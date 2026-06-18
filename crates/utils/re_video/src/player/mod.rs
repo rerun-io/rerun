@@ -942,6 +942,7 @@ impl<T: Default> VideoPlayer<T> {
         self.last_requested = None;
         self.last_enqueued = None;
         self.signaled_end_of_video = false;
+        self.last_time_caught_up = None;
         // Do *not* reset the error state or last output.
         //
         // We want to keep track of the last error, and also be able to display

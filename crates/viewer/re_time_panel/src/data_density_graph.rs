@@ -436,11 +436,10 @@ pub fn paint_loaded_indicator_bar(
     re_tracing::profile_function!();
 
     let full_time_range = db
-        .rrd_manifest_index()
-        .timeline_range(time_ctrl.timeline_name())
+        .time_range_for(time_ctrl.timeline_name())
         .unwrap_or(AbsoluteTimeRange::EMPTY);
 
-    let is_loading = db.is_buffering();
+    let is_loading = db.is_buffering() || time_ctrl.was_marked_as_buffering();
 
     if is_loading
         && let Some(start) = time_ranges_ui.x_from_time_f32(full_time_range.min.into())
@@ -493,12 +492,25 @@ pub fn paint_loaded_indicator_bar(
             .loaded_ranges_on_timeline(timeline.name());
 
         for range in loaded_ranges_on_timeline {
+            let max = if time_ctrl.was_marked_as_buffering() {
+                let max_draw = time_ctrl.time_int().unwrap_or(TimeInt::MIN);
+                if max_draw < range.min {
+                    break;
+                }
+
+                range.max.min(max_draw)
+            } else {
+                range.max
+            };
+
             let Some(start) = time_ranges_ui.x_from_time(range.min.into()) else {
                 continue;
             };
-            let Some(end) = time_ranges_ui.x_from_time(range.max.into()) else {
+
+            let Some(end) = time_ranges_ui.x_from_time(max.into()) else {
                 continue;
             };
+
             debug_assert!(start <= end, "Negative x-range");
             let x = Rangef::new(start as f32, end as f32).intersection(full_x_range);
 

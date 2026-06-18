@@ -17,8 +17,8 @@ use re_ui::ContextExt as _;
 use re_video::player::{VideoPlaybackIssueSeverity, VideoPlayerError};
 use re_view::DataResultQuery as _;
 use re_viewer_context::{
-    VideoStreamCache, VideoStreamProcessingError, ViewClass as _, ViewContext,
-    ViewContextCollection, ViewQuery, ViewSystemExecutionError, ViewSystemIdentifier,
+    SystemCommandSender as _, VideoStreamCache, VideoStreamProcessingError, ViewClass as _,
+    ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError, ViewSystemIdentifier,
     VisualizerExecutionOutput, typed_fallback_for, video_stream_time_from_query,
 };
 pub use video_frame_reference::VideoFrameReferenceVisualizer;
@@ -619,6 +619,13 @@ fn show_video_frame(
     };
 
     if let Some(reason) = loading_indicator_reason {
+        ctx.viewer_ctx.command_sender().send_system(
+            re_viewer_context::SystemCommand::TimeControlCommands {
+                store_id: ctx.store_id().clone(),
+                time_commands: vec![re_viewer_context::TimeControlCommand::Buffer],
+            },
+        );
+
         visualizer_data.loading_indicators.push(LoadingIndicator {
             center: top_left_corner_position + 0.5 * (extent_u + extent_v),
             half_extent_u: 0.5 * extent_u,

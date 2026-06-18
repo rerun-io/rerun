@@ -239,6 +239,12 @@ pub struct TimeControl {
 
     /// If the user has interacted since the last `update`, if so don't update time this frame.
     just_interacted: bool,
+
+    /// Should the time control buffer next update?
+    buffer_next_frame: bool,
+
+    /// The value of `buffer_next_frame` last update.
+    was_buffering: bool,
 }
 
 impl Default for TimeControl {
@@ -253,7 +259,10 @@ impl Default for TimeControl {
             loop_mode: LoopMode::Off,
             highlighted_range: None,
             highlighted_range_next_frame: None,
+
             just_interacted: false,
+            buffer_next_frame: false,
+            was_buffering: false,
         }
     }
 }
@@ -324,6 +333,11 @@ impl TimeControl {
             buffer_behavior: BufferBehavior::AlwaysBuffer,
             ..Self::default()
         }
+    }
+
+    /// Was this time control marked as buffering by [`TimeControlCommand::Buffer`]?
+    pub fn was_marked_as_buffering(&self) -> bool {
+        self.was_buffering
     }
 
     /// Hold the next playback advance until we stop buffering.
@@ -474,6 +488,8 @@ impl TimeControl {
         } = *params;
 
         let just_interacted = std::mem::take(&mut self.just_interacted);
+        self.was_buffering = std::mem::take(&mut self.buffer_next_frame);
+        let is_buffering = self.was_buffering || is_buffering;
 
         // Swap highlight buffer: `highlighted_range_next_frame` (set by the
         // command handler since the previous `update`) becomes readable via
