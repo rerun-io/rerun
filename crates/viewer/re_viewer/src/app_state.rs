@@ -839,23 +839,28 @@ impl AppState {
                     return None;
                 }
 
-                if let Some(viewport_ui) = viewport_ui
-                    && viewport_ui.blueprint.is_item_valid(storage_context, item)
-                {
-                    return Some(item.clone());
-                }
+                if let Some(viewport_ui) = viewport_ui {
+                    if viewport_ui.blueprint.is_item_valid(storage_context, item) {
+                        return Some(item.clone());
+                    }
 
-                // A data result whose view still exists but whose entity isn't actually
-                // part of that view: fall back to selecting the entity itself rather than
-                // dropping the selection entirely.
-                if let Item::DataResult(data_result) = item
-                    && let Some(viewport_ui) = viewport_ui
-                    && viewport_ui.blueprint.view(&data_result.view_id).is_some()
-                {
-                    return Some(Item::InstancePath(data_result.instance_path.clone()));
-                }
+                    // A data result whose view still exists but whose entity isn't actually
+                    // part of that view: fall back to selecting the entity itself rather than
+                    // dropping the selection entirely.
+                    if let Item::DataResult(data_result) = item
+                        && viewport_ui.blueprint.view(&data_result.view_id).is_some()
+                    {
+                        return Some(Item::InstancePath(data_result.instance_path.clone()));
+                    }
 
-                None
+                    None
+                } else if item.requires_blueprint() {
+                    // This item is invalid without an active blueprint
+                    None
+                } else {
+                    // This item doesn't depend on any blueprint, lets keep it valid
+                    Some(item.clone())
+                }
             },
             route.item(),
         );
