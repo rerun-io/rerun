@@ -1,5 +1,15 @@
 # Rerun changelog
 
+## [0.33.1](https://github.com/rerun-io/rerun/compare/0.33.0...0.33.1) - 2026-06-22
+
+### 🔎 Details
+
+#### 🪳 Bug fixes
+- Do not delete "duplicate" chunks that contain transform data [b2ac735](https://github.com/rerun-io/rerun/commit/b2ac735c15cba853d9e38b41412d5671ac16e06c)
+
+#### 🌁 Viewer improvements
+- Temporary time pause on scrubbing [c7578b9](https://github.com/rerun-io/rerun/commit/c7578b9406b0f5d19237d13085155144f6fd38e6)
+
 ## [0.33.0](https://github.com/rerun-io/rerun/compare/0.32.2...0.33.0) - 2026-05-29
 
 🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-33
