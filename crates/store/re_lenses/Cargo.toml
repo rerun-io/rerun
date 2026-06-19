@@ -23,3 +23,8 @@ re_log.workspace = true
 re_sdk_types.workspace = true
 
 arrow.workspace = true
+
+[dev-dependencies]
+re_arrow_util.workspace = true
+
+insta.workspace = true

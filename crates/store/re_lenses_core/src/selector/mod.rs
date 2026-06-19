@@ -21,7 +21,7 @@
 //! # Differences from `jq`
 //!
 //! * **Columnar, not row-oriented** - operations apply to entire Arrow columns rather than individual JSON values.
-//! * **No filters, arithmetic, or built-in functions** - only path navigation and iteration are supported.
+//! * **No filters or arithmetic** - only path navigation, iteration, and built-in functions are supported.
 //! * **No quoted field names or string interpolation** - field names must be bare identifiers
 //!   (alphanumeric, `-`, `_`).
 //!

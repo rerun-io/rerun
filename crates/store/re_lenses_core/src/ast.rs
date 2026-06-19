@@ -216,7 +216,8 @@ impl Lenses {
         &'a self,
         // TODO(grtlr): Let's take ownership here.
         chunk: &'a Chunk,
+        runtime: &'a crate::Runtime,
     ) -> impl Iterator<Item = Result<Chunk, crate::LensError>> + 'a {
-        crate::execute::execute(self, chunk)
+        crate::execute::execute(self, chunk, runtime)
     }
 }

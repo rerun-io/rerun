@@ -116,7 +116,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Apply all lenses and send the resulting chunks.
     let results = chunk
-        .apply_lenses(&[extract_x, extract_y, simplify_accel, scale_x])
+        .apply_lenses(
+            &[extract_x, extract_y, simplify_accel, scale_x],
+            &rerun::lenses::default_runtime(),
+        )
         .map_err(|partial| {
             let errors: Vec<_> =
                 partial.errors().map(|e| e.to_string()).collect();

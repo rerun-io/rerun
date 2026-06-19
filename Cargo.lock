@@ -8979,6 +8979,8 @@ name = "re_lenses"
 version = "0.34.0-alpha.1+dev"
 dependencies = [
  "arrow",
+ "insta",
+ "re_arrow_util",
  "re_lenses_core",
  "re_log",
  "re_sdk_types",
@@ -11057,6 +11059,7 @@ dependencies = [
  "re_grpc_client",
  "re_grpc_server",
  "re_importer",
+ "re_lenses",
  "re_lenses_core",
  "re_log",
  "re_log_encoding",

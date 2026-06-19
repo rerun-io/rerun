@@ -239,6 +239,25 @@ def test_apply_lenses_field_extraction() -> None:
 """)
 
 
+def test_apply_lenses_string_prefix_builtin() -> None:
+    """apply_lenses can use the built-in string_prefix selector function."""
+    image_data = pa.StructArray.from_arrays(
+        [pa.array(["png", "jpeg"], type=pa.string())],
+        names=["format"],
+    )
+    chunk = Chunk.from_columns(
+        "/camera",
+        indexes=[rr.TimeColumn("frame", sequence=[0, 1])],
+        columns=rr.DynamicArchetype.columns(archetype="Image", components={"format": image_data}),
+    )
+
+    lens = DeriveLens("Image:format").to_component("Image:mime", '.format | string_prefix("image/")')
+    results = chunk.apply_lenses(lens)
+
+    assert len(results) == 1
+    assert results[0].to_record_batch().column("Image:mime").to_pylist() == [["image/png"], ["image/jpeg"]]
+
+
 def test_apply_lenses_no_match() -> None:
     """apply_lenses forwards the original chunk when no lens input component matches."""
     chunk = Chunk.from_columns(

@@ -147,7 +147,10 @@ fn test_destructure_cast() {
         destructure,
     );
 
-    let res: Vec<re_chunk::Chunk> = lenses.apply(&original_chunk).try_collect().unwrap();
+    let res: Vec<re_chunk::Chunk> = lenses
+        .apply(&original_chunk, &re_lenses::default_runtime())
+        .try_collect()
+        .unwrap();
 
     assert_eq!(res.len(), 1);
 
@@ -174,7 +177,10 @@ fn test_destructure() {
         destructure,
     );
 
-    let res: Vec<re_chunk::Chunk> = lenses.apply(&original_chunk).try_collect().unwrap();
+    let res: Vec<re_chunk::Chunk> = lenses
+        .apply(&original_chunk, &re_lenses::default_runtime())
+        .try_collect()
+        .unwrap();
     assert_eq!(res.len(), 1);
 
     let chunk = &res[0];
@@ -242,7 +248,10 @@ fn test_time_column_extraction() {
         time_lens,
     );
 
-    let res: Vec<Chunk> = lenses.apply(&original_chunk).try_collect().unwrap();
+    let res: Vec<Chunk> = lenses
+        .apply(&original_chunk, &re_lenses::default_runtime())
+        .try_collect()
+        .unwrap();
     assert_eq!(res.len(), 1);
 
     let chunk = &res[0];
@@ -370,7 +379,10 @@ fn test_scatter_columns() {
 
     let lenses = Lenses::new(OutputMode::DropUnmatched).add_lens(scatter_lens);
 
-    let res: Vec<Chunk> = lenses.apply(&original_chunk).try_collect().unwrap();
+    let res: Vec<Chunk> = lenses
+        .apply(&original_chunk, &re_lenses::default_runtime())
+        .try_collect()
+        .unwrap();
     assert_eq!(res.len(), 1);
 
     let chunk = &res[0];
@@ -451,7 +463,10 @@ fn test_scatter_columns_static() {
 
     let lenses = Lenses::new(OutputMode::DropUnmatched).add_lens(scatter_lens);
 
-    let res: Vec<Chunk> = lenses.apply(&original_chunk).try_collect().unwrap();
+    let res: Vec<Chunk> = lenses
+        .apply(&original_chunk, &re_lenses::default_runtime())
+        .try_collect()
+        .unwrap();
     assert_eq!(res.len(), 1);
 
     let chunk = &res[0];
@@ -541,7 +556,9 @@ fn test_output_overwrites_same_named_component() {
 
     let lenses = Lenses::new(OutputMode::DropUnmatched).add_lens(lens);
 
-    let results: Vec<_> = lenses.apply(&original_chunk).collect();
+    let results: Vec<_> = lenses
+        .apply(&original_chunk, &re_lenses::default_runtime())
+        .collect();
     assert_eq!(results.len(), 1);
 
     let chunk = results.into_iter().next().unwrap().unwrap();
