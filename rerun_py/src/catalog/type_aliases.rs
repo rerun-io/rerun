@@ -8,7 +8,7 @@ use arrow::pyarrow::PyArrowType;
 use numpy::PyArrayMethods as _;
 use pyo3::exceptions::{PyTypeError, PyValueError};
 use pyo3::prelude::PyAnyMethods as _;
-use pyo3::{Bound, FromPyObject, PyAny, PyResult, pyclass, pymethods};
+use pyo3::{Borrowed, Bound, FromPyObject, PyAny, PyErr, PyResult, pyclass, pymethods};
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_sorbet::ComponentColumnSelector;
 
@@ -53,8 +53,10 @@ pub enum IndexValuesLike<'py> {
     CatchAll(Bound<'py, PyAny>),
 }
 
-impl<'py> FromPyObject<'py> for IndexValuesLike<'py> {
-    fn extract_bound(obj: &Bound<'py, PyAny>) -> PyResult<Self> {
+impl<'py> FromPyObject<'_, 'py> for IndexValuesLike<'py> {
+    type Error = PyErr;
+
+    fn extract(obj: Borrowed<'_, 'py, PyAny>) -> PyResult<Self> {
         // Try PyArrow first
         if let Ok(pyarrow) = obj.extract::<PyArrowType<ArrayData>>() {
             return Ok(Self::PyArrow(pyarrow));
@@ -86,7 +88,7 @@ impl<'py> FromPyObject<'py> for IndexValuesLike<'py> {
         }
 
         // Fall back to catch all
-        Ok(Self::CatchAll(obj.clone()))
+        Ok(Self::CatchAll(obj.to_owned()))
     }
 }
 
@@ -214,6 +216,7 @@ impl IndexValuesLike<'_> {
 /// `TimeInt` values.
 #[pyclass(
     frozen,
+    from_py_object,
     name = "_IndexValuesLikeInternal",
     module = "rerun_bindings.rerun_bindings",
     hash,
@@ -236,7 +239,7 @@ impl PyIndexValuesLikeInternal {
     #[new]
     #[pyo3(text_signature = "(self, values)")]
     fn new(values: Bound<'_, PyAny>) -> PyResult<Self> {
-        let index_values_like = IndexValuesLike::extract_bound(&values)?;
+        let index_values_like = IndexValuesLike::extract(values.as_borrowed())?;
         let values = index_values_like.to_index_values()?;
         Ok(Self { values })
     }

@@ -18,6 +18,19 @@ use crate::blueprint_resolved_results::{
 };
 use crate::{BlueprintResolvedResults, ComponentMappingError};
 
+/// A rule that decides the cast destination for a polymorphic target slot based on the
+/// source's element datatype.
+///
+/// Returning `Some(dt)` requests that the source array be cast to `dt`.
+/// Returning `None` rejects the source datatype: the surrounding query reports a
+/// [`ComponentMappingError::CastFailed`] and the target slot ends up empty for that chunk.
+///
+/// This is the per-slot override consulted by [`range_with_blueprint_resolved_data_polymorphic`]
+/// and [`latest_at_with_blueprint_resolved_data_polymorphic`]. When no rule is provided for a
+/// target, the existing behavior (cast to the target component's reflection-registered datatype)
+/// applies.
+pub type ComponentCastRule = fn(&arrow::datatypes::DataType) -> Option<arrow::datatypes::DataType>;
+
 /// Casts to a `ListArray` with values matching `target_value_datatype`.
 ///
 /// Returns `source` unchanged if already the correct type (zero-copy).
@@ -99,6 +112,28 @@ struct ActiveRemapping {
     selector: Option<re_lenses_core::Selector>,
 }
 
+/// Decide the cast destination datatype for one chunk during a remapping.
+///
+/// With a polymorphic `rule`, the destination is derived from the chunk's actual source element
+/// datatype. Without a rule, fall back to the target component's reflection-registered datatype.
+/// Returning `None` means "skip the cast" (matches `transform_chunk`'s contract).
+fn chunk_target_datatype(
+    rule: Option<ComponentCastRule>,
+    target: &ComponentIdentifier,
+    source: &ComponentIdentifier,
+    reflection: &re_types_core::reflection::Reflection,
+    chunk: &re_chunk_store::Chunk,
+) -> Option<arrow::datatypes::DataType> {
+    if let Some(rule) = rule {
+        chunk
+            .components()
+            .get_array(*source)
+            .and_then(|arr| rule(&arr.value_type()))
+    } else {
+        reflection.lookup_datatype(*target).cloned()
+    }
+}
+
 /// Determines the exact reason why a component was not found.
 fn component_not_found_error(
     component: ComponentIdentifier,
@@ -165,11 +200,40 @@ fn component_not_found_error(
 /// [`crate::BlueprintResolvedResults`].
 pub fn range_with_blueprint_resolved_data<'a>(
     ctx: &'a ViewContext<'a>,
+    annotations: Option<&re_viewer_context::Annotations>,
+    range_query: &RangeQuery,
+    data_result: &'a re_viewer_context::DataResult,
+    components: impl IntoIterator<Item = ComponentIdentifier>,
+    visualizer_instruction: &re_viewer_context::VisualizerInstruction,
+) -> BlueprintResolvedRangeResults<'a> {
+    range_with_blueprint_resolved_data_polymorphic(
+        ctx,
+        annotations,
+        range_query,
+        data_result,
+        components,
+        visualizer_instruction,
+        &IntMap::default(),
+    )
+}
+
+/// Like [`range_with_blueprint_resolved_data`] but with per-target polymorphic cast rules.
+///
+/// For each target component listed in `cast_rules`, the cast destination is decided per-chunk
+/// from the chunk's actual source element datatype via the supplied [`ComponentCastRule`],
+/// instead of being read from the target component's reflection-registered datatype.
+///
+/// This lets a single mapping slot accept heterogeneous source types (e.g. ints, floats, bools,
+/// strings) and canonicalize them according to caller-defined rules without coercing everything
+/// to the target's nominal datatype.
+pub fn range_with_blueprint_resolved_data_polymorphic<'a>(
+    ctx: &'a ViewContext<'a>,
     _annotations: Option<&re_viewer_context::Annotations>,
     range_query: &RangeQuery,
     data_result: &'a re_viewer_context::DataResult,
     components: impl IntoIterator<Item = ComponentIdentifier>,
     visualizer_instruction: &re_viewer_context::VisualizerInstruction,
+    cast_rules: &IntMap<ComponentIdentifier, ComponentCastRule>,
 ) -> BlueprintResolvedRangeResults<'a> {
     re_tracing::profile_function!(data_result.entity_path.to_string());
 
@@ -240,18 +304,21 @@ pub fn range_with_blueprint_resolved_data<'a>(
             selector,
         } in &active_remappings
         {
-            let target_datatype = reflection.lookup_datatype(*target);
+            let rule = cast_rules.get(target).copied();
 
             // NOTE: We clone the chunks instead of removing them, because multiple mappings may
             // reference the same source component.
             if let Some(mut chunks) = results.components.get(source).cloned() {
                 'ctx: {
                     for chunk in &mut chunks {
+                        let chunk_target_dt =
+                            chunk_target_datatype(rule, target, source, reflection, chunk);
+
                         let result = transform_chunk(
                             target,
                             source,
                             selector.as_ref(),
-                            target_datatype,
+                            chunk_target_dt.as_ref(),
                             chunk,
                         );
 
@@ -334,11 +401,34 @@ pub fn range_with_blueprint_resolved_data<'a>(
 /// [`crate::BlueprintResolvedResults`].
 pub fn latest_at_with_blueprint_resolved_data<'a>(
     ctx: &'a ViewContext<'a>,
+    annotations: Option<&'a re_viewer_context::Annotations>,
+    latest_at_query: &LatestAtQuery,
+    data_result: &'a re_viewer_context::DataResult,
+    components: impl IntoIterator<Item = ComponentIdentifier>,
+    visualizer_instruction: Option<&re_viewer_context::VisualizerInstruction>,
+) -> BlueprintResolvedLatestAtResults<'a> {
+    latest_at_with_blueprint_resolved_data_polymorphic(
+        ctx,
+        annotations,
+        latest_at_query,
+        data_result,
+        components,
+        visualizer_instruction,
+        &IntMap::default(),
+    )
+}
+
+/// Like [`latest_at_with_blueprint_resolved_data`] but with per-target polymorphic cast rules.
+///
+/// See [`range_with_blueprint_resolved_data_polymorphic`] for the cast-rule semantics.
+pub fn latest_at_with_blueprint_resolved_data_polymorphic<'a>(
+    ctx: &'a ViewContext<'a>,
     _annotations: Option<&'a re_viewer_context::Annotations>,
     latest_at_query: &LatestAtQuery,
     data_result: &'a re_viewer_context::DataResult,
     components: impl IntoIterator<Item = ComponentIdentifier>,
     visualizer_instruction: Option<&re_viewer_context::VisualizerInstruction>,
+    cast_rules: &IntMap<ComponentIdentifier, ComponentCastRule>,
 ) -> BlueprintResolvedLatestAtResults<'a> {
     // This is called very frequently, don't put a profile scope here.
 
@@ -417,12 +507,19 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
         selector,
     } in &active_remappings
     {
-        let target_datatype = reflection.lookup_datatype(*target);
+        let rule = cast_rules.get(target).copied();
 
         // NOTE: We borrow the chunk instead of removing it, because multiple mappings may
         // reference the same source component.
         if let Some(chunk) = store_results.components.get(source) {
-            let result = transform_chunk(target, source, selector.as_ref(), target_datatype, chunk);
+            let chunk_target_dt = chunk_target_datatype(rule, target, source, reflection, chunk);
+            let result = transform_chunk(
+                target,
+                source,
+                selector.as_ref(),
+                chunk_target_dt.as_ref(),
+                chunk,
+            );
             match result {
                 Ok(modified_chunk) => {
                     let chunk = std::sync::Arc::new(modified_chunk)

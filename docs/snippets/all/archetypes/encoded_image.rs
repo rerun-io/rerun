@@ -1,7 +1,8 @@
 //! Log a PNG image
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let rec = rerun::RecordingStreamBuilder::new("rerun_example_encoded_image").spawn()?;
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_encoded_image")
+        .spawn()?;
 
     let image = include_bytes!("ferris.png");
 

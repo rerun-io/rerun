@@ -96,7 +96,9 @@ class Mesh3D(Mesh3DExt, Archetype, VisualizableArchetype):
             "shape",
             rr.InstancePoses3D(
                 translations=[[2, 0, 0], [0, 2, 0], [0, -2, 0], [-2, 0, 0]],
-                rotation_axis_angles=rr.RotationAxisAngle([0, 0, 1], rr.Angle(deg=i * 2)),
+                rotation_axis_angles=rr.RotationAxisAngle(
+                    [0, 0, 1], rr.Angle(deg=i * 2)
+                ),
             ),
         )
     ```

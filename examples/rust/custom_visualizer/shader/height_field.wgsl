@@ -64,8 +64,7 @@ fn vs_main(in: VertexIn) -> VertexOut {
     // Normalize height to [0,1] and apply the colormap.
     let height_range = ubo.max_height - ubo.min_height;
     let t = select((in.height - ubo.min_height) / height_range, 0.5, height_range <= 0.0);
-    let color_rgb = colormap_linear(ubo.colormap, t);
-    out.color = vec4f(color_rgb, 1.0);
+    out.color = colormap_linear(ubo.colormap, t);
 
     return out;
 }

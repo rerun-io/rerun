@@ -5,13 +5,18 @@ from __future__ import annotations
 import numpy as np
 import pyarrow as pa
 import pytest
+from rerun.experimental.dataloader import Field
 from rerun.experimental.dataloader._decoders import (
+    VideoFrameDecoder,
     _avcc_to_annex_b,
     _flatten_blob,
+    _h264_annex_b_has_idr,
+    _hevc_annex_b_has_irap,
     _is_annex_b,
     _is_av1_keyframe_packet,
     _unwrap_to_numpy,
 )
+from rerun.experimental.dataloader._utils import _field_index_range, _prior_keyframe
 
 
 @pytest.mark.parametrize(
@@ -69,6 +74,96 @@ def _avcc_encode(nal_units: list[bytes], nal_length_size: int = 4) -> bytes:
         out.extend(len(unit).to_bytes(nal_length_size, "big"))
         out.extend(unit)
     return bytes(out)
+
+
+def _h264_annex_b(nal_units: list[tuple[int, bytes]], use_4byte: bool = True) -> bytes:
+    """Build an Annex B H.264 stream from `(nal_unit_type, payload)` pairs."""
+    start = b"\x00\x00\x00\x01" if use_4byte else b"\x00\x00\x01"
+    out = bytearray()
+    for nal_type, payload in nal_units:
+        out.extend(start)
+        # nal_ref_idc=3, forbidden_zero_bit=0
+        out.append((3 << 5) | (nal_type & 0x1F))
+        out.extend(payload)
+    return bytes(out)
+
+
+def _hevc_annex_b(nal_units: list[tuple[int, bytes]], use_4byte: bool = True) -> bytes:
+    """Build an Annex B HEVC stream from `(nal_unit_type, payload)` pairs."""
+    start = b"\x00\x00\x00\x01" if use_4byte else b"\x00\x00\x01"
+    out = bytearray()
+    for nal_type, payload in nal_units:
+        out.extend(start)
+        # forbidden_zero_bit=0, layer_id=0, temporal_id_plus1=1
+        out.append((nal_type & 0x3F) << 1)
+        out.append(0x01)
+        out.extend(payload)
+    return bytes(out)
+
+
+@pytest.mark.parametrize("use_4byte", [True, False])
+def test_h264_annex_b_has_idr_simple(use_4byte: bool) -> None:
+    sample = _h264_annex_b([(5, b"\xaa\xbb\xcc")], use_4byte=use_4byte)
+    assert _h264_annex_b_has_idr(sample) is True
+
+
+def test_h264_annex_b_has_idr_after_sps_pps() -> None:
+    sample = _h264_annex_b([
+        (7, b"\x42\xc0\x1f"),  # SPS
+        (8, b"\xce\x38\x80"),  # PPS
+        (5, b"\x88\x84"),  # IDR
+    ])
+    assert _h264_annex_b_has_idr(sample) is True
+
+
+def test_h264_annex_b_has_idr_after_aud_sei() -> None:
+    sample = _h264_annex_b([
+        (9, b"\x10"),  # AUD
+        (6, b"\x01\x80"),  # SEI
+        (5, b"\x88"),  # IDR
+    ])
+    assert _h264_annex_b_has_idr(sample) is True
+
+
+def test_h264_annex_b_has_idr_p_slice_only() -> None:
+    sample = _h264_annex_b([(1, b"\xab\xcd\xef")])
+    assert _h264_annex_b_has_idr(sample) is False
+
+
+def test_h264_annex_b_has_idr_empty() -> None:
+    assert _h264_annex_b_has_idr(b"") is False
+
+
+@pytest.mark.parametrize("use_4byte", [True, False])
+def test_hevc_annex_b_has_irap_simple(use_4byte: bool) -> None:
+    sample = _hevc_annex_b([(19, b"\xaa\xbb\xcc")], use_4byte=use_4byte)
+    assert _hevc_annex_b_has_irap(sample) is True
+
+
+@pytest.mark.parametrize("nal_type", [16, 17, 18, 19, 20, 21, 22, 23])
+def test_hevc_annex_b_has_irap_all_irap_types(nal_type: int) -> None:
+    sample = _hevc_annex_b([(nal_type, b"\xaa")])
+    assert _hevc_annex_b_has_irap(sample) is True
+
+
+@pytest.mark.parametrize("nal_type", [1, 15, 24, 32, 35])  # TRAIL_R, RSV_VCL_*, just-out-of-IRAP, VPS, AUD
+def test_hevc_annex_b_has_irap_non_irap_types(nal_type: int) -> None:
+    sample = _hevc_annex_b([(nal_type, b"\xaa")])
+    assert _hevc_annex_b_has_irap(sample) is False
+
+
+def test_hevc_annex_b_has_irap_after_vps_sps_pps() -> None:
+    sample = _hevc_annex_b([
+        (32, b"\xaa"),  # VPS
+        (33, b"\xbb"),  # SPS
+        (34, b"\xcc"),  # PPS
+        (19, b"\xdd"),  # IDR_W_RADL
+    ])
+    assert _hevc_annex_b_has_irap(sample) is True
+
+
+def test_hevc_annex_b_has_irap_empty() -> None:
+    assert _hevc_annex_b_has_irap(b"") is False
 
 
 def test_avcc_to_annex_b_single_unit() -> None:
@@ -168,3 +263,122 @@ def test_flatten_blob_binary_respects_offsets() -> None:
     )
     for row, expected in enumerate([b"AAAA", b"BB", b"CCCCCC"]):
         np.testing.assert_array_equal(_flatten_blob(arr, row), np.frombuffer(expected, dtype=np.uint8))
+
+
+def test_video_frame_decoder_returns_none_without_keyframe() -> None:
+    """`decode` returns `None` when the prefetched window contains no keyframe."""
+    p_slice_only = _h264_annex_b([(1, b"\xab\xcd\xef\x01\x02\x03")])
+    raw = pa.chunked_array([pa.array([[p_slice_only]], type=pa.list_(pa.binary()))])
+
+    decoder = VideoFrameDecoder(codec="h264", keyframe_interval=2)
+    assert decoder.decode(raw, 0, "seg") is None
+
+
+def test_video_frame_decoder_is_keyframe_h264() -> None:
+    p_slice = _h264_annex_b([(1, b"\xab\xcd")])
+    idr = _h264_annex_b([(5, b"\x88")])
+    decoder = VideoFrameDecoder(codec="h264")
+    assert decoder._is_keyframe(p_slice) is False
+    assert decoder._is_keyframe(idr) is True
+
+
+def test_video_frame_decoder_is_keyframe_hevc() -> None:
+    non_irap = _hevc_annex_b([(1, b"\xaa")])
+    irap = _hevc_annex_b([(19, b"\xaa")])
+    decoder = VideoFrameDecoder(codec="hevc")
+    assert decoder._is_keyframe(non_irap) is False
+    assert decoder._is_keyframe(irap) is True
+
+
+def test_video_frame_decoder_is_keyframe_unknown_codec_returns_none() -> None:
+    assert VideoFrameDecoder(codec="vp9")._is_keyframe(b"\x00") is None
+
+
+def test_video_frame_decoder_has_keyframe_h264() -> None:
+    p_slice = _h264_annex_b([(1, b"\xab\xcd")])
+    idr = _h264_annex_b([(7, b"\x42\xc0\x1f"), (8, b"\xce\x38"), (5, b"\x88")])
+    decoder = VideoFrameDecoder(codec="h264")
+    assert decoder._has_keyframe([]) is False
+    assert decoder._has_keyframe([p_slice]) is False
+    assert decoder._has_keyframe([p_slice, idr]) is True
+
+
+def test_video_frame_decoder_has_keyframe_unknown_codec_trusts_decoder() -> None:
+    # Unknown codec: `_is_keyframe` returns None and `_has_keyframe` returns True so
+    # failures surface from the decoder rather than being swallowed as cold-start.
+    assert VideoFrameDecoder(codec="vp9")._has_keyframe([b"\x00"]) is True
+
+
+def test_video_frame_decoder_derives_keyframe_path() -> None:
+    decoder = VideoFrameDecoder(codec="h264")
+    assert decoder.prior_keyframe_path("/camera:VideoStream:sample") == "/camera:VideoStream:is_keyframe"
+    assert (
+        decoder.prior_keyframe_path("/robot/cam_left:VideoStream:sample") == "/robot/cam_left:VideoStream:is_keyframe"
+    )
+
+
+def test_video_frame_decoder_keyframe_path_no_separator() -> None:
+    # Defensive: a path with no `:` is non-canonical; return None rather than guessing.
+    assert VideoFrameDecoder(codec="h264").prior_keyframe_path("/just_an_entity") is None
+
+
+def test_field_index_range_window_beats_anchor_and_heuristic() -> None:
+    field = Field(path="/camera:VideoStream:sample", decode=VideoFrameDecoder(codec="h264"), window=(-3, 5))
+    decoder = VideoFrameDecoder(codec="h264", keyframe_interval=10)
+    # Anchor and heuristic must lose to the explicit window.
+    assert _field_index_range(100, field, decoder, prior_keyframe=42) == (97, 105)
+
+
+def test_field_index_range_anchor_beats_heuristic_integer() -> None:
+    field = Field(path="/camera:VideoStream:sample", decode=VideoFrameDecoder(codec="h264"))
+    decoder = VideoFrameDecoder(codec="h264", keyframe_interval=10)
+    assert _field_index_range(100, field, decoder, prior_keyframe=87) == (87, 100)
+
+
+def test_field_index_range_anchor_beats_heuristic_timestamp() -> None:
+    field = Field(path="/camera:VideoStream:sample", decode=VideoFrameDecoder(codec="h264"))
+    decoder = VideoFrameDecoder(codec="h264", keyframe_interval=30, fps_estimate=30.0)
+    target = np.datetime64(1_000_000_000, "ns")
+    result = _field_index_range(target, field, decoder, prior_keyframe=500_000_000)
+    assert result is not None
+    lo, hi = result
+    assert lo == np.datetime64(500_000_000, "ns")
+    assert hi == target
+
+
+def test_field_index_range_falls_back_to_heuristic_when_anchor_missing() -> None:
+    # Simulates "no prior keyframe yet in this segment" — the prefetcher drops the
+    # entry and the field falls back to the decoder's heuristic context_range.
+    field = Field(path="/camera:VideoStream:sample", decode=VideoFrameDecoder(codec="h264"))
+    decoder = VideoFrameDecoder(codec="h264", keyframe_interval=10)
+    assert _field_index_range(100, field, decoder, prior_keyframe=None) == (90, 100)
+
+
+def test_field_index_range_default_kwarg_is_none() -> None:
+    # Existing call sites that don't pass `prior_keyframe` keep the same behavior.
+    field = Field(path="/camera:VideoStream:sample", decode=VideoFrameDecoder(codec="h264"))
+    decoder = VideoFrameDecoder(codec="h264", keyframe_interval=5)
+    assert _field_index_range(20, field, decoder) == (15, 20)
+
+
+def test_prior_keyframe_none_or_empty_returns_none() -> None:
+    assert _prior_keyframe(None, 100) is None
+    assert _prior_keyframe(np.array([], dtype=np.int64), 100) is None
+
+
+def test_prior_keyframe_target_before_first_returns_none() -> None:
+    assert _prior_keyframe(np.array([50, 100, 150], dtype=np.int64), 49) is None
+
+
+def test_prior_keyframe_target_equals_keyframe_returns_keyframe() -> None:
+    assert _prior_keyframe(np.array([50, 100, 150], dtype=np.int64), 100) == 100
+
+
+def test_prior_keyframe_target_between_returns_largest_leq() -> None:
+    kfs = np.array([50, 100, 150], dtype=np.int64)
+    assert _prior_keyframe(kfs, 99) == 50
+    assert _prior_keyframe(kfs, 149) == 100
+
+
+def test_prior_keyframe_target_after_last_returns_last() -> None:
+    assert _prior_keyframe(np.array([50, 100, 150], dtype=np.int64), 9999) == 150

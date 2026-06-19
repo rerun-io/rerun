@@ -1,4 +1,4 @@
-"""IterableDataset backed by the Rerun Data Platform."""
+"""IterableDataset backed by a catalog server."""
 
 from __future__ import annotations
 
@@ -23,9 +23,9 @@ if TYPE_CHECKING:
     from ._config import DataSource, Field
 
 
-class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tensor]]):
+class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tensor | None]]):
     """
-    Iterable dataset backed by the Rerun Data Platform.
+    Iterable dataset backed by a catalog server.
 
     Fetches `fetch_size` samples per server query and yields individual
     samples, so per-query overhead is amortized across many samples while
@@ -102,7 +102,7 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tens
         """Set the epoch for shuffling (like `DistributedSampler.set_epoch`)."""
         self._epoch = epoch
 
-    def __iter__(self) -> Iterator[dict[str, torch.Tensor]]:
+    def __iter__(self) -> Iterator[dict[str, torch.Tensor | None]]:
         """
         Yield individual samples as they are decoded.
 
@@ -120,12 +120,12 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tens
 
             executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="rerun-fetch")
 
-            def submit_fetch(chunk: np.ndarray) -> Future[tuple[list[Target], dict[str, pa.Table]]]:
+            def submit_fetch(chunk: np.ndarray) -> Future[tuple[list[Target], dict[str, dict[str, pa.Table]]]]:
                 # Copy the calling thread's contextvars so _fetch_arrow's span is
                 # parented under the current OTel context instead of appearing as a root trace.
                 ctx = contextvars.copy_context()
 
-                def fetch() -> tuple[list[Target], dict[str, pa.Table]]:
+                def fetch() -> tuple[list[Target], dict[str, dict[str, pa.Table]]]:
                     return ctx.run(
                         _fetch_arrow,
                         view=view,
@@ -139,7 +139,7 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tens
                 return executor.submit(fetch)
 
             try:
-                pending: Future[tuple[list[Target], dict[str, pa.Table]]] | None = submit_fetch(chunks[0])
+                pending: Future[tuple[list[Target], dict[str, dict[str, pa.Table]]]] | None = submit_fetch(chunks[0])
                 for i, _ in enumerate(chunks):
                     assert pending is not None
                     targets, seg_tables = pending.result()

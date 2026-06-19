@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -24,7 +25,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Archetype**: The query for the dataframe view.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, ::re_byte_size::SizeBytes)]
 pub struct DataframeQuery {
     /// The timeline for this query.
     ///
@@ -66,11 +67,13 @@ impl DataframeQuery {
     /// The corresponding component is [`crate::blueprint::components::TimelineName`].
     #[inline]
     pub fn descriptor_timeline() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
-            component: "DataframeQuery:timeline".into(),
-            component_type: Some("rerun.blueprint.components.TimelineName".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
+                component: "DataframeQuery:timeline".into(),
+                component_type: Some("rerun.blueprint.components.TimelineName".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::filter_by_range`].
@@ -78,11 +81,13 @@ impl DataframeQuery {
     /// The corresponding component is [`crate::blueprint::components::FilterByRange`].
     #[inline]
     pub fn descriptor_filter_by_range() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
-            component: "DataframeQuery:filter_by_range".into(),
-            component_type: Some("rerun.blueprint.components.FilterByRange".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
+                component: "DataframeQuery:filter_by_range".into(),
+                component_type: Some("rerun.blueprint.components.FilterByRange".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::filter_is_not_null`].
@@ -90,11 +95,13 @@ impl DataframeQuery {
     /// The corresponding component is [`crate::blueprint::components::FilterIsNotNull`].
     #[inline]
     pub fn descriptor_filter_is_not_null() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
-            component: "DataframeQuery:filter_is_not_null".into(),
-            component_type: Some("rerun.blueprint.components.FilterIsNotNull".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
+                component: "DataframeQuery:filter_is_not_null".into(),
+                component_type: Some("rerun.blueprint.components.FilterIsNotNull".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::apply_latest_at`].
@@ -102,11 +109,13 @@ impl DataframeQuery {
     /// The corresponding component is [`crate::blueprint::components::ApplyLatestAt`].
     #[inline]
     pub fn descriptor_apply_latest_at() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
-            component: "DataframeQuery:apply_latest_at".into(),
-            component_type: Some("rerun.blueprint.components.ApplyLatestAt".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
+                component: "DataframeQuery:apply_latest_at".into(),
+                component_type: Some("rerun.blueprint.components.ApplyLatestAt".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::select`].
@@ -114,11 +123,13 @@ impl DataframeQuery {
     /// The corresponding component is [`crate::blueprint::components::SelectedColumns`].
     #[inline]
     pub fn descriptor_select() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
-            component: "DataframeQuery:select".into(),
-            component_type: Some("rerun.blueprint.components.SelectedColumns".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
+                component: "DataframeQuery:select".into(),
+                component_type: Some("rerun.blueprint.components.SelectedColumns".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::entity_order`].
@@ -126,11 +137,13 @@ impl DataframeQuery {
     /// The corresponding component is [`crate::blueprint::components::ColumnOrder`].
     #[inline]
     pub fn descriptor_entity_order() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
-            component: "DataframeQuery:entity_order".into(),
-            component_type: Some("rerun.blueprint.components.ColumnOrder".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
+                component: "DataframeQuery:entity_order".into(),
+                component_type: Some("rerun.blueprint.components.ColumnOrder".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::auto_scroll`].
@@ -138,11 +151,13 @@ impl DataframeQuery {
     /// The corresponding component is [`crate::blueprint::components::AutoScroll`].
     #[inline]
     pub fn descriptor_auto_scroll() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
-            component: "DataframeQuery:auto_scroll".into(),
-            component_type: Some("rerun.blueprint.components.AutoScroll".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
+                component: "DataframeQuery:auto_scroll".into(),
+                component_type: Some("rerun.blueprint.components.AutoScroll".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -186,7 +201,10 @@ impl DataframeQuery {
 impl ::re_types_core::Archetype for DataframeQuery {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.blueprint.archetypes.DataframeQuery".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.blueprint.archetypes.DataframeQuery"
+        )
     }
 
     #[inline]
@@ -425,18 +443,5 @@ impl DataframeQuery {
     ) -> Self {
         self.auto_scroll = try_serialize_field(Self::descriptor_auto_scroll(), [auto_scroll]);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for DataframeQuery {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.timeline.heap_size_bytes()
-            + self.filter_by_range.heap_size_bytes()
-            + self.filter_is_not_null.heap_size_bytes()
-            + self.apply_latest_at.heap_size_bytes()
-            + self.select.heap_size_bytes()
-            + self.entity_order.heap_size_bytes()
-            + self.auto_scroll.heap_size_bytes()
     }
 }

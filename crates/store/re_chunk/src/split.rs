@@ -50,7 +50,7 @@ impl Chunk {
         let needs_split_rows = chunk_max_rows > 0 && chunk_num_rows > chunk_max_rows;
         let needs_split_unsorted = chunk_max_rows_if_unsorted > 0
             && chunk_num_rows > chunk_max_rows_if_unsorted
-            && !chunk.is_time_sorted();
+            && !chunk.all_timelines_sorted();
 
         if !needs_split_bytes && !needs_split_rows && !needs_split_unsorted {
             return vec![chunk];

@@ -11,7 +11,7 @@ use re_viewer::App;
 use re_viewer::event::{ViewerEvent, ViewerEventDispatcher, ViewerEventKind};
 use re_viewer::external::re_sdk_types::archetypes::TextLog;
 use re_viewer::external::re_sdk_types::blueprint::components::PlayState;
-use re_viewer::external::re_viewer_context::TimeControlCommand;
+use re_viewer::external::re_viewer_context::{AppContext, TimeControl, TimeControlCommand};
 use re_viewer::viewer_test_utils::{self, HarnessOptions};
 
 /// A simple event collector that records viewer events for later inspection.
@@ -60,16 +60,21 @@ fn send_time_commands(
     commands: impl IntoIterator<Item = TimeControlCommand>,
 ) {
     let commands: Vec<_> = commands.into_iter().collect();
-    harness.run_with_viewer_context(move |ctx| {
-        ctx.send_time_commands(commands);
+    harness.run_with_app_context(move |ctx| {
+        ctx.send_time_commands_to_active_recording(commands);
     });
 
     harness.run_ok();
 }
 
 fn assert_play_state(harness: &mut Harness<'_, App>, expected: PlayState) {
-    let actual = harness.run_with_viewer_context(|ctx| ctx.time_ctrl.play_state());
+    let actual = harness.run_with_app_context(|ctx| active_time_ctrl(ctx).play_state());
     assert_eq!(actual, expected, "play state mismatch");
+}
+
+fn active_time_ctrl<'a>(ctx: &'a AppContext<'_>) -> &'a TimeControl {
+    ctx.active_time_ctrl()
+        .expect("active recording route should have a time control")
 }
 
 /// Verifies that switching timelines emits the appropriate viewer event.
@@ -98,7 +103,7 @@ async fn time_control_emits_timeline_switch_event() {
     }
 
     let initial_timeline =
-        harness.run_with_viewer_context(move |ctx| *ctx.time_ctrl.timeline_name());
+        harness.run_with_app_context(move |ctx| *active_time_ctrl(ctx).timeline_name());
     let alternate_timeline = if initial_timeline == *timeline_a.name() {
         timeline_b
     } else {
@@ -115,7 +120,7 @@ async fn time_control_emits_timeline_switch_event() {
         )],
     );
     let timeline_after_switch =
-        harness.run_with_viewer_context(|ctx| *ctx.time_ctrl.timeline_name());
+        harness.run_with_app_context(|ctx| *active_time_ctrl(ctx).timeline_name());
     assert_eq!(timeline_after_switch, *alternate_timeline.name());
 
     assert!(
@@ -163,7 +168,7 @@ async fn time_control_emits_expected_viewer_events() {
     // Seek to a specific time
     let specific_time = TimeReal::from(4_i64);
     send_time_commands(&mut harness, [TimeControlCommand::SetTime(specific_time)]);
-    let time_after_seek = harness.run_with_viewer_context(|ctx| ctx.time_ctrl.time().unwrap());
+    let time_after_seek = harness.run_with_app_context(|ctx| active_time_ctrl(ctx).time().unwrap());
     assert_eq!(time_after_seek, specific_time);
     assert!(
         events.received_event(
@@ -239,7 +244,7 @@ async fn test_time_control_update_emits_time_update_events() {
     );
 
     assert_eq!(
-        harness.run_with_viewer_context(|ctx| ctx.time_ctrl.time().unwrap()),
+        harness.run_with_app_context(|ctx| active_time_ctrl(ctx).time().unwrap()),
         TimeReal::from(0_i64)
     );
 

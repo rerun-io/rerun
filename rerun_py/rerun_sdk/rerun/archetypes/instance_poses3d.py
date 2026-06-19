@@ -69,10 +69,20 @@ class InstancePoses3D(Archetype):
         rr.set_time("frame", sequence=i)
 
         # Log a regular transform which affects both the box and the points.
-        rr.log("world/box", rr.Transform3D(rotation_axis_angle=rr.RotationAxisAngle([0, 0, 1], angle=rr.Angle(deg=i * 2))))
+        rr.log(
+            "world/box",
+            rr.Transform3D(
+                rotation_axis_angle=rr.RotationAxisAngle(
+                    [0, 0, 1], angle=rr.Angle(deg=i * 2)
+                )
+            ),
+        )
 
         # Log an instance pose which affects only the box.
-        rr.log("world/box", rr.InstancePoses3D(translations=[0, 0, abs(i * 0.1 - 5.0) - 5.0]))
+        rr.log(
+            "world/box",
+            rr.InstancePoses3D(translations=[0, 0, abs(i * 0.1 - 5.0) - 5.0]),
+        )
     ```
     <center>
     <picture>

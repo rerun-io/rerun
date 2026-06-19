@@ -213,6 +213,11 @@ impl Ord for BatchKey {
 }
 
 impl MeshDrawData {
+    #[inline]
+    pub const fn gpu_instance_size_bytes() -> usize {
+        std::mem::size_of::<gpu_data::InstanceData>()
+    }
+
     /// Transforms and uploads mesh instance data to be consumed by gpu.
     ///
     /// Tries bundling all mesh instances into a single draw data instance whenever possible.
@@ -491,10 +496,11 @@ impl Renderer for MeshRenderer {
             ..Default::default()
         };
         // Put instance vertex buffer on slot 0 since it doesn't change for several draws.
-        let vertex_buffers: smallvec::SmallVec<[_; 4]> =
-            std::iter::once(gpu_data::InstanceData::vertex_buffer_layout())
-                .chain(mesh_vertices::vertex_buffer_layouts())
-                .collect();
+        let vertex_buffers: smallvec::SmallVec<[_; 4]> = std::iter::chain(
+            std::iter::once(gpu_data::InstanceData::vertex_buffer_layout()),
+            mesh_vertices::vertex_buffer_layouts(),
+        )
+        .collect();
 
         let rp_shaded_desc = RenderPipelineDesc {
             label: "MeshRenderer::rp_shaded".into(),

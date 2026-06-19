@@ -38,6 +38,10 @@ impl ViewState for TextDocumentViewState {
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
     }
+
+    fn heap_size_bytes(&self) -> u64 {
+        re_byte_size::SizeBytes::heap_size_bytes(self)
+    }
 }
 
 #[derive(Default)]
@@ -125,8 +129,9 @@ impl ViewClass for TextDocumentView {
     ) -> Result<(), ViewSystemExecutionError> {
         let tokens = ui.tokens();
         let state = state.downcast_mut::<TextDocumentViewState>()?;
-        let text_entries = system_output
-            .visualizer_data::<Vec<TextDocumentEntry>>(TextDocumentSystem::identifier())?;
+        let text_entries = system_output.visualizer_data_or_default::<Vec<TextDocumentEntry>>(
+            TextDocumentSystem::identifier(),
+        )?;
         state.only_showing_markdown = !text_entries.is_empty()
             && text_entries
                 .iter()
@@ -142,7 +147,7 @@ impl ViewClass for TextDocumentView {
                     let text_document_result = egui::ScrollArea::both()
                         .auto_shrink([false, false])
                         .show(ui, |ui| {
-                            text_document_ui(ctx, query, ui, state, text_entries)
+                            text_document_ui(ctx, query, ui, state, &text_entries)
                         })
                         .inner;
 

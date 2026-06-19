@@ -260,7 +260,6 @@ impl ViewContents {
     /// Note that this result will not have any resolved overrides. Those can
     /// be added by separately calling `DataQueryPropertyResolver::update_overrides` on
     /// the result.
-    #[expect(clippy::too_many_arguments)]
     pub fn build_data_result_tree(
         &self,
         ctx: &re_viewer_context::ActiveStoreContext<'_>,
@@ -469,7 +468,6 @@ impl DataQueryPropertyResolver<'_> {
     ///
     /// This will accumulate the recursive properties at each step down the tree, and then merge
     /// with individual overrides on each step.
-    #[expect(clippy::too_many_arguments)]
     #[expect(clippy::fn_params_excessive_bools)] // TODO(emilk): remove bool parameters
     fn update_overrides_recursive(
         &self,
@@ -850,11 +848,13 @@ mod tests {
                 )
             });
 
+        let time_ctrl = re_viewer_context::TimeControl::default();
         let ctx = ActiveStoreContext {
             blueprint: &blueprint,
             default_blueprint: None,
             recording: &recording,
             caches: &StoreCache::new(&view_class_registry, &recording),
+            time_ctrl: &time_ctrl,
             should_enable_heuristics: false,
         };
 

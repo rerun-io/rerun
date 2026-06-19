@@ -15,10 +15,12 @@ int main(int argc, char* argv[]) {
 
         rec.log(
             "base/rotated",
-            rerun::Transform3D().with_rotation_axis_angle(rerun::RotationAxisAngle(
-                {1.0f, 1.0f, 1.0f},
-                rerun::Angle::degrees(static_cast<float>(deg))
-            )),
+            rerun::Transform3D().with_rotation_axis_angle(
+                rerun::RotationAxisAngle(
+                    {1.0f, 1.0f, 1.0f},
+                    rerun::Angle::degrees(static_cast<float>(deg))
+                )
+            ),
             rerun::TransformAxes3D(0.5)
         );
 

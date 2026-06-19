@@ -29,7 +29,7 @@ def _are_datafusion_versions_compatible(v1: int, v2: int) -> bool:
     """
     Determine compatibility between two DataFusion versions.
 
-    In some rare cases, we may need to have a mismatch, e.g. in some deployed Rerun Cloud docker images. So we have a
+    In some rare cases, we may need to have a mismatch, e.g. in some deployed Rerun Hub docker images. So we have a
     carefully crafted compatibility allowlist for known-to-be-ffi-compatible DataFusion releases.
     """
 
@@ -421,7 +421,8 @@ class CatalogClient:
         url
             The URL of the directory for where to store the Lance table. If provided, the table will be stored in a
             globally unique subdirectory. If not provided, the server will use an automatically generated URL based on
-            its configured writable storage.
+            its configured writable storage. On Rerun Hub, custom table URLs are currently not supported: the request
+            will be rejected unless this parameter is None.
 
         """
         from . import TableEntry

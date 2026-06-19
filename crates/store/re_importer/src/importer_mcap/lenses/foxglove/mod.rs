@@ -13,6 +13,7 @@ mod point_cloud;
 mod pose_in_frame;
 mod poses_in_frame;
 mod raw_image;
+mod voxel_grid;
 
 use re_lenses::{LensBuilderError, Lenses, OutputMode};
 use re_log_types::TimeType;
@@ -29,6 +30,7 @@ pub use point_cloud::point_cloud;
 pub use pose_in_frame::pose_in_frame;
 pub use poses_in_frame::poses_in_frame;
 pub use raw_image::raw_image;
+pub use voxel_grid::voxel_grid;
 
 /// Suffix appended to frame IDs for image planes.
 ///
@@ -56,6 +58,7 @@ pub fn add_foxglove_lenses(
         .add_lens(point_cloud(time_type)?)
         .add_lens(pose_in_frame(time_type)?)
         .add_lens(poses_in_frame(time_type)?)
-        .add_lens(raw_image(time_type)?);
+        .add_lens(raw_image(time_type)?)
+        .add_lens(voxel_grid(time_type)?);
     Ok(())
 }

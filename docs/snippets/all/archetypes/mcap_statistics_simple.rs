@@ -1,7 +1,9 @@
 //! Log simple MCAP recording statistics.
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let rec = rerun::RecordingStreamBuilder::new("rerun_example_mcap_statistics").spawn()?;
+    let rec =
+        rerun::RecordingStreamBuilder::new("rerun_example_mcap_statistics")
+            .spawn()?;
 
     rec.log(
         "mcap/statistics/recording_overview",

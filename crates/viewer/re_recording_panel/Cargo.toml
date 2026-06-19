@@ -20,7 +20,7 @@ all-features = true
 
 [features]
 default = []
-testing = ["dep:serde", "re_viewer_context/testing", "re_log_types/serde"]
+testing = ["dep:serde", "re_viewer_context/testing"]
 
 [dependencies]
 re_data_ui.workspace = true

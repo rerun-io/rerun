@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::{borrow::Cow, collections::BTreeMap};
 
 use re_sdk_types::blueprint::components::VisualizerInstructionId;
 use vec1::Vec1;
@@ -46,18 +46,35 @@ impl SystemExecutionOutput {
     }
 
     /// Get typed output data from a specific visualizer's execution result.
+    ///
+    /// Returns `None` when the visualizer was skipped because it had no active instructions in
+    /// the view. Consumers that want a present-but-empty value in that case should use
+    /// [`Self::visualizer_data_or_default`].
     pub fn visualizer_data<T: 'static>(
         &self,
         id: ViewSystemIdentifier,
-    ) -> Result<&T, ViewSystemExecutionError> {
-        self.visualizer_execution_output
+    ) -> Result<Option<&T>, ViewSystemExecutionError> {
+        Ok(self
+            .visualizer_execution_output
             .per_visualizer
             .get(&id)
             .ok_or_else(|| ViewSystemExecutionError::VisualizerSystemNotFound(id.as_str()))?
             .as_ref()
             .map_err(|err| err.clone())?
-            .get_visualizer_data::<T>()
-            .ok_or_else(|| ViewSystemExecutionError::MissingOutputData(id))
+            .get_visualizer_data::<T>())
+    }
+
+    /// Like [`Self::visualizer_data`], but substitutes `T::default()` when the visualizer was
+    /// skipped for having no active instructions, rather than returning an error.
+    pub fn visualizer_data_or_default<T: Default + Clone + 'static>(
+        &self,
+        id: ViewSystemIdentifier,
+    ) -> Result<Cow<'_, T>, ViewSystemExecutionError> {
+        match self.visualizer_data(id) {
+            Ok(Some(t)) => Ok(Cow::Borrowed(t)),
+            Ok(None) => Ok(Cow::Owned(T::default())),
+            Err(err) => Err(err),
+        }
     }
 
     /// Iterate over all visualizer output data that can be downcast to the given type.
@@ -77,7 +94,7 @@ pub type VisualizerViewReport = BTreeMap<ViewSystemIdentifier, VisualizerTypeRep
 /// Diagnostics from executing a single visualizer type within a view.
 ///
 /// For a high-level failure handling overview, see the `re_viewer` crate documentation.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, re_byte_size::SizeBytes)]
 pub enum VisualizerTypeReport {
     /// The entire visualizer type failed to execute for this view.
     ///
@@ -85,7 +102,8 @@ pub enum VisualizerTypeReport {
     /// This is rare and almost always a bug in the Viewer itself.
     /// (So rare, in fact, that today we sometimes lump these together with per-instruction
     /// errors.)
-    OverallError(VisualizerInstructionReport),
+    // Assume small and/or rare.
+    OverallError(#[size_bytes(ignore)] VisualizerInstructionReport),
 
     /// The visualizer executed, but produced per-instruction reports (errors and/or warnings).
     ///
@@ -93,15 +111,6 @@ pub enum VisualizerTypeReport {
     /// [`VisualizerInstructionReport`]s. These are somewhat common, practically never infect
     /// other entities, and are often not completely fatal.
     PerInstructionReport(BTreeMap<VisualizerInstructionId, Vec1<VisualizerInstructionReport>>),
-}
-
-impl re_byte_size::SizeBytes for VisualizerTypeReport {
-    fn heap_size_bytes(&self) -> u64 {
-        match self {
-            Self::OverallError(_err) => 0, // assume small and/or rare
-            Self::PerInstructionReport(reports) => reports.heap_size_bytes(),
-        }
-    }
 }
 
 impl VisualizerTypeReport {

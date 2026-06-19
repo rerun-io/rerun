@@ -28,7 +28,7 @@ mod chunk;
 mod chunk_stream;
 mod lenses;
 mod python_bridge;
-mod recording;
+mod query_metrics;
 mod selector;
 mod server;
 mod trace_context;

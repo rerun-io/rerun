@@ -156,9 +156,14 @@ fn fs_main(in: VertexOut) -> @location(0) vec4f {
         coverage = step(0.5, coverage);
     }
 
-    if coverage < 0.001 {
-        discard;
-    }
+    // As per benchmarking on Apple Silicon M5, putting a discard can be
+    // a significant pessimization in high-overdraw situations and at best only a very mild optimization.
+    // Desktop graphics cards like the tested RTX4070 do not exhibit this behavior and aren't affected by it at all.
+    // This is likely due to Apple Silicon being a tile based GPU, it's still a bit surprising though int he presence of alpha-to-coverage.
+    // (Disabling alpha-to-coverage also shows performance benefits _independently_ of the discard instructionß)
+    // if coverage < 0.001 {
+    //     discard;
+    // }
 
     // TODO(andreas): Do we want manipulate the depth buffer depth to actually render spheres?
     // TODO(andreas): Proper shading

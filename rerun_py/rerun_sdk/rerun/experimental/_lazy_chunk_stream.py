@@ -22,13 +22,14 @@ class LazyChunkStream:
     """
     A lazy, composable pipeline over chunks.
 
-    Builder methods (`filter`, `drop`, `split`, `merge`) **consume** the input stream(s)
-    and return new stream(s). A consumed stream cannot be used as a builder input again; attempting
-    to do so raises a `ValueError`. This prevents accidental reuse that would result in duplicate
-    use of the same stream in a pipeline.
+    Builder methods (`filter`, `drop`, `split`, `map`, `flat_map`, `lenses`, `merge`)
+    **consume** the input stream(s) and return new stream(s). A consumed stream cannot be
+    used again; attempting to do so raises a `ValueError`. This prevents accidental reuse
+    that would result in duplicate use of the same stream in a pipeline.
 
-    Terminal methods (`collect`, `write_rrd`, `__iter__`) do **not** consume the stream and
-    may be called repeatedly. Each call creates a fresh execution of the pipeline.
+    Terminal methods (`to_chunks`, `__iter__`, `collect`, `write_rrd`) do **not** consume
+    the stream — they run the pipeline and leave the stream usable. Each call creates a
+    fresh execution.
     """
 
     _internal: LazyChunkStreamInternal
@@ -126,7 +127,7 @@ class LazyChunkStream:
 
     def map(self, fn: Callable[[Chunk], Chunk]) -> LazyChunkStream:
         """
-        Apply a Python function to each chunk, producing exactly one output chunk.
+        Apply a Python function to each chunk, producing exactly one output chunk. Consumes this stream.
 
         Runs in Python (GIL-bound, sequential). For transforms that may produce
         zero or many chunks, use `flat_map` instead.
@@ -139,7 +140,7 @@ class LazyChunkStream:
 
     def flat_map(self, fn: Callable[[Chunk], Iterable[Chunk]]) -> LazyChunkStream:
         """
-        Apply a Python function to each chunk, producing zero or more output chunks.
+        Apply a Python function to each chunk, producing zero or more output chunks. Consumes this stream.
 
         Runs in Python (GIL-bound, sequential).
         """
@@ -257,7 +258,7 @@ class LazyChunkStream:
         recording_id: str,
     ) -> None:
         """
-        Consume the stream and write all chunks to an RRD file.
+        Run the pipeline and write all chunks to an RRD file.
 
         The caller must provide application_id and recording_id explicitly.
         """
@@ -273,7 +274,7 @@ class LazyChunkStream:
         optimize: OptimizationProfile | None = None,
     ) -> ChunkStore:
         """
-        Consume the stream and materialize all chunks into a ChunkStore.
+        Run the pipeline and materialize all chunks into a ChunkStore.
 
         By default, only the single-pass compaction that happens naturally
         during chunk insertion is applied. Pass `optimize=OptimizationProfile.LIVE`
@@ -310,11 +311,12 @@ class LazyChunkStream:
                 extra_passes=optimize.extra_passes,
                 gop_batching=optimize.gop_batching,
                 split_size_ratio=optimize.split_size_ratio,
+                fix_keyframe=optimize.fix_keyframe,
             ),
         )
 
     def to_chunks(self) -> list[Chunk]:
-        """Consume the stream and return all chunks as a list."""
+        """Run the pipeline and return all chunks as a list."""
         return [Chunk(internal) for internal in self._internal.to_chunks()]
 
     def __iter__(self) -> Iterator[Chunk]:

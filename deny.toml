@@ -35,6 +35,8 @@ ignore = [
   { id = "RUSTSEC-2024-0436", reason = "paste is unmaintained — https://github.com/dtolnay/paste" },
   { id = "RUSTSEC-2024-0014", reason = "generational-arena is unmaintained" },
   { id = "RUSTSEC-2025-0141", reason = "bincode is unmaintained — https://git.sr.ht/~stygianentity/bincode/tree/v3.0/item/README.md" },
+  { id = "RUSTSEC-2026-0176", reason = "RR-4865 can't update to pyo3 0.29 until numpy crate is updated" },
+  { id = "RUSTSEC-2026-0177", reason = "RR-4865 can't update to pyo3 0.29 until numpy crate is updated" },
 ]
 
 
@@ -64,6 +66,7 @@ skip = [
   { name = "console" }, # smallish
   { name = "core-foundation" }, # Currently, e.g. `webbrowser` and `winit` use different versions.
   { name = "downcast-rs" }, # eco-system is transitioning from 1 to 2
+  { name = "getrandom" }, # ring uses 0.2, ahash/arrow/datafusion use 0.3
   { name = "float-cmp" },
   { name = "gimli" }, # wasm-bindgen
   { name = "hashbrown" }, # Old version used by polar-rs
@@ -88,6 +91,7 @@ skip = [
   { name = "zip" }, # duplicated by `protoc-prebuilt`, which uses an ancient version.
 ]
 skip-tree = [
+  { name = "darling" }, # enumset_derive uses 0.21, serde_with_macros (via lance-namespace) uses 0.23
   { name = "petgraph" }, # b/c lance
   { name = "phf" }, # b/c mime_guess2
   { name = "rand_distr" }, # from ndarray-rand

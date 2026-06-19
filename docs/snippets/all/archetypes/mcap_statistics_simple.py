@@ -13,7 +13,9 @@ rr.log(
         attachment_count=2,
         metadata_count=8,
         chunk_count=25,
-        message_start_time=1743465600000000000,  # 2024-04-01 00:00:00 UTC in nanoseconds
-        message_end_time=1743466200000000000,  # 2024-04-01 00:10:00 UTC in nanoseconds (10 minute recording)
+        # 2024-04-01 00:00:00 UTC in nanoseconds
+        message_start_time=1743465600000000000,
+        # 2024-04-01 00:10:00 UTC in nanoseconds (10 minute recording)
+        message_end_time=1743466200000000000,
     ),
 )

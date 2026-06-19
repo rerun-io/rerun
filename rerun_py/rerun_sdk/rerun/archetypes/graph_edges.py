@@ -48,7 +48,9 @@ class GraphEdges(Archetype, VisualizableArchetype):
             positions=[(0.0, 100.0), (-100.0, 0.0), (100.0, 0.0)],
             labels=["A", "B", "C"],
         ),
-        rr.GraphEdges(edges=[("a", "b"), ("b", "c"), ("c", "a")], graph_type="directed"),
+        rr.GraphEdges(
+            edges=[("a", "b"), ("b", "c"), ("c", "a")], graph_type="directed"
+        ),
     )
     ```
     <center>

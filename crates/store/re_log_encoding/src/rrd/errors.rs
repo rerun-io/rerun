@@ -1,5 +1,6 @@
 use re_build_info::CrateVersion;
 use re_chunk::ChunkError;
+use re_protos::common::v1alpha1::ext;
 
 pub type CodecResult<T> = Result<T, CodecError>;
 
@@ -106,8 +107,8 @@ impl From<ChunkError> for CodecError {
     }
 }
 
-impl From<re_protos::common::v1alpha1::ext::StoreIdMissingApplicationIdError> for CodecError {
-    fn from(value: re_protos::common::v1alpha1::ext::StoreIdMissingApplicationIdError) -> Self {
+impl From<ext::StoreIdMissingApplicationIdError> for CodecError {
+    fn from(value: ext::StoreIdMissingApplicationIdError) -> Self {
         Self::StoreIdMissingApplicationId {
             store_kind: value.store_kind,
             recording_id: value.recording_id,

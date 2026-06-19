@@ -10,7 +10,10 @@ use re_sdk_types::blueprint::components;
 use re_sorbet::ColumnSelector;
 use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{TimeDragValue, UiExt as _, icons, list_item};
-use re_viewer_context::{TimeControlCommand, ViewId, ViewSystemExecutionError, ViewerContext};
+use re_viewer_context::{
+    TimeControlCommand, TimeRangeHighlight, TimeRangeHighlightKind, ViewId,
+    ViewSystemExecutionError, ViewerContext,
+};
 
 use crate::view_query::Query;
 
@@ -161,9 +164,12 @@ impl Query {
         if should_display_time_range
             && timeline.is_some_and(|t| t.name() == ctx.time_ctrl.timeline_name())
         {
-            ctx.send_time_commands([TimeControlCommand::HighlightRange(AbsoluteTimeRange::new(
-                start, end,
-            ))]);
+            ctx.send_time_commands([TimeControlCommand::HighlightRange(TimeRangeHighlight {
+                range: AbsoluteTimeRange::new(start, end),
+                timeline: *ctx.time_ctrl.timeline_name(),
+                kind: TimeRangeHighlightKind::TimeRangeConfiguration,
+                color: None,
+            })]);
         }
 
         Ok(())

@@ -35,7 +35,7 @@ The Rerun command-line interface:
 > - A path to a Rerun .rrd recording
 > - A path to a Rerun .rbl blueprint
 > - An HTTP(S) URL to an .rrd or .rbl file to load
-> - A path to an image or mesh, or any other file that Rerun can load (see https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview?speculative-link)
+> - A path to an image or mesh, or any other file that Rerun can load (see https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview)
 >
 > If no arguments are given, a server will be hosted which a Rerun SDK can connect to.
 
@@ -185,6 +185,13 @@ The Rerun command-line interface:
 >
 > [Default: `false`]
 
+* `--headless <HEADLESS>`
+> Run the viewer in headless mode (no OS window).
+>
+> The viewer is driven by an offscreen `egui_kittest` harness, while the gRPC server keeps running so SDK clients can still log data and request screenshots via `save_screenshot`.
+>
+> [Default: `false`]
+
 * `--window-size <WINDOW_SIZE>`
 > Set the screen resolution (in logical points), e.g. "1920x1080". Useful together with `--screenshot-to`.
 
@@ -273,7 +280,7 @@ Authentication with the redap.
 
 Log into Rerun.
 
-This command opens a page in your default browser, allowing you to log in to the Rerun Data Platform.
+This command opens a page in your default browser, allowing you to log in to Rerun Hub.
 
 Once you've logged in, your credentials are stored on your machine.
 
@@ -312,7 +319,7 @@ This command clears the credentials stored on your machine and ends your session
 
 Generate a fresh access token.
 
-You can use this token to authorize requests to the Rerun Data Platform.
+You can use this token to authorize requests to Rerun Hub.
 
 It's closer to an API key than an access token, as it can be revoked before it expires.
 
@@ -337,7 +344,7 @@ It's closer to an API key than an access token, as it can be revoked before it e
 
 Download recordings and save them as .rrd files.
 
-Supports downloading from Rerun Cloud as well as any other supported URI.
+Supports downloading from Rerun Hub as well as any other supported URI.
 
 **Usage**: `rerun download [OPTIONS] <URLS>…`
 
@@ -362,6 +369,7 @@ Manipulate the contents of .mcap files.
 **Commands**
 
 * `convert`: Convert an .mcap file to an .rrd.
+* `info`: Print timeline / sortedness diagnostics for an .mcap file.
 
 ## rerun mcap convert
 
@@ -421,6 +429,26 @@ Convert an .mcap file to an .rrd.
 >
 > Applied after includes: a topic is kept only if it matches an include (or no includes are set) AND matches no exclude.
 
+## rerun mcap info
+
+Print timeline / sortedness diagnostics for an .mcap file.
+
+**Usage**: `rerun mcap info [OPTIONS] <PATH>`
+
+**Arguments**
+
+* `<PATH>`
+> Path to the .mcap file to inspect.
+
+**Options**
+
+* `--full <FULL>`
+> Run the full `re_mcap` decoder pipeline.
+>
+> Surfaces timelines added by per-message decoders (e.g. `ros2_timestamp` from a ROS 2 `Header.stamp`). Without this flag only the raw MCAP-level timelines `message_log_time` / `message_publish_time` are inspected.
+>
+> [Default: `false`]
+
 ## rerun rrd
 
 Manipulate the contents of .rrd and .rbl files.
@@ -472,6 +500,11 @@ This ignores the `log_time` timeline.
 > If specified, the comparison will ignore chunks without components.
 >
 > [Default: `false`]
+
+* `--ignore-timeline <TIMELINE>`
+> Timelines to ignore entirely during comparison (their presence, absence, and values).
+>
+> Useful when comparing recordings produced with different default-timeline settings, e.g. `--ignore-timeline log_tick` (which is opt-in). Can be specified multiple times.
 
 ## rerun rrd filter
 
@@ -634,6 +667,13 @@ Examples:
 > By default, after compaction, video stream chunks are rebatched on GoP boundaries so that each chunk contains one or more complete GoPs. This flag disables that behavior.
 >
 > Note: GoP rebatching never splits a GoP across chunks, so streams with long keyframe intervals (e.g. 10+ seconds between I-frames) can produce chunks much larger than `--max-size`.
+>
+> [Default: `false`]
+
+* `--fix-keyframe <FIX_KEYFRAME>`
+> Drop any user-supplied `VideoStream:is_keyframe` labels and re-derive them from the encoded samples.
+>
+> By default, `rrd optimize` validates user-supplied keyframe labels against the encoded samples and errors out if they disagree. Pass this flag to ignore the existing labels and unconditionally re-derive them.
 >
 > [Default: `false`]
 

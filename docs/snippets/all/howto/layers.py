@@ -16,7 +16,9 @@ from pathlib import Path
 
 import rerun as rr
 
-sample_5_path = Path(__file__).parents[4] / "tests" / "assets" / "rrd" / "sample_5"
+sample_5_path = (
+    Path(__file__).parents[4] / "tests" / "assets" / "rrd" / "sample_5"
+)
 
 server = rr.server.Server(datasets={"sample_dataset": sample_5_path})
 client = server.client()
@@ -38,14 +40,20 @@ import numpy as np
 from datafusion import col
 
 # Query action (commanded) and observation (actual) joint positions
-joints = dataset.filter_contents(["/action/joint_positions", "/observation/joint_positions"]).reader(index="real_time")
+joints = dataset.filter_contents([
+    "/action/joint_positions",
+    "/observation/joint_positions",
+]).reader(index="real_time")
 
 # Compute tracking error: L2 norm of (commanded - actual) joint positions
-segment_ids = pa.table(joints.select("rerun_segment_id").distinct())["rerun_segment_id"].to_numpy()
+segment_ids = pa.table(joints.select("rerun_segment_id").distinct())[
+    "rerun_segment_id"
+].to_numpy()
 rrd_paths = []
 
 for seg_id in segment_ids:
-    # Filter to this segment and collect as a PyArrow table for efficient extraction to NumPy
+    # Filter to this segment and collect as a PyArrow table for efficient
+    # extraction to NumPy
     segment_data = pa.table(
         joints.filter(col("rerun_segment_id") == seg_id).select(
             "real_time",
@@ -56,8 +64,12 @@ for seg_id in segment_ids:
 
     timestamps = segment_data["real_time"].to_numpy()
 
-    actions = np.vstack(segment_data["/action/joint_positions:Scalars:scalars"].to_numpy())
-    observations = np.vstack(segment_data["/observation/joint_positions:Scalars:scalars"].to_numpy())
+    actions = np.vstack(
+        segment_data["/action/joint_positions:Scalars:scalars"].to_numpy()
+    )
+    observations = np.vstack(
+        segment_data["/observation/joint_positions:Scalars:scalars"].to_numpy()
+    )
 
     # Compute L2 tracking error per timestep
     tracking_error = np.linalg.norm(actions - observations, axis=1)
@@ -66,7 +78,9 @@ for seg_id in segment_ids:
     rrd_path = TMP_DIR / f"{seg_id}_tracking_error.rrd"
     rrd_paths.append(rrd_path)
 
-    with rr.RecordingStream(application_id="rerun_example_tracking_error", recording_id=seg_id) as rec:
+    with rr.RecordingStream(
+        application_id="rerun_example_tracking_error", recording_id=seg_id
+    ) as rec:
         rec.save(rrd_path)
         rr.send_columns(
             "/derived/tracking_error",
@@ -76,7 +90,9 @@ for seg_id in segment_ids:
 
 
 # Register derived RRDs as a new layer
-dataset.register([p.as_uri() for p in rrd_paths], layer_name="tracking_error").wait()
+dataset.register(
+    [p.as_uri() for p in rrd_paths], layer_name="tracking_error"
+).wait()
 # endregion: add_tracking_error
 
 # region: check_layer_names
@@ -96,12 +112,18 @@ print(segment_table)
 # Query the tracking error we just added and compute a quality metric
 from datafusion import functions as F
 
-tracking = dataset.filter_contents(["/derived/tracking_error"]).reader(index="real_time")
+tracking = dataset.filter_contents(["/derived/tracking_error"]).reader(
+    index="real_time"
+)
 quality_stats = pa.table(
     tracking
     .aggregate(
         col("rerun_segment_id"),
-        [F.avg(col("/derived/tracking_error:Scalars:scalars")[0]).alias("mean_error")],
+        [
+            F.avg(col("/derived/tracking_error:Scalars:scalars")[0]).alias(
+                "mean_error"
+            )
+        ],
     )
     .with_column("tracking_good", col("mean_error") < 0.13)
     .select("rerun_segment_id", "tracking_good")
@@ -109,11 +131,15 @@ quality_stats = pa.table(
 
 # Create RRDs with just the property
 rrd_paths = []
-for seg_id, tracking_good in zip(quality_stats["rerun_segment_id"], quality_stats["tracking_good"]):
+for seg_id, tracking_good in zip(
+    quality_stats["rerun_segment_id"], quality_stats["tracking_good"]
+):
     rrd_path = TMP_DIR / f"{seg_id}_quality.rrd"
     rrd_paths.append(rrd_path)
 
-    with rr.RecordingStream(application_id="rerun_example_quality", recording_id=seg_id) as rec:
+    with rr.RecordingStream(
+        application_id="rerun_example_quality", recording_id=seg_id
+    ) as rec:
         rec.save(rrd_path)
         rec.send_property("quality", rr.AnyValues(tracking_good=tracking_good))
 
@@ -136,16 +162,15 @@ segment_table = (
 print(segment_table)
 # endregion: verify
 
-# region: manifest
-manifest = (
+# region: list_layers
+layers = (
     dataset
-    .manifest()
+    .segment_table()
     .select(
         "rerun_segment_id",
-        "rerun_layer_name",
-        "property:quality:tracking_good",
+        "rerun_layer_names",
     )
-    .sort("rerun_segment_id", "rerun_layer_name")
+    .sort("rerun_segment_id")
 )
-print(manifest)
-# endregion: manifest
+print(layers)
+# endregion: list_layers

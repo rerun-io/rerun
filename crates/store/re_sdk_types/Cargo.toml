@@ -25,7 +25,7 @@ features = ["all"]
 default = ["ecolor"]
 
 ## All features except `testing`.
-all = ["ecolor", "egui_plot", "glam", "image", "mint", "serde", "video"]
+all = ["ecolor", "egui_plot", "glam", "image", "mint", "video"]
 
 ## Enable color conversions.
 ecolor = ["dep:ecolor"]
@@ -41,9 +41,6 @@ image = ["dep:ecolor", "dep:image", "dep:tiff"]
 
 ## Inspecting video data.
 video = ["dep:re_video"]
-
-## Enable (de)serialization using serde.
-serde = ["dep:serde", "glam/serde"]
 
 ## Include testing archetypes/components/datatypes into the crate.
 ## Only useful for testing purposes.
@@ -77,6 +74,7 @@ mime_guess2.workspace = true
 ndarray.workspace = true
 nohash-hasher.workspace = true
 ply-rs-bw.workspace = true
+serde = { workspace = true, features = ["derive", "rc"] }
 smallvec.workspace = true
 thiserror.workspace = true
 tiff = { workspace = true, optional = true }
@@ -85,11 +83,10 @@ uuid = { workspace = true, features = ["serde", "v4", "js"] }
 # External (optional)
 ecolor = { workspace = true, optional = true }
 egui_plot = { workspace = true, optional = true }
-glam = { workspace = true, optional = true }
+glam = { workspace = true, optional = true, features = ["serde"] }
 image = { workspace = true, optional = true, default-features = false, features = ["jpeg"] }
 mint = { workspace = true, optional = true }
 macaw = { workspace = true, optional = true }
-serde = { workspace = true, optional = true, features = ["derive", "rc"] }
 
 
 [dev-dependencies]

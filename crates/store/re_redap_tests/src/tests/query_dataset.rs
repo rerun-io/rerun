@@ -1,11 +1,8 @@
-use arrow::array::{
-    Array as _, FixedSizeBinaryArray, RecordBatch, RecordBatchOptions, UInt32Array, UInt64Array,
-};
+use arrow::array::{RecordBatch, RecordBatchOptions, UInt32Array};
 use futures::StreamExt as _;
 use re_log_types::{AbsoluteTimeRange, TimeInt, TimeType};
-use re_protos::cloud::v1alpha1::QueryDatasetResponse;
 use re_protos::cloud::v1alpha1::ext::{
-    DataSource, DataSourceKind, Query, QueryDatasetRequest, QueryLatestAt, QueryRange,
+    DataSource, Query, QueryDatasetDataframe, QueryDatasetRequest, QueryLatestAt, QueryRange,
 };
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::headers::RerunHeadersInjectorExt as _;
@@ -124,6 +121,77 @@ pub async fn query_simple_dataset_with_layers(service: impl RerunCloudService) {
         "simple_with_layer",
     )
     .await;
+}
+
+/// Querying with a `segment_id` that does not exist must NOT error — it must
+/// succeed and return zero rows for that segment. Mixed requests (one real,
+/// one unknown) must succeed and return rows only for the real segment.
+///
+/// Rationale: `segment_ids` is also what DataFusion filter pushdown produces
+/// for `WHERE rerun_segment_id = 'foo'`. The value is data, not a referent.
+/// Erroring would turn ordinary SQL filters that happen not to match into
+/// hand-grenades. Explicit-API callers (`filter_segments`,
+/// `using_index_values`) accept the same silent-ignore semantics — the
+/// alternative is a roundtrip to validate IDs, which is exactly the
+/// expensive call we're trying to avoid.
+pub async fn query_dataset_unknown_segment_id_returns_empty(service: impl RerunCloudService) {
+    let data_sources_def = DataSourcesDefinition::new_with_tuid_prefix(
+        1,
+        [LayerDefinition::simple("real_segment", &["my/entity"])],
+    );
+
+    let dataset_name = "dataset";
+    service.create_dataset_entry_with_name(dataset_name).await;
+    service
+        .register_with_dataset_name_blocking(dataset_name, data_sources_def.to_data_sources())
+        .await;
+
+    // (description, request segment_ids, expected: any data rows?)
+    let test_cases = [
+        ("only unknown", vec!["doesnt_exist".into()], false),
+        (
+            "mixed real + unknown",
+            vec!["real_segment".into(), "doesnt_exist".into()],
+            true,
+        ),
+    ];
+
+    for (descr, segment_ids, expect_rows) in test_cases {
+        let chunk_info: Vec<RecordBatch> = service
+            .query_dataset(
+                tonic::Request::new(
+                    QueryDatasetRequest {
+                        segment_ids,
+                        ..Default::default()
+                    }
+                    .into(),
+                )
+                .with_entry_name(entry_name(dataset_name)),
+            )
+            .await
+            .unwrap_or_else(|err| panic!("query_dataset must succeed ({descr}): {err}"))
+            .into_inner()
+            .flat_map(|resp| {
+                futures::stream::iter(
+                    resp.unwrap_or_else(|err| {
+                        panic!("query_dataset stream must not error ({descr}): {err}")
+                    })
+                    .data,
+                )
+            })
+            .map(|dfp| dfp.try_into().unwrap())
+            .collect()
+            .await;
+
+        let merged = concat_record_batches(&chunk_info);
+        let has_rows = merged.num_rows() > 0;
+        assert_eq!(
+            has_rows,
+            expect_rows,
+            "unexpected row presence for {descr}: got {} rows",
+            merged.num_rows(),
+        );
+    }
 }
 
 /// Test that failure cases return the correct error code.
@@ -246,12 +314,9 @@ pub async fn query_dataset_with_various_queries(service: impl RerunCloudService)
         .register_with_dataset_name_blocking(
             dataset_name,
             vec![
-                DataSource {
-                    storage_url: url::Url::from_file_path(recording_path.as_path()).unwrap(),
-                    is_prefix: false,
-                    layer: "base".to_owned(),
-                    kind: DataSourceKind::Rrd,
-                }
+                DataSource::new_rrd_url(
+                    url::Url::from_file_path(recording_path.as_path()).unwrap(),
+                )
                 .into(),
             ],
         )
@@ -331,8 +396,7 @@ pub async fn query_dataset_has_uncompressed_sizes(service: impl RerunCloudServic
     let chunk_info: Vec<RecordBatch> = service
         .query_dataset(
             tonic::Request::new(QueryDatasetRequest::default().into())
-                .with_entry_name(entry_name(dataset_name))
-                .unwrap(),
+                .with_entry_name(entry_name(dataset_name)),
         )
         .await
         .unwrap()
@@ -348,24 +412,13 @@ pub async fn query_dataset_has_uncompressed_sizes(service: impl RerunCloudServic
         "query should return at least one chunk"
     );
 
-    let uncompressed_col = merged
-        .column_by_name(QueryDatasetResponse::FIELD_CHUNK_BYTE_LENGTH_UNCOMPRESSED)
+    let uncompressed = QueryDatasetDataframe::COLUMN_CHUNK_BYTE_SIZE_UNCOMPRESSED
+        .extract(&merged)
         .expect("chunk_byte_size_uncompressed column must be present");
 
-    let uncompressed = uncompressed_col
-        .as_any()
-        .downcast_ref::<UInt64Array>()
-        .expect("chunk_byte_size_uncompressed must be UInt64Array");
-
-    for i in 0..merged.num_rows() {
-        assert!(
-            !uncompressed.is_null(i),
-            "row {i}: uncompressed size must not be null"
-        );
-        assert!(
-            uncompressed.value(i) > 0,
-            "row {i}: uncompressed size must be > 0"
-        );
+    for (i, size) in uncompressed.iter().enumerate() {
+        let size = size.unwrap_or_else(|| panic!("row {i}: uncompressed size must not be null"));
+        assert!(0 < size, "row {i}: uncompressed size must be > 0");
     }
 }
 
@@ -408,9 +461,7 @@ pub async fn query_dataset_consistent_schema_across_timelines(service: impl Reru
 
     let responses: Vec<RecordBatch> = service
         .query_dataset(
-            tonic::Request::new(request.into())
-                .with_entry_name(entry_name(dataset_name))
-                .unwrap(),
+            tonic::Request::new(request.into()).with_entry_name(entry_name(dataset_name)),
         )
         .await
         .unwrap()
@@ -463,8 +514,7 @@ async fn query_dataset_snapshot(
     let chunk_info = service
         .query_dataset(
             tonic::Request::new(query_dataset_request.into())
-                .with_entry_name(entry_name(dataset_name))
-                .unwrap(),
+                .with_entry_name(entry_name(dataset_name)),
         )
         .await
         .unwrap()
@@ -479,7 +529,7 @@ async fn query_dataset_snapshot(
         remove_rows_containing_chunk_id(&merged_chunk_info, chunk_ids_to_remove);
 
     // these are the only columns guaranteed to be returned by `query_dataset`
-    let required_field = QueryDatasetResponse::fields();
+    let required_field = QueryDatasetDataframe::min_schema().fields().to_vec();
 
     assert!(
         merged_chunk_info
@@ -505,9 +555,9 @@ async fn query_dataset_snapshot(
     // these columns are not stable, so we cannot snapshot them
     let filtered_chunk_info = required_chunk_info
         .remove_columns(&[
-            QueryDatasetResponse::FIELD_CHUNK_KEY,
-            QueryDatasetResponse::FIELD_CHUNK_BYTE_LENGTH,
-            QueryDatasetResponse::FIELD_CHUNK_BYTE_LENGTH_UNCOMPRESSED,
+            QueryDatasetDataframe::COLUMN_CHUNK_KEY_NAME,
+            QueryDatasetDataframe::COLUMN_CHUNK_BYTE_LEN_NAME,
+            QueryDatasetDataframe::COLUMN_CHUNK_BYTE_SIZE_UNCOMPRESSED_NAME,
         ])
         .auto_sort_rows()
         .unwrap();
@@ -527,21 +577,14 @@ fn remove_rows_containing_chunk_id(
     rb: &RecordBatch,
     chunk_ids: &[re_types_core::ChunkId],
 ) -> RecordBatch {
-    let chunk_id_col = rb
-        .column_by_name(QueryDatasetResponse::FIELD_CHUNK_ID)
-        .expect("Missing column chunk_id");
-
-    let chunk_id_array = chunk_id_col
-        .as_any()
-        .downcast_ref::<FixedSizeBinaryArray>()
-        .expect("chunk_id is not FixedSizeBinary");
-    let chunk_id_slice = re_types_core::ChunkId::try_slice_from_arrow(chunk_id_array)
-        .expect("chunk_id column should be convertible to ChunkId slice");
+    let chunk_id_col = QueryDatasetDataframe::COLUMN_CHUNK_ID
+        .extract(rb)
+        .expect("bad chunk_id column");
 
     let mut indices_to_keep = Vec::new();
 
-    for (row_idx, chunk_id) in chunk_id_slice.iter().enumerate() {
-        if !chunk_ids.contains(chunk_id) {
+    for (row_idx, chunk_id) in chunk_id_col.iter_owned().enumerate() {
+        if !chunk_ids.contains(&chunk_id) {
             indices_to_keep.push(row_idx as u32);
         }
     }

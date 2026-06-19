@@ -5,7 +5,8 @@ use std::sync::Arc;
 use rerun::external::arrow;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let rec = rerun::RecordingStreamBuilder::new("rerun_example_any_values").spawn()?;
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_any_values")
+        .spawn()?;
 
     let any_values = rerun::AnyValues::default()
         // Using arbitrary Arrow data.
@@ -22,8 +23,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             ])),
         )
         // Using Rerun's builtin components.
-        .with_component::<rerun::components::Scalar>("confidence", [1.2, 3.4, 5.6])
-        .with_component::<rerun::components::Text>("description", vec!["Bla bla bla…"]);
+        .with_component::<rerun::components::Scalar>(
+            "confidence",
+            [1.2, 3.4, 5.6],
+        )
+        .with_component::<rerun::components::Text>(
+            "description",
+            vec!["Bla bla bla…"],
+        );
 
     rec.log("any_values", &any_values)?;
 

@@ -20,7 +20,7 @@ To open multiple viewer windows, use different ports with the `--port` flag.
 # Start a viewer on the default port (9876)
 $ rerun &
 
-# This does nothing—a viewer is already running on :9876
+# This does nothing — a viewer is already running on :9876
 $ rerun &
 
 # Start a second viewer on port 6789
@@ -50,6 +50,6 @@ rr.connect_grpc("rerun+http://127.0.0.1:6789")
 
 ## Tips
 
-- Use `spawn()` to automatically start a new viewer if needed—it will reuse an existing viewer on the default port if one is running
+- Use `spawn()` to automatically start a new viewer if needed — it will reuse an existing viewer on the default port if one is running
 - Each viewer maintains its own Chunk Store, so data sent to different viewers is independent
-- The Web Viewer doesn't use gRPC ports the same way—it connects via WebSocket when served locally
+- The Web Viewer doesn't use gRPC ports the same way — it connects via WebSocket when served locally

@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -37,7 +38,8 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// use rand::prelude::*;
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_pinhole").spawn()?;
+///     let rec =
+///         rerun::RecordingStreamBuilder::new("rerun_example_pinhole").spawn()?;
 ///
 ///     let mut image = Array::<u8, _>::default((3, 3, 3).f());
 ///     let mut rng = rand::rngs::SmallRng::seed_from_u64(42);
@@ -49,7 +51,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///     )?;
 ///     rec.log(
 ///         "world/image",
-///         &rerun::Image::from_color_model_and_tensor(rerun::ColorModel::RGB, image)?,
+///         &rerun::Image::from_color_model_and_tensor(
+///             rerun::ColorModel::RGB,
+///             image,
+///         )?,
 ///     )?;
 ///
 ///     Ok(())
@@ -68,7 +73,9 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// ### Perspective pinhole camera
 /// ```ignore
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_pinhole_perspective").spawn()?;
+///     let rec =
+///         rerun::RecordingStreamBuilder::new("rerun_example_pinhole_perspective")
+///             .spawn()?;
 ///
 ///     let fov_y = std::f32::consts::FRAC_PI_4;
 ///     let aspect_ratio = 1.7777778;
@@ -83,8 +90,12 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 ///     rec.log(
 ///         "world/points",
-///         &rerun::Points3D::new([(0.0, 0.0, -0.5), (0.1, 0.1, -0.5), (-0.1, -0.1, -0.5)])
-///             .with_radii([0.025]),
+///         &rerun::Points3D::new([
+///             (0.0, 0.0, -0.5),
+///             (0.1, 0.1, -0.5),
+///             (-0.1, -0.1, -0.5),
+///         ])
+///         .with_radii([0.025]),
 ///     )?;
 ///
 ///     Ok(())
@@ -99,7 +110,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/pinhole_perspective/317e2de6d212b238dcdad5b67037e9e2a2afafa0/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug, PartialEq, Default)]
+#[derive(Clone, Debug, PartialEq, Default, ::re_byte_size::SizeBytes)]
 pub struct Pinhole {
     /// Camera projection, from image coordinates to view coordinates.
     ///
@@ -189,11 +200,13 @@ impl Pinhole {
     /// The corresponding component is [`crate::components::PinholeProjection`].
     #[inline]
     pub fn descriptor_image_from_camera() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Pinhole".into()),
-            component: "Pinhole:image_from_camera".into(),
-            component_type: Some("rerun.components.PinholeProjection".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Pinhole".into()),
+                component: "Pinhole:image_from_camera".into(),
+                component_type: Some("rerun.components.PinholeProjection".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::resolution`].
@@ -201,11 +214,13 @@ impl Pinhole {
     /// The corresponding component is [`crate::components::Resolution`].
     #[inline]
     pub fn descriptor_resolution() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Pinhole".into()),
-            component: "Pinhole:resolution".into(),
-            component_type: Some("rerun.components.Resolution".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Pinhole".into()),
+                component: "Pinhole:resolution".into(),
+                component_type: Some("rerun.components.Resolution".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::camera_xyz`].
@@ -213,11 +228,13 @@ impl Pinhole {
     /// The corresponding component is [`crate::components::ViewCoordinates`].
     #[inline]
     pub fn descriptor_camera_xyz() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Pinhole".into()),
-            component: "Pinhole:camera_xyz".into(),
-            component_type: Some("rerun.components.ViewCoordinates".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Pinhole".into()),
+                component: "Pinhole:camera_xyz".into(),
+                component_type: Some("rerun.components.ViewCoordinates".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::child_frame`].
@@ -225,11 +242,13 @@ impl Pinhole {
     /// The corresponding component is [`crate::components::TransformFrameId`].
     #[inline]
     pub fn descriptor_child_frame() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Pinhole".into()),
-            component: "Pinhole:child_frame".into(),
-            component_type: Some("rerun.components.TransformFrameId".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Pinhole".into()),
+                component: "Pinhole:child_frame".into(),
+                component_type: Some("rerun.components.TransformFrameId".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::parent_frame`].
@@ -237,11 +256,13 @@ impl Pinhole {
     /// The corresponding component is [`crate::components::TransformFrameId`].
     #[inline]
     pub fn descriptor_parent_frame() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Pinhole".into()),
-            component: "Pinhole:parent_frame".into(),
-            component_type: Some("rerun.components.TransformFrameId".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Pinhole".into()),
+                component: "Pinhole:parent_frame".into(),
+                component_type: Some("rerun.components.TransformFrameId".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::image_plane_distance`].
@@ -249,11 +270,13 @@ impl Pinhole {
     /// The corresponding component is [`crate::components::ImagePlaneDistance`].
     #[inline]
     pub fn descriptor_image_plane_distance() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Pinhole".into()),
-            component: "Pinhole:image_plane_distance".into(),
-            component_type: Some("rerun.components.ImagePlaneDistance".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Pinhole".into()),
+                component: "Pinhole:image_plane_distance".into(),
+                component_type: Some("rerun.components.ImagePlaneDistance".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::color`].
@@ -261,11 +284,13 @@ impl Pinhole {
     /// The corresponding component is [`crate::components::Color`].
     #[inline]
     pub fn descriptor_color() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Pinhole".into()),
-            component: "Pinhole:color".into(),
-            component_type: Some("rerun.components.Color".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Pinhole".into()),
+                component: "Pinhole:color".into(),
+                component_type: Some("rerun.components.Color".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::line_width`].
@@ -273,11 +298,13 @@ impl Pinhole {
     /// The corresponding component is [`crate::components::Radius`].
     #[inline]
     pub fn descriptor_line_width() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Pinhole".into()),
-            component: "Pinhole:line_width".into(),
-            component_type: Some("rerun.components.Radius".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Pinhole".into()),
+                component: "Pinhole:line_width".into(),
+                component_type: Some("rerun.components.Radius".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -321,7 +348,10 @@ impl Pinhole {
 impl ::re_types_core::Archetype for Pinhole {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.archetypes.Pinhole".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.archetypes.Pinhole"
+        )
     }
 
     #[inline]
@@ -818,19 +848,5 @@ impl Pinhole {
     ) -> Self {
         self.line_width = try_serialize_field(Self::descriptor_line_width(), line_width);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for Pinhole {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.image_from_camera.heap_size_bytes()
-            + self.resolution.heap_size_bytes()
-            + self.camera_xyz.heap_size_bytes()
-            + self.child_frame.heap_size_bytes()
-            + self.parent_frame.heap_size_bytes()
-            + self.image_plane_distance.heap_size_bytes()
-            + self.color.heap_size_bytes()
-            + self.line_width.heap_size_bytes()
     }
 }

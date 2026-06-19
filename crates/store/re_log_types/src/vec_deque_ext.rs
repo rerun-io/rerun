@@ -1,6 +1,8 @@
 use std::collections::VecDeque;
 use std::ops::Range;
 
+use itertools::chain;
+
 // --
 // ---
 
@@ -101,11 +103,7 @@ impl<T> VecDequeInsertionExt<T> for VecDeque<T> {
             // self.extend(values);
             // self.extend(right);
 
-            *self = std::mem::take(self)
-                .into_iter()
-                .chain(values)
-                .chain(right)
-                .collect();
+            *self = chain!(std::mem::take(self), values, right).collect();
         }
     }
 }

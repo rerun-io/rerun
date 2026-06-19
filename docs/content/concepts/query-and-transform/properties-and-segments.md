@@ -9,7 +9,7 @@ Common use cases for properties include tagging recordings with capture location
 
 ## Understanding properties
 
-Let's use an example to illustrate how properties work and how they can be retrieved and queried using the Rerun Data Platform.
+Let's use an example to illustrate how properties work and how they can be retrieved and queried using a catalog server.
 
 First, we create a few recordings with some properties:
 
@@ -25,7 +25,7 @@ Internally, properties are logged under a reserved `/__properties` entity path a
 ## Querying the segment table
 
 Once recordings are registered to a [dataset](catalog-object-model.md#datasets), their properties become visible and queryable through the segment table.
-Here we use the local open-source Data Platform included with Rerun to illustrate this:
+Here we use the local open-source catalog server included with Rerun to illustrate this:
 
 snippet: concepts/query-and-transform/segment_properties[segment_table]
 

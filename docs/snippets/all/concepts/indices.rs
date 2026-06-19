@@ -1,7 +1,9 @@
 //! Set different types of indices.
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let rec = rerun::RecordingStreamBuilder::new("rerun_example_different_indices").spawn()?;
+    let rec =
+        rerun::RecordingStreamBuilder::new("rerun_example_different_indices")
+            .spawn()?;
 
     rec.set_time_sequence("frame_nr", 42);
     rec.set_duration_secs("elapsed", 12.0);

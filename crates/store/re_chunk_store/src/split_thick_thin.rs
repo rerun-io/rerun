@@ -76,11 +76,7 @@ pub(crate) fn split_chunk(chunk: &Chunk, ratio: f64) -> Option<Vec<Chunk>> {
 
     let mut splits = Vec::new();
     let mut start = 0;
-    for end in split_points
-        .iter()
-        .copied()
-        .chain(std::iter::once(sorted.len()))
-    {
+    for end in std::iter::chain(split_points.iter().copied(), std::iter::once(sorted.len())) {
         let mut components = Vec::new();
         for group in &sorted[start..end] {
             components.extend_from_slice(&group.components);

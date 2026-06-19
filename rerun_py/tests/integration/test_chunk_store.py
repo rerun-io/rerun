@@ -359,10 +359,11 @@ before_gop: num_gops=1 num_chunks=17
 /video rows=16 static=False timelines=['video_time'] cols=['VideoStream:sample', 'video_time']
 /video rows=31 static=False timelines=['video_time'] cols=['VideoStream:sample', 'video_time']
 /video rows=30 static=False timelines=['video_time'] cols=['VideoStream:sample', 'video_time']
-after_gop: num_gops=1 num_chunks=3
+after_gop: num_gops=1 num_chunks=4
 /__properties rows=1 static=True timelines=[] cols=['RecordingInfo:start_time']
 /video rows=1 static=True timelines=[] cols=['VideoStream:codec']
-/video rows=315 static=False timelines=['video_time'] cols=['VideoStream:sample', 'video_time']
+/video rows=300 static=False timelines=['video_time'] cols=['VideoStream:sample', 'video_time']
+/video rows=1 static=False timelines=['video_time'] cols=['VideoStream:is_keyframe', 'video_time']
 
 
 === Big_Buck_Bunny_1080_1s_h264_nobframes.mp4 ===
@@ -378,10 +379,11 @@ before_gop: num_gops=1 num_chunks=11
 /video rows=3 static=False timelines=['video_time'] cols=['VideoStream:sample', 'video_time']
 /video rows=4 static=False timelines=['video_time'] cols=['VideoStream:sample', 'video_time']
 /video rows=4 static=False timelines=['video_time'] cols=['VideoStream:sample', 'video_time']
-after_gop: num_gops=1 num_chunks=3
+after_gop: num_gops=1 num_chunks=4
 /__properties rows=1 static=True timelines=[] cols=['RecordingInfo:start_time']
 /video rows=1 static=True timelines=[] cols=['VideoStream:codec']
-/video rows=39 static=False timelines=['video_time'] cols=['VideoStream:sample', 'video_time']
+/video rows=30 static=False timelines=['video_time'] cols=['VideoStream:sample', 'video_time']
+/video rows=1 static=False timelines=['video_time'] cols=['VideoStream:is_keyframe', 'video_time']
 
 
 === Sintel_1080_10s_av1.mp4 ===
@@ -391,12 +393,13 @@ before_gop: num_gops=12 num_chunks=5
 /video rows=114 static=False timelines=['video_time'] cols=['VideoStream:sample', 'video_time']
 /video rows=111 static=False timelines=['video_time'] cols=['VideoStream:sample', 'video_time']
 /video rows=75 static=False timelines=['video_time'] cols=['VideoStream:sample', 'video_time']
-after_gop: num_gops=12 num_chunks=6
+after_gop: num_gops=12 num_chunks=7
 /__properties rows=1 static=True timelines=[] cols=['RecordingInfo:start_time']
 /video rows=1 static=True timelines=[] cols=['VideoStream:codec']
-/video rows=100 static=False timelines=['video_time'] cols=['VideoStream:sample', 'video_time']
-/video rows=84 static=False timelines=['video_time'] cols=['VideoStream:sample', 'video_time']
-/video rows=52 static=False timelines=['video_time'] cols=['VideoStream:sample', 'video_time']
-/video rows=77 static=False timelines=['video_time'] cols=['VideoStream:sample', 'video_time']
+/video rows=39 static=False timelines=['video_time'] cols=['VideoStream:sample', 'video_time']
+/video rows=107 static=False timelines=['video_time'] cols=['VideoStream:sample', 'video_time']
+/video rows=68 static=False timelines=['video_time'] cols=['VideoStream:sample', 'video_time']
+/video rows=86 static=False timelines=['video_time'] cols=['VideoStream:sample', 'video_time']
+/video rows=12 static=False timelines=['video_time'] cols=['VideoStream:is_keyframe', 'video_time']
 
 """)

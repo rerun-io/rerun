@@ -1,7 +1,10 @@
 //! Log lines with ui points & scene unit radii.
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let rec = rerun::RecordingStreamBuilder::new("rerun_example_line_strip3d_ui_radius").spawn()?;
+    let rec = rerun::RecordingStreamBuilder::new(
+        "rerun_example_line_strip3d_ui_radius",
+    )
+    .spawn()?;
 
     // A blue line with a scene unit radii of 0.01.
     let points = [[0., 0., 0.], [0., 0., 1.], [1., 0., 0.], [1., 0., 1.]];

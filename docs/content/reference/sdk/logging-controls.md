@@ -18,7 +18,8 @@ cargo run my_rerun_package
 
 The `RERUN` environment variable is read once during SDK initialization. The accepted values for `RERUN` are `1/on/true`, and `0/off/false`.
 
-ℹ️ Note: When Rerun is disabled, logging statements are bypassed and essentially become no-ops.
+> [!NOTE]
+> When Rerun is disabled, logging statements are bypassed and essentially become no-ops.
 
 ## Creating a default-off setup in code
 

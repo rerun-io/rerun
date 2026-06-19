@@ -4,12 +4,18 @@ use pyo3::exceptions::PyTypeError;
 use pyo3::{Py, PyErr, PyResult, Python, pyclass, pymethods};
 use re_log_types::EntryId;
 use re_protos::cloud::v1alpha1::EntryKind;
+use re_protos::cloud::v1alpha1::ext;
 use re_protos::cloud::v1alpha1::ext::EntryDetails;
 
 use crate::catalog::PyCatalogClientInternal;
 
 /// A unique identifier for an entry in the catalog.
-#[pyclass(eq, name = "EntryId", module = "rerun_bindings.rerun_bindings")]
+#[pyclass(
+    eq,
+    from_py_object,
+    name = "EntryId",
+    module = "rerun_bindings.rerun_bindings"
+)]
 #[derive(Clone, PartialEq, Eq)]
 pub struct PyEntryId {
     pub id: EntryId,
@@ -50,6 +56,7 @@ impl From<EntryId> for PyEntryId {
 /// The kinds of entries that can be stored in the catalog.
 #[pyclass(
     name = "EntryKind",
+    from_py_object,
     eq,
     eq_int,
     module = "rerun_bindings.rerun_bindings"
@@ -173,7 +180,7 @@ pub fn set_entry_name(
 
     let entry_name = re_protos::EntryName::new(name)
         .map_err(|err| pyo3::exceptions::PyValueError::new_err(err.to_string()))?;
-    let entry_details_update = re_protos::cloud::v1alpha1::ext::EntryDetailsUpdate {
+    let entry_details_update = ext::EntryDetailsUpdate {
         name: Some(entry_name),
     };
 

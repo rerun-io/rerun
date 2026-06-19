@@ -557,7 +557,6 @@ impl ComponentUiRegistry {
     ///
     /// Has a fallback to show an info text if the instance is not specific,
     /// but in these cases `LatestAtComponentResults::data_ui` should be used instead!
-    #[expect(clippy::too_many_arguments)]
     pub fn component_ui(
         &self,
         ctx: &StoreViewContext<'_>,
@@ -670,7 +669,6 @@ impl ComponentUiRegistry {
     }
 
     /// Show a UI for a single raw component.
-    #[expect(clippy::too_many_arguments)]
     pub fn component_ui_raw(
         &self,
         ctx: &StoreViewContext<'_>,
@@ -733,7 +731,6 @@ impl ComponentUiRegistry {
     }
 
     /// Show a UI corresponding to the provided variant name.
-    #[expect(clippy::too_many_arguments)]
     pub fn variant_ui_raw(
         &self,
         ctx: &StoreViewContext<'_>,
@@ -791,7 +788,6 @@ impl ComponentUiRegistry {
     /// Changes will be written to the blueprint store at the given override path.
     /// Any change is expected to be effective next frame and passed in via the `component_query_result` parameter.
     /// (Otherwise, this method is agnostic to where the component data is stored.)
-    #[expect(clippy::too_many_arguments)]
     pub fn multiline_edit_ui(
         &self,
         query_ctx: &QueryContext<'_>,
@@ -820,7 +816,6 @@ impl ComponentUiRegistry {
     /// Changes will be written to the blueprint store at the given override path.
     /// Any change is expected to be effective next frame and passed in via the `component_query_result` parameter.
     /// (Otherwise, this method is agnostic to where the component data is stored.)
-    #[expect(clippy::too_many_arguments)]
     pub fn singleline_edit_ui(
         &self,
         query_ctx: &QueryContext<'_>,
@@ -844,7 +839,6 @@ impl ComponentUiRegistry {
         );
     }
 
-    #[expect(clippy::too_many_arguments)]
     fn edit_ui(
         &self,
         query_ctx: &QueryContext<'_>,
@@ -884,7 +878,6 @@ impl ComponentUiRegistry {
     }
 
     /// For blueprint editing
-    #[expect(clippy::too_many_arguments)]
     pub fn edit_ui_raw(
         &self,
         query_ctx: &QueryContext<'_>,

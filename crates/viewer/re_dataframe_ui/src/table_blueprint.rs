@@ -104,7 +104,7 @@ pub struct EntryLinksSpec {
 /// The "blueprint" for a table, a.k.a the specification of how it should look.
 ///
 /// This is the single source of truth for table configuration. Fields can be populated
-/// from the embedded `.fbs` `TableBlueprint` archetype or set programmatically.
+/// from the registered `.fbs` `TableBlueprint` archetype or set programmatically.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct TableBlueprint {
     pub sort_by: Option<SortBy>,
@@ -126,14 +126,14 @@ pub struct TableBlueprint {
     ///
     /// The column must exist in the table and be of boolean type.
     /// Populated from schema metadata ([`crate::experimental_field_metadata::IS_FLAG_COLUMN`])
-    /// or the embedded `.fbs` `TableBlueprint` archetype.
+    /// or the registered `.fbs` `TableBlueprint` archetype.
     pub flag_column: Option<String>,
 
     /// The name of the column to use as the card title in grid view.
     ///
     /// If unset, the first visible string column is used.
     /// Populated from schema metadata ([`crate::experimental_field_metadata::IS_GRID_VIEW_CARD_TITLE`])
-    /// or the embedded `.fbs` `TableBlueprint` archetype.
+    /// or the registered `.fbs` `TableBlueprint` archetype.
     pub grid_view_card_title: Option<String>,
 
     /// The name of the column containing URLs to open when a card is clicked in grid view.
@@ -141,14 +141,14 @@ pub struct TableBlueprint {
     /// If unset, the first column whose values parse as a Rerun URI pointing to the same
     /// Rerun server is used (resolved ad-hoc in the grid view). If no such column exists,
     /// clicking a card does not navigate anywhere.
-    /// Populated from the embedded `.fbs` `TableBlueprint` archetype.
+    /// Populated from the registered `.fbs` `TableBlueprint` archetype.
     pub url_column: Option<String>,
 }
 
 impl TableBlueprint {
-    /// Populate fields from an embedded `.fbs` `TableBlueprint` archetype stored in a blueprint
+    /// Populate fields from a registered `.fbs` `TableBlueprint` archetype stored in a blueprint
     /// [`EntityDb`].
-    pub fn populate_from_embedded_blueprint(&mut self, blueprint_db: &EntityDb) {
+    pub fn populate_from_registered_blueprint(&mut self, blueprint_db: &EntityDb) {
         let blueprint_query = LatestAtQuery::latest(blueprint_timeline());
         let engine = blueprint_db.storage_engine();
         let results = engine.cache().latest_at(
@@ -184,20 +184,20 @@ impl TableBlueprint {
 
     /// Fill in unset fields with defaults inferred from the table's runtime state.
     ///
-    /// Call after [`Self::populate_from_embedded_blueprint`]. Fields already set by the user
-    /// or the embedded blueprint are left untouched.
+    /// Call after [`Self::populate_from_registered_blueprint`]. Fields already set by the user
+    /// or the registered blueprint are left untouched.
     ///
     /// Sources applied (in order, first match wins per field):
     /// 1. Per-field Arrow schema metadata (see [`crate::experimental_field_metadata`]).
     /// 2. Structural heuristics over the loaded columns/data.
     pub fn apply_heuristics(
-        &mut self,
+        mut self,
         schema: &arrow::datatypes::Schema,
         columns: &Columns<'_>,
         display_record_batches: &[DisplayRecordBatch],
         table_config: &TableConfig,
         current_server_origin: Option<&re_uri::Origin>,
-    ) {
+    ) -> Self {
         if self.flag_column.is_none() {
             self.flag_column =
                 find_field_with_flag(schema, crate::experimental_field_metadata::IS_FLAG_COLUMN)
@@ -223,31 +223,35 @@ impl TableBlueprint {
             });
         }
 
-        if self.url_column.is_none() {
-            self.url_column = columns
-                .columns
-                .iter()
-                .enumerate()
-                .filter(|(_, c)| {
-                    matches!(
-                        &c.desc,
-                        ColumnDescriptorRef::Component(c)
-                            if c.store_datatype == arrow::datatypes::DataType::Utf8
-                    )
-                })
-                .find_map(|(idx, col)| {
-                    let sample = display_record_batches.iter().find_map(|batch| {
-                        let DisplayColumn::Component(comp) = batch.columns().get(idx)? else {
-                            return None;
-                        };
-                        (0..batch.num_rows()).find_map(|row| comp.string_value_at(row))
-                    })?;
-                    let uri = re_uri::RedapUri::from_str(&sample).ok()?;
-                    current_server_origin
-                        .is_none_or(|origin| uri.origin() == origin)
-                        .then(|| col.display_name())
-                });
+        if self.url_column.is_none() && self.segment_preview_column.is_none() {
+            let first_url = columns.columns.iter().enumerate().find_map(|(idx, col)| {
+                if !matches!(
+                    &col.desc,
+                    ColumnDescriptorRef::Component(c)
+                        if c.store_datatype == arrow::datatypes::DataType::Utf8
+                ) {
+                    return None;
+                }
+
+                let sample = display_record_batches.iter().find_map(|batch| {
+                    let DisplayColumn::Component(comp) = batch.columns().get(idx)? else {
+                        return None;
+                    };
+                    (0..batch.num_rows()).find_map(|row| comp.string_value_at(row))
+                })?;
+                let uri = re_uri::RedapUri::from_str(&sample).ok()?;
+
+                current_server_origin
+                    .is_none_or(|origin| uri.origin() == origin)
+                    .then(|| col.display_name())
+            });
+            self.url_column = first_url.clone();
+            self.segment_preview_column = first_url;
+        } else if self.url_column.is_none() && self.segment_preview_column.is_some() {
+            self.url_column = self.segment_preview_column.clone();
         }
+
+        self
     }
 }
 

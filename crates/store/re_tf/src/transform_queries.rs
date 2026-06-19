@@ -298,12 +298,7 @@ pub fn query_and_resolve_instance_poses_at_entity(
             return Either::Left(std::iter::empty());
         };
         let last = last.clone();
-        Either::Right(
-            values
-                .into_iter()
-                .chain(std::iter::repeat(last))
-                .take(clamped_len),
-        )
+        Either::Right(std::iter::chain(values, std::iter::repeat(last)).take(clamped_len))
     }
 
     let batch_translation = chunk

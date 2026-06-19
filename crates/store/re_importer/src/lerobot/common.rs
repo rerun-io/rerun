@@ -7,6 +7,7 @@ use arrow::{
     datatypes::{DataType, Field},
 };
 use crossbeam::channel::Sender;
+use itertools::Itertools as _;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::{
     ArrowArray as _, Chunk, ChunkId, EntityPath, RowId, TimeColumn, TimePoint, TimelineName,
@@ -85,7 +86,7 @@ pub fn load_and_stream_common<Dataset>(
                     return;
                 };
 
-                for chunk in std::iter::once(initial).chain(chunks) {
+                for chunk in std::iter::chain(std::iter::once(initial), chunks) {
                     let data = ImportedData::Chunk(loader_name.to_owned(), store_id.clone(), chunk);
 
                     if send_crossbeam(tx, data).is_err() {
@@ -396,7 +397,7 @@ fn extract_fixed_size_list_array_elements_as_f64(
             cast(&data.value(idx), &DataType::Float64)
                 .with_context(|| format!("Failed to cast {} to Float64", data.data_type()))
         })
-        .collect::<Result<Vec<_>, _>>()
+        .try_collect()
 }
 
 fn extract_list_array_elements_as_f64(
@@ -407,5 +408,5 @@ fn extract_list_array_elements_as_f64(
             cast(&data.value(idx), &DataType::Float64)
                 .with_context(|| format!("Failed to cast {} to Float64", data.data_type()))
         })
-        .collect::<Result<Vec<_>, _>>()
+        .try_collect()
 }

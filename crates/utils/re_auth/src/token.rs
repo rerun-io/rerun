@@ -162,7 +162,7 @@ fn extract_allowed_hosts_from_jwt(jwt: &Jwt) -> Result<Vec<String>, JwtDecodeErr
 
 /// Check if a token's `allowed_hosts` claim permits the given host.
 ///
-/// Works for both Rerun Cloud tokens (RS256, from `WorkOS`) and Redap
+/// Works for both Rerun Hub tokens (RS256, from `WorkOS`) and Redap
 /// machine tokens (HS256, from `generate-token`).
 ///
 /// Returns `true` if:

@@ -77,7 +77,7 @@ fn create_chunk() -> anyhow::Result<Chunk> {
         )
         .build()?;
 
-    chunk.sort_if_unsorted();
+    chunk.sort_by_row_ids_if_needed();
 
     Ok(chunk)
 }

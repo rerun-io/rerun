@@ -11,7 +11,9 @@ if TYPE_CHECKING:
 
 
 class CustomPoints3D(rr.AsComponents):  # type: ignore[misc]
-    def __init__(self: Any, positions: npt.ArrayLike, colors: npt.ArrayLike) -> None:
+    def __init__(
+        self: Any, positions: npt.ArrayLike, colors: npt.ArrayLike
+    ) -> None:
         self.positions = rr.components.Position3DBatch(positions).described(
             rr.ComponentDescriptor(
                 "user.CustomPoints3D:custom_positions",
@@ -35,4 +37,5 @@ rr.spawn()
 
 rr.log("data", CustomPoints3D([[1, 2, 3]], [0xFF00FFFF]), static=True)
 
-# The tags are indirectly checked by the Rust version (have a look over there for more info).
+# The tags are indirectly checked by the Rust version (have a look over there
+# for more info).

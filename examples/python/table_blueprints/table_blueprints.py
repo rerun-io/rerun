@@ -7,29 +7,41 @@ Table blueprints allow configuring table layouts and use segment previews.
 viewer under Settings > Experimental > Table cards and blueprints.
 
 Each row can reference a recording via a URI column. The viewer loads those recordings
-on demand and renders them through the embedded blueprint's view definition.
+on demand and renders them through the registered blueprint's view definition.
 
-The demo also includes a boolean `marker_flag` column and points the embedded table
+The demo also includes a boolean `marker_flag` column and points the registered table
 blueprint at it. The Viewer uses that column as the per-row flag state: toggling a
 card's flag updates the visible table immediately and upserts the new boolean value
 back to the server using the `rerun:is_table_index` column as the row key.
 
+For testing you can use this droid rrd dataset:
+https://huggingface.co/datasets/rerun/droid_sample/tree/main
+
 Usage:
     table_blueprints
     table_blueprints /path/to/dataset
-    table_blueprints <dataset-name> --url rerun+https://…
+    table_blueprints --target dataset
+    table_blueprints --target both
+    table_blueprints --write-blueprints-only --blueprint-dir /tmp/table-blueprints
+    table_blueprints <dataset-name> --url rerun+https://… --blueprint-uri-base s3://bucket/table-blueprints/
+
+`--target` selects what the blueprints are applied to:
+- `tables` (default): create the demo tables, each with its own table blueprint.
+- `dataset`: register a blueprint on the dataset's own segment table (no tables created).
+- `both`: do both.
 
 Without `--url`, this starts a temporary local Rerun server for the given directory of
 `.rrd` files. With `--url`, this connects as a client to an existing Rerun server or
 catalog and expects `dataset` to be the remote dataset name.
+Remote registration requires `--blueprint-uri-base` pointing at a server-visible
+location containing the `.rbl` files written by this script.
 """
 
 from __future__ import annotations
 
 import argparse
-import base64
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
 import pyarrow as pa
 
@@ -40,18 +52,21 @@ from rerun.recording_stream import RecordingStream
 from rerun.server import Server
 
 
-def make_table_blueprint(
+def save_table_blueprint(
+    path: Path,
     *views: rrb.View,
     segment_preview_column: str | None = None,
     flag_column: str | None = None,
     grid_view_card_title: str | None = None,
     timeline: str | None = None,
-) -> str:
+) -> None:
     """
-    Serialize one or more views into a base64-encoded blueprint for table schema metadata.
+    Write a table blueprint with one or more views into a `.rbl` file.
 
     Parameters
     ----------
+    path:
+        File path to write the serialized `.rbl` blueprint to.
     *views:
         One or more view definitions to embed (e.g. `Spatial3DView`, `TimeSeriesView`).
     segment_preview_column:
@@ -66,43 +81,36 @@ def make_table_blueprint(
     timeline:
         If set, configures the time panel to display this timeline.
 
-    Returns
-    -------
-    str
-        `"base64:<data>"` string suitable for Arrow schema metadata.
-
     """
     blueprint = rrb.Blueprint(*views)
 
-    blueprint_stream = RecordingStream._from_native(
+    with RecordingStream._from_native(
         bindings.new_blueprint(
             application_id="embedded",
             make_default=False,
             make_thread_default=False,
             default_enabled=True,
         ),
-    )
-    blueprint_stream.set_time("blueprint", sequence=0)
-    blueprint._log_to_stream(blueprint_stream)
+    ) as blueprint_stream:
+        blueprint_stream.save(str(path))
+        blueprint_stream.set_time("blueprint", sequence=0)
+        blueprint._log_to_stream(blueprint_stream)
 
-    table_blueprint_kwargs = {}
-    if segment_preview_column is not None:
-        table_blueprint_kwargs["segment_preview_column"] = segment_preview_column
-    if flag_column is not None:
-        table_blueprint_kwargs["flag_column"] = flag_column
-    if grid_view_card_title is not None:
-        table_blueprint_kwargs["grid_view_card_title"] = grid_view_card_title
-    if table_blueprint_kwargs:
-        blueprint_stream.log(
-            "/table",
-            rrb.experimental.TableBlueprint(**table_blueprint_kwargs),
-        )
+        table_blueprint_kwargs = {}
+        if segment_preview_column is not None:
+            table_blueprint_kwargs["segment_preview_column"] = segment_preview_column
+        if flag_column is not None:
+            table_blueprint_kwargs["flag_column"] = flag_column
+        if grid_view_card_title is not None:
+            table_blueprint_kwargs["grid_view_card_title"] = grid_view_card_title
+        if table_blueprint_kwargs:
+            blueprint_stream.log(
+                "/table",
+                rrb.experimental.TableBlueprint(**table_blueprint_kwargs),
+            )
 
-    if timeline is not None:
-        rrb.TimePanel(timeline=timeline)._log_to_stream(blueprint_stream)
-
-    rbl_bytes = blueprint_stream.memory_recording().drain_as_bytes()
-    return "base64:" + base64.b64encode(rbl_bytes).decode("ascii")
+        if timeline is not None:
+            rrb.TimePanel(timeline=timeline)._log_to_stream(blueprint_stream)
 
 
 # ---------------------------------------------------------------------------
@@ -111,8 +119,7 @@ def make_table_blueprint(
 
 DEFAULT_LOCAL_DATASET = Path(__file__).resolve().parents[3] / "tests/assets/rrd/sample_5"
 MARKER_FLAG_COLUMN = "marker_flag"
-TABLE_BLUEPRINT_METADATA_KEY = b"rerun:table_blueprint"
-
+SEGMENT_TABLE_BLUEPRINT_NAME = "segment_table"
 PropertyColumn = tuple[str, pa.Field, list[Any]]
 
 # Please edit the functions in this section to match your own dataset.
@@ -139,14 +146,56 @@ def extract_dataset_property_columns(seg_arrow: pa.Table, num_segments: int) -> 
     return props
 
 
-def make_dataset_blueprints() -> dict[str, str]:
+class PreviewViews(NamedTuple):
+    """The views shared by the table and segment-table blueprints."""
+
+    plot: rrb.TimeSeriesView
+    spatial_3d: rrb.Spatial3DView
+    spatial_2d: rrb.Spatial2DView
+
+
+def setup_preview_views() -> PreviewViews:
     """
-    Create the table blueprints used by this demo.
+    Build all views used by the demo blueprints.
+
+    PLEASE EDIT THIS for your dataset: view origins, contents, target frame, and excluded paths.
+    """
+    return PreviewViews(
+        plot=rrb.TimeSeriesView(
+            origin="/observation/joint_positions",
+            plot_legend=rrb.PlotLegend(visible=False),
+        ),
+        spatial_3d=rrb.Spatial3DView(
+            contents=[
+                "+ /**",
+                "- /camera/**",
+                "- /**/collision_0/**",
+                "- /thumbnail/**",
+            ],
+            spatial_information=rrb.SpatialInformation(
+                target_frame="panda_link0",
+            ),
+            background=rrb.Background(
+                color=[0.1, 0.1, 0.1, 1.0],
+            ),
+        ),
+        spatial_2d=rrb.Spatial2DView(
+            contents=["+ /camera/wrist/**"],
+        ),
+    )
+
+
+def make_dataset_blueprints(blueprint_dir: Path) -> dict[str, Path]:
+    """
+    Write the table blueprints used by this demo to `blueprint_dir` and return their paths by name.
+
+    These target the demo *tables* created by this script, whose schema has `recording_uri`,
+    `marker_flag`, and `uuid` columns. For the dataset's own segment table, see
+    `make_segment_table_blueprint`.
 
     PLEASE EDIT THIS for your dataset. In particular, update:
     - `grid_view_card_title` to a string column that exists in your copied properties.
     - `timeline` to the timeline used by your recordings.
-    - view origins, contents, target frame, and excluded paths.
     """
     common_bp_kwargs = {
         "segment_preview_column": "recording_uri",
@@ -155,35 +204,39 @@ def make_dataset_blueprints() -> dict[str, str]:
         "timeline": "real_time",
     }
 
-    spatial_3d_view = rrb.Spatial3DView(
-        contents=[
-            "+ /**",
-            "- /camera/**",
-            "- /**/collision_0/**",
-            "- /thumbnail/**",
-        ],
-        spatial_information=rrb.SpatialInformation(
-            target_frame="panda_link0",
-        ),
-        background=rrb.Background(
-            color=[0.1, 0.1, 0.1, 1.0],
-        ),
-    )
-    spatial_2d_view = rrb.Spatial2DView(
-        contents=["+ /camera/wrist/**"],
-    )
+    views = setup_preview_views()
 
-    return {
-        "previews_plot": make_table_blueprint(
-            rrb.TimeSeriesView(
-                origin="/observation/joint_positions",
-                plot_legend=rrb.PlotLegend(visible=False),
-            ),
-            **common_bp_kwargs,
-        ),
-        "previews_3d_only": make_table_blueprint(spatial_3d_view, **common_bp_kwargs),
-        "previews_3d_and_2d": make_table_blueprint(spatial_3d_view, spatial_2d_view, **common_bp_kwargs),
+    blueprint_dir.mkdir(parents=True, exist_ok=True)
+    paths = {
+        name: blueprint_dir / f"{name}.rbl" for name in ("previews_plot", "previews_3d_only", "previews_3d_and_2d")
     }
+
+    save_table_blueprint(paths["previews_plot"], views.plot, **common_bp_kwargs)
+    save_table_blueprint(paths["previews_3d_only"], views.spatial_3d, **common_bp_kwargs)
+    save_table_blueprint(paths["previews_3d_and_2d"], views.spatial_3d, views.spatial_2d, **common_bp_kwargs)
+
+    return paths
+
+
+def make_segment_table_blueprint(blueprint_dir: Path) -> Path:
+    """
+    Write the blueprint used for the dataset's own segment table and return its path.
+
+    Unlike the table blueprints, this targets the dataset's native segment table, so:
+    - `segment_preview_column` is left unset, letting the viewer auto-pick the column to preview.
+    - `flag_column` is left unset (segment tables have no demo flag column).
+
+    PLEASE EDIT THIS for your dataset. By default it uses the combined 3D & 2D views and the
+    `real_time` timeline; adjust the views (via `setup_preview_views`) and timeline to match your
+    recordings.
+    """
+    blueprint_dir.mkdir(parents=True, exist_ok=True)
+    path = blueprint_dir / f"{SEGMENT_TABLE_BLUEPRINT_NAME}.rbl"
+
+    views = setup_preview_views()
+    save_table_blueprint(path, views.spatial_3d, views.spatial_2d, timeline="real_time")
+
+    return path
 
 
 # ---------------------------------------------------------------------------
@@ -210,15 +263,14 @@ def query_segment_data(
     return segment_ids, segment_uris, props
 
 
-def create_table_with_blueprint(
+def create_table(
     client: rr.catalog.CatalogClient,
     *,
     table_name: str,
-    blueprint_str: str,
     segment_uris: list[str],
     property_columns: list[PropertyColumn],
 ) -> rr.catalog.TableEntry:
-    """Create a table with the given blueprint and segment data."""
+    """Create a table with the given segment data."""
     n = len(segment_uris)
 
     fields: list[pa.Field] = [
@@ -237,34 +289,88 @@ def create_table_with_blueprint(
     fields.append(pa.field(MARKER_FLAG_COLUMN, pa.bool_()))
     data[MARKER_FLAG_COLUMN] = [False] * n
 
-    schema = pa.schema(fields, metadata={TABLE_BLUEPRINT_METADATA_KEY: blueprint_str.encode("ascii")})
+    schema = pa.schema(fields)
     table = client.create_table(table_name, schema)
     table.append(**data)
     return table
 
 
-def run_with_client(client: rr.catalog.CatalogClient, dataset_name: str) -> None:
-    """Create tables with different view blueprints from a dataset's real properties."""
-    dataset = client.get_dataset(dataset_name)
-    segment_ids, segment_uris, props = query_segment_data(dataset)
-    print(f"Using {len(segment_ids)} segments from dataset '{dataset_name}'")
+def blueprint_uri(name: str, local_path: Path, blueprint_uri_base: str | None) -> str:
+    """Return the URI to register for a blueprint."""
+    if blueprint_uri_base is None:
+        return local_path.absolute().as_uri()
+    return blueprint_uri_base.rstrip("/") + f"/{name}.rbl"
 
-    blueprints = make_dataset_blueprints()
+
+def create_demo_tables(
+    client: rr.catalog.CatalogClient,
+    dataset: rr.catalog.DatasetEntry,
+    dataset_name: str,
+    *,
+    blueprint_dir: Path,
+    blueprint_uri_base: str | None,
+) -> None:
+    """Create one demo table per table blueprint, populated from the dataset's segment properties."""
+    _, segment_uris, props = query_segment_data(dataset)
+    print(f"Using {len(segment_uris)} segments from dataset '{dataset_name}'")
+
+    blueprint_paths = make_dataset_blueprints(blueprint_dir)
 
     existing_table_names = set(client.table_names())
-    for name, bp in blueprints.items():
+    for name in blueprint_paths:
         if name in existing_table_names:
             client.get_table(name).delete()
             print(f"  {name}: deleted existing table")
-        table = create_table_with_blueprint(
+        table = create_table(
             client,
             table_name=name,
-            blueprint_str=bp,
             segment_uris=segment_uris,
             property_columns=props,
         )
-        bp_size = len(table.arrow_schema().metadata.get(TABLE_BLUEPRINT_METADATA_KEY))
-        print(f"  {name}: blueprint {bp_size} bytes")
+        uri = blueprint_uri(name, blueprint_paths[name], blueprint_uri_base)
+        table.register_blueprint(uri)
+        print(f"  {name}: registered table blueprint {uri}")
+
+
+def apply_segment_table_blueprint(
+    dataset: rr.catalog.DatasetEntry,
+    *,
+    blueprint_dir: Path,
+    blueprint_uri_base: str | None,
+) -> None:
+    """Register the segment-table blueprint on the dataset's own segment table."""
+    path = make_segment_table_blueprint(blueprint_dir)
+    uri = blueprint_uri(SEGMENT_TABLE_BLUEPRINT_NAME, path, blueprint_uri_base)
+    dataset.register_blueprint(uri, segment_table=True)
+    print(f"  segment table: registered blueprint {uri}")
+
+
+def run_with_client(
+    client: rr.catalog.CatalogClient,
+    dataset_name: str,
+    *,
+    target: str,
+    blueprint_dir: Path,
+    blueprint_uri_base: str | None,
+) -> None:
+    """Create demo tables and/or register a blueprint on the dataset's segment table, per `target`."""
+    dataset = client.get_dataset(dataset_name)
+
+    if target in ("tables", "both"):
+        create_demo_tables(
+            client,
+            dataset,
+            dataset_name,
+            blueprint_dir=blueprint_dir,
+            blueprint_uri_base=blueprint_uri_base,
+        )
+
+    if target in ("dataset", "both"):
+        apply_segment_table_blueprint(
+            dataset,
+            blueprint_dir=blueprint_dir,
+            blueprint_uri_base=blueprint_uri_base,
+        )
 
 
 def main() -> None:
@@ -272,30 +378,74 @@ def main() -> None:
     parser.add_argument(
         "dataset",
         nargs="?",
-        help=(
-            "Without --url: local dataset directory to serve. "
-            "With --url: remote dataset name to look up. "
-            f"Defaults to {DEFAULT_LOCAL_DATASET} in local server mode."
-        ),
+        help=(f"Local dataset directory to serve. Defaults to {DEFAULT_LOCAL_DATASET}."),
     )
 
     connection_group = parser.add_mutually_exclusive_group()
     connection_group.add_argument("--port", type=int, default=None, help="Port for local server mode.")
     connection_group.add_argument("--url", help="Remote server/catalog URL for client mode.")
+    parser.add_argument(
+        "--blueprint-dir",
+        type=Path,
+        default=Path.cwd(),
+        help="Directory where generated .rbl table blueprints are written.",
+    )
+    parser.add_argument(
+        "--blueprint-uri-base",
+        help=(
+            "Server-visible URI prefix used when registering generated .rbl files. "
+            "Required with --url unless --write-blueprints-only is used."
+        ),
+    )
+    parser.add_argument(
+        "--target",
+        choices=("tables", "dataset", "both"),
+        default="both",
+        help=(
+            "What to apply blueprints to:\n"
+            "* 'tables' creates the demo tables\n"
+            "* 'dataset' registers a blueprint on the dataset's own segment table\n"
+            "* 'both' (default) does both."
+        ),
+    )
+    parser.add_argument(
+        "--write-blueprints-only",
+        action="store_true",
+        help="Only write generated .rbl files to --blueprint-dir, then exit.",
+    )
 
     args = parser.parse_args()
+
+    if args.write_blueprints_only:
+        make_dataset_blueprints(args.blueprint_dir)
+        make_segment_table_blueprint(args.blueprint_dir)
+        return
 
     if args.url is not None:
         if args.dataset is None:
             parser.error("Provide a remote dataset name when using --url")
+        if args.blueprint_uri_base is None:
+            parser.error("Provide --blueprint-uri-base with --url after uploading the generated .rbl files")
         client = rr.catalog.CatalogClient(args.url)
-        run_with_client(client, dataset_name=args.dataset)
+        run_with_client(
+            client,
+            dataset_name=args.dataset,
+            target=args.target,
+            blueprint_dir=args.blueprint_dir,
+            blueprint_uri_base=args.blueprint_uri_base,
+        )
     else:
         local_dataset = args.dataset or str(DEFAULT_LOCAL_DATASET)
         with Server(port=args.port, datasets={"local": local_dataset}) as srv:
             print(srv.url())
             client = srv.client()
-            run_with_client(client, dataset_name="local")
+            run_with_client(
+                client,
+                dataset_name="local",
+                target=args.target,
+                blueprint_dir=args.blueprint_dir,
+                blueprint_uri_base=args.blueprint_uri_base,
+            )
             input("Press Enter to stop the server…")
 
 

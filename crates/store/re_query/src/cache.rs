@@ -18,25 +18,11 @@ use crate::{LatestAtCache, RangeCache};
 // ---
 
 /// Uniquely identifies cached query results in the [`QueryCache`].
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, re_byte_size::SizeBytes)]
 pub struct QueryCacheKey {
     pub entity_path: EntityPath,
     pub timeline_name: TimelineName,
     pub component: ComponentIdentifier,
-}
-
-impl re_byte_size::SizeBytes for QueryCacheKey {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            entity_path,
-            timeline_name,
-            component: component_identifier,
-        } = self;
-        entity_path.heap_size_bytes()
-            + timeline_name.heap_size_bytes()
-            + component_identifier.heap_size_bytes()
-    }
 }
 
 impl std::fmt::Debug for QueryCacheKey {
@@ -138,8 +124,10 @@ impl QueryCacheHandle {
     }
 }
 
+#[derive(re_byte_size::SizeBytes)]
 pub struct QueryCache {
     /// Handle to the associated [`ChunkStoreHandle`].
+    #[size_bytes(ignore)]
     pub(crate) store: ChunkStoreHandle,
 
     /// The [`StoreId`] of the associated [`ChunkStoreHandle`].
@@ -153,31 +141,14 @@ pub struct QueryCache {
     /// This is a huge performance improvement in practice, especially in recordings with many entities.
     pub(crate) might_require_clearing: RwLock<IntSet<EntityPath>>,
 
+    // TODO(RR-3800): better size estimation. This seems to be over-estimating a lot?
+    // Maybe double-counting chunks or other arrow data?
+    #[size_bytes(ignore)]
     // NOTE: `Arc` so we can cheaply free the top-level lock early when needed.
     pub(crate) latest_at_per_cache_key: RwLock<HashMap<QueryCacheKey, Arc<RwLock<LatestAtCache>>>>,
 
     // NOTE: `Arc` so we can cheaply free the top-level lock early when needed.
     pub(crate) range_per_cache_key: RwLock<HashMap<QueryCacheKey, Arc<RwLock<RangeCache>>>>,
-}
-
-impl re_byte_size::SizeBytes for QueryCache {
-    fn heap_size_bytes(&self) -> u64 {
-        re_tracing::profile_function!();
-
-        let Self {
-            store: _,
-            store_id: _,
-            might_require_clearing,
-
-            // TODO(RR-3800): better size estimation. This seems to be over-estimating a lot?
-            // Maybe double-counting chunks or other arrow data?
-            latest_at_per_cache_key: _,
-
-            range_per_cache_key,
-        } = self;
-
-        might_require_clearing.heap_size_bytes() + range_per_cache_key.heap_size_bytes()
-    }
 }
 
 impl MemUsageTreeCapture for QueryCache {

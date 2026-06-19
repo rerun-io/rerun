@@ -3,7 +3,7 @@ use std::sync::OnceLock;
 use ahash::HashMap;
 use nohash_hasher::{IntMap, IntSet};
 use re_chunk_store::{
-    ChunkStore, ChunkStoreEvent, ChunkStoreSubscriber, ChunkStoreSubscriberHandle,
+    ChunkStore, ChunkStoreDiff, ChunkStoreEvent, ChunkStoreSubscriber, ChunkStoreSubscriberHandle,
 };
 use re_log::debug_assert;
 use re_log_types::{EntityPath, EntityPathHash, StoreId};
@@ -17,11 +17,29 @@ bitflags::bitflags! {
     }
 }
 
+impl re_byte_size::SizeBytes for SubSpaceConnectionFlags {
+    const IS_POD: bool = true;
+
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+}
+
 bitflags::bitflags! {
     /// Marks entities that are of special interest for heuristics.
     #[derive(PartialEq, Eq, Debug, Copy, Clone)]
     pub struct HeuristicHints: u8 {
         const ViewCoordinates3d = 0b0000001;
+    }
+}
+
+impl re_byte_size::SizeBytes for HeuristicHints {
+    const IS_POD: bool = true;
+
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
     }
 }
 
@@ -35,7 +53,7 @@ bitflags::bitflags! {
 /// Within the tree of all subspaces, every entity is contained in exactly one subspace.
 /// The subtree at (and including) the `origin` minus the
 /// subtrees of all child spaces are considered to be contained in a subspace.
-#[derive(Debug)]
+#[derive(Debug, re_byte_size::SizeBytes)]
 pub struct SubSpace {
     /// The transform root of this subspace.
     ///
@@ -157,20 +175,21 @@ impl ChunkStoreSubscriber for SpatialTopologyStoreSubscriber {
         re_tracing::profile_function!();
 
         for event in events {
-            let Some(add) = event.to_addition() else {
-                // Topology is only additive, don't care about removals.
+            let ChunkStoreDiff::SchemaAddition(add) = &event.diff else {
                 continue;
             };
 
-            // Possible optimization:
-            // only update topologies if an entity is logged the first time or a new relevant component was added.
-            self.topologies
-                .entry(event.store_id.clone())
-                .or_default()
-                .on_store_diff(
-                    add.delta_chunk().entity_path(),
-                    add.delta_chunk().component_descriptors(),
-                );
+            for meta in &add.new_columns {
+                self.topologies
+                    .entry(event.store_id.clone())
+                    .or_default()
+                    .on_store_diff(
+                        &meta.entity_path,
+                        meta.components
+                            .iter()
+                            .map(|component| &component.descriptor),
+                    );
+            }
         }
     }
 }
@@ -184,6 +203,7 @@ impl ChunkStoreSubscriber for SpatialTopologyStoreSubscriber {
 ///
 /// Spatial topology is time independent but may change as new data comes in.
 /// Generally, the assumption is that topological cuts stay constant over time.
+#[derive(Debug, re_byte_size::SizeBytes)]
 pub struct SpatialTopology {
     /// All subspaces, identified by their origin-hash.
     subspaces: IntMap<EntityPathHash, SubSpace>,
@@ -196,58 +216,6 @@ pub struct SpatialTopology {
     /// When there is an explicit coordinate frame there are effectively more entity
     /// trees than are known about here. And heuristic can't make the same assumptions.
     has_explicit_coordinate_frame: bool,
-}
-
-impl re_byte_size::SizeBytes for SubSpaceConnectionFlags {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
-    }
-}
-
-impl re_byte_size::SizeBytes for HeuristicHints {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
-    }
-}
-
-impl re_byte_size::SizeBytes for SubSpace {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            origin,
-            entities,
-            child_spaces,
-            parent_space: _,
-            connection_to_parent: _,
-            heuristic_hints,
-        } = self;
-        origin.heap_size_bytes()
-            + entities.heap_size_bytes()
-            + child_spaces.heap_size_bytes()
-            + heuristic_hints.heap_size_bytes()
-    }
-}
-
-impl re_byte_size::SizeBytes for SpatialTopology {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            subspaces,
-            subspace_origin_per_logged_entity,
-            has_explicit_coordinate_frame: _,
-        } = self;
-        subspaces.heap_size_bytes() + subspace_origin_per_logged_entity.heap_size_bytes()
-    }
 }
 
 impl Default for SpatialTopology {

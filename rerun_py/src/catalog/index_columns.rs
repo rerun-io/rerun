@@ -11,6 +11,7 @@ use re_sorbet::{IndexColumnDescriptor, TimeColumnSelector};
 /// column, use [`IndexColumnSelector`][rerun.catalog.IndexColumnSelector].
 #[pyclass(
     frozen,
+    from_py_object,
     eq,
     hash,
     name = "IndexColumnDescriptor",
@@ -58,6 +59,7 @@ impl From<IndexColumnDescriptor> for PyIndexColumnDescriptor {
 ///     The name of the index to select. Usually the name of a timeline.
 #[pyclass(
     frozen,
+    from_py_object,
     eq,
     name = "IndexColumnSelector",
     module = "rerun_bindings.rerun_bindings"

@@ -3,7 +3,7 @@ use std::io::{Read, Seek};
 
 use mcap::Summary;
 use mcap::sans_io::{SummaryReadEvent, SummaryReader};
-use re_chunk::TimePoint;
+use re_chunk::{TimePoint, TimelineName};
 use re_log_types::{TimeCell, TimeType};
 use saturating_cast::SaturatingCast as _;
 
@@ -75,9 +75,8 @@ pub fn log_and_publish_timepoint_from_msg(
     msg: &mcap::Message<'_>,
     time_type: TimeType,
 ) -> TimePoint {
-    let log_time_cell = crate::util::TimestampCell::from_nanos_default(msg.log_time, time_type);
-    let publish_time_cell =
-        crate::util::TimestampCell::from_nanos_default(msg.publish_time, time_type);
+    let log_time_cell = TimestampCell::from_nanos_default(msg.log_time, time_type);
+    let publish_time_cell = TimestampCell::from_nanos_default(msg.publish_time, time_type);
     re_chunk::TimePoint::from([
         ("message_log_time", log_time_cell.into_time_cell()),
         ("message_publish_time", publish_time_cell.into_time_cell()),
@@ -85,9 +84,9 @@ pub fn log_and_publish_timepoint_from_msg(
 }
 
 /// A timestamp or duration on a specific timeline.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TimestampCell {
-    pub timeline: String,
+    pub timeline: TimelineName,
     pub time: TimeCell,
 }
 
@@ -96,7 +95,7 @@ impl TimestampCell {
     ///
     /// Always interprets the value as a timestamp, regardless of magnitude.
     /// Use [`Self::from_nanos_with_type`] for configurable [`TimeType`].
-    pub fn from_nanos(timestamp_ns: u64, timeline: impl Into<String>) -> Self {
+    pub fn from_nanos(timestamp_ns: u64, timeline: impl Into<TimelineName>) -> Self {
         let ns = timestamp_ns.saturating_cast::<i64>();
         Self {
             timeline: timeline.into(),
@@ -107,7 +106,7 @@ impl TimestampCell {
     /// Create a time cell with a configurable [`TimeType`] and custom timeline name.
     pub fn from_nanos_with_type(
         nanos: u64,
-        timeline: impl Into<String>,
+        timeline: impl Into<TimelineName>,
         time_type: TimeType,
     ) -> Self {
         let ns = nanos.saturating_cast::<i64>();
@@ -133,7 +132,7 @@ impl TimestampCell {
     }
 
     /// The timeline name for this time cell.
-    pub fn timeline_name(&self) -> &str {
+    pub fn timeline_name(&self) -> &TimelineName {
         &self.timeline
     }
 

@@ -58,9 +58,8 @@ impl Capsules3DVisualizer {
 
             let axes_only = batch.fill_mode.axes_only();
 
-            let meshes = lengths_iter
-                .zip(radii.iter())
-                .map(|(Length(length), &Radius(radius))| {
+            let meshes =
+                std::iter::zip(lengths_iter, &radii).map(|(Length(length), &Radius(radius))| {
                     let ratio = clean_length(length.0 / radius.0);
 
                     // Avoid generating extremely similar meshes by rounding the ratio.
@@ -127,7 +126,10 @@ struct Capsules3DComponentData<'a> {
 
 impl IdentifiedViewSystem for Capsules3DVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "Capsules3D".into()
+        re_viewer_context::external::re_string_interner::intern_static!(
+            re_viewer_context::ViewSystemIdentifier,
+            "Capsules3D"
+        )
     }
 }
 

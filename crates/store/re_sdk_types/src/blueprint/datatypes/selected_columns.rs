@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -24,7 +25,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Datatype**: List of selected columns in a dataframe.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, ::re_byte_size::SizeBytes)]
 pub struct SelectedColumns {
     /// The time columns to include
     pub time_columns: Vec<crate::datatypes::Utf8>,
@@ -222,11 +223,11 @@ impl ::re_types_core::Loggable for SelectedColumns {
             } else {
                 let (arrow_data_fields, arrow_data_arrays) =
                     (arrow_data.fields(), arrow_data.columns());
-                let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data_fields
-                    .iter()
-                    .map(|field| field.name().as_str())
-                    .zip(arrow_data_arrays)
-                    .collect();
+                let arrays_by_name: ::std::collections::HashMap<_, _> = ::std::iter::zip(
+                    arrow_data_fields.iter().map(|field| field.name().as_str()),
+                    arrow_data_arrays,
+                )
+                .collect();
                 let time_columns = {
                     if !arrays_by_name.contains_key("time_columns") {
                         return Err(DeserializationError::missing_struct_field(
@@ -454,18 +455,5 @@ impl ::re_types_core::Loggable for SelectedColumns {
                 .with_context("rerun.blueprint.datatypes.SelectedColumns")?
             }
         })
-    }
-}
-
-impl ::re_byte_size::SizeBytes for SelectedColumns {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.time_columns.heap_size_bytes() + self.component_columns.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <Vec<crate::datatypes::Utf8>>::is_pod()
-            && <Vec<crate::blueprint::datatypes::ComponentColumnSelector>>::is_pod()
     }
 }

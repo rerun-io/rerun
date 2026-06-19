@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -33,7 +34,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// and the [MCAP specification](https://mcap.dev/) for complete format details.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, PartialEq, Default)]
+#[derive(Clone, Debug, PartialEq, Default, ::re_byte_size::SizeBytes)]
 pub struct McapStatistics {
     /// Total number of data messages contained in the MCAP recording.
     ///
@@ -87,11 +88,13 @@ impl McapStatistics {
     /// The corresponding component is [`crate::components::Count`].
     #[inline]
     pub fn descriptor_message_count() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.McapStatistics".into()),
-            component: "McapStatistics:message_count".into(),
-            component_type: Some("rerun.components.Count".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.McapStatistics".into()),
+                component: "McapStatistics:message_count".into(),
+                component_type: Some("rerun.components.Count".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::schema_count`].
@@ -99,11 +102,13 @@ impl McapStatistics {
     /// The corresponding component is [`crate::components::Count`].
     #[inline]
     pub fn descriptor_schema_count() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.McapStatistics".into()),
-            component: "McapStatistics:schema_count".into(),
-            component_type: Some("rerun.components.Count".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.McapStatistics".into()),
+                component: "McapStatistics:schema_count".into(),
+                component_type: Some("rerun.components.Count".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::channel_count`].
@@ -111,11 +116,13 @@ impl McapStatistics {
     /// The corresponding component is [`crate::components::Count`].
     #[inline]
     pub fn descriptor_channel_count() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.McapStatistics".into()),
-            component: "McapStatistics:channel_count".into(),
-            component_type: Some("rerun.components.Count".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.McapStatistics".into()),
+                component: "McapStatistics:channel_count".into(),
+                component_type: Some("rerun.components.Count".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::attachment_count`].
@@ -123,11 +130,13 @@ impl McapStatistics {
     /// The corresponding component is [`crate::components::Count`].
     #[inline]
     pub fn descriptor_attachment_count() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.McapStatistics".into()),
-            component: "McapStatistics:attachment_count".into(),
-            component_type: Some("rerun.components.Count".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.McapStatistics".into()),
+                component: "McapStatistics:attachment_count".into(),
+                component_type: Some("rerun.components.Count".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::metadata_count`].
@@ -135,11 +144,13 @@ impl McapStatistics {
     /// The corresponding component is [`crate::components::Count`].
     #[inline]
     pub fn descriptor_metadata_count() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.McapStatistics".into()),
-            component: "McapStatistics:metadata_count".into(),
-            component_type: Some("rerun.components.Count".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.McapStatistics".into()),
+                component: "McapStatistics:metadata_count".into(),
+                component_type: Some("rerun.components.Count".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::chunk_count`].
@@ -147,11 +158,13 @@ impl McapStatistics {
     /// The corresponding component is [`crate::components::Count`].
     #[inline]
     pub fn descriptor_chunk_count() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.McapStatistics".into()),
-            component: "McapStatistics:chunk_count".into(),
-            component_type: Some("rerun.components.Count".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.McapStatistics".into()),
+                component: "McapStatistics:chunk_count".into(),
+                component_type: Some("rerun.components.Count".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::message_start_time`].
@@ -159,11 +172,13 @@ impl McapStatistics {
     /// The corresponding component is [`crate::components::Timestamp`].
     #[inline]
     pub fn descriptor_message_start_time() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.McapStatistics".into()),
-            component: "McapStatistics:message_start_time".into(),
-            component_type: Some("rerun.components.Timestamp".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.McapStatistics".into()),
+                component: "McapStatistics:message_start_time".into(),
+                component_type: Some("rerun.components.Timestamp".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::message_end_time`].
@@ -171,11 +186,13 @@ impl McapStatistics {
     /// The corresponding component is [`crate::components::Timestamp`].
     #[inline]
     pub fn descriptor_message_end_time() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.McapStatistics".into()),
-            component: "McapStatistics:message_end_time".into(),
-            component_type: Some("rerun.components.Timestamp".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.McapStatistics".into()),
+                component: "McapStatistics:message_end_time".into(),
+                component_type: Some("rerun.components.Timestamp".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::channel_message_counts`].
@@ -183,11 +200,13 @@ impl McapStatistics {
     /// The corresponding component is [`crate::components::ChannelMessageCounts`].
     #[inline]
     pub fn descriptor_channel_message_counts() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.McapStatistics".into()),
-            component: "McapStatistics:channel_message_counts".into(),
-            component_type: Some("rerun.components.ChannelMessageCounts".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.McapStatistics".into()),
+                component: "McapStatistics:channel_message_counts".into(),
+                component_type: Some("rerun.components.ChannelMessageCounts".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -234,7 +253,10 @@ impl McapStatistics {
 impl ::re_types_core::Archetype for McapStatistics {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.archetypes.McapStatistics".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.archetypes.McapStatistics"
+        )
     }
 
     #[inline]
@@ -757,20 +779,5 @@ impl McapStatistics {
             channel_message_counts,
         );
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for McapStatistics {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.message_count.heap_size_bytes()
-            + self.schema_count.heap_size_bytes()
-            + self.channel_count.heap_size_bytes()
-            + self.attachment_count.heap_size_bytes()
-            + self.metadata_count.heap_size_bytes()
-            + self.chunk_count.heap_size_bytes()
-            + self.message_start_time.heap_size_bytes()
-            + self.message_end_time.heap_size_bytes()
-            + self.channel_message_counts.heap_size_bytes()
     }
 }

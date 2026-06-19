@@ -24,9 +24,11 @@ class ConfidenceBatch(rr.ComponentBatchMixin):  # type: ignore[misc]
 
 
 class CustomPoints3D(rr.AsComponents):  # type: ignore[misc]
-    """A custom archetype that extends Rerun's builtin `Points3D` archetype with a custom component."""
+    """A custom archetype extending the builtin `Points3D` with extra data."""
 
-    def __init__(self: Any, positions: npt.ArrayLike, confidences: npt.ArrayLike) -> None:
+    def __init__(
+        self: Any, positions: npt.ArrayLike, confidences: npt.ArrayLike
+    ) -> None:
         self.points3d = rr.Points3D(positions)
         self.confidences = ConfidenceBatch(confidences).described(
             rr.ComponentDescriptor(
@@ -38,8 +40,10 @@ class CustomPoints3D(rr.AsComponents):  # type: ignore[misc]
 
     def as_component_batches(self) -> list[rr.DescribedComponentBatch]:
         return [
-            *self.points3d.as_component_batches(),  # The components from Points3D
-            self.confidences,  # Custom confidence data
+            # The components from Points3D
+            *self.points3d.as_component_batches(),
+            # Custom confidence data
+            self.confidences,
         ]
 
 
@@ -58,12 +62,16 @@ def log_custom_data() -> None:
 
     rr.log(
         "right/my_polarized_point_cloud",
-        CustomPoints3D(positions=point_grid, confidences=np.arange(0, len(point_grid))),
+        CustomPoints3D(
+            positions=point_grid, confidences=np.arange(0, len(point_grid))
+        ),
     )
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Logs rich data using the Rerun SDK.")
+    parser = argparse.ArgumentParser(
+        description="Logs rich data using the Rerun SDK."
+    )
     rr.script_add_args(parser)
     args = parser.parse_args()
 

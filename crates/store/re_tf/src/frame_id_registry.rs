@@ -7,6 +7,7 @@ use re_sdk_types::components::TransformFrameId;
 use re_sdk_types::{TransformFrameIdHash, archetypes};
 
 /// Provides context around frame id hashes.
+#[derive(SizeBytes)]
 pub struct FrameIdRegistry {
     /// A lookup table for resolving frame id hashes back to frame ids.
     frame_id_lookup_table: IntMap<TransformFrameIdHash, TransformFrameId>,
@@ -31,17 +32,6 @@ impl Default for FrameIdRegistry {
             // This is initially empty, because implicit frames are not relevant to this map.
             child_frames_per_entity: Default::default(),
         }
-    }
-}
-
-impl SizeBytes for FrameIdRegistry {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            frame_id_lookup_table,
-            child_frames_per_entity,
-        } = self;
-
-        frame_id_lookup_table.total_size_bytes() + child_frames_per_entity.total_size_bytes()
     }
 }
 

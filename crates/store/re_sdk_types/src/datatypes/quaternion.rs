@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -25,7 +26,16 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// Note: although the x,y,z,w components of the quaternion will be passed through to the
 /// datastore as provided, when used in the Viewer Quaternions will always be normalized.
-#[derive(Clone, Debug, Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(
+    Clone,
+    Debug,
+    Copy,
+    PartialEq,
+    PartialOrd,
+    bytemuck::Pod,
+    bytemuck::Zeroable,
+    ::re_byte_size::SizeBytes,
+)]
 #[repr(C)]
 pub struct Quaternion(pub [f32; 4usize]);
 
@@ -117,9 +127,10 @@ impl ::re_types_core::Loggable for Quaternion {
             if arrow_data.is_empty() {
                 Vec::new()
             } else {
-                let offsets = (0..)
-                    .step_by(4usize)
-                    .zip((4usize..).step_by(4usize).take(arrow_data.len()));
+                let offsets = ::std::iter::zip(
+                    (0..).step_by(4usize),
+                    (4usize..).step_by(4usize).take(arrow_data.len()),
+                );
                 let arrow_data_inner = {
                     let arrow_data_inner = &**arrow_data.values();
                     arrow_data_inner
@@ -223,17 +234,5 @@ impl From<Quaternion> for [f32; 4usize] {
     #[inline]
     fn from(value: Quaternion) -> Self {
         value.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for Quaternion {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <[f32; 4usize]>::is_pod()
     }
 }

@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -26,7 +27,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// The main purpose of this component existing separately from the labels themselves
 /// is to be overridden when desired, to allow hiding and showing from the viewer and
 /// blueprints.
-#[derive(Clone, Debug, Copy, PartialEq, Eq)]
+#[derive(Clone, Debug, Copy, PartialEq, Eq, ::re_byte_size::SizeBytes)]
 pub struct ShowLabels(
     /// Whether the entity's [`components::Text`][crate::components::Text] label is shown.
     pub crate::datatypes::Bool,
@@ -74,17 +75,5 @@ impl std::ops::DerefMut for ShowLabels {
     #[inline]
     fn deref_mut(&mut self) -> &mut crate::datatypes::Bool {
         &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for ShowLabels {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Bool>::is_pod()
     }
 }

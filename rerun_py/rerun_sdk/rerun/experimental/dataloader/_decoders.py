@@ -46,8 +46,8 @@ class ColumnDecoder(ABC):
         raw: pa.ChunkedArray,
         index_value: int | np.datetime64,
         segment_id: str,
-    ) -> torch.Tensor:
-        """Decode *raw* Arrow data into a tensor."""
+    ) -> torch.Tensor | None:
+        """Decode *raw* Arrow data into a tensor, or return `None` to signal data missing."""
         ...
 
     def context_range(
@@ -62,6 +62,31 @@ class ColumnDecoder(ABC):
         """
         del index_value
         return None
+
+    def prior_keyframe_path(self, field_path: str) -> str | None:
+        """
+        Sibling column whose non-null rows mark a re-entrant keyframe, or `None`.
+
+        Override on decoders that need the prefetch window anchored at the prior
+        keyframe (compressed video). Default returns `None`.
+        """
+        del field_path
+        return None
+
+    @property
+    def fill_latest_at(self) -> bool:
+        """
+        Whether this column's prefetch read latest-at-fills empty grid slots.
+
+        `True` for stateless columns (images, scalars): each grid slot wants the
+        most recent value snapped from the real rows. Compressed video keeps it
+        `True` too (consecutive duplicates from a dense grid are dropped at
+        decode time), but a decoder reading frame-indexed data where the grid
+        lands 1:1 on real samples can override to `False` for exact, fill-free
+        packet reads. The read is partitioned by this flag so it stays a global
+        query argument per group rather than a per-column one.
+        """
+        return True
 
     def __repr__(self) -> str:
         return f"{type(self).__name__}()"
@@ -166,23 +191,59 @@ def _is_av1_keyframe_packet(sample: bytes) -> bool:
     return obu_type in (1, 2)
 
 
+def _h264_annex_b_has_idr(sample: bytes) -> bool:
+    """True if *sample* (Annex-B H.264) contains an IDR slice NAL (type 5)."""
+    pos = 0
+    while True:
+        idx = sample.find(b"\x00\x00\x01", pos)
+        if idx < 0 or idx + 3 >= len(sample):
+            return False
+        if (sample[idx + 3] & 0x1F) == 5:
+            return True
+        pos = idx + 3
+
+
+def _hevc_annex_b_has_irap(sample: bytes) -> bool:
+    """True if *sample* (Annex-B HEVC) contains an IRAP NAL (type 16-23)."""
+    pos = 0
+    while True:
+        idx = sample.find(b"\x00\x00\x01", pos)
+        if idx < 0 or idx + 3 >= len(sample):
+            return False
+        nal_type = (sample[idx + 3] >> 1) & 0x3F
+        if 16 <= nal_type <= 23:
+            return True
+        pos = idx + 3
+
+
 class VideoFrameDecoder(ColumnDecoder):
     """
     Compressed video random access via context-aware fetching.
 
-    `context_range(N)` asks the prefetcher to pull the previous
+    Anchors the decode window at the prior keyframe by consulting the sibling
+    `is_keyframe` component on the `VideoStream` archetype, derived from
+    `Field.path` (e.g. `/cam:VideoStream:sample` pairs with
+    `/cam:VideoStream:is_keyframe`). The marker is populated by the user or by
+    `LazyChunkStream.collect(optimize=…)`, and lives in dedicated chunks
+    separate from the video sample, so the lookup is cheap.
+
+    When the column is missing from the schema, or has no row at or before
+    the target, the decoder falls back to a fixed-size window: the previous
     `keyframe_interval` samples (counted directly for integer indices,
-    converted to `keyframe_interval / fps_estimate` seconds for
-    timestamp indices). `decode()` runs the codec over those samples
-    in order and returns the final frame.
+    converted to `keyframe_interval / fps_estimate` seconds for timestamp
+    indices). `keyframe_interval` must be at least the actual GOP length, and
+    for timestamp indices `fps_estimate` must be close to the true frame rate.
 
-    `keyframe_interval` must be greater than or equal to the actual GOP
-    length; for timestamp indices `fps_estimate` must also be close to
-    the true frame rate. If the fetched window misses a keyframe,
-    `decode()` raises `RuntimeError`.
+    Samples may be raw H.264 AVC1/AVCC (length-prefixed NAL units) or Annex B;
+    the format is detected automatically per sample.
 
-    H.264 samples may be AVC1/AVCC (length-prefixed NAL units) or Annex B;
-    the format is detected per sample.
+    Returns `None` when the resolved window contains no decodable keyframe:
+    the target precedes the entity's first frame in a multi-modal segment,
+    the fallback `keyframe_interval` under-estimates the true GOP length, or
+    the anchored row was user-logged `is_keyframe=true` on a sample that
+    isn't actually a codec keyframe (run optimize with `fix_keyframe=True` to
+    re-derive markers from the encoded samples). Consumers must filter these
+    out in their collate function before stacking.
     """
 
     def __init__(
@@ -199,6 +260,12 @@ class VideoFrameDecoder(ColumnDecoder):
 
     def __repr__(self) -> str:
         return f"VideoFrameDecoder(codec={self.codec!r})"
+
+    def prior_keyframe_path(self, field_path: str) -> str | None:
+        prefix, sep, _ = field_path.rpartition(":")
+        if not sep:
+            return None
+        return f"{prefix}:is_keyframe"
 
     def context_range(
         self,
@@ -218,8 +285,8 @@ class VideoFrameDecoder(ColumnDecoder):
         raw: pa.ChunkedArray,
         index_value: int | np.datetime64,
         segment_id: str,
-    ) -> torch.Tensor:
-        """Decode the target frame from the context samples in *raw*."""
+    ) -> torch.Tensor | None:
+        """Decode the target frame from the context samples in *raw*, or `None` if no keyframe is available."""
         return self._decode_to_target(raw, index_value, segment_id)
 
     def _decode_to_target(
@@ -227,7 +294,7 @@ class VideoFrameDecoder(ColumnDecoder):
         raw_context: pa.ChunkedArray,
         target_idx: int | np.datetime64,
         segment_id: str,
-    ) -> torch.Tensor:
+    ) -> torch.Tensor | None:
         """
         Decode context through *target_idx* and return the final frame.
 
@@ -248,14 +315,31 @@ class VideoFrameDecoder(ColumnDecoder):
                 continue
             if self.codec == "h264" and not _is_annex_b(sample_bytes):
                 sample_bytes = _avcc_to_annex_b(sample_bytes)
+            # `fill_latest_at` repeats the previous frame's bytes for grid slots
+            # with no source frame, so the window can hold consecutive duplicate
+            # samples. Re-feeding a duplicate packet corrupts the decoder's
+            # reference state, so skip them.
+            # TODO(RR-4751): we should measure whether we can optimize this by doing precise queries when `VideoStream::is_keyframe` is present.
+            if samples and sample_bytes == samples[-1]:
+                continue
             samples.append(sample_bytes)
 
-        # libdav1d rejects a non-keyframe as the first packet.
-        if self.codec == "av1":
-            drop = 0
-            while drop < len(samples) and not _is_av1_keyframe_packet(samples[drop]):
-                drop += 1
-            samples = samples[drop:]
+        # No bootstrap context: target precedes the first keyframe in the
+        # prefetched range. See class docstring.
+        if not self._has_keyframe(samples):
+            return None
+
+        # For codecs we recognize, drop leading non-keyframe samples so the decoder sees a
+        # bootstrap packet first (libdav1d rejects a non-keyframe outright;
+        # H.264/HEVC need SPS/PPS, plus VPS for HEVC, before any non-IDR/IRAP slice).
+        # For codecs without a detector, `_is_keyframe` returns None and the loop is a no-op.
+        drop = 0
+        while drop < len(samples):
+            is_keyframe = self._is_keyframe(samples[drop])
+            if is_keyframe is None or is_keyframe:
+                break
+            drop += 1
+        samples = samples[drop:]
 
         target_tensor = None
         for frame in self._decode_packets(samples):
@@ -263,10 +347,32 @@ class VideoFrameDecoder(ColumnDecoder):
 
         if target_tensor is None:
             raise RuntimeError(
-                f"Failed to decode target frame {target_idx} from {num_rows} context samples for segment {segment_id}"
+                f"Failed to decode target frame {target_idx} for segment {segment_id}: "
+                f"{len(samples)} context samples included a keyframe but the decoder "
+                "produced no frame."
             )
 
         return target_tensor
+
+    def _is_keyframe(self, sample: bytes) -> bool | None:
+        """Whether *sample* can boot the decoder, or `None` if we have no detector for this codec."""
+        if self.codec == "av1":
+            return _is_av1_keyframe_packet(sample)
+        if self.codec == "h264":
+            return _h264_annex_b_has_idr(sample)
+        if self.codec in ("h265", "hevc"):
+            return _hevc_annex_b_has_irap(sample)
+        return None
+
+    def _has_keyframe(self, samples: list[bytes]) -> bool:
+        """True if *samples* has a known-codec keyframe, or this codec has no detector (then we trust the decoder)."""
+        for sample in samples:
+            is_keyframe = self._is_keyframe(sample)
+            if is_keyframe is None:
+                return True
+            if is_keyframe:
+                return True
+        return False
 
     def _decode_packets(self, samples: list[bytes]) -> Iterator[av.VideoFrame]:
         """Decode raw packet bytes via a per-call CodecContext (no container)."""

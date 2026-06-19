@@ -33,7 +33,7 @@ def test_urdf_tree_loading() -> None:
     child_link = tree.get_joint_child(joint)
     assert child_link.name == "shoulder"
 
-    # We expect flat, neighbouring paths for visual and collision geometries of links,
+    # We expect flat, neighboring paths for visual and collision geometries of links,
     # queryable by either link name or link object.
     visual_paths = tree.get_visual_geometry_paths(child_link)
     assert visual_paths[0] == "/so_arm100/visual_geometries/shoulder/visual_0"
@@ -144,8 +144,6 @@ def test_urdf_tree_custom_static_transform_entity_path(tmp_path: Path) -> None:
 
         tree = rru.UrdfTree.from_file_path(URDF_PATH, static_transform_entity_path="custom_tf_static")
         tree.log_urdf_to_recording(rec)
-
-        rec.disconnect()  # save manifest
 
     paths = RrdReader(rrd_path).stream().collect().schema().entity_paths()
 

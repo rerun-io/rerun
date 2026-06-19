@@ -97,7 +97,7 @@ pub type ComponentSet = std::collections::BTreeSet<ComponentIdentifier>;
 
 re_string_interner::declare_new_type!(
     /// The fully-qualified name of a [`Component`], e.g. `rerun.components.Position2D`.
-    #[cfg_attr(feature = "serde", derive(::serde::Deserialize, ::serde::Serialize))]
+    #[derive(::serde::Deserialize, ::serde::Serialize)]
     pub struct ComponentType;
 );
 
@@ -193,7 +193,7 @@ impl ComponentType {
 
 re_string_interner::declare_new_type!(
     /// The fully-qualified name of a [`Datatype`], e.g. `rerun.datatypes.Vec2D`.
-    #[cfg_attr(feature = "serde", derive(::serde::Deserialize, ::serde::Serialize))]
+    #[derive(::serde::Deserialize, ::serde::Serialize)]
     pub struct DatatypeName;
 );
 

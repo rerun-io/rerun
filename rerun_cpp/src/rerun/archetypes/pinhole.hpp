@@ -47,7 +47,10 @@ namespace rerun::archetypes {
     ///     const auto rec = rerun::RecordingStream("rerun_example_pinhole");
     ///     rec.spawn().exit_on_failure();
     ///
-    ///     rec.log("world/image", rerun::Pinhole::from_focal_length_and_resolution(3.0f, {3.0f, 3.0f}));
+    ///     rec.log(
+    ///         "world/image",
+    ///         rerun::Pinhole::from_focal_length_and_resolution(3.0f, {3.0f, 3.0f})
+    ///     );
     ///
     ///     std::vector<uint8_t> random_data(3 * 3 * 3);
     ///     std::generate(random_data.begin(), random_data.end(), [] {
@@ -65,7 +68,8 @@ namespace rerun::archetypes {
     /// #include <rerun.hpp>
     ///
     /// int main(int argc, char* argv[]) {
-    ///     const auto rec = rerun::RecordingStream("rerun_example_pinhole_perspective");
+    ///     const auto rec =
+    ///         rerun::RecordingStream("rerun_example_pinhole_perspective");
     ///     rec.spawn().exit_on_failure();
     ///
     ///     const float fov_y = 0.7853982f;
@@ -81,7 +85,8 @@ namespace rerun::archetypes {
     ///
     ///     rec.log(
     ///         "world/points",
-    ///         rerun::Points3D({{0.0f, 0.0f, -0.5f}, {0.1f, 0.1f, -0.5f}, {-0.1f, -0.1f, -0.5f}}
+    ///         rerun::Points3D(
+    ///             {{0.0f, 0.0f, -0.5f}, {0.1f, 0.1f, -0.5f}, {-0.1f, -0.1f, -0.5f}}
     ///         ).with_radii({0.025f})
     ///     );
     /// }

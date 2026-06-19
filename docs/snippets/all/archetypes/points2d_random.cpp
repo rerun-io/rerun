@@ -31,7 +31,10 @@ int main(int argc, char* argv[]) {
     std::vector<rerun::Radius> radii(10);
     std::generate(radii.begin(), radii.end(), [&] { return dist_radius(gen); });
 
-    rec.log("random", rerun::Points2D(points2d).with_colors(colors).with_radii(radii));
+    rec.log(
+        "random",
+        rerun::Points2D(points2d).with_colors(colors).with_radii(radii)
+    );
 
     // TODO(#5520): log VisualBounds2D
 }

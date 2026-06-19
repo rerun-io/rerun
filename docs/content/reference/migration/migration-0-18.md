@@ -82,7 +82,7 @@ When constructing a [`Mesh3D`](https://rerun.io/docs/reference/types/archetypes/
 * Python: `mesh_material=rr.Material(albedo_factor=color)` ➡ `albedo_factor=color`
 
 
-### Overhaul of [`Transform3D`](https://rerun.io/docs/reference/types/archetypes/Transform3D)
+### Overhaul of [`Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d)
 Previously, the transform component was represented as one of several variants (an Arrow union, `enum` in Rust) depending on how the transform was expressed, sometimes nested within.
 (for instance, the `TranslationRotationScale3D` variant had internally several variants for rotation & scale).
 

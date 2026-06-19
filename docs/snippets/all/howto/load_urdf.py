@@ -19,7 +19,8 @@ with RecordingStream("rerun_example_load_urdf") as rec:
     joint_axis = [0, 0, 1]  # comes from URDF
     joint_angle = 1.216  # radians
     origin_xyz = [0, 0, 0.1]  # comes from URDF
-    # Make sure that `parent_frame` and `child_frame` match the joint's frame IDs in the URDF file.
+    # Make sure that `parent_frame` and `child_frame` match the joint's
+    # frame IDs in the URDF file.
     rec.log(
         "transforms",
         rr.Transform3D(

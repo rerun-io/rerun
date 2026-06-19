@@ -17,11 +17,12 @@ use pyo3::prelude::*;
 
 use re_chunk::Chunk;
 
-use super::ChunkStream;
 use super::error::{ChunkPipelineError, PythonException, py_callable_err};
 use super::stream::{
-    LazyChunkStream, PipelineStep, SplitOrigin, SplitSide, StreamSource, StructuredFilter,
+    LazyChunkStream, MergeResult, PipelineStep, SplitOrigin, SplitSide, StreamSource,
+    StructuredFilter,
 };
+use super::{ChunkStream, ChunkStreamFactory};
 
 /// Compile a [`LazyChunkStream`] into a runnable [`ChunkStream`] chain.
 pub fn compile(stream: &LazyChunkStream) -> Box<dyn ChunkStream> {
@@ -232,78 +233,98 @@ fn scan_inner(stream: &LazyChunkStream, usage: &mut HashMap<SplitOriginId, Split
 
 /// Recursive compilation with a shared context.
 fn compile_inner(stream: &LazyChunkStream, ctx: &mut CompileContext) -> Box<dyn ChunkStream> {
-    let mut compiled: Box<dyn ChunkStream> = match stream.source() {
-        StreamSource::StreamFactory(factory) => match factory.create() {
-            Ok(source) => source,
-            Err(err) => Box::new(FailedSource(Some(err))),
-        },
+    let all_steps = stream.steps();
+
+    let (source, remaining_steps) = match stream.source() {
+        StreamSource::StreamFactory(factory) => build_factory_source(factory.as_ref(), all_steps),
 
         StreamSource::PyIterable(obj) => {
             let cloned = Python::attach(|py| obj.clone_ref(py));
-            Box::new(PyIteratorSource::new(cloned))
+            (
+                Box::new(PyIteratorSource::new(cloned)) as Box<dyn ChunkStream>,
+                all_steps,
+            )
         }
 
-        StreamSource::Merged(streams) => {
-            let compiled: Vec<Box<dyn ChunkStream>> =
-                streams.iter().map(|s| compile_inner(s, ctx)).collect();
-
-            let (tx, rx) =
-                crossbeam::channel::bounded::<ChannelItem>(super::CHUNK_CHANNEL_CAPACITY);
-            for upstream in compiled {
-                let tx = tx.clone();
-                std::thread::Builder::new()
-                    .name("chunk-merge-source".into())
-                    .spawn(move || {
-                        let mut stream = upstream;
-                        loop {
-                            match stream.next() {
-                                Ok(Some(chunk)) => {
-                                    if re_quota_channel::send_crossbeam(&tx, Ok(chunk)).is_err() {
-                                        break; // receiver dropped
-                                    }
-                                }
-
-                                Ok(None) => break,
-
-                                Err(err) => {
-                                    re_quota_channel::send_crossbeam(&tx, Err(err)).ok();
-                                    break;
-                                }
-                            }
-                        }
-                    })
-                    .expect("Failed to spawn merge source thread");
-            }
-            drop(tx); // channel closes when all source threads finish
-            Box::new(ChannelStream::new(rx))
-        }
+        StreamSource::Merged(streams) => (compile_merged(streams, ctx), all_steps),
 
         StreamSource::SplitBranch { origin, side } => {
-            let key = SplitOriginId::new(origin);
-            if ctx.split_has_both_sides(&key) {
-                // Both branches are reachable: use the full router thread.
-                let rx = ctx.take_split_receiver(origin, *side);
-                Box::new(ChannelStream::new(rx))
-            } else {
-                // Only one branch is reachable: degenerate to filter/drop.
-                re_log::warn!(
-                    "Only one branch of a split is connected to the pipeline. \
-                     The split has been optimized into a filter/drop operation."
-                );
-                let upstream = compile_inner(&origin.upstream, ctx);
-                match side {
-                    SplitSide::Matched => {
-                        Box::new(FilterStream::new(upstream, origin.filter.clone()))
-                    }
-                    SplitSide::Unmatched => {
-                        Box::new(DropStream::new(upstream, origin.filter.clone()))
-                    }
-                }
-            }
+            (compile_split_branch(origin, *side, ctx), all_steps)
         }
     };
 
-    for step in stream.steps() {
+    apply_steps(source, remaining_steps)
+}
+
+/// Collect and AND-merge leading [`PipelineStep::Filter`] steps into a single filter.
+///
+/// Stops at the first non-`Filter` step (`Drop`, `Lenses`, `Map`, `FlatMap`) and at the first
+/// merge `Conflict` or `Empty` (both leave the offending filter in place for normal post-source
+/// execution). Returns `(merged, remaining)` where `remaining` is the slice of unconsumed steps,
+/// or `None` if no meaningful filter can be pushed (no leading filters at all, or the merged
+/// filter ended up a no-op).
+fn collect_leading_filters(steps: &[PipelineStep]) -> Option<(StructuredFilter, &[PipelineStep])> {
+    let mut merged: Option<StructuredFilter> = None;
+    let mut consumed = 0;
+
+    for step in steps {
+        let PipelineStep::Filter(f) = step else {
+            break;
+        };
+
+        match merged.as_ref() {
+            None => {
+                merged = Some(f.clone());
+                consumed += 1;
+            }
+
+            Some(cur) => match cur.try_merge(f) {
+                MergeResult::Merged(m) => {
+                    merged = Some(m);
+                    consumed += 1;
+                }
+
+                MergeResult::Conflict | MergeResult::Empty => break,
+            },
+        }
+    }
+
+    let m = merged?;
+    if m.is_noop() {
+        None
+    } else {
+        Some((m, &steps[consumed..]))
+    }
+}
+
+/// Build the source `ChunkStream` for a [`StreamSource::StreamFactory`], opportunistically
+/// pushing leading filters into the factory. Returns the source stream and the slice of
+/// pipeline steps that remain to be applied by `apply_steps`.
+///
+/// Factories that can't push down anything inherit the trait's default `create_with_pushdown`,
+/// which calls `create()` and wraps the result in a `FilterStream`. The net effect is that any
+/// leading-filter prefix is consolidated into a single post-source `FilterStream`, whether or
+/// not the source did real pushdown work.
+fn build_factory_source<'a>(
+    factory: &dyn ChunkStreamFactory,
+    steps: &'a [PipelineStep],
+) -> (Box<dyn ChunkStream>, &'a [PipelineStep]) {
+    let Some((merged, remaining)) = collect_leading_filters(steps) else {
+        let source: Box<dyn ChunkStream> = match factory.create() {
+            Ok(s) => s,
+            Err(err) => Box::new(FailedSource(Some(err))),
+        };
+        return (source, steps);
+    };
+
+    match factory.create_with_pushdown(&merged) {
+        Ok(stream) => (stream, remaining),
+        Err(err) => (Box::new(FailedSource(Some(err))), steps),
+    }
+}
+
+fn apply_steps(mut compiled: Box<dyn ChunkStream>, steps: &[PipelineStep]) -> Box<dyn ChunkStream> {
+    for step in steps {
         compiled = match step {
             PipelineStep::Filter(f) => Box::new(FilterStream::new(compiled, f.clone())),
             PipelineStep::Drop(f) => Box::new(DropStream::new(compiled, f.clone())),
@@ -327,8 +348,65 @@ fn compile_inner(stream: &LazyChunkStream, ctx: &mut CompileContext) -> Box<dyn 
             }
         };
     }
-
     compiled
+}
+
+fn compile_merged(streams: &[LazyChunkStream], ctx: &mut CompileContext) -> Box<dyn ChunkStream> {
+    let compiled: Vec<Box<dyn ChunkStream>> =
+        streams.iter().map(|s| compile_inner(s, ctx)).collect();
+
+    let (tx, rx) = crossbeam::channel::bounded::<ChannelItem>(super::CHUNK_CHANNEL_CAPACITY);
+    for upstream in compiled {
+        let tx = tx.clone();
+        std::thread::Builder::new()
+            .name("chunk-merge-source".into())
+            .spawn(move || {
+                let mut stream = upstream;
+                loop {
+                    match stream.next() {
+                        Ok(Some(chunk)) => {
+                            if re_quota_channel::send_crossbeam(&tx, Ok(chunk)).is_err() {
+                                break; // receiver dropped
+                            }
+                        }
+
+                        Ok(None) => break,
+
+                        Err(err) => {
+                            re_quota_channel::send_crossbeam(&tx, Err(err)).ok();
+                            break;
+                        }
+                    }
+                }
+            })
+            .expect("Failed to spawn merge source thread");
+    }
+    drop(tx); // channel closes when all source threads finish
+    Box::new(ChannelStream::new(rx))
+}
+
+fn compile_split_branch(
+    origin: &Arc<SplitOrigin>,
+    side: SplitSide,
+    ctx: &mut CompileContext,
+) -> Box<dyn ChunkStream> {
+    let key = SplitOriginId::new(origin);
+    if ctx.split_has_both_sides(&key) {
+        // Both branches are reachable: use the full router thread.
+        let rx = ctx.take_split_receiver(origin, side);
+        Box::new(ChannelStream::new(rx))
+    } else {
+        // Only one branch is reachable: degenerate to filter/drop.
+        re_log::warn!(
+            "Only one branch of a split is connected to the pipeline. \
+             The split has been optimized into a filter/drop operation."
+        );
+        let upstream = compile_inner(&origin.upstream, ctx);
+        match side {
+            SplitSide::Matched => Box::new(FilterStream::new(upstream, origin.filter.clone())),
+            SplitSide::Unmatched => Box::new(DropStream::new(upstream, origin.filter.clone())),
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -351,9 +429,10 @@ impl ChunkStream for PyIteratorSource {
             let iter = self.iter_obj.bind(py);
             match iter.call_method0("__next__") {
                 Ok(obj) => {
-                    let internal: PyRef<'_, crate::chunk::PyChunkInternal> =
-                        obj.extract().map_err(|err| {
-                            ChunkPipelineError::PythonIterator(PythonException::new(err))
+                    let internal: PyRef<'_, crate::chunk::PyChunkInternal> = obj
+                        .extract()
+                        .map_err(|err: pyo3::pyclass::PyClassGuardError<'_, '_>| {
+                            ChunkPipelineError::PythonIterator(PythonException::new(err.into()))
                         })?;
                     Ok(Some(Arc::clone(internal.inner())))
                 }
@@ -372,7 +451,7 @@ impl ChunkStream for PyIteratorSource {
 // FilterStream
 // ---------------------------------------------------------------------------
 
-struct FilterStream {
+pub struct FilterStream {
     inner: Box<dyn ChunkStream>,
     filter: StructuredFilter,
 }
@@ -517,8 +596,9 @@ impl ChunkStream for MapStream {
                 .map_fn
                 .call1(py, (py_chunk,))
                 .map_err(py_callable_err)?;
-            let result_ref: PyRef<'_, crate::chunk::PyChunkInternal> =
-                result.extract(py).map_err(py_callable_err)?;
+            let result_ref: PyRef<'_, crate::chunk::PyChunkInternal> = result
+                .extract(py)
+                .map_err(|e: pyo3::pyclass::PyClassGuardError<'_, '_>| py_callable_err(e.into()))?;
             Ok(Some(Arc::clone(result_ref.inner())))
         })
     }
@@ -555,8 +635,11 @@ impl ChunkStream for FlatMapStream {
                 let bound = result.bind(py);
                 for item in bound.try_iter().map_err(py_callable_err)? {
                     let item = item.map_err(py_callable_err)?;
-                    let chunk_ref: PyRef<'_, crate::chunk::PyChunkInternal> =
-                        item.extract().map_err(py_callable_err)?;
+                    let chunk_ref: PyRef<'_, crate::chunk::PyChunkInternal> = item
+                        .extract()
+                        .map_err(|e: pyo3::pyclass::PyClassGuardError<'_, '_>| {
+                            py_callable_err(e.into())
+                        })?;
                     self.buffer.push_back(Arc::clone(chunk_ref.inner()));
                 }
                 Ok(())

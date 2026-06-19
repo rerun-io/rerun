@@ -1,4 +1,4 @@
-"""Demonstrate common dataframe operations with Rerun Data Platform."""
+"""Demonstrate common dataframe operations with a catalog server."""
 
 # region: setup
 from __future__ import annotations
@@ -13,13 +13,17 @@ from datafusion import functions as F
 
 import rerun as rr
 
-sample_5_path = Path(__file__).parents[4] / "tests" / "assets" / "rrd" / "sample_5"
+sample_5_path = (
+    Path(__file__).parents[4] / "tests" / "assets" / "rrd" / "sample_5"
+)
 
 server = rr.server.Server(datasets={"sample_dataset": sample_5_path})
 CATALOG_URL = server.url()
 client = rr.catalog.CatalogClient(CATALOG_URL)
 dataset = client.get_dataset(name="sample_dataset")
-observations = dataset.filter_contents(["/observation/**"]).reader(index="real_time")
+observations = dataset.filter_contents(["/observation/**"]).reader(
+    index="real_time"
+)
 # endregion: setup
 
 # region: group_by
@@ -39,7 +43,8 @@ pa.table(first_last)["start"][0]
 # region: join_query
 joints = dataset.filter_contents(["/observation/joint_positions"])
 
-# Find the earliest joint position in each episode (cast to unix epoch nanoseconds for easier math later)
+# Find the earliest joint position in each episode (cast to unix epoch
+# nanoseconds for easier math later)
 joint_min_t = (
     joints
     .reader(index="real_time")
@@ -53,7 +58,8 @@ joint_min_t = (
 
 cameras = dataset.filter_contents(["/camera/**"])
 
-# Find the earliest camera frame in each episode (cast to unix epoch nanoseconds for easier math later)
+# Find the earliest camera frame in each episode (cast to unix epoch
+# nanoseconds for easier math later)
 camera_min_t = (
     cameras
     .reader(index="real_time")
@@ -82,11 +88,23 @@ delta_t = min_t.select(
 THRESHOLD_S = 1
 NANO_S = 1_000_000_000
 outliers = delta_t.filter(
-    dfn.Expr.between(col("start_delta_t"), -THRESHOLD_S * NANO_S, THRESHOLD_S * NANO_S, negated=True),
+    dfn.Expr.between(
+        col("start_delta_t"),
+        -THRESHOLD_S * NANO_S,
+        THRESHOLD_S * NANO_S,
+        negated=True,
+    ),
 )
-outliers = outliers.with_column("start_delta_t_s", col("start_delta_t") / 1_000_000_000.0)
+outliers = outliers.with_column(
+    "start_delta_t_s", col("start_delta_t") / 1_000_000_000.0
+)
 
-print(f"{outliers.count()=}\n", f"{joint_min_t.count()=}\n", f"{camera_min_t.count()=}", sep="")
+print(
+    f"{outliers.count()=}\n",
+    f"{joint_min_t.count()=}\n",
+    f"{camera_min_t.count()=}",
+    sep="",
+)
 # endregion: join_query
 
 # region: sub_episodes
@@ -120,25 +138,37 @@ light_slice = light_slice.with_column(
 light_slice = light_slice.with_column(
     "prev_gripper_open",
     F.lag(
-        col("gripper_open"), default_value=False, partition_by=[col("rerun_segment_id")], order_by=[col("real_time")]
+        col("gripper_open"),
+        default_value=False,
+        partition_by=[col("rerun_segment_id")],
+        order_by=[col("real_time")],
     ),
 )
 light_slice = light_slice.with_column(
     "gripper_change",
-    col("gripper_open").cast(pa.int8()) - col("prev_gripper_open").cast(pa.int8()),
+    col("gripper_open").cast(pa.int8())
+    - col("prev_gripper_open").cast(pa.int8()),
 )
 
 slice_times = light_slice.with_column(
     "start",
-    F.case(col("gripper_change")).when(lit(1), col("real_time")).otherwise(lit(None)),
+    F
+    .case(col("gripper_change"))
+    .when(lit(1), col("real_time"))
+    .otherwise(lit(None)),
 ).with_column(
     "end",
-    F.case(col("gripper_change")).when(lit(-1), col("real_time")).otherwise(lit(None)),
+    F
+    .case(col("gripper_change"))
+    .when(lit(-1), col("real_time"))
+    .otherwise(lit(None)),
 )
 
 # Helper because pyarrow timestamps didn't have a nice min/max utility
 max_ts = pa.scalar(np.iinfo(np.int64).max, type=pa.timestamp("ns"))
-min_ts = pa.scalar(np.iinfo(np.int64).min + 1_000_000_000, type=pa.timestamp("ns"))
+min_ts = pa.scalar(
+    np.iinfo(np.int64).min + 1_000_000_000, type=pa.timestamp("ns")
+)
 
 # This generates the column for the last observed start time
 slice_dense_times = (
@@ -158,7 +188,8 @@ slice_dense_times = (
     .fill_null(value=max_ts, subset=["dense_start"])
 )
 
-# This generates the column for the next observed end time (by finding the last_value in reversed order)
+# This generates the column for the next observed end time (by finding the
+# last_value in reversed order)
 slice_dense_times = slice_dense_times.with_column(
     "dense_end",
     F.last_value(col("end")).over(
@@ -171,7 +202,9 @@ slice_dense_times = slice_dense_times.with_column(
     ),
 ).fill_null(value=min_ts, subset=["dense_end"])
 
-slice_dense_times = slice_dense_times.select("rerun_segment_id", "real_time", "dense_start", "dense_end")
+slice_dense_times = slice_dense_times.select(
+    "rerun_segment_id", "real_time", "dense_start", "dense_end"
+)
 
 sub_episodes = slice_dense_times.filter(
     dfn.Expr.between(col("real_time"), col("dense_start"), col("dense_end")),

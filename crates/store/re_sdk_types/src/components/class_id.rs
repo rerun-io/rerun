@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -25,10 +26,20 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// Used to look up a [`crate::datatypes::ClassDescription`] within the [`crate::components::AnnotationContext`].
 #[derive(
-    Clone, Debug, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, bytemuck::Pod, bytemuck::Zeroable,
+    Clone,
+    Debug,
+    Copy,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    bytemuck::Pod,
+    bytemuck::Zeroable,
+    ::re_byte_size::SizeBytes,
 )]
 #[repr(transparent)]
-#[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
+#[derive(::serde::Serialize, ::serde::Deserialize)]
 pub struct ClassId(pub crate::datatypes::ClassId);
 
 impl ::re_types_core::WrapperComponent for ClassId {
@@ -73,17 +84,5 @@ impl std::ops::DerefMut for ClassId {
     #[inline]
     fn deref_mut(&mut self) -> &mut crate::datatypes::ClassId {
         &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for ClassId {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::ClassId>::is_pod()
     }
 }

@@ -134,7 +134,7 @@ impl ChunkStore {
         let mut events = self.finalize_events(deletion_diffs);
 
         for mut chunk in new_chunks {
-            chunk.sort_if_unsorted();
+            chunk.sort_by_row_ids_if_needed();
             #[expect(clippy::unwrap_used)] // The chunk came from the store, so it should be fine
             events.append(&mut self.insert_chunk(&chunk.into()).unwrap());
         }

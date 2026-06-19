@@ -5,7 +5,9 @@
 use ndarray::{Array, ShapeBuilder as _, s};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let rec = rerun::RecordingStreamBuilder::new("rerun_example_image_row_updates").spawn()?;
+    let rec =
+        rerun::RecordingStreamBuilder::new("rerun_example_image_row_updates")
+            .spawn()?;
 
     for t in 0..20 {
         rec.set_time_sequence("time", t);
@@ -18,7 +20,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         rec.log(
             "image",
-            &rerun::Image::from_color_model_and_tensor(rerun::ColorModel::RGB, image)?,
+            &rerun::Image::from_color_model_and_tensor(
+                rerun::ColorModel::RGB,
+                image,
+            )?,
         )?;
     }
 

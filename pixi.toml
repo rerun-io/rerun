@@ -63,6 +63,18 @@ EXECUTABLE_EXTENSION = ""
 # This ensures uv targets .venv instead of the pixi environment.
 PATH = "${PIXI_PROJECT_ROOT}/scripts/pixi:${PATH}"
 
+[target.linux-64.activation.env]
+# `gilrs` uses `pkg-config` to find libudev on Linux. Prefer Pixi's pkgconf and
+# make the Pixi pkg-config files visible before falling back to host paths.
+PKG_CONFIG = "pkgconf"
+PKG_CONFIG_PATH = "${CONDA_PREFIX}/lib/pkgconfig:${PKG_CONFIG_PATH}"
+
+[target.linux-aarch64.activation.env]
+# `gilrs` uses `pkg-config` to find libudev on Linux. Prefer Pixi's pkgconf and
+# make the Pixi pkg-config files visible before falling back to host paths.
+PKG_CONFIG = "pkgconf"
+PKG_CONFIG_PATH = "${CONDA_PREFIX}/lib/pkgconfig:${PKG_CONFIG_PATH}"
+
 [target.win-64.activation]
 # Run ensure-rerun-env to set up pyo3-build.cfg and uv shim.
 # This is a polyglot .bat that works in both cmd.exe and bash (Git Bash).
@@ -71,6 +83,9 @@ scripts = ["scripts/pixi/activate.bat"]
 [target.win-64.activation.env]
 # The executable extension for binaries on the current platform.
 EXECUTABLE_EXTENSION = ".exe"
+# cc-rs needs an archiver for wasm32 cross-compilation; MSVC's lib.exe isn't found
+# for non-MSVC targets, so point AR at llvm-ar from the llvm-tools conda package.
+AR = "llvm-ar"
 # Prepend scripts/pixi to PATH so our uv wrapper shadows the conda uv.
 # This ensures uv targets .venv instead of the pixi environment.
 PATH = "%PIXI_PROJECT_ROOT%\\scripts\\pixi;%PATH%"
@@ -210,7 +225,13 @@ rs-check = "python scripts/ci/rust_checks.py"
 # Note that we run with `--check-footers=false`: it is expected that these RRDs do not have proper footers (they predate them).
 check-backwards-compatibility = { cmd = "find tests/assets/rrd -name '*.rrd' -type f -print0 | xargs -0 cargo run --package rerun-cli --no-default-features rrd verify --check-footers=false" }
 
-rs-fmt = "cargo fmt --all"
+# `cargo fmt --all` only sees files reachable from each crate's lib.rs/main.rs.
+# Snippets in `docs/snippets/all/*.rs` are copied into the crate by `build.rs`,
+# so the originals are never formatted by cargo fmt. Run rustfmt on them
+# directly so `docs/snippets/rustfmt.toml` (max_width=80) is applied.
+# We filter to files containing `fn main()` to skip partial fragments
+# (they don't parse standalone).
+rs-fmt = { cmd = "cargo fmt --all && grep -rl 'fn main()' --include='*.rs' docs/snippets/all | xargs rustfmt --edition 2024" }
 
 # Code formatting for all languages.
 format = { depends-on = ["cpp-fmt", "misc-fmt", "pb-fmt", "py-fmt", "rs-fmt", "toml-fmt"] }
@@ -256,10 +277,10 @@ uv-lock-check = { depends-on = ["uv-lock-check-workspace", "uv-lock-check-isolat
 # * <https://buf.build/docs/breaking/rules/>
 # * <https://buf.build/docs/lint/rules/>
 
-pb-fmt-check = "buf format --exit-code --diff"
-pb-fmt = "buf format --exit-code --write"
+pb-fmt-check = "buf format --config scripts/ci/buf.yaml --exit-code --diff"
+pb-fmt = "buf format --config scripts/ci/buf.yaml --exit-code --write"
 
-pb-lint = "buf lint --error-format=json"
+pb-lint = "buf lint --config scripts/ci/buf.yaml --error-format=json"
 
 # NOTE(cmc): I'm keeping all the snapshot machinery around if it turns out we need something more robust
 # than a pure git solution in the future. For now, convenience wins.
@@ -276,7 +297,7 @@ pb-lint = "buf lint --error-format=json"
 #   "pb-snapshot-main",
 # ]}
 
-pb-breaking = "echo 'ℹ️ If this CI step is failing even though you did not modify any Protobuf files, that means that somebody purposefully published breaking Protobuf changes onto the main branch in the meantime.\nℹ️ For that reason, the Protobuf definitions on your local branch are now incompatible with those on main.\nℹ️ When that happens, simply rebase your branch on latest main, and the errors will go away.' ; buf breaking --error-format=json --against '.git#branch=origin/main'"
+pb-breaking = "echo 'ℹ️ If this CI step is failing even though you did not modify any Protobuf files, that means that somebody purposefully published breaking Protobuf changes onto the main branch in the meantime.\nℹ️ For that reason, the Protobuf definitions on your local branch are now incompatible with those on main.\nℹ️ When that happens, simply rebase your branch on latest main, and the errors will go away.' ; buf breaking --config scripts/ci/buf.yaml --against-config scripts/ci/buf.yaml --error-format=json --against '.git#branch=origin/main'"
 
 pb-check = { depends-on = ["pb-fmt-check", "pb-lint", "pb-breaking"] }
 
@@ -608,9 +629,15 @@ rerun-pixi-env = { path = "rerun_pixi_env", editable = true }
 uv = "==0.9.17"
 
 [target.linux-64.dependencies]
+libudev = "257.4.*" # for `gilrs` Linux backend
 patchelf = ">=0.17"
+pkgconf = ">=2" # Provides `pkg-config` for `gilrs` Linux backend.
 meilisearch = "1.5.1.*" # not available for linux-aarch64
 buf = "1.*" # not available for linux-aarch64
+
+[target.linux-aarch64.dependencies]
+libudev = "257.4.*" # for `gilrs` Linux backend
+pkgconf = ">=2" # Provides `pkg-config` for `gilrs` Linux backend.
 
 [target.osx-arm64.dependencies]
 buf = "1.*" # not available for linux-aarch64
@@ -620,6 +647,7 @@ llvm-tools = "16.0.6.*" # Various Wasm targets fail on mac without llvm-ar
 
 [target.win-64.dependencies]
 buf = "1.*" # not available for linux-aarch64
+llvm-tools = "16.0.6.*" # Wasm targets need llvm-ar for cc-rs (same as osx-arm64)
 
 [feature.cpp.target.linux-64.dependencies]
 sysroot_linux-64 = ">=2.17,<3" # rustc 1.64+ requires glibc 2.17+, see https://blog.rust-lang.org/2022/08/01/Increasing-glibc-kernel-requirements.html

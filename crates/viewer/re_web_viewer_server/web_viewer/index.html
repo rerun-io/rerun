@@ -192,6 +192,43 @@
         canvas_elem.classList.add("hidden");
       }
 
+      // Feature-detect Wasm SIMD (`simd128`). The viewer .wasm is compiled with
+      // `-Ctarget-feature=+simd128`, so browsers without SIMD support will fail to
+      // instantiate the module with a cryptic error. We detect up-front and surface
+      // a friendly message instead.
+      //
+      // The probe is a tiny module that uses the `v128.any_true` instruction.
+      // Supported in: Chrome 91+, Firefox 89+, Safari 16.4+.
+      function has_wasm_simd() {
+        try {
+          return WebAssembly.validate(
+            new Uint8Array([
+              0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 96, 0, 1, 123, 3, 2, 1, 0,
+              10, 10, 1, 8, 0, 65, 0, 253, 15, 253, 98, 11,
+            ]),
+          );
+        } catch (e) {
+          return false;
+        }
+      }
+
+      function show_unsupported_browser() {
+        show_center_html(`
+          <p class="strong">
+              Your browser is too old to run the Rerun Viewer.
+          </p>
+          <p>
+              The Viewer requires WebAssembly SIMD support, available in:
+          </p>
+          <p>
+              Chrome 91+, Firefox 89+, Safari 16.4+, or any modern Chromium-based browser.
+          </p>
+          <p>
+              Please update your browser and try again.
+          </p>
+        `);
+      }
+
       // On mobile platforms show a warning, but provide a link to try anyways
       if (
         /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
@@ -210,8 +247,14 @@
           .querySelector("#try_anyways")
           .addEventListener("click", function (event) {
             event.preventDefault();
+            if (!has_wasm_simd()) {
+              show_unsupported_browser();
+              return;
+            }
             load_wasm();
           });
+      } else if (!has_wasm_simd()) {
+        show_unsupported_browser();
       } else {
         load_wasm();
       }
@@ -337,6 +380,7 @@
           enable_history: Option<bool>,
           notebook: Option<bool>,
           persist: Option<bool>,
+          theme: Option<String>,
         */
         const options = {
           url: query.getAll("url"),
@@ -350,6 +394,7 @@
           notebook: get_query_bool(query, "notebook", false),
           persist: get_query_bool(query, "persist", true),
           fallback_token: query.get("token"),
+          theme: query.get("theme"),
           login: {
             signed_in_url: location.origin + "/signed-in",
             signed_out_url: location.origin + "/signed-out",

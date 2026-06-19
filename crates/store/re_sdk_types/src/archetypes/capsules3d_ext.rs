@@ -27,9 +27,7 @@ impl Capsules3D {
             Vec<components::Length>,
             Vec<components::Translation3D>,
             Vec<components::RotationQuat>,
-        ) = start_points
-            .into_iter()
-            .zip(end_points)
+        ) = std::iter::zip(start_points, end_points)
             .map(|(p1, p2)| {
                 let p1: glam::Vec3 = p1.into().0.into();
                 let p2: glam::Vec3 = p2.into().0.into();

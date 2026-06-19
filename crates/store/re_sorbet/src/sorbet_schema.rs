@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 
 use arrow::datatypes::{Schema as ArrowSchema, SchemaRef as ArrowSchemaRef};
 use re_log_types::EntityPath;
-use re_types_core::ChunkId;
+use re_types_core::{ChunkId, SegmentId};
 
 use crate::{
     ArrowBatchMetadata, SorbetColumnDescriptors, SorbetError, TimestampMetadata, migrate_schema_ref,
@@ -26,7 +26,7 @@ pub struct SorbetSchema {
     pub entity_path: Option<EntityPath>,
 
     /// The segment id that this chunk belongs to.
-    pub segment_id: Option<String>,
+    pub segment_id: Option<SegmentId>,
 
     /// Timing statistics.
     pub timestamps: TimestampMetadata,
@@ -46,25 +46,28 @@ impl SorbetSchema {
 }
 
 impl SorbetSchema {
-    pub fn chunk_id_metadata(chunk_id: &ChunkId) -> (String, String) {
-        ("rerun:id".to_owned(), chunk_id.to_string())
-    }
-
-    pub fn entity_path_metadata(entity_path: &EntityPath) -> (String, String) {
-        (
-            crate::metadata::SORBET_ENTITY_PATH.to_owned(),
-            entity_path.to_string(),
-        )
-    }
-
-    pub fn segment_id_metadata(segment_id: impl AsRef<str>) -> (String, String) {
-        (
-            "rerun:segment_id".to_owned(),
-            segment_id.as_ref().to_owned(),
-        )
-    }
-
     pub fn arrow_batch_metadata(&self) -> ArrowBatchMetadata {
+        fn chunk_id_metadata(chunk_id: &ChunkId) -> (String, String) {
+            (
+                crate::metadata::RERUN_CHUNK_ID.to_owned(),
+                chunk_id.to_string(),
+            )
+        }
+
+        fn entity_path_metadata(entity_path: &EntityPath) -> (String, String) {
+            (
+                crate::metadata::SORBET_ENTITY_PATH.to_owned(),
+                entity_path.to_string(),
+            )
+        }
+
+        fn segment_id_metadata(segment_id: impl AsRef<str>) -> (String, String) {
+            (
+                "rerun:segment_id".to_owned(),
+                segment_id.as_ref().to_owned(),
+            )
+        }
+
         let Self {
             columns: _,
             chunk_id,
@@ -73,28 +76,30 @@ impl SorbetSchema {
             timestamps,
         } = self;
 
-        [
-            Some((
-                Self::METADATA_KEY_VERSION.to_owned(),
-                Self::METADATA_VERSION.to_string(),
-            )),
-            chunk_id.as_ref().map(Self::chunk_id_metadata),
-            entity_path.as_ref().map(Self::entity_path_metadata),
-            segment_id.as_ref().map(Self::segment_id_metadata),
-        ]
-        .into_iter()
-        .flatten()
-        .chain(timestamps.to_metadata())
+        std::iter::chain(
+            [
+                Some((
+                    Self::METADATA_KEY_VERSION.to_owned(),
+                    Self::METADATA_VERSION.to_string(),
+                )),
+                chunk_id.as_ref().map(chunk_id_metadata),
+                entity_path.as_ref().map(entity_path_metadata),
+                segment_id.as_ref().map(segment_id_metadata),
+            ]
+            .into_iter()
+            .flatten(),
+            timestamps.to_metadata(),
+        )
         .collect()
     }
 
     /// All the entities referenced by any column.
     pub fn all_entities(&self) -> BTreeSet<&EntityPath> {
-        self.columns
-            .iter()
-            .filter_map(|c| c.entity_path())
-            .chain(self.entity_path.iter())
-            .collect()
+        std::iter::chain(
+            self.columns.iter().filter_map(|c| c.entity_path()),
+            self.entity_path.iter(),
+        )
+        .collect()
     }
 }
 
@@ -138,7 +143,7 @@ impl SorbetSchema {
 
         let columns = SorbetColumnDescriptors::try_from_arrow_fields(entity_path.as_ref(), fields)?;
 
-        let chunk_id = if let Some(chunk_id_str) = metadata.get("rerun:id") {
+        let chunk_id = if let Some(chunk_id_str) = metadata.get(crate::metadata::RERUN_CHUNK_ID) {
             Some(chunk_id_str.parse().map_err(|err| {
                 SorbetError::ChunkIdDeserializationError(format!(
                     "Failed to deserialize chunk id {chunk_id_str:?}: {err}"
@@ -152,7 +157,7 @@ impl SorbetSchema {
         let segment_id = metadata
             .get("rerun:segment_id")
             .or_else(|| metadata.get("rerun:partition_id"))
-            .map(|s| s.to_owned());
+            .map(|s| SegmentId::from(s.as_str()));
 
         // Verify version
         if let Some(batch_version) = metadata.get(Self::METADATA_KEY_VERSION)
@@ -206,7 +211,7 @@ mod tests {
         // Verify that segment_id is correctly populated from the legacy partition_id
         assert_eq!(
             sorbet_schema.segment_id,
-            Some(partition_id_value.to_owned()),
+            Some(partition_id_value.into()),
             "Legacy rerun:partition_id should be read as segment_id"
         );
     }
@@ -239,7 +244,7 @@ mod tests {
         // Verify that segment_id takes precedence
         assert_eq!(
             sorbet_schema.segment_id,
-            Some(segment_id_value.to_owned()),
+            Some(segment_id_value.into()),
             "rerun:segment_id should take precedence over rerun:partition_id"
         );
     }

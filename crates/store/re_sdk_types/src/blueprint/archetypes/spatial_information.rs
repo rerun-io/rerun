@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -24,7 +25,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Archetype**: This configures extra drawing config for the 3D view.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, ::re_byte_size::SizeBytes)]
 pub struct SpatialInformation {
     /// The target reference frame for all transformations.
     ///
@@ -44,11 +45,13 @@ impl SpatialInformation {
     /// The corresponding component is [`crate::components::TransformFrameId`].
     #[inline]
     pub fn descriptor_target_frame() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.SpatialInformation".into()),
-            component: "SpatialInformation:target_frame".into(),
-            component_type: Some("rerun.components.TransformFrameId".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.SpatialInformation".into()),
+                component: "SpatialInformation:target_frame".into(),
+                component_type: Some("rerun.components.TransformFrameId".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::show_axes`].
@@ -56,11 +59,13 @@ impl SpatialInformation {
     /// The corresponding component is [`crate::blueprint::components::Enabled`].
     #[inline]
     pub fn descriptor_show_axes() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.SpatialInformation".into()),
-            component: "SpatialInformation:show_axes".into(),
-            component_type: Some("rerun.blueprint.components.Enabled".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.SpatialInformation".into()),
+                component: "SpatialInformation:show_axes".into(),
+                component_type: Some("rerun.blueprint.components.Enabled".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::show_bounding_box`].
@@ -68,11 +73,13 @@ impl SpatialInformation {
     /// The corresponding component is [`crate::blueprint::components::Enabled`].
     #[inline]
     pub fn descriptor_show_bounding_box() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.SpatialInformation".into()),
-            component: "SpatialInformation:show_bounding_box".into(),
-            component_type: Some("rerun.blueprint.components.Enabled".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.SpatialInformation".into()),
+                component: "SpatialInformation:show_bounding_box".into(),
+                component_type: Some("rerun.blueprint.components.Enabled".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -108,7 +115,10 @@ impl SpatialInformation {
 impl ::re_types_core::Archetype for SpatialInformation {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.blueprint.archetypes.SpatialInformation".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.blueprint.archetypes.SpatialInformation"
+        )
     }
 
     #[inline]
@@ -251,14 +261,5 @@ impl SpatialInformation {
         self.show_bounding_box =
             try_serialize_field(Self::descriptor_show_bounding_box(), [show_bounding_box]);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for SpatialInformation {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.target_frame.heap_size_bytes()
-            + self.show_axes.heap_size_bytes()
-            + self.show_bounding_box.heap_size_bytes()
     }
 }

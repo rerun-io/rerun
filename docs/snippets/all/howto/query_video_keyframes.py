@@ -24,7 +24,9 @@ from datafusion import functions as F
 
 import rerun as rr
 
-sample_video_path = Path(__file__).parents[4] / "tests" / "assets" / "rrd" / "video_sample"
+sample_video_path = (
+    Path(__file__).parents[4] / "tests" / "assets" / "rrd" / "video_sample"
+)
 
 server = rr.server.Server(datasets={"video_dataset": sample_video_path})
 client = server.client()
@@ -73,7 +75,9 @@ first_segment_id = segment_ids[0]
 # Make sure the timeline matches the original video stream
 timeline = "log_time"
 time_column = rr.TimeColumn(timeline=timeline, timestamp=keyframe_times)
-content = rr.DynamicArchetype.columns(archetype="KeyframeData", components={"is_keyframe": keyframe_values})
+content = rr.DynamicArchetype.columns(
+    archetype="KeyframeData", components={"is_keyframe": keyframe_values}
+)
 
 # Write to a new file as a layer
 layer_path = TMP_DIR / "keyframe_layer.rrd"
@@ -91,7 +95,8 @@ print(f"Registered keyframe layer at {layer_path}")
 
 # region: query_with_keyframes
 # Query using keyframe information for efficient random access
-# Assume we've already added keyframe information via the preprocessing step above
+# Assume we've already added keyframe information via the preprocessing step
+# above
 target_frame_index = 42
 target_time = times[target_frame_index]
 
@@ -100,11 +105,19 @@ target_time = times[target_frame_index]
 keyframe_column = "/video_stream:is_keyframe"
 full_df = dataset.filter_contents(["/video_stream/**"]).reader(index="log_time")
 
-# Query to find the most recent keyframe at or before the target time
-# Since we only log when is_keyframe=True, any row with this column present is a keyframe
-keyframe_slice = full_df.filter((col("log_time") <= target_time) & col(keyframe_column).is_not_null())
+# Query to find the most recent keyframe at or before the target time.
+# Since we only log when is_keyframe=True, any row with this column present
+# is a keyframe
+keyframe_slice = full_df.filter(
+    (col("log_time") <= target_time) & col(keyframe_column).is_not_null()
+)
 closest_keyframe_df = keyframe_slice.aggregate(
-    [], [F.last_value(col("log_time"), order_by=[col("log_time")]).alias("latest_keyframe")]
+    [],
+    [
+        F.last_value(col("log_time"), order_by=[col("log_time")]).alias(
+            "latest_keyframe"
+        )
+    ],
 )
 
 keyframe_result = pa.table(closest_keyframe_df)
@@ -114,14 +127,22 @@ start_time = keyframe_result["latest_keyframe"].to_numpy()[0]
 start_frame_idx = np.searchsorted(times, start_time)
 
 frames_saved = target_frame_index - start_frame_idx
-print(f"Found keyframe at frame {start_frame_idx}, saved decoding {frames_saved} frames")
+print(
+    f"Found keyframe at frame {start_frame_idx}, "
+    f"saved decoding {frames_saved} frames"
+)
 
 # Query only the video samples from keyframe to target (much more efficient!)
-efficient_video_df = df.filter(col("log_time").between(start_time, target_time)).select("log_time", video_column)
+efficient_video_df = df.filter(
+    col("log_time").between(start_time, target_time)
+).select("log_time", video_column)
 
 efficient_table = pa.table(efficient_video_df)
 frames_to_decode = len(efficient_table)
-print(f"Decoding {frames_to_decode} frames (vs {target_frame_index + 1} without keyframe info)")
+print(
+    f"Decoding {frames_to_decode} frames "
+    f"(vs {target_frame_index + 1} without keyframe info)"
+)
 
 # Now decode just this smaller range
 samples = efficient_table[video_column].to_numpy()
@@ -136,7 +157,9 @@ video_stream = container.streams.video[0]
 
 # Decode to the target frame
 frame = None
-for packet, time in zip(container.demux(video_stream), sample_times, strict=False):
+for packet, time in zip(
+    container.demux(video_stream), sample_times, strict=False
+):
     packet.time_base = Fraction(1, 1_000_000_000)
     packet.pts = int(time - sample_times[0])
     packet.dts = packet.pts
@@ -145,5 +168,8 @@ for packet, time in zip(container.demux(video_stream), sample_times, strict=Fals
 
 if isinstance(frame, av.VideoFrame):
     image = np.asarray(frame.to_image())
-    print(f"Efficiently decoded frame {target_frame_index} with shape: {image.shape}")
+    print(
+        f"Efficiently decoded frame {target_frame_index} "
+        f"with shape: {image.shape}"
+    )
 # endregion: query_with_keyframes

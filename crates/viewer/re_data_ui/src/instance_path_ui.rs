@@ -345,7 +345,6 @@ fn component_list_ui(
     );
 }
 
-#[expect(clippy::too_many_arguments)]
 fn component_ui(
     ctx: &StoreViewContext<'_>,
     ui: &mut egui::Ui,

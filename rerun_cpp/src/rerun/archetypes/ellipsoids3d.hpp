@@ -65,7 +65,9 @@ namespace rerun::archetypes {
     ///
     ///     rec.log(
     ///         "points",
-    ///         rerun::Points3D(points3d).with_radii(0.02f).with_colors(rerun::Rgba32(188, 77, 185))
+    ///         rerun::Points3D(points3d).with_radii(0.02f).with_colors(
+    ///             rerun::Rgba32(188, 77, 185)
+    ///         )
     ///     );
     ///
     ///     rec.log(

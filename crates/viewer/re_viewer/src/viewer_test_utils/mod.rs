@@ -20,7 +20,9 @@ pub struct HarnessOptions {
     pub step_dt: Option<f32>,
     pub startup_url: Option<String>,
     pub enable_component_mapping: bool,
-    pub enable_experimental_status_view: bool,
+
+    /// Allows tests to emulate platform-specific UI behavior.
+    pub os: Option<egui::os::OperatingSystem>,
 
     /// Allows the test to set `AppOptions` at start.
     pub app_options_editor: Option<AppOptionsEditor>,
@@ -38,9 +40,11 @@ pub fn viewer_harness(options: &HarnessOptions) -> Harness<'static, App> {
     if let Some(step_dt) = options.step_dt {
         harness_builder = harness_builder.with_step_dt(step_dt);
     }
+    if let Some(os) = options.os {
+        harness_builder = harness_builder.with_os(os);
+    }
 
     harness_builder.build_eframe(|cc| {
-        cc.egui_ctx.set_os(egui::os::OperatingSystem::Nix);
         customize_eframe_and_setup_renderer(cc).expect("Failed to customize eframe");
         let mut app = App::new(
             MainThreadToken::i_promise_i_am_only_using_this_for_a_test(),
@@ -50,7 +54,6 @@ pub fn viewer_harness(options: &HarnessOptions) -> Harness<'static, App> {
                 // Don't show the welcome / example screen in tests.
                 // See also: https://github.com/rerun-io/rerun/issues/10989
                 hide_welcome_screen: true,
-                enable_experimental_status_view: options.enable_experimental_status_view,
                 ..Default::default()
             },
             cc,
@@ -99,7 +102,7 @@ pub fn step_until<'app, 'harness, Predicate>(
     step_duration: std::time::Duration,
     max_duration: std::time::Duration,
 ) where
-    Predicate: for<'a> FnMut(&'a egui_kittest::Harness<'app, App>) -> bool,
+    Predicate: for<'a> FnMut(&'a mut egui_kittest::Harness<'app, App>) -> bool,
 {
     let start_time = std::time::Instant::now();
     let mut success = predicate(harness);

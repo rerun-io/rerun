@@ -3,7 +3,7 @@ title: Loading URDF models
 order: 900
 ---
 
-Rerun features a built-in [importer](https://rerun.io/docs/concepts/logging-and-ingestion/importers/overview?speculative-link) for [URDF](https://en.wikipedia.org/wiki/URDF) files.
+Rerun features a built-in [importer](https://rerun.io/docs/concepts/logging-and-ingestion/importers/overview) for [URDF](https://en.wikipedia.org/wiki/URDF) files.
 
 <picture style="zoom: 0.5">
   <img src="https://static.rerun.io/urdf-viewer/ebdefa158ab6f26f9dc1cb1924fce4b846fe8db2/full.png" alt="A robot model loaded from an URDF file visualized in Rerun.">
@@ -22,7 +22,8 @@ This will automatically invoke the importer, which will take care of:
 
 Once that is done, the joints can be updated by sending [`Transform3D`](../../reference/types/archetypes/transform3d.md)s, where you have to set the `parent_frame` and `child_frame` fields explicitly to each joint's specific frame IDs.
 
-> ⚠️ Note: previous versions (< 0.28) required you to send transforms with _implicit_ frame IDs, i.e. having to send each joint transform on a specific entity path.
+> [!NOTE]
+> Previous versions (< 0.28) required you to send transforms with _implicit_ frame IDs, i.e. having to send each joint transform on a specific entity path.
 > This was dropped in favor of _named_ frame IDs, which is more in line with ROS and allows you to send all transform updates on one entity (e.g. a `transforms` entity like in the example below).
 
 ## Example

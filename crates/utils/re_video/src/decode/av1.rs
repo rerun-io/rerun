@@ -5,7 +5,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use dav1d::{PixelLayout, PlanarImageComponent};
 use re_log::debug_assert;
 
-use super::async_decoder_wrapper::SyncDecoder;
+use super::sync_decoder_wrapper::SyncDecoder;
 use super::{
     Chunk, DecodeError, Frame, FrameContent, FrameInfo, PixelFormat, Result, YuvMatrixCoefficients,
     YuvPixelLayout, YuvRange,

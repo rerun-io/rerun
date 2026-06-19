@@ -100,7 +100,12 @@ class AssetVideo(AssetVideoExt, Archetype):
     )
 
     # Send blueprint that shows two 2D views next to each other.
-    rr.send_blueprint(rrb.Horizontal(rrb.Spatial2DView(origin="frame_1s"), rrb.Spatial2DView(origin="frame_2s")))
+    rr.send_blueprint(
+        rrb.Horizontal(
+            rrb.Spatial2DView(origin="frame_1s"),
+            rrb.Spatial2DView(origin="frame_2s"),
+        )
+    )
     ```
     <center>
     <picture>

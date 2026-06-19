@@ -11,7 +11,9 @@ blueprint = rrb.Blueprint(
     rrb.BarChartView(
         origin="bar_chart",
         name="Bar Chart",
-        background=rrb.archetypes.PlotBackground(color=[50, 0, 50, 255], show_grid=False),
+        background=rrb.archetypes.PlotBackground(
+            color=[50, 0, 50, 255], show_grid=False
+        ),
     ),
     collapse_panels=True,
 )

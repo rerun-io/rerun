@@ -245,7 +245,7 @@ fn flush_pending_events(
     Ok(())
 }
 
-#[expect(clippy::needless_return, clippy::too_many_arguments)]
+#[expect(clippy::needless_return)]
 fn realtime_pipeline(
     config: &Config,
     sink: &PostHogSink,

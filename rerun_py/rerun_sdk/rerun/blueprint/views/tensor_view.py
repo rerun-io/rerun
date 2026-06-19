@@ -57,11 +57,15 @@ class TensorView(View):
                     rr.TensorDimensionIndexSelection(dimension=2, index=4),
                     rr.TensorDimensionIndexSelection(dimension=3, index=5),
                 ],
-                # Show a slider for dimension 2 only. If not specified, all dimensions in `indices` will have sliders.
+                # Show a slider for dimension 2 only. If not specified, all
+                # dimensions in `indices` will have sliders.
                 slider=[2],
             ),
-            # Set a scalar mapping with a custom colormap, gamma and magnification filter.
-            scalar_mapping=rrb.TensorScalarMapping(colormap="turbo", gamma=1.5, mag_filter="linear"),
+            # Set a scalar mapping with a custom colormap, gamma and
+            # magnification filter.
+            scalar_mapping=rrb.TensorScalarMapping(
+                colormap="turbo", gamma=1.5, mag_filter="linear"
+            ),
             # Fill the view, ignoring aspect ratio.
             view_fit="fill",
         ),

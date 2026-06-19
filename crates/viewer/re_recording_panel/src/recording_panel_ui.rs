@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use egui::collapsing_header::CollapsingState;
-use egui::{RichText, Widget as _};
-use re_data_ui::DataUi as _;
+use egui::{RichText, Widget as _, WidgetInfo, WidgetType};
+use re_data_ui::AppUi as _;
 use re_data_ui::item_ui::{entity_db_button_ui, table_id_button_ui};
 use re_log_channel::LogSource;
 use re_log_types::TableId;
@@ -12,8 +12,8 @@ use re_ui::{OnResponseExt as _, UiExt as _, UiLayout, icons, list_item};
 use re_uri::dataset_hierarchy_leaf_name;
 use re_viewer_context::open_url::ViewerOpenUrl;
 use re_viewer_context::{
-    EditRedapServerModalCommand, Item, RecordingOrTable, RedapEntryKind, Route, SystemCommand,
-    SystemCommandSender as _, ViewerContext,
+    AppContext, EditRedapServerModalCommand, Item, RecordingOrTable, RedapEntryKind, Route,
+    SystemCommand, SystemCommandSender as _,
 };
 
 use crate::RecordingPanelCommand;
@@ -34,7 +34,7 @@ impl RecordingPanel {
 
     pub fn show_panel(
         &mut self,
-        ctx: &ViewerContext<'_>,
+        ctx: &AppContext<'_>,
         ui: &mut egui::Ui,
         servers: &RedapServers,
         hide_examples: bool,
@@ -74,6 +74,10 @@ impl RecordingPanel {
                 ui.panel_content(|ui| {
                     re_ui::list_item::list_item_scope(ui, "recording panel", |ui| {
                         all_sections_ui(ctx, ui, servers, &recording_panel_data);
+                    })
+                    .response
+                    .widget_info(|| {
+                        WidgetInfo::labeled(WidgetType::Panel, true, "_recording_panel")
                     });
                 });
             });
@@ -81,11 +85,14 @@ impl RecordingPanel {
 }
 
 fn shift_through_recordings(
-    ctx: &ViewerContext<'_>,
+    ctx: &AppContext<'_>,
     recording_panel_data: &RecordingPanelData<'_>,
     direction: isize,
 ) {
-    let current_store_id = ctx.store_context.recording.store_id();
+    let Some(store_context) = ctx.active_store_context else {
+        return;
+    };
+    let current_store_id = store_context.recording.store_id();
 
     #[expect(clippy::cast_possible_wrap)]
     if let Some((idx, store_collection)) =
@@ -105,7 +112,7 @@ fn shift_through_recordings(
 }
 
 fn add_button_ui(
-    ctx: &ViewerContext<'_>,
+    ctx: &AppContext<'_>,
     ui: &mut egui::Ui,
     _recording_panel_data: &RecordingPanelData<'_>,
 ) {
@@ -159,7 +166,7 @@ fn add_button_ui(
 }
 
 fn all_sections_ui(
-    ctx: &ViewerContext<'_>,
+    ctx: &AppContext<'_>,
     ui: &mut egui::Ui,
     servers: &RedapServers,
     recording_panel_data: &RecordingPanelData<'_>,
@@ -234,7 +241,7 @@ fn all_sections_ui(
 }
 
 fn welcome_item_ui(
-    ctx: &ViewerContext<'_>,
+    ctx: &AppContext<'_>,
     ui: &mut egui::Ui,
     recording_panel_data: &RecordingPanelData<'_>,
 ) {
@@ -278,7 +285,7 @@ fn welcome_item_ui(
 // ---
 
 fn server_section_ui(
-    ctx: &ViewerContext<'_>,
+    ctx: &AppContext<'_>,
     ui: &mut egui::Ui,
     servers: &RedapServers,
     server_data: &ServerData<'_>,
@@ -310,6 +317,15 @@ fn server_section_ui(
                         servers.send_command(Command::OpenEditServerModal(
                             EditRedapServerModalCommand::new(origin.clone()),
                         ));
+                    }
+                    if icons::COPY
+                        .as_button_with_label(ui.tokens(), "Copy URL")
+                        .ui(ui)
+                        .clicked()
+                    {
+                        let url = origin.to_string();
+                        re_log::info!("Copied {url:?} to clipboard");
+                        ui.copy_text(url);
                     }
                     if icons::TRASH
                         .as_button_with_label(ui.tokens(), "Remove")
@@ -343,7 +359,7 @@ fn server_section_ui(
 }
 
 fn server_entries_ui(
-    ctx: &ViewerContext<'_>,
+    ctx: &AppContext<'_>,
     ui: &mut egui::Ui,
     entries_data: &ServerEntriesData<'_>,
     origin: &re_uri::Origin,
@@ -381,7 +397,7 @@ fn server_entries_ui(
 }
 
 fn entry_tree_node_ui(
-    ctx: &ViewerContext<'_>,
+    ctx: &AppContext<'_>,
     ui: &mut egui::Ui,
     node: &EntryTreeNode<'_>,
     origin: &re_uri::Origin,
@@ -439,11 +455,7 @@ fn entry_tree_node_ui(
     }
 }
 
-fn dataset_entry_ui(
-    ctx: &ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    dataset_entry_data: &DatasetData<'_>,
-) {
+fn dataset_entry_ui(ctx: &AppContext<'_>, ui: &mut egui::Ui, dataset_entry_data: &DatasetData<'_>) {
     let DatasetData {
         entry_data:
             EntryData {
@@ -496,7 +508,7 @@ fn dataset_entry_ui(
                         SegmentData::Loaded { entity_db } => {
                             let include_app_id = false; // we already show it in the parent item
                             let response = entity_db_button_ui(
-                                &ctx.app_ctx,
+                                ctx,
                                 entity_db,
                                 ui,
                                 UiLayout::SelectionPanel,
@@ -558,7 +570,7 @@ fn dataset_entry_ui(
 }
 
 fn remote_table_entry_ui(
-    ctx: &ViewerContext<'_>,
+    ctx: &AppContext<'_>,
     ui: &mut egui::Ui,
     remote_table_data: &RemoteTableData,
 ) {
@@ -594,11 +606,7 @@ fn remote_table_entry_ui(
     }
 }
 
-fn failed_entry_ui(
-    ctx: &ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    failed_entry_data: &FailedEntryData,
-) {
+fn failed_entry_ui(ctx: &AppContext<'_>, ui: &mut egui::Ui, failed_entry_data: &FailedEntryData) {
     let FailedEntryData {
         entry_data:
             EntryData {
@@ -632,7 +640,7 @@ fn failed_entry_ui(
 
 // ---
 
-fn app_id_section_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, local_app_id: &AppIdData<'_>) {
+fn app_id_section_ui(ctx: &AppContext<'_>, ui: &mut egui::Ui, local_app_id: &AppIdData<'_>) {
     let AppIdData {
         app_id,
         is_active,
@@ -668,7 +676,7 @@ fn app_id_section_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, local_app_id: &
                 for recording_data in loaded_recordings {
                     let include_app_id = false; // we already show it in the parent item
                     let response = entity_db_button_ui(
-                        &ctx.app_ctx,
+                        ctx,
                         recording_data.entity_db,
                         ui,
                         UiLayout::SelectionPanel,
@@ -686,11 +694,7 @@ fn app_id_section_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, local_app_id: &
     };
 
     item_response = item_response.on_hover_ui(|ui| {
-        app_id.data_ui(
-            &ctx.active_recording_store_view_context(),
-            ui,
-            UiLayout::Tooltip,
-        );
+        app_id.app_ui(ctx, ui, UiLayout::Tooltip);
     });
 
     ctx.handle_select_hover_drag_interactions(&item_response, item.clone(), false);
@@ -707,12 +711,12 @@ fn app_id_section_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, local_app_id: &
     }
 }
 
-fn table_item_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, table_id: &TableId) {
+fn table_item_ui(ctx: &AppContext<'_>, ui: &mut egui::Ui, table_id: &TableId) {
     table_id_button_ui(ctx, ui, table_id, UiLayout::SelectionPanel);
 }
 
 fn loading_receivers_ui(
-    ctx: &ViewerContext<'_>,
+    ctx: &AppContext<'_>,
     ui: &mut egui::Ui,
     loading_receivers: &Vec<Arc<LogSource>>,
 ) {
@@ -722,7 +726,7 @@ fn loading_receivers_ui(
 }
 
 fn receiver_ui(
-    ctx: &ViewerContext<'_>,
+    ctx: &AppContext<'_>,
     ui: &mut egui::Ui,
     receiver: &LogSource,
     show_hierarchal: bool,
@@ -898,10 +902,12 @@ fn expand_folder_nodes_containing_entry(
 /// Iterate every ancestor folder path of a dotted hierarchy `path`, shallowest first,
 /// including `path` itself. `"a.b.c"` → `"a"`, `"a.b"`, `"a.b.c"`. Allocation-free.
 fn ancestor_folder_paths(path: &str) -> impl Iterator<Item = &str> {
-    path.match_indices(re_uri::DATASET_HIERARCHY_SEPARATOR)
-        .map(|(idx, _)| &path[..idx])
-        .chain(std::iter::once(path))
-        .filter(|s| !s.is_empty())
+    std::iter::chain(
+        path.match_indices(re_uri::DATASET_HIERARCHY_SEPARATOR)
+            .map(|(idx, _)| &path[..idx]),
+        std::iter::once(path),
+    )
+    .filter(|s| !s.is_empty())
 }
 
 #[cfg(test)]

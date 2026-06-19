@@ -10,7 +10,8 @@ use re_sdk_types::datatypes::{TimeInt, TimeRange, TimeRangeBoundary};
 use re_ui::list_item::{LabelContent, ListItemContentButtonsExt as _};
 use re_ui::{RelativeTimeRange, TimeDragValue, UiExt as _, relative_time_range_label_text};
 use re_viewer_context::{
-    BlueprintContext as _, QueryRange, TimeControlCommand, ViewClass, ViewState, ViewerContext,
+    BlueprintContext as _, QueryRange, TimeControlCommand, TimeRangeHighlight,
+    TimeRangeHighlightKind, ViewClass, ViewState, ViewerContext,
 };
 use re_viewport_blueprint::{ViewBlueprint, entity_path_for_view_property};
 
@@ -268,7 +269,12 @@ Notes:
     {
         let absolute_time_range =
             AbsoluteTimeRange::from_relative_time_range(time_range, current_time);
-        ctx.send_time_commands([TimeControlCommand::HighlightRange(absolute_time_range)]);
+        ctx.send_time_commands([TimeControlCommand::HighlightRange(TimeRangeHighlight {
+            range: absolute_time_range,
+            timeline: *time_ctrl.timeline_name(),
+            kind: TimeRangeHighlightKind::TimeRangeConfiguration,
+            color: None,
+        })]);
     }
 }
 

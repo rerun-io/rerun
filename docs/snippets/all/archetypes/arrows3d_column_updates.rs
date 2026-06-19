@@ -5,8 +5,10 @@
 use rerun::demo_util::linspace;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let rec =
-        rerun::RecordingStreamBuilder::new("rerun_example_arrows3d_column_updates").spawn()?;
+    let rec = rerun::RecordingStreamBuilder::new(
+        "rerun_example_arrows3d_column_updates",
+    )
+    .spawn()?;
     let times = rerun::TimeColumn::new_duration_secs("time", 10..15);
 
     // Prepare a fixed sequence of arrows over 5 timesteps.
@@ -16,8 +18,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let i = i as f32;
             (
                 linspace(-1., 1., 5).map(move |x| (x, x, 0.)),
-                linspace(-1., 1., 5)
-                    .zip(linspace(0., i, 5))
+                std::iter::zip(linspace(-1., 1., 5), linspace(0., i, 5))
                     .map(|(x, z)| (x, x, z)),
             )
         })
@@ -34,7 +35,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_colors(colors)
         .columns_of_unit_batches()?;
 
-    rec.send_columns("arrows", [times], arrows.chain(color))?;
+    rec.send_columns("arrows", [times], std::iter::chain(arrows, color))?;
 
     Ok(())
 }

@@ -1,6 +1,7 @@
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyModule;
+use pyo3::{Borrowed, FromPyObject};
 
 use re_lenses_core::{DynExpr, Lens, OutputMode, Selector};
 use re_types_core::{ComponentDescriptor, ComponentIdentifier};
@@ -152,26 +153,28 @@ impl PyMutateLensInternal {
 }
 
 /// Extracts a `Lens` from either derive or mutate Python lens types.
-pub enum PyLens<'py> {
-    Derive(PyRef<'py, PyDeriveLensInternal>),
-    Mutate(PyRef<'py, PyMutateLensInternal>),
+pub enum PyLens {
+    Derive(Py<PyDeriveLensInternal>),
+    Mutate(Py<PyMutateLensInternal>),
 }
 
-impl PyLens<'_> {
-    pub fn build(&self) -> PyResult<Lens> {
+impl PyLens {
+    pub fn build(&self, py: Python<'_>) -> PyResult<Lens> {
         match self {
-            Self::Derive(d) => d.build(),
-            Self::Mutate(i) => Ok(i.build()),
+            Self::Derive(d) => d.borrow(py).build(),
+            Self::Mutate(i) => Ok(i.borrow(py).build()),
         }
     }
 }
 
-impl<'py> FromPyObject<'py> for PyLens<'py> {
-    fn extract_bound(ob: &Bound<'py, PyAny>) -> PyResult<Self> {
-        if let Ok(d) = ob.downcast::<PyDeriveLensInternal>() {
-            Ok(Self::Derive(d.borrow()))
-        } else if let Ok(i) = ob.downcast::<PyMutateLensInternal>() {
-            Ok(Self::Mutate(i.borrow()))
+impl<'py> FromPyObject<'_, 'py> for PyLens {
+    type Error = PyErr;
+
+    fn extract(ob: Borrowed<'_, 'py, PyAny>) -> PyResult<Self> {
+        if let Ok(d) = ob.cast::<PyDeriveLensInternal>() {
+            Ok(Self::Derive(d.to_owned().unbind()))
+        } else if let Ok(i) = ob.cast::<PyMutateLensInternal>() {
+            Ok(Self::Mutate(i.to_owned().unbind()))
         } else {
             Err(PyValueError::new_err(
                 "Expected a DeriveLensInternal or MutateLensInternal instance",

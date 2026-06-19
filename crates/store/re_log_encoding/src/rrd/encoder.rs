@@ -3,6 +3,7 @@
 use std::borrow::Borrow;
 use std::collections::HashMap;
 
+use itertools::Itertools as _;
 use re_build_info::CrateVersion;
 use re_chunk::{ChunkError, ChunkResult};
 use re_log_types::{LogMsg, StoreId};
@@ -98,26 +99,12 @@ pub struct Encoder<W: std::io::Write> {
 /// This is automatically updated when calling [`Encoder::append`].
 #[derive(Default)]
 struct FooterState {
-    /// What is the currently active recording ID according to the state of the encoder, if any?
-    ///
-    /// Put another way: was there a `SetStoreInfo` message earlier in the stream? If so, we will
-    /// want to override the recording ID of each chunk with that one (because that's the existing
-    /// behavior, certainly not because it's nice).
-    recording_id_scope: Option<re_log_types::StoreId>,
-
     manifests: HashMap<re_log_types::StoreId, ManifestState>,
 }
 
 /// The accumulated state for a specific RRD manifest.
 #[derive(Default)]
 struct ManifestState {
-    /// The accumulated recording IDs of each individual chunk, extracted from their `LogMsg`.
-    ///
-    /// In most normal scenarios, this will just be the same value repeated N times.
-    ///
-    /// This will only be used if [`FooterState::recording_id_scope`] is empty.
-    recording_ids: Vec<re_log_types::StoreId>,
-
     /// The state of the RRD manifest currently being built.
     manifest: RrdManifestBuilder,
 }
@@ -130,10 +117,6 @@ impl FooterState {
         byte_size_uncompressed: u64,
     ) -> Result<(), EncodeError> {
         match msg {
-            LogMsg::SetStoreInfo(msg) => {
-                self.recording_id_scope = Some(msg.info.store_id.clone());
-            }
-
             LogMsg::ArrowMsg(store_id, msg) => {
                 // NOTE(1): The fact that this parses the `RecordBatch` back into an actual `Chunk`
                 // is a bit unfortunate, but really it's nowhere near as bad as one might think:
@@ -149,20 +132,11 @@ impl FooterState {
                 // application layer where one can accessed the parsed, unmigrated data.
                 let chunk_batch = re_sorbet::ChunkBatch::try_from(&msg.batch)?;
 
-                // See `self.recording_id_scope` for some explanations.
-                let recording_id = self
-                    .recording_id_scope
-                    .clone()
-                    .unwrap_or_else(|| store_id.clone());
-
                 // This line is important: it implies that if a recording doesn't have any data
                 // chunks at all, we do not even reserve an RRD manifest for it in the footer.
-                let ManifestState {
-                    recording_ids,
-                    manifest,
-                } = self.manifests.entry(recording_id.clone()).or_default();
+                let ManifestState { manifest } =
+                    self.manifests.entry(store_id.clone()).or_default();
 
-                recording_ids.push(recording_id);
                 manifest.append(
                     &chunk_batch,
                     byte_span_excluding_header,
@@ -170,14 +144,14 @@ impl FooterState {
                 )?;
             }
 
-            LogMsg::BlueprintActivationCommand(_) => {}
+            LogMsg::SetStoreInfo(_) | LogMsg::BlueprintActivationCommand(_) => {}
         }
 
         Ok(())
     }
 
     fn finish(self) -> Result<crate::RrdFooter, EncodeError> {
-        let manifests: Result<HashMap<StoreId, crate::RawRrdManifest>, _> = self
+        let manifests: HashMap<StoreId, crate::RawRrdManifest> = self
             .manifests
             .into_iter()
             .map(|(store_id, state)| {
@@ -186,11 +160,9 @@ impl FooterState {
                     .build(store_id.clone())
                     .map(|m| (store_id, m))
             })
-            .collect();
+            .try_collect()?;
 
-        Ok(crate::RrdFooter {
-            manifests: manifests?,
-        })
+        Ok(crate::RrdFooter { manifests })
     }
 }
 
@@ -351,10 +323,8 @@ impl<W: std::io::Write> Encoder<W> {
 
         let byte_size_excluding_header = n - crate::MessageHeader::ENCODED_SIZE_BYTES as u64;
 
-        let byte_span_excluding_header = re_span::Span {
-            start: byte_offset_excluding_header,
-            len: byte_size_excluding_header,
-        };
+        let byte_span_excluding_header =
+            re_span::Span::from_start_len(byte_offset_excluding_header, byte_size_excluding_header);
 
         Ok((n, byte_span_excluding_header))
     }

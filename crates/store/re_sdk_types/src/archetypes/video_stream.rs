@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -32,7 +33,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// TODO(#10422): [`archetypes::VideoFrameReference`][crate::archetypes::VideoFrameReference] does not yet work with [`archetypes::VideoStream`][crate::archetypes::VideoStream].
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, ::re_byte_size::SizeBytes)]
 pub struct VideoStream {
     /// The codec used to encode the video chunks.
     ///
@@ -93,11 +94,13 @@ impl VideoStream {
     /// The corresponding component is [`crate::components::VideoCodec`].
     #[inline]
     pub fn descriptor_codec() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.VideoStream".into()),
-            component: "VideoStream:codec".into(),
-            component_type: Some("rerun.components.VideoCodec".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.VideoStream".into()),
+                component: "VideoStream:codec".into(),
+                component_type: Some("rerun.components.VideoCodec".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::sample`].
@@ -105,11 +108,13 @@ impl VideoStream {
     /// The corresponding component is [`crate::components::VideoSample`].
     #[inline]
     pub fn descriptor_sample() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.VideoStream".into()),
-            component: "VideoStream:sample".into(),
-            component_type: Some("rerun.components.VideoSample".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.VideoStream".into()),
+                component: "VideoStream:sample".into(),
+                component_type: Some("rerun.components.VideoSample".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::is_keyframe`].
@@ -117,11 +122,13 @@ impl VideoStream {
     /// The corresponding component is [`crate::components::IsKeyframe`].
     #[inline]
     pub fn descriptor_is_keyframe() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.VideoStream".into()),
-            component: "VideoStream:is_keyframe".into(),
-            component_type: Some("rerun.components.IsKeyframe".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.VideoStream".into()),
+                component: "VideoStream:is_keyframe".into(),
+                component_type: Some("rerun.components.IsKeyframe".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::opacity`].
@@ -129,11 +136,13 @@ impl VideoStream {
     /// The corresponding component is [`crate::components::Opacity`].
     #[inline]
     pub fn descriptor_opacity() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.VideoStream".into()),
-            component: "VideoStream:opacity".into(),
-            component_type: Some("rerun.components.Opacity".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.VideoStream".into()),
+                component: "VideoStream:opacity".into(),
+                component_type: Some("rerun.components.Opacity".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::draw_order`].
@@ -141,11 +150,13 @@ impl VideoStream {
     /// The corresponding component is [`crate::components::DrawOrder`].
     #[inline]
     pub fn descriptor_draw_order() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.VideoStream".into()),
-            component: "VideoStream:draw_order".into(),
-            component_type: Some("rerun.components.DrawOrder".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.VideoStream".into()),
+                component: "VideoStream:draw_order".into(),
+                component_type: Some("rerun.components.DrawOrder".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -183,7 +194,10 @@ impl VideoStream {
 impl ::re_types_core::Archetype for VideoStream {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.archetypes.VideoStream".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.archetypes.VideoStream"
+        )
     }
 
     #[inline]
@@ -519,16 +533,5 @@ impl VideoStream {
     ) -> Self {
         self.draw_order = try_serialize_field(Self::descriptor_draw_order(), draw_order);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for VideoStream {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.codec.heap_size_bytes()
-            + self.sample.heap_size_bytes()
-            + self.is_keyframe.heap_size_bytes()
-            + self.opacity.heap_size_bytes()
-            + self.draw_order.heap_size_bytes()
     }
 }

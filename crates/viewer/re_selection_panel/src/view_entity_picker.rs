@@ -119,7 +119,6 @@ fn add_entities_ui(
     }
 }
 
-#[expect(clippy::too_many_arguments)]
 fn add_entities_tree_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,

@@ -30,7 +30,7 @@ color_scheme = [
 DESCRIPTION = """
 # Graphs
 This example shows various graph visualizations that you can create using Rerun.
-In this example, the node positions—and therefore the graph layout—are computed by Rerun internally using a force-based layout algorithm.
+In this example, the node positions — and therefore the graph layout — are computed by Rerun internally using a force-based layout algorithm.
 
 You can modify how these graphs look by changing the parameters of the force-based layout algorithm in the selection panel.
 

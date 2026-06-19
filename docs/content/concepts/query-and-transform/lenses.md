@@ -3,7 +3,8 @@ title: Lenses
 order: 400
 ---
 
-> **Note:** The Lenses API is currently experimental and may change in future releases.
+> [!NOTE]
+> The Lenses API is currently experimental and may change in future releases.
 
 Lenses transform data by extracting, reshaping, and rerouting components.
 They produce new component columns, entity paths, or timelines from existing data.
@@ -45,7 +46,7 @@ The following lens extracts the `.y` field from the struct as a [`Scalar`](../..
 
 snippet: concepts/lenses[derive_lens]
 
-See the full examples in [Rust](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/concepts/lenses.rs?speculative-link) and [Python](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/concepts/lenses.py?speculative-link).
+See the full examples in [Rust](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/concepts/lenses.rs) and [Python](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/concepts/lenses.py).
 
 When we apply the `extract_y` lens, we get the following resulting chunks.
 

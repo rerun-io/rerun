@@ -16,8 +16,8 @@ use re_ui::{
 use re_viewer_context::{
     BlueprintContext as _, ContainerId, Contents, DataQueryResult, DataResult,
     DataResultInteractionAddress, HoverHighlight, Item, RecommendedVisualizers, StoreViewContext,
-    SystemCommand, SystemCommandSender as _, TimeControlCommand, UiLayout, ViewContext, ViewId,
-    ViewStates, ViewSystemIdentifier, ViewerContext, VisualizerInstruction, VisualizerViewReport,
+    SystemCommand, SystemCommandSender as _, UiLayout, ViewContext, ViewId, ViewStates,
+    ViewSystemIdentifier, ViewerContext, VisualizerInstruction, VisualizerViewReport,
     contents_name_style, icon_for_container_kind,
 };
 use re_viewport_blueprint::ViewportBlueprint;
@@ -73,11 +73,6 @@ impl SelectionPanel {
                 },
                 ..Default::default()
             });
-
-        if ctx.time_ctrl.highlighted_range.is_some() {
-            // Always reset the VH highlight, and let the UI re-set it if needed.
-            ctx.send_time_commands([TimeControlCommand::ClearHighlightedRange]);
-        }
 
         panel.show_animated_inside(ui, expanded, |ui: &mut egui::Ui| {
             ui.panel_content(|ui| {
@@ -384,20 +379,18 @@ impl SelectionPanel {
                 self.view_selection_ui(ctx, ui, viewport, view_id, view_states);
             }
 
-            Item::DataResult(data_result) => {
-                if data_result.instance_path.is_all() {
-                    entity_selection_ui(
-                        ctx,
-                        ui,
-                        &data_result.instance_path.entity_path,
-                        viewport,
-                        &data_result.view_id,
-                        view_states,
-                    );
-                } else {
-                    // NOTE: not implemented when a single instance is selected
-                }
+            Item::DataResult(data_result) if data_result.instance_path.is_all() => {
+                // NOTE: not implemented when a single instance is selected
+                entity_selection_ui(
+                    ctx,
+                    ui,
+                    &data_result.instance_path.entity_path,
+                    viewport,
+                    &data_result.view_id,
+                    view_states,
+                );
             }
+
             _ => {}
         }
     }
@@ -450,6 +443,14 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
         clone_view_button_ui(ctx, ui, viewport, *view_id);
 
         if let Some(view) = viewport.view(view_id) {
+            if view.class(ctx.view_class_registry()).is_experimental() {
+                ui.add_space(6.0);
+                ui.info_label(
+                    "This view is experimental: its API, behavior, and on-disk format may change without notice.",
+                );
+                ui.add_space(8.0);
+            }
+
             ui.section_collapsing_header("Entity path filter")
                 .with_action_button(
                     &re_ui::icons::EDIT,
@@ -717,11 +718,11 @@ fn add_new_visualizer(
 
     // Build the updated list of active visualizer IDs.
     let active_visualizer_archetype = ActiveVisualizers::new(
-        existing_instructions
-            .iter()
-            .map(|v| &v.id)
-            .chain(std::iter::once(&new_instruction.id))
-            .map(|v| v.0),
+        std::iter::chain(
+            existing_instructions.iter().map(|v| &v.id),
+            std::iter::once(&new_instruction.id),
+        )
+        .map(|v| v.0),
     );
 
     // If this is the first time we persist ActiveVisualizers for this entity,

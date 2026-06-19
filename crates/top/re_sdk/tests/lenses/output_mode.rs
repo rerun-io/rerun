@@ -1,6 +1,7 @@
 #![expect(clippy::unwrap_used)]
 
 use arrow::array::{ListBuilder, StringBuilder};
+use itertools::Itertools as _;
 use re_chunk::{Chunk, ChunkId, TimeColumn, TimelineName};
 use re_log_types::EntityPathFilter;
 use re_sdk::lenses::{Lens, Lenses, OutputMode, Selector};
@@ -48,10 +49,7 @@ fn test_output_mode_forward_all() {
         .add_lens_with_filter(EntityPathFilter::parse_forgiving("matched/**"), lens);
 
     // Apply to matching chunk
-    let matching_results: Vec<_> = lenses
-        .apply(&matching_chunk)
-        .collect::<Result<_, _>>()
-        .unwrap();
+    let matching_results: Vec<_> = lenses.apply(&matching_chunk).try_collect().unwrap();
 
     // Should get the original chunk first, then the transformed chunk
     assert_eq!(matching_results.len(), 2);
@@ -62,10 +60,7 @@ fn test_output_mode_forward_all() {
     assert_eq!(matching_results[1].entity_path(), &"matched/output".into());
 
     // Apply to unmatched chunk
-    let unmatched_results: Vec<_> = lenses
-        .apply(&unmatched_chunk)
-        .collect::<Result<_, _>>()
-        .unwrap();
+    let unmatched_results: Vec<_> = lenses.apply(&unmatched_chunk).try_collect().unwrap();
 
     // Should get only the original chunk (no lens matched)
     assert_eq!(unmatched_results.len(), 1);
@@ -95,20 +90,14 @@ fn test_output_mode_forward_unmatched() {
         .add_lens_with_filter(EntityPathFilter::parse_forgiving("matched/**"), lens);
 
     // Apply to matching chunk (all components are matched, so no untouched remainder)
-    let matching_results: Vec<_> = lenses
-        .apply(&matching_chunk)
-        .collect::<Result<_, _>>()
-        .unwrap();
+    let matching_results: Vec<_> = lenses.apply(&matching_chunk).try_collect().unwrap();
 
     // Should get only the transformed chunk (no empty untouched remainder)
     assert_eq!(matching_results.len(), 1);
     assert_eq!(matching_results[0].entity_path(), &"matched/output".into());
 
     // Apply to unmatched chunk
-    let unmatched_results: Vec<_> = lenses
-        .apply(&unmatched_chunk)
-        .collect::<Result<_, _>>()
-        .unwrap();
+    let unmatched_results: Vec<_> = lenses.apply(&unmatched_chunk).try_collect().unwrap();
 
     // Should get the original chunk forwarded
     assert_eq!(unmatched_results.len(), 1);
@@ -138,20 +127,14 @@ fn test_output_mode_drop_unmatched() {
         .add_lens_with_filter(EntityPathFilter::parse_forgiving("matched/**"), lens);
 
     // Apply to matching chunk
-    let matching_results: Vec<_> = lenses
-        .apply(&matching_chunk)
-        .collect::<Result<_, _>>()
-        .unwrap();
+    let matching_results: Vec<_> = lenses.apply(&matching_chunk).try_collect().unwrap();
 
     // Should get only the transformed chunk
     assert_eq!(matching_results.len(), 1);
     assert_eq!(matching_results[0].entity_path(), &"matched/output".into());
 
     // Apply to unmatched chunk
-    let unmatched_results: Vec<_> = lenses
-        .apply(&unmatched_chunk)
-        .collect::<Result<_, _>>()
-        .unwrap();
+    let unmatched_results: Vec<_> = lenses.apply(&unmatched_chunk).try_collect().unwrap();
 
     // Should get nothing (unmatched data is dropped)
     assert_eq!(unmatched_results.len(), 0);

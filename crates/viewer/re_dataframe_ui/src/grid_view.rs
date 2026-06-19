@@ -1,6 +1,5 @@
 use std::str::FromStr as _;
 
-use ahash::HashSet;
 use egui::{Frame, RichText, Ui};
 
 use re_ui::egui_ext::card_layout::CardLayout;
@@ -36,7 +35,6 @@ struct CardConfig<'a> {
 /// Render the data as a card-based grid.
 ///
 /// Returns a list of flag toggle changes that need to be applied to the underlying data.
-#[expect(clippy::too_many_arguments)]
 pub fn grid_ui(
     ctx: &StoreViewContext<'_>,
     ui: &mut Ui,
@@ -49,7 +47,6 @@ pub fn grid_ui(
     num_table_rows: u64,
     flagging_enabled: bool,
 ) -> Vec<FlagChangeEvent> {
-    let mut already_requested_uris = HashSet::default();
     let mut flag_changes = Vec::new();
 
     // Blueprint fields are expected to be resolved upstream via `TableBlueprint::apply_heuristics`,
@@ -105,7 +102,6 @@ pub fn grid_ui(
                     ui,
                     view_renderer,
                     view_states,
-                    &mut already_requested_uris,
                     index as u64,
                     columns,
                     display_record_batches,
@@ -129,14 +125,12 @@ fn lookup_column(columns: &Columns<'_>, name: &str, kind: &str) -> Option<usize>
 /// Render the content of a single card for the given table row.
 ///
 /// This renders only the card interior — the frame is handled by [`CardLayout`].
-#[expect(clippy::too_many_arguments)]
 fn card_content_ui(
     ctx: &StoreViewContext<'_>,
     config: &CardConfig<'_>,
     ui: &mut Ui,
     view_renderer: Option<&RecordingPreviewRenderer<'_>>,
     view_states: &mut ViewStates,
-    already_requested_uris: &mut HashSet<re_uri::DatasetSegmentUri>,
     row_idx: u64,
     columns: &Columns<'_>,
     display_record_batches: &[DisplayRecordBatch],
@@ -214,6 +208,7 @@ fn card_content_ui(
         if let Some(renderer) = view_renderer
             && let Some(preview_column) = table_blueprint.segment_preview_column.as_deref()
         {
+            let preview_state = view_states.preview_state.get_or_insert_default();
             let (rect, _response) = ui.allocate_exact_size(
                 egui::vec2(ui.available_width(), PREVIEW_HEIGHT),
                 egui::Sense::hover(),
@@ -225,7 +220,7 @@ fn card_content_ui(
                 columns,
                 display_record_batches,
                 row_idx,
-                already_requested_uris,
+                &mut preview_state.requested_uris,
             );
 
             let mut child_ui = ui.new_child(
@@ -234,7 +229,14 @@ fn card_content_ui(
                     .layout(egui::Layout::left_to_right(egui::Align::Center)),
             );
 
-            renderer.show_preview(ctx.app_ctx, &mut child_ui, row_idx, recording, view_states);
+            renderer.show_preview(
+                ctx.app_ctx,
+                &mut child_ui,
+                row_idx,
+                card_hovered,
+                recording,
+                view_states,
+            );
         }
 
         ui.horizontal_wrapped(|ui| {

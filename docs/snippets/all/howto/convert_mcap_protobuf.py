@@ -53,8 +53,14 @@ def set_mcap_message_times(rec: rr.RecordingStream, msg: McapMessage) -> None:
     log_time_ns: when the message was logged by the recorder
     publish_time_ns: when the message was published
     """
-    rec.set_time(timeline="message_log_time", timestamp=np.datetime64(msg.log_time_ns, "ns"))
-    rec.set_time(timeline="message_publish_time", timestamp=np.datetime64(msg.publish_time_ns, "ns"))
+    rec.set_time(
+        timeline="message_log_time",
+        timestamp=np.datetime64(msg.log_time_ns, "ns"),
+    )
+    rec.set_time(
+        timeline="message_publish_time",
+        timestamp=np.datetime64(msg.publish_time_ns, "ns"),
+    )
 
 
 # endregion: set_message_times
@@ -74,9 +80,18 @@ def transform_msg(rec: rr.RecordingStream, msg: McapMessage) -> bool:
         child = transform.child_frame_id
 
         rr_transform = rr.Transform3D(
-            translation=(transform.translation.x, transform.translation.y, transform.translation.z),
+            translation=(
+                transform.translation.x,
+                transform.translation.y,
+                transform.translation.z,
+            ),
             quaternion=rr.Quaternion(
-                xyzw=[transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w]
+                xyzw=[
+                    transform.rotation.x,
+                    transform.rotation.y,
+                    transform.rotation.z,
+                    transform.rotation.w,
+                ]
             ),
             parent_frame=parent,
             child_frame=child,
@@ -105,8 +120,9 @@ def camera_calibration(rec: rr.RecordingStream, msg: McapMessage) -> bool:
     _logged_static_calibrations.add(msg.topic)
 
     info = msg.proto_msg
-    # Use from_fields to set parent_frame directly on the Pinhole
-    # This connects the pinhole to the named transform frame without needing a separate Transform3D
+    # Use from_fields to set parent_frame directly on the Pinhole.
+    # This connects the pinhole to the named transform frame without needing
+    # a separate Transform3D
     camera_info = rr.Pinhole.from_fields(
         image_from_camera=info.K,
         resolution=(info.width, info.height),
@@ -148,7 +164,9 @@ def implicit_convert(rec: rr.RecordingStream, msg: McapMessage) -> bool:
             components=contents,
         )
     except Exception as e:
-        raise ValueError(f"{msg.proto_msg.DESCRIPTOR.full_name} {contents}") from e
+        raise ValueError(
+            f"{msg.proto_msg.DESCRIPTOR.full_name} {contents}"
+        ) from e
 
     rec.log(msg.topic, dynamic_archetype, strict=True)
     return True
@@ -156,7 +174,9 @@ def implicit_convert(rec: rr.RecordingStream, msg: McapMessage) -> bool:
 
 # --- Main execution ---
 
-parser = argparse.ArgumentParser(description="Convert MCAP Protobuf messages to Rerun format.")
+parser = argparse.ArgumentParser(
+    description="Convert MCAP Protobuf messages to Rerun format."
+)
 parser.add_argument("mcap_file", help="Path to the MCAP file to convert")
 parser.add_argument(
     "--urdf-dir",
@@ -182,7 +202,12 @@ with rr.RecordingStream("rerun_example_convert_mcap_protobuf") as rec:
     # region: conversion_loop
     with open(path_to_mcap, "rb") as f:
         reader = make_reader(f, decoder_factories=[DecoderFactory()])
-        for _schema, channel, message, proto_msg in reader.iter_decoded_messages():
+        for (
+            _schema,
+            channel,
+            message,
+            proto_msg,
+        ) in reader.iter_decoded_messages():
             msg = McapMessage(
                 topic=channel.topic,
                 log_time_ns=message.log_time,
@@ -197,5 +222,8 @@ with rr.RecordingStream("rerun_example_convert_mcap_protobuf") as rec:
                 continue
             if implicit_convert(rec, msg):
                 continue
-            print(f"Unhandled message on topic {msg.topic} of type {msg.proto_msg.DESCRIPTOR.name}")
+            print(
+                f"Unhandled message on topic {msg.topic} "
+                f"of type {msg.proto_msg.DESCRIPTOR.name}"
+            )
 # endregion: conversion_loop

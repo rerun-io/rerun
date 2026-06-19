@@ -44,7 +44,7 @@ Right-click any item for a context menu with additional operations. See [Configu
 
 ### Data blueprints
 
-Entities shown in the blueprint panel refer to their *data blueprints*—the entity plus its associated blueprint settings. Changes made here apply only to the specific view where the entity appears.
+Entities shown in the blueprint panel refer to their *data blueprints* — the entity plus its associated blueprint settings. Changes made here apply only to the specific view where the entity appears.
 
 ### Groups
 

@@ -39,7 +39,7 @@ use std::fmt::{Display, Formatter};
 
 use itertools::Itertools as _;
 use re_entity_db::InstancePath;
-use re_log_types::EntityPath;
+use re_log_types::{ComponentPath, EntityPath};
 use re_ui::UiExt as _;
 
 use crate::{Contents, DataResultInteractionAddress, Item, ItemCollection};
@@ -52,6 +52,9 @@ pub enum DragAndDropPayload {
     /// The dragged content is made of entities.
     Entities { entities: Vec<EntityPath> },
 
+    /// The dragged content is made of components.
+    Components { component_paths: Vec<ComponentPath> },
+
     /// The dragged content is made of a collection of [`Item`]s we do know how to handle.
     Invalid,
 }
@@ -62,6 +65,8 @@ impl DragAndDropPayload {
             Self::Contents { contents }
         } else if let Some(entities) = try_item_collection_to_entities(selected_items) {
             Self::Entities { entities }
+        } else if let Some(component_paths) = try_item_collection_to_components(selected_items) {
+            Self::Components { component_paths }
         } else {
             Self::Invalid
         }
@@ -87,6 +92,16 @@ fn try_item_collection_to_entities(items: &ItemCollection) -> Option<Vec<EntityP
         .collect()
 }
 
+fn try_item_collection_to_components(items: &ItemCollection) -> Option<Vec<ComponentPath>> {
+    items
+        .iter()
+        .map(|(item, _)| match item {
+            Item::ComponentPath(component_path) => Some(component_path.clone()),
+            _ => None,
+        })
+        .collect()
+}
+
 impl std::fmt::Display for DragAndDropPayload {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let mut item_counter = ItemCounter::default();
@@ -101,6 +116,12 @@ impl std::fmt::Display for DragAndDropPayload {
             Self::Entities { entities } => {
                 for entity in entities {
                     item_counter.add(&Item::InstancePath(InstancePath::from(entity.clone())));
+                }
+            }
+
+            Self::Components { component_paths } => {
+                for component_path in component_paths {
+                    item_counter.add(&Item::ComponentPath(component_path.clone()));
                 }
             }
 
@@ -129,8 +150,10 @@ pub enum DragAndDropFeedback {
 
     /// The payload type is correct, but it's content cannot be accepted by the current drop location.
     ///
-    /// For example, a view might reject an entity because it already contains it.
-    Reject,
+    /// For example, a view might reject an entity because it already contains it. The optional
+    /// string is a short, user-facing reason; when present, it is shown next to the cursor with a
+    /// warning icon. When `None`, the pill is rendered as normal (just a "no-drop" cursor).
+    Reject(Option<&'static str>),
 }
 
 /// Helper to handle drag-and-drop operations.
@@ -185,12 +208,10 @@ impl DragAndDropManager {
         if let Some(payload) = egui::DragAndDrop::payload::<DragAndDropPayload>(ctx)
             && let Some(pointer_pos) = ctx.pointer_interact_pos()
         {
-            let icon = match payload.as_ref() {
-                DragAndDropPayload::Contents { .. } => &re_ui::icons::DND_MOVE,
-                DragAndDropPayload::Entities { .. } => &re_ui::icons::DND_ADD_TO_EXISTING,
-                // don't draw anything for invalid selection
-                DragAndDropPayload::Invalid => return,
-            };
+            // Don't draw anything for invalid selection.
+            if matches!(payload.as_ref(), DragAndDropPayload::Invalid) {
+                return;
+            }
 
             let layer_id = egui::LayerId::new(
                 egui::Order::Tooltip,
@@ -215,11 +236,26 @@ impl DragAndDropManager {
                     ctx.set_cursor_icon(egui::CursorIcon::Grabbing);
                     ui.set_opacity(0.5);
                 }
-                DragAndDropFeedback::Reject => {
+                DragAndDropFeedback::Reject(_) => {
                     ctx.set_cursor_icon(egui::CursorIcon::NoDrop);
                     ui.set_opacity(0.5);
                 }
             }
+
+            // On reject, show the reason
+            let payload_text = payload.to_string();
+            let (icon, text) = if let DragAndDropFeedback::Reject(Some(reason)) = feedback {
+                (&re_ui::icons::WARNING, reason)
+            } else {
+                let icon = match payload.as_ref() {
+                    DragAndDropPayload::Contents { .. } => &re_ui::icons::DND_MOVE,
+                    DragAndDropPayload::Entities { .. } | DragAndDropPayload::Components { .. } => {
+                        &re_ui::icons::DND_ADD_TO_EXISTING
+                    }
+                    DragAndDropPayload::Invalid => return,
+                };
+                (icon, payload_text.as_str())
+            };
 
             let payload_is_currently_droppable = feedback == DragAndDropFeedback::Accept;
             let response = drag_pill_frame(ui.tokens(), payload_is_currently_droppable)
@@ -230,7 +266,7 @@ impl DragAndDropManager {
                         ui.spacing_mut().item_spacing.x = 2.0;
 
                         ui.small_icon(icon, Some(text_color));
-                        ui.label(egui::RichText::new(payload.to_string()).color(text_color));
+                        ui.label(egui::RichText::new(text).color(text_color));
                     });
                 })
                 .response;

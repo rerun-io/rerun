@@ -20,7 +20,10 @@ pub struct EntityDepthOffsets {
 
 impl IdentifiedViewSystem for EntityDepthOffsets {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "EntityDepthOffsets".into()
+        re_viewer_context::external::re_string_interner::intern_static!(
+            re_viewer_context::ViewSystemIdentifier,
+            "EntityDepthOffsets"
+        )
     }
 }
 

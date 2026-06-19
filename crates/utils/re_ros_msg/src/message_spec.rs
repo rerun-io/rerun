@@ -1,3 +1,4 @@
+use itertools::Itertools as _;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -41,6 +42,15 @@ pub struct MessageSpecification {
 
     /// Compile-time constants defined alongside fields.
     pub constants: Vec<Constant>,
+}
+
+/// Returns the ROS package for a message name.
+///
+/// Relative message references resolve within the same package as the containing message.
+/// The package is the first path segment in names like `pkg/msg/Type` or `pkg/Type`.
+/// See <https://github.com/ros2/design/blob/gh-pages/articles/110_interface_definition.md>.
+pub fn message_package(name: &str) -> Option<&str> {
+    name.split_once('/').map(|(package, _)| package)
 }
 
 impl MessageSpecification {
@@ -271,11 +281,23 @@ pub enum BuiltInType {
     WString(Option<usize>), // Optional max length for bounded wide strings.
 }
 
+/// A ROS message field type parsed from a `.msg` definition.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Type {
+    /// A primitive ROS field type, such as `int32`, `float64`, or `string`.
     BuiltIn(BuiltInType),
-    Complex(ComplexType), // Possibly qualified with package path, e.g. `pkg/Type
-    Array { ty: Box<Self>, size: ArraySize },
+
+    /// A message type reference, either relative (`Header`) or fully-qualified (`std_msgs/Header`).
+    Complex(ComplexType),
+
+    /// A fixed-size, bounded, or unbounded array of another field type.
+    Array {
+        /// The element type stored by the array.
+        ty: Box<Self>,
+
+        /// The declared array size constraint.
+        size: ArraySize,
+    },
 }
 
 impl Type {
@@ -340,7 +362,10 @@ impl Type {
     }
 }
 
-/// A complex (non-primitive) type, possibly qualified with a package path.
+/// A complex (non-primitive) message type reference.
+///
+/// ROS resolves relative message references within the same package as the containing message.
+/// See <https://github.com/ros2/design/blob/gh-pages/articles/110_interface_definition.md>.
 ///
 /// Examples:
 /// ```text
@@ -495,7 +520,7 @@ impl Literal {
                         .map(|e| e.trim())
                         .filter(|e| !e.is_empty())
                         .map(|elem_str| Self::parse(elem_str, elem_ty))
-                        .collect::<Result<Vec<_>, ParseError>>()?;
+                        .try_collect()?;
 
                     Ok(Self::Array(elems))
                 }

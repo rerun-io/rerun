@@ -38,3 +38,18 @@ pytest -c rerun_py/pyproject.toml rerun_py/tests/e2e_redap_tests -m "not local_o
 
 Note: When using `--resource-prefix` with remote storage (s3://, gs://, etc.), local-only tests are automatically skipped.
 
+## CI
+
+In CI, this suite runs against two server targets:
+
+| Target                   | Profile      | Triggered on                |
+| ------------------------ | ------------ | --------------------------- |
+| OSS `re_server` (Docker) | `dpf-docker` | Every PR and push to `main` |
+| Rerun Hub (cloud stack)  | `dpf-stack`  | Pushes to `main` only       |
+
+Tests marked `@pytest.mark.local_only` are skipped in both CI profiles (they require writing local `.rrd` files).
+Tests marked `@pytest.mark.cloud_only` only run against cloud stacks (`dpf-stack`).
+
+## Related test suites
+
+There are more e2e tests in [`re_redap_tests`](../../../crates/store/re_redap_tests/README.md), written in Rust.

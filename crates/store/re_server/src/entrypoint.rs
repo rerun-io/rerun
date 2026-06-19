@@ -4,6 +4,7 @@ use std::str::FromStr;
 
 use anyhow::Context as _;
 use re_protos::EntryName;
+use re_protos::common::v1alpha1::ext;
 #[cfg(unix)]
 use tokio::signal::unix::{SignalKind, signal};
 #[cfg(windows)]
@@ -139,7 +140,7 @@ impl Args {
                     .with_rrds_as_dataset(
                         name,
                         paths,
-                        re_protos::common::v1alpha1::ext::IfDuplicateBehavior::Error,
+                        ext::IfDuplicateBehavior::Error,
                         crate::OnError::Continue,
                     )
                     .await?;
@@ -149,7 +150,7 @@ impl Args {
                 builder = builder
                     .with_directory_as_dataset(
                         dataset_prefix,
-                        re_protos::common::v1alpha1::ext::IfDuplicateBehavior::Error,
+                        ext::IfDuplicateBehavior::Error,
                         crate::OnError::Continue,
                     )
                     .await?;
@@ -162,7 +163,7 @@ impl Args {
                         builder = builder
                             .with_directory_as_table(
                                 table,
-                                re_protos::common::v1alpha1::ext::IfDuplicateBehavior::Error,
+                                ext::IfDuplicateBehavior::Error,
                             )
                             .await?;
                     } else {

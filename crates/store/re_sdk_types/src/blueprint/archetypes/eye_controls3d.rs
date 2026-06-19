@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -26,7 +27,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// This configures the camera through which the 3D scene is viewed.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, ::re_byte_size::SizeBytes)]
 pub struct EyeControls3D {
     /// The kind of the eye for the spatial 3D view.
     ///
@@ -74,11 +75,13 @@ impl EyeControls3D {
     /// The corresponding component is [`crate::blueprint::components::Eye3DKind`].
     #[inline]
     pub fn descriptor_kind() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.EyeControls3D".into()),
-            component: "EyeControls3D:kind".into(),
-            component_type: Some("rerun.blueprint.components.Eye3DKind".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.EyeControls3D".into()),
+                component: "EyeControls3D:kind".into(),
+                component_type: Some("rerun.blueprint.components.Eye3DKind".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::position`].
@@ -86,11 +89,13 @@ impl EyeControls3D {
     /// The corresponding component is [`crate::components::Position3D`].
     #[inline]
     pub fn descriptor_position() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.EyeControls3D".into()),
-            component: "EyeControls3D:position".into(),
-            component_type: Some("rerun.components.Position3D".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.EyeControls3D".into()),
+                component: "EyeControls3D:position".into(),
+                component_type: Some("rerun.components.Position3D".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::look_target`].
@@ -98,11 +103,13 @@ impl EyeControls3D {
     /// The corresponding component is [`crate::components::Position3D`].
     #[inline]
     pub fn descriptor_look_target() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.EyeControls3D".into()),
-            component: "EyeControls3D:look_target".into(),
-            component_type: Some("rerun.components.Position3D".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.EyeControls3D".into()),
+                component: "EyeControls3D:look_target".into(),
+                component_type: Some("rerun.components.Position3D".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::eye_up`].
@@ -110,11 +117,13 @@ impl EyeControls3D {
     /// The corresponding component is [`crate::components::Vector3D`].
     #[inline]
     pub fn descriptor_eye_up() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.EyeControls3D".into()),
-            component: "EyeControls3D:eye_up".into(),
-            component_type: Some("rerun.components.Vector3D".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.EyeControls3D".into()),
+                component: "EyeControls3D:eye_up".into(),
+                component_type: Some("rerun.components.Vector3D".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::speed`].
@@ -122,11 +131,13 @@ impl EyeControls3D {
     /// The corresponding component is [`crate::components::LinearSpeed`].
     #[inline]
     pub fn descriptor_speed() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.EyeControls3D".into()),
-            component: "EyeControls3D:speed".into(),
-            component_type: Some("rerun.components.LinearSpeed".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.EyeControls3D".into()),
+                component: "EyeControls3D:speed".into(),
+                component_type: Some("rerun.components.LinearSpeed".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::tracking_entity`].
@@ -134,11 +145,13 @@ impl EyeControls3D {
     /// The corresponding component is [`crate::components::EntityPath`].
     #[inline]
     pub fn descriptor_tracking_entity() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.EyeControls3D".into()),
-            component: "EyeControls3D:tracking_entity".into(),
-            component_type: Some("rerun.components.EntityPath".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.EyeControls3D".into()),
+                component: "EyeControls3D:tracking_entity".into(),
+                component_type: Some("rerun.components.EntityPath".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::spin_speed`].
@@ -146,11 +159,13 @@ impl EyeControls3D {
     /// The corresponding component is [`crate::blueprint::components::AngularSpeed`].
     #[inline]
     pub fn descriptor_spin_speed() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.EyeControls3D".into()),
-            component: "EyeControls3D:spin_speed".into(),
-            component_type: Some("rerun.blueprint.components.AngularSpeed".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.EyeControls3D".into()),
+                component: "EyeControls3D:spin_speed".into(),
+                component_type: Some("rerun.blueprint.components.AngularSpeed".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -194,7 +209,10 @@ impl EyeControls3D {
 impl ::re_types_core::Archetype for EyeControls3D {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.blueprint.archetypes.EyeControls3D".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.blueprint.archetypes.EyeControls3D"
+        )
     }
 
     #[inline]
@@ -421,18 +439,5 @@ impl EyeControls3D {
     ) -> Self {
         self.spin_speed = try_serialize_field(Self::descriptor_spin_speed(), [spin_speed]);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for EyeControls3D {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.kind.heap_size_bytes()
-            + self.position.heap_size_bytes()
-            + self.look_target.heap_size_bytes()
-            + self.eye_up.heap_size_bytes()
-            + self.speed.heap_size_bytes()
-            + self.tracking_entity.heap_size_bytes()
-            + self.spin_speed.heap_size_bytes()
     }
 }

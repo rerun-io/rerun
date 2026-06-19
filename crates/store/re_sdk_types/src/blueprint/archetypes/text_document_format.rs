@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -26,7 +27,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// These options only apply to plain text documents and have no effect on Markdown documents.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, ::re_byte_size::SizeBytes)]
 pub struct TextDocumentFormat {
     /// Whether to use a monospace font for the document body.
     ///
@@ -45,11 +46,13 @@ impl TextDocumentFormat {
     /// The corresponding component is [`crate::blueprint::components::Enabled`].
     #[inline]
     pub fn descriptor_monospace() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.TextDocumentFormat".into()),
-            component: "TextDocumentFormat:monospace".into(),
-            component_type: Some("rerun.blueprint.components.Enabled".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.TextDocumentFormat".into()),
+                component: "TextDocumentFormat:monospace".into(),
+                component_type: Some("rerun.blueprint.components.Enabled".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::word_wrap`].
@@ -57,11 +60,13 @@ impl TextDocumentFormat {
     /// The corresponding component is [`crate::blueprint::components::Enabled`].
     #[inline]
     pub fn descriptor_word_wrap() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.TextDocumentFormat".into()),
-            component: "TextDocumentFormat:word_wrap".into(),
-            component_type: Some("rerun.blueprint.components.Enabled".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.TextDocumentFormat".into()),
+                component: "TextDocumentFormat:word_wrap".into(),
+                component_type: Some("rerun.blueprint.components.Enabled".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -95,7 +100,10 @@ impl TextDocumentFormat {
 impl ::re_types_core::Archetype for TextDocumentFormat {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.blueprint.archetypes.TextDocumentFormat".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.blueprint.archetypes.TextDocumentFormat"
+        )
     }
 
     #[inline]
@@ -214,12 +222,5 @@ impl TextDocumentFormat {
     ) -> Self {
         self.word_wrap = try_serialize_field(Self::descriptor_word_wrap(), [word_wrap]);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for TextDocumentFormat {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.monospace.heap_size_bytes() + self.word_wrap.heap_size_bytes()
     }
 }

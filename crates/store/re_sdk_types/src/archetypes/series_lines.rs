@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -35,7 +36,9 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// ### Line series
 /// ```ignore
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_series_line_style").spawn()?;
+///     let rec =
+///         rerun::RecordingStreamBuilder::new("rerun_example_series_line_style")
+///             .spawn()?;
 ///
 ///     // Set up plot styling:
 ///     // They are logged static as they don't change over time and apply to all timelines.
@@ -81,7 +84,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/series_line_style/d2616d98b1e46bdb85849b8669154fdf058e3453/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, ::re_byte_size::SizeBytes)]
 pub struct SeriesLines {
     /// Color for the corresponding series.
     ///
@@ -130,11 +133,13 @@ impl SeriesLines {
     /// The corresponding component is [`crate::components::Color`].
     #[inline]
     pub fn descriptor_colors() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.SeriesLines".into()),
-            component: "SeriesLines:colors".into(),
-            component_type: Some("rerun.components.Color".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.SeriesLines".into()),
+                component: "SeriesLines:colors".into(),
+                component_type: Some("rerun.components.Color".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::widths`].
@@ -142,11 +147,13 @@ impl SeriesLines {
     /// The corresponding component is [`crate::components::StrokeWidth`].
     #[inline]
     pub fn descriptor_widths() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.SeriesLines".into()),
-            component: "SeriesLines:widths".into(),
-            component_type: Some("rerun.components.StrokeWidth".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.SeriesLines".into()),
+                component: "SeriesLines:widths".into(),
+                component_type: Some("rerun.components.StrokeWidth".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::names`].
@@ -154,11 +161,13 @@ impl SeriesLines {
     /// The corresponding component is [`crate::components::Name`].
     #[inline]
     pub fn descriptor_names() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.SeriesLines".into()),
-            component: "SeriesLines:names".into(),
-            component_type: Some("rerun.components.Name".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.SeriesLines".into()),
+                component: "SeriesLines:names".into(),
+                component_type: Some("rerun.components.Name".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::visible_series`].
@@ -166,11 +175,13 @@ impl SeriesLines {
     /// The corresponding component is [`crate::components::Visible`].
     #[inline]
     pub fn descriptor_visible_series() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.SeriesLines".into()),
-            component: "SeriesLines:visible_series".into(),
-            component_type: Some("rerun.components.Visible".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.SeriesLines".into()),
+                component: "SeriesLines:visible_series".into(),
+                component_type: Some("rerun.components.Visible".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::aggregation_policy`].
@@ -178,11 +189,13 @@ impl SeriesLines {
     /// The corresponding component is [`crate::components::AggregationPolicy`].
     #[inline]
     pub fn descriptor_aggregation_policy() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.SeriesLines".into()),
-            component: "SeriesLines:aggregation_policy".into(),
-            component_type: Some("rerun.components.AggregationPolicy".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.SeriesLines".into()),
+                component: "SeriesLines:aggregation_policy".into(),
+                component_type: Some("rerun.components.AggregationPolicy".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::interpolation_mode`].
@@ -190,11 +203,13 @@ impl SeriesLines {
     /// The corresponding component is [`crate::components::InterpolationMode`].
     #[inline]
     pub fn descriptor_interpolation_mode() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.SeriesLines".into()),
-            component: "SeriesLines:interpolation_mode".into(),
-            component_type: Some("rerun.components.InterpolationMode".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.SeriesLines".into()),
+                component: "SeriesLines:interpolation_mode".into(),
+                component_type: Some("rerun.components.InterpolationMode".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -236,7 +251,10 @@ impl SeriesLines {
 impl ::re_types_core::Archetype for SeriesLines {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.archetypes.SeriesLines".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.archetypes.SeriesLines"
+        )
     }
 
     #[inline]
@@ -562,17 +580,5 @@ impl SeriesLines {
         self.interpolation_mode =
             try_serialize_field(Self::descriptor_interpolation_mode(), interpolation_mode);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for SeriesLines {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.colors.heap_size_bytes()
-            + self.widths.heap_size_bytes()
-            + self.names.heap_size_bytes()
-            + self.visible_series.heap_size_bytes()
-            + self.aggregation_policy.heap_size_bytes()
-            + self.interpolation_mode.heap_size_bytes()
     }
 }

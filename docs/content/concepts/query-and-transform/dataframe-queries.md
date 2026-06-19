@@ -24,13 +24,13 @@ Dataframe queries can be used in two contexts:
 
 Let's use an example to illustrate how dataframe queries work.
 
-Dataframe queries run against datasets stored on a [Data Platform](../how-does-rerun-work.md#data-platform).
+Dataframe queries run against datasets stored on a [catalog server](../how-does-rerun-work.md#catalog-server).
 We can create a demo recording and load it into a temporary local catalog using the following code:
 
 snippet: concepts/query-and-transform/dataframe_query_example[setup]
 
 
-We can then perform a dataframe query (against the local open-source Data Platform included in Rerun):
+We can then perform a dataframe query (against the local open-source catalog server included in Rerun):
 
 snippet: concepts/query-and-transform/dataframe_query_example[query]
 
@@ -63,38 +63,16 @@ This should produce an output similar to:
 ```
 
 Let's unpack what happened here:
-- **Catalog required**: We use `rr.server.Server()` to spin up a temporary local catalog. In production, you might connect to a Rerun Data Platform deployment instead. We then obtain the dataset to be queried from the catalog.
+- **Catalog required**: We use `rr.server.Server()` to spin up a temporary local catalog. In production, you might connect to a Rerun Hub deployment instead. We then obtain the dataset to be queried from the catalog.
 - **Content filtering**: The `filter_contents()` method restricts the scope of the query to specific entities. This affects which columns are returned, but may also change which rows are returned since rows are only produced where at least one filtered column has data (see [How are rows produced?](#how-are-rows-produced-by-dataframe-queries)).
 - **Reader produces a lazy dataframe**: The `reader(index=…)` method returns a [DataFusion](https://datafusion.apache.org/) dataframe. The `index` parameter specifies which timeline drives row generation: a row is produced for each unique value of this index where data exists. The returned dataframe doesn't execute until it is collected.
 - **Filtering/aggregation/joining/etc.**: The standard suite of dataframe operations is provided by DataFusion. Here we use `filter()` to filter rows based on the data. Again, these are lazy operations that only build a query plan.
 - **Execution**: The `print(df)` implicitly executes the dataframe's query plan and returns the final result. The same would happen when converting to dataframe for other frameworks (Pandas, Polars, PyArrow, etc.).
 
-```d2
-direction: down
-
-Dataset: {
-  shape: cylinder
-}
-
-view: {
-  label: "Dataset view"
-}
-
-DataFrame: {
-  label: "DataFusion DataFrame"
-}
-
-Result: {
-  label: "Materialized rows\n(Arrow RecordBatch)"
-  shape: page
-}
-
-
-Dataset -> view: "filter_contents()\nfilter_segments()"
-Dataset -> DataFrame: "reader()"
-view -> DataFrame: "reader()"
-DataFrame -> Result: "collect()"
-```
+<div class="d2-diagram">
+  <img class="d2-dark" src="https://static.rerun.io/da79987875a81bbabf1ab9f25c869dc7bdc6dc52_d2.svg" alt="">
+  <img class="d2-light" src="https://static.rerun.io/eb4c2e89434a4a61da75d4bdc0de2d2f08c9d873_d2-light.svg" alt="">
+</div>
 
 
 ## FAQ

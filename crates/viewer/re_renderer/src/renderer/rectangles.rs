@@ -530,8 +530,8 @@ impl RectangleDrawData {
         );
 
         let mut instances = Vec::with_capacity(rectangles.len());
-        for ((rectangle, uniform_buffer), cluster_info) in
-            izip!(rectangles, uniform_buffer_bindings).zip(cluster_infos)
+        for (rectangle, uniform_buffer, cluster_info) in
+            izip!(rectangles, uniform_buffer_bindings, cluster_infos)
         {
             let texture = &rectangle.colormapped_texture.texture;
             let texture_format = texture.creation_desc.format;

@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -35,13 +36,17 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// #![expect(clippy::cast_possible_wrap)]
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_transform3d_hierarchy").spawn()?;
+///     let rec = rerun::RecordingStreamBuilder::new(
+///         "rerun_example_transform3d_hierarchy",
+///     )
+///     .spawn()?;
 ///
 ///     rec.set_time_sequence("time", 0);
 ///     rec.log(
 ///         "red_box",
 ///         &[
-///             &rerun::Boxes3D::from_half_sizes([(0.5, 0.5, 0.5)]).with_colors([(255, 0, 0)])
+///             &rerun::Boxes3D::from_half_sizes([(0.5, 0.5, 0.5)])
+///                 .with_colors([(255, 0, 0)])
 ///                 as &dyn rerun::AsComponents,
 ///             // Use Transform3D to place the box, so we actually change the underlying coordinate frame and not just the box's pose.
 ///             &rerun::Transform3D::from_translation([2.0, 0.0, 0.0]),
@@ -50,7 +55,8 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///     rec.log(
 ///         "blue_box",
 ///         &[
-///             &rerun::Boxes3D::from_half_sizes([(0.5, 0.5, 0.5)]).with_colors([(0, 0, 255)])
+///             &rerun::Boxes3D::from_half_sizes([(0.5, 0.5, 0.5)])
+///                 .with_colors([(0, 0, 255)])
 ///                 as &dyn rerun::AsComponents,
 ///             // Use Transform3D to place the box, so we actually change the underlying coordinate frame and not just the box's pose.
 ///             &rerun::Transform3D::from_translation([-2.0, 0.0, 0.0]),
@@ -62,7 +68,8 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///     )?;
 ///
 ///     // Change where the point is located by cycling through its coordinate frame.
-///     for (t, frame_id) in ["tf#/red_box", "tf#/blue_box"].into_iter().enumerate() {
+///     for (t, frame_id) in ["tf#/red_box", "tf#/blue_box"].into_iter().enumerate()
+///     {
 ///         rec.set_time_sequence("time", t as i64 + 1); // leave it untouched at t==0.
 ///         rec.log("point", &rerun::CoordinateFrame::new(frame_id))?;
 ///     }
@@ -79,7 +86,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/coordinate_frame_builtin_frame/71f941f35cf73c299c6ea7fbc4487a140db8e8f8/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug, PartialEq, Default)]
+#[derive(Clone, Debug, PartialEq, Default, ::re_byte_size::SizeBytes)]
 pub struct CoordinateFrame {
     /// The coordinate frame to use for the current entity.
     ///
@@ -93,11 +100,13 @@ impl CoordinateFrame {
     /// The corresponding component is [`crate::components::TransformFrameId`].
     #[inline]
     pub fn descriptor_frame() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.CoordinateFrame".into()),
-            component: "CoordinateFrame:frame".into(),
-            component_type: Some("rerun.components.TransformFrameId".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.CoordinateFrame".into()),
+                component: "CoordinateFrame:frame".into(),
+                component_type: Some("rerun.components.TransformFrameId".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -121,7 +130,10 @@ impl CoordinateFrame {
 impl ::re_types_core::Archetype for CoordinateFrame {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.archetypes.CoordinateFrame".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.archetypes.CoordinateFrame"
+        )
     }
 
     #[inline]
@@ -258,12 +270,5 @@ impl CoordinateFrame {
     ) -> Self {
         self.frame = try_serialize_field(Self::descriptor_frame(), frame);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for CoordinateFrame {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.frame.heap_size_bytes()
     }
 }

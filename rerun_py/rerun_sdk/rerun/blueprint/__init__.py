@@ -66,7 +66,7 @@ from .views import (
     MapView as MapView,
     Spatial2DView as Spatial2DView,
     Spatial3DView as Spatial3DView,
-    StatusView as StatusView,
+    StateTimelineView as StateTimelineView,
     TensorView as TensorView,
     TextDocumentView as TextDocumentView,
     TextLogView as TextLogView,

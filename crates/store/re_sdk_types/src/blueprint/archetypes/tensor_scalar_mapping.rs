@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -24,7 +25,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Archetype**: Configures how tensor scalars are mapped to color.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, ::re_byte_size::SizeBytes)]
 pub struct TensorScalarMapping {
     /// Filter used when zooming in on the tensor.
     ///
@@ -50,11 +51,13 @@ impl TensorScalarMapping {
     /// The corresponding component is [`crate::components::MagnificationFilter`].
     #[inline]
     pub fn descriptor_mag_filter() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.TensorScalarMapping".into()),
-            component: "TensorScalarMapping:mag_filter".into(),
-            component_type: Some("rerun.components.MagnificationFilter".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.TensorScalarMapping".into()),
+                component: "TensorScalarMapping:mag_filter".into(),
+                component_type: Some("rerun.components.MagnificationFilter".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::colormap`].
@@ -62,11 +65,13 @@ impl TensorScalarMapping {
     /// The corresponding component is [`crate::components::Colormap`].
     #[inline]
     pub fn descriptor_colormap() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.TensorScalarMapping".into()),
-            component: "TensorScalarMapping:colormap".into(),
-            component_type: Some("rerun.components.Colormap".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.TensorScalarMapping".into()),
+                component: "TensorScalarMapping:colormap".into(),
+                component_type: Some("rerun.components.Colormap".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::gamma`].
@@ -74,11 +79,13 @@ impl TensorScalarMapping {
     /// The corresponding component is [`crate::components::GammaCorrection`].
     #[inline]
     pub fn descriptor_gamma() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.TensorScalarMapping".into()),
-            component: "TensorScalarMapping:gamma".into(),
-            component_type: Some("rerun.components.GammaCorrection".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.TensorScalarMapping".into()),
+                component: "TensorScalarMapping:gamma".into(),
+                component_type: Some("rerun.components.GammaCorrection".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -114,7 +121,10 @@ impl TensorScalarMapping {
 impl ::re_types_core::Archetype for TensorScalarMapping {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.blueprint.archetypes.TensorScalarMapping".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.blueprint.archetypes.TensorScalarMapping"
+        )
     }
 
     #[inline]
@@ -252,14 +262,5 @@ impl TensorScalarMapping {
     pub fn with_gamma(mut self, gamma: impl Into<crate::components::GammaCorrection>) -> Self {
         self.gamma = try_serialize_field(Self::descriptor_gamma(), [gamma]);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for TensorScalarMapping {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.mag_filter.heap_size_bytes()
-            + self.colormap.heap_size_bytes()
-            + self.gamma.heap_size_bytes()
     }
 }

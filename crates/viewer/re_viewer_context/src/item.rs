@@ -139,6 +139,26 @@ impl Item {
         }
     }
 
+    /// Does validating this item require a viewport blueprint?
+    ///
+    /// `View`, `Container`, and `DataResult` only exist within a viewport blueprint, so without one
+    /// they can neither be validated nor make sense as a selection. All other items (recordings,
+    /// redap entries/servers, tables, …) are independent of the blueprint.
+    pub fn requires_blueprint(&self) -> bool {
+        match self {
+            Self::View(_) | Self::Container(_) | Self::DataResult(_) => true,
+
+            Self::AppId(_)
+            | Self::DataSource(_)
+            | Self::StoreId(_)
+            | Self::TableId(_)
+            | Self::InstancePath(_)
+            | Self::ComponentPath(_)
+            | Self::RedapEntry { .. }
+            | Self::RedapServer(_) => false,
+        }
+    }
+
     pub fn entity_path(&self) -> Option<&EntityPath> {
         match self {
             Self::AppId(_)

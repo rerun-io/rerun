@@ -26,7 +26,7 @@ What you can or cannot do with that depends on which project you're working on (
 
 ### Redap
 
-If you have source access to the Rerun Data Platform check the Readme there.
+If you have source access to Rerun Hub check the Readme there.
 
 
 ### Rerun SDK

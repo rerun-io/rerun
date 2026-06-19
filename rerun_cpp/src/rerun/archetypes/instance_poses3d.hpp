@@ -50,14 +50,17 @@ namespace rerun::archetypes {
     /// #include <rerun/demo_utils.hpp>
     ///
     /// int main(int argc, char* argv[]) {
-    ///     const auto rec = rerun::RecordingStream("rerun_example_instance_pose3d_combined");
+    ///     const auto rec =
+    ///         rerun::RecordingStream("rerun_example_instance_pose3d_combined");
     ///     rec.set_time_sequence("frame", 0);
     ///
     ///     // Log a box and points further down in the hierarchy.
     ///     rec.log("world/box", rerun::Boxes3D::from_half_sizes({{1.0, 1.0, 1.0}}));
     ///     rec.log(
     ///         "world/box/points",
-    ///         rerun::Points3D(rerun::demo::grid3d<rerun::Position3D, float>(-10.0f, 10.0f, 10))
+    ///         rerun::Points3D(
+    ///             rerun::demo::grid3d<rerun::Position3D, float>(-10.0f, 10.0f, 10)
+    ///         )
     ///     );
     ///
     ///     for (int i = 0; i <180; ++i) {
@@ -75,7 +78,9 @@ namespace rerun::archetypes {
     ///         rec.log(
     ///             "world/box",
     ///             rerun::InstancePoses3D().with_translations(
-    ///                 {{0.0f, 0.0f, std::abs(static_cast<float>(i) * 0.1f - 5.0f) - 5.0f}}
+    ///                 {{0.0f,
+    ///                   0.0f,
+    ///                   std::abs(static_cast<float>(i) * 0.1f - 5.0f) - 5.0f}}
     ///             )
     ///         );
     ///     }

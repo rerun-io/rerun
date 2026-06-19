@@ -4,13 +4,14 @@ use std::sync::Arc;
 use futures::StreamExt as _;
 use parking_lot::Mutex;
 use pyo3::exceptions::{PyStopIteration, PyValueError};
-use pyo3::{Py, PyRef, PyRefMut, PyResult, Python, pyclass, pymethods};
-use re_arrow_util::{ArrowArrayDowncastRef as _, RecordBatchExt as _};
+use pyo3::{Py, PyErr, PyRef, PyRefMut, PyResult, Python, pyclass, pymethods};
 use re_protos::{
-    cloud::v1alpha1::QueryTasksResponse,
-    cloud::v1alpha1::ext::{QueryTasksOnCompletionResponse, RegisterWithDatasetTaskDescriptor},
+    cloud::v1alpha1::ext::{
+        QueryTasksDataframe, QueryTasksOnCompletionResponse, RegisterWithDatasetTaskDescriptor,
+    },
     common::v1alpha1::TaskId,
 };
+use re_redap_client::TraceId;
 use tokio::sync::mpsc;
 use tracing::Instrument as _;
 
@@ -45,6 +46,13 @@ pub struct PyRegistrationHandleInternal {
     /// Note: using vec index here is ok because this struct is essentially immutable, so
     /// out-of-bound errors are unlikely.
     task_id_to_indices: HashMap<String, Vec<usize>>,
+
+    /// Trace-id of the request that created this handle.
+    ///
+    /// A registration task is long-running, and the initial request may succeed
+    /// even though the registration itself ultimately fails.
+    /// In that case we want to show the trace-id of the original request to the user.
+    request_trace_id: Option<TraceId>,
 }
 
 impl PyRegistrationHandleInternal {
@@ -52,6 +60,7 @@ impl PyRegistrationHandleInternal {
     pub fn new(
         client: Py<PyCatalogClientInternal>,
         descriptors: Vec<RegisterWithDatasetTaskDescriptor>,
+        request_trace_id: Option<TraceId>,
     ) -> Self {
         let mut task_id_to_indices: HashMap<String, Vec<usize>> = HashMap::new();
         for (idx, desc) in descriptors.iter().enumerate() {
@@ -65,6 +74,7 @@ impl PyRegistrationHandleInternal {
             client,
             descriptors,
             task_id_to_indices,
+            request_trace_id,
         }
     }
 
@@ -92,13 +102,18 @@ impl PyRegistrationHandleInternal {
         let (tx, rx) = mpsc::channel::<PyResult<Vec<RegistrationResult>>>(32 * 1024);
         let descriptors = self.descriptors.clone();
         let task_id_to_indices = self.task_id_to_indices.clone();
+        let request_trace_id = self.request_trace_id;
         let runtime = get_tokio_runtime();
         runtime.spawn(
             async move {
+                // The query trace-id is already part of any `to_py_err` error message (it lives
+                // on `ApiError`); here we additionally surface the original request trace-id.
+                let with_trace_id = |err| prepend_request_trace_id(err, request_trace_id.as_ref());
+
                 let mut client = match connection.client().await {
                     Ok(c) => c,
                     Err(err) => {
-                        tx.send(Err(err)).await.ok();
+                        tx.send(Err(with_trace_id(err))).await.ok();
                         return;
                     }
                 };
@@ -107,7 +122,7 @@ impl PyRegistrationHandleInternal {
                     match client.query_tasks_on_completion(task_ids, timeout).await {
                         Ok(stream) => stream,
                         Err(err) => {
-                            tx.send(Err(to_py_err(err))).await.ok();
+                            tx.send(Err(with_trace_id(to_py_err(err)))).await.ok();
                             return;
                         }
                     };
@@ -131,7 +146,7 @@ impl PyRegistrationHandleInternal {
                         }
 
                         Err(err) => {
-                            tx.send(Err(err)).await.ok();
+                            tx.send(Err(with_trace_id(err))).await.ok();
                             break;
                         }
                     }
@@ -160,6 +175,10 @@ impl PyRegistrationHandleInternal {
         // exception.
         let descriptors = self.descriptors.clone();
         let task_id_to_indices = self.task_id_to_indices.clone();
+
+        // Trace-id of the original registration request.
+        let request_trace_id = self.request_trace_id;
+
         wait_for_future(
             py,
             async move {
@@ -169,6 +188,9 @@ impl PyRegistrationHandleInternal {
                     .query_tasks_on_completion(task_ids, timeout)
                     .await
                     .map_err(to_py_err)?;
+
+                // Trace-id of this completion query.
+                let query_trace_id = response_stream.trace_id();
 
                 // Collect unique error messages (deduplicated across descriptors
                 // that share the same task).
@@ -192,14 +214,15 @@ impl PyRegistrationHandleInternal {
                 // Check for any errors
                 if !unique_errors.is_empty() {
                     return Err(PyValueError::new_err(format!(
-                        "Registration failed while processing the following segments:\n{}",
-                        unique_errors.join("\n")
+                        "Registration failed.{}\n\nThe following segments failed:\n{}",
+                        format_trace_ids(request_trace_id.as_ref(), query_trace_id.as_ref()),
+                        unique_errors.join("\n"),
                     )));
                 }
 
                 Ok(descriptors
                     .iter()
-                    .map(|d| d.segment_id.id.clone())
+                    .map(|d| d.segment_id.to_string())
                     .collect())
             }
             .instrument(span),
@@ -232,6 +255,43 @@ impl PyRegistrationHandleInternal {
     }
 }
 
+/// Prepend the original request trace-id to an error surfaced to Python.
+///
+/// The trace-id goes first so it stays visible ahead of the (potentially long and
+/// private) error details. Returns the error unchanged when no trace-id is known.
+fn prepend_request_trace_id(err: PyErr, request_trace_id: Option<&TraceId>) -> PyErr {
+    match request_trace_id {
+        Some(trace_id) => {
+            PyValueError::new_err(format!("Registration request trace-id: {trace_id}\n{err}"))
+        }
+        None => err,
+    }
+}
+
+/// Format a leading trace-id section for a registration error message.
+///
+/// Trace-ids go *early* in the error — before the (potentially long and private)
+/// list of failed segments — so they stay visible even when the rest is truncated.
+/// Returns an empty string when no trace-ids are known, so callers can splice it
+/// in unconditionally.
+fn format_trace_ids(
+    request_trace_id: Option<&TraceId>,
+    query_trace_id: Option<&TraceId>,
+) -> String {
+    let mut lines = Vec::new();
+    if let Some(trace_id) = request_trace_id {
+        lines.push(format!("Registration request trace-id: {trace_id}"));
+    }
+    if let Some(trace_id) = query_trace_id {
+        lines.push(format!("Task-completion query trace-id: {trace_id}"));
+    }
+    if lines.is_empty() {
+        String::new()
+    } else {
+        format!("\n{}", lines.join("\n"))
+    }
+}
+
 /// Process a single response from the task completion stream.
 fn process_task_response(
     response: QueryTasksOnCompletionResponse,
@@ -240,44 +300,28 @@ fn process_task_response(
 ) -> PyResult<Vec<RegistrationResult>> {
     let item = response.data;
 
-    let projected = item
-        .project_columns(
-            [
-                QueryTasksResponse::FIELD_TASK_ID,
-                QueryTasksResponse::FIELD_EXEC_STATUS,
-                QueryTasksResponse::FIELD_MSGS,
-            ]
-            .into_iter(),
-        )
-        .map_err(to_py_err)?;
-
-    let (task_ids_col, statuses, msgs) = (
-        projected
-            .column(0)
-            .try_downcast_array_ref::<arrow::array::StringArray>()
-            .map_err(to_py_err)?,
-        projected
-            .column(1)
-            .try_downcast_array_ref::<arrow::array::StringArray>()
-            .map_err(to_py_err)?,
-        projected
-            .column(2)
-            .try_downcast_array_ref::<arrow::array::StringArray>()
-            .map_err(to_py_err)?,
-    );
+    let on_err =
+        |err| PyValueError::new_err(format!("invalid QueryTasks response dataframe: {err}"));
+    let task_ids = QueryTasksDataframe::COLUMN_TASK_ID
+        .extract(&item)
+        .map_err(on_err)?;
+    let statuses = QueryTasksDataframe::COLUMN_EXEC_STATUS
+        .extract(&item)
+        .map_err(on_err)?;
+    let msgs = QueryTasksDataframe::COLUMN_MSGS
+        .extract(&item)
+        .map_err(on_err)?;
 
     let mut results = Vec::new();
 
-    for i in 0..projected.num_rows() {
-        let task_id = task_ids_col.value(i);
-        let status = statuses.value(i);
-        let msg = msgs.value(i);
+    for (task_id, status, msg) in itertools::izip!(&task_ids, &statuses, &msgs) {
+        let msg = msg.unwrap_or_default();
 
         if let Some(indices) = task_id_to_indices.get(task_id) {
             for &idx in indices {
                 let desc = &descriptors[idx];
 
-                let segment_id = desc.segment_id.id.clone();
+                let segment_id = desc.segment_id.to_string();
                 let error = match status {
                     "success" => None,
                     "cancelled" => Some("registration was cancelled".to_owned()),

@@ -14,7 +14,7 @@ This page is meant to give an high level overview of ongoing and planned work. T
 - Performance improvements
 - UX & DX improvements
 - Supporting more data types
-- Rerun Cloud features (commercial)
+- Rerun Hub features (commercial)
     - Get in touch on hi@rerun.io if you're interested in becoming a design partner
 
 ## Roadmap of major feature areas

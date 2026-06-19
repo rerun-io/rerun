@@ -10,7 +10,9 @@ from datafusion import col
 
 import rerun as rr
 
-sample_5_path = Path(__file__).parents[4] / "tests" / "assets" / "rrd" / "sample_5"
+sample_5_path = (
+    Path(__file__).parents[4] / "tests" / "assets" / "rrd" / "sample_5"
+)
 
 server = rr.server.Server(datasets={"sample_dataset": sample_5_path})
 CATALOG_URL = server.url()
@@ -23,13 +25,19 @@ observations = dataset.filter_contents("/observation/**")
 episode = "ILIAD_50aee79f_2023_07_12_20h_55m_08s"
 start = 1689220508
 end = start + 5
-filtered_view = dataset.filter_segments(episode).filter_contents("/observation/**")
+filtered_view = dataset.filter_segments(episode).filter_contents(
+    "/observation/**"
+)
 filtered_df = filtered_view.reader(index="real_time")
-filtered_df = filtered_df.filter((col("real_time") >= start) & (col("real_time") < end))
+filtered_df = filtered_df.filter(
+    (col("real_time") >= start) & (col("real_time") < end)
+)
 # endregion: filtering
 
 # region: static_data
-instructions = dataset.filter_contents("/language_instruction/**").reader(index=None)
+instructions = dataset.filter_contents("/language_instruction/**").reader(
+    index=None
+)
 
 # Sort to ensure documented output is always correct
 instructions = instructions.sort("/language_instruction:TextDocument:text")

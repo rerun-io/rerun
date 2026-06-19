@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -33,7 +34,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// [MCAP specification](https://mcap.dev/) for complete format details.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, PartialEq, Default)]
+#[derive(Clone, Debug, PartialEq, Default, ::re_byte_size::SizeBytes)]
 pub struct McapMessage {
     /// The raw message payload as a binary blob.
     ///
@@ -50,11 +51,13 @@ impl McapMessage {
     /// The corresponding component is [`crate::components::Blob`].
     #[inline]
     pub fn descriptor_data() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.McapMessage".into()),
-            component: "McapMessage:data".into(),
-            component_type: Some("rerun.components.Blob".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.McapMessage".into()),
+                component: "McapMessage:data".into(),
+                component_type: Some("rerun.components.Blob".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -78,7 +81,10 @@ impl McapMessage {
 impl ::re_types_core::Archetype for McapMessage {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.archetypes.McapMessage".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.archetypes.McapMessage"
+        )
     }
 
     #[inline]
@@ -218,12 +224,5 @@ impl McapMessage {
     ) -> Self {
         self.data = try_serialize_field(Self::descriptor_data(), data);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for McapMessage {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.data.heap_size_bytes()
     }
 }

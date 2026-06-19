@@ -138,6 +138,22 @@ find_package(rerun_sdk REQUIRED)
 target_link_libraries(<yourtarget> PRIVATE rerun_sdk)
 ```
 
+### Install with vcpkg
+
+The Rerun C++ SDK is also available as the community-maintained [`rerun-sdk` vcpkg port](https://vcpkg.io/en/package/rerun-sdk).
+You can install it with:
+
+```bash
+vcpkg install rerun-sdk
+```
+
+Once installed, consume it from CMake like any other vcpkg-provided package:
+
+```cmake
+find_package(rerun_sdk CONFIG REQUIRED)
+
+target_link_libraries(<yourtarget> PRIVATE rerun_sdk)
+```
 
 ## Development in the Rerun repository
 

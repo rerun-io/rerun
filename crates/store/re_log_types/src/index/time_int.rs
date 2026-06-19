@@ -5,24 +5,22 @@ use crate::{Duration, NonMinI64, TryFromIntError};
 /// Must be matched with a [`crate::TimeType`] to know what.
 ///
 /// Used both for time points and durations.
-#[derive(Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[derive(
+    Clone,
+    Copy,
+    Hash,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    re_byte_size::SizeBytes,
+    serde::Deserialize,
+    serde::Serialize,
+)]
 pub struct TimeInt(Option<NonMinI64>);
 
 static_assertions::assert_eq_size!(TimeInt, i64);
 static_assertions::assert_eq_align!(TimeInt, i64);
-
-impl re_byte_size::SizeBytes for TimeInt {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
-    }
-}
 
 impl std::fmt::Debug for TimeInt {
     #[inline]

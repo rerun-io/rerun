@@ -12,7 +12,9 @@ from datafusion import lit
 import rerun as rr
 from rerun.utilities.datafusion.functions.url_generation import segment_url
 
-sample_5_path = Path(__file__).parents[5] / "tests" / "assets" / "rrd" / "sample_5"
+sample_5_path = (
+    Path(__file__).parents[5] / "tests" / "assets" / "rrd" / "sample_5"
+)
 
 server = rr.server.Server(datasets={"sample_dataset": sample_5_path})
 client = server.client()
@@ -35,7 +37,11 @@ meta = pa.record_batch(
             [t + timedelta(milliseconds=500) for t in event_times],
             type=pa.timestamp("ns"),
         ),
-        "entity_path": ["/camera/rgb", "/observation/joint_positions", "/observation/gripper_state"],
+        "entity_path": [
+            "/camera/rgb",
+            "/observation/joint_positions",
+            "/observation/gripper_state",
+        ],
     },
 )
 
@@ -51,15 +57,22 @@ for url in basic.select("url").to_pydict()["url"]:
 # endregion: basic
 
 # region: timestamp
-ts = view.segment_table(join_meta=meta_df).select("rerun_segment_id", "event_time")
+ts = view.segment_table(join_meta=meta_df).select(
+    "rerun_segment_id", "event_time"
+)
 ts = ts.sort("rerun_segment_id")
-ts = ts.with_column("url", segment_url(dataset, timestamp="event_time", timeline_name="real_time"))
+ts = ts.with_column(
+    "url",
+    segment_url(dataset, timestamp="event_time", timeline_name="real_time"),
+)
 for url in ts.select("url").to_pydict()["url"]:
     print(url)
 # endregion: timestamp
 
 # region: time_range
-tr = view.segment_table(join_meta=meta_df).select("rerun_segment_id", "range_start", "range_end")
+tr = view.segment_table(join_meta=meta_df).select(
+    "rerun_segment_id", "range_start", "range_end"
+)
 tr = tr.sort("rerun_segment_id")
 tr = tr.with_column(
     "url",
@@ -75,7 +88,9 @@ for url in tr.select("url").to_pydict()["url"]:
 # endregion: time_range
 
 # region: selection
-sel = view.segment_table(join_meta=meta_df).select("rerun_segment_id", "entity_path")
+sel = view.segment_table(join_meta=meta_df).select(
+    "rerun_segment_id", "entity_path"
+)
 sel = sel.sort("rerun_segment_id")
 sel = sel.with_column("url", segment_url(dataset, selection="entity_path"))
 for url in sel.select("url").to_pydict()["url"]:
@@ -103,7 +118,9 @@ for url in combined.select("url").to_pydict()["url"]:
 # endregion: combined
 
 # region: expressions
-expr = view.segment_table(join_meta=meta_df).select("rerun_segment_id", "event_time")
+expr = view.segment_table(join_meta=meta_df).select(
+    "rerun_segment_id", "event_time"
+)
 expr = expr.sort("rerun_segment_id")
 expr = expr.with_column(
     "url",

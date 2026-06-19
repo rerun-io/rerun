@@ -1,11 +1,12 @@
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use ahash::{HashMap, HashMapExt as _};
 use nohash_hasher::{IntMap, IntSet};
 
 use re_chunk::{Chunk, ChunkId};
 use re_log_encoding::{ChunkProvider, RawRrdManifest, RrdManifest};
-use re_log_types::{AbsoluteTimeRange, EntityPath, StoreId, Timeline};
+use re_log_types::{AbsoluteTimeRange, EntityPath, StoreId, TimelineName};
 
 use crate::{
     ChunkStore, ChunkStoreConfig, ChunkStoreHandle, ChunkStoreResult, ChunkTrackingMode,
@@ -32,7 +33,11 @@ pub struct LazyStore {
     chunk_id_to_index: HashMap<ChunkId, usize>,
 
     /// Precomputed per-chunk timeline ranges.
-    timeline_ranges: HashMap<ChunkId, IntMap<Timeline, AbsoluteTimeRange>>,
+    timeline_ranges: HashMap<ChunkId, IntMap<TimelineName, AbsoluteTimeRange>>,
+
+    /// Monotonic count of chunks physically materialized through [`Self::load_chunks`].
+    /// Used for test purposes.
+    chunks_loaded: AtomicU64,
 }
 
 impl LazyStore {
@@ -67,19 +72,20 @@ impl LazyStore {
             provider,
             chunk_id_to_index,
             timeline_ranges,
+            chunks_loaded: AtomicU64::new(0),
         }
     }
 
     fn build_timeline_ranges(
         manifest: &RrdManifest,
-    ) -> HashMap<ChunkId, IntMap<Timeline, AbsoluteTimeRange>> {
-        let mut result: HashMap<ChunkId, IntMap<Timeline, AbsoluteTimeRange>> = HashMap::new();
+    ) -> HashMap<ChunkId, IntMap<TimelineName, AbsoluteTimeRange>> {
+        let mut result: HashMap<ChunkId, IntMap<TimelineName, AbsoluteTimeRange>> = HashMap::new();
         for per_entity in manifest.temporal_map().values() {
             for (timeline, per_component) in per_entity {
                 for per_chunk in per_component.values() {
                     for (&chunk_id, entry) in per_chunk {
                         let e = result.entry(chunk_id).or_default();
-                        e.entry(*timeline)
+                        e.entry(*timeline.name())
                             .and_modify(|existing| {
                                 *existing = existing.union(entry.time_range);
                             })
@@ -97,7 +103,17 @@ impl LazyStore {
     /// this store. The caller owns the returned `Vec<Arc<Chunk>>`; dropping it frees the memory.
     /// Returns an error if any chunk ID is not in the manifest.
     pub fn load_chunks(&self, chunk_ids: &[ChunkId]) -> ChunkStoreResult<Vec<Arc<Chunk>>> {
-        Ok(self.provider.load_chunks(chunk_ids)?)
+        let chunks = self.provider.load_chunks(chunk_ids)?;
+        self.chunks_loaded
+            .fetch_add(chunks.len() as u64, Ordering::Relaxed);
+        Ok(chunks)
+    }
+
+    /// Monotonic count of chunks physically materialized through [`Self::load_chunks`] since
+    /// this store was constructed. Intended for test-side validation that pushdown / lazy
+    /// loading is engaged; not a performance metric.
+    pub fn chunks_loaded(&self) -> u64 {
+        self.chunks_loaded.load(Ordering::Relaxed)
     }
 
     /// Load every chunk in the manifest and return them in a single [`Vec`].
@@ -152,7 +168,7 @@ impl LazyStore {
     }
 
     /// Per-chunk timeline ranges.
-    pub fn timeline_ranges(&self) -> &HashMap<ChunkId, IntMap<Timeline, AbsoluteTimeRange>> {
+    pub fn timeline_ranges(&self) -> &HashMap<ChunkId, IntMap<TimelineName, AbsoluteTimeRange>> {
         &self.timeline_ranges
     }
 
@@ -174,10 +190,10 @@ impl LazyStore {
         let ids: Vec<ChunkId> = per_entity
             .iter()
             .flat_map(|(_, qr)| {
-                qr.chunks
-                    .iter()
-                    .map(|c| c.id())
-                    .chain(qr.missing_virtual.iter().copied())
+                std::iter::chain(
+                    qr.chunks.iter().map(|c| c.id()),
+                    qr.missing_virtual.iter().copied(),
+                )
             })
             .collect();
 

@@ -16,11 +16,6 @@ mod streaming_cache;
 mod table_blueprint;
 mod table_selection;
 
-/// The key used to embed a table blueprint in table schema-level metadata.
-///
-/// The value is a base64-encoded `.rbl` (blueprint RRD) prefixed with `base64:`.
-pub(crate) const RERUN_TABLE_BLUEPRINT: &str = "rerun:table_blueprint";
-
 pub use self::datafusion_table_widget::{DataFusionTableWidget, TableStatus};
 pub use self::display_record_batch::{DisplayRecordBatch, DisplayRecordBatchError};
 // for testing purposes

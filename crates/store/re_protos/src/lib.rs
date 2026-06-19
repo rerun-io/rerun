@@ -92,7 +92,7 @@ pub mod cloud {
 
             /// Returns the full list of features this build of the server
             /// natively supports. Used by both OSS `re_server` and the
-            /// Rerun Data Platform frontend to populate `VersionResponse.features`.
+            /// Rerun Hub frontend to populate `VersionResponse.features`.
             pub fn all_supported_features() -> Vec<String> {
                 vec![PER_SEGMENT_INDEX_VALUES.to_owned()]
             }

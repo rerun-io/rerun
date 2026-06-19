@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -24,7 +25,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Archetype**: Controls the distance to the near clip plane in 3D scene units.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, ::re_byte_size::SizeBytes)]
 pub struct NearClipPlane {
     /// Controls the distance to the near clip plane in 3D scene units.
     ///
@@ -38,11 +39,13 @@ impl NearClipPlane {
     /// The corresponding component is [`crate::blueprint::components::NearClipPlane`].
     #[inline]
     pub fn descriptor_near_clip_plane() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.NearClipPlane".into()),
-            component: "NearClipPlane:near_clip_plane".into(),
-            component_type: Some("rerun.blueprint.components.NearClipPlane".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.NearClipPlane".into()),
+                component: "NearClipPlane:near_clip_plane".into(),
+                component_type: Some("rerun.blueprint.components.NearClipPlane".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -66,7 +69,10 @@ impl NearClipPlane {
 impl ::re_types_core::Archetype for NearClipPlane {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.blueprint.archetypes.NearClipPlane".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.blueprint.archetypes.NearClipPlane"
+        )
     }
 
     #[inline]
@@ -163,12 +169,5 @@ impl NearClipPlane {
         self.near_clip_plane =
             try_serialize_field(Self::descriptor_near_clip_plane(), [near_clip_plane]);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for NearClipPlane {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.near_clip_plane.heap_size_bytes()
     }
 }

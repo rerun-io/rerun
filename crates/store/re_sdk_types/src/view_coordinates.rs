@@ -85,8 +85,7 @@ impl ViewDir {
 }
 
 /// One of `X`, `Y`, `Z`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 pub enum Axis3 {
     X,
     Y,

@@ -111,6 +111,16 @@ pub trait LogSink: Send + Sync + 'static + std::any::Any {
     fn defers_finalization_to_shutdown(&self) -> bool {
         false
     }
+
+    /// Best-effort finalization of any deferred-finalization children that can be retired in
+    /// place without tearing down the rest of this sink.
+    ///
+    /// Composite sinks (e.g. [`MultiSink`]) override this to drop their file-like children while
+    /// keeping streaming children alive. Returns `true` if the sink handled finalization itself,
+    /// or `false` if the caller must replace the entire sink to write footers.
+    fn finalize_deferred_in_place(&self) -> bool {
+        false
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -163,6 +173,23 @@ impl LogSink for MultiSink {
     #[inline]
     fn drain_backlog(&self) -> Vec<LogMsg> {
         Vec::new()
+    }
+
+    fn defers_finalization_to_shutdown(&self) -> bool {
+        self.0
+            .lock()
+            .iter()
+            .any(|sink| sink.defers_finalization_to_shutdown())
+    }
+
+    fn finalize_deferred_in_place(&self) -> bool {
+        // Drop any children that need a footer-style finalization. Their `Drop` impls join their
+        // writer threads, which is what actually emits the footer. Non-deferring children (e.g.
+        // a long-lived gRPC sink) stay live in this MultiSink.
+        self.0
+            .lock()
+            .retain(|sink| !sink.defers_finalization_to_shutdown());
+        true
     }
 
     fn default_batcher_config(&self) -> ChunkBatcherConfig {

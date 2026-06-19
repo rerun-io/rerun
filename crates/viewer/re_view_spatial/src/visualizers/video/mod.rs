@@ -17,8 +17,8 @@ use re_ui::ContextExt as _;
 use re_video::player::{VideoPlaybackIssueSeverity, VideoPlayerError};
 use re_view::DataResultQuery as _;
 use re_viewer_context::{
-    VideoStreamCache, VideoStreamProcessingError, ViewClass as _, ViewContext,
-    ViewContextCollection, ViewQuery, ViewSystemExecutionError, ViewSystemIdentifier,
+    SystemCommandSender as _, VideoStreamCache, VideoStreamProcessingError, ViewClass as _,
+    ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError, ViewSystemIdentifier,
     VisualizerExecutionOutput, typed_fallback_for, video_stream_time_from_query,
 };
 pub use video_frame_reference::VideoFrameReferenceVisualizer;
@@ -102,7 +102,6 @@ struct VideoStreamCtx<'a> {
 }
 
 impl<'a> VideoStreamCtx<'a> {
-    #[expect(clippy::too_many_arguments)]
     pub fn new(
         view_context: &'a ViewContext<'a>,
         view_query: &'a ViewQuery<'a>,
@@ -547,7 +546,10 @@ impl From<VideoPlayerError> for VideoPlaybackIssue {
             should_request_more_frames: error.should_request_more_frames(),
             show_frame: match error {
                 VideoPlayerError::NegativeTimestamp
-                | VideoPlayerError::InsufficientSampleData(_) => false,
+                | VideoPlayerError::InsufficientSampleData(_)
+                | VideoPlayerError::Decoding(re_video::DecodeError::WaitingForCodecDetails) => {
+                    false
+                }
 
                 VideoPlayerError::EmptyBuffer
                 | VideoPlayerError::UnloadedSampleData(_)
@@ -568,7 +570,6 @@ impl From<VideoPlayerError> for VideoPlaybackIssue {
 /// - Only `frame`: renders the frame texture.
 /// - Only `issue`: shows the error/loading overlay.
 /// - Both `Some`: renders the frame with the error overlaid on top.
-#[expect(clippy::too_many_arguments)]
 fn show_video_frame(
     ctx: &ViewContext<'_>,
     visualizer_data: &mut SpatialViewVisualizerData,
@@ -618,6 +619,13 @@ fn show_video_frame(
     };
 
     if let Some(reason) = loading_indicator_reason {
+        ctx.viewer_ctx.command_sender().send_system(
+            re_viewer_context::SystemCommand::TimeControlCommands {
+                store_id: ctx.store_id().clone(),
+                time_commands: vec![re_viewer_context::TimeControlCommand::Buffer],
+            },
+        );
+
         visualizer_data.loading_indicators.push(LoadingIndicator {
             center: top_left_corner_position + 0.5 * (extent_u + extent_v),
             half_extent_u: 0.5 * extent_u,

@@ -12,7 +12,7 @@ re_string_interner::declare_new_type!(
 
 impl Default for ViewSystemIdentifier {
     fn default() -> Self {
-        "unknown".into()
+        re_string_interner::intern_static!(ViewSystemIdentifier, "unknown")
     }
 }
 

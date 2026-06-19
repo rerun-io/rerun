@@ -62,7 +62,8 @@ class Points3D(Points3DExt, Archetype, VisualizableArchetype):
 
     rr.init("rerun_example_points3d_row_updates", spawn=True)
 
-    # Prepare a point cloud that evolves over 5 timesteps, changing the number of points in the process.
+    # Prepare a point cloud that evolves over 5 timesteps, changing the
+    # number of points in the process.
     times = np.arange(10, 15, 1.0)
     # fmt: off
     positions = [
@@ -74,13 +75,16 @@ class Points3D(Points3DExt, Archetype, VisualizableArchetype):
     ]
     # fmt: on
 
-    # At each timestep, all points in the cloud share the same but changing color and radius.
+    # At each timestep, all points in the cloud share the same but changing
+    # color and radius.
     colors = [0xFF0000FF, 0x00FF00FF, 0x0000FFFF, 0xFFFF00FF, 0x00FFFFFF]
     radii = [0.05, 0.01, 0.2, 0.1, 0.3]
 
     for i in range(5):
         rr.set_time("time", duration=10 + i)
-        rr.log("points", rr.Points3D(positions[i], colors=colors[i], radii=radii[i]))
+        rr.log(
+            "points", rr.Points3D(positions[i], colors=colors[i], radii=radii[i])
+        )
     ```
     <center>
     <picture>
@@ -102,7 +106,8 @@ class Points3D(Points3DExt, Archetype, VisualizableArchetype):
 
     rr.init("rerun_example_points3d_column_updates", spawn=True)
 
-    # Prepare a point cloud that evolves over 5 timesteps, changing the number of points in the process.
+    # Prepare a point cloud that evolves over 5 timesteps, changing the
+    # number of points in the process.
     times = np.arange(10, 15, 1.0)
     # fmt: off
     positions = [
@@ -114,7 +119,8 @@ class Points3D(Points3DExt, Archetype, VisualizableArchetype):
     ]
     # fmt: on
 
-    # At each timestep, all points in the cloud share the same but changing color and radius.
+    # At each timestep, all points in the cloud share the same but changing
+    # color and radius.
     colors = [0xFF0000FF, 0x00FF00FF, 0x0000FFFF, 0xFFFF00FF, 0x00FFFFFF]
     radii = [0.05, 0.01, 0.2, 0.1, 0.3]
 
@@ -122,7 +128,9 @@ class Points3D(Points3DExt, Archetype, VisualizableArchetype):
         "points",
         indexes=[rr.TimeColumn("time", duration=times)],
         columns=[
-            *rr.Points3D.columns(positions=positions).partition(lengths=[2, 4, 4, 3, 4]),
+            *rr.Points3D.columns(positions=positions).partition(
+                lengths=[2, 4, 4, 3, 4]
+            ),
             *rr.Points3D.columns(colors=colors, radii=radii),
         ],
     )
@@ -158,7 +166,10 @@ class Points3D(Points3DExt, Archetype, VisualizableArchetype):
 
     # Update the positions and radii, and clear everything else in the process.
     rr.set_time("frame", sequence=20)
-    rr.log("points", rr.Points3D.from_fields(clear_unset=True, positions=positions, radii=0.3))
+    rr.log(
+        "points",
+        rr.Points3D.from_fields(clear_unset=True, positions=positions, radii=0.3),
+    )
     ```
     <center>
     <picture>
@@ -184,6 +195,7 @@ class Points3D(Points3DExt, Archetype, VisualizableArchetype):
             colors=None,
             labels=None,
             show_labels=None,
+            point_shading=None,
             class_ids=None,
             keypoint_ids=None,
         )
@@ -205,6 +217,7 @@ class Points3D(Points3DExt, Archetype, VisualizableArchetype):
         colors: datatypes.Rgba32ArrayLike | None = None,
         labels: datatypes.Utf8ArrayLike | None = None,
         show_labels: datatypes.BoolLike | None = None,
+        point_shading: components.PointShadingLike | None = None,
         class_ids: datatypes.ClassIdArrayLike | None = None,
         keypoint_ids: datatypes.KeypointIdArrayLike | None = None,
     ) -> Points3D:
@@ -234,6 +247,10 @@ class Points3D(Points3DExt, Archetype, VisualizableArchetype):
 
             If not set, labels will automatically appear when there is exactly one label for this entity
             or the number of instances on this entity is under a certain threshold.
+        point_shading:
+            How points should be shaded.
+
+            If not set, points are rendered with [`components.PointShading.Gradient`][rerun.components.PointShading.Gradient] by default.
         class_ids:
             Optional class Ids for the points.
 
@@ -258,6 +275,7 @@ class Points3D(Points3DExt, Archetype, VisualizableArchetype):
                 "colors": colors,
                 "labels": labels,
                 "show_labels": show_labels,
+                "point_shading": point_shading,
                 "class_ids": class_ids,
                 "keypoint_ids": keypoint_ids,
             }
@@ -317,6 +335,14 @@ class Points3D(Points3DExt, Archetype, VisualizableArchetype):
         )
 
     @staticmethod
+    def descriptor_point_shading() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Points3D:point_shading",
+            archetype=Points3D.NAME,
+            component_type=components.PointShadingBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
     def descriptor_class_ids() -> ComponentDescriptor:
         return ComponentDescriptor(
             "Points3D:class_ids",
@@ -341,6 +367,7 @@ class Points3D(Points3DExt, Archetype, VisualizableArchetype):
         colors: datatypes.Rgba32ArrayLike | None = None,
         labels: datatypes.Utf8ArrayLike | None = None,
         show_labels: datatypes.BoolArrayLike | None = None,
+        point_shading: components.PointShadingArrayLike | None = None,
         class_ids: datatypes.ClassIdArrayLike | None = None,
         keypoint_ids: datatypes.KeypointIdArrayLike | None = None,
     ) -> ComponentColumnList:
@@ -373,6 +400,10 @@ class Points3D(Points3DExt, Archetype, VisualizableArchetype):
 
             If not set, labels will automatically appear when there is exactly one label for this entity
             or the number of instances on this entity is under a certain threshold.
+        point_shading:
+            How points should be shaded.
+
+            If not set, points are rendered with [`components.PointShading.Gradient`][rerun.components.PointShading.Gradient] by default.
         class_ids:
             Optional class Ids for the points.
 
@@ -397,6 +428,7 @@ class Points3D(Points3DExt, Archetype, VisualizableArchetype):
                 colors=colors,
                 labels=labels,
                 show_labels=show_labels,
+                point_shading=point_shading,
                 class_ids=class_ids,
                 keypoint_ids=keypoint_ids,
             )
@@ -411,6 +443,7 @@ class Points3D(Points3DExt, Archetype, VisualizableArchetype):
             "Points3D:colors": colors,
             "Points3D:labels": labels,
             "Points3D:show_labels": show_labels,
+            "Points3D:point_shading": point_shading,
             "Points3D:class_ids": class_ids,
             "Points3D:keypoint_ids": keypoint_ids,
         }
@@ -498,6 +531,17 @@ class Points3D(Points3DExt, Archetype, VisualizableArchetype):
     #
     # If not set, labels will automatically appear when there is exactly one label for this entity
     # or the number of instances on this entity is under a certain threshold.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    point_shading: components.PointShadingBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.PointShadingBatch._converter,  # type: ignore[misc]
+    )
+    # How points should be shaded.
+    #
+    # If not set, points are rendered with [`components.PointShading.Gradient`][rerun.components.PointShading.Gradient] by default.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

@@ -4,8 +4,10 @@ use rerun::{
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let rec = rerun::RecordingStreamBuilder::new("rerun_example_annotation_context_connections")
-        .spawn()?;
+    let rec = rerun::RecordingStreamBuilder::new(
+        "rerun_example_annotation_context_connections",
+    )
+    .spawn()?;
 
     // Annotation context with two classes, using two labeled classes, of which ones defines a
     // color.
@@ -13,7 +15,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "masks", // Applies to all entities below "masks".
         &AnnotationContext::new([
             ClassDescriptionMapElem::from((0, "Background")),
-            ClassDescriptionMapElem::from((1, "Person", Rgba32::from_rgb(255, 0, 0))),
+            ClassDescriptionMapElem::from((
+                1,
+                "Person",
+                Rgba32::from_rgb(255, 0, 0),
+            )),
         ]),
     )?;
 

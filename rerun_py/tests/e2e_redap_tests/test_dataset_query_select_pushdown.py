@@ -22,6 +22,7 @@ from typing import TYPE_CHECKING
 import pyarrow as pa
 import pytest
 from datafusion import col
+from rerun.experimental import query_metrics
 
 if TYPE_CHECKING:
     from datafusion import DataFrame
@@ -56,42 +57,83 @@ def _full_query(dataset: DatasetEntry, time_idx: str) -> DataFrame:
 
 @pytest.mark.parametrize("time_idx", ["time_1", "time_2", "time_3"])
 def test_narrowing_drops_all_null_rows_single_entity(readonly_test_dataset: DatasetEntry, time_idx: str) -> None:
-    """SELECT one entity column — narrowing drops rows where that column would be null."""
-    narrowed = (
-        readonly_test_dataset
-        .reader(index=time_idx)
-        .select("rerun_segment_id", time_idx, OBJ1)
-        .sort("rerun_segment_id", time_idx)
-    )
+    """
+    SELECT one entity column — narrowing drops rows where that column would be null.
 
-    expected = (
-        _full_query(readonly_test_dataset, time_idx)
-        .filter(col(OBJ1).is_not_null())
-        .select("rerun_segment_id", time_idx, OBJ1)
-        .sort("rerun_segment_id", time_idx)
-    )
+    Asserts both row-correctness *and* that the narrowing optimization actually fired —
+    previously the latter was only observable in `EXPLAIN ANALYZE` output.
+    """
+    # Build both queries inside the `query_metrics()` scope: collectors are
+    # bound at `reader()` time, so readers built outside the scope are not
+    # captured. Order: narrowed first (via `_materialize`), then the
+    # `_full_query`-derived expected.
+    with query_metrics() as m:
+        narrowed = (
+            readonly_test_dataset
+            .reader(index=time_idx)
+            .select("rerun_segment_id", time_idx, OBJ1)
+            .sort("rerun_segment_id", time_idx)
+        )
 
-    assert _materialize(narrowed) == _materialize(expected)
+        expected = (
+            _full_query(readonly_test_dataset, time_idx)
+            .filter(col(OBJ1).is_not_null())
+            .select("rerun_segment_id", time_idx, OBJ1)
+            .sort("rerun_segment_id", time_idx)
+        )
+
+        narrowed_tbl = _materialize(narrowed)
+        expected_tbl = _materialize(expected)
+
+    assert narrowed_tbl == expected_tbl
+
+    qs = m.queries
+    assert len(qs) == 2, f"expected 2 captured queries (narrowed + baseline), got {len(qs)}"
+    nar, _base = qs
+    # Core claim: a single-entity SELECT triggers narrowing. This was
+    # previously unverifiable from Python — only inspectable in the
+    # `EXPLAIN ANALYZE` output.
+    #
+    # We deliberately *don't* compare `nar.query_chunks` to the baseline's:
+    # the `_full_query` baseline also triggers narrowing (the dataset has
+    # more entities than its SELECT references), and the OR'd
+    # `IS NOT NULL` filter it applies pushes server-side, so the two
+    # ultimately fetch comparable chunk counts. The flag itself is the
+    # cleanest assertion.
+    assert nar.entity_path_narrowing_applied is True, (
+        f"single-entity SELECT must trigger entity-path narrowing, got {nar}"
+    )
 
 
 @pytest.mark.parametrize("time_idx", ["time_1", "time_2", "time_3"])
 def test_narrowing_drops_all_null_rows_two_entities(readonly_test_dataset: DatasetEntry, time_idx: str) -> None:
     """SELECT two entity columns — narrowing drops rows where both would be null."""
-    narrowed = (
-        readonly_test_dataset
-        .reader(index=time_idx)
-        .select("rerun_segment_id", time_idx, OBJ1, OBJ2)
-        .sort("rerun_segment_id", time_idx)
-    )
+    with query_metrics() as m:
+        narrowed = (
+            readonly_test_dataset
+            .reader(index=time_idx)
+            .select("rerun_segment_id", time_idx, OBJ1, OBJ2)
+            .sort("rerun_segment_id", time_idx)
+        )
 
-    expected = (
-        _full_query(readonly_test_dataset, time_idx)
-        .filter(col(OBJ1).is_not_null() | col(OBJ2).is_not_null())
-        .select("rerun_segment_id", time_idx, OBJ1, OBJ2)
-        .sort("rerun_segment_id", time_idx)
-    )
+        expected = (
+            _full_query(readonly_test_dataset, time_idx)
+            .filter(col(OBJ1).is_not_null() | col(OBJ2).is_not_null())
+            .select("rerun_segment_id", time_idx, OBJ1, OBJ2)
+            .sort("rerun_segment_id", time_idx)
+        )
 
-    assert _materialize(narrowed) == _materialize(expected)
+        narrowed_tbl = _materialize(narrowed)
+        expected_tbl = _materialize(expected)
+
+    assert narrowed_tbl == expected_tbl
+
+    qs = m.queries
+    assert len(qs) == 2, f"expected 2 captured queries (narrowed + baseline), got {len(qs)}"
+    nar, _base = qs
+    # See `test_narrowing_drops_all_null_rows_single_entity` for why we only
+    # assert the flag here, not chunk-count ordinality.
+    assert nar.entity_path_narrowing_applied is True
 
 
 @pytest.mark.parametrize("time_idx", ["time_1", "time_2", "time_3"])
@@ -102,29 +144,48 @@ def test_fill_latest_at_disables_narrowing(readonly_test_dataset: DatasetEntry, 
     Under LatestAtGlobal, excluded entities' timestamps would generate rows filled with the
     latest values, so the optimization must not drop them. We assert the narrowed query's row
     count equals the baseline's, and the projected /obj1 column matches.
+
+    With `query_metrics()` we now also directly verify the gating logic fired — previously
+    we could only infer it from the row-count parity.
     """
-    narrowed_fill = (
-        readonly_test_dataset
-        .reader(index=time_idx, fill_latest_at=True)
-        .select("rerun_segment_id", time_idx, OBJ1)
-        .sort("rerun_segment_id", time_idx)
-    )
+    with query_metrics() as m:
+        narrowed_fill = (
+            readonly_test_dataset
+            .reader(index=time_idx, fill_latest_at=True)
+            .select("rerun_segment_id", time_idx, OBJ1)
+            .sort("rerun_segment_id", time_idx)
+        )
 
-    full_fill = (
-        readonly_test_dataset
-        .reader(index=time_idx, fill_latest_at=True)
-        .select("rerun_segment_id", time_idx, OBJ1, OBJ2, OBJ3)
-        .sort("rerun_segment_id", time_idx)
-    )
+        full_fill = (
+            readonly_test_dataset
+            .reader(index=time_idx, fill_latest_at=True)
+            .select("rerun_segment_id", time_idx, OBJ1, OBJ2, OBJ3)
+            .sort("rerun_segment_id", time_idx)
+        )
 
-    expected = full_fill.select("rerun_segment_id", time_idx, OBJ1).sort("rerun_segment_id", time_idx)
-
-    narrowed_table = _materialize(narrowed_fill)
-    full_table = _materialize(full_fill)
+        narrowed_table = _materialize(narrowed_fill)
+        full_table = _materialize(full_fill)
 
     # Narrowing is skipped → row count matches the unprojected baseline.
     assert narrowed_table.num_rows == full_table.num_rows
-    assert narrowed_table == _materialize(expected)
+    # Project full_table down to the same columns post-hoc rather than running
+    # another DataFrame query — re-materializing a DataFrame whose provider
+    # was bound inside the scope would emit a 3rd snapshot to the collector.
+    assert narrowed_table == full_table.select(["rerun_segment_id", time_idx, OBJ1])
+
+    qs = m.queries
+    assert len(qs) == 2, f"expected 2 captured queries, got {len(qs)}"
+    nar, full = qs
+    # The whole point of this test: narrowing is gated off by fill_latest_at=True.
+    assert nar.entity_path_narrowing_applied is False, (
+        f"fill_latest_at=True must disable narrowing, but it fired on a single-entity SELECT: {nar}"
+    )
+    assert full.entity_path_narrowing_applied is False
+    # Both queries fetch the same data when narrowing is gated off.
+    assert nar.query_chunks == full.query_chunks, (
+        f"with narrowing gated off, both queries should fetch the same chunks: "
+        f"nar={nar.query_chunks} vs full={full.query_chunks}"
+    )
 
 
 @pytest.mark.parametrize("time_idx", ["time_1", "time_2", "time_3"])
@@ -195,6 +256,9 @@ def test_filter_on_index_column_does_not_expand_fetch_set(readonly_test_dataset:
     Time index columns have no entity-path metadata, so referencing one in a filter doesn't add
     any entity to the projected set. Narrowing still drops all-null-/obj1 rows that pass the
     time filter.
+
+    With `query_metrics()` we additionally assert the fetch set didn't grow — comparing the
+    time-filtered narrowed query to a baseline narrowed query without the time filter.
     """
     # Pick a threshold from the dataset itself so the filter is meaningful regardless of which
     # time index we're parametrized over.
@@ -202,23 +266,51 @@ def test_filter_on_index_column_does_not_expand_fetch_set(readonly_test_dataset:
     values = [v for rb in times for v in rb[0] if v.is_valid]
     threshold = values[len(values) // 3]
 
-    narrowed = (
-        readonly_test_dataset
-        .reader(index=time_idx)
-        .filter(col(time_idx) > threshold)
-        .select("rerun_segment_id", time_idx, OBJ1)
-        .sort("rerun_segment_id", time_idx)
-    )
+    # Build the three readers inside the scope so each gets the active
+    # collector bound at `reader()` time.
+    with query_metrics() as m:
+        narrowed = (
+            readonly_test_dataset
+            .reader(index=time_idx)
+            .filter(col(time_idx) > threshold)
+            .select("rerun_segment_id", time_idx, OBJ1)
+            .sort("rerun_segment_id", time_idx)
+        )
 
-    expected = (
-        _full_query(readonly_test_dataset, time_idx)
-        .filter(col(time_idx) > threshold)
-        .filter(col(OBJ1).is_not_null())  # explicit — narrowing drops these implicitly
-        .select("rerun_segment_id", time_idx, OBJ1)
-        .sort("rerun_segment_id", time_idx)
-    )
+        expected = (
+            _full_query(readonly_test_dataset, time_idx)
+            .filter(col(time_idx) > threshold)
+            .filter(col(OBJ1).is_not_null())  # explicit — narrowing drops these implicitly
+            .select("rerun_segment_id", time_idx, OBJ1)
+            .sort("rerun_segment_id", time_idx)
+        )
 
-    assert _materialize(narrowed) == _materialize(expected)
+        # Baseline: same narrowed SELECT without the time-index filter. Used to
+        # check that adding the filter doesn't expand the entity fetch set.
+        narrowed_no_filter = (
+            readonly_test_dataset
+            .reader(index=time_idx)
+            .select("rerun_segment_id", time_idx, OBJ1)
+            .sort("rerun_segment_id", time_idx)
+        )
+
+        narrowed_tbl = _materialize(narrowed)
+        expected_tbl = _materialize(expected)
+        baseline_tbl = _materialize(narrowed_no_filter)
+
+    assert narrowed_tbl == expected_tbl
+    # Baseline materialization just keeps things consistent with the
+    # `query_metrics()` scope; we use its metrics, not its rows.
+    _ = baseline_tbl
+
+    qs = m.queries
+    assert len(qs) == 3, f"expected 3 captured queries, got {len(qs)}"
+    nar, _exp, baseline_qm = qs
+    assert nar.entity_path_narrowing_applied is True, f"narrowing must fire on single-entity SELECT: {nar}"
+    assert nar.query_chunks <= baseline_qm.query_chunks, (
+        f"time-index filter must NOT expand the fetch set: "
+        f"with-filter={nar.query_chunks} vs without-filter={baseline_qm.query_chunks}"
+    )
 
 
 # -----------------------------------------------------------------------------

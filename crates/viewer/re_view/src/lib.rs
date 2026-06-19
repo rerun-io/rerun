@@ -10,6 +10,7 @@ mod annotation_context_utils;
 mod annotation_scene_context;
 mod blueprint_resolved_results;
 mod chunks_with_component;
+mod clears;
 mod instance_hash_conversions;
 mod outlines;
 mod query;
@@ -29,6 +30,7 @@ pub use blueprint_resolved_results::{
 pub use chunks_with_component::{
     ChunkWithComponent, ChunksWithComponent, MaybeChunksWithComponent,
 };
+pub use clears::collect_recursive_clears;
 pub use instance_hash_conversions::{
     instance_path_hash_from_picking_layer_id, picking_layer_id_from_instance_path_hash,
 };
@@ -36,7 +38,9 @@ pub use outlines::{
     SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES, SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES, outline_config,
 };
 pub use query::{
-    DataResultQuery, latest_at_with_blueprint_resolved_data, range_with_blueprint_resolved_data,
+    ComponentCastRule, DataResultQuery, latest_at_with_blueprint_resolved_data,
+    latest_at_with_blueprint_resolved_data_polymorphic, range_with_blueprint_resolved_data,
+    range_with_blueprint_resolved_data_polymorphic,
 };
 use re_log_types::external::arrow;
 pub use view_property_ui::{
@@ -119,12 +123,7 @@ pub fn clamped_or_nothing<T>(values: &[T], clamped_len: usize) -> impl Iterator<
         return itertools::Either::Left(std::iter::empty());
     };
 
-    itertools::Either::Right(
-        values
-            .iter()
-            .chain(std::iter::repeat(last))
-            .take(clamped_len),
-    )
+    itertools::Either::Right(std::iter::chain(values, std::iter::repeat(last)).take(clamped_len))
 }
 
 /// Iterate over all the values in the slice, then repeat the last value forever.
@@ -133,7 +132,7 @@ pub fn clamped_or_nothing<T>(values: &[T], clamped_len: usize) -> impl Iterator<
 #[inline]
 pub fn clamped_or<'a, T>(values: &'a [T], if_empty: &'a T) -> impl Iterator<Item = &'a T> + Clone {
     let repeated = values.last().unwrap_or(if_empty);
-    values.iter().chain(std::iter::repeat(repeated))
+    std::iter::chain(values, std::iter::repeat(repeated))
 }
 
 /// Iterate over all the values in the slice, then repeat the last value forever.
@@ -145,7 +144,7 @@ pub fn clamped_or_else<T: Clone>(
     if_empty: impl Fn() -> T,
 ) -> impl Iterator<Item = T> {
     let repeated = values.last().cloned().unwrap_or_else(if_empty);
-    values.iter().cloned().chain(std::iter::repeat(repeated))
+    std::iter::chain(values.iter().cloned(), std::iter::repeat(repeated))
 }
 
 /// Clamp the last value in `values` in order to reach a length of `clamped_len`.

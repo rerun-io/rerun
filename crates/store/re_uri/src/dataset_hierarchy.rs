@@ -18,14 +18,14 @@ pub fn split_dataset_hierarchy_path(path: &str) -> impl Iterator<Item = &str> {
         (None, path)
     };
 
-    parents
-        .into_iter()
-        .flat_map(|parents| {
+    std::iter::chain(
+        parents.into_iter().flat_map(|parents| {
             parents
                 .split(DATASET_HIERARCHY_SEPARATOR)
                 .filter(|s| !s.is_empty())
-        })
-        .chain(std::iter::once(leaf))
+        }),
+        std::iter::once(leaf),
+    )
 }
 
 /// Returns the leaf segment of an entry name using [`split_dataset_hierarchy_path`] semantics.

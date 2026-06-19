@@ -121,7 +121,12 @@ impl McapImporter {
         // Apply time offset (if set) and make sure chunks are sorted by RowId before passing to the callback.
         let emit_final_chunk = |chunk: re_chunk::Chunk| {
             let mut chunk = apply_timestamp_offset(chunk, timestamp_offset_ns);
-            chunk.sort_if_unsorted();
+            chunk.sort_by_row_ids_if_needed();
+
+            // If we hit this warning, we may be producing unnecessarily slow .rrd:s
+            // See RR-4658 for details.
+            chunk.warn_if_out_of_order();
+
             emit_chunk(chunk);
         };
 

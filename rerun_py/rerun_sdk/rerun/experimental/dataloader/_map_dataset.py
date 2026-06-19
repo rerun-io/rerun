@@ -1,4 +1,4 @@
-"""Map-style Dataset backed by the Rerun Data Platform."""
+"""Map-style Dataset backed by a catalog server."""
 
 from __future__ import annotations
 
@@ -16,16 +16,16 @@ if TYPE_CHECKING:
     from ._config import DataSource, Field
 
 
-class RerunMapDataset(torch.utils.data.Dataset[dict[str, torch.Tensor]]):
+class RerunMapDataset(torch.utils.data.Dataset[dict[str, torch.Tensor | None]]):
     """
-    Map-style dataset backed by the Rerun Data Platform.
+    Map-style dataset backed by a catalog server.
 
     Supports random access by global index, so it works with PyTorch's
     sampler ecosystem (`DistributedSampler`, `WeightedRandomSampler`,
     `SubsetRandomSampler`, ...). Shuffling and cross-worker partitioning
     are driven by the `DataLoader`'s sampler.
 
-    For in-order streaming with internal shuffling, use
+    For streaming iteration with internal shuffling, use
     [`RerunIterableDataset`][rerun.experimental.dataloader.RerunIterableDataset] instead.
 
     Parameters
@@ -33,7 +33,7 @@ class RerunMapDataset(torch.utils.data.Dataset[dict[str, torch.Tensor]]):
     source
         The dataset to read from (with optional segment filter).
     index
-        Timeline to iterate (e.g. `"frame_nr"`).
+        Timeline column to use as the sample index (e.g. `"frame_nr"`).
     fields
         Sample fields, keyed by output name.
     timeline_sampling
@@ -94,12 +94,12 @@ class RerunMapDataset(torch.utils.data.Dataset[dict[str, torch.Tensor]]):
         """Total number of samples across all segments."""
         return self._sample_index.total_samples
 
-    def __getitem__(self, idx: int) -> dict[str, torch.Tensor]:  # ty: ignore[invalid-method-override]
+    def __getitem__(self, idx: int) -> dict[str, torch.Tensor | None]:  # ty: ignore[invalid-method-override]
         """Fetch a single sample by global index (one server query)."""
         return self.__getitems__([idx])[0]
 
     @with_tracing("RerunMapDataset.__getitems__")
-    def __getitems__(self, indices: list[int]) -> list[dict[str, torch.Tensor]]:
+    def __getitems__(self, indices: list[int]) -> list[dict[str, torch.Tensor | None]]:
         """
         Fetch multiple samples by global index in a single server query.
 

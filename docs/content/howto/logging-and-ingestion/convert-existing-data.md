@@ -55,7 +55,8 @@ Here are timings from a real-world MCAP conversion with custom Protobuf messages
 | Other messages (2,354 msgs) | 0.09s | 0.01s |
 | **Total Rerun logging time** | **1.33s** | **0.10s** |
 
-> **Note:** These are example timings from a specific dataset. Actual performance will vary. The relative speedup (10-13x here) is typical for the Rerun logging step of batch conversions.
+> [!NOTE]
+> These are example timings from a specific dataset. Actual performance will vary. The relative speedup (10-13x here) is typical for the Rerun logging step of batch conversions.
 
 ## Map to archetypes
 
@@ -96,8 +97,9 @@ Our example for `send_columns` works differently because it sends data in batche
 For this purpose, our handlers first extract data into collector utilities.
 These collectors first accumulate data during iteration and then send it in bulk after the loop.
 
-**Note:** the `ColumnCollector` used below is a user-defined helper class (not part of the Rerun SDK) that accumulates time-indexed data and sends it via `send_columns`.
-See the full example for its implementation.
+> [!NOTE]
+> The `ColumnCollector` used below is a user-defined helper class (not part of the Rerun SDK) that accumulates time-indexed data and sends it via `send_columns`.
+> See the full example for its implementation.
 
 snippet: howto/convert_mcap_protobuf_send_column[conversion_loop]
 

@@ -17,8 +17,8 @@ impl DrawOrder {
     /// Draw order used for segmentation images if no draw order was specified.
     pub const DEFAULT_SEGMENTATION_IMAGE: Self = Self(Float32(0.0));
 
-    /// Draw order used for 2D boxes if no draw order was specified.
-    pub const DEFAULT_BOX2D: Self = Self(Float32(10.0));
+    /// Draw order used for 2D shapes (boxes, ellipses) if no draw order was specified.
+    pub const DEFAULT_SHAPE_2D: Self = Self(Float32(10.0));
 
     /// Draw order used for 2D lines if no draw order was specified.
     pub const DEFAULT_LINES2D: Self = Self(Float32(20.0));

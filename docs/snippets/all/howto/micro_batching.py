@@ -1,7 +1,7 @@
 """
 Shows how to configure micro-batching directly from code.
 
-Check out <https://rerun.io/docs/reference/sdk/micro-batching> for more information.
+Check out <https://rerun.io/docs/reference/sdk/micro-batching> for more info.
 """
 
 from datetime import timedelta
@@ -21,6 +21,7 @@ config = rr.ChunkBatcherConfig(
 rec = rr.RecordingStream("rerun_example_micro_batching", batcher_config=config)
 rec.spawn()
 
-# These 10 log calls are guaranteed be batched together, and end up in the same chunk.
+# These 10 log calls are guaranteed be batched together, and end up in the
+# same chunk.
 for i in range(10):
     rec.log("logs", rr.TextLog(f"log #{i}"))

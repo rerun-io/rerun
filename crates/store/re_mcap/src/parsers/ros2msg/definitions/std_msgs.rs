@@ -6,13 +6,6 @@ use serde::{Deserialize, Serialize};
 
 use super::builtin_interfaces::Time;
 
-/// A string type used in ROS2 messages.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct StringMessage {
-    /// The string data.
-    pub data: String,
-}
-
 /// An array of Float64 values used in ROS2 messages.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Float64ArrayMessage {

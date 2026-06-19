@@ -26,7 +26,10 @@ pub struct VideoFrameReferenceVisualizer;
 
 impl IdentifiedViewSystem for VideoFrameReferenceVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "VideoFrameReference".into()
+        re_viewer_context::external::re_string_interner::intern_static!(
+            re_viewer_context::ViewSystemIdentifier,
+            "VideoFrameReference"
+        )
     }
 }
 

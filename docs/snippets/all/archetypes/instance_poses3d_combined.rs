@@ -6,8 +6,10 @@ use rerun::{
 };
 
 fn main() -> anyhow::Result<()> {
-    let rec =
-        rerun::RecordingStreamBuilder::new("rerun_example_instance_pose3d_combined").spawn()?;
+    let rec = rerun::RecordingStreamBuilder::new(
+        "rerun_example_instance_pose3d_combined",
+    )
+    .spawn()?;
 
     rec.set_time_sequence("frame", 0);
 
@@ -18,7 +20,11 @@ fn main() -> anyhow::Result<()> {
     )?;
     rec.log(
         "world/box/points",
-        &rerun::Points3D::new(grid(glam::Vec3::splat(-10.0), glam::Vec3::splat(10.0), 10)),
+        &rerun::Points3D::new(grid(
+            glam::Vec3::splat(-10.0),
+            glam::Vec3::splat(10.0),
+            10,
+        )),
     )?;
 
     for i in 0..180 {

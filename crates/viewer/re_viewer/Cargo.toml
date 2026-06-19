@@ -30,6 +30,7 @@ targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
 [lib]
 crate-type = ["cdylib", "rlib"]
 
+
 [package.metadata.cargo-shear]
 ignored-paths = ["data/quick_start_guides/*.rs"]
 
@@ -53,7 +54,7 @@ perf_telemetry = ["dep:re_perf_telemetry", "re_redap_client/perf_telemetry"]
 perf_telemetry_tracy = ["perf_telemetry", "re_perf_telemetry/tracy"]
 
 
-testing = ["dep:egui_kittest", "dep:tokio", "re_ui/testing", "re_analytics/testing"]
+testing = ["dep:tokio", "re_ui/testing", "re_analytics/testing"]
 
 
 [dependencies]
@@ -97,12 +98,13 @@ re_types_core.workspace = true
 re_ui.workspace = true
 re_uri.workspace = true
 re_video.workspace = true
+re_gamepad.workspace = true
 re_view.workspace = true
 re_view_bar_chart.workspace = true
 re_view_dataframe.workspace = true
 re_view_graph.workspace = true
 re_view_spatial.workspace = true
-re_view_status.workspace = true
+re_view_state_timeline.workspace = true
 re_view_tensor.workspace = true
 re_view_text_document.workspace = true
 re_view_text_log.workspace = true
@@ -116,7 +118,6 @@ re_analytics = { workspace = true, optional = true }
 re_view_map = { workspace = true, optional = true }
 
 # Test dependencies (optional):
-egui_kittest = { workspace = true, optional = true }
 tokio = { workspace = true, optional = true }
 
 
@@ -125,6 +126,7 @@ ahash.workspace = true
 anyhow.workspace = true
 arrow.workspace = true
 bytemuck.workspace = true
+camino.workspace = true
 cfg-if.workspace = true
 crossbeam.workspace = true
 eframe = { workspace = true, default-features = false, features = [
@@ -137,6 +139,7 @@ egui-wgpu.workspace = true
 egui.workspace = true
 ehttp.workspace = true
 emath.workspace = true
+futures.workspace = true
 glam.workspace = true
 image = { workspace = true, default-features = false, features = ["png"] }
 itertools.workspace = true
@@ -160,9 +163,13 @@ wgpu.workspace = true
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+egui_kittest.workspace = true
 poll-promise = { workspace = true, features = ["tokio"] }
 re_perf_telemetry = { workspace = true, optional = true }
 tokio.workspace = true
+
+[target.'cfg(target_os = "windows")'.dependencies]
+winit.workspace = true
 
 # web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
@@ -191,7 +198,6 @@ web-sys = { workspace = true, features = [
 
 
 [dev-dependencies]
-egui_kittest.workspace = true
 re_test_context.workspace = true
 re_test_viewport.workspace = true
 tempfile.workspace = true

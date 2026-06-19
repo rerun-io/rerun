@@ -3,16 +3,17 @@
 use rerun::AsComponents;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let rec =
-        rerun::RecordingStreamBuilder::new("rerun_example_transform3d_partial_updates").spawn()?;
+    let rec = rerun::RecordingStreamBuilder::new(
+        "rerun_example_transform3d_partial_updates",
+    )
+    .spawn()?;
 
     // Set up a 3D box.
     rec.log(
         "box",
-        &[
-            &rerun::Boxes3D::from_half_sizes([(4.0, 2.0, 1.0)])
-                .with_fill_mode(rerun::FillMode::Solid) as &dyn AsComponents,
-        ],
+        &[&rerun::Boxes3D::from_half_sizes([(4.0, 2.0, 1.0)])
+            .with_fill_mode(rerun::FillMode::Solid)
+            as &dyn AsComponents],
     )?;
 
     // Update only the rotation of the box.
@@ -20,10 +21,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let rad = truncated_radians((deg * 4) as f32);
         rec.log(
             "box",
-            &rerun::Transform3D::new().with_rotation(rerun::RotationAxisAngle::new(
-                [0.0, 1.0, 0.0],
-                rerun::Angle::from_radians(rad),
-            )),
+            &rerun::Transform3D::new().with_rotation(
+                rerun::RotationAxisAngle::new(
+                    [0.0, 1.0, 0.0],
+                    rerun::Angle::from_radians(rad),
+                ),
+            ),
         )?;
     }
 
@@ -31,7 +34,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     for t in 0..=50 {
         rec.log(
             "box",
-            &rerun::Transform3D::new().with_translation([0.0, 0.0, t as f32 / 10.0]),
+            &rerun::Transform3D::new().with_translation([
+                0.0,
+                0.0,
+                t as f32 / 10.0,
+            ]),
         )?;
     }
 
@@ -40,10 +47,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let rad = truncated_radians(((deg + 45) * 4) as f32);
         rec.log(
             "box",
-            &rerun::Transform3D::new().with_rotation(rerun::RotationAxisAngle::new(
-                [0.0, 1.0, 0.0],
-                rerun::Angle::from_radians(rad),
-            )),
+            &rerun::Transform3D::new().with_rotation(
+                rerun::RotationAxisAngle::new(
+                    [0.0, 1.0, 0.0],
+                    rerun::Angle::from_radians(rad),
+                ),
+            ),
         )?;
     }
 

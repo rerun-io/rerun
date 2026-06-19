@@ -12,7 +12,8 @@ use rerun::blueprint::VisualizableArchetype as _;
 fn colormap(t: f64, stops: &[(f64, [u8; 3])]) -> rerun::components::Color {
     for i in 0..stops.len() - 1 {
         if t <= stops[i + 1].0 {
-            let frac = ((t - stops[i].0) / (stops[i + 1].0 - stops[i].0)) as f32;
+            let frac =
+                ((t - stops[i].0) / (stops[i + 1].0 - stops[i].0)) as f32;
             let [r0, g0, b0] = stops[i].1.map(|c| c as f32);
             let [r1, g1, b1] = stops[i + 1].1.map(|c| c as f32);
             return rerun::components::Color::from_rgb(
@@ -27,8 +28,10 @@ fn colormap(t: f64, stops: &[(f64, [u8; 3])]) -> rerun::components::Color {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let rec =
-        rerun::RecordingStreamBuilder::new("rerun_example_custom_color_archetypes").spawn()?;
+    let rec = rerun::RecordingStreamBuilder::new(
+        "rerun_example_custom_color_archetypes",
+    )
+    .spawn()?;
 
     // --- Generate a torus point cloud ---
     let n = 8_000;
@@ -37,9 +40,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let theta: Vec<f64> = (0..n).map(|_| rng.random_range(0.0..TAU)).collect(); // angle around ring
     let phi: Vec<f64> = (0..n).map(|_| rng.random_range(0.0..TAU)).collect(); // angle around tube
 
-    let positions: Vec<[f32; 3]> = theta
-        .iter()
-        .zip(&phi)
+    let positions: Vec<[f32; 3]> = std::iter::zip(&theta, &phi)
         .map(|(&t, &p)| {
             let r = 3.0 + p.cos();
             [(r * t.cos()) as f32, (r * t.sin()) as f32, p.sin() as f32]
@@ -65,19 +66,27 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         (0.75, [200, 220, 60]),
         (1.0, [0, 200, 200]),
     ];
-    let spin_colors: Vec<_> = theta.iter().map(|&t| colormap(t / TAU, &cyclic)).collect();
+    let spin_colors: Vec<_> =
+        theta.iter().map(|&t| colormap(t / TAU, &cyclic)).collect();
 
     // region: log_custom_archetypes
     // --- Log positions and both color sets in one call ---
     rec.log(
         "pointcloud",
         &[
-            &rerun::Points3D::new(positions).with_radii([rerun::components::Radius::from(0.06)])
+            &rerun::Points3D::new(positions)
+                .with_radii([rerun::components::Radius::from(0.06)])
                 as &dyn rerun::AsComponents,
             &rerun::DynamicArchetype::new("HeightColors")
-                .with_component::<rerun::components::Color>("colors", height_colors),
+                .with_component::<rerun::components::Color>(
+                "colors",
+                height_colors,
+            ),
             &rerun::DynamicArchetype::new("SpinColors")
-                .with_component::<rerun::components::Color>("colors", spin_colors),
+                .with_component::<rerun::components::Color>(
+                    "colors",
+                    spin_colors,
+                ),
         ],
     )?;
     // endregion: log_custom_archetypes

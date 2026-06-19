@@ -16,7 +16,6 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     import datafusion
-    from pytest import LogCaptureFixture
     from rerun.catalog import DatasetEntry, IndexValuesLike
     from syrupy import SnapshotAssertion
 
@@ -369,8 +368,11 @@ def test_dataframe_api_using_index_values_partial_overlap(
 
 
 def test_dataframe_api_using_index_values_empty(
-    readonly_test_dataset: DatasetEntry, caplog: LogCaptureFixture, snapshot: SnapshotAssertion
+    readonly_test_dataset: DatasetEntry, snapshot: SnapshotAssertion
 ) -> None:
+    # Unknown segment IDs (e.g. "doesnt_exist") are silently ignored — no warning,
+    # no error, they just contribute no rows. Same goes for segments whose value
+    # array is empty.
     df = readonly_test_dataset.reader(
         index="time_1",
         using_index_values={
@@ -394,11 +396,6 @@ def test_dataframe_api_using_index_values_empty(
         "/obj3:Points3D:positions",
         "/text1:TextDocument:text",
         "/text2:TextDocument:text",
-    )
-
-    assert len(caplog.records) == 1
-    assert caplog.records[0].msg == inline_snapshot(
-        "Index values for the following inexistent or filtered segments were ignored: doesnt_exist"
     )
 
     assert str(df) == inline_snapshot("No data to display")

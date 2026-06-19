@@ -187,7 +187,7 @@ where
             event.record(&mut visitor);
             panic!(
                 "{level} logged with RERUN_PANIC_ON_WARN: {}",
-                visitor.finish()
+                visitor.format_as_string()
             );
         }
     }

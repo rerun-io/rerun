@@ -15,7 +15,7 @@ with tracing_session():
 
 The implementation is a thin Python wrapper around a Rust-side `ContextVar`.
 The Rust gRPC client reads the variable on every outbound request and merges
-`rerun_session_id=<id>` into the W3C `tracestate` header. The Rerun Data Platform
+`rerun_session_id=<id>` into the W3C `tracestate` header. The catalog server
 records it as a span attribute, queryable in Tempo as
 `{ .rerun_session_id = "…" }`.
 

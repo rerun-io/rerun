@@ -16,14 +16,14 @@ else
 fi
 
 # remove any existing .new.png that might have been left behind
-find . -type d -path "*/tests/snapshots*" | while read dir; do
-    find "$dir" -type f -name "*.new.png" | while read file; do
+find . -type d -path "*/tests/snapshots*" | while read -r dir; do
+    find "$dir" -type f -name "*.new.png" | while read -r file; do
         rm "$file"
     done
 done
 
 
-gh run download "$RUN_ID" --name "test-results-linux" --dir tmp_artefacts
+gh run download "$RUN_ID" --name "test-results-rust-checks-tests-linux" --dir tmp_artefacts
 
 # move the snapshots to the correct location, overwriting the existing ones
 rsync -a tmp_artefacts/ .

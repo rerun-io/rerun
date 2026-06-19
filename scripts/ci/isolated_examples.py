@@ -69,6 +69,12 @@ def cmd_lint(examples_dir: Path, repo_root: Path) -> int:
     for project in projects:
         print(f"\n=== {project.relative_to(repo_root)} ===", flush=True)
         subprocess.run(["uv", "sync"], cwd=project, check=True)
+        # rerun-dev-fixup is not in pyproject.toml (uv 0.7.x resolves all groups
+        # unconditionally — a path-only package would block standalone --no-sources).
+        # Install it explicitly here when running inside the monorepo.
+        shim_dir = (project / "../../../rerun_py/rerun_dev_fixup").resolve()
+        if shim_dir.exists():
+            subprocess.run(["uv", "pip", "install", str(shim_dir)], cwd=project, check=True)
         merged = build_merged_config(shared_base, project / "pyproject.toml")
         with tempfile.NamedTemporaryFile(
             mode="w",

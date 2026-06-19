@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -30,7 +31,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// based on the bounding-box of the data or other camera information present in the view.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, ::re_byte_size::SizeBytes)]
 pub struct VisualBounds2D {
     /// Controls the visible range of a 2D view.
     ///
@@ -44,11 +45,13 @@ impl VisualBounds2D {
     /// The corresponding component is [`crate::blueprint::components::VisualBounds2D`].
     #[inline]
     pub fn descriptor_range() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.VisualBounds2D".into()),
-            component: "VisualBounds2D:range".into(),
-            component_type: Some("rerun.blueprint.components.VisualBounds2D".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.VisualBounds2D".into()),
+                component: "VisualBounds2D:range".into(),
+                component_type: Some("rerun.blueprint.components.VisualBounds2D".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -72,7 +75,10 @@ impl VisualBounds2D {
 impl ::re_types_core::Archetype for VisualBounds2D {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.blueprint.archetypes.VisualBounds2D".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.blueprint.archetypes.VisualBounds2D"
+        )
     }
 
     #[inline]
@@ -161,12 +167,5 @@ impl VisualBounds2D {
     ) -> Self {
         self.range = try_serialize_field(Self::descriptor_range(), [range]);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for VisualBounds2D {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.range.heap_size_bytes()
     }
 }

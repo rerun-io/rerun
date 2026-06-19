@@ -1,0 +1,22 @@
+---
+source: crates/store/re_protos/src/v1alpha1/./rerun.cloud.v1alpha1.ext.rs
+expression: "format_schema(&QueryDatasetDataframe::max_schema())"
+---
+chunk_id: non-null FixedSizeBinary(16) [
+    rerun:kind: "control"
+]
+chunk_segment_id: non-null Utf8 [
+    rerun:kind: "control"
+]
+rerun_segment_layer: non-null Utf8
+chunk_key: non-null Binary
+chunk_entity_path: non-null Utf8 [
+    rerun:kind: "control"
+]
+chunk_is_static: non-null Boolean [
+    rerun:kind: "control"
+]
+chunk_byte_len: non-null UInt64
+chunk_byte_size_uncompressed: nullable UInt64
+rerun_layer_direct_url: nullable Dictionary(Int32, Utf8)
+rerun_layer_direct_url_expires_at: nullable Dictionary(Int32, Int64)

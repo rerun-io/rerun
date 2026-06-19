@@ -38,17 +38,23 @@ namespace rerun {
     // Also import any component or datatype that has a unique name:
     using components::AlbedoFactor;
     using components::Color;
+    using components::Colormap;
     using components::FillMode;
     using components::GeoLineString;
+    using components::GraphType;
     using components::HalfSize2D;
     using components::HalfSize3D;
+    using components::ImageBuffer;
+    using components::KeyValuePairs;
     using components::LatLon;
     using components::LineStrip2D;
     using components::LineStrip3D;
+    using components::MarkerShape;
     using components::MediaType;
     using components::Position2D;
     using components::Position3D;
     using components::Radius;
+    using components::Scalar;
     using components::Text;
     using components::TextLogLevel;
     using components::TransformRelation;

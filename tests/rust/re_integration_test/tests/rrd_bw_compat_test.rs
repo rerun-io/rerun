@@ -8,16 +8,20 @@ use egui_kittest::kittest::Queryable as _;
 use egui_kittest::{SnapshotOptions, SnapshotResults};
 use futures::StreamExt as _;
 use re_integration_test::HarnessExt as _;
+use re_viewer::external::re_log_types::TimelineName;
 use re_viewer::external::re_ui::notifications::NotificationLevel;
 use re_viewer::viewer_test_utils::{self, AppTestingExt as _, HarnessOptions, step_until};
 use re_viewer::{SystemCommand, SystemCommandSender as _};
 use re_viewer_context::TimeControlCommand;
 use std::io::Write as _;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::time::Duration;
 
 /// Maximum number of concurrent downloads.
 const DOWNLOAD_CONCURRENCY: usize = 8;
+
+/// Prefix used for in-flight download temp files in the cache directory.
+const DOWNLOAD_TEMP_PREFIX: &str = ".rrd-download-";
 
 /// Derive previous minor version from `CARGO_PKG_VERSION`.
 ///
@@ -116,6 +120,9 @@ async fn fetch_example_manifest(client: &reqwest::Client, version: &str) -> Vec<
 }
 
 /// Download a URL to a local path, streaming chunks to disk.
+///
+/// Writes go to a sibling temp file that is `fsync`'d and then renamed into place,
+/// so a partial download from an aborted run can never be observed at `path`.
 async fn download(client: &reqwest::Client, url: &str, path: &Path) {
     let mut resp = client
         .get(url)
@@ -123,16 +130,38 @@ async fn download(client: &reqwest::Client, url: &str, path: &Path) {
         .await
         .and_then(|r| r.error_for_status())
         .unwrap_or_else(|e| panic!("Failed to download {url}: {e}"));
-    let mut file =
-        std::fs::File::create(path).unwrap_or_else(|e| panic!("Failed to create {path:?}: {e}"));
+    // NOTE: We currently store `gzip`-ed versions on GCS, so this will always be `None`.
+    // If we ever decide to store and serve them unzipped, we'd benefit from additional
+    // checks, so I think it is worth leaving in.
+    let expected_len = resp.content_length();
+    let parent_dir = path
+        .parent()
+        .unwrap_or_else(|| panic!("Cannot determine parent of {path:?}"));
+    let mut tmp = tempfile::Builder::new()
+        .prefix(DOWNLOAD_TEMP_PREFIX)
+        .tempfile_in(parent_dir)
+        .unwrap_or_else(|e| panic!("Failed to create temp file in {parent_dir:?}: {e}"));
+    let mut written: u64 = 0;
     while let Some(chunk) = resp
         .chunk()
         .await
         .unwrap_or_else(|e| panic!("Failed to read from {url}: {e}"))
     {
-        file.write_all(&chunk)
-            .unwrap_or_else(|e| panic!("Failed to write {path:?}: {e}"));
+        tmp.write_all(&chunk)
+            .unwrap_or_else(|e| panic!("Failed to write to temp file for {path:?}: {e}"));
+        written += chunk.len() as u64;
     }
+    tmp.as_file()
+        .sync_all()
+        .unwrap_or_else(|e| panic!("Failed to sync temp file for {path:?}: {e}"));
+    if let Some(expected) = expected_len {
+        assert_eq!(
+            written, expected,
+            "Truncated download from {url}: got {written} bytes, expected {expected}"
+        );
+    }
+    tmp.persist(path)
+        .unwrap_or_else(|e| panic!("Failed to persist download to {path:?}: {e}"));
 }
 
 /// Ensure a single example is cached at `path`, downloading it if missing.
@@ -162,9 +191,27 @@ async fn test_old_rrds_in_current_viewer() {
     let version = resolve_latest_patch(&client, major, prev_minor).await;
     eprintln!("Testing backward compatibility with version {version}");
 
-    let cache_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join(format!("../../../target/rrd_bw_compat/{version}"));
+    let cache_dir = directories::ProjectDirs::from("io", "rerun", "rerun-integration-tests")
+        .expect("could not resolve the OS user cache directory (HOME unset?)")
+        .cache_dir()
+        .join("rrd_bw_compat")
+        .join(&version);
     std::fs::create_dir_all(&cache_dir).expect("failed to create cache directory");
+
+    // Clean up stale temp files left behind by aborted runs (e.g. SIGKILL),
+    // which `NamedTempFile::drop` cannot remove.
+    for entry in std::fs::read_dir(&cache_dir).expect("failed to read cache directory") {
+        let entry = entry.expect("failed to read cache entry");
+        if entry
+            .file_name()
+            .to_string_lossy()
+            .starts_with(DOWNLOAD_TEMP_PREFIX)
+        {
+            let path = entry.path();
+            std::fs::remove_file(&path)
+                .unwrap_or_else(|e| panic!("Failed to remove stale temp file {path:?}: {e}"));
+        }
+    }
 
     let manifest = fetch_example_manifest(&client, &version).await;
     assert!(
@@ -220,14 +267,27 @@ async fn test_old_rrds_in_current_viewer() {
         );
 
         // Pause playback and seek to the end of the recording so the snapshot
-        // is deterministic and the viewer stops requesting repaints.
-        harness.run_with_viewer_context(|ctx| {
-            ctx.send_time_commands(vec![TimeControlCommand::Pause, TimeControlCommand::MoveEnd]);
+        // is deterministic. If the default active timeline is `log_time`
+        // (inherently unstable across runs), switch to `log_tick` first.
+        harness.run_with_app_context(|ctx| {
+            let mut commands = vec![];
+            let time_ctrl = ctx
+                .active_time_ctrl()
+                .expect("active recording route should have a time control");
+            if *time_ctrl.timeline_name() == TimelineName::log_time() {
+                // log_time is inherently unstable and non-deterministic, so change to log_tick
+                commands.push(TimeControlCommand::SetActiveTimeline(
+                    TimelineName::log_tick(),
+                ));
+            }
+            commands.push(TimeControlCommand::Pause);
+            commands.push(TimeControlCommand::MoveEnd);
+            ctx.send_time_commands_to_active_recording(commands);
         });
         harness.run();
 
         if UNSTABLE_BLUEPRINT_EXAMPLES.contains(&example_name.as_str()) {
-            harness.run_with_viewer_context(|ctx| {
+            harness.run_with_app_context(|ctx| {
                 ctx.command_sender()
                     .send_system(SystemCommand::ClearActiveBlueprintAndEnableHeuristics);
             });
@@ -298,9 +358,7 @@ async fn test_old_rrds_in_current_viewer() {
         results.extend_harness(&mut harness);
     }
 
-    let untriggered: Vec<&str> = EXPECTED_NOTIFICATIONS
-        .iter()
-        .zip(expected_triggered.iter())
+    let untriggered: Vec<&str> = std::iter::zip(EXPECTED_NOTIFICATIONS, &expected_triggered)
         .filter(|(_, triggered)| !**triggered)
         .map(|(msg, _)| *msg)
         .collect();

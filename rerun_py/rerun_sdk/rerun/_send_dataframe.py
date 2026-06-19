@@ -1,16 +1,23 @@
 from __future__ import annotations
 
-from collections import defaultdict
-from typing import TYPE_CHECKING, Any
-
-import pyarrow as pa
-
-from ._baseclasses import ComponentColumn, ComponentDescriptor
-from ._send_columns import TimeColumnLike, send_columns
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    import pyarrow as pa
+
+    from .experimental._chunk import DataframeLike
     from .recording_stream import RecordingStream
 
+
+class _AutoIndex:
+    """Sentinel for the `index=…` argument: derive index columns from metadata."""
+
+
+AUTO_INDEX = _AutoIndex()
+"""Sentinel for the `index=…` argument: derive index columns from metadata."""
+
+# The following constants mirror the Rerun Arrow metadata keys (see `re_sorbet::metadata`). They are
+# kept here for backwards compatibility; the dataframe → chunk interpretation now lives in Rust.
 SORBET_INDEX_NAME = b"rerun:index_name"
 SORBET_ENTITY_PATH = b"rerun:entity_path"
 SORBET_ARCHETYPE_NAME = b"rerun:archetype"
@@ -26,82 +33,78 @@ RERUN_KIND_INDEX = b"index"
 RECORDING_PROPERTIES_PATH = "/__properties"
 
 
-class _RawIndexColumn(TimeColumnLike):
-    def __init__(self, metadata: dict[bytes, bytes], col: pa.Array) -> None:
-        self.metadata = metadata
-        self.col = col
+def send_record_batch(
+    batch: pa.RecordBatch,
+    recording: RecordingStream | None = None,
+    *,
+    index: str | list[str] | None | _AutoIndex = AUTO_INDEX,
+    entity_path: str | None = None,
+) -> None:
+    """
+    Coerce a single pyarrow `RecordBatch` to Rerun structure and log it.
 
-    def timeline_name(self) -> str:
-        name = self.metadata.get(SORBET_INDEX_NAME, "unknown")
-        if isinstance(name, bytes):
-            name = name.decode("utf-8")
-        return name
+    A thin wrapper over [`Chunk.from_record_batch`][rerun.experimental.Chunk.from_record_batch]
+    followed by [`send_chunks`][rerun.experimental.send_chunks]. See `Chunk.from_record_batch` for
+    the full column-classification semantics and the conditions under which a `ValueError` is raised.
 
-    def as_arrow_array(self) -> pa.Array:
-        return self.col
+    Parameters
+    ----------
+    batch:
+        The Arrow record batch to interpret.
+    recording:
+        Specifies the [`rerun.RecordingStream`][] to use.
+        If left unspecified, defaults to the current active data recording, if there is one.
+        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
+    index:
+        Determines which columns are index (timeline) columns. See
+        [`Chunk.from_record_batch`][rerun.experimental.Chunk.from_record_batch] for the full
+        semantics. Defaults to deriving the index from the batch's Rerun metadata.
+    entity_path:
+        Default entity path for component columns that do not otherwise specify one.
 
+    """
+    from .experimental._chunk import Chunk
+    from .experimental._send_chunks import send_chunks
 
-class _RawComponentBatchLike(ComponentColumn):
-    def __init__(self, metadata: dict[bytes, bytes], col: pa.Array) -> None:
-        self.metadata = metadata
-        self.col = col
-
-    def component_descriptor(self) -> ComponentDescriptor:
-        kwargs = {}
-        if SORBET_ARCHETYPE_NAME in self.metadata:
-            kwargs["archetype"] = self.metadata[SORBET_ARCHETYPE_NAME].decode("utf-8")
-        if SORBET_COMPONENT_TYPE in self.metadata:
-            kwargs["component_type"] = self.metadata[SORBET_COMPONENT_TYPE].decode("utf-8")
-        if SORBET_COMPONENT in self.metadata:
-            kwargs["component"] = self.metadata[SORBET_COMPONENT].decode("utf-8")
-
-        if "component_type" not in kwargs:
-            kwargs["component_type"] = "Unknown"
-
-        return ComponentDescriptor(**kwargs)
-
-    def as_arrow_array(self) -> pa.Array:
-        return self.col
-
-
-def send_record_batch(batch: pa.RecordBatch, recording: RecordingStream | None = None) -> None:
-    """Coerce a single pyarrow `RecordBatch` to Rerun structure."""
-
-    indexes = []
-    data: defaultdict[str, list[Any]] = defaultdict(list)
-    archetypes: defaultdict[str, set[Any]] = defaultdict(set)
-    for col in batch.schema:
-        metadata = col.metadata or {}
-        if metadata.get(RERUN_KIND) == RERUN_KIND_CONTROL:
-            continue
-        if SORBET_INDEX_NAME in metadata or metadata.get(RERUN_KIND) == RERUN_KIND_INDEX:
-            if SORBET_INDEX_NAME not in metadata:
-                metadata[SORBET_INDEX_NAME] = col.name
-            indexes.append(_RawIndexColumn(metadata, batch.column(col.name)))
-        else:
-            entity_path = metadata.get(SORBET_ENTITY_PATH, col.name.split(":")[0])
-            if isinstance(entity_path, bytes):
-                entity_path = entity_path.decode("utf-8")
-            data[entity_path].append(_RawComponentBatchLike(metadata, batch.column(col.name)))
-            if SORBET_ARCHETYPE_NAME in metadata:
-                archetypes[entity_path].add(metadata[SORBET_ARCHETYPE_NAME].decode("utf-8"))
-
-    for entity_path, columns in data.items():
-        send_columns(
-            entity_path,
-            indexes,
-            columns,
-            # This is fine, send_columns will handle the conversion
-            recording=recording,  # NOLINT
-        )
+    chunks = Chunk.from_record_batch(batch, index=index, entity_path=entity_path)
+    send_chunks(chunks, recording=recording)  # NOLINT: send_chunks casts the RecordingStream itself
 
 
-# TODO(RR-3198): this should accept a `datafusion.DataFrame` as a soft dependency
-def send_dataframe(df: pa.RecordBatchReader | pa.Table, recording: RecordingStream | None = None) -> None:
-    """Coerce a pyarrow `RecordBatchReader` or `Table` to Rerun structure."""
+def send_dataframe(
+    df: DataframeLike,
+    recording: RecordingStream | None = None,
+    *,
+    index: str | list[str] | None | _AutoIndex = AUTO_INDEX,
+    entity_path: str | None = None,
+) -> None:
+    """
+    Coerce a pyarrow `Table` / `RecordBatch` / `RecordBatchReader`, or a datafusion `DataFrame`, to Rerun structure and log it.
 
-    if isinstance(df, pa.Table):
-        df = df.to_reader()
+    A thin wrapper over [`Chunk.from_dataframe`][rerun.experimental.Chunk.from_dataframe] followed by
+    [`send_chunks`][rerun.experimental.send_chunks]. See `Chunk.from_dataframe` for the accepted input
+    types, and `Chunk.from_record_batch` for the full column-classification semantics and the
+    conditions under which a `ValueError` is raised.
 
-    for batch in df:
-        send_record_batch(batch, recording)
+    Parameters
+    ----------
+    df:
+        The dataframe to interpret. Must be a pyarrow `Table`, pyarrow `RecordBatch`, pyarrow
+        `RecordBatchReader`, or datafusion `DataFrame` (an optional dependency) — each has a single
+        fixed schema.
+    recording:
+        Specifies the [`rerun.RecordingStream`][] to use.
+        If left unspecified, defaults to the current active data recording, if there is one.
+        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
+    index:
+        Determines which columns are index (timeline) columns. See
+        [`Chunk.from_record_batch`][rerun.experimental.Chunk.from_record_batch] for the full
+        semantics. Defaults to deriving the index from the dataframe's Rerun metadata.
+    entity_path:
+        Default entity path for component columns that do not otherwise specify one.
+
+    """
+    from .experimental._chunk import Chunk
+    from .experimental._send_chunks import send_chunks
+
+    chunks = Chunk.from_dataframe(df, index=index, entity_path=entity_path)
+    send_chunks(chunks, recording=recording)  # NOLINT: send_chunks casts the RecordingStream itself

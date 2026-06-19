@@ -9,8 +9,10 @@ fn main() -> anyhow::Result<()> {
         anyhow::bail!("Usage: {} <path_to_video.[mp4]>", args[0]);
     };
 
-    let rec =
-        rerun::RecordingStreamBuilder::new("rerun_example_asset_video_auto_frames").spawn()?;
+    let rec = rerun::RecordingStreamBuilder::new(
+        "rerun_example_asset_video_auto_frames",
+    )
+    .spawn()?;
 
     // Log video asset which is referred to by frame references.
     let video_asset = rerun::AssetVideo::from_file_path(path)?;

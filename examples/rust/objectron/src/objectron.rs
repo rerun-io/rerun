@@ -992,8 +992,8 @@ pub mod ar_mesh_geometry {
     }
     #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
     pub struct Face {
-        /// / Indices of vertices defining the face from correspondent array of parent
-        /// / message. A typical face is triangular.
+        /// Indices of vertices defining the face from correspondent array of parent
+        /// message. A typical face is triangular.
         #[prost(int32, repeated, tag = "1")]
         pub vertex_indices: ::prost::alloc::vec::Vec<i32>,
     }

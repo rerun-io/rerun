@@ -6,12 +6,12 @@ namespace rerun.archetypes;
 /// This archetype is intended for robotics applications like occupancy maps or navigation costmaps.
 ///
 /// \example archetypes/grid_map_simple title="Simple occupancy grid map"
+/// \example archetypes/grid_map_pose missing="cpp,rs" title="Log a grid map at a specific pose" image="https://static.rerun.io/grid_map_pose/55eeb468043da65a1c678f97048dca8545806983/1200w.png"
 table GridMap (
   "attr.cpp.no_field_ctors",
   "attr.docs.category": "Spatial 3D",
-  "attr.docs.unreleased",
   "attr.docs.view_types": "Spatial3DView, Spatial2DView",
-  "attr.rerun.state": "unstable",
+  "attr.rerun.state": "stable",
   "attr.rust.derive": "PartialEq"
 ) {
   // --- Required ---

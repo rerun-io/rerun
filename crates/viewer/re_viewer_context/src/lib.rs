@@ -72,13 +72,13 @@ pub use self::blueprint_id::{
     BlueprintId, BlueprintIdRegistry, ContainerId, GLOBAL_VIEW_ID, ViewId,
 };
 pub use self::cache::{
-    Cache, CacheEntryAccess, ImageDecodeCache, ImageStatsCache, Memoizers,
-    SharablePlayableVideoStream, StoreCache, TensorStatsAccessor, TensorStatsCache,
+    Cache, CacheEntryAccess, ImageDecodeCache, ImageHistogramCache, ImageStatsCache, Memoizers,
+    Rgb8Histogram, SharablePlayableVideoStream, StoreCache, TensorStatsAccessor, TensorStatsCache,
     TransformDatabaseStoreCache, VideoAssetCache, VideoStreamCache, VideoStreamProcessingError,
 };
 pub use self::collapsed_id::{CollapseItem, CollapseScope, CollapsedId};
 pub use self::command_sender::{
-    CommandReceiver, CommandSender, EditRedapServerModalCommand, SystemCommand,
+    CommandReceiver, CommandSender, DownloadAction, EditRedapServerModalCommand, SystemCommand,
     SystemCommandSender, command_channel,
 };
 pub use self::component_fallbacks::{
@@ -117,9 +117,9 @@ pub use self::store_view_context::StoreViewContext;
 pub use self::tables::{TableStore, TableStores};
 pub use self::tensor::{ImageStats, TensorStats};
 pub use self::time_control::{
-    MoveDirection, MoveSpeed, PreviewRecordingsDb, TIME_PANEL_PATH, TimeControl,
-    TimeControlCommand, TimeControlDb, TimeControlResponse, TimeControlUpdateParams, TimeView,
-    time_panel_blueprint_entity_path,
+    MoveDirection, MoveSpeed, TIME_PANEL_PATH, TimeControl, TimeControlCommand,
+    TimeControlResponse, TimeControlUpdateParams, TimeRangeHighlight, TimeRangeHighlightKind,
+    TimeView, time_panel_blueprint_entity_path,
 };
 pub use self::typed_entity_collections::{
     BufferAndFormatMatch, DatatypeMatch, IndicatedEntities, PerVisualizerInstruction,
@@ -151,7 +151,10 @@ pub use self::visitor_flow_control::VisitorControlFlow; // Historical reasons
 pub mod external {
     #[cfg(not(target_arch = "wasm32"))]
     pub use tokio;
-    pub use {nohash_hasher, re_chunk_store, re_entity_db, re_log_types, re_query, re_ui};
+    pub use {
+        nohash_hasher, re_chunk_store, re_entity_db, re_log_types, re_query, re_string_interner,
+        re_ui,
+    };
 }
 
 // Re-export
@@ -164,6 +167,16 @@ pub use re_chunk_store::MissingChunkReporter;
 pub enum NeedsRepaint {
     Yes,
     No,
+}
+
+impl NeedsRepaint {
+    pub fn or(self, other: Self) -> Self {
+        if self == Self::Yes || other == Self::Yes {
+            Self::Yes
+        } else {
+            Self::No
+        }
+    }
 }
 
 // ---

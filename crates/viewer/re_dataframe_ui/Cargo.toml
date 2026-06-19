@@ -45,7 +45,6 @@ re_viewport.workspace = true
 
 ahash.workspace = true
 arrow.workspace = true
-base64.workspace = true
 async-trait.workspace = true
 cfg-if.workspace = true
 crossbeam.workspace = true

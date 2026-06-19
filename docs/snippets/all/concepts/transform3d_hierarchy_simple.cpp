@@ -3,7 +3,8 @@
 #include <rerun.hpp>
 
 int main(int argc, char* argv[]) {
-    const auto rec = rerun::RecordingStream("rerun_example_transform3d_hierarchy_simple");
+    const auto rec =
+        rerun::RecordingStream("rerun_example_transform3d_hierarchy_simple");
     rec.spawn().exit_on_failure();
 
     // Log entities at their hierarchy positions.

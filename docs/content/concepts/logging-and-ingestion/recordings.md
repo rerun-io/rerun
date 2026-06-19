@@ -25,9 +25,9 @@ In particular, they share the same [blueprint](../visualization/blueprints.md).
 
 
 <!-- NOLINT -->
-### Recordings on the Data Platform
+### Recordings on a catalog server
 
-The Data Platform has a slightly different object model, which you can read more about in [Catalog object model](../query-and-transform/catalog-object-model.md).
+A catalog server has a slightly different object model, which you can read more about in [Catalog object model](../query-and-transform/catalog-object-model.md).
 
 Datasets are top-level objects that group semantically related episodes of data, which we call _segments_.
 For example, it can be multiple recordings of the same robotic task.
@@ -42,9 +42,9 @@ This again allows pooling multiple physical recordings into a single (logical) s
 
 ### Distributed recordings
 
-Both the Viewer's implicit merging semantics and the Data Platform's layer system enable distributed logging workflows. Multiple processes or machines can produce separate `.rrd` files that share the same recording ID and application ID.
+Both the Viewer's implicit merging semantics and the catalog server's layer system enable distributed logging workflows. Multiple processes or machines can produce separate `.rrd` files that share the same recording ID and application ID.
 
-When these files are loaded into the Viewer, they are treated as a single logical recording. Alternatively, when using the Data Platform, these files can be registered to separate layers. This enables workflows where data collection is distributed across multiple sources but visualized as a unified set of data.
+When these files are loaded into the Viewer, they are treated as a single logical recording. Alternatively, when using a catalog server, these files can be registered to separate layers. This enables workflows where data collection is distributed across multiple sources but visualized as a unified set of data.
 
 You can learn more about this in the [shared recordings guide](../../howto/logging-and-ingestion/shared-recordings.md).
 
@@ -64,13 +64,13 @@ snippet: tutorials/custom-application-id
 <!-- NOLINT -->
 ### When application IDs matter
 
-Application IDs are used by the Viewer when loading recordings directly (not via the Data Platform):
+Application IDs are used by the Viewer when loading recordings directly (not via a catalog server):
 
 - The Viewer stores blueprints per application ID
 - Different recordings share the same blueprint if they share the same application ID
 - Recordings are grouped by application ID in the Viewer UI
 
-As stated above, application IDs are discarded when registering recordings to the Data Platform. See [Recordings on the Data Platform](#recordings-on-the-data-platform) above.
+As stated above, application IDs are discarded when registering recordings to a catalog server. See [Recordings on a catalog server](#recordings-on-a-catalog-server) above.
 
 Check out the API to learn more about SDK initialization:
 - [🐍 Python](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.init)

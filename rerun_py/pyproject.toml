@@ -43,23 +43,27 @@ tests = [
   "opencv-python>4.6",
   "pandas>=2",
   "polars==1.36.1",
-  "pytest==8.4.2",
+  "pytest==9.0.3",
   "semver>=3.0,<3.1",
   "syrupy==5.0.0",
   "tomli==2.0.1",
   "torch>=2.5", # Needs numpy 2 support
   "torchvision", # Imported at top of `rerun.experimental.dataloader._decoders`, so needed to import the dataloader module at all
-  "datafusion==52.3.0",
+  "datafusion==53.0.0",
 ]
-notebook = ["rerun-notebook==0.32.0-alpha.1+dev"]
+notebook = ["rerun-notebook==0.34.0-alpha.1+dev"]
 # TODO(RR-3786): when pyarrow is fixed, we should remove the pandas dependency
-datafusion = ["datafusion==52.3.0", "pandas>=2"] # deprecated, replaced by `dataplatform` (NOLINT)
-dataplatform = [ # NOLINT
-  "datafusion==52.3.0",
+datafusion = ["datafusion==53.0.0", "pandas>=2"] # deprecated, replaced by `catalog`
+dataplatform = [ # deprecated, replaced by `catalog` (NOLINT)
+  "datafusion==53.0.0",
+  "pandas>=2",
+]
+catalog = [
+  "datafusion==53.0.0",
   "pandas>=2",
 ] # pandas is needed so pyarrow properly converts nanoseconds (RR-3532)
 
-# PyTorch `Dataset` for the Rerun Data Platform.
+# PyTorch `Dataset` for a catalog server.
 dataloader = ["torch>=2.5", "torchvision", "av", "pillow>=8.0.0"]
 
 # Client-side OpenTelemetry export, enabled by setting `TELEMETRY_ENABLED=true`
@@ -70,7 +74,7 @@ tracing = ["opentelemetry-api", "opentelemetry-sdk", "opentelemetry-exporter-otl
 # Note: We avoid self-referential extras like "rerun-sdk[notebook]" because they cause
 # uv to fetch rerun-sdk from PyPI when the local package isn't built yet.
 # TODO(RR-3786): when pyarrow is fixed, we should remove the pandas dependency
-all = ["datafusion==52.3.0", "pandas>=2", "rerun-notebook==0.32.0-alpha.1+dev"]
+all = ["datafusion==53.0.0", "pandas>=2", "rerun-notebook==0.34.0-alpha.1+dev"]
 
 [project.urls]
 documentation = "https://www.rerun.io/docs"
@@ -248,10 +252,15 @@ known-first-party = ["rerun_bindings"]
 # with the other `rerun` pypi package. The rerun_sdk.pth adds this to the pythonpath
 # which then allows `import rerun` to work as expected.
 # See https://github.com/rerun-io/rerun/pull/1085 for more details
-# Even though both `rerun` and `rerun.exe` are here, only one will be included since
-# they both should not be fetched in CI when running the build.
+# Each platform fetches only one of these — `rerun` (Linux), `rerun.exe` (Windows),
+# or the `Rerun.app` bundle (macOS — see scripts/ci/bundle_macos_app.py).
 # Files missing from this list is not a packaging failure.
-include = ["rerun_sdk.pth", "rerun_sdk/rerun_cli/rerun", "rerun_sdk/rerun_cli/rerun.exe"]
+include = [
+  "rerun_sdk.pth",
+  "rerun_sdk/rerun_cli/rerun",
+  "rerun_sdk/rerun_cli/rerun.exe",
+  "rerun_sdk/rerun_cli/Rerun.app/**/*",
+]
 locked = true
 name = "rerun_bindings"
 python-packages = ["rerun_sdk/rerun", "rerun_sdk/rerun_cli"]

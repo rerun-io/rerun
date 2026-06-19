@@ -35,7 +35,7 @@ snippet: howto/dataframe_performance[cache]
 
 ## Leverage sparsity to minimize scans
 In a write once, read many paradigm adding an additional sparse column can enable cheap access to data of interest via filtering.
-The Rerun Data Platform has the ability to "push down" filters to greatly reduce the amount of data returned, improving query performance.
+The catalog server has the ability to "push down" filters to greatly reduce the amount of data returned, improving query performance.
 In this example we take advantage of this fact by filtering based on a sparse marker we have intentionally inserted into the recording.
 
 snippet: howto/dataframe_performance[sparsity]

@@ -9,3 +9,4 @@ mod test_log;
 mod test_point_cloud;
 mod test_poses_in_frame;
 mod test_raw_image;
+mod test_voxel_grid;

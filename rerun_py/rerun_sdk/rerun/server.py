@@ -16,6 +16,8 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from types import TracebackType
 
+__all__ = ["Server"]
+
 
 class Server:
     """

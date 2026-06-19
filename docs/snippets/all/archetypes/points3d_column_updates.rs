@@ -3,8 +3,10 @@
 //! This is semantically equivalent to the `points3d_row_updates` example, albeit much faster.
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let rec =
-        rerun::RecordingStreamBuilder::new("rerun_example_points3d_column_updates").spawn()?;
+    let rec = rerun::RecordingStreamBuilder::new(
+        "rerun_example_points3d_column_updates",
+    )
+    .spawn()?;
 
     let times = rerun::TimeColumn::new_duration_secs("time", 10..15);
 
@@ -31,7 +33,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_radii(radii)
         .columns_of_unit_batches()?;
 
-    rec.send_columns("points", [times], position.chain(color_and_radius))?;
+    rec.send_columns(
+        "points",
+        [times],
+        std::iter::chain(position, color_and_radius),
+    )?;
 
     Ok(())
 }

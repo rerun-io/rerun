@@ -16,4 +16,5 @@ positions = rr.components.Position3DBatch([1, 2, 3]).described(
 )
 rr.log("data", [positions], static=True)
 
-# The tags are indirectly checked by the Rust version (have a look over there for more info).
+# The tags are indirectly checked by the Rust version (have a look over there
+# for more info).

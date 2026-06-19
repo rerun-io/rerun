@@ -12,7 +12,7 @@ use crate::datatypes::{Blob, ChannelDatatype, TensorBuffer, TensorData};
 // ----------------------------------------------------------------------------
 
 /// The kind of image data, either color, segmentation, or depth image.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, re_byte_size::SizeBytes)]
 pub enum ImageKind {
     /// A normal grayscale or color image ([`archetypes::Image`]).
     Color,
@@ -39,16 +39,6 @@ impl ImageKind {
         } else {
             Self::Color
         }
-    }
-}
-
-impl re_byte_size::SizeBytes for ImageKind {
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    fn is_pod() -> bool {
-        true
     }
 }
 

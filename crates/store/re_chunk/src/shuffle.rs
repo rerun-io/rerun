@@ -12,16 +12,22 @@ impl Chunk {
     ///
     /// This is O(1) (cached).
     ///
-    /// See also [`Self::is_sorted_uncached`].
+    /// Even if this is true, individual timelines can still be unsorted.
+    ///
+    /// See also:
+    /// * [`Self::is_row_ids_sorted_uncached`]
+    /// * [`Self::all_timelines_sorted`]
+    /// * [`Self::is_timeline_sorted`]
+    /// * [`Self::unsorted_timelines`]
     #[inline]
-    pub fn is_sorted(&self) -> bool {
+    pub fn is_row_ids_sorted(&self) -> bool {
         self.is_sorted
     }
 
     /// For debugging purposes.
     #[doc(hidden)]
     #[inline]
-    pub fn is_sorted_uncached(&self) -> bool {
+    pub fn is_row_ids_sorted_uncached(&self) -> bool {
         re_tracing::profile_function!();
 
         self.row_ids()
@@ -31,9 +37,12 @@ impl Chunk {
 
     /// Is the chunk ascendingly sorted by time, for all of its timelines?
     ///
+    /// This is also known as an "ordered" chunk,
+    /// and when `false` this is also known as an "out-of-order" chunk.
+    ///
     /// This is O(1) (cached).
     #[inline]
-    pub fn is_time_sorted(&self) -> bool {
+    pub fn all_timelines_sorted(&self) -> bool {
         self.timelines
             .values()
             .all(|time_column| time_column.is_sorted())
@@ -61,17 +70,39 @@ impl Chunk {
             || self
                 .timelines
                 .get(timeline)
-                .is_some_and(|time_column| time_column.is_sorted_uncached())
+                .is_some_and(|time_column| time_column.is_row_ids_sorted_uncached())
     }
 
-    /// Sort the chunk, if needed.
+    /// Return all timelines that are not sorted relative to [`crate::RowId`].
+    pub fn unsorted_timelines(&self) -> Vec<TimelineName> {
+        self.timelines
+            .iter()
+            .filter_map(|(name, time_column)| {
+                if time_column.is_sorted() {
+                    None
+                } else {
+                    Some(*name)
+                }
+            })
+            .collect()
+    }
+
+    /// Sort the chunk by [`crate::RowId`], if needed.
     ///
     /// The underlying arrow data will be copied and shuffled in memory in order to make it contiguous.
     ///
+    /// Even after calling this, individual timelines may be unsorted.
+    ///
     /// If the chunk changes, it is given a new unique [`ChunkId`].
+    ///
+    /// See also:
+    /// * [`Self::is_row_ids_sorted_uncached`]
+    /// * [`Self::all_timelines_sorted`]
+    /// * [`Self::is_timeline_sorted`]
+    /// * [`Self::unsorted_timelines`]
     #[inline]
-    pub fn sort_if_unsorted(&mut self) {
-        if self.is_sorted() {
+    pub fn sort_by_row_ids_if_needed(&mut self) {
+        if self.is_row_ids_sorted() {
             return;
         }
 
@@ -280,7 +311,7 @@ impl Chunk {
             }
         }
 
-        self.is_sorted = self.is_sorted_uncached();
+        self.is_sorted = self.is_row_ids_sorted_uncached();
     }
 }
 
@@ -289,7 +320,7 @@ impl TimeColumn {
     ///
     /// This is O(1) (cached).
     ///
-    /// See also [`Self::is_sorted_uncached`].
+    /// See also [`Self::is_row_ids_sorted_uncached`].
     #[inline]
     pub fn is_sorted(&self) -> bool {
         self.is_sorted
@@ -302,7 +333,7 @@ impl TimeColumn {
     ///
     /// See also [`Self::is_sorted`].
     #[inline]
-    pub fn is_sorted_uncached(&self) -> bool {
+    pub fn is_row_ids_sorted_uncached(&self) -> bool {
         re_tracing::profile_function!();
         self.times_raw()
             .windows(2)
@@ -383,8 +414,8 @@ mod tests {
 
             eprintln!("{chunk_sorted}");
 
-            assert!(chunk_sorted.is_sorted());
-            assert!(chunk_sorted.is_sorted_uncached());
+            assert!(chunk_sorted.is_row_ids_sorted());
+            assert!(chunk_sorted.is_row_ids_sorted_uncached());
 
             let chunk_shuffled = {
                 let mut chunk_shuffled = chunk_sorted.clone();
@@ -394,20 +425,20 @@ mod tests {
 
             eprintln!("{chunk_shuffled}");
 
-            assert!(!chunk_shuffled.is_sorted());
-            assert!(!chunk_shuffled.is_sorted_uncached());
+            assert!(!chunk_shuffled.is_row_ids_sorted());
+            assert!(!chunk_shuffled.is_row_ids_sorted_uncached());
             assert_ne!(chunk_sorted, chunk_shuffled);
 
             let chunk_resorted = {
                 let mut chunk_resorted = chunk_shuffled.clone();
-                chunk_resorted.sort_if_unsorted();
+                chunk_resorted.sort_by_row_ids_if_needed();
                 chunk_resorted
             };
 
             eprintln!("{chunk_resorted}");
 
-            assert!(chunk_resorted.is_sorted());
-            assert!(chunk_resorted.is_sorted_uncached());
+            assert!(chunk_resorted.is_row_ids_sorted());
+            assert!(chunk_resorted.is_row_ids_sorted_uncached());
             assert_eq!(chunk_sorted, chunk_resorted);
         }
 
@@ -484,8 +515,8 @@ mod tests {
 
             eprintln!("unsorted:\n{chunk_unsorted_timeline2}");
 
-            assert!(chunk_unsorted_timeline2.is_sorted());
-            assert!(chunk_unsorted_timeline2.is_sorted_uncached());
+            assert!(chunk_unsorted_timeline2.is_row_ids_sorted());
+            assert!(chunk_unsorted_timeline2.is_row_ids_sorted_uncached());
 
             assert!(
                 chunk_unsorted_timeline2
@@ -499,7 +530,7 @@ mod tests {
                     .timelines()
                     .get(timeline1.name())
                     .unwrap()
-                    .is_sorted_uncached()
+                    .is_row_ids_sorted_uncached()
             );
 
             assert!(
@@ -514,7 +545,7 @@ mod tests {
                     .timelines()
                     .get(timeline2.name())
                     .unwrap()
-                    .is_sorted_uncached()
+                    .is_row_ids_sorted_uncached()
             );
 
             let chunk_sorted_timeline2 =
@@ -522,8 +553,8 @@ mod tests {
 
             eprintln!("sorted:\n{chunk_sorted_timeline2}");
 
-            assert!(!chunk_sorted_timeline2.is_sorted());
-            assert!(!chunk_sorted_timeline2.is_sorted_uncached());
+            assert!(!chunk_sorted_timeline2.is_row_ids_sorted());
+            assert!(!chunk_sorted_timeline2.is_row_ids_sorted_uncached());
 
             assert!(
                 !chunk_sorted_timeline2
@@ -537,7 +568,7 @@ mod tests {
                     .timelines()
                     .get(timeline1.name())
                     .unwrap()
-                    .is_sorted_uncached()
+                    .is_row_ids_sorted_uncached()
             );
 
             assert!(
@@ -552,7 +583,7 @@ mod tests {
                     .timelines()
                     .get(timeline2.name())
                     .unwrap()
-                    .is_sorted_uncached()
+                    .is_row_ids_sorted_uncached()
             );
 
             let chunk_sorted_timeline2_expected =
@@ -648,8 +679,8 @@ mod tests {
 
         eprintln!("{chunk}");
 
-        assert!(chunk.is_sorted());
-        assert!(chunk.is_sorted_uncached());
+        assert!(chunk.is_row_ids_sorted());
+        assert!(chunk.is_row_ids_sorted_uncached());
 
         let alpha = chunk.timelines().get(&"alpha".into()).unwrap();
         let beta = chunk.timelines().get(&"beta".into()).unwrap();

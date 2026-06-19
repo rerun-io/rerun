@@ -33,7 +33,7 @@ fn build_mesh_instances(
         .chunks_exact(model_mesh_instances.len())
         .enumerate()
         .flat_map(|(i, positions_and_colors)| {
-            model_mesh_instances.iter().zip(positions_and_colors).map(
+            std::iter::zip(model_mesh_instances, positions_and_colors).map(
                 move |(model_mesh_instances, (p, c))| GpuMeshInstance {
                     gpu_mesh: model_mesh_instances.gpu_mesh.clone(),
                     world_from_mesh: glam::Affine3A::from_scale_rotation_translation(

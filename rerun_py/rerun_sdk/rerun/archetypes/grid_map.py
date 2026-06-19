@@ -29,10 +29,8 @@ class GridMap(Archetype):
 
     This archetype is intended for robotics applications like occupancy maps or navigation costmaps.
 
-    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-
-    Example
-    -------
+    Examples
+    --------
     ### Simple occupancy grid map:
     ```python
     import numpy as np
@@ -42,8 +40,8 @@ class GridMap(Archetype):
     width, height = 64, 64
     cell_size = 0.1
 
-    # Create a synthetic image with ROS `nav_msgs/OccupancyGrid` cell value conventions:
-    # -1 (255) unknown, 0 free, 100 occupied.
+    # Create a synthetic image with ROS `nav_msgs/OccupancyGrid` cell value
+    # conventions: -1 (255) unknown, 0 free, 100 occupied.
     grid = np.full((height, width), -1, dtype=np.int8)
     grid[8:56, 8:56] = 0
     grid[20:44, 20:44] = 100
@@ -61,11 +59,89 @@ class GridMap(Archetype):
                 channel_datatype="U8",
             ),
             cell_size=cell_size,
-            translation=[-(width * cell_size) / 2.0, -(height * cell_size) / 2.0, 0.0],
+            translation=[
+                -(width * cell_size) / 2.0,
+                -(height * cell_size) / 2.0,
+                0.0,
+            ],
             colormap=rr.components.Colormap.RvizMap,
         ),
     )
     ```
+
+    ### Log a grid map at a specific pose:
+    ```python
+    import math
+    from pathlib import Path
+
+    from PIL import Image as PILImage
+
+    import rerun as rr
+    import rerun.blueprint as rrb
+
+    rr.init("rerun_example_grid_map_pose", spawn=True)
+
+    # Log the transform for the map origin.
+    # Here we use ROS TF-style parent & child frame names.
+    rr.log(
+        "/tf",
+        rr.Transform3D(
+            translation=[1.0, 2.0, 0.0],
+            rotation_axis_angle=rr.components.RotationAxisAngle(
+                [0, 0, 1], -math.pi / 3
+            ),
+            parent_frame="world",
+            child_frame="map",
+        ),
+        static=True,
+    )
+
+    # We use a dummy image for the map in this example.
+    image = PILImage.open(Path(__file__).parent / "ferris.png").convert("RGBA")
+
+    # Log the grid map at the map origin.
+    rr.log(
+        "demo_map",
+        rr.CoordinateFrame("map"),
+        rr.GridMap(
+            data=image.tobytes(),
+            format=rr.components.ImageFormat(
+                width=image.size[0],
+                height=image.size[1],
+                color_model="RGBA",
+                channel_datatype="U8",
+            ),
+            opacity=0.5,
+            # The size of a pixel in scene units.
+            cell_size=0.01,
+            # Specify the pose of the lower-left image corner relative to the
+            # map frame, in scene units.
+            translation=[1.1, -1.6, 0.0],
+            rotation_axis_angle=rr.components.RotationAxisAngle(
+                [0, 0, 1], math.pi / 4.0
+            ),
+        ),
+    )
+
+    # Show transform axes with frame names.
+    rr.send_blueprint(
+        rrb.Spatial3DView(
+            origin="/",
+            overrides={
+                "/tf": [rr.TransformAxes3D(axis_length=0.5, show_frame=True)],
+            },
+        )
+    )
+    ```
+    <center>
+    <picture>
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/grid_map_pose/55eeb468043da65a1c678f97048dca8545806983/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/grid_map_pose/55eeb468043da65a1c678f97048dca8545806983/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/grid_map_pose/55eeb468043da65a1c678f97048dca8545806983/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/grid_map_pose/55eeb468043da65a1c678f97048dca8545806983/1200w.png">
+      <img src="https://static.rerun.io/grid_map_pose/55eeb468043da65a1c678f97048dca8545806983/full.png" width="640">
+    </picture>
+    </center>
 
     """
 

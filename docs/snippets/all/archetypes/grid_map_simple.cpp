@@ -29,7 +29,7 @@ int main(int argc, char* argv[]) {
     rec.log(
         "world/map",
         rerun::archetypes::GridMap()
-            .with_data(rerun::components::ImageBuffer(grid))
+            .with_data(rerun::ImageBuffer(grid))
             .with_format(rerun::components::ImageFormat(
                 {width, height},
                 rerun::ColorModel::L,
@@ -41,6 +41,6 @@ int main(int argc, char* argv[]) {
                  -(static_cast<float>(height) * cell_size) / 2.0f,
                  0.0f}
             )
-            .with_colormap(rerun::components::Colormap::RvizMap)
+            .with_colormap(rerun::Colormap::RvizMap)
     );
 }

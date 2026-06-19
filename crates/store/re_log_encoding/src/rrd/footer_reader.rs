@@ -145,10 +145,7 @@ fn enumerate_legacy_stores(file: &mut File) -> Result<Vec<StoreId>, CodecError> 
                 let payload_len = usize::try_from(header.len).map_err(CodecError::Overflow)?;
                 let mut payload = vec![0u8; payload_len];
                 file.read_exact(&mut payload)?;
-                let byte_span = re_chunk::Span {
-                    start: 0,
-                    len: header.len,
-                };
+                let byte_span = re_chunk::Span::from_start_len(0, header.len);
                 if let Some(LogMsg::SetStoreInfo(set_store_info)) = LogMsg::decode(
                     bytes::Bytes::from(payload),
                     byte_span,

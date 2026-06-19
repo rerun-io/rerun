@@ -81,7 +81,12 @@ class Pinhole(PinholeExt, Archetype, VisualizableArchetype):
         ),
     )
 
-    rr.log("world/points", rr.Points3D([(0.0, 0.0, -0.5), (0.1, 0.1, -0.5), (-0.1, -0.1, -0.5)], radii=0.025))
+    rr.log(
+        "world/points",
+        rr.Points3D(
+            [(0.0, 0.0, -0.5), (0.1, 0.1, -0.5), (-0.1, -0.1, -0.5)], radii=0.025
+        ),
+    )
     ```
     <center>
     <picture>

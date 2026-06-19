@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -25,7 +26,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// If normalization of the rotation axis fails the rotation is treated as an invalid transform, unless the
 /// angle is zero in which case it is treated as an identity.
-#[derive(Clone, Debug, Default, Copy, PartialEq)]
+#[derive(Clone, Debug, Default, Copy, PartialEq, ::re_byte_size::SizeBytes)]
 #[repr(transparent)]
 pub struct RotationAxisAngle(pub crate::datatypes::RotationAxisAngle);
 
@@ -71,17 +72,5 @@ impl std::ops::DerefMut for RotationAxisAngle {
     #[inline]
     fn deref_mut(&mut self) -> &mut crate::datatypes::RotationAxisAngle {
         &mut self.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for RotationAxisAngle {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::RotationAxisAngle>::is_pod()
     }
 }

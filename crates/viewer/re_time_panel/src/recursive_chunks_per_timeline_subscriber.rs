@@ -9,7 +9,7 @@ use re_chunk_store::{
 use re_log_types::{AbsoluteTimeRange, EntityPath, EntityPathHash, StoreId, TimelineName};
 
 /// Cached information about a chunk in the context of a given timeline.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, re_byte_size::SizeBytes)]
 pub struct ChunkTimelineInfo {
     chunk: Weak<Chunk>,
     pub num_events: u64,
@@ -47,7 +47,7 @@ impl PartialEq for ChunkTimelineInfo {
 }
 
 /// Recursive chunk timeline infos for a given timeline & entity.
-#[derive(Debug, Default)]
+#[derive(Debug, Default, re_byte_size::SizeBytes)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct EntityTimelineChunks {
     /// All chunks used by the entity & timeline, recursive for all children of the entity.
@@ -157,29 +157,6 @@ impl PathRecursiveChunksPerTimelineStoreSubscriber {
                 next_path = path.parent();
             }
         }
-    }
-}
-
-impl re_byte_size::SizeBytes for ChunkTimelineInfo {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        // The chunk store owns the strong `Arc<Chunk>`s and accounts for their bytes there.
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
-    }
-}
-
-impl re_byte_size::SizeBytes for EntityTimelineChunks {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            recursive_chunks_info,
-            total_num_events: _,
-        } = self;
-        recursive_chunks_info.heap_size_bytes()
     }
 }
 

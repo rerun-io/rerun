@@ -276,41 +276,49 @@ impl ChunkUi {
             }
         };
 
-        let chunk_stats_ui =
-            |ui: &mut egui::Ui| {
-                ui.list_item_flat_noninteractive(
-                    list_item::PropertyContent::new("Chunk ID")
-                        .value_text(self.chunk.id().to_string()),
-                );
+        let chunk_stats_ui = |ui: &mut egui::Ui| {
+            ui.list_item_flat_noninteractive(
+                list_item::PropertyContent::new("Chunk ID").value_text(self.chunk.id().to_string()),
+            );
 
-                ui.list_item_flat_noninteractive(
-                    list_item::PropertyContent::new("Entity")
-                        .value_text(self.chunk.entity_path().to_string()),
-                );
+            ui.list_item_flat_noninteractive(
+                list_item::PropertyContent::new("Entity")
+                    .value_text(self.chunk.entity_path().to_string()),
+            );
 
-                ui.list_item_flat_noninteractive(
-                    list_item::PropertyContent::new("Row count")
-                        .value_text(self.chunk.num_rows().to_string()),
-                );
+            ui.list_item_flat_noninteractive(
+                list_item::PropertyContent::new("Row count")
+                    .value_text(self.chunk.num_rows().to_string()),
+            );
 
-                ui.list_item_flat_noninteractive(
-                    list_item::PropertyContent::new("Heap size").value_text(
-                        re_format::format_bytes(
-                            <Chunk as SizeBytes>::heap_size_bytes(&self.chunk) as f64
-                        ),
-                    ),
-                );
+            ui.list_item_flat_noninteractive(
+                list_item::PropertyContent::new("Heap size").value_text(re_format::format_bytes(
+                    <Chunk as SizeBytes>::heap_size_bytes(&self.chunk) as f64,
+                )),
+            );
 
-                ui.list_item_flat_noninteractive(
-                    list_item::PropertyContent::new("Sorted")
-                        .value_text(if self.chunk.is_sorted() { "yes" } else { "no" }),
-                );
+            ui.list_item_flat_noninteractive(
+                list_item::PropertyContent::new("Unsorted timelines").value_text({
+                    let unsorted_timelines = self.chunk.unsorted_timelines();
+                    if unsorted_timelines.is_empty() {
+                        "none".to_owned()
+                    } else {
+                        unsorted_timelines
+                            .iter()
+                            .map(|timeline| timeline.as_str())
+                            .join(", ")
+                    }
+                }),
+            );
 
-                ui.list_item_flat_noninteractive(
-                    list_item::PropertyContent::new("Static")
-                        .value_text(if self.chunk.is_static() { "yes" } else { "no" }),
-                );
-            };
+            ui.list_item_flat_noninteractive(
+                list_item::PropertyContent::new("Static").value_text(if self.chunk.is_static() {
+                    "yes"
+                } else {
+                    "no"
+                }),
+            );
+        };
         if *show_details_panels {
             egui::ScrollArea::vertical()
                 .id_salt("chunk_detail_info_scroll_area")

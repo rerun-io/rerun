@@ -443,11 +443,16 @@ fn decoded_frame_ui<'a>(
                         .and_then(|d| d.bit_depth),
                 ),
                 preview_size,
-                &|| match re_renderer::schedule_read_texture(ctx.render_ctx, &texture.inner.texture)
-                {
-                    Ok(id) => ctx
-                        .command_sender
-                        .send_system(re_viewer_context::SystemCommand::ReadbackAndSaveTexture(id)),
+                &|action| match re_renderer::schedule_read_texture(
+                    ctx.render_ctx,
+                    &texture.inner.texture,
+                ) {
+                    Ok(texture) => ctx.command_sender.send_system(
+                        re_viewer_context::SystemCommand::ReadbackAndSaveTexture {
+                            texture,
+                            action,
+                        },
+                    ),
                     Err(err) => {
                         re_log::error!("Failed to save {stream_kind} preview: {err}");
                     }
@@ -625,10 +630,10 @@ fn frame_info_ui(
             let first_sample = video_descr.samples.get(sample_range.start);
             let last_sample = video_descr.samples.get(sample_range.end.saturating_sub(1));
 
-            if let Some((first_sample, last_sample)) = first_sample
-                .and_then(|s| s.sample())
-                .zip(last_sample.and_then(|s| s.sample()))
-            {
+            if let Some((first_sample, last_sample)) = Option::zip(
+                first_sample.and_then(|s| s.sample()),
+                last_sample.and_then(|s| s.sample()),
+            ) {
                 ui.list_item_flat_noninteractive(PropertyContent::new("GOP DTS range").value_text(
                     format!("{} - {}", re_format::format_int(first_sample.decode_timestamp.0), re_format::format_int(last_sample.decode_timestamp.0))
                 ))

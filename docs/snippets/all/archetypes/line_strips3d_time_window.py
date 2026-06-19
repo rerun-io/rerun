@@ -1,4 +1,4 @@
-"""Log line strips over time and view a sliding window, e.g. for trajectories."""
+"""Log line strips over time and view a sliding window (e.g. trajectories)."""
 
 import math
 

@@ -28,6 +28,8 @@ int main(int argc, char* argv[]) {
 
     rec.log(
         "arrows",
-        rerun::Arrows3D::from_vectors(vectors).with_origins(origins).with_colors(colors)
+        rerun::Arrows3D::from_vectors(vectors)
+            .with_origins(origins)
+            .with_colors(colors)
     );
 }

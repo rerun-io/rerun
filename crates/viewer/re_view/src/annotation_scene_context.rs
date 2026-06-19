@@ -10,7 +10,10 @@ pub struct AnnotationSceneContext(pub Arc<AnnotationMap>);
 
 impl IdentifiedViewSystem for AnnotationSceneContext {
     fn identifier() -> ViewSystemIdentifier {
-        "AnnotationSceneContext".into()
+        re_viewer_context::external::re_string_interner::intern_static!(
+            re_viewer_context::ViewSystemIdentifier,
+            "AnnotationSceneContext"
+        )
     }
 }
 

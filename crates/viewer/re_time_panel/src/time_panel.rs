@@ -11,7 +11,8 @@ use re_data_ui::DataUi as _;
 use re_entity_db::InstancePath;
 use re_entity_db::entity_db::RedapConnectionState;
 use re_log_types::{
-    AbsoluteTimeRange, ApplicationId, ComponentPath, EntityPath, TimeInt, TimeReal,
+    AbsoluteTimeRange, AbsoluteTimeRangeF, ApplicationId, ComponentPath, EntityPath, TimeInt,
+    TimeReal,
 };
 use re_sdk_types::ComponentIdentifier;
 use re_sdk_types::blueprint::components::PanelState;
@@ -32,8 +33,9 @@ use crate::recursive_chunks_per_timeline_subscriber::PathRecursiveChunksPerTimel
 use crate::streams_tree_data::{EntityData, StreamsTreeData, components_for_entity};
 use crate::time_axis::TimelineAxis;
 use crate::time_control_ui::TimeControlUi;
-use crate::time_ranges_ui::{self, TimeRangesUi};
-use crate::{MOVE_TIME_CURSOR_ICON, data_density_graph, paint_ticks, time_selection_ui};
+use re_time_ruler::{self, TimeRangesUi};
+
+use crate::{MOVE_TIME_CURSOR_ICON, data_density_graph, time_selection_ui};
 
 #[derive(Debug, Clone, Hash)]
 pub struct TimePanelItem {
@@ -254,16 +256,8 @@ impl TimePanel {
             state.is_expanded(),
             collapsed,
             expanded,
-            |ui: &mut egui::Ui, expansion: f32| {
-                if expansion < 1.0 {
-                    // Collapsed or animating
-                    ui.horizontal(|ui| {
-                        ui.spacing_mut().interact_size = Vec2::splat(tokens.top_bar_height());
-                        ui.visuals_mut().button_frame = true;
-                        self.collapsed_ui(store_ctx, viewer_ctx, ui, &mut time_commands);
-                    });
-                } else {
-                    // Expanded:
+            |ui: &mut egui::Ui, how_expanded: f32| {
+                if how_expanded > 0.0 {
                     self.show_expanded_with_header(
                         viewer_ctx,
                         store_ctx,
@@ -271,6 +265,12 @@ impl TimePanel {
                         ui,
                         &mut time_commands,
                     );
+                } else {
+                    ui.horizontal(|ui| {
+                        ui.spacing_mut().interact_size = Vec2::splat(tokens.top_bar_height());
+                        ui.visuals_mut().button_frame = true;
+                        self.collapsed_ui(store_ctx, viewer_ctx, ui, &mut time_commands);
+                    });
                 }
             },
         );
@@ -604,12 +604,15 @@ impl TimePanel {
         let time_bg_area_painter = ui.painter().with_clip_rect(time_bg_area_rect);
         let time_area_painter = ui.painter().with_clip_rect(time_fg_area_rect);
 
-        if let Some(highlighted_range) = store_ctx.time_ctrl.highlighted_range {
+        if let Some(highlight) = store_ctx.time_ctrl.highlighted_range()
+            && highlight.timeline == *store_ctx.time_ctrl.timeline_name()
+        {
             paint_range_highlight(
-                highlighted_range,
+                highlight.range,
                 &self.time_ranges_ui,
                 ui.painter(),
                 time_fg_area_rect,
+                highlight.color,
             );
         }
 
@@ -620,7 +623,7 @@ impl TimePanel {
         );
 
         if let Some(time_type) = store_ctx.time_ctrl.time_type() {
-            paint_ticks::paint_time_ranges_and_ticks(
+            re_time_ruler::paint_time_ranges_and_ticks(
                 &self.time_ranges_ui,
                 ui,
                 &time_area_painter,
@@ -637,7 +640,7 @@ impl TimePanel {
         );
         time_selection_ui::loop_selection_ui(
             viewer_ctx,
-            store_ctx.time_ctrl,
+            store_ctx,
             &self.time_ranges_ui,
             ui,
             &time_bg_area_painter,
@@ -714,7 +717,6 @@ impl TimePanel {
     }
 
     // All the entity rows and their data density graphs:
-    #[expect(clippy::too_many_arguments)]
     fn tree_ui(
         &mut self,
         store_ctx: &StoreViewContext<'_>,
@@ -766,7 +768,6 @@ impl TimePanel {
     }
 
     /// Display the list item for an entity.
-    #[expect(clippy::too_many_arguments)]
     fn show_entity(
         &mut self,
         store_ctx: &StoreViewContext<'_>,
@@ -924,7 +925,6 @@ impl TimePanel {
     }
 
     /// Display the contents of an entity, i.e. its sub-entities and its components.
-    #[expect(clippy::too_many_arguments)]
     fn show_entity_contents(
         &mut self,
         store_ctx: &StoreViewContext<'_>,
@@ -982,6 +982,7 @@ impl TimePanel {
                     .list_item()
                     .render_offscreen(false)
                     .selected(store_ctx.selection().contains_item(&item.to_item()))
+                    .draggable(true)
                     .force_hovered(
                         store_ctx
                             .selection_state()
@@ -1006,7 +1007,7 @@ impl TimePanel {
                     streams_tree_data,
                     item.to_item(),
                     &response,
-                    false,
+                    true,
                 );
 
                 let response_rect = response.rect;
@@ -1116,7 +1117,6 @@ impl TimePanel {
         }
     }
 
-    #[expect(clippy::too_many_arguments)]
     fn handle_interactions_for_item(
         &mut self,
         store_ctx: &StoreViewContext<'_>,
@@ -1185,7 +1185,7 @@ impl TimePanel {
                 ctx.command_sender
                     .send_system(SystemCommand::SetSelection(item.to_item().into()));
 
-                time_commands.push(TimeControlCommand::SetTime(hovered_time.into()));
+                time_commands.push(TimeControlCommand::SetTimeClamped(hovered_time.into()));
             } else {
                 ctx.selection_state().set_hovered(item.to_item());
             }
@@ -1493,12 +1493,15 @@ impl TimePanel {
 
                 let painter = ui.painter_at(time_range_rect.expand(4.0));
 
-                if let Some(highlighted_range) = time_ctrl.highlighted_range {
+                if let Some(highlight) = time_ctrl.highlighted_range()
+                    && highlight.timeline == *time_ctrl.timeline_name()
+                {
                     paint_range_highlight(
-                        highlighted_range,
+                        highlight.range,
                         &self.time_ranges_ui,
                         &painter,
                         time_range_rect,
+                        highlight.color,
                     );
                 }
 
@@ -1590,7 +1593,7 @@ impl TimePanel {
                 if let Some(time_int) =
                     time_type.parse_time(&time_str, app_options.timestamp_format)
                 {
-                    time_commands.push(TimeControlCommand::SetTime(time_int.into()));
+                    time_commands.push(TimeControlCommand::SetTimeClamped(time_int.into()));
                 } else {
                     re_log::warn!("Failed to parse {time_str:?}");
                 }
@@ -1663,14 +1666,14 @@ fn paint_range_highlight(
     time_ranges_ui: &TimeRangesUi,
     painter: &egui::Painter,
     rect: Rect,
+    color: Option<egui::Color32>,
 ) {
-    time_selection_ui::paint_timeline_range(
-        highlighted_range,
-        time_ranges_ui,
-        painter,
-        rect,
-        painter.ctx().tokens().extreme_fg_color.gamma_multiply(0.1),
-    );
+    // `Configuration` producers don't carry a color (no semantic color to surface),
+    // so fall back to the neutral theme tint. `Data` producers (e.g. a state phase
+    // hover) pass the phase color, which we honor verbatim to match what the data
+    // views are painting.
+    let fill = color.unwrap_or_else(|| painter.ctx().tokens().extreme_fg_color.gamma_multiply(0.1));
+    time_selection_ui::paint_timeline_range(highlighted_range, time_ranges_ui, painter, rect, fill);
 }
 
 fn help(os: egui::os::OperatingSystem) -> Help {
@@ -1749,7 +1752,7 @@ fn initialize_time_ranges_ui(
 
 /// Find a nice view of everything in the valid marked range.
 fn view_everything(x_range: &Rangef, timeline_axis: &TimelineAxis) -> TimeView {
-    let gap_width = time_ranges_ui::gap_width(x_range, &timeline_axis.ranges) as f32;
+    let gap_width = re_time_ruler::gap_width(x_range, &timeline_axis.ranges) as f32;
     let num_gaps = timeline_axis.ranges.len().saturating_sub(1);
     let width = x_range.span();
     let width_sans_gaps = width - num_gaps as f32 * gap_width;
@@ -2041,7 +2044,6 @@ impl TimePanel {
     /// A vertical line that shows the current time.
     ///
     /// This function both paints it and allows click and drag to interact with the current time.
-    #[expect(clippy::too_many_arguments)]
     fn time_marker_ui(
         &self,
         viewer_ctx: &ViewerContext<'_>,
@@ -2074,6 +2076,13 @@ impl TimePanel {
             self.time_ranges_ui.snapped_time_from_x(ui, pointer_pos.x)
         });
 
+        let timeline_range = AbsoluteTimeRangeF::from(
+            store_ctx
+                .db
+                .time_range_for(time_ctrl.timeline_name())
+                .unwrap_or(AbsoluteTimeRange::EVERYTHING),
+        );
+
         // Press to move time:
         if ui.input(|i| i.pointer.primary_pressed() || i.pointer.primary_down() || i.pointer.primary_released())
             // `interact_pointer_pos` is set as soon as the mouse button is down on it,
@@ -2081,7 +2090,9 @@ impl TimePanel {
             && response.interact_pointer_pos().is_some()
             && let Some(time) = hovered_time
         {
-            time_commands.push(TimeControlCommand::SetTime(time));
+            time_commands.push(TimeControlCommand::SetTimeClamped(
+                time.clamp(timeline_range.min, timeline_range.max),
+            ));
         }
 
         // Show hover preview, and right-click context menu:
@@ -2127,7 +2138,7 @@ impl TimePanel {
             // Use latest available time to avoid frame delay:
             let mut current_time = time_ctrl.time();
             for cmd in time_commands {
-                if let TimeControlCommand::SetTime(time) = cmd {
+                if let TimeControlCommand::SetTimeClamped(time) = cmd {
                     current_time = Some(*time);
                 }
             }

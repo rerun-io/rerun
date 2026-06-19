@@ -1,6 +1,6 @@
 //! Per-connection analytics for dataset queries.
 //!
-//! Each connection to a Rerun Cloud instance gets its own analytics sender
+//! Each connection to a Rerun Hub instance gets its own analytics sender
 //! that forwards OTLP trace events to that instance's OTEL ingest endpoint.
 //! This ensures analytics go to the correct cloud when the viewer is connected
 //! to multiple clouds simultaneously.
@@ -20,10 +20,13 @@
 //! allows the server to correlate the analytics event with the original query
 //! trace in Grafana/Tempo.
 
+use std::fmt;
 use std::ops::Range;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, OnceLock};
 
+use datafusion::logical_expr::Expr;
+use datafusion::physical_plan::metrics::{ExecutionPlanMetricsSet, MetricBuilder, MetricsSet};
 use opentelemetry_proto::tonic::{
     collector::trace::v1::{ExportTraceServiceRequest, ExportTraceServiceResponse},
     common::v1::any_value::Value,
@@ -35,19 +38,14 @@ use re_dataframe::QueryExpression;
 use re_protos::cloud::v1alpha1::SystemTableKind;
 use re_protos::cloud::v1alpha1::ext::ProviderDetails;
 use re_uri::Origin;
-use tokio::sync::OnceCell;
-use web_time::{Duration, SystemTime};
+use web_time::{Duration, Instant, SystemTime};
 
-#[cfg(not(target_arch = "wasm32"))]
-type Channel = tonic::transport::Channel;
-
-#[cfg(target_arch = "wasm32")]
-type Channel = tonic_web_wasm_client::Client;
+use crate::metrics_capture::{QueryMetrics, QuerySnapshot, build_query_snapshot};
 
 const EXPORT_PATH: &str = "/opentelemetry.proto.collector.trace.v1.TraceService/Export";
 
 /// A per-connection analytics client that sends OTLP traces to a specific
-/// Rerun Cloud's OTEL ingest endpoint.
+/// Rerun Hub's OTEL ingest endpoint.
 ///
 /// Cheap to clone (wraps an `Arc`).
 ///
@@ -59,8 +57,8 @@ pub(crate) struct ConnectionAnalytics {
     inner: Arc<Inner>,
 }
 
-impl std::fmt::Debug for ConnectionAnalytics {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Debug for ConnectionAnalytics {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("ConnectionAnalytics")
             .field("origin", &self.inner.origin)
             .finish_non_exhaustive()
@@ -69,61 +67,32 @@ impl std::fmt::Debug for ConnectionAnalytics {
 
 struct Inner {
     origin: Origin,
-    client: tokio::sync::Mutex<Option<tonic::client::Grpc<Channel>>>,
 
-    /// Lazily populated once per connection via [`ConnectionAnalytics::set_server_version`].
-    /// `None` if the version RPC failed or has not completed yet.
-    server_version: OnceCell<Option<String>>,
+    /// gRPC client sharing the layered tower service of the sibling
+    /// [`re_redap_client::ConnectionClient`] (i.e. same HTTP/2 transport, same auth /
+    /// version / propagate-headers stack).
+    ///
+    /// Cloned per send so concurrent OTLP exports don't serialize on a single client.
+    grpc: tonic::client::Grpc<re_redap_client::RedapClientInner>,
 }
 
 impl ConnectionAnalytics {
     /// Create a new analytics sender for the given origin.
     ///
-    /// The actual gRPC connection is established lazily on first use.
-    pub fn new(origin: Origin) -> Self {
+    /// The analytics OTLP channel reuses the layered tower service of the supplied
+    /// [`re_redap_client::ConnectionClient`], so exports go through the same
+    /// authenticated and version-tagged HTTP/2 connection as regular RPCs.
+    pub fn new(origin: Origin, client: &re_redap_client::ConnectionClient) -> Self {
         Self {
             inner: Arc::new(Inner {
                 origin,
-                client: tokio::sync::Mutex::new(None),
-                server_version: OnceCell::new(),
-            }),
-        }
-    }
-
-    /// Record the server/stack version string (e.g. semver) for this connection.
-    ///
-    /// Only the first call has effect. The value is then attached to every
-    /// subsequent query span on this connection as `server_version`.
-    pub fn set_server_version(&self, version: Option<String>) {
-        // `OnceCell::set` returns Err if the cell was already set; silently ignore —
-        // we only want the first value.
-        #[expect(clippy::let_underscore_must_use)]
-        let _ = self.inner.server_version.set(version);
-    }
-
-    /// Returns the cached server version, if available.
-    fn server_version(&self) -> Option<String> {
-        self.inner.server_version.get().and_then(Clone::clone)
-    }
-
-    /// Begin tracking analytics for a query.
-    ///
-    /// Returns a [`PendingQueryAnalytics`] that accumulates stats across phases.
-    /// The analytics event is sent when the last clone is dropped.
-    pub fn begin_query(
-        &self,
-        query_info: QueryInfo,
-        scan_start: web_time::Instant,
-    ) -> PendingQueryAnalytics {
-        PendingQueryAnalytics {
-            inner: Arc::new(PendingInner {
-                connection: self.clone(),
-                query_info,
-                fetch_stats: SharedFetchStats::default(),
-                scan_start,
-                time_to_first_chunk: OnceLock::new(),
-                direct_terminal_reason: OnceLock::new(),
-                error_kind: OnceLock::new(),
+                // NOTE: client-side gzip is intentionally *not* enabled here. A new
+                // viewer SDK could otherwise send `grpc-encoding: gzip` to a Hub
+                // whose `OtelIngestService` predates `accept_compressed(Gzip)`,
+                // causing analytics events to be silently dropped with an
+                // `UNIMPLEMENTED` rejection. Re-enable once the deployed Hub
+                // version range is known to support gzip.
+                grpc: tonic::client::Grpc::new(client.service()),
             }),
         }
     }
@@ -135,7 +104,7 @@ impl ConnectionAnalytics {
     pub fn begin_table_query(
         &self,
         info: TableQueryInfo,
-        scan_start: web_time::Instant,
+        scan_start: Instant,
     ) -> PendingTableQueryAnalytics {
         PendingTableQueryAnalytics {
             inner: Arc::new(PendingTableInner {
@@ -158,7 +127,7 @@ impl ConnectionAnalytics {
         let fut = async move {
             if let Err(err) = this.send_span_impl(span, trace_id).await {
                 re_log::debug_once!(
-                    "Failed to send analytics to Rerun Cloud: {} ({})",
+                    "Failed to send analytics to Rerun Hub: {} ({})",
                     err.code(),
                     err.message()
                 );
@@ -199,21 +168,22 @@ impl ConnectionAnalytics {
         span: Span,
         trace_id: Option<opentelemetry::TraceId>,
     ) -> tonic::Result<()> {
-        let mut guard = self.inner.client.lock().await;
+        // Clone per send: avoids serializing
+        // concurrent sends behind a single client's `&mut self` borrow.
+        let mut grpc = self.inner.grpc.clone();
 
-        let grpc = if let Some(grpc) = guard.as_mut() {
-            grpc
-        } else {
-            match re_redap_client::channel(self.inner.origin.clone()).await {
-                Ok(channel) => guard.get_or_insert(tonic::client::Grpc::new(channel)),
-                Err(err) => {
-                    return Err(tonic::Status::unavailable(format!(
-                        "failed to connect for analytics: {err}"
-                    )));
-                }
-            }
-        };
-
+        // `service.name` is the OTel resource attribute that identifies the
+        // sending service in the trace store (Grafana/Tempo etc.). We
+        // hard-code it to `"rerun-viewer"` here because this piggy-back is
+        // viewer-specific by construction — it ships `cloud_query_dataset`
+        // / `cloud_scan_table` spans from the viewer's query path,
+        // regardless of whatever `OTEL_SERVICE_NAME` the caller's process
+        // might have set for its own general tracing.
+        //
+        // The SDK-trace path in `re_perf_telemetry` (driven by
+        // `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=rerun://`) instead follows
+        // the OTel convention and uses whatever `OTEL_SERVICE_NAME` was
+        // set at init time (e.g. `rerun-py`, application-specific).
         let mut resource_attributes = vec![kv_string("service.name", "rerun-viewer")];
         if let Some(analytics) = re_analytics::Analytics::global_get() {
             resource_attributes.push(kv_string("analytics_id", &analytics.config().analytics_id));
@@ -258,9 +228,40 @@ impl ConnectionAnalytics {
 
 // ----------------------------------------------------------------------------
 
+/// Begin tracking analytics for a query.
+///
+/// Always returns a [`PendingQueryAnalytics`] — `connection` is `None` when
+/// the per-process telemetry stack is not active, in which case the resulting
+/// analytics struct gathers data passively (for the in-process
+/// [`crate::metrics_capture`] subscribers and DataFusion's `metrics()`) but
+/// skips the `PostHog` OTLP send at drop time.
+///
+/// `metrics` is the plan's [`QueryMetrics`], shared with `SegmentStreamExec`.
+/// It's the single source of truth for fetch counters: the
+/// `PendingInner::Drop` path reads it via [`build_query_snapshot`] to
+/// construct the OTLP span attribute set.
+pub fn begin_query(
+    connection: Option<ConnectionAnalytics>,
+    metrics: Arc<QueryMetrics>,
+    scan_start: Instant,
+    scan_start_wall: SystemTime,
+) -> PendingQueryAnalytics {
+    PendingQueryAnalytics {
+        inner: Arc::new(PendingInner {
+            connection,
+            metrics,
+            scan_start,
+            scan_start_wall,
+            time_to_first_chunk: OnceLock::new(),
+            direct_terminal_reason: OnceLock::new(),
+            error_kind: OnceLock::new(),
+        }),
+    }
+}
+
 /// Query shape
-#[derive(Clone, Copy, Debug)]
-pub(crate) enum QueryType {
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum QueryType {
     /// Query for static (timeless) data — no temporal selector applies.
     Static,
 
@@ -295,7 +296,7 @@ impl QueryType {
     }
 
     /// Stable string label emitted into the analytics span.
-    const fn as_str(self) -> &'static str {
+    pub const fn as_str(self) -> &'static str {
         match self {
             Self::Static => "static",
             Self::LatestAt => "latest_at",
@@ -307,7 +308,7 @@ impl QueryType {
 }
 
 /// Information about the query planning phase, collected in `scan()`.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct QueryInfo {
     /// The dataset being queried. Sent to the server so it can enrich the
     /// analytics event with full dataset stats (total chunks, bytes, etc.).
@@ -331,6 +332,9 @@ pub struct QueryInfo {
     /// Total size of all queried chunks in bytes (from chunk metadata).
     pub query_bytes: u64,
 
+    /// Min # chunks touched within any single segment in this query.
+    pub query_chunks_per_segment_min: u32,
+
     /// Max number of chunks touched within any single segment in this query.
     pub query_chunks_per_segment_max: u32,
 
@@ -343,74 +347,55 @@ pub struct QueryInfo {
     /// Name of the sort/filter index (timeline) for this query, if any.
     pub primary_index_name: Option<String>,
 
-    /// Wall-clock start..end of the scan planning phase.
-    pub time_range: Range<SystemTime>,
-
     /// Time from sending `query_dataset` until the first response message
     /// arrives (the chunk metadata, not actual chunk data).
     pub time_to_first_chunk_info: Option<Duration>,
 
     /// Server-side trace ID from the `x-request-trace-id` response header.
     pub trace_id: Option<opentelemetry::TraceId>,
+
+    /// Number of filter expressions the table provider was able to push down to the
+    /// server (returning `Exact` or `Inexact` from `supports_filters_pushdown`).
+    pub filters_pushed_down: usize,
+
+    /// Number of filter expressions the table provider could not push down — they
+    /// will be applied by DataFusion via a downstream `FilterExec`.
+    pub filters_applied_client_side: usize,
+
+    /// True when projection-based entity-path narrowing actually trimmed the set of
+    /// entity paths sent to `query_dataset`.
+    pub entity_path_narrowing_applied: bool,
+
+    /// Number of filter expressions DataFusion presented to
+    /// `supports_filters_pushdown` at planning time (equals
+    /// `filters_pushed_down + filters_applied_client_side`).
+    pub filters_total: u32,
+
+    /// Semicolon-delimited SQL representations of every offered filter
+    /// (e.g. `"(log_time > 0);rerun_segment_id IN ('a', 'b')"`).
+    pub filters_signatures: String,
+
+    /// Semicolon-delimited SQL signatures of filters classified as
+    /// [`datafusion::logical_expr::TableProviderFilterPushDown::Exact`] at planning time.
+    pub filters_signatures_exact: String,
+
+    /// Semicolon-delimited SQL signatures of filters classified as
+    /// [`datafusion::logical_expr::TableProviderFilterPushDown::Inexact`] at planning time.
+    pub filters_signatures_inexact: String,
+
+    /// Semicolon-delimited SQL signatures of filters classified as
+    /// [`datafusion::logical_expr::TableProviderFilterPushDown::Unsupported`] at planning time.
+    pub filters_signatures_unsupported: String,
 }
 
-/// Accumulates fetch statistics from multiple partitions.
+/// Tracks a query in progress. Accumulates per-query state across phases.
 ///
-/// Thread-safe — multiple IO loops can record stats concurrently.
-///
-/// This is the final sink for per-query fetch counters. To avoid cross-core
-/// cache-line contention during the hot fetch/retry loops, writers accumulate
-/// into a task-local [`TaskFetchStats`] and flush into this shared struct
-/// exactly once per outer fetch task via [`TaskFetchStats::flush_into`].
-#[derive(Default)]
-pub(crate) struct SharedFetchStats {
-    grpc_requests: AtomicU64,
-    grpc_bytes: AtomicU64,
-    direct_requests: AtomicU64,
-    direct_bytes: AtomicU64,
-
-    /// Total extra direct-fetch attempts across all merged requests (attempts beyond the first).
-    /// Note: gRPC retries happen at the transport layer and are not visible here — only direct
-    /// (HTTP Range) retries are counted.
-    direct_retries_total: AtomicU64,
-
-    /// Number of distinct merged requests that ended up needing more than one attempt.
-    direct_requests_retried: AtomicU64,
-
-    /// Total time spent in backoff sleeps across direct-fetch retries (microseconds).
-    direct_retry_sleep_us: AtomicU64,
-
-    /// Worst-case attempt number reached for any single merged request.
-    direct_max_attempt: AtomicU64,
-
-    /// Number of byte ranges generated by the batch splitter before gap-merging.
-    direct_original_ranges: AtomicU64,
-
-    /// Number of merged HTTP Range requests actually issued after gap-merging.
-    direct_merged_ranges: AtomicU64,
-}
-
-impl SharedFetchStats {
-    /// Take a snapshot of the counters after every outer fetch task has flushed.
-    fn snapshot(&mut self) -> TaskFetchStats {
-        // &mut self means we can skip the atomic-load barriers
-        TaskFetchStats {
-            grpc_requests: *self.grpc_requests.get_mut(),
-            grpc_bytes: *self.grpc_bytes.get_mut(),
-            direct_requests: *self.direct_requests.get_mut(),
-            direct_bytes: *self.direct_bytes.get_mut(),
-            direct_retries_total: *self.direct_retries_total.get_mut(),
-            direct_requests_retried: *self.direct_requests_retried.get_mut(),
-            direct_retry_sleep_us: *self.direct_retry_sleep_us.get_mut(),
-            direct_max_attempt: *self.direct_max_attempt.get_mut(),
-            direct_original_ranges: *self.direct_original_ranges.get_mut(),
-            direct_merged_ranges: *self.direct_merged_ranges.get_mut(),
-        }
-    }
-}
-
-/// Tracks a query in progress. Accumulates fetch stats from all partitions
-/// and sends a single combined analytics event when the last clone is dropped.
+/// Fetch counters live in the plan's [`QueryMetrics`] (shared with
+/// `SegmentStreamExec` and DataFusion `EXPLAIN ANALYZE`); this struct just
+/// holds an `Arc` clone of that handle plus timing and error state. A single
+/// combined OTLP analytics event is sent to `PostHog` when the last clone is
+/// dropped — but only if the per-process telemetry stack is active
+/// (`connection.is_some()`).
 ///
 /// Cheap to clone (wraps an `Arc`).
 #[derive(Clone)]
@@ -418,20 +403,32 @@ pub(crate) struct PendingQueryAnalytics {
     inner: Arc<PendingInner>,
 }
 
-impl std::fmt::Debug for PendingQueryAnalytics {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Debug for PendingQueryAnalytics {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("PendingQueryAnalytics")
             .finish_non_exhaustive()
     }
 }
 
-struct PendingInner {
-    connection: ConnectionAnalytics,
-    query_info: QueryInfo,
-    fetch_stats: SharedFetchStats,
+pub(crate) struct PendingInner {
+    /// `None` when the telemetry stack is off — analytics still accumulate
+    /// passively (for `metrics_capture` subscribers and DataFusion
+    /// `metrics()`) but the drop-time OTLP send is skipped.
+    connection: Option<ConnectionAnalytics>,
+
+    /// Shared with `SegmentStreamExec`. IO tasks `fetch_add` into the atomics
+    /// during execution; `Drop` reads them via [`build_query_snapshot`] to
+    /// build the OTLP span. Single source of truth — there is no parallel
+    /// accumulator. The embedded `query_info` carries plan-time scalars.
+    metrics: Arc<QueryMetrics>,
 
     /// Monotonic start time of the query, for computing elapsed durations.
-    scan_start: web_time::Instant,
+    scan_start: Instant,
+
+    /// Wall-clock start time of the query. Combined with `SystemTime::now()` at
+    /// drop time to produce the OTLP span's `start`/`end` timestamps, which then
+    /// match `total_duration_us`.
+    scan_start_wall: SystemTime,
 
     /// Time from scan start until the first chunk is returned to datafusion.
     time_to_first_chunk: OnceLock<Duration>,
@@ -439,11 +436,11 @@ struct PendingInner {
     /// First terminal direct-fetch failure reason encountered, if any.
     /// Only set once. Stored as `&'static str` from the bounded
     /// [`DirectFetchFailureReason`] label set.
-    direct_terminal_reason: std::sync::OnceLock<DirectFetchFailureReason>,
+    direct_terminal_reason: OnceLock<DirectFetchFailureReason>,
 
     /// Error classification, if the query failed. `None` ⇒ success.
     /// Stored as `&'static str` from [`QueryErrorKind::as_str`] so emission is zero-copy.
-    error_kind: std::sync::OnceLock<&'static str>,
+    error_kind: OnceLock<&'static str>,
 }
 
 /// Bounded set of query-failure classifications for the analytics span.
@@ -485,8 +482,7 @@ impl QueryErrorKind {
 /// (`chunk_fetch.direct.result`) and into the per-query `PostHog` span as
 /// `fetch_direct_terminal_reason`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[cfg_attr(target_arch = "wasm32", expect(dead_code))]
-pub(crate) enum DirectFetchFailureReason {
+pub enum DirectFetchFailureReason {
     Timeout,
     Http4xx,
     Http5xx,
@@ -501,7 +497,7 @@ pub(crate) enum DirectFetchFailureReason {
 
 impl DirectFetchFailureReason {
     /// Convert to the stable string label used in telemetry.
-    pub(crate) fn as_str(self) -> &'static str {
+    pub fn as_str(self) -> &'static str {
         match self {
             Self::Timeout => "timeout",
             Self::Http4xx => "http_4xx",
@@ -524,11 +520,6 @@ impl PendingQueryAnalytics {
             .get_or_init(|| self.inner.scan_start.elapsed());
     }
 
-    /// Access the shared [`SharedFetchStats`] sink. Used by [`TaskFetchStats::flush_into`].
-    pub(crate) fn fetch_stats(&self) -> &SharedFetchStats {
-        &self.inner.fetch_stats
-    }
-
     /// Record the terminal failure reason for a direct fetch that exhausted retries
     /// or hit a non-retryable error. Only the first call has effect.
     #[cfg(not(target_arch = "wasm32"))]
@@ -544,14 +535,42 @@ impl PendingQueryAnalytics {
         #[expect(clippy::let_underscore_must_use)]
         let _ = self.inner.error_kind.set(kind.as_str());
     }
+
+    /// Current error label, if any. Used by the in-process `metrics_capture`
+    /// path so cancelled / failed queries still surface an `error_kind` in
+    /// the [`crate::QuerySnapshot`].
+    pub fn error_kind(&self) -> Option<&'static str> {
+        self.inner.error_kind.get().copied()
+    }
+
+    /// Time from `scan_start` until the first chunk was returned, if recorded.
+    /// Mirrors the value the OTLP `Drop` path emits, so `metrics_capture`
+    /// subscribers see the same number.
+    pub fn time_to_first_chunk(&self) -> Option<Duration> {
+        self.inner.time_to_first_chunk.get().copied()
+    }
+
+    /// Terminal direct-fetch failure reason, if one was recorded. Mirrors the
+    /// OTLP `Drop`-time value.
+    pub fn direct_terminal_reason(&self) -> Option<DirectFetchFailureReason> {
+        self.inner.direct_terminal_reason.get().copied()
+    }
+
+    /// Elapsed time since this query was begun in [`begin_query`]. The
+    /// snapshot path uses this instead of a per-partition start so the
+    /// reported duration doesn't depend on which partition is last to
+    /// finish (or when DataFusion got around to scheduling it).
+    pub fn total_duration(&self) -> Duration {
+        self.inner.scan_start.elapsed()
+    }
 }
 
 /// Per-task accumulator for fetch counters.
 ///
-/// Each outer fetch task owns one of these and mutates it without synchronization.
-/// At the end of the task it is folded into the shared [`SharedFetchStats`] via
-/// [`TaskFetchStats::flush_into`], which is the only place the shared cache line
-/// is touched.
+/// Each outer fetch task owns one of these and mutates it without
+/// synchronization. At the end of the task it is folded into the plan's
+/// shared [`QueryMetrics`] via [`TaskFetchStats::flush_into`], which is the
+/// only place the shared cache line is touched.
 ///
 /// This avoids cross-core cache-line ping-pong on the shared atomics during the
 /// hot fetch/retry loops, where worst-case contention would otherwise be
@@ -565,7 +584,7 @@ pub(crate) struct TaskFetchStats {
     direct_bytes: u64,
     direct_retries_total: u64,
     direct_requests_retried: u64,
-    direct_retry_sleep_us: u64,
+    direct_retry_sleep: Duration,
     direct_max_attempt: u64,
     direct_original_ranges: u64,
     direct_merged_ranges: u64,
@@ -591,7 +610,7 @@ impl TaskFetchStats {
     /// `attempt` is the attempt number about to be made (starts at 2 for the first retry).
     pub fn record_direct_retry(&mut self, sleep: Duration, attempt: u64) {
         self.direct_retries_total += 1;
-        self.direct_retry_sleep_us += sleep.as_micros() as u64;
+        self.direct_retry_sleep = self.direct_retry_sleep.saturating_add(sleep);
         self.direct_max_attempt = self.direct_max_attempt.max(attempt);
     }
 
@@ -620,7 +639,7 @@ impl TaskFetchStats {
             direct_bytes,
             direct_retries_total,
             direct_requests_retried,
-            direct_retry_sleep_us,
+            direct_retry_sleep: direct_retry_sleep_us,
             direct_max_attempt,
             direct_original_ranges,
             direct_merged_ranges,
@@ -631,205 +650,375 @@ impl TaskFetchStats {
         self.direct_bytes += direct_bytes;
         self.direct_retries_total += direct_retries_total;
         self.direct_requests_retried += direct_requests_retried;
-        self.direct_retry_sleep_us += direct_retry_sleep_us;
+        self.direct_retry_sleep += direct_retry_sleep_us;
         self.direct_max_attempt = self.direct_max_attempt.max(direct_max_attempt);
         self.direct_original_ranges += direct_original_ranges;
         self.direct_merged_ranges += direct_merged_ranges;
     }
 
-    /// Fold this buffer into the shared atomic sink.
-    pub fn flush_into(self, shared: &SharedFetchStats) {
-        macro_rules! flush_stats {
-            {sum $($sum_id:ident),*; max $($max_id:ident),*;} => {
-                let Self {
-                    $($sum_id,)*
-                    $($max_id,)*
-                } = self;
-                $(
-                    // Zero-valued fields are skipped so totally-idle tasks don't touch the
-                    // shared cache line at all.
-                    if $sum_id != 0 {
-                        shared.$sum_id
-                            .fetch_add($sum_id, Ordering::Relaxed);
-                    }
-                )+
-                $(
-                    if $max_id != 0 {
-                        shared.$max_id
-                            .fetch_max($max_id, Ordering::Relaxed);
-                    }
-                )*
-            };
+    /// Fold this buffer into the shared [`QueryMetrics`].
+    ///
+    /// All counters are aggregated across partitions; `direct_max_attempt`
+    /// uses `fetch_max` so the resulting value is the true cross-partition
+    /// max rather than a sum.
+    pub fn flush_into(self, metrics: &QueryMetrics) {
+        let Self {
+            grpc_requests,
+            grpc_bytes,
+            direct_requests,
+            direct_bytes,
+            direct_retries_total,
+            direct_requests_retried,
+            direct_retry_sleep,
+            direct_max_attempt,
+            direct_original_ranges,
+            direct_merged_ranges,
+        } = self;
+
+        // Zero-valued fields are skipped so totally-idle tasks don't touch the
+        // shared cache line at all.
+        if grpc_requests != 0 {
+            metrics
+                .fetch_grpc_requests
+                .fetch_add(grpc_requests, Ordering::Relaxed);
         }
-        flush_stats! {
-            sum
-                grpc_requests,
-                grpc_bytes,
-                direct_requests,
-                direct_bytes,
-                direct_retries_total,
-                direct_requests_retried,
-                direct_retry_sleep_us,
-                direct_original_ranges,
-                direct_merged_ranges;
-            max
-                direct_max_attempt;
-        };
+        if grpc_bytes != 0 {
+            metrics
+                .fetch_grpc_bytes
+                .fetch_add(grpc_bytes, Ordering::Relaxed);
+        }
+        if direct_requests != 0 {
+            metrics
+                .fetch_direct_requests
+                .fetch_add(direct_requests, Ordering::Relaxed);
+        }
+        if direct_bytes != 0 {
+            metrics
+                .fetch_direct_bytes
+                .fetch_add(direct_bytes, Ordering::Relaxed);
+        }
+        if direct_retries_total != 0 {
+            metrics
+                .fetch_direct_retries
+                .fetch_add(direct_retries_total, Ordering::Relaxed);
+        }
+        if direct_requests_retried != 0 {
+            metrics
+                .fetch_direct_requests_retried
+                .fetch_add(direct_requests_retried, Ordering::Relaxed);
+        }
+        if !direct_retry_sleep.is_zero() {
+            metrics
+                .fetch_direct_retry_sleep_us
+                .fetch_add(direct_retry_sleep.as_micros() as u64, Ordering::Relaxed);
+        }
+        if direct_max_attempt != 0 {
+            metrics
+                .fetch_direct_max_attempt
+                .fetch_max(direct_max_attempt, Ordering::Relaxed);
+        }
+        if direct_original_ranges != 0 {
+            metrics
+                .fetch_direct_original_ranges
+                .fetch_add(direct_original_ranges, Ordering::Relaxed);
+        }
+        if direct_merged_ranges != 0 {
+            metrics
+                .fetch_direct_merged_ranges
+                .fetch_add(direct_merged_ranges, Ordering::Relaxed);
+        }
     }
 
-    /// Flush this buffer into `analytics` if present, also recording an error (if any).
+    /// Flush this buffer into `metrics`, also recording an error (if any) onto
+    /// `analytics`.
     pub fn try_flush_into(
         self,
-        analytics: Option<&PendingQueryAnalytics>,
+        analytics: &PendingQueryAnalytics,
+        metrics: &QueryMetrics,
         result: Result<(), QueryErrorKind>,
     ) {
-        if let Some(analytics) = analytics {
-            self.flush_into(analytics.fetch_stats());
-            if let Err(err) = result {
-                analytics.record_error(err);
-            }
+        self.flush_into(metrics);
+        if let Err(err) = result {
+            analytics.record_error(err);
         }
     }
 }
 
+/// Build an ad-hoc [`MetricsSet`] for DataFusion `EXPLAIN ANALYZE` output.
+///
+/// Called on demand from `ExecutionPlan::metrics()`. Reads the live atomics
+/// in `metrics` plus plan-time scalars in `metrics.query_info`, plus per-call
+/// auxiliary inputs (`num_partitions`, `time_to_first_chunk`) that aren't
+/// stored on `QueryMetrics`.
+///
+/// Names match what the old `seed_plan_time_metrics` + per-partition fetch
+/// counters used, so downstream dashboards / grep targets keep working.
+/// The output is summed across partitions (not per-partition rows) — the
+/// `num_partitions` gauge surfaces the partition count separately.
+///
+/// `query_type` and `primary_index_name` are not surfaced — labels don't fit
+/// the `MetricsSet::Count` shape; they show up in `DisplayAs::Verbose` instead.
+/// `query_chunks_per_segment_mean` is `f32`, also doesn't fit `Count` — it
+/// flows through the `QuerySnapshot` to `PostHog` / `query_metrics()` but not
+/// EXPLAIN. Anyone reading EXPLAIN can divide `query_chunks / query_segments`.
+pub(crate) fn build_metrics_set_for_explain(
+    metrics: &QueryMetrics,
+    num_partitions: usize,
+    time_to_first_chunk: Option<Duration>,
+) -> MetricsSet {
+    let set = ExecutionPlanMetricsSet::new();
+    let info = &metrics.query_info;
+    let load = |a: &AtomicU64| a.load(Ordering::Relaxed) as usize;
+
+    let global = |name: &'static str| MetricBuilder::new(&set).global_counter(name);
+    global("query_chunks").add(info.query_chunks);
+    global("query_segments").add(info.query_segments);
+    global("query_layers").add(info.query_layers);
+    global("query_columns").add(info.query_columns);
+    global("query_entities").add(info.query_entities);
+    global("query_bytes").add(info.query_bytes as usize);
+    global("query_chunks_per_segment_min").add(info.query_chunks_per_segment_min as usize);
+    global("query_chunks_per_segment_max").add(info.query_chunks_per_segment_max as usize);
+    global("filters_pushed_down").add(info.filters_pushed_down);
+    global("filters_applied_client_side").add(info.filters_applied_client_side);
+    if info.entity_path_narrowing_applied {
+        global("entity_path_narrowing_applied").add(1);
+    }
+    if let Some(ttfci) = info.time_to_first_chunk_info {
+        global("time_to_first_chunk_info_us").add(ttfci.as_micros() as usize);
+    }
+    global("num_partitions").add(num_partitions);
+
+    global("fetch_grpc_requests").add(load(&metrics.fetch_grpc_requests));
+    global("fetch_grpc_bytes").add(load(&metrics.fetch_grpc_bytes));
+    global("fetch_direct_requests").add(load(&metrics.fetch_direct_requests));
+    global("fetch_direct_bytes").add(load(&metrics.fetch_direct_bytes));
+    global("fetch_direct_retries").add(load(&metrics.fetch_direct_retries));
+    global("fetch_direct_requests_retried").add(load(&metrics.fetch_direct_requests_retried));
+    global("fetch_direct_retry_sleep_us").add(load(&metrics.fetch_direct_retry_sleep_us));
+    global("fetch_direct_max_attempt").add(load(&metrics.fetch_direct_max_attempt));
+    global("fetch_direct_original_ranges").add(load(&metrics.fetch_direct_original_ranges));
+    global("fetch_direct_merged_ranges").add(load(&metrics.fetch_direct_merged_ranges));
+
+    if let Some(ttfr) = time_to_first_chunk {
+        MetricBuilder::new(&set)
+            .subset_time("time_to_first_chunk", 0)
+            .add_duration(ttfr);
+    }
+
+    set.clone_inner()
+}
+
 impl Drop for PendingInner {
     fn drop(&mut self) {
-        let Self {
-            connection,
-            query_info,
-            fetch_stats,
-            scan_start,
-            time_to_first_chunk,
-            direct_terminal_reason,
-            error_kind,
-        } = self;
-
-        let total_duration = scan_start.elapsed();
-
-        let QueryInfo {
-            ref dataset_id,
-            query_chunks,
-            query_segments,
-            query_layers,
-            query_columns,
-            query_entities,
-            query_bytes,
-            query_chunks_per_segment_max,
-            query_chunks_per_segment_mean,
-            query_type,
-            ref primary_index_name,
-            ref time_range,
-            time_to_first_chunk_info,
-            trace_id,
-        } = *query_info;
-
-        let fetch = fetch_stats.snapshot();
-        let time_to_first_chunk = time_to_first_chunk.get().copied();
-        let direct_terminal_reason = direct_terminal_reason.get().copied();
-        let error_kind = error_kind.get().copied();
-
-        let [start_ns, end_ns] = [
-            nanos_since_epoch(&time_range.start),
-            nanos_since_epoch(&time_range.end),
-        ];
-
-        #[expect(
-            clippy::cast_possible_wrap,
-            reason = "OTLP proto uses i64 for int values"
-        )]
-        let mut attributes = vec![
-            kv_string("dataset_id", dataset_id),
-            kv_int("query_chunks", query_chunks as i64),
-            kv_int("query_segments", query_segments as i64),
-            kv_int("query_layers", query_layers as i64),
-            kv_int("query_columns", query_columns as i64),
-            kv_int("query_entities", query_entities as i64),
-            kv_int("query_bytes", query_bytes as i64),
-            kv_int(
-                "query_chunks_per_segment_max",
-                i64::from(query_chunks_per_segment_max),
-            ),
-            kv_double(
-                "query_chunks_per_segment_mean",
-                f64::from(query_chunks_per_segment_mean),
-            ),
-            kv_string("query_type", query_type.as_str()),
-            kv_int("total_duration_us", total_duration.as_micros() as i64),
-            kv_bool("is_success", error_kind.is_none()),
-            // Fetch stats: gRPC
-            kv_int("fetch_grpc_requests", fetch.grpc_requests as i64),
-            kv_int("fetch_grpc_bytes", fetch.grpc_bytes as i64),
-            // Fetch stats: direct (HTTP). Note: gRPC retries happen at the transport
-            // layer and are not visible here — only direct-URL retries are counted.
-            kv_int("fetch_direct_requests", fetch.direct_requests as i64),
-            kv_int("fetch_direct_bytes", fetch.direct_bytes as i64),
-            kv_int("fetch_direct_retries", fetch.direct_retries_total as i64),
-            kv_int(
-                "fetch_direct_requests_retried",
-                fetch.direct_requests_retried as i64,
-            ),
-            kv_int(
-                "fetch_direct_retry_sleep_us",
-                fetch.direct_retry_sleep_us as i64,
-            ),
-            kv_int("fetch_direct_max_attempt", fetch.direct_max_attempt as i64),
-            kv_int(
-                "fetch_direct_original_ranges",
-                fetch.direct_original_ranges as i64,
-            ),
-            kv_int(
-                "fetch_direct_merged_ranges",
-                fetch.direct_merged_ranges as i64,
-            ),
-        ];
-
-        if let Some(name) = primary_index_name {
-            attributes.push(kv_string("primary_index_name", name));
-        }
-
-        if let Some(ttfci) = time_to_first_chunk_info {
-            attributes.push(kv_int(
-                "time_to_first_chunk_info_us",
-                ttfci.as_micros() as i64,
-            ));
-        }
-
-        if let Some(ttfr) = time_to_first_chunk {
-            attributes.push(kv_int("time_to_first_chunk_us", ttfr.as_micros() as i64));
-        }
-
-        if let Some(reason) = direct_terminal_reason {
-            attributes.push(kv_string("fetch_direct_terminal_reason", reason.as_str()));
-        }
-
-        if let Some(kind) = error_kind {
-            attributes.push(kv_string("error_kind", kind));
-        }
-
-        if let Some(version) = connection.server_version() {
-            attributes.push(kv_string("server_version", &version));
-        }
-
-        let links = trace_id
-            .map(|id| {
-                vec![Link {
-                    trace_id: id.to_bytes().to_vec(),
-                    ..Default::default()
-                }]
-            })
-            .unwrap_or_default();
-
-        let span = Span {
-            name: "cloud_query_dataset".to_owned(),
-            kind: SpanKind::Client.into(),
-            start_time_unix_nano: start_ns,
-            end_time_unix_nano: end_ns,
-            attributes,
-            links,
-            ..Default::default()
+        // Only build + send the `PostHog` OTLP span when the per-process
+        // telemetry stack is active. When it isn't, the analytics struct is
+        // still serving its other consumers (`metrics_capture` and
+        // DataFusion's `metrics()`) — we just skip the send.
+        let Some(connection) = self.connection.as_ref() else {
+            return;
         };
 
+        let total_duration = self.scan_start.elapsed();
+        let scan_end_wall = SystemTime::now();
+        let time_to_first_chunk = self.time_to_first_chunk.get().copied();
+        let direct_terminal_reason = self.direct_terminal_reason.get().copied();
+        let error_kind = self.error_kind.get().copied();
+        let trace_id = self.metrics.query_info.trace_id;
+
+        let snapshot = build_query_snapshot(
+            &self.metrics,
+            total_duration,
+            time_to_first_chunk,
+            error_kind,
+            direct_terminal_reason,
+        );
+
+        let span = build_query_span(&snapshot, self.scan_start_wall..scan_end_wall);
+
         connection.send_span(span, trace_id);
+    }
+}
+
+/// Build the OTLP `cloud_query_dataset` span from a [`QuerySnapshot`].
+///
+/// Pure function — no I/O, no time reads. Takes the same `QuerySnapshot` shape
+/// that the in-process `metrics_capture` subscribers see, so `PostHog` and
+/// Python readers are guaranteed to observe identical values.
+fn build_query_span(snap: &QuerySnapshot, wall_clock_range: Range<SystemTime>) -> Span {
+    let start_time_unix_nano = nanos_since_epoch(&wall_clock_range.start);
+    let end_time_unix_nano = nanos_since_epoch(&wall_clock_range.end);
+
+    let QuerySnapshot {
+        query_info:
+            QueryInfo {
+                dataset_id,
+                query_chunks,
+                query_segments,
+                query_layers,
+                query_columns,
+                query_entities,
+                query_bytes,
+                query_chunks_per_segment_min,
+                query_chunks_per_segment_max,
+                query_chunks_per_segment_mean,
+                query_type,
+                primary_index_name,
+                time_to_first_chunk_info,
+                trace_id,
+                filters_pushed_down,
+                filters_applied_client_side,
+                entity_path_narrowing_applied,
+                filters_total,
+                filters_signatures,
+                filters_signatures_exact,
+                filters_signatures_inexact,
+                filters_signatures_unsupported,
+            },
+        total_duration,
+        time_to_first_chunk,
+        error_kind,
+        direct_terminal_reason,
+        fetch_grpc_requests,
+        fetch_grpc_bytes,
+        fetch_direct_requests,
+        fetch_direct_bytes,
+        fetch_direct_retries,
+        fetch_direct_requests_retried,
+        fetch_direct_retry_sleep,
+        fetch_direct_max_attempt,
+        fetch_direct_original_ranges,
+        fetch_direct_merged_ranges,
+    } = snap;
+
+    #[expect(
+        clippy::cast_possible_wrap,
+        reason = "OTLP proto uses i64 for int values"
+    )]
+    let mut attributes = vec![
+        kv_string("dataset_id", dataset_id),
+        kv_int("query_chunks", *query_chunks as i64),
+        kv_int("query_segments", *query_segments as i64),
+        kv_int("query_layers", *query_layers as i64),
+        kv_int("query_columns", *query_columns as i64),
+        kv_int("query_entities", *query_entities as i64),
+        kv_int("query_bytes", *query_bytes as i64),
+        kv_int(
+            "query_chunks_per_segment_min",
+            i64::from(*query_chunks_per_segment_min),
+        ),
+        kv_int(
+            "query_chunks_per_segment_max",
+            i64::from(*query_chunks_per_segment_max),
+        ),
+        kv_double(
+            "query_chunks_per_segment_mean",
+            f64::from(*query_chunks_per_segment_mean),
+        ),
+        kv_string("query_type", query_type.as_str()),
+        kv_int("total_duration_us", total_duration.as_micros() as i64),
+        kv_bool("is_success", error_kind.is_none()),
+        // Fetch stats: gRPC
+        kv_int("fetch_grpc_requests", *fetch_grpc_requests as i64),
+        kv_int("fetch_grpc_bytes", *fetch_grpc_bytes as i64),
+        // Fetch stats: direct (HTTP). Note: gRPC retries happen at the transport
+        // layer and are not visible here — only direct-URL retries are counted.
+        kv_int("fetch_direct_requests", *fetch_direct_requests as i64),
+        kv_int("fetch_direct_bytes", *fetch_direct_bytes as i64),
+        kv_int("fetch_direct_retries", *fetch_direct_retries as i64),
+        kv_int(
+            "fetch_direct_requests_retried",
+            *fetch_direct_requests_retried as i64,
+        ),
+        kv_int(
+            "fetch_direct_retry_sleep_us",
+            fetch_direct_retry_sleep.as_micros() as i64,
+        ),
+        kv_int("fetch_direct_max_attempt", *fetch_direct_max_attempt as i64),
+        kv_int(
+            "fetch_direct_original_ranges",
+            *fetch_direct_original_ranges as i64,
+        ),
+        kv_int(
+            "fetch_direct_merged_ranges",
+            *fetch_direct_merged_ranges as i64,
+        ),
+        kv_int("filters_pushed_down", *filters_pushed_down as i64),
+        kv_int(
+            "filters_applied_client_side",
+            *filters_applied_client_side as i64,
+        ),
+        kv_bool(
+            "entity_path_narrowing_applied",
+            *entity_path_narrowing_applied,
+        ),
+    ];
+
+    if *filters_total > 0 {
+        attributes.push(kv_int("filters_total", i64::from(*filters_total)));
+    }
+    if !filters_signatures.is_empty() {
+        attributes.push(kv_string("filters_signatures", filters_signatures));
+    }
+    if !filters_signatures_exact.is_empty() {
+        attributes.push(kv_string(
+            "filters_signatures_exact",
+            filters_signatures_exact,
+        ));
+    }
+    if !filters_signatures_inexact.is_empty() {
+        attributes.push(kv_string(
+            "filters_signatures_inexact",
+            filters_signatures_inexact,
+        ));
+    }
+    if !filters_signatures_unsupported.is_empty() {
+        attributes.push(kv_string(
+            "filters_signatures_unsupported",
+            filters_signatures_unsupported,
+        ));
+    }
+
+    if let Some(name) = primary_index_name.as_deref() {
+        attributes.push(kv_string("primary_index_name", name));
+    }
+
+    if let Some(ttfci) = time_to_first_chunk_info {
+        attributes.push(kv_int(
+            "time_to_first_chunk_info_us",
+            ttfci.as_micros() as i64,
+        ));
+    }
+
+    if let Some(ttfr) = time_to_first_chunk {
+        attributes.push(kv_int("time_to_first_chunk_us", ttfr.as_micros() as i64));
+    }
+
+    if let Some(reason) = direct_terminal_reason {
+        attributes.push(kv_string("fetch_direct_terminal_reason", reason.as_str()));
+    }
+
+    if let Some(kind) = error_kind {
+        attributes.push(kv_string("error_kind", kind));
+    }
+
+    let links = trace_id
+        .map(|id| {
+            vec![Link {
+                trace_id: id.to_bytes().to_vec(),
+                ..Default::default()
+            }]
+        })
+        .unwrap_or_default();
+
+    Span {
+        name: "cloud_query_dataset".to_owned(),
+        kind: SpanKind::Client.into(),
+        start_time_unix_nano,
+        end_time_unix_nano,
+        attributes,
+        links,
+        ..Default::default()
     }
 }
 
@@ -842,10 +1031,26 @@ impl Drop for PendingInner {
 // reachable from the client today and will be added via server-side OTLP
 // span enrichment in a follow-up.
 
+/// Produce a SQL representation of a DataFusion filter expression for analytics.
+///
+/// Falls back to `variant_name()` for expressions the SQL unparser doesn't support.
+/// The result is escaped so that individual signatures can be safely joined with `;`.
+pub(crate) fn expr_filter_signature(expr: &Expr) -> String {
+    let sql = datafusion::sql::unparser::expr_to_sql(expr)
+        .map(|e| e.to_string())
+        .unwrap_or_else(|_| expr.variant_name().to_owned());
+    escape_sig_str(&sql)
+}
+
+/// Escape `\` and `;` so individual signatures can be safely joined with `;`.
+fn escape_sig_str(s: &str) -> String {
+    s.replace('\\', "\\\\").replace(';', "\\;")
+}
+
 /// Underlying provider variant of a table entry.
 ///
 /// Bounded so the analytics dimension cardinality stays low. Add a variant if
-/// the Data Platform exposes a new system or storage backend.
+/// the catalog server exposes a new system or storage backend.
 #[derive(Clone, Copy, Debug)]
 pub enum TableKind {
     /// User-registered Lance-backed table.
@@ -942,12 +1147,21 @@ pub struct TableQueryInfo {
 
     /// Wall-clock start..end of the scan. End is set at `Drop` time.
     pub time_range: Range<SystemTime>,
+
+    /// Total number of filter exprs DataFusion offered to `supports_filters_pushdown`.
+    /// Zero when the method was never called (no filters in the query).
+    pub filters_total: u32,
+
+    /// Semicolon-delimited SQL representations of every offered filter, in
+    /// the same order DataFusion supplied them. Empty when none were offered.
+    /// See [`expr_filter_signature`].
+    pub filters_signatures: String,
 }
 
 /// Accumulates per-scan counters from the streaming-provider IO loop.
 ///
 /// Not contended in practice today (one stream per scan) but kept atomic for
-/// consistency with [`SharedFetchStats`] and to leave room for parallelism.
+/// consistency with the dataset-query side and to leave room for parallelism.
 #[derive(Default)]
 pub(crate) struct SharedTableScanStats {
     grpc_requests: AtomicU64,
@@ -988,8 +1202,8 @@ pub(crate) struct PendingTableQueryAnalytics {
     inner: Arc<PendingTableInner>,
 }
 
-impl std::fmt::Debug for PendingTableQueryAnalytics {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Debug for PendingTableQueryAnalytics {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("PendingTableQueryAnalytics")
             .finish_non_exhaustive()
     }
@@ -1001,7 +1215,7 @@ struct PendingTableInner {
     stats: SharedTableScanStats,
 
     /// Monotonic start time of the scan, for computing elapsed durations.
-    scan_start: web_time::Instant,
+    scan_start: Instant,
 
     /// Time from `scan_start` until the first `ScanTableResponse` arrives.
     time_to_first_response: OnceLock<Duration>,
@@ -1091,7 +1305,7 @@ impl PendingTableInner {
     /// timing values — that's fine, it's how Drop already behaves.
     fn build_span(&self) -> Span {
         let total_duration = self.scan_start.elapsed();
-        let scan_end_wall = web_time::SystemTime::now();
+        let scan_end_wall = SystemTime::now();
         let stats = self.stats.snapshot();
         build_table_query_span(
             &self.info,
@@ -1102,7 +1316,6 @@ impl PendingTableInner {
             self.time_to_first_batch.get().copied(),
             self.trace_id.get().copied(),
             self.error_kind.get().copied(),
-            self.connection.server_version().as_deref(),
         )
     }
 }
@@ -1121,10 +1334,6 @@ impl Drop for PendingTableInner {
 /// PendingTableInner` so the exact attribute set the analytics pipeline relies
 /// on can be locked down by unit tests; if a future change accidentally drops
 /// or renames a field, the tests fail.
-#[expect(
-    clippy::too_many_arguments,
-    reason = "pure builder fn; grouping these would be churn without clarity"
-)]
 pub(crate) fn build_table_query_span(
     info: &TableQueryInfo,
     stats: TableScanStatsSnapshot,
@@ -1134,7 +1343,6 @@ pub(crate) fn build_table_query_span(
     time_to_first_batch: Option<Duration>,
     trace_id: Option<opentelemetry::TraceId>,
     error_kind: Option<&'static str>,
-    server_version: Option<&str>,
 ) -> Span {
     let TableQueryInfo {
         ref table_id,
@@ -1145,6 +1353,8 @@ pub(crate) fn build_table_query_span(
         has_limit,
         limit_value,
         time_range: _,
+        filters_total,
+        ref filters_signatures,
     } = *info;
 
     let start_time_unix_nano = nanos_since_epoch(&wall_clock_range.start);
@@ -1196,8 +1406,11 @@ pub(crate) fn build_table_query_span(
         attributes.push(kv_string("error_kind", kind));
     }
 
-    if let Some(version) = server_version {
-        attributes.push(kv_string("server_version", version));
+    if filters_total > 0 {
+        attributes.push(kv_int("filters_total", i64::from(filters_total)));
+    }
+    if !filters_signatures.is_empty() {
+        attributes.push(kv_string("filters_signatures", filters_signatures));
     }
 
     let links = trace_id
@@ -1237,11 +1450,11 @@ fn kv_string(key: &str, value: &str) -> KeyValue {
     }
 }
 
-fn kv_int(key: &str, value: i64) -> KeyValue {
+fn kv_int(key: &str, value: impl Into<i64>) -> KeyValue {
     KeyValue {
         key: key.to_owned(),
         value: Some(AnyValue {
-            value: Some(Value::IntValue(value)),
+            value: Some(Value::IntValue(value.into())),
         }),
     }
 }
@@ -1261,6 +1474,309 @@ fn kv_double(key: &str, value: f64) -> KeyValue {
         value: Some(AnyValue {
             value: Some(Value::DoubleValue(value)),
         }),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashSet;
+
+    use super::*;
+
+    fn dummy_query_info() -> QueryInfo {
+        QueryInfo {
+            dataset_id: "ds-123".to_owned(),
+            query_chunks: 42,
+            query_segments: 5,
+            query_layers: 2,
+            query_columns: 7,
+            query_entities: 3,
+            query_bytes: 1234,
+            query_chunks_per_segment_min: 4,
+            query_chunks_per_segment_max: 12,
+            query_chunks_per_segment_mean: 8.4,
+            query_type: QueryType::LatestAt,
+            primary_index_name: None,
+            time_to_first_chunk_info: None,
+            trace_id: None,
+            filters_pushed_down: 0,
+            filters_applied_client_side: 0,
+            entity_path_narrowing_applied: false,
+            filters_total: 0,
+            filters_signatures: String::new(),
+            filters_signatures_exact: String::new(),
+            filters_signatures_inexact: String::new(),
+            filters_signatures_unsupported: String::new(),
+        }
+    }
+
+    fn attribute_keys(span: &Span) -> HashSet<&str> {
+        let keys: HashSet<_> = span.attributes.iter().map(|kv| kv.key.as_str()).collect();
+        re_log::debug_assert_eq!(
+            keys.len(),
+            span.attributes.len(),
+            "span contains duplicate attribute keys"
+        );
+        keys
+    }
+
+    fn find_int(span: &Span, key: &str) -> Option<i64> {
+        span.attributes
+            .iter()
+            .find(|kv| kv.key == key)
+            .and_then(|kv| match kv.value.as_ref()?.value.as_ref()? {
+                Value::IntValue(i) => Some(*i),
+                _ => None,
+            })
+    }
+
+    fn find_string<'a>(span: &'a Span, key: &str) -> Option<&'a str> {
+        span.attributes
+            .iter()
+            .find(|kv| kv.key == key)
+            .and_then(|kv| match kv.value.as_ref()?.value.as_ref()? {
+                Value::StringValue(s) => Some(s.as_str()),
+                _ => None,
+            })
+    }
+
+    fn find_double(span: &Span, key: &str) -> Option<f64> {
+        span.attributes
+            .iter()
+            .find(|kv| kv.key == key)
+            .and_then(|kv| match kv.value.as_ref()?.value.as_ref()? {
+                Value::DoubleValue(d) => Some(*d),
+                _ => None,
+            })
+    }
+
+    fn find_bool(span: &Span, key: &str) -> Option<bool> {
+        span.attributes
+            .iter()
+            .find(|kv| kv.key == key)
+            .and_then(|kv| match kv.value.as_ref()?.value.as_ref()? {
+                Value::BoolValue(b) => Some(*b),
+                _ => None,
+            })
+    }
+
+    /// Required attributes that must always be emitted, regardless of query state.
+    /// Adding/removing one of these is a breaking change for the analytics pipeline.
+    const REQUIRED_KEYS: &[&str] = &[
+        "dataset_id",
+        "query_chunks",
+        "query_segments",
+        "query_layers",
+        "query_columns",
+        "query_entities",
+        "query_bytes",
+        "query_chunks_per_segment_min",
+        "query_chunks_per_segment_max",
+        "query_chunks_per_segment_mean",
+        "query_type",
+        "total_duration_us",
+        "is_success",
+        "fetch_grpc_requests",
+        "fetch_grpc_bytes",
+        "fetch_direct_requests",
+        "fetch_direct_bytes",
+        "fetch_direct_retries",
+        "fetch_direct_requests_retried",
+        "fetch_direct_retry_sleep_us",
+        "fetch_direct_max_attempt",
+        "fetch_direct_original_ranges",
+        "fetch_direct_merged_ranges",
+        "filters_pushed_down",
+        "filters_applied_client_side",
+        "entity_path_narrowing_applied",
+    ];
+
+    /// Build a fresh `QuerySnapshot` mirroring `dummy_query_info()`, with no
+    /// execution data — analogous to the pre-refactor `TaskFetchStats::default`
+    /// fixture.
+    fn snapshot_from_info(query_info: QueryInfo) -> QuerySnapshot {
+        QuerySnapshot {
+            query_info,
+            total_duration: Duration::ZERO,
+            time_to_first_chunk: None,
+            error_kind: None,
+            direct_terminal_reason: None,
+            fetch_grpc_requests: 0,
+            fetch_grpc_bytes: 0,
+            fetch_direct_requests: 0,
+            fetch_direct_bytes: 0,
+            fetch_direct_retries: 0,
+            fetch_direct_requests_retried: 0,
+            fetch_direct_retry_sleep: Duration::ZERO,
+            fetch_direct_max_attempt: 0,
+            fetch_direct_original_ranges: 0,
+            fetch_direct_merged_ranges: 0,
+        }
+    }
+
+    #[test]
+    fn build_query_span_minimal_emits_only_required_attributes() {
+        let qi = dummy_query_info();
+        let mut snap = snapshot_from_info(qi);
+        snap.total_duration = Duration::from_micros(500);
+
+        let span = build_query_span(
+            &snap,
+            SystemTime::UNIX_EPOCH..SystemTime::UNIX_EPOCH + Duration::from_secs(1),
+        );
+
+        // Span shape
+        assert_eq!(span.name, "cloud_query_dataset");
+        assert_eq!(span.kind, i32::from(SpanKind::Client));
+        assert!(span.links.is_empty());
+
+        // Attribute key set is exactly the required keys — no optional keys leaked.
+        let expected: HashSet<&str> = REQUIRED_KEYS.iter().copied().collect();
+        let actual = attribute_keys(&span);
+        assert_eq!(
+            actual,
+            expected,
+            "extra/missing attribute keys: {:?}",
+            actual.symmetric_difference(&expected).collect::<Vec<_>>()
+        );
+
+        // Spot-check a few values.
+        assert_eq!(find_string(&span, "dataset_id"), Some("ds-123"));
+        assert_eq!(find_int(&span, "query_chunks"), Some(42));
+        assert_eq!(find_int(&span, "query_chunks_per_segment_min"), Some(4));
+        assert_eq!(find_int(&span, "query_chunks_per_segment_max"), Some(12));
+        assert_eq!(
+            find_double(&span, "query_chunks_per_segment_mean"),
+            Some(f64::from(8.4_f32))
+        );
+        assert_eq!(find_string(&span, "query_type"), Some("latest_at"));
+        assert_eq!(find_int(&span, "total_duration_us"), Some(500));
+        assert_eq!(find_bool(&span, "is_success"), Some(true));
+    }
+
+    #[test]
+    fn build_query_span_records_fetch_stats() {
+        let qi = dummy_query_info();
+        let mut snap = snapshot_from_info(qi);
+        snap.total_duration = Duration::from_micros(1_000);
+        snap.fetch_grpc_requests = 2;
+        snap.fetch_grpc_bytes = 5_000;
+        snap.fetch_direct_requests = 1;
+        snap.fetch_direct_bytes = 10_000;
+        snap.fetch_direct_retries = 2;
+        snap.fetch_direct_requests_retried = 1;
+        snap.fetch_direct_retry_sleep = Duration::from_micros(12_000);
+        snap.fetch_direct_max_attempt = 3;
+        snap.fetch_direct_original_ranges = 8;
+        snap.fetch_direct_merged_ranges = 4;
+
+        let span = build_query_span(
+            &snap,
+            SystemTime::UNIX_EPOCH..SystemTime::UNIX_EPOCH + Duration::from_secs(1),
+        );
+
+        assert_eq!(find_int(&span, "fetch_grpc_requests"), Some(2));
+        assert_eq!(find_int(&span, "fetch_grpc_bytes"), Some(5_000));
+        assert_eq!(find_int(&span, "fetch_direct_requests"), Some(1));
+        assert_eq!(find_int(&span, "fetch_direct_bytes"), Some(10_000));
+        assert_eq!(find_int(&span, "fetch_direct_retries"), Some(2));
+        assert_eq!(find_int(&span, "fetch_direct_requests_retried"), Some(1));
+        assert_eq!(find_int(&span, "fetch_direct_retry_sleep_us"), Some(12_000));
+        assert_eq!(find_int(&span, "fetch_direct_max_attempt"), Some(3));
+        assert_eq!(find_int(&span, "fetch_direct_original_ranges"), Some(8));
+        assert_eq!(find_int(&span, "fetch_direct_merged_ranges"), Some(4));
+    }
+
+    #[test]
+    fn build_query_span_emits_all_optional_attributes_when_present() {
+        let trace_id = opentelemetry::TraceId::from_bytes([7u8; 16]);
+        let mut qi = dummy_query_info();
+        qi.primary_index_name = Some("log_time".to_owned());
+        qi.time_to_first_chunk_info = Some(Duration::from_micros(123));
+        qi.trace_id = Some(trace_id);
+
+        let mut snap = snapshot_from_info(qi);
+        snap.total_duration = Duration::from_micros(999);
+        snap.time_to_first_chunk = Some(Duration::from_micros(456));
+        snap.direct_terminal_reason = Some(DirectFetchFailureReason::Http5xx);
+        snap.error_kind = Some(QueryErrorKind::DirectFetch.as_str());
+
+        let span = build_query_span(
+            &snap,
+            SystemTime::UNIX_EPOCH..SystemTime::UNIX_EPOCH + Duration::from_secs(1),
+        );
+
+        // Optional keys must all be present.
+        let optional = [
+            "primary_index_name",
+            "time_to_first_chunk_info_us",
+            "time_to_first_chunk_us",
+            "fetch_direct_terminal_reason",
+            "error_kind",
+        ];
+        let keys = attribute_keys(&span);
+        for k in optional {
+            assert!(keys.contains(k), "missing optional attribute: {k}");
+        }
+
+        // is_success flips to false when error_kind is set.
+        assert_eq!(find_bool(&span, "is_success"), Some(false));
+
+        assert_eq!(find_string(&span, "primary_index_name"), Some("log_time"));
+        assert_eq!(find_int(&span, "time_to_first_chunk_info_us"), Some(123));
+        assert_eq!(find_int(&span, "time_to_first_chunk_us"), Some(456));
+        assert_eq!(
+            find_string(&span, "fetch_direct_terminal_reason"),
+            Some("http_5xx")
+        );
+        assert_eq!(find_string(&span, "error_kind"), Some("direct_fetch"));
+
+        // Trace id flows into span.links.
+        assert_eq!(span.links.len(), 1);
+        assert_eq!(span.links[0].trace_id, trace_id.to_bytes().to_vec());
+    }
+
+    /// Confirms the planning-phase metrics that `EXPLAIN ANALYZE` reads are
+    /// all surfaced by [`build_metrics_set_for_explain`]. Regression check
+    /// that `_min` shows up — prior to the alignment fix only `_max` was
+    /// surfaced.
+    #[test]
+    fn explain_metrics_set_includes_chunks_per_segment_min_and_max() {
+        let metrics = QueryMetrics::new(dummy_query_info());
+        let set = build_metrics_set_for_explain(&metrics, 1, None);
+
+        let aggregated = set.aggregate_by_name();
+        let names: std::collections::HashSet<_> = aggregated
+            .iter()
+            .filter_map(|m| match m.value() {
+                datafusion::physical_plan::metrics::MetricValue::Count { name, .. } => {
+                    Some(name.as_ref().to_owned())
+                }
+                _ => None,
+            })
+            .collect();
+
+        assert!(
+            names.contains("query_chunks_per_segment_min"),
+            "expected query_chunks_per_segment_min in explain metrics: {names:?}"
+        );
+        assert!(
+            names.contains("query_chunks_per_segment_max"),
+            "expected query_chunks_per_segment_max in explain metrics: {names:?}"
+        );
+    }
+
+    #[test]
+    fn build_query_span_uses_wall_clock_range() {
+        let qi = dummy_query_info();
+        let snap = snapshot_from_info(qi);
+        let start = SystemTime::UNIX_EPOCH + Duration::from_millis(2_000);
+        let end = SystemTime::UNIX_EPOCH + Duration::from_millis(2_500);
+
+        let span = build_query_span(&snap, start..end);
+
+        assert_eq!(span.start_time_unix_nano, 2_000_000_000);
+        assert_eq!(span.end_time_unix_nano, 2_500_000_000);
     }
 }
 
@@ -1293,6 +1809,8 @@ mod table_query_tests {
             has_limit: false,
             limit_value: None,
             time_range: SystemTime::UNIX_EPOCH..SystemTime::UNIX_EPOCH + Duration::from_secs(1),
+            filters_total: 0,
+            filters_signatures: String::new(),
         }
     }
 
@@ -1373,7 +1891,6 @@ mod table_query_tests {
             None,
             None,
             None,
-            None,
         );
 
         // Span shape
@@ -1421,7 +1938,6 @@ mod table_query_tests {
             None,
             None,
             None,
-            None,
         );
 
         assert_eq!(find_int(&span, "fetch_grpc_requests"), Some(7));
@@ -1446,7 +1962,6 @@ mod table_query_tests {
             Some(Duration::from_micros(75)),
             Some(trace_id),
             Some(QueryErrorKind::Decode.as_str()),
-            Some("redap-9.9.9"),
         );
 
         // All optional keys are present.
@@ -1455,7 +1970,6 @@ mod table_query_tests {
             "time_to_first_response_us",
             "time_to_first_batch_us",
             "error_kind",
-            "server_version",
         ];
         let keys = attribute_keys(&span);
         for k in optional {
@@ -1469,7 +1983,6 @@ mod table_query_tests {
         assert_eq!(find_int(&span, "time_to_first_response_us"), Some(50));
         assert_eq!(find_int(&span, "time_to_first_batch_us"), Some(75));
         assert_eq!(find_string(&span, "error_kind"), Some("decode"));
-        assert_eq!(find_string(&span, "server_version"), Some("redap-9.9.9"));
 
         // Trace id flows into span.links.
         assert_eq!(span.links.len(), 1);
@@ -1487,7 +2000,6 @@ mod table_query_tests {
             empty_stats(),
             start..end,
             Duration::from_micros(0),
-            None,
             None,
             None,
             None,
@@ -1520,7 +2032,6 @@ mod table_query_tests {
                 None,
                 None,
                 None,
-                None,
             );
             assert_eq!(find_string(&span, "table_kind"), Some(expected));
         }
@@ -1542,7 +2053,6 @@ mod table_query_tests {
                 None,
                 None,
                 None,
-                None,
             );
             assert_eq!(find_string(&span, "caller"), Some(expected));
         }
@@ -1558,7 +2068,6 @@ mod table_query_tests {
             empty_stats(),
             SystemTime::UNIX_EPOCH..SystemTime::UNIX_EPOCH,
             Duration::ZERO,
-            None,
             None,
             None,
             None,
@@ -1608,12 +2117,13 @@ mod table_query_tests {
 
     fn make_pending() -> PendingTableQueryAnalytics {
         let origin: Origin = "rerun+http://localhost:51234".parse().unwrap();
-        let analytics = ConnectionAnalytics::new(origin);
-        analytics.begin_table_query(dummy_table_query_info(), web_time::Instant::now())
+        let client = re_redap_client::ConnectionClient::new_disconnected();
+        let analytics = ConnectionAnalytics::new(origin, &client);
+        analytics.begin_table_query(dummy_table_query_info(), Instant::now())
     }
 
-    #[test]
-    fn record_first_response_is_once_only() {
+    #[tokio::test]
+    async fn record_first_response_is_once_only() {
         let pending = make_pending();
         pending.record_first_response();
         let first = pending.inner.time_to_first_response.get().copied().unwrap();
@@ -1623,8 +2133,8 @@ mod table_query_tests {
         assert_eq!(first, second, "second call must not overwrite");
     }
 
-    #[test]
-    fn record_first_batch_is_once_only() {
+    #[tokio::test]
+    async fn record_first_batch_is_once_only() {
         let pending = make_pending();
         pending.record_first_batch();
         let first = pending.inner.time_to_first_batch.get().copied().unwrap();
@@ -1634,8 +2144,8 @@ mod table_query_tests {
         assert_eq!(first, second);
     }
 
-    #[test]
-    fn record_error_is_once_only() {
+    #[tokio::test]
+    async fn record_error_is_once_only() {
         let pending = make_pending();
         pending.record_error(QueryErrorKind::GrpcFetch);
         pending.record_error(QueryErrorKind::Decode);
@@ -1645,8 +2155,8 @@ mod table_query_tests {
         );
     }
 
-    #[test]
-    fn record_trace_id_is_once_only() {
+    #[tokio::test]
+    async fn record_trace_id_is_once_only() {
         let pending = make_pending();
         let first = opentelemetry::TraceId::from_bytes([1u8; 16]);
         let second = opentelemetry::TraceId::from_bytes([2u8; 16]);
@@ -1655,8 +2165,8 @@ mod table_query_tests {
         assert_eq!(pending.inner.trace_id.get().copied(), Some(first));
     }
 
-    #[test]
-    fn record_batch_accumulates_across_calls() {
+    #[tokio::test]
+    async fn record_batch_accumulates_across_calls() {
         let pending = make_pending();
         pending.record_batch(100, 1_000);
         pending.record_batch(50, 500);
@@ -1666,5 +2176,304 @@ mod table_query_tests {
         assert_eq!(stats.batches, 3);
         assert_eq!(stats.rows_returned, 150);
         assert_eq!(stats.bytes_returned, 1_500);
+    }
+}
+
+#[cfg(test)]
+mod explain_metrics_set_tests {
+    //! Sanity-check that [`build_metrics_set_for_explain`] populates the
+    //! `MetricsSet` with the values from [`QueryInfo`] and the runtime
+    //! atomics on [`QueryMetrics`]. This is the contract that backs
+    //! `EXPLAIN ANALYZE` output for `SegmentStreamExec`.
+
+    use super::*;
+
+    fn dummy_query_info(
+        filters_pushed_down: usize,
+        filters_applied_client_side: usize,
+        entity_path_narrowing_applied: bool,
+    ) -> QueryInfo {
+        QueryInfo {
+            dataset_id: "ds-test".to_owned(),
+            query_chunks: 7,
+            query_segments: 3,
+            query_layers: 2,
+            query_columns: 11,
+            query_entities: 5,
+            query_bytes: 12_345,
+            query_chunks_per_segment_min: 1,
+            query_chunks_per_segment_max: 4,
+            query_chunks_per_segment_mean: 2.5,
+            query_type: QueryType::LatestAt,
+            primary_index_name: Some("log_time".to_owned()),
+            time_to_first_chunk_info: Some(Duration::from_micros(2_000)),
+            trace_id: None,
+            filters_pushed_down,
+            filters_applied_client_side,
+            entity_path_narrowing_applied,
+            filters_total: 0,
+            filters_signatures: String::new(),
+            filters_signatures_exact: String::new(),
+            filters_signatures_inexact: String::new(),
+            filters_signatures_unsupported: String::new(),
+        }
+    }
+
+    /// Helper to look up the value of a single `global_counter`-style metric by name.
+    fn metric_value_by_name(set: &MetricsSet, name: &str) -> Option<usize> {
+        set.iter()
+            .find(|m| m.value().name() == name)
+            .map(|m| m.value().as_usize())
+    }
+
+    #[test]
+    fn emits_chunk_segment_byte_counts() {
+        let metrics = QueryMetrics::new(dummy_query_info(0, 0, false));
+        let set = build_metrics_set_for_explain(&metrics, 1, None);
+
+        assert_eq!(metric_value_by_name(&set, "query_chunks"), Some(7));
+        assert_eq!(metric_value_by_name(&set, "query_segments"), Some(3));
+        assert_eq!(metric_value_by_name(&set, "query_layers"), Some(2));
+        assert_eq!(metric_value_by_name(&set, "query_columns"), Some(11));
+        assert_eq!(metric_value_by_name(&set, "query_entities"), Some(5));
+        assert_eq!(metric_value_by_name(&set, "query_bytes"), Some(12_345));
+        assert_eq!(
+            metric_value_by_name(&set, "query_chunks_per_segment_max"),
+            Some(4),
+        );
+        assert_eq!(
+            metric_value_by_name(&set, "time_to_first_chunk_info_us"),
+            Some(2_000),
+        );
+    }
+
+    #[test]
+    fn emits_filter_pushdown_counters() {
+        let metrics = QueryMetrics::new(dummy_query_info(2, 1, false));
+        let set = build_metrics_set_for_explain(&metrics, 1, None);
+
+        assert_eq!(metric_value_by_name(&set, "filters_pushed_down"), Some(2));
+        assert_eq!(
+            metric_value_by_name(&set, "filters_applied_client_side"),
+            Some(1),
+        );
+        // Boolean: only emitted when true. With `false` here the metric is absent.
+        assert_eq!(
+            metric_value_by_name(&set, "entity_path_narrowing_applied"),
+            None,
+        );
+    }
+
+    #[test]
+    fn emits_entity_path_narrowing_when_applied() {
+        let metrics = QueryMetrics::new(dummy_query_info(0, 0, true));
+        let set = build_metrics_set_for_explain(&metrics, 1, None);
+
+        assert_eq!(
+            metric_value_by_name(&set, "entity_path_narrowing_applied"),
+            Some(1),
+        );
+    }
+
+    #[test]
+    fn emits_runtime_counters_and_partition_count() {
+        let metrics = QueryMetrics::new(dummy_query_info(0, 0, false));
+        // Simulate two partitions each contributing to the shared atomics.
+        metrics.fetch_grpc_bytes.fetch_add(1_000, Ordering::Relaxed);
+        metrics.fetch_grpc_bytes.fetch_add(2_500, Ordering::Relaxed);
+        metrics
+            .fetch_direct_max_attempt
+            .fetch_max(3, Ordering::Relaxed);
+        metrics
+            .fetch_direct_max_attempt
+            .fetch_max(5, Ordering::Relaxed);
+        metrics
+            .fetch_direct_max_attempt
+            .fetch_max(2, Ordering::Relaxed);
+
+        let set = build_metrics_set_for_explain(&metrics, 4, None);
+
+        assert_eq!(metric_value_by_name(&set, "fetch_grpc_bytes"), Some(3_500));
+        // True cross-partition max, not a sum.
+        assert_eq!(
+            metric_value_by_name(&set, "fetch_direct_max_attempt"),
+            Some(5),
+        );
+        assert_eq!(metric_value_by_name(&set, "num_partitions"), Some(4));
+    }
+}
+
+#[cfg(test)]
+mod expr_filter_signature_tests {
+    use datafusion::logical_expr::expr::InList;
+    use datafusion::logical_expr::{Between, col, lit};
+
+    use super::*;
+
+    #[test]
+    fn binary_expr_column_on_left() {
+        let expr = col("frame_nr").gt(lit(100i64));
+        assert_eq!(expr_filter_signature(&expr), "(frame_nr > 100)");
+    }
+
+    #[test]
+    fn binary_expr_column_on_right() {
+        let expr = lit(100i64).lt(col("frame_nr"));
+        assert_eq!(expr_filter_signature(&expr), "(100 < frame_nr)");
+    }
+
+    #[test]
+    fn binary_expr_equality() {
+        let expr = col("rerun_segment_id").eq(lit("some-segment"));
+        assert_eq!(
+            expr_filter_signature(&expr),
+            "(rerun_segment_id = 'some-segment')"
+        );
+    }
+
+    #[test]
+    fn between_expr() {
+        let expr = Expr::Between(Between {
+            expr: Box::new(col("log_time")),
+            negated: false,
+            low: Box::new(lit(0i64)),
+            high: Box::new(lit(1000i64)),
+        });
+        assert_eq!(
+            expr_filter_signature(&expr),
+            "(log_time BETWEEN 0 AND 1000)"
+        );
+    }
+
+    #[test]
+    fn in_list_expr() {
+        let expr = Expr::InList(InList {
+            expr: Box::new(col("rerun_segment_id")),
+            list: vec![lit("a"), lit("b")],
+            negated: false,
+        });
+        assert_eq!(
+            expr_filter_signature(&expr),
+            "rerun_segment_id IN ('a', 'b')"
+        );
+    }
+
+    #[test]
+    fn alias_is_transparent() {
+        let expr = col("frame_nr").gt(lit(5i64)).alias("my_filter");
+        assert_eq!(expr_filter_signature(&expr), "(frame_nr > 5)");
+    }
+
+    #[test]
+    fn plain_column_reference() {
+        let expr = col("something");
+        assert_eq!(expr_filter_signature(&expr), "something");
+    }
+
+    #[test]
+    fn semicolon_in_column_name_is_escaped() {
+        // SQL quotes the identifier as "my;col"; the `;` is then escaped for join safety.
+        let expr = col("my;col").gt(lit(0i64));
+        assert_eq!(expr_filter_signature(&expr), "(\"my\\;col\" > 0)");
+    }
+
+    #[test]
+    fn backslash_in_column_name_is_escaped() {
+        // SQL quotes the identifier as "my\col"; the `\` is then escaped.
+        let expr = col("my\\col").gt(lit(0i64));
+        assert_eq!(expr_filter_signature(&expr), "(\"my\\\\col\" > 0)");
+    }
+}
+
+#[cfg(test)]
+mod filter_capture_span_tests {
+    use std::collections::HashSet;
+
+    use super::*;
+
+    fn dummy_info_with_filters(offered: u32, signatures: &str) -> TableQueryInfo {
+        TableQueryInfo {
+            table_id: "tbl-1".to_owned(),
+            table_kind: TableKind::Lance,
+            caller: TableQueryCaller::CatalogResolver,
+            schema_total_columns: 4,
+            projected_columns: 4,
+            has_limit: false,
+            limit_value: None,
+            time_range: web_time::SystemTime::UNIX_EPOCH
+                ..web_time::SystemTime::UNIX_EPOCH + web_time::Duration::from_secs(1),
+            filters_total: offered,
+            filters_signatures: signatures.to_owned(),
+        }
+    }
+
+    fn attribute_keys(span: &opentelemetry_proto::tonic::trace::v1::Span) -> HashSet<&str> {
+        span.attributes.iter().map(|kv| kv.key.as_str()).collect()
+    }
+
+    fn find_int(span: &opentelemetry_proto::tonic::trace::v1::Span, key: &str) -> Option<i64> {
+        use opentelemetry_proto::tonic::common::v1::any_value::Value;
+        span.attributes
+            .iter()
+            .find(|kv| kv.key == key)
+            .and_then(|kv| match kv.value.as_ref()?.value.as_ref()? {
+                Value::IntValue(i) => Some(*i),
+                _ => None,
+            })
+    }
+
+    fn find_string<'a>(
+        span: &'a opentelemetry_proto::tonic::trace::v1::Span,
+        key: &str,
+    ) -> Option<&'a str> {
+        use opentelemetry_proto::tonic::common::v1::any_value::Value;
+        span.attributes
+            .iter()
+            .find(|kv| kv.key == key)
+            .and_then(|kv| match kv.value.as_ref()?.value.as_ref()? {
+                Value::StringValue(s) => Some(s.as_str()),
+                _ => None,
+            })
+    }
+
+    #[test]
+    fn filters_omitted_when_none_offered() {
+        let info = dummy_info_with_filters(0, "");
+        let span = build_table_query_span(
+            &info,
+            TableScanStatsSnapshot::default(),
+            web_time::SystemTime::UNIX_EPOCH
+                ..web_time::SystemTime::UNIX_EPOCH + web_time::Duration::from_secs(1),
+            web_time::Duration::ZERO,
+            None,
+            None,
+            None,
+            None,
+        );
+        let keys = attribute_keys(&span);
+        assert!(!keys.contains("filters_total"), "must be absent when zero");
+        assert!(
+            !keys.contains("filters_signatures"),
+            "must be absent when empty"
+        );
+    }
+
+    #[test]
+    fn filters_emitted_when_present() {
+        let sigs = "(frame_nr > 100);rerun_segment_id IN ('a', 'b')";
+        let info = dummy_info_with_filters(2, sigs);
+        let span = build_table_query_span(
+            &info,
+            TableScanStatsSnapshot::default(),
+            web_time::SystemTime::UNIX_EPOCH
+                ..web_time::SystemTime::UNIX_EPOCH + web_time::Duration::from_secs(1),
+            web_time::Duration::ZERO,
+            None,
+            None,
+            None,
+            None,
+        );
+        assert_eq!(find_int(&span, "filters_total"), Some(2));
+        assert_eq!(find_string(&span, "filters_signatures"), Some(sigs));
     }
 }

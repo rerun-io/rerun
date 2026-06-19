@@ -1,5 +1,5 @@
 use nohash_hasher::{IntMap, IntSet};
-use re_byte_size::SizeBytes;
+use re_byte_size::SizeBytes as _;
 use re_chunk_store::{LatestAtQuery, MissingChunkReporter};
 use re_entity_db::EntityDb;
 use re_log::debug_assert;
@@ -12,7 +12,7 @@ use crate::{
 };
 
 /// Details on how to transform from a source to a target frame.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, re_byte_size::SizeBytes)]
 pub struct TreeTransform {
     /// Root frame this transform belongs to.
     ///
@@ -56,17 +56,6 @@ impl TreeTransform {
             root: *root,
             target_from_source,
         }
-    }
-}
-
-impl SizeBytes for TreeTransform {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            root,
-            target_from_source,
-        } = self;
-
-        root.heap_size_bytes() + target_from_source.heap_size_bytes()
     }
 }
 
@@ -135,7 +124,7 @@ struct SourceInfo<'a> {
 /// Each pinhole forms its own subtree which may be embedded into a 3D space.
 /// Everything at and below the pinhole tree root is considered to be 2D,
 /// everything above is considered to be 3D.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, re_byte_size::SizeBytes)]
 pub struct PinholeTreeRoot {
     /// The tree root of the parent of this pinhole.
     pub parent_tree_root: TransformFrameIdHash,
@@ -151,24 +140,10 @@ pub struct PinholeTreeRoot {
     pub parent_root_from_pinhole_root: glam::DAffine3,
 }
 
-impl SizeBytes for PinholeTreeRoot {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            parent_tree_root,
-            pinhole_projection,
-            parent_root_from_pinhole_root,
-        } = self;
-
-        parent_tree_root.heap_size_bytes()
-            + pinhole_projection.heap_size_bytes()
-            + parent_root_from_pinhole_root.heap_size_bytes()
-    }
-}
-
 /// Properties of a transform root.
 ///
 /// [`TransformForest`] tries to identify all roots.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, re_byte_size::SizeBytes)]
 pub enum TransformTreeRootInfo {
     /// Regular root without any extra meta information.
     TransformFrameRoot,
@@ -178,23 +153,15 @@ pub enum TransformTreeRootInfo {
     Pinhole(PinholeTreeRoot),
 }
 
-impl SizeBytes for TransformTreeRootInfo {
-    fn heap_size_bytes(&self) -> u64 {
-        match self {
-            Self::TransformFrameRoot => 0,
-            Self::Pinhole(pinhole_tree_root) => pinhole_tree_root.heap_size_bytes(),
-        }
-    }
-}
-
 /// Analyzes & propagates the transform graph of a recording at a given time & timeline.
 ///
 /// Identifies different transform trees present in the recording and computes transforms relative to their roots,
 /// such that arbitrary transforms within the tree can be resolved (relatively) quickly.
-#[derive(Default, Clone)]
+#[derive(Default, Clone, re_byte_size::SizeBytes)]
 pub struct TransformForest {
     /// Are there any chunks missing from the chunk store,
     /// leading to an incomplete forest?
+    #[size_bytes(ignore)]
     missing_chunk_reporter: MissingChunkReporter,
 
     /// All known tree roots.
@@ -396,20 +363,6 @@ impl TransformForest {
     }
 }
 
-impl SizeBytes for TransformForest {
-    fn heap_size_bytes(&self) -> u64 {
-        re_tracing::profile_function!();
-
-        let Self {
-            missing_chunk_reporter: _,
-            roots,
-            root_from_frame,
-        } = self;
-
-        roots.heap_size_bytes() + root_from_frame.heap_size_bytes()
-    }
-}
-
 impl re_byte_size::MemUsageTreeCapture for TransformForest {
     fn capture_mem_usage_tree(&self) -> re_byte_size::MemUsageTree {
         re_tracing::profile_function!();
@@ -429,7 +382,6 @@ impl re_byte_size::MemUsageTreeCapture for TransformForest {
 
 /// Starting from a `current_frame`, walks towards the parent and accumulates transforms into `transform_stack`.
 /// Stops until not more connection is found or an already processed `frame_id` is hit.
-#[expect(clippy::too_many_arguments)]
 fn walk_towards_parent(
     entity_db: &EntityDb,
     missing_chunk_reporter: &MissingChunkReporter,
@@ -1524,10 +1476,10 @@ mod tests {
         assert_eq!(received_log.level, re_log::Level::WARN);
         assert!(
             received_log
-                .msg
+                .message
                 .contains("Ignoring transform at root entity"),
             "Expected warning about ignoring implicit root parent frame, got: {}",
-            received_log.msg
+            received_log.message
         );
 
         Ok(())

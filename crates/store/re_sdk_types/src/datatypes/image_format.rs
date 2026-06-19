@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -22,7 +23,7 @@ use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: The metadata describing the contents of a [`components::ImageBuffer`][crate::components::ImageBuffer].
-#[derive(Clone, Debug, Default, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, Default, Copy, PartialEq, Eq, Hash, ::re_byte_size::SizeBytes)]
 pub struct ImageFormat {
     /// The width of the image in pixels.
     pub width: u32,
@@ -249,11 +250,11 @@ impl ::re_types_core::Loggable for ImageFormat {
             } else {
                 let (arrow_data_fields, arrow_data_arrays) =
                     (arrow_data.fields(), arrow_data.columns());
-                let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data_fields
-                    .iter()
-                    .map(|field| field.name().as_str())
-                    .zip(arrow_data_arrays)
-                    .collect();
+                let arrays_by_name: ::std::collections::HashMap<_, _> = ::std::iter::zip(
+                    arrow_data_fields.iter().map(|field| field.name().as_str()),
+                    arrow_data_arrays,
+                )
+                .collect();
                 let width = {
                     if !arrays_by_name.contains_key("width") {
                         return Err(DeserializationError::missing_struct_field(
@@ -359,25 +360,5 @@ impl ::re_types_core::Loggable for ImageFormat {
                 .with_context("rerun.datatypes.ImageFormat")?
             }
         })
-    }
-}
-
-impl ::re_byte_size::SizeBytes for ImageFormat {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.width.heap_size_bytes()
-            + self.height.heap_size_bytes()
-            + self.pixel_format.heap_size_bytes()
-            + self.color_model.heap_size_bytes()
-            + self.channel_datatype.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <u32>::is_pod()
-            && <u32>::is_pod()
-            && <Option<crate::datatypes::PixelFormat>>::is_pod()
-            && <Option<crate::datatypes::ColorModel>>::is_pod()
-            && <Option<crate::datatypes::ChannelDatatype>>::is_pod()
     }
 }

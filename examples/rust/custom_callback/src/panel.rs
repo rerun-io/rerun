@@ -58,6 +58,10 @@ impl eframe::App for Control {
 
         self.app.ui(ui, frame);
     }
+
+    fn logic(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+        self.app.logic(ctx, frame);
+    }
 }
 
 impl Control {

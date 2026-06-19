@@ -1,4 +1,4 @@
-"""Craft an example blueprint with the python API and save it to a file for future use."""
+"""Craft an example blueprint with the python API and save it to a file."""
 
 import sys
 

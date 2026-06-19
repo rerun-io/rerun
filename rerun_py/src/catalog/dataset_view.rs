@@ -1,18 +1,20 @@
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 use std::sync::Arc;
 
+#[cfg(feature = "perf_telemetry")]
+use crate::trace_context::extract_trace_context_from_contextvar;
 use arrow::datatypes::Schema as ArrowSchema;
 use arrow::pyarrow::PyArrowType;
 use datafusion::catalog::TableProvider;
+use itertools::Itertools as _;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::PyAnyMethods as _;
 use pyo3::{Bound, Py, PyAny, PyRef, PyResult, Python, pyclass, pymethods};
 use re_chunk_store::{QueryExpression, SparseFillStrategy, TimeInt, ViewContentsSelector};
 use re_datafusion::DataframeQueryTableProvider;
 use re_log_types::{EntityPathFilter, ResolvedEntityPathFilter};
-#[cfg(feature = "perf_telemetry")]
-use re_perf_telemetry::extract_trace_context_from_contextvar;
 use re_sorbet::{ColumnDescriptor, SorbetColumnDescriptors};
+use re_types_core::SegmentId;
 
 use crate::catalog::{
     IndexValuesLike, PyDatasetEntryInternal, PySchemaInternal, PyTableProviderAdapterInternal,
@@ -243,8 +245,8 @@ impl PyDatasetViewInternal {
             .map(|values_map| {
                 values_map
                     .into_iter()
-                    .map(|(k, v)| v.to_index_values().map(|v| (k, v)))
-                    .collect::<Result<BTreeMap<_, _>, _>>()
+                    .map(|(k, v)| v.to_index_values().map(|v| (SegmentId::from(k), v)))
+                    .try_collect()
             })
             .transpose()?;
 
@@ -327,7 +329,7 @@ fn build_view_contents(
 }
 
 /// Build a table provider for dataframe queries with the given parameters.
-#[expect(clippy::too_many_arguments, clippy::fn_params_excessive_bools)]
+#[expect(clippy::fn_params_excessive_bools)]
 fn build_dataframe_query_table_provider(
     py: Python<'_>,
     dataset: &Py<PyDatasetEntryInternal>,
@@ -337,7 +339,7 @@ fn build_dataframe_query_table_provider(
     include_semantically_empty_columns: bool,
     include_tombstone_columns: bool,
     fill_latest_at: bool,
-    using_index_values: Option<BTreeMap<String, BTreeSet<TimeInt>>>,
+    using_index_values: Option<BTreeMap<SegmentId, BTreeSet<TimeInt>>>,
 ) -> PyResult<Arc<dyn TableProvider + Send>> {
     let dataset_ref = dataset.borrow(py);
     let dataset_id = dataset_ref.entry_id();
@@ -407,6 +409,14 @@ fn build_dataframe_query_table_provider(
     let index_values = using_index_values.map(Arc::new);
     // Reuse the already-fetched schema so the provider skips its own `GetDatasetSchema` RPC.
     let arrow_schema = Some(schema);
+
+    // Bind any active `query_metrics()` collectors to this query at plan
+    // construction time. Empty when no scope is open; the read traverses the
+    // Python `ContextVar` so only collectors from this thread/task are
+    // captured. Concurrent or unrelated queries elsewhere in the process are
+    // not affected.
+    let metrics_collectors = crate::query_metrics::active_metrics_collectors(py);
+
     wait_for_future(py, async move {
         DataframeQueryTableProvider::new(
             connection.origin().clone(),
@@ -418,6 +428,7 @@ fn build_dataframe_query_table_provider(
             arrow_schema,
             #[cfg(not(target_arch = "wasm32"))]
             trace_headers_opt,
+            metrics_collectors,
         )
         .await
     })

@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -24,7 +25,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Datatype**: Describe a component column to be selected in the dataframe view.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, ::re_byte_size::SizeBytes)]
 pub struct ComponentColumnSelector {
     /// The entity path for this component.
     pub entity_path: crate::datatypes::EntityPath,
@@ -191,11 +192,11 @@ impl ::re_types_core::Loggable for ComponentColumnSelector {
             } else {
                 let (arrow_data_fields, arrow_data_arrays) =
                     (arrow_data.fields(), arrow_data.columns());
-                let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data_fields
-                    .iter()
-                    .map(|field| field.name().as_str())
-                    .zip(arrow_data_arrays)
-                    .collect();
+                let arrays_by_name: ::std::collections::HashMap<_, _> = ::std::iter::zip(
+                    arrow_data_fields.iter().map(|field| field.name().as_str()),
+                    arrow_data_arrays,
+                )
+                .collect();
                 let entity_path = {
                     if !arrays_by_name.contains_key("entity_path") {
                         return Err(DeserializationError::missing_struct_field(
@@ -333,17 +334,5 @@ impl ::re_types_core::Loggable for ComponentColumnSelector {
                 .with_context("rerun.blueprint.datatypes.ComponentColumnSelector")?
             }
         })
-    }
-}
-
-impl ::re_byte_size::SizeBytes for ComponentColumnSelector {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.entity_path.heap_size_bytes() + self.component.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::EntityPath>::is_pod() && <crate::datatypes::Utf8>::is_pod()
     }
 }

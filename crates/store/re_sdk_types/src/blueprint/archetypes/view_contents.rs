@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -61,7 +62,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// The last rule matching `/world/house` is `+ /world/**`, so it is included.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, ::re_byte_size::SizeBytes)]
 pub struct ViewContents {
     /// The `QueryExpression` that populates the contents for the view.
     ///
@@ -75,11 +76,13 @@ impl ViewContents {
     /// The corresponding component is [`crate::blueprint::components::QueryExpression`].
     #[inline]
     pub fn descriptor_query() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.ViewContents".into()),
-            component: "ViewContents:query".into(),
-            component_type: Some("rerun.blueprint.components.QueryExpression".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ViewContents".into()),
+                component: "ViewContents:query".into(),
+                component_type: Some("rerun.blueprint.components.QueryExpression".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -103,7 +106,10 @@ impl ViewContents {
 impl ::re_types_core::Archetype for ViewContents {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.blueprint.archetypes.ViewContents".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.blueprint.archetypes.ViewContents"
+        )
     }
 
     #[inline]
@@ -194,12 +200,5 @@ impl ViewContents {
     ) -> Self {
         self.query = try_serialize_field(Self::descriptor_query(), query);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for ViewContents {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.query.heap_size_bytes()
     }
 }

@@ -41,6 +41,22 @@ from ._event import (
 )
 from .recording_stream import RecordingStream, get_data_recording
 
+__all__ = [
+    "ContainerSelectionItem",
+    "EntitySelectionItem",
+    "PauseEvent",
+    "PlayEvent",
+    "RecordingOpenEvent",
+    "SelectionChangeEvent",
+    "SelectionItem",
+    "TimeUpdateEvent",
+    "TimelineChangeEvent",
+    "ViewSelectionItem",
+    "Viewer",
+    "ViewerEvent",
+    "set_default_size",
+]
+
 HAS_NOTEBOOK = True
 try:
     from ipywidgets import HTML as _HTML, VBox as _VBox
@@ -404,7 +420,7 @@ class Viewer:
         Parameters
         ----------
         top: str
-            State of the panel, positioned on the top of the viewer.
+            State of the top panel of the viewer.
         blueprint: str
             State of the blueprint panel, positioned on the left side of the viewer.
         selection: str

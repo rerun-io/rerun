@@ -239,6 +239,17 @@ def lint_line(
         if re.search(r"\b3d\b", line_without_link_targets):
             return "we prefer '3D' over '3d'"
 
+    # Em dash should be spaced (` — `, not `word—word`). See DESIGN.md.
+    # The UI placeholder literal `"—"` (em dash inside quotes) is naturally exempt
+    # since the regex requires word/paren/asterisk characters on both sides.
+    if re.search(r"[\w\)\*]—[\w\(\*]", line):
+        return "Use a spaced em dash (' — '), not 'word—word'. See DESIGN.md."
+
+    # En dash (`–`) is for numeric ranges only; as a sentence dash, use an em dash (` — `).
+    # Detection: en dash with spaces, flanked by letters (digit-flanked allows `100 – 200`).
+    if re.search(r"[A-Za-z\"'\)]\s–\s[A-Za-z]", line):
+        return "Use an em dash (' — '), not an en dash, as a sentence dash. See DESIGN.md."
+
     if (
         "recording=rec" in line
         and "rr." not in line
@@ -344,12 +355,29 @@ def lint_line(
             )
 
     if is_in_oss_rerun_repo:
-        # Check for specific data platform phrases that should be capitalized.
+        # Deprecated brand names. Replacement is context-dependent:
+        #   - 'Rerun Hub'      → commercial managed offering
+        #   - 'catalog server' → generic OSS or managed
+        #   - or rephrase to avoid naming the product
+        # Matched case-insensitively so that lowercase variants (e.g. 'rerun cloud') are also caught.
+        deprecated_msg = "is a deprecated name. Use 'Rerun Hub' (commercial), 'catalog server' (generic), or rephrase."
+        if re.search(r"\bRerun\s+Cloud\b", line, re.IGNORECASE):
+            return f"'Rerun Cloud' {deprecated_msg}"
+        if re.search(r"\bRerun\s+Base\b", line, re.IGNORECASE):
+            return f"'Rerun Base' {deprecated_msg}"
+        if re.search(r"\bRerun\s+Data\s+Platform\b", line, re.IGNORECASE):
+            return f"'Rerun Data Platform' {deprecated_msg}"
+        if re.search(r"\bData\s+Platform\b", line, re.IGNORECASE):
+            return f"'Data Platform' {deprecated_msg}"
         # Skip URL paths (`/dataplatform/`) and python package extras specifiers
-        if re.search(r"(the\s+data\s+platform|Rerun\s+data\s+platform)", line) or re.search(
-            r"(?<![/\[,])dataplatform(?![/\],])", line
-        ):
-            return "Use 'the Data Platform', 'Rerun Data Platform', or 'Data Platform' (unless it's part of a URL path or python package extras specifier)"
+        # (`rerun-sdk[dataloader,dataplatform]`) — those reference the feature name, not prose.
+        if re.search(r"(?<![/\[,])dataplatform(?![/\],])", line, re.IGNORECASE):
+            return f"'dataplatform' {deprecated_msg}"
+
+        # Enforce 'Rerun Hub' capitalization: flag any case variant that isn't exactly 'Rerun Hub'.
+        for m in re.finditer(r"\bRerun\s+Hub\b", line, re.IGNORECASE):
+            if m.group(0) != "Rerun Hub":
+                return "'Rerun Hub' must be properly capitalized."
 
     if not is_in_docstring:
         if m := re.search(
@@ -384,6 +412,15 @@ def lint_line(
     ):
         return """Functions should never take `&dyn std::any::Any` as argument since `&Box<std::any::Any>`
  itself implements `Any`, making it easy to accidentally pass the wrong object. Expect purpose defined traits instead."""
+
+    if file_extension == "rs":
+        if re.search(r"\.zip\(", line):
+            return (
+                "Prefer `std::iter::zip(a, b)` (iterators), `itertools::izip!(a, b, …)` (3+ iterators), "
+                "or `Option::zip(a, b)` (options) over `a.zip(b)`"
+            )
+        if re.search(r"\.chain\(", line):
+            return "Prefer `std::iter::chain(a, b)` or `itertools::chain!(a, b, …)` over `a.chain(b)`"
 
     return None
 
@@ -474,13 +511,16 @@ def test_lint_line() -> None:
 """,
         "fn ret_any() -> &dyn std::any::Any",
         "fn ret_any_mut() -> &mut dyn std::any::Any",
+        # URL paths and python package extras still reference the feature name.
         "Visit /dataplatform/docs for more info",
         "The https://example.com/dataplatform/api endpoint",
         'dependencies = ["rerun-sdk[dataloader,dataplatform]"]',
         'override-dependencies = ["rerun-sdk[dataplatform]"]',
         'extras = ["dataplatform,extra"]',
-        "We need a data platform solution",
-        "Building data platform infrastructure",
+        # New approved names.
+        "Connect to Rerun Hub for hosted catalogs.",
+        "Spin up a catalog server locally.",
+        "We use the catalog server in production.",
         # %err (Display) in tracing macros is good
         'tracing::warn!(%err, "something failed");',
         're_log::error!(%err, "something failed");',
@@ -507,6 +547,25 @@ def test_lint_line() -> None:
         '#[error("Failed to open {path}: {err}")]',
         '#[error("Something went wrong: {0}")]',  # single unnamed is fine
         '#[error("Simple error message")]',
+        # Spaced em dash is the convention.
+        "Use a spaced em dash (` — `) for parenthetical breaks.",
+        "foo — bar — baz",
+        # En dash is fine in numeric/character ranges (no spaces, or digit-flanked).
+        "Range: 2020–2025",
+        "pp. 10–15",
+        "100 KB–10 MB",
+        "Chunks 100 – 200",  # digit on right side — allowed range with spaces
+        "A–Z and a–z and 0–9",
+        # Em dash as a UI placeholder literal in a string (not prose).
+        '"—".to_owned()',
+        'return sha[:8] if sha else "—"',
+        # Mathematical/UI display with en dash, no spaces.
+        'ui.button("–∞")',
+        # Preferred zip/chain alternatives.
+        "let it = std::iter::zip(a, b);",
+        "let it = std::iter::chain(a, b);",
+        "for (x, y, z) in izip!(a, b, c) {",
+        "for x in itertools::chain!(a, b, c) {",
     ]
 
     should_error = [
@@ -575,10 +634,27 @@ def test_lint_line() -> None:
         "fn take_any_mut(thing: &mut dyn std::any::Any)",
         "fn take_any(thing: &dyn Any)",
         "fn take_any_mut(thing: &mut dyn Any)",
+        # Deprecated brand names — must use 'Rerun Hub' or 'catalog server' instead.
+        # Matched case-insensitively, so lowercase variants must also error.
         "The dataplatform is powerful",
         "Using dataplatform for analytics",
+        "Using DATAPLATFORM in caps",
         "I love the data platform",
         "The Rerun data platform is great",
+        "We use the Rerun Data Platform.",
+        "We use the RERUN DATA PLATFORM.",
+        "Connect via Rerun Cloud today.",
+        "Connect via rerun cloud today.",
+        "Connect via RERUN CLOUD today.",
+        "The Data Platform stores recordings.",
+        "The data platform stores recordings.",
+        "Rerun Base is the new commercial offering.",
+        "rerun base is the new commercial offering.",
+        # Wrong 'Rerun Hub' capitalization.
+        "Connect to Rerun hub today.",
+        "Use rerun Hub for catalogs.",
+        "Use rerun hub for catalogs.",
+        "USE RERUN HUB FOR CATALOGS.",
         # Inline sensitive data in log messages (bad pattern) - only error/warn are linted
         're_log::warn!("Failed to open URL {url}: {err}");',
         're_log::error!("Failed to read file at {path}: {err}");',
@@ -590,6 +666,18 @@ def test_lint_line() -> None:
         # thiserror with multiple unnamed fields (bad)
         '#[error("Failed to do {0}: {1}")]',
         '#[error("{0} failed with {1} at {2}")]',
+        # Unspaced em dash (should be spaced).
+        "the layout—are computed",
+        "components—the viewer no longer",
+        "*data blueprints*—the entity",
+        "(SN)—and the storage node",
+        # En dash used as a sentence dash (should be em dash).
+        "Foo – the description",
+        "[Python](./install-rerun/python.md) – the Python SDK",
+        "done – next step",
+        # Method `.zip(` / `.chain(` — prefer `std::iter::*` or `itertools::izip!/chain!`.
+        "let it = a.iter().zip(b.iter());",
+        "let it = a.iter().chain(b.iter());",
     ]
 
     for test in should_pass:
@@ -1172,6 +1260,7 @@ force_capitalized = [
     "UIs",
     "UX",
     "Wasm",
+    "Windows",
     # "Arrow",   # Would be nice to capitalize in the right context, but it's a too common word.
     # "Windows", # Consider "multiple plot windows"
 ]
@@ -1181,9 +1270,8 @@ allow_capitalized = [
     # Referring to the Rerun Viewer as just "the Viewer" is fine, but not all mentions of "viewer" are capitalized.
     "Arrow",
     # Referring to the Apache Arrow project as just "Arrow" is fine, but not all mentions of "arrow" are capitalized.
-    "Data",
-    "Platform",
-    # In the context of "Data Platform" we want capitalization, but not for all mentions
+    "Hub",
+    # Referring to Rerun Hub as just "Hub" is fine, but "hub" as a common noun isn't capitalized.
 ]
 
 force_capitalized_as_lower = [word.lower() for word in force_capitalized]
@@ -1303,16 +1391,6 @@ def fix_header_casing(s: str) -> str:
     return " ".join(new_words)
 
 
-def fix_dataplatform(s: str) -> str:
-    """Fix specific data platform phrases to proper capitalization unless it's part of a URL path or package extras."""
-    # Skip URL paths (`/dataplatform/`) and package extras specifiers
-    # (`rerun-sdk[dataloader,dataplatform]`) — those reference the feature name, not prose.
-    s = re.sub(r"the\s+data\s+platform", "the Data Platform", s)
-    s = re.sub(r"Rerun\s+data\s+platform", "Rerun Data Platform", s)
-    s = re.sub(r"(?<![/\[,])dataplatform(?![/\],])", "Data Platform", s)
-    return s
-
-
 def fix_enforced_upper_case(s: str) -> str:
     new_words: list[str] = []
     inline_code_block = False
@@ -1392,14 +1470,6 @@ def lint_markdown(filepath: str, source: SourceFile) -> tuple[list[str], list[st
                 new_line = fix_enforced_upper_case(line)
                 if new_line != line:
                     errors.append(f"{line_nr}: Certain words should be capitalized. This should be '{new_line}'.")
-                    line = new_line
-
-                # Fix dataplatform to Data Platform
-                new_line = fix_dataplatform(line)
-                if new_line != line:
-                    errors.append(
-                        f"{line_nr}: Use 'Data Platform' instead of 'dataplatform'. This should be '{new_line}'."
-                    )
                     line = new_line
 
             if in_example_readme and not in_metadata:
@@ -1593,6 +1663,14 @@ def lint_file(filepath: str, args: Any) -> int:
             print(source.error("Prefer using tonic::Result<>", line_nr=line_nr))
             num_errors += 1
 
+    if filepath.endswith(".proto"):
+        for line_nr, line in enumerate(source.lines):
+            if source.should_ignore(line_nr):
+                continue
+            if "/// " in line:
+                print(source.error("Use `//` not `///` for comments in .proto files", line_nr=line_nr))
+                num_errors += 1
+
     if filepath.endswith((".rs", ".fbs")):
         errors, lines_out = lint_vertical_spacing(source.lines)
         for error in errors:
@@ -1738,10 +1816,13 @@ def main() -> None:
         "html",
         "js",
         "md",
+        "mjs",
+        "proto",
         "py",
         "rs",
         "sh",
         "toml",
+        "ts",
         "txt",
         "wgsl",
         "yaml",
@@ -1772,6 +1853,8 @@ def main() -> None:
         return f"{rerun_prefix}{path}"
 
     exclude_paths = (
+        "./dataplatform/crates/redap_protos/Cargo.toml",  # intentional [lints.clippy] override (see file header)
+        "./dataplatform/crates/redap_protos/src/v1alpha1",  # auto-generated
         rerun(".github/workflows/reusable_checks.yml"),  # zombie TODO hunting job
         rerun(".nox"),
         rerun(".pytest_cache"),
@@ -1780,6 +1863,7 @@ def main() -> None:
         rerun("crates/store/re_protos/proto/schema_snapshot.yaml"),  # auto-generated
         rerun("crates/store/re_protos/src/v0"),  # auto-generated
         rerun("crates/store/re_protos/src/v1alpha1"),  # auto-generated
+        rerun("crates/viewer/re_ui/data/Inter-README.txt"),  # third-party font readme (Inter)
         rerun("crates/viewer/re_web_viewer_server/web_viewer/re_viewer.js"),  # auto-generated by wasm_bindgen
         rerun("docs/content/concepts/app-model.md"),  # this really needs custom letter casing
         rerun("docs/content/reference/cli.md"),  # auto-generated
@@ -1831,11 +1915,15 @@ def main() -> None:
             filepath = "./" + filepath
             filepath = filepath.replace("\\", "/")
 
-            # Only lint files inside the rerun directory.
-            # In the standalone rerun repo rerun_prefix is "./" so everything matches.
-            # In the monorepo (reality) rerun_prefix is "./rerun/" which keeps us
-            # from accidentally linting dataplatform/ or other top-level directories.
-            if not filepath.startswith(rerun_prefix):
+            # Only lint files inside the rerun or dataplatform directories.
+            # In the standalone rerun repo `rerun_prefix` is "./" so everything matches.
+            # In the monorepo (reality) we explicitly include both top-level Rust
+            # workspaces (`./rerun/` and `./dataplatform/`) so they share the same
+            # custom lints, and skip everything else (`node_modules/`, `landing/`, …).
+            allowed_prefixes: tuple[str, ...] = (rerun_prefix,)
+            if rerun_prefix != "./":
+                allowed_prefixes = allowed_prefixes + ("./dataplatform/",)
+            if not filepath.startswith(allowed_prefixes):
                 continue
 
             extension = filepath.split(".")[-1]

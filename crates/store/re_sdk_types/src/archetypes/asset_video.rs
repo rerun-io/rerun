@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -42,8 +43,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///         anyhow::bail!("Usage: {} <path_to_video.[mp4]>", args[0]);
 ///     };
 ///
-///     let rec =
-///         rerun::RecordingStreamBuilder::new("rerun_example_asset_video_auto_frames").spawn()?;
+///     let rec = rerun::RecordingStreamBuilder::new(
+///         "rerun_example_asset_video_auto_frames",
+///     )
+///     .spawn()?;
 ///
 ///     // Log video asset which is referred to by frame references.
 ///     let video_asset = rerun::AssetVideo::from_file_path(path)?;
@@ -94,8 +97,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///         anyhow::bail!("Usage: {} <path_to_video.[mp4]>", args[0]);
 ///     };
 ///
-///     let rec =
-///         rerun::RecordingStreamBuilder::new("rerun_example_asset_video_manual_frames").spawn()?;
+///     let rec = rerun::RecordingStreamBuilder::new(
+///         "rerun_example_asset_video_manual_frames",
+///     )
+///     .spawn()?;
 ///
 ///     // Log video asset which is referred to by frame references.
 ///     rec.log_static("video_asset", &rerun::AssetVideo::from_file_path(path)?)?;
@@ -103,13 +108,17 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///     // Create two entities, showing the same video frozen at different times.
 ///     rec.log(
 ///         "frame_1s",
-///         &rerun::VideoFrameReference::new(rerun::components::VideoTimestamp::from_secs(1.0))
-///             .with_video_reference("video_asset"),
+///         &rerun::VideoFrameReference::new(
+///             rerun::components::VideoTimestamp::from_secs(1.0),
+///         )
+///         .with_video_reference("video_asset"),
 ///     )?;
 ///     rec.log(
 ///         "frame_2s",
-///         &rerun::VideoFrameReference::new(rerun::components::VideoTimestamp::from_secs(2.0))
-///             .with_video_reference("video_asset"),
+///         &rerun::VideoFrameReference::new(
+///             rerun::components::VideoTimestamp::from_secs(2.0),
+///         )
+///         .with_video_reference("video_asset"),
 ///     )?;
 ///
 ///     // TODO(#5520): log blueprint once supported
@@ -125,7 +134,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/video_manual_frames/9f41c00f84a98cc3f26875fba7c1d2fa2bad7151/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, ::re_byte_size::SizeBytes)]
 pub struct AssetVideo {
     /// The asset's bytes.
     pub blob: Option<SerializedComponentBatch>,
@@ -146,11 +155,13 @@ impl AssetVideo {
     /// The corresponding component is [`crate::components::Blob`].
     #[inline]
     pub fn descriptor_blob() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.AssetVideo".into()),
-            component: "AssetVideo:blob".into(),
-            component_type: Some("rerun.components.Blob".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.AssetVideo".into()),
+                component: "AssetVideo:blob".into(),
+                component_type: Some("rerun.components.Blob".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::media_type`].
@@ -158,11 +169,13 @@ impl AssetVideo {
     /// The corresponding component is [`crate::components::MediaType`].
     #[inline]
     pub fn descriptor_media_type() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.AssetVideo".into()),
-            component: "AssetVideo:media_type".into(),
-            component_type: Some("rerun.components.MediaType".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.AssetVideo".into()),
+                component: "AssetVideo:media_type".into(),
+                component_type: Some("rerun.components.MediaType".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -191,7 +204,10 @@ impl AssetVideo {
 impl ::re_types_core::Archetype for AssetVideo {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.archetypes.AssetVideo".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.archetypes.AssetVideo"
+        )
     }
 
     #[inline]
@@ -370,12 +386,5 @@ impl AssetVideo {
     ) -> Self {
         self.media_type = try_serialize_field(Self::descriptor_media_type(), media_type);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for AssetVideo {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.blob.heap_size_bytes() + self.media_type.heap_size_bytes()
     }
 }

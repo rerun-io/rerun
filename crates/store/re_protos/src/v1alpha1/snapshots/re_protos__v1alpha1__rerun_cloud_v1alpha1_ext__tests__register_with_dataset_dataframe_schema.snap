@@ -1,0 +1,9 @@
+---
+source: crates/store/re_protos/src/v1alpha1/./rerun.cloud.v1alpha1.ext.rs
+expression: "format_schema(&RegisterWithDatasetDataframe::max_schema())"
+---
+rerun_segment_id: non-null Utf8
+rerun_segment_layer: non-null Utf8
+rerun_segment_type: non-null Utf8
+rerun_storage_url: non-null Utf8
+rerun_task_id: non-null Utf8

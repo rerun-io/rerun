@@ -1,0 +1,646 @@
+mod chunk_event_stats;
+mod memory_history;
+mod plot_utils;
+mod server_streaming_tab;
+mod streaming_history;
+
+use plot_utils::history_to_plot;
+use re_chunk_store::{ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreStats};
+use re_entity_db::StoreBundle;
+use re_format::{format_bytes, format_uint};
+use re_memory::MemoryLimit;
+use re_memory::util::sec_since_start;
+use re_query::{QueryCacheStats, QueryCachesStats};
+use re_renderer::WgpuResourcePoolStatistics;
+use re_ui::UiExt as _;
+use re_viewer_context::StorageContext;
+use re_viewer_context::store_hub::StoreHubStats;
+
+use crate::env_vars::RERUN_TRACK_ALLOCATIONS;
+use memory_history::MemoryHistory;
+use streaming_history::StreamingHistory;
+
+// ----------------------------------------------------------------------------
+
+/// Which view to show in the dev panel.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, strum_macros::EnumIter)]
+enum DevPanelTab {
+    #[default]
+    Flamegraph,
+
+    TimeGraph,
+
+    Stores,
+
+    Streaming,
+
+    AllocationTracking,
+
+    Gpu,
+}
+
+impl DevPanelTab {
+    fn label(&self) -> &'static str {
+        match self {
+            Self::Flamegraph => "Flamegraph",
+            Self::TimeGraph => "Over time",
+            Self::Stores => "Recordings",
+            Self::Streaming => "Server streaming",
+            Self::AllocationTracking => "Allocation tracking",
+            Self::Gpu => "GPU",
+        }
+    }
+}
+
+#[derive(Default)]
+pub struct DevPanel {
+    history: MemoryHistory,
+    streaming_history: StreamingHistory,
+    memory_purge_times: Vec<f64>,
+    selected_tab: DevPanelTab,
+    include_rss_in_flamegraph: bool,
+}
+
+#[derive(Default)]
+pub struct DevPanelResponse {
+    pub close_requested: bool,
+}
+
+impl DevPanel {
+    /// Call once per frame
+    pub fn update(
+        &mut self,
+        gpu_resource_stats: &WgpuResourcePoolStatistics,
+        store_stats: Option<&StoreHubStats>,
+        store_bundle: Option<&StoreBundle>,
+    ) {
+        re_tracing::profile_function!();
+
+        // Ensure GC counter subscriber is registered (idempotent via OnceLock).
+        chunk_event_stats::ChunkEventStats::subscription_handle();
+
+        self.history.capture(Some(gpu_resource_stats), store_stats);
+        if let Some(store_bundle) = store_bundle {
+            self.streaming_history.capture(store_bundle);
+        }
+    }
+
+    /// Note that we purged memory at this time, to show in stats.
+    #[inline]
+    pub fn note_memory_purge(&mut self) {
+        self.memory_purge_times.push(sec_since_start());
+    }
+
+    pub fn ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        limit: &MemoryLimit,
+        mem_usage_tree: Option<re_byte_size::NamedMemUsageTree>,
+        external_trees: &[re_byte_size::NamedMemUsageTree],
+        gpu_resource_stats: &WgpuResourcePoolStatistics,
+        store_stats: Option<&StoreHubStats>,
+        storage_context: &StorageContext<'_>,
+    ) -> DevPanelResponse {
+        re_tracing::profile_function!();
+
+        // We show realtime stats, so keep showing the latest!
+        ui.request_repaint();
+
+        ui.add_space(4.0);
+
+        // Tab selector at the top
+        let ((), close_clicked) = egui::Sides::new().shrink_left().show(
+            ui,
+            |ui| {
+                use strum::IntoEnumIterator as _;
+                for tab in DevPanelTab::iter() {
+                    ui.selectable_value(&mut self.selected_tab, tab, tab.label());
+                }
+            },
+            |ui| {
+                ui.small_icon_button(&re_ui::icons::CLOSE, "Close dev panel")
+                    .clicked()
+            },
+        );
+
+        ui.separator();
+
+        match self.selected_tab {
+            DevPanelTab::Flamegraph => {
+                memory_tree_ui(
+                    ui,
+                    mem_usage_tree,
+                    external_trees,
+                    &mut self.include_rss_in_flamegraph,
+                );
+            }
+            DevPanelTab::TimeGraph => {
+                ui.label("🗠 Rerun Viewer memory use over time");
+                self.plot(ui, limit);
+            }
+            DevPanelTab::Stores => {
+                egui::ScrollArea::vertical()
+                    .auto_shrink(false)
+                    .show(ui, |ui| {
+                        Self::store_stats_ui(ui, store_stats);
+                    });
+            }
+            DevPanelTab::Streaming => {
+                server_streaming_tab::server_streaming_tab_ui(
+                    ui,
+                    storage_context,
+                    &self.streaming_history,
+                );
+            }
+            DevPanelTab::AllocationTracking => {
+                egui::ScrollArea::vertical()
+                    .auto_shrink(false)
+                    .show(ui, |ui| {
+                        Self::allocation_tracking_ui(ui);
+                    });
+            }
+            DevPanelTab::Gpu => {
+                egui::ScrollArea::vertical()
+                    .auto_shrink(false)
+                    .show(ui, |ui| {
+                        Self::gpu_stats(ui, gpu_resource_stats);
+                    });
+            }
+        }
+
+        DevPanelResponse {
+            close_requested: close_clicked,
+        }
+    }
+
+    fn store_stats_ui(ui: &mut egui::Ui, store_stats: Option<&StoreHubStats>) {
+        if let Some(store_stats) = store_stats {
+            for (store_id, store_stats) in &store_stats.store_stats {
+                let title = format!("{} {}", store_id.kind(), store_id.recording_id());
+                ui.collapsing_header(&title, false, |ui| {
+                    if let Some(data_source) = &store_stats.store_source {
+                        ui.weak(format!("Source: {data_source}"));
+
+                        ui.separator();
+                    }
+                    ui.collapsing("Datastore Resources", |ui| {
+                        Self::chunk_store_stats(
+                            ui,
+                            &store_stats.store_config,
+                            &store_stats.store_stats,
+                        );
+                    });
+
+                    ui.separator();
+                    ui.collapsing("Primary Query Caches", |ui| {
+                        Self::caches_stats(ui, &store_stats.query_cache_stats);
+                    });
+
+                    ui.separator();
+                    ui.collapsing("Viewer Caches", |ui| {
+                        ui.label(format!(
+                            "GPU Memory: {}",
+                            format_bytes(store_stats.cache_vram_usage.size_bytes() as f64)
+                        ));
+
+                        // TODO(emilk): in the future we could have a VRAM flamegraph here
+                    });
+                });
+            }
+        } else {
+            ui.label("No store statistics available.");
+        }
+    }
+
+    fn allocation_tracking_ui(ui: &mut egui::Ui) {
+        let mut is_tracking_callstacks = re_memory::accounting_allocator::is_tracking_callstacks();
+        ui.re_checkbox(
+            &mut is_tracking_callstacks,
+            "Enable detailed allocation tracking",
+        )
+        .on_hover_text("This will slow down the program");
+        re_memory::accounting_allocator::set_tracking_callstacks(is_tracking_callstacks);
+
+        ui.add_space(8.0);
+
+        if let Some(tracking_stats) = re_memory::accounting_allocator::tracking_stats() {
+            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
+            Self::tracking_stats(ui, tracking_stats);
+        } else if !cfg!(target_arch = "wasm32") {
+            ui.label(format!(
+                "Set {RERUN_TRACK_ALLOCATIONS}=1 for detailed allocation tracking from startup."
+            ));
+        }
+    }
+
+    fn gpu_stats(ui: &mut egui::Ui, gpu_resource_stats: &WgpuResourcePoolStatistics) {
+        ui.strong("GPU Resources");
+        ui.separator();
+
+        egui::Grid::new("gpu resource grid")
+            .num_columns(2)
+            .show(ui, |ui| {
+                let WgpuResourcePoolStatistics {
+                    num_bind_group_layouts,
+                    num_pipeline_layouts,
+                    num_render_pipelines,
+                    num_samplers,
+                    num_shader_modules,
+                    num_bind_groups,
+                    num_buffers,
+                    num_textures,
+                    total_buffer_size_in_bytes,
+                    total_texture_size_in_bytes,
+                } = gpu_resource_stats;
+
+                ui.label("# Bind Group Layouts:");
+                ui.label(num_bind_group_layouts.to_string());
+                ui.end_row();
+                ui.label("# Pipeline Layouts:");
+                ui.label(num_pipeline_layouts.to_string());
+                ui.end_row();
+                ui.label("# Render Pipelines:");
+                ui.label(num_render_pipelines.to_string());
+                ui.end_row();
+                ui.label("# Samplers:");
+                ui.label(num_samplers.to_string());
+                ui.end_row();
+                ui.label("# Shader Modules:");
+                ui.label(num_shader_modules.to_string());
+                ui.end_row();
+                ui.label("# Bind Groups:");
+                ui.label(num_bind_groups.to_string());
+                ui.end_row();
+                ui.label("# Buffers:");
+                ui.label(num_buffers.to_string());
+                ui.end_row();
+                ui.label("# Textures:");
+                ui.label(num_textures.to_string());
+                ui.end_row();
+                ui.label("Buffer Memory:");
+                ui.label(re_format::format_bytes(*total_buffer_size_in_bytes as _));
+                ui.end_row();
+                ui.label("Texture Memory:");
+                ui.label(re_format::format_bytes(*total_texture_size_in_bytes as _));
+                ui.end_row();
+            });
+    }
+
+    fn chunk_store_stats(
+        ui: &mut egui::Ui,
+        store_config: &ChunkStoreConfig,
+        store_stats: &ChunkStoreStats,
+    ) {
+        // TODO(cmc): this will become useful again once we introduce compaction settings.
+        _ = store_config;
+
+        egui::Grid::new("store stats grid 2")
+            .num_columns(3)
+            .show(ui, |ui| {
+                let ChunkStoreStats {
+                    static_chunks,
+                    temporal_chunks,
+                } = *store_stats;
+
+                ui.label(egui::RichText::new("Stats").italics());
+                ui.label("Chunks");
+                ui.label("Rows (total)");
+                ui.label("Events (total)")
+                    .on_hover_text("Number of non-null component batches (cells)");
+                ui.label("Size (total)");
+                ui.end_row();
+
+                fn label_chunk_stats(ui: &mut egui::Ui, stats: ChunkStoreChunkStats) {
+                    let ChunkStoreChunkStats {
+                        num_chunks,
+                        total_size_bytes,
+                        num_rows,
+                        num_events,
+                    } = stats;
+
+                    ui.label(re_format::format_uint(num_chunks));
+                    ui.label(re_format::format_uint(num_rows));
+                    ui.label(re_format::format_uint(num_events));
+                    ui.label(re_format::format_bytes(total_size_bytes as _));
+                }
+
+                ui.label("Static:");
+                label_chunk_stats(ui, static_chunks);
+                ui.end_row();
+
+                ui.label("Temporal:");
+                label_chunk_stats(ui, temporal_chunks);
+                ui.end_row();
+
+                ui.label("Total:");
+                label_chunk_stats(ui, static_chunks + temporal_chunks);
+                ui.end_row();
+            });
+    }
+
+    fn caches_stats(ui: &mut egui::Ui, caches_stats: &QueryCachesStats) {
+        let QueryCachesStats { latest_at, range } = caches_stats;
+
+        if !latest_at.is_empty() {
+            ui.separator();
+            ui.strong("LatestAt");
+            egui::ScrollArea::vertical()
+                .max_height(200.0)
+                .id_salt("latest_at")
+                .show(ui, |ui| {
+                    egui::Grid::new("latest_at cache stats grid")
+                        .num_columns(3)
+                        .show(ui, |ui| {
+                            ui.label(egui::RichText::new("Entity").underline());
+                            ui.label(egui::RichText::new("Component").underline());
+                            ui.label(egui::RichText::new("Chunks").underline())
+                                .on_hover_text("How many chunks in the cache?");
+                            ui.label(egui::RichText::new("Effective size").underline())
+                                .on_hover_text("What would be the size of this cache in the worst case, i.e. if all chunks had been fully copied?");
+                            ui.label(egui::RichText::new("Actual size").underline())
+                                .on_hover_text("What is the actual size of this cache after deduplication?");
+                            ui.end_row();
+
+                            for (cache_key, stats) in latest_at {
+                                let &QueryCacheStats {
+                                    total_chunks,
+                                    total_effective_size_bytes,
+                                    total_actual_size_bytes,
+                                } = stats;
+
+                                ui.label(cache_key.entity_path.ui_string());
+                                ui.label(cache_key.component.to_string());
+                                ui.label(re_format::format_uint(total_chunks));
+                                ui.label(re_format::format_bytes(total_effective_size_bytes as _));
+                                ui.label(re_format::format_bytes(total_actual_size_bytes as _));
+                                ui.end_row();
+                            }
+                        });
+                });
+        }
+
+        if !range.is_empty() {
+            ui.separator();
+            ui.strong("Range");
+            egui::ScrollArea::vertical()
+                .max_height(200.0)
+                .id_salt("range")
+                .show(ui, |ui| {
+                    egui::Grid::new("range cache stats grid")
+                        .num_columns(4)
+                        .show(ui, |ui| {
+                            ui.label(egui::RichText::new("Entity").underline());
+                            ui.label(egui::RichText::new("Component").underline());
+                            ui.label(egui::RichText::new("Chunks").underline())
+                                .on_hover_text("How many chunks in the cache?");
+                            ui.label(egui::RichText::new("Effective size").underline())
+                                .on_hover_text("What would be the size of this cache in the worst case, i.e. if all chunks had been fully copied?");
+                            ui.label(egui::RichText::new("Actual size").underline())
+                                .on_hover_text("What is the actual size of this cache after deduplication?");
+                            ui.end_row();
+
+                            for (cache_key, stats) in range {
+                                let &QueryCacheStats {
+                                    total_chunks,
+                                    total_effective_size_bytes,
+                                    total_actual_size_bytes,
+                                } = stats;
+
+                                ui.label(cache_key.entity_path.ui_string());
+                                ui.label(cache_key.component.to_string());
+                                ui.label(re_format::format_uint(total_chunks));
+                                ui.label(re_format::format_bytes(total_effective_size_bytes as _));
+                                ui.label(re_format::format_bytes(total_actual_size_bytes as _));
+                                ui.end_row();
+                            }
+                        });
+                });
+        }
+    }
+
+    fn tracking_stats(
+        ui: &mut egui::Ui,
+        tracking_stats: re_memory::accounting_allocator::TrackingStatistics,
+    ) {
+        ui.label("counted = fully_tracked + stochastically_tracked + untracked + overhead");
+        ui.label(format!(
+            "fully_tracked: {} in {} allocs",
+            format_bytes(tracking_stats.fully_tracked.size as _),
+            format_uint(tracking_stats.fully_tracked.count),
+        ));
+        ui.label(format!(
+            "stochastically_tracked: {} in {} allocs",
+            format_bytes(tracking_stats.stochastically_tracked.size as _),
+            format_uint(tracking_stats.stochastically_tracked.count),
+        ));
+        ui.label(format!(
+            "untracked: {} in {} allocs (all smaller than {})",
+            format_bytes(tracking_stats.untracked.size as _),
+            format_uint(tracking_stats.untracked.count),
+            format_bytes(tracking_stats.track_size_threshold as _),
+        ));
+        ui.label(format!(
+            "overhead: {} in {} allocs",
+            format_bytes(tracking_stats.overhead.size as _),
+            format_uint(tracking_stats.overhead.count),
+        ))
+        .on_hover_text("Used for the book-keeping of the allocation tracker");
+
+        egui::CollapsingHeader::new("Top memory consumers")
+            .default_open(true)
+            .show(ui, |ui| {
+                egui::ScrollArea::vertical()
+                    .max_height(300.0)
+                    .show(ui, |ui| {
+                        ui.set_min_width(750.0);
+                        for callstack in tracking_stats.top_callstacks {
+                            let stochastic_rate = callstack.stochastic_rate;
+                            let is_stochastic = stochastic_rate > 1;
+
+                            let text = format!(
+                                "{}{} in {} allocs (≈{} / alloc){} - {}",
+                                if is_stochastic { "≈" } else { "" },
+                                format_bytes((callstack.extant.size * stochastic_rate) as _),
+                                format_uint(callstack.extant.count * stochastic_rate),
+                                format_bytes(
+                                    callstack.extant.size as f64 / callstack.extant.count as f64
+                                ),
+                                if stochastic_rate <= 1 {
+                                    String::new()
+                                } else {
+                                    format!(" ({} stochastic samples)", callstack.extant.count)
+                                },
+                                summarize_callstack(&callstack.readable_backtrace.to_string())
+                            );
+
+                            if ui
+                                .button(text)
+                                .on_hover_text("Click to copy callstack to clipboard")
+                                .clicked()
+                            {
+                                let mut text = callstack.readable_backtrace.to_string();
+                                if text.is_empty() {
+                                    // This is weird
+                                    text = "No callstack available".to_owned();
+                                }
+                                ui.copy_text(text);
+                            }
+                        }
+                    });
+            });
+    }
+
+    fn plot(&self, ui: &mut egui::Ui, limit: &MemoryLimit) {
+        re_tracing::profile_function!();
+
+        let ram_purge_color = ui.visuals().warn_fg_color;
+
+        egui_plot::Plot::new("mem_history_plot")
+            .min_size(egui::Vec2::splat(200.0))
+            .label_formatter(|name, value| format!("{name}: {}", format_bytes(value.y)))
+            .x_axis_formatter(|time, _| format!("{} s", time.value))
+            .y_axis_formatter(|bytes, _| format_bytes(bytes.value))
+            .show_x(false)
+            .legend(egui_plot::Legend::default().position(egui_plot::Corner::LeftTop))
+            .include_y(0.0)
+            // TODO(emilk): turn off plot interaction, and always do auto-sizing
+            .show(ui, |plot_ui| {
+                if limit.is_limited() {
+                    plot_ui
+                        .hline(egui_plot::HLine::new("Limit", limit.as_bytes() as f64).width(2.0));
+                }
+
+                for &time in &self.memory_purge_times {
+                    plot_ui.vline(
+                        egui_plot::VLine::new("RAM purge", time)
+                            .color(ram_purge_color)
+                            .width(2.0),
+                    );
+                }
+
+                let MemoryHistory {
+                    resident,
+                    counted_allocator,
+                    counted_vram,
+                    counted_blueprints,
+                    counted_recordings,
+                    counted_query_caches,
+                    counted_table_stores,
+                } = &self.history;
+
+                plot_ui.line(history_to_plot("Resident", resident).width(1.5));
+                plot_ui.line(history_to_plot("Allocator", counted_allocator).width(1.5));
+                plot_ui.line(history_to_plot("VRAM", counted_vram).width(1.5));
+                plot_ui.line(history_to_plot("Recordings", counted_recordings).width(1.5));
+
+                if false {
+                    // Intentionally omitted because they are uninteresting and clutter things up too much
+                    plot_ui.line(history_to_plot("Blueprints", counted_blueprints).width(1.5));
+                    plot_ui.line(history_to_plot("Query caches", counted_query_caches).width(1.5));
+                    plot_ui.line(history_to_plot("Table stores", counted_table_stores).width(1.5));
+                }
+            });
+    }
+}
+
+fn summarize_callstack(callstack: &str) -> String {
+    let patterns = [
+        ("App::receive_messages", "App::receive_messages"),
+        ("w_store::store::ComponentBucket>::archive", "archive"),
+        ("ChunkStore>::insert", "ChunkStore"),
+        ("EntityDb", "EntityDb"),
+        ("EntityTree", "EntityTree"),
+        ("::LogMsg>::deserialize", "LogMsg"),
+        ("::TimePoint>::deserialize", "TimePoint"),
+        ("ImageCache", "ImageCache"),
+        ("gltf", "gltf"),
+        ("tokio::sync::broadcast::channel", "channel"),
+        ("grpc", "grpc"),
+        ("image::image", "image"),
+        ("ImageDecodeCache", "ImageDecodeCache"),
+        ("epaint::text::text_layout", "text_layout"),
+        ("egui_wgpu", "egui_wgpu"),
+        ("decode_arrow", "decode_arrow"),
+        ("transform_resolution_cache", "transform_resolution_cache"),
+        ("wgpu_hal", "wgpu_hal"),
+        ("prepare_staging_buffer", "prepare_staging_buffer"),
+        // -----
+        // Very general:
+        ("crossbeam::channel::Sender", "crossbeam::channel::Sender"),
+        ("epaint::texture_atlas", "egui font texture"),
+        ("alloc::collections::btree", "BTree"),
+        ("std::collections::hash::map::HashMap<K,V,S>", "HashMap"),
+    ];
+
+    let mut all_summaries = vec![];
+
+    for (pattern, summary) in patterns {
+        if callstack.contains(pattern) {
+            all_summaries.push(summary);
+        }
+    }
+
+    all_summaries.join(", ")
+}
+
+pub fn memory_tree_ui(
+    ui: &mut egui::Ui,
+    tree: Option<re_byte_size::NamedMemUsageTree>,
+    external_trees: &[re_byte_size::NamedMemUsageTree],
+    include_rss: &mut bool,
+) {
+    // Add explanation at the top
+    ui.horizontal(|ui| {
+        ui.label("Memory flamegraph visualizing the memory usage tree.");
+        ui.hyperlink_to(
+            "Learn more",
+            "https://docs.rs/re_byte_size/latest/re_byte_size/trait.MemUsageTreeCapture.html",
+        );
+
+        #[expect(dead_code)]
+        fn foo(_: &dyn re_byte_size::MemUsageTreeCapture) {
+            // This function is only here so we remember to update the link above if the trait name changes.
+        }
+    });
+
+    ui.label("Double-click to reset view, scroll to zoom, drag to pan.");
+
+    ui.re_checkbox(include_rss, "Include RSS")
+        .on_hover_text("Include Resident Set Size (RSS) in the flamegraph. This shows total memory use as reported by the OS. This may be a lot bigger than what is actually _used_ because our allocator (mimalloc) retains pages in case they are needed again.");
+
+    ui.separator();
+
+    let Some(mut tree) = tree else {
+        ui.label("No memory usage tree available.");
+        return;
+    };
+
+    let re_memory::MemoryUse { resident, counted } = re_memory::MemoryUse::capture();
+
+    let include_counted = true; // What our allocator counts. Perfectly accurate.
+
+    if include_counted && let Some(counted) = counted {
+        let mut node = re_byte_size::MemUsageNode::new().with_named_child(tree);
+
+        for tree in external_trees {
+            node = node.with_named_child(tree.clone());
+        }
+
+        tree = re_byte_size::NamedMemUsageTree::new("counted", node.with_total_size_bytes(counted));
+    }
+
+    if *include_rss && let Some(resident) = resident {
+        tree = re_byte_size::NamedMemUsageTree::new(
+            "RSS",
+            re_byte_size::MemUsageNode::new()
+                .with_named_child(tree)
+                .with_total_size_bytes(resident),
+        );
+    }
+
+    egui::ScrollArea::vertical()
+        .auto_shrink(false)
+        .show(ui, |ui| {
+            re_memory_view::memory_flamegraph_ui(ui, &tree);
+        });
+}

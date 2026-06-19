@@ -21,4 +21,8 @@ rr.log("points", rr.Points2D.from_fields(colors=[0, 0, 255]))
 
 
 # Set view bounds:
-rr.send_blueprint(rrb.Spatial2DView(visual_bounds=rrb.VisualBounds2D(x_range=[-1, 2], y_range=[-1, 2])))
+rr.send_blueprint(
+    rrb.Spatial2DView(
+        visual_bounds=rrb.VisualBounds2D(x_range=[-1, 2], y_range=[-1, 2])
+    )
+)

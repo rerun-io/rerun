@@ -15,34 +15,6 @@ if TYPE_CHECKING:
 
 
 # ---------------------------------------------------------------------------
-# from_record_batch
-# ---------------------------------------------------------------------------
-
-
-def test_chunk_from_record_batch_round_trip(test_rrd_path: Path) -> None:
-    """to_record_batch() -> from_record_batch() round-trips correctly."""
-    chunks = RrdReader(test_rrd_path).stream().to_chunks()
-    assert len(chunks) > 0
-
-    for original in chunks:
-        rb = original.to_record_batch()
-        restored = Chunk.from_record_batch(rb)
-        assert restored.entity_path == original.entity_path
-        assert restored.num_rows == original.num_rows
-        assert restored.num_columns == original.num_columns
-        assert restored.is_static == original.is_static
-        assert sorted(restored.timeline_names) == sorted(original.timeline_names)
-
-
-def test_chunk_from_record_batch_rejects_plain_batch() -> None:
-    """from_record_batch() raises on a RecordBatch without Rerun metadata."""
-
-    plain_batch = pa.record_batch({"x": [1, 2, 3]})
-    with pytest.raises(ValueError):
-        Chunk.from_record_batch(plain_batch)
-
-
-# ---------------------------------------------------------------------------
 # from_columns
 # ---------------------------------------------------------------------------
 
@@ -100,6 +72,37 @@ def test_chunk_from_columns_static() -> None:
 │ │ ARROW:extension:name: TUID                    ┆ component: Points3D:positions                   │ │
 │ │ is_sorted: true                               ┆ component_type: Position3D                      │ │
 │ │ kind: control                                 ┆ kind: data                                      │ │
+│ ╞═══════════════════════════════════════════════╪═════════════════════════════════════════════════╡ │
+│ │ row_[**REDACTED**]                            ┆ [[1.0, 2.0, 3.0]]                               │ │
+│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
+│ │ row_[**REDACTED**]                            ┆ [[4.0, 5.0, 6.0]]                               │ │
+│ └───────────────────────────────────────────────┴─────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────────────────────────────────────┘\
+""")
+
+
+def test_chunk_format_keeps_rerun_metadata_prefixes() -> None:
+    """`trim_metadata_keys=False` preserves the `rerun:` / `sorbet:` prefixes on metadata keys."""
+    chunk = Chunk.from_columns(
+        "/test/static",
+        indexes=[],
+        columns=rr.Points3D.columns(positions=[[1, 2, 3], [4, 5, 6]]),
+    )
+    assert chunk.format(redact=True, trim_metadata_keys=False) == inline_snapshot("""\
+┌─────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ METADATA:                                                                                           │
+│ * rerun:entity_path: /test/static                                                                   │
+│ * rerun:id: [**REDACTED**]                                                                          │
+│ * sorbet:version: [**REDACTED**]                                                                    │
+├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│ ┌───────────────────────────────────────────────┬─────────────────────────────────────────────────┐ │
+│ │ RowId                                         ┆ Points3D:positions                              │ │
+│ │ ---                                           ┆ ---                                             │ │
+│ │ type: non-null FixedSizeBinary(16)            ┆ type: List(FixedSizeList(3 x non-null Float32)) │ │
+│ │ ARROW:extension:metadata: {"namespace":"row"} ┆ rerun:archetype: Points3D                       │ │
+│ │ ARROW:extension:name: TUID                    ┆ rerun:component: Points3D:positions             │ │
+│ │ rerun:is_sorted: true                         ┆ rerun:component_type: Position3D                │ │
+│ │ rerun:kind: control                           ┆ rerun:kind: data                                │ │
 │ ╞═══════════════════════════════════════════════╪═════════════════════════════════════════════════╡ │
 │ │ row_[**REDACTED**]                            ┆ [[1.0, 2.0, 3.0]]                               │ │
 │ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │

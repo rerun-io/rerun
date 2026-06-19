@@ -137,13 +137,12 @@ impl ParserContext {
     ///
     /// The timeline name and [`TimeCell`] are automatically determined from the timestamp cell.
     pub fn add_timestamp_cell(&mut self, timestamp_cell: TimestampCell) -> &mut Self {
-        let timeline_name = TimelineName::from(timestamp_cell.timeline_name());
-        let cell = timestamp_cell.into_time_cell();
+        let TimestampCell { timeline, time } = timestamp_cell;
 
         self.timelines
-            .entry(timeline_name)
-            .or_insert_with(|| TimeColumn::builder(Timeline::new(timeline_name, cell.typ)))
-            .with_row(cell.value);
+            .entry(timeline)
+            .or_insert_with(|| TimeColumn::builder(Timeline::new(timeline, time.typ)))
+            .with_row(time.value);
 
         self
     }

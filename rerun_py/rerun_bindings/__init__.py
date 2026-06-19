@@ -12,6 +12,7 @@ from .rerun_bindings import (
     _is_telemetry_active as _is_telemetry_active,
     _log_tracing_session_finished as _log_tracing_session_finished,
     _log_tracing_session_started as _log_tracing_session_started,
+    _new_metrics_collector as _new_metrics_collector,
     _optimization_profile_values as _optimization_profile_values,
     _ServerInternal as _ServerInternal,
     _UrdfJointInternal as _UrdfJointInternal,

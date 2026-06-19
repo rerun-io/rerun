@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -31,7 +32,8 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// ### Batch of 3D boxes
 /// ```ignore
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_box3d_batch").spawn()?;
+///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_box3d_batch")
+///         .spawn()?;
 ///
 ///     rec.log(
 ///         "batch",
@@ -65,7 +67,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/box3d_batch/5aac5b5d29c9f2ecd572c93f6970fcec17f4984b/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug, PartialEq, Default)]
+#[derive(Clone, Debug, PartialEq, Default, ::re_byte_size::SizeBytes)]
 pub struct Boxes3D {
     /// All half-extents that make up the batch of boxes.
     pub half_sizes: Option<SerializedComponentBatch>,
@@ -120,11 +122,13 @@ impl Boxes3D {
     /// The corresponding component is [`crate::components::HalfSize3D`].
     #[inline]
     pub fn descriptor_half_sizes() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Boxes3D".into()),
-            component: "Boxes3D:half_sizes".into(),
-            component_type: Some("rerun.components.HalfSize3D".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Boxes3D".into()),
+                component: "Boxes3D:half_sizes".into(),
+                component_type: Some("rerun.components.HalfSize3D".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::centers`].
@@ -132,11 +136,13 @@ impl Boxes3D {
     /// The corresponding component is [`crate::components::Translation3D`].
     #[inline]
     pub fn descriptor_centers() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Boxes3D".into()),
-            component: "Boxes3D:centers".into(),
-            component_type: Some("rerun.components.Translation3D".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Boxes3D".into()),
+                component: "Boxes3D:centers".into(),
+                component_type: Some("rerun.components.Translation3D".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::rotation_axis_angles`].
@@ -144,11 +150,13 @@ impl Boxes3D {
     /// The corresponding component is [`crate::components::RotationAxisAngle`].
     #[inline]
     pub fn descriptor_rotation_axis_angles() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Boxes3D".into()),
-            component: "Boxes3D:rotation_axis_angles".into(),
-            component_type: Some("rerun.components.RotationAxisAngle".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Boxes3D".into()),
+                component: "Boxes3D:rotation_axis_angles".into(),
+                component_type: Some("rerun.components.RotationAxisAngle".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::quaternions`].
@@ -156,11 +164,13 @@ impl Boxes3D {
     /// The corresponding component is [`crate::components::RotationQuat`].
     #[inline]
     pub fn descriptor_quaternions() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Boxes3D".into()),
-            component: "Boxes3D:quaternions".into(),
-            component_type: Some("rerun.components.RotationQuat".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Boxes3D".into()),
+                component: "Boxes3D:quaternions".into(),
+                component_type: Some("rerun.components.RotationQuat".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::colors`].
@@ -168,11 +178,13 @@ impl Boxes3D {
     /// The corresponding component is [`crate::components::Color`].
     #[inline]
     pub fn descriptor_colors() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Boxes3D".into()),
-            component: "Boxes3D:colors".into(),
-            component_type: Some("rerun.components.Color".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Boxes3D".into()),
+                component: "Boxes3D:colors".into(),
+                component_type: Some("rerun.components.Color".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::radii`].
@@ -180,11 +192,13 @@ impl Boxes3D {
     /// The corresponding component is [`crate::components::Radius`].
     #[inline]
     pub fn descriptor_radii() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Boxes3D".into()),
-            component: "Boxes3D:radii".into(),
-            component_type: Some("rerun.components.Radius".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Boxes3D".into()),
+                component: "Boxes3D:radii".into(),
+                component_type: Some("rerun.components.Radius".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fill_mode`].
@@ -192,11 +206,13 @@ impl Boxes3D {
     /// The corresponding component is [`crate::components::FillMode`].
     #[inline]
     pub fn descriptor_fill_mode() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Boxes3D".into()),
-            component: "Boxes3D:fill_mode".into(),
-            component_type: Some("rerun.components.FillMode".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Boxes3D".into()),
+                component: "Boxes3D:fill_mode".into(),
+                component_type: Some("rerun.components.FillMode".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::labels`].
@@ -204,11 +220,13 @@ impl Boxes3D {
     /// The corresponding component is [`crate::components::Text`].
     #[inline]
     pub fn descriptor_labels() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Boxes3D".into()),
-            component: "Boxes3D:labels".into(),
-            component_type: Some("rerun.components.Text".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Boxes3D".into()),
+                component: "Boxes3D:labels".into(),
+                component_type: Some("rerun.components.Text".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::show_labels`].
@@ -216,11 +234,13 @@ impl Boxes3D {
     /// The corresponding component is [`crate::components::ShowLabels`].
     #[inline]
     pub fn descriptor_show_labels() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Boxes3D".into()),
-            component: "Boxes3D:show_labels".into(),
-            component_type: Some("rerun.components.ShowLabels".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Boxes3D".into()),
+                component: "Boxes3D:show_labels".into(),
+                component_type: Some("rerun.components.ShowLabels".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::class_ids`].
@@ -228,11 +248,13 @@ impl Boxes3D {
     /// The corresponding component is [`crate::components::ClassId`].
     #[inline]
     pub fn descriptor_class_ids() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Boxes3D".into()),
-            component: "Boxes3D:class_ids".into(),
-            component_type: Some("rerun.components.ClassId".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Boxes3D".into()),
+                component: "Boxes3D:class_ids".into(),
+                component_type: Some("rerun.components.ClassId".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -279,7 +301,10 @@ impl Boxes3D {
 impl ::re_types_core::Archetype for Boxes3D {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.archetypes.Boxes3D".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.archetypes.Boxes3D"
+        )
     }
 
     #[inline]
@@ -705,21 +730,5 @@ impl Boxes3D {
     ) -> Self {
         self.class_ids = try_serialize_field(Self::descriptor_class_ids(), class_ids);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for Boxes3D {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.half_sizes.heap_size_bytes()
-            + self.centers.heap_size_bytes()
-            + self.rotation_axis_angles.heap_size_bytes()
-            + self.quaternions.heap_size_bytes()
-            + self.colors.heap_size_bytes()
-            + self.radii.heap_size_bytes()
-            + self.fill_mode.heap_size_bytes()
-            + self.labels.heap_size_bytes()
-            + self.show_labels.heap_size_bytes()
-            + self.class_ids.heap_size_bytes()
     }
 }

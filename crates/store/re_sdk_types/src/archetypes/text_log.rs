@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -30,7 +31,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// use rerun::external::log;
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_text_log_integration").spawn()?;
+///     let rec = rerun::RecordingStreamBuilder::new(
+///         "rerun_example_text_log_integration",
+///     )
+///     .spawn()?;
 ///
 ///     // Log a text entry directly:
 ///     rec.log(
@@ -45,7 +49,9 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///         // You can also use the standard `RUST_LOG` environment variable!
 ///         .with_filter(rerun::default_log_filter())
 ///         .init()?;
-///     log::info!("This INFO log got added through the standard logging interface");
+///     log::info!(
+///         "This INFO log got added through the standard logging interface"
+///     );
 ///
 ///     log::logger().flush();
 ///
@@ -61,7 +67,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/text_log_integration/9737d0c986325802a9885499d6fcc773b1736488/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug, PartialEq, Default)]
+#[derive(Clone, Debug, PartialEq, Default, ::re_byte_size::SizeBytes)]
 pub struct TextLog {
     /// The body of the message.
     pub text: Option<SerializedComponentBatch>,
@@ -81,11 +87,13 @@ impl TextLog {
     /// The corresponding component is [`crate::components::Text`].
     #[inline]
     pub fn descriptor_text() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.TextLog".into()),
-            component: "TextLog:text".into(),
-            component_type: Some("rerun.components.Text".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.TextLog".into()),
+                component: "TextLog:text".into(),
+                component_type: Some("rerun.components.Text".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::level`].
@@ -93,11 +101,13 @@ impl TextLog {
     /// The corresponding component is [`crate::components::TextLogLevel`].
     #[inline]
     pub fn descriptor_level() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.TextLog".into()),
-            component: "TextLog:level".into(),
-            component_type: Some("rerun.components.TextLogLevel".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.TextLog".into()),
+                component: "TextLog:level".into(),
+                component_type: Some("rerun.components.TextLogLevel".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::color`].
@@ -105,11 +115,13 @@ impl TextLog {
     /// The corresponding component is [`crate::components::Color`].
     #[inline]
     pub fn descriptor_color() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.TextLog".into()),
-            component: "TextLog:color".into(),
-            component_type: Some("rerun.components.Color".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.TextLog".into()),
+                component: "TextLog:color".into(),
+                component_type: Some("rerun.components.Color".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -139,7 +151,10 @@ impl TextLog {
 impl ::re_types_core::Archetype for TextLog {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.archetypes.TextLog".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.archetypes.TextLog"
+        )
     }
 
     #[inline]
@@ -351,12 +366,5 @@ impl TextLog {
     ) -> Self {
         self.color = try_serialize_field(Self::descriptor_color(), color);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for TextLog {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.text.heap_size_bytes() + self.level.heap_size_bytes() + self.color.heap_size_bytes()
     }
 }

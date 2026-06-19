@@ -10,8 +10,10 @@ use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{UiExt as _, icons, list_item};
 use re_viewer_context::gpu_bridge::{self, image_data_range_heuristic, image_to_gpu};
 use re_viewer_context::{
-    AppContext, ColormapWithRange, ImageInfo, ImageStatsCache, StoreViewContext, UiLayout,
+    AppContext, ColormapWithRange, DownloadAction, ImageHistogramCache, ImageInfo, ImageStatsCache,
+    Rgb8Histogram, StoreViewContext, UiLayout,
 };
+use std::sync::Arc;
 
 use crate::find_and_deserialize_archetype_mono_component;
 
@@ -53,12 +55,14 @@ pub fn image_preview_ui(
         &debug_name,
         &texture,
         preview_size,
-        &|| {
-            ImageUi::new(app_ctx, image.clone()).download_image(
-                app_ctx,
-                main_thread_token,
-                entity_path,
-            );
+        &|action| {
+            let image_ui = ImageUi::new(app_ctx, image.clone());
+            match action {
+                re_viewer_context::DownloadAction::CopyToClipboard => image_ui.copy_image(app_ctx),
+                re_viewer_context::DownloadAction::Save => {
+                    image_ui.download_image(app_ctx, main_thread_token, entity_path);
+                }
+            }
         },
     );
 
@@ -99,7 +103,7 @@ pub fn texture_preview_ui(
     debug_name: &str,
     texture: &ColormappedTexture,
     preview_size: Vec2,
-    download_image: &dyn Fn(),
+    download_image: &dyn Fn(DownloadAction),
 ) -> egui::Response {
     if ui_layout.is_single_line() {
         ui.allocate_ui_with_layout(
@@ -164,7 +168,7 @@ fn show_image_preview(
     colormapped_texture: &ColormappedTexture,
     debug_name: &str,
     desired_size: egui::Vec2,
-    download_image: &dyn Fn(),
+    download_image: &dyn Fn(DownloadAction),
 ) -> Result<egui::Response, (egui::Response, anyhow::Error)> {
     fn texture_size(colormapped_texture: &ColormappedTexture) -> Vec2 {
         let [w, h] = colormapped_texture.width_height();
@@ -213,38 +217,53 @@ fn show_image_preview(
     let (Ok(response) | Err((response, _))) = &res;
 
     if response.contains_pointer() {
-        let button = ui.small_icon_button_widget(&re_ui::icons::DOWNLOAD, "Download image");
-        let max =
+        let mut max =
             response.rect.right_bottom() - egui::Vec2::splat(ui.tokens().view_padding() as f32);
 
-        let rect = egui::Rect::from_min_max(max - ui.tokens().small_icon_size, max);
+        let mut download_image_button = |icon, text, action| {
+            let button = ui.small_icon_button_widget(icon, text);
 
-        let shape_idx = ui.painter().add(egui::Shape::Noop);
+            let rect = egui::Rect::from_min_max(max - ui.tokens().small_icon_size, max);
 
-        let download_response = ui
-            .place(rect, button)
-            .on_hover_text("Save preview texture…");
+            max.x -= ui.tokens().small_icon_size.x + ui.spacing().item_spacing.x;
 
-        if download_response.clicked() {
-            download_image();
-        }
+            let shape_idx = ui.painter().add(egui::Shape::Noop);
 
-        let visuals = ui.style().interact(response);
-        let hovered_visuals = &ui.style().visuals.widgets.hovered;
+            let download_response = ui.place(rect, button).on_hover_text(text);
 
-        let color = if download_response.contains_pointer() {
-            hovered_visuals.weak_bg_fill
-        } else {
-            visuals.weak_bg_fill.linear_multiply(0.7)
+            if download_response.clicked() {
+                download_image(action);
+            }
+
+            let visuals = ui.style().interact(response);
+            let hovered_visuals = &ui.style().visuals.widgets.hovered;
+
+            let color = if download_response.contains_pointer() {
+                hovered_visuals.weak_bg_fill
+            } else {
+                visuals.weak_bg_fill.linear_multiply(0.7)
+            };
+
+            ui.painter().set(
+                shape_idx,
+                egui::Shape::rect_filled(
+                    rect.expand(hovered_visuals.expansion),
+                    visuals.corner_radius,
+                    color,
+                ),
+            );
         };
 
-        ui.painter().set(
-            shape_idx,
-            egui::Shape::rect_filled(
-                rect.expand(hovered_visuals.expansion),
-                visuals.corner_radius,
-                color,
-            ),
+        download_image_button(
+            &re_ui::icons::DOWNLOAD,
+            "Save preview texture…",
+            DownloadAction::Save,
+        );
+
+        download_image_button(
+            &re_ui::icons::COPY,
+            "Copy preview texture…",
+            DownloadAction::CopyToClipboard,
         );
     }
 
@@ -261,30 +280,27 @@ fn largest_size_that_fits_in(aspect_ratio: f32, max_size: Vec2) -> Vec2 {
     }
 }
 
-fn rgb8_histogram_ui(ui: &mut egui::Ui, rgb: &[u8]) -> egui::Response {
+fn rgb8_histogram_ui(
+    ctx: &StoreViewContext<'_>,
+    ui: &mut egui::Ui,
+    image: &ImageInfo,
+) -> egui::Response {
     use egui::Color32;
     use itertools::Itertools as _;
 
     re_tracing::profile_function!();
 
-    let mut histograms = [[0_u64; 256]; 3];
-    {
-        // TODO(emilk): this is slow, so cache the results!
-        re_tracing::profile_scope!("build");
-        for pixel in rgb.chunks_exact(3) {
-            for c in 0..3 {
-                histograms[c][pixel[c] as usize] += 1;
-            }
-        }
-    }
+    // Two stores looking at the same image blob will share a single cached histogram.
+    let histogram: Arc<Rgb8Histogram> = ctx.memoizer(|c: &mut ImageHistogramCache| c.entry(image));
 
     use egui_plot::{Bar, BarChart, Legend, Plot};
 
     let names = ["R", "G", "B"];
     let colors = [Color32::RED, Color32::GREEN, Color32::BLUE];
 
-    let charts = histograms
-        .into_iter()
+    let charts = histogram
+        .bins
+        .iter()
         .enumerate()
         .map(|(component, histogram)| {
             let fill = colors[component].linear_multiply(0.5);
@@ -292,9 +308,9 @@ fn rgb8_histogram_ui(ui: &mut egui::Ui, rgb: &[u8]) -> egui::Response {
             BarChart::new(
                 "bar_chart",
                 histogram
-                    .into_iter()
+                    .iter()
                     .enumerate()
-                    .map(|(i, count)| {
+                    .map(|(i, &count)| {
                         Bar::new(i as _, count as _)
                             .width(1.0) // no gaps between bars
                             .fill(fill)
@@ -413,17 +429,21 @@ impl ImageUi {
         property_content: list_item::PropertyContent<'a>,
     ) -> list_item::PropertyContent<'a> {
         property_content.with_action_button(&icons::COPY, "Copy image", move || {
-            if let Some(rgba) = self.image.to_rgba8_image(self.data_range.into()) {
-                let egui_image = egui::ColorImage::from_rgba_unmultiplied(
-                    [rgba.width() as _, rgba.height() as _],
-                    bytemuck::cast_slice(rgba.as_raw()),
-                );
-                ctx.egui_ctx.copy_image(egui_image);
-                re_log::info!("Copied image to clipboard");
-            } else {
-                re_log::error!("Invalid image");
-            }
+            self.copy_image(ctx);
         })
+    }
+
+    pub fn copy_image<'a>(&'a self, ctx: &'a AppContext<'_>) {
+        if let Some(rgba) = self.image.to_rgba8_image(self.data_range.into()) {
+            let egui_image = egui::ColorImage::from_rgba_unmultiplied(
+                [rgba.width() as _, rgba.height() as _],
+                bytemuck::cast_slice(rgba.as_raw()),
+            );
+            ctx.egui_ctx.copy_image(egui_image);
+            re_log::info!("Copied image to clipboard");
+        } else {
+            re_log::error!("Invalid image");
+        }
     }
 
     pub fn inline_download_button<'a>(
@@ -505,7 +525,7 @@ impl ImageUi {
             ui.section_collapsing_header("Histogram")
                 .default_open(false)
                 .show(ui, |ui| {
-                    rgb8_histogram_ui(ui, &image.buffer);
+                    rgb8_histogram_ui(ctx, ui, image);
                 });
         }
     }

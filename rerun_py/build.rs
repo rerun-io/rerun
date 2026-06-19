@@ -43,7 +43,18 @@ fn main() {
             .unwrap()
             .join("rerun_sdk/rerun_cli/rerun.exe");
 
-        #[cfg(not(target_os = "windows"))]
+        #[cfg(target_os = "macos")]
+        let rerun_bin = {
+            let base = std::env::current_dir().expect("std::env::current_dir() failed");
+            let bundled = base.join("rerun_sdk/rerun_cli/Rerun.app/Contents/MacOS/Rerun");
+            if bundled.exists() {
+                bundled
+            } else {
+                base.join("rerun_sdk/rerun_cli/rerun")
+            }
+        };
+
+        #[cfg(all(not(target_os = "windows"), not(target_os = "macos")))]
         let rerun_bin = std::env::current_dir()
             .expect("std::env::current_dir() failed")
             .join("rerun_sdk/rerun_cli/rerun");

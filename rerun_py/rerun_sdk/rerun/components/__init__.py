@@ -79,6 +79,7 @@ from .name import Name, NameBatch
 from .opacity import Opacity, OpacityBatch
 from .pinhole_projection import PinholeProjection, PinholeProjectionBatch
 from .plane3d import Plane3D, Plane3DBatch
+from .point_shading import PointShading, PointShadingArrayLike, PointShadingBatch, PointShadingLike
 from .position2d import Position2D, Position2DBatch
 from .position3d import Position3D, Position3DBatch
 from .radius import Radius, RadiusBatch
@@ -117,6 +118,9 @@ from .video_sample import VideoSample, VideoSampleBatch
 from .video_timestamp import VideoTimestamp, VideoTimestampBatch
 from .view_coordinates import ViewCoordinates, ViewCoordinatesBatch
 from .visible import Visible, VisibleBatch
+from .voxel_index import VoxelIndex, VoxelIndexBatch
+from .voxel_size import VoxelSize, VoxelSizeBatch
+from .voxel_value import VoxelValue, VoxelValueBatch
 
 __all__ = [
     "AggregationPolicy",
@@ -241,6 +245,10 @@ __all__ = [
     "PinholeProjectionBatch",
     "Plane3D",
     "Plane3DBatch",
+    "PointShading",
+    "PointShadingArrayLike",
+    "PointShadingBatch",
+    "PointShadingLike",
     "Position2D",
     "Position2DBatch",
     "Position3D",
@@ -311,4 +319,10 @@ __all__ = [
     "ViewCoordinatesBatch",
     "Visible",
     "VisibleBatch",
+    "VoxelIndex",
+    "VoxelIndexBatch",
+    "VoxelSize",
+    "VoxelSizeBatch",
+    "VoxelValue",
+    "VoxelValueBatch",
 ]

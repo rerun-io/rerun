@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 import os
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from datetime import datetime, timedelta
-from enum import Enum
 from pathlib import Path
 from typing import Any, Literal
 
@@ -11,16 +10,16 @@ import datafusion as dfn
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
-from typing_extensions import deprecated
 
 from .types import (
     IndexValuesLike as IndexValuesLike,
-    VectorDistanceMetricLike as VectorDistanceMetricLike,
 )
 
 # NOTE
 #
 # The pure Python wrapper/internal pyo3 object is documented in `rerun_py/ARCHITECTURE.md`.
+#
+# Refrain from adding doc strings for APIs that is wrapped on the Python side as they are unchecked and just add duplication.
 
 class IndexColumnDescriptor:
     """
@@ -172,14 +171,6 @@ class ComponentColumnSelector:
         This property is read-only.
         """
 
-class VectorDistanceMetric(Enum):  # type: ignore[misc]
-    """Which distance metric for use for vector index."""
-
-    L2: VectorDistanceMetric
-    COSINE: VectorDistanceMetric
-    DOT: VectorDistanceMetric
-    HAMMING: VectorDistanceMetric
-
 class SchemaInternal:
     def index_columns(self) -> list[IndexColumnDescriptor]: ...
     def component_columns(self) -> list[ComponentColumnDescriptor]: ...
@@ -188,17 +179,6 @@ class SchemaInternal:
         self, selector: str | ComponentColumnSelector | ComponentColumnDescriptor
     ) -> ComponentColumnDescriptor: ...
     def __arrow_c_schema__(self) -> Any: ...
-
-class RecordingInternal:
-    def schema(self) -> SchemaInternal: ...
-    def recording_id(self) -> str: ...
-    def application_id(self) -> str: ...
-    def chunks(self) -> ChunkIterator: ...
-    def save(self, path: str) -> None: ...
-
-class RRDArchiveInternal:
-    def num_recordings(self) -> int: ...
-    def all_recordings(self) -> list[RecordingInternal]: ...
 
 class ChunkInternal:
     @property
@@ -218,40 +198,23 @@ class ChunkInternal:
     def to_record_batch(self) -> pa.RecordBatch: ...
     def with_entity_path(self, entity_path: str) -> ChunkInternal: ...
     @staticmethod
-    def from_record_batch(record_batch: pa.RecordBatch) -> ChunkInternal: ...
+    def from_record_batch(
+        record_batch: pa.RecordBatch,
+        index_mode: str,
+        index_columns: list[str],
+        entity_path: str | None,
+    ) -> list[ChunkInternal]: ...
     @staticmethod
     def from_columns(
         entity_path: str,
         timelines: dict[str, Any],
         components: dict[ComponentDescriptor, Any],
     ) -> ChunkInternal: ...
-    def format(self, *, width: int = 240, redact: bool = False) -> str: ...
+    def format(self, *, width: int, redact: bool, trim_metadata_keys: bool) -> str: ...
     def apply_lenses(self, lenses: list[LensInternal]) -> list[ChunkInternal]: ...
     def apply_selector(self, source: str, selector: SelectorInternal) -> ChunkInternal: ...
     def __repr__(self) -> str: ...
     def __len__(self) -> int: ...
-
-class ChunkIterator:
-    """An iterator over chunks in a recording."""
-
-    def __iter__(self) -> ChunkIterator:
-        """Implement iter(self)."""
-
-    def __next__(self) -> ChunkInternal:
-        """Implement next(self)."""
-
-def recording_from_chunks(
-    chunks: Any,
-    application_id: str,
-    recording_id: str,
-) -> RecordingInternal:
-    """Create a new recording from an iterable of chunks."""
-
-def load_recording(path_to_rrd: str | os.PathLike[str]) -> RecordingInternal:
-    """Load a single recording from an RRD file."""
-
-def load_archive(path_to_rrd: str | os.PathLike[str]) -> RRDArchiveInternal:
-    """Load a rerun archive from an RRD file."""
 
 def _optimization_profile_values(name: str) -> dict[str, object]:
     """
@@ -503,7 +466,8 @@ def spawn(
     executable_path: str | None = None,
     extra_args: list[str] = ...,
     extra_env: list[tuple[str, str]] = ...,
-) -> None:
+    headless: bool = False,
+) -> int | None:
     """Spawn a new viewer."""
 
 #
@@ -793,6 +757,18 @@ def disconnect(recording: PyRecordingStream | None = None) -> None:
     Subsequent log messages will be buffered and either sent on the next call to `connect_grpc` or `spawn`.
     """
 
+def finalize_deferred_sinks(recording: PyRecordingStream | None = None) -> None:
+    """
+    Finalize any deferred-finalization sinks (i.e. file-like sinks that write a footer at the end).
+
+    For a bare `FileSink` this is equivalent to `disconnect()`. For a `MultiSink` containing both
+    streaming and file-like children, only the file-like children are dropped — the streaming
+    children stay live. For all other sinks this is a no-op.
+
+    Used by `RecordingStream.__exit__` so that file-backed recordings are consumable as soon as
+    the `with`-block exits, without waiting for `__del__` / GC.
+    """
+
 def flush(*, timeout_sec: float = 1e38, recording: PyRecordingStream | None = None) -> None:
     """Block until outstanding data has been flushed to the sink."""
 
@@ -842,6 +818,12 @@ def disable_timeline(
 def reset_time(recording: PyRecordingStream | None = None) -> None:
     """Clear all timeline information on this thread."""
 
+def set_log_tick_enabled(enabled: bool, recording: PyRecordingStream | None = None) -> None:
+    """Enable or disable automatic injection of the `log_tick` timeline (disabled by default)."""
+
+def set_log_time_enabled(enabled: bool, recording: PyRecordingStream | None = None) -> None:
+    """Enable or disable automatic injection of the `log_time` timeline (enabled by default)."""
+
 #
 # log any
 #
@@ -873,11 +855,16 @@ def send_arrow_chunk(
         A dictionary mapping component types to their values.
     """
 
-def send_chunk(
-    chunk: ChunkInternal,
+def send_chunks(
+    chunks: ChunkInternal | Iterable[ChunkInternal],
     recording: PyRecordingStream | None = None,
 ) -> None:
-    """Send a pre-built chunk to the recording stream."""
+    """
+    Send chunks to the recording stream.
+
+    Accepts a single chunk or any iterable of chunks. Blocks until every chunk
+    has been pushed to the recording's batcher.
+    """
 
 def log_file_from_path(
     file_path: str | os.PathLike[str],
@@ -903,14 +890,6 @@ def send_blueprint(
     recording: PyRecordingStream | None = None,
 ) -> None:
     """Send a blueprint to the given recording stream."""
-
-def send_recording(rrd: RecordingInternal, recording: PyRecordingStream | None = None) -> None:
-    """
-    Send all chunks from a [`PyRecording`] to the given recording stream.
-
-    !!! Warning
-        ⚠️ This API is experimental and may change or be removed in future versions! ⚠️
-    """
 
 #
 # misc
@@ -1013,6 +992,8 @@ class DatasetEntryInternal:
     def blueprint_dataset(self) -> DatasetEntryInternal | None: ...
     def default_blueprint_segment_id(self) -> str | None: ...
     def set_default_blueprint_segment_id(self, segment_id: str | None) -> None: ...
+    def default_segment_table_blueprint_segment_id(self) -> str | None: ...
+    def set_default_segment_table_blueprint_segment_id(self, segment_id: str | None) -> None: ...
 
     # ---
 
@@ -1023,8 +1004,8 @@ class DatasetEntryInternal:
         self,
         segment_id: str,
         timeline: str | None = None,
-        start: datetime | int | None = None,
-        end: datetime | int | None = None,
+        start: datetime | timedelta | int | None = None,
+        end: datetime | timedelta | int | None = None,
     ) -> str: ...
 
     # ---
@@ -1040,6 +1021,9 @@ class DatasetEntryInternal:
     def register_prefix(
         self, recordings_prefix: str, layer_name: str, on_duplicate: str
     ) -> RegistrationHandleInternal: ...
+    def _register_asset_layer(
+        self, *, layer_name: str, recording_uri: str, on_duplicate: str
+    ) -> RegistrationHandleInternal: ...
     def unregister(
         self,
         *,
@@ -1050,56 +1034,7 @@ class DatasetEntryInternal:
 
     # ---
 
-    def download_segment(self, segment_id: str) -> RecordingInternal: ...
     def segment_store(self, segment_id: str) -> LazyStoreInternal: ...
-
-    # ---
-
-    @deprecated(
-        "Index creation is currently not supported. Contact Rerun if this is a feature you would like us to support."
-    )
-    def create_fts_search_index(
-        self,
-        *,
-        column: str | ComponentColumnSelector | ComponentColumnDescriptor,
-        time_index: IndexColumnSelector,
-        store_position: bool = False,
-        base_tokenizer: str = "simple",
-    ) -> None: ...
-    @deprecated(
-        "Index creation is currently not supported. Contact Rerun if this is a feature you would like us to support."
-    )
-    def create_vector_search_index(
-        self,
-        *,
-        column: str | ComponentColumnSelector | ComponentColumnDescriptor,
-        time_index: IndexColumnSelector,
-        target_partition_num_rows: int | None = None,
-        num_sub_vectors: int = 16,
-        distance_metric: VectorDistanceMetric | str = ...,
-    ) -> IndexingResult: ...
-    def list_search_indexes(self) -> list[IndexingResult]: ...
-    def delete_search_indexes(
-        self,
-        column: str | ComponentColumnSelector | ComponentColumnDescriptor,
-    ) -> list[IndexConfig]: ...
-    @deprecated(
-        "Index search is currently not supported. Contact Rerun if this is a feature you would like us to support."
-    )
-    def search_fts(
-        self,
-        query: str,
-        column: str | ComponentColumnSelector | ComponentColumnDescriptor,
-    ) -> dfn.DataFrame: ...
-    @deprecated(
-        "Index search is currently not supported. Contact Rerun if this is a feature you would like us to support."
-    )
-    def search_vector(
-        self,
-        query: Any,  # VectorLike
-        column: str | ComponentColumnSelector | ComponentColumnDescriptor,
-        top_k: int,
-    ) -> dfn.DataFrame: ...
 
     # ---
 
@@ -1150,6 +1085,12 @@ class TableEntryInternal:
     def delete(self) -> None: ...
     def set_name(self, name: str) -> None: ...
     def entry_details(self) -> EntryDetailsInternal: ...
+
+    # ---
+
+    def blueprint_dataset(self) -> DatasetEntryInternal: ...
+    def default_blueprint_segment_id(self) -> str | None: ...
+    def set_default_blueprint_segment_id(self, segment_id: str | None) -> None: ...
 
     # ---
 
@@ -1285,52 +1226,10 @@ class _IndexValuesLikeInternal:
     def to_index_values(self) -> npt.NDArray[np.int64]: ...
     def len(self) -> int: ...
 
-class IndexProperties:
-    """The properties and configuration of a user-defined index."""
+class TableProviderAdapterInternal:
+    """Internal opaque adapter exposing a Rust DataFusion `TableProvider` to Python via the FFI capsule protocol."""
 
-class IndexConfig:
-    """The complete description of a user-defined index."""
-
-    @property
-    def time_column(self) -> IndexColumnSelector:
-        """Returns the time column that this index applies to."""
-
-    @property
-    def component_column(self) -> ComponentColumnSelector:
-        """Returns the component column that this index applies to."""
-
-    @property
-    def properties(self) -> IndexProperties:
-        """Returns the properties/configuration of the index."""
-
-class IndexingResult:
-    """Indexing operation status result."""
-
-    @property
-    def properties(self) -> IndexConfig:
-        """Returns configuration information and properties about the newly created index."""
-
-    @property
-    def column(self) -> ComponentColumnSelector:
-        """Returns the component column that this index was created on."""
-
-    @property
-    def statistics(self) -> str:
-        """Returns best-effort backend-specific statistics about the newly created index."""
-
-    def debug_info(self) -> dict[str, Any] | None:
-        """
-        Get debug information about the indexing operation.
-
-        The exact contents of debug information may vary depending on the indexing operation performed
-        and the server implementation.
-
-        Returns
-        -------
-        Optional[dict]
-            A dictionary containing debug information, or `None` if no debug information is available
-
-        """
+    def __datafusion_table_provider__(self, session: Any) -> Any: ...
 
 class CatalogClientInternal:
     def __init__(self, url: str, token: str | None = None) -> None: ...
@@ -1594,6 +1493,16 @@ class ChunkStoreInternal:
     def num_chunks(self) -> int: ...
     def summary(self) -> str: ...
     def stream(self) -> LazyChunkStreamInternal: ...
+    def reader(
+        self,
+        *,
+        index: str | None,
+        contents: list[str] | None,
+        include_semantically_empty_columns: bool,
+        include_tombstone_columns: bool,
+        fill_latest_at: bool,
+        using_index_values: IndexValuesLike | None,
+    ) -> TableProviderAdapterInternal: ...
 
 class LazyStoreInternal:
     """Internal implementation. Use LazyStore from rerun.experimental instead."""
@@ -1602,6 +1511,8 @@ class LazyStoreInternal:
     def num_chunks(self) -> int: ...
     def summary(self) -> str: ...
     def stream(self) -> LazyChunkStreamInternal: ...
+    @property
+    def _chunks_loaded(self) -> int: ...
 
 class StoreEntryInternal:
     """Internal implementation. Use StoreEntry from rerun.experimental instead."""
@@ -1640,6 +1551,25 @@ class McapReaderInternal:
     def path(self) -> Path: ...
     @staticmethod
     def available_decoders() -> list[str]: ...
+
+class Mp4ReaderInternal:
+    """Internal implementation. Use Mp4Reader from rerun.experimental instead."""
+
+    def __init__(
+        self,
+        path: str,
+        mode: Literal["asset", "stream"] = "stream",
+        chunk_by_gop: bool = True,
+        timeline_name: str = "video",
+        timeline_type: Literal["duration", "timestamp"] = "duration",
+        allow_b_frames: bool = False,
+        entity_path: str | None = None,
+    ) -> None: ...
+    def stream(self) -> LazyChunkStreamInternal: ...
+    @property
+    def path(self) -> Path: ...
+    @property
+    def entity_path(self) -> str: ...
 
 class ParquetReaderInternal:
     """Internal implementation. Use ParquetReader from rerun.experimental instead."""
@@ -1707,12 +1637,29 @@ class LazyChunkStreamInternal:
         extra_passes: int = 0,
         gop_batching: bool = False,
         split_size_ratio: float | None = None,
+        fix_keyframe: bool = False,
     ) -> ChunkStoreInternal:
-        """Consume the stream and materialize all chunks into a ChunkStore."""
+        """
+        Run the pipeline and materialize all chunks into a ChunkStore.
+
+        The defaults (`extra_passes=0`, `gop_batching=False`) produce a store that
+        has only received the single-pass compaction that happens naturally during
+        chunk insertion. The Python wrapper `LazyChunkStream.collect(optimize=...)`
+        is the intended entry point.
+        """
+
     def to_chunks(self) -> list[ChunkInternal]: ...
     def __iter__(self) -> LazyChunkStreamIterator: ...
     @staticmethod
     def from_iter(iterable: Any) -> LazyChunkStreamInternal: ...
+    def send_to_recording(self, recording: PyRecordingStream | None = None) -> None:
+        """
+        Drain this stream into a recording stream.
+
+        If `recording` is `None`, the active recording is used. Blocks until every
+        chunk has been pushed to the recording's batcher. A silent no-op when
+        there is no active recording.
+        """
 
 class LazyChunkStreamIterator:
     """Iterator over chunks from a compiled stream."""
@@ -1722,3 +1669,130 @@ class LazyChunkStreamIterator:
 
     def __next__(self) -> ChunkInternal:
         """Implement next(self)."""
+
+#####################################################################################################################
+## METRICS APIS                                                                                                   ##
+#####################################################################################################################
+
+class _QueryMetrics:
+    """Frozen mirror of `re_datafusion::QuerySnapshot`. One per query."""
+
+    # Plan-time
+    dataset_id: str
+    """The dataset being queried."""
+
+    query_chunks: int
+    """Number of unique chunks returned by `query_dataset` (subset of the dataset)."""
+
+    query_segments: int
+    """Number of distinct segments involved in the query."""
+
+    query_layers: int
+    """Number of distinct layers touched by the query."""
+
+    query_columns: int
+    """Number of columns in the query output schema."""
+
+    query_entities: int
+    """Number of entity paths in the query request."""
+
+    query_bytes: int
+    """Total size of all queried chunks in bytes (from chunk metadata)."""
+
+    query_chunks_per_segment_min: int
+    """Min number of chunks touched within any single segment in this query."""
+
+    query_chunks_per_segment_max: int
+    """Max number of chunks touched within any single segment in this query."""
+
+    query_chunks_per_segment_mean: float
+    """Mean number of chunks touched per segment in this query."""
+
+    query_type: str
+    """Query shape: one of `"static"`, `"latest_at"`, `"range"`, `"dataframe"`, or `"full_scan"`."""
+
+    primary_index_name: str | None
+    """Name of the sort/filter index (timeline) for this query, if any."""
+
+    time_to_first_chunk_info: timedelta | None
+    """Time from sending `query_dataset` until the first response message arrives (the chunk metadata, not actual chunk data)."""
+
+    filters_pushed_down: int
+    """Number of filter expressions the table provider was able to push down to the server (`Exact` or `Inexact` from `supports_filters_pushdown`)."""
+
+    filters_applied_client_side: int
+    """Number of filter expressions that could not be pushed down — applied client-side by DataFusion via a downstream `FilterExec`."""
+
+    entity_path_narrowing_applied: bool
+    """True when projection-based entity-path narrowing actually trimmed the set of entity paths sent to `query_dataset`."""
+
+    # Execution-time
+    total_duration: timedelta
+    """Wall-clock time from the start of `scan()` until the query finished (cleanly or via error). Always populated."""
+
+    time_to_first_chunk: timedelta | None
+    """Time from scan start until the first chunk reached the consumer. `None` when no chunk was ever delivered (e.g. early error, empty result)."""
+
+    error_kind: str | None
+    """`None` on success. On failure, one of the stable string labels `"grpc_fetch"`, `"direct_fetch"`, `"decode"`, or `"other"`."""
+
+    direct_terminal_reason: str | None
+    """Reason a direct (HTTP Range) fetch hit a terminal failure — i.e. a non-retryable error or retries exhausted. `None` when no direct fetch terminally failed (can be `None` even when `error_kind` is set, if the failure was on the gRPC or decode path)."""
+
+    # Fetch counters
+    fetch_grpc_requests: int
+    """Number of gRPC fetch calls the scanner issued."""
+
+    fetch_grpc_bytes: int
+    """Sum of `chunk_byte_length` (catalog metadata, compressed on-disk size) over chunks fetched via gRPC. Excludes framing overhead and bytes consumed by failed retries — a lower bound on wire traffic."""
+
+    fetch_direct_requests: int
+    """Number of direct (HTTP Range) fetches the scanner issued. Counts each merged request once, regardless of byte ranges or retry attempts."""
+
+    fetch_direct_bytes: int
+    """Sum of `chunk_byte_length` (catalog metadata, compressed on-disk size) over chunks fetched via direct HTTP. Does **not** count filler bytes that range-merging pulls between adjacent chunks, so actual wire traffic can exceed this value."""
+
+    fetch_direct_retries: int
+    """Total number of direct-fetch retry *attempts* across all requests. A request retried 3 times contributes 3 here."""
+
+    fetch_direct_requests_retried: int
+    """Number of distinct direct-fetch requests that needed at least one retry. Always `≤ fetch_direct_retries`; the ratio between them is the average retries per retried request."""
+
+    fetch_direct_retry_sleep: timedelta
+    """Total backoff time slept across all direct-fetch retries."""
+
+    fetch_direct_max_attempt: int
+    """Sum of per-partition max attempts. For a single-partition query this is the true max; for multi-partition queries it is an upper bound on the true max — `MetricsSet::Count` has no `fetch_max` operation, so cross-partition aggregation sums."""
+
+    fetch_direct_original_ranges: int
+    """Number of byte ranges the planner *wanted* to fetch directly, before adjacent ranges were coalesced. With `fetch_direct_merged_ranges`, gives the range-merging ratio."""
+
+    fetch_direct_merged_ranges: int
+    """Number of byte ranges actually issued after merging adjacent ranges into combined HTTP Range requests. Equals `fetch_direct_requests` for a single-range-per-request scanner."""
+
+class _MetricsCollectorHandle:
+    """Opaque handle held by the `query_metrics()` context manager."""
+
+    def snapshot(self) -> list[_QueryMetrics]:
+        """
+        Non-destructive copy of all snapshots received so far.
+
+        Suitable for use mid-scope (`collector.queries` in the Python wrapper).
+        """
+
+    def drain(self) -> list[_QueryMetrics]:
+        """
+        Take and clear all snapshots.
+
+        Used by the context manager on `__exit__` to drain any remaining
+        snapshots into the user-visible Python `MetricsCollector` wrapper.
+        """
+
+def _new_metrics_collector() -> _MetricsCollectorHandle:
+    """
+    Allocate a fresh [`MetricsCollector`] and wrap it in a Python handle.
+
+    The Python `query_metrics()` context manager pushes the returned handle
+    onto the `_active_collectors` `ContextVar` for the duration of the
+    `with` block; nothing is registered globally.
+    """

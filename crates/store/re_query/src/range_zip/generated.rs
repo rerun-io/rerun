@@ -4,7 +4,6 @@
 // ---
 
 #![expect(clippy::iter_on_single_items)]
-#![expect(clippy::too_many_arguments)]
 #![expect(clippy::type_complexity)]
 
 use std::iter::Peekable;

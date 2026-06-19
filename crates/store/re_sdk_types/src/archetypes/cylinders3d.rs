@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -35,7 +36,9 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// use rerun::external::glam::vec3;
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_cylinders3d_batch").spawn()?;
+///     let rec =
+///         rerun::RecordingStreamBuilder::new("rerun_example_cylinders3d_batch")
+///             .spawn()?;
 ///
 ///     rec.log(
 ///         "cylinders",
@@ -77,7 +80,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/cylinders3d_batch/ef642dede2bef23704eaff0f22aa48284d482b23/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug, PartialEq, Default)]
+#[derive(Clone, Debug, PartialEq, Default, ::re_byte_size::SizeBytes)]
 pub struct Cylinders3D {
     /// The total axial length of the cylinder, measured as the straight-line distance between the centers of its two endcaps.
     pub lengths: Option<SerializedComponentBatch>,
@@ -132,11 +135,13 @@ impl Cylinders3D {
     /// The corresponding component is [`crate::components::Length`].
     #[inline]
     pub fn descriptor_lengths() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Cylinders3D".into()),
-            component: "Cylinders3D:lengths".into(),
-            component_type: Some("rerun.components.Length".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Cylinders3D".into()),
+                component: "Cylinders3D:lengths".into(),
+                component_type: Some("rerun.components.Length".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::radii`].
@@ -144,11 +149,13 @@ impl Cylinders3D {
     /// The corresponding component is [`crate::components::Radius`].
     #[inline]
     pub fn descriptor_radii() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Cylinders3D".into()),
-            component: "Cylinders3D:radii".into(),
-            component_type: Some("rerun.components.Radius".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Cylinders3D".into()),
+                component: "Cylinders3D:radii".into(),
+                component_type: Some("rerun.components.Radius".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::centers`].
@@ -156,11 +163,13 @@ impl Cylinders3D {
     /// The corresponding component is [`crate::components::Translation3D`].
     #[inline]
     pub fn descriptor_centers() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Cylinders3D".into()),
-            component: "Cylinders3D:centers".into(),
-            component_type: Some("rerun.components.Translation3D".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Cylinders3D".into()),
+                component: "Cylinders3D:centers".into(),
+                component_type: Some("rerun.components.Translation3D".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::rotation_axis_angles`].
@@ -168,11 +177,13 @@ impl Cylinders3D {
     /// The corresponding component is [`crate::components::RotationAxisAngle`].
     #[inline]
     pub fn descriptor_rotation_axis_angles() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Cylinders3D".into()),
-            component: "Cylinders3D:rotation_axis_angles".into(),
-            component_type: Some("rerun.components.RotationAxisAngle".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Cylinders3D".into()),
+                component: "Cylinders3D:rotation_axis_angles".into(),
+                component_type: Some("rerun.components.RotationAxisAngle".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::quaternions`].
@@ -180,11 +191,13 @@ impl Cylinders3D {
     /// The corresponding component is [`crate::components::RotationQuat`].
     #[inline]
     pub fn descriptor_quaternions() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Cylinders3D".into()),
-            component: "Cylinders3D:quaternions".into(),
-            component_type: Some("rerun.components.RotationQuat".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Cylinders3D".into()),
+                component: "Cylinders3D:quaternions".into(),
+                component_type: Some("rerun.components.RotationQuat".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::colors`].
@@ -192,11 +205,13 @@ impl Cylinders3D {
     /// The corresponding component is [`crate::components::Color`].
     #[inline]
     pub fn descriptor_colors() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Cylinders3D".into()),
-            component: "Cylinders3D:colors".into(),
-            component_type: Some("rerun.components.Color".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Cylinders3D".into()),
+                component: "Cylinders3D:colors".into(),
+                component_type: Some("rerun.components.Color".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::line_radii`].
@@ -204,11 +219,13 @@ impl Cylinders3D {
     /// The corresponding component is [`crate::components::Radius`].
     #[inline]
     pub fn descriptor_line_radii() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Cylinders3D".into()),
-            component: "Cylinders3D:line_radii".into(),
-            component_type: Some("rerun.components.Radius".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Cylinders3D".into()),
+                component: "Cylinders3D:line_radii".into(),
+                component_type: Some("rerun.components.Radius".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::fill_mode`].
@@ -216,11 +233,13 @@ impl Cylinders3D {
     /// The corresponding component is [`crate::components::FillMode`].
     #[inline]
     pub fn descriptor_fill_mode() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Cylinders3D".into()),
-            component: "Cylinders3D:fill_mode".into(),
-            component_type: Some("rerun.components.FillMode".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Cylinders3D".into()),
+                component: "Cylinders3D:fill_mode".into(),
+                component_type: Some("rerun.components.FillMode".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::labels`].
@@ -228,11 +247,13 @@ impl Cylinders3D {
     /// The corresponding component is [`crate::components::Text`].
     #[inline]
     pub fn descriptor_labels() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Cylinders3D".into()),
-            component: "Cylinders3D:labels".into(),
-            component_type: Some("rerun.components.Text".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Cylinders3D".into()),
+                component: "Cylinders3D:labels".into(),
+                component_type: Some("rerun.components.Text".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::show_labels`].
@@ -240,11 +261,13 @@ impl Cylinders3D {
     /// The corresponding component is [`crate::components::ShowLabels`].
     #[inline]
     pub fn descriptor_show_labels() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Cylinders3D".into()),
-            component: "Cylinders3D:show_labels".into(),
-            component_type: Some("rerun.components.ShowLabels".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Cylinders3D".into()),
+                component: "Cylinders3D:show_labels".into(),
+                component_type: Some("rerun.components.ShowLabels".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::class_ids`].
@@ -252,11 +275,13 @@ impl Cylinders3D {
     /// The corresponding component is [`crate::components::ClassId`].
     #[inline]
     pub fn descriptor_class_ids() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Cylinders3D".into()),
-            component: "Cylinders3D:class_ids".into(),
-            component_type: Some("rerun.components.ClassId".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Cylinders3D".into()),
+                component: "Cylinders3D:class_ids".into(),
+                component_type: Some("rerun.components.ClassId".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -314,7 +339,10 @@ impl Cylinders3D {
 impl ::re_types_core::Archetype for Cylinders3D {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.archetypes.Cylinders3D".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.archetypes.Cylinders3D"
+        )
     }
 
     #[inline]
@@ -763,22 +791,5 @@ impl Cylinders3D {
     ) -> Self {
         self.class_ids = try_serialize_field(Self::descriptor_class_ids(), class_ids);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for Cylinders3D {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.lengths.heap_size_bytes()
-            + self.radii.heap_size_bytes()
-            + self.centers.heap_size_bytes()
-            + self.rotation_axis_angles.heap_size_bytes()
-            + self.quaternions.heap_size_bytes()
-            + self.colors.heap_size_bytes()
-            + self.line_radii.heap_size_bytes()
-            + self.fill_mode.heap_size_bytes()
-            + self.labels.heap_size_bytes()
-            + self.show_labels.heap_size_bytes()
-            + self.class_ids.heap_size_bytes()
     }
 }

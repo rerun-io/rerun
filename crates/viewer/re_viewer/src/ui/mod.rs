@@ -5,10 +5,12 @@ mod share_modal;
 mod top_panel;
 mod welcome_screen;
 
-pub(crate) mod memory_panel;
+pub(crate) mod dev_panel;
 mod settings_screen;
 
 // ----
+
+pub use rerun_menu::about_rerun_ui;
 
 pub(crate) use open_url_modal::OpenUrlModal;
 pub(crate) use settings_screen::settings_screen_ui;

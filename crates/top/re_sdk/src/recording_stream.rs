@@ -1,6 +1,6 @@
 use std::fmt;
 use std::io::IsTerminal as _;
-use std::sync::atomic::AtomicI64;
+use std::sync::atomic::{AtomicBool, AtomicI64};
 use std::sync::{Arc, Weak};
 use std::time::Duration;
 
@@ -13,6 +13,7 @@ use re_chunk::{
     BatcherFlushError, BatcherHooks, Chunk, ChunkBatcher, ChunkBatcherConfig, ChunkBatcherError,
     ChunkComponents, ChunkError, ChunkId, PendingRow, RowId, TimeColumn,
 };
+use re_log::env_var_flag;
 use re_log_types::{
     ApplicationId, ArrowRecordBatchReleaseCallback, BlueprintActivationCommand, EntityPath, LogMsg,
     RecordingId, StoreId, StoreInfo, StoreKind, StoreSource, TimeCell, TimeInt, TimePoint,
@@ -42,6 +43,59 @@ const ENV_FORCE_SAVE: &str = "_RERUN_TEST_FORCE_SAVE";
 /// a race between file creation (and thus clearing) and pending file writes.
 pub fn forced_sink_path() -> Option<String> {
     std::env::var(ENV_FORCE_SAVE).ok()
+}
+
+/// Environment variable controlling whether the `log_tick` timeline column is injected.
+///
+/// Opt-in: disabled unless set to a truthy value.
+const ENV_LOG_TICK: &str = "RERUN_LOG_TICK";
+
+/// Environment variable controlling whether the `log_time` timeline column is injected.
+///
+/// Opt-out: enabled unless set to a falsy value.
+const ENV_LOG_TIME: &str = "RERUN_LOG_TIME";
+
+/// Which of the default timelines (`log_tick` and `log_time`) are injected into logged data?
+///
+/// The initial values come from the [`ENV_LOG_TICK`] / [`ENV_LOG_TIME`] env-vars
+/// (`log_tick` opt-in, `log_time` opt-out), but can be toggled at runtime via
+/// [`RecordingStream::set_log_tick_enabled`] / [`RecordingStream::set_log_time_enabled`].
+#[derive(Debug)]
+struct DefaultTimelines {
+    log_tick: AtomicBool,
+    log_time: AtomicBool,
+}
+
+impl DefaultTimelines {
+    fn from_env() -> Self {
+        static LOG_TICK: std::sync::LazyLock<bool> =
+            std::sync::LazyLock::new(|| env_var_flag(ENV_LOG_TICK).unwrap_or(false));
+        static LOG_TIME: std::sync::LazyLock<bool> =
+            std::sync::LazyLock::new(|| env_var_flag(ENV_LOG_TIME).unwrap_or(true));
+
+        Self {
+            log_tick: AtomicBool::new(*LOG_TICK),
+            log_time: AtomicBool::new(*LOG_TIME),
+        }
+    }
+
+    fn log_tick(&self) -> bool {
+        self.log_tick.load(std::sync::atomic::Ordering::Relaxed)
+    }
+
+    fn log_time(&self) -> bool {
+        self.log_time.load(std::sync::atomic::Ordering::Relaxed)
+    }
+
+    fn set_log_tick(&self, enabled: bool) {
+        self.log_tick
+            .store(enabled, std::sync::atomic::Ordering::Relaxed);
+    }
+
+    fn set_log_time(&self, enabled: bool) {
+        self.log_time
+            .store(enabled, std::sync::atomic::Ordering::Relaxed);
+    }
 }
 
 /// Errors that can occur when creating/manipulating a [`RecordingStream`].
@@ -588,7 +642,7 @@ impl RecordingStreamBuilder {
 
         // Spawn viewer and connect normally.
         // spawn() returns the actual port used, which may differ from opts.port when --new picks a free port.
-        let actual_port = crate::spawn(opts)?;
+        let actual_port = crate::spawn(opts)?.port;
         let addr = std::net::SocketAddr::new(
             std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST),
             actual_port,
@@ -790,6 +844,8 @@ struct RecordingStreamInner {
     recording_info: Option<RecordingInfo>,
     tick: AtomicI64,
 
+    default_timelines: DefaultTimelines,
+
     /// The one and only entrypoint into the pipeline: this is _never_ cloned nor publicly exposed,
     /// therefore the `Drop` implementation is guaranteed that no more data can come in while it's
     /// running.
@@ -877,10 +933,11 @@ fn warn_if_problematic_file_sink_config(config: &ChunkBatcherConfig, sink: &dyn 
         return;
     }
 
-    // Snippet-roundtrip tests intentionally pair this config with a forced file sink in order to
-    // exercise the per-row serialization path. The warning is correct in principle but noisy
-    // (and fatal under `RERUN_PANIC_ON_WARN`) for that controlled setup, so suppress it.
-    if forced_sink_path().is_some() {
+    // Snippet-roundtrip tests intentionally pair this config with a file sink to exercise the
+    // per-row serialization path. The warning is correct in principle but noisy (and fatal under
+    // `RERUN_PANIC_ON_WARN`) for that controlled setup, so suppress it when the test harness
+    // signals strict-test mode.
+    if re_log::env_var_is_truthy("RERUN_STRICT") {
         return;
     }
 
@@ -961,6 +1018,7 @@ impl RecordingStreamInner {
             store_info,
             recording_info,
             tick: AtomicI64::new(0),
+            default_timelines: DefaultTimelines::from_env(),
             cmds_tx,
             batcher,
             batcher_to_sink_handle: Some(batcher_to_sink_handle),
@@ -993,16 +1051,32 @@ type InspectSinkFn = Box<dyn FnOnce(&dyn LogSink) + Send + 'static>;
 
 type FlushResult = Result<(), SinkFlushError>;
 
+#[derive(re_byte_size::SizeBytes)]
 enum Command {
     RecordMsg(LogMsg),
     SwapSink {
+        #[size_bytes(ignore)]
         new_sink: Box<dyn LogSink>,
+        #[size_bytes(ignore)]
         timeout: Duration,
     },
     // TODO(#10444): This should go away with more explicit sinks.
-    InspectSink(InspectSinkFn),
+    InspectSink(#[size_bytes(ignore)] InspectSinkFn),
     Flush {
+        #[size_bytes(ignore)]
         on_done: Sender<FlushResult>,
+        #[size_bytes(ignore)]
+        timeout: Duration,
+    },
+
+    /// Drop any sinks whose on-disk format only finalizes at shutdown (i.e. file-like sinks with
+    /// footers), while leaving streaming sinks (e.g. gRPC) untouched. Used by Python's
+    /// `RecordingStream.__exit__` to ensure file-backed recordings are consumable as soon as
+    /// the `with`-block exits, without waiting for GC.
+    FinalizeDeferredSinks {
+        #[size_bytes(ignore)]
+        on_done: Sender<()>,
+        #[size_bytes(ignore)]
         timeout: Duration,
     },
     PopPendingChunks,
@@ -1016,21 +1090,11 @@ impl std::fmt::Debug for Command {
             Self::SwapSink { .. } => f.debug_struct("SwapSink").finish_non_exhaustive(),
             Self::InspectSink(_) => f.debug_tuple("InspectSink").finish_non_exhaustive(),
             Self::Flush { .. } => f.debug_struct("Flush").finish_non_exhaustive(),
+            Self::FinalizeDeferredSinks { .. } => f
+                .debug_struct("FinalizeDeferredSinks")
+                .finish_non_exhaustive(),
             Self::PopPendingChunks => write!(f, "PopPendingChunks"),
             Self::Shutdown => write!(f, "Shutdown"),
-        }
-    }
-}
-
-impl re_byte_size::SizeBytes for Command {
-    fn heap_size_bytes(&self) -> u64 {
-        match self {
-            Self::RecordMsg(msg) => msg.heap_size_bytes(),
-            Self::SwapSink { .. }
-            | Self::InspectSink(_)
-            | Self::Flush { .. }
-            | Self::PopPendingChunks
-            | Self::Shutdown => 0,
         }
     }
 }
@@ -1039,6 +1103,11 @@ impl Command {
     fn flush(timeout: Duration) -> (Self, Receiver<FlushResult>) {
         let (on_done, rx) = crossbeam::channel::bounded(1); // oneshot
         (Self::Flush { on_done, timeout }, rx)
+    }
+
+    fn finalize_deferred_sinks(timeout: Duration) -> (Self, Receiver<()>) {
+        let (on_done, rx) = crossbeam::channel::bounded(1); // oneshot
+        (Self::FinalizeDeferredSinks { on_done, timeout }, rx)
     }
 }
 
@@ -1377,7 +1446,7 @@ impl RecordingStream {
     /// This method blocks until either at least one [`re_importer::Importer`] starts
     /// streaming data in or all of them fail.
     ///
-    /// See <https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview?speculative-link> for more information.
+    /// See <https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview> for more information.
     #[cfg(feature = "importers")]
     pub fn log_file_from_path(
         &self,
@@ -1395,7 +1464,7 @@ impl RecordingStream {
     /// This method blocks until either at least one [`re_importer::Importer`] starts
     /// streaming data in or all of them fail.
     ///
-    /// See <https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview?speculative-link> for more information.
+    /// See <https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview> for more information.
     #[cfg(feature = "importers")]
     pub fn log_file_from_contents(
         &self,
@@ -1448,11 +1517,14 @@ impl RecordingStream {
                     // thread…
                     let mut now = self.now();
 
-                    // …and then also inject the current recording tick into it.
+                    // Note: we always increment, even if `log_tick` is disabled
                     let tick = inner
                         .tick
                         .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                    now.insert_cell(TimelineName::log_tick(), TimeCell::from_sequence(tick));
+                    if inner.default_timelines.log_tick() {
+                        // …and then also inject the current recording tick into it.
+                        now.insert_cell(TimelineName::log_tick(), TimeCell::from_sequence(tick));
+                    }
 
                     now
                 })
@@ -1581,6 +1653,30 @@ fn forwarding_thread(
                     re_log::error!("Failed to flush sink: {err}");
                 }
             }
+            Command::FinalizeDeferredSinks { on_done, timeout } => {
+                if sink.defers_finalization_to_shutdown() && !sink.finalize_deferred_in_place() {
+                    // Composite sinks handle finalization themselves; otherwise the entire
+                    // sink defers finalization (e.g. a bare FileSink), so we have to swap it
+                    // out for a BufferedSink — dropping the old sink runs its writer thread
+                    // to completion and emits the footer.
+                    let backlog = sink.drain_backlog();
+                    if let Err(err) = sink.flush_blocking(timeout) {
+                        re_log::error!("Failed to flush previous sink during finalize: {err}");
+                    }
+
+                    let new_sink: Box<dyn LogSink> = Box::new(crate::log_sink::BufferedSink::new());
+                    new_sink.send(
+                        re_log_types::SetStoreInfo {
+                            row_id: *RowId::new(),
+                            info: store_info.clone(),
+                        }
+                        .into(),
+                    );
+                    new_sink.send_all(backlog);
+                    *sink = new_sink;
+                }
+                send_crossbeam(&on_done, ()).ok();
+            }
             Command::PopPendingChunks => {
                 // Wake up and skip the current iteration so that we can drain all pending chunks
                 // before handling the next command.
@@ -1702,12 +1798,16 @@ impl RecordingStream {
             let tick = inner
                 .tick
                 .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+
             if inject_time {
                 // Get the current time on all timelines, for the current recording, on the current
                 // thread…
                 let mut now = self.now();
+
                 // …and then also inject the current recording tick into it.
-                now.insert_cell(TimelineName::log_tick(), TimeCell::from_sequence(tick));
+                if inner.default_timelines.log_tick() {
+                    now.insert_cell(TimelineName::log_tick(), TimeCell::from_sequence(tick));
+                }
 
                 // Inject all these times into the row, overriding conflicting times, if any.
                 for (timeline, cell) in now {
@@ -1725,15 +1825,15 @@ impl RecordingStream {
 
     /// Logs a single [`Chunk`].
     ///
-    /// Will inject `log_tick` and `log_time` timeline columns into the chunk.
+    /// Will inject the `log_time` timeline column (and `log_tick` if enabled) into the chunk.
     /// If you don't want to inject these, use [`Self::send_chunk`] instead.
     #[inline]
     pub fn log_chunk(&self, mut chunk: Chunk) {
         let f = move |inner: &RecordingStreamInner| {
             // TODO(cmc): Repeating these values is pretty wasteful. Would be nice to have a way of
             // indicating these are fixed across the whole chunk.
-            // Inject the log time
-            {
+            if inner.default_timelines.log_time() {
+                // Inject the log time
                 let time_timeline = Timeline::log_time();
                 let time =
                     TimeInt::new_temporal(re_log_types::Timestamp::now().nanos_since_epoch());
@@ -1751,13 +1851,15 @@ impl RecordingStream {
                     return;
                 }
             }
-            // Inject the log tick
-            {
-                let tick_timeline = Timeline::log_tick();
 
-                let tick = inner
-                    .tick
-                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            // Note: we always increment, even if `log_tick` is disabled
+            let tick = inner
+                .tick
+                .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+
+            if inner.default_timelines.log_tick() {
+                // Inject the log tick
+                let tick_timeline = Timeline::log_tick();
 
                 let repeated_tick = std::iter::repeat_n(tick, chunk.num_rows()).collect();
 
@@ -1793,8 +1895,8 @@ impl RecordingStream {
 
     /// Records a single [`Chunk`].
     ///
-    /// Will inject `log_tick` and `log_time` timeline columns into the chunk.
-    /// If you don't want to inject these, use [`Self::send_chunks`] instead.
+    /// This will _not_ inject `log_tick` and `log_time` timeline columns into the chunk,
+    /// for that use [`Self::log_chunk`].
     #[inline]
     pub fn send_chunk(&self, chunk: Chunk) {
         let f = move |inner: &RecordingStreamInner| {
@@ -2170,7 +2272,7 @@ impl RecordingStream {
             return Ok(());
         }
 
-        let actual_port = crate::spawn(opts)?;
+        let actual_port = crate::spawn(opts)?.port;
         let addr = std::net::SocketAddr::new(
             std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST),
             actual_port,
@@ -2301,6 +2403,43 @@ impl RecordingStream {
         }
     }
 
+    /// Finalize any sinks whose on-disk format only completes at shutdown (i.e. file-like sinks
+    /// that write a footer at the end), while leaving streaming sinks (e.g. gRPC) intact.
+    ///
+    /// For a bare deferring sink (e.g. `FileSink` from `save()`), this is equivalent to
+    /// [`Self::disconnect`]: the sink is replaced with a [`crate::sink::BufferedSink`] and its
+    /// `Drop` impl runs the writer thread to completion, which is what emits the footer.
+    ///
+    /// For a [`crate::log_sink::MultiSink`] containing a mix of deferring and streaming children,
+    /// only the deferring children are dropped. The streaming children remain live and the
+    /// `MultiSink` continues to receive new messages.
+    ///
+    /// For all other sinks this is a no-op.
+    ///
+    /// Used by Python's `RecordingStream.__exit__` so file-backed recordings are consumable as
+    /// soon as the `with`-block exits, without waiting for `__del__` / GC.
+    pub fn finalize_deferred_sinks(&self) {
+        let timeout = Duration::MAX;
+        let f = move |inner: &RecordingStreamInner| {
+            inner.wait_for_importers();
+
+            // Flush the batcher down the chunk channel so any pending data lands in the sink
+            // before we tear it down.
+            if let Err(err) = inner.batcher.flush_blocking(timeout) {
+                re_log::warn!("Failed to flush batcher in `finalize_deferred_sinks`: {err}");
+            }
+            inner.cmds_tx.send(Command::PopPendingChunks).ok();
+
+            let (cmd, oneshot) = Command::finalize_deferred_sinks(timeout);
+            inner.cmds_tx.send(cmd).ok();
+            oneshot.recv().ok();
+        };
+
+        if self.with(f).is_none() {
+            re_log::warn_once!("Recording disabled - call to finalize_deferred_sinks() ignored");
+        }
+    }
+
     /// Send a blueprint through this recording stream.
     pub fn send_blueprint(
         &self,
@@ -2350,6 +2489,7 @@ impl fmt::Debug for RecordingStream {
                 store_info,
                 recording_info,
                 tick,
+                default_timelines: _,
                 cmds_tx: _,
                 batcher: _,
                 batcher_to_sink_handle: _,
@@ -2390,8 +2530,10 @@ struct ThreadInfo {
 }
 
 impl ThreadInfo {
-    fn thread_now(rid: &StoreId) -> TimePoint {
-        Self::with(|ti| ti.now(rid))
+    /// The current `TimePoint`, including all user-set timelines,
+    /// plus the default `log_time` (if enabled).
+    fn thread_now(rid: &StoreId, log_time: bool) -> TimePoint {
+        Self::with(|ti| ti.now(rid, log_time))
     }
 
     fn set_thread_time(rid: &StoreId, timeline: TimelineName, cell: TimeCell) {
@@ -2420,9 +2562,15 @@ impl ThreadInfo {
         })
     }
 
-    fn now(&self, rid: &StoreId) -> TimePoint {
+    /// The current `TimePoint`, including all user-set timelines,
+    /// plus the default `log_time` (if enabled).
+    fn now(&self, rid: &StoreId, log_time: bool) -> TimePoint {
         let mut timepoint = self.timepoints.get(rid).cloned().unwrap_or_default();
-        timepoint.insert_cell(TimelineName::log_time(), TimeCell::timestamp_now());
+
+        if log_time {
+            timepoint.insert_cell(TimelineName::log_time(), TimeCell::timestamp_now());
+        }
+
         timepoint
     }
 
@@ -2447,10 +2595,28 @@ impl ThreadInfo {
 }
 
 impl RecordingStream {
-    /// Returns the current time of the recording on the current thread.
+    /// Returns the current time of the recording on the current calling thread.
+    ///
+    /// This is the [`TimePoint`] that would be injected into data logged right now from this
+    /// thread: it contains every user timeline set via [`Self::set_time`] and friends, plus the
+    /// automatic `log_time` timeline if it is enabled (see [`Self::set_log_time_enabled`]).
+    ///
+    /// Note that the automatic `log_tick` timeline is _not_ included here — it is only assigned
+    /// at the moment data is actually logged.
+    ///
+    /// Returns an empty [`TimePoint`] if the recording is disabled.
+    ///
+    /// See also:
+    /// - [`Self::set_time`]
+    /// - [`Self::disable_timeline`]
+    /// - [`Self::reset_time`]
     pub fn now(&self) -> TimePoint {
-        let f =
-            move |inner: &RecordingStreamInner| ThreadInfo::thread_now(&inner.store_info.store_id);
+        let f = move |inner: &RecordingStreamInner| {
+            ThreadInfo::thread_now(
+                &inner.store_info.store_id,
+                inner.default_timelines.log_time(),
+            )
+        };
         if let Some(res) = self.with(f) {
             res
         } else {
@@ -2678,6 +2844,58 @@ impl RecordingStream {
             re_log::warn_once!("Recording disabled - call to reset_time() ignored");
         }
     }
+
+    /// Whether the `log_tick` timeline is automatically injected into logged data.
+    ///
+    /// Defaults to `false` (opt-in), overridable via the `RERUN_LOG_TICK` env-var.
+    /// See also [`Self::set_log_tick_enabled`].
+    pub fn log_tick_enabled(&self) -> bool {
+        self.with(|inner| inner.default_timelines.log_tick())
+            .unwrap_or(false)
+    }
+
+    /// Whether the `log_time` timeline is automatically injected into logged data.
+    ///
+    /// Defaults to `true` (opt-out), overridable via the `RERUN_LOG_TIME` env-var.
+    /// See also [`Self::set_log_time_enabled`].
+    pub fn log_time_enabled(&self) -> bool {
+        self.with(|inner| inner.default_timelines.log_time())
+            .unwrap_or(false)
+    }
+
+    /// Enable or disable automatic injection of the `log_tick` timeline into logged data.
+    ///
+    /// `log_tick` is a per-recording counter that increments on every logging call.
+    /// It is disabled by default; this lets you turn it on (or off) at runtime, overriding
+    /// the `RERUN_LOG_TICK` env-var.
+    ///
+    /// See also [`Self::set_log_time_enabled`].
+    pub fn set_log_tick_enabled(&self, enabled: bool) {
+        let f = move |inner: &RecordingStreamInner| {
+            inner.default_timelines.set_log_tick(enabled);
+        };
+
+        if self.with(f).is_none() {
+            re_log::warn_once!("Recording disabled - call to set_log_tick_enabled() ignored");
+        }
+    }
+
+    /// Enable or disable automatic injection of the `log_time` timeline into logged data.
+    ///
+    /// `log_time` is the wall-clock time at which data was logged.
+    /// It is enabled by default; this lets you turn it off (or on) at runtime, overriding
+    /// the `RERUN_LOG_TIME` env-var.
+    ///
+    /// See also [`Self::set_log_tick_enabled`].
+    pub fn set_log_time_enabled(&self, enabled: bool) {
+        let f = move |inner: &RecordingStreamInner| {
+            inner.default_timelines.set_log_time(enabled);
+        };
+
+        if self.with(f).is_none() {
+            re_log::warn_once!("Recording disabled - call to set_log_time_enabled() ignored");
+        }
+    }
 }
 
 // ---
@@ -2711,6 +2929,73 @@ mod tests {
     fn impl_send_sync() {
         fn assert_send_sync<T: Send + Sync>() {}
         assert_send_sync::<RecordingStream>();
+    }
+
+    #[test]
+    fn default_timeline_injection_toggles() {
+        use re_log_types::example_components::{MyPoint, MyPoints};
+        use re_sdk_types::Loggable;
+
+        // Logs a single row (with a user timeline) and returns the set of timeline names
+        // that ended up on the resulting data chunk.
+        #[expect(clippy::fn_params_excessive_bools)]
+        fn injected_timelines(
+            log_tick: bool,
+            log_time: bool,
+        ) -> std::collections::BTreeSet<String> {
+            let (rec, storage) = RecordingStreamBuilder::new("rerun_example_default_timelines")
+                .enabled(true)
+                .batcher_config(ChunkBatcherConfig::NEVER)
+                .memory()
+                .unwrap();
+
+            rec.set_log_tick_enabled(log_tick);
+            rec.set_log_time_enabled(log_time);
+
+            // A user timeline, so there is always at least one index.
+            rec.set_time_sequence("frame", 1);
+
+            let row = PendingRow {
+                row_id: RowId::new(),
+                timepoint: TimePoint::default(),
+                components: std::iter::once((
+                    MyPoints::descriptor_points().component,
+                    SerializedComponentBatch::new(
+                        <MyPoint as Loggable>::to_arrow([MyPoint::new(1.0, 2.0)]).unwrap(),
+                        MyPoints::descriptor_points(),
+                    ),
+                ))
+                .collect(),
+            };
+            rec.record_row("points".into(), row, true);
+            rec.flush_blocking().ok();
+
+            let mut timelines = std::collections::BTreeSet::new();
+            for msg in storage.take() {
+                if let LogMsg::ArrowMsg(_, msg) = msg {
+                    let chunk = Chunk::from_arrow_msg(&msg).unwrap();
+                    if chunk.entity_path() == &EntityPath::from("points") {
+                        timelines.extend(chunk.timelines().keys().map(|t| t.to_string()));
+                    }
+                }
+            }
+            timelines
+        }
+
+        let set = |names: &[&str]| {
+            names
+                .iter()
+                .map(|s| (*s).to_owned())
+                .collect::<std::collections::BTreeSet<_>>()
+        };
+
+        assert_eq!(injected_timelines(false, true), set(&["frame", "log_time"]));
+        assert_eq!(
+            injected_timelines(true, true),
+            set(&["frame", "log_tick", "log_time"])
+        );
+        assert_eq!(injected_timelines(false, false), set(&["frame"]));
+        assert_eq!(injected_timelines(true, false), set(&["frame", "log_tick"]));
     }
 
     #[test]

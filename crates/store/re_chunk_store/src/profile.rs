@@ -35,7 +35,7 @@ impl OptimizationProfile {
         split_size_ratio: None,
     };
 
-    /// Optimized for object-store-backed storage (e.g. the Rerun Data Platform):
+    /// Optimized for object-store-backed storage (e.g. a catalog server):
     /// larger chunks tuned for query throughput and streaming over the network.
     pub const OBJECT_STORE: Self = Self {
         chunk_max_bytes: 2 * 1024 * 1024,

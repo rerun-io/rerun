@@ -14,7 +14,6 @@ fn mag_filter(filter: MagnificationFilter) -> renderer::TextureFilterMag {
     }
 }
 
-#[expect(clippy::too_many_arguments)]
 pub fn textured_rect_from_image(
     ctx: &ViewerContext<'_>,
     ent_path: &EntityPath,

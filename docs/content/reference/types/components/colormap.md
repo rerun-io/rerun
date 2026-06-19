@@ -97,4 +97,5 @@ UInt8
 
 * [`DepthImage`](../archetypes/depth_image.md)
 * [`EncodedDepthImage`](../archetypes/encoded_depth_image.md)
-* [`GridMap`](../archetypes/grid_map.md?speculative-link)
+* [`GridMap`](../archetypes/grid_map.md)
+* [`VoxelGridMap`](../archetypes/voxel_grid_map.md?speculative-link)

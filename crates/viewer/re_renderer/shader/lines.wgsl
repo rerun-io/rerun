@@ -226,14 +226,15 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     }
     // `approx_pixel_world_size_at` expects depth, see its doc comment.
     // For orthographic cameras the argument is ignored, so this is always safe.
-    let camera_distance = dot(center_position - frame.camera_position, frame.camera_forward);
+    // Limited to 0.0, so we don't accidentally blow up the cap.
+    let camera_distance = max(dot(center_position - frame.camera_position, frame.camera_forward), 0.0);
     let world_scale_factor = average_scale_from_transform(batch.world_from_obj); // TODO(andreas): somewhat costly, should precompute this
     var strip_radius = unresolved_size_to_world(strip_data.unresolved_radius, camera_distance, world_scale_factor);
 
     // If the triangle cap is longer than the quad would be otherwise, we need to stunt it, otherwise we'd get artifacts.
     var triangle_cap_length = batch.triangle_cap_length_factor * strip_radius;
     let max_triangle_cap_length = quad_length * 0.75; // Having the entire arrow be just triangle head already looks pretty bad, so we're stopping at 75% of the quad length.
-    let triangle_cap_size_factor = min(1.0, max_triangle_cap_length / triangle_cap_length);
+    let triangle_cap_size_factor = clamp(max_triangle_cap_length / max(triangle_cap_length, 1e-20), 0.0, 1.0);
     triangle_cap_length *= triangle_cap_size_factor;
 
     // Make space for the end cap if this is either the cap itself or the cap follows right after/before this quad.
@@ -354,9 +355,11 @@ fn fs_main(in: VertexOut) -> @location(0) vec4f {
         coverage = step(0.5, coverage);
     }
 
-    if coverage < 0.001 {
-        discard;
-    }
+    // As per benchmarking performed on point_cloud.wgsl, this is likely a pessimization on tile based GPUs.
+    // (this has not been independently confirmed for the line rendering, but it's almost certainly the same here)
+    // if coverage < 0.001 {
+    //     discard;
+    // }
 
     // TODO(andreas): lighting setup
     var shading = 1.0;

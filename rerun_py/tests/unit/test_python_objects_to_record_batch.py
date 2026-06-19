@@ -26,7 +26,7 @@ def test_list_column_mismatch_error_message() -> None:
     assert "3 rows" in error_message
     assert "expected 1" in error_message
     assert "Hint" in error_message
-    assert "[[...]]" in error_message  # NOLINT
+    assert "[[…]]" in error_message
 
 
 def test_list_column_properly_wrapped() -> None:

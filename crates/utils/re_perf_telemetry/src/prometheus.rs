@@ -74,7 +74,7 @@ pub fn convert_to_prometheus(
     // Process each scope's metrics
     for scope in resource_metrics.scope_metrics() {
         for metric in scope.metrics() {
-            let metric_name = sanitize_metric_name(metric.name());
+            let metric_name = sanitize_name(metric.name());
 
             // Handle different metric types using the enum pattern
             use opentelemetry_sdk::metrics::data::{AggregatedMetrics, MetricData};
@@ -716,7 +716,7 @@ fn register_exponential_histogram_u64(
 
 // Helper functions
 
-fn sanitize_metric_name(name: &str) -> String {
+fn sanitize_name(name: &str) -> String {
     name.chars()
         .map(|c| {
             if c.is_ascii_alphanumeric() || c == '_' {
@@ -731,7 +731,12 @@ fn sanitize_metric_name(name: &str) -> String {
 fn create_dynamic_labels(attributes: &[KeyValue]) -> DynamicLabels {
     let mut labels: Vec<(String, String)> = attributes
         .iter()
-        .map(|kv| (kv.key.as_str().to_owned(), kv.value.as_str().into_owned()))
+        .map(|kv| {
+            (
+                sanitize_name(kv.key.as_str()),
+                kv.value.as_str().into_owned(),
+            )
+        })
         .collect();
     labels.sort_by(|a, b| a.0.cmp(&b.0)); // Ensure consistent ordering
     DynamicLabels(labels)
@@ -863,5 +868,20 @@ mod tests {
             output.contains("test_bucket{le=\"1.41421"),
             "expected bucket ≈ √2, output: {output}"
         );
+    }
+
+    #[test]
+    fn escape_dot_in_counter_label() {
+        let attrs = vec![KeyValue::new("otel.metric.overflow", "true")];
+        let labels = create_dynamic_labels(&attrs);
+        let family = Family::<DynamicLabels, Counter>::default();
+        family.get_or_create(&labels).inc();
+
+        let mut registry = Registry::default();
+        registry.register("test_counter", "help", family);
+        let mut buf = String::new();
+        encode(&mut buf, &registry).unwrap();
+
+        assert!(buf.contains(r#"test_counter_total{otel_metric_overflow="true"} 1"#));
     }
 }

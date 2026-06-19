@@ -25,6 +25,8 @@ mod result_extensions;
 mod setup;
 #[cfg(feature = "setup")]
 pub use channel_logger::{LogMsg, Receiver, Sender, add_log_msg_receiver};
+#[cfg(feature = "setup")]
+pub use event_visitor::FieldValue;
 
 pub use tracing::Level;
 #[cfg(feature = "setup")]
@@ -274,8 +276,41 @@ fn is_log_enabled(
 
 /// Check if an environment variable is set to a truthy value.
 ///
-/// Returns `true` if the environment variable is set to "1", "true", or "yes" (case-insensitive).
-/// Returns `false` otherwise (including when the variable is not set).
+/// Returns `true` if the environment variable is set to "1/true/yes/on" (case-insensitive).
+/// Returns `false` if the environment variable is set to "0/false/no/off" (case-insensitive).
+/// Otherwise returns `None`.
+///
+/// # Example
+///
+/// ```ignore
+/// if env_var_flag("TELEMETRY_ENABLED") == Some(true) {
+///     // enable telemetry
+/// }
+/// ```
+pub fn env_var_flag(var_name: &str) -> Option<bool> {
+    match std::env::var(var_name)
+        .ok()?
+        .trim()
+        .to_ascii_lowercase()
+        .as_str()
+    {
+        "" => None,
+        "0" | "false" | "no" | "off" => Some(false),
+        "1" | "true" | "yes" | "on" => Some(true),
+        value => {
+            crate::warn_once!(
+                "Ignoring unrecognized value {value:?} for environment variable {var_name:?} \
+                    (expected one of: 1/true/yes/on, 0/false/no/off); falling back to the default."
+            );
+            None
+        }
+    }
+}
+
+/// Check if an environment variable is set to a truthy value.
+///
+/// Returns `true` if the environment variable is set to "1/true/yes/on" (case-insensitive).
+/// Otherwise returns `false`.
 ///
 /// # Example
 ///
@@ -285,12 +320,21 @@ fn is_log_enabled(
 /// }
 /// ```
 pub fn env_var_is_truthy(var_name: &str) -> bool {
-    std::env::var(var_name)
-        .map(|v| {
-            let v = v.to_lowercase();
-            v == "1" || v == "true" || v == "yes"
-        })
-        .unwrap_or(false)
+    env_var_flag(var_name).unwrap_or(false)
+}
+
+/// Is `RERUN_VERY_STRICT` set to a truthy value?
+///
+/// In very strict mode, Rerun may panic anywhere, at any time, for any reason whenever it
+/// detects something it does not like — e.g. out-of-order chunks, unsorted timelines,
+/// or other invariant violations. Very strict mode is meant for development, testing and
+/// CI, never for production: enable it to catch silent corruption early.
+///
+/// The result is cached on the first call, so subsequent calls are very cheap and
+/// changing the environment variable at runtime has no effect.
+pub fn is_rerun_very_strict() -> bool {
+    static VERY_STRICT: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *VERY_STRICT.get_or_init(|| env_var_is_truthy("RERUN_VERY_STRICT"))
 }
 
 /// Shorten a path to a Rust source file.

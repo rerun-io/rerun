@@ -15,6 +15,7 @@ use crate::catalog::{AnyComponentColumn, to_py_err};
 
 #[pyclass(
     frozen,
+    from_py_object,
     eq,
     name = "SchemaInternal",
     module = "rerun_bindings.rerun_bindings"

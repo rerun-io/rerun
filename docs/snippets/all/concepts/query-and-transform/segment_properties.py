@@ -11,7 +11,9 @@ from datafusion import col
 import rerun as rr
 
 RRD_DIR = Path(tempfile.mkdtemp())
-atexit.register(lambda: shutil.rmtree(RRD_DIR) if os.path.exists(RRD_DIR) else None)
+atexit.register(
+    lambda: shutil.rmtree(RRD_DIR) if os.path.exists(RRD_DIR) else None
+)
 
 # region: setup
 rrd_paths = [RRD_DIR / f"recording_{i}.rrd" for i in range(5)]
@@ -46,7 +48,9 @@ with rr.server.Server(datasets={"dataset": rrd_paths}) as server:
     segment_table = dataset.segment_table()
 
     # sort and select columns of interest
-    segment_table = segment_table.sort(col("property:RecordingInfo:name")[0]).select(
+    segment_table = segment_table.sort(
+        col("property:RecordingInfo:name")[0]
+    ).select(
         "rerun_segment_id",
         "property:RecordingInfo:name",
         "property:RecordingInfo:start_time",

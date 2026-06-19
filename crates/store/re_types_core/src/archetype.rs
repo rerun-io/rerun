@@ -119,7 +119,7 @@ pub trait ArchetypeReflectionMarker {}
 
 re_string_interner::declare_new_type!(
     /// The fully-qualified name of an [`Archetype`], e.g. `rerun.archetypes.Points3D`.
-    #[cfg_attr(feature = "serde", derive(::serde::Deserialize, ::serde::Serialize))]
+    #[derive(::serde::Deserialize, ::serde::Serialize)]
     pub struct ArchetypeName;
 );
 
@@ -182,6 +182,6 @@ impl ArchetypeName {
 
 re_string_interner::declare_new_type!(
     /// An identifier for a component, i.e. a field in an [`Archetype`].
-    #[cfg_attr(feature = "serde", derive(::serde::Deserialize, ::serde::Serialize))]
+    #[derive(::serde::Deserialize, ::serde::Serialize)]
     pub struct ComponentIdentifier;
 );

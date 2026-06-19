@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -31,14 +32,15 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// use rand::prelude::*;
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_tensor").spawn()?;
+///     let rec =
+///         rerun::RecordingStreamBuilder::new("rerun_example_tensor").spawn()?;
 ///
 ///     let mut data = Array::<u8, _>::default((8, 6, 3, 5).f());
 ///     let mut rng = rand::rngs::SmallRng::seed_from_u64(42);
 ///     data.map_inplace(|x| *x = rng.random());
 ///
-///     let tensor =
-///         rerun::Tensor::try_from(data)?.with_dim_names(["width", "height", "channel", "batch"]);
+///     let tensor = rerun::Tensor::try_from(data)?
+///         .with_dim_names(["width", "height", "channel", "batch"]);
 ///     rec.log("tensor", &tensor)?;
 ///
 ///     Ok(())
@@ -53,7 +55,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/tensor_simple/baacb07712f7b706e3c80e696f70616c6c20b367/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug, PartialEq, Default)]
+#[derive(Clone, Debug, PartialEq, Default, ::re_byte_size::SizeBytes)]
 pub struct Tensor {
     /// The tensor data
     pub data: Option<SerializedComponentBatch>,
@@ -78,11 +80,13 @@ impl Tensor {
     /// The corresponding component is [`crate::components::TensorData`].
     #[inline]
     pub fn descriptor_data() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Tensor".into()),
-            component: "Tensor:data".into(),
-            component_type: Some("rerun.components.TensorData".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Tensor".into()),
+                component: "Tensor:data".into(),
+                component_type: Some("rerun.components.TensorData".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::value_range`].
@@ -90,11 +94,13 @@ impl Tensor {
     /// The corresponding component is [`crate::components::ValueRange`].
     #[inline]
     pub fn descriptor_value_range() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Tensor".into()),
-            component: "Tensor:value_range".into(),
-            component_type: Some("rerun.components.ValueRange".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Tensor".into()),
+                component: "Tensor:value_range".into(),
+                component_type: Some("rerun.components.ValueRange".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -118,7 +124,10 @@ impl Tensor {
 impl ::re_types_core::Archetype for Tensor {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.archetypes.Tensor".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.archetypes.Tensor"
+        )
     }
 
     #[inline]
@@ -311,12 +320,5 @@ impl Tensor {
     ) -> Self {
         self.value_range = try_serialize_field(Self::descriptor_value_range(), value_range);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for Tensor {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.data.heap_size_bytes() + self.value_range.heap_size_bytes()
     }
 }

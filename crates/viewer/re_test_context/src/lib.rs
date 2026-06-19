@@ -21,10 +21,10 @@ use re_types_core::reflection::Reflection;
 use re_ui::Help;
 use re_viewer_context::{
     AppContext, AppOptions, ApplicationSelectionState, BlueprintContext, CommandReceiver,
-    CommandSender, ComponentUiRegistry, DataQueryResult, FallbackProviderRegistry, Item,
-    ItemCollection, NeedsRepaint, Route, StoreHub, StoreViewContext, SystemCommand,
-    SystemCommandSender as _, TimeControl, TimeControlCommand, ViewClass, ViewClassRegistry,
-    ViewId, ViewStates, ViewerContext, blueprint_timeline, command_channel,
+    CommandSender, ComponentUiRegistry, DataQueryResult, FallbackProviderRegistry, ItemCollection,
+    NeedsRepaint, Route, StoreHub, StoreViewContext, SystemCommand, SystemCommandSender as _,
+    TimeControl, TimeControlCommand, ViewClass, ViewClassRegistry, ViewId, ViewStates,
+    ViewerContext, blueprint_timeline, command_channel,
 };
 
 pub mod external {
@@ -156,7 +156,8 @@ pub trait VisualizerBlueprintContext: BlueprintContext {
 
             self.save_blueprint_archetypes(
                 visualizer_path,
-                std::iter::once(&instruction as &dyn AsComponents).chain(
+                std::iter::chain(
+                    std::iter::once(&instruction as &dyn AsComponents),
                     visualizer
                         .overrides
                         .iter()
@@ -530,7 +531,7 @@ impl TestContext {
         edit_fn(&mut selection_state);
 
         // the selection state is double-buffered, so let's ensure it's updated
-        selection_state.on_frame_start(|_| true, None);
+        selection_state.on_frame_start(|item| Some(item.clone()), None);
     }
 
     /// Log an entity to the recording store.
@@ -568,6 +569,7 @@ impl TestContext {
         active_recording.data_source = Some(re_log_channel::LogSource::RedapGrpcStream {
             uri: "rerun+http://localhost:51234/dataset/187A3200CAE4DD795748a7ad187e21a3?segment_id=6977dcfd524a45b3b786c9a5a0bde4e1".parse().unwrap(),
             open_behavior: re_log_channel::RecordingOpenBehavior::OpenAndSelect,
+            table_blueprint: None,
         });
     }
 
@@ -629,7 +631,8 @@ impl TestContext {
         let route = Route::LocalRecording {
             recording_id: self.recording_store_id.clone(),
         };
-        let (storage_context, store_context) = store_hub.read_context(&route);
+        let active_time_ctrl = self.time_ctrl.read();
+        let (storage_context, store_context) = store_hub.read_context(&route, &active_time_ctrl);
         let store_context = store_context
             .expect("a `Route::LocalRecording` must always have an active store context");
 
@@ -669,7 +672,7 @@ impl TestContext {
                 connection_registry: &self.connection_registry,
 
                 storage_context: &storage_context,
-                active_store_context: Some(&store_context), // TODO(RR-3033): should sometimes be `None`
+                active_store_context: Some(&store_context),
 
                 component_ui_registry: &self.component_ui_registry,
                 view_class_registry: &self.view_class_registry,
@@ -682,13 +685,11 @@ impl TestContext {
                 selection_state: &selection_state,
                 focused_item: &focused_item,
                 drag_and_drop_manager: &drag_and_drop_manager,
-                active_time_ctrl: Some(&self.time_ctrl.read()),
                 connected_receivers: &Default::default(),
                 auth_context: None,
                 login_enabled: false,
                 login_signed_in_url: None,
             },
-            connected_receivers: &Default::default(),
             store_context: &store_context,
             visualizable_entities_per_visualizer: &visualizable_entities_per_visualizer,
             indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
@@ -711,7 +712,7 @@ impl TestContext {
 
         render_ctx.before_submit();
 
-        selection_state.on_frame_start(|_| true, None);
+        selection_state.on_frame_start(|item| Some(item.clone()), None);
         *focused_item = None;
     }
 
@@ -727,7 +728,7 @@ impl TestContext {
     /// Notes:
     /// - Uses [`egui::__run_test_ctx`].
     /// - There is a possibility that the closure will be called more than once, see
-    ///   [`egui::Context::run`]. Use [`Self::run_once_in_egui_central_panel`] if you want to ensure
+    ///   [`egui::Context::run_ui`]. Use [`Self::run_once_in_egui_central_panel`] if you want to ensure
     ///   that the closure is called exactly once.
     //TODO(ab): should this be removed entirely in favor of `run_once_in_egui_central_panel`?
     pub fn run_in_egui_central_panel(
@@ -789,13 +790,9 @@ impl TestContext {
     ///
     /// Does *not* switch the active recording.
     fn go_to_dataset_data(&self, store_id: StoreId, fragment: re_uri::Fragment) {
-        let re_uri::Fragment {
-            selection,
-            when,
-            time_selection,
-        } = fragment;
+        let time_commands = TimeControlCommand::from_url_fragment(&fragment);
 
-        if let Some(selection) = selection {
+        if let Some(selection) = fragment.selection {
             let re_log_types::DataPath {
                 entity_path,
                 instance,
@@ -803,28 +800,18 @@ impl TestContext {
             } = selection;
 
             let item = if let Some(component) = component {
-                Item::from(re_log_types::ComponentPath::new(entity_path, component))
+                re_viewer_context::Item::from(re_log_types::ComponentPath::new(
+                    entity_path,
+                    component,
+                ))
             } else if let Some(instance) = instance {
-                Item::from(InstancePath::instance(entity_path, instance))
+                re_viewer_context::Item::from(InstancePath::instance(entity_path, instance))
             } else {
-                Item::from(entity_path)
+                re_viewer_context::Item::from(entity_path)
             };
 
             self.command_sender
-                .send_system(SystemCommand::set_selection(item.clone()));
-        }
-
-        let mut time_commands = Vec::new();
-        if let Some(time_selection) = time_selection {
-            time_commands.push(TimeControlCommand::SetActiveTimeline(
-                *time_selection.timeline.name(),
-            ));
-            time_commands.push(TimeControlCommand::SetTimeSelection(time_selection.range));
-        }
-
-        if let Some((timeline, timecell)) = when {
-            time_commands.push(TimeControlCommand::SetActiveTimeline(timeline));
-            time_commands.push(TimeControlCommand::SetTime(timecell.value.into()));
+                .send_system(SystemCommand::set_selection(item));
         }
 
         if !time_commands.is_empty() {
@@ -848,6 +835,16 @@ impl TestContext {
                 }
                 SystemCommand::CopyViewerUrl(_) => {
                     // Ignore this trying to copy to the clipboard.
+                }
+                SystemCommand::LoadDataSource(data_source) => {
+                    if let Some(re_uri::RedapUri::DatasetData(uri)) = data_source
+                        .as_uri()
+                        .and_then(|uri| uri.parse::<re_uri::RedapUri>().ok())
+                    {
+                        self.go_to_dataset_data(uri.store_id(), uri.fragment);
+                    } else {
+                        handled = false;
+                    }
                 }
                 SystemCommand::AppendToStore(store_id, chunks) => {
                     let mut store_hub = self
@@ -917,7 +914,6 @@ impl TestContext {
                 SystemCommand::ActivateApp(_)
                 | SystemCommand::CloseApp(_)
                 | SystemCommand::CloseRecordingOrTable(_)
-                | SystemCommand::LoadDataSource(_)
                 | SystemCommand::AddReceiver { .. }
                 | SystemCommand::ResetViewer
                 | SystemCommand::SetRoute(_)
@@ -937,8 +933,7 @@ impl TestContext {
                 | SystemCommand::Logout
                 | SystemCommand::SaveScreenshot { .. }
                 | SystemCommand::ShowNotification { .. }
-                | SystemCommand::RegisterTableBlueprint { .. }
-                | SystemCommand::ReadbackAndSaveTexture(_) => handled = false,
+                | SystemCommand::ReadbackAndSaveTexture { .. } => handled = false,
 
                 #[cfg(debug_assertions)]
                 SystemCommand::EnableInspectBlueprintTimeline(_) => handled = false,

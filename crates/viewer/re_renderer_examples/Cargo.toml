@@ -25,6 +25,10 @@ name = "depth_offset"
 path = "depth_offset.rs"
 
 [[bin]]
+name = "point_cloud_bench"
+path = "point_cloud_bench.rs"
+
+[[bin]]
 name = "multiview"
 path = "multiview.rs"
 
@@ -47,6 +51,7 @@ re_renderer = { workspace = true, features = ["import-obj", "import-gltf"] }
 ahash.workspace = true
 anyhow.workspace = true
 bytemuck.workspace = true
+clap.workspace = true
 glam.workspace = true
 image = { workspace = true, default-features = false, features = ["png"] }
 itertools.workspace = true

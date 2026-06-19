@@ -19,4 +19,7 @@ for i in range(10):
 
 # Update the positions and radii, and clear everything else in the process.
 rr.set_time("frame", sequence=20)
-rr.log("points", rr.Points3D.from_fields(clear_unset=True, positions=positions, radii=0.3))
+rr.log(
+    "points",
+    rr.Points3D.from_fields(clear_unset=True, positions=positions, radii=0.3),
+)

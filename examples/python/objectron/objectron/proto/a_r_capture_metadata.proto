@@ -562,8 +562,8 @@ message ARMeshGeometry {
   }
 
   message Face {
-    /// Indices of vertices defining the face from correspondent array of parent
-    /// message. A typical face is triangular.
+    // Indices of vertices defining the face from correspondent array of parent
+    // message. A typical face is triangular.
     repeated int32 vertex_indices = 1 [packed = true];
   }
 

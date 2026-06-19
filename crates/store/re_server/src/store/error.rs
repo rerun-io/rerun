@@ -1,6 +1,7 @@
 use re_log_types::{ComponentPath, EntryId};
 use re_protos::EntryName;
-use re_protos::common::v1alpha1::ext::SegmentId;
+use re_types_core::LayerName;
+use re_types_core::SegmentId;
 
 #[derive(thiserror::Error, Debug)]
 #[expect(clippy::enum_variant_names)]
@@ -34,19 +35,19 @@ pub enum Error {
 
     #[error("Layer '{layer_name}' not found in segment '{segment_id}' of dataset '{entry_id}'")]
     LayerNameNotFound {
-        layer_name: String,
+        layer_name: LayerName,
         segment_id: SegmentId,
         entry_id: EntryId,
     },
 
     #[error("Layer '{0}' already exists")]
-    LayerAlreadyExists(String),
+    LayerAlreadyExists(LayerName),
+
+    #[error("Layer '{0}' already exists with a different layer class (asset vs segment)")]
+    LayerClassConflict(LayerName),
 
     #[error("Component path '{0}' not found")]
     ComponentPathNotFound(ComponentPath),
-
-    #[error("Index '{0}' already exists")]
-    IndexAlreadyExists(String),
 
     #[error(transparent)]
     DataFusionError(#[from] datafusion::error::DataFusionError),
@@ -57,9 +58,6 @@ pub enum Error {
     #[cfg(feature = "lance")]
     #[error(transparent)]
     LanceError(#[from] lance::Error),
-
-    #[error("Indexing error: {0}")]
-    IndexingError(String),
 
     #[error("Error loading RRD: {0}")]
     RrdLoadingError(anyhow::Error),
@@ -119,10 +117,8 @@ impl From<Error> for tonic::Status {
             Error::DuplicateEntryNameError(_)
             | Error::DuplicateEntryIdError(_)
             | Error::LayerAlreadyExists(_)
-            | Error::IndexAlreadyExists(_)
+            | Error::LayerClassConflict(_)
             | Error::TableStorageAlreadyExists(_) => Self::already_exists(format!("{err:#}")),
-
-            Error::IndexingError(_) => Self::internal(format!("Indexing error: {err:#}")),
 
             Error::SchemaConflict(_) => Self::invalid_argument(format!("{err:#}")),
         }

@@ -178,3 +178,30 @@ def test_warns_and_no_ops_when_telemetry_inactive(
     assert any("TELEMETRY_ENABLED=true" in r.getMessage() for r in caplog.records), (
         f"expected a WARNING about TELEMETRY_ENABLED, got: {[r.getMessage() for r in caplog.records]}"
     )
+
+
+def test_nested_sessions_shadow_and_restore(monkeypatch: pytest.MonkeyPatch) -> None:
+    """
+    Nested `with tracing_session()` blocks shadow the outer id while open and restore it on exit.
+
+    Standard `ContextVar` token-reset semantics.
+    """
+    import rerun_bindings  # noqa: TID251
+
+    monkeypatch.setattr(rerun_bindings, "_is_telemetry_active", lambda: True)
+    monkeypatch.setattr(rerun_bindings, "_log_tracing_session_started", lambda _sid: None)
+    monkeypatch.setattr(rerun_bindings, "_log_tracing_session_finished", lambda *_args: None)
+
+    var = rerun_bindings._get_tracing_session_var()
+    assert var.get(None) is None, "expected no active session before any scope"
+
+    with tracing_session() as t1:
+        assert var.get(None) == t1, f"outer scope should see its own id, got {var.get(None)!r}"
+
+        with tracing_session() as t2:
+            assert t2 != t1, "nested scope should generate a distinct id"
+            assert var.get(None) == t2, f"inner scope should shadow outer, got {var.get(None)!r}"
+
+        assert var.get(None) == t1, f"outer id should be restored after inner exits, got {var.get(None)!r}"
+
+    assert var.get(None) is None, f"session should be cleared after outermost exits, got {var.get(None)!r}"

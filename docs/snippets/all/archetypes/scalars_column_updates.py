@@ -1,7 +1,8 @@
 """
 Update a scalar over time, in a single operation.
 
-This is semantically equivalent to the `scalar_row_updates` example, albeit much faster.
+This is semantically equivalent to the `scalar_row_updates` example,
+albeit much faster.
 """
 
 from __future__ import annotations

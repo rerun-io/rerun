@@ -5,7 +5,10 @@ use std::sync::Arc;
 use rerun::external::arrow;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let rec = rerun::RecordingStreamBuilder::new("rerun_example_recording_properties").spawn()?;
+    let rec = rerun::RecordingStreamBuilder::new(
+        "rerun_example_recording_properties",
+    )
+    .spawn()?;
 
     // Recordings can have an optional name.
     rec.send_recording_name("My recording")?;
@@ -22,7 +25,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let other = rerun::AnyValues::default()
         .with_component_from_data(
             "confidences",
-            Arc::new(arrow::array::Float64Array::from(vec![0.3, 0.4, 0.5, 0.6])),
+            Arc::new(arrow::array::Float64Array::from(vec![
+                0.3, 0.4, 0.5, 0.6,
+            ])),
         )
         .with_component_from_data(
             "traffic",

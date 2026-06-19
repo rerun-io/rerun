@@ -20,6 +20,35 @@ pub struct Span<Idx: Unsigned + Copy> {
 }
 
 impl<Idx: Unsigned + Copy> Span<Idx> {
+    /// Construct from `start` and `len`.
+    #[inline]
+    pub fn from_start_len(start: Idx, len: Idx) -> Self {
+        Self { start, len }
+    }
+
+    /// Construct from `start` (inclusive) and `end` (exclusive).
+    ///
+    /// Expects `start <= end`, or you will get a panic in debug mode.
+    #[inline]
+    pub fn from_start_end(start: Idx, end: Idx) -> Self
+    where
+        Idx: PartialOrd,
+    {
+        #![expect(
+            clippy::disallowed_macros,
+            reason = "We don't want to depend on re_log for re_log::debug_assert"
+        )]
+        debug_assert!(
+            start <= end,
+            "DEBUG ASSERT: start must be less than or equal to end"
+        );
+
+        Self {
+            start,
+            len: end - start,
+        }
+    }
+
     /// The next element, just outside the range.
     #[inline]
     pub fn end(&self) -> Idx {

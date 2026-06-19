@@ -4,7 +4,7 @@ use re_sdk_types::datatypes::ChannelDatatype;
 use crate::ImageInfo;
 
 /// Stats about an image.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, re_byte_size::SizeBytes)]
 pub struct ImageStats {
     /// The range of values, ignoring `NaN`s.
     ///
@@ -16,16 +16,6 @@ pub struct ImageStats {
     /// If no finite values are present, this takes the maximum finite range
     /// of the underlying data type.
     pub finite_range: (f64, f64),
-}
-
-impl re_byte_size::SizeBytes for ImageStats {
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    fn is_pod() -> bool {
-        true
-    }
 }
 
 impl ImageStats {

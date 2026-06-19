@@ -3,110 +3,29 @@ title: Docs Guide
 order: 400
 ---
 
-This page provides an overview of how the Rerun documentation is organized to help you find what you need.
+## How the docs are organized
 
-## Overview
+### Using Rerun
 
-High-level introduction to Rerun:
+| You want to… | Where to look |
+| --- | --- |
+| Learn by doing | [Getting Started](../getting-started.md) |
+| Dive into a specific task | [How-to](../howto.md) |
+| Understand how Rerun works | [Concepts](../concepts.md) |
 
-- **[What is Rerun?](what-is-rerun.md)** - Learn about Rerun's data platform for Physical AI
-- **[Installing the Viewer](installing-rerun/viewer.md)** - Get Rerun installed on your system
+### Even more details: [reference](../reference.md)
 
-## Getting started
+- [Types](../reference/types.md)
+- [Per language API documentation](../reference.md)
+- [CLI flags](../reference/cli.md)
+- [Migration notes](../reference/migration.md)
 
-Step-by-step guides to get up and running quickly:
+### Contributing to Rerun
 
-- **[Log and Ingest](../getting-started/data-in.md)** - Learn how to log data to Rerun from your code
-- **[Visualize](../getting-started/configure-the-viewer.md)** - Customize the visualization to your needs
-- **[Query and Transform](../getting-started/data-out.md)** - Query and export data from Rerun recordings
-- **[Troubleshooting](../overview/installing-rerun/troubleshooting.md)** - Solutions to common issues
+**[Developing Rerun](../development.md)** is for people working *on* Rerun, not just *with* it.
 
-## Concepts
+## Beyond the docs
 
-Understanding the foundational concepts behind Rerun:
-
-- **[How Does Rerun Work](../concepts/how-does-rerun-work.md)** - How Rerun applications are structured
-- **[Entity Component System](../concepts/logging-and-ingestion/entity-component.md)** - Rerun's data model
-- **[Entity Paths](../concepts/logging-and-ingestion/entity-path.md)** - Organizing your data hierarchically
-- **[Spaces and Transforms](../concepts/logging-and-ingestion/transforms.md)** - Working with coordinate systems
-- **[Timelines](../concepts/logging-and-ingestion/timelines.md)** - Managing temporal data
-- **[Blueprints](../concepts/visualization/blueprints.md)** - Configuring visualization layouts
-- **[Batches](../concepts/logging-and-ingestion/batches.md)** - Efficiently logging collections of data
-- **[Static Data](../concepts/logging-and-ingestion/static.md)** - Data that exists across all timelines
-- **[Query Semantics](../concepts/logging-and-ingestion/latest-at.md)** - How Rerun resolves data queries
-- **[Annotation Context](../concepts/visualization/annotation-context.md)** - Shared styling and labels
-- **[Recordings](../concepts/logging-and-ingestion/recordings.md)** - Managing recordings, application IDs, and the Data Platform
-- **[Visualizers and Overrides](../concepts/visualization/customize-views.md)** - Customizing rendering
-- **[Chunks](../concepts/logging-and-ingestion/chunks.md)** - Internal storage mechanism (advanced)
-
-## How-to guides
-
-Practical guides for specific tasks and advanced features:
-
-### Logging data
-- **[Logging](../howto/logging-and-ingestion.md)** - Advanced logging techniques
-- **[Send Columns](../howto/logging-and-ingestion/send-columns.md)** - Efficiently log columnar data
-- **[Using Native Loggers](../howto/integrations/integrate-host-loggers.md)** - Integrate with existing logging systems
-- **[Short-lived Entities](../howto/logging-and-ingestion/clears.md)** - Handling temporary data
-
-### Visualization
-- **[Visualization](../howto/visualization.md)** - Advanced visualization techniques
-- **[Configure Viewer Through Code](../getting-started/configure-the-viewer/navigating-the-viewer.md#programmatic-blueprints)** - Programmatic viewer configuration
-- **[Fixed Window Plots](../howto/visualization/fixed-window-plot.md)** - Creating time-windowed plots
-
-### Data management
-- **[DataFrame API](../howto/query-and-transform/get-data-out.md)** - Query recordings programmatically
-- **[Get Data Out](../howto/query-and-transform/get-data-out.md)** - Export data from Rerun
-- **[MCAP Integration](../howto/logging-and-ingestion/mcap.md)** - Working with MCAP files
-- **[Shared Recordings](../howto/logging-and-ingestion/shared-recordings.md)** - Collaborate with recordings
-
-### Integration & deployment
-- **[Integrations](../howto/integrations.md)** - Integrate Rerun with other tools
-- **[Embed Rerun Viewer](../howto/integrations/embed-web.md)** - Embed the viewer in your application
-- **[Jupyter Notebooks](../howto/integrations/embed-notebooks.md)** - Use Rerun in notebooks
-- **[Callbacks](../howto/visualization/callbacks.md)** - Respond to viewer events
-
-### Performance & optimization
-- **[Limit RAM Usage](../howto/visualization/limit-ram.md)** - Control memory consumption
-- **[Optimize Chunks](../howto/logging-and-ingestion/optimize-chunks.md)** - Fine-tune data storage
-
-### Extending Rerun
-- **[Extend](../howto/extend.md)** - Add custom types and visualizations
-
-### Examples
-- **[ROS2 Nav Turtlebot](../howto/integrations/ros2-nav-turtlebot.md)** - Complete robotics example
-
-## Reference
-
-Detailed API documentation and technical specifications:
-
-### Types
-- **[Archetypes](../reference/types/archetypes.md)** - Bundles of components with first-class viewer support
-- **[Components](../reference/types/components.md)** - Individual data components used by archetypes
-- **[Datatypes](../reference/types/datatypes.md)** - Fundamental data structures
-- **[Views](../reference/types/views.md)** - Available visualization view types
-
-### SDKs
-- **[Python APIs](https://ref.rerun.io/docs/python)** - Python SDK reference
-- **[Rust APIs](https://docs.rs/rerun/)** - Rust SDK reference
-- **[C++ APIs](https://ref.rerun.io/docs/cpp)** - C++ SDK reference
-- **[Web Viewer API](https://ref.rerun.io/docs/js/)** - JavaScript/TypeScript web viewer API
-
-### Viewer & CLI
-- **[Viewer](../reference/viewer/overview.md)** - Viewer UI overview and features
-- **[CLI Manual](../reference/cli.md)** - Command-line interface reference
-
-### Migration guides
-- **[Migration](../reference/migration.md)** - Guides for upgrading between Rerun versions
-
-## Development
-
-Contributing to Rerun:
-
-- **[Developing Rerun](../development.md)** - How to contribute to the Rerun project
-
-## Community
-
-- [Rerun Discord](https://discord.gg/PXtCgFBSmH) - Join the community
-- [GitHub Repository](https://github.com/rerun-io/rerun) - Source code and issue tracking
-- [Examples Gallery](https://rerun.io/examples) - See Rerun in action
+- [Discord](https://discord.gg/PXtCgFBSmH) — ask questions and chat with other Rerun users
+- [GitHub](https://github.com/rerun-io/rerun) — source code and issue tracker
+- [Examples](https://rerun.io/examples) — see Rerun in action

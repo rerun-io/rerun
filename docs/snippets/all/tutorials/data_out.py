@@ -9,11 +9,13 @@ import rerun as rr
 
 # endregion: imports
 
-# ----------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 # Load and prepare the data
 
 repo_root = Path(__file__).parent.parent.parent.parent.parent
-example_rrd = repo_root / "tests" / "assets" / "rrd" / "examples" / "face_tracking.rrd"
+example_rrd = (
+    repo_root / "tests" / "assets" / "rrd" / "examples" / "face_tracking.rrd"
+)
 assert example_rrd.exists(), f"Example RRD not found at {example_rrd}"
 # region: launch_server
 server = rr.server.Server(datasets={"tutorial": [example_rrd]})
@@ -38,11 +40,13 @@ print(pd_df["/blendshapes/0/jawOpen:Scalars:scalars"][160:180])
 # convert the "jawOpen" column to a flat list of floats
 print(pd_df)
 # region: explode_jaw
-pd_df["jawOpen"] = pd_df["/blendshapes/0/jawOpen:Scalars:scalars"].explode().astype(float)
+pd_df["jawOpen"] = (
+    pd_df["/blendshapes/0/jawOpen:Scalars:scalars"].explode().astype(float)
+)
 print(pd_df["jawOpen"][160:180])
 # endregion: explode_jaw
 
-# ----------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 # Analyze the data
 
 # region: filter_jaw
@@ -52,10 +56,12 @@ pd_df["jawOpenState"] = pd_df["jawOpen"] > 0.15
 
 # endregion: filter_jaw
 
-# ----------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 # Log the data back to the viewer
 
-application_id = rr.recording.load_recording(example_rrd).application_id()
+application_id = (
+    rr.experimental.RrdReader(example_rrd).recordings()[0].application_id
+)
 
 # Connect to the viewer
 # region: connect_viewer
@@ -79,6 +85,8 @@ rr.log(target_entity, rr.Boxes2D.from_fields(show_labels=True), static=True)
 rr.send_columns(
     target_entity,
     indexes=[rr.TimeColumn("frame_nr", sequence=pd_df["frame_nr"])],
-    columns=rr.Boxes2D.columns(labels=np.where(pd_df["jawOpenState"], "OPEN", "CLOSE")),
+    columns=rr.Boxes2D.columns(
+        labels=np.where(pd_df["jawOpenState"], "OPEN", "CLOSE")
+    ),
 )
 # endregion: log_labels

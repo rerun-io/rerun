@@ -13,14 +13,19 @@ TMP_FILE = tempfile.NamedTemporaryFile(suffix=".rrd")
 RRD_PATH = TMP_FILE.name
 
 # region: get_df
-sample_video_path = Path(__file__).parents[4] / "tests" / "assets" / "rrd" / "video_sample"
+sample_video_path = (
+    Path(__file__).parents[4] / "tests" / "assets" / "rrd" / "video_sample"
+)
 server = rr.server.Server(datasets={"video_dataset": sample_video_path})
 # Using OSS server for demonstration but in practice replace with
 # the URL of your cloud instance
 CATALOG_URL = server.url()
 client = rr.catalog.CatalogClient(CATALOG_URL)
 dataset = client.get_dataset(name="video_dataset")
-df = dataset.filter_contents(["/compressed_images/**", "/raw_images/**"]).reader(index="log_time")
+df = dataset.filter_contents([
+    "/compressed_images/**",
+    "/raw_images/**",
+]).reader(index="log_time")
 # endregion: get_df
 
 # region: to_list_bad
@@ -51,9 +56,11 @@ with rr.RecordingStream("rerun_example_layer", recording_id=segment_id) as rec:
 dataset.register([Path(RRD_PATH).as_uri()], layer_name="event_layer")
 
 # Read dataframe including new sparse layer
-df_with_flag = dataset.filter_contents(["/compressed_images/**", "/raw_images/**", "/events/**"]).reader(
-    index="log_time"
-)
+df_with_flag = dataset.filter_contents([
+    "/compressed_images/**",
+    "/raw_images/**",
+    "/events/**",
+]).reader(index="log_time")
 
 # This filter only looks at the single row in events
 df_with_flag.filter(col("/events:flag").is_not_null())

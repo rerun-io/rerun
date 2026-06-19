@@ -1,7 +1,8 @@
 //! Log a batch of 2D arrows.
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let rec = rerun::RecordingStreamBuilder::new("rerun_example_arrow2d").spawn()?;
+    let rec =
+        rerun::RecordingStreamBuilder::new("rerun_example_arrow2d").spawn()?;
 
     rec.log(
         "arrows",

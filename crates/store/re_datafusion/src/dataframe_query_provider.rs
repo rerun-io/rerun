@@ -1,27 +1,26 @@
+mod cpu_worker;
+mod io_loop;
+
 use std::any::Any;
-use std::collections::{BTreeMap, HashSet};
+use std::collections::BTreeMap;
 use std::fmt::Debug;
 use std::pin::Pin;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::task::{Context, Poll};
 
-use crate::analytics::{QueryErrorKind, TaskFetchStats};
-use crate::chunk_fetcher::{
-    SortedChunksWithSegment, batch_byte_size, batch_byte_size_uncompressed,
-    batch_has_any_direct_urls, fetch_batch_direct, fetch_batch_group_via_grpc,
-    split_batch_by_direct_url,
-};
+use crate::analytics::{QueryErrorKind, build_metrics_set_for_explain};
+use crate::chunk_fetcher::{batch_byte_size, batch_byte_size_uncompressed};
 use crate::dataframe_query_common::{
-    DEFAULT_BATCH_BYTES, DEFAULT_BATCH_ROWS, DataframeClientAPI, IndexValuesMap, force_grpc,
-    group_chunk_infos_by_segment_id, prepend_string_column_schema,
+    DataframeClientAPI, IndexValuesMap, PlanSummary, group_chunk_infos_by_segment_id,
+    segment_partition_hash,
 };
+use crate::metrics_capture::QueryMetrics;
 use crate::pipeline_budget::PipelineBudget;
-use arrow::array::{
-    Array as _, ArrayRef, RecordBatch, RecordBatchOptions, StringArray, UInt64Array,
-};
+use arrow::array::RecordBatch;
 use arrow::compute::SortOptions;
 use arrow::datatypes::{Schema, SchemaRef};
-use datafusion::common::hash_utils::HashValue as _;
+use cpu_worker::{CpuWorkerMsg, chunk_store_cpu_worker_thread};
 use datafusion::common::{exec_datafusion_err, exec_err, plan_err};
 use datafusion::config::ConfigOptions;
 use datafusion::error::DataFusionError;
@@ -31,17 +30,16 @@ use datafusion::physical_expr::{
     EquivalenceProperties, LexOrdering, Partitioning, PhysicalExpr, PhysicalSortExpr,
 };
 use datafusion::physical_plan::execution_plan::{Boundedness, EmissionType};
+use datafusion::physical_plan::metrics::MetricsSet;
 use datafusion::physical_plan::{DisplayAs, DisplayFormatType, ExecutionPlan, PlanProperties};
-use futures::StreamExt as _;
-use futures_util::{FutureExt as _, Stream};
-use re_dataframe::external::re_chunk::Chunk;
-use re_dataframe::external::re_chunk_store::ChunkStore;
-use re_dataframe::utils::align_record_batch_to_schema;
-use re_dataframe::{
-    ChunkStoreHandle, Index, QueryCache, QueryEngine, QueryExpression, QueryHandle, StorageEngine,
-};
-use re_log_types::{ApplicationId, StoreId, StoreKind};
-use re_protos::cloud::v1alpha1::ScanSegmentTableResponse;
+use futures::FutureExt as _;
+use futures_util::Stream;
+use io_loop::chunk_stream_io_loop;
+use itertools::Itertools as _;
+use re_dataframe::{Index, QueryExpression, TimelineName};
+use re_protos::cloud::v1alpha1::ext::ScanSegmentTableDataframe;
+use re_types_core::SegmentId;
+
 use re_redap_client::{ApiError, ApiResult};
 
 use crate::IntoDfError as _;
@@ -50,26 +48,12 @@ use tokio::runtime::Handle;
 use tokio::sync::Notify;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::task::JoinHandle;
-use tracing::{Instrument as _, instrument};
-
-// TODO(zehiko) make these configurable
+use tracing::Instrument as _;
 
 /// This parameter sets the back pressure that either the streaming provider
 /// can place on the CPU worker thread or the CPU worker thread can place on
 /// the IO stream.
 const CPU_THREAD_IO_CHANNEL_SIZE: usize = 32;
-
-/// Target batch size in bytes for grouping segments together in requests.
-/// This reduces the number of round-trips while keeping memory usage bounded (as long
-/// as the concurrency is also bounded).
-const TARGET_BATCH_SIZE_BYTES: usize = 8 * 1024 * 1024; // 8 MB
-
-/// How many concurrent requests to make to the server when fetching chunks.
-const GRPC_BATCH_SIZE: usize = 12;
-
-/// Max batch-level futures in-flight at once in the IO pipeline.
-/// This bounds both concurrency and the reorder buffer size.
-const IO_PIPELINE_BUFFER: usize = 24;
 
 /// Helper to attach parent trace context if available.
 /// Returns a guard that must be kept alive for the duration of the traced scope.
@@ -86,7 +70,7 @@ pub(crate) fn attach_trace_context(
 
 #[derive(Debug)]
 pub(crate) struct SegmentStreamExec<T: DataframeClientAPI> {
-    props: PlanProperties,
+    props: Arc<PlanProperties>,
     index_values: IndexValuesMap,
 
     /// Describes the chunks per partition, derived from `chunk_info_batches`.
@@ -94,7 +78,7 @@ pub(crate) struct SegmentStreamExec<T: DataframeClientAPI> {
     /// reuse multiple times in theory. We may also need to recompute if the
     /// user asks for a different target partition. These are generally not
     /// too large.
-    chunk_info: Arc<BTreeMap<String, Vec<RecordBatch>>>,
+    chunk_info: Arc<BTreeMap<SegmentId, Vec<RecordBatch>>>,
     query_expression: QueryExpression,
     projected_schema: Arc<Schema>,
     target_partitions: usize,
@@ -104,7 +88,7 @@ pub(crate) struct SegmentStreamExec<T: DataframeClientAPI> {
     /// Optional row limit pushed down from the scan. When set, background
     /// threads will stop fetching/processing data once this many rows have
     /// been produced.
-    limit: Option<usize>,
+    limit_rows: Option<usize>,
 
     /// Request trace-headers.
     /// Passing trace headers between phases of execution pipeline helps keep
@@ -115,24 +99,58 @@ pub(crate) struct SegmentStreamExec<T: DataframeClientAPI> {
     /// This may or may not match request `trace_headers`.
     server_trace_id: Option<re_redap_client::TraceId>,
 
-    /// Pending query analytics — fetch stats are accumulated here.
-    /// The event is sent when the last clone is dropped.
-    pending_analytics: Option<crate::PendingQueryAnalytics>,
+    /// Pending query analytics — always present; the OTLP send on drop is
+    /// gated internally by whether the per-process telemetry stack is active.
+    pending_analytics: crate::PendingQueryAnalytics,
+
+    /// Subscribers (from `query_metrics()`) captured at plan-construction
+    /// time. Each receives a [`crate::QuerySnapshot`] when the last
+    /// per-partition stream completes — see [`DataframeSegmentStreamInner::maybe_emit_snapshot`].
+    captured_collectors: Vec<crate::MetricsCollector>,
+
+    /// Counts down to zero as per-partition streams complete; on the
+    /// zero-transition the metrics snapshot is built and pushed to
+    /// `captured_collectors`. Wrapped in an `Arc` so all streams + the plan
+    /// share the same counter.
+    partitions_remaining: Arc<AtomicUsize>,
+
+    /// Latched true the first time the snapshot is sent so cancellation /
+    /// late drop doesn't produce a duplicate.
+    snapshot_sent: Arc<AtomicBool>,
 
     /// Shared byte budget for end-to-end pipeline backpressure.
     /// Created once and shared across all partitions so the total memory
     /// usage is bounded by a single global budget.
     pipeline_budget: Arc<PipelineBudget>,
-}
 
-use crate::chunk_fetcher::ChunksWithSegment;
+    /// Per-query counters + embedded plan-time `QueryInfo`. Single source of
+    /// truth for fetch counters: each IO task flushes its `TaskFetchStats`
+    /// here, the snapshot path reads the atomics in `build_query_snapshot`,
+    /// and `ExecutionPlan::metrics()` builds an ad-hoc `MetricsSet` from
+    /// them on demand for `EXPLAIN ANALYZE`.
+    metrics: Arc<QueryMetrics>,
+
+    /// Plan-time summary used by `DisplayAs::Verbose` so that `EXPLAIN` (without
+    /// `ANALYZE`) also exposes the most useful planning-phase decisions.
+    plan_summary: PlanSummary,
+}
 
 pub struct DataframeSegmentStreamInner<T: DataframeClientAPI> {
     projected_schema: SchemaRef,
     client: T,
     chunk_infos: Vec<RecordBatch>,
 
-    chunk_tx: Option<Sender<ApiResult<SortedChunksWithSegment>>>,
+    /// Name of the timeline named by `query_expression.filtered_index`,
+    /// if any. Plumbed through to the IO loop so it can extract the
+    /// per-chunk `{timeline}:start` values from the `chunk_info`
+    /// columns and build per-segment manifests for the CPU worker's
+    /// horizon-driven emit + GC. `TimelineName` is `Copy` (interned
+    /// `Arc<str>`), so propagating it end-to-end avoids the
+    /// String→&str→TimelineName conversion dance an owned `String`
+    /// would force at each hop.
+    filtered_index_timeline: Option<TimelineName>,
+
+    chunk_tx: Option<Sender<ApiResult<CpuWorkerMsg>>>,
     store_output_channel: Receiver<RecordBatch>,
     io_join_handle: Option<JoinHandle<ApiResult<()>>>,
 
@@ -153,20 +171,35 @@ pub struct DataframeSegmentStreamInner<T: DataframeClientAPI> {
     server_trace_id: Option<re_redap_client::TraceId>,
 
     /// Pending query analytics — keeps alive until stream completes.
-    pending_analytics: Option<crate::PendingQueryAnalytics>,
+    pending_analytics: crate::PendingQueryAnalytics,
+
+    /// Subscribers cloned from the parent `SegmentStreamExec`. On
+    /// end-of-stream the last partition to finish builds a
+    /// [`crate::QuerySnapshot`] and pushes it to each.
+    captured_collectors: Vec<crate::MetricsCollector>,
+
+    /// Shared partition countdown — see `SegmentStreamExec::partitions_remaining`.
+    partitions_remaining: Arc<AtomicUsize>,
+
+    /// Shared latch — see `SegmentStreamExec::snapshot_sent`.
+    snapshot_sent: Arc<AtomicBool>,
+
+    /// Shared metrics handle used by the snapshot path. Same `QueryMetrics`
+    /// as the parent plan; reading the atomics gives the final fetch counters.
+    metrics: Arc<QueryMetrics>,
 
     /// Shared byte budget for end-to-end pipeline backpressure.
     pipeline_budget: Arc<PipelineBudget>,
 }
 
-/// This is a temporary fix to minimize the impact of leaking memory
-/// per issue <https://github.com/rerun-io/dataplatform/issues/1494>
-/// The work around is to check for when the stream has exhausted and
-/// to set the `inner` to None, thereby clearing the memory since
-/// we are not properly getting a `drop` call from the upstream
-/// FFI interface. When the upstream issue resolves, change
-/// `DataframeSegmentStreamInner` back into `DataframeSegmentStream`
-/// and delete this wrapper struct.
+// TODO(RR-4607): This is a temporary fix to minimize the impact of leaking memory
+// per issue <https://github.com/rerun-io/dataplatform/issues/1494>.
+// The work around is to check for when the stream has exhausted and
+// to set the `inner` to None, thereby clearing the memory since
+// we are not properly getting a `drop` call from the upstream
+// FFI interface. When the upstream issue resolves, change
+// `DataframeSegmentStreamInner` back into `DataframeSegmentStream`
+// and delete this wrapper struct.
 pub struct DataframeSegmentStream<T: DataframeClientAPI> {
     inner: Option<DataframeSegmentStreamInner<T>>,
 }
@@ -191,15 +224,11 @@ impl<T: DataframeClientAPI> Stream for DataframeSegmentStream<T> {
         {
             match cpu_join_result {
                 Err(err) => {
-                    if let Some(analytics) = &this.pending_analytics {
-                        analytics.record_error(QueryErrorKind::Decode);
-                    }
+                    this.pending_analytics.record_error(QueryErrorKind::Decode);
                     return Poll::Ready(Some(exec_err!("{err}")));
                 }
                 Ok(Err(err)) => {
-                    if let Some(analytics) = &this.pending_analytics {
-                        analytics.record_error(QueryErrorKind::Decode);
-                    }
+                    this.pending_analytics.record_error(QueryErrorKind::Decode);
                     return Poll::Ready(Some(Err(err
                         .with_trace_id(this.server_trace_id)
                         .into_df_error())));
@@ -216,18 +245,14 @@ impl<T: DataframeClientAPI> Stream for DataframeSegmentStream<T> {
         {
             match io_join_result {
                 Err(err) => {
-                    if let Some(analytics) = &this.pending_analytics {
-                        analytics.record_error(QueryErrorKind::Other);
-                    }
+                    this.pending_analytics.record_error(QueryErrorKind::Other);
                     return Poll::Ready(Some(exec_err!("{err}")));
                 }
                 Ok(Err(err)) => {
-                    if let Some(analytics) = &this.pending_analytics {
-                        // The IO task's own error-recording will have already set a
-                        // more specific kind (direct_fetch / grpc_fetch) via OnceLock,
-                        // so this call is a no-op fallback if that hasn't happened.
-                        analytics.record_error(QueryErrorKind::Other);
-                    }
+                    // The IO task's own error-recording will have already set a
+                    // more specific kind (direct_fetch / grpc_fetch) via OnceLock,
+                    // so this call is a no-op fallback if that hasn't happened.
+                    this.pending_analytics.record_error(QueryErrorKind::Other);
                     return Poll::Ready(Some(Err(err
                         .with_trace_id(this.server_trace_id)
                         .into_df_error())));
@@ -246,8 +271,10 @@ impl<T: DataframeClientAPI> Stream for DataframeSegmentStream<T> {
 
             let client = this.client.clone();
             let chunk_infos = this.chunk_infos.clone();
+            let filtered_index_timeline = this.filtered_index_timeline;
             let pending_analytics = this.pending_analytics.clone();
             let pipeline_budget = Arc::clone(&this.pipeline_budget);
+            let metrics = Arc::clone(&this.metrics);
 
             // Parent the IO pipeline under the original caller's trace via the
             // `attach_trace_context` guard above, not under whichever DataFusion
@@ -260,9 +287,11 @@ impl<T: DataframeClientAPI> Stream for DataframeSegmentStream<T> {
                         chunk_stream_io_loop(
                             client,
                             chunk_infos,
+                            filtered_index_timeline,
                             chunk_tx,
                             pending_analytics,
                             pipeline_budget,
+                            metrics,
                         )
                         .await
                     }
@@ -276,16 +305,19 @@ impl<T: DataframeClientAPI> Stream for DataframeSegmentStream<T> {
             .poll_recv(cx)
             .map(|result| Ok(result).transpose());
 
-        if matches!(&result, Poll::Ready(Some(Ok(_))))
-            && let Some(analytics) = &this.pending_analytics
-        {
-            // This could be the first time we return data that will
-            // actually be shown to the user.
-            // This is as close to the perceived latency as we're gonna come right now.
-            analytics.record_first_chunk();
+        if matches!(&result, Poll::Ready(Some(Ok(_)))) {
+            // This could be the first time we return data that will actually be
+            // shown to the user — as close to the perceived latency as we'll get.
+            // `record_first_chunk` is OnceLock-backed; subsequent calls are no-ops.
+            this.pending_analytics.record_first_chunk();
         }
 
         if matches!(&result, Poll::Ready(None)) {
+            // Eagerly produce a `QuerySnapshot` for `metrics_capture`
+            // subscribers when this is the last per-partition stream to
+            // finish — long before the FFI capsule on the Python side gets
+            // garbage-collected and triggers `PendingInner::Drop`.
+            this.maybe_emit_snapshot();
             this_outer.inner = None;
         }
 
@@ -302,9 +334,109 @@ impl<T: DataframeClientAPI> RecordBatchStream for DataframeSegmentStream<T> {
     }
 }
 
+/// Build a [`crate::QuerySnapshot`] from the canonical sources and push it to
+/// each subscriber. Caller is responsible for the CAS on `snapshot_sent` —
+/// this function is the pure "actually build + send" step.
+fn build_and_push_snapshot(
+    captured_collectors: &[crate::MetricsCollector],
+    pending_analytics: &crate::PendingQueryAnalytics,
+    metrics: &QueryMetrics,
+) {
+    let snapshot = crate::metrics_capture::build_query_snapshot(
+        metrics,
+        pending_analytics.total_duration(),
+        pending_analytics.time_to_first_chunk(),
+        pending_analytics.error_kind(),
+        pending_analytics.direct_terminal_reason(),
+    );
+    crate::metrics_capture::push_snapshot(captured_collectors, &snapshot);
+}
+
+/// Decrement `partitions_remaining` and, on the transition to zero, latch
+/// `snapshot_sent` and emit a snapshot to each subscriber. Idempotent —
+/// the CAS on `snapshot_sent` guarantees at most one emission across all
+/// callers (`poll_next` end-of-stream, the empty-partition branch in
+/// `execute`, and concurrent cancellations).
+fn emit_snapshot_if_last_partition(
+    captured_collectors: &[crate::MetricsCollector],
+    partitions_remaining: &AtomicUsize,
+    snapshot_sent: &AtomicBool,
+    pending_analytics: &crate::PendingQueryAnalytics,
+    metrics: &QueryMetrics,
+) {
+    if captured_collectors.is_empty() {
+        // Fast path: no `query_metrics()` scope was active when this plan was
+        // built, so no snapshot will ever be emitted. The counter only exists
+        // to detect the zero-transition for that emission, so skip the RMW —
+        // it would just bounce the cache line across partitions for nothing.
+        return;
+    }
+
+    let prev = partitions_remaining.fetch_sub(1, Ordering::AcqRel);
+    if prev != 1 {
+        return; // not the last partition yet
+    }
+
+    if snapshot_sent
+        .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+        .is_err()
+    {
+        return;
+    }
+
+    build_and_push_snapshot(captured_collectors, pending_analytics, metrics);
+}
+
+/// Cancellation/short-circuit fallback: if no other path has emitted yet,
+/// latch `snapshot_sent` and emit with whatever state has been recorded.
+/// Does NOT touch `partitions_remaining` (the normal end-of-stream path
+/// is responsible for that).
+fn emit_snapshot_drop_fallback(
+    captured_collectors: &[crate::MetricsCollector],
+    snapshot_sent: &AtomicBool,
+    pending_analytics: &crate::PendingQueryAnalytics,
+    metrics: &QueryMetrics,
+) {
+    if captured_collectors.is_empty() {
+        return;
+    }
+    if snapshot_sent
+        .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+        .is_err()
+    {
+        return;
+    }
+    build_and_push_snapshot(captured_collectors, pending_analytics, metrics);
+}
+
+impl<T: DataframeClientAPI> DataframeSegmentStreamInner<T> {
+    /// See [`emit_snapshot_if_last_partition`].
+    fn maybe_emit_snapshot(&self) {
+        emit_snapshot_if_last_partition(
+            &self.captured_collectors,
+            &self.partitions_remaining,
+            &self.snapshot_sent,
+            &self.pending_analytics,
+            &self.metrics,
+        );
+    }
+}
+
+impl<T: DataframeClientAPI> Drop for DataframeSegmentStreamInner<T> {
+    fn drop(&mut self) {
+        // Cover the cancelled/short-circuited case — `poll_next` may already
+        // have called `maybe_emit_snapshot`, in which case the CAS no-ops.
+        emit_snapshot_drop_fallback(
+            &self.captured_collectors,
+            &self.snapshot_sent,
+            &self.pending_analytics,
+            &self.metrics,
+        );
+    }
+}
+
 impl<T: DataframeClientAPI> SegmentStreamExec<T> {
     #[tracing::instrument(level = "info", skip_all)]
-    #[expect(clippy::too_many_arguments)]
     pub fn try_new(
         table_schema: &SchemaRef,
         sort_index: Option<Index>,
@@ -314,10 +446,12 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
         mut query_expression: QueryExpression,
         index_values: IndexValuesMap,
         client: T,
-        limit: Option<usize>,
+        limit_rows: Option<usize>,
         trace_headers: Option<crate::TraceHeaders>,
         server_trace_id: Option<re_redap_client::TraceId>,
-        pending_analytics: Option<crate::PendingQueryAnalytics>,
+        pending_analytics: crate::PendingQueryAnalytics,
+        metrics: Arc<QueryMetrics>,
+        captured_collectors: Vec<crate::MetricsCollector>,
     ) -> datafusion::common::Result<Self> {
         let projected_schema = match projection {
             Some(p) => Arc::new(table_schema.project(p)?),
@@ -331,7 +465,7 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
                 .map(|field| {
                     ColumnDescriptor::try_from_arrow_field(None, field).map(ColumnSelector::from)
                 })
-                .collect::<Result<Vec<_>, _>>()
+                .try_collect()
                 .map_err(|err| exec_datafusion_err!("{err}"))?;
 
             query_expression.selection = Some(selection);
@@ -341,42 +475,43 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
         // segment ID and then time index. If the output does not have rerun
         // segment ID included, we cannot specify any output ordering.
 
-        let orderings = if projected_schema
-            .fields()
-            .iter()
-            .any(|f| f.name().as_str() == ScanSegmentTableResponse::FIELD_SEGMENT_ID)
-        {
-            let segment_col = Arc::new(Column::new(ScanSegmentTableResponse::FIELD_SEGMENT_ID, 0))
-                as Arc<dyn PhysicalExpr>;
-            let order_col = sort_index
-                .and_then(|index| {
-                    let index_name = index.as_str();
-                    projected_schema
-                        .fields()
-                        .iter()
-                        .enumerate()
-                        .find(|(_idx, field)| field.name() == index_name)
-                        .map(|(index_col, _)| Column::new(index_name, index_col))
-                })
-                .map(|expr| Arc::new(expr) as Arc<dyn PhysicalExpr>);
+        let orderings =
+            if projected_schema.fields().iter().any(|f| {
+                f.name().as_str() == ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME
+            }) {
+                let segment_col = Arc::new(Column::new(
+                    ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME,
+                    0,
+                )) as Arc<dyn PhysicalExpr>;
+                let order_col = sort_index
+                    .and_then(|index| {
+                        let index_name = index.as_str();
+                        projected_schema
+                            .fields()
+                            .iter()
+                            .enumerate()
+                            .find(|(_idx, field)| field.name() == index_name)
+                            .map(|(index_col, _)| Column::new(index_name, index_col))
+                    })
+                    .map(|expr| Arc::new(expr) as Arc<dyn PhysicalExpr>);
 
-            let mut physical_ordering = vec![PhysicalSortExpr::new(
-                segment_col,
-                SortOptions::new(false, true),
-            )];
-            if let Some(col_expr) = order_col {
-                physical_ordering.push(PhysicalSortExpr::new(
-                    col_expr,
+                let mut physical_ordering = vec![PhysicalSortExpr::new(
+                    segment_col,
                     SortOptions::new(false, true),
-                ));
-            }
-            vec![
-                LexOrdering::new(physical_ordering)
-                    .expect("LexOrdering should return Some since input is not empty"),
-            ]
-        } else {
-            vec![]
-        };
+                )];
+                if let Some(col_expr) = order_col {
+                    physical_ordering.push(PhysicalSortExpr::new(
+                        col_expr,
+                        SortOptions::new(false, true),
+                    ));
+                }
+                vec![
+                    LexOrdering::new(physical_ordering)
+                        .expect("LexOrdering should return Some since input is not empty"),
+                ]
+            } else {
+                vec![]
+            };
 
         let eq_properties =
             EquivalenceProperties::new_with_orderings(Arc::clone(&projected_schema), orderings);
@@ -386,7 +521,7 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
         let output_partitioning = if partition_in_output_schema {
             Partitioning::Hash(
                 vec![Arc::new(Column::new(
-                    ScanSegmentTableResponse::FIELD_SEGMENT_ID,
+                    ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME,
                     0,
                 ))],
                 num_partitions,
@@ -400,7 +535,8 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
             output_partitioning,
             EmissionType::Incremental,
             Boundedness::Bounded,
-        );
+        )
+        .into();
 
         // Compute total uncompressed size for adaptive budget before consuming the batches.
         let total_uncompressed: usize = chunk_info_batches
@@ -413,6 +549,18 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
 
         let worker_runtime = Arc::new(CpuRuntime::try_new(num_partitions)?);
 
+        // `metrics` carries the plan-time `QueryInfo` (set by the caller in
+        // `dataframe_query_common::scan`) plus zero-initialized fetch atomics
+        // that the IO loop will populate.
+        let plan_summary = PlanSummary::from_query_info(&metrics.query_info);
+
+        // `captured_collectors` was sourced from the `DataframeQueryTableProvider`
+        // (which itself read the Python `query_metrics()` ContextVar at the
+        // `dataset_view.rs::reader()` boundary). It is empty when no scope
+        // was active.
+        let partitions_remaining = Arc::new(AtomicUsize::new(num_partitions));
+        let snapshot_sent = Arc::new(AtomicBool::new(false));
+
         Ok(Self {
             props,
             chunk_info,
@@ -422,823 +570,18 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
             target_partitions: num_partitions,
             worker_runtime,
             client,
-            limit,
+            limit_rows,
             trace_headers,
             server_trace_id,
             pending_analytics,
             pipeline_budget: Arc::new(PipelineBudget::new(total_uncompressed, num_partitions)),
+            metrics,
+            plan_summary,
+            captured_collectors,
+            partitions_remaining,
+            snapshot_sent,
         })
     }
-}
-
-/// Per-batch caps used by `send_next_row_batch`.
-///
-/// Accumulating up to `DEFAULT_BATCH_ROWS` rows or `DEFAULT_BATCH_BYTES` bytes
-/// (whichever first) amortises per-batch overhead (alloc, schema align, async
-/// channel send) while keeping batch memory bounded for wide columns
-/// (e.g. images, large lists, replicated video blobs from retrofill).
-///
-/// These mirror the values used by `SizedCoalesceBatchesExec` so that the
-/// downstream coalescer is mostly a pass-through.
-const FLUSH_BATCH_ROWS: usize = DEFAULT_BATCH_ROWS;
-const FLUSH_BATCH_BYTES: usize = DEFAULT_BATCH_BYTES as usize;
-
-#[tracing::instrument(level = "trace", skip_all, fields(segment_id = %segment_id))]
-async fn send_next_row_batch(
-    query_handle: &mut QueryHandle<StorageEngine>,
-    segment_id: &str,
-    target_schema: &Arc<Schema>,
-    output_channel: &Sender<RecordBatch>,
-    rows_sent: &mut usize,
-    limit: Option<usize>,
-) -> ApiResult<Option<()>> {
-    // If we have already sent enough rows, stop early.
-    if limit.is_some_and(|l| *rows_sent >= l) {
-        return Ok(None);
-    }
-
-    let max_rows_this_batch = limit
-        .map(|l| l.saturating_sub(*rows_sent).min(FLUSH_BATCH_ROWS))
-        .unwrap_or(FLUSH_BATCH_ROWS);
-    if max_rows_this_batch == 0 {
-        return Ok(None);
-    }
-
-    let query_schema = Arc::clone(query_handle.schema());
-    let num_fields = query_schema.fields.len();
-
-    // `_next_n_rows` carries its own `profile_function!`, so no extra scope here.
-    // Wrapping the `.await` in a `profile_scope!` would hold a non-`Send` guard
-    // across the suspension point and break `Handle::spawn`'s `Send` bound.
-    let next = query_handle
-        .next_n_rows_async(max_rows_this_batch, FLUSH_BATCH_BYTES)
-        .await;
-    if next.num_rows == 0 {
-        return Ok(None);
-    }
-    if num_fields != next.columns.len() {
-        return Err(ApiError::internal(
-            "Unexpected number of columns returned from query",
-        ));
-    }
-    let total_rows = next.num_rows;
-
-    let mut columns: Vec<ArrayRef> = Vec::with_capacity(num_fields + 1);
-    let sid_array =
-        Arc::new(StringArray::from(vec![segment_id.to_owned(); total_rows])) as ArrayRef;
-    columns.push(sid_array);
-    columns.extend(next.columns);
-
-    let output_batch = {
-        re_tracing::profile_scope!("build_and_align_batch");
-        let batch_schema = Arc::new(prepend_string_column_schema(
-            &query_schema,
-            ScanSegmentTableResponse::FIELD_SEGMENT_ID,
-        ));
-
-        let batch = RecordBatch::try_new_with_options(
-            batch_schema,
-            columns,
-            &RecordBatchOptions::default().with_row_count(Some(total_rows)),
-        )
-        .map_err(|err| {
-            ApiError::deserialization_with_source(
-                None,
-                err,
-                "building output record batch from chunk-store rows",
-            )
-        })?;
-
-        align_record_batch_to_schema(&batch, target_schema).map_err(|err| {
-            ApiError::internal_with_source(None, err, "DataFusion schema mismatch error")
-        })?
-    };
-
-    // Slice the batch to respect the row limit. We pre-cap `max_rows_this_batch`
-    // by the limit, but a single `next_row()` call can return more than one row
-    // (see `_next_row` for multi-row index values), so a final trim is needed.
-    let output_batch = if let Some(limit) = limit {
-        let remaining = limit.saturating_sub(*rows_sent);
-        if remaining == 0 {
-            return Ok(None);
-        }
-        if output_batch.num_rows() > remaining {
-            output_batch.slice(0, remaining)
-        } else {
-            output_batch
-        }
-    } else {
-        output_batch
-    };
-
-    *rows_sent += output_batch.num_rows();
-
-    output_channel
-        .send(output_batch)
-        .await
-        .map_err(|err| ApiError::internal_with_source(None, err, "output channel closed"))?;
-
-    Ok(Some(()))
-}
-
-// TODO(#10781) - support for sending intermediate results/chunks
-#[instrument(level = "info", skip_all)]
-async fn chunk_store_cpu_worker_thread(
-    mut input_channel: Receiver<ApiResult<SortedChunksWithSegment>>,
-    output_channel: Sender<RecordBatch>,
-    query_expression: QueryExpression,
-    projected_schema: Arc<Schema>,
-    index_values: IndexValuesMap,
-    limit: Option<usize>,
-    pipeline_budget: Arc<PipelineBudget>,
-) -> ApiResult<()> {
-    struct CurrentStores {
-        segment_id: String,
-        store: ChunkStoreHandle,
-        query_handle: QueryHandle<StorageEngine>,
-    }
-
-    impl CurrentStores {
-        #[tracing::instrument(level = "debug", skip_all, fields(segment_id = %segment_id))]
-        fn new(
-            segment_id: String,
-            query_expression: &QueryExpression,
-            index_values: &IndexValuesMap,
-        ) -> Self {
-            let store_id = StoreId::random(
-                StoreKind::Recording,
-                ApplicationId::from(segment_id.as_str()),
-            );
-            let store = ChunkStore::new_handle(store_id.clone(), Default::default());
-
-            let query_engine =
-                QueryEngine::new(store.clone(), QueryCache::new_handle(store.clone()));
-            let mut individual_query = query_expression.clone();
-
-            let values = index_values
-                .as_ref()
-                .and_then(|index_values| index_values.get(&segment_id));
-            if let Some(values) = values {
-                individual_query.using_index_values = Some(values.clone());
-            }
-
-            let query_handle = query_engine.query(individual_query);
-
-            Self {
-                segment_id,
-                store,
-                query_handle,
-            }
-        }
-
-        /// Flush all remaining rows from the query handle, respecting the row limit.
-        #[instrument(level = "debug", skip_all)]
-        async fn flush(
-            mut self,
-            projected_schema: &Arc<Schema>,
-            output_channel: &Sender<RecordBatch>,
-            rows_sent: &mut usize,
-            limit: Option<usize>,
-        ) -> ApiResult<()> {
-            while send_next_row_batch(
-                &mut self.query_handle,
-                &self.segment_id,
-                projected_schema,
-                output_channel,
-                rows_sent,
-                limit,
-            )
-            .await?
-            .is_some()
-            {}
-            Ok(())
-        }
-    }
-    let mut current_stores: Option<CurrentStores> = None;
-    let mut rows_sent: usize = 0;
-    loop {
-        // Time spent here = `cpu_worker` idle waiting for the IO pipeline to
-        // deliver the next batch of chunks. Short consecutive spans = healthy
-        // stream; one long dominating span = IO-starved worker.
-        let recv_span = tracing::trace_span!("waiting_for_chunks");
-        let Some(chunks_and_segment_ids) = input_channel.recv().instrument(recv_span).await else {
-            break;
-        };
-        let (segment_id, chunks) = chunks_and_segment_ids?;
-
-        if chunks.is_empty() {
-            continue;
-        }
-
-        if index_values
-            .as_ref()
-            .is_some_and(|index_values| !index_values.contains_key(&segment_id))
-        {
-            continue;
-        }
-
-        // When we change segments, flush the outputs and release the finished
-        // segment's bytes back to the budget so IO can proceed.
-        //
-        // The `release` call uses `ChunkStore::stats().total().total_size_bytes`,
-        // while the IO side reserves using `re_byte_size::SizeBytes::total_size_bytes`
-        // summed per inserted chunk. Both internally invoke the same
-        // `SizeBytes::total_size_bytes` on each `Arc<Chunk>` (see
-        // `ChunkStoreChunkStats::from_chunk`), so per-chunk the metrics
-        // are identical. They diverge only when the store performs
-        // chunk compaction at insert time: an incoming chunk A may be
-        // merged with an existing chunk B into `C = concat(A, B)`,
-        // after which the store's stats reflect `+C - B = A + concat_overhead`
-        // while the IO accounting only added `A`. `concat_overhead` is
-        // strictly non-negative (concatenation allocates new arrow
-        // buffers; it cannot shrink the data), so `store_bytes >= reserved_sum`
-        // a priori. Empirically the overhead is ~0.3-0.5% of decoded
-        // data on representative workloads (see PR #1736 review). This
-        // means `release` may return slightly more than `reserve`
-        // charged, so `current` saturates toward 0 marginally early —
-        // which under-utilises the budget by the same fraction but
-        // poses no OOM or deadlock risk. Treated as benign and not
-        // worth correcting; revisit if the chunk-store internals
-        // change in a way that grows the gap.
-        if let Some(current_stores) = current_stores.take_if(|s| s.segment_id != segment_id) {
-            let store_bytes = current_stores.store.read().stats().total().total_size_bytes as usize;
-            current_stores
-                .flush(&projected_schema, &output_channel, &mut rows_sent, limit)
-                .await?;
-            pipeline_budget.release(store_bytes);
-
-            if limit.is_some_and(|l| rows_sent >= l) {
-                return Ok(());
-            }
-        }
-
-        let CurrentStores {
-            store, segment_id, ..
-        } = current_stores.get_or_insert_with(|| {
-            CurrentStores::new(segment_id, &query_expression, &index_values)
-        });
-
-        let _insert_span = tracing::trace_span!(
-            "insert_chunks",
-            segment_id = %segment_id,
-            n = chunks.len(),
-        )
-        .entered();
-        for chunk in chunks {
-            store
-                .write()
-                .insert_chunk(&Arc::new(chunk))
-                .map_err(|err| {
-                    ApiError::internal_with_source(
-                        None,
-                        err,
-                        "inserting chunk into in-memory store",
-                    )
-                })?;
-        }
-    }
-
-    // Flush out remaining of last segment
-    if let Some(current_stores) = current_stores {
-        let store_bytes = current_stores.store.read().stats().total().total_size_bytes as usize;
-        current_stores
-            .flush(&projected_schema, &output_channel, &mut rows_sent, limit)
-            .await?;
-        pipeline_budget.release(store_bytes);
-    }
-
-    Ok(())
-}
-
-/// Extract segment ID from a `chunk_info` `RecordBatch`. Each `chunk_info` batch contains
-/// chunks *for a single segment*, hence we can just take the first row's `segment_id`. This is
-/// guaranteed by the implementation in `group_chunk_infos_by_segment_id`.
-fn extract_segment_id(chunk_info: &RecordBatch) -> ApiResult<String> {
-    let segment_ids = chunk_info
-        .column_by_name(re_protos::cloud::v1alpha1::QueryDatasetResponse::FIELD_CHUNK_SEGMENT_ID)
-        .ok_or_else(|| ApiError::internal("missing segment_id column in chunk_info batch"))?
-        .as_any()
-        .downcast_ref::<StringArray>()
-        .ok_or_else(|| ApiError::internal("segment_id column is not a string array"))?;
-
-    Ok(segment_ids.value(0).to_owned())
-}
-
-/// Extract chunk sizes from a `chunk_info` `RecordBatch`.
-/// Returns a reference to the arrow array containing `chunk_byte_len` values.
-fn extract_chunk_sizes(chunk_info: &RecordBatch) -> ApiResult<&UInt64Array> {
-    let chunk_sizes = chunk_info
-        .column_by_name(re_protos::cloud::v1alpha1::QueryDatasetResponse::FIELD_CHUNK_BYTE_LENGTH)
-        .ok_or_else(|| ApiError::internal("missing chunk_byte_len column in chunk_info batch"))?
-        .as_any()
-        .downcast_ref::<UInt64Array>()
-        .ok_or_else(|| ApiError::internal("chunk_byte_len column is not a uint64 array"))?;
-
-    Ok(chunk_sizes)
-}
-
-type BatchingResult = (Vec<RecordBatch>, Vec<String>);
-
-/// Groups `chunk_infos` into batches targeting the specified size, with special handling
-/// for segments larger than the target size (which get split). Batches smaller than `target_size`
-/// are merged together to reduce the number of requests.
-///
-/// Returns (batches, `segment_order`) where:
-/// - batches: list of merged `RecordBatch`es, each representing a `target_size` request
-/// - `segment_order`: Original order of segments for preserving segment order
-#[tracing::instrument(level = "info", skip_all, fields(num_chunk_infos = chunk_infos.len(), target_size_bytes))]
-fn create_request_batches(
-    chunk_infos: Vec<RecordBatch>,
-    target_size_bytes: u64,
-) -> ApiResult<BatchingResult> {
-    re_tracing::profile_function!();
-    let merge_err = |err: arrow::error::ArrowError, ctx: &'static str| {
-        ApiError::deserialization_with_source(None, err, ctx)
-    };
-
-    let mut request_batches = Vec::new();
-    let mut current_batch = Vec::new();
-    let mut current_batch_size = 0u64;
-    let mut segment_order = Vec::new();
-    let mut segment_seen = HashSet::new();
-
-    for chunk_info in chunk_infos {
-        let segment_id = extract_segment_id(&chunk_info)?;
-        let chunk_sizes = extract_chunk_sizes(&chunk_info)?;
-        let segment_size: u64 = chunk_sizes.iter().map(|v| v.unwrap_or(0)).sum();
-
-        // Track original segment order
-        if segment_seen.insert(segment_id.clone()) {
-            segment_order.push(segment_id.clone());
-        }
-
-        // Check if this segment would make the current batch too large
-        if !current_batch.is_empty() && current_batch_size + segment_size > target_size_bytes {
-            // Merge current batch and add to results
-            let merged_batch = re_arrow_util::concat_polymorphic_batches(&current_batch)
-                .map_err(|err| merge_err(err, "merging chunk-info batches"))?;
-            request_batches.push(merged_batch);
-            current_batch = Vec::new();
-            current_batch_size = 0;
-        }
-
-        // Split the large segment into multiple requests
-        if segment_size > target_size_bytes {
-            // If current batch is not empty, merge and send it first
-            if !current_batch.is_empty() {
-                let merged_batch = re_arrow_util::concat_polymorphic_batches(&current_batch)
-                    .map_err(|err| merge_err(err, "merging chunk-info batches"))?;
-                request_batches.push(merged_batch);
-                current_batch = Vec::new();
-                current_batch_size = 0;
-            }
-
-            let split_batches =
-                split_large_segments(&segment_id, &chunk_info, target_size_bytes, chunk_sizes)?;
-
-            // Split batches are already individual RecordBatches, add them directly
-            for split_batch in split_batches {
-                request_batches.push(split_batch);
-            }
-        } else {
-            current_batch.push(chunk_info);
-            current_batch_size += segment_size;
-        }
-    }
-
-    // Don't forget to merge the last batch
-    if !current_batch.is_empty() {
-        let merged_batch = re_arrow_util::concat_polymorphic_batches(&current_batch)
-            .map_err(|err| merge_err(err, "merging final chunk-info batch"))?;
-        request_batches.push(merged_batch);
-    }
-
-    tracing::debug!(
-        "Batching complete: {} segments → {} batches (target_size={}KB)",
-        segment_order.len(),
-        request_batches.len(),
-        target_size_bytes / 1024
-    );
-
-    Ok((request_batches, segment_order))
-}
-
-/// Split segment larger than target size into multiple smaller requests. Each request will contain
-/// a subset of the chunks from the original segment, targeting approximately the desired size.
-fn split_large_segments(
-    segment_id: &str,
-    chunk_info: &RecordBatch,
-    target_size: u64,
-    chunk_sizes: &UInt64Array,
-) -> ApiResult<Vec<RecordBatch>> {
-    re_tracing::profile_function!();
-    let take_err = |err: arrow::error::ArrowError| {
-        ApiError::deserialization_with_source(None, err, "slicing large segment into sub-batches")
-    };
-
-    let mut result_batches = Vec::new();
-    let mut current_indices = Vec::new();
-    let mut current_size = 0u64;
-
-    for row_idx in 0..chunk_info.num_rows() {
-        let chunk_size = chunk_sizes.value(row_idx);
-
-        // Always include at least one chunk per batch (even if it exceeds target)
-        if current_indices.is_empty() || current_size + chunk_size <= target_size {
-            current_indices.push(row_idx);
-            current_size += chunk_size;
-        } else {
-            // Create batch from current indices
-            let batch =
-                re_arrow_util::take_record_batch(chunk_info, &current_indices).map_err(take_err)?;
-            result_batches.push(batch);
-
-            // Start new batch with current chunk
-            current_indices = vec![row_idx];
-            current_size = chunk_size;
-        }
-    }
-
-    // Don't forget the last batch
-    if !current_indices.is_empty() {
-        let batch =
-            re_arrow_util::take_record_batch(chunk_info, &current_indices).map_err(take_err)?;
-        result_batches.push(batch);
-    }
-
-    tracing::debug!(
-        "Split large segment '{}' ({}) into {} requests",
-        segment_id,
-        re_format::format_bytes(
-            (0..chunk_info.num_rows())
-                .map(|i| chunk_sizes.value(i))
-                .sum::<u64>() as _
-        ),
-        result_batches.len()
-    );
-
-    Ok(result_batches)
-}
-
-/// Helper function to sort chunks by segment order.
-/// This function handles the fact we send concurrent requests where sometimes even a
-/// single request can contain chunks from multiple segments (due to batching) and the more
-/// important fact that server provides no ordering guarantees.
-fn sort_chunks_by_segment_order(
-    chunks: Vec<ChunksWithSegment>,
-    segment_order: &[String],
-) -> Vec<SortedChunksWithSegment> {
-    use std::collections::HashMap;
-
-    // Collect all individual chunks grouped by segment ID (we don't care about ordering of individual
-    // chunks within a segment here)
-    let mut segment_groups: HashMap<String, Vec<Chunk>> = HashMap::default();
-
-    // Extract all chunks and group by segment
-    for chunks_with_segment in chunks {
-        for (chunk, segment_id_opt) in chunks_with_segment {
-            let Some(segment_id) = segment_id_opt else {
-                continue;
-            };
-            segment_groups.entry(segment_id).or_default().push(chunk);
-        }
-    }
-
-    // Rebuild chunks in the correct segment order
-    segment_order
-        .iter()
-        .filter_map(|segment_id| segment_groups.remove_entry(segment_id))
-        .collect()
-}
-
-/// Helper to sort and send chunks through the output channel, preserving segment order.
-/// Returns `false` if the output channel is closed (consumer dropped).
-async fn send_sorted_chunks(
-    chunks: Vec<ChunksWithSegment>,
-    global_segment_order: &[String],
-    output_channel: &Sender<ApiResult<SortedChunksWithSegment>>,
-) -> bool {
-    let sorted = {
-        let _span = tracing::info_span!("sort_chunks").entered();
-        sort_chunks_by_segment_order(chunks, global_segment_order)
-    };
-    let n_sorted = sorted.len();
-    async {
-        for chunk in sorted {
-            if output_channel.send(Ok(chunk)).await.is_err() {
-                return false;
-            }
-        }
-        true
-    }
-    .instrument(tracing::info_span!("send_chunks", n = n_sorted))
-    .await
-}
-
-/// Fetch remaining batches via batched gRPC (groups of `GRPC_BATCH_SIZE`),
-/// preserving ordering.
-async fn fetch_remaining_via_grpc<T: DataframeClientAPI>(
-    batches: &[RecordBatch],
-    client: &T,
-    global_segment_order: &[String],
-    output_channel: &Sender<ApiResult<SortedChunksWithSegment>>,
-    pipeline_budget: &PipelineBudget,
-) -> ApiResult<()> {
-    let total_batches = batches.len();
-    let mut batches_completed = 0usize;
-    for batch_group in batches.chunks(GRPC_BATCH_SIZE) {
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            let bytes: u64 = batch_group.iter().map(batch_byte_size).sum();
-            crate::chunk_fetcher::metrics::record_grpc_no_direct_urls(bytes);
-        }
-
-        let estimated = batch_group
-            .iter()
-            .map(|b| batch_byte_size_uncompressed(b).unwrap_or_else(|| batch_byte_size(b)))
-            .sum::<u64>() as usize;
-        let guard = pipeline_budget.reserve_guarded(estimated).await;
-        // `?` here is safe: `guard` returns the reservation on drop so an
-        // error from the gRPC fetch does not leak headroom to the shared
-        // cross-partition budget.
-        let all_chunks = fetch_batch_group_via_grpc(batch_group, client).await?;
-
-        let actual: usize = all_chunks
-            .iter()
-            .flat_map(|segment_chunks| {
-                segment_chunks
-                    .iter()
-                    .map(|(chunk, _)| re_byte_size::SizeBytes::total_size_bytes(chunk) as usize)
-            })
-            .sum();
-        guard.commit(actual);
-
-        batches_completed += batch_group.len();
-        if !send_sorted_chunks(all_chunks, global_segment_order, output_channel).await {
-            // Consumer (CPU worker) hung up — typically because a row LIMIT was hit
-            // or the surrounding plan was cancelled. Any remaining batches will go
-            // unfetched. Log at `info` (not `debug`) so the cancellation is visible
-            // in production logs alongside the matching server-side
-            // `terminated_by="cancelled"` analytics; not a `warn` because this is
-            // expected when the caller actually wanted to stop.
-            tracing::info!(
-                total_batches,
-                batches_completed,
-                batches_skipped = total_batches.saturating_sub(batches_completed),
-                "FetchChunks IO loop short-circuited: downstream consumer closed (likely LIMIT or plan cancellation)"
-            );
-            return Ok(());
-        }
-    }
-    Ok(())
-}
-
-/// This is the function that will run on the IO (main) tokio runtime that will listen
-/// to the gRPC channel for chunks coming in from the Data Platform. This loop is started
-/// up by the execute fn of the physical plan, so we will start one per output DataFusion partition,
-/// which is different from the Rerun `segment_id`. The sorting by time index will happen within
-/// the cpu worker thread.
-///
-/// `chunk_infos` is a list of batches with chunk information where each batch has info for
-/// a *single segment*. We also expect these to be previously sorted by segment id, otherwise
-/// our suggestion to the query planner that inputs are sorted by segment id will be incorrect.
-/// See `group_chunk_infos_by_segment_id` and `execute` for more details.
-///
-/// In order to improve performance, while maintaining ordering, we batch requests to the server
-/// and process them concurrently in groups. After data for each group is collected, it is sorted
-/// by the input segment order before being sent to the CPU worker thread.
-#[tracing::instrument(
-    level = "info",
-    skip_all,
-    fields(n_chunks, n_batches, n_segments, fetch_strategy)
-)]
-async fn chunk_stream_io_loop<T: DataframeClientAPI>(
-    client: T,
-    chunk_infos: Vec<RecordBatch>,
-    output_channel: Sender<ApiResult<SortedChunksWithSegment>>,
-    pending_analytics: Option<crate::PendingQueryAnalytics>,
-    pipeline_budget: Arc<PipelineBudget>,
-) -> ApiResult<()> {
-    let target_size_bytes = TARGET_BATCH_SIZE_BYTES as u64;
-
-    // One row per chunk in each `RecordBatch` of chunk-info.
-    let n_chunks: usize = chunk_infos.iter().map(|rb| rb.num_rows()).sum();
-    let (request_batches, global_segment_order) =
-        create_request_batches(chunk_infos, target_size_bytes)?;
-
-    let span = tracing::Span::current();
-    span.record("n_chunks", n_chunks);
-    span.record("n_batches", request_batches.len());
-    span.record("n_segments", global_segment_order.len());
-
-    re_log::debug!(
-        "Fetching {n_chunks} chunks in {} batches ({} segments)",
-        request_batches.len(),
-        global_segment_order.len()
-    );
-
-    // Allow overriding the fetch strategy via environment variable.
-    let force_grpc = force_grpc();
-
-    // Fast path: if no batches contain direct URLs (or gRPC is forced), fetch everything via gRPC.
-    if force_grpc || !request_batches.iter().any(batch_has_any_direct_urls) {
-        let reason = if force_grpc {
-            "grpc_forced"
-        } else {
-            "no_direct_urls"
-        };
-        span.record("fetch_strategy", reason);
-        re_log::debug!(
-            "{reason}, fetching all {} chunks via FetchChunks gRPC",
-            request_batches.len()
-        );
-        let result = fetch_remaining_via_grpc(
-            &request_batches,
-            &client,
-            &global_segment_order,
-            &output_channel,
-            &pipeline_budget,
-        )
-        .await;
-
-        if let Some(analytics) = &pending_analytics {
-            match &result {
-                Ok(()) => {
-                    // All fetches were gRPC — record total bytes into a task-local
-                    // buffer and flush once. No intermediate atomics.
-                    let total_bytes: u64 = request_batches.iter().map(batch_byte_size).sum();
-                    let mut stats = TaskFetchStats::default();
-                    stats.record_grpc_fetch(total_bytes);
-                    stats.flush_into(analytics.fetch_stats());
-                }
-                Err(_) => {
-                    analytics.record_error(QueryErrorKind::GrpcFetch);
-                }
-            }
-        }
-
-        return result;
-    }
-
-    // Split each batch into direct-URL rows and non-URL rows, producing independent work items.
-    // Each work item gets a sequential index for the reorder buffer.
-    enum FetchTask {
-        Direct(RecordBatch),
-        Grpc(RecordBatch),
-    }
-
-    let mut work_items: Vec<FetchTask> = Vec::new();
-    let mut n_direct = 0usize;
-    let mut n_grpc = 0usize;
-    for batch in &request_batches {
-        let (direct_batch, grpc_batch) = split_batch_by_direct_url(batch);
-        if let Some(b) = direct_batch {
-            n_direct += 1;
-            work_items.push(FetchTask::Direct(b));
-        }
-        if let Some(b) = grpc_batch {
-            n_grpc += 1;
-            work_items.push(FetchTask::Grpc(b));
-        }
-    }
-
-    if n_grpc == 0 {
-        span.record("fetch_strategy", "direct");
-    } else {
-        span.record(
-            "fetch_strategy",
-            format!("hybrid(direct={n_direct},grpc={n_grpc})"),
-        );
-    }
-    re_log::debug!("Fetch tasks: {n_direct} direct, {n_grpc} gRPC fallback");
-
-    let http_client = reqwest::Client::new();
-
-    // `work_items` may differ from `request_batches.len()` when a batch is split
-    // into a direct part + a gRPC part. Track the count we'll actually iterate.
-    let total_tasks = work_items.len();
-
-    let fetch_stream = futures::stream::iter(work_items.into_iter().enumerate())
-        .map(|(task_idx, task)| {
-            let http_client = http_client.clone();
-            let client = client.clone();
-            let pending_analytics = pending_analytics.clone();
-            let pipeline_budget = Arc::clone(&pipeline_budget);
-            async move {
-                // Task-local stats buffer — flushed once to the shared atomics
-                // at the end of this task to avoid cross-core cache-line
-                // contention on the hot counters.
-                let mut stats = TaskFetchStats::default();
-                let pending_analytics = pending_analytics.as_ref();
-
-                let estimated = match &task {
-                    FetchTask::Direct(b) | FetchTask::Grpc(b) => batch_byte_size_uncompressed(b)
-                        .unwrap_or_else(|| batch_byte_size(b))
-                        as usize,
-                };
-                // RAII guard: refunds the reservation on any early `return Err(_)`
-                // below so the shared budget keeps its full headroom for other
-                // partitions on fetch failure.
-                let guard = pipeline_budget.reserve_guarded(estimated).await;
-
-                let chunks = match task {
-                    FetchTask::Direct(batch) => {
-                        let bytes = batch_byte_size(&batch);
-                        let chunks = match fetch_batch_direct(
-                            &batch,
-                            &http_client,
-                            &mut stats,
-                            pending_analytics,
-                        )
-                        .await
-                        {
-                            Ok(chunks) => chunks,
-                            Err(err) => {
-                                stats.try_flush_into(
-                                    pending_analytics,
-                                    Err(QueryErrorKind::DirectFetch),
-                                );
-                                return Err(err);
-                            }
-                        };
-                        stats.record_direct_fetch(bytes);
-                        chunks
-                    }
-                    FetchTask::Grpc(batch) => {
-                        let bytes = batch_byte_size(&batch);
-                        #[cfg(not(target_arch = "wasm32"))]
-                        crate::chunk_fetcher::metrics::record_grpc_no_direct_urls(bytes);
-                        let chunks =
-                            match fetch_batch_group_via_grpc(std::slice::from_ref(&batch), &client)
-                                .await
-                            {
-                                Ok(chunks) => chunks,
-                                Err(err) => {
-                                    stats.try_flush_into(
-                                        pending_analytics,
-                                        Err(QueryErrorKind::GrpcFetch),
-                                    );
-                                    return Err(err);
-                                }
-                            };
-                        stats.record_grpc_fetch(bytes);
-                        chunks
-                    }
-                };
-
-                stats.try_flush_into(pending_analytics, Ok(()));
-                let actual: usize = chunks
-                    .iter()
-                    .flat_map(|seg| {
-                        seg.iter()
-                            .map(|(c, _)| re_byte_size::SizeBytes::total_size_bytes(c) as usize)
-                    })
-                    .sum();
-                guard.commit(actual);
-
-                Ok::<_, ApiError>((task_idx, chunks))
-            }
-            .instrument(tracing::info_span!("fetch_task", task_idx))
-        })
-        .buffer_unordered(IO_PIPELINE_BUFFER);
-
-    tokio::pin!(fetch_stream);
-
-    let mut next_to_emit: usize = 0;
-    let mut reorder_buf: BTreeMap<usize, Vec<ChunksWithSegment>> = BTreeMap::new();
-
-    while let Some(result) = fetch_stream.next().await {
-        let (task_idx, chunks) = result?;
-        reorder_buf.insert(task_idx, chunks);
-
-        // Drain contiguous completed tasks in order
-        while let Some(chunks) = reorder_buf.remove(&next_to_emit) {
-            if !send_sorted_chunks(chunks, &global_segment_order, &output_channel).await {
-                // Consumer hung up — record what's still outstanding so we can
-                // see in logs whether the cancel happened early or late, and how
-                // much in-flight work the `buffer_unordered` is about to drop
-                // (those streams will be RST_STREAM'd cleanly by hyper). Log at
-                // `info` so this is visible in production logs (matches the
-                // server-side `terminated_by="cancelled"` analytics).
-                tracing::info!(
-                    total_tasks,
-                    next_to_emit,
-                    in_reorder_buf = reorder_buf.len(),
-                    in_flight_or_pending = total_tasks
-                        .saturating_sub(next_to_emit)
-                        .saturating_sub(reorder_buf.len()),
-                    "FetchChunks IO loop short-circuited (hybrid path): downstream consumer closed (likely LIMIT or plan cancellation)"
-                );
-                return Ok(());
-            }
-            next_to_emit += 1;
-        }
-    }
-
-    // Fetch stats are already recorded per-task into pending_analytics.
-    // The combined event will be sent when the last PendingQueryAnalytics clone is dropped.
-
-    Ok(())
 }
 
 impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
@@ -1250,7 +593,7 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
         self
     }
 
-    fn properties(&self) -> &PlanProperties {
+    fn properties(&self) -> &Arc<PlanProperties> {
         &self.props
     }
 
@@ -1294,18 +637,29 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
         let (chunk_tx, chunk_rx) = tokio::sync::mpsc::channel(CPU_THREAD_IO_CHANNEL_SIZE);
 
         let random_state = ahash::RandomState::with_seeds(0, 0, 0, 0);
-        let chunk_infos = {
+        let chunk_infos: Vec<_> = {
             re_tracing::profile_scope!("concat_chunk_infos_per_segment");
             self.chunk_info
                 .iter()
                 .filter(|(segment_id, _)| {
-                    let hash_value = segment_id.hash_one(&random_state) as usize;
+                    let hash_value = segment_partition_hash(segment_id, &random_state) as usize;
                     hash_value % self.target_partitions == partition
+                })
+                // Drop segments not referenced by `index_values` before
+                // they reach the IO loop. Otherwise the IO loop would
+                // fetch + `PipelineBudget::commit` their chunks, then the
+                // CPU worker would drop them on an `index_values` miss
+                // without releasing — leaking the reservation for the
+                // rest of the query.
+                .filter(|(segment_id, _)| {
+                    self.index_values
+                        .as_ref()
+                        .is_none_or(|iv| iv.contains_key(*segment_id))
                 })
                 // we end up with 1 batch per (rerun) segment. Order is important and must be preserved.
                 // See SegmentStreamExec::try_new for details on ordering.
                 .map(|(_, batches)| re_arrow_util::concat_polymorphic_batches(batches))
-                .collect::<Result<Vec<_>, _>>()
+                .try_collect()
                 .map_err(|err| {
                     ApiError::deserialization_with_source(
                         None,
@@ -1318,6 +672,16 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
 
         // if no chunks match this datafusion partition, return an empty stream
         if chunk_infos.is_empty() {
+            // The partition still counts toward `partitions_remaining` —
+            // decrement it (and possibly emit the snapshot) here, since the
+            // empty stream's `poll_next` never gets the chance.
+            emit_snapshot_if_last_partition(
+                &self.captured_collectors,
+                &self.partitions_remaining,
+                &self.snapshot_sent,
+                &self.pending_analytics,
+                &self.metrics,
+            );
             let stream: DataframeSegmentStream<T> = DataframeSegmentStream { inner: None };
             return Ok(Box::pin(stream));
         }
@@ -1327,7 +691,7 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
         let (batches_tx, batches_rx) = tokio::sync::mpsc::channel(CPU_THREAD_IO_CHANNEL_SIZE);
         let query_expression = self.query_expression.clone();
         let projected_schema = self.projected_schema.clone();
-        let limit = self.limit;
+        let limit_rows = self.limit_rows;
         let cpu_join_handle = Some(
             self.worker_runtime.handle().spawn(
                 chunk_store_cpu_worker_thread(
@@ -1336,18 +700,21 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
                     query_expression,
                     projected_schema,
                     self.index_values.clone(),
-                    limit,
+                    limit_rows,
                     Arc::clone(&pipeline_budget),
                 )
                 .instrument(tracing::info_span!("cpu_worker")),
             ),
         );
 
+        let filtered_index_timeline = self.query_expression.filtered_index;
+
         let stream = DataframeSegmentStreamInner {
             projected_schema: self.projected_schema.clone(),
             store_output_channel: batches_rx,
             client,
             chunk_infos,
+            filtered_index_timeline,
             chunk_tx: Some(chunk_tx),
             io_join_handle: None,
             cpu_join_handle,
@@ -1356,12 +723,27 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
             server_trace_id: self.server_trace_id,
             pending_analytics: self.pending_analytics.clone(),
             pipeline_budget,
+            captured_collectors: self.captured_collectors.clone(),
+            partitions_remaining: Arc::clone(&self.partitions_remaining),
+            snapshot_sent: Arc::clone(&self.snapshot_sent),
+            metrics: Arc::clone(&self.metrics),
         };
         let stream = DataframeSegmentStream {
             inner: Some(stream),
         };
 
         Ok(Box::pin(stream))
+    }
+
+    fn metrics(&self) -> Option<MetricsSet> {
+        // Build the `MetricsSet` on demand from our flat `QueryMetrics` —
+        // see `build_metrics_set_for_explain` for why we don't hold a
+        // `MetricsSet` as the source of truth.
+        Some(build_metrics_set_for_explain(
+            &self.metrics,
+            self.target_partitions,
+            self.pending_analytics.time_to_first_chunk(),
+        ))
     }
 
     fn repartitioned(
@@ -1382,32 +764,70 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
             target_partitions,
             worker_runtime: Arc::new(CpuRuntime::try_new(target_partitions)?),
             client: self.client.clone(),
-            limit: self.limit,
+            limit_rows: self.limit_rows,
             trace_headers: self.trace_headers.clone(),
             server_trace_id: self.server_trace_id,
             pending_analytics: self.pending_analytics.clone(),
             pipeline_budget: Arc::clone(&self.pipeline_budget),
+            // Share the same `QueryMetrics` atomics across the original and
+            // repartitioned plans so any in-flight writes are still observed
+            // by the original `PendingInner::drop` snapshot path.
+            metrics: Arc::clone(&self.metrics),
+            plan_summary: self.plan_summary.clone(),
+            captured_collectors: self.captured_collectors.clone(),
+            // Reset the partition counter for the repartitioned plan — it
+            // owns its own per-partition stream lifetimes.
+            partitions_remaining: Arc::new(AtomicUsize::new(target_partitions)),
+            // Repartitioning yields a fresh plan; the snapshot latch is
+            // shared so the original plan's `Drop`-path emission still
+            // dedupes against the new one.
+            snapshot_sent: Arc::clone(&self.snapshot_sent),
         };
 
-        plan.props.partitioning = match plan.props.partitioning {
+        let partitioning = match &plan.props.as_ref().partitioning {
             Partitioning::RoundRobinBatch(_) => Partitioning::RoundRobinBatch(target_partitions),
             Partitioning::UnknownPartitioning(_) => {
                 Partitioning::UnknownPartitioning(target_partitions)
             }
-            Partitioning::Hash(expr, _) => Partitioning::Hash(expr, target_partitions),
+            Partitioning::Hash(expr, _) => Partitioning::Hash(expr.clone(), target_partitions),
         };
+        plan.props = self
+            .props
+            .as_ref()
+            .clone()
+            .with_partitioning(partitioning)
+            .into();
 
         Ok(Some(Arc::new(plan) as Arc<dyn ExecutionPlan>))
     }
 }
 
 impl<T: DataframeClientAPI> DisplayAs for SegmentStreamExec<T> {
-    fn fmt_as(&self, _t: DisplayFormatType, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt_as(&self, t: DisplayFormatType, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
             "SegmentStreamExec: num_partitions={:?}",
             self.target_partitions,
-        )
+        )?;
+        match t {
+            DisplayFormatType::Default | DisplayFormatType::TreeRender => Ok(()),
+            DisplayFormatType::Verbose => {
+                let s = &self.plan_summary;
+                write!(
+                    f,
+                    ", query_type={}, chunks={}, segments={}, bytes={}, \
+                     filters_pushed_down={}, filters_applied_client_side={}, \
+                     entity_path_narrowing={}",
+                    s.query_type,
+                    s.query_chunks,
+                    s.query_segments,
+                    re_format::format_bytes(s.query_bytes as _),
+                    s.filters_pushed_down,
+                    s.filters_applied_client_side,
+                    s.entity_path_narrowing_applied,
+                )
+            }
+        }
     }
 }
 
@@ -1469,263 +889,5 @@ impl CpuRuntime {
     /// Return a handle suitable for spawning CPU bound tasks
     pub fn handle(&self) -> &Handle {
         &self.handle
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use std::collections::HashMap;
-
-    use arrow::array::{FixedSizeBinaryBuilder, UInt64Array};
-    use arrow::datatypes::Field;
-
-    use super::*;
-
-    /// Extract segment ID from a chunk result (test helper)
-    fn extract_segment_id_from_chunk((segment_id, _chunks): &SortedChunksWithSegment) -> &str {
-        segment_id
-    }
-
-    /// Helper to create a test `RecordBatch` with chunk info for testing
-    fn create_test_chunk_info(segment_id: &str, chunk_sizes: &[u64]) -> RecordBatch {
-        let num_chunks = chunk_sizes.len();
-
-        // Create segment ID column (all rows have same segment)
-        let segment_ids = StringArray::from(vec![segment_id; num_chunks]);
-
-        // Create chunk sizes column
-        let sizes = UInt64Array::from(chunk_sizes.to_vec());
-
-        // Create dummy chunk IDs
-        let mut chunk_id_builder = FixedSizeBinaryBuilder::with_capacity(num_chunks, 16);
-        for i in 0..num_chunks {
-            let mut id_bytes = [0u8; 16];
-            id_bytes[0..4].copy_from_slice(&(i as u32).to_le_bytes());
-            chunk_id_builder.append_value(id_bytes).unwrap();
-        }
-        let chunk_ids = chunk_id_builder.finish();
-
-        let schema = Arc::new(Schema::new_with_metadata(
-            vec![
-                re_protos::cloud::v1alpha1::QueryDatasetResponse::field_chunk_segment_id()
-                    .as_ref()
-                    .clone(),
-                Field::new(
-                    re_protos::cloud::v1alpha1::QueryDatasetResponse::FIELD_CHUNK_BYTE_LENGTH,
-                    arrow::datatypes::DataType::UInt64,
-                    false,
-                ),
-                re_protos::cloud::v1alpha1::QueryDatasetResponse::field_chunk_id()
-                    .as_ref()
-                    .clone(),
-            ],
-            HashMap::default(),
-        ));
-
-        RecordBatch::try_new_with_options(
-            schema,
-            vec![Arc::new(segment_ids), Arc::new(sizes), Arc::new(chunk_ids)],
-            &RecordBatchOptions::new().with_row_count(Some(num_chunks)),
-        )
-        .unwrap()
-    }
-
-    #[test]
-    fn test_create_request_batches_single_small_segment() {
-        let chunk_info = create_test_chunk_info("seg1", &[100, 200, 300]); // 600 bytes total
-        let target_size = 1000; // 1KB target
-
-        let (batches, segment_order) =
-            create_request_batches(vec![chunk_info], target_size).unwrap();
-
-        assert_eq!(batches.len(), 1);
-        assert_eq!(batches[0].num_rows(), 3);
-        assert_eq!(segment_order, vec!["seg1"]);
-    }
-
-    #[test]
-    fn test_create_request_batches_single_large_segment() {
-        let chunk_info = create_test_chunk_info("seg1", &[300, 400, 500, 600]); // 1800 bytes total
-        let target_size = 1000; // 1KB target
-
-        let (batches, segment_order) =
-            create_request_batches(vec![chunk_info], target_size).unwrap();
-
-        // should be split into 3 as each batch should be under 1KB
-        assert_eq!(batches.len(), 3);
-        assert_eq!(segment_order, vec!["seg1"]);
-    }
-
-    #[test]
-    fn test_create_request_batches_multiple_small_segments() {
-        let chunk_infos = vec![
-            create_test_chunk_info("seg1", &[100, 150]), // 250 bytes
-            create_test_chunk_info("seg2", &[200, 250]), // 450 bytes
-            create_test_chunk_info("seg3", &[300]),      // 300 bytes
-            create_test_chunk_info("seg4", &[100]),      // 100 bytes
-        ];
-        let target_size = 800; // Should fit seg1+seg2 in first batch, seg3+seg4 in second
-
-        let (batches, segment_order) = create_request_batches(chunk_infos, target_size).unwrap();
-
-        assert_eq!(batches.len(), 2);
-        assert_eq!(batches[0].num_rows(), 4);
-        assert_eq!(batches[1].num_rows(), 2);
-        assert_eq!(segment_order, vec!["seg1", "seg2", "seg3", "seg4"]);
-    }
-
-    #[test]
-    fn test_create_request_batches_mixed_small_and_large() {
-        let chunk_infos = vec![
-            create_test_chunk_info("seg1", &[100, 200]), // 300 bytes - small
-            create_test_chunk_info("seg2", &[800, 900, 700]), // 2400 bytes - large, needs splitting
-            create_test_chunk_info("seg3", &[150]),      // 150 bytes - small
-        ];
-        let target_size = 1000;
-
-        let (batches, segment_order) = create_request_batches(chunk_infos, target_size).unwrap();
-
-        // Should have: [seg1], [seg2_part1], [seg2_part2], [seg2_part3], [seg3]
-        assert_eq!(batches.len(), 5);
-        assert_eq!(segment_order, vec!["seg1", "seg2", "seg3"]);
-    }
-
-    #[test]
-    fn test_segment_order_within_batches_is_preserved() {
-        let chunk_infos = vec![
-            create_test_chunk_info("segA", &[100]), // First in input
-            create_test_chunk_info("segB", &[200]), // Second in input
-            create_test_chunk_info("segC", &[300]), // Third in input
-        ];
-        let target_size = 1000; // All segments fit in one batch
-
-        let (batches, segment_order) = create_request_batches(chunk_infos, target_size).unwrap();
-
-        assert_eq!(batches.len(), 1);
-        assert_eq!(batches[0].num_rows(), 3);
-        assert_eq!(segment_order, vec!["segA", "segB", "segC"]);
-
-        // Verify that segments within the batch maintain input order
-        let segment_id_column = batches[0]
-            .column_by_name(
-                re_protos::cloud::v1alpha1::QueryDatasetResponse::FIELD_CHUNK_SEGMENT_ID,
-            )
-            .unwrap()
-            .as_any()
-            .downcast_ref::<StringArray>()
-            .unwrap();
-
-        let batch_segment_ids: Vec<String> = (0..segment_id_column.len())
-            .map(|i| segment_id_column.value(i).to_owned())
-            .collect();
-
-        assert_eq!(batch_segment_ids, vec!["segA", "segB", "segC"]);
-    }
-
-    #[test]
-    fn test_sort_chunks_by_segment_order_simple_case() {
-        use re_dataframe::external::re_chunk::Chunk;
-        use re_log_types::EntityPath;
-
-        // Simple case: one segment per response
-        let empty_chunk = Chunk::builder(EntityPath::root()).build().unwrap();
-        let segment_order = vec!["segA".to_owned(), "segB".to_owned(), "segC".to_owned()];
-
-        let chunks: Vec<ChunksWithSegment> = vec![
-            vec![(empty_chunk.clone(), Some("segC".to_owned()))],
-            vec![(empty_chunk.clone(), Some("segA".to_owned()))],
-            vec![(empty_chunk.clone(), Some("segB".to_owned()))],
-        ];
-
-        let sorted_chunks = sort_chunks_by_segment_order(chunks, &segment_order);
-
-        // Verify chunks are sorted according to segment order
-        let sorted_segments: Vec<&str> = sorted_chunks
-            .iter()
-            .map(extract_segment_id_from_chunk)
-            .collect();
-
-        assert_eq!(sorted_segments, vec!["segA", "segB", "segC"]);
-    }
-
-    #[test]
-    fn test_sort_chunks_by_segment_order_multi_segment_response() {
-        use re_dataframe::external::re_chunk::Chunk;
-        use re_log_types::EntityPath;
-
-        let empty_chunk = Chunk::builder(EntityPath::root()).build().unwrap();
-        let segment_order = vec!["segA".to_owned(), "segB".to_owned(), "segC".to_owned()];
-
-        let chunks: Vec<ChunksWithSegment> = vec![
-            // Single response containing segments in wrong order: segC, segA, segB
-            vec![
-                (empty_chunk.clone(), Some("segC".to_owned())),
-                (empty_chunk.clone(), Some("segC".to_owned())), // Multiple chunks for segC
-                (empty_chunk.clone(), Some("segA".to_owned())),
-                (empty_chunk.clone(), Some("segB".to_owned())),
-                (empty_chunk.clone(), Some("segB".to_owned())), // Multiple chunks for segB
-                (empty_chunk.clone(), Some("segA".to_owned())), // More chunks for segA
-                (empty_chunk.clone(), Some("segB".to_owned())), // More chunks for segB
-            ],
-        ];
-
-        let sorted_chunks = sort_chunks_by_segment_order(chunks, &segment_order);
-
-        // After sorting, we should have segments in correct order: segA, segB, segC
-        // And the function should have split the multi-segment response into separate responses
-        assert_eq!(sorted_chunks.len(), 3);
-        let sorted_segments: Vec<&str> = sorted_chunks
-            .iter()
-            .map(extract_segment_id_from_chunk)
-            .collect();
-
-        assert_eq!(sorted_segments, vec!["segA", "segB", "segC"]);
-
-        // Verify each segment has the correct number of chunks
-        let seg_a_chunks = sorted_chunks[0].1.len();
-        let seg_b_chunks = sorted_chunks[1].1.len();
-        let seg_c_chunks = sorted_chunks[2].1.len();
-
-        assert_eq!(seg_a_chunks, 2);
-        assert_eq!(seg_b_chunks, 3);
-        assert_eq!(seg_c_chunks, 2);
-    }
-
-    #[test]
-    fn test_sort_chunks_by_segment_order_mixed_responses() {
-        use re_dataframe::external::re_chunk::Chunk;
-        use re_log_types::EntityPath;
-
-        // We have some single-segment responses, some multi-segment responses
-        let empty_chunk = Chunk::builder(EntityPath::root()).build().unwrap();
-        let segment_order = vec!["segA".to_owned(), "segB".to_owned(), "segC".to_owned()];
-
-        let chunks: Vec<ChunksWithSegment> = vec![
-            // Single segment response
-            vec![(empty_chunk.clone(), Some("segC".to_owned()))],
-            // Multi-segment response
-            vec![
-                (empty_chunk.clone(), Some("segB".to_owned())),
-                (empty_chunk.clone(), Some("segA".to_owned())),
-            ],
-            // Another single segment response
-            vec![(empty_chunk.clone(), Some("segB".to_owned()))],
-        ];
-
-        let sorted_chunks = sort_chunks_by_segment_order(chunks, &segment_order);
-
-        // Should be sorted: segA, segB (grouped together), segC
-        assert_eq!(sorted_chunks.len(), 3);
-
-        let sorted_segments: Vec<&str> = sorted_chunks
-            .iter()
-            .map(extract_segment_id_from_chunk)
-            .collect();
-
-        assert_eq!(sorted_segments, vec!["segA", "segB", "segC"]);
-
-        // Verify segB has 2 chunks (they should be grouped together)
-        let seg_b_chunks = sorted_chunks[1].1.len();
-        assert_eq!(seg_b_chunks, 2);
     }
 }

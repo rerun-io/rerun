@@ -144,8 +144,14 @@ impl VisualizerQueryInfo {
 /// Severity level for visualizer diagnostics.
 ///
 /// Sorts from least concern to highest.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, re_byte_size::SizeBytes)]
 pub enum VisualizerReportSeverity {
+    /// A purely informational report for a component.
+    ///
+    /// For example if a component is not supported in some situations, but that's expected
+    /// (e.g. a colormap component that has no effect with non-grayscale image data).
+    Info,
+
     /// Something went wrong on an optional component.
     ///
     /// We can often still show something using the default.
@@ -161,7 +167,7 @@ pub enum VisualizerReportSeverity {
 }
 
 /// Contextual information about where/why a diagnostic occurred.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, re_byte_size::SizeBytes)]
 pub struct VisualizerReportContext {
     /// The component that caused the issue (if applicable).
     ///
@@ -170,12 +176,6 @@ pub struct VisualizerReportContext {
 
     /// Additional free-form context
     pub extra: Option<String>,
-}
-
-impl re_byte_size::SizeBytes for VisualizerReportContext {
-    fn heap_size_bytes(&self) -> u64 {
-        self.extra.heap_size_bytes()
-    }
 }
 
 /// A diagnostic message (error or warning) from a visualizer for a single instruction.
@@ -197,7 +197,7 @@ impl re_byte_size::SizeBytes for VisualizerReportContext {
 ///     has an unexpected type, or is otherwise unusable.
 ///
 /// For a high-level failure handling overview, see the `re_viewer` crate documentation.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, re_byte_size::SizeBytes)]
 pub struct VisualizerInstructionReport {
     pub severity: VisualizerReportSeverity,
     pub context: VisualizerReportContext,
@@ -207,14 +207,6 @@ pub struct VisualizerInstructionReport {
 
     /// Optional detailed explanation
     pub details: Option<String>,
-}
-
-impl re_byte_size::SizeBytes for VisualizerInstructionReport {
-    fn heap_size_bytes(&self) -> u64 {
-        self.summary.heap_size_bytes()
-            + self.details.heap_size_bytes()
-            + self.context.heap_size_bytes()
-    }
 }
 
 /// Result of running [`VisualizerSystem::execute`].

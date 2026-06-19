@@ -194,18 +194,8 @@ impl DecoderDelayState {
 ///
 /// A single video may use several decoders at a time to simultaneously decode frames at different timestamps.
 /// The id does not need to be globally unique, just unique enough to distinguish streams of the same video.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, re_byte_size::SizeBytes)]
 pub struct VideoPlayerStreamId(pub u64);
-
-impl re_byte_size::SizeBytes for VideoPlayerStreamId {
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    fn is_pod() -> bool {
-        true
-    }
-}
 
 // --- Player configuration ---
 
@@ -952,6 +942,7 @@ impl<T: Default> VideoPlayer<T> {
         self.last_requested = None;
         self.last_enqueued = None;
         self.signaled_end_of_video = false;
+        self.last_time_caught_up = None;
         // Do *not* reset the error state or last output.
         //
         // We want to keep track of the last error, and also be able to display

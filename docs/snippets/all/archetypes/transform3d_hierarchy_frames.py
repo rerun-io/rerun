@@ -45,17 +45,29 @@ rr.log(
     rr.CoordinateFrame("moon_frame"),
 )
 
-# The viewer automatically creates a 3D view at `/`. To connect it to our transform hierarchy, we set its coordinate frame
-# to `sun_frame` as well. Alternatively, we could also set a blueprint that makes `/sun` the space origin.
+# The viewer automatically creates a 3D view at `/`. To connect it to our
+# transform hierarchy, we set its coordinate frame to `sun_frame` as well.
+# Alternatively, we could also set a blueprint that makes `/sun` the space
+# origin.
 rr.log("/", rr.CoordinateFrame("sun_frame"))
 
 # Draw fixed paths where the planet & moon move.
 d_planet = 6.0
 d_moon = 3.0
 angles = np.arange(0.0, 1.01, 0.01) * np.pi * 2
-circle = np.array([np.sin(angles), np.cos(angles), angles * 0.0], dtype=np.float32).transpose()
-rr.log("planet_path", rr.LineStrips3D(circle * d_planet), rr.CoordinateFrame("sun_frame"))
-rr.log("moon_path", rr.LineStrips3D(circle * d_moon), rr.CoordinateFrame("planet_frame"))
+circle = np.array(
+    [np.sin(angles), np.cos(angles), angles * 0.0], dtype=np.float32
+).transpose()
+rr.log(
+    "planet_path",
+    rr.LineStrips3D(circle * d_planet),
+    rr.CoordinateFrame("sun_frame"),
+)
+rr.log(
+    "moon_path",
+    rr.LineStrips3D(circle * d_moon),
+    rr.CoordinateFrame("planet_frame"),
+)
 
 # Movement via transforms.
 for i in range(6 * 120):
@@ -67,7 +79,11 @@ for i in range(6 * 120):
     rr.log(
         "planet_transforms",
         rr.Transform3D(
-            translation=[np.sin(r_planet) * d_planet, np.cos(r_planet) * d_planet, 0.0],
+            translation=[
+                np.sin(r_planet) * d_planet,
+                np.cos(r_planet) * d_planet,
+                0.0,
+            ],
             rotation=rr.RotationAxisAngle(axis=(1, 0, 0), degrees=20),
             child_frame="planet_frame",
             parent_frame="sun_frame",

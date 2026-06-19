@@ -51,9 +51,9 @@ clap = ["dep:clap"]
 
 ## Support for using Rerun's importers directly from the SDK.
 ##
-## See our `log_file` example and <https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview?speculative-link>
+## See our `log_file` example and <https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview>
 ## for more information.
-importers = ["dep:re_mcap", "re_sdk?/importers"]
+importers = ["dep:re_mcap", "dep:mcap", "re_sdk?/importers"]
 
 ## Access to Rerun's dataframe API and related types.
 dataframe = ["dep:re_dataframe"]
@@ -185,6 +185,7 @@ re_data_source = { workspace = true, optional = true }
 re_dataframe = { workspace = true, optional = true }
 re_grpc_server = { workspace = true, optional = true }
 re_mcap = { workspace = true, optional = true }
+mcap = { workspace = true, optional = true }
 re_sdk = { workspace = true, optional = true }
 re_server = { workspace = true, optional = true }
 re_sdk_types = { workspace = true, optional = true }

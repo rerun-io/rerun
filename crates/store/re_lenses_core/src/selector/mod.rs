@@ -64,17 +64,9 @@ use vec1::Vec1;
 use parser::Expr;
 
 /// A parsed selector expression that can be executed against Arrow arrays.
-#[derive(Clone)]
+#[derive(Clone, re_byte_size::SizeBytes)]
 pub struct Selector<E = Expr> {
     expr: E,
-}
-
-impl re_byte_size::SizeBytes for Selector {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self { expr } = self;
-
-        expr.heap_size_bytes()
-    }
 }
 
 impl std::fmt::Debug for Selector {

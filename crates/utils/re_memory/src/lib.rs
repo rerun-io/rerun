@@ -64,6 +64,16 @@ pub use self::memory_use::MemoryUse;
 pub use self::peak_memory_stats::PeakMemoryStats;
 pub use self::ram_warner::*;
 
+#[cfg(not(target_arch = "wasm32"))]
+pub fn default_memory_limit() -> MemoryLimit {
+    MemoryLimit::from_fraction_of_total(0.75)
+}
+
+#[cfg(target_arch = "wasm32")]
+pub fn default_memory_limit() -> MemoryLimit {
+    MemoryLimit::from_bytes(2_500_000_000)
+}
+
 /// Number of allocation and their total size.
 #[derive(Copy, Clone, Default, PartialEq, Eq, Hash)]
 pub struct CountAndSize {

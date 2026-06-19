@@ -20,7 +20,7 @@ Float32
 ## Used by
 
 * [`AxisLength`](../components/axis_length.md)
-* [`CellSize`](../components/cell_size.md?speculative-link)
+* [`CellSize`](../components/cell_size.md)
 * [`DepthMeter`](../components/depth_meter.md)
 * [`DrawOrder`](../components/draw_order.md)
 * [`FillRatio`](../components/fill_ratio.md)
@@ -31,3 +31,4 @@ Float32
 * [`Opacity`](../components/opacity.md)
 * [`Radius`](../components/radius.md)
 * [`StrokeWidth`](../components/stroke_width.md)
+* [`VoxelValue`](../components/voxel_value.md?speculative-link)

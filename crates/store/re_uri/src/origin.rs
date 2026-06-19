@@ -1,5 +1,7 @@
 use std::net::SocketAddr;
 
+use re_byte_size::SizeBytes;
+
 use crate::{Error, Scheme};
 
 /// `scheme://hostname:port`
@@ -10,6 +12,21 @@ pub struct Origin {
     pub scheme: Scheme,
     pub host: url::Host<String>,
     pub port: u16,
+}
+
+impl SizeBytes for Origin {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            scheme: _,
+            host,
+            port: _,
+        } = self;
+
+        match host {
+            url::Host::Domain(s) => s.heap_size_bytes(),
+            url::Host::Ipv4(_) | url::Host::Ipv6(_) => 0,
+        }
+    }
 }
 
 impl Origin {

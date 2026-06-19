@@ -18,11 +18,12 @@ fn cache_with_manifest() {
 
     let mut store = EntityDb::new(StoreId::recording("test", "test"));
 
-    let chunks: Vec<_> = (0..10)
-        .map(|i| video_chunk(i as f64, 0.25, 1, 4))
-        .chain(once(codec_chunk()))
-        .map(Arc::new)
-        .collect();
+    let chunks: Vec<_> = std::iter::chain(
+        (0..10).map(|i| video_chunk(i as f64, 0.25, 1, 4)),
+        once(codec_chunk()),
+    )
+    .map(Arc::new)
+    .collect();
 
     load_into_rrd_manifest(&mut store, &chunks);
 
@@ -87,11 +88,12 @@ fn cache_with_streaming() {
     let chunk_count = 100;
 
     let dt = 0.25;
-    let chunks: Vec<_> = (0..chunk_count)
-        .map(|i| video_chunk(i as f64, dt, 1, 4))
-        .chain(once(codec_chunk()))
-        .map(Arc::new)
-        .collect();
+    let chunks: Vec<_> = std::iter::chain(
+        (0..chunk_count).map(|i| video_chunk(i as f64, dt, 1, 4)),
+        once(codec_chunk()),
+    )
+    .map(Arc::new)
+    .collect();
 
     // load codec chunk
     load_chunks(&mut store, &mut cache, &chunks[chunks.len() - 1..]);
@@ -120,10 +122,12 @@ fn cache_with_manifest_and_streaming() {
 
     let mut store = EntityDb::new(StoreId::recording("test", "test"));
 
-    let chunks: Vec<_> = once(codec_chunk())
-        .chain((0..6).map(|i| video_chunk(i as f64 + 1.0, 0.25, 1, 4)))
-        .map(Arc::new)
-        .collect();
+    let chunks: Vec<_> = std::iter::chain(
+        once(codec_chunk()),
+        (0..6).map(|i| video_chunk(i as f64 + 1.0, 0.25, 1, 4)),
+    )
+    .map(Arc::new)
+    .collect();
 
     // Load first 5 chunks into the manifest.
     load_into_rrd_manifest(&mut store, &chunks[..5]);
@@ -189,18 +193,19 @@ fn cache_with_streaming_splits() {
     let sample_count = chunk_count * samples_per_chunk;
     let time_per_chunk = samples_per_chunk as f64 * dt;
 
-    let chunks: Vec<_> = (0..chunk_count)
-        .map(|i| {
+    let chunks: Vec<_> = std::iter::chain(
+        (0..chunk_count).map(|i| {
             video_chunk(
                 i as f64 * time_per_chunk,
                 dt,
                 gops_per_chunk,
                 samples_per_gop,
             )
-        })
-        .chain(once(codec_chunk()))
-        .map(Arc::new)
-        .collect();
+        }),
+        once(codec_chunk()),
+    )
+    .map(Arc::new)
+    .collect();
 
     // load codec chunk
     load_chunks(&mut store, &mut cache, &chunks[chunks.len() - 1..]);
@@ -243,18 +248,19 @@ fn cache_with_manifest_splits() {
     let samples_per_chunk = gops_per_chunk * samples_per_gop;
     let time_per_chunk = samples_per_chunk as f64 * dt;
 
-    let chunks: Vec<_> = (0..chunk_count)
-        .map(|i| {
+    let chunks: Vec<_> = std::iter::chain(
+        (0..chunk_count).map(|i| {
             video_chunk(
                 time_per_chunk * i as f64,
                 dt,
                 gops_per_chunk,
                 samples_per_gop,
             )
-        })
-        .chain(once(codec_chunk()))
-        .map(Arc::new)
-        .collect();
+        }),
+        once(codec_chunk()),
+    )
+    .map(Arc::new)
+    .collect();
 
     load_into_rrd_manifest(&mut store, &chunks);
 
@@ -334,8 +340,8 @@ fn cache_with_unordered_chunks() {
     let samples_per_gop = 4;
 
     let dt = 0.25;
-    let chunks: Vec<_> = (0..chunk_count)
-        .map(|i| {
+    let chunks: Vec<_> = std::iter::chain(
+        (0..chunk_count).map(|i| {
             let timeline = Timeline::new_duration(TIMELINE_NAME);
             let mut builder = Chunk::builder(STREAM_ENTITY);
             let mut row_ids: Vec<_> = (0..gop_count * samples_per_gop)
@@ -371,13 +377,14 @@ fn cache_with_unordered_chunks() {
 
             let mut chunk = builder.build().unwrap();
 
-            chunk.sort_if_unsorted();
+            chunk.sort_by_row_ids_if_needed();
 
             chunk
-        })
-        .chain(once(codec_chunk()))
-        .map(Arc::new)
-        .collect();
+        }),
+        once(codec_chunk()),
+    )
+    .map(Arc::new)
+    .collect();
 
     assert!(
         chunks.iter().any(|chunk| {
@@ -417,11 +424,12 @@ fn cache_with_out_of_order_chunk_arrival() {
 
     // 10 chunks, each 1 GOP of 4 samples.
     let chunk_count = 10usize;
-    let chunks: Vec<_> = (0..chunk_count)
-        .map(|i| video_chunk(i as f64, dt, 1, samples_per_gop))
-        .chain(once(codec_chunk()))
-        .map(Arc::new)
-        .collect();
+    let chunks: Vec<_> = std::iter::chain(
+        (0..chunk_count).map(|i| video_chunk(i as f64, dt, 1, samples_per_gop)),
+        once(codec_chunk()),
+    )
+    .map(Arc::new)
+    .collect();
 
     // Load codec chunk and create the cache entry.
     load_chunks(&mut store, &mut cache, &chunks[chunks.len() - 1..]);
@@ -541,27 +549,26 @@ fn cache_out_of_order_arrival_with_compaction() {
     load_chunks(&mut store, &mut cache, &[chunk1]);
 
     assert!(
-        store
-            .storage_engine()
-            .store()
-            .iter_physical_chunks()
-            .zip([Some(codec_chunk_id), Some(chunk0_id), Some(chunk1_id), None])
-            .all(|(c, expected_id)| {
-                let eq = Some(c.id()) == expected_id;
+        std::iter::zip(
+            store.storage_engine().store().iter_physical_chunks(),
+            [Some(codec_chunk_id), Some(chunk0_id), Some(chunk1_id), None],
+        )
+        .all(|(c, expected_id)| {
+            let eq = Some(c.id()) == expected_id;
 
-                if !eq {
-                    eprintln!(
-                        "Expected {}, got {} with lineage:\n{}",
-                        expected_id
-                            .map(|c| c.short_string())
-                            .unwrap_or_else(|| "nothing".to_owned()),
-                        c.id().short_string(),
-                        replace_id(&store.storage_engine().store().format_lineage(&c.id())),
-                    );
-                }
+            if !eq {
+                eprintln!(
+                    "Expected {}, got {} with lineage:\n{}",
+                    expected_id
+                        .map(|c| c.short_string())
+                        .unwrap_or_else(|| "nothing".to_owned()),
+                    c.id().short_string(),
+                    replace_id(&store.storage_engine().store().format_lineage(&c.id())),
+                );
+            }
 
-                eq
-            }),
+            eq
+        }),
         "No compaction should've occurred yet"
     );
 

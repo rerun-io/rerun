@@ -70,14 +70,14 @@ dev = [
   "huggingface-hub<1.0",
   # Typed packages for dataframe/arrow operations (needed for linting examples/tests)
   "polars>=1.0",
-  "datafusion>=50.0",
+  "datafusion>=53.0",
   "jupyter>=1.0",
   "types-protobuf", # Needed by mcap-protobuf-support
   # Needed for pretty-printing tables in `fetch_patch_candidates.py`
   "tabulate>=0.9.0",
   "types-tabulate>=0.9.0",
 ]
-snippets = ["rerun-sdk", "av", "pandas", "mcap-protobuf-support"]
+snippets = ["rerun-sdk[dataloader]", "av", "pandas", "mcap-protobuf-support"]
 examples = [
   # External deps used by examples
   "polars>=0.12.0",
@@ -124,6 +124,7 @@ examples = [
   "plots",
   "raw_mesh",
   "rgbd",
+  "robot_data_preprocessing",
   "rrt_star",
   "segment_anything_model",
   "server_tables",
@@ -138,22 +139,28 @@ examples = [
 ]
 docs = [
   # Documentation build dependencies (mkdocs and plugins)
-  "griffe==1.4.1",
+  "griffe>=1.14,<2",
+  "griffe-public-redundant-aliases==0.3.0",
   "griffe-warnings-deprecated==1.1.0",
   "mkdocs==1.6.1",
   "mkdocs-gen-files==0.5.0",
   "mkdocs-literate-nav==0.6.1",
+  "mkdocs-redirects==1.2.2",
   "mkdocs-material==9.4.7",
   "mkdocs-material-extensions==1.3",
-  "mkdocs-redirects @ git+https://github.com/rerun-io/mkdocs-redirects.git@fb6b074554975ba7729d68d04957ce7c7dfd5003",
-  "mkdocstrings==0.26.2",
-  "mkdocstrings-python==1.12.1",
+  "mkdocstrings>=0.28.2,<0.29",
+  "mkdocstrings-python>=1.16.2,<2",
+  "pygments",
   "setuptools>75",
   "sphobjinv==2.3.1",
 ]
 
 [tool.uv]
 package = false
+
+# pyarrow 24.0.0 ships an incomplete `py.typed` that breaks mypy on `pyarrow.compute.*`.
+# 23.x has no type stubs (so mypy leaves it untyped) and clears RUSTSEC/GHSA pyarrow alert >= 23.0.1.
+constraint-dependencies = ["pyarrow>=23.0.1,<24"]
 
 # Override lerobot's dependency on rerun-sdk to use the workspace version
 # TODO(RR-3548): Figure out how to have lerobot as a workspace member without causing dependency issues.
@@ -205,6 +212,7 @@ openstreetmap_data = { workspace = true }
 plots = { workspace = true }
 raw_mesh = { workspace = true }
 rgbd = { workspace = true }
+robot_data_preprocessing = { workspace = true }
 rrt_star = { workspace = true }
 segment_anything_model = { workspace = true }
 server_tables = { workspace = true }
@@ -262,6 +270,7 @@ members = [
   "examples/python/plots",
   "examples/python/raw_mesh",
   "examples/python/rgbd",
+  "examples/python/robot_data_preprocessing",
   "examples/python/rrt_star",
   "examples/python/segment_anything_model",
   "examples/python/server_tables",

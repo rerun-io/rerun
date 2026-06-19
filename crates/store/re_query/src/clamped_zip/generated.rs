@@ -3,7 +3,6 @@
 
 // ---
 
-#![expect(clippy::too_many_arguments)]
 #![expect(clippy::type_complexity)]
 
 /// Returns a new [`ClampedZip1x1`] iterator.

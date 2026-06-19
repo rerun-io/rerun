@@ -287,10 +287,7 @@ impl<T: DecoderEntrypoint> Decoder<T> {
 
                 if let Some(bytes) = self.byte_chunks.try_read(header.len as usize) {
                     let bytes_len = bytes.len() as u64;
-                    let byte_span = re_chunk::Span {
-                        start: start_offset,
-                        len: bytes_len,
-                    };
+                    let byte_span = re_chunk::Span::from_start_len(start_offset, bytes_len);
                     let message = match T::decode(
                         bytes.clone(),
                         byte_span,
@@ -652,7 +649,7 @@ mod tests {
     fn two_concatenated_streams_protobuf() {
         let (input1, data1) = test_data(EncodingOptions::PROTOBUF_UNCOMPRESSED, 16);
         let (input2, data2) = test_data(EncodingOptions::PROTOBUF_UNCOMPRESSED, 16);
-        let input = input1.into_iter().chain(input2).collect::<Vec<_>>();
+        let input = std::iter::chain(input1, input2).collect::<Vec<_>>();
 
         let mut decoder = DecoderApp::new();
 

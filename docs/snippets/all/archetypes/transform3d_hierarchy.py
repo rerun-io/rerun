@@ -9,9 +9,13 @@ rr.init("rerun_example_transform3d_hierarchy", spawn=True)
 
 if False:
     # One space with the sun in the center, and another one with the planet.
-    # TODO(#5521): enable this once we have it in Rust too, so that the snippets compare equally
+    # TODO(#5521): enable this once we have it in Rust too, so that the
+    # snippets compare equally
     rr.send_blueprint(
-        rrb.Horizontal(rrb.Spatial3DView(origin="sun"), rrb.Spatial3DView(origin="sun/planet", contents="sun/**")),
+        rrb.Horizontal(
+            rrb.Spatial3DView(origin="sun"),
+            rrb.Spatial3DView(origin="sun/planet", contents="sun/**"),
+        ),
     )
 
 rr.set_time("sim_time", duration=0)
@@ -54,7 +58,9 @@ rr.log(
 d_planet = 6.0
 d_moon = 3.0
 angles = np.arange(0.0, 1.01, 0.01) * np.pi * 2
-circle = np.array([np.sin(angles), np.cos(angles), angles * 0.0], dtype=np.float32).transpose()
+circle = np.array(
+    [np.sin(angles), np.cos(angles), angles * 0.0], dtype=np.float32
+).transpose()
 rr.log("sun/planet_path", rr.LineStrips3D(circle * d_planet))
 rr.log("sun/planet/moon_path", rr.LineStrips3D(circle * d_moon))
 
@@ -68,7 +74,11 @@ for i in range(6 * 120):
     rr.log(
         "sun/planet",
         rr.Transform3D(
-            translation=[np.sin(r_planet) * d_planet, np.cos(r_planet) * d_planet, 0.0],
+            translation=[
+                np.sin(r_planet) * d_planet,
+                np.cos(r_planet) * d_planet,
+                0.0,
+            ],
             rotation=rr.RotationAxisAngle(axis=(1, 0, 0), degrees=20),
         ),
     )

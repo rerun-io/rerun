@@ -12,13 +12,16 @@ def _spawn_viewer(
     detach_process: bool = True,
     executable_name: str = "rerun",
     executable_path: str | None = None,
-) -> None:
+    headless: bool = False,
+) -> int | None:
     """
     Internal helper to spawn a Rerun Viewer, listening on the given port.
 
-    Blocks until the viewer is ready to accept connections.
+    Blocks until the viewer is ready to accept connections. Returns the spawned
+    viewer's pid, or `None` if spawning was skipped (e.g. when
+    `_RERUN_TEST_FORCE_SAVE` is set).
 
-    Used by [rerun.spawn][]
+    Used by [rerun.spawn][] and [rerun.experimental.ViewerClient][].
 
     Parameters
     ----------
@@ -49,20 +52,21 @@ def _spawn_viewer(
         through PATH for `executable_name`.
 
         Unspecified by default.
+    headless:
+        Run the spawned viewer in headless mode (no OS window).
+        The viewer still listens for gRPC connections, so the SDK can keep
+        logging data and request screenshots via
+        [`rerun.experimental.ViewerClient.save_screenshot`][].
 
     """
 
     import rerun_bindings
 
-    # Let the spawned rerun process know it's just an app
-    new_env = os.environ.copy()
     # NOTE: If `_RERUN_TEST_FORCE_SAVE` is set, all recording streams will write to disk no matter
     # what, thus spawning a viewer is pointless (and probably not intended).
     if os.environ.get("_RERUN_TEST_FORCE_SAVE") is not None:
-        return
-    new_env["RERUN_APP_ONLY"] = "true"
-
-    rerun_bindings.spawn(
+        return None
+    return rerun_bindings.spawn(
         port=port,
         memory_limit=memory_limit,
         server_memory_limit=server_memory_limit,
@@ -70,4 +74,7 @@ def _spawn_viewer(
         detach_process=detach_process,
         executable_name=executable_name,
         executable_path=executable_path,
+        # Let the spawned rerun process know it's just an app (skips analytics opt-in etc.).
+        extra_env=[("RERUN_APP_ONLY", "true")],
+        headless=headless,
     )

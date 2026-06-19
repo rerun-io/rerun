@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
-use ahash::HashMap;
+use ahash::{HashMap, HashSet};
 use arrow::array::Array as _;
 use itertools::Itertools as _;
 
@@ -9,13 +9,43 @@ use re_byte_size::SizeBytes;
 use re_chunk::{Chunk, EntityPath, RowId};
 use re_log::debug_assert;
 use re_log_encoding::{RrdManifest, RrdManifestTemporalMapEntry};
+use re_sdk_types::{Archetype as _, ArchetypeName, archetypes};
 
+use crate::lineage::TrackedDirectChunkLineage;
 use crate::store::ChunkIdSetPerTime;
 use crate::{
     ChunkDeletionReason, ChunkDirectLineage, ChunkDirectLineageReport, ChunkId, ChunkStore,
     ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreDiff, ChunkStoreDiffAddition,
     ChunkStoreError, ChunkStoreEvent, ChunkStoreResult,
 };
+
+/// Does this component belong to a transform archetype whose static data must be preserved in full?
+///
+/// [Sometime ago](https://github.com/rerun-io/rerun/pull/7518), we introduced a mechanism to auto-
+/// delete static chunks that are "shadowed" by a newly inserted static chunk.
+/// The reason for that is that in the basic data model, a latest-at query only ever returns the
+/// most recent value for a given `(entity, component)`, so superseded static chunks can be safely
+/// dropped, giving the benefit of "insta-GC" through logging with static data.
+///
+/// Named transform data is the exception: it is interpreted in full, not latest-at. A single entity
+/// can carry many distinct frames across multiple static chunks (e.g. a `/tf_static` topic logging
+/// transforms over its lifetime.
+///
+/// See RR-4887 for more info.
+fn is_transform_archetype(archetype: Option<ArchetypeName>) -> bool {
+    // Note: these are "named transform" archetypes, aka those which have parent/child frame
+    // references
+    archetype.is_some_and(|archetype| {
+        archetype == archetypes::Transform3D::name() || archetype == archetypes::Pinhole::name()
+    })
+}
+
+pub(crate) struct LineageDroppingCtx<'a> {
+    pub chunks_lineage: &'a mut HashMap<ChunkId, TrackedDirectChunkLineage>,
+    pub leaky_compactions: &'a mut HashMap<ChunkId, ChunkId>,
+    pub split_on_ingest: &'a mut HashSet<ChunkId>,
+    pub dangling_splits: &'a mut HashMap<ChunkId, Vec<ChunkId>>,
+}
 
 // ---
 
@@ -56,7 +86,11 @@ impl ChunkStore {
                 .map(|chunk_id| {
                     (
                         *chunk_id,
-                        ChunkDirectLineage::RootFromManifest { is_static: true },
+                        TrackedDirectChunkLineage {
+                            lineage: ChunkDirectLineage::RootFromManifest { is_static: true },
+                            ref_count: 0,
+                            descends_from_manifest: true,
+                        },
                     )
                 }),
         );
@@ -77,7 +111,11 @@ impl ChunkStore {
                 .map(|chunk_id| {
                     (
                         *chunk_id,
-                        ChunkDirectLineage::RootFromManifest { is_static: false },
+                        TrackedDirectChunkLineage {
+                            lineage: ChunkDirectLineage::RootFromManifest { is_static: false },
+                            ref_count: 0,
+                            descends_from_manifest: true,
+                        },
                     )
                 }),
         );
@@ -189,6 +227,56 @@ impl ChunkStore {
         Ok(self.finalize_events(diffs))
     }
 
+    fn insert_lineage_if_missing(&mut self, chunk_id: ChunkId, lineage: &ChunkDirectLineageReport) {
+        let lineage: ChunkDirectLineage = lineage.into();
+
+        let descends_from_manifest = match &lineage {
+            ChunkDirectLineage::SplitFrom(chunk_id, _) => self.descends_from_manifest(chunk_id),
+            ChunkDirectLineage::CompactedFrom(chunks) => {
+                chunks.iter().any(|c| self.descends_from_manifest(c))
+            }
+            ChunkDirectLineage::RootFromManifest { .. } => true,
+            ChunkDirectLineage::Volatile => false,
+        };
+
+        match self.chunks_lineage.entry(chunk_id) {
+            std::collections::hash_map::Entry::Vacant(entry) => {
+                entry.insert(TrackedDirectChunkLineage {
+                    // Zero for now, add to this later.
+                    ref_count: 0,
+                    descends_from_manifest,
+                    lineage: lineage.clone(),
+                });
+
+                for chunk_id in lineage.iter_referenced_chunks() {
+                    let Some(l) = self.chunks_lineage.get_mut(chunk_id) else {
+                        continue;
+                    };
+
+                    l.ref_count += 1;
+                }
+            }
+            std::collections::hash_map::Entry::Occupied(entry) => {
+                if cfg!(debug_assertions) {
+                    if matches!(
+                        entry.get().lineage,
+                        ChunkDirectLineage::RootFromManifest { .. }
+                    ) && matches!(lineage, ChunkDirectLineage::Volatile)
+                    {
+                        // If we've already indicated that this chunk is from the manifest, don't
+                        // override with the default lineage `Volatile`.
+                    } else {
+                        re_log::debug_assert_eq!(
+                            entry.get().lineage,
+                            lineage,
+                            "Lineage for a specific chunk id should never change ({chunk_id})",
+                        );
+                    }
+                }
+            }
+        }
+    }
+
     fn insert_chunk_impl(
         &mut self,
         chunk: &Arc<Chunk>,
@@ -234,18 +322,11 @@ impl ChunkStore {
             return Ok(all_diffs);
         }
 
-        if !chunk.is_sorted() {
+        if !chunk.is_row_ids_sorted() {
             return Err(ChunkStoreError::UnsortedChunk);
         }
 
-        for (timeline, time_column) in chunk.timelines() {
-            if !time_column.is_sorted() {
-                let entity_path = chunk.entity_path();
-                re_log::debug_warn_once!(
-                    "Found chunk for entity '{entity_path}' where timeline '{timeline}' was unsorted (compared to RowId). This may cause performance issues."
-                );
-            }
-        }
+        chunk.warn_if_out_of_order();
 
         re_tracing::profile_function!();
 
@@ -314,10 +395,8 @@ impl ChunkStore {
             );
         }
 
-        self.chunks_lineage
-            .entry(chunk.id())
-            // `.or_insert_with` because we don't want to lose the RRD manifest lineage if there is one.
-            .or_insert_with(|| (&lineage).into());
+        // "if missing" because we don't want to lose the RRD manifest lineage if there is one.
+        self.insert_lineage_if_missing(chunk.id(), &lineage);
 
         // Splitting a static chunk just seems like a terrible idea in general.
         let chunk_is_static = chunk.is_static();
@@ -417,6 +496,7 @@ impl ChunkStore {
 
         let chunk_before_processing = Arc::clone(chunk); // we'll need it to create the store event
 
+        //TODO(RR-4887): we should NEVER delete chunks
         let (chunk_after_processing, diffs) = if chunk.is_static() {
             // Static data: make sure to keep the most recent chunk available for each component column.
             re_tracing::profile_scope!("static");
@@ -439,6 +519,8 @@ impl ChunkStore {
                 else {
                     continue;
                 };
+
+                let is_transform = is_transform_archetype(column.descriptor.archetype);
 
                 self.static_chunk_ids_per_entity
                     .entry(chunk.entity_path().clone())
@@ -474,7 +556,9 @@ impl ChunkStore {
                                     chunk.row_id_range().map(|(row_id_min, _)| row_id_min)
                                 });
 
-                            if let Some(cur_row_id_min_for_chunk) = cur_row_id_min_for_chunk {
+                            if let Some(cur_row_id_min_for_chunk) = cur_row_id_min_for_chunk
+                                && !is_transform
+                            {
                                 overwritten_chunk_ids
                                     .insert(*cur_chunk_id, cur_row_id_min_for_chunk);
                             }
@@ -533,6 +617,16 @@ impl ChunkStore {
                         debug_assert!(chunk_removed.is_some());
 
                         if let Some(chunk_removed) = chunk_removed {
+                            Self::drop_lineage_reference(
+                                &mut LineageDroppingCtx {
+                                    chunks_lineage: &mut self.chunks_lineage,
+                                    leaky_compactions: &mut self.leaky_compactions,
+                                    split_on_ingest: &mut self.split_on_ingest,
+                                    dangling_splits: &mut self.dangling_splits,
+                                },
+                                &chunk_id,
+                            );
+
                             self.static_chunks_stats -=
                                 ChunkStoreChunkStats::from_chunk(&chunk_removed);
                             diffs.push(ChunkStoreDiff::deletion(
@@ -670,19 +764,22 @@ impl ChunkStore {
             };
             if let Some(elected_chunk) = &elected_chunk {
                 // NOTE: The chunk that we've just added has been compacted already!
-                let srcs: BTreeMap<_, _> =
-                    std::iter::once((chunk_before_processing.id(), chunk_before_processing))
-                        .chain(
-                            // NOTE: deep removal, we don't want a compacted chunk to linger on!
-                            self.remove_chunks_deep(
-                                vec![elected_chunk.clone()],
-                                None,
-                                ChunkDeletionReason::Compaction,
-                            )
-                            .into_iter()
-                            .map(|diff| (diff.chunk.id(), diff.chunk)),
-                        )
-                        .collect();
+                //
+                // We build `srcs` eagerly from the chunks we already have in hand, then wire up
+                // `leaky_compactions` and the new compacted chunk's lineage entry *before* removing
+                // the elected chunk. That way the elected chunk's `ref_count` is bumped by the new
+                // compacted chunk's lineage, and the cascading cleanup inside `remove_chunks_deep`
+                // sees a ref > 0 and leaves it (and the leaky_compactions entries that point to it)
+                // alone.
+                let srcs: BTreeMap<ChunkId, Arc<Chunk>> = [
+                    (
+                        chunk_before_processing.id(),
+                        Arc::clone(&chunk_before_processing),
+                    ),
+                    (elected_chunk.id(), Arc::clone(elected_chunk)),
+                ]
+                .into_iter()
+                .collect();
 
                 for source_id in srcs.keys().copied() {
                     let found = self
@@ -705,7 +802,17 @@ impl ChunkStore {
                     }
                 }
 
-                add.direct_lineage = ChunkDirectLineageReport::CompactedFrom(srcs);
+                let direct_lineage = ChunkDirectLineageReport::CompactedFrom(srcs);
+                self.insert_lineage_if_missing(chunk_or_compacted.id(), &direct_lineage);
+
+                // NOTE: deep removal, we don't want a compacted chunk to linger on!
+                self.remove_chunks_deep(
+                    vec![elected_chunk.clone()],
+                    None,
+                    ChunkDeletionReason::Compaction,
+                );
+
+                add.direct_lineage = direct_lineage;
             }
 
             (chunk_or_compacted, vec![add.into()])
@@ -713,15 +820,12 @@ impl ChunkStore {
 
         self.physical_chunks_per_chunk_id
             .insert(chunk_after_processing.id(), chunk_after_processing.clone());
-
-        for diff in &diffs {
-            if let ChunkStoreDiff::Addition(add) = diff
-                && let report @ ChunkDirectLineageReport::CompactedFrom(_) = &add.direct_lineage
-            {
-                self.chunks_lineage
-                    .insert(add.chunk_after_processing.id(), report.into());
-            }
+        // Account for the physical reference. The matching decrement happens in
+        // `remove_chunks_shallow` (via `drop_lineage_reference`).
+        if let Some(l) = self.chunks_lineage.get_mut(&chunk_after_processing.id()) {
+            l.ref_count += 1;
         }
+
         all_diffs.extend(diffs);
 
         // NOTE: ⚠️Make sure to recompute the Row ID range! The chunk might have been compacted
@@ -732,6 +836,52 @@ impl ChunkStore {
         }
 
         Ok(all_diffs)
+    }
+
+    fn remove_lineage_and_decrement_referenced_chunks(
+        ctx: &mut LineageDroppingCtx<'_>,
+        chunk_id: &ChunkId,
+    ) {
+        if let Some(lineage) = ctx.chunks_lineage.remove(chunk_id) {
+            ctx.leaky_compactions.remove(chunk_id);
+            ctx.split_on_ingest.remove(chunk_id);
+            ctx.dangling_splits.remove(chunk_id);
+
+            for chunk_id in lineage.iter_referenced_chunks() {
+                Self::drop_lineage_reference(ctx, chunk_id);
+            }
+        }
+    }
+
+    pub(crate) fn drop_lineage_reference(ctx: &mut LineageDroppingCtx<'_>, chunk_id: &ChunkId) {
+        let Some(lineage) = ctx.chunks_lineage.get_mut(chunk_id) else {
+            return;
+        };
+
+        lineage.ref_count = lineage.ref_count.saturating_sub(1);
+
+        if lineage.descends_from_manifest || lineage.ref_count > 0 {
+            return;
+        }
+
+        // Only remove splits if all siblings aren't referenced.
+        if let ChunkDirectLineage::SplitFrom(_, siblings) = &lineage.lineage {
+            let siblings = siblings.clone();
+
+            if siblings.iter().any(|chunk_id| {
+                ctx.chunks_lineage
+                    .get(chunk_id)
+                    .is_some_and(|l| l.ref_count > 0)
+            }) {
+                return;
+            }
+
+            for chunk_id in siblings {
+                Self::remove_lineage_and_decrement_referenced_chunks(ctx, &chunk_id);
+            }
+        }
+
+        Self::remove_lineage_and_decrement_referenced_chunks(ctx, chunk_id);
     }
 
     /// Finds the most appropriate candidate for compaction.
@@ -769,7 +919,7 @@ impl ChunkStore {
             let is_below_bytes_threshold = total_bytes <= chunk_max_bytes;
 
             let total_rows = (chunk.num_rows()) as u64;
-            let is_below_rows_threshold = if chunk.is_time_sorted() {
+            let is_below_rows_threshold = if chunk.all_timelines_sorted() {
                 total_rows <= chunk_max_rows
             } else {
                 total_rows <= chunk_max_rows_if_unsorted
@@ -817,7 +967,7 @@ impl ChunkStore {
                                 let is_below_bytes_threshold = total_bytes <= chunk_max_bytes;
 
                                 let total_rows = (chunk.num_rows() + candidate.num_rows()) as u64;
-                                let is_below_rows_threshold = if candidate.is_time_sorted() {
+                                let is_below_rows_threshold = if candidate.all_timelines_sorted() {
                                     total_rows <= chunk_max_rows
                                 } else {
                                     total_rows <= chunk_max_rows_if_unsorted
@@ -1006,9 +1156,7 @@ impl ChunkStore {
                 *temporal_physical_chunks_stats -= ChunkStoreChunkStats::from_chunk(chunk);
             });
 
-        let diffs: Vec<_> = dropped_static_chunks
-            .into_iter()
-            .chain(dropped_temporal_chunks)
+        let diffs: Vec<_> = std::iter::chain(dropped_static_chunks, dropped_temporal_chunks)
             .map(|chunk| ChunkStoreDiff::deletion(chunk, ChunkDeletionReason::ExplicitDrop))
             .collect();
 
@@ -1451,6 +1599,93 @@ mod tests {
             assert_eq!(2, num_rows);
             assert_eq!(3, num_events);
         }
+
+        Ok(())
+    }
+
+    /// Regression test for RR-4880: `rrd optimize` / `.collect(optimize=…)` lose static transforms.
+    ///
+    /// Both optimize paths route every chunk through `ChunkStore::insert_chunk`, which applies
+    /// auto-delete shadowed static chunk semantics. See [`is_transform_archetype`] and RR-4887 for
+    /// more info.
+    ///
+    /// This test reproduces that loss with three static chunks on the same entity, each carrying a
+    /// `Transform3D` for a distinct child frame. All three must be preserved.
+    #[test]
+    fn static_transforms_spread_across_chunks_are_preserved() -> anyhow::Result<()> {
+        re_log::setup_logging();
+
+        let mut store = ChunkStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
+            Default::default(),
+        );
+
+        let entity_path = EntityPath::from("tf_static");
+
+        // Three distinct frames, each in its own static chunk, all on the same entity, with
+        // increasing RowIds (as if logged over time). They share the same component columns but
+        // carry different child frames, so last-write-wins would clobber all but the last.
+        let child_frames = ["child0", "child1", "child2"];
+
+        for (i, child_frame) in child_frames.iter().enumerate() {
+            let transform = archetypes::Transform3D::default()
+                .with_child_frame(*child_frame)
+                .with_translation([i as f32, i as f32, i as f32]);
+            let chunk = Chunk::builder(entity_path.clone())
+                .with_archetype(RowId::new(), TimePoint::STATIC, &transform)
+                .build()?;
+            store.insert_chunk(&Arc::new(chunk))?;
+        }
+
+        let ChunkStoreChunkStats { num_rows, .. } = store.stats().static_chunks;
+        assert_eq!(
+            num_rows,
+            child_frames.len() as u64,
+            "all static transform rows spread across chunks should be preserved, \
+             but {num_rows} of {} survived",
+            child_frames.len(),
+        );
+
+        Ok(())
+    }
+
+    /// Counterpart to [`static_transforms_spread_across_chunks_are_preserved`]: non-transform
+    /// static data must *still* be deduplicated to the latest value.
+    //TODO(RR-4887): this test should no longer pass with this issue is resolved.
+    #[test]
+    fn static_non_transform_data_spread_across_chunks_is_deduplicated() -> anyhow::Result<()> {
+        re_log::setup_logging();
+
+        let mut store = ChunkStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
+            Default::default(),
+        );
+
+        let entity_path = EntityPath::from("camera");
+
+        let values = [
+            MyPoint::new(1.0, 1.0),
+            MyPoint::new(2.0, 2.0),
+            MyPoint::new(3.0, 3.0),
+        ];
+
+        for value in &values {
+            let chunk = Chunk::builder(entity_path.clone())
+                .with_component_batches(
+                    RowId::new(),
+                    TimePoint::STATIC,
+                    [(MyPoints::descriptor_points(), &[*value] as _)],
+                )
+                .build()?;
+            store.insert_chunk(&Arc::new(chunk))?;
+        }
+
+        let ChunkStoreChunkStats { num_rows, .. } = store.stats().static_chunks;
+        assert_eq!(
+            num_rows, 1,
+            "non-transform static data should be deduplicated to the latest value, \
+             but {num_rows} rows survived",
+        );
 
         Ok(())
     }

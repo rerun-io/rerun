@@ -183,6 +183,7 @@ use std::rc::Rc;
 use ahash::{HashMap, HashSet, HashSetExt as _};
 use anyhow::{Context as _, anyhow, bail, ensure};
 use clean_path::Clean as _;
+use itertools::Itertools as _;
 
 use crate::FileSystem;
 
@@ -232,21 +233,20 @@ impl std::str::FromStr for SearchPath {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        // Using implicit Vec<Result<_>> -> Result<Vec<_>> collection.
-        let dirs: Result<Vec<PathBuf>, _> = s
+        let dirs: Vec<PathBuf> = s
             .split(':')
             .filter(|s| !s.is_empty())
             .map(|s| {
                 s.parse()
                     .with_context(|| format!("couldn't parse {s:?} as PathBuf"))
             })
-            .collect();
+            .try_collect()?;
 
         // We cannot check whether these actually are directories, since they are not
         // guaranteed to even exist yet!
         // Similarly, we cannot canonicalize here, but we can at least normalize.
 
-        dirs.map(|dirs| Self {
+        Ok(Self {
             dirs: dirs.into_iter().map(|dir| dir.clean()).collect(),
         })
     }

@@ -88,7 +88,7 @@ impl ChunkStore {
 /// A temporal chunk has dense timelines.
 ///
 /// Each chunk can contain multiple components (columns).
-#[derive(Default, Debug, Clone, Copy)]
+#[derive(Default, Debug, Clone, Copy, re_byte_size::SizeBytes)]
 pub struct ChunkStoreChunkStats {
     /// The number of chunks this is the stats for.
     pub num_chunks: u64,
@@ -111,18 +111,6 @@ pub struct ChunkStoreChunkStats {
 
     /// How many _component batches_ ("cells").
     pub num_events: u64,
-}
-
-impl SizeBytes for ChunkStoreChunkStats {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
-    }
 }
 
 impl std::fmt::Display for ChunkStoreChunkStats {
@@ -491,6 +479,17 @@ impl MemUsageTreeCapture for ChunkStore {
                 MemUsageTree::Bytes(self.schema.total_size_bytes()),
             )
             .with_child("entities", entities_node.into_tree())
+            .with_child("chunks_lineage", self.chunks_lineage.total_size_bytes())
+            .with_child(
+                "leaky_compactions",
+                self.leaky_compactions.total_size_bytes(),
+            )
+            .with_child("split_on_ingest", self.split_on_ingest.total_size_bytes())
+            .with_child("dangling_splits", self.dangling_splits.total_size_bytes())
+            .with_child(
+                "queried_chunk_id_tracker",
+                self.queried_chunk_id_tracker.total_size_bytes(),
+            )
             .with_total_size_bytes(self.total_size_bytes())
     }
 }

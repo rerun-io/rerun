@@ -11,19 +11,8 @@ use re_viewer_context::{
 #[derive(Default)]
 pub struct TestView;
 
+#[derive(re_byte_size::SizeBytes)]
 pub struct TestViewState;
-
-impl re_viewer_context::SizeBytes for TestViewState {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
-    }
-}
 
 impl ViewState for TestViewState {
     fn as_any(&self) -> &dyn std::any::Any {
@@ -32,6 +21,10 @@ impl ViewState for TestViewState {
 
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
+    }
+
+    fn heap_size_bytes(&self) -> u64 {
+        re_viewer_context::SizeBytes::heap_size_bytes(self)
     }
 }
 
@@ -61,7 +54,10 @@ impl VisualizerSystem for TestSystem {
 
 impl IdentifiedViewSystem for TestSystem {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "Test".into()
+        re_viewer_context::external::re_string_interner::intern_static!(
+            re_viewer_context::ViewSystemIdentifier,
+            "Test"
+        )
     }
 }
 

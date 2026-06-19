@@ -97,22 +97,46 @@ def main() -> None:
     parser.add_argument("--no-py", action="store_true", help="Skip Python tests")
     parser.add_argument("--no-cpp", action="store_true", help="Skip C++ tests")
     # We don't allow skipping Rust - it is what we compare to at the moment.
-    parser.add_argument("--no-py-build", action="store_true", help="Skip building rerun-sdk for Python")
+    parser.add_argument(
+        "--no-py-build",
+        action="store_true",
+        help="Skip building rerun-sdk for Python",
+    )
     parser.add_argument(
         "--no-cpp-build",
         action="store_true",
         help="Skip cmake configure and ahead of time build for rerun_c & rerun_prebuilt_cpp",
     )
     parser.add_argument("--full-dump", action="store_true", help="Dump both rrd files as tables")
-    parser.add_argument("--release", action="store_true", help="Run cargo invocations with --release")
-    parser.add_argument("--target", type=str, default=None, help="Target used for cargo invocations")
-    parser.add_argument("--target-dir", type=str, default=None, help="Target directory used for cargo invocations")
+    parser.add_argument(
+        "--release",
+        action="store_true",
+        help="Run cargo invocations with --release",
+    )
+    parser.add_argument(
+        "--target",
+        type=str,
+        default=None,
+        help="Target used for cargo invocations",
+    )
+    parser.add_argument(
+        "--target-dir",
+        type=str,
+        default=None,
+        help="Target directory used for cargo invocations",
+    )
     parser.add_argument(
         "--write-missing-backward-assets",
         action="store_true",
         help="Add any missing asset files to tests/assets/rrd/snippets",
     )
-    parser.add_argument("example", nargs="*", type=str, default=None, help="Run only the specified example(s)")
+    parser.add_argument(
+        "example",
+        nargs="*",
+        type=str,
+        default=None,
+        help="Run only the specified example(s)",
+    )
 
     args = parser.parse_args()
 
@@ -129,7 +153,15 @@ def main() -> None:
             build_python_sdk(build_env)
         # Use uv to install the snippet dependencies
         run(
-            ["uv", "sync", "--group", "snippets", "--inexact", "--no-install-package", "rerun-sdk"],
+            [
+                "uv",
+                "sync",
+                "--group",
+                "snippets",
+                "--inexact",
+                "--no-install-package",
+                "rerun-sdk",
+            ],
             env=build_env,
         )
 
@@ -143,7 +175,12 @@ def main() -> None:
         build_cpp_snippets()
 
     # Always build rust since we use it as the baseline for comparison.
-    build_rust_snippets(build_env=build_env, release=args.release, target=args.target, target_dir=args.target_dir)
+    build_rust_snippets(
+        build_env=build_env,
+        release=args.release,
+        target=args.target,
+        target_dir=args.target_dir,
+    )
 
     examples = []
     if len(args.example) > 0:
@@ -224,7 +261,9 @@ def main() -> None:
             # They should be the same!
             try:
                 if backwards_path.exists():
-                    run_comparison(backwards_path, baseline_path, args.full_dump)
+                    # Older backward-compatibility assets were recorded back when `log_tick` was
+                    # injected by default. It is now opt-in, so ignore it in the comparison.
+                    run_comparison(backwards_path, baseline_path, args.full_dump, ignore_timelines=["log_tick"])
                 elif args.write_missing_backward_assets:
                     print(f"Writing new backwards-compatibility file to {backwards_path}…")
                     backwards_path.parent.mkdir(parents=True, exist_ok=True)
@@ -289,13 +328,22 @@ def run_example(example: Example, language: str, args: argparse.Namespace) -> No
     elif language == "py":
         run_python(example)
     elif language == "rust":
-        run_prebuilt_rust(example, release=args.release, target=args.target, target_dir=args.target_dir)
+        run_prebuilt_rust(
+            example,
+            release=args.release,
+            target=args.target,
+            target_dir=args.target_dir,
+        )
     else:
         raise AssertionError(f"Unknown language: {language}")
 
 
 def build_rust_snippets(
-    *, build_env: dict[str, str], release: bool, target: str | None, target_dir: str | None
+    *,
+    build_env: dict[str, str],
+    release: bool,
+    target: str | None,
+    target_dir: str | None,
 ) -> None:
     print("----------------------------------------------------------")
     print("Building snippets for Rust…")
@@ -356,7 +404,13 @@ def run_python(example: Example) -> str:
     return output_path
 
 
-def run_prebuilt_rust(example: Example, *, release: bool, target: str | None, target_dir: str | None) -> str:
+def run_prebuilt_rust(
+    example: Example,
+    *,
+    release: bool,
+    target: str | None,
+    target_dir: str | None,
+) -> str:
     output_path = example.output_path("rust")
 
     extension = ".exe" if os.name == "nt" else ""
@@ -387,7 +441,11 @@ def run_prebuilt_cpp(example: Example) -> str:
     output_path = example.output_path("cpp")
 
     extension = ".exe" if os.name == "nt" else ""
-    cmd = [f"./build/debug/docs/snippets/snippets{extension}", example.name, *example.extra_args()]
+    cmd = [
+        f"./build/debug/docs/snippets/snippets{extension}",
+        example.name,
+        *example.extra_args(),
+    ]
     env = None
     if str(example) not in OPT_OUT_BACKWARDS_CHECK:
         env = roundtrip_env(save_path=output_path)

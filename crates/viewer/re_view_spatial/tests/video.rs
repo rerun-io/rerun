@@ -2,7 +2,7 @@
 
 use re_chunk_store::RowId;
 use re_log_types::TimePoint;
-use re_sdk_types::archetypes::{AssetVideo, VideoFrameReference, VideoStream};
+use re_sdk_types::archetypes::{AssetVideo, TextLog, VideoFrameReference, VideoStream};
 use re_sdk_types::components::{self, MediaType, VideoTimestamp};
 use re_sdk_types::datatypes;
 use re_test_context::TestContext;
@@ -149,6 +149,16 @@ fn test_video(video_type: VideoType, codec: &VideoCodec) {
     let timeline = test_context
         .active_timeline()
         .expect("should have an active timeline");
+
+    // Extend the timeline before the first frame so we can still test rendering
+    // before the video starts despite cursor clamping.
+    test_context.log_entity("marker", |builder| {
+        builder.with_archetype(
+            RowId::new(),
+            [(timeline, -1_i64)],
+            &TextLog::new("before video"),
+        )
+    });
 
     match video_type {
         VideoType::AssetVideo => {

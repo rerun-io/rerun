@@ -5,6 +5,9 @@ use arrow::datatypes::Field as ArrowField;
 // The following constants are used as metadata keys. See also
 // [`re_types_core::component_descriptor`] for additional constants.
 
+/// The key used to identify the chunk ID in batch-level metadata.
+pub const RERUN_CHUNK_ID: &str = "rerun:id";
+
 /// The key used to identify the index name in field-level metadata.
 pub const SORBET_INDEX_NAME: &str = "rerun:index_name";
 

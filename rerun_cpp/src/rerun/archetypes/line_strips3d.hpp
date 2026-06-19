@@ -69,7 +69,8 @@ namespace rerun::archetypes {
     /// #include <rerun.hpp>
     ///
     /// int main(int argc, char* argv[]) {
-    ///     const auto rec = rerun::RecordingStream("rerun_example_line_strip3d_ui_radius");
+    ///     const auto rec =
+    ///         rerun::RecordingStream("rerun_example_line_strip3d_ui_radius");
     ///     rec.spawn().exit_on_failure();
     ///
     ///     // A blue line with a scene unit radii of 0.01.

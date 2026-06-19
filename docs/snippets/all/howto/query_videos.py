@@ -23,7 +23,9 @@ from datafusion import col
 
 import rerun as rr
 
-sample_video_path = Path(__file__).parents[4] / "tests" / "assets" / "rrd" / "video_sample"
+sample_video_path = (
+    Path(__file__).parents[4] / "tests" / "assets" / "rrd" / "video_sample"
+)
 
 server = rr.server.Server(datasets={"video_dataset": sample_video_path})
 CATALOG_URL = server.url()
@@ -35,10 +37,15 @@ times = pa.table(df.select("log_time"))["log_time"].to_numpy()
 
 # region: check_codec
 codec_column = "/video_stream:VideoStream:codec"
-num_codec_matches = df.select(col(codec_column)[0] == rr.VideoCodec.H264.value).count()
+num_codec_matches = df.select(
+    col(codec_column)[0] == rr.VideoCodec.H264.value
+).count()
 
 if num_codec_matches != df.select(codec_column).count():
-    raise ValueError(f"Expected H.264 codec {rr.VideoCodec.H264.value}, got {df.select(codec_column).limit(1)}")
+    raise ValueError(
+        f"Expected H.264 codec {rr.VideoCodec.H264.value}, "
+        f"got {df.select(codec_column).limit(1)}"
+    )
 # endregion: check_codec
 
 # region: decode_frame
@@ -48,7 +55,9 @@ selected_frame_index = 3  # Pick an arbitrary frame to decode
 # Query all samples up to and including the target frame.
 # We need to decode from the start (or a keyframe) to reach our target.
 selected_time = times[selected_frame_index]
-video_df = df.filter(col("log_time") <= selected_time).select("log_time", video_column)
+video_df = df.filter(col("log_time") <= selected_time).select(
+    "log_time", video_column
+)
 pa_table = pa.table(video_df)
 
 # Concatenate samples into a byte buffer
@@ -66,7 +75,9 @@ start_time = sample_times[0]
 
 # Decode all frames up to our target, keeping only the last one
 frame = None
-for packet, time in zip(container.demux(video_stream), sample_times, strict=False):
+for packet, time in zip(
+    container.demux(video_stream), sample_times, strict=False
+):
     packet.time_base = Fraction(1, 1_000_000_000)  # Timestamps in nanoseconds
     packet.pts = int(time - start_time)
     packet.dts = packet.pts  # No B-frames, so dts == pts
@@ -87,7 +98,9 @@ all_times = pa_table["log_time"]
 all_samples = pa_table["/video_stream:VideoStream:sample"]
 
 # Concatenate samples into a single byte buffer
-sample_bytes = np.concatenate([sample[0] for sample in all_samples.to_numpy()]).tobytes()
+sample_bytes = np.concatenate([
+    sample[0] for sample in all_samples.to_numpy()
+]).tobytes()
 sample_bytes_io = BytesIO(sample_bytes)
 
 # Setup input container (H.264 Annex B stream)
@@ -101,7 +114,9 @@ output_stream = output_container.add_stream_from_template(input_stream)
 
 # Remux packets with correct timestamps
 start_time = all_times.chunk(0)[0]
-for packet, time in zip(input_container.demux(input_stream), all_times, strict=False):
+for packet, time in zip(
+    input_container.demux(input_stream), all_times, strict=False
+):
     packet.time_base = Fraction(1, 1_000_000_000)
     packet.pts = int(time.value - start_time.value)
     packet.dts = packet.pts

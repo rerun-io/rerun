@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -28,7 +29,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// See [Dataframe queries](https://rerun.io/docs/concepts/query-and-transform/dataframe-queries) to learn more about the query model.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, ::re_byte_size::SizeBytes)]
 pub struct DataframeView {
     /// Query of the dataframe.
     pub query: crate::blueprint::archetypes::DataframeQuery,
@@ -37,7 +38,10 @@ pub struct DataframeView {
 impl ::re_types_core::View for DataframeView {
     #[inline]
     fn identifier() -> ::re_types_core::ViewClassIdentifier {
-        "Dataframe".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ViewClassIdentifier,
+            "Dataframe"
+        )
     }
 }
 
@@ -67,17 +71,5 @@ impl std::ops::DerefMut for DataframeView {
     #[inline]
     fn deref_mut(&mut self) -> &mut crate::blueprint::archetypes::DataframeQuery {
         &mut self.query
-    }
-}
-
-impl ::re_byte_size::SizeBytes for DataframeView {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.query.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::blueprint::archetypes::DataframeQuery>::is_pod()
     }
 }

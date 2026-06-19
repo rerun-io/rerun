@@ -1,7 +1,8 @@
 //! Log some very simple geospatial point.
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let rec = rerun::RecordingStreamBuilder::new("rerun_example_geo_points").spawn()?;
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_geo_points")
+        .spawn()?;
 
     rec.log(
         "rerun_hq",

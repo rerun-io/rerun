@@ -449,7 +449,7 @@ pub fn timeline_button_to(
     timeline_name: &TimelineName,
 ) -> egui::Response {
     let is_selected = ctx
-        .active_time_ctrl
+        .active_time_ctrl()
         .is_some_and(|time_ctr| time_ctr.timeline_name() == timeline_name);
 
     let response = ui
@@ -634,7 +634,7 @@ pub fn entity_db_button_ui(
     {
         Some(recording_name.to_string())
     } else if let EntityDbClass::DatasetSegment(url) = entity_db.store_class() {
-        Some(url.segment_id.clone())
+        Some(url.segment_id.to_string())
     } else {
         entity_db
             .recording_info_property::<Timestamp>(RecordingInfo::descriptor_start_time().component)
@@ -751,7 +751,7 @@ pub fn entity_db_button_ui(
 }
 
 pub fn table_id_button_ui(
-    ctx: &ViewerContext<'_>,
+    ctx: &AppContext<'_>,
     ui: &mut egui::Ui,
     table_id: &TableId,
     ui_layout: UiLayout,

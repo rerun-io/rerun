@@ -13,7 +13,7 @@ class OptimizationProfile:
 
     - `OptimizationProfile.LIVE`: small chunks tuned for the live Viewer workflow.
     - `OptimizationProfile.OBJECT_STORE`: large chunks tuned for object-store-backed
-      query and streaming (e.g. the Rerun Data Platform).
+      query and streaming (e.g. a catalog server).
 
     The presets are *fully concrete*: every field has a value. Custom profiles
     built by calling `OptimizationProfile(...)` directly may pass `None` on the
@@ -29,7 +29,7 @@ class OptimizationProfile:
 
     OBJECT_STORE: ClassVar[OptimizationProfile]
     """
-    Optimized for object-store-backed storage (e.g. the Rerun Data Platform):
+    Optimized for object-store-backed storage (e.g. a catalog server):
     larger chunks tuned for query throughput and streaming over the network.
     """
 
@@ -69,6 +69,12 @@ class OptimizationProfile:
     performed.
     """
 
+    fix_keyframe: bool = False
+    """
+    If `True`, any user-supplied `VideoStream:is_keyframe` data is dropped and
+    re-derived from the encoded samples during video rebatching.
+    """
+
 
 OptimizationProfile.LIVE = OptimizationProfile(
     max_bytes=12 * 8 * 4096,
@@ -77,6 +83,7 @@ OptimizationProfile.LIVE = OptimizationProfile(
     extra_passes=50,
     gop_batching=True,
     split_size_ratio=None,
+    fix_keyframe=False,
 )
 
 OptimizationProfile.OBJECT_STORE = OptimizationProfile(
@@ -86,4 +93,5 @@ OptimizationProfile.OBJECT_STORE = OptimizationProfile(
     extra_passes=50,
     gop_batching=True,
     split_size_ratio=None,
+    fix_keyframe=False,
 )

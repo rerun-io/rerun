@@ -17,17 +17,23 @@ rr.log(
 )
 
 # Two red points with ui point radii of 40 and 60.
-# UI points are independent of zooming in Views, but are sensitive to the application UI scaling.
+# UI points are independent of zooming in Views, but are sensitive to the
+# application UI scaling.
 # For 100% ui scaling, UI points are equal to pixels.
 rr.log(
     "ui_points",
     rr.Points2D(
         [[1, 0], [1, 1]],
-        # rr.Radius.ui_points produces radii that the viewer interprets as given in ui points.
+        # rr.Radius.ui_points produces radii that the viewer interprets
+        # as given in ui points.
         radii=rr.Radius.ui_points([40.0, 60.0]),
         colors=[255, 0, 0],
     ),
 )
 
 # Set view bounds:
-rr.send_blueprint(rrb.Spatial2DView(visual_bounds=rrb.VisualBounds2D(x_range=[-1, 2], y_range=[-1, 2])))
+rr.send_blueprint(
+    rrb.Spatial2DView(
+        visual_bounds=rrb.VisualBounds2D(x_range=[-1, 2], y_range=[-1, 2])
+    )
+)

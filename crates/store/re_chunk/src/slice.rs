@@ -21,7 +21,7 @@ impl Chunk {
     pub fn cell(&self, row_id: RowId, component: ComponentIdentifier) -> Option<ArrowArrayRef> {
         let list_array = self.components.get_array(component)?;
 
-        if self.is_sorted() {
+        if self.is_row_ids_sorted() {
             let row_ids = self.row_ids_slice();
             let index = row_ids.binary_search(&row_id).ok()?;
             list_array.is_valid(index).then(|| list_array.value(index))
@@ -176,7 +176,7 @@ impl Chunk {
         // └──────────────┴───────────────────┴────────────────────────────────────────────┘
         //
         // The original chunk is unsorted, but the new sliced one actually ends up being sorted.
-        chunk.is_sorted = is_sorted || chunk.is_sorted_uncached();
+        chunk.is_sorted = is_sorted || chunk.is_row_ids_sorted_uncached();
 
         chunk
     }
@@ -493,7 +493,7 @@ impl Chunk {
         // └──────────────┴───────────────────┴────────────────────────────────────────────┘
         //
         // The original chunk is unsorted, but the new filtered one actually ends up being sorted.
-        chunk.is_sorted = is_sorted || chunk.is_sorted_uncached();
+        chunk.is_sorted = is_sorted || chunk.is_row_ids_sorted_uncached();
 
         #[cfg(debug_assertions)]
         #[expect(clippy::unwrap_used)] // debug-only
@@ -738,7 +738,7 @@ impl Chunk {
         // └──────────────┴───────────────────┴────────────────────────────────────────────┘
         //
         // The original chunk is unsorted, but the new filtered one actually ends up being sorted.
-        chunk.is_sorted = is_sorted || chunk.is_sorted_uncached();
+        chunk.is_sorted = is_sorted || chunk.is_row_ids_sorted_uncached();
 
         #[cfg(debug_assertions)]
         #[expect(clippy::unwrap_used)] // debug-only
@@ -821,7 +821,7 @@ impl Chunk {
         // └──────────────┴───────────────────┴────────────────────────────────────────────┘
         //
         // The original chunk is unsorted, but the new filtered one actually ends up being sorted.
-        chunk.is_sorted = is_sorted || chunk.is_sorted_uncached();
+        chunk.is_sorted = is_sorted || chunk.is_row_ids_sorted_uncached();
 
         #[cfg(debug_assertions)]
         #[expect(clippy::unwrap_used)] // debug-only
@@ -1089,7 +1089,7 @@ mod tests {
             (row_id5, mypoints_colors_component, Some(colors5 as _)),
         ];
 
-        assert!(!chunk.is_sorted());
+        assert!(!chunk.is_row_ids_sorted());
         for (row_id, component, expected) in expectations {
             let expected = expected
                 .and_then(|expected| re_types_core::ComponentBatch::to_arrow(expected).ok());
@@ -1097,8 +1097,8 @@ mod tests {
             similar_asserts::assert_eq!(expected, chunk.cell(*row_id, *component));
         }
 
-        chunk.sort_if_unsorted();
-        assert!(chunk.is_sorted());
+        chunk.sort_by_row_ids_if_needed();
+        assert!(chunk.is_row_ids_sorted());
 
         for (row_id, component, expected) in expectations {
             let expected = expected

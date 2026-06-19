@@ -487,6 +487,15 @@ impl PipelineBudget {
         }
     }
 
+    /// Number of [`Self::release`] calls observed since construction.
+    /// Test helper for asserting whether a `Drop` / refund path fired,
+    /// independent of how many bytes flowed.
+    #[cfg(test)]
+    pub(crate) fn total_releases(&self) -> u64 {
+        self.total_releases
+            .load(std::sync::atomic::Ordering::Acquire)
+    }
+
     /// Current learned multiplier. Applied to `estimated_bytes` in
     /// `reserve` to derive the reservation size.
     fn current_multiplier(&self) -> f64 {

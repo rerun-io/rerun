@@ -16,16 +16,20 @@ pub use self::api_error::{ApiError, ApiErrorKind, ApiResult};
 
 pub use self::api_response_stream::ApiResponseStream;
 pub use self::connection_client::{
-    FetchChunksResponseStream, GenericConnectionClient, SegmentQueryParams,
+    ConnectionClient, FetchChunksResponseStream, GenericConnectionClient, SegmentQueryParams,
 };
 pub use self::connection_registry::{
-    ClientCredentialsError, ConnectionClient, ConnectionRegistry, ConnectionRegistryHandle,
-    CredentialSource, Credentials, SourcedCredentials,
+    ClientCredentialsError, ConnectionRegistry, ConnectionRegistryHandle, CredentialSource,
+    Credentials, SourcedCredentials,
 };
 pub use self::grpc::{
-    ChunksWithSegment, RedapClient, StreamingOptions, channel,
+    ChunksWithSegment, RedapClient, RedapClientInner, SegmentDownload, StreamingOptions, channel,
     fetch_chunks_response_to_chunk_and_segment_id, stream_blueprint_and_segment_from_server,
+    stream_table_blueprint_segment_from_server, table_blueprint_log_channel,
 };
+
+#[cfg(not(target_arch = "wasm32"))]
+pub use self::grpc::PoolChannel;
 
 /// Re-export of [`opentelemetry::TraceId`] for callers constructing
 /// [`ApiError`]s without taking a direct dependency on `opentelemetry`.
@@ -74,7 +78,7 @@ const MAX_DECODING_MESSAGE_SIZE: usize = u32::MAX as usize;
 /// without truncating legitimate large fetches.
 pub const FETCH_CHUNKS_DEADLINE: std::time::Duration = std::time::Duration::from_secs(300);
 
-/// Responses from the Data Platform can optionally include this header to communicate back the trace id of the request.
+/// Responses from the catalog server can optionally include this header to communicate back the trace id of the request.
 const GRPC_RESPONSE_TRACEID_HEADER: &str = "x-request-trace-id";
 
 /// Extract the server's trace-id from gRPC response metadata, if present.

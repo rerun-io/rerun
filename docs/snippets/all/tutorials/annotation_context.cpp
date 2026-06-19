@@ -1,7 +1,8 @@
 #include <rerun.hpp>
 
 int main(int argc, char* argv[]) {
-    const auto rec = rerun::RecordingStream("rerun_example_annotation_context_connections");
+    const auto rec =
+        rerun::RecordingStream("rerun_example_annotation_context_connections");
     rec.spawn().exit_on_failure();
 
     // Annotation context with two classes, using two labeled classes, of which ones defines a
@@ -17,9 +18,10 @@ int main(int argc, char* argv[]) {
     // Annotation context with simple keypoints & keypoint connections.
     std::vector<rerun::AnnotationInfo> keypoint_annotations;
     for (uint16_t i = 0; i < 10; ++i) {
-        keypoint_annotations.push_back(
-            rerun::AnnotationInfo(i, rerun::Rgba32(0, static_cast<uint8_t>(28 * i), 0))
-        );
+        keypoint_annotations.push_back(rerun::AnnotationInfo(
+            i,
+            rerun::Rgba32(0, static_cast<uint8_t>(28 * i), 0)
+        ));
     }
 
     std::vector<rerun::KeypointPair> keypoint_connections;

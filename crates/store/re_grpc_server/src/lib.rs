@@ -6,8 +6,8 @@ use std::collections::VecDeque;
 use std::net::SocketAddr;
 use std::pin::Pin;
 
-use re_byte_size::SizeBytes;
-use re_log_channel::{DataSourceMessage, DataSourceUiCommand};
+use re_byte_size::{MemUsageNode, MemUsageTree, SizeBytes};
+use re_log_channel::{DataSourceMessage, DataSourceUiCommand, SaveScreenshotError};
 use re_log_encoding::{ToApplication as _, ToTransport as _};
 use re_log_types::TableMsg;
 use re_protos::common::v1alpha1::{
@@ -162,12 +162,12 @@ fn is_origin_allowed(origin: &str, patterns: &[wildmatch::WildMatch]) -> bool {
 /// Patterns are matched against the full `Origin` header value,
 /// using glob-style matching where `*` matches any sequence of characters.
 pub fn cors_layer(extra_allowed_origins: &[String]) -> CorsLayer {
-    let allowed_origin_patterns: Vec<wildmatch::WildMatch> = DEFAULT_CORS_PATTERNS
-        .iter()
-        .copied()
-        .chain(extra_allowed_origins.iter().map(String::as_str))
-        .map(wildmatch::WildMatch::new)
-        .collect();
+    let allowed_origin_patterns: Vec<wildmatch::WildMatch> = std::iter::chain(
+        DEFAULT_CORS_PATTERNS.iter().copied(),
+        extra_allowed_origins.iter().map(String::as_str),
+    )
+    .map(wildmatch::WildMatch::new)
+    .collect();
     CorsLayer::very_permissive().allow_origin(AllowOrigin::predicate(
         move |origin, _request_parts| {
             let Ok(origin) = origin.to_str() else {
@@ -376,9 +376,10 @@ pub fn spawn_from_rx_set(
     options: ServerOptions,
     shutdown: shutdown::Shutdown,
     rxs: re_log_channel::LogReceiverSet,
-) {
+) -> MessageProxyHandle {
     let message_proxy = MessageProxy::new(options.clone());
-    let event_tx = message_proxy.event_tx.clone();
+    let handle = message_proxy.handle();
+    let event_tx = handle.event_tx.clone();
 
     tokio::spawn(async move {
         if let Err(err) = serve_impl(addr, options, message_proxy, shutdown).await {
@@ -445,6 +446,8 @@ pub fn spawn_from_rx_set(
             }
         }
     });
+
+    handle
 }
 
 /// Start a Rerun server, listening on `addr`.
@@ -462,7 +465,7 @@ pub fn spawn_with_recv(
     addr: SocketAddr,
     options: ServerOptions,
     shutdown: shutdown::Shutdown,
-) -> re_log_channel::LogReceiver {
+) -> (re_log_channel::LogReceiver, MessageProxyHandle) {
     let uri = re_uri::ProxyUri::new(re_uri::Origin::from_scheme_and_socket_addr(
         re_uri::Scheme::RerunHttp,
         addr,
@@ -472,6 +475,7 @@ pub fn spawn_with_recv(
         re_log_channel::log_channel(re_log_channel::LogSource::MessageProxy(uri));
 
     let (message_proxy, mut broadcast_log_rx) = MessageProxy::new_with_recv(options.clone());
+    let handle = message_proxy.handle();
 
     tokio::spawn(async move {
         if let Err(err) = serve_impl(addr, options, message_proxy, shutdown).await {
@@ -545,7 +549,7 @@ pub fn spawn_with_recv(
         }
     });
 
-    channel_log_rx
+    (channel_log_rx, handle)
 }
 
 enum Event {
@@ -559,30 +563,26 @@ enum Event {
 
     /// A client sent a message.
     Message(LogOrTableMsgProto),
+
+    /// Request that the event loop refresh the cached `MemUsageTree` snapshot.
+    ///
+    /// The result is written to the shared `MemorySnapshot` held by every
+    /// [`MessageProxyHandle`]; the requester reads it from there.
+    CaptureMemory,
 }
 
-#[derive(Clone)]
+#[derive(Clone, re_byte_size::SizeBytes)]
 struct TableMsgProto {
     id: TableIdProto,
     data: DataframePartProto,
 }
 // -----------------------------------------------------------------------------------
 
-#[derive(Clone)]
+#[derive(Clone, re_byte_size::SizeBytes)]
 enum LogOrTableMsgProto {
     LogMsg(LogMsgProto),
     Table(TableMsgProto),
     UiCommand(DataSourceUiCommand),
-}
-
-impl SizeBytes for LogOrTableMsgProto {
-    fn heap_size_bytes(&self) -> u64 {
-        match self {
-            Self::LogMsg(log_msg) => log_msg.heap_size_bytes(),
-            Self::Table(table) => table.heap_size_bytes(),
-            Self::UiCommand(cmd) => cmd.heap_size_bytes(),
-        }
-    }
 }
 
 impl From<LogMsgProto> for LogOrTableMsgProto {
@@ -840,6 +840,13 @@ impl<T: Clone + SizeBytes + Send + Sync + 'static> Stream for BackPressureReceiv
 /// Main event loop for the server, which runs in its own task.
 ///
 /// Handles message history, and broadcasts messages to clients.
+/// Shared cell that holds the latest memory snapshot the event loop has produced.
+///
+/// Written by `EventLoop` when it handles [`Event::CaptureMemory`], read by
+/// [`MessageProxyHandle::capture_memory`]. `None` until the loop has produced
+/// at least one snapshot.
+type MemorySnapshot = std::sync::Arc<parking_lot::Mutex<Option<MemUsageTree>>>;
+
 struct EventLoop {
     options: ServerOptions,
 
@@ -852,6 +859,9 @@ struct EventLoop {
 
     /// All messages received so far, minus those that have been garbage collected.
     history: MessageBuffer,
+
+    /// Latest memory snapshot, refreshed on `Event::CaptureMemory`.
+    memory_snapshot: MemorySnapshot,
 }
 
 impl EventLoop {
@@ -859,12 +869,14 @@ impl EventLoop {
         options: ServerOptions,
         event_rx: async_mpsc_channel::Receiver<Event>,
         broadcast_log_tx: async_broadcast_channel::Sender<LogOrTableMsgProto>,
+        memory_snapshot: MemorySnapshot,
     ) -> Self {
         Self {
             options,
             broadcast_log_tx,
             event_rx,
             history: Default::default(),
+            memory_snapshot,
         }
     }
 
@@ -884,8 +896,25 @@ impl EventLoop {
                         .ok();
                 }
                 Event::Message(msg) => self.handle_msg(msg).await,
+                Event::CaptureMemory => {
+                    *self.memory_snapshot.lock() = Some(self.capture_mem_usage_tree());
+                }
             }
         }
+    }
+
+    /// Snapshot the proxy's history and broadcast queue sizes as a `MemUsageTree`.
+    ///
+    /// Cheap: reads the already-maintained `MsgQueue::size_bytes` counters and the
+    /// broadcast channel's atomic byte counter — no traversal.
+    fn capture_mem_usage_tree(&self) -> MemUsageTree {
+        MemUsageTree::Node(
+            MemUsageNode::new()
+                .with_child("disposable", self.history.disposable.size_bytes)
+                .with_child("static", self.history.static_.size_bytes)
+                .with_child("persistent", self.history.persistent.size_bytes)
+                .with_child("broadcast", self.broadcast_log_tx.bytes_in_flight()),
+        )
     }
 
     async fn handle_msg(&mut self, msg: LogOrTableMsgProto) {
@@ -913,10 +942,27 @@ impl EventLoop {
     }
 }
 
-impl SizeBytes for TableMsgProto {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self { id, data } = self;
-        id.heap_size_bytes() + data.heap_size_bytes()
+/// A cloneable handle to a running [`MessageProxy`].
+///
+/// Used to read the proxy's most recent memory snapshot from outside the tokio
+/// runtime (e.g. from the viewer's UI thread).
+#[derive(Clone)]
+pub struct MessageProxyHandle {
+    event_tx: async_mpsc_channel::Sender<Event>,
+    memory_snapshot: MemorySnapshot,
+}
+
+impl MessageProxyHandle {
+    /// Return the latest recent memory snapshot the proxy has produced.
+    pub fn capture_memory(&self) -> Option<MemUsageTree> {
+        let res = self.event_tx.try_send(Event::CaptureMemory);
+
+        match res {
+            Err(tokio::sync::mpsc::error::TrySendError::Full(_)) | Ok(()) => {
+                Some(self.memory_snapshot.lock().clone().unwrap_or_default())
+            }
+            Err(tokio::sync::mpsc::error::TrySendError::Closed(_)) => None,
+        }
     }
 }
 
@@ -924,6 +970,7 @@ pub struct MessageProxy {
     options: ServerOptions,
     _queue_task_handle: tokio::task::JoinHandle<()>,
     event_tx: async_mpsc_channel::Sender<Event>,
+    memory_snapshot: MemorySnapshot,
 }
 
 impl MessageProxy {
@@ -946,10 +993,13 @@ impl MessageProxy {
             async_mpsc_channel::channel("re_grpc_server events", message_queue_capacity)
         };
 
+        let memory_snapshot: MemorySnapshot = Default::default();
+
         let task_handle = tokio::spawn({
             let options = options.clone();
+            let memory_snapshot = memory_snapshot.clone();
             async move {
-                EventLoop::new(options, event_rx, broadcast_log_tx)
+                EventLoop::new(options, event_rx, broadcast_log_tx, memory_snapshot)
                     .run_in_place()
                     .await;
             }
@@ -960,9 +1010,17 @@ impl MessageProxy {
                 options,
                 _queue_task_handle: task_handle,
                 event_tx,
+                memory_snapshot,
             },
             broadcast_log_rx,
         )
+    }
+
+    pub fn handle(&self) -> MessageProxyHandle {
+        MessageProxyHandle {
+            event_tx: self.event_tx.clone(),
+            memory_snapshot: self.memory_snapshot.clone(),
+        }
     }
 
     async fn push_message(&self, message: impl Into<LogOrTableMsgProto>) {
@@ -1000,7 +1058,7 @@ impl MessageProxy {
         });
 
         match self.options.playback_behavior {
-            PlaybackBehavior::OldestFirst => Box::pin(history.chain(channel)),
+            PlaybackBehavior::OldestFirst => Box::pin(history.chain(channel)), // NOLINT: Stream::chain
             PlaybackBehavior::NewestFirst => Box::pin(PriorityMerge::new(channel, history)),
         }
     }
@@ -1144,13 +1202,28 @@ impl message_proxy_service_server::MessageProxyService for MessageProxy {
         request: tonic::Request<SaveScreenshotRequest>,
     ) -> tonic::Result<tonic::Response<SaveScreenshotResponse>> {
         let SaveScreenshotRequest { view_id, file_path } = request.into_inner();
+        let (done_tx, mut done_rx) =
+            futures::channel::mpsc::unbounded::<Result<(), SaveScreenshotError>>();
         self.push_message(DataSourceUiCommand::SaveScreenshot {
             file_path: file_path.into(),
             view_id,
+            on_done: Some(done_tx),
         })
         .await;
 
-        Ok(tonic::Response::new(SaveScreenshotResponse {}))
+        match done_rx.next().await {
+            Some(Ok(())) => Ok(tonic::Response::new(SaveScreenshotResponse {})),
+            Some(Err(err @ SaveScreenshotError::InvalidViewId { .. })) => {
+                Err(tonic::Status::invalid_argument(err.to_string()))
+            }
+            Some(Err(
+                err @ (SaveScreenshotError::InvalidImageData
+                | SaveScreenshotError::SaveToPathFailed { .. }),
+            )) => Err(tonic::Status::internal(err.to_string())),
+            None => Err(tonic::Status::internal(
+                "Screenshot completion signal was dropped before the screenshot was taken",
+            )),
+        }
     }
 }
 
@@ -1680,12 +1753,10 @@ mod tests {
         use super::super::{DEFAULT_CORS_PATTERNS, is_origin_allowed};
 
         fn check(origin: &str, extra: &[&str]) -> bool {
-            let patterns: Vec<wildmatch::WildMatch> = DEFAULT_CORS_PATTERNS
-                .iter()
-                .copied()
-                .chain(extra.iter().copied())
-                .map(wildmatch::WildMatch::new)
-                .collect();
+            let patterns: Vec<wildmatch::WildMatch> =
+                std::iter::chain(DEFAULT_CORS_PATTERNS.iter().copied(), extra.iter().copied())
+                    .map(wildmatch::WildMatch::new)
+                    .collect();
             is_origin_allowed(origin, &patterns)
         }
 

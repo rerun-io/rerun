@@ -399,7 +399,6 @@ impl SpatialView2D {
     }
 }
 
-#[expect(clippy::too_many_arguments)]
 fn setup_target_config(
     render_mode: re_renderer::RenderMode,
     egui_painter: &egui::Painter,

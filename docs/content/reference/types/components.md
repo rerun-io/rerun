@@ -60,6 +60,7 @@ on [Entities and Components](../../concepts/logging-and-ingestion/entity-compone
 * [`Opacity`](components/opacity.md): Degree of transparency ranging from 0.0 (fully transparent) to 1.0 (fully opaque).
 * [`PinholeProjection`](components/pinhole_projection.md): Camera projection, from image coordinates to view coordinates.
 * [`Plane3D`](components/plane3d.md): An infinite 3D plane represented by a unit normal vector and a distance.
+* [`PointShading`](components/point_shading.md): Defines how points are shaded.
 * [`Position2D`](components/position2d.md): A position in 2D space.
 * [`Position3D`](components/position3d.md): A position in 3D space.
 * [`Radius`](components/radius.md): The radius of something, e.g. a point.
@@ -93,4 +94,7 @@ on [Entities and Components](../../concepts/logging-and-ingestion/entity-compone
 * [`VideoTimestamp`](components/video_timestamp.md): Timestamp inside a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video).
 * [`ViewCoordinates`](components/view_coordinates.md): How we interpret the coordinate system of an entity/space.
 * [`Visible`](components/visible.md): Whether the container, view, entity or instance is currently visible.
+* [`VoxelIndex`](components/voxel_index.md): Integer index of a voxel in a sparse 3D voxel grid.
+* [`VoxelSize`](components/voxel_size.md): The scene-unit dimensions of one voxel in a sparse 3D voxel grid.
+* [`VoxelValue`](components/voxel_value.md): Optional scalar occupancy or value associated with a voxel.
 

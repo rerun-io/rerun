@@ -45,6 +45,11 @@ pub struct CompactionOptions {
     ///
     /// `None` disables the split.
     pub split_size_ratio: Option<f64>,
+
+    /// If true, any user-supplied `VideoStream:is_keyframe` data is dropped and
+    /// re-derived from codec analysis during video rebatching. This bypasses
+    /// validation of the user-supplied labels.
+    pub fix_keyframe: bool,
 }
 
 impl ChunkStore {
@@ -54,7 +59,8 @@ impl ChunkStore {
     /// datatypes, up to the thresholds in the config. Large chunks may be split.
     ///
     /// If `is_start_of_gop` is provided, video stream chunks are rebatched to align
-    /// with GoP boundaries after compaction.
+    /// with GoP boundaries after compaction, and sparse `is_keyframe` marker chunks
+    /// are emitted.
     ///
     /// If `split_size_ratio` is provided, chunks are split on entry so no two
     /// archetype groups sharing a chunk differ in byte size by more than that factor.
@@ -103,6 +109,7 @@ impl ChunkStore {
             num_extra_passes,
             is_start_of_gop,
             split_size_ratio,
+            fix_keyframe,
         } = options;
 
         let num_extra_passes = num_extra_passes.unwrap_or(50);
@@ -159,13 +166,14 @@ impl ChunkStore {
                 &self,
                 config,
                 is_start_of_gop.as_ref(),
+                *fix_keyframe,
             ) {
                 Ok(new_store) => {
                     self = new_store;
                     re_log::info!(time = ?now.elapsed(), "video GoP rebatching completed");
                 }
                 Err(err) => {
-                    re_log::warn!(%err, "video GoP rebatching failed");
+                    return Err(ChunkStoreError::VideoRebatch(err));
                 }
             }
         }
@@ -194,6 +202,7 @@ mod tests {
             num_extra_passes: Some(0),
             is_start_of_gop: None,
             split_size_ratio: None,
+            fix_keyframe: false,
         };
         let result = store
             .finalize_compaction(&options)
@@ -257,6 +266,7 @@ mod tests {
             num_extra_passes: Some(3),
             is_start_of_gop: None,
             split_size_ratio: Some(10.0),
+            fix_keyframe: false,
         };
         let compacted = store.compacted(&options)?;
 
@@ -302,6 +312,7 @@ mod tests {
             num_extra_passes: Some(3),
             is_start_of_gop: None,
             split_size_ratio: None,
+            fix_keyframe: false,
         };
         let compacted = store.compacted(&options)?;
 

@@ -16,7 +16,6 @@ from ._spawn import _spawn_viewer
 if TYPE_CHECKING:
     import pathlib
 
-    from rerun.recording import Recording
     from rerun.recording_stream import RecordingStream
 
 
@@ -457,34 +456,6 @@ def send_blueprint(
         blueprint_storage,
         make_active,
         make_default,
-        recording=recording.to_native() if recording is not None else None,
-    )
-
-
-def send_recording(rrd: Recording, recording: RecordingStream | None = None) -> None:
-    """
-    Send a `Recording` loaded from a `.rrd` to the `RecordingStream`.
-
-    !!! Warning
-        ⚠️ This API is experimental and may change or be removed in future versions! ⚠️
-
-    Parameters
-    ----------
-    rrd:
-        A recording loaded from a `.rrd` file.
-    recording:
-        Specifies the [`rerun.RecordingStream`][] to use.
-        If left unspecified, defaults to the current active data recording, if there is one.
-        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
-
-    """
-    application_id = get_application_id(recording=recording)  # NOLINT
-
-    if application_id is None:
-        raise ValueError("No application id found. You must call rerun.init before sending a recording.")
-
-    bindings.send_recording(
-        rrd._internal,
         recording=recording.to_native() if recording is not None else None,
     )
 

@@ -9,8 +9,17 @@ use crate::{TimeInt, TimeReal};
 /// Can be resolved from [`re_types_core::datatypes::TimeRange`] (which *may* have relative bounds) using a given timeline & cursor.
 ///
 /// Should not include [`TimeInt::STATIC`].
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    Hash,
+    re_byte_size::SizeBytes,
+    serde::Deserialize,
+    serde::Serialize,
+)]
 pub struct AbsoluteTimeRange {
     pub min: TimeInt,
     pub max: TimeInt,
@@ -142,18 +151,6 @@ impl AbsoluteTimeRange {
     }
 }
 
-impl re_byte_size::SizeBytes for AbsoluteTimeRange {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
-    }
-}
-
 impl From<AbsoluteTimeRange> for RangeInclusive<TimeInt> {
     fn from(range: AbsoluteTimeRange) -> Self {
         range.min..=range.max
@@ -163,14 +160,29 @@ impl From<AbsoluteTimeRange> for RangeInclusive<TimeInt> {
 // ----------------------------------------------------------------------------
 
 /// Like [`AbsoluteTimeRange`], but using [`TimeReal`] for improved precision.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    Hash,
+    re_byte_size::SizeBytes,
+    serde::Deserialize,
+    serde::Serialize,
+)]
 pub struct AbsoluteTimeRangeF {
     pub min: TimeReal,
     pub max: TimeReal,
 }
 
 impl AbsoluteTimeRangeF {
+    /// Contains no time at all.
+    pub const EMPTY: Self = Self {
+        min: TimeReal::MAX,
+        max: TimeReal::MIN,
+    };
+
     #[inline]
     pub fn new(min: impl Into<TimeReal>, max: impl Into<TimeReal>) -> Self {
         Self {
@@ -222,6 +234,19 @@ impl AbsoluteTimeRangeF {
     #[inline]
     pub fn length(&self) -> TimeReal {
         self.max - self.min
+    }
+
+    #[inline]
+    pub fn intersects(&self, other: Self) -> bool {
+        self.min <= other.max && self.max >= other.min
+    }
+
+    #[inline]
+    pub fn intersection(&self, other: Self) -> Option<Self> {
+        self.intersects(other).then(|| Self {
+            min: self.min.max(other.min),
+            max: self.max.min(other.max),
+        })
     }
 
     /// Creates an [`AbsoluteTimeRange`] from self by rounding the start

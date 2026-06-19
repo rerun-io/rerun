@@ -390,7 +390,8 @@ mod table_query_pipeline_tests {
 
     fn make_pending() -> PendingTableQueryAnalytics {
         let origin: Origin = "rerun+http://localhost:51234".parse().unwrap();
-        let analytics = ConnectionAnalytics::new(origin);
+        let client = re_redap_client::ConnectionClient::new_disconnected();
+        let analytics = ConnectionAnalytics::new(origin, &client);
         analytics.begin_table_query(
             TableQueryInfo {
                 table_id: "tbl-pipeline".to_owned(),
@@ -401,6 +402,8 @@ mod table_query_pipeline_tests {
                 has_limit: false,
                 limit_value: None,
                 time_range: web_time::SystemTime::now()..web_time::SystemTime::now(),
+                filters_total: 0,
+                filters_signatures: String::new(),
             },
             web_time::Instant::now(),
         )
@@ -582,8 +585,8 @@ mod table_query_pipeline_tests {
         assert!(result.is_none());
     }
 
-    #[test]
-    fn build_table_query_span_called_via_pending_matches_pure_builder() {
+    #[tokio::test]
+    async fn build_table_query_span_called_via_pending_matches_pure_builder() {
         // Sanity check: PendingTableQueryAnalytics::build_span_for_test
         // produces equivalent output to calling `build_table_query_span`
         // directly with the same inputs. Pins the wiring between the two.
@@ -605,6 +608,8 @@ mod table_query_pipeline_tests {
                 has_limit: false,
                 limit_value: None,
                 time_range: web_time::SystemTime::now()..web_time::SystemTime::now(),
+                filters_total: 0,
+                filters_signatures: String::new(),
             },
             crate::analytics::TableScanStatsSnapshot {
                 grpc_requests: 2,
@@ -614,7 +619,6 @@ mod table_query_pipeline_tests {
             },
             web_time::SystemTime::now()..web_time::SystemTime::now(),
             std::time::Duration::ZERO,
-            None,
             None,
             None,
             None,

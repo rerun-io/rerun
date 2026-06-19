@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -24,7 +25,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Archetype**: Configuration of the text log columns.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, ::re_byte_size::SizeBytes)]
 pub struct TextLogColumns {
     /// What timeline columns to show.
     ///
@@ -43,11 +44,13 @@ impl TextLogColumns {
     /// The corresponding component is [`crate::blueprint::components::TimelineColumn`].
     #[inline]
     pub fn descriptor_timeline_columns() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.TextLogColumns".into()),
-            component: "TextLogColumns:timeline_columns".into(),
-            component_type: Some("rerun.blueprint.components.TimelineColumn".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.TextLogColumns".into()),
+                component: "TextLogColumns:timeline_columns".into(),
+                component_type: Some("rerun.blueprint.components.TimelineColumn".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::text_log_columns`].
@@ -55,11 +58,13 @@ impl TextLogColumns {
     /// The corresponding component is [`crate::blueprint::components::TextLogColumn`].
     #[inline]
     pub fn descriptor_text_log_columns() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.TextLogColumns".into()),
-            component: "TextLogColumns:text_log_columns".into(),
-            component_type: Some("rerun.blueprint.components.TextLogColumn".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.TextLogColumns".into()),
+                component: "TextLogColumns:text_log_columns".into(),
+                component_type: Some("rerun.blueprint.components.TextLogColumn".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -93,7 +98,10 @@ impl TextLogColumns {
 impl ::re_types_core::Archetype for TextLogColumns {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.blueprint.archetypes.TextLogColumns".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.blueprint.archetypes.TextLogColumns"
+        )
     }
 
     #[inline]
@@ -218,12 +226,5 @@ impl TextLogColumns {
         self.text_log_columns =
             try_serialize_field(Self::descriptor_text_log_columns(), text_log_columns);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for TextLogColumns {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.timeline_columns.heap_size_bytes() + self.text_log_columns.heap_size_bytes()
     }
 }

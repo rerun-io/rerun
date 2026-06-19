@@ -92,7 +92,7 @@ pub fn build_chunk_from_components(
     let (arrays, timeline_names): (Vec<ArrowArrayRef>, Vec<TimelineName>) =
         itertools::process_results(
             timelines.iter().map(|(name, array)| {
-                let py_name = name.downcast::<PyString>()?;
+                let py_name = name.cast::<PyString>()?;
                 let name: std::borrow::Cow<'_, str> = py_name.extract()?;
                 let timeline_name: TimelineName = name.as_ref().into();
                 array_to_rust(&array).map(|array| (array, timeline_name))
@@ -100,9 +100,7 @@ pub fn build_chunk_from_components(
             |iter| iter.unzip(),
         )?;
 
-    let timelines: Result<Vec<_>, ChunkError> = arrays
-        .into_iter()
-        .zip(timeline_names)
+    let timelines: Result<Vec<_>, ChunkError> = std::iter::zip(arrays, timeline_names)
         .map(|(array, timeline_name)| {
             let time_type = re_log_types::TimeType::from_arrow_datatype(array.data_type())
                 .ok_or_else(|| ChunkError::Malformed {
@@ -135,26 +133,26 @@ pub fn build_chunk_from_components(
             |iter| iter.unzip(),
         )?;
 
-    let components: Result<Vec<(ComponentDescriptor, _)>, ChunkError> = arrays
-        .into_iter()
-        .zip(component_descrs)
-        .map(|(list_array, descr)| {
-            let batch = if let Some(batch) = list_array.downcast_array_ref::<ArrowListArray>() {
-                batch.clone()
-            } else {
-                let offsets =
-                    ArrowOffsetBuffer::from_lengths(std::iter::repeat_n(1, list_array.len()));
-                let field = ArrowField::new("item", list_array.data_type().clone(), true).into();
-                ArrowListArray::try_new(field, offsets, list_array, None).map_err(|err| {
-                    ChunkError::Malformed {
-                        reason: format!("Failed to wrap in List array: {err}"),
-                    }
-                })?
-            };
+    let components: Result<Vec<(ComponentDescriptor, _)>, ChunkError> =
+        std::iter::zip(arrays, component_descrs)
+            .map(|(list_array, descr)| {
+                let batch = if let Some(batch) = list_array.downcast_array_ref::<ArrowListArray>() {
+                    batch.clone()
+                } else {
+                    let offsets =
+                        ArrowOffsetBuffer::from_lengths(std::iter::repeat_n(1, list_array.len()));
+                    let field =
+                        ArrowField::new("item", list_array.data_type().clone(), true).into();
+                    ArrowListArray::try_new(field, offsets, list_array, None).map_err(|err| {
+                        ChunkError::Malformed {
+                            reason: format!("Failed to wrap in List array: {err}"),
+                        }
+                    })?
+                };
 
-            Ok((descr, batch))
-        })
-        .collect();
+                Ok((descr, batch))
+            })
+            .collect();
 
     let components = components
         .map_err(|err| PyRuntimeError::new_err(format!("Error converting component data: {err}")))?

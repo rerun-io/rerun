@@ -1,8 +1,5 @@
 ---
 title: Importers
 order: 800
+redirect: concepts/logging-and-ingestion/importers/overview
 ---
-
-Extending Rerun's file loading capabilities with custom importers.
-
-<!-- TODO(ab): it would be nice to auto-generate a TOC here -->

@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import time
 from pathlib import Path
+from typing import cast
 
 import torch
 import torch.nn.functional as F
@@ -41,7 +42,8 @@ CHUNK_SIZE = 50
 EPOCHS = 5
 BATCH_SIZE = 8
 LR = 1e-5
-NUM_WORKERS = 8
+NUM_WORKERS = 4
+FETCH_SIZE = 256
 
 
 class CollateFn:
@@ -52,13 +54,17 @@ class CollateFn:
         self.state_dim = state_dim
 
     @with_tracing("CollateFn")
-    def __call__(self, samples: list[dict[str, torch.Tensor]]) -> dict[str, torch.Tensor]:
-        batch_size = len(samples)
+    def __call__(self, samples: list[dict[str, torch.Tensor | None]]) -> dict[str, torch.Tensor]:
+        # `VideoFrameDecoder` returns `None` when a target precedes the first keyframe; filter those out.
+        complete: list[dict[str, torch.Tensor]] = [
+            cast("dict[str, torch.Tensor]", s) for s in samples if all(s[f"image_{cam}"] is not None for cam in CAMERAS)
+        ]
+        batch_size = len(complete)
 
-        states = torch.stack([s["state"] for s in samples]).float()
+        states = torch.stack([s["state"] for s in complete]).float()
 
         # Future action chunks: reshape windowed flat tensors
-        actions = torch.stack([s["action"].reshape(self.chunk_size, self.state_dim) for s in samples]).float()
+        actions = torch.stack([s["action"].reshape(self.chunk_size, self.state_dim) for s in complete]).float()
 
         batch: dict[str, torch.Tensor] = {
             "observation.state": states,
@@ -67,7 +73,7 @@ class CollateFn:
         }
         # Per-camera images: (3, H, W) uint8 -> float in [0, 1], resized to (IMAGE_H, IMAGE_W)
         for cam, key in zip(CAMERAS, IMAGE_KEYS):
-            imgs = torch.stack([s[f"image_{cam}"] for s in samples]).float() / 255.0
+            imgs = torch.stack([s[f"image_{cam}"] for s in complete]).float() / 255.0
             batch[key] = F.interpolate(imgs, size=(IMAGE_H, IMAGE_W), mode="bilinear", align_corners=False)
         return batch
 
@@ -88,6 +94,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--epochs", type=int, default=EPOCHS, help="Number of training epochs")
     parser.add_argument("--batch-size", type=int, default=BATCH_SIZE, help="Training batch size")
     parser.add_argument("--num-workers", type=int, default=NUM_WORKERS, help="DataLoader worker processes")
+    parser.add_argument(
+        "--fetch-size",
+        type=int,
+        default=FETCH_SIZE,
+        help="Samples fetched per server query for the iterable dataset",
+    )
     parser.add_argument("--lr", type=float, default=LR, help="Learning rate")
     parser.add_argument(
         "--dataset-style",
@@ -145,11 +157,13 @@ def main() -> None:
     if args.dataset_style == "map":
         ds = RerunMapDataset(source=source, index="frame_index", fields=fields)
     else:
-        ds = RerunIterableDataset(source=source, index="frame_index", fields=fields, fetch_size=512)
+        ds = RerunIterableDataset(source=source, index="frame_index", fields=fields, fetch_size=args.fetch_size)
     print(f"Using {args.dataset_style} dataset with {len(ds)} samples (after window trimming)")
 
     # IterableDataset doesn't support indexing, so probe shape via iteration.
-    state_dim = next(iter(ds))["state"].shape[0]
+    state_tensor = next(iter(ds))["state"]
+    assert state_tensor is not None  # NumericDecoder never returns None
+    state_dim = state_tensor.shape[0]
     action_dim = state_dim
     print(f"Dimensions: {state_dim=}, {action_dim=}")
 

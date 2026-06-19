@@ -19,7 +19,7 @@ use re_viewport_blueprint::ViewProperty;
 use super::visualizer_system::{Entry, TextLogSystem};
 
 // TODO(andreas): This should be a blueprint component.
-#[derive(Clone, PartialEq, Eq, Default)]
+#[derive(Clone, PartialEq, Eq, Default, re_byte_size::SizeBytes)]
 pub struct TextViewState {
     /// Keeps track of the latest time selection made by the user.
     ///
@@ -27,20 +27,18 @@ pub struct TextViewState {
     /// text entry window however they please when the time cursor isn't moving.
     latest_time: i64,
 
+    /// Time of the latest entry at or before the cursor on the previous render.
+    ///
+    /// We auto-scroll whenever this changes so the view tracks the latest-at
+    /// row as new (possibly out-of-order) data streams in. This handles both
+    /// the initial catch-up to a programmatic `SetTime` (e.g. a `#when` URL
+    /// anchor pointing past the data loaded so far) and any later arrival
+    /// that lands closer to the cursor.
+    last_anchor_time: Option<i64>,
+
     seen_levels: BTreeSet<String>,
 
     last_columns_min_sizes: Vec<u32>,
-}
-
-impl re_byte_size::SizeBytes for TextViewState {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            latest_time: _,
-            seen_levels,
-            last_columns_min_sizes,
-        } = self;
-        seen_levels.heap_size_bytes() + last_columns_min_sizes.heap_size_bytes()
-    }
 }
 
 impl ViewState for TextViewState {
@@ -50,6 +48,10 @@ impl ViewState for TextViewState {
 
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
+    }
+
+    fn heap_size_bytes(&self) -> u64 {
+        re_byte_size::SizeBytes::heap_size_bytes(self)
     }
 }
 
@@ -198,7 +200,8 @@ Filter message types and toggle column visibility in a selection panel.",
 
         let tokens = ui.tokens();
         let state = state.downcast_mut::<TextViewState>()?;
-        let text = system_output.visualizer_data::<Vec<Entry>>(TextLogSystem::identifier())?;
+        let text =
+            system_output.visualizer_data_or_default::<Vec<Entry>>(TextLogSystem::identifier())?;
 
         let columns_property = ViewProperty::from_archetype::<TextLogColumns>(
             ctx.blueprint_db(),
@@ -237,7 +240,7 @@ Filter message types and toggle column visibility in a selection panel.",
             TextLogRows::descriptor_filter_by_log_level().component,
         )?;
 
-        for te in text {
+        for te in text.iter() {
             if let Some(lvl) = &te.level {
                 state.seen_levels.insert(lvl.to_string());
             }
@@ -260,14 +263,20 @@ Filter message types and toggle column visibility in a selection panel.",
             ..egui::Frame::default()
         }
         .show(ui, |ui| {
-            // Did the time cursor move since last time?
-            // - If it did, autoscroll to the text log to reveal the current time.
-            // - Otherwise, let the user scroll around freely!
+            // Auto-scroll when the time cursor moves, or whenever the
+            // latest-at row shifts because new (possibly out-of-order) data
+            // landed closer to the cursor.
+            let anchor_time = entries
+                .partition_point(|te| te.time.as_i64() <= time)
+                .checked_sub(1)
+                .map(|i| entries[i].time.as_i64());
+            let anchor_moved = anchor_time != state.last_anchor_time;
             let time_cursor_moved = state.latest_time != time;
-            let scroll_to_row = time_cursor_moved.then(|| {
+            let scroll_to_row = (time_cursor_moved || anchor_moved).then(|| {
                 re_tracing::profile_scope!("search scroll time");
                 entries.partition_point(|te| te.time.as_i64() < time)
             });
+            state.last_anchor_time = anchor_time;
 
             ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
                 egui::ScrollArea::horizontal().show(ui, |ui| {
@@ -296,7 +305,6 @@ Filter message types and toggle column visibility in a selection panel.",
 /// `scroll_to_row` indicates how far down we want to scroll in terms of logical rows,
 /// as opposed to `scroll_to_offset` (computed below) which is how far down we want to
 /// scroll in terms of actual points.
-#[expect(clippy::too_many_arguments)]
 fn table_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
@@ -534,20 +542,17 @@ fn view_property_ui_rows(ctx: &ViewContext<'_>, ui: &mut egui::Ui) {
                             return;
                         };
 
-                        let mut new_levels = state
-                            .seen_levels
-                            .iter()
-                            .map(|s| {
+                        let mut new_levels = std::iter::chain(
+                            state.seen_levels.iter().map(|s| {
                                 let level_active = levels.iter().any(|l| l.as_str() == s);
                                 (s.clone(), level_active)
-                            })
-                            .chain(
-                                levels
-                                    .iter()
-                                    .filter(|lvl| !state.seen_levels.contains(lvl.as_str()))
-                                    .map(|lvl| (lvl.as_str().to_owned(), true)),
-                            )
-                            .collect::<Vec<_>>();
+                            }),
+                            levels
+                                .iter()
+                                .filter(|lvl| !state.seen_levels.contains(lvl.as_str()))
+                                .map(|lvl| (lvl.as_str().to_owned(), true)),
+                        )
+                        .collect::<Vec<_>>();
 
                         let mut any_change = false;
                         for (lvl, active) in &mut new_levels {

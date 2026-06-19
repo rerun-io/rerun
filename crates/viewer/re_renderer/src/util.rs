@@ -129,10 +129,7 @@ mod tests {
             Vec3::new(1.2, 1.8, 1.5),
         ];
         let outlier = Vec3::new(100.0, 200.0, 300.0);
-        let points = cluster_core
-            .iter()
-            .copied()
-            .chain(std::iter::once(outlier))
+        let points = std::iter::chain(cluster_core.iter().copied(), std::iter::once(outlier))
             .collect::<Vec<_>>();
 
         let bounds = point_cloud_bounds(&points);

@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -21,7 +22,7 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq, ::re_byte_size::SizeBytes)]
 pub struct AffixFuzzer20 {
     pub p: crate::testing::datatypes::PrimitiveComponent,
     pub s: crate::testing::datatypes::StringComponent,
@@ -165,11 +166,11 @@ impl ::re_types_core::Loggable for AffixFuzzer20 {
             } else {
                 let (arrow_data_fields, arrow_data_arrays) =
                     (arrow_data.fields(), arrow_data.columns());
-                let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data_fields
-                    .iter()
-                    .map(|field| field.name().as_str())
-                    .zip(arrow_data_arrays)
-                    .collect();
+                let arrays_by_name: ::std::collections::HashMap<_, _> = ::std::iter::zip(
+                    arrow_data_fields.iter().map(|field| field.name().as_str()),
+                    arrow_data_arrays,
+                )
+                .collect();
                 let p = {
                     if !arrays_by_name.contains_key("p") {
                         return Err(DeserializationError::missing_struct_field(
@@ -261,18 +262,5 @@ impl ::re_types_core::Loggable for AffixFuzzer20 {
                     .with_context("rerun.testing.datatypes.AffixFuzzer20")?
             }
         })
-    }
-}
-
-impl ::re_byte_size::SizeBytes for AffixFuzzer20 {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.p.heap_size_bytes() + self.s.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::testing::datatypes::PrimitiveComponent>::is_pod()
-            && <crate::testing::datatypes::StringComponent>::is_pod()
     }
 }

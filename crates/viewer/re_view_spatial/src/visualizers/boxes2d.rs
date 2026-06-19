@@ -113,19 +113,18 @@ impl Boxes2DVisualizer {
                     overall_position: UiLabelTarget::Point2D(
                         <[f32; 2]>::from(obj_space_bounding_box.center().truncate()).into(),
                     ),
-                    instance_positions: data
-                        .half_sizes
-                        .iter()
-                        .copied()
-                        .zip(clamped_or(data.centers, &Position2D::ZERO).copied())
-                        .map(|(half_size, center)| {
-                            let min = half_size.box_min(center);
-                            let max = half_size.box_max(center);
-                            UiLabelTarget::Rect(egui::Rect::from_min_max(
-                                egui::pos2(min.x, min.y),
-                                egui::pos2(max.x, max.y),
-                            ))
-                        }),
+                    instance_positions: std::iter::zip(
+                        data.half_sizes.iter().copied(),
+                        clamped_or(data.centers, &Position2D::ZERO).copied(),
+                    )
+                    .map(|(half_size, center)| {
+                        let min = half_size.box_min(center);
+                        let max = half_size.box_max(center);
+                        UiLabelTarget::Rect(egui::Rect::from_min_max(
+                            egui::pos2(min.x, min.y),
+                            egui::pos2(max.x, max.y),
+                        ))
+                    }),
                     labels: &data.labels,
                     colors: &colors,
                     show_labels: data.show_labels.unwrap_or_else(|| {
@@ -158,7 +157,10 @@ struct Boxes2DComponentData<'a> {
 
 impl IdentifiedViewSystem for Boxes2DVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "Boxes2D".into()
+        re_viewer_context::external::re_string_interner::intern_static!(
+            re_viewer_context::ViewSystemIdentifier,
+            "Boxes2D"
+        )
     }
 }
 

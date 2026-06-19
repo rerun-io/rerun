@@ -62,12 +62,20 @@ class TransformData:
 class ColumnCollector:
     """Collects time-series data for sending via send_columns API.
 
-    Handles both regular archetypes (VideoStream, Transform3D, etc.) and DynamicArchetype.
+    Handles both regular archetypes (VideoStream, Transform3D, etc.) and
+    DynamicArchetype.
     - For regular archetypes: ColumnCollector(path, rr.VideoStream)
-    - For DynamicArchetype: ColumnCollector(path, rr.DynamicArchetype, archetype_name="custom.CompressedImage")
+    - For DynamicArchetype:
+      ColumnCollector(path, rr.DynamicArchetype,
+                      archetype_name="custom.CompressedImage")
     """
 
-    def __init__(self, entity_path: str, archetype_type: type, archetype_name: str | None = None):
+    def __init__(
+        self,
+        entity_path: str,
+        archetype_type: type,
+        archetype_name: str | None = None,
+    ):
         self.entity_path = entity_path
         self.archetype_type: type = archetype_type
         self.archetype_name = archetype_name  # Only used for DynamicArchetype
@@ -87,16 +95,22 @@ class ColumnCollector:
             return
 
         time_columns = [
-            rr.TimeColumn(name, timestamp=[np.datetime64(t, "ns") for t in timestamps])
+            rr.TimeColumn(
+                name, timestamp=[np.datetime64(t, "ns") for t in timestamps]
+            )
             for name, timestamps in self.indexes.items()
         ]
 
         if self.archetype_type is rr.DynamicArchetype:
-            columns = rr.DynamicArchetype.columns(archetype=self.archetype_name, components=self.components)  # type: ignore[arg-type]
+            columns = rr.DynamicArchetype.columns(
+                archetype=self.archetype_name,  # type: ignore[arg-type]
+                components=self.components,
+            )
             kwargs.setdefault("strict", True)
         else:
-            # .columns() is code-generated per-archetype with type-specific signatures, not on base class.
-            #  So mypy can't verify it exists on 'type'.
+            # .columns() is code-generated per-archetype with type-specific
+            # signatures, not on base class. So mypy can't verify it exists
+            # on 'type'.
             columns = self.archetype_type.columns(**self.components)  # type: ignore[attr-defined]
 
         rec.send_columns(
@@ -116,7 +130,9 @@ def convert_timestamp(secs: int, nanos: int) -> np.datetime64:
     return np.datetime64(epoch_nanos, "ns")
 
 
-def camera_calibration(rec: rr.RecordingStream, msg: McapMessage, logged: set[str]) -> bool:
+def camera_calibration(
+    rec: rr.RecordingStream, msg: McapMessage, logged: set[str]
+) -> bool:
     """Convert CameraCalibration messages to Rerun Pinhole. Logs statically."""
     if msg.proto_msg.DESCRIPTOR.name != "CameraCalibration":
         return False
@@ -126,8 +142,9 @@ def camera_calibration(rec: rr.RecordingStream, msg: McapMessage, logged: set[st
     logged.add(msg.topic)
 
     info = msg.proto_msg
-    # Use from_fields to set parent_frame directly on the Pinhole
-    # This connects the pinhole to the named transform frame without needing a separate Transform3D
+    # Use from_fields to set parent_frame directly on the Pinhole.
+    # This connects the pinhole to the named transform frame without needing
+    # a separate Transform3D
     camera_info = rr.Pinhole.from_fields(
         image_from_camera=info.K,
         resolution=(info.width, info.height),
@@ -150,8 +167,13 @@ def compressed_video(msg: McapMessage) -> VideoFrameData | None:
     )
 
 
-def transform_msg(rec: rr.RecordingStream, msg: McapMessage, logged: set[tuple[str, str]]) -> list[TransformData]:
-    """Extract transform data from FrameTransforms messages. Static transforms are logged immediately."""
+def transform_msg(
+    rec: rr.RecordingStream, msg: McapMessage, logged: set[tuple[str, str]]
+) -> list[TransformData]:
+    """Extract transform data from FrameTransforms messages.
+
+    Static transforms are logged immediately.
+    """
     if msg.proto_msg.DESCRIPTOR.name != "FrameTransforms":
         return []
 
@@ -162,8 +184,17 @@ def transform_msg(rec: rr.RecordingStream, msg: McapMessage, logged: set[tuple[s
     for transform in msg.proto_msg.transforms:
         parent = transform.parent_frame_id
         child = transform.child_frame_id
-        translation = (transform.translation.x, transform.translation.y, transform.translation.z)
-        quaternion = (transform.rotation.x, transform.rotation.y, transform.rotation.z, transform.rotation.w)
+        translation = (
+            transform.translation.x,
+            transform.translation.y,
+            transform.translation.z,
+        )
+        quaternion = (
+            transform.rotation.x,
+            transform.rotation.y,
+            transform.rotation.z,
+            transform.rotation.w,
+        )
         entity_path = f"transforms/{child}"
 
         if is_static:
@@ -207,7 +238,9 @@ def implicit_collect(msg: McapMessage) -> tuple[str, str, dict[str, Any]]:
     return msg.proto_msg.DESCRIPTOR.full_name, msg.topic, contents
 
 
-def send_collected_columns(rec: rr.RecordingStream, *collector_maps: dict[str, ColumnCollector]) -> None:
+def send_collected_columns(
+    rec: rr.RecordingStream, *collector_maps: dict[str, ColumnCollector]
+) -> None:
     """Send all collected time-series data using columnar API."""
     for collectors in collector_maps:
         for collector in collectors.values():
@@ -216,7 +249,9 @@ def send_collected_columns(rec: rr.RecordingStream, *collector_maps: dict[str, C
 
 # --- Main execution ---
 
-parser = argparse.ArgumentParser(description="Convert MCAP Protobuf messages to Rerun format.")
+parser = argparse.ArgumentParser(
+    description="Convert MCAP Protobuf messages to Rerun format."
+)
 parser.add_argument("mcap_file", help="Path to the MCAP file to convert")
 parser.add_argument(
     "--urdf-dir",
@@ -227,7 +262,9 @@ args = parser.parse_args()
 
 path_to_mcap = args.mcap_file
 
-with rr.RecordingStream("rerun_example_convert_mcap_protobuf_send_column") as rec:
+with rr.RecordingStream(
+    "rerun_example_convert_mcap_protobuf_send_column"
+) as rec:
     rec.save("convert_mcap_protobuf_send_column.rrd")
 
     # Connect the viewer's root to the "world" frame.
@@ -251,7 +288,12 @@ with rr.RecordingStream("rerun_example_convert_mcap_protobuf_send_column") as re
     # region: conversion_loop
     with open(path_to_mcap, "rb") as f:
         reader = make_reader(f, decoder_factories=[DecoderFactory()])
-        for _schema, channel, message, proto_msg in reader.iter_decoded_messages():
+        for (
+            _schema,
+            channel,
+            message,
+            proto_msg,
+        ) in reader.iter_decoded_messages():
             msg = McapMessage(
                 topic=channel.topic,
                 log_time_ns=message.log_time,
@@ -267,10 +309,19 @@ with rr.RecordingStream("rerun_example_convert_mcap_protobuf_send_column") as re
             if frame := compressed_video(msg):
                 entity_path = msg.topic
                 if entity_path not in video_collectors:
-                    video_collectors[entity_path] = ColumnCollector(entity_path, rr.VideoStream)
-                    rec.log(entity_path, rr.VideoStream(codec=frame.codec), static=True)
+                    video_collectors[entity_path] = ColumnCollector(
+                        entity_path, rr.VideoStream
+                    )
+                    rec.log(
+                        entity_path,
+                        rr.VideoStream(codec=frame.codec),
+                        static=True,
+                    )
                 video_collectors[entity_path].append(
-                    indexes={"message_log_time": frame.log_time_ns, "message_publish_time": frame.publish_time_ns},
+                    indexes={
+                        "message_log_time": frame.log_time_ns,
+                        "message_publish_time": frame.publish_time_ns,
+                    },
                     sample=frame.data,
                 )
                 continue
@@ -279,9 +330,14 @@ with rr.RecordingStream("rerun_example_convert_mcap_protobuf_send_column") as re
             if transforms := transform_msg(rec, msg, logged_static_transforms):
                 for t in transforms:
                     if t.entity_path not in transform_collectors:
-                        transform_collectors[t.entity_path] = ColumnCollector(t.entity_path, rr.Transform3D)
+                        transform_collectors[t.entity_path] = ColumnCollector(
+                            t.entity_path, rr.Transform3D
+                        )
                     transform_collectors[t.entity_path].append(
-                        indexes={"message_log_time": t.log_time_ns, "message_publish_time": t.publish_time_ns},
+                        indexes={
+                            "message_log_time": t.log_time_ns,
+                            "message_publish_time": t.publish_time_ns,
+                        },
                         translation=t.translation,
                         quaternion=rr.Quaternion(xyzw=t.quaternion),
                         parent_frame=t.parent_frame,
@@ -293,13 +349,20 @@ with rr.RecordingStream("rerun_example_convert_mcap_protobuf_send_column") as re
             archetype_name, entity_path, components = implicit_collect(msg)
             if entity_path not in dynamic_collectors:
                 dynamic_collectors[entity_path] = ColumnCollector(
-                    entity_path, rr.DynamicArchetype, archetype_name=archetype_name
+                    entity_path,
+                    rr.DynamicArchetype,
+                    archetype_name=archetype_name,
                 )
             dynamic_collectors[entity_path].append(
-                indexes={"message_log_time": msg.log_time_ns, "message_publish_time": msg.publish_time_ns},
+                indexes={
+                    "message_log_time": msg.log_time_ns,
+                    "message_publish_time": msg.publish_time_ns,
+                },
                 **components,
             )
 
     # Send all collected time-series data using columnar API
-    send_collected_columns(rec, video_collectors, transform_collectors, dynamic_collectors)
+    send_collected_columns(
+        rec, video_collectors, transform_collectors, dynamic_collectors
+    )
 # endregion: conversion_loop

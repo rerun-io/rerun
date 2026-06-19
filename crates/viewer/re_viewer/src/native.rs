@@ -21,7 +21,7 @@ pub fn run_native_app(
 
     let native_options = eframe_options(force_wgpu_backend);
 
-    let window_title = "Rerun Viewer";
+    let window_title = "Rerun";
     eframe::run_native(
         window_title,
         native_options,
@@ -35,18 +35,19 @@ pub fn run_native_app(
 pub fn eframe_options(force_wgpu_backend: Option<&str>) -> eframe::NativeOptions {
     re_tracing::profile_function!();
     let os = egui::os::OperatingSystem::default();
+    let custom_window_decorations = re_ui::supports_custom_decorations(os);
     eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_app_id(APP_ID) // Controls where on disk the app state is persisted
-            .with_decorations(!re_ui::CUSTOM_WINDOW_DECORATIONS) // Maybe hide the OS-specific "chrome" around the window
+            .with_decorations(!custom_window_decorations) // Maybe hide the OS-specific "chrome" around the window
             .with_fullsize_content_view(re_ui::fullsize_content(os))
             .with_icon(icon_data())
             .with_inner_size([1600.0, 1200.0])
             .with_min_inner_size([320.0, 450.0]) // Should be high enough to fit the rerun menu
             .with_title_shown(!re_ui::fullsize_content(os))
-            .with_titlebar_buttons_shown(!re_ui::CUSTOM_WINDOW_DECORATIONS)
+            .with_titlebar_buttons_shown(!custom_window_decorations)
             .with_titlebar_shown(!re_ui::fullsize_content(os))
-            .with_transparent(re_ui::CUSTOM_WINDOW_DECORATIONS), // To have rounded corners without decorations we need transparency
+            .with_transparent(custom_window_decorations), // To have rounded corners without decorations we need transparency on Linux. On Windows this mostly affects resizing which looks a bit better with this.
 
         renderer: eframe::Renderer::Wgpu,
         wgpu_options: crate::wgpu_options(force_wgpu_backend),

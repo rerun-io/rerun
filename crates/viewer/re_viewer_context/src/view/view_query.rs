@@ -1,6 +1,5 @@
 use std::collections::BTreeMap;
 
-use itertools::Either;
 use nohash_hasher::IntSet;
 
 use re_chunk::{ComponentIdentifier, TimelineName};
@@ -110,6 +109,11 @@ impl RecommendedMappings {
         }
     }
 
+    /// Creates a recommendation from a set of mandatory mappings.
+    pub fn from_mappings(mandatory_mappings: VisualizerComponentMappings) -> Self {
+        Self { mandatory_mappings }
+    }
+
     /// Returns `true` if all mandatory mappings in this recommendation are already
     /// satisfied by the given existing component mappings.
     pub fn is_covered_by(&self, existing_mappings: &VisualizerComponentMappings) -> bool {
@@ -151,6 +155,11 @@ impl RecommendedMappings {
     /// Returns the underlying component mappings.
     pub fn into_mappings(self) -> VisualizerComponentMappings {
         self.mandatory_mappings
+    }
+
+    /// Returns the underlying component mappings.
+    pub fn mappings(&self) -> &VisualizerComponentMappings {
+        &self.mandatory_mappings
     }
 
     /// Human-readable display name derived from the first component source.
@@ -492,14 +501,11 @@ impl<'s> ViewQuery<'s> {
         &self,
         visualizer: ViewSystemIdentifier,
     ) -> impl Iterator<Item = (&'s DataResult, &'s VisualizerInstruction)> {
-        if let Some(instructions) = self
-            .active_visualizer_instructions_per_type
+        self.active_visualizer_instructions_per_type
             .get(&visualizer)
-        {
-            Either::Left(instructions.iter().copied())
-        } else {
-            Either::Right(std::iter::empty())
-        }
+            .into_iter()
+            .flatten()
+            .copied()
     }
 
     #[inline]

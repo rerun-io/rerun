@@ -6,7 +6,8 @@ order: 984
 
 ## `cargo install rerun-cli` requires `protoc` (0.26.0 only)
 
-**NOTE**: this has been fixed in 0.26.1 and no longer applies.
+> [!NOTE]
+> This has been fixed in 0.26.1 and no longer applies.
 
 In order to install the Rerun CLI via cargo, you have to have a `protoc` installation on the `PATH` or `PROTOC` environment variable.
 

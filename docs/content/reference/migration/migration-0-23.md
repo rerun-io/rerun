@@ -268,11 +268,12 @@ After:
 # …
 ```
 
-⚠️ Warning: Just like regular log/send calls, overlapping component types still overwrite each other.
-E.g. overriding a box radius will also override point radius on the same entity.
-In a future release, components tagged with a different archetype or field name can live side by side,
-but for the moment the Viewer is not able to make this distinction.
-For details see [#6889](https://github.com/rerun-io/rerun/issues/6889).
+> [!WARNING]
+> Just like regular log/send calls, overlapping component types still overwrite each other.
+> E.g. overriding a box radius will also override point radius on the same entity.
+> In a future release, components tagged with a different archetype or field name can live side by side,
+> but for the moment the Viewer is not able to make this distinction.
+> For details see [#6889](https://github.com/rerun-io/rerun/issues/6889).
 
 
 ### Overriding `Visible` and `Interactive` is now always recursive

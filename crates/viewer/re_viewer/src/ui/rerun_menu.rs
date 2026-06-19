@@ -76,7 +76,10 @@ impl App {
         ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
         // no wrapping: make as wide as needed
 
-        ui.menu_button("About", |ui| self.about_rerun_ui(ui, render_state));
+        let build_info = self.build_info();
+        ui.menu_button("About", |ui| {
+            about_rerun_ui(ui, build_info, render_state);
+        });
 
         ui.add_space(SPACING);
 
@@ -130,7 +133,7 @@ impl App {
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::OpenProfiler.menu_button_ui(ui, &self.command_sender);
 
-            UICommand::ToggleMemoryPanel.menu_button_ui(ui, &self.command_sender);
+            UICommand::ToggleDevPanel.menu_button_ui(ui, &self.command_sender);
             UICommand::ToggleChunkStoreBrowser.menu_button_ui(ui, &self.command_sender);
 
             #[cfg(debug_assertions)]
@@ -173,61 +176,6 @@ impl App {
         }
     }
 
-    fn about_rerun_ui(&self, ui: &mut egui::Ui, render_state: Option<&egui_wgpu::RenderState>) {
-        let re_build_info::BuildInfo {
-            crate_name,
-            features,
-            version,
-            rustc_version,
-            llvm_version,
-            git_hash,
-            git_branch: _,
-            is_in_rerun_workspace: _,
-            target_triple,
-            datetime,
-            is_debug_build,
-        } = self.build_info();
-
-        ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
-
-        let git_hash_suffix = if git_hash.is_empty() {
-            String::new()
-        } else {
-            let short_git_hash = &git_hash[..std::cmp::min(git_hash.len(), 7)];
-            format!("({short_git_hash})")
-        };
-
-        let debug_label = if *is_debug_build { " (debug)" } else { "" };
-
-        let mut label = format!(
-            "{crate_name} {version} {git_hash_suffix}{debug_label}\n\
-            {target_triple}"
-        );
-
-        // It is really the features of `rerun-cli` (the `rerun` binary) that are interesting.
-        // For the web-viewer we get `crate_name: "re_viewer"` here, which is much less interesting.
-        if crate_name == "rerun-cli" && !features.is_empty() {
-            write!(label, "\n{crate_name} features: {features}").ok();
-        }
-
-        if !rustc_version.is_empty() {
-            write!(label, "\nrustc {rustc_version}").ok();
-            if !llvm_version.is_empty() {
-                write!(label, ", LLVM {llvm_version}").ok();
-            }
-        }
-
-        if !datetime.is_empty() {
-            write!(label, "\nbuilt {datetime}").ok();
-        }
-
-        ui.label(label);
-
-        if let Some(render_state) = render_state {
-            render_state_ui(ui, render_state);
-        }
-    }
-
     fn save_buttons_ui(&self, ui: &mut egui::Ui, store_ctx: Option<&ActiveStoreContext<'_>>) {
         use re_ui::UICommandSender as _;
 
@@ -264,7 +212,7 @@ impl App {
                 // button, as this will determine whether its grayed out or not!
                 // TODO(cmc): In practice the loop (green) selection is always there
                 // at the moment so…
-                let loop_selection = self.state.loop_selection(store_ctx);
+                let loop_selection = store_ctx.and_then(|ctx| ctx.loop_selection());
 
                 if ui
                     .add_enabled(loop_selection.is_some(), save_selection_button)
@@ -279,6 +227,120 @@ impl App {
                 }
             });
         }
+    }
+}
+
+/// The about-menu serves two purposes:
+///
+/// A) Tell users about what Rerun is, in case they just stumbled upon it online.
+/// B) Show detailed build information, that can be used when reporting bugs.
+pub fn about_rerun_ui(
+    ui: &mut egui::Ui,
+    build_info: &re_build_info::BuildInfo,
+    render_state: Option<&egui_wgpu::RenderState>,
+) {
+    let re_build_info::BuildInfo {
+        crate_name,
+        features,
+        version,
+        rustc_version,
+        llvm_version,
+        git_hash,
+        git_branch: _,
+        is_in_rerun_workspace: _,
+        target_triple,
+        datetime,
+        is_debug_build,
+    } = build_info;
+
+    ui.set_max_width(400.0);
+
+    let logo_size = 68.0;
+
+    ui.horizontal(|ui|{
+        ui.add(
+            re_ui::icons::RERUN_LOGO
+                .as_image()
+                .fit_to_exact_size(egui::Vec2::splat(logo_size))
+                .corner_radius(4.0)
+                .alt_text("Rerun"),
+        );
+
+        ui.vertical(|ui|{
+            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
+            ui.label(
+                "Rerun is a toolchain for robotics and physical AI that makes it easy to log, query, visualize, and train on multi-rate, multimodal data.",
+            );
+
+            ui.add_space(4.0);
+
+            ui.horizontal(|ui| {
+                ui.spacing_mut().item_spacing.x = 0.0;
+                ui.label("Learn more at ");
+                ui.hyperlink_to("rerun.io", "https://rerun.io/");
+                ui.label(".");
+            });
+        });
+    });
+
+    ui.add_space(SPACING);
+
+    ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
+
+    let version = {
+        let git_hash_suffix = if git_hash.is_empty() {
+            String::new()
+        } else {
+            let short_git_hash = &git_hash[..std::cmp::min(git_hash.len(), 7)];
+            format!(" ({short_git_hash})")
+        };
+
+        let debug_label = if *is_debug_build { " (debug)" } else { "" };
+
+        format!("{version}{git_hash_suffix}{debug_label}")
+    };
+
+    egui::Grid::new("build_info").num_columns(2).show(ui, |ui| {
+        ui.label("Crate");
+        ui.label(crate_name.as_ref());
+        ui.end_row();
+
+        ui.label("Version");
+        ui.label(version);
+        ui.end_row();
+
+        if !datetime.is_empty() {
+            ui.label("Built");
+            ui.label(datetime.as_ref());
+            ui.end_row();
+        }
+
+        // It is really the features of `rerun-cli` (the `rerun` binary) that are interesting.
+        // For the web-viewer (`crate_name: "re_viewer"`) it is much less interesting.
+        if crate_name == "rerun-cli" && !features.is_empty() {
+            ui.label("Features");
+            ui.label(features.as_ref());
+            ui.end_row();
+        }
+
+        ui.label("Platform");
+        ui.label(target_triple.as_ref());
+        ui.end_row();
+
+        if !rustc_version.is_empty() {
+            ui.label("Compiler");
+            let mut compiler = format!("rustc {rustc_version}");
+            if !llvm_version.is_empty() {
+                write!(compiler, ", LLVM {llvm_version}").ok();
+            }
+            ui.label(compiler);
+            ui.end_row();
+        }
+    });
+
+    if let Some(render_state) = render_state {
+        ui.add_space(SPACING);
+        render_state_ui(ui, render_state);
     }
 }
 
@@ -352,13 +414,13 @@ fn render_state_ui(ui: &mut egui::Ui, render_state: &egui_wgpu::RenderState) {
     };
 
     egui::Grid::new("wgpu_info").num_columns(2).show(ui, |ui| {
-        ui.label("Rendering backend:");
+        ui.label("Rendering backend");
         wgpu_adapter_ui(ui, &render_state.adapter);
         ui.end_row();
 
         #[cfg(not(target_arch = "wasm32"))]
         if 1 < render_state.available_adapters.len() {
-            ui.label("Other rendering backends:");
+            ui.label("Other rendering backends");
             ui.vertical(|ui| {
                 for adapter in &*render_state.available_adapters {
                     if adapter.get_info() != render_state.adapter.get_info() {

@@ -35,7 +35,8 @@ class EntityBehavior(Archetype):
 
     rr.init("rerun_example_entity_behavior", spawn=True)
 
-    # Use `EntityBehavior` to override visibility & interactivity of entities in the blueprint.
+    # Use `EntityBehavior` to override visibility & interactivity of entities
+    # in the blueprint.
     rr.send_blueprint(
         rrb.Spatial2DView(
             overrides={
@@ -50,7 +51,10 @@ class EntityBehavior(Archetype):
     rr.log("hidden_subtree/also_hidden", rr.LineStrips2D(strips=[(-1, 1), (1, -1)]))
     rr.log("hidden_subtree/not_hidden", rr.LineStrips2D(strips=[(1, 1), (-1, -1)]))
     rr.log("non_interactive_subtree", rr.Boxes2D(centers=(0, 0), half_sizes=(1, 1)))
-    rr.log("non_interactive_subtree/also_non_interactive", rr.Boxes2D(centers=(0, 0), half_sizes=(0.5, 0.5)))
+    rr.log(
+        "non_interactive_subtree/also_non_interactive",
+        rr.Boxes2D(centers=(0, 0), half_sizes=(0.5, 0.5)),
+    )
     ```
     <center>
     <picture>

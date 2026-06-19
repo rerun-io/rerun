@@ -18,6 +18,7 @@ use super::{ChunkStream, ChunkStreamFactory};
 /// Describes a single store found in an RRD file.
 #[pyclass(
     frozen,
+    from_py_object,
     name = "StoreEntryInternal",
     module = "rerun_bindings.rerun_bindings"
 )]
@@ -259,6 +260,9 @@ impl ChunkStreamFactory for RrdStreamFactory {
 ///
 /// Construction is fallible: I/O errors (missing file, permission denied) are
 /// captured and surfaced on the first `next()` call rather than panicking.
+// TODO(RR-4850): this is the synchronous (no-thread) reference case for the shared
+// adapter. Once `IterStream` lands, `RrdStream` could be replaced by it, keeping the
+// per-item store-filtering as a `filter_map` on the decoder iterator.
 enum RrdStream {
     /// Normal operation: lazily decode messages from the file.
     Live {

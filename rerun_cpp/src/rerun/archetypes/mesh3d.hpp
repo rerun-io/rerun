@@ -83,11 +83,14 @@ namespace rerun::archetypes {
     ///     rec.set_time_sequence("frame", 0);
     ///     rec.log(
     ///         "shape",
-    ///         rerun::Mesh3D(
-    ///             {{1.0f, 1.0f, 1.0f}, {-1.0f, -1.0f, 1.0f}, {-1.0f, 1.0f, -1.0f}, {1.0f, -1.0f, -1.0f}}
-    ///         )
+    ///         rerun::Mesh3D({{1.0f, 1.0f, 1.0f},
+    ///                        {-1.0f, -1.0f, 1.0f},
+    ///                        {-1.0f, 1.0f, -1.0f},
+    ///                        {1.0f, -1.0f, -1.0f}})
     ///             .with_triangle_indices({{0, 2, 1}, {0, 3, 1}, {0, 3, 2}, {1, 3, 2}})
-    ///             .with_vertex_colors({0xFF0000FF, 0x00FF00FF, 0x00000FFFF, 0xFFFF00FF})
+    ///             .with_vertex_colors(
+    ///                 {0xFF0000FF, 0x00FF00FF, 0x00000FFFF, 0xFFFF00FF}
+    ///             )
     ///     );
     ///     // This box will not be affected by its parent's instance poses!
     ///     rec.log("shape/box", rerun::Boxes3D::from_half_sizes({{5.0f, 5.0f, 5.0f}}));

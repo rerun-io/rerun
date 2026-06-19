@@ -1,6 +1,7 @@
 //! Chunk fetching strategies: direct URL (HTTP Range) and gRPC.
 
 use std::collections::BTreeMap;
+use std::time::Duration;
 use std::{error::Error as _, fmt::Write as _};
 
 use arrow::array::{
@@ -9,14 +10,19 @@ use arrow::array::{
 };
 use arrow::datatypes::Int32Type;
 use futures::StreamExt as _;
+use itertools::Itertools as _;
 use tonic::IntoRequest as _;
 use tracing::Instrument as _;
 
 use re_dataframe::external::re_chunk::Chunk;
-use re_protos::cloud::v1alpha1::ext::{
-    ChunkKey, ETag, RrdChunkLocation, SOURCE_CHANGED_MESSAGE, url_strip_query,
+use re_protos::cloud::v1alpha1::FetchChunksRequest;
+use re_protos::cloud::v1alpha1::ext::QueryDatasetDataframe;
+use re_protos::{
+    cloud::v1alpha1::ext::{
+        ChunkKey, ETag, RrdChunkLocation, SOURCE_CHANGED_MESSAGE, url_strip_query,
+    },
+    common::v1alpha1::ext::SegmentId,
 };
-use re_protos::cloud::v1alpha1::{FetchChunksRequest, QueryDatasetResponse};
 use re_redap_client::ApiResult;
 
 use crate::analytics::{DirectFetchFailureReason, PendingQueryAnalytics, TaskFetchStats};
@@ -97,9 +103,9 @@ pub(crate) mod metrics {
 }
 
 /// Chunks tagged with their segment ID.
-pub type ChunksWithSegment = Vec<(Chunk, Option<String>)>;
+pub type ChunksWithSegment = Vec<(Chunk, Option<SegmentId>)>;
 
-pub type SortedChunksWithSegment = (String, Vec<Chunk>);
+pub type SortedChunksWithSegment = (SegmentId, Vec<Chunk>);
 
 /// Maximum size of a single merged HTTP Range request (16 MB, matching server).
 const MAX_MERGED_RANGE_SIZE: usize = 16 * 1024 * 1024;
@@ -136,7 +142,7 @@ struct MergedRangeRequest {
     chunks: Vec<ChunkInMergedRange>,
 
     /// Segment ID the chunks in this merged range belong to.
-    segment_id: Option<String>,
+    segment_id: Option<SegmentId>,
 
     /// `ETag` the manifest registered for the source object, when known.
     expected_etag: Option<ETag>,
@@ -175,7 +181,7 @@ impl DirectFetchError {
 
     /// The source object backing this fetch has changed since the dataset was
     /// registered. Non-retryable: re-trying produces the same drift.
-    fn source_changed(segment_id: Option<&str>) -> Self {
+    fn source_changed(segment_id: Option<&SegmentId>) -> Self {
         let msg = if let Some(id) = segment_id {
             format!("{SOURCE_CHANGED_MESSAGE}: {id}")
         } else {
@@ -200,7 +206,7 @@ impl std::error::Error for DirectFetchError {}
 /// Returns `true` if the batch contains at least one non-null direct URL.
 pub fn batch_has_any_direct_urls(batch: &RecordBatch) -> bool {
     batch
-        .column_by_name(QueryDatasetResponse::FIELD_DIRECT_URL)
+        .column_by_name(QueryDatasetDataframe::COLUMN_RERUN_LAYER_DIRECT_URL_NAME)
         .is_some_and(|col| col.null_count() < col.len())
 }
 
@@ -213,7 +219,9 @@ pub fn split_batch_by_direct_url(
     re_tracing::profile_function!();
     use arrow::compute::{filter_record_batch, is_not_null, not};
 
-    let Some(url_col) = batch.column_by_name(QueryDatasetResponse::FIELD_DIRECT_URL) else {
+    let Some(url_col) =
+        batch.column_by_name(QueryDatasetDataframe::COLUMN_RERUN_LAYER_DIRECT_URL_NAME)
+    else {
         return (None, Some(batch.clone()));
     };
 
@@ -238,7 +246,7 @@ pub fn split_batch_by_direct_url(
 /// Sum of `chunk_byte_len` values in a batch (best-effort, returns 0 on missing column).
 pub fn batch_byte_size(batch: &RecordBatch) -> u64 {
     batch
-        .column_by_name(QueryDatasetResponse::FIELD_CHUNK_BYTE_LENGTH)
+        .column_by_name(QueryDatasetDataframe::COLUMN_CHUNK_BYTE_LEN_NAME)
         .and_then(|c| c.as_any().downcast_ref::<UInt64Array>())
         .map(|arr| arr.iter().map(|v| v.unwrap_or(0)).sum())
         .unwrap_or(0)
@@ -250,7 +258,7 @@ pub fn batch_byte_size(batch: &RecordBatch) -> u64 {
 /// the column was not projected).
 pub fn batch_byte_size_uncompressed(batch: &RecordBatch) -> Option<u64> {
     batch
-        .column_by_name(QueryDatasetResponse::FIELD_CHUNK_BYTE_LENGTH_UNCOMPRESSED)
+        .column_by_name(QueryDatasetDataframe::COLUMN_CHUNK_BYTE_SIZE_UNCOMPRESSED_NAME)
         .and_then(|c| c.as_any().downcast_ref::<UInt64Array>())
         .map(|arr| arr.iter().map(|v| v.unwrap_or(0)).sum())
 }
@@ -266,7 +274,7 @@ pub async fn fetch_batch_direct(
     batch: &RecordBatch,
     http_client: &reqwest::Client,
     stats: &mut TaskFetchStats,
-    pending: Option<&PendingQueryAnalytics>,
+    pending: &PendingQueryAnalytics,
 ) -> ApiResult<Vec<ChunksWithSegment>> {
     #[cfg(not(target_arch = "wasm32"))]
     let byte_size = batch_byte_size(batch);
@@ -284,9 +292,7 @@ pub async fn fetch_batch_direct(
         }
         Err(err) => {
             let reason = DirectFetchFailureReason::classify(&err);
-            if let Some(pending) = pending {
-                pending.record_direct_terminal_failure(reason);
-            }
+            pending.record_direct_terminal_failure(reason);
             #[cfg(not(target_arch = "wasm32"))]
             metrics::record_direct_failure(reason.as_str());
             Err(re_redap_client::ApiError::connection_with_source(
@@ -428,7 +434,7 @@ fn merge_ranges_for_url(
     url: String,
     mut chunks: Vec<(usize, u64, u64)>, // (original_row_index, offset, length)
     max_gap_size: usize,
-    segment_id: Option<String>,
+    segment_id: Option<SegmentId>,
     expected_etag: Option<ETag>,
     registration_time: Option<jiff::Timestamp>,
 ) -> Vec<MergedRangeRequest> {
@@ -537,7 +543,7 @@ fn calculate_adaptive_concurrency(ranges: &[(u64, u64)]) -> usize {
 
 /// Decode a single chunk from raw RRD bytes (protobuf-encoded `ArrowMsg`).
 #[tracing::instrument(level = "debug", skip_all)]
-fn decode_chunk_from_bytes(bytes: &[u8]) -> Result<(Chunk, Option<String>), DirectFetchError> {
+fn decode_chunk_from_bytes(bytes: &[u8]) -> Result<(Chunk, Option<SegmentId>), DirectFetchError> {
     re_tracing::profile_function!();
     use re_log_encoding::Decodable;
     let raw_msg =
@@ -550,7 +556,10 @@ fn decode_chunk_from_bytes(bytes: &[u8]) -> Result<(Chunk, Option<String>), Dire
         return Err(DirectFetchError::new("invalid msg type".to_owned(), false));
     };
 
-    let segment_id_opt = arrow_msg.store_id.clone().map(|id| id.recording_id);
+    let segment_id_opt = arrow_msg
+        .store_id
+        .clone()
+        .map(|id| SegmentId::from(id.recording_id));
 
     use re_log_encoding::ToApplication as _;
     let app_msg = arrow_msg.to_application(()).map_err(|err| {
@@ -597,19 +606,22 @@ async fn fetch_batch_via_direct_urls(
     // populated by the server. `chunk_key` carries the canonical source URL
     // (e.g. `s3://`) plus per-source-object metadata (etag, registration_time)
     // used here purely for drift detection — never as the transport URL.
-    let chunk_keys: &BinaryArray = batch_column(batch, QueryDatasetResponse::FIELD_CHUNK_KEY)?;
-    let direct_urls =
-        batch_column::<DictionaryArray<Int32Type>>(batch, QueryDatasetResponse::FIELD_DIRECT_URL)?
-            .downcast_dict::<StringArray>()
-            .ok_or_else(|| {
-                DirectFetchError::new("direct_url dict values must be strings".to_owned(), false)
-            })?;
+    let chunk_keys: &BinaryArray =
+        batch_column(batch, QueryDatasetDataframe::COLUMN_CHUNK_KEY_NAME)?;
+    let direct_urls = batch_column::<DictionaryArray<Int32Type>>(
+        batch,
+        QueryDatasetDataframe::COLUMN_RERUN_LAYER_DIRECT_URL_NAME,
+    )?
+    .downcast_dict::<StringArray>()
+    .ok_or_else(|| {
+        DirectFetchError::new("direct_url dict values must be strings".to_owned(), false)
+    })?;
     // Segment IDs are required on QueryDatasetResponse, but treat them as
     // optional here: we use them purely for diagnostic logging on the decode
     // failure path, and a missing column should never break the fetch path.
-    let segment_ids: Option<&StringArray> = batch
-        .column_by_name(QueryDatasetResponse::FIELD_CHUNK_SEGMENT_ID)
-        .and_then(|col| col.as_any().downcast_ref::<StringArray>());
+    let segment_ids = QueryDatasetDataframe::COLUMN_CHUNK_SEGMENT_ID
+        .extract(batch)
+        .ok();
 
     let num_rows = batch.num_rows();
 
@@ -618,7 +630,7 @@ async fn fetch_batch_via_direct_urls(
     // sharing a URL share both, and we stash them once on first sight.
     struct UrlGroup {
         ranges: Vec<(usize, u64, u64)>,
-        segment_id: Option<String>,
+        segment_id: Option<SegmentId>,
         expected_etag: Option<ETag>,
         registration_time: Option<jiff::Timestamp>,
     }
@@ -654,9 +666,7 @@ async fn fetch_batch_via_direct_urls(
             .entry(url)
             .or_insert_with(|| UrlGroup {
                 ranges: Vec::new(),
-                segment_id: segment_ids
-                    .filter(|arr| !arr.is_null(i))
-                    .map(|arr| arr.value(i).to_owned()),
+                segment_id: segment_ids.as_ref().map(|col| col.value_owned(i)),
                 expected_etag: chunk_key.etag,
                 registration_time: chunk_key.registration_time,
             })
@@ -718,8 +728,8 @@ async fn fetch_batch_via_direct_urls(
 
                 // Backoff matching gRPC retry settings: base 100ms, max 3s, 50% jitter.
                 let mut backoff_gen = re_backoff::BackoffGenerator::new(
-                    std::time::Duration::from_millis(100),
-                    std::time::Duration::from_secs(3),
+                    Duration::from_millis(100),
+                    Duration::from_secs(3),
                 )
                 .expect("base is less than max");
 
@@ -786,7 +796,7 @@ async fn fetch_batch_via_direct_urls(
 
     // Fold every inner buffer into the outer task's accumulator before we bail
     // on the first error — we want stats from successful fetches preserved.
-    let mut all_chunks: Vec<(usize, (Chunk, Option<String>))> = Vec::new();
+    let mut all_chunks: Vec<(usize, (Chunk, Option<SegmentId>))> = Vec::new();
     let mut first_err: Option<DirectFetchError> = None;
     async {
         let mut stream = futures::stream::iter(fetches).buffer_unordered(concurrency);
@@ -810,7 +820,7 @@ async fn fetch_batch_via_direct_urls(
 
     // Step 5: Reassemble in original row order.
     all_chunks.sort_by_key(|(idx, _)| *idx);
-    let ordered: Vec<(Chunk, Option<String>)> = all_chunks
+    let ordered: Vec<(Chunk, Option<SegmentId>)> = all_chunks
         .into_iter()
         .map(|(_, chunk_with_segment)| chunk_with_segment)
         .collect();
@@ -818,7 +828,7 @@ async fn fetch_batch_via_direct_urls(
     Ok(vec![ordered])
 }
 
-type DecodedChunk = (usize, (Chunk, Option<String>));
+type DecodedChunk = (usize, (Chunk, Option<SegmentId>));
 
 async fn fetch_merged_range(
     http_client: &reqwest::Client,
@@ -834,7 +844,7 @@ async fn fetch_merged_range(
         expected_etag,
         registration_time,
     } = request;
-    let segment_id = segment_id.as_deref();
+    let segment_id = segment_id.as_ref();
     let expected_etag = expected_etag.as_ref();
     let registration_time = *registration_time;
 
@@ -902,7 +912,7 @@ async fn fetch_merged_range(
                         _ => false,
                     };
                     re_log::error!(
-                        segment_id = segment_id.unwrap_or("unknown"),
+                        segment_id = segment_id.map(|s| s.as_str()).unwrap_or("unknown"),
                         url = logged_url,
                         range_start,
                         range_end,
@@ -924,5 +934,5 @@ async fn fetch_merged_range(
                 })
                 .map(|chunk_with_segment| (info.original_row_index, chunk_with_segment))
         })
-        .collect::<Result<Vec<_>, _>>()
+        .try_collect()
 }

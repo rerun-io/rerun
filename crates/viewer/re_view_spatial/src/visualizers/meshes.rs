@@ -102,7 +102,10 @@ impl Mesh3DVisualizer {
 
 impl IdentifiedViewSystem for Mesh3DVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "Mesh3D".into()
+        re_viewer_context::external::re_string_interner::intern_static!(
+            re_viewer_context::ViewSystemIdentifier,
+            "Mesh3D"
+        )
     }
 }
 

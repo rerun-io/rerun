@@ -283,7 +283,7 @@ When persisted, the state will be stored at the following locations:
 - A path to a Rerun .rrd recording
 - A path to a Rerun .rbl blueprint
 - An HTTP(S) URL to an .rrd or .rbl file to load
-- A path to an image or mesh, or any other file that Rerun can load (see https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview?speculative-link)
+- A path to an image or mesh, or any other file that Rerun can load (see https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview)
 
 If no arguments are given, a server will be hosted which a Rerun SDK can connect to.")]
     url_or_paths: Vec<String>,
@@ -313,6 +313,14 @@ If no arguments are given, a server will be hosted which a Rerun SDK can connect
     /// Detach Rerun Viewer process from the application process.
     #[clap(long)]
     detach_process: bool,
+
+    /// Run the viewer in headless mode (no OS window).
+    ///
+    /// The viewer is driven by an offscreen `egui_kittest` harness, while the
+    /// gRPC server keeps running so SDK clients can still log data and request
+    /// screenshots via `save_screenshot`.
+    #[clap(long)]
+    headless: bool,
 
     /// Set the screen resolution (in logical points), e.g. "1920x1080".
     /// Useful together with `--screenshot-to`.
@@ -460,10 +468,8 @@ impl Args {
                 !arg.is_positional() && !arg.is_hide_set() && arg.get_long() != Some("help")
             });
 
-            let full_name = full_name
-                .into_iter()
-                .chain(std::iter::once(name.to_owned()))
-                .collect_vec();
+            let full_name =
+                std::iter::chain(full_name, std::iter::once(name.to_owned())).collect_vec();
 
             if !any_positional_args && !any_floating_args && !any_subcommands {
                 return;
@@ -530,7 +536,7 @@ impl Args {
             // > - A path to a Rerun .rrd recording
             // > - A path to a Rerun .rbl blueprint
             // > - An HTTP(S) URL to an .rrd or .rbl file to load
-            // > - A path to an image or mesh, or any other file that Rerun can load (see https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview?speculative-link)
+            // > - A path to an image or mesh, or any other file that Rerun can load (see https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview)
             // >
             // > If no arguments are given, a server will be hosted which a Rerun SDK can connect to.
             // """
@@ -604,7 +610,7 @@ enum Command {
 
     /// Download recordings and save them as .rrd files.
     ///
-    /// Supports downloading from Rerun Cloud as well as any other supported URI.
+    /// Supports downloading from Rerun Hub as well as any other supported URI.
     Download(DownloadCommand),
 
     /// Generates the Rerun CLI manual (markdown).
@@ -977,7 +983,6 @@ fn run_impl(
 }
 
 #[cfg(feature = "native_viewer")]
-#[expect(clippy::too_many_arguments)]
 #[allow(clippy::allow_attributes, unused_variables)]
 fn start_native_viewer(
     args: &Args,
@@ -991,7 +996,7 @@ fn start_native_viewer(
     #[cfg(feature = "server")] server_addr: std::net::SocketAddr,
     #[cfg(feature = "server")] server_options: re_sdk::ServerOptions,
 ) -> anyhow::Result<()> {
-    use re_viewer::external::re_viewer_context;
+    use re_viewer::external::{eframe, re_viewer_context};
 
     use crate::external::re_ui::{UICommand, UICommandSender as _};
 
@@ -1000,7 +1005,15 @@ fn start_native_viewer(
     let connect = args.connect.is_some();
     let follow = args.follow;
     let renderer = args.renderer.as_deref();
-    let memory_limit = args.memory_limit.clone();
+    let memory_limit = args
+        .memory_limit
+        .as_ref()
+        .map(|memory_limit| {
+            re_log::debug!("Parsing --memory-limit (for Viewer)");
+            re_memory::MemoryLimit::parse(memory_limit)
+        })
+        .transpose()
+        .map_err(|err| anyhow::format_err!("Bad --memory-limit: {err}"))?;
 
     let (command_tx, command_rx) = re_viewer_context::command_channel();
 
@@ -1014,86 +1027,116 @@ fn start_native_viewer(
     // so we catch any warnings produced during startup.
     let text_log_rx = re_viewer::register_text_log_receiver();
 
-    re_viewer::run_native_app(
-        _main_thread_token,
-        Box::new(move |cc| {
-            {
-                let tx = command_tx.clone();
-                let egui_ctx = cc.egui_ctx.clone();
-                tokio::spawn(async move {
-                    // We catch ctrl-c commands so we can properly quit.
-                    // Without this, recent state changes might not be persisted.
-                    match tokio::signal::ctrl_c().await {
-                        Ok(()) => {
-                            re_log::info!("Caught Ctrl-C, quitting Rerun Viewer…");
-                            tx.send_ui(UICommand::Quit);
-                            egui_ctx.request_repaint();
-                        }
-                        Err(err) => {
-                            re_log::error!("Failed to listen for ctrl-c signal: {err}");
-                        }
+    #[allow(clippy::allow_attributes, unused_mut)]
+    let ReceiversFromUrlParams {
+        mut log_receivers,
+        urls_to_pass_on_to_viewer,
+    } = ReceiversFromUrlParams::new(
+        url_or_paths,
+        &UrlParamProcessingConfig::native_viewer(),
+        &connection_registry,
+        Some(auth_error_handler),
+        follow,
+    )?;
+
+    let create_app = move |cc: &eframe::CreationContext<'_>| -> re_viewer::App {
+        {
+            let tx = command_tx.clone();
+            let egui_ctx = cc.egui_ctx.clone();
+            tokio::spawn(async move {
+                // We catch ctrl-c commands so we can properly quit.
+                // Without this, recent state changes might not be persisted.
+                match tokio::signal::ctrl_c().await {
+                    Ok(()) => {
+                        re_log::info!("Caught Ctrl-C, quitting Rerun Viewer…");
+                        tx.send_ui(UICommand::Quit);
+                        egui_ctx.request_repaint();
                     }
-                });
-            }
-            let mut app = re_viewer::App::with_commands(
-                _main_thread_token,
-                _build_info,
-                call_source.app_env(),
-                startup_options,
-                cc,
-                Some(connection_registry.clone()),
-                re_viewer::AsyncRuntimeHandle::new_native(tokio_runtime_handle),
-                text_log_rx,
-                (command_tx, command_rx),
+                    Err(err) => {
+                        re_log::error!("Failed to listen for ctrl-c signal: {err}");
+                    }
+                }
+            });
+        }
+        let mut app = re_viewer::App::with_commands(
+            _main_thread_token,
+            _build_info,
+            call_source.app_env(),
+            startup_options,
+            cc,
+            Some(connection_registry.clone()),
+            re_viewer::AsyncRuntimeHandle::new_native(tokio_runtime_handle),
+            text_log_rx,
+            (command_tx, command_rx),
+        );
+
+        if let Some(memory_limit) = memory_limit {
+            app.app_options_mut().memory_limit = memory_limit;
+        }
+
+        // If we're **not** connecting to an existing server, we spawn a new one and add it to the list of receivers.
+        #[cfg(feature = "server")]
+        if !connect {
+            let (log_receiver, grpc_server_handle) = re_grpc_server::spawn_with_recv(
+                server_addr,
+                server_options,
+                re_grpc_server::shutdown::never(),
             );
 
-            if let Some(memory_limit) = memory_limit {
-                re_log::debug!("Parsing --memory-limit (for Viewer)");
-                let memory_limit = re_memory::MemoryLimit::parse(&memory_limit)
-                    .map_err(|err| anyhow::format_err!("Bad --memory-limit: {err}"))?;
-                app.app_options_mut().memory_limit = memory_limit;
+            log_receivers.push(log_receiver);
+
+            struct ProxyHandleWrapper {
+                handle: re_grpc_server::MessageProxyHandle,
             }
 
-            #[allow(clippy::allow_attributes, unused_mut)]
-            let ReceiversFromUrlParams {
-                mut log_receivers,
-                urls_to_pass_on_to_viewer,
-            } = ReceiversFromUrlParams::new(
-                url_or_paths,
-                &UrlParamProcessingConfig::native_viewer(),
-                &connection_registry,
-                Some(auth_error_handler),
-                follow,
-            )?;
-
-            // If we're **not** connecting to an existing server, we spawn a new one and add it to the list of receivers.
-            #[cfg(feature = "server")]
-            if !connect {
-                let log_receiver = re_grpc_server::spawn_with_recv(
-                    server_addr,
-                    server_options,
-                    re_grpc_server::shutdown::never(),
-                );
-
-                log_receivers.push(log_receiver);
+            impl re_viewer::ExternalMemoryUser for ProxyHandleWrapper {
+                fn capture(&mut self) -> Option<re_byte_size::NamedMemUsageTree> {
+                    self.handle
+                        .capture_memory()
+                        .map(|tree| re_byte_size::NamedMemUsageTree {
+                            name: "GRPC Server".to_owned(),
+                            value: tree,
+                        })
+                }
             }
 
-            app.set_profiler(profiler);
-            for rx in log_receivers {
-                app.add_log_receiver(rx);
-            }
-            for url in urls_to_pass_on_to_viewer {
-                app.open_url_or_file(&url);
-            }
-            if let Ok(url) = std::env::var("EXAMPLES_MANIFEST_URL") {
-                app.set_examples_manifest_url(url);
-            }
+            app.add_external_memory_user(Box::new(ProxyHandleWrapper {
+                handle: grpc_server_handle,
+            }));
+        }
 
-            Ok(Box::new(app))
-        }),
-        renderer,
-    )
-    .map_err(|err| err.into())
+        app.set_profiler(profiler);
+        for rx in log_receivers {
+            app.add_log_receiver(rx);
+        }
+        for url in urls_to_pass_on_to_viewer {
+            app.open_url_or_file(&url);
+        }
+        if let Ok(url) = std::env::var("EXAMPLES_MANIFEST_URL") {
+            app.set_examples_manifest_url(url);
+        }
+
+        app
+    };
+
+    if args.headless {
+        let window_size = args
+            .window_size
+            .as_deref()
+            .map(parse_size)
+            .transpose()?
+            .map(|[w, h]| re_viewer::external::egui::Vec2::new(w, h));
+
+        re_viewer::run_headless_app(Box::new(create_app), renderer, window_size)
+            .map_err(|err| err.into())
+    } else {
+        re_viewer::run_native_app(
+            _main_thread_token,
+            Box::new(move |cc| Ok(Box::new(create_app(cc)))),
+            renderer,
+        )
+        .map_err(|err| err.into())
+    }
 }
 
 #[cfg(feature = "native_viewer")]
@@ -1201,7 +1244,8 @@ fn serve_web(
 
         // Spawn a server which the Web Viewer can connect to.
         // All `rxs` are consumed by the server.
-        re_grpc_server::spawn_from_rx_set(
+        // We don't render a dev panel here so we don't need to keep the handle.
+        let _ = re_grpc_server::spawn_from_rx_set(
             server_addr,
             server_options,
             re_grpc_server::shutdown::never(),
@@ -1253,7 +1297,8 @@ fn serve_grpc(
 
     let (signal, shutdown) = re_grpc_server::shutdown::shutdown();
     // Spawn a server which the Web Viewer can connect to.
-    re_grpc_server::spawn_from_rx_set(
+    // No dev panel in this mode, so we drop the handle.
+    let _ = re_grpc_server::spawn_from_rx_set(
         server_addr,
         server_options,
         shutdown,
@@ -1285,7 +1330,7 @@ fn save_or_test_receive(
 
     #[cfg(feature = "server")]
     {
-        let log_rx = re_grpc_server::spawn_with_recv(
+        let (log_rx, _handle) = re_grpc_server::spawn_with_recv(
             server_addr,
             server_options,
             re_grpc_server::shutdown::never(),
@@ -1751,6 +1796,7 @@ fn record_cli_command_analytics(args: &Args) {
         cors_allow_origin: _,
         port: _,
         new: _,
+        headless: _,
     } = args;
 
     let (command, subcommand) = match command {

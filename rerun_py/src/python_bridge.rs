@@ -1,6 +1,5 @@
 #![expect(clippy::fn_params_excessive_bools)] // We used named arguments, so this is fine
 #![expect(clippy::needless_pass_by_value)] // A lot of arguments to #[pyfunction] need to be by value
-#![expect(clippy::too_many_arguments)] // We used named arguments, so this is fine
 
 use std::borrow::Borrow as _;
 use std::io::IsTerminal as _;
@@ -10,7 +9,7 @@ use std::time::Duration;
 
 use arrow::array::RecordBatch as ArrowRecordBatch;
 use itertools::Itertools as _;
-use pyo3::exceptions::{PyKeyboardInterrupt, PyRuntimeError};
+use pyo3::exceptions::{PyKeyboardInterrupt, PyRuntimeError, PyStopIteration, PyTypeError};
 use pyo3::prelude::*;
 use pyo3::types::{PyBytes, PyDict};
 use re_auth::oauth::Credentials;
@@ -39,7 +38,7 @@ impl PyRuntimeErrorExt for PyRuntimeError {
     }
 }
 
-use crate::recording::PyRecordingInternal;
+use crate::chunk::PyChunkInternal;
 
 // The bridge needs to have complete control over the lifetimes of the individual recordings,
 // otherwise all the recording shutdown machinery (which includes deallocating C, Rust and Python
@@ -95,7 +94,7 @@ static GARBAGE_QUEUE: LazyLock<(GarbageSender, GarbageReceiver)> = LazyLock::new
 ///
 /// Any time you release the GIL (e.g. `py.allow_threads()`), try to slip in a call to this
 /// function so we don't accumulate too much garbage.
-fn flush_garbage_queue() {
+pub(crate) fn flush_garbage_queue() {
     while GARBAGE_QUEUE.1.try_recv().is_ok() {
         // Implicitly dropping chunks, therefore triggering their `release` callbacks, therefore
         // triggering the native Python GC.
@@ -151,37 +150,28 @@ fn init_perf_telemetry() -> parking_lot::MutexGuard<'static, re_perf_telemetry::
 
             let runtime = crate::utils::get_tokio_runtime(); // telemetry must be init in a Tokio context
             runtime.block_on(async {
-                let enabled = args.enabled;
-                let telemetry = re_perf_telemetry::Telemetry::init(
+                // Wire a Python `ContextVar` reader as the session-id source for
+                // `re_perf_telemetry::current_rerun_session_id`. The crate itself
+                // doesn't know Python exists; we hand it a closure it can call.
+                let telemetry = re_perf_telemetry::Telemetry::init_with_session_id_reader(
                     args,
                     // NOTE: It's a static in this case, so it's never dropped anyhow.
                     re_perf_telemetry::TelemetryDropBehavior::Shutdown,
+                    || {
+                        pyo3::Python::attach(
+                            crate::tracing_session::current_rerun_session_id_from_contextvar,
+                        )
+                    },
                 )
                 // Perf telemetry is a developer tool, it's not compiled into final user builds.
                 .expect("could not start perf telemetry");
-                // Only flip the flag when telemetry actually wired up the OTel stack.
-                // `Telemetry::init` returns an inert `Self` when `TELEMETRY_ENABLED` is
-                // false, in which case `tracing_session()` cannot work either.
-                if enabled {
-                    TELEMETRY_ACTIVE.store(true, std::sync::atomic::Ordering::Release);
-                }
+                // `Telemetry::init` sets `re_perf_telemetry::is_telemetry_active()` on
+                // its own success path; the Python `_is_telemetry_active()` binding
+                // reads from there. Single source of truth.
                 parking_lot::Mutex::new(telemetry)
             })
         })
         .lock()
-}
-
-/// Tracks whether `init_perf_telemetry` has finished setting up the OTel pipeline.
-///
-/// Read by [`telemetry_active`] from the `tracing_session()` Python bridge to fail
-/// fast with a helpful error when telemetry is not active.
-#[cfg(feature = "perf_telemetry")]
-static TELEMETRY_ACTIVE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
-
-/// Returns `true` if `init_perf_telemetry` ran successfully.
-#[cfg(feature = "perf_telemetry")]
-pub(crate) fn telemetry_active() -> bool {
-    TELEMETRY_ACTIVE.load(std::sync::atomic::Ordering::Acquire)
 }
 
 /// The python module is called "rerun_bindings".
@@ -275,6 +265,7 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(serve_web_viewer, m)?)?;
     m.add_function(wrap_pyfunction!(serve_web, m)?)?;
     m.add_function(wrap_pyfunction!(disconnect, m)?)?;
+    m.add_function(wrap_pyfunction!(finalize_deferred_sinks, m)?)?;
     m.add_function(wrap_pyfunction!(flush, m)?)?;
 
     // time
@@ -283,15 +274,16 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(set_time_timestamp_nanos_since_epoch, m)?)?;
     m.add_function(wrap_pyfunction!(disable_timeline, m)?)?;
     m.add_function(wrap_pyfunction!(reset_time, m)?)?;
+    m.add_function(wrap_pyfunction!(set_log_tick_enabled, m)?)?;
+    m.add_function(wrap_pyfunction!(set_log_time_enabled, m)?)?;
 
     // log any
     m.add_function(wrap_pyfunction!(log_arrow_msg, m)?)?;
     m.add_function(wrap_pyfunction!(log_file_from_path, m)?)?;
     m.add_function(wrap_pyfunction!(log_file_from_contents, m)?)?;
     m.add_function(wrap_pyfunction!(send_arrow_chunk, m)?)?;
-    m.add_function(wrap_pyfunction!(send_chunk, m)?)?;
+    m.add_function(wrap_pyfunction!(send_chunks, m)?)?;
     m.add_function(wrap_pyfunction!(send_blueprint, m)?)?;
-    m.add_function(wrap_pyfunction!(send_recording, m)?)?;
 
     // misc
     m.add_function(wrap_pyfunction!(version, m)?)?;
@@ -311,9 +303,6 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
         asset_video_read_frame_timestamps_nanos,
         m
     )?)?;
-
-    // recording
-    crate::recording::register(m)?;
 
     // chunk
     crate::chunk::register(m)?;
@@ -353,6 +342,15 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
         m
     )?)?;
 
+    // query_metrics(): experimental, customer-facing context manager for
+    // capturing DataFusion query metrics from Python.
+    m.add_class::<crate::query_metrics::PyQueryMetrics>()?;
+    m.add_class::<crate::query_metrics::PyMetricsCollectorHandle>()?;
+    m.add_function(wrap_pyfunction!(
+        crate::query_metrics::new_metrics_collector,
+        m
+    )?)?;
+
     // viewer
     crate::viewer::register(py, m)?;
 
@@ -385,7 +383,7 @@ fn flush_and_cleanup_orphaned_recordings(py: Python<'_>) -> PyResult<()> {
     py.detach(|| -> Result<(), SinkFlushError> {
         // Now flush all recordings to handle weird cases where the data in the queue
         // is actually holding onto the ref to the recording.
-        for recording in all_recordings().iter().chain(orphaned_recordings().iter()) {
+        for recording in std::iter::chain(&*all_recordings(), &*orphaned_recordings()) {
             recording.flush_blocking()?;
         }
 
@@ -461,6 +459,7 @@ impl DurationLike {
 /// Defines the different batching thresholds used within the RecordingStream.
 #[pyclass(
     eq,
+    from_py_object,
     name = "ChunkBatcherConfig",
     module = "rerun_bindings.rerun_bindings"
 )]
@@ -779,7 +778,7 @@ fn shutdown(py: Python<'_>) {
 
 // --- Recordings ---
 
-#[pyclass(frozen, module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
+#[pyclass(frozen, from_py_object, module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
 #[derive(Clone)]
 pub(crate) struct PyRecordingStream(RecordingStream);
 
@@ -1028,6 +1027,7 @@ fn send_mem_sink_as_default_blueprint(
     executable_path = None,
     extra_args = vec![],
     extra_env = vec![],
+    headless = false,
 ))]
 fn spawn(
     port: u16,
@@ -1039,7 +1039,8 @@ fn spawn(
     executable_path: Option<String>,
     extra_args: Vec<String>,
     extra_env: Vec<(String, String)>,
-) -> PyResult<()> {
+    headless: bool,
+) -> PyResult<Option<u32>> {
     let spawn_opts = re_sdk::SpawnOptions {
         port,
         wait_for_bind: true,
@@ -1052,10 +1053,11 @@ fn spawn(
         extra_args,
         extra_env,
         new: false,
+        headless,
     };
 
     re_sdk::spawn(&spawn_opts)
-        .map(|_| ())
+        .map(|info| info.child_pid)
         .map_err(|err| PyRuntimeError::new_err(err.to_string()))
 }
 
@@ -1152,11 +1154,11 @@ fn set_sinks<'py>(
 
     let mut resolved_sinks: Vec<Box<dyn re_sdk::sink::LogSink>> = Vec::new();
     for sink in sinks {
-        if let Ok(sink) = sink.downcast::<PyGrpcSink>() {
+        if let Ok(sink) = sink.cast::<PyGrpcSink>() {
             let sink = sink.get();
             let sink = re_sdk::sink::GrpcSink::new(sink.uri.clone());
             resolved_sinks.push(Box::new(sink));
-        } else if let Ok(sink) = sink.downcast::<PyFileSink>() {
+        } else if let Ok(sink) = sink.cast::<PyFileSink>() {
             let sink = sink.get();
             let sink = re_sdk::sink::FileSink::with_options(
                 sink.path.clone(),
@@ -1166,15 +1168,15 @@ fn set_sinks<'py>(
             )
             .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
             resolved_sinks.push(Box::new(sink));
-        } else if let Ok(storage) = sink.downcast::<PyBinarySinkStorage>() {
+        } else if let Ok(storage) = sink.cast::<PyBinarySinkStorage>() {
             // Direct PyBinarySinkStorage
             let binary_sink =
                 re_sdk::sink::BinaryStreamSink::with_shared_storage(&storage.get().inner);
             resolved_sinks.push(Box::new(binary_sink));
-        } else if let Ok(storage) = sink.getattr("storage").and_then(|attr| {
-            attr.downcast_into::<PyBinarySinkStorage>()
-                .map_err(Into::into)
-        }) {
+        } else if let Ok(storage) = sink
+            .getattr("storage")
+            .and_then(|attr| attr.cast_into::<PyBinarySinkStorage>().map_err(Into::into))
+        {
             // Python BinaryStream wrapper — extract .storage
             let binary_sink =
                 re_sdk::sink::BinaryStreamSink::with_shared_storage(&storage.get().inner);
@@ -1851,6 +1853,27 @@ fn disconnect(py: Python<'_>, recording: Option<&PyRecordingStream>) {
     });
 }
 
+/// Finalize any deferred-finalization sinks (i.e. file-like sinks that write a footer at the end).
+///
+/// For a bare `FileSink` this is equivalent to `disconnect()`. For a `MultiSink` containing both
+/// streaming and file-like children, only the file-like children are dropped — the streaming
+/// children stay live. For all other sinks this is a no-op.
+///
+/// Used by `RecordingStream.__exit__` so that file-backed recordings are consumable as soon as
+/// the `with`-block exits, without waiting for `__del__` / GC.
+#[pyfunction]
+#[pyo3(signature = (recording=None))]
+fn finalize_deferred_sinks(py: Python<'_>, recording: Option<&PyRecordingStream>) {
+    let Some(recording) = get_data_recording(recording) else {
+        return;
+    };
+    // Release the GIL in case any flushing behavior needs to cleanup a python object.
+    py.detach(|| {
+        recording.finalize_deferred_sinks();
+        flush_garbage_queue();
+    });
+}
+
 /// Block until outstanding data has been flushed to the sink.
 #[pyfunction]
 #[pyo3(signature = (*, timeout_sec = 1e38, recording = None))] // Can't use infinity here because of python_check_signatures.py
@@ -1884,6 +1907,7 @@ fn flush(py: Python<'_>, timeout_sec: f32, recording: Option<&PyRecordingStream>
 /// fields provide additional information about the semantics of the data.
 #[pyclass(
     eq,
+    from_py_object,
     name = "ComponentDescriptor",
     module = "rerun_bindings.rerun_bindings"
 )]
@@ -2035,6 +2059,26 @@ fn reset_time(recording: Option<&PyRecordingStream>) {
     recording.reset_time();
 }
 
+/// Enable or disable automatic injection of the `log_tick` timeline (disabled by default).
+#[pyfunction]
+#[pyo3(signature = (enabled, recording=None))]
+fn set_log_tick_enabled(enabled: bool, recording: Option<&PyRecordingStream>) {
+    let Some(recording) = get_data_recording(recording) else {
+        return;
+    };
+    recording.set_log_tick_enabled(enabled);
+}
+
+/// Enable or disable automatic injection of the `log_time` timeline (enabled by default).
+#[pyfunction]
+#[pyo3(signature = (enabled, recording=None))]
+fn set_log_time_enabled(enabled: bool, recording: Option<&PyRecordingStream>) {
+    let Some(recording) = get_data_recording(recording) else {
+        return;
+    };
+    recording.set_log_time_enabled(enabled);
+}
+
 // --- Log special ---
 
 /// Log an arrow message.
@@ -2123,25 +2167,56 @@ fn send_arrow_chunk(
     })
 }
 
-/// Send a pre-built chunk to the recording stream.
+/// Send chunks to the recording stream.
+///
+/// Accepts a single chunk or any iterable of chunks. Blocks until every chunk
+/// has been pushed to the recording's batcher.
 #[pyfunction]
-#[pyo3(signature = (chunk, recording=None))]
-fn send_chunk(
+#[pyo3(signature = (chunks, recording=None))]
+fn send_chunks(
     py: Python<'_>,
-    chunk: &crate::chunk::PyChunkInternal,
+    chunks: Bound<'_, PyAny>,
     recording: Option<&PyRecordingStream>,
 ) -> PyResult<()> {
     let Some(recording) = get_data_recording(recording) else {
         return Ok(());
     };
 
-    let chunk = re_chunk::Chunk::clone(chunk.inner());
+    // Single Chunk — fast path
+    if let Ok(chunk_obj) = chunks.cast::<PyChunkInternal>() {
+        let chunk = re_chunk::Chunk::clone(chunk_obj.borrow().inner());
+        py.detach(|| {
+            recording.send_chunk(chunk);
+            flush_garbage_queue();
+        });
+        return Ok(());
+    }
 
-    py.detach(|| {
-        recording.send_chunk(chunk);
+    // Iterable of Chunk. Streamed one at a time — we don't collect into a Vec
+    // because the iterable may be a generator yielding many chunks and buffering
+    // all of them would inflate peak memory.
+    let iter: Py<PyAny> = chunks
+        .try_iter()
+        .map_err(|_err| PyTypeError::new_err("send_chunks expected a Chunk or iterable of Chunk"))?
+        .into_any()
+        .unbind();
 
+    py.detach(|| -> PyResult<()> {
+        loop {
+            let next_chunk = Python::attach(|py| -> PyResult<Option<re_chunk::Chunk>> {
+                match iter.bind(py).call_method0("__next__") {
+                    Ok(obj) => {
+                        let internal: PyRef<'_, PyChunkInternal> = obj.extract()?;
+                        Ok(Some(re_chunk::Chunk::clone(internal.inner())))
+                    }
+                    Err(err) if err.is_instance_of::<PyStopIteration>(py) => Ok(None),
+                    Err(err) => Err(err),
+                }
+            })?;
+            let Some(chunk) = next_chunk else { break };
+            recording.send_chunk(chunk);
+        }
         flush_garbage_queue();
-
         Ok(())
     })
 }
@@ -2246,23 +2321,6 @@ fn send_blueprint(
         recording.send_blueprint(blueprint.inner.take(), activation_cmd);
     } else {
         re_log::warn!("Provided `blueprint` has no store info, cannot send it.");
-    }
-}
-
-/// Send all chunks from a [`PyRecording`] to the given recording stream.
-///
-/// !!! Warning
-///     ⚠️ This API is experimental and may change or be removed in future versions! ⚠️
-#[pyfunction]
-#[pyo3(signature = (rrd, recording = None))]
-fn send_recording(rrd: &PyRecordingInternal, recording: Option<&PyRecordingStream>) {
-    let Some(recording) = get_data_recording(recording) else {
-        return;
-    };
-
-    let store = rrd.store.read();
-    for chunk in store.iter_physical_chunks() {
-        recording.send_chunk((**chunk).clone());
     }
 }
 
@@ -2470,7 +2528,7 @@ authkey = multiprocessing.current_process().authkey
     })
     .and_then(|authkey| {
         authkey
-            .downcast()
+            .cast()
             .cloned()
             .map_err(|err| PyRuntimeError::new_err(err.to_string()))
     })

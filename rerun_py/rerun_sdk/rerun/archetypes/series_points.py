@@ -50,8 +50,9 @@ class SeriesPoints(SeriesPointsExt, Archetype, VisualizableArchetype):
     rr.init("rerun_example_series_point_style", spawn=True)
 
     # Set up plot styling:
-    # They are logged as static as they don't change over time and apply to all timelines.
-    # Log two point series under a shared root so that they show in the same plot by default.
+    # They are logged as static as they don't change over time and apply to all
+    # timelines. Log two point series under a shared root so that they show in the
+    # same plot by default.
     rr.log(
         "trig/sin",
         rr.SeriesPoints(

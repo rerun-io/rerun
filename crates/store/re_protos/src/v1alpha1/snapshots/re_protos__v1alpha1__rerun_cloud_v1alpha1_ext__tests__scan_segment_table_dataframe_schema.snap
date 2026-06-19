@@ -1,0 +1,10 @@
+---
+source: crates/store/re_protos/src/v1alpha1/./rerun.cloud.v1alpha1.ext.rs
+expression: "format_schema(&ScanSegmentTableDataframe::max_schema())"
+---
+rerun_segment_id: non-null Utf8
+rerun_layer_names: non-null List(non-null Utf8)
+rerun_storage_urls: non-null List(non-null Utf8)
+rerun_last_updated_at: non-null Timestamp(ns)
+rerun_num_chunks: non-null UInt64
+rerun_size_bytes: non-null UInt64

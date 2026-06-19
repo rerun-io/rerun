@@ -1,3 +1,4 @@
+use itertools::chain;
 use re_entity_db::InstancePathHash;
 use re_log_types::{EntityPath, Instance};
 use re_sdk_types::Archetype as _;
@@ -21,7 +22,10 @@ pub struct TransformAxes3DVisualizer;
 
 impl IdentifiedViewSystem for TransformAxes3DVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "TransformAxes3D".into()
+        re_viewer_context::external::re_string_interner::intern_static!(
+            re_viewer_context::ViewSystemIdentifier,
+            "TransformAxes3D"
+        )
     }
 }
 
@@ -34,12 +38,14 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
             relevant_archetype: Some(TransformAxes3D::name()),
             // Make this visualizer available for any entity with Transform3D components
             constraints: VisualizabilityConstraints::AnyBuiltinComponent(
-                Transform3D::all_component_identifiers()
-                    .chain(CoordinateFrame::all_component_identifiers())
-                    .chain(InstancePoses3D::all_component_identifiers())
-                    .chain(Pinhole::all_component_identifiers())
-                    .chain(TransformAxes3D::all_component_identifiers())
-                    .collect(),
+                chain!(
+                    Transform3D::all_component_identifiers(),
+                    CoordinateFrame::all_component_identifiers(),
+                    InstancePoses3D::all_component_identifiers(),
+                    Pinhole::all_component_identifiers(),
+                    TransformAxes3D::all_component_identifiers(),
+                )
+                .collect(),
             ),
             queried: TransformAxes3D::all_components().iter().cloned().collect(),
         }

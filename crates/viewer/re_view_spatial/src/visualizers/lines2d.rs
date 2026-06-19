@@ -74,7 +74,7 @@ impl Lines2DVisualizer {
 
             let mut obj_space_bounding_box = macaw::BoundingBox::nothing();
             for (i, (strip, radius, &color)) in
-                itertools::izip!(ent_data.strips.iter(), radii, &colors).enumerate()
+                itertools::izip!(&ent_data.strips, radii, &colors).enumerate()
             {
                 let lines = line_batch
                     .add_strip_2d(strip.iter().copied().map(Into::into))
@@ -144,7 +144,10 @@ struct Lines2DComponentData<'a> {
 
 impl IdentifiedViewSystem for Lines2DVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "Lines2D".into()
+        re_viewer_context::external::re_string_interner::intern_static!(
+            re_viewer_context::ViewSystemIdentifier,
+            "Lines2D"
+        )
     }
 }
 

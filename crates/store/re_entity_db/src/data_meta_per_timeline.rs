@@ -5,7 +5,7 @@ use re_chunk_store::{ChunkStore, ChunkStoreDiff, ChunkStoreEvent};
 
 use crate::RrdManifestIndex;
 
-#[derive(Default, Clone, Copy)]
+#[derive(Default, Clone, Copy, re_byte_size::SizeBytes)]
 struct RowCount {
     /// Row count from a rrd manifest.
     from_rrd_manifest: u64,
@@ -20,35 +20,10 @@ impl RowCount {
     }
 }
 
-impl re_byte_size::SizeBytes for RowCount {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            from_rrd_manifest: _,
-            from_volatile_chunks: _,
-        } = self;
-
-        0
-    }
-
-    fn is_pod() -> bool {
-        true
-    }
-}
-
 /// Helper to track row counts and time ranges across all entities and components per timeline.
-#[derive(Default, Clone)]
+#[derive(Default, Clone, re_byte_size::SizeBytes)]
 pub struct DataMetaPerTimeline {
     row_count_per_timeline: BTreeMap<TimelineName, RowCount>,
-}
-
-impl re_byte_size::SizeBytes for DataMetaPerTimeline {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            row_count_per_timeline,
-        } = self;
-
-        row_count_per_timeline.heap_size_bytes()
-    }
 }
 
 impl DataMetaPerTimeline {

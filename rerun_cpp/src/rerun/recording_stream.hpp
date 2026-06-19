@@ -431,6 +431,24 @@ namespace rerun {
         /// @see set_time_sequence, set_time_seconds, set_time_nanos, disable_timeline
         void reset_time() const;
 
+        /// Enable or disable automatic injection of the `log_tick` timeline into logged data.
+        ///
+        /// `log_tick` is a per-recording counter that increments on every logging call.
+        /// It is **disabled** by default (it can also be controlled via the `RERUN_LOG_TICK`
+        /// environment variable).
+        ///
+        /// @see set_log_time_enabled
+        void set_log_tick_enabled(bool enabled) const;
+
+        /// Enable or disable automatic injection of the `log_time` timeline into logged data.
+        ///
+        /// `log_time` is the wall-clock time at which data was logged.
+        /// It is **enabled** by default (it can also be controlled via the `RERUN_LOG_TIME`
+        /// environment variable).
+        ///
+        /// @see set_log_tick_enabled
+        void set_log_time_enabled(bool enabled) const;
+
         /// @}
 
         // -----------------------------------------------------------------------------------------
@@ -552,7 +570,7 @@ namespace rerun {
         /// \param static_ If true, the logged components will be static.
         /// Static data has no time associated with it, exists on all timelines, and unconditionally shadows
         /// any temporal data of the same type.
-        /// Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
+        /// Otherwise, the data will be timestamped automatically with `log_time` (and `log_tick`, if enabled).
         /// Additional timelines set by `set_time_sequence` or `set_time` will also be included.
         /// \param as_components Any type for which the `AsComponents<T>` trait is implemented.
         /// This is the case for any archetype as well as individual or collection of `ComponentBatch`.
@@ -574,7 +592,7 @@ namespace rerun {
         /// \param static_ If true, the logged components will be static.
         /// Static data has no time associated with it, exists on all timelines, and unconditionally shadows
         /// any temporal data of the same type.
-        /// Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
+        /// Otherwise, the data will be timestamped automatically with `log_time` (and `log_tick`, if enabled).
         /// Additional timelines set by `set_time_sequence` or `set_time` will also be included.
         /// \param as_components Any type for which the `AsComponents<T>` trait is implemented.
         /// This is the case for any archetype as well as individual or collection of `ComponentBatch`.
@@ -631,7 +649,7 @@ namespace rerun {
         /// \param static_ If true, the logged components will be static.
         /// Static data has no time associated with it, exists on all timelines, and unconditionally shadows
         /// any temporal data of the same type.
-        /// Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
+        /// Otherwise, the data will be timestamped automatically with `log_time` (and `log_tick`, if enabled).
         /// Additional timelines set by `set_time_sequence` or `set_time` will also be included.
         /// \param batches The serialized batches to log.
         ///
@@ -664,14 +682,14 @@ namespace rerun {
         /// This method blocks until either at least one `Importer` starts streaming data in
         /// or all of them fail.
         ///
-        /// See <https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview?speculative-link> for more information.
+        /// See <https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview> for more information.
         ///
         /// \param filepath Path to the file to be logged.
         /// \param entity_path_prefix What should the logged entity paths be prefixed with?
         /// \param static_ If true, the logged components will be static.
         /// Static data has no time associated with it, exists on all timelines, and unconditionally shadows
         /// any temporal data of the same type.
-        /// Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
+        /// Otherwise, the data will be timestamped automatically with `log_time` (and `log_tick`, if enabled).
         /// Additional timelines set by `set_time_sequence` or `set_time` will also be included.
         ///
         /// \see `try_log_file_from_path`
@@ -689,14 +707,14 @@ namespace rerun {
         /// This method blocks until either at least one `Importer` starts streaming data in
         /// or all of them fail.
         ///
-        /// See <https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview?speculative-link> for more information.
+        /// See <https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview> for more information.
         ///
         /// \param filepath Path to the file to be logged.
         /// \param entity_path_prefix What should the logged entity paths be prefixed with?
         /// \param static_ If true, the logged components will be static.
         /// Static data has no time associated with it, exists on all timelines, and unconditionally shadows
         /// any temporal data of the same type.
-        /// Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
+        /// Otherwise, the data will be timestamped automatically with `log_time` (and `log_tick`, if enabled).
         /// Additional timelines set by `set_time_sequence` or `set_time` will also be included.
         ///
         /// \see `log_file_from_path`
@@ -712,7 +730,7 @@ namespace rerun {
         /// This method blocks until either at least one `Importer` starts streaming data in
         /// or all of them fail.
         ///
-        /// See <https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview?speculative-link> for more information.
+        /// See <https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview> for more information.
         ///
         /// \param filepath Path to the file that the `contents` belong to.
         /// \param contents Contents to be logged.
@@ -721,7 +739,7 @@ namespace rerun {
         /// \param static_ If true, the logged components will be static.
         /// Static data has no time associated with it, exists on all timelines, and unconditionally shadows
         /// any temporal data of the same type.
-        /// Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
+        /// Otherwise, the data will be timestamped automatically with `log_time` (and `log_tick`, if enabled).
         /// Additional timelines set by `set_time_sequence` or `set_time` will also be included.
         ///
         /// \see `try_log_file_from_contents`
@@ -746,7 +764,7 @@ namespace rerun {
         /// This method blocks until either at least one `Importer` starts streaming data in
         /// or all of them fail.
         ///
-        /// See <https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview?speculative-link> for more information.
+        /// See <https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview> for more information.
         ///
         /// \param filepath Path to the file that the `contents` belong to.
         /// \param contents Contents to be logged.
@@ -755,7 +773,7 @@ namespace rerun {
         /// \param static_ If true, the logged components will be static.
         /// Static data has no time associated with it, exists on all timelines, and unconditionally shadows
         /// any temporal data of the same type.
-        /// Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
+        /// Otherwise, the data will be timestamped automatically with `log_time` (and `log_tick`, if enabled).
         /// Additional timelines set by `set_time_sequence` or `set_time` will also be included.
         ///
         /// \see `log_file_from_contents`

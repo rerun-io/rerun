@@ -272,7 +272,7 @@ impl ViewportBlueprint {
                 self.view(&data_result.view_id).is_some_and(|view| {
                     let entity_path = &data_result.instance_path.entity_path;
 
-                    // TODO(#5742): including any path that is—or descend from—the space origin is
+                    // TODO(#5742): including any path that is — or descend from — the space origin is
                     // necessary because such items may actually be displayed in the blueprint tree.
                     entity_path == &view.space_origin
                         || entity_path.is_descendant_of(&view.space_origin)
@@ -356,11 +356,9 @@ impl ViewportBlueprint {
             // If now the user edits the view at `/**` to be `/points/**`, that does *not*
             // mean we should suddenly add `/camera/**` to the viewport.
             if !recommended_views.is_empty() {
-                let new_viewer_recommendation_hashes: Vec<ViewerRecommendationHash> = self
-                    .past_viewer_recommendations
-                    .iter()
-                    .cloned()
-                    .chain(
+                let new_viewer_recommendation_hashes: Vec<ViewerRecommendationHash> =
+                    std::iter::chain(
+                        self.past_viewer_recommendations.iter().cloned(),
                         recommended_views
                             .iter()
                             .map(|recommendation| recommendation.recommendation_hash(class_id)),
@@ -455,14 +453,12 @@ impl ViewportBlueprint {
 
     /// Returns an iterator over all the contents (views and containers) in the viewport.
     pub fn contents_iter(&self) -> impl Iterator<Item = Contents> + '_ {
-        self.views
-            .keys()
-            .map(|view_id| Contents::View(*view_id))
-            .chain(
-                self.containers
-                    .keys()
-                    .map(|container_id| Contents::Container(*container_id)),
-            )
+        std::iter::chain(
+            self.views.keys().map(|view_id| Contents::View(*view_id)),
+            self.containers
+                .keys()
+                .map(|container_id| Contents::Container(*container_id)),
+        )
     }
 
     /// Walk the entire [`Contents`] tree, starting from the root container.

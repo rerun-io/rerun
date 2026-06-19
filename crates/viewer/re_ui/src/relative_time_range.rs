@@ -38,7 +38,6 @@ pub fn relative_time_range_boundary_label_text(
     }
 }
 
-#[expect(clippy::too_many_arguments)]
 fn edit_boundary_ui(
     ui: &mut egui::Ui,
     boundary: &mut TimeRangeBoundary,

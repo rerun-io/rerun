@@ -1,0 +1,4 @@
+BasedOnStyle: InheritParentConfig
+
+# Keep snippets tight so they look nice on our web page:
+ColumnLimit: 80

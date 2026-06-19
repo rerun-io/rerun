@@ -1,3 +1,5 @@
+mod info;
+
 use std::collections::BTreeSet;
 use std::fs::File;
 use std::io::BufWriter;
@@ -9,6 +11,8 @@ use re_log_types::{LogMsg, RecordingId, TimeType};
 use re_mcap::{DecoderIdentifier, SelectedDecoders, TopicFilter};
 use re_sdk::external::re_importer::{McapImporter, supported_mcap_decoder_identifiers};
 use re_sdk::{ApplicationId, ImportedData, Importer, ImporterSettings};
+
+use info::InfoCommand;
 
 fn possible_timeline_types() -> impl clap::builder::TypedValueParser {
     clap::builder::PossibleValuesParser::new(["timestamp", "duration"]).map(|value: String| {
@@ -193,12 +197,16 @@ impl ConvertCommand {
 pub enum McapCommands {
     /// Convert an .mcap file to an .rrd
     Convert(ConvertCommand),
+
+    /// Print timeline / sortedness diagnostics for an .mcap file
+    Info(InfoCommand),
 }
 
 impl McapCommands {
     pub fn run(&self) -> anyhow::Result<()> {
         match self {
             Self::Convert(cmd) => cmd.run(),
+            Self::Info(cmd) => cmd.run(),
         }
     }
 }

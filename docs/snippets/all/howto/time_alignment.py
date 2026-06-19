@@ -10,7 +10,9 @@ from datafusion import col
 
 import rerun as rr
 
-sample_5_path = Path(__file__).parents[4] / "tests" / "assets" / "rrd" / "sample_5"
+sample_5_path = (
+    Path(__file__).parents[4] / "tests" / "assets" / "rrd" / "sample_5"
+)
 
 server = rr.server.Server(datasets={"sample_dataset": sample_5_path})
 CATALOG_URL = server.url()
@@ -19,12 +21,16 @@ dataset = client.get_dataset(name="sample_dataset")
 # endregion: setup
 
 # region: extract_timepoints
-view = dataset.filter_segments("ILIAD_sbd7d2c6_2023_12_24_16h_20m_37s").filter_contents("/observation/joint_positions")
+view = dataset.filter_segments(
+    "ILIAD_sbd7d2c6_2023_12_24_16h_20m_37s"
+).filter_contents("/observation/joint_positions")
 ranges = view.get_index_ranges().to_arrow_table()
 
 min_time = ranges["real_time:start"].to_numpy().flatten()
 max_time = ranges["real_time:end"].to_numpy().flatten()
-desired_timestamps = np.arange(min_time[0], max_time[0], np.timedelta64(100, "ms"))  # 10Hz
+desired_timestamps = np.arange(
+    min_time[0], max_time[0], np.timedelta64(100, "ms")
+)  # 10Hz
 # endregion: extract_timepoints
 
 # region: time_align
@@ -35,7 +41,11 @@ fixed_hz = (
     dataset
     .filter_segments("ILIAD_sbd7d2c6_2023_12_24_16h_20m_37s")
     .filter_contents(["/observation/joint_positions", "/camera/ext1/**"])
-    .reader(index="real_time", using_index_values=desired_timestamps, fill_latest_at=True)
+    .reader(
+        index="real_time",
+        using_index_values=desired_timestamps,
+        fill_latest_at=True,
+    )
 )
 
 # Filter out partially sparse rows (since one column may start before the other)

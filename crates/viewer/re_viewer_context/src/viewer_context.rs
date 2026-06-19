@@ -5,9 +5,7 @@ use re_entity_db::entity_db::EntityDb;
 use re_log_types::{EntryId, TableId};
 use re_query::StorageEngineReadGuard;
 use re_sdk_types::ViewClassIdentifier;
-use re_ui::list_item::ListItem;
 
-use crate::command_sender::{SelectionSource, SetSelection};
 use crate::query_context::DataQueryResult;
 use crate::time_control::TimeControlCommand;
 use crate::{
@@ -45,9 +43,6 @@ pub struct ViewerContext<'a> {
 
     /// The blueprint query used for resolving blueprint in this frame
     pub blueprint_query: &'a LatestAtQuery,
-
-    /// Where we are getting our data from.
-    pub connected_receivers: &'a re_log_channel::LogReceiverSet,
 
     /// The active recording and blueprint.
     pub store_context: &'a ActiveStoreContext<'a>,
@@ -275,42 +270,8 @@ impl<'a> ViewerContext<'a> {
         response: &egui::Response,
         interacted_items: impl Into<ItemCollection>,
     ) {
-        let interacted_items = interacted_items
-            .into()
-            .into_mono_instance_path_items(self.recording(), &self.current_query());
-
-        // Focus -> Selection
-
-        // We want the item to be selected if it was selected with arrow keys (in list_item)
-        // but not when focused using e.g. the tab key.
-        if ListItem::gained_focus_via_arrow_key(&response.ctx, response.id) {
-            self.command_sender()
-                .send_system(SystemCommand::SetSelection(
-                    SetSelection::new(interacted_items.clone())
-                        .with_source(SelectionSource::ListItemNavigation),
-                ));
-        }
-
-        // Selection -> Focus
-
-        let single_selected = self.selection().single_item() == interacted_items.single_item();
-        if single_selected {
-            // If selection changes, and a single item is selected, the selected item should
-            // receive egui focus.
-            // We don't do this if selection happened due to list item navigation to avoid
-            // a feedback loop.
-            let selection_changed = self
-                .selection_state()
-                .selection_changed()
-                .is_some_and(|source| source != SelectionSource::ListItemNavigation);
-
-            // If there is a single selected item and nothing is focused, focus that item.
-            let nothing_focused = response.ctx.memory(|mem| mem.focused().is_none());
-
-            if selection_changed || nothing_focused {
-                response.request_focus();
-            }
-        }
+        self.app_ctx
+            .handle_select_focus_sync(response, interacted_items);
     }
 
     /// Are we running inside the Safari browser?
