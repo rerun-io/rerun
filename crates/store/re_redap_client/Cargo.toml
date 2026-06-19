@@ -59,6 +59,7 @@ futures.workspace = true
 itertools.workspace = true
 jiff.workspace = true
 opentelemetry.workspace = true
+quiver.workspace = true
 serde.workspace = true
 thiserror.workspace = true
 tokio.workspace = true

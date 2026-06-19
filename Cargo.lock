@@ -9465,6 +9465,7 @@ dependencies = [
  "itertools 0.14.0",
  "jiff",
  "opentelemetry",
+ "quiver",
  "re_arrow_util",
  "re_auth",
  "re_backoff",

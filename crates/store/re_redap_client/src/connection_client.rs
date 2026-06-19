@@ -665,11 +665,7 @@ where
             let segment_id_column = ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID
                 .extract(&record_batch)
                 .map_err(|err| {
-                    ApiError::deserialization_with_source(
-                        trace_id,
-                        err,
-                        "invalid segment id column in item in /ScanSegmentTable stream",
-                    )
+                    ApiError::deserialization_quiver_from(trace_id, err, "/ScanSegmentTable stream")
                 })?;
 
             segment_ids.extend(segment_id_column);
@@ -1008,11 +1004,7 @@ where
             rerun_storage_url,
             rerun_task_id,
         } = RegisterWithDatasetDataframe::try_from(response).map_err(|err| {
-            ApiError::deserialization_with_source(
-                trace_id,
-                err,
-                "invalid dataframe in /RegisterWithDataset response",
-            )
+            ApiError::deserialization_quiver_from(trace_id, err, "/RegisterWithDataset response")
         })?;
 
         let segment_types = DataSourceKind::many_from_arrow(rerun_segment_type.as_arrow().as_ref())
