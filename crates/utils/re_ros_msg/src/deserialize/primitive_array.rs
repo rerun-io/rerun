@@ -109,8 +109,8 @@ impl<'de> DeserializeSeed<'de> for PrimitiveArraySeed<'_> {
 
         match self.elem {
             Bool => deserialize_array!(de, BoolArrayVisitor).map(PrimitiveArray::Bool),
-            Byte | UInt8 => deserialize_array!(de, U8ArrayVisitor).map(PrimitiveArray::U8),
-            Char | Int8 => deserialize_array!(de, I8ArrayVisitor).map(PrimitiveArray::I8),
+            Byte | Char | UInt8 => deserialize_array!(de, U8ArrayVisitor).map(PrimitiveArray::U8),
+            Int8 => deserialize_array!(de, I8ArrayVisitor).map(PrimitiveArray::I8),
             Float32 => deserialize_array!(de, F32ArrayVisitor).map(PrimitiveArray::F32),
             Float64 => deserialize_array!(de, F64ArrayVisitor).map(PrimitiveArray::F64),
             Int16 => deserialize_array!(de, I16ArrayVisitor).map(PrimitiveArray::I16),

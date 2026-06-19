@@ -363,8 +363,8 @@ fn arrow_builder_from_type(
 fn arrow_builder_from_builtin_type(ty: &BuiltInType) -> Box<dyn ArrayBuilder> {
     match ty {
         BuiltInType::Bool => Box::new(BooleanBuilder::new()),
-        BuiltInType::Byte | BuiltInType::UInt8 => Box::new(UInt8Builder::new()),
-        BuiltInType::Char | BuiltInType::Int8 => Box::new(Int8Builder::new()),
+        BuiltInType::Byte | BuiltInType::Char | BuiltInType::UInt8 => Box::new(UInt8Builder::new()),
+        BuiltInType::Int8 => Box::new(Int8Builder::new()),
         BuiltInType::Int16 => Box::new(Int16Builder::new()),
         BuiltInType::UInt16 => Box::new(UInt16Builder::new()),
         BuiltInType::Int32 => Box::new(Int32Builder::new()),
@@ -420,8 +420,8 @@ fn datatype_from_type(
 fn datatype_from_builtin_type(ty: &BuiltInType) -> DataType {
     match ty {
         BuiltInType::Bool => DataType::Boolean,
-        BuiltInType::Byte | BuiltInType::UInt8 => DataType::UInt8,
-        BuiltInType::Char | BuiltInType::Int8 => DataType::Int8,
+        BuiltInType::Byte | BuiltInType::Char | BuiltInType::UInt8 => DataType::UInt8,
+        BuiltInType::Int8 => DataType::Int8,
         BuiltInType::Int16 => DataType::Int16,
         BuiltInType::UInt16 => DataType::UInt16,
         BuiltInType::Int32 => DataType::Int32,
@@ -461,6 +461,27 @@ fn resolve_complex_type<'a>(
         })?;
 
     Ok(spec)
+}
+
+/// True if any field (including inside arrays) is a `wstring`, which we can't decode.
+///
+/// Nested messages live in `dependencies` and are walked directly, so we don't recurse
+/// into `Type::Complex`.
+fn schema_uses_wstring(message_schema: &MessageSchema) -> bool {
+    fn type_uses_wstring(ty: &Type) -> bool {
+        match ty {
+            Type::BuiltIn(BuiltInType::WString(_)) => true,
+            Type::BuiltIn(_) | Type::Complex(_) => false,
+            Type::Array { ty, .. } => type_uses_wstring(ty),
+        }
+    }
+
+    std::iter::chain(
+        std::iter::once(&message_schema.spec),
+        &message_schema.dependencies,
+    )
+    .flat_map(|spec| &spec.fields)
+    .any(|field| type_uses_wstring(&field.ty))
 }
 
 fn ensure_complex_field_types_resolve(message_schema: &MessageSchema) -> anyhow::Result<()> {
@@ -534,6 +555,17 @@ impl MessageDecoder for McapRos2ReflectionDecoder {
                     }
                 })?;
 
+            if schema_uses_wstring(&message_schema) {
+                // `wstring` is UTF-16 on the wire, so decoding it would corrupt the rest
+                // of the message. Leave it unregistered and let the channel fall back to
+                // the raw decoder.
+                re_log::warn_once!(
+                    "MCAP channel '{}' uses ROS 2 `wstring`, which reflection cannot decode. Keeping it as raw data.",
+                    channel.topic
+                );
+                continue;
+            }
+
             let found = self
                 .schemas_per_topic
                 .insert(channel.topic.clone(), message_schema);
@@ -598,6 +630,31 @@ mod tests {
     use re_ros_msg::deserialize::Value;
 
     use super::*;
+
+    #[test]
+    fn detects_wstring_in_schema() {
+        let plain = MessageSchema::parse("test/Msg", "string s\nint32 n\n").unwrap();
+        assert!(!schema_uses_wstring(&plain));
+
+        let scalar = MessageSchema::parse("test/Msg", "wstring w\n").unwrap();
+        assert!(schema_uses_wstring(&scalar));
+
+        let array = MessageSchema::parse("test/Msg", "wstring[] w\n").unwrap();
+        assert!(schema_uses_wstring(&array));
+
+        let nested = MessageSchema::parse(
+            "test/Outer",
+            r#"
+test/Inner inner
+
+================================================================================
+MSG: test/Inner
+wstring w
+"#,
+        )
+        .unwrap();
+        assert!(schema_uses_wstring(&nested));
+    }
 
     fn enum_schema() -> MessageSchema {
         MessageSchema::parse(
