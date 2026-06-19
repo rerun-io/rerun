@@ -8287,6 +8287,7 @@ dependencies = [
 name = "re_backoff"
 version = "0.34.0-alpha.1+dev"
 dependencies = [
+ "futures",
  "getrandom 0.3.4",
  "js-sys",
  "rand 0.9.3",

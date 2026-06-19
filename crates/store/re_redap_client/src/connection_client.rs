@@ -61,6 +61,7 @@ pub type FetchChunksResponseStream =
 pub type QueryDatasetResponseStream =
     ApiResponseStream<re_protos::cloud::v1alpha1::QueryDatasetResponse>;
 
+#[derive(Clone)]
 pub struct SegmentQueryParams {
     pub dataset_id: EntryId,
     pub segment_id: SegmentId,
@@ -621,22 +622,32 @@ where
     /// Get a list of segment IDs for the given dataset entry ID.
     //TODO(ab): is there a way — and a reason — to not collect and instead return a stream?
     #[tracing::instrument(level = "info", skip_all)]
-    pub async fn get_dataset_segment_ids(
-        &mut self,
-        entry_id: EntryId,
-    ) -> ApiResult<Vec<SegmentId>> {
+    pub async fn get_dataset_segment_ids(&self, entry_id: EntryId) -> ApiResult<Vec<SegmentId>>
+    where
+        T: Clone,
+    {
         const COLUMN_NAME: &str = ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME;
 
-        let response = self
-            .inner()
-            .scan_segment_table(
-                tonic::Request::new(ScanSegmentTableRequest {
-                    columns: vec![COLUMN_NAME.to_owned()],
-                })
-                .with_entry_id(entry_id),
-            )
-            .await
-            .map_err(|err| ApiError::tonic(err, "/ScanSegmentTable failed"))?;
+        // Retry only the *open*: the server rejects `ScanSegmentTable` with `ResourceExhausted`
+        // fail-fast at admission control, before the stream exists, so re-opening is idempotent.
+        // Stream consumption below is intentionally outside the retry (consistent with
+        // `query_dataset_raw`); once the stream is open it can't yield `ResourceExhausted`.
+        let response = crate::with_retry_resource_exhausted("/ScanSegmentTable", || {
+            let mut client = self.clone();
+            async move {
+                client
+                    .inner()
+                    .scan_segment_table(
+                        tonic::Request::new(ScanSegmentTableRequest {
+                            columns: vec![COLUMN_NAME.to_owned()],
+                        })
+                        .with_entry_id(entry_id),
+                    )
+                    .await
+                    .map_err(|err| ApiError::tonic(err, "/ScanSegmentTable failed"))
+            }
+        })
+        .await?;
 
         let mut stream = ApiResponseStream::from_tonic_response(response, "/ScanSegmentTable");
         let trace_id = stream.trace_id();
@@ -797,47 +808,61 @@ where
     /// and limit the query to a time range.
     #[tracing::instrument(level = "info", skip_all)]
     pub async fn query_dataset_raw(
-        &mut self,
+        &self,
         params: SegmentQueryParams,
-    ) -> ApiResult<QueryDatasetResponseStream> {
-        let SegmentQueryParams {
-            dataset_id,
-            segment_id,
-            include_static_data,
-            include_temporal_data,
-            query,
-            generate_direct_urls,
-        } = params;
+    ) -> ApiResult<QueryDatasetResponseStream>
+    where
+        T: Clone,
+    {
+        // The server rejects `QueryDataset` with `ResourceExhausted` (fail-fast, before any work)
+        // when its stream-concurrency limiter is saturated. Retry the *open* only; the returned
+        // stream is consumed by the caller. `params` is cloned per attempt so we rebuild the
+        // request fresh.
+        crate::with_retry_resource_exhausted("/QueryDataset", || {
+            let mut client = self.clone();
+            let SegmentQueryParams {
+                dataset_id,
+                segment_id,
+                include_static_data,
+                include_temporal_data,
+                query,
+                generate_direct_urls,
+            } = params.clone();
 
-        let query_request = QueryDatasetRequest {
-            segment_ids: vec![segment_id],
-            chunk_ids: vec![],
-            entity_paths: vec![],
-            select_all_entity_paths: true,
-            fuzzy_descriptors: vec![],
-            exclude_static_data: !include_static_data,
-            exclude_temporal_data: !include_temporal_data,
-            query: query
-                .map(|q| q.try_into())
-                .transpose()
-                .map_err(|err| ApiError::tonic(err, "failed building /QueryDataset request"))?,
-            scan_parameters: Some(ScanParameters {
-                columns: FetchChunksRequest::required_column_names(),
-                ..Default::default()
-            }),
-            generate_direct_urls,
-        };
+            async move {
+                let query_request = QueryDatasetRequest {
+                    segment_ids: vec![segment_id],
+                    chunk_ids: vec![],
+                    entity_paths: vec![],
+                    select_all_entity_paths: true,
+                    fuzzy_descriptors: vec![],
+                    exclude_static_data: !include_static_data,
+                    exclude_temporal_data: !include_temporal_data,
+                    query: query.map(|q| q.try_into()).transpose().map_err(|err| {
+                        ApiError::tonic(err, "failed building /QueryDataset request")
+                    })?,
+                    scan_parameters: Some(ScanParameters {
+                        columns: FetchChunksRequest::required_column_names(),
+                        ..Default::default()
+                    }),
+                    generate_direct_urls,
+                };
 
-        let response = self
-            .inner()
-            .query_dataset(tonic::Request::new(query_request.into()).with_entry_id(dataset_id))
-            .await
-            .map_err(|err| ApiError::tonic(err, "/QueryDataset failed"))?;
+                let response = client
+                    .inner()
+                    .query_dataset(
+                        tonic::Request::new(query_request.into()).with_entry_id(dataset_id),
+                    )
+                    .await
+                    .map_err(|err| ApiError::tonic(err, "/QueryDataset failed"))?;
 
-        Ok(ApiResponseStream::from_tonic_response(
-            response,
-            "/QueryDataset",
-        ))
+                Ok(ApiResponseStream::from_tonic_response(
+                    response,
+                    "/QueryDataset",
+                ))
+            }
+        })
+        .await
     }
 
     /// Fetches all chunks ids for a specified segment.
@@ -848,9 +873,12 @@ where
     /// You can pass on the results to [`Self::query_dataset_chunk_index`].
     #[tracing::instrument(level = "info", skip_all)]
     pub async fn query_dataset_chunk_index(
-        &mut self,
+        &self,
         params: SegmentQueryParams,
-    ) -> ApiResult<Vec<RecordBatch>> {
+    ) -> ApiResult<Vec<RecordBatch>>
+    where
+        T: Clone,
+    {
         let stream = self.query_dataset_raw(params).await?;
         let trace_id = stream.trace_id();
         let responses: Vec<_> = stream.collect::<Vec<_>>().await.into_iter().try_collect()?;
@@ -910,7 +938,10 @@ where
     pub async fn fetch_segment_chunks_by_query(
         &mut self,
         params: SegmentQueryParams,
-    ) -> ApiResult<FetchChunksResponseStream> {
+    ) -> ApiResult<FetchChunksResponseStream>
+    where
+        T: Clone,
+    {
         let stream = self.query_dataset_raw(params).await?;
         let query_trace_id = stream.trace_id();
         let responses: Vec<_> = stream.collect::<Vec<_>>().await.into_iter().try_collect()?;

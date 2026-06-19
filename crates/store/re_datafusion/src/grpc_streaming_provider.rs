@@ -208,7 +208,18 @@ impl GrpcStream {
         T: GrpcStreamToTable + Send + 'static,
     {
         let adapted_stream = Box::pin(async_stream::try_stream! {
-            let mut stream = client.send_streaming_request().await
+            // Retry only the *opening* of the stream, never the consume loop below.
+            //
+            // Admission-control endpoints (`ScanSegmentTable`, `QueryDataset`, …) reject with
+            // `ResourceExhausted` fail-fast at the handler entry, before any response byte is
+            // produced — so a rejected attempt provably did no server-side work and is safe to
+            // retry. Each attempt clones the (read-only/idempotent) provider so the request is
+            // rebuilt fresh.
+            let mut stream = re_redap_client::with_retry_resource_exhausted("grpc_stream_open", || {
+                    let mut client = client.clone();
+                    async move { client.send_streaming_request().await }
+                })
+                .await
                 .map_err(|err| {
                     if let Some(analytics) = analytics.as_ref() {
                         analytics.record_error(QueryErrorKind::GrpcFetch);
@@ -309,6 +320,11 @@ mod table_query_pipeline_tests {
         items: Arc<Mutex<Option<Vec<ApiResult<u32>>>>>,
         fail_send_request: bool,
         fail_decode: bool,
+
+        /// Number of `send_streaming_request` opens to reject with `ResourceExhausted` before
+        /// succeeding. `Arc<AtomicUsize>` so the count is shared across the per-attempt clones the
+        /// retry wrapper makes.
+        resource_exhausted_remaining: Arc<std::sync::atomic::AtomicUsize>,
         trace_id: Option<opentelemetry::TraceId>,
     }
 
@@ -318,6 +334,7 @@ mod table_query_pipeline_tests {
                 items: Arc::new(Mutex::new(Some(items))),
                 fail_send_request: false,
                 fail_decode: false,
+                resource_exhausted_remaining: Arc::new(std::sync::atomic::AtomicUsize::new(0)),
                 trace_id: None,
             }
         }
@@ -332,6 +349,7 @@ mod table_query_pipeline_tests {
                 items: Arc::new(Mutex::new(Some(vec![]))),
                 fail_send_request: true,
                 fail_decode: false,
+                resource_exhausted_remaining: Arc::new(std::sync::atomic::AtomicUsize::new(0)),
                 trace_id: None,
             }
         }
@@ -343,6 +361,20 @@ mod table_query_pipeline_tests {
                 ))),
                 fail_send_request: false,
                 fail_decode: true,
+                resource_exhausted_remaining: Arc::new(std::sync::atomic::AtomicUsize::new(0)),
+                trace_id: None,
+            }
+        }
+
+        /// Reject the first `n` opens with `ResourceExhausted`, then stream `items`.
+        fn resource_exhausted_then(n: usize, items: Vec<u32>) -> Self {
+            Self {
+                items: Arc::new(Mutex::new(Some(
+                    items.into_iter().map(Ok).collect::<Vec<_>>(),
+                ))),
+                fail_send_request: false,
+                fail_decode: false,
+                resource_exhausted_remaining: Arc::new(std::sync::atomic::AtomicUsize::new(n)),
                 trace_id: None,
             }
         }
@@ -379,6 +411,21 @@ mod table_query_pipeline_tests {
         async fn send_streaming_request(
             &mut self,
         ) -> ApiResult<ApiResponseStream<Self::GrpcStreamData>> {
+            // Simulate fail-fast admission control: reject the first `n` opens with
+            // ResourceExhausted (shared across the retry wrapper's per-attempt clones). The branch
+            // returns before touching `items`, so the eventual successful open still streams them.
+            if self
+                .resource_exhausted_remaining
+                .load(std::sync::atomic::Ordering::SeqCst)
+                > 0
+            {
+                self.resource_exhausted_remaining
+                    .fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
+                return Err(ApiError::tonic(
+                    tonic::Status::resource_exhausted("busy"),
+                    "fake",
+                ));
+            }
             if self.fail_send_request {
                 return Err(ApiError::deserialization(None, "fake send error"));
             }
@@ -571,6 +618,18 @@ mod table_query_pipeline_tests {
 
         let items = drain(stream).await;
         assert_eq!(items.len(), 2);
+        assert!(items.iter().all(|r| r.is_ok()));
+    }
+
+    #[tokio::test]
+    async fn pipeline_retries_resource_exhausted_then_succeeds() {
+        // The first two stream-opens are rejected with `ResourceExhausted`; the retry wrapper in
+        // `GrpcStream::execute` should ride them out and then stream all three rows.
+        let provider = FakeProvider::resource_exhausted_then(2, vec![1, 2, 3]);
+        let stream = GrpcStream::execute(&fake_schema(), provider, None);
+
+        let items = drain(stream).await;
+        assert_eq!(items.len(), 3);
         assert!(items.iter().all(|r| r.is_ok()));
     }
 
