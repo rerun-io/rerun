@@ -1105,6 +1105,29 @@ fn start_native_viewer(
             }));
         }
 
+        // Start the internal catalog server at launch when the experimental option is on.
+        // The server stays up for the lifetime of the viewer (the spawned task owns its handle).
+        #[cfg(all(feature = "oss_server", not(target_arch = "wasm32")))]
+        if app.app_options().experimental.use_internal_catalog {
+            let connection_registry = connection_registry.clone();
+            let internal_catalog_origin = app.internal_catalog_origin();
+            tokio::spawn(async move {
+                match crate::internal_catalog::start(connection_registry).await {
+                    Ok((server_handle, origin)) => {
+                        internal_catalog_origin
+                            .set(origin)
+                            .expect("internal catalog origin already set");
+                        // Keep the server alive for the lifetime of the process.
+                        let _server_handle = server_handle;
+                        std::future::pending::<()>().await;
+                    }
+                    Err(err) => {
+                        re_log::error!("Failed to start the internal catalog server: {err:#}");
+                    }
+                }
+            });
+        }
+
         app.set_profiler(profiler);
         for rx in log_receivers {
             app.add_log_receiver(rx);

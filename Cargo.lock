@@ -10545,6 +10545,7 @@ dependencies = [
  "re_memory_view",
  "re_mutex",
  "re_perf_telemetry",
+ "re_protos",
  "re_query",
  "re_recording_panel",
  "re_redap_browser",

@@ -1,4 +1,6 @@
 use std::sync::Arc;
+#[cfg(not(target_arch = "wasm32"))]
+use std::sync::OnceLock;
 
 use egui::{FocusDirection, Key};
 use re_auth::credentials::CredentialsProvider as _;
@@ -150,6 +152,10 @@ pub struct App {
     /// * we want the user to have full control over the runtime,
     ///   and not expect that a global runtime exists.
     async_runtime: AsyncRuntimeHandle,
+
+    /// Origin of the in-process internal catalog server.
+    #[cfg(not(target_arch = "wasm32"))]
+    internal_catalog_origin: Arc<OnceLock<re_uri::Origin>>,
 }
 
 impl App {
@@ -473,12 +479,20 @@ impl App {
             connection_registry,
             server_latency_trackers: ServerLatencyTrackers::default(),
             async_runtime: tokio_runtime,
+
+            #[cfg(not(target_arch = "wasm32"))]
+            internal_catalog_origin: Arc::new(OnceLock::new()),
         }
     }
 
     #[cfg(not(target_arch = "wasm32"))]
     pub fn set_profiler(&mut self, profiler: re_tracing::Profiler) {
         self.profiler = profiler;
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn internal_catalog_origin(&self) -> Arc<OnceLock<re_uri::Origin>> {
+        self.internal_catalog_origin.clone()
     }
 
     pub fn connection_registry(&self) -> &ConnectionRegistryHandle {

@@ -83,6 +83,7 @@ re_log_types.workspace = true
 re_memory_view.workspace = true
 re_memory.workspace = true
 re_mutex.workspace = true
+re_protos.workspace = true
 re_query.workspace = true
 re_recording_panel.workspace = true
 re_redap_browser.workspace = true

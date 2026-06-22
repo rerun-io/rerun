@@ -40,7 +40,7 @@ use tonic::IntoStreamingRequest as _;
 use tonic::codegen::{Body, StdError};
 use url::Url;
 
-use crate::{ApiError, ApiResponseStream, ApiResult, TraceId, extract_trace_id};
+use crate::{ApiError, ApiErrorKind, ApiResponseStream, ApiResult, TraceId, extract_trace_id};
 
 /// Extension trait for [`tonic::Response`] that extracts both the inner value
 /// and the server's trace-id in one step.
@@ -1377,6 +1377,72 @@ where
             })?
             .try_into()
             .map_err(|err| ApiError::internal_with_source(trace_id, err, "/CreateTable failed"))
+    }
+
+    /// Look up a dataset entry by name, returning its id if it exists.
+    #[tracing::instrument(level = "info", skip_all)]
+    pub async fn find_dataset_by_name(&mut self, name: &str) -> ApiResult<Option<EntryId>> {
+        let entries = match self
+            .find_entries(EntryFilter {
+                name: Some(name.to_owned()),
+                entry_kind: Some(EntryKind::Dataset.into()),
+                ..Default::default()
+            })
+            .await
+        {
+            Ok(entries) => entries,
+            Err(err) if err.kind == ApiErrorKind::NotFound => return Ok(None),
+            Err(err) => return Err(err),
+        };
+        Ok(entries.into_iter().next().map(|entry| entry.id))
+    }
+
+    /// Find the dataset named `name`, creating it if it doesn't exist yet.
+    #[tracing::instrument(level = "info", skip_all)]
+    pub async fn find_or_create_dataset(&mut self, name: &str) -> ApiResult<EntryId> {
+        if let Some(id) = self.find_dataset_by_name(name).await? {
+            return Ok(id);
+        }
+
+        match self.create_dataset_entry(name.to_owned(), None).await {
+            Ok(dataset) => Ok(dataset.details.id),
+
+            // Created concurrently between our lookup and our create.
+            Err(err) if err.kind == ApiErrorKind::AlreadyExists => {
+                self.find_dataset_by_name(name).await?.ok_or_else(|| {
+                    ApiError::invalid_arguments(format!(
+                        "dataset {name:?} disappeared while registering"
+                    ))
+                })
+            }
+
+            Err(err) => Err(err),
+        }
+    }
+
+    /// Ensure a dataset exists, register `data_sources` with it
+    #[tracing::instrument(level = "info", skip_all)]
+    pub async fn ensure_dataset_and_register(
+        &mut self,
+        dataset_name: &str,
+        data_sources: Vec<DataSource>,
+        on_duplicate: IfDuplicateBehavior,
+    ) -> ApiResult<(EntryId, SegmentId)> {
+        let dataset_id = self.find_or_create_dataset(dataset_name).await?;
+
+        let (_trace_id, tasks) = self
+            .register_with_dataset(dataset_id, data_sources, on_duplicate)
+            .await?;
+
+        let segment_id = tasks
+            .into_iter()
+            .next()
+            .map(|task| task.segment_id)
+            .ok_or_else(|| {
+                ApiError::invalid_arguments("server registered the file but returned no segments")
+            })?;
+
+        Ok((dataset_id, segment_id))
     }
 }
 

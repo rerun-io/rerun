@@ -7,6 +7,13 @@ use re_viewer_context::{StoreHub, SystemCommand, SystemCommandSender as _, TimeC
 
 use super::App;
 
+#[cfg(not(target_arch = "wasm32"))]
+use {
+    anyhow::Context as _, re_protos::cloud::v1alpha1::ext::DataSource,
+    re_protos::common::v1alpha1::ext::IfDuplicateBehavior,
+    re_redap_client::ConnectionRegistryHandle, std::path::Path,
+};
+
 impl App {
     #[expect(clippy::needless_pass_by_ref_mut)]
     pub fn add_log_receiver(&mut self, rx: LogReceiver) {
@@ -101,6 +108,38 @@ impl App {
 
             #[cfg(not(target_arch = "wasm32"))]
             LogDataSource::FilePath { path, follow, .. } => {
+                // If an internal catalog server is running, route `.rrd` files through it.
+                //
+                // `follow` (tailing a growing file) is incompatible with this, followed files
+                // keep the direct loading path.
+                if !*follow
+                    && path.extension().is_some_and(|ext| ext == "rrd")
+                    && let Some(origin) = self.internal_catalog_origin.get().cloned()
+                {
+                    let path = path.clone();
+                    let connection_registry = self.connection_registry.clone();
+                    let sender = self.command_sender.clone();
+                    self.async_runtime.spawn_future(async move {
+                        match register_local_file(&connection_registry, origin, &path).await {
+                            Ok(uri) => {
+                                sender.send_system(SystemCommand::LoadDataSource(
+                                    LogDataSource::RedapDatasetSegment {
+                                        uri,
+                                        open_behavior: RecordingOpenBehavior::OpenAndSelect,
+                                    },
+                                ));
+                            }
+                            Err(err) => {
+                                re_log::error!(
+                                    "Failed to load file via the internal catalog: {err}\nFile path: {}",
+                                    path.display(),
+                                );
+                            }
+                        }
+                    });
+                    return;
+                }
+
                 let new_source = LogSource::File {
                     path: path.clone(),
                     follow: *follow,
@@ -259,4 +298,51 @@ impl App {
             self.make_store_active_and_highlight(store_hub, egui_ctx, &store_id);
         }
     }
+}
+
+/// Register a local `.rrd` file with the catalog server.
+#[cfg(not(target_arch = "wasm32"))]
+async fn register_local_file(
+    connection_registry: &ConnectionRegistryHandle,
+    origin: re_uri::Origin,
+    path: &Path,
+) -> anyhow::Result<re_uri::DatasetSegmentUri> {
+    let mut client = connection_registry.client(origin.clone()).await?;
+
+    let abs_path = std::path::absolute(path).with_context(|| {
+        format!(
+            "failed to resolve absolute path\nFile path: {}",
+            path.display()
+        )
+    })?;
+    let file_url = url::Url::from_file_path(&abs_path).map_err(|()| {
+        anyhow::anyhow!(
+            "not an absolute file path\nFile path: {}",
+            abs_path.display()
+        )
+    })?;
+
+    // TODO(RR-4929): extrect application id from the file if possible.
+    let dataset_name = abs_path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("recording")
+        .to_owned();
+
+    let data_source = DataSource::new_rrd(file_url.as_str())?;
+
+    let (dataset_id, segment_id) = client
+        .ensure_dataset_and_register(
+            &dataset_name,
+            vec![data_source],
+            IfDuplicateBehavior::Overwrite,
+        )
+        .await?;
+
+    Ok(re_uri::DatasetSegmentUri {
+        origin,
+        dataset_id: dataset_id.id,
+        segment_id,
+        fragment: Default::default(),
+    })
 }
