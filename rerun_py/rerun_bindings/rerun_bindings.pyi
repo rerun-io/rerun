@@ -1311,7 +1311,12 @@ class DeriveLensInternal:
         output_entity: str | None = None,
         scatter: bool = False,
     ) -> None: ...
-    def to_component(self, component: ComponentDescriptor, selector: SelectorInternal) -> DeriveLensInternal: ...
+    def to_component(
+        self,
+        component: ComponentDescriptor,
+        selector: SelectorInternal,
+        cast_to: pa.DataType | Literal["auto"] | None = None,
+    ) -> DeriveLensInternal: ...
     def to_timeline(self, timeline_name: str, timeline_type: str, selector: SelectorInternal) -> DeriveLensInternal: ...
 
 class MutateLensInternal:

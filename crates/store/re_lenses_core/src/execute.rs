@@ -21,7 +21,15 @@ fn output_components_iter<'a>(
 ) -> impl Iterator<Item = Result<(ComponentDescriptor, ListArray), LensRuntimeError>> + 'a {
     components.iter().filter_map(move |output| {
         match runtime.execute_per_row(&output.selector, &input.list_array) {
-            Ok(Some(list_array)) => Some(Ok((output.component_descr.clone(), list_array))),
+            Ok(Some(list_array)) => Some(
+                crate::cast::apply_output_cast(
+                    output.cast.as_ref(),
+                    &output.component_descr,
+                    target_entity,
+                    list_array,
+                )
+                .map(|list_array| (output.component_descr.clone(), list_array)),
+            ),
             Ok(None) => {
                 re_log::debug_once!(
                     "Lens suppressed for `{target_entity}` component `{}`",

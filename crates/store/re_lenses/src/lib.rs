@@ -10,6 +10,6 @@ pub use self::runtime::default_runtime;
 
 // Re-export the core lenses types.
 pub use re_lenses_core::{
-    ChunkExt, DeriveLensBuilder, Lens, LensBuilderError, LensError, LensRuntimeError, Lenses,
-    MutateLensBuilder, OutputMode, Runtime, Selector, function_registry,
+    CastTo, ChunkExt, DeriveLensBuilder, Lens, LensBuilderError, LensError, LensRuntimeError,
+    Lenses, MutateLensBuilder, OutputMode, Runtime, Selector, function_registry,
 };
