@@ -103,19 +103,13 @@ fn build_segment_manifests(
             })?;
         let segment_ids = QueryDatasetDataframe::COLUMN_CHUNK_SEGMENT_ID
             .extract(rb)
-            .map_err(|err| {
-                ApiError::internal(format!("bad segment_id column in chunk_info batch: {err}"))
-            })?;
+            .map_err(ApiError::internal_quiver)?;
         let entity_paths = QueryDatasetDataframe::COLUMN_CHUNK_ENTITY_PATH
             .extract(rb)
-            .map_err(|err| {
-                ApiError::internal(format!("bad entity_path column in chunk_info batch: {err}"))
-            })?;
+            .map_err(ApiError::internal_quiver)?;
         let is_statics = QueryDatasetDataframe::COLUMN_CHUNK_IS_STATIC
             .extract(rb)
-            .map_err(|err| {
-                ApiError::internal(format!("bad is_static column in chunk_info batch: {err}"))
-            })?;
+            .map_err(ApiError::internal_quiver)?;
 
         for i in 0..rb.num_rows() {
             if start_nulls.as_ref().is_some_and(|n| n.is_null(i)) {
@@ -171,9 +165,7 @@ fn count_chunks_per_segment(chunk_infos: &[RecordBatch]) -> ApiResult<Vec<(Segme
     for rb in chunk_infos {
         let segment_ids = QueryDatasetDataframe::COLUMN_CHUNK_SEGMENT_ID
             .extract(rb)
-            .map_err(|err| {
-                ApiError::internal(format!("bad segment_id column in chunk_info batch: {err}"))
-            })?;
+            .map_err(ApiError::internal_quiver)?;
         for seg in &segment_ids {
             // Avoid the `SegmentId::from` allocation on the hot repeated-segment path:
             // only take it when we are actually inserting a new entry.
@@ -201,9 +193,7 @@ fn count_chunks_per_segment(chunk_infos: &[RecordBatch]) -> ApiResult<Vec<(Segme
 fn extract_segment_id(chunk_info: &RecordBatch) -> ApiResult<SegmentId> {
     let segment_ids = QueryDatasetDataframe::COLUMN_CHUNK_SEGMENT_ID
         .extract(chunk_info)
-        .map_err(|err| {
-            ApiError::internal(format!("bad segment_id column in chunk_info batch: {err}"))
-        })?;
+        .map_err(ApiError::internal_quiver)?;
 
     Ok(segment_ids.value_owned(0))
 }
@@ -212,11 +202,7 @@ fn extract_segment_id(chunk_info: &RecordBatch) -> ApiResult<SegmentId> {
 fn extract_chunk_sizes(chunk_info: &RecordBatch) -> ApiResult<quiver::Column<u64>> {
     QueryDatasetDataframe::COLUMN_CHUNK_BYTE_LEN
         .extract(chunk_info)
-        .map_err(|err| {
-            ApiError::internal(format!(
-                "bad chunk_byte_len column in chunk_info batch: {err}"
-            ))
-        })
+        .map_err(ApiError::internal_quiver)
 }
 
 type BatchingResult = (Vec<RecordBatch>, Vec<SegmentId>);

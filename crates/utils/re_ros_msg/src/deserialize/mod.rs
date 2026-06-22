@@ -281,12 +281,13 @@ where
         Bool => de
             .deserialize_bool(PrimitiveVisitor::<bool>::new())
             .map(Value::Bool),
-        Byte | UInt8 => de
+        // `byte` and `char` are both unsigned octets in ROS 2 CDR.
+        Byte | Char | UInt8 => de
             .deserialize_u8(PrimitiveVisitor::<u8>::new())
-            .map(Value::U8), // ROS2: octet
-        Char | Int8 => de
+            .map(Value::U8),
+        Int8 => de
             .deserialize_i8(PrimitiveVisitor::<i8>::new())
-            .map(Value::I8), // ROS2: char (int8)
+            .map(Value::I8),
         Float32 => de
             .deserialize_f32(PrimitiveVisitor::<f32>::new())
             .map(Value::F32),
@@ -311,7 +312,13 @@ where
         UInt64 => de
             .deserialize_u64(PrimitiveVisitor::<u64>::new())
             .map(Value::U64),
-        String(_bound) | WString(_bound) => de.deserialize_string(StringVisitor).map(Value::String),
+        String(_bound) => de.deserialize_string(StringVisitor).map(Value::String),
+        // `wstring` is UTF-16 on the wire, a different layout than `string`. We can't decode
+        // it without corrupting the message, so reject it. The MCAP reflection decoder keeps
+        // such channels as raw data.
+        WString(_bound) => Err(de::Error::custom(
+            "ROS 2 `wstring` deserialization is not supported",
+        )),
     }
 }
 

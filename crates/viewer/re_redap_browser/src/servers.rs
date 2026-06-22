@@ -94,17 +94,17 @@ impl Server {
     }
 
     fn refresh_entries(
-        &mut self,
+        mut self,
         runtime: &AsyncRuntimeHandle,
         egui_ctx: &egui::Context,
         viewer_command_sender: ViewerCommandSender,
-    ) {
+    ) -> Self {
         // TODO(RR-4874): this replaces the whole session context, dropping the DataFusionTableWidget
         // caches. As a result, a currently-displayed table reverts to "Loading…" on any catalog
         // refresh, even when that table itself is unchanged.
         self.tables_session_ctx = Self::session_context();
 
-        self.entries = Entries::new(
+        self.entries = self.entries.refresh(
             self.connection_registry.clone(),
             runtime,
             egui_ctx,
@@ -112,6 +112,8 @@ impl Server {
             self.tables_session_ctx.clone(),
             viewer_command_sender,
         );
+
+        self
     }
 
     #[inline]
@@ -870,9 +872,12 @@ impl RedapServers {
             }
 
             Command::RefreshCollection(origin) => {
-                self.servers.entry(origin).and_modify(|server| {
-                    server.refresh_entries(runtime, egui_ctx, viewer_command_sender.clone());
-                });
+                if let Some(server) = self.servers.remove(&origin) {
+                    self.servers.insert(
+                        origin,
+                        server.refresh_entries(runtime, egui_ctx, viewer_command_sender.clone()),
+                    );
+                }
             }
 
             Command::UseStoredCredentials(origin) => {

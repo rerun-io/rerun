@@ -172,7 +172,10 @@ impl PyChunkInternal {
             .iter()
             .map(|l| l.build(py))
             .collect::<PyResult<Vec<_>>>()?;
-        match self.chunk.apply_lenses(&lenses) {
+        match self
+            .chunk
+            .apply_lenses(&lenses, &re_lenses::default_runtime())
+        {
             Ok(chunks) => Ok(chunks
                 .into_iter()
                 .map(|chunk| Self {
@@ -204,7 +207,11 @@ impl PyChunkInternal {
 
         let new_chunk = self
             .chunk
-            .apply_selector(source_id, selector.selector())
+            .apply_selector(
+                source_id,
+                selector.selector(),
+                &re_lenses::default_runtime(),
+            )
             .map_err(|err| PyValueError::new_err(err.to_string()))?;
 
         Ok(Self::new(Arc::new(new_chunk)))

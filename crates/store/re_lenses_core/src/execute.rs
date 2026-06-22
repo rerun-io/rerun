@@ -11,15 +11,25 @@ use crate::combinators::{Explode, Transform as _};
 use crate::error::{LensError, LensRuntimeError};
 
 use crate::plan::{ChunkTimelines, DeriveWork, Plan};
+use crate::selector::Runtime;
 
 fn output_components_iter<'a>(
     input: &'a SerializedComponentColumn,
     components: &'a [ComponentOutput],
     target_entity: &'a re_chunk::EntityPath,
+    runtime: &'a Runtime,
 ) -> impl Iterator<Item = Result<(ComponentDescriptor, ListArray), LensRuntimeError>> + 'a {
     components.iter().filter_map(move |output| {
-        match output.selector.execute_per_row(&input.list_array) {
-            Ok(Some(list_array)) => Some(Ok((output.component_descr.clone(), list_array))),
+        match runtime.execute_per_row(&output.selector, &input.list_array) {
+            Ok(Some(list_array)) => Some(
+                crate::cast::apply_output_cast(
+                    output.cast.as_ref(),
+                    &output.component_descr,
+                    target_entity,
+                    list_array,
+                )
+                .map(|list_array| (output.component_descr.clone(), list_array)),
+            ),
             Ok(None) => {
                 re_log::debug_once!(
                     "Lens suppressed for `{target_entity}` component `{}`",
@@ -41,10 +51,11 @@ fn output_timelines_iter<'a>(
     input: &'a SerializedComponentColumn,
     timelines: &'a [TimeOutput],
     target_entity: &'a re_chunk::EntityPath,
+    runtime: &'a Runtime,
 ) -> impl Iterator<Item = Result<(re_chunk::TimelineName, TimeType, ListArray), LensRuntimeError>> + 'a
 {
     timelines.iter().filter_map(move |time| {
-        match time.selector.execute_per_row(&input.list_array) {
+        match runtime.execute_per_row(&time.selector, &input.list_array) {
             Ok(Some(list_array)) => Some(Ok((time.timeline_name, time.timeline_type, list_array))),
             Ok(None) => {
                 re_log::debug_once!(
@@ -103,12 +114,12 @@ fn finalize_chunk(
 }
 
 /// Applies a one-to-one lens transformation (each input row -> exactly one output row).
-fn apply_one_to_one(work: &DeriveWork<'_>) -> Result<Chunk, LensError> {
+fn apply_one_to_one(work: &DeriveWork<'_>, runtime: &Runtime) -> Result<Chunk, LensError> {
     let mut errors = Vec::new();
 
     let mut component_results = re_chunk::ChunkComponents::default();
 
-    for result in output_components_iter(work.input, work.components, work.target_entity) {
+    for result in output_components_iter(work.input, work.components, work.target_entity, runtime) {
         match result {
             Ok((component_descr, list_array)) => {
                 component_results
@@ -121,7 +132,7 @@ fn apply_one_to_one(work: &DeriveWork<'_>) -> Result<Chunk, LensError> {
     let mut chunk_times = work.original_timelines.clone();
 
     chunk_times.extend(
-        output_timelines_iter(work.input, work.timelines, work.target_entity).filter_map(
+        output_timelines_iter(work.input, work.timelines, work.target_entity, runtime).filter_map(
             |result| match result {
                 Ok((timeline_name, timeline_type, list_array)) => {
                     match try_convert_time_column(timeline_name, timeline_type, &list_array) {
@@ -210,11 +221,11 @@ fn scatter_existing_timelines(
 }
 
 /// Applies a one-to-many lens transformation (each input row -> potentially multiple output rows).
-fn apply_one_to_many(work: &DeriveWork<'_>) -> Result<Chunk, LensError> {
+fn apply_one_to_many(work: &DeriveWork<'_>, runtime: &Runtime) -> Result<Chunk, LensError> {
     let mut errors = Vec::new();
 
     let mut components =
-        output_components_iter(work.input, work.components, work.target_entity).peekable();
+        output_components_iter(work.input, work.components, work.target_entity, runtime).peekable();
 
     let reference_array = match components.peek() {
         Some(Ok((_descr, reference_array))) => reference_array,
@@ -240,7 +251,7 @@ fn apply_one_to_many(work: &DeriveWork<'_>) -> Result<Chunk, LensError> {
         scatter_existing_timelines(work.original_timelines, &scatter_indices_array, &mut errors);
 
     chunk_times.extend(
-        output_timelines_iter(work.input, work.timelines, work.target_entity).filter_map(
+        output_timelines_iter(work.input, work.timelines, work.target_entity, runtime).filter_map(
             |result| match result {
                 Ok((timeline_name, timeline_type, list_array)) => {
                     match Explode.transform(&list_array) {
@@ -317,6 +328,7 @@ fn apply_one_to_many(work: &DeriveWork<'_>) -> Result<Chunk, LensError> {
 pub fn execute<'a>(
     lenses: &'a Lenses,
     chunk: &'a Chunk,
+    runtime: &'a Runtime,
 ) -> impl Iterator<Item = Result<Chunk, LensError>> + 'a {
     let Plan {
         mutate_work,
@@ -367,7 +379,7 @@ pub fn execute<'a>(
             let Some(col) = components.get(*id) else {
                 continue;
             };
-            match work.selector.execute_per_row(&col.list_array) {
+            match runtime.execute_per_row(work.selector, &col.list_array) {
                 Ok(Some(list_array)) => {
                     components.insert(SerializedComponentColumn::new(
                         list_array,
@@ -393,7 +405,8 @@ pub fn execute<'a>(
 
         // Append merged same-entity derive outputs.
         for work in &merge_work {
-            for result in output_components_iter(work.input, work.components, entity_path) {
+            for result in output_components_iter(work.input, work.components, entity_path, runtime)
+            {
                 match result {
                     Ok((descr, list_array)) => {
                         components.insert(SerializedComponentColumn::new(list_array, descr));
@@ -431,9 +444,9 @@ pub fn execute<'a>(
 
     // --- Produce derived chunks ---
 
-    let derived_chunks = derive_work.into_iter().map(|work| match work.rows {
-        Rows::OneToMany => apply_one_to_many(&work),
-        Rows::OneToOne => apply_one_to_one(&work),
+    let derived_chunks = derive_work.into_iter().map(move |work| match work.rows {
+        Rows::OneToMany => apply_one_to_many(&work, runtime),
+        Rows::OneToOne => apply_one_to_one(&work, runtime),
     });
 
     // --- Chain all results ---

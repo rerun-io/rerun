@@ -55,22 +55,23 @@ pub fn resolution_of_image_at(
         let video = ctx
             .store_context
             .memoizer(|c: &mut crate::VideoStreamCache| {
+                let codec = entity_db
+                    .latest_at_component::<components::VideoCodec>(
+                        entity_path,
+                        query,
+                        archetypes::EncodedImage::descriptor_media_type().component,
+                    )
+                    .map(|(_, c)| re_video::VideoCodec::from(c))
+                    .ok_or(crate::VideoStreamProcessingError::MissingCodec);
+                let codec = codec?;
+
                 c.entry(
                     entity_db,
                     entity_path,
                     *ctx.time_ctrl.timeline_name(),
                     ctx.app_options().video_decoder_settings(),
                     video_stream_sample_component,
-                    &|| {
-                        entity_db
-                            .latest_at_component::<components::VideoCodec>(
-                                entity_path,
-                                query,
-                                archetypes::EncodedImage::descriptor_media_type().component,
-                            )
-                            .map(|(_, c)| re_video::VideoCodec::from(c))
-                            .ok_or(crate::VideoStreamProcessingError::MissingCodec)
-                    },
+                    codec,
                 )
             });
 
@@ -95,23 +96,21 @@ pub fn resolution_of_image_at(
             let video = ctx
                 .store_context
                 .memoizer(|c: &mut crate::VideoStreamCache| {
+                    let media_type = entity_db
+                        .latest_at_component::<components::MediaType>(
+                            entity_path,
+                            query,
+                            media_type_component,
+                        )
+                        .map(|(_, c)| c.to_string());
+
                     c.entry(
                         entity_db,
                         entity_path,
                         *ctx.time_ctrl.timeline_name(),
                         ctx.app_options().video_decoder_settings(),
                         image_blob_component,
-                        &|| {
-                            let media_type = entity_db
-                                .latest_at_component::<components::MediaType>(
-                                    entity_path,
-                                    query,
-                                    media_type_component,
-                                )
-                                .map(|(_, c)| c.to_string());
-
-                            Ok(re_video::VideoCodec::ImageSequence(media_type))
-                        },
+                        re_video::VideoCodec::ImageSequence(media_type),
                     )
                 });
 

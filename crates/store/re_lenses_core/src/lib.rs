@@ -10,6 +10,7 @@ pub mod combinators;
 
 mod ast;
 mod builder;
+mod cast;
 mod chunk;
 mod error;
 mod execute;
@@ -17,7 +18,7 @@ mod plan;
 mod selector;
 
 pub use self::{
-    ast::{Lens, Lenses, OutputMode},
+    ast::{CastTo, Lens, Lenses, OutputMode},
     builder::{DeriveLensBuilder, MutateLensBuilder},
     chunk::ChunkExt,
     error::{LensBuilderError, LensError, LensRuntimeError},

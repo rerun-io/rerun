@@ -9,11 +9,16 @@ use super::Selector;
 use super::eval;
 use super::function_registry::FunctionRegistry;
 
+/// The runtime backing the convenience [`Selector::execute`](super::Selector::execute) methods.
+///
+/// It carries no built-in functions; Rerun's built-ins (and a populated runtime) live in the
+/// `re_lenses` crate. Selectors using only paths or piped closures resolve fine here, but named
+/// built-in functions require an explicit runtime such as `re_lenses::default_runtime()`.
 pub(super) fn default_runtime() -> Arc<Runtime> {
     static DEFAULT_RUNTIME: OnceLock<Arc<Runtime>> = OnceLock::new();
 
     DEFAULT_RUNTIME
-        .get_or_init(|| Arc::new(Runtime::new(Arc::new(FunctionRegistry::default()))))
+        .get_or_init(|| Arc::new(Runtime::new(Arc::new(FunctionRegistry::new()))))
         .clone()
 }
 

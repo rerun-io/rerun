@@ -239,6 +239,25 @@ def test_apply_lenses_field_extraction() -> None:
 """)
 
 
+def test_apply_lenses_string_prefix_builtin() -> None:
+    """apply_lenses can use the built-in string_prefix selector function."""
+    image_data = pa.StructArray.from_arrays(
+        [pa.array(["png", "jpeg"], type=pa.string())],
+        names=["format"],
+    )
+    chunk = Chunk.from_columns(
+        "/camera",
+        indexes=[rr.TimeColumn("frame", sequence=[0, 1])],
+        columns=rr.DynamicArchetype.columns(archetype="Image", components={"format": image_data}),
+    )
+
+    lens = DeriveLens("Image:format").to_component("Image:mime", '.format | string_prefix("image/")')
+    results = chunk.apply_lenses(lens)
+
+    assert len(results) == 1
+    assert results[0].to_record_batch().column("Image:mime").to_pylist() == [["image/png"], ["image/jpeg"]]
+
+
 def test_apply_lenses_no_match() -> None:
     """apply_lenses forwards the original chunk when no lens input component matches."""
     chunk = Chunk.from_columns(
@@ -550,6 +569,52 @@ def test_apply_lenses_mutate_same_column_collision() -> None:
     ]
     with pytest.raises(ValueError, match="collision"):
         chunk.apply_lenses(lenses)
+
+
+def _int64_accel_chunk() -> Chunk:
+    """A chunk with a single Int64-typed `Imu:accel` component column."""
+    return Chunk.from_columns(
+        "/sensor",
+        indexes=[rr.TimeColumn("frame", sequence=[0, 1])],
+        columns=rr.DynamicArchetype.columns(archetype="Imu", components={"accel": pa.array([1, 2], type=pa.int64())}),
+    )
+
+
+def _component_value_type(chunks: list[Chunk], column_name: str) -> pa.DataType:
+    """The element type of the named component column across the produced chunks."""
+    for chunk in chunks:
+        for field in chunk.to_record_batch().schema:
+            if field.name == column_name:
+                return field.type.value_type
+    raise AssertionError(f"column {column_name} not found in produced chunks")
+
+
+def test_apply_lenses_cast_to_auto() -> None:
+    """`cast_to="auto"` casts the output to the component's canonical type (Scalar -> float64)."""
+    chunk = _int64_accel_chunk()
+    lens = DeriveLens("Imu:accel", output_entity="/derived").to_component(
+        rr.Scalars.descriptor_scalars(), ".", cast_to="auto"
+    )
+    results = chunk.apply_lenses([lens])
+    assert _component_value_type(results, "Scalars:scalars") == pa.float64()
+
+
+def test_apply_lenses_cast_to_explicit_type() -> None:
+    """`cast_to=<pa.DataType>` casts the output to that explicit type."""
+    chunk = _int64_accel_chunk()
+    lens = DeriveLens("Imu:accel", output_entity="/derived").to_component(
+        rr.Scalars.descriptor_scalars(), ".", cast_to=pa.float32()
+    )
+    results = chunk.apply_lenses([lens])
+    assert _component_value_type(results, "Scalars:scalars") == pa.float32()
+
+
+def test_apply_lenses_no_cast_preserves_type() -> None:
+    """Without `cast_to`, the produced column is emitted as-is (Int64 here)."""
+    chunk = _int64_accel_chunk()
+    lens = DeriveLens("Imu:accel", output_entity="/derived").to_component(rr.Scalars.descriptor_scalars(), ".")
+    results = chunk.apply_lenses([lens])
+    assert _component_value_type(results, "Scalars:scalars") == pa.int64()
 
 
 def test_apply_lenses_derive_same_entity_collision() -> None:

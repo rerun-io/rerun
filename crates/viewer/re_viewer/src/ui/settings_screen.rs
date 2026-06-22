@@ -171,6 +171,8 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
         let ExperimentalAppOptions {
             table_cards_and_blueprints,
             gamepad_navigation,
+            #[cfg(not(target_arch = "wasm32"))]
+            use_internal_catalog,
         } = experimental;
         separator_with_some_space(ui);
         ui.strong("Experimental");
@@ -187,6 +189,18 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
             if gamepad_navigation_response.changed() && !*gamepad_navigation {
                 re_gamepad::clear_event_waker();
             }
+
+            ui.re_checkbox(
+                use_internal_catalog,
+                "Load files via internal catalog server (restart required)",
+            )
+            .on_hover_text(
+                "Open .rrd files through an in-process \"internal catalog\" server instead of \
+                     importing them directly into the viewer. The server is hosted inside the \
+                     desktop app and the viewer talks to it like any other server.\n\n\
+                     Takes effect for files opened after enabling; the server starts at launch \
+                     when this is on.",
+            );
         }
         #[cfg(target_arch = "wasm32")]
         {

@@ -85,6 +85,12 @@ struct VertexOut {
 
     @location(4) @interpolate(flat)
     quad_idx: u32,
+
+    // Offset vector from `point_pos_in_world` to the quad.
+    // Interpolating along this small-scale local offset for coverage math avoids float-precision issues,
+    // compared to subtracting potentially large world positions in the fragment shader.
+    @location(5) @interpolate(perspective)
+    quad_offset_from_center: vec3f,
 };
 
 // ---
@@ -172,20 +178,40 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
         let quad = sphere_or_circle_quad_span(vertex_idx, point_data.pos_in_world, world_radius, false);
         out.pos_in_clip = frame.projection_from_world * vec4f(quad.pos_in_world, 1.0);
         out.pos_in_world = quad.pos_in_world;
+        out.quad_offset_from_center = quad.pos_in_world - point_data.pos_in_world;
         out.point_radius = quad.point_resolved_radius;
     } else {
         // Degenerate case - early-out!
         out.pos_in_clip = vec4f(0.0);
         out.pos_in_world = vec3f(0.0);
+        out.quad_offset_from_center = vec3f(0.0);
         out.point_radius = 0.0;
     }
 
     return out;
 }
 
+fn coverage(
+    pos_in_world: vec3f,
+    point_radius: f32,
+    point_pos_in_world: vec3f,
+    quad_offset_from_center: vec3f,
+) -> f32 {
+    if is_camera_orthographic() {
+        return circle_quad_coverage(quad_offset_from_center, point_radius);
+    } else {
+        return sphere_quad_coverage(pos_in_world, point_radius, point_pos_in_world);
+    }
+}
+
 @fragment
 fn fs_main(in: VertexOut) -> @location(0) vec4f {
-    var coverage = sphere_quad_coverage(in.pos_in_world, in.point_radius, in.point_pos_in_world);
+    var coverage = coverage(
+        in.pos_in_world,
+        in.point_radius,
+        in.point_pos_in_world,
+        in.quad_offset_from_center,
+    );
 
     if frame.deterministic_rendering == 1 {
         coverage = step(0.5, coverage);
@@ -205,7 +231,12 @@ fn fs_main(in: VertexOut) -> @location(0) vec4f {
 
 @fragment
 fn fs_main_picking_layer(in: VertexOut) -> @location(0) vec4u {
-    let coverage = sphere_quad_coverage(in.pos_in_world, in.point_radius, in.point_pos_in_world);
+    let coverage = coverage(
+        in.pos_in_world,
+        in.point_radius,
+        in.point_pos_in_world,
+        in.quad_offset_from_center,
+    );
     if coverage <= 0.5 {
         discard;
     }
@@ -216,7 +247,12 @@ fn fs_main_picking_layer(in: VertexOut) -> @location(0) vec4u {
 fn fs_main_outline_mask(in: VertexOut) -> @location(0) vec2u {
     // Output is an integer target so we can't use coverage even though
     // the target is anti-aliased.
-    let coverage = sphere_quad_coverage(in.pos_in_world, in.point_radius, in.point_pos_in_world);
+    let coverage = coverage(
+        in.pos_in_world,
+        in.point_radius,
+        in.point_pos_in_world,
+        in.quad_offset_from_center,
+    );
     if coverage <= 0.5 {
         discard;
     }

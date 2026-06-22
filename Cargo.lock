@@ -8287,6 +8287,7 @@ dependencies = [
 name = "re_backoff"
 version = "0.34.0-alpha.1+dev"
 dependencies = [
+ "futures",
  "getrandom 0.3.4",
  "js-sys",
  "rand 0.9.3",
@@ -8979,6 +8980,8 @@ name = "re_lenses"
 version = "0.34.0-alpha.1+dev"
 dependencies = [
  "arrow",
+ "insta",
+ "re_arrow_util",
  "re_lenses_core",
  "re_log",
  "re_sdk_types",
@@ -9231,6 +9234,8 @@ dependencies = [
  "itertools 0.14.0",
  "parquet",
  "re_chunk",
+ "re_lenses",
+ "re_lenses_core",
  "re_log",
  "re_log_types",
  "re_sdk_types",
@@ -9465,6 +9470,7 @@ dependencies = [
  "itertools 0.14.0",
  "jiff",
  "opentelemetry",
+ "quiver",
  "re_arrow_util",
  "re_auth",
  "re_backoff",
@@ -10539,6 +10545,7 @@ dependencies = [
  "re_memory_view",
  "re_mutex",
  "re_perf_telemetry",
+ "re_protos",
  "re_query",
  "re_recording_panel",
  "re_redap_browser",
@@ -11056,6 +11063,7 @@ dependencies = [
  "re_grpc_client",
  "re_grpc_server",
  "re_importer",
+ "re_lenses",
  "re_lenses_core",
  "re_log",
  "re_log_encoding",

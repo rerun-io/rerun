@@ -67,3 +67,9 @@ Consequently, the following breaking behavior changes are introduced:
 - As a consequence, `property:…` columns now land on the root entity `/` rather than an entity named `property`.
   Neither map back to `/__properties` — proper handling of this is not yet implemented.
 - `component_type` is no longer defaulted to the literal `"Unknown"` when absent; it is left unset.
+
+## `ParquetReader` column rules removed in favor of lenses
+
+`rerun.experimental.ParquetReader` no longer accepts the `column_rules` parameter, and the `ColumnRule` class has been removed.
+`ParquetReader` is now a pure reader — it turns raw parquet columns into grouped, time-indexed chunks of struct/scalar components.
+Mapping those struct fields into Rerun archetypes is now done with lenses on the reader's `.stream()`.

@@ -140,6 +140,32 @@ impl Entries {
         }
     }
 
+    pub(crate) fn refresh(
+        self,
+        connection_registry: ConnectionRegistryHandle,
+        runtime: &AsyncRuntimeHandle,
+        egui_ctx: &egui::Context,
+        origin: re_uri::Origin,
+        session_context: Arc<SessionContext>,
+        command_sender: CommandSender,
+    ) -> Self {
+        let entries_fut = fetch_entries_and_register_tables(
+            connection_registry,
+            origin,
+            session_context,
+            runtime.clone(),
+            command_sender,
+        );
+
+        Self {
+            entries: self.entries.refresh_with_previous_and_repaint(
+                runtime,
+                egui_ctx.clone(),
+                entries_fut,
+            ),
+        }
+    }
+
     pub(crate) fn on_frame_start(&mut self) {
         self.entries.on_frame_start();
     }

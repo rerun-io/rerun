@@ -1,7 +1,6 @@
 //! Configuration types for parquet loading.
 
 use re_chunk::EntityPath;
-use re_sdk_types::ComponentDescriptor;
 
 /// Strategy for grouping parquet columns into Rerun chunks.
 ///
@@ -50,108 +49,7 @@ impl Default for ColumnGrouping {
     }
 }
 
-/// What to produce from a group of matched columns.
-/// Highly experimental and will definitely change as
-/// we add tools to support this more generically
-#[derive(Debug, Clone)]
-pub enum ColumnMapping {
-    /// N columns → a Rerun component. Interleaved into `FixedSizeList(N, Float32)`.
-    Component {
-        /// Archetype + component descriptor used for the output chunk.
-        descriptor: ComponentDescriptor,
-    },
-
-    /// N columns → multi-instance Scalars with named series.
-    /// Interleaved into `FixedSizeList(N, Float64)` + companion names field.
-    Scalars {
-        /// Display name for each series, in the same order as `suffixes`.
-        names: Vec<String>,
-    },
-
-    /// Translation + rotation columns → a `Transform3D` archetype.
-    ///
-    /// The translation suffixes come from the parent [`ColumnRule::suffixes`] field.
-    /// When both suffix sets match with the same sub-prefix, the columns are
-    /// combined into a `Transform3D` with translation and quaternion components.
-    ///
-    /// In struct mode this produces a nested struct with `translation` and
-    /// `quaternion` fields. In flat mode, two components at the same entity path.
-    Transform {
-        /// Ordered suffixes that identify the rotation columns
-        /// (e.g., `["_quat_x", "_quat_y", "_quat_z", "_quat_w"]`).
-        rotation_suffixes: Vec<String>,
-    },
-}
-
-impl ColumnMapping {
-    /// `Translation3D` component mapping.
-    pub fn translation3d() -> Self {
-        use re_sdk_types::archetypes::Transform3D;
-        Self::Component {
-            descriptor: Transform3D::descriptor_translation(),
-        }
-    }
-
-    /// `RotationQuat` component mapping.
-    pub fn rotation_quat() -> Self {
-        use re_sdk_types::archetypes::Transform3D;
-        Self::Component {
-            descriptor: Transform3D::descriptor_quaternion(),
-        }
-    }
-
-    /// `RotationAxisAngle` component mapping.
-    pub fn rotation_axis_angle() -> Self {
-        use re_sdk_types::archetypes::Transform3D;
-        Self::Component {
-            descriptor: Transform3D::descriptor_rotation_axis_angle(),
-        }
-    }
-
-    /// `Scale3D` component mapping.
-    pub fn scale3d() -> Self {
-        use re_sdk_types::archetypes::Transform3D;
-        Self::Component {
-            descriptor: Transform3D::descriptor_scale(),
-        }
-    }
-
-    /// `Transform3D` mapping (translation + rotation quaternion).
-    pub fn transform(rotation_suffixes: Vec<String>) -> Self {
-        Self::Transform { rotation_suffixes }
-    }
-}
-
-/// Rule for combining columns with matching suffixes into a typed component.
-///
-/// When a set of columns whose names end with the specified `suffixes` (in order)
-/// share a common prefix, they are combined according to `mapping`.
-///
-/// Rules are processed in list order; the first rule whose suffixes match a set
-/// of columns wins. Put specific rules before broad catch-all rules.
-///
-/// Experimental: this API may change or be removed.
-#[derive(Debug, Clone)]
-pub struct ColumnRule {
-    /// Ordered suffixes that identify columns (e.g., `["_pos_x", "_pos_y", "_pos_z"]`).
-    pub suffixes: Vec<String>,
-
-    /// What to produce from the matched columns.
-    pub mapping: ColumnMapping,
-
-    /// Optional override appended to the sub-prefix to form the struct field name.
-    ///
-    /// When present and `sub_prefix` is non-empty: `field_name = "{sub_prefix}{override}"`.
-    /// When present and `sub_prefix` is empty: `field_name = override` (leading `_` stripped).
-    /// The `suffix_fallback` is ignored when override is set.
-    pub field_name_override: Option<String>,
-}
-
 /// Configuration for parquet loading.
-///
-/// Fields marked "Experimental" are expected to change or be removed
-/// as the parquet loading API matures. `column_grouping`, `index_columns`,
-/// and `static_columns` are considered stable.
 #[derive(Debug, Clone, Default)]
 pub struct ParquetConfig {
     /// How to group columns into chunks.
@@ -163,10 +61,6 @@ pub struct ParquetConfig {
 
     /// Column names with constant values — emitted as static data.
     pub static_columns: Vec<String>,
-
-    // TODO(parquet): Ad-hoc; will be replaced by lenses in py-chunk.
-    /// Experimental: suffix-based column combination rules.
-    pub column_rules: Vec<ColumnRule>,
 }
 
 impl ParquetConfig {

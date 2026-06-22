@@ -244,9 +244,49 @@ impl ApiError {
         }
     }
 
+    /// Failed to decode a quiver record batch received from the server.
+    ///
+    /// Decoding server data is a [`ApiErrorKind::Deserialization`]; the quiver error names the
+    /// offending column and the exact mismatch, so no extra message is needed.
+    pub fn deserialization_quiver(
+        trace_id: Option<opentelemetry::TraceId>,
+        err: quiver::Error,
+    ) -> Self {
+        Self {
+            message: "failed to decode record batch".to_owned(),
+            kind: ApiErrorKind::Deserialization,
+            source: Some(Arc::new(err)),
+            trace_id,
+        }
+    }
+
+    /// Like [`Self::deserialization_quiver`], but names where the batch came from (the endpoint or
+    /// response stream); the quiver error itself only describes the schema mismatch.
+    pub fn deserialization_quiver_from(
+        trace_id: Option<opentelemetry::TraceId>,
+        err: quiver::Error,
+        context: impl std::fmt::Display,
+    ) -> Self {
+        Self {
+            message: format!("failed to decode record batch from {context}"),
+            kind: ApiErrorKind::Deserialization,
+            source: Some(Arc::new(err)),
+            trace_id,
+        }
+    }
+
     /// Failed to encode data for sending to the server.
     pub fn serialization(message: impl Into<String>) -> Self {
         Self::new(ApiErrorKind::Serialization, message)
+    }
+
+    /// Failed to encode a quiver record batch for sending to the server.
+    pub fn serialization_quiver(err: quiver::Error) -> Self {
+        Self::new_with_source(
+            err,
+            ApiErrorKind::Serialization,
+            "failed to encode record batch",
+        )
     }
 
     /// Failed to encode data for sending to the server.
@@ -279,6 +319,12 @@ impl ApiError {
 
     pub fn internal(message: impl Into<String>) -> Self {
         Self::new(ApiErrorKind::Internal, message)
+    }
+
+    /// Failed to decode a quiver record batch. The quiver error names the offending column and the
+    /// record-batch schema, so no extra message is needed.
+    pub fn internal_quiver(err: quiver::Error) -> Self {
+        Self::new_with_source(err, ApiErrorKind::Internal, "failed to decode record batch")
     }
 
     /// Do NOT include `err` in the `message` - it will be added for you.

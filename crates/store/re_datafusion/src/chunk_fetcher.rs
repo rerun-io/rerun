@@ -726,7 +726,7 @@ async fn fetch_batch_via_direct_urls(
                     start = request.file_range_start,
                 );
 
-                // Backoff matching gRPC retry settings: base 100ms, max 3s, 50% jitter.
+                // Backoff matching gRPC retry settings: base 100ms, max 3s, full jitter (`[0, base)`).
                 let mut backoff_gen = re_backoff::BackoffGenerator::new(
                     Duration::from_millis(100),
                     Duration::from_secs(3),

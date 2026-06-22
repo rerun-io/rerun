@@ -5,7 +5,8 @@ use std::sync::Arc;
 use arrow::array::{ArrayRef, Float64Array};
 use re_chunk::{Chunk, RowId};
 use re_lenses_core::combinators::Error;
-use re_lenses_core::{ChunkExt as _, DynExpr, Selector};
+use re_lenses_core::function_registry::FunctionRegistry;
+use re_lenses_core::{ChunkExt as _, DynExpr, Runtime, Selector};
 use re_log_types::Timeline;
 use re_sdk_types::ComponentDescriptor;
 
@@ -76,7 +77,10 @@ fn apply_selector_doubles_values() {
 
     let selector: Selector<DynExpr> = Selector::parse(".").unwrap().pipe(double_values);
 
-    let result = chunk.apply_selector("value".into(), &selector).unwrap();
+    let runtime = Runtime::new(Arc::new(FunctionRegistry::new()));
+    let result = chunk
+        .apply_selector("value".into(), &selector, &runtime)
+        .unwrap();
 
     insta::assert_snapshot!(format!("{:-240}", result), @r#"
     ┌────────────────────────────────────────────────────────────────────────────────────────────┐

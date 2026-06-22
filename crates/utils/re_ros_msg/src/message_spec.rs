@@ -90,11 +90,21 @@ impl MessageSpecification {
             }
         }
 
-        let spec = Self {
+        let mut spec = Self {
             name: name.to_owned(),
             fields,
             constants,
         };
+
+        // rosidl pads field-less messages with a `structure_needs_at_least_one_member`
+        // byte, except constants-only enum-like ones. Mirror that so our wire layout matches.
+        if spec.fields.is_empty() && !matches!(spec.underlying_type_if_enum_like(), Ok(Some(_))) {
+            spec.fields.push(Field {
+                ty: Type::BuiltIn(BuiltInType::UInt8),
+                name: "structure_needs_at_least_one_member".to_owned(),
+                default: None,
+            });
+        }
 
         // Sanity check: if this is an enum-like message that only contains constants,
         // try if we can determine the underlying type or fail early here.
@@ -105,14 +115,16 @@ impl MessageSpecification {
 
     /// Returns the primitive type of a constants-only enum-like specification.
     ///
-    /// A spec can be assumed enum-like when it has only constants definitions, no data fields,
-    /// and all constants share the same built-in type.
-    ///
-    /// For example, this has `int8` as its underlying type:
+    /// A spec is enum-like when it has no data fields and all constants share one built-in
+    /// type that is a single octet. For example, this has `int8` as its underlying type:
     /// ```text
     /// int8 FOO=0
     /// int8 BAR=1
     /// ```
+    ///
+    /// Constants are never serialized, so on the wire a constants-only message is a single
+    /// padding octet. A wider constant type would read the wrong number of bytes, so we report it
+    /// as non-enum-like and treat it as a padded struct instead.
     pub fn underlying_type_if_enum_like(&self) -> Result<Option<&BuiltInType>, ParseError> {
         if !self.fields.is_empty() || self.constants.is_empty() {
             return Ok(None);
@@ -130,12 +142,20 @@ impl MessageSpecification {
 
         for constant in &self.constants[1..] {
             if constant.ty != Type::BuiltIn(first_type.clone()) {
-                // Ambiguous typing can't be handled.
-                return Err(ParseError::Validate(format!(
-                    "constants-only spec `{}` uses mixed constant types",
-                    self.name
-                )));
+                // Mixed constant types are not enum-like, so this is a padded struct.
+                return Ok(None);
             }
+        }
+
+        if !matches!(
+            first_type,
+            BuiltInType::Bool
+                | BuiltInType::Byte
+                | BuiltInType::Char
+                | BuiltInType::Int8
+                | BuiltInType::UInt8
+        ) {
+            return Ok(None);
         }
 
         Ok(Some(first_type))
@@ -783,18 +803,42 @@ int8 BAR=1
         );
     }
 
-    /// Tests that constants-only enum-like specs reject mixed primitive constant types.
+    /// Mixed constant types are not enum-like, so they become padded structs.
     #[test]
-    fn constants_only_spec_rejects_mixed_enum_types() {
-        let result = MessageSpecification::parse(
+    fn constants_only_spec_with_mixed_types_is_a_padded_struct() {
+        let spec = MessageSpecification::parse(
             "test/DummyEnum",
             r#"
 int8 FOO=0
 uint8 BAR=1
 "#,
-        );
+        )
+        .unwrap();
 
-        assert!(result.is_err());
+        assert_eq!(spec.underlying_type_if_enum_like().unwrap(), None);
+        assert_eq!(spec.fields.len(), 1);
+        assert_eq!(spec.fields[0].name, "structure_needs_at_least_one_member");
+        assert_eq!(spec.fields[0].ty, Type::BuiltIn(BuiltInType::UInt8));
+    }
+
+    /// Tests that constants-only specs wider than one octet are padded structs, not enum-like.
+    #[test]
+    fn constants_only_spec_with_wide_type_is_a_padded_struct() {
+        // Constants are never serialized, so on the wire this is a single padding octet.
+        // Collapsing to `int32` would read/write four bytes and corrupt the message.
+        let spec = MessageSpecification::parse(
+            "test/WideEnum",
+            r#"
+int32 FOO=0
+int32 BAR=1
+"#,
+        )
+        .unwrap();
+
+        assert_eq!(spec.underlying_type_if_enum_like().unwrap(), None);
+        assert_eq!(spec.fields.len(), 1);
+        assert_eq!(spec.fields[0].name, "structure_needs_at_least_one_member");
+        assert_eq!(spec.fields[0].ty, Type::BuiltIn(BuiltInType::UInt8));
     }
 
     #[test]

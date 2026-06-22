@@ -132,7 +132,7 @@ impl McapImporter {
 
         let on_chunk_with_transforms = |chunk: re_chunk::Chunk| {
             if let Some(ref lenses) = lenses {
-                for result in lenses.apply(&chunk) {
+                for result in lenses.apply(&chunk, &re_lenses::default_runtime()) {
                     match result {
                         Ok(chunk) => emit_final_chunk(chunk),
                         Err(partial) => {

@@ -107,6 +107,9 @@
 #[cfg(feature = "run")]
 mod commands;
 
+#[cfg(all(feature = "oss_server", not(target_arch = "wasm32")))]
+pub mod internal_catalog;
+
 #[cfg(feature = "sdk")]
 mod sdk;
 

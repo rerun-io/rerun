@@ -1,11 +1,14 @@
 from __future__ import annotations
 
-from typing import Literal, TypeAlias
+from typing import TYPE_CHECKING, Literal, TypeAlias
 
 from rerun._baseclasses import ComponentDescriptor
 from rerun_bindings import DeriveLensInternal, MutateLensInternal
 
 from ._selector import Selector
+
+if TYPE_CHECKING:
+    import pyarrow as pa
 
 
 class DeriveLens:
@@ -66,6 +69,8 @@ class DeriveLens:
         self,
         component: ComponentDescriptor | str,
         selector: Selector | str,
+        *,
+        cast_to: pa.DataType | Literal["auto"] | None = None,
     ) -> DeriveLens:
         """
         Add a component output column.
@@ -78,6 +83,11 @@ class DeriveLens:
         selector:
             A [`Selector`][rerun.experimental.Selector] or selector query string to apply to the
             input column.
+        cast_to:
+            How to cast the produced column to match the target component. By default
+            (`None`) the column is emitted as-is. Pass `"auto"` to cast it to the
+            component's canonical Arrow datatype, or an explicit pyarrow `DataType` to
+            cast it to that type. Casting errors if the conversion is unsupported.
 
         Returns
         -------
@@ -88,7 +98,7 @@ class DeriveLens:
         new = DeriveLens.__new__(DeriveLens)
         if isinstance(component, str):
             component = ComponentDescriptor(component)
-        new._internal = self._internal.to_component(component, sel._internal)
+        new._internal = self._internal.to_component(component, sel._internal, cast_to=cast_to)
         return new
 
     def to_timeline(

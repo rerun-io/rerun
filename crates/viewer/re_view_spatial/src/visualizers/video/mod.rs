@@ -246,13 +246,16 @@ fn execute_video_stream_like(
         let video = match viewer_ctx
             .store_context
             .memoizer(|c: &mut VideoStreamCache| {
+                let new_codec =
+                    (ctx.get_codec)(&ctx, &latest_at, data_result, instruction, &output)?;
+
                 c.entry(
                     viewer_ctx.recording(),
                     entity_path,
                     ctx.view_query.timeline,
                     viewer_ctx.app_options().video_decoder_settings(),
                     ctx.sample_component,
-                    &|| (ctx.get_codec)(&ctx, &latest_at, data_result, instruction, &output),
+                    new_codec,
                 )
             }) {
             Ok(video) => video,

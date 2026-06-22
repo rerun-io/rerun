@@ -351,25 +351,22 @@ pub fn archetype_field_fallbacks(registry: &mut FallbackProviderRegistry) {
                 .is_some()
             {
                 let video = ctx.store_ctx().caches.memoizer(|c: &mut VideoStreamCache| {
+                    let media_type = ctx
+                        .recording()
+                        .latest_at_component::<components::MediaType>(
+                            ctx.target_entity_path,
+                            &ctx.query,
+                            archetypes::EncodedDepthImage::descriptor_media_type().component,
+                        )
+                        .map(|(_, c)| c.to_string());
+
                     c.entry(
                         ctx.recording(),
                         ctx.target_entity_path,
                         ctx.query.timeline(),
                         ctx.viewer_ctx().app_options().video_decoder_settings(),
                         blob_component,
-                        &|| {
-                            let media_type = ctx
-                                .recording()
-                                .latest_at_component::<components::MediaType>(
-                                    ctx.target_entity_path,
-                                    &ctx.query,
-                                    archetypes::EncodedDepthImage::descriptor_media_type()
-                                        .component,
-                                )
-                                .map(|(_, c)| c.to_string());
-
-                            Ok(re_video::VideoCodec::ImageSequence(media_type))
-                        },
+                        re_video::VideoCodec::ImageSequence(media_type),
                     )
                 });
 

@@ -1,8 +1,7 @@
-"""Experimental parquet reader with configurable column grouping and column rules."""
+"""Experimental parquet reader with configurable column grouping."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from rerun_bindings import ParquetReaderInternal
@@ -13,98 +12,33 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-@dataclass(frozen=True)
-class ColumnRule:
-    """
-    Rule for combining columns with matching suffixes into a Rerun component.
-
-    Use the factory methods to create rules:
-
-    - `translation3d()` — 3 columns → `Translation3D`
-    - `rotation_quat()` — 4 columns → `RotationQuat`
-    - `rotation_axis_angle()` — 4 columns → `RotationAxisAngle`
-    - `scale3d()` — 3 columns → `Scale3D`
-    - `scalars()` — N columns → `Scalars` with named series
-    - `transform()` — 3 + 4 columns → `Transform3D` (translation + rotation)
-    """
-
-    suffixes: list[str]
-    target: str
-    names: list[str] | None = None
-    field_name_override: str | None = None
-    rotation_suffixes: list[str] | None = None
-
-    @classmethod
-    def translation3d(cls, suffixes: list[str], *, field_name_override: str | None = None) -> ColumnRule:
-        """Create a rule that combines 3 columns into a `Translation3D` component."""
-        if len(suffixes) != 3:
-            raise ValueError("Translation3D requires exactly 3 suffixes")
-        return cls(suffixes, "Translation3D", field_name_override=field_name_override)
-
-    @classmethod
-    def rotation_quat(cls, suffixes: list[str], *, field_name_override: str | None = None) -> ColumnRule:
-        """Create a rule that combines 4 columns into a `RotationQuat` component."""
-        if len(suffixes) != 4:
-            raise ValueError("RotationQuat requires exactly 4 suffixes")
-        return cls(suffixes, "RotationQuat", field_name_override=field_name_override)
-
-    @classmethod
-    def rotation_axis_angle(cls, suffixes: list[str], *, field_name_override: str | None = None) -> ColumnRule:
-        """Create a rule that combines 4 columns into a `RotationAxisAngle` component (3 axis + 1 angle)."""
-        if len(suffixes) != 4:
-            raise ValueError("RotationAxisAngle requires exactly 4 suffixes (3 axis + 1 angle)")
-        return cls(suffixes, "RotationAxisAngle", field_name_override=field_name_override)
-
-    @classmethod
-    def scale3d(cls, suffixes: list[str], *, field_name_override: str | None = None) -> ColumnRule:
-        """Create a rule that combines 3 columns into a `Scale3D` component."""
-        if len(suffixes) != 3:
-            raise ValueError("Scale3D requires exactly 3 suffixes")
-        return cls(suffixes, "Scale3D", field_name_override=field_name_override)
-
-    @classmethod
-    def scalars(
-        cls,
-        suffixes: list[str],
-        *,
-        names: list[str],
-        field_name_override: str | None = None,
-    ) -> ColumnRule:
-        """Create a rule that combines N columns into a `Scalars` component with named series."""
-        if len(suffixes) != len(names):
-            raise ValueError("suffixes and names must have the same length")
-        return cls(suffixes, "Scalars", names=names, field_name_override=field_name_override)
-
-    @classmethod
-    def transform(
-        cls,
-        translation_suffixes: list[str],
-        rotation_suffixes: list[str],
-        *,
-        field_name_override: str | None = None,
-    ) -> ColumnRule:
-        """
-        Create a rule that combines 3 translation + 4 rotation columns into a `Transform3D`.
-
-        Both suffix sets must match with the same sub-prefix for columns to be
-        combined. In struct mode, produces a nested struct with `translation`
-        and `quaternion` fields. In flat mode, emits both components at the
-        same entity path.
-        """
-        if len(translation_suffixes) != 3:
-            raise ValueError("Transform requires exactly 3 translation suffixes")
-        if len(rotation_suffixes) != 4:
-            raise ValueError("Transform requires exactly 4 rotation suffixes")
-        return cls(
-            translation_suffixes,
-            "Transform",
-            field_name_override=field_name_override,
-            rotation_suffixes=rotation_suffixes,
-        )
-
-
 class ParquetReader:
-    """Read chunks from a Parquet file."""
+    """
+    Read chunks from a Parquet file.
+
+    The reader turns raw parquet columns into grouped, time-indexed
+    [`Chunk`][rerun.experimental.Chunk]s of struct/scalar components. To map those
+    struct fields into Rerun archetypes (translation, rotation, scalars, …), apply
+    lenses to the resulting `.stream()` — see
+    [`DeriveLens`][rerun.experimental.DeriveLens]:
+
+    Example
+    -------
+    ```python
+    import rerun as rr
+    from rerun.experimental import ParquetReader, DeriveLens, Selector
+        store = (
+        ParquetReader(path, index_columns=[("frame_index", "sequence")])
+        .stream()
+        .lenses(
+            [DeriveLens("data").to_component(rr.Scalars.descriptor_scalars(), Selector(".x"))],
+            content="/obs",
+        )
+        .collect()
+    )
+    ```
+
+    """
 
     _internal: ParquetReaderInternal
 
@@ -119,10 +53,9 @@ class ParquetReader:
         use_structs: bool = True,
         static_columns: list[str] | None = None,
         index_columns: list[tuple[str, str] | tuple[str, str, str]] | None = None,
-        column_rules: list[ColumnRule] | None = None,
     ) -> None:
         """
-        Load a parquet file with configurable column grouping and column rules.
+        Load a parquet file with configurable column grouping.
 
         Parameters
         ----------
@@ -171,20 +104,6 @@ class ParquetReader:
 
             When omitted, a synthetic `row_index` sequence timeline is
             generated automatically (one entry per row).
-        column_rules:
-            Rules for combining columns with matching suffixes into typed
-            Rerun components. Each rule is a `ColumnRule` created via
-            factory methods. Rules are processed in list order; the first rule
-            whose suffixes match wins. Put specific rules before broad
-            catch-all rules.
-
-            Example::
-
-                column_rules=[
-                    ColumnRule.translation3d(["_pos_x", "_pos_y", "_pos_z"], field_name_override="_pos"),
-                    ColumnRule.rotation_quat(["_quat_x", "_quat_y", "_quat_z", "_quat_w"], field_name_override="_quat"),
-                    ColumnRule.scalars(["_x", "_y", "_z"], names=["x", "y", "z"]),
-                ]
 
         """
         # Normalize index_columns: pad 2-tuples to 3-tuples with None for the unit
@@ -201,7 +120,6 @@ class ParquetReader:
             use_structs=use_structs,
             static_columns=static_columns,
             index_columns=normalized_index,
-            column_rules=column_rules,
         )
 
     def stream(self) -> LazyChunkStream:

@@ -540,14 +540,28 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
             for dataset_query in dataset_queries {
                 let query_start = Instant::now();
 
-                let request =
-                    tonic::Request::new(dataset_query.into()).with_entry_id(self.dataset_id);
-                let response = self
-                    .client
-                    .clone()
-                    .query_dataset(request)
+                // Build the proto request once, then clone it per retry attempt (`tonic::Request`
+                // isn't `Clone`). The server rejects `QueryDataset` with `ResourceExhausted`
+                // fail-fast (before any work) when its stream-concurrency limiter is saturated, so
+                // retrying the open is idempotent. Map tonic → `ApiError` *inside* the retry so the
+                // predicate sees `ResourcesExhausted`, and to `DataFusionError` *outside*.
+                let proto_request: re_protos::cloud::v1alpha1::QueryDatasetRequest =
+                    dataset_query.into();
+                let dataset_id = self.dataset_id;
+                let response =
+                    re_redap_client::with_retry_resource_exhausted("query_dataset", || {
+                        let mut client = self.client.clone();
+                        let request =
+                            tonic::Request::new(proto_request.clone()).with_entry_id(dataset_id);
+                        async move {
+                            client
+                                .query_dataset(request)
+                                .await
+                                .map_err(|err| ApiError::tonic(err, "query_dataset"))
+                        }
+                    })
                     .await
-                    .map_err(|err| ApiError::tonic(err, "query_dataset").into_df_error())?;
+                    .map_err(|err| err.into_df_error())?;
 
                 // Capture the server-side trace-id from response metadata.
                 if trace_id.is_none() {
