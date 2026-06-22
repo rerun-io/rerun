@@ -7,14 +7,16 @@
 
 use std::sync::Arc;
 
-use arrow::array::{Float64Array, Int64Array, RecordBatch, StringArray};
+use arrow::array::{
+    Array as _, FixedSizeListArray, Float32Array, Float64Array, Int64Array, RecordBatch,
+    StringArray,
+};
 use arrow::datatypes::{DataType, Field, Schema};
 use itertools::Itertools as _;
+
 use re_chunk::{Chunk, EntityPath};
 use re_log_types::TimeType;
-use re_parquet::{
-    ColumnGrouping, ColumnMapping, ColumnRule, IndexColumn, IndexType, ParquetConfig, TimeUnit,
-};
+use re_parquet::{ColumnGrouping, IndexColumn, IndexType, ParquetConfig, TimeUnit};
 
 // ---------------------------------------------------------------------------
 // Test helpers
@@ -419,7 +421,6 @@ fn static_columns() {
             index_type: IndexType::Sequence,
         }],
         static_columns: vec!["suite".into(), "agg".into()],
-        ..Default::default()
     };
     let chunks = load_chunks(&path, &config);
     let all = data_chunks(&chunks);
@@ -502,114 +503,6 @@ fn file_metadata() {
 }
 
 #[test]
-fn archetype_rules_transform3d() {
-    let batch = RecordBatch::try_new(
-        Arc::new(Schema::new(vec![
-            Field::new("frame_index", DataType::Int64, false),
-            Field::new("A_pos_x", DataType::Float64, false),
-            Field::new("A_pos_y", DataType::Float64, false),
-            Field::new("A_pos_z", DataType::Float64, false),
-            Field::new("A_quat_x", DataType::Float64, false),
-            Field::new("A_quat_y", DataType::Float64, false),
-            Field::new("A_quat_z", DataType::Float64, false),
-            Field::new("A_quat_w", DataType::Float64, false),
-            Field::new("A_speed", DataType::Float64, false),
-        ])),
-        vec![
-            Arc::new(Int64Array::from(vec![0, 1])),
-            Arc::new(Float64Array::from(vec![1.0, 4.0])),
-            Arc::new(Float64Array::from(vec![2.0, 5.0])),
-            Arc::new(Float64Array::from(vec![3.0, 6.0])),
-            Arc::new(Float64Array::from(vec![0.0, 0.0])),
-            Arc::new(Float64Array::from(vec![0.0, 0.0])),
-            Arc::new(Float64Array::from(vec![0.0, 0.0])),
-            Arc::new(Float64Array::from(vec![1.0, 1.0])),
-            Arc::new(Float64Array::from(vec![9.0, 8.0])),
-        ],
-    )
-    .unwrap();
-
-    let path = write_parquet_tmp(&batch);
-    let config = ParquetConfig {
-        column_grouping: ColumnGrouping::Prefix {
-            delimiter: '_',
-            use_structs: true,
-        },
-        index_columns: vec![IndexColumn {
-            name: "frame_index".into(),
-            index_type: IndexType::Sequence,
-        }],
-        column_rules: vec![
-            ColumnRule {
-                suffixes: vec!["_pos_x".into(), "_pos_y".into(), "_pos_z".into()],
-                mapping: ColumnMapping::translation3d(),
-                field_name_override: None,
-            },
-            ColumnRule {
-                suffixes: vec![
-                    "_quat_x".into(),
-                    "_quat_y".into(),
-                    "_quat_z".into(),
-                    "_quat_w".into(),
-                ],
-                mapping: ColumnMapping::rotation_quat(),
-                field_name_override: None,
-            },
-        ],
-        ..Default::default()
-    };
-    let chunks = load_chunks(&path, &config);
-    let data = data_chunks(&chunks);
-
-    // All columns for prefix "A" collapse into a single chunk with one struct component
-    let a_chunks: Vec<_> = data
-        .iter()
-        .filter(|c| c.entity_path() == &EntityPath::from("/A"))
-        .collect();
-
-    assert_eq!(a_chunks.len(), 1, "all entries in one struct → one chunk");
-
-    let a_chunk = a_chunks[0];
-    assert_eq!(a_chunk.num_rows(), 2);
-    assert_eq!(a_chunk.num_components(), 1, "single struct component");
-    assert!(a_chunk.timelines().contains_key(&"frame_index".into()));
-
-    // Verify the struct fields: archetype fields + raw leftover
-    let a_list = a_chunk.components().get_array("data".into()).unwrap();
-    let a_struct = a_list
-        .values()
-        .as_any()
-        .downcast_ref::<arrow::array::StructArray>()
-        .expect("should be a StructArray");
-
-    // 3 struct fields: pos (FixedSizeList(3, Float32)), quat (FixedSizeList(4, Float32)), speed (Float64)
-    assert_eq!(a_struct.num_columns(), 3);
-
-    let pos_field = a_struct
-        .column_by_name("pos")
-        .expect("should have pos field");
-    assert!(
-        matches!(pos_field.data_type(), DataType::FixedSizeList(_, 3)),
-        "pos should be FixedSizeList(3, _), got {:?}",
-        pos_field.data_type()
-    );
-
-    let quat_field = a_struct
-        .column_by_name("quat")
-        .expect("should have quat field");
-    assert!(
-        matches!(quat_field.data_type(), DataType::FixedSizeList(_, 4)),
-        "quat should be FixedSizeList(4, _), got {:?}",
-        quat_field.data_type()
-    );
-
-    let speed_field = a_struct
-        .column_by_name("speed")
-        .expect("should have speed field");
-    assert_eq!(speed_field.data_type(), &DataType::Float64);
-}
-
-#[test]
 fn prefix_grouping_flat() {
     let batch = RecordBatch::try_new(
         Arc::new(Schema::new(vec![
@@ -682,210 +575,6 @@ fn prefix_grouping_flat() {
         .expect("should have /action");
     assert_eq!(action.num_rows(), 3);
     assert_eq!(action.num_components(), 1);
-}
-
-#[test]
-fn archetype_rules_transform3d_flat() {
-    let batch = RecordBatch::try_new(
-        Arc::new(Schema::new(vec![
-            Field::new("frame_index", DataType::Int64, false),
-            Field::new("A_pos_x", DataType::Float64, false),
-            Field::new("A_pos_y", DataType::Float64, false),
-            Field::new("A_pos_z", DataType::Float64, false),
-            Field::new("A_quat_x", DataType::Float64, false),
-            Field::new("A_quat_y", DataType::Float64, false),
-            Field::new("A_quat_z", DataType::Float64, false),
-            Field::new("A_quat_w", DataType::Float64, false),
-            Field::new("A_speed", DataType::Float64, false),
-        ])),
-        vec![
-            Arc::new(Int64Array::from(vec![0, 1])),
-            Arc::new(Float64Array::from(vec![1.0, 4.0])),
-            Arc::new(Float64Array::from(vec![2.0, 5.0])),
-            Arc::new(Float64Array::from(vec![3.0, 6.0])),
-            Arc::new(Float64Array::from(vec![0.0, 0.0])),
-            Arc::new(Float64Array::from(vec![0.0, 0.0])),
-            Arc::new(Float64Array::from(vec![0.0, 0.0])),
-            Arc::new(Float64Array::from(vec![1.0, 1.0])),
-            Arc::new(Float64Array::from(vec![9.0, 8.0])),
-        ],
-    )
-    .unwrap();
-
-    let path = write_parquet_tmp(&batch);
-    let config = ParquetConfig {
-        column_grouping: ColumnGrouping::Prefix {
-            delimiter: '_',
-            use_structs: false,
-        },
-        index_columns: vec![IndexColumn {
-            name: "frame_index".into(),
-            index_type: IndexType::Sequence,
-        }],
-        column_rules: vec![
-            ColumnRule {
-                suffixes: vec!["_pos_x".into(), "_pos_y".into(), "_pos_z".into()],
-                mapping: ColumnMapping::translation3d(),
-                field_name_override: None,
-            },
-            ColumnRule {
-                suffixes: vec![
-                    "_quat_x".into(),
-                    "_quat_y".into(),
-                    "_quat_z".into(),
-                    "_quat_w".into(),
-                ],
-                mapping: ColumnMapping::rotation_quat(),
-                field_name_override: None,
-            },
-        ],
-        ..Default::default()
-    };
-    let chunks = load_chunks(&path, &config);
-    let data = data_chunks(&chunks);
-
-    assert_eq!(data.len(), 3, "pos + quat + speed as separate chunks");
-
-    let pos = data
-        .iter()
-        .find(|c| c.entity_path() == &EntityPath::from("/A/pos"))
-        .expect("should have /A/pos");
-    assert_eq!(pos.num_rows(), 2);
-    assert_eq!(pos.num_components(), 1);
-
-    let quat = data
-        .iter()
-        .find(|c| c.entity_path() == &EntityPath::from("/A/quat"))
-        .expect("should have /A/quat");
-    assert_eq!(quat.num_rows(), 2);
-    assert_eq!(quat.num_components(), 1);
-
-    let speed = data
-        .iter()
-        .find(|c| c.entity_path() == &EntityPath::from("/A"))
-        .expect("should have /A (raw speed)");
-    assert_eq!(speed.num_rows(), 2);
-    assert_eq!(speed.num_components(), 1);
-}
-
-#[test]
-fn scalar_suffixes_flat() {
-    // Columns like sensor_accel_x where after prefix split on '_' the comp_names
-    // are accel_x, accel_y, accel_z — suffix _x matches accel_x but NOT accel_ax.
-    let batch = RecordBatch::try_new(
-        Arc::new(Schema::new(vec![
-            Field::new("frame_index", DataType::Int64, false),
-            Field::new("sensor_accel_x", DataType::Float64, false),
-            Field::new("sensor_accel_y", DataType::Float64, false),
-            Field::new("sensor_accel_z", DataType::Float64, false),
-        ])),
-        vec![
-            Arc::new(Int64Array::from(vec![0, 1])),
-            Arc::new(Float64Array::from(vec![1.0, 2.0])),
-            Arc::new(Float64Array::from(vec![3.0, 4.0])),
-            Arc::new(Float64Array::from(vec![5.0, 6.0])),
-        ],
-    )
-    .unwrap();
-
-    let path = write_parquet_tmp(&batch);
-    let config = ParquetConfig {
-        column_grouping: ColumnGrouping::Prefix {
-            delimiter: '_',
-            use_structs: false,
-        },
-        index_columns: vec![IndexColumn {
-            name: "frame_index".into(),
-            index_type: IndexType::Sequence,
-        }],
-        column_rules: vec![ColumnRule {
-            suffixes: vec!["_x".into(), "_y".into(), "_z".into()],
-            mapping: ColumnMapping::Scalars {
-                names: vec!["x".into(), "y".into(), "z".into()],
-            },
-            field_name_override: None,
-        }],
-        ..Default::default()
-    };
-    let chunks = load_chunks(&path, &config);
-    let data = data_chunks(&chunks);
-
-    // comp_names: accel_x, accel_y, accel_z
-    // suffix _x matches accel_x → raw_sub "accel" → sub_prefix "accel"
-    // field_name = "accel" → entity path = /sensor/accel
-    let scalars_path = EntityPath::from("/sensor/accel");
-
-    // Data chunk: Scalars component
-    let data_only: Vec<_> = data.iter().filter(|c| !c.is_static()).collect();
-    assert_eq!(data_only.len(), 1);
-    assert_eq!(data_only[0].entity_path(), &scalars_path);
-    assert_eq!(data_only[0].num_rows(), 2);
-
-    // Static Name chunk: series labels
-    let static_chunks: Vec<_> = data.iter().filter(|c| c.is_static()).collect();
-    assert_eq!(static_chunks.len(), 1, "should have static Name chunk");
-    assert_eq!(static_chunks[0].entity_path(), &scalars_path);
-    assert_eq!(static_chunks[0].num_components(), 1);
-}
-
-#[test]
-fn scalar_suffixes_no_false_match() {
-    // Suffix _x should NOT match comp_name ending in "ax" (no delimiter boundary)
-    let batch = RecordBatch::try_new(
-        Arc::new(Schema::new(vec![
-            Field::new("frame_index", DataType::Int64, false),
-            Field::new("sensor_accel_ax", DataType::Float64, false),
-            Field::new("sensor_accel_ay", DataType::Float64, false),
-            Field::new("sensor_accel_az", DataType::Float64, false),
-        ])),
-        vec![
-            Arc::new(Int64Array::from(vec![0, 1])),
-            Arc::new(Float64Array::from(vec![1.0, 2.0])),
-            Arc::new(Float64Array::from(vec![3.0, 4.0])),
-            Arc::new(Float64Array::from(vec![5.0, 6.0])),
-        ],
-    )
-    .unwrap();
-
-    let path = write_parquet_tmp(&batch);
-    let config = ParquetConfig {
-        column_grouping: ColumnGrouping::Prefix {
-            delimiter: '_',
-            use_structs: true,
-        },
-        index_columns: vec![IndexColumn {
-            name: "frame_index".into(),
-            index_type: IndexType::Sequence,
-        }],
-        column_rules: vec![ColumnRule {
-            suffixes: vec!["_x".into(), "_y".into(), "_z".into()],
-            mapping: ColumnMapping::Scalars {
-                names: vec!["x".into(), "y".into(), "z".into()],
-            },
-            field_name_override: None,
-        }],
-        ..Default::default()
-    };
-    let chunks = load_chunks(&path, &config);
-    let data = data_chunks(&chunks);
-
-    // accel_ax does NOT end in _x, so no scalar group should be created.
-    // All three columns should be raw entries in the "sensor" struct.
-    let sensor = data
-        .iter()
-        .find(|c| c.entity_path() == &EntityPath::from("/sensor"))
-        .expect("should have /sensor");
-    let sensor_list = sensor.components().get_array("data".into()).unwrap();
-    let sensor_struct = sensor_list
-        .values()
-        .as_any()
-        .downcast_ref::<arrow::array::StructArray>()
-        .expect("should be a StructArray");
-    // 3 raw fields, not grouped into a scalar
-    assert_eq!(sensor_struct.num_columns(), 3);
-    assert!(sensor_struct.column_by_name("accel_ax").is_some());
-    assert!(sensor_struct.column_by_name("accel_ay").is_some());
-    assert!(sensor_struct.column_by_name("accel_az").is_some());
 }
 
 // ---------------------------------------------------------------------------
@@ -1061,111 +750,35 @@ fn explicit_prefixes_underscore_stripping() {
 }
 
 // ---------------------------------------------------------------------------
-// Struct-mode Name emission
+// Archetype mapping via lenses
 // ---------------------------------------------------------------------------
 
+/// Example of building a `Transform3D` archetype (translation + rotation quaternion) from a pose
+/// table using lenses.
 #[test]
-fn scalar_suffixes_struct_names_in_struct() {
+fn transform3d_from_struct_via_lens() {
+    use re_lenses::op::basic::struct_to_fixed_size_list_f32;
+    use re_lenses::{ChunkExt as _, Lens};
+    use re_lenses_core::Selector;
+    use re_sdk_types::archetypes::Transform3D;
+
+    // A pose table: per-row translation (`pos_*`) and rotation quaternion (`quat_*`).
     let batch = RecordBatch::try_new(
         Arc::new(Schema::new(vec![
             Field::new("frame_index", DataType::Int64, false),
-            Field::new("sensor_accel_x", DataType::Float64, false),
-            Field::new("sensor_accel_y", DataType::Float64, false),
-            Field::new("sensor_accel_z", DataType::Float64, false),
+            Field::new("A_pos_x", DataType::Float64, false),
+            Field::new("A_pos_y", DataType::Float64, false),
+            Field::new("A_pos_z", DataType::Float64, false),
+            Field::new("A_quat_x", DataType::Float64, false),
+            Field::new("A_quat_y", DataType::Float64, false),
+            Field::new("A_quat_z", DataType::Float64, false),
+            Field::new("A_quat_w", DataType::Float64, false),
         ])),
         vec![
             Arc::new(Int64Array::from(vec![0, 1])),
             Arc::new(Float64Array::from(vec![1.0, 2.0])),
             Arc::new(Float64Array::from(vec![3.0, 4.0])),
             Arc::new(Float64Array::from(vec![5.0, 6.0])),
-        ],
-    )
-    .unwrap();
-
-    let path = write_parquet_tmp(&batch);
-    let config = ParquetConfig {
-        column_grouping: ColumnGrouping::Prefix {
-            delimiter: '_',
-            use_structs: true,
-        },
-        index_columns: vec![IndexColumn {
-            name: "frame_index".into(),
-            index_type: IndexType::Sequence,
-        }],
-        column_rules: vec![ColumnRule {
-            suffixes: vec!["_x".into(), "_y".into(), "_z".into()],
-            mapping: ColumnMapping::Scalars {
-                names: vec!["x".into(), "y".into(), "z".into()],
-            },
-            field_name_override: None,
-        }],
-        ..Default::default()
-    };
-    let chunks = load_chunks(&path, &config);
-    let data = data_chunks(&chunks);
-
-    let sensor_path = EntityPath::from("/sensor");
-
-    // In struct mode, names are embedded in the struct — no static Name chunks
-    let data_only: Vec<_> = data.iter().filter(|c| !c.is_static()).collect();
-    assert_eq!(data_only.len(), 1);
-    assert_eq!(data_only[0].entity_path(), &sensor_path);
-
-    let static_chunks: Vec<_> = data.iter().filter(|c| c.is_static()).collect();
-    assert_eq!(
-        static_chunks.len(),
-        0,
-        "struct mode should NOT emit static Name chunks"
-    );
-
-    // Verify the struct has both data and names fields
-    let sensor_list = data_only[0].components().get_array("data".into()).unwrap();
-    let sensor_struct = sensor_list
-        .values()
-        .as_any()
-        .downcast_ref::<arrow::array::StructArray>()
-        .expect("should be a StructArray");
-
-    // Should have "accel" (data) and "accel_names" (labels)
-    assert_eq!(sensor_struct.num_columns(), 2);
-    assert!(
-        sensor_struct.column_by_name("accel").is_some(),
-        "should have 'accel' data field"
-    );
-    let names_col = sensor_struct
-        .column_by_name("accel_names")
-        .expect("should have 'accel_names' field");
-    assert!(
-        matches!(names_col.data_type(), DataType::FixedSizeList(_, 3)),
-        "names should be FixedSizeList(3, _)"
-    );
-}
-
-// ---------------------------------------------------------------------------
-// Field name override
-// ---------------------------------------------------------------------------
-
-#[test]
-fn field_name_override_archetype() {
-    // Columns Foo_name_pos_x/y/z and Foo_name_quat_x/y/z/w
-    // Without override both get field_name "name" → collision.
-    // With override "_pos" and "_quat" → "name_pos" and "name_quat".
-    let batch = RecordBatch::try_new(
-        Arc::new(Schema::new(vec![
-            Field::new("frame_index", DataType::Int64, false),
-            Field::new("Foo_name_pos_x", DataType::Float64, false),
-            Field::new("Foo_name_pos_y", DataType::Float64, false),
-            Field::new("Foo_name_pos_z", DataType::Float64, false),
-            Field::new("Foo_name_quat_x", DataType::Float64, false),
-            Field::new("Foo_name_quat_y", DataType::Float64, false),
-            Field::new("Foo_name_quat_z", DataType::Float64, false),
-            Field::new("Foo_name_quat_w", DataType::Float64, false),
-        ])),
-        vec![
-            Arc::new(Int64Array::from(vec![0, 1])),
-            Arc::new(Float64Array::from(vec![1.0, 4.0])),
-            Arc::new(Float64Array::from(vec![2.0, 5.0])),
-            Arc::new(Float64Array::from(vec![3.0, 6.0])),
             Arc::new(Float64Array::from(vec![0.0, 0.0])),
             Arc::new(Float64Array::from(vec![0.0, 0.0])),
             Arc::new(Float64Array::from(vec![0.0, 0.0])),
@@ -1184,105 +797,96 @@ fn field_name_override_archetype() {
             name: "frame_index".into(),
             index_type: IndexType::Sequence,
         }],
-        column_rules: vec![
-            ColumnRule {
-                suffixes: vec!["_pos_x".into(), "_pos_y".into(), "_pos_z".into()],
-                mapping: ColumnMapping::translation3d(),
-                field_name_override: Some("_pos".into()),
-            },
-            ColumnRule {
-                suffixes: vec![
-                    "_quat_x".into(),
-                    "_quat_y".into(),
-                    "_quat_z".into(),
-                    "_quat_w".into(),
-                ],
-                mapping: ColumnMapping::rotation_quat(),
-                field_name_override: Some("_quat".into()),
-            },
-        ],
         ..Default::default()
     };
     let chunks = load_chunks(&path, &config);
     let data = data_chunks(&chunks);
 
-    let foo = data
+    // The reader produced a single `/A` chunk with one `data` struct component.
+    let a_chunk = data
         .iter()
-        .find(|c| c.entity_path() == &EntityPath::from("/Foo"))
-        .expect("should have /Foo");
-    let foo_list = foo.components().get_array("data".into()).unwrap();
-    let foo_struct = foo_list
+        .find(|c| c.entity_path() == &EntityPath::from("/A"))
+        .expect("should have /A entity");
+
+    // Map the struct fields into a `Transform3D` archetype with a derive lens: read the
+    // `pos_*` / `quat_*` fields off the `data` struct and interleave them into the
+    // `FixedSizeList<f32>` arrays the components expect.
+    //TODO(RR-4935): use selector function when available
+    let lens: Lens = Lens::derive("data")
+        .to_component(
+            Transform3D::descriptor_translation(),
+            Selector::parse(".")
+                .unwrap()
+                .pipe(struct_to_fixed_size_list_f32(["pos_x", "pos_y", "pos_z"])),
+        )
+        .to_component(
+            Transform3D::descriptor_quaternion(),
+            Selector::parse(".")
+                .unwrap()
+                .pipe(struct_to_fixed_size_list_f32([
+                    "quat_x", "quat_y", "quat_z", "quat_w",
+                ])),
+        )
+        .build()
+        .unwrap();
+
+    let transformed = a_chunk
+        .apply_lenses(&[lens], &re_lenses::default_runtime())
+        .unwrap();
+    let pose = transformed
+        .iter()
+        .find(|c| {
+            c.components()
+                .get_array(Transform3D::descriptor_translation().component)
+                .is_some()
+        })
+        .expect("a chunk carrying the Transform3D translation");
+
+    // Same entity, timeline preserved.
+    assert_eq!(pose.entity_path(), &EntityPath::from("/A"));
+    assert!(pose.timelines().contains_key(&"frame_index".into()));
+
+    // Translation: FixedSizeList(3, Float32), values interleaved row-major from pos_x/y/z.
+    let translation = pose
+        .components()
+        .get_array(Transform3D::descriptor_translation().component)
+        .unwrap();
+    let translation = translation
         .values()
         .as_any()
-        .downcast_ref::<arrow::array::StructArray>()
-        .expect("should be a StructArray");
-
-    // Should have name_pos and name_quat, NOT two fields both named "name"
-    assert_eq!(foo_struct.num_columns(), 2);
-    assert!(
-        foo_struct.column_by_name("name_pos").is_some(),
-        "should have field 'name_pos', got fields: {:?}",
-        foo_struct
-            .fields()
-            .iter()
-            .map(|f| f.name())
-            .collect::<Vec<_>>()
+        .downcast_ref::<FixedSizeListArray>()
+        .expect("translation should be a FixedSizeList");
+    assert_eq!(translation.value_length(), 3);
+    assert_eq!(translation.values().data_type(), &DataType::Float32);
+    let translation = translation
+        .values()
+        .as_any()
+        .downcast_ref::<Float32Array>()
+        .unwrap();
+    assert_eq!(
+        translation.values().to_vec(),
+        vec![1.0, 3.0, 5.0, 2.0, 4.0, 6.0]
     );
-    assert!(
-        foo_struct.column_by_name("name_quat").is_some(),
-        "should have field 'name_quat', got fields: {:?}",
-        foo_struct
-            .fields()
-            .iter()
-            .map(|f| f.name())
-            .collect::<Vec<_>>()
+
+    // Quaternion: FixedSizeList(4, Float32).
+    let quaternion = pose
+        .components()
+        .get_array(Transform3D::descriptor_quaternion().component)
+        .unwrap();
+    let quaternion = quaternion
+        .values()
+        .as_any()
+        .downcast_ref::<FixedSizeListArray>()
+        .expect("quaternion should be a FixedSizeList");
+    assert_eq!(quaternion.value_length(), 4);
+    assert_eq!(quaternion.values().data_type(), &DataType::Float32);
+    let quaternion = quaternion
+        .values()
+        .as_any()
+        .downcast_ref::<Float32Array>()
+        .unwrap();
+    assert_eq!(
+        quaternion.values().to_vec(),
+        vec![0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
     );
-}
-
-#[test]
-fn field_name_override_empty_sub_prefix() {
-    // When sub_prefix is empty, override (stripped of _) is used directly
-    let batch = RecordBatch::try_new(
-        Arc::new(Schema::new(vec![
-            Field::new("Foo_pos_x", DataType::Float64, false),
-            Field::new("Foo_pos_y", DataType::Float64, false),
-            Field::new("Foo_pos_z", DataType::Float64, false),
-        ])),
-        vec![
-            Arc::new(Float64Array::from(vec![1.0])),
-            Arc::new(Float64Array::from(vec![2.0])),
-            Arc::new(Float64Array::from(vec![3.0])),
-        ],
-    )
-    .unwrap();
-
-    let path = write_parquet_tmp(&batch);
-    let config = ParquetConfig {
-        column_grouping: ColumnGrouping::Prefix {
-            delimiter: '_',
-            use_structs: true,
-        },
-        column_rules: vec![ColumnRule {
-            suffixes: vec!["_pos_x".into(), "_pos_y".into(), "_pos_z".into()],
-            mapping: ColumnMapping::Component {
-                descriptor: re_sdk_types::archetypes::Transform3D::descriptor_translation(),
-            },
-            field_name_override: Some("_pos".into()),
-        }],
-        ..Default::default()
-    };
-    let chunks = load_chunks(&path, &config);
-    let data = data_chunks(&chunks);
-
-    let foo = data
-        .iter()
-        .find(|c| c.entity_path() == &EntityPath::from("/Foo"))
-        .expect("should have /Foo");
-
-    // sub_prefix is empty (comp "pos_x" strip_suffix "pos_x" → ""),
-    // override "_pos" → field_name "pos"
-    let foo_list = foo.components().get_array("data".into());
-    // Single-entry group: no struct wrapping, component is the archetype directly.
-    // The field_name is used for flat_entity_path but not for struct field when single entry.
-    assert!(foo_list.is_some() || foo.num_components() == 1);
 }

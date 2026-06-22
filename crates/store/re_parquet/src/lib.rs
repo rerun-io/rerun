@@ -9,9 +9,7 @@ mod grouping;
 mod streaming;
 mod timeline;
 
-pub use config::{
-    ColumnGrouping, ColumnMapping, ColumnRule, IndexColumn, IndexType, ParquetConfig, TimeUnit,
-};
+pub use config::{ColumnGrouping, IndexColumn, IndexType, ParquetConfig, TimeUnit};
 pub use streaming::ParquetError;
 
 use re_chunk::{Chunk, EntityPath};

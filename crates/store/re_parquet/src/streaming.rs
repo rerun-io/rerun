@@ -8,13 +8,13 @@ use arrow::array::{
     StructArray,
 };
 use arrow::buffer::OffsetBuffer;
-use arrow::datatypes::{DataType, Field, Fields};
+use arrow::datatypes::{Field, Fields};
 use re_chunk::{Chunk, ChunkId, EntityPath, RowId, TimeColumn, TimePoint};
 // Component: for KeyValuePairs::name(), ComponentBatch: for .try_serialized()
 use re_sdk_types::{Component as _, ComponentBatch as _, ComponentDescriptor, datatypes};
 
 use crate::config::{ColumnGrouping, ParquetConfig};
-use crate::grouping::{ColumnGroup, ColumnGroupEntry, compute_column_groups};
+use crate::grouping::{ColumnEntry, ColumnGroup, compute_column_groups};
 use crate::timeline::{self, TimelineInfo};
 
 const PARQUET_METADATA_ARCHETYPE: &str = "ParquetMetadata";
@@ -122,7 +122,6 @@ fn build_iterator(
         &excluded,
         &entity_path_prefix,
         &config.column_grouping,
-        &config.column_rules,
     );
 
     // use_structs is only meaningful for Prefix mode. Individual mode always
@@ -324,78 +323,31 @@ impl ParquetChunkIterator {
         let num_rows = batch.num_rows();
 
         for group in &self.column_groups {
-            if self.use_structs {
-                // Struct mode: one chunk per group.
-                // Use single-entry shortcut only for Raw/Archetype entries
-                // (ScalarGroups need the companion _names field → struct).
-                let needs_struct = group.entries.iter().any(|e| {
-                    matches!(
-                        e,
-                        ColumnGroupEntry::ScalarGroup { .. } | ColumnGroupEntry::Transform { .. }
-                    )
-                });
-                let components: re_chunk::ChunkComponents = if group.entries.len() == 1
-                    && !needs_struct
-                {
-                    build_single_entry_component(&self.schema, batch, &group.entries[0], num_rows)
-                        .into_iter()
-                        .collect()
-                } else {
+            let components: re_chunk::ChunkComponents =
+                if self.use_structs && group.entries.len() > 1 {
+                    // Struct mode: pack a multi-column group into a single `Struct` component.
                     build_struct_component(&self.schema, batch, &group.entries, num_rows)
                         .into_iter()
                         .collect()
+                } else {
+                    // Single-column groups (and flat mode): one component per column.
+                    group
+                        .entries
+                        .iter()
+                        .map(|entry| build_single_entry_component(&self.schema, batch, entry))
+                        .collect()
                 };
-                emit_chunk(
-                    &mut self.pending,
-                    group.entity_path.clone(),
-                    timelines,
-                    components,
-                );
-            } else {
-                // Flat mode: group entries by entity path, one chunk per path.
-                // This avoids duplicating timeline data for every entry.
-                let mut by_path: std::collections::BTreeMap<
-                    EntityPath,
-                    Vec<(ComponentDescriptor, arrow::array::ListArray)>,
-                > = std::collections::BTreeMap::new();
-                for entry in &group.entries {
-                    let entity_path = flat_entity_path(&group.entity_path, entry);
-                    if let ColumnGroupEntry::Transform {
-                        translation_col_indices,
-                        rotation_col_indices,
-                        translation_descriptor,
-                        rotation_descriptor,
-                        ..
-                    } = entry
-                    {
-                        // Transform in flat mode: emit both components at the same path.
-                        if let Some(components) = build_transform_components(
-                            batch,
-                            translation_col_indices,
-                            rotation_col_indices,
-                            translation_descriptor,
-                            rotation_descriptor,
-                        ) {
-                            by_path.entry(entity_path).or_default().extend(components);
-                        }
-                    } else if let Some(component) =
-                        build_single_entry_component(&self.schema, batch, entry, num_rows)
-                    {
-                        by_path.entry(entity_path).or_default().push(component);
-                    }
-                }
-                for (entity_path, components) in by_path {
-                    let chunk_components: re_chunk::ChunkComponents =
-                        components.into_iter().collect();
-                    emit_chunk(&mut self.pending, entity_path, timelines, chunk_components);
-                }
-            }
+            emit_chunk(
+                &mut self.pending,
+                group.entity_path.clone(),
+                timelines,
+                components,
+            );
         }
     }
 
-    /// Build finalization chunks: static columns + scalar name components.
+    /// Build finalization chunks: the single timeless chunk holding static columns.
     fn build_finalization_chunks(&mut self) {
-        // Static columns as a single timeless chunk.
         if let Some(ref refs) = self.static_reference {
             let components: re_chunk::ChunkComponents = refs
                 .iter()
@@ -414,35 +366,6 @@ impl ParquetChunkIterator {
                 &Default::default(),
                 components,
             );
-        }
-
-        // Flat mode: emit static Name components for scalar groups.
-        // In struct mode, series names are stored as a companion struct field
-        // (e.g., "accel_names") alongside the scalar data field.
-        if !self.use_structs {
-            for group in &self.column_groups {
-                for entry in &group.entries {
-                    if let ColumnGroupEntry::ScalarGroup { names, .. } = entry {
-                        let entity_path = flat_entity_path(&group.entity_path, entry);
-                        let names_array = arrow::array::StringArray::from(names.clone());
-                        let inner_field = Arc::new(Field::new("item", DataType::Utf8, false));
-                        let n = i32::try_from(names.len()).expect("scalar suffix group too large");
-                        let fsl =
-                            FixedSizeListArray::new(inner_field, n, Arc::new(names_array), None);
-                        let components: re_chunk::ChunkComponents = std::iter::once((
-                            re_sdk_types::archetypes::SeriesLines::descriptor_names(),
-                            arrow::array::ListArray::from(fsl),
-                        ))
-                        .collect();
-                        emit_chunk(
-                            &mut self.pending,
-                            entity_path,
-                            &Default::default(),
-                            components,
-                        );
-                    }
-                }
-            }
         }
     }
 }
@@ -502,119 +425,25 @@ fn emit_chunk(
     }
 }
 
-/// Derive the entity path for a single entry in flat mode.
-///
-/// Archetype/ScalarGroup entries append their `field_name` as a sub-path
-/// (e.g., base `/A` + `field_name` `pos` → `/A/pos`). Raw entries stay at base.
-fn flat_entity_path(base: &EntityPath, entry: &ColumnGroupEntry) -> EntityPath {
-    let sub = match entry {
-        ColumnGroupEntry::Component { field_name, .. }
-        | ColumnGroupEntry::ScalarGroup { field_name, .. }
-        | ColumnGroupEntry::Transform { field_name, .. } => field_name.as_str(),
-        ColumnGroupEntry::Raw { .. } => "",
-    };
-    if sub.is_empty() {
-        base.clone()
-    } else {
-        base.join(&EntityPath::from(sub))
-    }
-}
-
-/// Build a single `List<Struct>` component from all entries in a prefix group.
+/// Build a single `List<Struct>` component from all (raw) columns in a prefix group.
 fn build_struct_component(
     schema: &arrow::datatypes::Schema,
     batch: &RecordBatch,
-    entries: &[ColumnGroupEntry],
+    entries: &[ColumnEntry],
     num_rows: usize,
 ) -> Option<(ComponentDescriptor, arrow::array::ListArray)> {
     let mut struct_fields: Vec<Arc<Field>> = Vec::new();
     let mut struct_arrays: Vec<Arc<dyn Array>> = Vec::new();
 
-    for entry in entries {
-        match entry {
-            ColumnGroupEntry::Raw { col_idx, comp_name } => {
-                let source_field = &schema.fields()[*col_idx];
-                let array = batch.column(*col_idx).clone();
-                struct_fields.push(Arc::new(Field::new(
-                    comp_name.as_str(),
-                    array.data_type().clone(),
-                    source_field.is_nullable(),
-                )));
-                struct_arrays.push(array);
-            }
-            ColumnGroupEntry::Component {
-                col_indices,
-                field_name,
-                ..
-            } => {
-                // TODO(nick): build_archetype_array ignores source null bitmaps (pre-existing gap)
-                let array = build_archetype_array(batch, col_indices)?;
-                struct_fields.push(Arc::new(Field::new(
-                    field_name.as_str(),
-                    array.data_type().clone(),
-                    true,
-                )));
-                struct_arrays.push(array);
-            }
-            ColumnGroupEntry::ScalarGroup {
-                col_indices,
-                names,
-                field_name,
-            } => {
-                // TODO(nick): build_scalar_fsl_array ignores source null bitmaps (pre-existing gap)
-                let array = build_scalar_fsl_array(batch, col_indices, num_rows)?;
-                struct_fields.push(Arc::new(Field::new(
-                    field_name.as_str(),
-                    array.data_type().clone(),
-                    true,
-                )));
-                struct_arrays.push(array);
-
-                // Add a companion field with the series names so the viewer
-                // can associate labels with the scalar data.
-                let names_array = build_names_array(names, num_rows);
-                let names_field_name = format!("{field_name}_names");
-                struct_fields.push(Arc::new(Field::new(
-                    names_field_name.as_str(),
-                    names_array.data_type().clone(),
-                    true,
-                )));
-                struct_arrays.push(names_array);
-            }
-            ColumnGroupEntry::Transform {
-                translation_col_indices,
-                rotation_col_indices,
-                field_name,
-                ..
-            } => {
-                // Build a nested struct with `translation` and `quaternion` fields.
-                let trans_array = build_archetype_array(batch, translation_col_indices)?;
-                let rot_array = build_archetype_array(batch, rotation_col_indices)?;
-
-                let inner_fields = Fields::from(vec![
-                    Arc::new(Field::new(
-                        "translation",
-                        trans_array.data_type().clone(),
-                        true,
-                    )),
-                    Arc::new(Field::new(
-                        "quaternion",
-                        rot_array.data_type().clone(),
-                        true,
-                    )),
-                ]);
-                let inner_struct =
-                    StructArray::try_new(inner_fields.clone(), vec![trans_array, rot_array], None)
-                        .ok()?;
-
-                struct_fields.push(Arc::new(Field::new(
-                    field_name.as_str(),
-                    DataType::Struct(inner_fields),
-                    true,
-                )));
-                struct_arrays.push(Arc::new(inner_struct));
-            }
-        }
+    for ColumnEntry { col_idx, comp_name } in entries {
+        let source_field = &schema.fields()[*col_idx];
+        let array = batch.column(*col_idx).clone();
+        struct_fields.push(Arc::new(Field::new(
+            comp_name.as_str(),
+            array.data_type().clone(),
+            source_field.is_nullable(),
+        )));
+        struct_arrays.push(array);
     }
 
     let struct_array =
@@ -630,186 +459,20 @@ fn build_struct_component(
     Some((ComponentDescriptor::partial("data"), list_array))
 }
 
-/// Build a `FixedSizeList(N, Float64)` array from `N` scalar columns (interleaved).
-fn build_scalar_fsl_array(
-    batch: &RecordBatch,
-    col_indices: &[usize],
-    num_rows: usize,
-) -> Option<Arc<dyn Array>> {
-    let n = col_indices.len();
-    let columns: Vec<Vec<f64>> = col_indices
-        .iter()
-        .map(|&idx| read_f64_column(batch.column(idx).as_ref()))
-        .collect::<Option<Vec<_>>>()?;
-
-    let mut values = Vec::with_capacity(num_rows * n);
-    for i in 0..num_rows {
-        for col in &columns {
-            values.push(col[i]);
-        }
-    }
-
-    let float_array = Float64Array::from(values);
-    let inner_field = Arc::new(Field::new("item", DataType::Float64, false));
-    let n_i32 = i32::try_from(n).expect("scalar suffix group too large");
-    Some(Arc::new(FixedSizeListArray::new(
-        inner_field,
-        n_i32,
-        Arc::new(float_array),
-        None,
-    )))
-}
-
-/// Build a `FixedSizeList(N, Utf8)` array with the same names repeated for each row.
-///
-/// Used in struct mode to embed series labels alongside scalar data.
-fn build_names_array(names: &[String], num_rows: usize) -> Arc<dyn Array> {
-    let n = names.len();
-    let mut values = Vec::with_capacity(num_rows * n);
-    for _ in 0..num_rows {
-        for name in names {
-            values.push(name.as_str());
-        }
-    }
-    let string_array = arrow::array::StringArray::from(values);
-    let inner_field = Arc::new(Field::new("item", DataType::Utf8, false));
-    let n_i32 = i32::try_from(n).expect("scalar suffix group too large");
-    Arc::new(FixedSizeListArray::new(
-        inner_field,
-        n_i32,
-        Arc::new(string_array),
-        None,
-    ))
-}
-
-/// Build a component from a single [`ColumnGroupEntry`] (no struct wrapping).
-///
-/// Preserves the current behavior for single-entry groups.
+/// Build a component from a single raw column (no struct wrapping).
 fn build_single_entry_component(
     schema: &arrow::datatypes::Schema,
     batch: &RecordBatch,
-    entry: &ColumnGroupEntry,
-    num_rows: usize,
-) -> Option<(ComponentDescriptor, arrow::array::ListArray)> {
-    match entry {
-        ColumnGroupEntry::Raw { col_idx, comp_name } => {
-            let field = &schema.fields()[*col_idx];
-            let array = batch.column(*col_idx).clone();
-            let list_array = wrap_in_fixed_size_list(field, array);
-            Some((
-                ComponentDescriptor::partial(comp_name.as_str()),
-                arrow::array::ListArray::from(list_array),
-            ))
-        }
-        ColumnGroupEntry::Component {
-            col_indices,
-            descriptor,
-            ..
-        } => {
-            let array = build_archetype_array(batch, col_indices)?;
-            let inner_field = Arc::new(Field::new("item", array.data_type().clone(), true));
-            let fsl = FixedSizeListArray::new(inner_field, 1, array, None);
-            Some((descriptor.clone(), arrow::array::ListArray::from(fsl)))
-        }
-        ColumnGroupEntry::ScalarGroup { col_indices, .. } => {
-            let array = build_scalar_fsl_array(batch, col_indices, num_rows)?;
-            let inner_field = Arc::new(Field::new("item", array.data_type().clone(), true));
-            let fsl = FixedSizeListArray::new(inner_field, 1, array, None);
-            Some((
-                re_sdk_types::archetypes::Scalars::descriptor_scalars(),
-                arrow::array::ListArray::from(fsl),
-            ))
-        }
-        ColumnGroupEntry::Transform { .. } => {
-            // Transform entries are handled separately (they emit two components).
-            None
-        }
-    }
-}
-
-/// Build two `(descriptor, ListArray)` pairs for a `Transform` entry in flat mode.
-fn build_transform_components(
-    batch: &RecordBatch,
-    translation_col_indices: &[usize],
-    rotation_col_indices: &[usize],
-    translation_descriptor: &ComponentDescriptor,
-    rotation_descriptor: &ComponentDescriptor,
-) -> Option<Vec<(ComponentDescriptor, arrow::array::ListArray)>> {
-    let trans_array = build_archetype_array(batch, translation_col_indices)?;
-    let rot_array = build_archetype_array(batch, rotation_col_indices)?;
-
-    let trans_inner = Arc::new(Field::new("item", trans_array.data_type().clone(), true));
-    let trans_fsl = FixedSizeListArray::new(trans_inner, 1, trans_array, None);
-
-    let rot_inner = Arc::new(Field::new("item", rot_array.data_type().clone(), true));
-    let rot_fsl = FixedSizeListArray::new(rot_inner, 1, rot_array, None);
-
-    Some(vec![
-        (
-            translation_descriptor.clone(),
-            arrow::array::ListArray::from(trans_fsl),
-        ),
-        (
-            rotation_descriptor.clone(),
-            arrow::array::ListArray::from(rot_fsl),
-        ),
-    ])
-}
-
-/// Build a `FixedSizeList(N, Float32)` array from `N` scalar columns.
-fn build_archetype_array(batch: &RecordBatch, col_indices: &[usize]) -> Option<Arc<dyn Array>> {
-    let num_rows = batch.num_rows();
-    let n = col_indices.len();
-
-    let columns: Vec<Vec<f32>> = col_indices
-        .iter()
-        .map(|&idx| read_f32_column(batch.column(idx).as_ref()))
-        .collect::<Option<Vec<_>>>()?;
-
-    let mut values = Vec::with_capacity(num_rows * n);
-    for i in 0..num_rows {
-        for col in &columns {
-            values.push(col[i]);
-        }
-    }
-
-    let float_array = Float32Array::from(values);
-    let inner_field = Arc::new(Field::new("item", DataType::Float32, false));
-    let n_i32 = i32::try_from(n).expect("archetype element count too large");
-    Some(Arc::new(FixedSizeListArray::new(
-        inner_field,
-        n_i32,
-        Arc::new(float_array),
-        None,
-    )))
-}
-
-/// Convert a numeric Arrow array to `Vec<f64>` via arrow cast.
-fn read_f64_column(array: &dyn Array) -> Option<Vec<f64>> {
-    let casted = arrow::compute::cast(array, &DataType::Float64)
-        .map_err(|_err| {
-            re_log::warn_once!(
-                "Unsupported column type for scalar mapping: {:?}",
-                array.data_type()
-            );
-        })
-        .ok()?;
-    let arr = casted.as_any().downcast_ref::<Float64Array>()?;
-    Some(arr.values().iter().copied().collect())
-}
-
-/// Convert a numeric Arrow array to `Vec<f32>` via arrow cast.
-fn read_f32_column(array: &dyn Array) -> Option<Vec<f32>> {
-    let casted = arrow::compute::cast(array, &DataType::Float32)
-        .map_err(|_err| {
-            re_log::warn_once!(
-                "Unsupported column type for archetype mapping: {:?}",
-                array.data_type()
-            );
-        })
-        .ok()?;
-    let arr = casted.as_any().downcast_ref::<Float32Array>()?;
-    Some(arr.values().iter().copied().collect())
+    entry: &ColumnEntry,
+) -> (ComponentDescriptor, arrow::array::ListArray) {
+    let ColumnEntry { col_idx, comp_name } = entry;
+    let field = &schema.fields()[*col_idx];
+    let array = batch.column(*col_idx).clone();
+    let list_array = wrap_in_fixed_size_list(field, array);
+    (
+        ComponentDescriptor::partial(comp_name.as_str()),
+        arrow::array::ListArray::from(list_array),
+    )
 }
 
 /// Verify that every value in `array` is identical.

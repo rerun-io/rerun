@@ -9234,6 +9234,8 @@ dependencies = [
  "itertools 0.14.0",
  "parquet",
  "re_chunk",
+ "re_lenses",
+ "re_lenses_core",
  "re_log",
  "re_log_types",
  "re_sdk_types",

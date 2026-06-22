@@ -27,4 +27,7 @@ parquet = { workspace = true, features = ["arrow", "snap", "zstd"] }
 thiserror.workspace = true
 
 [dev-dependencies]
+re_lenses.workspace = true
+re_lenses_core.workspace = true
+
 itertools.workspace = true

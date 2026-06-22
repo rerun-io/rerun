@@ -1584,7 +1584,6 @@ class ParquetReaderInternal:
         use_structs: bool = True,
         static_columns: list[str] | None = None,
         index_columns: list[tuple[str, str, str | None]] | None = None,
-        column_rules: list[Any] | None = None,
     ) -> None: ...
     def stream(self) -> LazyChunkStreamInternal: ...
     @property
