@@ -147,13 +147,15 @@ pub async fn start_with_segment_fragment_url() {
     let preview_entity = EntityPath::from("test_entity");
     let timeline = TimelineName::new("test_time");
     viewer_test_utils::step_until(
-        "Recording opened and point data arrived",
+        "Recording opened, source tree populated, and point data arrived",
         &mut harness,
         |harness| {
             let uri = recording_uri.clone();
             let entity = preview_entity.clone();
             harness.query_by_label_contains("Streams").is_some()
                 && harness.query_by_label("Loading entries…").is_none()
+                && harness.query_by_label_contains("my_dataset").is_some()
+                && harness.query_all_by_label("new_recording_id").count() == 2
                 && harness.run_with_app_context(move |app_context| {
                     app_context
                         .storage_context
