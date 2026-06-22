@@ -115,41 +115,40 @@ impl VideoStreamCache {
         let sample_component = VideoStream::descriptor_sample().component;
         let codec_component = VideoStream::descriptor_codec().component;
 
+        let query_result = store.storage_engine().cache().latest_at(
+            // Get the last logged codec. Should be unchanging so if correctly
+            // logged it doesn't matter which one we get.
+            &re_chunk::LatestAtQuery::new(timeline, re_chunk::TimeInt::MAX),
+            entity_path,
+            [codec_component],
+        );
+
+        let codec_chunk = query_result.get_required(codec_component).map_err(|_err| {
+            if store
+                .storage_engine()
+                .store()
+                .entity_has_component_on_timeline(&timeline, entity_path, codec_component)
+            {
+                VideoStreamProcessingError::UnloadedCodec
+            } else {
+                VideoStreamProcessingError::MissingCodec
+            }
+        })?;
+
+        // Translate codec by looking at the last codec.
+        // TODO(andreas): Should validate whether all codecs ever logged are the same, but it's a bit tedious.
+        let last_codec = codec_chunk
+            .component_mono::<components::VideoCodec>(codec_component)
+            .ok_or(VideoStreamProcessingError::MissingCodec)?
+            .map_err(|err| VideoStreamProcessingError::FailedReadingCodec(Box::new(err)))?;
+
         self.entry(
             store,
             entity_path,
             timeline,
             decode_settings,
             sample_component,
-            &|| {
-                let query_result = store.storage_engine().cache().latest_at(
-                    // Get the last logged codec. Should be unchanging so if correctly
-                    // logged it doesn't matter which one we get.
-                    &re_chunk::LatestAtQuery::new(timeline, re_chunk::TimeInt::MAX),
-                    entity_path,
-                    [codec_component],
-                );
-
-                let codec_chunk = query_result.get_required(codec_component).map_err(|_err| {
-                    if store
-                        .storage_engine()
-                        .store()
-                        .entity_has_component_on_timeline(&timeline, entity_path, codec_component)
-                    {
-                        VideoStreamProcessingError::UnloadedCodec
-                    } else {
-                        VideoStreamProcessingError::MissingCodec
-                    }
-                })?;
-
-                // Translate codec by looking at the last codec.
-                // TODO(andreas): Should validate whether all codecs ever logged are the same, but it's a bit tedious.
-                let last_codec = codec_chunk
-                    .component_mono::<components::VideoCodec>(codec_component)
-                    .ok_or(VideoStreamProcessingError::MissingCodec)?
-                    .map_err(|err| VideoStreamProcessingError::FailedReadingCodec(Box::new(err)))?;
-                Ok(last_codec.into())
-            },
+            last_codec.into(),
         )
     }
 
@@ -166,7 +165,7 @@ impl VideoStreamCache {
         timeline: TimelineName,
         decode_settings: DecodeSettings,
         sample_component: re_chunk::ComponentIdentifier,
-        get_codec: &dyn Fn() -> Result<re_video::VideoCodec, VideoStreamProcessingError>,
+        new_codec: re_video::VideoCodec,
     ) -> Result<SharablePlayableVideoStream, VideoStreamProcessingError> {
         re_tracing::profile_function!();
 
@@ -177,16 +176,27 @@ impl VideoStreamCache {
         };
 
         let entry = match self.entries.entry(key) {
-            std::collections::hash_map::Entry::Occupied(occupied_entry) => {
+            std::collections::hash_map::Entry::Occupied(occupied_entry)
+                if occupied_entry
+                    .get()
+                    .video_stream
+                    .read_arc()
+                    .video_descr()
+                    .codec
+                    == new_codec =>
+            {
                 occupied_entry.into_mut()
             }
-            std::collections::hash_map::Entry::Vacant(vacant_entry) => {
+            entry => {
+                // Reloading an existing entry on a codec change keeps the same key.
+                let is_new_entry = matches!(entry, std::collections::hash_map::Entry::Vacant(_));
+
                 let (video_descr, known_chunk_ranges) = load_video_data_from_chunks(
                     store,
                     entity_path,
                     timeline,
                     sample_component,
-                    get_codec,
+                    new_codec,
                 )?;
 
                 let video = re_renderer::video::Video::load(
@@ -195,18 +205,22 @@ impl VideoStreamCache {
                     decode_settings,
                 );
 
-                self.keys_per_entity
-                    .entry(key.entity_path)
-                    .or_default()
-                    .push(key);
+                if is_new_entry {
+                    self.keys_per_entity
+                        .entry(key.entity_path)
+                        .or_default()
+                        .push(key);
+                }
 
-                vacant_entry.insert(VideoStreamCacheEntry {
-                    used_this_frame: AtomicBool::new(true),
-                    video_stream: Arc::new(RwLock::new(PlayableVideoStream {
-                        video_renderer: video,
-                    })),
-                    known_chunk_ranges,
-                })
+                entry
+                    .insert_entry(VideoStreamCacheEntry {
+                        used_this_frame: AtomicBool::new(true),
+                        video_stream: Arc::new(RwLock::new(PlayableVideoStream {
+                            video_renderer: video,
+                        })),
+                        known_chunk_ranges,
+                    })
+                    .into_mut()
             }
         };
 
@@ -808,7 +822,7 @@ fn load_video_data_from_chunks(
     entity_path: &EntityPath,
     timeline: TimelineName,
     sample_component: re_chunk::ComponentIdentifier,
-    get_codec: &dyn Fn() -> Result<re_video::VideoCodec, VideoStreamProcessingError>,
+    codec: re_video::VideoCodec,
 ) -> Result<
     (
         re_video::VideoDataDescription,
@@ -817,8 +831,6 @@ fn load_video_data_from_chunks(
     VideoStreamProcessingError,
 > {
     re_tracing::profile_function!();
-
-    let codec = get_codec()?;
 
     // Query for all video chunks on the **entire** timeline.
     // Tempting to bypass the query cache for this, but we don't expect to get new video chunks every frame
