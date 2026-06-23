@@ -71,6 +71,10 @@ impl SearchClient {
     /// and `url`) is searchable with no priority order, there is no page-type
     /// weighting, and no synonyms — which is how a single API symbol used to
     /// outrank the documentation page on the same topic.
+    ///
+    /// CANONICAL SOURCE: `scripts/search/search-settings.json` in
+    /// rerun-io/landing. The website's `pages` index reads that file directly;
+    /// this must stay identical to it (we can't share a file across repos).
     fn settings() -> serde_json::Value {
         serde_json::json!({
             // Order = matching priority: a hit in `title` beats a hit in `content`.
@@ -122,6 +126,16 @@ impl SearchClient {
                 "ros": ["ros2"],
                 "ros2": ["ros"],
                 "install": ["installation", "setup"],
+                // Marketing-page terms — these pages live in the website's
+                // `pages` index, but synonyms are query-side and harmless here;
+                // kept so this list matches the canonical settings file.
+                "price": ["pricing"],
+                "cost": ["pricing"],
+                "plans": ["pricing"],
+                "job": ["careers"],
+                "jobs": ["careers"],
+                "hiring": ["careers"],
+                "release notes": ["changelog"],
             },
         })
     }
