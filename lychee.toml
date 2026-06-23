@@ -102,7 +102,7 @@ exclude = [
 
   # Local links that require further setup.
   '/examples', # Relative link to our examples gallery.
-  'http://0.0.0.0:51234',
+  'http://0.0.0.0',
   'http://127.0.0.1',
   'http://localhost',
   're_viewer.js', # Build artifact that html is linking to.

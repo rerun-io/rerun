@@ -67,6 +67,7 @@ impl WebViewerSink {
             .expect("failed to spawn thread for message proxy server");
         let webviewer_server = WebViewerServer::new(bind_ip, web_port)?;
 
+        let http_web_viewer_bound_url = webviewer_server.bound_url();
         let http_web_viewer_url = webviewer_server.server_url();
 
         let viewer_url =
@@ -76,7 +77,9 @@ impl WebViewerSink {
                 format!("{http_web_viewer_url}?url=rerun%2Bhttp://{grpc_server_addr}/proxy")
             };
 
-        re_log::info!("Hosting a web-viewer at {viewer_url}");
+        re_log::info!(
+            "Hosting a web-viewer at {http_web_viewer_bound_url} - connect at {viewer_url}"
+        );
         if open_browser {
             webbrowser::open(&viewer_url).ok();
         }
@@ -201,6 +204,7 @@ impl WebViewerConfig {
         } = self;
 
         let web_server = WebViewerServer::new(&bind_ip, web_port)?;
+        let http_web_viewer_bound_url = web_server.bound_url();
         let http_web_viewer_url = web_server.server_url();
 
         let mut viewer_url = http_web_viewer_url;
@@ -231,7 +235,9 @@ impl WebViewerConfig {
             append_argument(format!("video_decoder={video_decoder}"));
         }
 
-        re_log::info!("Hosting a web-viewer at {viewer_url}");
+        re_log::info!(
+            "Hosting a web-viewer at {http_web_viewer_bound_url} - connect at {viewer_url}"
+        );
         if open_browser {
             webbrowser::open(&viewer_url).ok();
         }
