@@ -628,8 +628,8 @@ mod tests {
 
     use arrow::array::{Array as _, Float32Array};
     use byteorder::LittleEndian;
-    use cdr_encoding::to_vec;
     use mcap::{Channel, Message};
+    use re_cdr::to_vec;
     use re_log_types::TimeType;
 
     use super::*;

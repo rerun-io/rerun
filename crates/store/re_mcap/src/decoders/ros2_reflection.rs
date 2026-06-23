@@ -11,17 +11,15 @@ use arrow::datatypes::{
     DataType, Field, Fields, Float32Type, Float64Type, Int8Type, Int16Type, Int32Type, Int64Type,
     UInt8Type, UInt16Type, UInt32Type, UInt64Type,
 };
-use cdr_encoding::CdrDeserializer;
 use re_chunk::{Chunk, ChunkId};
 use re_ros_msg::MessageSchema;
 use re_ros_msg::deserialize::primitive_array::PrimitiveArray;
-use re_ros_msg::deserialize::{MapResolver, MessageSeed, Value};
+use re_ros_msg::deserialize::{MapResolver, Value, decode_message};
 use re_ros_msg::message_spec::{
     ArraySize, BuiltInType, ComplexType, MessageSpecification, Type, message_package,
 };
 use re_sdk_types::ComponentDescriptor;
 use re_sdk_types::reflection::ComponentDescriptorExt as _;
-use serde::de::DeserializeSeed as _;
 
 use super::ros2::supports_ros2_cdr_channel;
 use crate::parsers::{MessageParser, ParserContext, dds};
@@ -42,15 +40,13 @@ pub fn decode_bytes(top: &MessageSchema, buf: &[u8]) -> anyhow::Result<Value> {
 
     let resolver = MapResolver::new(top.dependencies.iter().map(|dep| (dep.name.clone(), dep)));
 
-    let seed = MessageSeed::new(&top.spec, &resolver);
-
     if representation_identifier.is_big_endian() {
-        let mut de = CdrDeserializer::<byteorder::BigEndian>::new(&buf[4..]);
-        seed.deserialize(&mut de)
+        let mut reader = re_cdr::CdrReader::<byteorder::BigEndian>::new(&buf[4..]);
+        decode_message(&mut reader, &top.spec, &resolver)
             .with_context(|| "failed to deserialize CDR message")
     } else {
-        let mut de = CdrDeserializer::<byteorder::LittleEndian>::new(&buf[4..]);
-        seed.deserialize(&mut de)
+        let mut reader = re_cdr::CdrReader::<byteorder::LittleEndian>::new(&buf[4..]);
+        decode_message(&mut reader, &top.spec, &resolver)
             .with_context(|| "failed to deserialize CDR message")
     }
 }

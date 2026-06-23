@@ -1464,21 +1464,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cdr-encoding"
-version = "0.10.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "73f0cdb643d85bb03b1b786ab8d332747f386f0a25b19367d559b437f44f1e46"
-dependencies = [
- "byteorder",
- "log",
- "paste",
- "serde",
- "serde_repr",
- "static_assertions",
- "thiserror 1.0.69",
-]
-
-[[package]]
 name = "cesu8"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6137,9 +6122,9 @@ dependencies = [
 
 [[package]]
 name = "memmap2"
-version = "0.9.10"
+version = "0.9.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "714098028fe011992e1c3962653c96b2d578c4b4bce9036e15ff220319b1e0e3"
+checksum = "d1219ed1b7f229ee7104d281dd01d6802fe28bb6e95d292942c4daacdeb798c0"
 dependencies = [
  "libc",
 ]
@@ -8390,6 +8375,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_cdr"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bba10c21433b597481f366b978cdf2617e56785b38cb0dcc3833c6b8ad7e061a"
+dependencies = [
+ "bytemuck",
+ "byteorder",
+ "serde",
+ "thiserror 2.0.18",
+]
+
+[[package]]
 name = "re_chunk"
 version = "0.34.0-alpha.1+dev"
 dependencies = [
@@ -8900,7 +8897,7 @@ dependencies = [
  "insta",
  "itertools 0.14.0",
  "mcap",
- "memmap2 0.9.10",
+ "memmap2 0.9.11",
  "notify",
  "parking_lot",
  "parquet",
@@ -9128,7 +9125,6 @@ dependencies = [
  "anyhow",
  "arrow",
  "byteorder",
- "cdr-encoding",
  "crossbeam",
  "insta",
  "itertools 0.14.0",
@@ -9136,6 +9132,7 @@ dependencies = [
  "prost-reflect",
  "rayon",
  "re_arrow_util",
+ "re_cdr",
  "re_chunk",
  "re_log",
  "re_log_types",
@@ -9614,7 +9611,7 @@ version = "0.34.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "itertools 0.14.0",
- "serde",
+ "re_cdr",
  "thiserror 2.0.18",
 ]
 
@@ -11044,7 +11041,7 @@ dependencies = [
  "infer",
  "itertools 0.14.0",
  "jiff",
- "memmap2 0.9.10",
+ "memmap2 0.9.11",
  "mimalloc",
  "numpy",
  "parking_lot",
@@ -11796,7 +11793,7 @@ dependencies = [
  "cursor-icon",
  "libc",
  "log",
- "memmap2 0.9.10",
+ "memmap2 0.9.11",
  "rustix 0.38.44",
  "thiserror 1.0.69",
  "wayland-backend",
@@ -14221,7 +14218,7 @@ dependencies = [
  "dpi",
  "js-sys",
  "libc",
- "memmap2 0.9.10",
+ "memmap2 0.9.11",
  "ndk",
  "objc2 0.5.2",
  "objc2-app-kit 0.2.2",
