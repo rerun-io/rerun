@@ -30,7 +30,6 @@ re_tracing.workspace = true
 re_ui.workspace = true
 re_view.workspace = true
 re_viewer_context.workspace = true
-re_viewport_blueprint.workspace = true
 
 egui.workspace = true
 nohash-hasher.workspace = true
@@ -39,3 +38,4 @@ nohash-hasher.workspace = true
 re_test_context.workspace = true
 re_test_viewport.workspace = true
 re_viewport.workspace = true
+re_viewport_blueprint.workspace = true

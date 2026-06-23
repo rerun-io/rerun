@@ -11,6 +11,7 @@ mod annotation_scene_context;
 mod blueprint_resolved_results;
 mod chunks_with_component;
 mod clears;
+mod component_drop;
 mod instance_hash_conversions;
 mod outlines;
 mod query;
@@ -31,6 +32,7 @@ pub use chunks_with_component::{
     ChunkWithComponent, ChunksWithComponent, MaybeChunksWithComponent,
 };
 pub use clears::collect_recursive_clears;
+pub use component_drop::{ComponentDropResult, handle_component_drop};
 pub use instance_hash_conversions::{
     instance_path_hash_from_picking_layer_id, picking_layer_id_from_instance_path_hash,
 };

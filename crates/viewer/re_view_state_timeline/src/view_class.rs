@@ -194,9 +194,6 @@ impl ViewClass for StateTimelineView {
 
     /// Accept drops of components onto the state timeline view. For each dropped component, a new
     /// `StateVisualizer` is added that remaps `StateChange.state` from it.
-    ///
-    /// The viewport owns the drop feedback (cursor) and the drop-target frame; we only signal
-    /// acceptance and perform the mutation on release.
     fn handle_component_drop(
         &self,
         ctx: &ViewerContext<'_>,
@@ -204,18 +201,22 @@ impl ViewClass for StateTimelineView {
         component_paths: &[ComponentPath],
         released: bool,
     ) -> DragAndDropFeedback {
-        // Reject if none of the dropped components would add a new visualizer (e.g. they are
-        // already visualized), mirroring the entity-drop behavior.
-        if !crate::drop_handler::can_drop_any_component(ctx, view_id, component_paths) {
-            return DragAndDropFeedback::Reject(Some("Already visualized"));
+        match re_view::handle_component_drop(
+            ctx,
+            view_id,
+            component_paths,
+            released,
+            crate::StateVisualizer::identifier(),
+            re_sdk_types::archetypes::StateChange::descriptor_state().component,
+        ) {
+            re_view::ComponentDropResult::Accept => DragAndDropFeedback::Accept,
+            re_view::ComponentDropResult::CompatibleButAlreadyVisualized => {
+                DragAndDropFeedback::Reject(Some("Already visualized"))
+            }
+            re_view::ComponentDropResult::Incompatible => {
+                DragAndDropFeedback::Reject(Some("Not a state component"))
+            }
         }
-
-        if released {
-            egui::DragAndDrop::clear_payload(ctx.egui_ctx());
-            crate::drop_handler::handle_component_drop(ctx, view_id, component_paths);
-        }
-
-        DragAndDropFeedback::Accept
     }
 
     fn ui(

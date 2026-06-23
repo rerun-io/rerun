@@ -6,7 +6,7 @@ use nohash_hasher::{IntMap, IntSet};
 use re_chunk_store::TimeType;
 use re_format::time::next_grid_tick_magnitude_nanos;
 use re_log_types::external::arrow::datatypes::DataType;
-use re_log_types::{AbsoluteTimeRange, EntityPath};
+use re_log_types::{AbsoluteTimeRange, ComponentPath, EntityPath};
 use re_sdk_types::archetypes::{Scalars, SeriesLines, SeriesPoints};
 use re_sdk_types::blueprint::archetypes::{PlotBackground, PlotLegend, ScalarAxis, TimeAxis};
 use re_sdk_types::blueprint::components::{
@@ -19,12 +19,13 @@ use re_ui::{Help, IconText, MouseButtonText, UiExt as _, icons, list_item};
 use re_view::controls::{MOVE_TIME_CURSOR_BUTTON, SELECTION_RECT_ZOOM_BUTTON};
 use re_view::view_property_ui;
 use re_viewer_context::{
-    BlueprintContext as _, DataResultInteractionAddress, DatatypeMatch, IdentifiedViewSystem as _,
-    IndicatedEntities, PerVisualizerType, QueryRange, RecommendedMappings, RecommendedView,
-    RecommendedVisualizers, SingleRequiredComponentMatch, SystemExecutionOutput,
-    TimeControlCommand, ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewId, ViewQuery,
-    ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
-    ViewSystemIdentifier, ViewerContext, VisualizableReason, VisualizerComponentSource,
+    BlueprintContext as _, DataResultInteractionAddress, DatatypeMatch, DragAndDropFeedback,
+    IdentifiedViewSystem as _, IndicatedEntities, PerVisualizerType, QueryRange,
+    RecommendedMappings, RecommendedView, RecommendedVisualizers, SingleRequiredComponentMatch,
+    SystemExecutionOutput, TimeControlCommand, ViewClass, ViewClassExt as _,
+    ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _,
+    ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext, VisualizableReason,
+    VisualizerComponentSource,
 };
 use re_viewport_blueprint::ViewProperty;
 use smallvec::SmallVec;
@@ -413,6 +414,33 @@ impl ViewClass for TimeSeriesView {
             }),
             add_options,
         })
+    }
+
+    /// Accept drops of scalar components onto the time series view. For each dropped component, a
+    /// new `SeriesLines` visualizer is added that remaps `Scalars.scalars` from it.
+    fn handle_component_drop(
+        &self,
+        ctx: &ViewerContext<'_>,
+        view_id: ViewId,
+        component_paths: &[ComponentPath],
+        released: bool,
+    ) -> DragAndDropFeedback {
+        match re_view::handle_component_drop(
+            ctx,
+            view_id,
+            component_paths,
+            released,
+            SeriesLinesSystem::identifier(),
+            Scalars::descriptor_scalars().component,
+        ) {
+            re_view::ComponentDropResult::Accept => DragAndDropFeedback::Accept,
+            re_view::ComponentDropResult::CompatibleButAlreadyVisualized => {
+                DragAndDropFeedback::Reject(Some("Already visualized"))
+            }
+            re_view::ComponentDropResult::Incompatible => {
+                DragAndDropFeedback::Reject(Some("Not a scalar component"))
+            }
+        }
     }
 
     fn ui(
