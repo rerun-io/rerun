@@ -112,7 +112,7 @@ fn manifest_layer_names(batch: &arrow::array::RecordBatch) -> Vec<String> {
     ext::ScanDatasetManifestDataframe::COLUMN_RERUN_LAYER_NAME
         .extract(batch)
         .expect("valid layer name column")
-        .into_iter()
+        .into_iter_owned()
         .map(LayerName::into_string)
         .sorted()
         .collect()
@@ -126,8 +126,8 @@ fn segment_ids_of_layer(batch: &arrow::array::RecordBatch, layer_name: &str) -> 
     let segment_ids = ext::ScanDatasetManifestDataframe::COLUMN_RERUN_SEGMENT_ID
         .extract(batch)
         .expect("valid segment id column");
-    std::iter::zip(layer_names, segment_ids)
-        .filter(|(name, _)| name == layer_name)
+    std::iter::zip(&layer_names, &segment_ids)
+        .filter(|(name, _)| name == &layer_name)
         .map(|(_, segment_id)| String::from(segment_id))
         .sorted()
         .collect()

@@ -679,7 +679,7 @@ where
                     ApiError::deserialization_quiver_from(trace_id, err, "/ScanSegmentTable stream")
                 })?;
 
-            segment_ids.extend(segment_id_column);
+            segment_ids.extend(segment_id_column.into_iter_owned());
         }
 
         Ok(segment_ids)
@@ -1048,11 +1048,11 @@ where
             })?;
 
         let descriptors = itertools::izip!(
-            rerun_segment_layer,
-            rerun_segment_id,
+            rerun_segment_layer.into_iter_owned(),
+            rerun_segment_id.into_iter_owned(),
             segment_types,
-            rerun_storage_url,
-            rerun_task_id
+            rerun_storage_url.into_iter_owned(),
+            rerun_task_id.into_iter_owned()
         )
         .map(
             |(layer_name, segment_id, segment_type, storage_url, task_id)| {

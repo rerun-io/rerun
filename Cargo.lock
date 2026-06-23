@@ -7961,9 +7961,9 @@ dependencies = [
 
 [[package]]
 name = "quiver"
-version = "0.2.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d3733e3e2c5f6af8f5ae9a16e5ca7401938cec58f8473a70b6494414caa691ec"
+checksum = "14d76538f8741333f93231eb5663fcff03ad4f944e157020852010016d5d51d9"
 dependencies = [
  "quiver_derive",
  "quiver_types",
@@ -7971,9 +7971,9 @@ dependencies = [
 
 [[package]]
 name = "quiver_derive"
-version = "0.2.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5664664fa9e403ee83c23b09e894baf7a79826989b4097ddaf18ea6ce056773d"
+checksum = "6d6572f7a35753c5269e69aac8cb15e479234c9aba857d0d0263575a4b34ebfc"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -7982,9 +7982,9 @@ dependencies = [
 
 [[package]]
 name = "quiver_types"
-version = "0.2.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7b47a1ff2ab808a656f4b8cb7e3eb839b8b7fdbc4e37ecefa94cded774a071ae"
+checksum = "ca03cf07e4b58cbc66692bd8759d90edf0794d5b16d6fa5837f1b27b8a090e48"
 dependencies = [
  "arrow",
  "half",

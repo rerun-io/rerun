@@ -228,7 +228,7 @@ pub async fn register_and_wait(
     let task_ids: Vec<TaskId> = cloud_ext::RegisterWithDatasetDataframe::COLUMN_RERUN_TASK_ID
         .extract(&resp)
         .expect("valid task id column")
-        .into_iter()
+        .into_iter_owned()
         .unique() // dups are possible because of batching partitions per task
         .collect();
 

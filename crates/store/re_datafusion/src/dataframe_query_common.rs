@@ -980,7 +980,7 @@ pub(crate) fn group_chunk_infos_by_segment_id(
 
         // group rows by segment ID
         let mut segment_rows: BTreeMap<SegmentId, Vec<usize>> = BTreeMap::new();
-        for (row_idx, segment_id) in segment_ids.into_iter().enumerate() {
+        for (row_idx, segment_id) in segment_ids.into_iter_owned().enumerate() {
             segment_rows.entry(segment_id).or_default().push(row_idx);
         }
 
