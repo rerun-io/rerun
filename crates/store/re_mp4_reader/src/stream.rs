@@ -9,6 +9,7 @@ use re_chunk::{Chunk, ChunkId, EntityPath, RowId, TimeColumn, TimePoint};
 use re_log_types::{TimeType, Timeline};
 use re_sdk_types::archetypes::VideoStream;
 use re_sdk_types::components::VideoCodec;
+use re_video::player::GetVideoSource;
 use re_video::{SampleIndex, SampleMetadataState, VideoDataDescription, VideoSource};
 
 use crate::Mp4Error;
@@ -199,13 +200,26 @@ fn build_gop_chunk<R: Read + Seek>(
                 "sample {sample_idx} has a non-span source; mp4 demux only produces spans"
             )));
         };
+
+        struct FullSource<'a>(&'a [u8]);
+
+        impl GetVideoSource for FullSource<'_> {
+            fn get_video_chunk(&self, _source: VideoSource) -> &[u8] {
+                self.0
+            }
+
+            fn require_video_source(&self, _source: VideoSource) {}
+
+            fn indicate_video_source(&self, _source: VideoSource) {}
+        }
+
         let byte_range = span.range_usize();
         reader.seek(SeekFrom::Start(byte_range.start as u64))?;
         sample_bytes.resize(byte_range.len(), 0);
         reader.read_exact(&mut sample_bytes)?;
 
         let chunk = meta
-            .get(&|_src| sample_bytes.as_slice(), sample_idx)
+            .get(&FullSource(sample_bytes.as_slice()), sample_idx)
             .ok_or_else(|| {
                 Mp4Error::SampleConversion(format!(
                     "sample {sample_idx} could not be read from the mp4 buffer"

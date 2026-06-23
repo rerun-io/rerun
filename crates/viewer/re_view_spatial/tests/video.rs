@@ -8,6 +8,7 @@ use re_sdk_types::datatypes;
 use re_test_context::TestContext;
 use re_test_context::external::egui_kittest::SnapshotOptions;
 use re_test_viewport::TestContextExt as _;
+use re_video::player::VideoSliceSource;
 use re_video::{VideoCodec, VideoDataDescription};
 use re_viewer_context::{TimeControlCommand, ViewClass as _};
 use re_viewport_blueprint::{ViewBlueprint, ViewProperty};
@@ -219,15 +220,7 @@ fn test_video(video_type: VideoType, codec: &VideoCodec) {
                             &sample
                                 .sample()
                                 .unwrap()
-                                .get(
-                                    &|source| match source {
-                                        re_video::VideoSource::Span(span) => {
-                                            &blob_bytes[span.range_usize()]
-                                        }
-                                        re_video::VideoSource::Id { .. } => &[],
-                                    },
-                                    sample_idx,
-                                )
+                                .get(&VideoSliceSource(blob_bytes), sample_idx)
                                 .unwrap(),
                             &mut annexb_stream_state,
                         )
@@ -254,15 +247,7 @@ fn test_video(video_type: VideoType, codec: &VideoCodec) {
                             &sample
                                 .sample()
                                 .unwrap()
-                                .get(
-                                    &|source| match source {
-                                        re_video::VideoSource::Span(span) => {
-                                            &blob_bytes[span.range_usize()]
-                                        }
-                                        re_video::VideoSource::Id { .. } => &[],
-                                    },
-                                    sample_idx,
-                                )
+                                .get(&VideoSliceSource(blob_bytes), sample_idx)
                                 .unwrap(),
                             &mut annexb_stream_state,
                         )
@@ -274,15 +259,7 @@ fn test_video(video_type: VideoType, codec: &VideoCodec) {
                         let chunk = sample
                             .sample()
                             .unwrap()
-                            .get(
-                                &|source| match source {
-                                    re_video::VideoSource::Span(span) => {
-                                        &blob_bytes[span.range_usize()]
-                                    }
-                                    re_video::VideoSource::Id { .. } => &[],
-                                },
-                                sample_idx,
-                            )
+                            .get(&VideoSliceSource(blob_bytes), sample_idx)
                             .unwrap();
                         let sample_bytes = video_data_description
                             .sample_data_in_stream_format(&chunk)

@@ -18,6 +18,7 @@ use web_time::Instant;
 
 use super::{Time, Timescale};
 use crate::nalu::AnnexBStreamWriteError;
+use crate::player::GetVideoSource;
 use crate::{
     Chunk, StableIndexDeque, TrackId, TrackKind, write_avc_chunk_to_annexb,
     write_hevc_chunk_to_annexb,
@@ -1162,12 +1163,8 @@ impl SampleMetadata {
     ///
     /// Returns `None` if the sample is out of bounds, which can only happen
     /// if `data` is not the original video data.
-    pub fn get<'a>(
-        &self,
-        get_video_chunk: &dyn Fn(VideoSource) -> &'a [u8],
-        sample_idx: SampleIndex,
-    ) -> Option<Chunk> {
-        let bytes = get_video_chunk(self.source);
+    pub fn get(&self, video_source: &dyn GetVideoSource, sample_idx: SampleIndex) -> Option<Chunk> {
+        let bytes = video_source.get_video_chunk(self.source);
 
         if bytes.is_empty() {
             return None;
@@ -1275,7 +1272,7 @@ impl std::fmt::Debug for VideoDataDescription {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::nalu::ANNEXB_NAL_START_CODE;
+    use crate::{nalu::ANNEXB_NAL_START_CODE, player::VideoSliceSource};
 
     #[test]
     fn test_latest_sample_index_at_presentation_timestamp() {
@@ -1446,13 +1443,7 @@ mod tests {
             let chunk = sample
                 .sample()
                 .unwrap()
-                .get(
-                    &|source| match source {
-                        VideoSource::Span(span) => &data[span.range_usize()],
-                        VideoSource::Id { .. } => &[],
-                    },
-                    sample_idx,
-                )
+                .get(&VideoSliceSource(&data), sample_idx)
                 .unwrap();
             let converted = video_data.sample_data_in_stream_format(&chunk).unwrap();
 

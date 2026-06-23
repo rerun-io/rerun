@@ -15,12 +15,62 @@ use re_log::{debug_assert, debug_panic};
 use re_log_types::{EntityPathHash, TimeType};
 use re_sdk_types::archetypes::VideoStream;
 use re_sdk_types::components;
-use re_video::{DecodeSettings, SampleMetadataState, StableIndexDeque};
+use re_video::player::GetVideoSource;
+use re_video::{DecodeSettings, SampleMetadataState, StableIndexDeque, VideoSource};
 
 use crate::Cache;
 
 #[cfg(test)]
 mod test_player;
+
+pub struct VideoStoreSource<'a> {
+    pub store: &'a re_chunk_store::ChunkStore,
+    pub sample_component: re_chunk::ComponentIdentifier,
+}
+
+impl GetVideoSource for VideoStoreSource<'_> {
+    fn get_video_chunk(&self, source: VideoSource) -> &[u8] {
+        let lookup = |id: re_log_types::external::re_tuid::Tuid,
+                      sub_id: Option<re_log_types::external::re_tuid::Tuid>|
+         -> Option<&[u8]> {
+            let chunk = self
+                .store
+                .use_chunk_or_indicate(&re_sdk_types::ChunkId::from_tuid(id))?;
+            let sub_id = sub_id?;
+            let (offsets, buffer) = re_arrow_util::blob_arrays_offsets_and_buffer(
+                chunk.raw_component_array(self.sample_component)?,
+            )?;
+            let row_idx = chunk.row_index_of(re_sdk_types::RowId::from_tuid(sub_id))?;
+            let start = offsets[row_idx] as usize;
+            let end = offsets[row_idx + 1] as usize;
+            Some(&buffer.as_slice()[start..end])
+        };
+
+        match source {
+            VideoSource::Id { id, sub_id } => lookup(id, sub_id).unwrap_or(&[]),
+            VideoSource::Span(_) => &[],
+        }
+    }
+
+    fn require_video_source(&self, source: VideoSource) {
+        match source {
+            VideoSource::Id { id, sub_id: _ } => {
+                self.store
+                    .use_chunk_or_report_missing(&ChunkId::from_tuid(id));
+            }
+            VideoSource::Span(_) => {}
+        }
+    }
+
+    fn indicate_video_source(&self, source: VideoSource) {
+        match source {
+            VideoSource::Id { id, sub_id: _ } => {
+                self.store.use_chunk_or_indicate(&ChunkId::from_tuid(id));
+            }
+            VideoSource::Span(_) => {}
+        }
+    }
+}
 
 /// Video stream from the store, ready for playback.
 ///

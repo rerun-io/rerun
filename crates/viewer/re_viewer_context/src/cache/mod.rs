@@ -28,7 +28,7 @@ pub use tensor_stats_cache::{TensorStatsAccessor, TensorStatsCache};
 pub use transform_database_store::TransformDatabaseStoreCache;
 pub use video_asset_cache::VideoAssetCache;
 pub use video_stream_cache::{
-    SharablePlayableVideoStream, VideoStreamCache, VideoStreamProcessingError,
+    SharablePlayableVideoStream, VideoStoreSource, VideoStreamCache, VideoStreamProcessingError,
 };
 
 // ----

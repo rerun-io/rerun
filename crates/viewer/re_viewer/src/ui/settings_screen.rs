@@ -250,7 +250,7 @@ fn memory_budget_section_ui(ui: &mut Ui, memory_limit: &mut MemoryLimit) {
 fn prefetch_stage_combo_box_ui(ui: &mut Ui, max_fetch_stage: &mut FetchStage) {
     fn label(stage: FetchStage) -> &'static str {
         match stage {
-            FetchStage::Required => "Required",
+            FetchStage::Required | FetchStage::Indicated => "Required",
             FetchStage::Similar(_) => "Similar",
             FetchStage::Everything => "Everything",
         }
@@ -260,7 +260,7 @@ fn prefetch_stage_combo_box_ui(ui: &mut Ui, max_fetch_stage: &mut FetchStage) {
         .selected_text(label(*max_fetch_stage))
         .show_ui(ui, |ui| {
             for stage in [
-                FetchStage::Required,
+                FetchStage::Indicated,
                 FetchStage::default(),
                 FetchStage::Everything,
             ] {
@@ -311,7 +311,7 @@ fn prefetch_stage_combo_box_ui(ui: &mut Ui, max_fetch_stage: &mut FetchStage) {
 
             ui.label(label);
         }
-        FetchStage::Required | FetchStage::Everything => {}
+        FetchStage::Required | FetchStage::Indicated | FetchStage::Everything => {}
     }
 }
 

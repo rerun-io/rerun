@@ -4,6 +4,7 @@ use std::time::Duration;
 
 use ahash::{HashMap, HashSet};
 use arrow::array::RecordBatch;
+use itertools::chain;
 use re_byte_size::SizeBytes as _;
 use re_chunk::{Chunk, ChunkId, ComponentIdentifier, TimeInt, Timeline, TimelineName};
 use re_chunk_store::{ChunkStore, QueriedChunkIdTracker};
@@ -318,6 +319,13 @@ impl PrioritizedRootChunk {
         }
     }
 
+    fn indicated(root_chunk_id: ChunkId) -> Self {
+        Self {
+            stage: FetchStage::Indicated,
+            root_chunk_id,
+        }
+    }
+
     fn similar(chunk_id: ChunkId, time_cursor_offset: Option<Duration>) -> Self {
         Self {
             stage: FetchStage::Similar(time_cursor_offset),
@@ -569,15 +577,15 @@ impl ChunkPrioritizer {
         root_chunks: &'a HashMap<ChunkId, RootChunkInfo>,
         budget: &mut RemainingByteBudget,
     ) -> ChunkFetcher<'a> {
-        let used_and_missing = store.take_tracked_chunk_ids();
+        let chunk_usage_tracker = store.take_tracked_chunk_ids();
 
         self.frame_visited.clear();
-        self.update_components_of_interest(store, &used_and_missing);
+        self.update_components_of_interest(store, &chunk_usage_tracker);
         self.protected_chunks.roots.clear();
         self.protected_chunks.physical.clear();
-        self.protect_used_and_missing(store, &used_and_missing);
+        self.protect_used_and_missing(store, &chunk_usage_tracker);
 
-        for &physical_chunk_id in &used_and_missing.used_physical {
+        for &physical_chunk_id in &chunk_usage_tracker.used_physical {
             debug_assert!(
                 self.protected_chunks.physical.contains(&physical_chunk_id),
                 "We added it earlier"
@@ -598,7 +606,8 @@ impl ChunkPrioritizer {
             time_cursor,
             store,
             next_chunk: None,
-            fetch_stage: ChunkPriorityStage::Start(used_and_missing),
+            fetch_stage: ChunkPriorityStage::Start,
+            tracker: chunk_usage_tracker,
 
             request_batcher: Some(ChunkRequestBatcher::new(manifest, options)),
         }
@@ -617,6 +626,7 @@ impl ChunkPrioritizer {
         let QueriedChunkIdTracker {
             used_physical,
             missing_virtual,
+            indicated_virtual,
         } = used_and_missing;
 
         for physical_chunk_id in used_physical {
@@ -629,7 +639,7 @@ impl ChunkPrioritizer {
                 }
             }
         }
-        for missing_virtual_chunk_id in missing_virtual {
+        for missing_virtual_chunk_id in chain!(missing_virtual.iter(), indicated_virtual) {
             for root_id in store.find_root_chunks(missing_virtual_chunk_id) {
                 if let Some(components) = self.component_paths_from_root_id.get(&root_id) {
                     self.components_of_interest
@@ -648,6 +658,7 @@ impl ChunkPrioritizer {
         let QueriedChunkIdTracker {
             used_physical,
             missing_virtual,
+            indicated_virtual,
         } = used_and_missing;
 
         for physical_chunk_id in used_physical {
@@ -657,7 +668,7 @@ impl ChunkPrioritizer {
             self.protected_chunks.physical.insert(*physical_chunk_id);
         }
 
-        for chunk_id in missing_virtual {
+        for chunk_id in chain!(missing_virtual.iter(), indicated_virtual) {
             // Do not cancel any downloads of any roots of this missing chunk:
             for root_id in store.find_root_chunks(chunk_id) {
                 self.protected_chunks.roots.insert(root_id);
@@ -678,19 +689,24 @@ impl ChunkPrioritizer {
 #[repr(u32)]
 pub enum FetchStage {
     /// Fetch all required chunks, which includes:
-    /// - Static chunks.
     /// - Missing chunks.
-    /// - High-prio chunks (e.g Transform ones).
+    /// - High-prio chunks before the time cursor (e.g Transform ones).
     Required = 0,
+
+    /// Includes chunks that were indicated as required soon, which includes:
+    /// - Chunks indicated intentionally as indicated in various visualizers like video.
+    /// - Some future high prio chunks.
+    /// - Static chunks.
+    Indicated = 1,
 
     /// Fetches all chunks on the component paths of chunks that were reported
     /// as used or missing within the given time range.
     ///
     /// This is in number of seconds ahead if the timeline were to be played.
-    Similar(Option<Duration>) = 1,
+    Similar(Option<Duration>) = 2,
 
     /// Fetches everything. Starting at the time cursor.
-    Everything = 2,
+    Everything = 3,
 }
 
 impl PartialOrd for FetchStage {
@@ -703,9 +719,9 @@ impl Ord for FetchStage {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         use std::cmp::Ordering;
         match (self, other) {
-            (Self::Required, Self::Required) | (Self::Everything, Self::Everything) => {
-                Ordering::Equal
-            }
+            (Self::Required, Self::Required)
+            | (Self::Indicated, Self::Indicated)
+            | (Self::Everything, Self::Everything) => Ordering::Equal,
 
             (Self::Similar(a), Self::Similar(b)) => match (a, b) {
                 (Some(a), Some(b)) => a.cmp(b),
@@ -716,6 +732,9 @@ impl Ord for FetchStage {
 
             (Self::Required, _) | (_, Self::Everything) => Ordering::Less,
             (_, Self::Required) | (Self::Everything, _) => Ordering::Greater,
+
+            (Self::Indicated, _) => Ordering::Less,
+            (_, Self::Indicated) => Ordering::Greater,
         }
     }
 }
@@ -730,13 +749,13 @@ impl FetchStage {
     pub fn is_required(&self) -> bool {
         match self {
             Self::Required => true,
-            Self::Similar(_) | Self::Everything => false,
+            Self::Indicated | Self::Similar(_) | Self::Everything => false,
         }
     }
 
     pub fn is_everything(&self) -> bool {
         match self {
-            Self::Required | Self::Similar(_) => false,
+            Self::Required | Self::Indicated | Self::Similar(_) => false,
             Self::Everything => true,
         }
     }
@@ -770,16 +789,24 @@ impl TimeRangeStage {
 /// Chunk fetching stages, defined in the order they're done.
 enum ChunkPriorityStage<'a> {
     /// Initial state.
-    Start(QueriedChunkIdTracker),
+    Start,
 
     /// Fetches all missing chunks.
     Missing(std::vec::IntoIter<ChunkId>),
 
+    /// Fetches high prio chunks before the time cursor in reverse order.
+    HighPrioBefore(IterState),
+
+    /// Fetches all chunks indicated as needed soon.
+    Indicated(std::vec::IntoIter<ChunkId>),
+
+    HighPrioAfter {
+        idx: IterState,
+        buffer_time: f64,
+    },
+
     /// Fetches all static chunks.
     Static(usize),
-
-    /// Fetches high prio chunks before the time cursor in reverse order.
-    HighPrio(IterState),
 
     /// Fetches chunks in temporal order within a specific range.
     ///
@@ -817,6 +844,7 @@ pub struct ChunkFetcher<'a> {
 
     next_chunk: Option<PrioritizedRootChunk>,
     fetch_stage: ChunkPriorityStage<'a>,
+    tracker: QueriedChunkIdTracker,
 
     request_batcher: Option<ChunkRequestBatcher<'a>>,
 }
@@ -848,9 +876,9 @@ impl ChunkFetcher<'_> {
 
         loop {
             match &mut self.fetch_stage {
-                ChunkPriorityStage::Start(tracker) => {
+                ChunkPriorityStage::Start => {
                     let mut missing_roots = Vec::new();
-                    for missing_virtual_chunk_id in &tracker.missing_virtual {
+                    for missing_virtual_chunk_id in &self.tracker.missing_virtual {
                         self.store
                             .collect_root_ids(missing_virtual_chunk_id, &mut missing_roots);
                     }
@@ -863,6 +891,41 @@ impl ChunkFetcher<'_> {
                     if let Some(missing) = missing.next() {
                         return Some(PrioritizedRootChunk::required(missing));
                     } else {
+                        self.fetch_stage = ChunkPriorityStage::HighPrioBefore(IterState::Uninited);
+                    }
+                }
+                ChunkPriorityStage::HighPrioBefore(_) => {
+                    if let Some(prioritized) = self.high_prio_chunk_stage() {
+                        return Some(prioritized);
+                    } else {
+                        let mut indicated_roots = Vec::new();
+                        for missing_virtual_chunk_id in &self.tracker.indicated_virtual {
+                            self.store
+                                .collect_root_ids(missing_virtual_chunk_id, &mut indicated_roots);
+                        }
+                        indicated_roots.sort();
+                        indicated_roots.dedup();
+
+                        self.fetch_stage =
+                            ChunkPriorityStage::Indicated(indicated_roots.into_iter());
+                    }
+                }
+
+                ChunkPriorityStage::Indicated(indicated) => {
+                    if let Some(indicated) = indicated.next() {
+                        return Some(PrioritizedRootChunk::indicated(indicated));
+                    } else {
+                        self.fetch_stage = ChunkPriorityStage::HighPrioAfter {
+                            idx: IterState::Uninited,
+                            // Load 5 wall-clock seconds ahead of high prio chunks.
+                            buffer_time: 5.0,
+                        };
+                    }
+                }
+                ChunkPriorityStage::HighPrioAfter { .. } => {
+                    if let Some(prioritized) = self.high_prio_chunk_stage() {
+                        return Some(prioritized);
+                    } else {
                         self.fetch_stage = ChunkPriorityStage::Static(0);
                     }
                 }
@@ -870,45 +933,7 @@ impl ChunkFetcher<'_> {
                     if let Some(c) = self.prioritizer.static_chunk_ids.get(*idx) {
                         *idx += 1;
 
-                        return Some(PrioritizedRootChunk::required(*c));
-                    } else {
-                        self.fetch_stage = ChunkPriorityStage::HighPrio(IterState::Uninited);
-                    }
-                }
-                ChunkPriorityStage::HighPrio(idx) => {
-                    if let Some(time_cursor) = self.time_cursor
-                        && let Some(chunks_on_timeline) = self
-                            .prioritizer
-                            .high_priority_chunks
-                            .temporal_chunks
-                            .get(time_cursor.timeline().name())
-                        && let Some(current_idx) = match idx {
-                            IterState::Uninited => {
-                                let (new_idx, res) = if let Some(idx) = chunks_on_timeline
-                                    .partition_point(|c| c.time_range.min <= time_cursor.time)
-                                    .checked_sub(1)
-                                {
-                                    (IterState::Idx(idx), Some(idx))
-                                } else {
-                                    (IterState::Done, None)
-                                };
-
-                                *idx = new_idx;
-
-                                res
-                            }
-                            IterState::Idx(idx) => Some(*idx),
-                            IterState::Done => None,
-                        }
-                        && let Some(c) = chunks_on_timeline.get(current_idx)
-                    {
-                        *idx = if let Some(idx) = current_idx.checked_sub(1) {
-                            IterState::Idx(idx)
-                        } else {
-                            IterState::Done
-                        };
-
-                        return Some(PrioritizedRootChunk::required(c.chunk_id));
+                        return Some(PrioritizedRootChunk::indicated(*c));
                     } else {
                         self.fetch_stage = ChunkPriorityStage::TimeQuery {
                             stage: TimeRangeStage::AfterCursor,
@@ -917,6 +942,7 @@ impl ChunkFetcher<'_> {
                         };
                     }
                 }
+
                 ChunkPriorityStage::TimeQuery {
                     stage,
                     iter_state,
@@ -961,6 +987,74 @@ impl ChunkFetcher<'_> {
                 ChunkPriorityStage::Done => return None,
             }
         }
+    }
+
+    fn high_prio_chunk_stage(&mut self) -> Option<PrioritizedRootChunk> {
+        let (idx, before, buffer_time) = match &mut self.fetch_stage {
+            ChunkPriorityStage::HighPrioBefore(idx) => (idx, true, 0.0),
+            ChunkPriorityStage::HighPrioAfter {
+                idx,
+                buffer_time: time,
+            } => (idx, false, *time),
+            _ => return None,
+        };
+
+        if let Some(time_cursor) = self.time_cursor
+            && let Some(chunks_on_timeline) = self
+                .prioritizer
+                .high_priority_chunks
+                .temporal_chunks
+                .get(time_cursor.timeline().name())
+            && let Some(current_idx) = match idx {
+                IterState::Uninited => {
+                    let partition_point = chunks_on_timeline
+                        .partition_point(|c| c.time_range.min <= time_cursor.time);
+                    let start_idx = if before {
+                        partition_point.checked_sub(1)
+                    } else {
+                        Some(partition_point)
+                    };
+                    let (new_idx, res) = if let Some(idx) = start_idx {
+                        (IterState::Idx(idx), Some(idx))
+                    } else {
+                        (IterState::Done, None)
+                    };
+
+                    *idx = new_idx;
+
+                    res
+                }
+                IterState::Idx(idx) => Some(*idx),
+                IterState::Done => None,
+            }
+            && let Some(c) = chunks_on_timeline.get(current_idx)
+            && if !before {
+                // After load `buffer_time` wall-clock seconds into the future
+                (c.time_range.min - time_cursor.time_cursor.time).as_f64()
+                    / time_cursor.speed_if_unpaused
+                    < buffer_time
+            } else {
+                true
+            }
+        {
+            *idx = if let Some(idx) = if before {
+                current_idx.checked_sub(1)
+            } else {
+                current_idx.checked_add(1)
+            } {
+                IterState::Idx(idx)
+            } else {
+                IterState::Done
+            };
+
+            return Some(if before {
+                PrioritizedRootChunk::required(c.chunk_id)
+            } else {
+                PrioritizedRootChunk::indicated(c.chunk_id)
+            });
+        }
+
+        None
     }
 
     fn next_in_time_query(
@@ -1472,10 +1566,11 @@ mod tests {
         }
     }
 
-    /// The `Required` pass fetches only the static chunk. Temporal chunks stay untouched
-    /// until a `Everything` pass runs.
+    /// The static chunk is fetched in the `Indicated` pass rather than the `Required` pass,
+    /// so it never blocks playback. The remaining temporal chunks stay untouched until an
+    /// `Everything` pass runs.
     #[test]
-    fn required_pass_only_fetches_static_then_everything_fetches_the_rest() {
+    fn indicated_pass_fetches_static_then_everything_fetches_the_rest() {
         let tl = Timeline::new_sequence("frame");
         let static_chunk = build_static_chunk("/static_entity");
         let temporal_chunks: Vec<Arc<Chunk>> = (0..3)
@@ -1494,19 +1589,29 @@ mod tests {
             &mut budget,
             FetchStage::Required,
         );
+        assert!(
+            required.requested.is_empty(),
+            "Required pass should not load the static chunk"
+        );
 
-        assert_eq!(
-            required.requested,
-            vec![static_chunk.id()],
-            "Required pass should only load the static chunk"
+        let indicated = run_fetch(
+            &mut manifest_index,
+            &store,
+            &mut budget,
+            FetchStage::Indicated,
         );
         assert_eq!(
-            required.result.new_in_transit_chunks,
+            indicated.requested,
+            vec![static_chunk.id()],
+            "Indicated pass should load the static chunk"
+        );
+        assert_eq!(
+            indicated.result.new_in_transit_chunks,
             vec![static_chunk.id()],
             "only the static chunk should transition to InTransit"
         );
 
-        manifest_index.handle_fetch_result(required.result);
+        manifest_index.handle_fetch_result(indicated.result);
 
         let everything = run_fetch(
             &mut manifest_index,

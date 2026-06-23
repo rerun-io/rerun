@@ -370,10 +370,9 @@ impl ChunkStore {
         self.leaky_compactions.shrink_to_fit();
         self.split_on_ingest.shrink_to_fit();
         self.dangling_splits.shrink_to_fit();
-        let mut queried_chunk_id_tracker = self.queried_chunk_id_tracker.write();
 
-        queried_chunk_id_tracker.used_physical.shrink_to_fit();
-        queried_chunk_id_tracker.missing_virtual.shrink_to_fit();
+        let mut queried_chunk_id_tracker = self.queried_chunk_id_tracker.write();
+        queried_chunk_id_tracker.shrink_to_fit();
 
         dels
     }

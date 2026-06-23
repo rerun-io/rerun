@@ -480,6 +480,23 @@ pub struct QueriedChunkIdTracker {
     // chunks using their root-level IDs, so downstream consumers don't have to redundantly build
     // their own tracking. And document it so.
     pub missing_virtual: HashSet<ChunkId>,
+
+    /// Chunks that aren't necessarily missing, but are expected to be needed soon.
+    pub indicated_virtual: HashSet<ChunkId>,
+}
+
+impl QueriedChunkIdTracker {
+    pub fn shrink_to_fit(&mut self) {
+        let Self {
+            used_physical,
+            missing_virtual,
+            indicated_virtual,
+        } = self;
+
+        used_physical.shrink_to_fit();
+        missing_virtual.shrink_to_fit();
+        indicated_virtual.shrink_to_fit();
+    }
 }
 
 /// A complete chunk store: covers all timelines, all entities, everything.
@@ -924,6 +941,24 @@ impl ChunkStore {
         chunk
     }
 
+    /// Get a *physical* chunk based on its ID and track the chunk as either
+    /// used or indicated, to signal that it should be kept or fetched.
+    ///
+    /// If the given chunk isn't physical `None` is returned and the ID is reported
+    /// missing.
+    #[track_caller]
+    pub fn use_chunk_or_indicate(&self, id: &ChunkId) -> Option<&Arc<Chunk>> {
+        let chunk = self.physical_chunk(id);
+
+        if chunk.is_some() {
+            self.report_used_physical_chunk_id(*id);
+        } else {
+            self.indicate_virtual_chunk_id(*id);
+        }
+
+        chunk
+    }
+
     /// Get the number of *physical* chunks in the store.
     #[inline]
     pub fn num_physical_chunks(&self) -> usize {
@@ -1018,6 +1053,20 @@ impl ChunkStore {
         self.queried_chunk_id_tracker
             .write()
             .missing_virtual
+            .insert(chunk_id);
+    }
+
+    /// Signal that a chunk should be fetched when possible.
+    #[track_caller]
+    pub fn indicate_virtual_chunk_id(&self, chunk_id: ChunkId) {
+        debug_assert!(
+            self.chunks_lineage.contains_key(&chunk_id),
+            "A chunk was reported missing, with no known lineage: {chunk_id}"
+        );
+
+        self.queried_chunk_id_tracker
+            .write()
+            .indicated_virtual
             .insert(chunk_id);
     }
 

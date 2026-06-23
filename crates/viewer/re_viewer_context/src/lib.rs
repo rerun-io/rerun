@@ -74,7 +74,8 @@ pub use self::blueprint_id::{
 pub use self::cache::{
     Cache, CacheEntryAccess, ImageDecodeCache, ImageHistogramCache, ImageStatsCache, Memoizers,
     Rgb8Histogram, SharablePlayableVideoStream, StoreCache, TensorStatsAccessor, TensorStatsCache,
-    TransformDatabaseStoreCache, VideoAssetCache, VideoStreamCache, VideoStreamProcessingError,
+    TransformDatabaseStoreCache, VideoAssetCache, VideoStoreSource, VideoStreamCache,
+    VideoStreamProcessingError,
 };
 pub use self::collapsed_id::{CollapseItem, CollapseScope, CollapsedId};
 pub use self::command_sender::{

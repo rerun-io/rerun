@@ -17,9 +17,10 @@ use re_ui::ContextExt as _;
 use re_video::player::{VideoPlaybackIssueSeverity, VideoPlayerError};
 use re_view::DataResultQuery as _;
 use re_viewer_context::{
-    SystemCommandSender as _, VideoStreamCache, VideoStreamProcessingError, ViewClass as _,
-    ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError, ViewSystemIdentifier,
-    VisualizerExecutionOutput, typed_fallback_for, video_stream_time_from_query,
+    SystemCommandSender as _, VideoStoreSource, VideoStreamCache, VideoStreamProcessingError,
+    ViewClass as _, ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError,
+    ViewSystemIdentifier, VisualizerExecutionOutput, typed_fallback_for,
+    video_stream_time_from_query,
 };
 pub use video_frame_reference::VideoFrameReferenceVisualizer;
 pub use video_stream::VideoStreamVisualizer;
@@ -319,37 +320,14 @@ fn execute_video_stream_like(
             }
 
             let storage_engine = ctx.viewer_ctx.store_context.recording.storage_engine();
-            // Both real fetches and "mark in use" calls go through here: the
-            // `use_chunk_or_report_missing` call marks the chunk in use either
-            // way; if `sub_id` is `None` we stop there.
-            let lookup = |id: re_log_types::external::re_tuid::Tuid,
-                          sub_id: Option<re_log_types::external::re_tuid::Tuid>|
-             -> Option<&[u8]> {
-                let Some(chunk) = storage_engine
-                    .store()
-                    .use_chunk_or_report_missing(&re_sdk_types::ChunkId::from_tuid(id))
-                else {
-                    output.set_missing_chunks(); // view-wide loading indicator
-                    return None;
-                };
-                let sub_id = sub_id?;
-                let (offsets, buffer) = re_arrow_util::blob_arrays_offsets_and_buffer(
-                    chunk.raw_component_array(ctx.sample_component)?,
-                )?;
-                let row_idx = chunk.row_index_of(re_sdk_types::RowId::from_tuid(sub_id))?;
-                let start = offsets[row_idx] as usize;
-                let end = offsets[row_idx + 1] as usize;
-                Some(&buffer.as_slice()[start..end])
-            };
 
             video.video_renderer.frame_at(
                 ctx.viewer_ctx.render_ctx(),
                 video_stream_id(entity_path, ctx.sample_component, AT_TIME_CURSOR_SALT),
                 video_stream_time_from_query(&query_context.query),
-                &|source| match source {
-                    re_video::VideoSource::Id { id, sub_id } => lookup(id, sub_id).unwrap_or(&[]),
-                    // No `Span` sources for video streams.
-                    re_video::VideoSource::Span(_) => &[],
+                &VideoStoreSource {
+                    store: storage_engine.store(),
+                    sample_component: ctx.sample_component,
                 },
             )
         };

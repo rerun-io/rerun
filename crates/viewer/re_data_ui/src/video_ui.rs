@@ -11,10 +11,11 @@ use re_sdk_types::{Archetype as _, archetypes};
 use re_types_core::{ComponentDescriptor, ComponentIdentifier, RowId};
 use re_ui::UiExt as _;
 use re_ui::list_item::{self, PropertyContent};
+use re_video::player::{GetVideoSource, VideoSliceSource};
 use re_video::{FrameInfo, VideoDataDescription};
 use re_viewer_context::{
     SharablePlayableVideoStream, StoreViewContext, SystemCommandSender as _, UiLayout,
-    VideoStreamCache, VideoStreamProcessingError, video_stream_time_from_query,
+    VideoStoreSource, VideoStreamCache, VideoStreamProcessingError, video_stream_time_from_query,
 };
 
 use crate::image_ui::texture_preview_size;
@@ -353,25 +354,20 @@ fn timestamp_ui(
     }
 }
 
-fn decoded_frame_ui<'a>(
+fn decoded_frame_ui(
     ctx: &re_viewer_context::AppContext<'_>,
     ui: &mut egui::Ui,
     ui_layout: UiLayout,
     video: &re_renderer::video::Video,
     video_time: re_video::Time,
     stream_kind: StreamKind,
-    get_video_chunk: &dyn Fn(re_video::VideoSource) -> &'a [u8],
+    video_source: &dyn GetVideoSource,
 ) {
     let player_stream_id = re_video::player::VideoPlayerStreamId(
         ui.id().with(format!("{stream_kind}_player")).value(),
     );
 
-    let frame_output = video.frame_at(
-        ctx.render_ctx,
-        player_stream_id,
-        video_time,
-        get_video_chunk,
-    );
+    let frame_output = video.frame_at(ctx.render_ctx, player_stream_id, video_time, video_source);
 
     if let Some(VideoFrameTexture {
         texture,
@@ -878,24 +874,6 @@ impl VideoUi {
                 video_stream_result_ui(ui, ui_layout, video_stream_result, *stream_kind);
 
                 let storage_engine = ctx.db.storage_engine();
-                // Both real fetches and "mark in use" calls go through here:
-                // the `use_chunk_or_report_missing` call marks the chunk in use
-                // either way; if `sub_id` is `None` we stop there.
-                let lookup = |id: re_log_types::external::re_tuid::Tuid,
-                              sub_id: Option<re_log_types::external::re_tuid::Tuid>|
-                 -> Option<&[u8]> {
-                    let chunk = storage_engine
-                        .store()
-                        .use_chunk_or_report_missing(&re_sdk_types::ChunkId::from_tuid(id))?;
-                    let sub_id = sub_id?;
-                    let (offsets, buffer) = re_arrow_util::blob_arrays_offsets_and_buffer(
-                        chunk.raw_component_array(*sample_component)?,
-                    )?;
-                    let row_idx = chunk.row_index_of(re_sdk_types::RowId::from_tuid(sub_id))?;
-                    let start = offsets[row_idx] as usize;
-                    let end = offsets[row_idx + 1] as usize;
-                    Some(&buffer.as_slice()[start..end])
-                };
 
                 if let Ok(video) = video_stream_result {
                     let video = video.read();
@@ -907,11 +885,9 @@ impl VideoUi {
                         &video.video_renderer,
                         time,
                         *stream_kind,
-                        &|source| match source {
-                            re_video::VideoSource::Id { id, sub_id } => {
-                                lookup(id, sub_id).unwrap_or(&[])
-                            }
-                            re_video::VideoSource::Span(_) => &[],
+                        &VideoStoreSource {
+                            store: storage_engine.store(),
+                            sample_component: *sample_component,
                         },
                     );
                 }
@@ -948,10 +924,7 @@ impl VideoUi {
                         video,
                         video_time,
                         StreamKind::Video,
-                        &|source| match source {
-                            re_video::VideoSource::Span(span) => &blob[span.range_usize()],
-                            re_video::VideoSource::Id { .. } => &[],
-                        },
+                        &VideoSliceSource(blob),
                     );
                 }
             }

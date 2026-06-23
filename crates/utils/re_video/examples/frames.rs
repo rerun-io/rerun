@@ -10,6 +10,7 @@ use std::time::{Duration, Instant};
 
 use indicatif::ProgressBar;
 use re_mutex::Mutex;
+use re_video::player::VideoSliceSource;
 
 fn main() {
     re_log::setup_logging();
@@ -84,13 +85,7 @@ fn main() {
         };
 
         let chunk = sample
-            .get(
-                &|source| match source {
-                    re_video::VideoSource::Span(span) => &video_blob[span.range_usize()],
-                    re_video::VideoSource::Id { .. } => &[],
-                },
-                sample_idx,
-            )
+            .get(&VideoSliceSource(&video_blob), sample_idx)
             .unwrap();
         decoder.submit_chunk(chunk).expect("Failed to submit chunk");
     }
