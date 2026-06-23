@@ -29,14 +29,15 @@ pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
         // directive line.
         let body = resolve_snippets(&raw_body, &snippets_root);
 
-        // Migration guides are special: their headings are bare renamed-API
-        // names ("log_image", "serve_grpc") that collide with real queries,
-        // and the deboost below can't stop a tight title match (weight is
-        // ranked after the matching rules). So index each migration guide as a
-        // single page-level document — findable by version or name, but not
-        // competing section-by-section — and deboost it below examples.
+        // Migration guides are special: their bodies mention every renamed API
+        // and command ("log_image", "serve_grpc", "cargo install … protoc"),
+        // which made them outrank the docs people actually want — a migration
+        // note beat "Install Rerun" for "how to install". The deboost can't
+        // stop it (weight is ranked after the matching rules). So index each
+        // migration guide by TITLE ONLY: still findable by version or name
+        // ("migrating from 0.25 to 0.26"), but it no longer competes on the
+        // common terms in its body.
         let is_migration = path.starts_with("reference/migration");
-        let weight = if is_migration { 6 } else { 10 };
 
         // Other pages are split into one document per `##` section and per
         // substantial `###` subsection (see `page_documents`), so a match deep
@@ -47,7 +48,7 @@ pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
             vec![DocPart {
                 title: frontmatter.title.clone(),
                 anchor: None,
-                content: body.clone(),
+                content: String::new(),
             }]
         } else {
             page_documents(&frontmatter.title, &body)
@@ -60,6 +61,19 @@ pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
                     format!("{page_url}#{anchor}"),
                     Some(frontmatter.title.clone()),
                 ),
+            };
+
+            // Ranking weight (used by the `weight:desc` rule): a page's own
+            // intro represents the page (10) and should beat another page's
+            // niche section (9) for a bare term, while sections still beat
+            // examples (8) and API symbols (3). Migration titles sit below
+            // examples (6).
+            let weight = if is_migration {
+                6
+            } else if part.anchor.is_none() {
+                10
+            } else {
+                9
             };
 
             ctx.push_weighted(
