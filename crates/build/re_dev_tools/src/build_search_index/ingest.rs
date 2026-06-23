@@ -177,10 +177,16 @@ impl DocumentKind {
     /// Documents are ranked by this weight (descending) after word/typo/proximity/attribute
     /// matching, so that whole-page guides beat the thousands of per-symbol API documents
     /// for generic queries, while exact symbol matches still win on `exactness`.
+    ///
+    /// Examples tie docs sections (9, just under whole-page docs at 10): for a query
+    /// that names an example or integration (`urdf`, `ros`, `lerobot`), the example —
+    /// whose title is an exact match — then wins on `exactness`, instead of losing to a
+    /// niche docs subsection. Concept queries (`transform`, `video`) have no competing
+    /// example, so they stay docs-first.
     fn weight(self) -> u64 {
         match self {
             Self::Docs => 10,
-            Self::Examples => 8,
+            Self::Examples => 9,
             Self::Python | Self::Cpp => 3,
         }
     }
