@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use re_chunk_store::ChunkTrackingMode;
 use re_log_types::EntityPath;
 use re_renderer::external::re_video::VideoLoadError;
 use re_renderer::video::Video;
@@ -270,6 +271,7 @@ fn latest_at_query_video_from_datastore(
     let query = ctx.current_query();
 
     let results = ctx.recording_engine().cache().latest_at(
+        ChunkTrackingMode::Report,
         &query,
         entity_path,
         AssetVideo::all_component_identifiers(),

@@ -1,3 +1,4 @@
+use re_chunk_store::ChunkTrackingMode;
 use re_log_types::{ComponentPath, Instance};
 use re_ui::UiExt as _;
 use re_viewer_context::{StoreViewContext, UiLayout};
@@ -16,7 +17,12 @@ impl DataUi for ComponentPath {
         let engine = ctx.db.storage_engine();
         let query = ctx.query();
 
-        let results = engine.cache().latest_all(&query, &entity_path, [component]);
+        let results = engine.cache().latest_all(
+            ChunkTrackingMode::ReportTransient,
+            &query,
+            &entity_path,
+            [component],
+        );
 
         if let Some(hits) = results.components.get(&component) {
             LatestAllInstanceResult {

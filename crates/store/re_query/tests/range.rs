@@ -198,7 +198,12 @@ fn simple_range_with_differently_tagged_components() -> anyhow::Result<()> {
 
     // Check that we can also reach the other re-tagged component.
     let component = points3_2_serialized.descriptor.component;
-    let cached = caches.range(&query, &entity_path, [component]);
+    let cached = caches.range(
+        re_chunk_store::ChunkTrackingMode::PanicOnMissing,
+        &query,
+        &entity_path,
+        [component],
+    );
     let all_points_chunks = cached.get_required(component).unwrap();
     let all_points_indexed = all_points_chunks
         .iter()
@@ -1065,7 +1070,12 @@ fn concurrent_multitenant_edge_case() {
     eprintln!("{store}");
 
     {
-        let cached = caches.range(&query, &entity_path, MyPoints::all_component_identifiers());
+        let cached = caches.range(
+            re_chunk_store::ChunkTrackingMode::PanicOnMissing,
+            &query,
+            &entity_path,
+            MyPoints::all_component_identifiers(),
+        );
 
         let _cached_all_points = cached
             .get_required(MyPoints::descriptor_points().component)
@@ -1141,7 +1151,12 @@ fn concurrent_multitenant_edge_case2() {
 
     let query1 = RangeQuery::new(*timepoint1[0].0.name(), AbsoluteTimeRange::new(123, 223));
     {
-        let cached = caches.range(&query1, &entity_path, MyPoints::all_component_identifiers());
+        let cached = caches.range(
+            re_chunk_store::ChunkTrackingMode::PanicOnMissing,
+            &query1,
+            &entity_path,
+            MyPoints::all_component_identifiers(),
+        );
 
         let _cached_all_points = cached
             .get_required(MyPoints::descriptor_points().component)
@@ -1152,7 +1167,12 @@ fn concurrent_multitenant_edge_case2() {
 
     let query2 = RangeQuery::new(*timepoint1[0].0.name(), AbsoluteTimeRange::new(423, 523));
     {
-        let cached = caches.range(&query2, &entity_path, MyPoints::all_component_identifiers());
+        let cached = caches.range(
+            re_chunk_store::ChunkTrackingMode::PanicOnMissing,
+            &query2,
+            &entity_path,
+            MyPoints::all_component_identifiers(),
+        );
 
         let _cached_all_points = cached
             .get_required(MyPoints::descriptor_points().component)
@@ -1296,7 +1316,12 @@ fn query_and_compare(
     let component_colors = MyPoints::descriptor_colors().component;
 
     for _ in 0..3 {
-        let cached = caches.range(query, entity_path, [component_points, component_colors]);
+        let cached = caches.range(
+            re_chunk_store::ChunkTrackingMode::PanicOnMissing,
+            query,
+            entity_path,
+            [component_points, component_colors],
+        );
 
         let all_points_chunks = cached.get_required(component_points).unwrap();
         let all_points_indexed = all_points_chunks

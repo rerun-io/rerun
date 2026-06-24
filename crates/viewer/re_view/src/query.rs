@@ -291,6 +291,7 @@ pub fn range_with_blueprint_resolved_data_polymorphic<'a>(
 
         let engine = ctx.recording_engine();
         let mut results = engine.cache().range(
+            re_chunk_store::ChunkTrackingMode::Report,
             range_query,
             &data_result.entity_path,
             components.iter().copied(),
@@ -494,6 +495,7 @@ pub fn latest_at_with_blueprint_resolved_data_polymorphic<'a>(
 
     let engine = ctx.viewer_ctx.recording_engine();
     let mut store_results = engine.cache().latest_at(
+        re_chunk_store::ChunkTrackingMode::Report,
         latest_at_query,
         &data_result.entity_path,
         components.iter().copied(),
@@ -669,10 +671,12 @@ fn query_overrides_at_path(
 
     for component in components {
         // TODO(andreas): Batch these queries?
-        let component_override_result =
-            blueprint_engine
-                .cache()
-                .latest_at(ctx.blueprint_query, blueprint_path, [component]);
+        let component_override_result = blueprint_engine.cache().latest_at(
+            re_chunk_store::ChunkTrackingMode::Report,
+            ctx.blueprint_query,
+            blueprint_path,
+            [component],
+        );
 
         // If we successfully find a non-empty override, add it to our results.
         if let Some(value) = component_override_result.get(component) {

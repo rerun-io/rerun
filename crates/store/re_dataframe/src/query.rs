@@ -20,8 +20,8 @@ use re_chunk::{
     UnitChunkShared,
 };
 use re_chunk_store::{
-    ChunkStore, ColumnDescriptor, ComponentColumnDescriptor, Index, IndexColumnDescriptor,
-    IndexValue, QueryExpression, SparseFillStrategy,
+    ChunkStore, ChunkTrackingMode, ColumnDescriptor, ComponentColumnDescriptor, Index,
+    IndexColumnDescriptor, IndexValue, QueryExpression, SparseFillStrategy,
 };
 use re_log::{debug_assert, debug_assert_eq, debug_panic};
 use re_log_types::AbsoluteTimeRange;
@@ -727,8 +727,12 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                         let query =
                             re_chunk::LatestAtQuery::new(TimelineName::new(""), TimeInt::STATIC);
 
-                        let results =
-                            cache.latest_at(&query, &descr.entity_path, [descr.component]);
+                        let results = cache.latest_at(
+                            ChunkTrackingMode::Report,
+                            &query,
+                            &descr.entity_path,
+                            [descr.component],
+                        );
 
                         results.components.into_values().next()
                     }
@@ -985,7 +989,12 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         //
         // TODO(cmc): Going through the cache is very useful in a Viewer context, but
         // not so much in an SDK context. Make it configurable.
-        let results = cache.range(range_query, entity_path, components);
+        let results = cache.range(
+            ChunkTrackingMode::Report,
+            range_query,
+            entity_path,
+            components,
+        );
 
         debug_assert!(
             results.components.len() <= 1,
@@ -1543,8 +1552,12 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                     let query =
                         re_chunk::LatestAtQuery::new(state.filtered_index, *cur_index_value);
 
-                    let results =
-                        cache.latest_at(&query, &descr.entity_path.clone(), [descr.component]);
+                    let results = cache.latest_at(
+                        ChunkTrackingMode::Report,
+                        &query,
+                        &descr.entity_path.clone(),
+                        [descr.component],
+                    );
 
                     *streaming_state = results
                         .components

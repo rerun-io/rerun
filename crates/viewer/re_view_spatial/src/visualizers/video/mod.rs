@@ -328,6 +328,7 @@ fn execute_video_stream_like(
                 &VideoStoreSource {
                     store: storage_engine.store(),
                     sample_component: ctx.sample_component,
+                    indicate: true,
                 },
             )
         };

@@ -9,7 +9,9 @@ use egui::NumExt as _;
 use parking_lot::RwLock;
 use re_byte_size::SizeBytes as _;
 use re_chunk::{ChunkId, EntityPath, Span, Timeline, TimelineName};
-use re_chunk_store::{ChunkDirectLineageReport, ChunkStoreDiff, ChunkStoreEvent};
+use re_chunk_store::{
+    ChunkDirectLineageReport, ChunkStoreDiff, ChunkStoreEvent, ChunkTrackingMode,
+};
 use re_entity_db::EntityDb;
 use re_log::{debug_assert, debug_panic};
 use re_log_types::{EntityPathHash, TimeType};
@@ -26,6 +28,9 @@ mod test_player;
 pub struct VideoStoreSource<'a> {
     pub store: &'a re_chunk_store::ChunkStore,
     pub sample_component: re_chunk::ComponentIdentifier,
+
+    /// Should the used chunks be indicated as more potentially being downloaded?
+    pub indicate: bool,
 }
 
 impl GetVideoSource for VideoStoreSource<'_> {
@@ -33,9 +38,13 @@ impl GetVideoSource for VideoStoreSource<'_> {
         let lookup = |id: re_log_types::external::re_tuid::Tuid,
                       sub_id: Option<re_log_types::external::re_tuid::Tuid>|
          -> Option<&[u8]> {
-            let chunk = self
-                .store
-                .use_chunk_or_indicate(&re_sdk_types::ChunkId::from_tuid(id))?;
+            let chunk = if self.indicate {
+                self.store
+                    .use_chunk_or_report_missing(&ChunkId::from_tuid(id))
+            } else {
+                self.store
+                    .use_transient_chunk_or_report_missing(&ChunkId::from_tuid(id))
+            }?;
             let sub_id = sub_id?;
             let (offsets, buffer) = re_arrow_util::blob_arrays_offsets_and_buffer(
                 chunk.raw_component_array(self.sample_component)?,
@@ -55,8 +64,13 @@ impl GetVideoSource for VideoStoreSource<'_> {
     fn require_video_source(&self, source: VideoSource) {
         match source {
             VideoSource::Id { id, sub_id: _ } => {
-                self.store
-                    .use_chunk_or_report_missing(&ChunkId::from_tuid(id));
+                if self.indicate {
+                    self.store
+                        .use_chunk_or_report_missing(&ChunkId::from_tuid(id));
+                } else {
+                    self.store
+                        .use_transient_chunk_or_report_missing(&ChunkId::from_tuid(id));
+                }
             }
             VideoSource::Span(_) => {}
         }
@@ -65,7 +79,12 @@ impl GetVideoSource for VideoStoreSource<'_> {
     fn indicate_video_source(&self, source: VideoSource) {
         match source {
             VideoSource::Id { id, sub_id: _ } => {
-                self.store.use_chunk_or_indicate(&ChunkId::from_tuid(id));
+                if self.indicate {
+                    self.store.use_chunk_or_indicate(&ChunkId::from_tuid(id));
+                } else {
+                    self.store
+                        .use_transient_chunk_or_report_missing(&ChunkId::from_tuid(id));
+                }
             }
             VideoSource::Span(_) => {}
         }
@@ -161,11 +180,13 @@ impl VideoStreamCache {
         entity_path: &EntityPath,
         timeline: TimelineName,
         decode_settings: DecodeSettings,
+        report_mode: ChunkTrackingMode,
     ) -> Result<SharablePlayableVideoStream, VideoStreamProcessingError> {
         let sample_component = VideoStream::descriptor_sample().component;
         let codec_component = VideoStream::descriptor_codec().component;
 
         let query_result = store.storage_engine().cache().latest_at(
+            report_mode,
             // Get the last logged codec. Should be unchanging so if correctly
             // logged it doesn't matter which one we get.
             &re_chunk::LatestAtQuery::new(timeline, re_chunk::TimeInt::MAX),
@@ -891,6 +912,8 @@ fn load_video_data_from_chunks(
     let entire_timeline_query =
         re_chunk::RangeQuery::new(timeline, re_log_types::AbsoluteTimeRange::EVERYTHING);
     let query_results = store.storage_engine().cache().range(
+        // Ignore, since the video player will handle requesting sample chunks.
+        ChunkTrackingMode::Ignore,
         &entire_timeline_query,
         entity_path,
         [sample_component],
@@ -2253,6 +2276,7 @@ mod tests {
                 &"vid".into(),
                 *timeline.name(),
                 DecodeSettings::default(),
+                ChunkTrackingMode::Report,
             )
             .unwrap();
         let video_stream = video_stream_lock.read();
@@ -2288,6 +2312,7 @@ mod tests {
                 &"vid".into(),
                 *timeline.name(),
                 DecodeSettings::default(),
+                ChunkTrackingMode::Report,
             )
             .unwrap();
         let video_stream = video_stream_lock.read();
@@ -2331,6 +2356,7 @@ mod tests {
                     &"vid".into(),
                     *timeline.name(),
                     DecodeSettings::default(),
+                    ChunkTrackingMode::Report,
                 )
                 .unwrap();
             validate_stream_from_test_data(&video_stream.read(), 1);
@@ -2355,6 +2381,7 @@ mod tests {
                         &"vid".into(),
                         *timeline.name(),
                         DecodeSettings::default(),
+                        ChunkTrackingMode::Report,
                     )
                     .unwrap();
                 validate_stream_from_test_data(&video_stream.read(), t as usize + 1);
@@ -2391,6 +2418,7 @@ mod tests {
                 &"vid".into(),
                 *timeline.name(),
                 DecodeSettings::default(),
+                ChunkTrackingMode::Report,
             )
             .unwrap();
 
@@ -2418,6 +2446,7 @@ mod tests {
                 &"vid".into(),
                 *timeline.name(),
                 DecodeSettings::default(),
+                ChunkTrackingMode::Report,
             )
             .unwrap();
         let video_stream = video_stream_lock.read();

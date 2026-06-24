@@ -1,7 +1,7 @@
 use egui::RichText;
 use itertools::Itertools as _;
 use re_capabilities::MainThreadToken;
-use re_chunk_store::UnitChunkShared;
+use re_chunk_store::{ChunkTrackingMode, UnitChunkShared};
 use re_entity_db::InstancePath;
 use re_format::format_plural_s;
 use re_log_types::ComponentPath;
@@ -64,6 +64,7 @@ impl DataUi for InstancePath {
         );
 
         let query_results = ctx.db.storage_engine().cache().latest_all(
+            ChunkTrackingMode::ReportTransient,
             &ctx.query(),
             entity_path,
             unordered_components.iter().copied(),

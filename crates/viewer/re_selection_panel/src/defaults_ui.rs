@@ -244,7 +244,12 @@ fn active_defaults(
         .filter_map(|component| {
             let data = engine
                 .cache()
-                .latest_at(blueprint_query, &view.defaults_path, [component])
+                .latest_at(
+                    re_chunk_store::ChunkTrackingMode::Report,
+                    blueprint_query,
+                    &view.defaults_path,
+                    [component],
+                )
                 .component_batch_raw(component)?;
             (!data.is_empty()).then_some((component, data))
         })

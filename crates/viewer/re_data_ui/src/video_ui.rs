@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use egui::NumExt as _;
 use egui_extras::Column;
+use re_chunk_store::ChunkTrackingMode;
 use re_format::time::format_relative_timestamp_secs;
 use re_renderer::external::re_video::VideoLoadError;
 use re_renderer::resource_managers::SourceImageDataFormat;
@@ -788,6 +789,7 @@ impl VideoUi {
                     entity_path,
                     ctx.timeline_name(),
                     ctx.app_ctx.app_options.video_decoder_settings(),
+                    ChunkTrackingMode::ReportTransient,
                 )
             });
 
@@ -796,6 +798,7 @@ impl VideoUi {
             let res = ctx.memoizer(|c: &mut VideoStreamCache| {
                 let codec_component = archetypes::EncodedImage::descriptor_media_type().component;
                 let query_result = ctx.db.storage_engine().cache().latest_at(
+                    ChunkTrackingMode::ReportTransient,
                     // Get the last logged codec. Should be unchanging so if correctly
                     // logged it doesn't matter which one we get.
                     &re_chunk_store::LatestAtQuery::new(
@@ -831,6 +834,7 @@ impl VideoUi {
                 let codec_component =
                     archetypes::EncodedDepthImage::descriptor_media_type().component;
                 let query_result = ctx.db.storage_engine().cache().latest_at(
+                    ChunkTrackingMode::ReportTransient,
                     &re_chunk_store::LatestAtQuery::new(
                         ctx.timeline_name(),
                         re_log_types::TimeInt::MAX,
@@ -888,6 +892,7 @@ impl VideoUi {
                         &VideoStoreSource {
                             store: storage_engine.store(),
                             sample_component: *sample_component,
+                            indicate: false,
                         },
                     );
                 }

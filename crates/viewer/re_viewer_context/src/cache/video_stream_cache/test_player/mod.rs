@@ -694,6 +694,7 @@ impl TestVideoPlayer {
         let video_source = super::VideoStoreSource {
             store: engine.store(),
             sample_component,
+            indicate: true,
         };
         self.play_with_buffer(range, time_step, &video_source)
     }
@@ -803,6 +804,7 @@ pub(super) fn playable_stream(
                 hw_acceleration: Default::default(),
                 ffmpeg_path: Some(std::path::PathBuf::from("/not/used")),
             },
+            re_chunk_store::ChunkTrackingMode::Report,
         )
         .unwrap()
 }

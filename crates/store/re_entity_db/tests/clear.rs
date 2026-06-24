@@ -22,10 +22,12 @@ fn query_latest_component<C: re_types_core::Component>(
 ) -> Option<(TimeInt, RowId, C)> {
     re_tracing::profile_function!();
 
-    let results = db
-        .storage_engine()
-        .cache()
-        .latest_at(query, entity_path, [component]);
+    let results = db.storage_engine().cache().latest_at(
+        re_chunk_store::ChunkTrackingMode::Report,
+        query,
+        entity_path,
+        [component],
+    );
 
     let (data_time, row_id) = results.max_index();
     let data = results.component_mono::<C>(component)?;
@@ -41,6 +43,7 @@ fn query_latest_component_clear(
     re_tracing::profile_function!();
 
     let results = db.storage_engine().cache().latest_at(
+        re_chunk_store::ChunkTrackingMode::Report,
         query,
         entity_path,
         [Clear::descriptor_is_recursive().component],

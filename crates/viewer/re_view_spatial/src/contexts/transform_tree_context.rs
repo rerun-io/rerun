@@ -594,6 +594,7 @@ fn lookup_image_plane_distance(
                     .recording_engine()
                     .cache()
                     .latest_at(
+                        re_chunk_store::ChunkTrackingMode::Report,
                         latest_at_query,
                         &data_result.entity_path,
                         [plane_dist_component],

@@ -141,6 +141,7 @@ impl ViewBlueprint {
         re_tracing::profile_function!();
 
         let results = blueprint_db.storage_engine().cache().latest_at(
+            re_chunk_store::ChunkTrackingMode::Report,
             query,
             &id.as_entity_path(),
             blueprint_archetypes::ViewBlueprint::all_component_identifiers(),
@@ -275,7 +276,7 @@ impl ViewBlueprint {
                             .filter_map(|component| {
                                 let array = blueprint_engine
                                     .cache()
-                                    .latest_at(query, path, [component])
+                                    .latest_at(re_chunk_store::ChunkTrackingMode::Report, query, path, [component])
                                     .component_batch_raw(component)?;
                                 let descriptor = blueprint_engine.schema().entity_component_descriptor(path, component)?;
                                 Some((descriptor, array))

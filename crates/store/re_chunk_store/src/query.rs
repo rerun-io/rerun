@@ -743,7 +743,7 @@ impl QueryResults {
             } else {
                 match report_mode {
                     ChunkTrackingMode::Ignore => {}
-                    ChunkTrackingMode::Report => {
+                    ChunkTrackingMode::Report | ChunkTrackingMode::ReportTransient => {
                         this.missing_virtual.push(chunk_id);
                     }
                     ChunkTrackingMode::PanicOnMissing => {
@@ -753,7 +753,9 @@ impl QueryResults {
             }
         }
 
-        if report_mode == ChunkTrackingMode::Report {
+        if report_mode == ChunkTrackingMode::Report
+            || report_mode == ChunkTrackingMode::ReportTransient
+        {
             let mut tracker = store.queried_chunk_id_tracker.write();
 
             for chunk_id in &this.missing_virtual {
@@ -773,13 +775,23 @@ impl QueryResults {
                 }
             }
 
-            tracker
-                .missing_virtual
-                .extend(this.missing_virtual.iter().copied());
+            if report_mode == ChunkTrackingMode::Report {
+                tracker
+                    .missing_virtual
+                    .extend(this.missing_virtual.iter().copied());
 
-            tracker
-                .used_physical
-                .extend(this.chunks.iter().map(|c| c.id()));
+                tracker
+                    .used_physical
+                    .extend(this.chunks.iter().map(|c| c.id()));
+            } else {
+                tracker
+                    .transient_missing_virtual
+                    .extend(this.missing_virtual.iter().copied());
+
+                tracker
+                    .transient_used_physical
+                    .extend(this.chunks.iter().map(|c| c.id()));
+            }
         }
 
         debug_assert!(

@@ -416,7 +416,12 @@ pub fn resolve_mono_instance_path(
         for component in components {
             if let Some(array) = engine
                 .cache()
-                .latest_at(query, &instance.entity_path, [component])
+                .latest_at(
+                    re_chunk_store::ChunkTrackingMode::ReportTransient,
+                    query,
+                    &instance.entity_path,
+                    [component],
+                )
                 .component_batch_raw(component)
                 && array.len() > 1
             {

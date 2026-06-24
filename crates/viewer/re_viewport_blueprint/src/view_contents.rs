@@ -635,7 +635,7 @@ impl DataQueryPropertyResolver<'_> {
         {
             if let Some(component_data) = blueprint_engine
                     .cache()
-                    .latest_at(blueprint_query, override_base_path, [component])
+                    .latest_at(re_chunk_store::ChunkTrackingMode::Report, blueprint_query, override_base_path, [component])
                     .component_batch_raw(component)
                 &&
                     // We regard empty overrides as non-existent. This is important because there is no other way of doing component-clears.
@@ -688,7 +688,7 @@ impl DataQueryPropertyResolver<'_> {
             {
                 if let Some(component_data) = blueprint_engine
                         .cache()
-                        .latest_at(blueprint_query, &instruction.override_path, [component])
+                        .latest_at(re_chunk_store::ChunkTrackingMode::Report, blueprint_query, &instruction.override_path, [component])
                         .component_batch_raw(component) &&
                     // We regard empty overrides as non-existent. This is important because there is no other way of doing component-clears.
                      !component_data.is_empty()

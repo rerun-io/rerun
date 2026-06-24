@@ -468,6 +468,9 @@ pub struct QueriedChunkIdTracker {
     /// Used physical chunks.
     pub used_physical: HashSet<ChunkId>,
 
+    /// Used physical chunks, but we shouldn't indicate their entity/components as used.
+    pub transient_used_physical: HashSet<ChunkId>,
+
     /// Missing virtual chunks.
     ///
     /// Chunks are considered missing when they are required to compute the results of a query, but cannot be
@@ -481,6 +484,9 @@ pub struct QueriedChunkIdTracker {
     // their own tracking. And document it so.
     pub missing_virtual: HashSet<ChunkId>,
 
+    /// Chunks that are reported as missing, but we shouldn't indicate their entity/componetns as used.
+    pub transient_missing_virtual: HashSet<ChunkId>,
+
     /// Chunks that aren't necessarily missing, but are expected to be needed soon.
     pub indicated_virtual: HashSet<ChunkId>,
 }
@@ -489,12 +495,16 @@ impl QueriedChunkIdTracker {
     pub fn shrink_to_fit(&mut self) {
         let Self {
             used_physical,
+            transient_used_physical,
             missing_virtual,
+            transient_missing_virtual,
             indicated_virtual,
         } = self;
 
         used_physical.shrink_to_fit();
+        transient_used_physical.shrink_to_fit();
         missing_virtual.shrink_to_fit();
+        transient_missing_virtual.shrink_to_fit();
         indicated_virtual.shrink_to_fit();
     }
 }
@@ -942,10 +952,34 @@ impl ChunkStore {
     }
 
     /// Get a *physical* chunk based on its ID and track the chunk as either
-    /// used or indicated, to signal that it should be kept or fetched.
+    /// used or missing, to signal that it should be kept or fetched.
     ///
     /// If the given chunk isn't physical `None` is returned and the ID is reported
     /// missing.
+    ///
+    /// Unlike [`ChunkStore::use_chunk_or_report_missing`], this does not signal
+    /// that similar chunks should also be downloaded.
+    #[track_caller]
+    pub fn use_transient_chunk_or_report_missing(&self, id: &ChunkId) -> Option<&Arc<Chunk>> {
+        let chunk = self.physical_chunk(id);
+
+        if chunk.is_some() {
+            self.report_transient_used_physical_chunk_id(*id);
+        } else {
+            self.report_transient_missing_virtual_chunk_id(*id);
+        }
+
+        chunk
+    }
+
+    /// Get a *physical* chunk based on its ID and track the chunk as either
+    /// used or indicated, to signal that it should be kept or fetched.
+    ///
+    /// If the given chunk isn't physical `None` is returned and the ID is reported
+    /// as possibly needed in the future.
+    ///
+    /// Unlike [`ChunkStore::use_chunk_or_report_missing`], this does make missing chunks
+    /// required.
     #[track_caller]
     pub fn use_chunk_or_indicate(&self, id: &ChunkId) -> Option<&Arc<Chunk>> {
         let chunk = self.physical_chunk(id);
@@ -1056,7 +1090,40 @@ impl ChunkStore {
             .insert(chunk_id);
     }
 
+    /// Signal that the chunk was used and should not be evicted by gc.
+    ///
+    /// Unlike [`ChunkStore::report_used_physical_chunk_id`], this does not signal
+    /// that similar chunks should also be downloaded.
+    pub fn report_transient_used_physical_chunk_id(&self, chunk_id: ChunkId) {
+        debug_assert!(self.physical_chunk(&chunk_id).is_some());
+
+        self.queried_chunk_id_tracker
+            .write()
+            .transient_used_physical
+            .insert(chunk_id);
+    }
+
+    /// Signal that a chunk is missing and should be fetched when possible.
+    ///
+    /// Unlike [`ChunkStore::report_missing_virtual_chunk_id`], this does not signal
+    /// that similar chunks should also be downloaded.
+    #[track_caller]
+    pub fn report_transient_missing_virtual_chunk_id(&self, chunk_id: ChunkId) {
+        debug_assert!(
+            self.chunks_lineage.contains_key(&chunk_id),
+            "A chunk was reported missing, with no known lineage: {chunk_id}"
+        );
+
+        self.queried_chunk_id_tracker
+            .write()
+            .transient_missing_virtual
+            .insert(chunk_id);
+    }
+
     /// Signal that a chunk should be fetched when possible.
+    ///
+    /// Unlike [`ChunkStore::report_missing_virtual_chunk_id`], this does not
+    /// make the missing chunk required.
     #[track_caller]
     pub fn indicate_virtual_chunk_id(&self, chunk_id: ChunkId) {
         debug_assert!(

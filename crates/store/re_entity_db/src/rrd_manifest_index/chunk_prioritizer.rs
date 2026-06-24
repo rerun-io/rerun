@@ -625,7 +625,9 @@ impl ChunkPrioritizer {
 
         let QueriedChunkIdTracker {
             used_physical,
+            transient_used_physical: _,
             missing_virtual,
+            transient_missing_virtual: _,
             indicated_virtual,
         } = used_and_missing;
 
@@ -639,7 +641,7 @@ impl ChunkPrioritizer {
                 }
             }
         }
-        for missing_virtual_chunk_id in chain!(missing_virtual.iter(), indicated_virtual) {
+        for missing_virtual_chunk_id in chain!(missing_virtual, indicated_virtual) {
             for root_id in store.find_root_chunks(missing_virtual_chunk_id) {
                 if let Some(components) = self.component_paths_from_root_id.get(&root_id) {
                     self.components_of_interest
@@ -657,18 +659,24 @@ impl ChunkPrioritizer {
     ) {
         let QueriedChunkIdTracker {
             used_physical,
+            transient_used_physical,
             missing_virtual,
+            transient_missing_virtual,
             indicated_virtual,
         } = used_and_missing;
 
-        for physical_chunk_id in used_physical {
+        for physical_chunk_id in std::iter::chain(used_physical.iter(), transient_used_physical) {
             // We don't need to add the root(s) of this to the `protected_root_chunks`.
             // It is fine to cancel the download of the root(s),
             // as long as we don't GC this particular physical chunk.
             self.protected_chunks.physical.insert(*physical_chunk_id);
         }
 
-        for chunk_id in chain!(missing_virtual.iter(), indicated_virtual) {
+        for chunk_id in chain!(
+            missing_virtual,
+            transient_missing_virtual,
+            indicated_virtual,
+        ) {
             // Do not cancel any downloads of any roots of this missing chunk:
             for root_id in store.find_root_chunks(chunk_id) {
                 self.protected_chunks.roots.insert(root_id);
@@ -899,7 +907,10 @@ impl ChunkFetcher<'_> {
                         return Some(prioritized);
                     } else {
                         let mut indicated_roots = Vec::new();
-                        for missing_virtual_chunk_id in &self.tracker.indicated_virtual {
+                        for missing_virtual_chunk_id in std::iter::chain(
+                            self.tracker.transient_missing_virtual.iter(),
+                            &self.tracker.indicated_virtual,
+                        ) {
                             self.store
                                 .collect_root_ids(missing_virtual_chunk_id, &mut indicated_roots);
                         }

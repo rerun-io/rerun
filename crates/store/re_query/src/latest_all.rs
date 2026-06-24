@@ -5,7 +5,7 @@ use re_chunk::{
     Chunk, ChunkId, ComponentIdentifier, EntityPath, LatestAtQuery, RangeQuery, RowId,
     UnitChunkShared,
 };
-use re_chunk_store::TimeInt;
+use re_chunk_store::{ChunkTrackingMode, TimeInt};
 use re_log_types::AbsoluteTimeRange;
 
 use crate::{LatestAtResults, QueryCache};
@@ -232,6 +232,7 @@ impl QueryCache {
     /// as one static image after the other.
     pub fn latest_all(
         &self,
+        tracking_mode: ChunkTrackingMode,
         query: &LatestAllQuery,
         entity_path: &EntityPath,
         components: impl IntoIterator<Item = ComponentIdentifier>,
@@ -242,7 +243,7 @@ impl QueryCache {
             components,
             missing_virtual,
             ..
-        } = self.latest_at(query, entity_path, components);
+        } = self.latest_at(tracking_mode, query, entity_path, components);
 
         let mut latest_all_results = LatestAllResults {
             entity_path: entity_path.clone(),
@@ -261,8 +262,12 @@ impl QueryCache {
                 } else {
                     let range_query =
                         RangeQuery::new(query.timeline(), AbsoluteTimeRange::new(time, time));
-                    let mut component_range_result =
-                        self.range(&range_query, entity_path, std::iter::once(component));
+                    let mut component_range_result = self.range(
+                        tracking_mode,
+                        &range_query,
+                        entity_path,
+                        std::iter::once(component),
+                    );
 
                     latest_all_results
                         .missing_virtual
