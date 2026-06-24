@@ -6,7 +6,7 @@ use arrow::array::{AsArray as _, Int32Builder, ListArray, ListBuilder};
 use arrow::datatypes::{DataType, Field};
 use itertools::Itertools as _;
 use re_chunk::{ArrowArray as _, Chunk, ChunkId, TimeColumn, TimelineName};
-use re_sdk::lenses::{Lens, Lenses, OutputMode, Selector, op};
+use re_sdk::lenses::{CastTo, Lens, Lenses, OutputMode, Selector};
 use re_sdk_types::ComponentDescriptor;
 use re_sdk_types::archetypes::Scalars;
 
@@ -133,11 +133,10 @@ fn test_destructure_cast() {
 
     let destructure = Lens::derive("structs")
         .output_entity("nullability/a")
-        .to_component(
+        .to_component_with_cast(
             Scalars::descriptor_scalars(),
-            Selector::parse(".a")
-                .unwrap()
-                .pipe(op::cast(DataType::Float64)),
+            Selector::parse(".a").unwrap(),
+            CastTo::Auto,
         )
         .build()
         .unwrap();
