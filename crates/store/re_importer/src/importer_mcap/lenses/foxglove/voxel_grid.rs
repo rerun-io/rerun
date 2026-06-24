@@ -1,4 +1,4 @@
-use re_lenses::{Lens, LensBuilderError, op};
+use re_lenses::{CastTo, Lens, LensBuilderError, op};
 use re_lenses_core::Selector;
 use re_log_types::TimeType;
 use re_sdk_types::archetypes::{CoordinateFrame, VoxelGridMap};
@@ -31,9 +31,10 @@ pub fn voxel_grid(time_type: TimeType) -> Result<Lens, LensBuilderError> {
                 .pipe(extract_voxel_indices)
                 .pipe(flatten.clone()),
         )
-        .to_component(
+        .to_component_with_cast(
             VoxelGridMap::descriptor_voxel_size(),
-            Selector::parse(".cell_size")?.pipe(op::struct_to_fixed_size_list_f32(["x", "y", "z"])),
+            Selector::parse(".cell_size | pack(.x!, .y!, .z!)")?,
+            CastTo::Auto,
         )
         .to_component(
             VoxelGridMap::descriptor_colors(),
@@ -41,15 +42,15 @@ pub fn voxel_grid(time_type: TimeType) -> Result<Lens, LensBuilderError> {
                 .pipe(extract_colors("cell_stride"))
                 .pipe(flatten),
         )
-        .to_component(
+        .to_component_with_cast(
             VoxelGridMap::descriptor_translation(),
-            Selector::parse(".pose.position!")?
-                .pipe(op::struct_to_fixed_size_list_f32(["x", "y", "z"])),
+            Selector::parse(".pose.position! | pack(.x!, .y!, .z!)")?,
+            CastTo::Auto,
         )
-        .to_component(
+        .to_component_with_cast(
             VoxelGridMap::descriptor_quaternion(),
-            Selector::parse(".pose.orientation!")?
-                .pipe(op::struct_to_fixed_size_list_f32(["x", "y", "z", "w"])),
+            Selector::parse(".pose.orientation! | pack(.x!, .y!, .z!, .w!)")?,
+            CastTo::Auto,
         )
         .build()
 }

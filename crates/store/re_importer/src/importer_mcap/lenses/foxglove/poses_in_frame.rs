@@ -1,4 +1,4 @@
-use re_lenses::{Lens, LensBuilderError, op};
+use re_lenses::{CastTo, Lens, LensBuilderError, op};
 use re_lenses_core::Selector;
 use re_log_types::TimeType;
 use re_sdk_types::archetypes::{CoordinateFrame, InstancePoses3D};
@@ -19,15 +19,15 @@ pub fn poses_in_frame(time_type: TimeType) -> Result<Lens, LensBuilderError> {
             CoordinateFrame::descriptor_frame(),
             Selector::parse(".frame_id")?,
         )
-        .to_component(
+        .to_component_with_cast(
             InstancePoses3D::descriptor_translations(),
-            Selector::parse(".poses[].position")?
-                .pipe(op::struct_to_fixed_size_list_f32(["x", "y", "z"])),
+            Selector::parse(".poses[].position | pack(.x!, .y!, .z!)")?,
+            CastTo::Auto,
         )
-        .to_component(
+        .to_component_with_cast(
             InstancePoses3D::descriptor_quaternions(),
-            Selector::parse(".poses[].orientation")?
-                .pipe(op::struct_to_fixed_size_list_f32(["x", "y", "z", "w"])),
+            Selector::parse(".poses[].orientation | pack(.x!, .y!, .z!, .w!)")?,
+            CastTo::Auto,
         )
         .build()
 }

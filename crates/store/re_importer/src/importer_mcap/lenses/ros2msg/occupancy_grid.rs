@@ -1,4 +1,4 @@
-use re_lenses::{Lens, LensBuilderError, op};
+use re_lenses::{CastTo, Lens, LensBuilderError, op};
 use re_lenses_core::Selector;
 use re_log_types::TimeType;
 use re_sdk_types::archetypes::{CoordinateFrame, GridMap};
@@ -33,15 +33,15 @@ pub fn occupancy_grid(time_type: TimeType) -> Result<Lens, LensBuilderError> {
             GridMap::descriptor_cell_size(),
             Selector::parse(".info.resolution")?,
         )
-        .to_component(
+        .to_component_with_cast(
             GridMap::descriptor_translation(),
-            Selector::parse(".info.origin.position")?
-                .pipe(op::struct_to_fixed_size_list_f32(["x", "y", "z"])),
+            Selector::parse(".info.origin.position | pack(.x!, .y!, .z!)")?,
+            CastTo::Auto,
         )
-        .to_component(
+        .to_component_with_cast(
             GridMap::descriptor_quaternion(),
-            Selector::parse(".info.origin.orientation")?
-                .pipe(op::struct_to_fixed_size_list_f32(["x", "y", "z", "w"])),
+            Selector::parse(".info.origin.orientation | pack(.x!, .y!, .z!, .w!)")?,
+            CastTo::Auto,
         )
         .to_component(
             GridMap::descriptor_colormap(),

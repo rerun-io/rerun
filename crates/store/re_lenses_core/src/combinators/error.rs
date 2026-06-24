@@ -65,6 +65,20 @@ pub enum Error {
     #[error("At least one field name is required")]
     NoFieldNames,
 
+    #[error(
+        "`pack` path `{path}` is nullable and must be acknowledged with `!` (e.g. `{path}!`), since a null shadows the whole entry"
+    )]
+    PackPathNullable { path: String },
+
+    #[error(
+        "`pack` path `{path}` has type {actual_type}, but expected {expected_type} (inferred from the first path); all paths must share the same datatype"
+    )]
+    PackPathTypeMismatch {
+        path: String,
+        actual_type: DataType,
+        expected_type: DataType,
+    },
+
     #[error("Offset overflow: cannot fit {actual} into {expected_type}")]
     OffsetOverflow {
         actual: usize,

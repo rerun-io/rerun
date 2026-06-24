@@ -1,4 +1,4 @@
-use re_lenses::{Lens, LensBuilderError, op};
+use re_lenses::{CastTo, Lens, LensBuilderError, op};
 use re_lenses_core::Selector;
 use re_log_types::TimeType;
 use re_sdk_types::archetypes::Transform3D;
@@ -23,15 +23,15 @@ pub fn frame_transform(time_type: TimeType) -> Result<Lens, LensBuilderError> {
             Transform3D::descriptor_child_frame(),
             Selector::parse(".child_frame_id")?,
         )
-        .to_component(
+        .to_component_with_cast(
             Transform3D::descriptor_translation(),
-            Selector::parse(".translation")?
-                .pipe(op::struct_to_fixed_size_list_f32(["x", "y", "z"])),
+            Selector::parse(".translation | pack(.x!, .y!, .z!)")?,
+            CastTo::Auto,
         )
-        .to_component(
+        .to_component_with_cast(
             Transform3D::descriptor_quaternion(),
-            Selector::parse(".rotation")?
-                .pipe(op::struct_to_fixed_size_list_f32(["x", "y", "z", "w"])),
+            Selector::parse(".rotation | pack(.x!, .y!, .z!, .w!)")?,
+            CastTo::Auto,
         )
         .build()
 }

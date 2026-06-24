@@ -109,6 +109,7 @@ The basic syntax elements are:
 * `.sequence[]` - iterate over all elements in a sequence
 * `.sequence[].x` - access a field on each element of a sequence
 * `.optional_field?` - access an optional field, skipping missing values
+* `pack(.x, .y, .z)` - pack several same-typed fields into a fixed-size list (see below)
 
 These can be composed using pipes (`|`) as described below.
 
@@ -122,3 +123,11 @@ This is useful for value transformations that go beyond path navigation, like un
 For example, the following lens extracts the `.x` field and scales it by `9.81`:
 
 snippet: concepts/lenses[pipe_example]
+
+### Packing fields into fixed-size lists
+
+Many Rerun components are based on Arrow fixed-size lists.
+For example, `Position3D` is a `FixedSizeList<f32>[3]`.
+`pack(...)` assembles a fixed-size list from several paths that resolve to the same datatype, e.g. `pack(.x, .y, .z)`.
+
+If a field is nullable, acknowledge it with `!` (for example `pack(.x!, .y!, .z!)`); a null in any field will null the corresponding row in the resulting array, potentially shadowing non-null data in other fields.

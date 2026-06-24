@@ -1,4 +1,4 @@
-use re_lenses::{Lens, LensBuilderError, op};
+use re_lenses::{CastTo, Lens, LensBuilderError, op};
 use re_lenses_core::Selector;
 use re_log_types::TimeType;
 use re_sdk_types::archetypes::{Arrows3D, CoordinateFrame};
@@ -18,10 +18,10 @@ pub fn magnetic_field(time_type: TimeType) -> Result<Lens, LensBuilderError> {
             CoordinateFrame::descriptor_frame(),
             Selector::parse(".header.frame_id")?,
         )
-        .to_component(
+        .to_component_with_cast(
             Arrows3D::descriptor_vectors(),
-            Selector::parse(".magnetic_field")?
-                .pipe(op::struct_to_fixed_size_list_f32(["x", "y", "z"])),
+            Selector::parse(".magnetic_field | pack(.x!, .y!, .z!)")?,
+            CastTo::Auto,
         )
         .build()
 }
