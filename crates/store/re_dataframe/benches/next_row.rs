@@ -238,7 +238,7 @@ fn bench_next_row_list(c: &mut Criterion) {
                 while handle.next_row().is_some() {
                     count += 1;
                 }
-                criterion::black_box(count)
+                std::hint::black_box(count)
             });
         });
     }
@@ -256,7 +256,7 @@ fn bench_next_row_batch_list(c: &mut Criterion) {
                 while let Some(rb) = handle.next_row_batch() {
                     total_rows += rb.num_rows();
                 }
-                criterion::black_box(total_rows)
+                std::hint::black_box(total_rows)
             });
         });
     }
@@ -294,7 +294,7 @@ fn bench_next_n_rows_list(c: &mut Criterion) {
                         }
                         total_rows += out.num_rows;
                     }
-                    criterion::black_box(total_rows)
+                    std::hint::black_box(total_rows)
                 });
             });
         }
@@ -316,7 +316,7 @@ fn bench_next_row_struct(c: &mut Criterion) {
                 while handle.next_row().is_some() {
                     count += 1;
                 }
-                criterion::black_box(count)
+                std::hint::black_box(count)
             });
         });
     }
@@ -334,7 +334,7 @@ fn bench_next_row_batch_struct(c: &mut Criterion) {
                 while let Some(rb) = handle.next_row_batch() {
                     total_rows += rb.num_rows();
                 }
-                criterion::black_box(total_rows)
+                std::hint::black_box(total_rows)
             });
         });
     }
@@ -417,7 +417,7 @@ fn bench_next_n_rows_struct_chunks(c: &mut Criterion) {
                     }
                     total_rows += out.num_rows;
                 }
-                criterion::black_box(total_rows)
+                std::hint::black_box(total_rows)
             });
         });
     }
@@ -436,7 +436,7 @@ fn bench_next_row_struct_chunks(c: &mut Criterion) {
                 while handle.next_row().is_some() {
                     count += 1;
                 }
-                criterion::black_box(count)
+                std::hint::black_box(count)
             });
         });
     }
@@ -459,7 +459,7 @@ fn bench_next_n_rows_struct(c: &mut Criterion) {
                         }
                         total_rows += out.num_rows;
                     }
-                    criterion::black_box(total_rows)
+                    std::hint::black_box(total_rows)
                 });
             });
         }

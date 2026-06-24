@@ -65,9 +65,7 @@ clap = { workspace = true, features = ["derive", "env"] }
 http.workspace = true
 memory-stats = { workspace = true, features = ["always_use_statm"] }
 opentelemetry = { workspace = true, features = ["metrics"] }
-opentelemetry-appender-tracing = { workspace = true, features = [
-  "experimental_use_tracing_span_context",
-] }
+opentelemetry-appender-tracing.workspace = true
 opentelemetry-http.workspace = true
 opentelemetry-otlp = { workspace = true, features = ["grpc-tonic", "gzip-tonic"] }
 rand.workspace = true

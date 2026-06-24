@@ -1,7 +1,8 @@
+use std::hint::black_box;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use criterion::{Criterion, Throughput, black_box, criterion_group, criterion_main};
+use criterion::{Criterion, Throughput, criterion_group, criterion_main};
 use re_renderer::device_caps;
 use re_renderer::mesh::{CpuMesh, GpuMesh, Material};
 use re_renderer::renderer::{

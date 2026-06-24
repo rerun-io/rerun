@@ -319,5 +319,5 @@ fn query_and_visit_strings(caches: &QueryCache, paths: &[EntityPath]) -> Vec<Sav
         }
     }
     assert_eq!(NUM_STRINGS as usize, strings.len());
-    criterion::black_box(strings)
+    std::hint::black_box(strings)
 }

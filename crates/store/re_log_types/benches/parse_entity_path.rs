@@ -32,7 +32,7 @@ fn parse_entity_path(c: &mut criterion::Criterion) {
             for _ in 0..num {
                 let path_str = strings_iter.next().unwrap();
                 let entity_path = re_log_types::EntityPath::parse_forgiving(path_str);
-                criterion::black_box(entity_path);
+                std::hint::black_box(entity_path);
             }
         });
     });

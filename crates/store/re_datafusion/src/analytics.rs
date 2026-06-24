@@ -1447,6 +1447,7 @@ fn kv_string(key: &str, value: &str) -> KeyValue {
         value: Some(AnyValue {
             value: Some(Value::StringValue(value.to_owned())),
         }),
+        key_strindex: 0,
     }
 }
 
@@ -1456,6 +1457,7 @@ fn kv_int(key: &str, value: impl Into<i64>) -> KeyValue {
         value: Some(AnyValue {
             value: Some(Value::IntValue(value.into())),
         }),
+        key_strindex: 0,
     }
 }
 
@@ -1465,6 +1467,7 @@ fn kv_bool(key: &str, value: bool) -> KeyValue {
         value: Some(AnyValue {
             value: Some(Value::BoolValue(value)),
         }),
+        key_strindex: 0,
     }
 }
 
@@ -1474,6 +1477,7 @@ fn kv_double(key: &str, value: f64) -> KeyValue {
         value: Some(AnyValue {
             value: Some(Value::DoubleValue(value)),
         }),
+        key_strindex: 0,
     }
 }
 
