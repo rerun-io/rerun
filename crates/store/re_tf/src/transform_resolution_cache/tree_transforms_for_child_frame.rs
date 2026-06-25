@@ -197,6 +197,18 @@ impl TreeTransformsForChildFrame {
         missing_chunk_reporter: &MissingChunkReporter,
         query: &LatestAtQuery,
     ) -> Option<ParentFromChildTransform> {
+        self.latest_at_transform_with_metadata(entity_db, missing_chunk_reporter, query)
+            .map(|(_, transform)| transform)
+    }
+
+    /// Like [`Self::latest_at_transform`], but also returns the time of the resolved entry.
+    #[inline]
+    pub(crate) fn latest_at_transform_with_metadata(
+        &self,
+        entity_db: &EntityDb,
+        missing_chunk_reporter: &MissingChunkReporter,
+        query: &LatestAtQuery,
+    ) -> Option<(TimeInt, ParentFromChildTransform)> {
         #[cfg(debug_assertions)] // `self.timeline` is only present with `debug_assertions` enabled.
         debug_assert!(Some(query.timeline()) == self.timeline || self.timeline.is_none());
 
@@ -233,13 +245,14 @@ impl TreeTransformsForChildFrame {
                         };
                     }
 
-                    match frame_transform {
-                        CachedTransformValue::Resident { value, .. } => Some(value.clone()),
-                        CachedTransformValue::Cleared => None,
+                    let value = match frame_transform {
+                        CachedTransformValue::Resident { value, .. } => value.clone(),
+                        CachedTransformValue::Cleared => return None,
                         CachedTransformValue::Invalidated { .. } => {
                             unreachable!("Just made transform cache-resident")
                         }
-                    }
+                    };
+                    Some((*time_of_last_update_to_this_frame, value))
                 },
             )
             .flatten()
@@ -252,6 +265,18 @@ impl TreeTransformsForChildFrame {
         missing_chunk_reporter: &MissingChunkReporter,
         query: &LatestAtQuery,
     ) -> Option<ResolvedPinholeProjection> {
+        self.latest_at_pinhole_with_metadata(entity_db, missing_chunk_reporter, query)
+            .map(|(_, pinhole)| pinhole)
+    }
+
+    /// Like [`Self::latest_at_pinhole`], but also returns the time of the resolved entry.
+    #[inline]
+    pub(crate) fn latest_at_pinhole_with_metadata(
+        &self,
+        entity_db: &EntityDb,
+        missing_chunk_reporter: &MissingChunkReporter,
+        query: &LatestAtQuery,
+    ) -> Option<(TimeInt, ResolvedPinholeProjection)> {
         #[cfg(debug_assertions)] // `self.timeline` is only present with `debug_assertions` enabled.
         debug_assert!(Some(query.timeline()) == self.timeline || self.timeline.is_none());
 
@@ -291,26 +316,25 @@ impl TreeTransformsForChildFrame {
                         };
                     }
 
-                    match pinhole_projection {
-                        CachedTransformValue::Resident { value, .. } => {
-                            Some(ResolvedPinholeProjection {
-                                cached: value.clone(),
-
-                                // TODO(andreas): view coordinates are in a weird limbo state in more than one way.
-                                // Not only are they only _partially_ relevant for the camera's transform (they both name axis & orient cameras),
-                                // we also rely on them too much being latest-at driven and to make matters worse query them from two different archetypes.
-                                view_coordinates: {
-                                    query_view_coordinates(entity_path, entity_db, query).unwrap_or(
-                                        re_sdk_types::archetypes::Pinhole::DEFAULT_CAMERA_XYZ,
-                                    )
-                                },
-                            })
-                        }
-                        CachedTransformValue::Cleared => None,
+                    let value = match pinhole_projection {
+                        CachedTransformValue::Resident { value, .. } => value.clone(),
+                        CachedTransformValue::Cleared => return None,
                         CachedTransformValue::Invalidated { .. } => {
                             unreachable!("Just made transform cache-resident")
                         }
-                    }
+                    };
+                    Some((
+                        *time_of_last_update_to_this_frame,
+                        ResolvedPinholeProjection {
+                            cached: value,
+
+                            // TODO(andreas): view coordinates are in a weird limbo state in more than one way.
+                            // Not only are they only _partially_ relevant for the camera's transform (they both name axis & orient cameras),
+                            // we also rely on them too much being latest-at driven and to make matters worse query them from two different archetypes.
+                            view_coordinates: query_view_coordinates(entity_path, entity_db, query)
+                                .unwrap_or(re_sdk_types::archetypes::Pinhole::DEFAULT_CAMERA_XYZ),
+                        },
+                    ))
                 },
             )
             .flatten()

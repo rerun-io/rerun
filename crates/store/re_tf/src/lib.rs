@@ -154,6 +154,7 @@ pub use self::transform_queries::{
 };
 pub use self::transform_resolution_cache::{
     CachedTransformsForTimeline, ResolvedPinholeProjection, TransformResolutionCache,
+    transform_cache_snapshot,
 };
 
 /// Returns the view coordinates used for 2D (image) views.

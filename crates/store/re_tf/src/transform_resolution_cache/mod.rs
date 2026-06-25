@@ -4,6 +4,7 @@ mod cached_transforms_for_timeline;
 mod parent_from_child_transform;
 mod pose_transform_for_entity;
 mod resolved_pinhole_projection;
+pub mod transform_cache_snapshot;
 mod transforms_for_child_frame_events;
 mod tree_transforms_for_child_frame;
 

@@ -16,7 +16,10 @@ use re_sdk_types::{
 };
 
 use crate::convert;
-use crate::{TransformFrameIdHash, transform_resolution_cache::ResolvedPinholeProjectionCached};
+use crate::{
+    TransformFrameIdHash, transform_cache_snapshot,
+    transform_resolution_cache::ResolvedPinholeProjectionCached,
+};
 
 use super::pose_transform_for_entity::PoseTransformForEntity;
 use super::tree_transforms_for_child_frame::TreeTransformsForChildFrame;
@@ -261,6 +264,210 @@ fn test_transforms_per_timeline_access() -> Result<(), Box<dyn std::error::Error
     assert_eq!(transforms.timeline, Some(*timeline.name()));
     assert_eq!(transforms.events.read().frame_transforms.len(), 1);
     assert_eq!(transforms.events.read().pinhole_projections.len(), 0);
+    Ok(())
+}
+
+/// Tests the API for requesting latest-at snapshots of parts of the transform cache.
+#[test]
+fn test_latest_at_transform_cache_snapshot() -> Result<(), Box<dyn std::error::Error>> {
+    let mut entity_db = new_entity_db_with_subscriber_registered();
+    let mut cache = TransformResolutionCache::default();
+    let timeline = Timeline::new_sequence("t");
+
+    // Set up one implicit entity-path transform ("world/camera") and one pinhole transform with
+    // named parent & child on the same entity.
+    let image_from_camera =
+        PinholeProjection::from_focal_length_and_principal_point([1.0, 2.0], [1.0, 2.0]);
+    let chunk = Chunk::builder(EntityPath::from("world/camera"))
+        .with_archetype_auto_row(
+            [(timeline, 1)],
+            &Transform3D::from_translation([1.0, 2.0, 3.0]),
+        )
+        .with_archetype_auto_row(
+            [(timeline, 1)],
+            &Pinhole::new(image_from_camera)
+                .with_child_frame("image_frame")
+                .with_parent_frame("camera_frame"),
+        )
+        .build()?;
+    entity_db.add_chunk(&Arc::new(chunk))?;
+
+    apply_store_subscriber_events(&mut cache, &entity_db);
+
+    // Query the unfiltered snapshot first. Filtered snapshots below are compared against this one.
+    let missing_chunk_reporter = MissingChunkReporter::default();
+    let query = LatestAtQuery::new(*timeline.name(), 1);
+    let frame_id_registry = cache.frame_id_registry();
+    let transforms = cache.transforms_for_timeline(*timeline.name());
+    let snapshot = transforms.latest_at_transform_cache_snapshot(
+        &frame_id_registry,
+        &entity_db,
+        &missing_chunk_reporter,
+        &query,
+        transform_cache_snapshot::SnapshotFilter::default(),
+    );
+    assert!(
+        missing_chunk_reporter.is_empty(),
+        "Test expected no missing chunks, but some were missing."
+    );
+
+    let expected_root_frame = TransformFrameIdHash::entity_path_hierarchy_root();
+    let expected_world_frame = TransformFrameIdHash::from_entity_path(&EntityPath::from("world"));
+    let expected_camera_frame =
+        TransformFrameIdHash::from_entity_path(&EntityPath::from("world/camera"));
+    let expected_named_camera_frame = TransformFrameIdHash::from_str("camera_frame");
+    let expected_image_frame = TransformFrameIdHash::from_str("image_frame");
+
+    // Check that the entity-path-based camera frame is included and marked as 3D subspace.
+    let world_camera_frame = snapshot
+        .frames
+        .iter()
+        .find(|frame| frame.id == expected_camera_frame)
+        .expect("camera entity-path frame should be registered");
+    assert_eq!(
+        world_camera_frame.kind,
+        transform_cache_snapshot::FrameKind::EntityPath
+    );
+    assert_eq!(
+        world_camera_frame.subspace_kind,
+        transform_cache_snapshot::SubspaceKind::ThreeD
+    );
+    assert!(world_camera_frame.has_transform);
+
+    // Check that the pinhole child frame is marked as 2D subspace.
+    let image_frame_snapshot = snapshot
+        .frames
+        .iter()
+        .find(|frame| frame.id == expected_image_frame)
+        .expect("image frame should be registered");
+    assert_eq!(
+        image_frame_snapshot.kind,
+        transform_cache_snapshot::FrameKind::Named
+    );
+    assert_eq!(
+        image_frame_snapshot.subspace_kind,
+        transform_cache_snapshot::SubspaceKind::TwoD
+    );
+    assert!(image_frame_snapshot.has_transform);
+
+    // Check that the implicit edge from the entity path hierarchy root to the parent `world` frame
+    // is included.
+    let implicit_edge = snapshot
+        .edges
+        .iter()
+        .find(|edge| {
+            edge.parent == expected_root_frame
+                && edge.child == expected_world_frame
+                && edge.time.is_static()
+        })
+        .expect("implicit hierarchy edge should be present");
+
+    // Check that the implicit edge has no logged transform payload.
+    assert!(matches!(
+        implicit_edge.source,
+        transform_cache_snapshot::EdgeSource::ImplicitHierarchy
+    ));
+
+    // Check that the logged transform shows up as such in the snapshot.
+    let transform_edge = snapshot
+        .edges
+        .iter()
+        .find(|edge| {
+            edge.parent == expected_world_frame
+                && edge.child == expected_camera_frame
+                && edge.time == TimeInt::new_temporal(1)
+        })
+        .expect("transform edge should be present");
+    let transform_cache_snapshot::EdgeSource::Transform {
+        entity_path,
+        transform,
+    } = &transform_edge.source
+    else {
+        unreachable!("transform edge source should be a transform");
+    };
+    assert_eq!(entity_path, &EntityPath::from("world/camera"));
+    assert_eq!(transform.transform.translation.to_array(), [1.0, 2.0, 3.0]);
+
+    // Check that the Pinhole archetype produces a direct pinhole edge between named frames.
+    let pinhole_edge = snapshot
+        .edges
+        .iter()
+        .find(|edge| {
+            edge.parent == expected_named_camera_frame
+                && edge.child == expected_image_frame
+                && edge.time == TimeInt::new_temporal(1)
+        })
+        .expect("pinhole edge should be present");
+    let transform_cache_snapshot::EdgeSource::Pinhole {
+        entity_path,
+        pinhole,
+    } = &pinhole_edge.source
+    else {
+        unreachable!("pinhole edge source should be a pinhole");
+    };
+    assert_eq!(entity_path, &EntityPath::from("world/camera"));
+    assert_eq!(pinhole.parent, expected_named_camera_frame);
+    assert_eq!(
+        pinhole.image_from_camera,
+        PinholeProjection::from_focal_length_and_principal_point([1.0, 2.0], [1.0, 2.0])
+    );
+
+    // Check that a static edge filter drops temporal logged transforms.
+    let static_snapshot = transforms.latest_at_transform_cache_snapshot(
+        &frame_id_registry,
+        &entity_db,
+        &missing_chunk_reporter,
+        &query,
+        transform_cache_snapshot::SnapshotFilter {
+            edges: transform_cache_snapshot::EdgeFilter::Static,
+            ..Default::default()
+        },
+    );
+    assert!(
+        static_snapshot
+            .edges
+            .iter()
+            .all(|edge| edge.time.is_static())
+    );
+
+    // Check that a temporal edge filter drops static transforms.
+    let temporal_snapshot = transforms.latest_at_transform_cache_snapshot(
+        &frame_id_registry,
+        &entity_db,
+        &missing_chunk_reporter,
+        &query,
+        transform_cache_snapshot::SnapshotFilter {
+            edges: transform_cache_snapshot::EdgeFilter::Temporal,
+            ..Default::default()
+        },
+    );
+    assert!(
+        temporal_snapshot
+            .edges
+            .iter()
+            .all(|edge| !edge.time.is_static())
+    );
+
+    // Check that a `Named` frame filter drops entity-path derived frames.
+    // With our test data, only the named frames from the pinhole edge remain.
+    let named_snapshot = transforms.latest_at_transform_cache_snapshot(
+        &frame_id_registry,
+        &entity_db,
+        &missing_chunk_reporter,
+        &query,
+        transform_cache_snapshot::SnapshotFilter {
+            frames: transform_cache_snapshot::FrameFilter::Named,
+            ..Default::default()
+        },
+    );
+    assert_eq!(named_snapshot.edges.len(), 1);
+    assert_eq!(named_snapshot.edges[0].parent, expected_named_camera_frame);
+    assert_eq!(named_snapshot.edges[0].child, expected_image_frame);
+    assert_eq!(named_snapshot.frames.len(), 2);
+    for frame in named_snapshot.frames {
+        assert!([expected_named_camera_frame, expected_image_frame].contains(&frame.id));
+    }
+
     Ok(())
 }
 
