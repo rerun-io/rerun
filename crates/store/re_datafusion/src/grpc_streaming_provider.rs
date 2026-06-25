@@ -437,8 +437,7 @@ mod table_query_pipeline_tests {
 
     fn make_pending() -> PendingTableQueryAnalytics {
         let origin: Origin = "rerun+http://localhost:51234".parse().unwrap();
-        let client = re_redap_client::ConnectionClient::new_disconnected();
-        let analytics = ConnectionAnalytics::new(origin, &client);
+        let analytics = ConnectionAnalytics::disabled_for_test(origin);
         analytics.begin_table_query(
             TableQueryInfo {
                 table_id: "tbl-pipeline".to_owned(),

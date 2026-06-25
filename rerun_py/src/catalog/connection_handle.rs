@@ -22,7 +22,7 @@ use re_protos::common::v1alpha1::TaskId;
 use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, ScanParameters, SegmentId};
 use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_protos::missing_field;
-use re_redap_client::{ApiError, ConnectionClient, ConnectionRegistryHandle, TraceId};
+use re_redap_client::{ApiError, Connection, ConnectionClient, ConnectionRegistryHandle, TraceId};
 use re_types_core::LayerName;
 
 use crate::catalog::table_entry::PyTableInsertModeInternal;
@@ -45,11 +45,15 @@ impl ConnectionHandle {
         }
     }
 
-    pub async fn client(&self) -> PyResult<ConnectionClient> {
+    pub async fn connection(&self) -> PyResult<Connection> {
         self.connection_registry
-            .client(self.origin.clone())
+            .connection(self.origin.clone())
             .await
             .map_err(to_py_err)
+    }
+
+    pub async fn client(&self) -> PyResult<ConnectionClient> {
+        Ok(self.connection().await?.client)
     }
 
     pub fn origin(&self) -> &re_uri::Origin {

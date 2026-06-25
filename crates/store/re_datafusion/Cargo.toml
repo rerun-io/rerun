@@ -54,7 +54,6 @@ async-trait.workspace = true
 datafusion.workspace = true
 futures.workspace = true
 futures-util.workspace = true
-http.workspace = true
 itertools.workspace = true
 opentelemetry.workspace = true
 opentelemetry-proto = { workspace = true, features = ["gen-tonic-messages", "trace"] }
@@ -64,7 +63,6 @@ tokio.workspace = true
 jiff.workspace = true
 tokio-stream.workspace = true
 tonic.workspace = true
-tonic-prost.workspace = true
 tracing.workspace = true
 web-time.workspace = true
 
@@ -82,5 +80,4 @@ getrandom = { workspace = true, features = ["wasm_js"] }
 
 
 [dev-dependencies]
-re_redap_client = { workspace = true, features = ["test_utils"] }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "signal"] }

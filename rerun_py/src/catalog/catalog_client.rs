@@ -413,8 +413,9 @@ impl PyCatalogClientInternal {
             return Ok(());
         };
 
-        let client = wait_for_future(py, self.connection.client())?;
-        let provider_list = PyDataFusionCatalogProviderList::new(client, self.origin.clone());
+        let connection = wait_for_future(py, self.connection.connection())?;
+        let provider_list =
+            PyDataFusionCatalogProviderList::new(connection.client, connection.analytics);
 
         ctx.call_method1(py, "register_catalog_provider_list", (provider_list,))?;
         Ok(())

@@ -200,12 +200,6 @@ impl PoolChannel {
         }
     }
 
-    /// Wrap a single connection, with no load-balancing.
-    #[cfg(any(test, feature = "test_utils"))]
-    pub(crate) fn single(channel: tonic::transport::Channel) -> Self {
-        Self::new(vec![channel])
-    }
-
     /// Index of the connection with the fewest requests in flight.
     fn least_loaded(&self) -> usize {
         use std::sync::atomic::Ordering;
@@ -318,10 +312,6 @@ pub type RedapClientInner = re_auth::client::AuthService<
 
 /// Apply the standard SDK-side layer stack on top of an already-built channel
 /// and return the high-level `RedapClient` plus the layered service backing it.
-///
-/// Pulled out of [`client`] so [`crate::ConnectionClient::new_disconnected`]
-/// (and any future test fixture) can build a fully-typed client over a
-/// never-connecting channel without going through `with_retry`.
 #[cfg(target_arch = "wasm32")]
 pub(crate) fn assemble_client(
     channel: tonic_web_wasm_client::Client,
@@ -385,10 +375,6 @@ pub type RedapClient = RerunCloudServiceClient<RedapClientInner>;
 
 /// Apply the standard SDK-side layer stack on top of an already-built channel
 /// and return the high-level `RedapClient` plus the layered service backing it.
-///
-/// Pulled out of [`client`] so [`crate::ConnectionClient::new_disconnected`]
-/// (and any future test fixture) can build a fully-typed client over a
-/// never-connecting channel without going through `with_retry`.
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) fn assemble_client(
     channel: PoolChannel,

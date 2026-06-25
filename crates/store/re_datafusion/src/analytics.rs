@@ -28,7 +28,7 @@ use std::sync::{Arc, OnceLock};
 use datafusion::logical_expr::Expr;
 use datafusion::physical_plan::metrics::{ExecutionPlanMetricsSet, MetricBuilder, MetricsSet};
 use opentelemetry_proto::tonic::{
-    collector::trace::v1::{ExportTraceServiceRequest, ExportTraceServiceResponse},
+    collector::trace::v1::ExportTraceServiceRequest,
     common::v1::any_value::Value,
     common::v1::{AnyValue, KeyValue},
     resource::v1::Resource,
@@ -37,12 +37,11 @@ use opentelemetry_proto::tonic::{
 use re_dataframe::QueryExpression;
 use re_protos::cloud::v1alpha1::SystemTableKind;
 use re_protos::cloud::v1alpha1::ext::ProviderDetails;
+use re_redap_client::ConnectionAnalyticsExporter;
 use re_uri::Origin;
 use web_time::{Duration, Instant, SystemTime};
 
 use crate::metrics_capture::{QueryMetrics, QuerySnapshot, build_query_snapshot};
-
-const EXPORT_PATH: &str = "/opentelemetry.proto.collector.trace.v1.TraceService/Export";
 
 /// A per-connection analytics client that sends OTLP traces to a specific
 /// Rerun Hub's OTEL ingest endpoint.
@@ -68,31 +67,33 @@ impl fmt::Debug for ConnectionAnalytics {
 struct Inner {
     origin: Origin,
 
-    /// gRPC client sharing the layered tower service of the sibling
-    /// [`re_redap_client::ConnectionClient`] (i.e. same HTTP/2 transport, same auth /
+    /// Analytics OTLP exporter sharing the layered tower service of the sibling
+    /// [`re_redap_client::ConnectionClient`] (same HTTP/2 transport, same auth /
     /// version / propagate-headers stack).
-    ///
-    /// Cloned per send so concurrent OTLP exports don't serialize on a single client.
-    grpc: tonic::client::Grpc<re_redap_client::RedapClientInner>,
+    exporter: Option<ConnectionAnalyticsExporter>,
 }
 
 impl ConnectionAnalytics {
     /// Create a new analytics sender for the given origin.
     ///
-    /// The analytics OTLP channel reuses the layered tower service of the supplied
-    /// [`re_redap_client::ConnectionClient`], so exports go through the same
-    /// authenticated and version-tagged HTTP/2 connection as regular RPCs.
-    pub fn new(origin: Origin, client: &re_redap_client::ConnectionClient) -> Self {
+    /// The analytics OTLP exports go through the same authenticated and
+    /// version-tagged HTTP/2 connection as regular REDAP RPCs.
+    pub fn new(exporter: ConnectionAnalyticsExporter) -> Self {
+        let origin = exporter.origin().clone();
         Self {
             inner: Arc::new(Inner {
                 origin,
-                // NOTE: client-side gzip is intentionally *not* enabled here. A new
-                // viewer SDK could otherwise send `grpc-encoding: gzip` to a Hub
-                // whose `OtelIngestService` predates `accept_compressed(Gzip)`,
-                // causing analytics events to be silently dropped with an
-                // `UNIMPLEMENTED` rejection. Re-enable once the deployed Hub
-                // version range is known to support gzip.
-                grpc: tonic::client::Grpc::new(client.service()),
+                exporter: Some(exporter),
+            }),
+        }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn disabled_for_test(origin: Origin) -> Self {
+        Self {
+            inner: Arc::new(Inner {
+                origin,
+                exporter: None,
             }),
         }
     }
@@ -168,10 +169,6 @@ impl ConnectionAnalytics {
         span: Span,
         trace_id: Option<opentelemetry::TraceId>,
     ) -> tonic::Result<()> {
-        // Clone per send: avoids serializing
-        // concurrent sends behind a single client's `&mut self` borrow.
-        let mut grpc = self.inner.grpc.clone();
-
         // `service.name` is the OTel resource attribute that identifies the
         // sending service in the trace store (Grafana/Tempo etc.). We
         // hard-code it to `"rerun-viewer"` here because this piggy-back is
@@ -205,24 +202,11 @@ impl ConnectionAnalytics {
             }],
         };
 
-        let mut request = tonic::Request::new(export_request);
-        if let Some(trace_id) = trace_id
-            && let Ok(value) = trace_id.to_string().parse()
-        {
-            request.metadata_mut().insert("x-request-trace-id", value);
-        }
+        let Some(exporter) = &self.inner.exporter else {
+            return Ok(());
+        };
 
-        grpc.ready().await.map_err(|err| {
-            tonic::Status::unavailable(format!("analytics channel not ready: {err}"))
-        })?;
-
-        let path = http::uri::PathAndQuery::from_static(EXPORT_PATH);
-        let codec = tonic_prost::ProstCodec::default();
-
-        let _response: tonic::Response<ExportTraceServiceResponse> =
-            grpc.unary(request.map(|m| m), path, codec).await?;
-
-        Ok(())
+        exporter.export_trace(export_request, trace_id).await
     }
 }
 
@@ -2121,8 +2105,7 @@ mod table_query_tests {
 
     fn make_pending() -> PendingTableQueryAnalytics {
         let origin: Origin = "rerun+http://localhost:51234".parse().unwrap();
-        let client = re_redap_client::ConnectionClient::new_disconnected();
-        let analytics = ConnectionAnalytics::new(origin, &client);
+        let analytics = ConnectionAnalytics::disabled_for_test(origin);
         analytics.begin_table_query(dummy_table_query_info(), Instant::now())
     }
 

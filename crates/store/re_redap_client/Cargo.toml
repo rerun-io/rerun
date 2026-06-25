@@ -21,11 +21,6 @@ default = []
 ## This only works on native.
 perf_telemetry = ["dep:re_perf_telemetry"]
 
-## Exposes test fixtures (e.g. `ConnectionClient::disconnected_for_test`) for use
-## in downstream crates' integration tests.
-test_utils = []
-
-
 [lints]
 workspace = true
 
@@ -56,14 +51,17 @@ arrow.workspace = true
 bitflags.workspace = true
 ehttp.workspace = true
 futures.workspace = true
+http.workspace = true
 itertools.workspace = true
 jiff.workspace = true
 opentelemetry.workspace = true
+opentelemetry-proto = { workspace = true, features = ["gen-tonic-messages", "trace"] }
 quiver.workspace = true
 serde.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 tokio-stream.workspace = true
+tonic-prost.workspace = true
 tower.workspace = true
 tracing.workspace = true
 url.workspace = true

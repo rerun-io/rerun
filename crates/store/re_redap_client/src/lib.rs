@@ -1,5 +1,6 @@
 //! Official gRPC client for the Rerun Data Protocol.
 
+mod analytics_exporter;
 mod api_error;
 mod api_response_stream;
 mod connection_client;
@@ -12,11 +13,13 @@ mod segment_chunk_provider;
 #[cfg(not(target_arch = "wasm32"))]
 pub use self::segment_chunk_provider::SegmentChunkProvider;
 
+pub use self::analytics_exporter::ConnectionAnalyticsExporter;
 pub use self::api_error::{ApiError, ApiErrorKind, ApiResult};
 
 pub use self::api_response_stream::ApiResponseStream;
 pub use self::connection_client::{
-    ConnectionClient, FetchChunksResponseStream, GenericConnectionClient, SegmentQueryParams,
+    Connection, ConnectionClient, FetchChunksResponseStream, GenericConnectionClient,
+    SegmentQueryParams,
 };
 pub use self::connection_registry::{
     ClientCredentialsError, ConnectionRegistry, ConnectionRegistryHandle, CredentialSource,

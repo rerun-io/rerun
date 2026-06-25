@@ -199,7 +199,7 @@ impl DataframeQueryTableProvider<ConnectionClient> {
     #[tracing::instrument(level = "info", skip_all)]
     pub async fn new(
         origin: Origin,
-        connection: ConnectionRegistryHandle,
+        connection_registry: ConnectionRegistryHandle,
         dataset_id: EntryId,
         query_expression: &QueryExpression,
         segment_ids: &[impl AsRef<str> + Sync],
@@ -208,10 +208,10 @@ impl DataframeQueryTableProvider<ConnectionClient> {
         #[cfg(not(target_arch = "wasm32"))] trace_headers: Option<crate::TraceHeaders>,
         metrics_collectors: Vec<crate::MetricsCollector>,
     ) -> ApiResult<Self> {
-        let client = connection.client(origin.clone()).await?;
+        let connection = connection_registry.connection(origin.clone()).await?;
 
         let mut provider = Self::new_from_client(
-            client,
+            connection.client,
             dataset_id,
             query_expression,
             segment_ids,
@@ -223,8 +223,7 @@ impl DataframeQueryTableProvider<ConnectionClient> {
         )
         .await?;
 
-        let analytics = crate::ConnectionAnalytics::new(origin, &provider.client);
-        provider.analytics = Some(analytics);
+        provider.analytics = connection.analytics.map(crate::ConnectionAnalytics::new);
 
         Ok(provider)
     }

@@ -11,7 +11,7 @@ use re_uri::Origin;
 use tokio::sync::RwLock;
 use tonic::Code;
 
-use crate::connection_client::{ConnectionClient, GenericConnectionClient};
+use crate::connection_client::{Connection, ConnectionClient, GenericConnectionClient};
 use crate::grpc::{RedapClient, RedapClientInner};
 use crate::{ApiError, ApiResult, TonicStatusError};
 
@@ -44,11 +44,11 @@ pub struct ConnectionRegistry {
     /// If set, the fallback token is used when no specific token is registered for a given origin.
     fallback_token: Option<Jwt>,
 
-    /// The cached clients, keyed by origin.
+    /// The cached remote connections, keyed by origin.
     ///
-    /// Clients are much cheaper to clone than create (since the latter involves establishing an
+    /// Connections are much cheaper to clone than create (since the latter involves establishing an
     /// actual TCP connection), so we keep them around once created.
-    clients: HashMap<re_uri::Origin, ConnectionClient>,
+    remote_connections: HashMap<re_uri::Origin, Connection>,
 
     /// Latest errors received for specific redap URIs.
     uri_errors: HashMap<re_uri::DatasetSegmentUri, String>,
@@ -65,7 +65,7 @@ impl ConnectionRegistry {
             inner: Arc::new(RwLock::new(Self {
                 saved_credentials: HashMap::new(),
                 fallback_token: None,
-                clients: HashMap::new(),
+                remote_connections: HashMap::new(),
                 uri_errors: Default::default(),
             })),
             use_stored_credentials: true,
@@ -82,7 +82,7 @@ impl ConnectionRegistry {
             inner: Arc::new(RwLock::new(Self {
                 saved_credentials: HashMap::new(),
                 fallback_token: None,
-                clients: HashMap::new(),
+                remote_connections: HashMap::new(),
                 uri_errors: Default::default(),
             })),
             use_stored_credentials: false,
@@ -200,7 +200,7 @@ impl ConnectionRegistryHandle {
         wrap_blocking_lock(|| {
             let mut inner = self.inner.blocking_write();
             inner.saved_credentials.insert(origin.clone(), credentials);
-            inner.clients.remove(origin);
+            inner.remote_connections.remove(origin);
         });
     }
 
@@ -215,7 +215,7 @@ impl ConnectionRegistryHandle {
         wrap_blocking_lock(|| {
             let mut inner = self.inner.blocking_write();
             inner.saved_credentials.remove(origin);
-            inner.clients.remove(origin);
+            inner.remote_connections.remove(origin);
         });
     }
 
@@ -254,11 +254,11 @@ impl ConnectionRegistryHandle {
         })
     }
 
-    /// Get a client for the given origin, creating one if it doesn't exist yet.
+    /// Get a connection for the given origin, creating one if it doesn't exist yet.
     ///
     /// Note: although `RedapClient` is cheap to clone, callsites should generally *not* hold on to
     /// client instances for longer than the immediate needs. In the future, authentication may
-    /// require periodic tokens refresh, so it is necessary to always get a "fresh" client.
+    /// require periodic tokens refresh, so it is necessary to always get a "fresh" connection.
     ///
     /// If a token has already been registered for this origin, it will be used. Otherwise, it will attempt to
     /// use the following token, in this order:
@@ -268,16 +268,16 @@ impl ConnectionRegistryHandle {
     ///
     /// Failing that, no token will be used.
     #[tracing::instrument(level = "info", skip_all)]
-    pub async fn client(&self, origin: re_uri::Origin) -> ApiResult<ConnectionClient> {
+    pub async fn connection(&self, origin: re_uri::Origin) -> ApiResult<Connection> {
         // happy path
         {
             let inner = self.inner.read().await;
-            if let Some(client) = inner.clients.get(&origin) {
-                return Ok(client.clone());
+            if let Some(connection) = inner.remote_connections.get(&origin) {
+                return Ok(connection.clone());
             }
         }
 
-        // Don't hold the lock while creating the client - this may take a while and we may
+        // Don't hold the lock while creating the connection — this may take a while and we may
         // want to read the tokens in the meantime for other purposes.
         let (saved_credentials, fallback_token) = {
             let inner = self.inner.read().await;
@@ -320,17 +320,25 @@ impl ConnectionRegistryHandle {
         let (raw_client, service, successful_credentials) =
             Self::try_create_raw_client(origin.clone(), credentials_to_try.into_iter()).await?;
 
-        let client = ConnectionClient::new(GenericConnectionClient::new(raw_client), service);
+        let connection = Connection {
+            client: ConnectionClient::new(GenericConnectionClient::new(raw_client)),
+            analytics: Some(crate::ConnectionAnalyticsExporter::from_remote_service(
+                origin.clone(),
+                service,
+            )),
+        };
 
-        // We have a successful client, so we cache it and remember about the successful token.
+        // We have a successful connection, so we cache it and remember about the successful token.
         //
         // Note: because we only acquire the lock now, a race is possible where two threads
-        // concurrently attempt to create the client and would override each-other's results. This
+        // concurrently attempt to create the connection and would override each-other's results. This
         // is acceptable since both should reach the same conclusion, and preferable that holding
         // the lock for the entire time, as the connection process can take a while.
         {
             let mut inner = self.inner.write().await;
-            inner.clients.insert(origin.clone(), client.clone());
+            inner
+                .remote_connections
+                .insert(origin.clone(), connection.clone());
 
             let successful_credentials = successful_credentials.map(|c| c.credentials);
 
@@ -345,7 +353,13 @@ impl ConnectionRegistryHandle {
             }
         }
 
-        Ok(client)
+        Ok(connection)
+    }
+
+    /// Get a REDAP RPC client for the given origin, creating a connection if it doesn't exist yet.
+    #[tracing::instrument(level = "info", skip_all)]
+    pub async fn client(&self, origin: re_uri::Origin) -> ApiResult<ConnectionClient> {
+        Ok(self.connection(origin).await?.client)
     }
 
     /// Try creating (and validating) a raw client using whatever token we might have available.
