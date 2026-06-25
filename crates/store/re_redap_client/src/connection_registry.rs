@@ -11,8 +11,8 @@ use re_uri::Origin;
 use tokio::sync::RwLock;
 use tonic::Code;
 
-use crate::connection_client::{Connection, ConnectionClient, GenericConnectionClient};
-use crate::grpc::{RedapClient, RedapClientInner};
+use crate::connection_client::{Connection, ConnectionClient, RedapClient};
+use crate::grpc::RedapClientStack;
 use crate::{ApiError, ApiResult, TonicStatusError};
 
 /// Returns a suggested host if the user likely forgot the "api." prefix.
@@ -256,8 +256,8 @@ impl ConnectionRegistryHandle {
 
     /// Get a connection for the given origin, creating one if it doesn't exist yet.
     ///
-    /// Note: although `RedapClient` is cheap to clone, callsites should generally *not* hold on to
-    /// client instances for longer than the immediate needs. In the future, authentication may
+    /// Note: although `ConnectionClient` is cheap to clone, callsites should generally *not* hold on
+    /// to client instances for longer than the immediate needs. In the future, authentication may
     /// require periodic tokens refresh, so it is necessary to always get a "fresh" connection.
     ///
     /// If a token has already been registered for this origin, it will be used. Otherwise, it will attempt to
@@ -317,14 +317,14 @@ impl ConnectionRegistryHandle {
             add_cred(&mut credentials_to_try, cred);
         }
 
-        let (raw_client, service, successful_credentials) =
-            Self::try_create_raw_client(origin.clone(), credentials_to_try.into_iter()).await?;
+        let (client_stack, successful_credentials) =
+            Self::try_connect_client_stack(origin.clone(), credentials_to_try.into_iter()).await?;
 
         let connection = Connection {
-            client: ConnectionClient::new(GenericConnectionClient::new(raw_client)),
+            client: RedapClient::new(crate::grpc::boxed_redap_grpc_client(client_stack.clone())),
             analytics: Some(crate::ConnectionAnalyticsExporter::from_remote_service(
                 origin.clone(),
-                service,
+                client_stack,
             )),
         };
 
@@ -356,34 +356,30 @@ impl ConnectionRegistryHandle {
         Ok(connection)
     }
 
-    /// Get a REDAP RPC client for the given origin, creating a connection if it doesn't exist yet.
+    /// Get a redap RPC client for the given origin, creating a connection if it doesn't exist yet.
     #[tracing::instrument(level = "info", skip_all)]
     pub async fn client(&self, origin: re_uri::Origin) -> ApiResult<ConnectionClient> {
         Ok(self.connection(origin).await?.client)
     }
 
-    /// Try creating (and validating) a raw client using whatever token we might have available.
+    /// Try connecting with whatever credentials we have available.
     ///
-    /// On success returns the high-level client, the underlying layered service (so sibling
-    /// channels can share the same auth/version/propagate stack), and the credentials
-    /// specification that worked.
+    /// On success returns the configured client stack and the credentials specification that worked.
     #[tracing::instrument(level = "info", skip_all)]
-    async fn try_create_raw_client(
+    async fn try_connect_client_stack(
         origin: re_uri::Origin,
         possible_credentials: impl Iterator<Item = SourcedCredentials>,
-    ) -> ApiResult<(RedapClient, RedapClientInner, Option<SourcedCredentials>)> {
+    ) -> ApiResult<(RedapClientStack, Option<SourcedCredentials>)> {
         let mut first_failed_attempt = None;
 
         for credentials in possible_credentials {
-            let result = Self::create_and_validate_raw_client_with_token(
-                origin.clone(),
-                Some(credentials.clone()),
-            )
-            .await;
+            let result =
+                Self::connect_and_validate_client_stack(origin.clone(), Some(credentials.clone()))
+                    .await;
 
             match result {
-                Ok((raw_client, service)) => {
-                    return Ok((raw_client, service, Some(credentials)));
+                Ok(client_stack) => {
+                    return Ok((client_stack, Some(credentials)));
                 }
 
                 Err(err) if err.is_client_credentials_error() => {
@@ -399,10 +395,10 @@ impl ConnectionRegistryHandle {
         }
 
         // Everything failed, last ditch effort without a token.
-        let result = Self::create_and_validate_raw_client_with_token(origin.clone(), None).await;
+        let result = Self::connect_and_validate_client_stack(origin.clone(), None).await;
 
         match result {
-            Ok((raw_client, service)) => Ok((raw_client, service, None)),
+            Ok(client_stack) => Ok((client_stack, None)),
 
             Err(err) => {
                 // If we actually tried tokens, this error is more relevant.
@@ -466,10 +462,10 @@ impl ConnectionRegistryHandle {
     }
 
     #[tracing::instrument(level = "info", skip_all)]
-    async fn create_and_validate_raw_client_with_token(
+    async fn connect_and_validate_client_stack(
         origin: re_uri::Origin,
         credentials: Option<SourcedCredentials>,
-    ) -> ApiResult<(RedapClient, RedapClientInner)> {
+    ) -> ApiResult<RedapClientStack> {
         // Check the token's allowed hosts before wrapping it in a provider that
         // would blindly attach it to every outgoing request. If the host
         // doesn't match, return a credentials error so the caller can skip
@@ -506,21 +502,22 @@ impl ConnectionRegistryHandle {
                 None => None,
             };
 
-        let (mut raw_client, service) = match crate::grpc::client(origin.clone(), provider).await {
-            Ok(pair) => pair,
-            Err(grpc_err) => {
-                // It's a common mistake to connect to `asdf.rerun.io` instead of `api.asdf.rerun.io`,
-                // so if what we're trying to connect to is not a valid Rerun server, then cut out
-                // a layer of noise:
-                Self::ensure_is_rerun_server(&origin).await?;
+        let (mut grpc_client, client_stack) =
+            match crate::grpc::connect_grpc_client(origin.clone(), provider).await {
+                Ok(pair) => pair,
+                Err(grpc_err) => {
+                    // It's a common mistake to connect to `asdf.rerun.io` instead of `api.asdf.rerun.io`,
+                    // so if what we're trying to connect to is not a valid Rerun server, then cut out
+                    // a layer of noise:
+                    Self::ensure_is_rerun_server(&origin).await?;
 
-                return Err(grpc_err);
-            }
-        };
+                    return Err(grpc_err);
+                }
+            };
 
         // Call the WhoAmI endpoint to check that authentication is successful. It's ok to do
         // this since we're caching the client, so we're not spamming such a request unnecessarily.
-        let request_result = raw_client.who_am_i(WhoAmIRequest {}).await;
+        let request_result = grpc_client.who_am_i(WhoAmIRequest {}).await;
 
         // TODO(rerun-io/dataplatform#1069): remove the `FindEntries` fallback once all servers
         // have been updated to support the `WhoAmI` endpoint.
@@ -529,7 +526,7 @@ impl ConnectionRegistryHandle {
                 re_log::debug_once!(
                     "Server at {origin} does not support WhoAmI, falling back to FindEntries"
                 );
-                raw_client
+                grpc_client
                     .find_entries(FindEntriesRequest {
                         filter: Some(EntryFilter {
                             id: None,
@@ -573,7 +570,7 @@ impl ConnectionRegistryHandle {
         };
 
         match request_result {
-            Ok(()) => Ok((raw_client, service)),
+            Ok(()) => Ok(client_stack),
 
             // catch unauthenticated errors and forget the token if they happen
             Err(err) if err.code() == Code::Unauthenticated => {

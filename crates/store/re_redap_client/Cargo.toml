@@ -62,7 +62,7 @@ thiserror.workspace = true
 tokio.workspace = true
 tokio-stream.workspace = true
 tonic-prost.workspace = true
-tower.workspace = true
+tower = { workspace = true, features = ["util"] }
 tracing.workspace = true
 url.workspace = true
 web-time.workspace = true

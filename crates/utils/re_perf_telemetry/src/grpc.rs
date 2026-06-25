@@ -22,8 +22,8 @@ const RERUN_HTTP_HEADER_REQUEST_TRACE_ID: &str = "x-request-trace-id";
 pub struct GrpcMakeSpan {
     gauge: opentelemetry::metrics::Gauge<u64>,
     // unfortunately we can't have different implementation of `MakeSpan` as that creates a ripple effect
-    // through the entire hierarchy of types of the RedapClient and its usage, hence to disable the span
-    // creation, we create noop spans instead if telemetry is disabled at runtime
+    // through the entire hierarchy of types of the redap client stack and its usage, hence to disable
+    // the span creation, we create noop spans instead if telemetry is disabled at runtime
     create_noop_spans: bool,
 }
 

@@ -61,6 +61,12 @@ pub type FetchChunksResponseStream =
 pub type QueryDatasetResponseStream =
     ApiResponseStream<re_protos::cloud::v1alpha1::QueryDatasetResponse>;
 
+pub type BoxedRedapClientStack = tower::util::BoxCloneSyncService<
+    tonic::codegen::http::Request<tonic::body::Body>,
+    tonic::codegen::http::Response<tonic::body::Body>,
+    tonic::Status,
+>;
+
 #[derive(Clone)]
 pub struct SegmentQueryParams {
     pub dataset_id: EntryId,
@@ -78,8 +84,8 @@ pub struct SegmentQueryParams {
 /// For the viewer, use [`crate::ConnectionClient`].
 //TODO(ab): this should NOT be `Clone`, to discourage callsites from holding on to a client for too
 //long. However we have a bunch of places that needs to be fixed before we can do that.
-#[derive(Debug, Clone)]
-pub struct GenericConnectionClient<T> {
+#[derive(Clone)]
+pub struct RedapClient<T> {
     inner: RerunCloudServiceClient<T>,
 
     /// Cached `VersionResponse.features` list. Populated lazily on the first
@@ -92,7 +98,7 @@ pub struct GenericConnectionClient<T> {
     features: Arc<OnceCell<Vec<String>>>,
 }
 
-impl<T> GenericConnectionClient<T> {
+impl<T> RedapClient<T> {
     /// Create a new [`Self`].
     ///
     /// This should not be used in the viewer, use [`crate::ConnectionRegistryHandle::client`]
@@ -104,7 +110,7 @@ impl<T> GenericConnectionClient<T> {
         }
     }
 
-    /// Get a mutable reference to the underlying `RedapClient`.
+    /// Get a mutable reference to the underlying generated gRPC client.
     //TODO(#10188): this should disappear once we have wrapper for all endpoints and the client code
     //is using them.
     pub fn inner(&mut self) -> &mut RerunCloudServiceClient<T> {
@@ -112,48 +118,33 @@ impl<T> GenericConnectionClient<T> {
     }
 }
 
-// ---
-
-/// Thin wrapper around [`GenericConnectionClient<crate::grpc::RedapClientInner>`].
-///
-/// Use [`crate::ConnectionRegistryHandle::connection`] to construct.
-#[derive(Debug, Clone)]
-pub struct ConnectionClient {
-    inner: GenericConnectionClient<crate::grpc::RedapClientInner>,
-}
-
-impl ConnectionClient {
-    pub(crate) fn new(inner: GenericConnectionClient<crate::grpc::RedapClientInner>) -> Self {
-        Self { inner }
+// `RerunCloudServiceClient<T>`'s derived `Debug` requires `T: Debug`, which doesn't hold for the
+// type-erased `BoxedRedapClientStack`. Print only the cached features instead.
+impl<T> std::fmt::Debug for RedapClient<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("RedapClient")
+            .field("features", &self.features)
+            .finish_non_exhaustive()
     }
 }
 
-/// REDAP connection capabilities for a single origin.
+// ---
+
+/// Type alias for the boxed-transport [`RedapClient`] used in the viewer.
+///
+/// Use [`crate::ConnectionRegistryHandle::connection`] to construct.
+pub type ConnectionClient = RedapClient<BoxedRedapClientStack>;
+
+/// Connection capabilities for a redap origin.
 #[derive(Clone, Debug)]
 pub struct Connection {
     pub client: ConnectionClient,
     pub analytics: Option<crate::ConnectionAnalyticsExporter>,
 }
 
-impl std::ops::Deref for ConnectionClient {
-    type Target = GenericConnectionClient<crate::grpc::RedapClientInner>;
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        &self.inner
-    }
-}
-
-impl std::ops::DerefMut for ConnectionClient {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.inner
-    }
-}
-
 // ---
 
-impl<T> GenericConnectionClient<T>
+impl<T> RedapClient<T>
 where
     T: tonic::client::GrpcService<tonic::body::Body>,
     T::Error: Into<StdError>,
@@ -1430,7 +1421,7 @@ mod tests {
     /// When the `features` cell is already populated, `supports_feature`
     /// must answer from the cache without going through the gRPC transport.
     ///
-    /// We construct a `GenericConnectionClient` against a lazy channel
+    /// We construct a `RedapClient` against a lazy channel
     /// pointing at an unrouteable address: any RPC against it would error
     /// (or hang past our test timeout). The test pre-populates the cell
     /// and then issues three `supports_feature` calls. If the cache is
@@ -1441,7 +1432,7 @@ mod tests {
         // `connect_lazy` succeeds without doing any I/O; the failure
         // would only surface when an RPC actually flows through.
         let channel = tonic::transport::Channel::from_static("http://127.0.0.1:1").connect_lazy();
-        let mut client = GenericConnectionClient::new(RerunCloudServiceClient::new(channel));
+        let mut client = RedapClient::new(RerunCloudServiceClient::new(channel));
 
         // Prime the cache exactly as a successful first-call would.
         client
@@ -1469,7 +1460,7 @@ mod tests {
     #[tokio::test]
     async fn features_cache_is_shared_across_clones() {
         let channel = tonic::transport::Channel::from_static("http://127.0.0.1:1").connect_lazy();
-        let client_a = GenericConnectionClient::new(RerunCloudServiceClient::new(channel));
+        let client_a = RedapClient::new(RerunCloudServiceClient::new(channel));
         let mut client_b = client_a.clone();
 
         client_a
@@ -1494,7 +1485,7 @@ mod tests {
     #[tokio::test]
     async fn supports_feature_returns_false_for_empty_features_list() {
         let channel = tonic::transport::Channel::from_static("http://127.0.0.1:1").connect_lazy();
-        let mut client = GenericConnectionClient::new(RerunCloudServiceClient::new(channel));
+        let mut client = RedapClient::new(RerunCloudServiceClient::new(channel));
 
         client
             .features

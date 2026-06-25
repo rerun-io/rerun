@@ -1,8 +1,8 @@
-//! Analytics-side OTLP exporter for a given [`crate::grpc::RedapClientInner`].
+//! Analytics-side OTLP exporter for a given [`crate::grpc::RedapClientStack`].
 //!
 //! `re_datafusion` constructs OTLP `ExportTraceServiceRequest`s for query
 //! analytics and hands them to [`ConnectionAnalyticsExporter`]. The exporter
-//! reuses the same authenticated tower service as REDAP RPCs, so analytics
+//! reuses the same authenticated tower service as redap RPCs, so analytics
 //! exports share the HTTP/2 connection to the Hub.
 
 use opentelemetry_proto::tonic::collector::trace::v1::{
@@ -17,17 +17,17 @@ const EXPORT_PATH: &str = "/opentelemetry.proto.collector.trace.v1.TraceService/
 ///
 /// Wraps a clone of the layered tower service shared with
 /// [`crate::ConnectionClient`] — same auth / version / propagate-headers
-/// stack — without requiring downstream crates to expose [`crate::RedapClientInner`].
+/// stack — without requiring downstream crates to expose [`crate::RedapClientStack`].
 #[derive(Clone, Debug)]
 pub struct ConnectionAnalyticsExporter {
     origin: Origin,
-    service: crate::grpc::RedapClientInner,
+    service: crate::grpc::RedapClientStack,
 }
 
 impl ConnectionAnalyticsExporter {
     pub(crate) fn from_remote_service(
         origin: Origin,
-        service: crate::grpc::RedapClientInner,
+        service: crate::grpc::RedapClientStack,
     ) -> Self {
         Self { origin, service }
     }

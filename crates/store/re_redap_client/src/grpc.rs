@@ -19,8 +19,8 @@ use re_uri::Origin;
 use tokio_stream::StreamExt as _;
 
 use crate::{
-    ApiError, ApiErrorKind, ApiResult, ConnectionClient, MAX_DECODING_MESSAGE_SIZE,
-    SegmentQueryParams,
+    ApiError, ApiErrorKind, ApiResult, BoxedRedapClientStack, ConnectionClient,
+    MAX_DECODING_MESSAGE_SIZE, SegmentQueryParams,
 };
 
 #[cfg(target_arch = "wasm32")]
@@ -303,7 +303,7 @@ impl tower::Service<tonic::codegen::http::Request<tonic::body::Body>> for PoolCh
 }
 
 #[cfg(target_arch = "wasm32")]
-pub type RedapClientInner = re_auth::client::AuthService<
+pub type RedapClientStack = re_auth::client::AuthService<
     tonic::service::interceptor::InterceptedService<
         re_protos::headers::PropagateHeaders<tonic_web_wasm_client::Client>,
         re_protos::headers::RerunVersionInterceptor,
@@ -311,39 +311,38 @@ pub type RedapClientInner = re_auth::client::AuthService<
 >;
 
 /// Apply the standard SDK-side layer stack on top of an already-built channel
-/// and return the high-level `RedapClient` plus the layered service backing it.
+/// and return the generated [`RawRedapClient`] plus the layered service backing it.
 #[cfg(target_arch = "wasm32")]
-pub(crate) fn assemble_client(
+pub(crate) fn assemble_grpc_client(
     channel: tonic_web_wasm_client::Client,
     credentials: Option<Arc<dyn re_auth::credentials::CredentialsProvider + Send + Sync + 'static>>,
-) -> (RedapClient, RedapClientInner) {
+) -> (RawRedapClient, RedapClientStack) {
     let middlewares = tower::ServiceBuilder::new()
         .layer(AuthDecorator::new(credentials))
         .layer(re_protos::headers::new_rerun_client_headers_layer());
 
-    let svc: RedapClientInner = tower::ServiceBuilder::new()
+    let client_stack: RedapClientStack = tower::ServiceBuilder::new()
         .layer(middlewares.into_inner())
         .service(channel);
 
-    let client = RerunCloudServiceClient::new(svc.clone())
-        .max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE);
-    (client, svc)
+    let client = redap_grpc_client(client_stack.clone());
+    (client, client_stack)
 }
 
 #[cfg(target_arch = "wasm32")]
-pub(crate) async fn client(
+pub(crate) async fn connect_grpc_client(
     origin: Origin,
     credentials: Option<Arc<dyn re_auth::credentials::CredentialsProvider + Send + Sync + 'static>>,
-) -> ApiResult<(RedapClient, RedapClientInner)> {
+) -> ApiResult<(RawRedapClient, RedapClientStack)> {
     let channel = crate::with_retry("redap_connection", || async {
         channel(origin.clone()).await
     })
     .await?;
-    Ok(assemble_client(channel, credentials))
+    Ok(assemble_grpc_client(channel, credentials))
 }
 
 #[cfg(all(not(target_arch = "wasm32"), feature = "perf_telemetry"))]
-pub type RedapClientInner = re_auth::client::AuthService<
+pub type RedapClientStack = re_auth::client::AuthService<
     tonic::service::interceptor::InterceptedService<
         re_protos::headers::PropagateHeaders<
             re_perf_telemetry::external::tower_http::trace::Trace<
@@ -364,22 +363,44 @@ pub type RedapClientInner = re_auth::client::AuthService<
 >;
 
 #[cfg(all(not(target_arch = "wasm32"), not(feature = "perf_telemetry")))]
-pub type RedapClientInner = re_auth::client::AuthService<
+pub type RedapClientStack = re_auth::client::AuthService<
     tonic::service::interceptor::InterceptedService<
         re_protos::headers::PropagateHeaders<PoolChannel>,
         re_protos::headers::RerunVersionInterceptor,
     >,
 >;
 
-pub type RedapClient = RerunCloudServiceClient<RedapClientInner>;
+pub(crate) type RawRedapClient = RerunCloudServiceClient<RedapClientStack>;
+
+fn redap_grpc_client(client_stack: RedapClientStack) -> RawRedapClient {
+    RerunCloudServiceClient::new(client_stack).max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE)
+}
+
+pub(crate) fn boxed_redap_grpc_client(
+    client_stack: RedapClientStack,
+) -> RerunCloudServiceClient<BoxedRedapClientStack> {
+    use tower::ServiceExt as _;
+
+    // Map the layered stack's `Box<dyn Error + Send + Sync>` error to a concrete `tonic::Status`
+    // before boxing. Keeping the boxed service's error type concrete avoids HRTB lifetime variance
+    // issues that otherwise prevent `Send` futures from being inferred at consumer sites (e.g.
+    // `re_datafusion`'s `make_future_send`).
+    let client_stack = tower::util::BoxCloneSyncService::new(
+        client_stack
+            .map_response(|response| response.map(tonic::body::Body::new))
+            .map_err(tonic::Status::from_error),
+    );
+
+    RerunCloudServiceClient::new(client_stack).max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE)
+}
 
 /// Apply the standard SDK-side layer stack on top of an already-built channel
-/// and return the high-level `RedapClient` plus the layered service backing it.
+/// and return the generated [`RawRedapClient`] plus the layered service backing it.
 #[cfg(not(target_arch = "wasm32"))]
-pub(crate) fn assemble_client(
+pub(crate) fn assemble_grpc_client(
     channel: PoolChannel,
     credentials: Option<Arc<dyn re_auth::credentials::CredentialsProvider + Send + Sync + 'static>>,
-) -> (RedapClient, RedapClientInner) {
+) -> (RawRedapClient, RedapClientStack) {
     let middlewares = tower::ServiceBuilder::new()
         .layer(AuthDecorator::new(credentials))
         .layer(re_protos::headers::new_rerun_client_headers_layer());
@@ -387,25 +408,24 @@ pub(crate) fn assemble_client(
     #[cfg(feature = "perf_telemetry")]
     let middlewares = middlewares.layer(re_perf_telemetry::new_client_telemetry_layer());
 
-    let svc: RedapClientInner = tower::ServiceBuilder::new()
+    let client_stack: RedapClientStack = tower::ServiceBuilder::new()
         .layer(middlewares.into_inner())
         .service(channel);
 
-    let client = RerunCloudServiceClient::new(svc.clone())
-        .max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE);
-    (client, svc)
+    let client = redap_grpc_client(client_stack.clone());
+    (client, client_stack)
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-pub(crate) async fn client(
+pub(crate) async fn connect_grpc_client(
     origin: Origin,
     credentials: Option<Arc<dyn re_auth::credentials::CredentialsProvider + Send + Sync + 'static>>,
-) -> ApiResult<(RedapClient, RedapClientInner)> {
+) -> ApiResult<(RawRedapClient, RedapClientStack)> {
     let channel = crate::with_retry("redap_connection", || async {
         channel(origin.clone()).await
     })
     .await?;
-    Ok(assemble_client(channel, credentials))
+    Ok(assemble_grpc_client(channel, credentials))
 }
 
 /// Converts a `FetchChunksStream` stream into a stream of `Chunk`s.

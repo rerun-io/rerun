@@ -18,7 +18,7 @@ pub use self::api_error::{ApiError, ApiErrorKind, ApiResult};
 
 pub use self::api_response_stream::ApiResponseStream;
 pub use self::connection_client::{
-    Connection, ConnectionClient, FetchChunksResponseStream, GenericConnectionClient,
+    BoxedRedapClientStack, Connection, ConnectionClient, FetchChunksResponseStream, RedapClient,
     SegmentQueryParams,
 };
 pub use self::connection_registry::{
@@ -26,7 +26,7 @@ pub use self::connection_registry::{
     Credentials, SourcedCredentials,
 };
 pub use self::grpc::{
-    ChunksWithSegment, RedapClient, RedapClientInner, SegmentDownload, StreamingOptions, channel,
+    ChunksWithSegment, RedapClientStack, SegmentDownload, StreamingOptions, channel,
     fetch_chunks_response_to_chunk_and_segment_id, stream_blueprint_and_segment_from_server,
     stream_table_blueprint_segment_from_server, table_blueprint_log_channel,
 };
