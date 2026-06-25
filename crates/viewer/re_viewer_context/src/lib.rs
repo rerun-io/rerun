@@ -154,7 +154,7 @@ pub mod external {
     pub use tokio;
     pub use {
         nohash_hasher, re_chunk_store, re_entity_db, re_log_types, re_query, re_string_interner,
-        re_ui,
+        re_tf, re_ui,
     };
 }
 

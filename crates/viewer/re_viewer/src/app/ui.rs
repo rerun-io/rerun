@@ -90,6 +90,7 @@ impl App {
                     gpu_resource_stats,
                     mem_usage_tree,
                     store_stats,
+                    active_store_context,
                     storage_context,
                 );
 
@@ -172,6 +173,7 @@ impl App {
         gpu_resource_stats: &WgpuResourcePoolStatistics,
         mem_usage_tree: Option<NamedMemUsageTree>,
         store_stats: Option<&StoreHubStats>,
+        store_context: Option<&ActiveStoreContext<'_>>,
         storage_context: &re_viewer_context::StorageContext<'_>,
     ) {
         let window_frame = self.window_frame_config(ui.ctx());
@@ -198,6 +200,8 @@ impl App {
                     external_trees,
                     gpu_resource_stats,
                     store_stats,
+                    store_context,
+                    &self.state.time_controls,
                     storage_context,
                 );
                 if response.close_requested {

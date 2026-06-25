@@ -4,7 +4,7 @@ use ahash::HashSet;
 use parking_lot::{ArcRwLockReadGuard, RawRwLock};
 use re_byte_size::SizeBytes as _;
 use re_chunk::{LatestAtQuery, TimelineName};
-use re_chunk_store::ChunkStoreEvent;
+use re_chunk_store::{ChunkStoreEvent, MissingChunkReporter};
 use re_entity_db::EntityDb;
 use re_tf::{
     CachedTransformsForTimeline, FrameIdRegistry, TransformForest, TransformResolutionCache,
@@ -69,6 +69,38 @@ impl TransformDatabaseStoreCache {
             .ensure_timeline_is_initialized(entity_db.storage_engine().store(), timeline);
 
         transform_cache.transforms_for_timeline(timeline)
+    }
+
+    /// Returns a snapshot of the transform cache for a single latest-at time.
+    ///
+    /// The snapshot contains registered frames matching the frame filter plus latest direct
+    /// transform edges between them.
+    pub fn latest_at_transform_cache_snapshot(
+        &mut self,
+        entity_db: &EntityDb,
+        missing_chunk_reporter: &MissingChunkReporter,
+        query: &LatestAtQuery,
+        filter: re_tf::transform_cache_snapshot::SnapshotFilter,
+    ) -> re_tf::transform_cache_snapshot::Snapshot {
+        let transform_cache = self
+            .transform_cache
+            .get_or_insert_with(|| TransformResolutionCache::new(entity_db));
+
+        // Remember that this timeline was used this frame.
+        self.used_timelines.insert(query.timeline());
+
+        transform_cache
+            .ensure_timeline_is_initialized(entity_db.storage_engine().store(), query.timeline());
+
+        let frame_id_registry = transform_cache.frame_id_registry();
+        let transforms = transform_cache.transforms_for_timeline(query.timeline());
+        transforms.latest_at_transform_cache_snapshot(
+            &frame_id_registry,
+            entity_db,
+            missing_chunk_reporter,
+            query,
+            filter,
+        )
     }
 
     pub fn update_transform_forest(
