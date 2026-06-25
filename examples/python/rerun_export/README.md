@@ -18,13 +18,13 @@ Convert robot recordings into training-ready datasets by using the OSS Rerun ser
 ## Background
 
 This example demonstrates how to use the Rerun OSS server API to process robot recordings and prepare them for imitation learning.
-The workflow uses the server to load RRD files, query robot data (actions, observations, videos), align time series to a target framerate, and write the result as a LeRobot v3 dataset compatible with robotics model training pipelines.
+The workflow uses the server to load RRD files, query robot data (actions, observations, videos), align time series to a target frame rate, and write the result as a LeRobot v3 dataset compatible with robotics model training pipelines.
 
 [LeRobot](https://github.com/huggingface/lerobot) is a project by Hugging Face that provides models, datasets, and tools for real-world robotics in PyTorch. This example shows how Rerun recordings can be converted into LeRobot's standardized dataset format.
 
 ## Conversion workflow
 
-The converter loads RRD files into the OSS server, infers data types from the recordings, resamples all data to a target framerate, and writes the result as a LeRobot v3 dataset. Video streams are efficiently remuxed without re-encoding.
+The converter loads RRD files into the OSS server, infers data types from the recordings, resamples all data to a target frame rate, and writes the result as a LeRobot v3 dataset. Video streams are efficiently remuxed without re-encoding.
 
 ## Run the code
 

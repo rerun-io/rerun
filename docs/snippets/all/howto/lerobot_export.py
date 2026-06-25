@@ -75,7 +75,7 @@ videos = [
 # Configure the conversion parameters
 # This maps Rerun's flexible data model to LeRobot's standardized format
 config = LeRobotConversionConfig(
-    fps=15,  # Target framerate for the dataset
+    fps=15,  # Target frame rate for the dataset
     index_column="real_time",  # Timeline to use for alignment
     # Fully qualified action column
     action="/action/joint_positions:Scalars:scalars",
@@ -109,7 +109,7 @@ lerobot_dataset = LeRobotDataset.create(
 
 # region: export_episode
 # Convert the recording to a LeRobot episode
-# This aligns all time series to the target framerate, extracts video frames,
+# This aligns all time series to the target frame rate, extracts video frames,
 # and writes the episode data in LeRobot's Parquet format
 print("Creating episode")
 

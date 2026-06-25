@@ -163,6 +163,32 @@ fn video_data_ui(
         ));
     }
 
+    if let Some(bitrate_bps) = video_descr.average_bitrate() {
+        // We only know the byte size of loaded samples, so for a not-fully-loaded video
+        // this is the average bitrate over the portion that has arrived so far.
+        let fully_loaded = video_descr
+            .samples
+            .iter()
+            .all(|s| matches!(s.source(), re_video::VideoSource::Span(_)));
+
+        ui.list_item_flat_noninteractive(
+            PropertyContent::new("Average bitrate")
+                .value_text(re_format::format_bits_per_second(bitrate_bps)),
+        )
+        .on_hover_text(if fully_loaded {
+            format!(
+                "Average bitrate of the {}",
+                match stream_kind {
+                    StreamKind::Video => "video",
+                    StreamKind::Image => "image stream",
+                }
+            )
+        } else {
+            "Average bitrate over the downloaded portion (the full data is not yet available)"
+                .to_owned()
+        });
+    }
+
     ui.list_item_flat_noninteractive(
         PropertyContent::new("Codec").value_text(video_descr.human_readable_codec_string()),
     );

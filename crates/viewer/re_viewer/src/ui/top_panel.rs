@@ -716,7 +716,7 @@ fn latency_details_ui(ui: &mut egui::Ui, latency: re_entity_db::LatencySnapshot)
 
     let e2e_hover_text = "End-to-end latency from when the data was logged by the SDK to when it is shown in the viewer.\n\
     This includes time for encoding, network latency, and decoding.\n\
-    It is also affected by the framerate of the viewer.\n\
+    It is also affected by the frame rate of the viewer.\n\
     This latency is inaccurate if the logging was done on a different machine, since it is clock-based.";
 
     let re_entity_db::LatencySnapshot { secs_since_log } = latency;

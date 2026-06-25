@@ -711,7 +711,7 @@ impl VideoDataDescription {
 
     /// `num_frames / duration`.
     ///
-    /// Note that the video could have a variable framerate!
+    /// Note that the video could have a variable frame rate!
     #[inline]
     pub fn average_fps(&self) -> Option<f32> {
         self.duration().map(|duration| {
@@ -721,6 +721,37 @@ impl VideoDataDescription {
             // so we don't have a fence-post problem here!
             num_frames as f32 / duration.as_secs_f32()
         })
+    }
+
+    /// Average bitrate in bits per second.
+    ///
+    /// Computed over the samples whose byte size is currently known (i.e. those with a
+    /// [`VideoSource::Span`] source). For a fully loaded video asset this is the bitrate of the
+    /// whole video; for a partially downloaded video it is the average bitrate over the portion
+    /// that has arrived so far.
+    ///
+    /// Returns `None` if no sample sizes are known (e.g. video streams whose bytes live in
+    /// external chunks) or if the covered duration is zero.
+    pub fn average_bitrate(&self) -> Option<f64> {
+        let timescale = self.timescale?;
+
+        let mut total_bytes: u64 = 0;
+        let mut total_secs = 0.0;
+        for state in self.samples.iter() {
+            let Some(sample) = state.sample() else {
+                continue;
+            };
+            let VideoSource::Span(span) = sample.source else {
+                continue;
+            };
+            let Some(duration) = sample.duration else {
+                continue;
+            };
+            total_bytes += span.len as u64;
+            total_secs += duration.into_secs(timescale);
+        }
+
+        (total_secs > 0.0).then(|| total_bytes as f64 * 8.0 / total_secs)
     }
 
     /// Determines the video timestamps of all present frames inside a video, returning raw time values.

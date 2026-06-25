@@ -303,8 +303,8 @@ impl FFmpegProcessAndListener {
             .format(codec_str) // TODO(andreas): should we check ahead of time whether this is available?
             //.fps_mode("0")
             .input("-") // stdin is our input!
-            // h264 bitstreams doesn't have timestamp information. Whatever ffmpeg tries to make up about timing & framerates is wrong!
-            // If we don't tell it to just pass the frames through, variable framerate (VFR) video will just not play at all.
+            // h264 bitstreams doesn't have timestamp information. Whatever ffmpeg tries to make up about timing & frame rates is wrong!
+            // If we don't tell it to just pass the frames through, variable frame rate (VFR) video will just not play at all.
             .fps_mode("passthrough")
             .pix_fmt(ffmpeg_pix_fmt)
             // ffmpeg-sidecar's .rawvideo() sets pix_fmt to rgb24, we don't want that.
@@ -997,7 +997,7 @@ fn should_ignore_log_msg(msg: &str) -> bool {
         // This is supported by experimentation yielding that it shows only up when using the `-colorspace` parameter.
         // (color range and yuvj formats are fine though!)
         "No accelerated colorspace conversion found from yuv420p to bgr24",
-        // We actually don't even want it to estimate a framerate!
+        // We actually don't even want it to estimate a frame rate!
         "not enough frames to estimate rate",
         // Similar: we don't want it to be able to estimate any of these things and we set those values explicitly, see invocation.
         // Observed on Windows FFmpeg 7.1, but not with the same version on Mac with the same video.
