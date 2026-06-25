@@ -526,22 +526,7 @@ impl From<VideoPlayerError> for VideoPlaybackIssue {
             message: error.to_string(),
             severity: error.severity(),
             should_request_more_frames: error.should_request_more_frames(),
-            show_frame: match error {
-                VideoPlayerError::NegativeTimestamp
-                | VideoPlayerError::InsufficientSampleData(_)
-                | VideoPlayerError::Decoding(re_video::DecodeError::WaitingForCodecDetails) => {
-                    false
-                }
-
-                VideoPlayerError::EmptyBuffer
-                | VideoPlayerError::UnloadedSampleData(_)
-                | VideoPlayerError::CreateChunk(_)
-                | VideoPlayerError::DecodeChunk(_)
-                | VideoPlayerError::Decoding(_)
-                | VideoPlayerError::BadData
-                | VideoPlayerError::TextureUploadError(_)
-                | VideoPlayerError::DecoderUnexpectedlyExited => true,
-            },
+            show_frame: error.severity() != VideoPlaybackIssueSeverity::Informational,
         }
     }
 }

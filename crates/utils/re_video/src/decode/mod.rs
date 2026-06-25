@@ -189,7 +189,7 @@ impl DecodeError {
 
     pub fn severity(&self) -> VideoPlaybackIssueSeverity {
         match self {
-            Self::WaitingForCodecDetails => VideoPlaybackIssueSeverity::Loading,
+            Self::WaitingForCodecDetails => VideoPlaybackIssueSeverity::Informational,
             #[cfg(with_dav1d)]
             Self::Dav1d(err) => match err {
                 dav1d::Error::Again => VideoPlaybackIssueSeverity::Loading,
