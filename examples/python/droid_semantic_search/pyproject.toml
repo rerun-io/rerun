@@ -1,0 +1,57 @@
+[project]
+name = "droid_semantic_search"
+version = "0.1.0"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  # `catalog` brings datafusion + pandas; `dataloader` brings torch, torchvision, av, pillow.
+  "rerun-sdk[catalog,dataloader]",
+  "lancedb", # local vector store + ANN index
+  "transformers>=4.55", # SigLIP-2 model + processor
+  "pyarrow", # building the LanceDB table
+  "huggingface-hub", # prepare_dataset.py: download DROID sample episodes from the Hub
+  "tqdm", # progress bars for download/register/ingest
+]
+
+[dependency-groups]
+dev = ["mypy==1.19.1", "types-tqdm"]
+
+[tool.rerun-example]
+# Picked up by scripts/ci/isolated_examples.py and the `py-lint-isolated-examples` pixi task.
+isolated = true
+
+[tool.uv]
+# The example is flat scripts, not a wheel — skip project build, just sync deps.
+package = false
+
+# Default `uv sync` uses the in-repo editable rerun-sdk (monorepo dev mode).
+# After syncing, also run `uv pip install ../../../rerun_py/rerun_dev_fixup` to
+# install the .pth shim that makes `import rerun` resolve to the editable source tree.
+#
+# Standalone users (e.g. sparse-checkout of just this example) run instead:
+#   uv sync --no-sources --no-dev
+# That ignores the path source below and resolves `rerun-sdk` from PyPI.
+# rerun-dev-fixup is intentionally absent from this file: uv 0.7.x resolves all
+# dependency groups and extras unconditionally, so any path-only package here would
+# block standalone `--no-sources` resolution.
+[tool.uv.sources]
+rerun-sdk = { path = "../../../rerun_py", editable = true }
+
+# Merged onto the shared base at `../_isolated/mypy.ini` by
+# scripts/ci/isolated_examples.py — list the untyped third-party libs this
+# example actually imports.
+[[tool.mypy.overrides]]
+module = ["lancedb.*", "torch.*", "torchvision.*", "av.*", "PIL.*", "huggingface_hub.*"]
+ignore_missing_imports = true
+
+# These ship a `py.typed` marker but with incomplete stubs, so type-checking their
+# internals yields false positives we can't fix from here:
+#   - transformers: model methods are wrapped in `_Wrapped` descriptors that mistype
+#     `self` (`AutoModel has no attribute "to"`, `AutoProcessor not callable`, etc.).
+#   - pyarrow.compute: its functions (`pc.max`, `pc.and_`, ...) are generated at
+#     runtime, so the stubs don't declare them (`Module has no attribute "max"`).
+# Skip following them — we only need our own usage typed, not their internals.
+[[tool.mypy.overrides]]
+module = ["transformers.*", "pyarrow.compute"]
+follow_imports = "skip"
+ignore_missing_imports = true

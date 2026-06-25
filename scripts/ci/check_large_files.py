@@ -29,6 +29,7 @@ FILES_ALLOWED_TO_BE_LARGE = {
     "uv.lock",
     # Examples excluded from the uv workspace so they maintain standalone lockfiles.
     "examples/python/dataloader/uv.lock",
+    "examples/python/droid_semantic_search/uv.lock",
     "examples/python/rerun_export/uv.lock",
 }
 

@@ -33,6 +33,7 @@ Examples related to robotics, autonomous systems, and interfacing with sensor ha
 examples = [
   # display order, most interesting first
   "droid_dataset",
+  "droid_semantic_search",
   "animated_urdf",
   "robot_data_preprocessing",
   "rerun_export",

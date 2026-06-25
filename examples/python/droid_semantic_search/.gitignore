@@ -1,0 +1,9 @@
+# Local LanceDB vector index built by `ingest.py`
+droid_lancedb/
+# DROID episodes downloaded by `prepare_dataset.py` (Hugging Face path)
+data/
+# Optimized (keyframe-fixed) episode copies written by `prepare_dataset.py`
+optimized/
+# uv-managed virtualenv for this isolated example
+.venv/
+__pycache__/
