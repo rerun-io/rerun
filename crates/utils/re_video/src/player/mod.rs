@@ -107,7 +107,9 @@ impl VideoPlayerError {
         match self {
             Self::UnloadedSampleData(_) => VideoPlaybackIssueSeverity::Loading,
             Self::Decoding(decode_error) => decode_error.severity(),
-            Self::InsufficientSampleData(_) => VideoPlaybackIssueSeverity::Informational,
+            Self::InsufficientSampleData(_) | Self::NegativeTimestamp => {
+                VideoPlaybackIssueSeverity::Informational
+            }
             _ => VideoPlaybackIssueSeverity::Error,
         }
     }

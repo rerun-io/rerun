@@ -19,34 +19,6 @@ use blueprint_ext::TimeBlueprintExt as _;
 pub use blueprint_ext::{TIME_PANEL_PATH, time_panel_blueprint_entity_path};
 pub use command::{MoveDirection, MoveSpeed, TimeControlCommand};
 
-/// What [`TimeControl`] should do when data is buffering.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, re_byte_size::SizeBytes)]
-pub enum BufferBehavior {
-    /// Advance time even while data is buffering. The visualizer is responsible
-    /// for rendering whatever data it has.
-    Play,
-
-    /// Pause until the first frame after pressing play arrives, then transition to
-    /// [`Self::Play`]. Used by the main viewer for playback, so the cursor doesn't
-    /// start moving before any data has loaded, but later stalls don't stutter
-    /// playback.
-    WaitForDataThenPlay,
-
-    /// Pause every time data is unavailable, for the entire duration of playback.
-    /// Used by previews.
-    AlwaysBuffer,
-}
-
-impl BufferBehavior {
-    /// Should we hold the time cursor in place when [`TimeControlUpdateParams::is_buffering`] is set?
-    fn pauses_on_buffer(self) -> bool {
-        match self {
-            Self::Play => false,
-            Self::WaitForDataThenPlay | Self::AlwaysBuffer => true,
-        }
-    }
-}
-
 /// What sort of thing a [`TimeRangeHighlight`] represents.
 ///
 /// Lets each consumer (time panel, time series view, state timeline view, …) decide
@@ -218,11 +190,6 @@ pub struct TimeControl {
     /// Ignored when [`Self::playing`] is `false`.
     following: bool,
 
-    /// What this time control should do when data is buffering.
-    ///
-    /// See [`BufferBehavior`] for the variants.
-    buffer_behavior: BufferBehavior,
-
     speed: f32,
 
     loop_mode: LoopMode,
@@ -254,7 +221,6 @@ impl Default for TimeControl {
             states: Default::default(),
             playing: true,
             following: true,
-            buffer_behavior: BufferBehavior::WaitForDataThenPlay,
             speed: 1.0,
             loop_mode: LoopMode::Off,
             highlighted_range: None,
@@ -330,7 +296,6 @@ impl TimeControl {
             playing: true,
             following: false,
             loop_mode: LoopMode::All,
-            buffer_behavior: BufferBehavior::AlwaysBuffer,
             ..Self::default()
         }
     }
@@ -338,16 +303,6 @@ impl TimeControl {
     /// Was this time control marked as buffering by [`TimeControlCommand::Buffer`]?
     pub fn was_marked_as_buffering(&self) -> bool {
         self.was_buffering
-    }
-
-    /// Hold the next playback advance until we stop buffering.
-    ///
-    /// Called when state changes mean we should re-pause for data, e.g. pressing
-    /// play or jumping the cursor.
-    fn start_buffering(&mut self) {
-        if self.buffer_behavior != BufferBehavior::AlwaysBuffer {
-            self.buffer_behavior = BufferBehavior::WaitForDataThenPlay;
-        }
     }
 
     pub fn from_blueprint(blueprint_ctx: &impl BlueprintContext) -> Self {
@@ -530,7 +485,6 @@ impl TimeControl {
                     });
 
                     state.last_paused_time = Some(state.time);
-                    self.start_buffering(); // in case we hit play again!
                     NeedsRepaint::No
                 }
 
@@ -540,16 +494,10 @@ impl TimeControl {
                         .entry(*self.timeline_name())
                         .or_insert_with(|| TimeState::new(full_range.min()));
 
-                    if self.buffer_behavior.pauses_on_buffer() && is_buffering {
+                    if is_buffering {
                         // Do not move time cursor until we are done buffering
                         NeedsRepaint::No
                     } else {
-                        // Don't auto-pause once we are actually playing.
-                        // `AlwaysBuffer` is sticky and stays in place.
-                        if self.buffer_behavior == BufferBehavior::WaitForDataThenPlay {
-                            self.buffer_behavior = BufferBehavior::Play;
-                        }
-
                         let dt = stable_dt.min(0.1) * self.speed;
 
                         if self.loop_mode == LoopMode::Off && full_range.max() <= state.time {
@@ -710,7 +658,6 @@ impl TimeControl {
             PlayState::Playing => {
                 self.playing = true;
                 self.following = false;
-                self.start_buffering();
 
                 // Start from beginning if we are at the end:
                 if let Some(db) = db
