@@ -243,6 +243,13 @@ impl OptimizeCommand {
 
         let gop_batching = !*no_rebatch_videos && profile.gop_batching;
 
+        if let Some(ratio) = *split_size_ratio {
+            anyhow::ensure!(
+                ratio.is_finite() && ratio >= 1.0,
+                "--split-size-ratio must be finite and >= 1.0, got {ratio}"
+            );
+        }
+
         let split_size_ratio = split_size_ratio.or(profile.split_size_ratio);
 
         let is_start_of_gop: IsStartOfGop = std::sync::Arc::new(|data, codec| {
