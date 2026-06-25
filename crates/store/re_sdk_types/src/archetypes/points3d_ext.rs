@@ -110,6 +110,14 @@ const PROP_ALPHA: &str = "alpha";
 const PROP_RADIUS: &str = "radius";
 const PROP_LABEL: &str = "label";
 
+// Gaussian splatting using models from e.g. https://poly.cam/tools/gaussian-splatting
+const PROP_SCALE_X: &str = "scale_0";
+const PROP_SCALE_Y: &str = "scale_1";
+const PROP_SCALE_Z: &str = "scale_2";
+const PROP_SH_DC_0: &str = "f_dc_0";
+const PROP_SH_DC_1: &str = "f_dc_1";
+const PROP_SH_DC_2: &str = "f_dc_2";
+
 /// A single vertex, parsed in-place by the PLY parser.
 ///
 /// Implementing [`PropertyAccess`] lets `ply-rs-bw` write each property directly into the relevant
@@ -126,6 +134,14 @@ struct Vertex {
     alpha: Option<u8>,
     radius: Option<f32>,
     label: Option<String>,
+
+    // Gaussian splatting:
+    sh_dc_0: Option<f32>,
+    sh_dc_1: Option<f32>,
+    sh_dc_2: Option<f32>,
+    scale_x: Option<f32>,
+    scale_y: Option<f32>,
+    scale_z: Option<f32>,
 }
 
 impl PropertyAccess for Vertex {
@@ -146,6 +162,12 @@ impl PropertyAccess for Vertex {
             PROP_ALPHA => self.alpha = u8(&property),
             PROP_RADIUS => self.radius = f32(&property),
             PROP_LABEL => self.label = string(&property),
+            PROP_SH_DC_0 => self.sh_dc_0 = f32(&property),
+            PROP_SH_DC_1 => self.sh_dc_1 = f32(&property),
+            PROP_SH_DC_2 => self.sh_dc_2 = f32(&property),
+            PROP_SCALE_X => self.scale_x = f32(&property),
+            PROP_SCALE_Y => self.scale_y = f32(&property),
+            PROP_SCALE_Z => self.scale_z = f32(&property),
             _ => {}
         }
     }
@@ -157,7 +179,23 @@ impl Vertex {
     }
 
     fn color(&self) -> Option<Color> {
-        if let (Some(r), Some(g), Some(b)) = (self.red, self.green, self.blue) {
+        // Gaussian splat spherical-harmonic DC coefficients take precedence over plain RGB.
+        if let (Some(r_dc), Some(g_dc), Some(b_dc)) = (self.sh_dc_0, self.sh_dc_1, self.sh_dc_2) {
+            fn to_u8(f: f32) -> u8 {
+                (f * 255.0 + 0.5) as u8
+            }
+
+            // See http://en.wikipedia.org/wiki/Table_of_spherical_harmonics
+            let sp_c0 = 0.5 * (1.0 / std::f32::consts::PI).sqrt();
+
+            // Evaluate the zero-degree Spherical Harmonic to get the ambient RGB:
+            let r = to_u8(0.5 + sp_c0 * r_dc);
+            let g = to_u8(0.5 + sp_c0 * g_dc);
+            let b = to_u8(0.5 + sp_c0 * b_dc);
+
+            // Note: gaussian splat opacity is intentionally ignored until we have transparency support.
+            Some(Color::new((r, g, b, 255)))
+        } else if let (Some(r), Some(g), Some(b)) = (self.red, self.green, self.blue) {
             Some(Color::new((r, g, b, self.alpha.unwrap_or(255))))
         } else {
             None
@@ -165,7 +203,14 @@ impl Vertex {
     }
 
     fn radius(&self) -> Option<Radius> {
-        self.radius.map(Radius::from)
+        // Gaussian splat scales take precedence over an explicit radius.
+        if let (Some(x), Some(y), Some(z)) = (self.scale_x, self.scale_y, self.scale_z) {
+            let (x, y, z) = (x.exp(), y.exp(), z.exp());
+            // Estimate gaussian with a custom radius sphere:
+            Some(Radius::from((x * y * z).cbrt()))
+        } else {
+            self.radius.map(Radius::from)
+        }
     }
 }
 
@@ -189,6 +234,12 @@ fn read_ply(reader: &mut impl std::io::BufRead) -> std::io::Result<Points3D> {
         PROP_ALPHA,
         PROP_RADIUS,
         PROP_LABEL,
+        PROP_SCALE_X,
+        PROP_SCALE_Y,
+        PROP_SCALE_Z,
+        PROP_SH_DC_0,
+        PROP_SH_DC_1,
+        PROP_SH_DC_2,
     ];
 
     let mut positions = Vec::new();
@@ -413,6 +464,35 @@ end_header
         assert_eq!(radii(&p), vec![Radius::from(0.5), Radius::from(0.0)]);
         // Label "A" (65) on first, empty list on second → empty string (the list is present).
         assert_eq!(labels(&p), vec![Text("A".into()), Text("".into())]);
+    }
+
+    #[test]
+    fn sh_color_takes_precedence_over_rgb_and_scale_over_radius() {
+        let ply = "\
+ply
+format ascii 1.0
+element vertex 1
+property float x
+property float y
+property float z
+property uchar red
+property uchar green
+property uchar blue
+property float radius
+property float f_dc_0
+property float f_dc_1
+property float f_dc_2
+property float scale_0
+property float scale_1
+property float scale_2
+end_header
+0 0 0 10 20 30 9.0 0 0 0 0 0 0
+";
+        let p = Points3D::from_file_contents(ply.as_bytes()).unwrap();
+        // SH (128,128,128,255) wins over rgb (10,20,30).
+        assert_eq!(colors(&p), vec![Color::new((128, 128, 128, 255))]);
+        // scale (→1.0) wins over radius (9.0).
+        assert_eq!(radii(&p), vec![Radius::from(1.0)]);
     }
 
     #[test]
