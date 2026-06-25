@@ -438,6 +438,31 @@ fn count_false_keyframes(store: &ChunkStore) -> u64 {
         .count() as u64
 }
 
+/// Run `f`, returning its result alongside every `WARN`+ log message emitted
+/// while it ran (message plus its structured fields, rendered to a string).
+///
+/// Used to assert that a skipped entity is *reported* — we don't want optimize
+/// to silently swallow a problem, only to not abort the whole recording over it.
+fn with_captured_warnings<R>(f: impl FnOnce() -> R) -> (R, Vec<String>) {
+    re_log::setup_logging();
+    let rx = re_log::add_log_msg_receiver(re_log::LevelFilter::WARN);
+    let result = f();
+    let warnings = rx
+        .try_iter()
+        .filter(|msg| msg.level == re_log::Level::WARN)
+        .map(|msg| {
+            let fields = msg
+                .fields
+                .iter()
+                .map(|(key, value)| format!("{key}={value}"))
+                .collect::<Vec<_>>()
+                .join(" ");
+            format!("{} {fields}", msg.message)
+        })
+        .collect();
+    (result, warnings)
+}
+
 /// Canonical input: user logged the codec's keyframes in a dedicated pure
 /// chunk with no `false` rows. The keyframe chunk must be preserved by ID,
 /// but the sample chunks must still get GoP-rebatched (those two concerns
@@ -500,11 +525,12 @@ fn optimize_preserves_canonical_keyframes_while_rebatching_samples() {
 }
 
 /// User-supplied labels whose `true`-set matches the codec, but with extra
-/// `is_keyframe=false` rows on non-keyframes. No `false` should remain after
-/// optimize, so the input is rejected — the user must explicitly set
-/// `fix_keyframe` to drop them.
+/// `is_keyframe=false` rows on non-keyframes. No `false` should remain after a
+/// successful optimize (the user must set `fix_keyframe` to drop them), so this
+/// entity can't be rebatched. That must not abort the whole optimize: the entity
+/// is skipped and left un-optimized, retaining the user's original labels.
 #[test]
-fn optimize_errors_on_false_rows() {
+fn optimize_skips_entity_with_false_rows() {
     let num_samples: i64 = 20;
     let period: i64 = 5;
     let mut store = indexed_video_store("/video", num_samples);
@@ -515,18 +541,29 @@ fn optimize_errors_on_false_rows() {
         (0..num_samples).map(|i| (i, i % period == 0)),
     );
 
-    let err = store
-        .compacted(&indexed_options(period, false))
-        .expect_err("`false` rows must error");
-    let msg = format!("{err:#}");
+    let (compacted, warnings) = with_captured_warnings(|| {
+        store
+            .compacted(&indexed_options(period, false))
+            .expect("a single un-rebatchable entity must not fail the whole optimize")
+    });
+
+    // The skip must be reported, and the warning must still explain the problem
+    // (the `false` rows) and how to handle it (`fix_keyframe`).
     assert!(
-        msg.contains("is_keyframe=false"),
-        "error must mention is_keyframe=false, got: {msg}"
+        warnings
+            .iter()
+            .any(|w| w.contains("skipping GoP rebatching")
+                && w.contains("is_keyframe=false")
+                && w.contains("fix_keyframe")),
+        "expected a warning explaining the skipped entity, got: {warnings:?}"
     );
-    assert!(
-        msg.contains("fix_keyframe"),
-        "error must mention the `fix_keyframe` override, got: {msg}"
-    );
+
+    // The entity is left untouched: the user's labels survive verbatim, including
+    // the `false` rows that prevented rebatching.
+    let expected_true = (0..num_samples).filter(|i| i % period == 0).count() as u64;
+    let expected_false = num_samples as u64 - expected_true;
+    assert_eq!(count_true_keyframes(&compacted), expected_true);
+    assert_eq!(count_false_keyframes(&compacted), expected_false);
 }
 
 /// Same setup as `optimize_errors_on_false_rows`, but with `fix_keyframe=true`
@@ -558,10 +595,11 @@ fn optimize_fix_keyframe_strips_false_rows() {
 }
 
 /// User labels frame 1 (a non-keyframe) as `is_keyframe=true` *and* leaves
-/// frames 10/15 (codec keyframes) unlabeled. Optimize bails with one error
-/// that names both the missing and the extra labels.
+/// frames 10/15 (codec keyframes) unlabeled. The labels disagree with the codec,
+/// so the entity can't be rebatched — but that must not abort the whole optimize.
+/// The entity is skipped and left un-optimized, retaining the user's labels.
 #[test]
-fn optimize_errors_on_mismatched_keyframe_labels() {
+fn optimize_skips_entity_with_mismatched_keyframe_labels() {
     let num_samples: i64 = 20;
     let period: i64 = 5;
     let mut store = indexed_video_store("/video", num_samples);
@@ -569,18 +607,27 @@ fn optimize_errors_on_mismatched_keyframe_labels() {
     // 1 incorrectly, and skip 10 and 15.
     insert_dedicated_keyframe_chunk(&mut store, "/video", [(0, true), (1, true), (5, true)]);
 
-    let err = store
-        .compacted(&indexed_options(period, false))
-        .expect_err("mismatched labels must error");
-    let msg = format!("{err:#}");
+    let (compacted, warnings) = with_captured_warnings(|| {
+        store
+            .compacted(&indexed_options(period, false))
+            .expect("a single un-rebatchable entity must not fail the whole optimize")
+    });
+
+    // The skip must be reported, and the warning must still call out both the
+    // missing labels (frames 10, 15) and the extra one (frame 1).
     assert!(
-        msg.contains("missing"),
-        "error must call out missing labels (frames 10, 15), got: {msg}"
+        warnings
+            .iter()
+            .any(|w| w.contains("skipping GoP rebatching")
+                && w.contains("missing")
+                && w.contains("not codec keyframes")),
+        "expected a warning explaining the skipped entity, got: {warnings:?}"
     );
-    assert!(
-        msg.contains("not codec keyframes"),
-        "error must call out the extra label (frame 1), got: {msg}"
-    );
+
+    // The entity is left untouched: the user's three `true` labels survive, and
+    // no `false` rows are invented.
+    assert_eq!(count_true_keyframes(&compacted), 3);
+    assert_eq!(count_false_keyframes(&compacted), 0);
 }
 
 /// With `fix_keyframe`, optimize ignores user labels and re-derives from the

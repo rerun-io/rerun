@@ -146,6 +146,13 @@ man = "RERUN_DISABLE_WEB_VIEWER_SERVER=1 cargo run --package rerun-cli --all-fea
 # You can also give an argument for what to view (e.g. an .rrd file).
 rerun = "cargo run --package rerun-cli --no-default-features --features release_no_web_viewer --"
 
+# Compile and run the rerun cli tool, without any viewer.
+#
+# This avoid recompiling the viewer when you just want to run a quick command.
+#
+# You can also give an argument for what to view (e.g. an .rrd file).
+rerun-cli = "cargo run --package rerun-cli --no-default-features --"
+
 # Compile and run the rerun viewer, with performance telemetry including Tracy profiler.
 #
 # You can also give an argument for what to view (e.g. an .rrd file).

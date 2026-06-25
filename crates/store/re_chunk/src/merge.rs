@@ -64,9 +64,39 @@ impl Chunk {
         let cr = rhs;
 
         if !cl.concatenable(cr) {
-            return Err(ChunkError::Malformed {
-                reason: format!("cannot concatenate incompatible Chunks:\n{cl}\n{cr}"),
-            });
+            // Make sure we provide good errors:
+            let reason = if cl.entity_path() != cr.entity_path() {
+                format!(
+                    "cannot concatenate chunks with different entity paths: {:?} != {:?}",
+                    cl.entity_path(),
+                    cr.entity_path()
+                )
+            } else if !cl.same_timelines(cr) {
+                format!(
+                    "cannot concatenate chunks with different timelines (timelines are dense within a chunk):\n{:?}\n{:?}",
+                    cl.timelines()
+                        .values()
+                        .map(|column| column.timeline())
+                        .sorted()
+                        .map(|timeline| format!("{}: {}", timeline.name(), timeline.typ()))
+                        .format(", "),
+                    cr.timelines()
+                        .values()
+                        .map(|column| column.timeline())
+                        .sorted()
+                        .map(|timeline| format!("{}: {}", timeline.name(), timeline.typ()))
+                        .format(", "),
+                )
+            } else if !cl.same_datatypes(cr) {
+                format!(
+                    "cannot concatenate chunks with different datatypes for shared components:\n{}\n{}",
+                    cl.component_descriptors().format(", "),
+                    cr.component_descriptors().format(", "),
+                )
+            } else {
+                format!("cannot concatenate incompatible chunks:\n{cl}\n{cr}")
+            };
+            return Err(ChunkError::Malformed { reason });
         }
 
         let Some((_cl0, cl1)) = cl.row_id_range() else {

@@ -29,6 +29,9 @@ pub struct SorbetSchema {
     pub segment_id: Option<SegmentId>,
 
     /// Timing statistics.
+    ///
+    /// NOT related to timelines.
+    /// This is about measuring the latency of the data pipeline, from SDK to viewer.
     pub timestamps: TimestampMetadata,
 }
 

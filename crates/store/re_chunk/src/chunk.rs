@@ -28,7 +28,7 @@ use crate::{ChunkId, RowId};
 /// the use of a [`crate::ChunkBatcher`].
 #[derive(thiserror::Error, Debug)]
 pub enum ChunkError {
-    #[error("Detected malformed Chunk: {reason}")]
+    #[error("Detected malformed chunk: {reason}")]
     Malformed { reason: String },
 
     #[error("Arrow: {0}")]
@@ -1782,14 +1782,13 @@ impl Chunk {
             if re_log::is_rerun_very_strict() {
                 panic!(
                     "Found out-of-order timelines for entity '{}': {:?}. Out-of-order timelines are sometimes unavoidable, but they may cause performance problems",
-                    self.entity_path,
-                    self.unsorted_timelines()
+                    self.entity_path, unsorted_timelines
                 );
             } else {
                 re_log::debug_warn_once!(
                     "Found out-of-order timelines for entity '{}': {:?}. Out-of-order timelines are sometimes unavoidable, but they may cause performance problems",
                     self.entity_path,
-                    self.unsorted_timelines()
+                    unsorted_timelines
                 );
             }
         }
