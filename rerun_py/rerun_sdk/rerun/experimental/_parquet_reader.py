@@ -25,14 +25,18 @@ class ParquetReader:
     Example
     -------
     ```python
-    import rerun as rr
-    from rerun.experimental import ParquetReader, DeriveLens, Selector
-        store = (
+    from rerun.experimental import ParquetReader, DeriveLens
+
+    store = (
         ParquetReader(path, index_columns=[("frame_index", "sequence")])
         .stream()
         .lenses(
-            [DeriveLens("data").to_component(rr.Scalars.descriptor_scalars(), Selector(".x"))],
-            content="/obs",
+            [
+                DeriveLens("data", output_entity="/pose")
+                .to_translation("pos_x", "pos_y", "pos_z")
+                .to_quaternion("quat_x", "quat_y", "quat_z", "quat_w")
+            ],
+            content="/transform",
         )
         .collect()
     )
