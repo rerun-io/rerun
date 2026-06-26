@@ -172,7 +172,10 @@ A correct ingest has exactly one root, and a path from every frame to it.
 
 A connecting edge is a **static** `Transform3D` carrying the bridging frame
 names. Static (no time index) so it holds for the whole recording; the frame
-names, not the entity path, are what create the graph edge:
+names, not the entity path, are what create the graph edge. This
+`Chunk.from_columns` is the rare **sidecar exception** — a calibration transform
+no reader or FK lens can produce; do not generalize it to transforms a reader
+emits (a `frame_transforms` topic → `Transform3D`) or that FK derives:
 
 ```python
 import rerun as rr

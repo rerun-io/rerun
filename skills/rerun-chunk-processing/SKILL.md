@@ -1,6 +1,6 @@
 ---
 name: rerun-chunk-processing
-description: Core mechanics of the Rerun Chunk Processing API (rerun.experimental) — LazyChunkStream pipelines, Chunk, lenses (MutateLens/DeriveLens/Selector), RrdReader, writing optimized RRDs. Read when building or reviewing any ingestion, conversion, or RRD preprocessing pipeline. Source-specific knowledge lives in the importer skills (rerun-mcap, rerun-urdf, rerun-parquet, rerun-lerobot); read rerun-data-model first to decide what the data should become.
+description: Core mechanics of the Rerun Chunk Processing API (rerun.experimental) — LazyChunkStream pipelines, Chunk, lenses (MutateLens/DeriveLens/Selector), RrdReader, writing optimized RRDs. Read BEFORE writing any ingestion/conversion/preprocessing code (convert an MCAP, build a recording from a dataset, preprocess an .rrd, port an old converter): it mandates reader+lens pipelines and steers away from hand-built chunks — no Chunk.from_columns for data a reader/lens can produce, no per-message rr.log, no manual pa.array assembly. Source-specific knowledge lives in the importer skills (rerun-mcap, rerun-urdf, rerun-parquet, rerun-lerobot); read rerun-data-model first to decide what the data should become.
 user_invocable: true
 allowed-tools: Read, Grep, Bash, WebFetch
 ---
@@ -24,6 +24,66 @@ importer skill for each source:
 The API is `rerun.experimental`; when
 behavior matters, check the installed surface:
 `python -c "from rerun.experimental import LazyChunkStream; help(LazyChunkStream)"`.
+
+## Decision rule: where does each component come from?
+
+Default: **a reader produces the chunks; lenses shape them.** Walk this before
+writing any conversion code — most "build it by hand" instincts are wrong here:
+
+1. **Source a reader supports?** Use the reader's `.stream()`; never hand-parse
+   and re-log. MCAP→`McapReader`, URDF→`UrdfTree`, parquet→`ParquetReader`,
+   RRD→`RrdReader`, LeRobot dir→`log_file_from_path`.
+2. **A decoder already emits the archetype?** Foxglove gives `Transform3D`,
+   `Pinhole`, `VideoStream` (real sample bytes) ready-made — **pass it through**,
+   do not re-derive. Only custom-protobuf topics arrive as `<Name>:message` and
+   need a lens (see `rerun-mcap`).
+3. **Fix an existing component in place** (swapped resolution, recolor, unit
+   convert)? `MutateLens`, `output_mode="forward_unmatched"`.
+4. **Derive a new component/entity** (FK→`/tf`, scalars from a message)?
+   `DeriveLens`. To scatter one row into N (a joint batch → per-joint `/tf`),
+   use the **two-lens pair**: derive the batch with `output_mode="forward_all"`
+   (keeps the originals, e.g. the joint states), then a second
+   `DeriveLens` with `scatter=True` and `output_mode="drop_unmatched"` (emits
+   only the scattered rows). See the `robot_data_preprocessing` example.
+5. **Genuine sidecar** no reader or lens can produce (JSON calibration offsets,
+   hand-measured extrinsics, external metadata)? `Chunk.from_columns` + `from_iter`.
+6. Finish with `LazyChunkStream.merge(...)` →
+   `.collect(optimize=OptimizationProfile.OBJECT_STORE)` →
+   `write_rrd(application_id, recording_id)`.
+
+Why this order: the pipeline stays lazy, columnar, multithreaded, and
+`OBJECT_STORE`-optimizable. A hand-built row loop or an out-of-lens `pa.array`
+throws all of that away — that is the path we are deliberately avoiding.
+
+## Anti-patterns (use a reader + lens instead)
+
+If you are writing the left, stop and use the right:
+
+- **`for`-loop building rows/components** → a lens with a `Selector(...).pipe(...)`
+  PyArrow-compute callback.
+- **`rr.init` + `rr.log` per message for conversion** → that is _live_ logging;
+  for ingestion, read with a reader and `write_rrd`.
+- **`chunk.to_record_batch()` + `pc.filter` then rebuilding via
+  `Chunk.from_columns`** (row-thinning by hand) → `stream.drop(content=...)`,
+  `.split(...)`, or a `MutateLens` returning a filtered `pa.array`.
+- **`pa.array` / `pa.RecordBatch` / `np.frombuffer` assembled OUTSIDE a lens** →
+  move the transform inside a `MutateLens`/`DeriveLens` selector callback.
+- **`rr.send_columns` hand-assembled from a custom parser** → use the matching
+  reader; it produces chunks directly.
+- **Parsing MCAP/URDF with a non-Rerun library then re-logging** → `McapReader`
+  / `UrdfTree`.
+- **`Chunk.from_columns` for data a reader already decodes** (`Pinhole`
+  intrinsics, `VideoStream`, `Transform3D` from a transforms topic) → keep it in
+  the reader stream; fix with a `MutateLens` if needed.
+
+A wall of `pyarrow.compute` "missing-attribute" type errors (`pc.filter`,
+`pc.list_element`) usually means `pc.*` calls sit in module-level helpers instead
+of inside `Selector.pipe` lens callbacks. Refactor into a lens before suppressing
+the checker — the errors are a smell that the hand-building should not exist.
+
+**Porting an existing converter?** Hand-built converters predate decoder
+improvements and are not ground truth. Re-verify the decoder output (step 2) and
+check every `Chunk.from_columns` / for-loop against this list before copying.
 
 ## Core model
 
@@ -67,7 +127,15 @@ merged = LazyChunkStream.merge(stream, sidecar_stream)
 merged.write_rrd(out_path, application_id="my_app", recording_id=recording_id)
 ```
 
-## Hand-built chunks (sidecar data)
+## Hand-built chunks — sidecar only
+
+Use `Chunk.from_columns` ONLY for data no reader or lens can emit — JSON/CSV
+calibration, frame offsets, external metadata. If a reader
+(`McapReader`/`UrdfTree`/`ParquetReader`) decodes the topic or a lens can derive
+it, that is the idiomatic path; do not hand-assemble it here. In the
+`robot_data_preprocessing` example the _only_ hand-built chunk is the JSON
+offsets sidecar; the camera fix, FK→`/tf`, meshes, and recolor are all
+readers + lenses.
 
 `Chunk.from_columns(entity_path, indexes, columns)` mirrors
 `rr.send_columns(...)` and accepts the same archetype `.columns(...)` helpers.

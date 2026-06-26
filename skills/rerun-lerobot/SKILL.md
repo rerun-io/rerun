@@ -28,6 +28,8 @@ with rr.RecordingStream("rerun_example_lerobot") as rec:
 
 The importer emits one recording per episode (recording ids like `episode_1`), plus a metadata-only root recording, all into the single RRD.
 
+`rr.RecordingStream` + `log_file_from_path` here is the **importer bootstrap** — the one place `RecordingStream` is correct in an ingestion pipeline (it drives the built-in importer, not per-message logging). Do not generalize it to `rr.log`-per-message loops; for everything after import, reprocess the RRD with `RrdReader` + lenses (see `rerun-chunk-processing`: Chunk API vs logging API).
+
 ## Step 2: split into per-episode RRDs
 
 Catalog segments are one-recording-per-file, and `recording_id` becomes the segment id on registration.
