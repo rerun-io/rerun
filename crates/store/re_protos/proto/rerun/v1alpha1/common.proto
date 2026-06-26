@@ -104,7 +104,7 @@ message EntryId {
   Tuid id = 1;
 }
 
-// Entry point for all ManifestRegistryService APIs
+// Entry point for all ManifestWriterService APIs
 message DatasetHandle {
   // Unique entry identifier (for debug purposes)
   EntryId entry_id = 1;

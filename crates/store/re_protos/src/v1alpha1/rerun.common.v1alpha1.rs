@@ -210,7 +210,7 @@ impl ::prost::Name for EntryId {
         "/rerun.common.v1alpha1.EntryId".into()
     }
 }
-/// Entry point for all ManifestRegistryService APIs
+/// Entry point for all ManifestWriterService APIs
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct DatasetHandle {
     /// Unique entry identifier (for debug purposes)
