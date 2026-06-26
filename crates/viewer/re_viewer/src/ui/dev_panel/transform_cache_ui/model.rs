@@ -6,25 +6,33 @@ use re_viewer_context::external::re_entity_db::EntityDb;
 use re_viewer_context::external::re_tf::transform_cache_snapshot;
 
 use super::FrameVisibilityFilter;
-use re_viewer_context::external::re_tf::transform_cache_snapshot::Frame;
+pub(super) use re_viewer_context::external::re_tf::transform_cache_snapshot::{
+    Edge, Frame as Node, SubspaceKind,
+};
 
 /// Thin UI wrapper around a filtered transform-cache snapshot.
 ///
-/// TODO(michael): this currently only contains the lookups needed for the UI header summary,
-/// extend when adding tree painting to the UI.
+/// The wrapper adds only the derived graph lookups needed for layout, hover highlighting, and
+/// tooltip labels.
 #[derive(Debug, Clone)]
 pub(super) struct Model {
     /// Visible transform-cache snapshot.
     pub(super) snapshot: transform_cache_snapshot::Snapshot,
 
-    /// Edge indices grouped by child frame for root detection.
-    edge_indices_by_child: HashMap<TransformFrameIdHash, Vec<usize>>,
+    /// Edge indices grouped by parent frame for layout and shared-fork drawing.
+    pub(super) edge_indices_by_parent: HashMap<TransformFrameIdHash, Vec<usize>>,
+
+    /// Edge indices grouped by child frame for root detection and ancestor traversal.
+    pub(super) edge_indices_by_child: HashMap<TransformFrameIdHash, Vec<usize>>,
+
+    /// Node indices keyed by frame id for label lookups without duplicating labels.
+    node_indices_by_id: HashMap<TransformFrameIdHash, usize>,
 
     pub(super) any_missing_chunks: bool,
 }
 
 /// Returns whether a frame is derived from an entity path.
-fn is_implicit_frame(frame: &Frame) -> bool {
+pub(super) fn is_implicit_frame(frame: &Node) -> bool {
     frame.kind == transform_cache_snapshot::FrameKind::EntityPath
 }
 
@@ -51,7 +59,7 @@ impl ModelFilter {
         }
     }
 
-    fn shows_node(self, node: &Frame) -> bool {
+    fn shows_node(self, node: &Node) -> bool {
         let is_implicit = is_implicit_frame(node);
         match self.frame_filter {
             FrameVisibilityFilter::All => true,
@@ -123,21 +131,75 @@ pub(super) fn build_transform_cache_model(
 
 impl Model {
     fn new(snapshot: transform_cache_snapshot::Snapshot, any_missing_chunks: bool) -> Self {
+        let mut edge_indices_by_parent: HashMap<TransformFrameIdHash, Vec<usize>> =
+            Default::default();
         let mut edge_indices_by_child: HashMap<TransformFrameIdHash, Vec<usize>> =
             Default::default();
 
         for (edge_index, edge) in snapshot.edges.iter().enumerate() {
+            edge_indices_by_parent
+                .entry(edge.parent)
+                .or_default()
+                .push(edge_index);
             edge_indices_by_child
                 .entry(edge.child)
                 .or_default()
                 .push(edge_index);
         }
 
+        let node_indices_by_id = snapshot
+            .frames
+            .iter()
+            .enumerate()
+            .map(|(node_index, node)| (node.id, node_index))
+            .collect();
+
         Self {
             snapshot,
+            edge_indices_by_parent,
             edge_indices_by_child,
+            node_indices_by_id,
             any_missing_chunks,
         }
+    }
+
+    /// Returns the user-facing label for a frame id.
+    pub(super) fn frame_label(&self, frame: TransformFrameIdHash) -> &str {
+        self.node_indices_by_id
+            .get(&frame)
+            .and_then(|&node_index| self.snapshot.frames.get(node_index))
+            .map_or("<unknown>", |node| node.label.as_str())
+    }
+
+    /// Returns a stable sort key for root ordering.
+    pub(super) fn sort_key(&self, frame: TransformFrameIdHash) -> &str {
+        self.node_indices_by_id
+            .get(&frame)
+            .and_then(|&node_index| self.snapshot.frames.get(node_index))
+            .map_or("", |node| node.label.as_str())
+    }
+
+    /// Returns true when an edge leaves a parent through a shared fork path.
+    pub(super) fn edge_starts_at_shared_fork(&self, edge: &Edge) -> bool {
+        self.edge_indices_by_parent
+            .get(&edge.parent)
+            .is_some_and(|children| children.len() > 1)
+    }
+
+    /// Returns the number of visible child transforms for a frame.
+    pub(super) fn num_children(&self, frame: TransformFrameIdHash) -> usize {
+        self.edge_indices_by_parent.get(&frame).map_or(0, Vec::len)
+    }
+
+    /// Collects all visible ancestors of a frame and the edges on the path to them.
+    pub(super) fn path_to_roots(
+        &self,
+        frame: TransformFrameIdHash,
+    ) -> (HashSet<TransformFrameIdHash>, HashSet<usize>) {
+        let mut ancestors = HashSet::default();
+        let mut edge_indices = HashSet::default();
+        self.collect_path_to_roots(frame, &mut ancestors, &mut edge_indices);
+        (ancestors, edge_indices)
     }
 
     /// Counts visible root components in the graph.
@@ -147,5 +209,21 @@ impl Model {
             .iter()
             .filter(|node| !self.edge_indices_by_child.contains_key(&node.id))
             .count()
+    }
+
+    /// Recursively collects root paths while protecting against cycles.
+    fn collect_path_to_roots(
+        &self,
+        frame: TransformFrameIdHash,
+        ancestors: &mut HashSet<TransformFrameIdHash>,
+        edge_indices: &mut HashSet<usize>,
+    ) {
+        for &edge_index in self.edge_indices_by_child.get(&frame).into_iter().flatten() {
+            let edge = &self.snapshot.edges[edge_index];
+            edge_indices.insert(edge_index);
+            if ancestors.insert(edge.parent) {
+                self.collect_path_to_roots(edge.parent, ancestors, edge_indices);
+            }
+        }
     }
 }
