@@ -54,7 +54,7 @@ impl SelectionPanel {
         viewport: &ViewportBlueprint,
         view_states: &mut ViewStates,
         ui: &mut egui::Ui,
-        expanded: bool,
+        expanded: &mut bool,
     ) {
         let screen_width = ui.content_rect().width();
 
@@ -74,7 +74,7 @@ impl SelectionPanel {
                 ..Default::default()
             });
 
-        panel.show_animated_inside(ui, expanded, |ui: &mut egui::Ui| {
+        panel.show_collapsible(ui, expanded, |ui: &mut egui::Ui| {
             ui.panel_content(|ui| {
                 let hover = "The selection view contains information and options about \
                     the currently selected object(s)";

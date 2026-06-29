@@ -389,7 +389,7 @@ impl ViewClass for StateTimelineView {
                 .auto_shrink([false, false])
                 .scroll_source(egui::scroll_area::ScrollSource {
                     scroll_bar: true,
-                    drag: false,
+                    drag: egui::scroll_area::DragScroll::Never,
                     mouse_wheel: true,
                 })
                 .show(ui, |ui: &mut egui::Ui| {

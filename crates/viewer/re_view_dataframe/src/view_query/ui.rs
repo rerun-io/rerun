@@ -18,7 +18,7 @@ use re_viewer_context::{
 use crate::view_query::Query;
 
 /// A group of component columns belonging to the same entity path, used for drag-and-drop reordering.
-#[derive(Hash)]
+#[derive(Hash, Debug)]
 struct EntityGroup {
     entity_path: EntityPath,
     columns: Vec<ColumnDescriptor>,

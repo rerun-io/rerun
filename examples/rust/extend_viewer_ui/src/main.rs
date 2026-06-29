@@ -80,7 +80,7 @@ impl eframe::App for MyApp {
         // First add our panel(s):
         egui::Panel::right("my_side_panel")
             .default_size(200.0)
-            .show_inside(ui, |ui| {
+            .show(ui, |ui| {
                 self.ui(ui);
             });
 

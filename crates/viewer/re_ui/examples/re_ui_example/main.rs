@@ -172,11 +172,14 @@ impl eframe::App for ExampleApp {
 
         let window_frame = self.window_frame_config(ui.ctx());
 
+        let mut show_bottom_panel = self.show_bottom_panel;
         egui::Panel::bottom("bottom_panel")
             .frame(ui.tokens().bottom_panel_frame(window_frame))
-            .show_animated_inside(ui, self.show_bottom_panel, |ui| {
+            .show_collapsible(ui, &mut show_bottom_panel, |ui| {
                 ui.strong("Bottom panel");
             });
+        // `show_collapsible` flips the bool when the user drags the panel closed/open:
+        self.show_bottom_panel = show_bottom_panel;
 
         // LEFT PANEL
 
@@ -316,13 +319,14 @@ impl eframe::App for ExampleApp {
         };
 
         // UI code
+        let mut show_left_panel = self.show_left_panel;
         egui::Panel::left("left_panel")
             .default_size(500.0)
             .frame(egui::Frame {
                 fill: ui.global_style().visuals.panel_fill,
                 ..Default::default()
             })
-            .show_animated_inside(ui, self.show_left_panel, |ui| {
+            .show_collapsible(ui, &mut show_left_panel, |ui| {
                 let y_spacing = ui.spacing().item_spacing.y;
 
                 list_item::list_item_scope(ui, "left_panel", |ui| {
@@ -334,7 +338,7 @@ impl eframe::App for ExampleApp {
                             inner_margin: egui::Margin::symmetric(tokens.view_padding(), 0),
                             ..Default::default()
                         })
-                        .show_inside(ui, left_panel_top_section_ui);
+                        .show(ui, left_panel_top_section_ui);
                     ui.selectable_label_with_icon(
                         &icons::ADD,
                         "foo/bar/baz",
@@ -353,6 +357,8 @@ impl eframe::App for ExampleApp {
                         });
                 });
             });
+        // `show_collapsible` flips the bool when the user drags the panel closed/open:
+        self.show_left_panel = show_left_panel;
 
         // RIGHT PANEL
         //
@@ -371,22 +377,25 @@ impl eframe::App for ExampleApp {
             ..Default::default()
         };
 
+        let mut show_right_panel = self.show_right_panel;
         egui::Panel::right("right_panel")
             .frame(panel_frame)
             .min_size(0.0)
-            .show_animated_inside(ui, self.show_right_panel, |ui| {
+            .show_collapsible(ui, &mut show_right_panel, |ui| {
                 ui.spacing_mut().item_spacing.y = 0.0;
                 ScrollArea::vertical().show(ui, |ui| {
                     self.right_panel.ui(ui);
                 });
             });
+        // `show_collapsible` flips the bool when the user drags the panel closed/open:
+        self.show_right_panel = show_right_panel;
 
         egui::CentralPanel::default()
             .frame(egui::Frame {
                 fill: ui.global_style().visuals.panel_fill,
                 ..Default::default()
             })
-            .show_inside(ui, |ui| {
+            .show(ui, |ui| {
                 tabs_ui(ui, &mut self.tree);
             });
 
@@ -454,7 +463,7 @@ impl ExampleApp {
         egui::Panel::top("top_bar")
             .frame(ui.tokens().top_panel_frame(window_frame))
             .exact_size(top_bar_style.height)
-            .show_inside(ui, |ui| {
+            .show(ui, |ui| {
                 #[cfg(not(target_arch = "wasm32"))]
                 if !self.use_custom_decorations {
                     // Interact with background first, so that buttons in the top bar gets input priority

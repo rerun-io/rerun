@@ -6,6 +6,7 @@ mod streaming_history;
 mod transform_cache_ui;
 
 use ahash::HashMap;
+use egui_plot::HoverPosition;
 use plot_utils::history_to_plot;
 use re_chunk_store::{ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreStats};
 use re_entity_db::StoreBundle;
@@ -543,7 +544,14 @@ impl DevPanel {
 
         egui_plot::Plot::new("mem_history_plot")
             .min_size(egui::Vec2::splat(200.0))
-            .label_formatter(|name, value| format!("{name}: {}", format_bytes(value.y)))
+            .label_formatter(|hover_position| match hover_position {
+                HoverPosition::NearDataPoint {
+                    plot_name,
+                    position,
+                    ..
+                } => Some(format!("{plot_name}: {}", format_bytes(position.y))),
+                HoverPosition::Elsewhere { position } => Some(format_bytes(position.y)),
+            })
             .x_axis_formatter(|time, _| format!("{} s", time.value))
             .y_axis_formatter(|bytes, _| format_bytes(bytes.value))
             .show_x(false)

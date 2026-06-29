@@ -1,5 +1,3 @@
-use std::hash::Hash;
-
 use egui::emath::GuiRounding as _;
 use egui::{
     CollapsingResponse, Color32, IntoAtoms, NumExt as _, Rangef, Rect, StrokeKind, Widget as _,
@@ -649,7 +647,7 @@ pub trait UiExt {
     #[inline]
     fn list_item_scope<R>(
         &mut self,
-        id_salt: impl std::hash::Hash,
+        id_salt: impl egui::AsId,
         content: impl FnOnce(&mut egui::Ui) -> R,
     ) -> egui::InnerResponse<R> {
         list_item::list_item_scope(self.ui_mut(), id_salt, content)
@@ -995,7 +993,7 @@ pub trait UiExt {
     /// The `add_contents` closure is executed in the context of a vertical layout.
     fn center<R>(
         &mut self,
-        id_salt: impl Hash,
+        id_salt: impl egui::AsIdSalt,
         add_contents: impl FnOnce(&mut egui::Ui) -> R,
     ) -> R {
         // Strategy:
@@ -1340,7 +1338,7 @@ pub trait UiExt {
     /// Use this instead of using [`egui::ComboBox`] directly.
     fn drop_down_menu(
         &mut self,
-        id_salt: impl std::hash::Hash,
+        id_salt: impl egui::AsIdSalt,
         selected_text: String,
         content: impl FnOnce(&mut egui::Ui),
     ) -> egui::Response {

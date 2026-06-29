@@ -350,8 +350,10 @@ fn create_egui_renderstate() -> egui_wgpu::RenderState {
         .into(),
 
         // None of these matter for tests as we're not going to draw to a surfaces.
-        present_mode: wgpu::PresentMode::Immediate,
-        desired_maximum_frame_latency: None,
+        surface: egui_wgpu::SurfaceConfig {
+            present_mode: wgpu::PresentMode::Immediate,
+            desired_maximum_frame_latency: None,
+        },
         on_surface_status: Arc::new(|_| {
             unreachable!("tests aren't expected to draw to surfaces");
         }),
@@ -736,7 +738,7 @@ impl TestContext {
         mut func: impl FnMut(&ViewerContext<'_>, &mut egui::Ui),
     ) {
         egui::__run_test_ui(|ui| {
-            egui::CentralPanel::default().show_inside(ui, |ui| {
+            egui::CentralPanel::default().show(ui, |ui| {
                 let egui_ctx = ui.ctx().clone();
 
                 self.run(&egui_ctx, |ctx| {
@@ -772,7 +774,7 @@ impl TestContext {
         let mut result = None;
 
         egui::__run_test_ui(|ui| {
-            egui::CentralPanel::default().show_inside(ui, |ui| {
+            egui::CentralPanel::default().show(ui, |ui| {
                 let egui_ctx = ui.ctx().clone();
 
                 self.run(&egui_ctx, |ctx| {

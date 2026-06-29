@@ -42,7 +42,7 @@ mod test {
             );
 
             let mut selection_panel = SelectionPanel::default();
-            selection_panel.show_panel(ctx, &blueprint, &mut Default::default(), ui, true);
+            selection_panel.show_panel(ctx, &blueprint, &mut Default::default(), ui, &mut true);
         });
     }
 }

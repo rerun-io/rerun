@@ -308,7 +308,7 @@ impl DatastoreUi {
         content_margin.top = content_margin.top.max(6);
 
         let should_copy_chunk = egui::Panel::top("chunk_store_top_controls_panel")
-            .show_inside(ui, |ui| {
+            .show(ui, |ui| {
                 let should_copy_chunk =
                     self.chunk_store_info_ui(ui, chunk_store, storage_context, datastore_ui_active);
                 if let Some(chunk_store) = chunk_store {

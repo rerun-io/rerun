@@ -64,7 +64,7 @@ impl App {
 
         egui::CentralPanel::default()
             .frame(main_panel_frame)
-            .show_inside(ui, |ui| {
+            .show(ui, |ui| {
                 paint_background_fill(ui);
 
                 crate::ui::mobile_warning_ui(ui, custom_window_decorations);
@@ -188,11 +188,13 @@ impl App {
             &[]
         };
 
+        let mut dev_panel_open = self.dev_panel_open;
+        let mut close_requested = false;
         egui::Panel::bottom("dev_panel")
             .default_size(300.0)
             .resizable(true)
             .frame(frame)
-            .show_animated_inside(ui, self.dev_panel_open, |ui| {
+            .show_collapsible(ui, &mut dev_panel_open, |ui| {
                 let response = self.dev_panel.ui(
                     ui,
                     &self.state.app_options().memory_limit,
@@ -204,15 +206,16 @@ impl App {
                     &self.state.time_controls,
                     storage_context,
                 );
-                if response.close_requested {
-                    self.dev_panel_open = false;
-                }
+                close_requested = response.close_requested;
             });
+        // `show_collapsible` flips `dev_panel_open` when the user drags the panel closed:
+        self.dev_panel_open = dev_panel_open && !close_requested;
     }
 
-    fn egui_debug_panel_ui(&self, ui: &mut egui::Ui) {
+    fn egui_debug_panel_ui(&mut self, ui: &mut egui::Ui) {
         let egui_ctx = ui.ctx().clone();
 
+        let mut egui_debug_panel_open = self.egui_debug_panel_open;
         egui::Panel::left("style_panel")
             .default_size(300.0)
             .resizable(true)
@@ -220,7 +223,7 @@ impl App {
                 ui.tokens()
                     .top_panel_frame(self.window_frame_config(ui.ctx())),
             )
-            .show_animated_inside(ui, self.egui_debug_panel_open, |ui| {
+            .show_collapsible(ui, &mut egui_debug_panel_open, |ui| {
                 egui::ScrollArea::vertical().show(ui, |ui| {
                     if ui
                         .button("request_discard")
@@ -243,6 +246,8 @@ impl App {
                         });
                 });
             });
+        // `show_collapsible` flips `egui_debug_panel_open` when the user drags the panel closed:
+        self.egui_debug_panel_open = egui_debug_panel_open;
     }
 
     fn should_fade_in_welcome_screen(&self) -> bool {

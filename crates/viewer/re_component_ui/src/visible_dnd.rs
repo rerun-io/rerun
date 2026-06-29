@@ -1,11 +1,9 @@
-use std::hash::Hash;
-
 use re_ui::{HasDesignTokens as _, UiExt as _};
 
 /// A shared utility for a drag and drop ui with a visibility button for each item.
-pub fn visible_dnd<T: Hash>(
+pub fn visible_dnd<T: egui::AsId>(
     ui: &mut egui::Ui,
-    id_source: impl Hash,
+    id_source: impl egui::AsId,
     items: &mut [T],
     mut item_ui: impl FnMut(&mut egui::Ui, &mut T),
     mut get_item_visibility: impl FnMut(&T) -> bool,

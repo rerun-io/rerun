@@ -1,6 +1,6 @@
-use egui::emath::OrderedFloat;
 use egui::text::TextWrapping;
 use egui::{NumExt as _, WidgetText};
+use egui::{emath::OrderedFloat, epaint::text::ByteRangeExt as _, text::ByteRange};
 use macaw::BoundingBox;
 use re_format::format_f32;
 use re_sdk_types::blueprint::archetypes::EyeControls3D;
@@ -241,7 +241,7 @@ pub fn create_labels(
                 fonts.layout_job(egui::text::LayoutJob {
                     sections: vec![egui::text::LayoutSection {
                         leading_space: 0.0,
-                        byte_range: 0..text.len(),
+                        byte_range: ByteRange::full(text),
                         format: format.clone(),
                     }],
                     text: text.to_owned(),

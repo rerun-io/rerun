@@ -467,7 +467,8 @@ impl AppState {
                     WindowFrameConfig::Native
                 };
 
-                if app_ctx.app_options.inspect_blueprint_timeline {
+                let was_open = app_ctx.app_options.inspect_blueprint_timeline;
+                if was_open {
                     let blueprint_db = ctx.store_context.blueprint;
 
                     let undo_state = self
@@ -496,36 +497,63 @@ impl AppState {
                                 });
                         }
                     }
-
-                    blueprint_time_panel.show_panel(
-                        &ctx,
-                        &ctx.blueprint_store_view_ctx(),
-                        &viewport_ui.blueprint,
-                        ui,
-                        PanelState::Expanded,
-                        // Give the blueprint time panel a distinct color from the normal time panel:
-                        ui.tokens()
-                            .bottom_panel_frame(window_frame)
-                            .fill(ui.tokens().blueprint_time_panel_bg_fill),
-                    );
                 }
 
+                // The blueprint inspection panel has no collapsed state: it is either
+                // fully expanded or completely hidden. Dragging it closed hides it.
+                let mut inspect_blueprint_timeline = was_open;
+                blueprint_time_panel.show_panel(
+                    &ctx,
+                    &ctx.blueprint_store_view_ctx(),
+                    &viewport_ui.blueprint,
+                    ui,
+                    PanelState::Expanded,
+                    &mut inspect_blueprint_timeline,
+                    // Give the blueprint time panel a distinct color from the normal time panel:
+                    ui.tokens()
+                        .bottom_panel_frame(window_frame)
+                        .fill(ui.tokens().blueprint_time_panel_bg_fill),
+                    // No collapsed bar: dragging the panel closed hides it entirely.
+                    false,
+                );
+                #[cfg(debug_assertions)]
+                if inspect_blueprint_timeline != was_open {
+                    // The user dragged the panel closed:
+                    command_sender.send_system(SystemCommand::EnableInspectBlueprintTimeline(
+                        inspect_blueprint_timeline,
+                    ));
+                }
+
+                let time_was_expanded = app_blueprint.time_panel_state().is_expanded();
+                let mut time_expanded = time_was_expanded;
                 time_panel.show_panel(
                     &ctx,
                     &ctx.active_recording_store_view_context(),
                     &viewport_ui.blueprint,
                     ui,
                     app_blueprint.time_panel_state(),
+                    &mut time_expanded,
                     ui.tokens().bottom_panel_frame(window_frame),
+                    true,
                 );
+                if time_expanded != time_was_expanded {
+                    // The user dragged the resize handle past the panel's limits to collapse/expand it:
+                    app_blueprint.toggle_time_panel(command_sender);
+                }
 
+                let selection_was_expanded = app_blueprint.selection_panel_state().is_expanded();
+                let mut selection_expanded = selection_was_expanded;
                 selection_panel.show_panel(
                     &ctx,
                     &viewport_ui.blueprint,
                     view_states,
                     ui,
-                    app_blueprint.selection_panel_state().is_expanded(),
+                    &mut selection_expanded,
                 );
+                if selection_expanded != selection_was_expanded {
+                    // The user dragged the resize handle past the panel's limits to collapse/expand it:
+                    app_blueprint.toggle_selection_panel(command_sender);
+                }
 
                 // If we are here and the "default" app id is selected,
                 // we should instead switch to the welcome screen.
@@ -548,7 +576,7 @@ impl AppState {
 
                 egui::CentralPanel::default()
                     .frame(viewport_frame)
-                    .show_inside(ui, |ui| {
+                    .show(ui, |ui| {
                         viewport_ui.viewport_ui(ui, &ctx, view_states);
                     });
 
@@ -592,7 +620,7 @@ impl AppState {
 
                 egui::CentralPanel::default()
                     .frame(viewport_frame)
-                    .show_inside(ui, |ui| {
+                    .show(ui, |ui| {
                         if let Some(re_uri::RedapUri::DatasetData(uri)) = log_source.redap_uri()
                             && let Some(err) = app_ctx.connection_registry.error_for_uri(uri)
                         {
@@ -627,7 +655,7 @@ impl AppState {
 
                 egui::CentralPanel::default()
                     .frame(viewport_frame)
-                    .show_inside(ui, |ui| {
+                    .show(ui, |ui| {
                         if let Some(store) = app_ctx.table_stores().get(table_id) {
                             re_dataframe_ui::DataFusionTableWidget::new(
                                 store.session_context(),
@@ -665,7 +693,7 @@ impl AppState {
 
                 egui::CentralPanel::default()
                     .frame(viewport_frame)
-                    .show_inside(ui, |ui| {
+                    .show(ui, |ui| {
                         if origin == &*re_redap_browser::EXAMPLES_ORIGIN {
                             let origin = self
                                 .redap_servers
@@ -726,7 +754,7 @@ impl AppState {
 
                 egui::CentralPanel::default()
                     .frame(viewport_frame)
-                    .show_inside(ui, |ui| {
+                    .show(ui, |ui| {
                         self.redap_servers.entry_ui(
                             &store_view_ctx, // TODO(RR-1127): this makes no sense
                             ui,
@@ -754,7 +782,7 @@ impl AppState {
 
                 egui::CentralPanel::default()
                     .frame(viewport_frame)
-                    .show_inside(ui, |ui| {
+                    .show(ui, |ui| {
                         self.redap_servers.folder_central_panel_ui(
                             &store_view_ctx,
                             ui,
@@ -906,10 +934,10 @@ impl AppState {
             .min_size(120.0)
             .default_size(default_blueprint_panel_width(ui.content_rect().width()));
 
-        let left_panel_response = left_panel.show_animated_inside(
-            ui,
-            app_blueprint.blueprint_panel_state().is_expanded(),
-            |ui: &mut egui::Ui| {
+        let was_expanded = app_blueprint.blueprint_panel_state().is_expanded();
+        let mut blueprint_panel_expanded = was_expanded;
+        let left_panel_response =
+            left_panel.show_collapsible(ui, &mut blueprint_panel_expanded, |ui: &mut egui::Ui| {
                 // ListItem don't need vertical spacing so we disable it, but restore it
                 // before drawing the blueprint panel.
                 ui.spacing_mut().item_spacing.y = 0.0;
@@ -939,7 +967,7 @@ impl AppState {
                                 .min_size(recordings_min_height)
                                 .max_size(max_recordings_height)
                                 .default_size(160.0_f32.max(recordings_min_height))
-                                .show_inside(ui, |ui| {
+                                .show(ui, |ui| {
                                     recording_panel.show_panel(
                                         app_ctx,
                                         ui,
@@ -963,12 +991,16 @@ impl AppState {
 
                     Route::ChunkStoreBrowser { .. } | Route::Settings { .. } => {} // handled above
                 }
-            },
-        );
+            });
         if let Some(left_panel_response) = left_panel_response {
             left_panel_response.response.widget_info(|| {
                 egui::WidgetInfo::labeled(egui::WidgetType::Panel, true, "blueprint_panel")
             });
+        }
+
+        // The user dragged the resize handle past the panel's limits to collapse/expand it:
+        if blueprint_panel_expanded != was_expanded {
+            app_blueprint.toggle_blueprint_panel(app_ctx.command_sender());
         }
     }
 

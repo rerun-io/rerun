@@ -261,7 +261,7 @@ impl LayoutInfoStack {
 ///   list items.
 pub fn list_item_scope<R>(
     ui: &mut egui::Ui,
-    id_salt: impl std::hash::Hash,
+    id_salt: impl egui::AsId,
     content: impl FnOnce(&mut egui::Ui) -> R,
 ) -> InnerResponse<R> {
     ui.sanity_check();

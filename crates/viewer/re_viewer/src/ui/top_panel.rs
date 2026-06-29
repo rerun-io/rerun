@@ -82,9 +82,10 @@ pub fn top_panel(
     // On MacOS, we show the close/minimize/maximize buttons in the top panel.
     // We _always_ want to show the top panel in that case, and only hide its content.
     if native_window_bar {
-        panel.show_animated_inside(ui, is_expanded, |ui| content(ui, is_expanded));
+        let mut panel_expanded = is_expanded; // Note: can't resize top panel, or drag-to-close it.
+        panel.show_collapsible(ui, &mut panel_expanded, |ui| content(ui, is_expanded));
     } else {
-        panel.show_inside(ui, |ui| content(ui, is_expanded));
+        panel.show(ui, |ui| content(ui, is_expanded));
     }
 }
 

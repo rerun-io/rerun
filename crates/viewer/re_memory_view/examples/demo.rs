@@ -36,7 +36,7 @@ impl DemoApp {
 
 impl eframe::App for DemoApp {
     fn ui(&mut self, ui: &mut Ui, _frame: &mut Frame) {
-        egui::CentralPanel::default().show_inside(ui, |ui| {
+        egui::CentralPanel::default().show(ui, |ui| {
             ui.heading("Memory flamegraph demo");
             ui.separator();
 

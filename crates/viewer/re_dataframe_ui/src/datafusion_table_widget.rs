@@ -781,7 +781,7 @@ impl<'a> DataFusionTableWidget<'a> {
         Panel::bottom(session_id.with("bottom_bar"))
             .frame(frame)
             .show_separator_line(false)
-            .show_inside(ui, |ui| {
+            .show(ui, |ui| {
                 let height = 24.0;
                 ui.set_height(height);
                 ui.horizontal_centered(|ui| {

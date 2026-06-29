@@ -193,6 +193,13 @@ impl TimePanel {
         self.filter_state.activate(query);
     }
 
+    /// Show the time panel.
+    ///
+    /// When `can_collapse_to_bar` is `true`, the panel has three states (hidden,
+    /// a collapsed bar, and fully expanded) and dragging it closed collapses it
+    /// to the bar. When `false` (used for the blueprint inspection panel) there
+    /// is no collapsed bar: dragging it closed flips `*is_expanded` to `false`,
+    /// hiding it entirely.
     pub fn show_panel(
         &mut self,
         viewer_ctx: &ViewerContext<'_>,
@@ -200,7 +207,10 @@ impl TimePanel {
         viewport_blueprint: &ViewportBlueprint,
         ui: &mut egui::Ui,
         state: PanelState,
+        // Flipped when the user drags the panel closed/open:
+        is_expanded: &mut bool,
         mut panel_frame: egui::Frame,
+        can_collapse_to_bar: bool,
     ) {
         if state.is_hidden() {
             return;
@@ -235,12 +245,6 @@ impl TimePanel {
 
         let id: egui::Id = self.source.into();
 
-        let collapsed = egui::Panel::bottom(id.with("time_panel_collapsed"))
-            .resizable(false)
-            .show_separator_line(false)
-            .frame(panel_frame)
-            .default_size(44.0);
-
         let min_height = 150.0;
         let min_top_space = 150.0 + screen_header_height;
         let expanded = egui::Panel::bottom(id.with("time_panel_expanded"))
@@ -251,29 +255,48 @@ impl TimePanel {
             .max_size((window_height - min_top_space).at_least(min_height).round())
             .default_size((0.25 * window_height).clamp(min_height, 250.0).round());
 
-        egui::Panel::show_animated_between_inside(
-            ui,
-            state.is_expanded(),
-            collapsed,
-            expanded,
-            |ui: &mut egui::Ui, how_expanded: f32| {
-                if how_expanded > 0.0 {
-                    self.show_expanded_with_header(
-                        viewer_ctx,
-                        store_ctx,
-                        viewport_blueprint,
-                        ui,
-                        &mut time_commands,
-                    );
-                } else {
-                    ui.horizontal(|ui| {
-                        ui.spacing_mut().interact_size = Vec2::splat(tokens.top_bar_height());
-                        ui.visuals_mut().button_frame = true;
-                        self.collapsed_ui(store_ctx, viewer_ctx, ui, &mut time_commands);
-                    });
-                }
-            },
-        );
+        if can_collapse_to_bar {
+            let collapsed = egui::Panel::bottom(id.with("time_panel_collapsed"))
+                .resizable(true)
+                .show_separator_line(false)
+                .frame(panel_frame)
+                .exact_size(32.0);
+
+            egui::Panel::show_switched(
+                ui,
+                is_expanded,
+                collapsed,
+                expanded,
+                |ui: &mut egui::Ui, expanded: bool| {
+                    if expanded {
+                        self.show_expanded_with_header(
+                            viewer_ctx,
+                            store_ctx,
+                            viewport_blueprint,
+                            ui,
+                            &mut time_commands,
+                        );
+                    } else {
+                        ui.horizontal(|ui| {
+                            ui.spacing_mut().interact_size = Vec2::splat(tokens.top_bar_height());
+                            ui.visuals_mut().button_frame = true;
+                            self.collapsed_ui(store_ctx, viewer_ctx, ui, &mut time_commands);
+                        });
+                    }
+                },
+            );
+        } else {
+            // No collapsed bar: dragging the panel closed hides it entirely.
+            expanded.show_collapsible(ui, is_expanded, |ui: &mut egui::Ui| {
+                self.show_expanded_with_header(
+                    viewer_ctx,
+                    store_ctx,
+                    viewport_blueprint,
+                    ui,
+                    &mut time_commands,
+                );
+            });
+        }
 
         if !time_commands.is_empty() {
             viewer_ctx
