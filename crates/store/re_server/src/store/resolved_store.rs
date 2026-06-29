@@ -172,3 +172,101 @@ impl ResolvedStoreWeak {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::collections::BTreeSet;
+    use std::sync::Arc;
+
+    use re_chunk::{Chunk, RowId, TimePoint, Timeline};
+    use re_log_types::example_components::{MyPoint, MyPoints};
+    use re_log_types::{
+        EntityPath, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource,
+    };
+
+    use super::ResolvedStore;
+
+    /// Authors a minimal RRD (one `SetStoreInfo` + a few chunks) at `path`, with or without a
+    /// footer, and returns the `StoreId` that was written.
+    fn write_rrd(path: &std::path::Path, store_id: &StoreId, with_footer: bool) {
+        let entity_path = EntityPath::from("/test/entity");
+        let timeline = Timeline::new_sequence("frame");
+        let chunks: Vec<Arc<Chunk>> = (0..3)
+            .map(|i| {
+                let points = MyPoint::from_iter(i as u32..i as u32 + 1);
+                Arc::new(
+                    Chunk::builder(entity_path.clone())
+                        .with_sparse_component_batches(
+                            RowId::new(),
+                            TimePoint::default().with(timeline, i64::from(i)),
+                            [(MyPoints::descriptor_points(), Some(&points as _))],
+                        )
+                        .build()
+                        .unwrap(),
+                )
+            })
+            .collect();
+
+        let mut file = std::fs::File::create(path).unwrap();
+        let mut encoder = re_log_encoding::Encoder::new_eager(
+            re_build_info::CrateVersion::LOCAL,
+            re_log_encoding::EncodingOptions::PROTOBUF_COMPRESSED,
+            &mut file,
+        )
+        .unwrap();
+        if !with_footer {
+            encoder.do_not_emit_footer();
+        }
+        encoder
+            .append(&LogMsg::SetStoreInfo(SetStoreInfo {
+                row_id: *RowId::ZERO,
+                info: StoreInfo::new(store_id.clone(), StoreSource::Unknown),
+            }))
+            .unwrap();
+        for chunk in &chunks {
+            encoder
+                .append(&LogMsg::ArrowMsg(
+                    store_id.clone(),
+                    chunk.to_arrow_msg().unwrap(),
+                ))
+                .unwrap();
+        }
+        encoder.finish().unwrap();
+    }
+
+    /// The register VALIDATION phase enumerates store IDs via
+    /// [`re_log_encoding::enumerate_rrd_stores`], while the LOAD phase derives them from
+    /// [`ResolvedStore::load_rrd_file`]. These run different code (footer-keys vs lazy load, and
+    /// frame-scan vs eager decode for legacy RRDs) and MUST agree, or registration would validate
+    /// a different set of segments than it ends up loading. This pins that invariant for both the
+    /// modern (footer) and legacy (no-footer) representations.
+    #[test]
+    fn enumerate_and_load_agree_on_store_ids() {
+        for with_footer in [true, false] {
+            let file = tempfile::NamedTempFile::new().unwrap();
+            let path = file.path();
+            let store_id = StoreId::random(StoreKind::Recording, "test");
+            write_rrd(path, &store_id, with_footer);
+
+            let validated: BTreeSet<StoreId> =
+                re_log_encoding::enumerate_rrd_stores(&mut std::fs::File::open(path).unwrap())
+                    .unwrap()
+                    .into_iter()
+                    .filter(|id| id.kind() == StoreKind::Recording)
+                    .collect();
+
+            let loaded: BTreeSet<StoreId> =
+                ResolvedStore::load_rrd_file(path, StoreKind::Recording)
+                    .unwrap()
+                    .into_iter()
+                    .map(|(id, _)| id)
+                    .collect();
+
+            assert_eq!(
+                validated, loaded,
+                "validate/load store-id sets must agree (with_footer={with_footer})"
+            );
+            assert_eq!(loaded, BTreeSet::from([store_id]));
+        }
+    }
+}

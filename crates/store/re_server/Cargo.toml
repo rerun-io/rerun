@@ -83,10 +83,15 @@ lance = { workspace = true, optional = true }
 
 
 [dev-dependencies]
+re_chunk.workspace = true
 re_chunk_store.workspace = true
+# `encoder` (decoder comes transitively via re_chunk_store) lets tests author RRDs
+# with and without footers to cross-check store enumeration vs lazy loading.
+re_log_encoding = { workspace = true, features = ["encoder"] }
 re_redap_tests.workspace = true
 re_tuid.workspace = true
 ehttp = { workspace = true, features = ["native-async"] }
+tempfile.workspace = true
 
 
 [build-dependencies]

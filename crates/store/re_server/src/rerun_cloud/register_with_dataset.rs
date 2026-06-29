@@ -415,23 +415,14 @@ async fn register_sources(
 /// Returns a deduplicated set because a single RRD can contain duplicate
 /// `SetStoreInfo` messages for the same store.
 fn load_store_ids(rrd_path: &std::path::Path) -> tonic::Result<BTreeSet<StoreId>> {
-    let reader = std::io::BufReader::new(
-        std::fs::File::open(rrd_path)
-            .map_err(|err| tonic::Status::internal(format!("Failed to open RRD file: {err:#}")))?,
-    );
-    let decoder = re_log_encoding::DecoderApp::decode_lazy(reader);
+    let mut file = std::fs::File::open(rrd_path)
+        .map_err(|err| tonic::Status::internal(format!("Failed to open RRD file: {err:#}")))?;
 
-    let mut store_ids = BTreeSet::new();
-    for msg_result in decoder {
-        let msg = msg_result.map_err(|err| {
-            tonic::Status::internal(format!("Failed to decode RRD message: {err:#}"))
-        })?;
-        if let re_log_types::LogMsg::SetStoreInfo(info) = msg {
-            store_ids.insert(info.info.store_id);
-        }
-    }
+    let store_ids = re_log_encoding::enumerate_rrd_stores(&mut file).map_err(|err| {
+        tonic::Status::internal(format!("Failed to enumerate RRD stores: {err:#}"))
+    })?;
 
-    Ok(store_ids)
+    Ok(store_ids.into_iter().collect())
 }
 
 /// Parses a `memory:///store/{store_slot_id}` URL and returns the [`StoreSlotId`].
