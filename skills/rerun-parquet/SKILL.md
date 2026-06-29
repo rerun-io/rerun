@@ -32,12 +32,12 @@ from rerun.experimental import ParquetReader, DeriveLens
 
 reader = ParquetReader(
     table_path,
-    entity_path_prefix="/world",         # prepended to every entity path
-    column_grouping="prefix",            # "prefix" | "individual" | "explicit_prefixes"
-    delimiter="_",                       # split for column_grouping="prefix"
-    prefixes=None,                       # required for "explicit_prefixes"
-    use_structs=True,                    # pack grouped columns into one struct component
-    static_columns=["robot_type"],       # constant-per-file values, logged static
+    entity_path_prefix="/world",  # prepended to every entity path
+    column_grouping="prefix",  # "prefix" | "individual" | "explicit_prefixes"
+    delimiter="_",  # split for column_grouping="prefix"
+    prefixes=None,  # required for "explicit_prefixes"
+    use_structs=True,  # pack grouped columns into one struct component
+    static_columns=["robot_type"],  # constant-per-file values, logged static
     index_columns=[("timestamp", "timestamp", "us"), ("frame_index", "sequence")],
 )
 stream = reader.stream()

@@ -65,14 +65,15 @@ and operate on the cached frame:
 
 ```python
 cached = (
-    dataset.filter_segments(seg)
+    dataset
+    .filter_segments(seg)
     .filter_contents([entity])
     .reader(index=index_col)
     .select(col(index_col).cast(pa.int64()).alias(index_col), value.alias("v"))
     .cache()  # one network round-trip, materializes into in-memory batches
 )
 starts = cached.filter(col("v") == start_val).collect_column(index_col)
-stops  = cached.filter(stop_pred(col("v"))).collect_column(index_col)
+stops = cached.filter(stop_pred(col("v"))).collect_column(index_col)
 ```
 
 Without `cache()`, each `count()` / `collect_column()` re-executes the
@@ -131,7 +132,8 @@ is the per-entity filter:
 
 ```python
 shared = (
-    dataset.filter_segments(seg)
+    dataset
+    .filter_segments(seg)
     .filter_contents(sorted(set(entities)))
     .reader(index=ix)
     .filter(col(ix).cast(pa.int64()).between(start_ns, end_ns))
