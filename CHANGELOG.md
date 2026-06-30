@@ -10,13 +10,61 @@
 
 (TODO(lucas): fill in)
 
-#### Voxel archetype
+#### Learning course
 
-(TODO(michael): fill in & more sections)
+https://rerun.io/learn is a great way to learn how the Rerun data model covers the full physical AI experiment loop.
+It is a short, hands-on course for robotics ML engineers who want the full robot learning data loop in one place:
+```
+raw data -> RRD -> derived layers -> dataset queries -> training -> evaluation
+```
+
+#### Rerun agent skills
+
+We added new skills to the Rerun repo to make it easier to investigate existing robotics data with Rerun.
+You can install the skills in your project via:
+```sh
+npx skills add rerun-io/rerun
+```
+
+The new [learning course](https://rerun.io/learn) also shows how these agent skills can be used to collect, refine and train with robotics data.
+
+#### `VoxelGridMap` archetype
+
+Rerun now supports sparse voxel grids through a new [`VoxelGridMap`](https://rerun.io/docs/reference/types/archetypes/voxel_grid_map?speculative-link) archetype (thanks to [@makeecat](https://github.com/makeecat) for the contribution!).
+The archetype supports sparse indexing, anisotropic voxel sizes, pose offsets, and optional explicit colors or values & colormap per voxel.
+
+Rerun's MCAP importer now also converts the *dense* ROS `nav2_msgs/VoxelGrid` and Foxglove `VoxelGrid` formats to Rerun `VoxelGridMap`.
+
+And if you wonder how the smooth 3D navigation through the [voxel scene](https://github.com/ephtracy/voxel-model) in this video was done, see below!
+
+<!-- https://static.rerun.io/7724132292eb25c643530304c6699270aeaa68e1_voxel_grid_teaser.mp4 -->
+https://github.com/user-attachments/assets/87fb80da-66dd-4fcd-8b35-ab553696f536
+
+#### 🎮 Gamepad support in 3D views
+
+You can now use a gamepad to navigate 3D views in the native viewer.
+This makes it easier to do fine-grained, complex maneuvers with varying speed - e.g. for navigating large scenes or for screen videos.
+Analog sticks control the eye position and look target, shoulder triggers move the eye up and down, and shoulder buttons accelerate/decelerate.
+
+**Note:** The gamepad feature is currently experimental and can be activated through the settings menu.
+Switch the 3D view's eye controls to `FirstPerson` for optimal experience.
+Under the hood, we use the [`gilrs`](https://crates.io/crates/gilrs) crate that supports a wide range of devices.
 
 #### Drag & drop components
 
 (TODO(gabor): fill in)
+
+#### Transform debugging tool
+
+We added a new debugging UI for visual introspection of the 3D transform cache.
+This allows to view the tree structure of the transform hierarchy, including potentially disconnected trees, and inspect the latest stored values of each frame node or transform edge.
+The UI supports horizontal and vertical tree layout and you can filter by transform type (e.g. static or temporal).
+
+**Note:** this UI is currently a tab in the dev panel (accessible via "Toggle dev panel" in the menu or ctrl/cmd+shift+m).
+But we are open to making this a dedicated view in the future - let us know if you have any feedback!
+
+<!-- https://static.rerun.io/cc6c41138eeeabb31fb2ec988eefdcd8da446c86_transform_dev_panel_teaser.mp4 -->
+https://github.com/user-attachments/assets/b4b1ea6e-bce9-4e88-9ede-262f545e3b47
 
 ### ⚠️ Breaking changes
 
@@ -79,11 +127,9 @@
 - Table blueprint registration for segment tables [0c60d04](https://github.com/rerun-io/rerun/commit/0c60d046d4071478bc4f89e8c0c5ba85f60005ef)
 - Add sparse VoxelGridMap archetype [fa40ec1](https://github.com/rerun-io/rerun/commit/fa40ec12509b73ec9cce3a808c95f2d9db3c335a) (thanks [@makeecat](https://github.com/makeecat)!)
 - Expose `App::current_query()` for external viewer [#12811](https://github.com/rerun-io/rerun/pull/12811) (thanks [@adsick](https://github.com/adsick)!)
-- MCAP: add support for `foxglove.VoxelGrid` [c8580c1](https://github.com/rerun-io/rerun/commit/c8580c11928c2354b905819ef33f029b917a83e1)
 - Don't play time forward when video is buffering [c4c6832](https://github.com/rerun-io/rerun/commit/c4c6832bb0b7399f12eebf644b6bbe0027791855)
 - Local catalog server [3c6b02e](https://github.com/rerun-io/rerun/commit/3c6b02e91d489ea2ab125ac5c40d1cf82af5c81e)
 - Drag & drop scalars into time series view [ae4a157](https://github.com/rerun-io/rerun/commit/ae4a15776f75b385a2a79598254b041e4e68bafd)
-- MCAP: add support for ROS `nav2_msgs/VoxelGrid` [651c140](https://github.com/rerun-io/rerun/commit/651c14069735aa4a3d200ec5578c5f0dca1f7359)
 - Always buffer time [81384a4](https://github.com/rerun-io/rerun/commit/81384a43489d9273aef52cbc44484426a8e47f6a)
 - Visualize transform trees in dev panel [a534ac6](https://github.com/rerun-io/rerun/commit/a534ac61ea388f33699940fb93981060e96fbf92)
 
@@ -104,6 +150,8 @@
 - Show average bitrate for selected video [9e28016](https://github.com/rerun-io/rerun/commit/9e2801688eae710d283f82552806598b4ee67bff)
 
 #### 🧢 MCAP
+- MCAP: add support for ROS `nav2_msgs/VoxelGrid` [651c140](https://github.com/rerun-io/rerun/commit/651c14069735aa4a3d200ec5578c5f0dca1f7359)
+- MCAP: add support for `foxglove.VoxelGrid` [c8580c1](https://github.com/rerun-io/rerun/commit/c8580c11928c2354b905819ef33f029b917a83e1)
 - Move sensor_msgs/msg/MagneticField to lens [fe9b74f](https://github.com/rerun-io/rerun/commit/fe9b74f233f9e017f594636799b354b466d0138e)
 
 #### 🧑‍💻 Dev-experience
