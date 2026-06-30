@@ -33,6 +33,8 @@ Rerun's MCAP importer now also converts the *dense* ROS `nav2_msgs/VoxelGrid` an
 
 And if you wonder how the smooth 3D navigation through the [voxel scene](https://github.com/ephtracy/voxel-model) in this video was done, see below!
 
+<!-- https://static.rerun.io/7724132292eb25c643530304c6699270aeaa68e1_voxel_grid_teaser.mp4 -->
+
 #### 🎮 Gamepad support in 3D views
 
 You can now use a gamepad to navigate 3D views in the native viewer.
@@ -48,12 +50,14 @@ Under the hood, we use the [`gilrs`](https://crates.io/crates/gilrs) crate that 
 
 #### Transform debugging tool
 
-We added a new debugging panel for visual introspection of the 3D transform cache.
+We added a new debugging UI for visual introspection of the 3D transform cache.
 This allows to view the tree structure of the transform hierarchy, including potentially disconnected trees, and inspect the latest stored values of each frame node or transform edge.
 The UI supports horizontal and vertical tree layout and you can filter by transform type (e.g. static or temporal).
 
 **Note:** this UI is currently a tab in the dev panel (accessible via "Toggle dev panel" in the menu or ctrl/cmd+shift+m).
 But we are open to making this a dedicated view in the future - let us know if you have any feedback!
+
+<!-- https://static.rerun.io/cc6c41138eeeabb31fb2ec988eefdcd8da446c86_transform_dev_panel_teaser.mp4 -->
 
 ### ⚠️ Breaking changes
 
