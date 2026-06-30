@@ -133,18 +133,18 @@ impl Chunk {
     /// * [`Self::iter_component_timepoints`].
     #[inline]
     pub fn iter_timepoints(&self) -> impl Iterator<Item = TimePoint> + '_ {
-        let mut timelines = self
+        let timelines = self
             .timelines
             .values()
-            .map(|time_column| (time_column.timeline, time_column.times()))
+            .map(|time_column| (time_column.timeline, time_column.times_raw()))
             .collect_vec();
 
-        std::iter::from_fn(move || {
+        (0..self.num_rows()).map(move |row| {
             let mut timepoint = TimePoint::default();
-            for (timeline, times) in &mut timelines {
-                timepoint.insert(*timeline, times.next()?);
+            for (timeline, times) in &timelines {
+                timepoint.insert(*timeline, TimeInt::new_temporal(times[row]));
             }
-            Some(timepoint)
+            timepoint
         })
     }
 
@@ -162,44 +162,25 @@ impl Chunk {
             return Either::Left(std::iter::empty());
         };
 
-        if let Some(validity) = list_array.nulls() {
-            let mut timelines = self
-                .timelines
-                .values()
-                .map(|time_column| {
-                    (
-                        time_column.timeline,
-                        time_column
-                            .times()
-                            .enumerate()
-                            .filter(|(i, _)| validity.is_valid(*i))
-                            .map(|(_, time)| time),
-                    )
-                })
-                .collect_vec();
+        let timelines = self
+            .timelines
+            .values()
+            .map(|time_column| (time_column.timeline, time_column.times_raw()))
+            .collect_vec();
 
-            Either::Right(Either::Left(std::iter::from_fn(move || {
-                let mut timepoint = TimePoint::default();
-                for (timeline, times) in &mut timelines {
-                    timepoint.insert(*timeline, times.next()?);
-                }
-                Some(timepoint)
-            })))
-        } else {
-            let mut timelines = self
-                .timelines
-                .values()
-                .map(|time_column| (time_column.timeline, time_column.times()))
-                .collect_vec();
+        let validity = list_array.nulls();
 
-            Either::Right(Either::Right(std::iter::from_fn(move || {
-                let mut timepoint = TimePoint::default();
-                for (timeline, times) in &mut timelines {
-                    timepoint.insert(*timeline, times.next()?);
-                }
-                Some(timepoint)
-            })))
-        }
+        Either::Right(
+            (0..self.num_rows())
+                .filter(move |&row| validity.is_none_or(|validity| validity.is_valid(row)))
+                .map(move |row| {
+                    let mut timepoint = TimePoint::default();
+                    for (timeline, times) in &timelines {
+                        timepoint.insert(*timeline, TimeInt::new_temporal(times[row]));
+                    }
+                    timepoint
+                }),
+        )
     }
 
     /// Returns an iterator over the offsets & lengths of component arrays within [`Chunk`], for a given
@@ -989,6 +970,25 @@ mod tests {
 
     use crate::{Chunk, RowId, Timeline};
 
+    /// Builds a chunk with one `MyPoints::points` row per `(timepoint, has_component)` entry.
+    ///
+    /// Rows with `has_component == false` leave the component null, making the array nullable.
+    fn timepoint_chunk(rows: impl IntoIterator<Item = (TimePoint, bool)>) -> Chunk {
+        let mut builder = Chunk::builder("this/that");
+        for (i, (timepoint, has_component)) in rows.into_iter().enumerate() {
+            let points = [MyPoint::new(i as f32, i as f32)];
+            builder = builder.with_sparse_component_batches(
+                RowId::new(),
+                timepoint,
+                [(
+                    MyPoints::descriptor_points(),
+                    has_component.then_some(&points as _),
+                )],
+            );
+        }
+        builder.build().expect("valid chunk")
+    }
+
     #[test]
     fn iter_indices_temporal() -> anyhow::Result<()> {
         let entity_path = EntityPath::from("this/that");
@@ -1061,6 +1061,116 @@ mod tests {
         }
 
         Ok(())
+    }
+
+    #[test]
+    fn iter_component_timepoints_temporal() {
+        let timeline_frame = Timeline::new_sequence("frame");
+        let timeline_other = Timeline::new_sequence("other");
+
+        let timepoint1 = TimePoint::from([(timeline_frame, 10), (timeline_other, 1)]);
+        let timepoint2 = TimePoint::from([(timeline_frame, 20), (timeline_other, 2)]);
+        let timepoint3 = TimePoint::from([(timeline_frame, 30), (timeline_other, 3)]);
+
+        let chunk = timepoint_chunk([
+            (timepoint1.clone(), true),
+            (timepoint2.clone(), true),
+            (timepoint3.clone(), true),
+        ]);
+        let expected = vec![timepoint1, timepoint2, timepoint3];
+        similar_asserts::assert_eq!(
+            expected,
+            chunk
+                .iter_component_timepoints(MyPoints::descriptor_points().component)
+                .collect_vec()
+        );
+    }
+
+    #[test]
+    fn iter_component_timepoints_temporal_sparse() {
+        let timeline_frame = Timeline::new_sequence("frame");
+        let timeline_other = Timeline::new_sequence("other");
+
+        let timepoint1 = TimePoint::from([(timeline_frame, 10), (timeline_other, 1)]);
+        let timepoint2 = TimePoint::from([(timeline_frame, 20), (timeline_other, 2)]);
+        let timepoint3 = TimePoint::from([(timeline_frame, 30), (timeline_other, 3)]);
+
+        let chunk = timepoint_chunk([
+            (timepoint1.clone(), true),
+            (timepoint2, false),
+            (timepoint3.clone(), true),
+        ]);
+        let expected = vec![timepoint1, timepoint3];
+        similar_asserts::assert_eq!(
+            expected,
+            chunk
+                .iter_component_timepoints(MyPoints::descriptor_points().component)
+                .collect_vec()
+        );
+    }
+
+    #[test]
+    fn iter_component_timepoints_static() {
+        let chunk = timepoint_chunk((0..3).map(|_| (TimePoint::default(), true)));
+        assert!(chunk.is_static());
+        let expected = vec![TimePoint::default(); 3];
+        similar_asserts::assert_eq!(
+            expected,
+            chunk
+                .iter_component_timepoints(MyPoints::descriptor_points().component)
+                .collect_vec()
+        );
+    }
+
+    #[test]
+    fn iter_component_timepoints_static_sparse() {
+        let chunk = timepoint_chunk([
+            (TimePoint::default(), true),
+            (TimePoint::default(), false),
+            (TimePoint::default(), true),
+        ]);
+        assert!(chunk.is_static());
+        let expected = vec![TimePoint::default(); 2];
+        similar_asserts::assert_eq!(
+            expected,
+            chunk
+                .iter_component_timepoints(MyPoints::descriptor_points().component)
+                .collect_vec()
+        );
+    }
+
+    #[test]
+    fn iter_component_timepoints_missing_component() {
+        let timepoint = TimePoint::from([
+            (Timeline::new_sequence("frame"), 10),
+            (Timeline::new_sequence("other"), 1),
+        ]);
+        let chunk = timepoint_chunk([(timepoint, true)]);
+        let got = chunk
+            .iter_component_timepoints("non_existing_component".into())
+            .collect_vec();
+        assert!(got.is_empty());
+    }
+
+    #[test]
+    fn iter_timepoints_temporal() {
+        let timeline_frame = Timeline::new_sequence("frame");
+        let timeline_other = Timeline::new_sequence("other");
+
+        let timepoint1 = TimePoint::from([(timeline_frame, 10), (timeline_other, 1)]);
+        let timepoint2 = TimePoint::from([(timeline_frame, 20), (timeline_other, 2)]);
+
+        let chunk = timepoint_chunk([(timepoint1.clone(), true), (timepoint2.clone(), true)]);
+        let expected = vec![timepoint1, timepoint2];
+        similar_asserts::assert_eq!(expected, chunk.iter_timepoints().collect_vec());
+    }
+
+    #[test]
+    fn iter_timepoints_static() {
+        let chunk = timepoint_chunk((0..3).map(|_| (TimePoint::default(), true)));
+        assert!(chunk.is_static());
+        let expected = vec![TimePoint::default(); 3];
+        similar_asserts::assert_eq!(expected, chunk.iter_timepoints().collect_vec());
     }
 
     #[test]
