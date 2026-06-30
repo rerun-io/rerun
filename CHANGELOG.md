@@ -52,7 +52,11 @@ Under the hood, we use the [`gilrs`](https://crates.io/crates/gilrs) crate that 
 
 #### Drag & drop components
 
-(TODO(gabor): fill in)
+You can now drag & drop a component right from the streams panel to visualize it in a Time series view or Status timeline.
+
+<!-- https://static.rerun.io/95f484cd8a2e937acd2eafa424bc778fe3ef5d7b_615146790-591024b9-57e7-4864-98f6-0b15ffb7ca2b-1782828747052.mp4 -->
+
+https://github.com/user-attachments/assets/d70587a9-2020-4ae8-9cf3-0fef54dcf896
 
 #### Transform debugging tool
 
