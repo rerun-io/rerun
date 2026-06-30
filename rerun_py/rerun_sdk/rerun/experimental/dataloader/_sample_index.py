@@ -22,10 +22,24 @@ def _ns_to_datetime64(ns: int) -> np.datetime64:
     return np.datetime64(ns, "ns")
 
 
+def _ns_to_timedelta64(ns: int) -> np.timedelta64:
+    """Convert a nanosecond count to a `timedelta64[ns]` scalar."""
+    return np.timedelta64(ns, "ns")
+
+
+def _ns_to_dtype(ns: int, ns_dtype: str | None) -> int | np.datetime64 | np.timedelta64:
+    """Convert a nanosecond count to the index-typed scalar (`int`, `datetime64`, or `timedelta64`)."""
+    if ns_dtype == "datetime64[ns]":
+        return _ns_to_datetime64(ns)
+    if ns_dtype == "timedelta64[ns]":
+        return _ns_to_timedelta64(ns)
+    return ns
+
+
 @dataclass(frozen=True)
 class FixedRateSampling:
     """
-    Sample timestamp timelines at a fixed nominal rate.
+    Sample timestamp or duration timelines at a fixed nominal rate.
 
     Indices are drawn on an algebraic grid
     `seg.index_start + k * ns_per_sample`. The server's
@@ -60,10 +74,10 @@ class SampleIndex:
     ns_per_sample
         For [`FixedRateSampling`][rerun.experimental.dataloader.FixedRateSampling]: nanoseconds between grid points.
         `None` for integer indices.
-    is_timestamp
-        True when the index is a timestamp timeline. Exposed so callers
-        can decide whether to interpret returned `int` values as
-        nanoseconds-since-epoch.
+    ns_dtype
+        Numpy dtype string used when materializing index values:
+        `"datetime64[ns]"` for timestamp timelines, `"timedelta64[ns]"`
+        for duration timelines, or `None` for plain integer indices.
 
     """
 
@@ -72,11 +86,11 @@ class SampleIndex:
         segments: list[SegmentMetadata],
         *,
         ns_per_sample: int | None = None,
-        is_timestamp: bool = False,
+        ns_dtype: str | None = None,
     ) -> None:
         self._segments = segments
         self._ns_per_sample = ns_per_sample
-        self._is_timestamp = is_timestamp
+        self._ns_dtype = ns_dtype
 
         seg_sizes = np.array([s.num_samples for s in segments], dtype=np.int64)
         self._cumulative_sizes = np.concatenate([[0], np.cumsum(seg_sizes)])
@@ -87,9 +101,19 @@ class SampleIndex:
         return self._segments
 
     @property
+    def ns_dtype(self) -> str | None:
+        """Numpy dtype for materialized index values, or ``None`` for integer indices."""
+        return self._ns_dtype
+
+    @property
     def is_timestamp(self) -> bool:
         """Whether the index is a timestamp timeline."""
-        return self._is_timestamp
+        return self._ns_dtype == "datetime64[ns]"
+
+    @property
+    def is_duration(self) -> bool:
+        """Whether the index is a duration timeline."""
+        return self._ns_dtype == "timedelta64[ns]"
 
     @property
     def ns_per_sample(self) -> int | None:
@@ -101,12 +125,13 @@ class SampleIndex:
         """Total number of samples across all segments."""
         return int(self._cumulative_sizes[-1])
 
-    def global_to_local(self, idx: int) -> tuple[SegmentMetadata, int | np.datetime64]:
+    def global_to_local(self, idx: int) -> tuple[SegmentMetadata, int | np.datetime64 | np.timedelta64]:
         """
         Map a global index `[0, total_samples)` to `(segment, concrete_idx_value)`.
 
-        The returned index value is a plain `int` for integer timelines
-        and a `datetime64[ns]` for timestamp timelines.
+        The returned index value is a plain `int` for integer timelines,
+        a `datetime64[ns]` for timestamp timelines, and a
+        `timedelta64[ns]` for duration timelines.
         """
         total = int(self._cumulative_sizes[-1])
         if idx < 0 or idx >= total:
@@ -116,16 +141,17 @@ class SampleIndex:
         seg = self._segments[seg_idx]
         return seg, self.resolve_local_index(seg, pos)
 
-    def resolve_local_index(self, seg: SegmentMetadata, pos: int) -> int | np.datetime64:
+    def resolve_local_index(self, seg: SegmentMetadata, pos: int) -> int | np.datetime64 | np.timedelta64:
         """
         Convert a positional index within `seg` to a concrete index value.
 
         `pos` is in `[0, seg.num_samples)`. Returns `datetime64[ns]`
-        for timestamp timelines, a plain `int` for integer indices.
+        for timestamp timelines, `timedelta64[ns]` for duration
+        timelines, and a plain `int` for integer indices.
         """
         if self._ns_per_sample is not None:
             ns = seg.index_start + int(pos) * self._ns_per_sample
-            return _ns_to_datetime64(ns)
+            return _ns_to_dtype(ns, self._ns_dtype)
         return int(seg.index_start) + int(pos)
 
     def indices_in_range(self, lo: int, hi: int) -> Iterable[int]:
@@ -136,8 +162,8 @@ class SampleIndex:
         in `ns_per_sample` steps (so they remain on the grid as long as
         `hi` is). For integer timelines, every value in `[lo, hi]` is
         returned. Values are plain `int` (ns-since-epoch for timestamp
-        indices); the caller casts the aggregated set to the right
-        `numpy` dtype.
+        indices, ns count for duration indices); the caller casts the
+        aggregated set to the right `numpy` dtype.
         """
         if hi < lo:
             return ()
@@ -168,7 +194,7 @@ class SampleIndex:
         fields
             Field definitions, used for window-trim calculation.
         timeline_sampling
-            Required for timestamp indices; ignored for integer indices.
+            Required for timestamp and duration indices; ignored for integer indices.
             Pass [`FixedRateSampling`][rerun.experimental.dataloader.FixedRateSampling] for a regular grid.
 
         """
@@ -220,7 +246,7 @@ def _window_trims_ns(fields: dict[str, Field]) -> tuple[int, int]:
     Largest `(-window[0], window[1])` across all fields, floored at 0.
 
     Used to shrink the iterable range so windowed lookups stay inside
-    each segment. Only called for timestamp timelines, where
+    each segment. Only called for timestamp or duration timelines, where
     `field.window` is interpreted as nanoseconds (hence the `_ns` suffix).
     """
     trim_start = 0
@@ -267,19 +293,22 @@ def _build(
 
     start_type = ranges_table.schema.field(start_col).type
     is_timestamp = pa.types.is_timestamp(start_type)
+    is_duration = pa.types.is_duration(start_type)
 
-    if is_timestamp:
+    if is_timestamp or is_duration:
+        kind = "timestamp" if is_timestamp else "duration"
         if timeline_sampling is None:
             raise TypeError(
-                f"Index {index!r} is a timestamp timeline; you must pass "
+                f"Index {index!r} is a {kind} timeline; you must pass "
                 "timeline_sampling=FixedRateSampling(rate_hz=…) so the "
                 "dataloader knows how to draw sample indices."
             )
-        return _build_fixed_rate(ctx, _ns_per_sample(timeline_sampling.rate_hz))
+        ns_dtype = "datetime64[ns]" if is_timestamp else "timedelta64[ns]"
+        return _build_fixed_rate(ctx, _ns_per_sample(timeline_sampling.rate_hz), ns_dtype=ns_dtype)
 
     if timeline_sampling is not None:
         warnings.warn(
-            f"timeline_sampling={timeline_sampling!r} ignored: index {index!r} is not a timestamp timeline",
+            f"timeline_sampling={timeline_sampling!r} ignored: index {index!r} is not a timestamp or duration timeline",
             stacklevel=3,
         )
     return _build_integer(ctx)
@@ -317,12 +346,12 @@ def _build_integer(ctx: _RangesCtx) -> SampleIndex:
             )
         )
 
-    return SampleIndex(segments, ns_per_sample=None, is_timestamp=False)
+    return SampleIndex(segments, ns_per_sample=None, ns_dtype=None)
 
 
-def _build_fixed_rate(ctx: _RangesCtx, ns_per_sample: int) -> SampleIndex:
+def _build_fixed_rate(ctx: _RangesCtx, ns_per_sample: int, *, ns_dtype: str) -> SampleIndex:
     """
-    Build SampleIndex for a timestamp timeline sampled at a fixed rate.
+    Build SampleIndex for a timestamp or duration timeline sampled at a fixed rate.
 
     With a user-provided rate we compute `num_samples` and draw
     sample timestamps algebraically on a grid -- no server query for
@@ -330,8 +359,10 @@ def _build_fixed_rate(ctx: _RangesCtx, ns_per_sample: int) -> SampleIndex:
     is absorbed by `fill_latest_at` on the server.
     """
     seg_col = ctx.ranges_table.column("rerun_segment_id").to_pylist()
-    min_vals = ctx.ranges_table.column(ctx.start_col).to_numpy()
-    max_vals = ctx.ranges_table.column(ctx.end_col).to_numpy()
+    # Cast through the underlying ns integer so the math below works
+    # for both timestamp("ns") and duration("ns") columns.
+    min_vals = ctx.ranges_table.column(ctx.start_col).to_numpy().astype("int64")
+    max_vals = ctx.ranges_table.column(ctx.end_col).to_numpy().astype("int64")
 
     trim_start_ns, trim_end_ns = _window_trims_ns(ctx.fields)
 
@@ -355,4 +386,4 @@ def _build_fixed_rate(ctx: _RangesCtx, ns_per_sample: int) -> SampleIndex:
             )
         )
 
-    return SampleIndex(segments, ns_per_sample=ns_per_sample, is_timestamp=True)
+    return SampleIndex(segments, ns_per_sample=ns_per_sample, ns_dtype=ns_dtype)

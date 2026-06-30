@@ -13,7 +13,7 @@ from torchvision.transforms.functional import pil_to_tensor  # type: ignore[impo
 
 from rerun._tracing import with_tracing
 
-from ._sample_index import _ns_to_datetime64
+from ._sample_index import _ns_to_datetime64, _ns_to_timedelta64
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -44,7 +44,7 @@ class ColumnDecoder(ABC):
     def decode(
         self,
         raw: pa.ChunkedArray,
-        index_value: int | np.datetime64,
+        index_value: int | np.datetime64 | np.timedelta64,
         segment_id: str,
     ) -> torch.Tensor | None:
         """Decode *raw* Arrow data into a tensor, or return `None` to signal data missing."""
@@ -52,8 +52,8 @@ class ColumnDecoder(ABC):
 
     def context_range(
         self,
-        index_value: int | np.datetime64,
-    ) -> tuple[int | np.datetime64, int | np.datetime64] | None:
+        index_value: int | np.datetime64 | np.timedelta64,
+    ) -> tuple[int | np.datetime64 | np.timedelta64, int | np.datetime64 | np.timedelta64] | None:
         """
         Extra index-value range needed to decode *index_value*.
 
@@ -96,7 +96,12 @@ class ImageDecoder(ColumnDecoder):
     """Decode a single encoded-image blob (JPEG/PNG) to a `[C, H, W]` uint8 tensor."""
 
     @with_tracing("ImageDecoder.decode")
-    def decode(self, raw: pa.ChunkedArray, index_value: int | np.datetime64, segment_id: str) -> torch.Tensor:
+    def decode(
+        self,
+        raw: pa.ChunkedArray,
+        index_value: int | np.datetime64 | np.timedelta64,
+        segment_id: str,
+    ) -> torch.Tensor:
         del index_value, segment_id
         combined = raw.combine_chunks()
         blob_bytes = bytes(_flatten_blob(combined, 0))
@@ -108,7 +113,12 @@ class NumericDecoder(ColumnDecoder):
     """Decode Arrow numeric / list-of-numeric columns to a tensor."""
 
     @with_tracing("NumericDecoder.decode")
-    def decode(self, raw: pa.ChunkedArray, index_value: int | np.datetime64, segment_id: str) -> torch.Tensor:
+    def decode(
+        self,
+        raw: pa.ChunkedArray,
+        index_value: int | np.datetime64 | np.timedelta64,
+        segment_id: str,
+    ) -> torch.Tensor:
         del index_value, segment_id
         return torch.as_tensor(_unwrap_to_numpy(raw.combine_chunks()))
 
@@ -269,13 +279,15 @@ class VideoFrameDecoder(ColumnDecoder):
 
     def context_range(
         self,
-        index_value: int | np.datetime64,
-    ) -> tuple[int | np.datetime64, int | np.datetime64] | None:
+        index_value: int | np.datetime64 | np.timedelta64,
+    ) -> tuple[int | np.datetime64 | np.timedelta64, int | np.datetime64 | np.timedelta64] | None:
         """Need frames from estimated keyframe position to target."""
         if isinstance(index_value, np.datetime64):
             iv = int(np.int64(index_value))
-            lo = _ns_to_datetime64(iv - self._keyframe_duration_ns)
-            return (lo, index_value)
+            return (_ns_to_datetime64(iv - self._keyframe_duration_ns), index_value)
+        if isinstance(index_value, np.timedelta64):
+            iv = int(np.int64(index_value))
+            return (_ns_to_timedelta64(iv - self._keyframe_duration_ns), index_value)
         iv = int(index_value)
         return (max(0, iv - self._keyframe_interval), iv)
 
@@ -283,7 +295,7 @@ class VideoFrameDecoder(ColumnDecoder):
     def decode(
         self,
         raw: pa.ChunkedArray,
-        index_value: int | np.datetime64,
+        index_value: int | np.datetime64 | np.timedelta64,
         segment_id: str,
     ) -> torch.Tensor | None:
         """Decode the target frame from the context samples in *raw*, or `None` if no keyframe is available."""
@@ -292,7 +304,7 @@ class VideoFrameDecoder(ColumnDecoder):
     def _decode_to_target(
         self,
         raw_context: pa.ChunkedArray,
-        target_idx: int | np.datetime64,
+        target_idx: int | np.datetime64 | np.timedelta64,
         segment_id: str,
     ) -> torch.Tensor | None:
         """
@@ -302,8 +314,8 @@ class VideoFrameDecoder(ColumnDecoder):
         always the last decoded frame. Earlier frames (prior to the
         target) are not cached: for sequence indices we'd need to know
         how many encoded samples were dropped by the codec before the
-        first keyframe, and for timestamp indices we'd need per-sample
-        timestamps we don't have here.
+        first keyframe, and for timestamp or duration indices we'd need
+        per-sample timestamps we don't have here.
         """
         combined = raw_context.combine_chunks()
         num_rows = len(combined)
