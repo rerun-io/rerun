@@ -49,7 +49,7 @@ Under the hood, we use the [`gilrs`](https://crates.io/crates/gilrs) crate that 
 #### Transform debugging tool
 
 We added a new debugging panel for visual introspection of the 3D transform cache.
-This allows to view the tree structure of the transform hierarchy, including potentially disconnected trees, and inspect the latest stored values at each frame node or transform edge.
+This allows to view the tree structure of the transform hierarchy, including potentially disconnected trees, and inspect the latest stored values of each frame node or transform edge.
 The UI supports horizontal and vertical tree layout and you can filter by transform type (e.g. static or temporal).
 
 **Note:** this UI is currently a tab in the dev panel (accessible via "Toggle dev panel" in the menu or ctrl/cmd+shift+m).
