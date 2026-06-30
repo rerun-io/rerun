@@ -68,7 +68,11 @@ https://github.com/user-attachments/assets/b4b1ea6e-bce9-4e88-9ede-262f545e3b47
 
 ### ⚠️ Breaking changes
 
-(TODO(isse): fill in)
+- **SDK**: If you relied on the `log_tick` timeline being automatically created, you'll now have to call `set_log_tick_enabled(true)`.
+- **Python**: `rr.send_dataframe` is now stricter for more correctness. See the migration guide for more details.
+- **Python**: The deprecated python module `rerun.recording` has been removed; Use `rerun.experimental.RrdReader` instead.
+- **SDK**: Several deprecated `DatasetEntry` methods have been removed.
+- **SDK**: `ParquetReader` column rules have been removed in favor of [lenses](https://rerun.io/docs/concepts/query-and-transform/lenses).
 
 🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-34?speculative-link
 
