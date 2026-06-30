@@ -18,7 +18,7 @@ You can install the skills in your project via:
 npx skills add rerun-io/rerun
 ```
 
-A great start to learn more about how to use the skills is our new learning course: https://rerun.io/learn
+A great start to learn more about how to use the skills is our new learning course: https://rerun.io/learn.
 It is a short, hands-on course for robotics ML engineers who want the full robot learning data loop in one place:
 ```
 raw data -> RRD -> derived layers -> dataset queries -> training -> evaluation
