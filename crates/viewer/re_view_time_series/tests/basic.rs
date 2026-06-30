@@ -1,5 +1,9 @@
+use std::sync::Arc;
+
 use re_chunk::{Chunk, ChunkBuilder};
+use re_log_types::external::arrow::array::Float64Array;
 use re_log_types::{EntityPath, TimeInt, TimePoint, Timeline};
+use re_sdk_types::DynamicArchetype;
 use re_sdk_types::blueprint::{archetypes::PlotLegend, components::Corner2D};
 use re_test_context::TestContext;
 use re_test_context::external::egui_kittest::SnapshotResults;
@@ -103,6 +107,45 @@ fn test_clear_series_points_and_line_impl(
             }
         ),
         egui::vec2(300.0, 300.0),
+        None,
+    ));
+}
+
+/// A single entity carrying multiple `Float64` channels (`a`, `b`, `c`) is auto-spawned as
+/// one visualizer instruction per channel, and the channels should render with distinct colors.
+#[test]
+fn test_multi_channel_scalars_per_entity() {
+    let mut test_context = TestContext::new_with_view_class::<TimeSeriesView>();
+
+    let timeline = Timeline::log_tick();
+
+    for i in 0..32 {
+        let t = i as f64 / 5.0;
+        test_context.log_entity("channels", |builder| {
+            builder.with_archetype_auto_row(
+                [(timeline, i)],
+                &DynamicArchetype::new("channels")
+                    .with_component_from_data("a", Arc::new(Float64Array::from(vec![t.sin()])))
+                    .with_component_from_data(
+                        "b",
+                        Arc::new(Float64Array::from(vec![t.cos() + 2.0])),
+                    )
+                    .with_component_from_data(
+                        "c",
+                        Arc::new(Float64Array::from(vec![(t * 0.5).sin() - 2.0])),
+                    ),
+            )
+        });
+    }
+
+    test_context.set_active_timeline(*timeline.name());
+
+    let view_id = setup_blueprint(&mut test_context);
+    let mut snapshot_results = SnapshotResults::new();
+    snapshot_results.add(test_context.run_view_ui_and_save_snapshot(
+        view_id,
+        "multi_channel_scalars_per_entity",
+        egui::vec2(400.0, 300.0),
         None,
     ));
 }
