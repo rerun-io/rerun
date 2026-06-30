@@ -73,14 +73,21 @@ impl RenderItem<'_> {
 
 /// View state for pan/zoom.
 #[derive(Default, re_byte_size::SizeBytes)]
-struct StateTimelineViewState {
-    /// Visible time range, in the same representation as the timeline panel.
-    /// `None` means "fit all data" — populated on the next frame from the data range.
-    time_view: Option<TimeView>,
+pub struct StateTimelineViewState {
+    /// Pan/zoom window, stored per timeline (in the same representation as the timeline panel).
+    pub time_views: std::collections::BTreeMap<TimelineName, TimeView>,
+}
 
-    /// The timeline we last rendered. When the active timeline changes,
-    /// we reset `time_view` so the view auto-fits to the new data.
-    active_timeline: Option<TimelineName>,
+impl StateTimelineViewState {
+    /// The visible time range to query for `timeline`, derived from its pan/zoom.
+    ///
+    /// `None` until `timeline` has been auto-fit.
+    pub fn visible_time_range(&self, timeline: TimelineName) -> Option<AbsoluteTimeRange> {
+        let time_view = self.time_views.get(&timeline)?;
+        let min = time_view.min;
+        let max = min + TimeReal::from(time_view.time_spanned);
+        Some(AbsoluteTimeRange::new(min.floor(), max.ceil()))
+    }
 }
 
 impl ViewState for StateTimelineViewState {
@@ -232,12 +239,6 @@ impl ViewClass for StateTimelineView {
 
         let state = state.downcast_mut::<StateTimelineViewState>()?;
 
-        // Reset the view when the active timeline changes.
-        if state.active_timeline.as_ref() != Some(&query.timeline) {
-            state.active_timeline = Some(query.timeline);
-            state.time_view = None;
-        }
-
         // Collect all lanes from all visualizers.
         let all_lanes: Vec<&StateLane> = system_output
             .iter_visualizer_data::<StateLanesData>()
@@ -269,19 +270,15 @@ impl ViewClass for StateTimelineView {
         let overhang = data_span * LAST_PHASE_OVERHANG_FRACTION;
         let open_end_time: Option<f64> = timeline_end.map(|end| end as f64 + overhang);
 
-        // Auto-fit on first frame.
-        if state.time_view.is_none() {
+        // Auto-fit the first time we render this timeline.
+        let mut time_view = *state.time_views.entry(query.timeline).or_insert_with(|| {
             let min = data_min - data_span * 0.05;
             let max = data_max + overhang + data_span * 0.05;
-            state.time_view = Some(TimeView {
+            TimeView {
                 min: TimeReal::from(min),
                 time_spanned: max - min,
-            });
-        }
-
-        let Some(mut time_view) = state.time_view else {
-            return Ok(());
-        };
+            }
+        });
 
         // Allocate the full available rect.
         let (rect, response) =
@@ -468,10 +465,10 @@ impl ViewClass for StateTimelineView {
         // Double click anywhere in the view to reset zoom.
         // Doesn't reset global time cursor.
         if response.double_clicked() {
-            state.time_view = None;
+            state.time_views.remove(&query.timeline);
             ui.request_repaint();
         } else {
-            state.time_view = Some(time_view);
+            state.time_views.insert(query.timeline, time_view);
         }
 
         // Handle selection: determine what's under the pointer (lane entity or view).

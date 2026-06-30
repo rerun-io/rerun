@@ -528,6 +528,127 @@ fn test_state_timeline_zoom() {
     snapshot_results.add(harness.try_snapshot("state_timeline_zoom_after"));
 }
 
+/// Regression test for RR-4294: after panning so that every logged state change lies to the
+/// *left* of the visible window, the lane must still render — showing the state active at the
+/// window start (the last change before the range) — rather than disappearing entirely.
+#[test]
+fn test_state_timeline_pan_past_data() {
+    let mut snapshot_results = SnapshotResults::new();
+    let mut test_context = TestContext::new_with_view_class::<StateTimelineView>();
+
+    let timeline = Timeline::new_sequence("tick");
+
+    // All state changes happen early (ticks 0..=40); we then pan the window far past them.
+    // "Idle" at tick 40 is the last state, so it must fill the whole panned-past window.
+    let state_data: Vec<(i64, &str, &str)> = vec![
+        (0, "state/robot_mode", "Idle"),
+        (10, "state/robot_mode", "Moving"),
+        (25, "state/robot_mode", "Working"),
+        (40, "state/robot_mode", "Idle"),
+    ];
+    for (tick, entity, state) in &state_data {
+        let timepoint = TimePoint::from([(timeline, *tick)]);
+        test_context.log_entity(*entity, |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                timepoint,
+                &re_sdk_types::archetypes::StateChange::new().with_state(*state),
+            )
+        });
+    }
+
+    test_context.set_active_timeline(*timeline.name());
+
+    let view_id = setup_blueprint(&mut test_context);
+
+    let size = egui::vec2(800.0, 150.0);
+    let mut harness = test_context
+        .setup_kittest_for_rendering_3d(size)
+        .build_ui(|ui| {
+            test_context.run_with_single_view(ui, view_id);
+        });
+
+    // Let the view auto-fit to the data.
+    harness.run();
+
+    // Pan far to the right so the whole [0, 40] data range scrolls off the left edge.
+    // The view pans on horizontal scroll while the pointer hovers over it.
+    // Smooth scrolling keeps the ui repainting, so step a fixed number of frames rather than
+    // `run()` (which bails out once it sees continuous repaints).
+    let center = egui::pos2(size.x * 0.5, size.y * 0.5);
+    harness.hover_at(center);
+    for _ in 0..8 {
+        harness.event(egui::Event::MouseWheel {
+            unit: egui::MouseWheelUnit::Point,
+            delta: egui::vec2(-2000.0, 0.0),
+            phase: egui::TouchPhase::Move,
+            modifiers: egui::Modifiers::NONE,
+        });
+        harness.step();
+    }
+
+    snapshot_results.add(harness.try_snapshot("state_timeline_pan_past_data"));
+}
+
+/// Panning the view entirely *before* the first state change must keep the lane visible (as an
+/// empty row) rather than letting it vanish. Even with no data in the window — and nothing before
+/// it to bootstrap — the visualizer probes the entity's state type so the lane keeps its identity.
+#[test]
+fn test_state_timeline_pan_before_data() {
+    let mut snapshot_results = SnapshotResults::new();
+    let mut test_context = TestContext::new_with_view_class::<StateTimelineView>();
+
+    let timeline = Timeline::new_sequence("tick");
+
+    // All state changes happen at ticks 0..=40; we then pan the window far to the left of them.
+    let state_data: Vec<(i64, &str, &str)> = vec![
+        (0, "state/robot_mode", "Idle"),
+        (10, "state/robot_mode", "Moving"),
+        (25, "state/robot_mode", "Working"),
+        (40, "state/robot_mode", "Idle"),
+    ];
+    for (tick, entity, state) in &state_data {
+        let timepoint = TimePoint::from([(timeline, *tick)]);
+        test_context.log_entity(*entity, |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                timepoint,
+                &re_sdk_types::archetypes::StateChange::new().with_state(*state),
+            )
+        });
+    }
+
+    test_context.set_active_timeline(*timeline.name());
+
+    let view_id = setup_blueprint(&mut test_context);
+
+    let size = egui::vec2(800.0, 150.0);
+    let mut harness = test_context
+        .setup_kittest_for_rendering_3d(size)
+        .build_ui(|ui| {
+            test_context.run_with_single_view(ui, view_id);
+        });
+
+    // Let the view auto-fit to the data.
+    harness.run();
+
+    // Pan far to the left so the whole [0, 40] data range scrolls off the right edge, leaving the
+    // window entirely before the data. Positive horizontal scroll moves the window left.
+    let center = egui::pos2(size.x * 0.5, size.y * 0.5);
+    harness.hover_at(center);
+    for _ in 0..8 {
+        harness.event(egui::Event::MouseWheel {
+            unit: egui::MouseWheelUnit::Point,
+            delta: egui::vec2(2000.0, 0.0),
+            phase: egui::TouchPhase::Move,
+            modifiers: egui::Modifiers::NONE,
+        });
+        harness.step();
+    }
+
+    snapshot_results.add(harness.try_snapshot("state_timeline_pan_before_data"));
+}
+
 /// Exercises every awkward shape the state slot can take in one lane:
 ///
 /// ```text
