@@ -15,7 +15,7 @@
 We added new skills to the Rerun repo to make it easier to investigate existing robotics data with Rerun.
 You can install the skills in your project via:
 ```sh
-npx skills add rerun-io/rerun`
+npx skills add rerun-io/rerun
 ```
 
 A great start to learn more about how to use the skills is our new learning course: https://rerun.io/learn
