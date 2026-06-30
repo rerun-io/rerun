@@ -72,6 +72,7 @@ rand.workspace = true
 opentelemetry_sdk = { workspace = true, features = [
   "rt-tokio",
   "experimental_metrics_custom_reader",
+  "experimental_metrics_periodicreader_with_async_runtime",
   "spec_unstable_metrics_views",
 ] }
 parking_lot.workspace = true
