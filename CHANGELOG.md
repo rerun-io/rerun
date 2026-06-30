@@ -47,6 +47,7 @@ This makes it easier to do fine-grained, complex maneuvers with varying speed - 
 Analog sticks control the eye position and look target, shoulder triggers move the eye up and down, and shoulder buttons accelerate/decelerate.
 
 **Note:** The gamepad feature is currently experimental and can be activated through the settings menu.
+Switch the 3D view's eye controls to `FirstPerson` for optimal experience.
 Under the hood, we use the [`gilrs`](https://crates.io/crates/gilrs) crate that supports a wide range of devices.
 
 #### Drag & drop components
