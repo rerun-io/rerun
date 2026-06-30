@@ -10,7 +10,15 @@
 
 (TODO(lucas): fill in)
 
-#### Rerun agent skills & learning course
+#### Learning course
+
+https://rerun.io/learn is a great way to learn how the Rerun data model covers the full physical AI experiment loop.
+It is a short, hands-on course for robotics ML engineers who want the full robot learning data loop in one place:
+```
+raw data -> RRD -> derived layers -> dataset queries -> training -> evaluation
+```
+
+#### Rerun agent skills
 
 We added new skills to the Rerun repo to make it easier to investigate existing robotics data with Rerun.
 You can install the skills in your project via:
@@ -18,11 +26,7 @@ You can install the skills in your project via:
 npx skills add rerun-io/rerun
 ```
 
-A great start to learn more about how to use the skills is our new learning course: https://rerun.io/learn.
-It is a short, hands-on course for robotics ML engineers who want the full robot learning data loop in one place:
-```
-raw data -> RRD -> derived layers -> dataset queries -> training -> evaluation
-````
+The new [learning course](https://rerun.io/learn) also shows how these agent skills can be used to collect, refine and train with robotics data.
 
 #### `VoxelGridMap` archetype
 
