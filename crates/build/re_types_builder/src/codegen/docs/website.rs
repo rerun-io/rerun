@@ -153,7 +153,14 @@ fn index_page(
 ) -> String {
     let mut page = String::new();
 
-    write_frontmatter(&mut page, kind.plural_name(), Some(order));
+    // Sort the (long, generated) child type pages alphabetically in the
+    // side nav rather than requiring an explicit `order` on each one.
+    write_frontmatter(
+        &mut page,
+        kind.plural_name(),
+        Some(order),
+        Some("alphabetical"),
+    );
     putln!(page);
     putln!(page, "{prelude}");
     putln!(page);
@@ -241,7 +248,7 @@ fn object_page(
         object.name.clone()
     };
 
-    write_frontmatter(&mut page, &title, None);
+    write_frontmatter(&mut page, &title, None, None);
     putln!(page);
 
     if let Some(docline_summary) = object.state.docline_summary() {
@@ -375,12 +382,19 @@ fn list_links(page: &mut String, object: &Object) {
     }
 }
 
-fn write_frontmatter(o: &mut String, title: &str, order: Option<u64>) {
+fn write_frontmatter(o: &mut String, title: &str, order: Option<u64>, sort_children: Option<&str>) {
     putln!(o, "---");
     putln!(o, "title: {title:?}");
     if let Some(order) = order {
         // The order is used to sort `rerun.io/docs` side navigation
         putln!(o, "order: {order}");
+    }
+    if let Some(sort_children) = sort_children {
+        // Sorts this page's children in the `rerun.io/docs` side navigation,
+        // overriding their individual `order`. Used here to keep the long,
+        // generated type lists alphabetical without stamping an `order` on
+        // every single page.
+        putln!(o, "sort_children: {sort_children}");
     }
     putln!(o, "---");
     // Can't put the autogen warning before the frontmatter, stuff breaks down then.

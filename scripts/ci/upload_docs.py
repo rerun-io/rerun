@@ -124,7 +124,7 @@ def parse_doc_frontmatter(md_path: Path) -> dict[str, Any]:
     """Parse YAML frontmatter from a docs markdown file.
 
     Returns the metadata dict expected by the website: title, order,
-    hidden, expand, redirect.
+    sort_children, hidden, expand, redirect.
     """
     text = md_path.read_text(encoding="utf-8")
     if not text.startswith("---"):
@@ -147,6 +147,8 @@ def parse_doc_frontmatter(md_path: Path) -> dict[str, Any]:
     }
     if "order" in fm and fm["order"] is not None:
         metadata["order"] = fm["order"]
+    if "sort_children" in fm and fm["sort_children"] is not None:
+        metadata["sort_children"] = fm["sort_children"]
     if "redirect" in fm and fm["redirect"] is not None:
         metadata["redirect"] = fm["redirect"]
     return metadata
