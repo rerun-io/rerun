@@ -34,6 +34,7 @@ Rerun's MCAP importer now also converts the *dense* ROS `nav2_msgs/VoxelGrid` an
 And if you wonder how the smooth 3D navigation through the [voxel scene](https://github.com/ephtracy/voxel-model) in this video was done, see below!
 
 <!-- https://static.rerun.io/7724132292eb25c643530304c6699270aeaa68e1_voxel_grid_teaser.mp4 -->
+https://github.com/user-attachments/assets/87fb80da-66dd-4fcd-8b35-ab553696f536
 
 #### 🎮 Gamepad support in 3D views
 
@@ -58,6 +59,7 @@ The UI supports horizontal and vertical tree layout and you can filter by transf
 But we are open to making this a dedicated view in the future - let us know if you have any feedback!
 
 <!-- https://static.rerun.io/cc6c41138eeeabb31fb2ec988eefdcd8da446c86_transform_dev_panel_teaser.mp4 -->
+https://github.com/user-attachments/assets/b4b1ea6e-bce9-4e88-9ede-262f545e3b47
 
 ### ⚠️ Breaking changes
 
