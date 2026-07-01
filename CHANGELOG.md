@@ -1,8 +1,8 @@
 # Rerun changelog
 
-## [0.34.0](https://github.com/rerun-io/rerun/compare/0.33.1...0.34.0?speculative-link) - 2026-06-30
+## [0.34.0](https://github.com/rerun-io/rerun/compare/0.33.1...0.34.0) - 2026-06-30
 
-🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-34?speculative-link
+🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-34
 
 ### ✨ Overview & highlights
 
@@ -37,7 +37,7 @@ and then debugged why the fade out animation was still showing particles on the 
   > closely it looks to the original image. Keep going until it's convinced that it looks close.
 </details>
 
-See our [mcp docs](https://rerun.io/docs/reference/viewer/mcp?speculative-link) to get started.
+See our [mcp docs](https://rerun.io/docs/reference/viewer/mcp) to get started.
 
 #### Learning course
 
@@ -59,7 +59,7 @@ The new [learning course](https://rerun.io/learn) also shows how these agent ski
 
 #### `VoxelGridMap` archetype
 
-Rerun now supports sparse voxel grids through a new [`VoxelGridMap`](https://rerun.io/docs/reference/types/archetypes/voxel_grid_map?speculative-link) archetype (thanks to [@makeecat](https://github.com/makeecat) for the contribution!).
+Rerun now supports sparse voxel grids through a new [`VoxelGridMap`](https://rerun.io/docs/reference/types/archetypes/voxel_grid_map) archetype (thanks to [@makeecat](https://github.com/makeecat) for the contribution!).
 The archetype supports sparse indexing, anisotropic voxel sizes, pose offsets, and optional explicit colors or values & colormap per voxel.
 
 Rerun's MCAP importer now also converts the *dense* ROS `nav2_msgs/VoxelGrid` and Foxglove `VoxelGrid` formats to Rerun `VoxelGridMap`.
@@ -107,7 +107,7 @@ https://github.com/user-attachments/assets/b4b1ea6e-bce9-4e88-9ede-262f545e3b47
 - **SDK**: Several deprecated `DatasetEntry` methods have been removed.
 - **SDK**: `ParquetReader` column rules have been removed in favor of [lenses](https://rerun.io/docs/concepts/query-and-transform/lenses).
 
-🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-34?speculative-link
+🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-34
 
 ### 🔎 Details
 

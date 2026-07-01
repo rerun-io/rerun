@@ -5,7 +5,7 @@ Part of the [`rerun`](https://github.com/rerun-io/rerun) family of crates.
 ![MIT](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Apache](https://img.shields.io/badge/license-Apache-blue.svg)
 
-MCP server for the Rerun Viewer. See the [docs](https://rerun.io/docs/reference/viewer/mcp?speculative-link) for more info.
+MCP server for the Rerun Viewer. See the [docs](https://rerun.io/docs/reference/viewer/mcp) for more info.
 
 ## Development
 

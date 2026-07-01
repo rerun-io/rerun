@@ -6,7 +6,6 @@ namespace rerun.components;
 ///
 /// The voxel center in local grid coordinates is `(index + 0.5) * voxel_size`.
 struct VoxelIndex (
-  "attr.docs.unreleased",
   "attr.python.aliases": "npt.NDArray[Any] | npt.ArrayLike | Sequence[int]",
   "attr.python.array_aliases": "npt.NDArray[Any] | npt.ArrayLike | Sequence[Sequence[int]] | Sequence[int]",
   "attr.rust.derive": "Copy, PartialEq, Eq, Hash, bytemuck::Pod, bytemuck::Zeroable",
