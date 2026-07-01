@@ -1,6 +1,6 @@
 # Rerun changelog
 
-## [0.34.0](https://github.com/rerun-io/rerun/compare/0.33.1...0.34.0) - 2026-06-30
+## [0.34.0](https://github.com/rerun-io/rerun/compare/0.33.1...0.34.0) - 2026-07-01
 
 🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-34
 
