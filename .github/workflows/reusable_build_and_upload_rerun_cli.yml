@@ -205,6 +205,11 @@ jobs:
           destination: "rerun-builds/commit/${{ steps.get-sha.outputs.sha }}/rerun-cli/${{ inputs.PLATFORM }}"
           parent: false
           process_gcloudignore: false
+          # The tarball is already gzip-compressed. Uploading with the action's default
+          # `gzip: true` sets `Content-Encoding: gzip` on the blob, so the download client
+          # transparently decompresses one layer while validating the checksum against the
+          # still-compressed stored hash — a guaranteed checksum mismatch.
+          gzip: false
 
       - name: "Upload rerun-cli (adhoc)"
         if: ${{ inputs.ADHOC_NAME != '' }}
@@ -223,3 +228,5 @@ jobs:
           destination: "rerun-builds/adhoc/${{inputs.ADHOC_NAME}}/rerun-cli/${{ inputs.PLATFORM }}"
           parent: false
           process_gcloudignore: false
+          # See the note on the commit upload above: keep the already-gzipped tarball raw.
+          gzip: false
