@@ -4,7 +4,6 @@ namespace rerun.components;
 
 /// Optional scalar occupancy or value associated with a voxel.
 struct VoxelValue (
-  "attr.docs.unreleased",
   "attr.python.aliases": "float",
   "attr.python.array_aliases": "float | npt.NDArray[np.float32]",
   "attr.rust.derive": "Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable",
