@@ -51,7 +51,7 @@ tests = [
   "torchvision", # Imported at top of `rerun.experimental.dataloader._decoders`, so needed to import the dataloader module at all
   "datafusion==53.0.0",
 ]
-notebook = ["rerun-notebook==0.34.0-alpha.1+dev"]
+notebook = ["rerun-notebook==0.34.0-rc.1"]
 # TODO(RR-3786): when pyarrow is fixed, we should remove the pandas dependency
 datafusion = ["datafusion==53.0.0", "pandas>=2"] # deprecated, replaced by `catalog`
 dataplatform = [ # deprecated, replaced by `catalog` (NOLINT)
@@ -74,7 +74,7 @@ tracing = ["opentelemetry-api", "opentelemetry-sdk", "opentelemetry-exporter-otl
 # Note: We avoid self-referential extras like "rerun-sdk[notebook]" because they cause
 # uv to fetch rerun-sdk from PyPI when the local package isn't built yet.
 # TODO(RR-3786): when pyarrow is fixed, we should remove the pandas dependency
-all = ["datafusion==53.0.0", "pandas>=2", "rerun-notebook==0.34.0-alpha.1+dev"]
+all = ["datafusion==53.0.0", "pandas>=2", "rerun-notebook==0.34.0-rc.1"]
 
 [project.urls]
 documentation = "https://www.rerun.io/docs"
