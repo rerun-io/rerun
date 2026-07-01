@@ -303,6 +303,10 @@ backwards_check = [
 "howto/component_mapping" = [
   "cpp", # Not implemented
 ]
+"howto/state_remapping" = [
+  "cpp", # Blueprint component-mapping API is Python-only
+  "rust", # Blueprint component-mapping API is Python-only
+]
 "howto/dataframe_operations" = [
   "cpp", # Not implemented
   "rust", # Not implemented

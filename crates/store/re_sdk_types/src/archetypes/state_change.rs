@@ -30,8 +30,6 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// The state timeline view displays these as horizontal colored lanes over time.
 ///
-/// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-///
 /// ## Example
 ///
 /// ### State changes over time

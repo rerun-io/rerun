@@ -19,7 +19,7 @@ namespace rerun.archetypes;
 table StateConfiguration (
   "attr.docs.category": "Plotting",
   "attr.docs.view_types": "StateTimelineView",
-  "attr.rerun.state": "unstable",
+  "attr.rerun.state": "stable",
   "attr.rerun.visualizer": "StateVisualizer",
   "attr.rust.derive": "PartialEq"
 ) {

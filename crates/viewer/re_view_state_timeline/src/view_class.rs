@@ -116,11 +116,6 @@ impl ViewClass for StateTimelineView {
         "State timeline"
     }
 
-    // TODO(RR-4506): Remove this function once the State Timeline view graduates from experimental.
-    fn is_experimental(&self) -> bool {
-        true
-    }
-
     fn icon(&self) -> &'static re_ui::Icon {
         &icons::VIEW_STATE_TIMELINE
     }

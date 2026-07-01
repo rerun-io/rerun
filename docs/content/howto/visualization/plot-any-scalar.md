@@ -48,6 +48,10 @@ The following remaps the `Scalars:scalars` input to read from `custom:my_custom_
 
 snippet: howto/component_mapping[source_mapping]
 
+### Add data by dragging components
+
+You can set up this mapping interactively instead of via the blueprint API: drag a component from the streams tree onto a time series view. If the component has a compatible (numeric) datatype, a new `SeriesLines` visualizer is added that remaps `Scalars:scalars` from it. Non-numeric components (e.g. a string) are rejected, as is dropping a component that the view already plots.
+
 ## Selectors for nested data
 
 When your data lives inside an Arrow `StructArray`, use a _selector_ to extract a specific field.

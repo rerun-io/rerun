@@ -44,8 +44,6 @@ class StateConfiguration(Archetype, VisualizableArchetype):
 
     The underlying data needs to be logged to the same entity path using [`archetypes.StateChange`][rerun.archetypes.StateChange].
 
-    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-
     Example
     -------
     ### State changes with a custom style:
