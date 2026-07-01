@@ -138,6 +138,7 @@ eframe = { workspace = true, default-features = false, features = [
 egui_plot.workspace = true
 egui-wgpu.workspace = true
 egui.workspace = true
+egui_inspection.workspace = true
 ehttp.workspace = true
 emath.workspace = true
 futures.workspace = true

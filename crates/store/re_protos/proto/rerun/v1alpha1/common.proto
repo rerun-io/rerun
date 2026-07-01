@@ -41,6 +41,25 @@ message Timeline {
   string name = 1;
 }
 
+// The type of a timeline's time values. Mirrors `re_log_types::TimeType`.
+enum TimeType {
+  TIME_TYPE_UNSPECIFIED = 0;
+
+  // Used e.g. for frames in a film.
+  TIME_TYPE_SEQUENCE = 1;
+
+  // Duration measured in nanoseconds.
+  TIME_TYPE_DURATION_NS = 2;
+
+  // Nanoseconds since unix epoch (1970-01-01 00:00:00 UTC).
+  TIME_TYPE_TIMESTAMP_NS = 3;
+}
+
+// A point in time on a timeline: a sequence index for sequence timelines, or nanoseconds for temporal timelines.
+message TimelineTime {
+  int64 time = 1;
+}
+
 // A time range between start and end time points. Each 64 bit number can represent different time point data
 // depending on the timeline it is associated with. Time range is inclusive for both start and end time points.
 message TimeRange {

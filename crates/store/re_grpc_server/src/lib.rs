@@ -7,7 +7,7 @@ use std::net::SocketAddr;
 use std::pin::Pin;
 
 use re_byte_size::{MemUsageNode, MemUsageTree, SizeBytes};
-use re_log_channel::{DataSourceMessage, DataSourceUiCommand, SaveScreenshotError};
+use re_log_channel::{DataSourceMessage, DataSourceUiCommand};
 use re_log_encoding::{ToApplication as _, ToTransport as _};
 use re_log_types::TableMsg;
 use re_protos::common::v1alpha1::{
@@ -16,8 +16,8 @@ use re_protos::common::v1alpha1::{
 use re_protos::log_msg::v1alpha1::LogMsg as LogMsgProto;
 use re_protos::sdk_comms::v1alpha1::{
     ReadMessagesRequest, ReadMessagesResponse, ReadTablesRequest, ReadTablesResponse,
-    SaveScreenshotRequest, SaveScreenshotResponse, WriteMessagesRequest, WriteMessagesResponse,
-    WriteTableRequest, WriteTableResponse, message_proxy_service_server,
+    WriteMessagesRequest, WriteMessagesResponse, WriteTableRequest, WriteTableResponse,
+    message_proxy_service_server,
 };
 use re_quota_channel::{async_broadcast_channel, async_mpsc_channel};
 use std::task::{Context, Poll};
@@ -31,6 +31,9 @@ use tower_http::cors::{AllowOrigin, CorsLayer};
 use crate::priority_stream::PriorityMerge;
 
 mod priority_stream;
+mod viewer_control;
+
+pub use viewer_control::ViewerControl;
 
 pub use re_memory::MemoryLimit;
 
@@ -552,7 +555,7 @@ pub fn spawn_with_recv_and_services(
     addr: SocketAddr,
     options: ServerOptions,
     shutdown: shutdown::Shutdown,
-    extra_services: LoopbackServices,
+    mut loopback_services: LoopbackServices,
 ) -> (re_log_channel::LogReceiver, MessageProxyHandle) {
     let uri = re_uri::ProxyUri::new(re_uri::Origin::from_scheme_and_socket_addr(
         re_uri::Scheme::RerunHttp,
@@ -565,13 +568,23 @@ pub fn spawn_with_recv_and_services(
     let (message_proxy, mut broadcast_log_rx) = MessageProxy::new_with_recv(options.clone());
     let handle = message_proxy.handle();
 
+    // Serve the viewer-control service alongside the proxy, restricted to loopback connections:
+    // it drives the local viewer (e.g. from the MCP server), which only ever connects over 127.0.0.1.
+    loopback_services.add_service(
+        re_protos::sdk_comms::v1alpha1::viewer_control_service_server::ViewerControlServiceServer::new(
+            message_proxy.viewer_control(),
+        )
+        .max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE)
+        .max_encoding_message_size(MAX_ENCODING_MESSAGE_SIZE),
+    );
+
     tokio::spawn(async move {
         if let Err(err) = serve_impl(
             addr,
             options,
             message_proxy,
             shutdown,
-            extra_services.into_routes(),
+            loopback_services.into_routes(),
         )
         .await
         {
@@ -1119,6 +1132,12 @@ impl MessageProxy {
         }
     }
 
+    pub fn viewer_control(&self) -> ViewerControl {
+        ViewerControl {
+            event_tx: self.event_tx.clone(),
+        }
+    }
+
     async fn push_message(&self, message: impl Into<LogOrTableMsgProto>) {
         let message = message.into();
         self.event_tx.send(Event::Message(message)).await.ok();
@@ -1291,35 +1310,6 @@ impl message_proxy_service_server::MessageProxyService for MessageProxy {
         _: tonic::Request<ReadTablesRequest>,
     ) -> tonic::Result<tonic::Response<Self::ReadTablesStream>> {
         Ok(tonic::Response::new(self.new_client_table_stream().await))
-    }
-
-    async fn save_screenshot(
-        &self,
-        request: tonic::Request<SaveScreenshotRequest>,
-    ) -> tonic::Result<tonic::Response<SaveScreenshotResponse>> {
-        let SaveScreenshotRequest { view_id, file_path } = request.into_inner();
-        let (done_tx, mut done_rx) =
-            futures::channel::mpsc::unbounded::<Result<(), SaveScreenshotError>>();
-        self.push_message(DataSourceUiCommand::SaveScreenshot {
-            file_path: file_path.into(),
-            view_id,
-            on_done: Some(done_tx),
-        })
-        .await;
-
-        match done_rx.next().await {
-            Some(Ok(())) => Ok(tonic::Response::new(SaveScreenshotResponse {})),
-            Some(Err(err @ SaveScreenshotError::InvalidViewId { .. })) => {
-                Err(tonic::Status::invalid_argument(err.to_string()))
-            }
-            Some(Err(
-                err @ (SaveScreenshotError::InvalidImageData
-                | SaveScreenshotError::SaveToPathFailed { .. }),
-            )) => Err(tonic::Status::internal(err.to_string())),
-            None => Err(tonic::Status::internal(
-                "Screenshot completion signal was dropped before the screenshot was taken",
-            )),
-        }
     }
 }
 

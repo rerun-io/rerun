@@ -623,6 +623,30 @@ enum Command {
     #[command(subcommand)]
     Mcap(McapCommands),
 
+    /// Run an MCP server that controls a running Rerun Viewer.
+    ///
+    /// See the [mcp docs](https://rerun.io/docs/reference/viewer/mcp?speculative-link) for more info about using
+    /// `rerun viewer-mcp`.
+    ///
+    /// Use the following to commands to register the mcp with your agent:
+    /// - `claude mcp add rerun -- rerun viewer-mcp`
+    /// - `codex mcp add rerun -- rerun viewer-mcp`
+    ///
+    /// Or add a mcp.json with the following content:
+    /// ```json
+    /// {
+    ///   "mcpServers": {
+    ///     "rerun": {
+    ///       "command": "rerun",
+    ///       "args": ["viewer-mcp"],
+    ///     }
+    ///   }
+    /// }
+    /// ```
+    #[cfg(feature = "native_viewer")]
+    #[command(name = "viewer-mcp")]
+    ViewerMcp,
+
     /// Reset the memory of the Rerun Viewer.
     ///
     /// Only run this if you're having trouble with the Viewer,
@@ -745,6 +769,9 @@ where
 
             #[cfg(feature = "importers")]
             Command::Mcap(mcap) => mcap.run(),
+
+            #[cfg(feature = "native_viewer")]
+            Command::ViewerMcp => tokio_runtime.block_on(re_viewer_mcp::serve()),
 
             #[cfg(feature = "native_viewer")]
             Command::Reset => re_viewer::reset_viewer_persistence(),
@@ -1854,6 +1881,9 @@ fn record_cli_command_analytics(args: &Args) {
             // TODO(RR-4073): Re-enable analytics for MCAP commands.
             return;
         }
+
+        #[cfg(feature = "native_viewer")]
+        Some(Command::ViewerMcp) => ("viewer-mcp", None),
 
         Some(Command::Download(_)) => ("download", None),
 

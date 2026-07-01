@@ -53,6 +53,22 @@ impl ::prost::Name for Timeline {
         "/rerun.common.v1alpha1.Timeline".into()
     }
 }
+/// A point in time on a timeline: a sequence index for sequence timelines, or nanoseconds for temporal timelines.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct TimelineTime {
+    #[prost(int64, tag = "1")]
+    pub time: i64,
+}
+impl ::prost::Name for TimelineTime {
+    const NAME: &'static str = "TimelineTime";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v1alpha1.TimelineTime".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v1alpha1.TimelineTime".into()
+    }
+}
 /// A time range between start and end time points. Each 64 bit number can represent different time point data
 /// depending on the timeline it is associated with. Time range is inclusive for both start and end time points.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
@@ -559,6 +575,42 @@ impl EncoderVersion {
         match value {
             "ENCODER_VERSION_UNSPECIFIED" => Some(Self::Unspecified),
             "ENCODER_VERSION_V0" => Some(Self::V0),
+            _ => None,
+        }
+    }
+}
+/// The type of a timeline's time values. Mirrors `re_log_types::TimeType`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum TimeType {
+    Unspecified = 0,
+    /// Used e.g. for frames in a film.
+    Sequence = 1,
+    /// Duration measured in nanoseconds.
+    DurationNs = 2,
+    /// Nanoseconds since unix epoch (1970-01-01 00:00:00 UTC).
+    TimestampNs = 3,
+}
+impl TimeType {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "TIME_TYPE_UNSPECIFIED",
+            Self::Sequence => "TIME_TYPE_SEQUENCE",
+            Self::DurationNs => "TIME_TYPE_DURATION_NS",
+            Self::TimestampNs => "TIME_TYPE_TIMESTAMP_NS",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "TIME_TYPE_UNSPECIFIED" => Some(Self::Unspecified),
+            "TIME_TYPE_SEQUENCE" => Some(Self::Sequence),
+            "TIME_TYPE_DURATION_NS" => Some(Self::DurationNs),
+            "TIME_TYPE_TIMESTAMP_NS" => Some(Self::TimestampNs),
             _ => None,
         }
     }

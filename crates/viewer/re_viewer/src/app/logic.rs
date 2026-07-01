@@ -1,14 +1,21 @@
 use std::str::FromStr as _;
 
 use ahash::HashMap;
+use re_chunk::TimelineName;
 use re_entity_db::LogSource;
 use re_log_channel::{
-    DataSourceMessage, DataSourceUiCommand, RecordingOpenBehavior, SaveScreenshotError,
+    DataSourceMessage, DataSourceUiCommand, InspectError, RecordingOpenBehavior,
+    SaveScreenshotError,
 };
-use re_log_types::{LogMsg, StoreId, StoreKind, TableMsg};
+use re_log_types::{LogMsg, StoreId, StoreKind, TableMsg, TimeReal, TimeType};
+use re_protos::common::v1alpha1::TimeType as ProtoTimeType;
+use re_protos::sdk_comms::v1alpha1::{
+    GetViewerStateResponse, SetTimeCursorResponse, TimeCursor, ViewerRecording, ViewerTimeline,
+};
 use re_sdk_types::external::uuid;
 use re_viewer_context::{
-    Item, Route, StoreHub, SystemCommand, SystemCommandSender as _, TableStore,
+    Item, Route, StoreHub, SystemCommand, SystemCommandSender as _, TableStore, TimeControlCommand,
+    open_url::{OpenUrlOptions, ViewerOpenUrl},
 };
 
 use crate::app_blueprint::AppBlueprint;
@@ -184,7 +191,12 @@ impl App {
                 }
 
                 DataSourceMessage::UiCommand(ui_command) => {
-                    self.receive_data_source_ui_command(ui_command, &channel_source);
+                    self.receive_data_source_ui_command(
+                        ui_command,
+                        &channel_source,
+                        store_hub,
+                        egui_ctx,
+                    );
                 }
             }
 
@@ -482,6 +494,8 @@ impl App {
         &mut self,
         ui_command: DataSourceUiCommand,
         channel_source: &LogSource,
+        store_hub: &StoreHub,
+        egui_ctx: &egui::Context,
     ) {
         re_tracing::profile_function!();
         match ui_command {
@@ -534,7 +548,200 @@ impl App {
                         view_id,
                     });
             }
+
+            // Handle a `egui_inspection` request.
+            DataSourceUiCommand::Inspect { request, on_done } => {
+                serve_inspect_request(egui_ctx, &request, on_done);
+            }
+
+            // Report current viewer state (re_viewer_mcp's `GetViewerState`).
+            DataSourceUiCommand::GetViewerState { on_done } => {
+                let state = self.collect_viewer_state(store_hub);
+                on_done.unbounded_send(state).ok();
+            }
+
+            // Open a URL in the viewer (re_viewer_mcp's `OpenUrl`).
+            DataSourceUiCommand::OpenUrl { url, on_done } => {
+                let result = ViewerOpenUrl::parse_with_options(
+                    &url,
+                    &re_data_source::FromUriOptions {
+                        accept_extensionless_http: true,
+                        ..Default::default()
+                    },
+                );
+                match result {
+                    Ok(open_url) => {
+                        open_url.open(egui_ctx, &OpenUrlOptions::default(), &self.command_sender);
+                        on_done.unbounded_send(Ok(())).ok();
+                    }
+                    Err(err) => {
+                        on_done
+                            .unbounded_send(Err(format!("Failed to open URL {url:?}: {err}")))
+                            .ok();
+                    }
+                }
+            }
+
+            // Move the time cursor of a recording (re_viewer_mcp's `SetTimeCursor`).
+            DataSourceUiCommand::SetTimeCursor {
+                store_id,
+                timeline,
+                time,
+                play,
+                on_done,
+            } => {
+                let result = self.apply_set_time_cursor(
+                    store_hub,
+                    store_id,
+                    timeline.as_deref(),
+                    time,
+                    play,
+                    egui_ctx,
+                );
+                on_done.unbounded_send(result).ok();
+            }
         }
+    }
+
+    /// Snapshot the current viewer state for `re_viewer_mcp`'s `GetViewerState`:
+    /// the active recording, the current page as a sharable URL, and every open recording's
+    /// timelines with their time ranges and current time cursor.
+    fn collect_viewer_state(&self, store_hub: &StoreHub) -> GetViewerStateResponse {
+        let active_id = self.state.active_recording_id().cloned();
+        let route = self.state.navigation.current();
+
+        // Best-effort sharable URL for the current page; some routes (e.g. local tables) can't be
+        // turned into a URL, in which case we leave it empty.
+        let url = ViewerOpenUrl::from_route(store_hub, route)
+            .and_then(|open_url| open_url.sharable_url(None))
+            .unwrap_or_default();
+
+        let recordings = store_hub
+            .store_bundle()
+            .recordings()
+            .map(|db| {
+                let store_id = db.store_id();
+                let timelines = db
+                    .timelines()
+                    .values()
+                    .map(|timeline| {
+                        let name = timeline.name();
+                        let range = db.time_range_for(name);
+                        ViewerTimeline {
+                            timeline: Some((*name).into()),
+                            time_type: ProtoTimeType::from(timeline.typ()) as i32,
+                            time_range: range.map(Into::into),
+                        }
+                    })
+                    .collect();
+
+                let current_time = self
+                    .state
+                    .time_control(store_id)
+                    .map(|time_ctrl| TimeCursor {
+                        timeline: Some((*time_ctrl.timeline_name()).into()),
+                        time_type: time_ctrl.time_type().map(|t| ProtoTimeType::from(t) as i32),
+                        time: time_ctrl.time_int().map(|t| t.as_i64().into()),
+                    });
+
+                ViewerRecording {
+                    store_id: Some(store_id.clone().into()),
+                    timelines,
+                    current_time,
+                }
+            })
+            .collect();
+
+        GetViewerStateResponse {
+            url,
+            active_store_id: active_id.map(Into::into),
+            recordings,
+        }
+    }
+
+    /// Resolve and apply a time-cursor move for `re_viewer_mcp`'s `SetTimeCursor`.
+    ///
+    /// Returns what was applied, or an error string if the recording or timeline could not
+    /// be resolved.
+    fn apply_set_time_cursor(
+        &self,
+        store_hub: &StoreHub,
+        store_id: Option<StoreId>,
+        timeline: Option<&str>,
+        time: i64,
+        play: bool,
+        egui_ctx: &egui::Context,
+    ) -> Result<SetTimeCursorResponse, String> {
+        use re_sdk_types::blueprint::components::PlayState;
+
+        let store_id = store_id
+            .or_else(|| self.state.active_recording_id().cloned())
+            .ok_or_else(|| "no active recording to set the time for".to_owned())?;
+
+        let db = store_hub
+            .entity_db(&store_id)
+            .ok_or_else(|| format!("recording {} is not open", store_id.recording_id().as_str()))?;
+
+        let timelines = db.timelines();
+        if timelines.is_empty() {
+            return Err(format!(
+                "recording {} has no timelines yet",
+                store_id.recording_id().as_str()
+            ));
+        }
+
+        // Resolve the target timeline: explicit, else the active one, else the first.
+        let timeline_name = if let Some(tl) = timeline {
+            let name = TimelineName::new(tl);
+            if !timelines.contains_key(&name) {
+                let available: Vec<&str> = timelines.keys().map(|n| n.as_str()).collect();
+                return Err(format!(
+                    "recording {} has no timeline {tl:?}; available: {available:?}",
+                    store_id.recording_id().as_str()
+                ));
+            }
+            name
+        } else {
+            let active = self
+                .state
+                .time_control(&store_id)
+                .map(|tc| *tc.timeline_name());
+            match active {
+                Some(name) if timelines.contains_key(&name) => name,
+                _ => *timelines.keys().next().expect("non-empty checked above"),
+            }
+        };
+
+        let time_type = timelines
+            .get(&timeline_name)
+            .map_or(TimeType::Sequence, |t| t.typ());
+
+        let play_state = if play {
+            PlayState::Playing
+        } else {
+            PlayState::Paused
+        };
+
+        // The order of these commands matters.
+        let time_commands = vec![
+            TimeControlCommand::SetActiveTimeline(timeline_name),
+            TimeControlCommand::SetPlayState(play_state),
+            TimeControlCommand::SetTime(TimeReal::from(time)),
+        ];
+
+        self.command_sender
+            .send_system(SystemCommand::TimeControlCommands {
+                store_id: store_id.clone(),
+                time_commands,
+            });
+        egui_ctx.request_repaint();
+
+        Ok(SetTimeCursorResponse {
+            store_id: Some(store_id.into()),
+            timeline: Some(timeline_name.into()),
+            time_type: ProtoTimeType::from(time_type) as i32,
+            time: Some(time.into()),
+        })
     }
 
     /// Receive in-transit chunks (previously prefetched):
@@ -896,4 +1103,37 @@ impl App {
             },
         );
     }
+}
+
+/// Handle a `egui_inspection` request.
+fn serve_inspect_request(
+    egui_ctx: &egui::Context,
+    request: &[u8],
+    on_done: futures::channel::mpsc::UnboundedSender<Result<Vec<u8>, InspectError>>,
+) {
+    use egui_inspection::{InspectionPlugin, Request, protocol};
+
+    let req: Request = match protocol::decode_body(request) {
+        Ok(req) => req,
+        Err(err) => {
+            on_done
+                .unbounded_send(Err(InspectError::DecodeRequest(err.to_string())))
+                .ok();
+            return;
+        }
+    };
+
+    if egui_ctx.plugin_opt::<InspectionPlugin>().is_none() {
+        egui_ctx.add_plugin(InspectionPlugin::new(Some("rerun viewer".to_owned())));
+    }
+
+    egui_ctx.with_plugin::<InspectionPlugin, _>(|plugin| {
+        plugin.submit(req, move |resp| {
+            let encoded = protocol::encode_body(&resp)
+                .map_err(|err| InspectError::EncodeResponse(err.to_string()));
+            on_done.unbounded_send(encoded).ok();
+        });
+    });
+
+    egui_ctx.request_repaint();
 }

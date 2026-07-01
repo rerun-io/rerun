@@ -351,6 +351,35 @@ impl From<re_log_types::Timeline> for crate::common::v1alpha1::Timeline {
     }
 }
 
+impl From<re_log_types::TimeType> for crate::common::v1alpha1::TimeType {
+    fn from(value: re_log_types::TimeType) -> Self {
+        match value {
+            re_log_types::TimeType::Sequence => Self::Sequence,
+            re_log_types::TimeType::DurationNs => Self::DurationNs,
+            re_log_types::TimeType::TimestampNs => Self::TimestampNs,
+        }
+    }
+}
+
+impl std::fmt::Display for crate::common::v1alpha1::TimeType {
+    /// Short, human-readable name, matching `re_log_types::TimeType`'s `Display`
+    /// (`"sequence"`, `"duration"`, `"timestamp"`, or `"unknown"`).
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Self::Unspecified => "unknown",
+            Self::Sequence => "sequence",
+            Self::DurationNs => "duration",
+            Self::TimestampNs => "timestamp",
+        })
+    }
+}
+
+impl From<i64> for crate::common::v1alpha1::TimelineTime {
+    fn from(time: i64) -> Self {
+        Self { time }
+    }
+}
+
 impl TryFrom<crate::common::v1alpha1::IndexColumnSelector> for re_log_types::TimelineName {
     type Error = TypeConversionError;
 

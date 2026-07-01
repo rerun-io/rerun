@@ -73,3 +73,7 @@ Consequently, the following breaking behavior changes are introduced:
 `rerun.experimental.ParquetReader` no longer accepts the `column_rules` parameter, and the `ColumnRule` class has been removed.
 `ParquetReader` is now a pure reader — it turns raw parquet columns into grouped, time-indexed chunks of struct/scalar components.
 Mapping those struct fields into Rerun archetypes is now done with lenses on the reader's `.stream()`.
+
+## `SaveScreenshot` gRPC endpoint moved to new `ViewerControlService`
+
+Previously, the `SaveScreenshot` gRPC endpoint was part of the `MessageProxyService`.

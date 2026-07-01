@@ -23,6 +23,7 @@ The Rerun command-line interface:
 * `download`: Download recordings and save them as .rrd files.
 * `man`: Generates the Rerun CLI manual (markdown).
 * `mcap`: Manipulate the contents of .mcap files.
+* `viewer-mcp`: Run an MCP server that controls a running Rerun Viewer.
 * `reset`: Reset the memory of the Rerun Viewer.
 * `rrd`: Manipulate the contents of .rrd and .rbl files.
 * `server`: In-memory Rerun data server.
