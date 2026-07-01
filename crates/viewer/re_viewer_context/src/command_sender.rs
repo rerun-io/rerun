@@ -179,6 +179,9 @@ pub enum SystemCommand {
         /// Optional view id to screenshot a specific view.
         /// If None, screenshots the entire viewer.
         view_id: Option<ViewId>,
+
+        /// Whether to show a user-facing notification (info toast) when the screenshot is done.
+        notify: bool,
     },
 }
 

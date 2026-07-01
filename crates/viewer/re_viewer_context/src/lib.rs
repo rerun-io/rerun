@@ -215,6 +215,9 @@ pub struct ScreenshotInfo {
 
     /// Where to put the screenshot.
     pub target: ScreenshotTarget,
+
+    /// Whether to show a user-facing notification (info toast) when the screenshot is done.
+    pub notify: bool,
 }
 
 /// Where to put the screenshot.

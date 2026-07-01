@@ -546,6 +546,7 @@ impl App {
                     .send_system(SystemCommand::SaveScreenshot {
                         target: re_viewer_context::ScreenshotTarget::SaveToPath(file_path),
                         view_id,
+                        notify: false,
                     });
             }
 

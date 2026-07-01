@@ -673,7 +673,11 @@ impl App {
                     _ => true,
                 });
             }
-            SystemCommand::SaveScreenshot { target, view_id } => {
+            SystemCommand::SaveScreenshot {
+                target,
+                view_id,
+                notify,
+            } => {
                 if let Some(view_id) = view_id {
                     // Screenshot a specific view
                     if let Some(view_info) = self.egui_ctx.memory_mut(|mem| {
@@ -696,6 +700,7 @@ impl App {
                                     pixels_per_point: self.egui_ctx.pixels_per_point(),
                                     name,
                                     target,
+                                    notify,
                                 }),
                             ));
                     } else {
@@ -710,6 +715,7 @@ impl App {
                                 pixels_per_point: self.egui_ctx.pixels_per_point(),
                                 name: "screenshot".to_owned(),
                                 target,
+                                notify,
                             },
                         )));
                 }

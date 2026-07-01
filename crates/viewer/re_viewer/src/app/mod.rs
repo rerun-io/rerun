@@ -1019,7 +1019,12 @@ impl App {
                 pixels_per_point,
                 name,
                 target,
+                notify,
             } = (*info).clone();
+
+            // Only used in the native `SaveToPath` branch below.
+            #[cfg(target_arch = "wasm32")]
+            let _ = notify;
 
             let rgba = if let Some(ui_rect) = ui_rect {
                 Arc::new(image.region(&ui_rect, Some(pixels_per_point)))
@@ -1080,7 +1085,12 @@ impl App {
 
                         let result = match rgb_image.save(&file_path) {
                             Ok(()) => {
-                                re_log::info!("Saved screenshot to {file_path:?}");
+                                // Only show a user-facing toast for user-initiated screenshots.
+                                if notify {
+                                    re_log::info!("Saved screenshot to {file_path:?}");
+                                } else {
+                                    re_log::debug!("Saved screenshot to {file_path:?}");
+                                }
                                 Ok(())
                             }
                             Err(err) => {
@@ -1108,7 +1118,14 @@ impl App {
             }
         } else {
             #[cfg(not(target_arch = "wasm32"))] // no full-app screenshotting on web
-            self.screenshotter.save(&self.egui_ctx, image);
+            if user_data
+                .data
+                .as_ref()
+                .is_some_and(|data| data.is::<crate::screenshotter::FullAppScreenshot>())
+            {
+                self.screenshotter.save(&self.egui_ctx, image);
+            }
+            // Ignore any other screenshot requests
         }
     }
 }
