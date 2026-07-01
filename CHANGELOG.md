@@ -8,7 +8,36 @@
 
 #### Viewer MCP
 
-(TODO(lucas): fill in)
+We've added a MCP that allows an llm agent to see and interact with the Viewer!
+You could ask your agent to
+ - verify its work looks as expected in the Viewer.
+ - debug a bug when something doesn't show up right.
+ - explore a recording or dataset to search for specific patterns.
+
+The agent has full control over the Viewer, meaning it can see and click any widget.
+
+Here's an example where Claude Sonnet was asked to create a fancy particle animation of the Rerun logo and verify its
+work using the mcp in the open Viewer (sped up by a lot, except when showing the end result):
+
+https://github.com/user-attachments/assets/14ffe7ed-6000-4193-900c-627784682125
+
+Once it wrote the script, it logged the recording to the Viewer, and then iterated until the result looked as requested.
+It adjusted the camera position, improved the particle rendering by looking at different frames in the animation,
+and then debugged why the fade out animation was still showing particles on the last frame.
+
+<details>
+  <summary>Full prompt</summary>
+
+  > /goal Create a new rerun python example in this folder that uses reruns 2D shapes to recreate the rerun logo (rerun-wordmark-black.svg).
+  > There should be a nice fade-in animation in the beginning, 10 frames duration. Then pause a bit with the full rerun logo visible and then
+  > the shapes should explosively fade away with a 20 frame animation before the recording ends.
+  >
+  > You may only stop once the recreated logo in the viewer looks close to the provided svg (black text, white background).
+  > Use the mcp to verify in the open viewer, don't ever kill it. Once done, launch an opus agent and ask it to judge how
+  > closely it looks to the original image. Keep going until it's convinced that it looks close.
+</details>
+
+See our [mcp docs](https://rerun.io/docs/reference/viewer/mcp?speculative-link) to get started.
 
 #### Learning course
 
