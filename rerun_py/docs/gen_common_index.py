@@ -543,6 +543,8 @@ of Python, you can use the table below to make sure you choose the proper Rerun 
 
 | **Rerun Version** | **Release Date** | **Supported Python Version** |
 |-------------------|------------------|------------------------------|
+| 0.34              | Jul.  1, 2026    | 3.10+                        |
+| 0.33              | May. 29, 2026    | 3.10+                        |
 | 0.32              | May. 13, 2026    | 3.10+                        |
 | 0.31              | Mar. 31, 2026    | 3.10+                        |
 | 0.30              | Feb. 25, 2026    | 3.10+                        |
