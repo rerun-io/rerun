@@ -481,10 +481,14 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
             .on_hover_cursor(egui::CursorIcon::Grab);
 
         let label = tab_widget.label.take();
+        let active = tab_state.active;
         response.widget_info(|| {
-            let mut info = egui::WidgetInfo::new(egui::WidgetType::Label);
-            info.label = label.clone();
-            info
+            egui::WidgetInfo::selected(
+                egui::WidgetType::SelectableLabel,
+                true,
+                active,
+                label.clone().unwrap_or_default(),
+            )
         });
 
         // Show a gap when dragged
