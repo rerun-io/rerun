@@ -169,7 +169,7 @@ re_viewport_blueprint = { path = "crates/viewer/re_viewport_blueprint", version 
 re_web_viewer_server = { path = "crates/viewer/re_web_viewer_server", version = "=0.34.0-alpha.1", default-features = false }
 
 # Rerun crates in other repos:
-quiver = { version = "0.3.0", default-features = false }
+quiver = { version = "0.4.0", default-features = false }
 re_mp4 = "0.5.0"
 
 # If this package fails to build, install `nasm` locally, or build through `pixi`.
