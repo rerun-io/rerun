@@ -106,7 +106,7 @@ fn hevc_codec_string(profile_tier_level: &ProfileTierLevel) -> String {
 pub fn detect_h265_annexb_gop(data: &[u8]) -> Result<GopStartDetection, DetectGopStartError> {
     let mut parser = Parser::default();
     let mut details: Option<VideoEncodingDetails> = None;
-    let mut idr_found = false;
+    let mut irap_found = false;
     let mut cursor = std::io::Cursor::new(data);
 
     while let Ok(nalu) = Nalu::next(&mut cursor) {
@@ -127,21 +127,23 @@ pub fn detect_h265_annexb_gop(data: &[u8]) -> Result<GopStartDetection, DetectGo
                 // convert into your VideoEncodingDetails
                 details = Some(encoding_details_from_h265_sps(sps_ref));
             }
-            t if t.is_idr() => {
-                idr_found = true;
+            // Any Intra Random Access Pictures (IRAP) picture is a valid random-access point a decoder can start from — not just IDR.
+            // See https://www.hevcbook.de/hevc-picture-types/
+            t if t.is_irap() => {
+                irap_found = true;
             }
             _ => {}
         }
-        if idr_found && details.is_some() {
+        if irap_found && details.is_some() {
             break;
         }
     }
 
-    if idr_found {
+    if irap_found {
         if let Some(ved) = details {
             Ok(GopStartDetection::StartOfGop(ved))
         } else {
-            // saw IDR but no SPS → not useful
+            // saw a keyframe but no SPS → not useful
             Ok(GopStartDetection::NotStartOfGop)
         }
     } else {
@@ -270,5 +272,44 @@ mod test {
         let sample_data = &[0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A];
         let result = detect_h265_annexb_gop(sample_data);
         assert_eq!(result, Ok(GopStartDetection::NotStartOfGop));
+    }
+
+    #[test]
+    fn detects_cra_as_gop_start() {
+        // A real open-GOP H.265 access unit: VPS/SPS/PPS + a CRA picture (NAL
+        // type 21), produced by libx265 (testsrc 320x240, keyint=30, open-gop).
+        // The CRA slice is truncated — `detect_h265_annexb_gop` reads NAL types
+        // and the SPS only, not the slice body. Open-GOP encoders emit CRA for
+        // periodic keyframes; a CRA is a valid random-access point, so it must be
+        // detected as a GOP start (this is what fails if only IDR is accepted).
+        let sample_data = &[
+            // VPS NAL unit (NAL type 32)
+            0x00, 0x00, 0x00, 0x01, 0x40, 0x01, 0x0c, 0x01, 0xff, 0xff, 0x04, 0x08, 0x00, 0x00,
+            0x03, 0x00, 0x9e, 0x08, 0x00, 0x00, 0x03, 0x00, 0x00, 0x3c, 0x92, 0x80, 0x90,
+            // SPS NAL unit (NAL type 33)
+            0x00, 0x00, 0x00, 0x01, 0x42, 0x01, 0x01, 0x04, 0x08, 0x00, 0x00, 0x03, 0x00, 0x9e,
+            0x08, 0x00, 0x00, 0x03, 0x00, 0x00, 0x3c, 0x90, 0x01, 0x41, 0x01, 0xe2, 0xcb, 0x25,
+            0x49, 0x26, 0x57, 0x80, 0xb7, 0x02, 0x02, 0x00, 0x04, 0x00, 0x00, 0x03, 0x00, 0x04,
+            0x00, 0x00, 0x03, 0x00, 0x78, 0x20,
+            // PPS NAL unit (NAL type 34)
+            0x00, 0x00, 0x00, 0x01, 0x44, 0x01, 0xc1, 0x72, 0x86, 0x0c, 0x46, 0x24,
+            // CRA frame NAL unit (NAL type 21) — real header + leading slice bytes
+            0x00, 0x00, 0x00, 0x01, 0x2a, 0x01, 0xac, 0x78, 0x4d, 0x5c, 0x54, 0x82, 0xb9, 0xb7,
+            0x9e, 0xc6, 0x80, 0xac, 0x53, 0x3f, 0xf4, 0xc8, 0xff, 0xe9, 0x95, 0x6b, 0x06, 0x7f,
+        ];
+        let result = detect_h265_annexb_gop(sample_data);
+        // Detected as a GOP start (CRA accepted), with details parsed from the
+        // real 320x240 8-bit SPS.
+        assert!(
+            matches!(
+                &result,
+                Ok(GopStartDetection::StartOfGop(VideoEncodingDetails {
+                    coded_dimensions: [320, 240],
+                    bit_depth: Some(8),
+                    ..
+                }))
+            ),
+            "expected StartOfGop for a CRA keyframe, got {result:?}"
+        );
     }
 }
