@@ -1,6 +1,7 @@
 //! Provides a test context that builds on `re_viewer_context`.
 
 #![expect(clippy::unwrap_used)] // This is only a test
+#![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
 
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;

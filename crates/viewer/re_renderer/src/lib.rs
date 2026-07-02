@@ -28,6 +28,7 @@
 
 // TODO(#3408): remove unwrap()
 #![expect(clippy::unwrap_used)]
+#![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
 
 mod allocator;
 pub mod device_caps;
