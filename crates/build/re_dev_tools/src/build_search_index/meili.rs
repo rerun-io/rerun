@@ -34,15 +34,129 @@ impl SearchClient {
 
     /// Create an index from `documents`.
     ///
-    /// If an index with the same name already exists, it is deleted first.
+    /// The documents and index settings are first written to a scratch index
+    /// (`{index}_build`), which is then atomically swapped with the live index,
+    /// so search never observes an empty or partially-built index.
     pub fn index(&self, index: &str, documents: &[Document]) -> anyhow::Result<()> {
-        if self.index_exists(index)? {
-            self.delete_index(index).context("failed to delete index")?; // delete existing index
+        let build_index = format!("{index}_build");
+
+        if self.index_exists(&build_index)? {
+            self.delete_index(&build_index)
+                .context("failed to delete stale build index")?;
         }
-        self.create_index(index).context("failed to create index")?;
-        self.add_or_replace_documents(index, documents)
+        self.create_index(&build_index)
+            .context("failed to create build index")?;
+        self.apply_settings(&build_index)
+            .context("failed to apply index settings")?;
+        self.add_or_replace_documents(&build_index, documents)
             .context("failed to add documents")?;
+
+        // The swap requires both indexes to exist.
+        if !self.index_exists(index)? {
+            self.create_index(index).context("failed to create index")?;
+        }
+        self.swap_indexes(index, &build_index)
+            .context("failed to swap indexes")?;
+        // After the swap the build index holds the previous documents.
+        self.delete_index(&build_index)
+            .context("failed to delete old index after swap")?;
+
         println!("created index {index:?}");
+        Ok(())
+    }
+
+    /// Relevance configuration for the search index.
+    ///
+    /// Without this, Meilisearch runs on defaults: every field (including `id`
+    /// and `url`) is searchable with no priority order, there is no page-type
+    /// weighting, and no synonyms — which is how a single API symbol used to
+    /// outrank the documentation page on the same topic.
+    ///
+    /// CANONICAL SOURCE: `scripts/search/search-settings.json` in
+    /// rerun-io/landing. The website's `pages` index reads that file directly;
+    /// this must stay identical to it (we can't share a file across repos).
+    fn settings() -> serde_json::Value {
+        serde_json::json!({
+            // Order = matching priority: a hit in `title` beats a hit in `content`.
+            // `page_title` is display-only: making it searchable let pages
+            // whose titles contain query filler ("Migrating from 0.25 to
+            // 0.26" matches "to") outrank better results, and page-level
+            // findability already comes from each page's intro document.
+            "searchableAttributes": ["title", "tags", "hidden_tags", "content"],
+            // Docs are indexed one document per `##` section, all sharing
+            // their page URL in `page` — so results show at most one (the
+            // best-matching) section per page. Other kinds set `page` to
+            // their unique URL and are unaffected.
+            "distinctAttribute": "page",
+            // Default rules plus `weight:desc` (see `DocumentKind::weight`) so
+            // docs/example pages rank above per-symbol API documents, while
+            // `exactness` still lets exact symbol queries win.
+            "rankingRules": [
+                "words",
+                "typo",
+                "proximity",
+                "attribute",
+                "weight:desc",
+                "exactness",
+            ],
+            // Lets the website offer kind tabs/filters and federated queries.
+            "filterableAttributes": ["kind", "tags"],
+            "sortableAttributes": ["weight"],
+            // So natural-language queries like "how do I install" aren't dominated
+            // by their filler words. Deliberately omits words that appear inside
+            // API identifiers once underscores are tokenized — `to`, `from`,
+            // `with`, `as`, `is`, … (`to_arrow`, `log_file_from_path`,
+            // `with_sample`, `as_arrow_array`, `is_empty`) — dropping those
+            // measurably broke exact symbol queries in the A/B harness.
+            "stopWords": [
+                "a", "an", "the", "how", "do", "does", "i", "my", "can",
+                "what", "when", "where", "which", "you", "your",
+            ],
+            // Seeded from real queries in PostHog (top clicked + abandoned
+            // searches). Keep this list small and principled; one-way synonyms
+            // map the user's word to our terminology.
+            "synonyms": {
+                "headless": ["serve", "server", "no gui"],
+                "no gui": ["headless", "serve"],
+                "point cloud": ["points3d", "points"],
+                "pointcloud": ["point cloud", "points3d"],
+                "3d points": ["points3d"],
+                "splat": ["gaussian splatting"],
+                "gaussian splat": ["gaussian splatting", "splat"],
+                "ros": ["ros2"],
+                "ros2": ["ros"],
+                "install": ["installation", "setup"],
+                // Marketing-page terms — these pages live in the website's
+                // `pages` index, but synonyms are query-side and harmless here;
+                // kept so this list matches the canonical settings file.
+                "price": ["pricing"],
+                "cost": ["pricing"],
+                "plans": ["pricing"],
+                "job": ["careers"],
+                "jobs": ["careers"],
+                "hiring": ["careers"],
+                "release notes": ["changelog"],
+            },
+        })
+    }
+
+    fn apply_settings(&self, index: &str) -> anyhow::Result<()> {
+        let task: Task = self
+            .patch(&format!("/indexes/{index}/settings"))
+            .send_json(Self::settings())?
+            .into_body()
+            .read_json()?;
+        self.wait_for_task(task)?;
+        Ok(())
+    }
+
+    fn swap_indexes(&self, a: &str, b: &str) -> anyhow::Result<()> {
+        let task: Task = self
+            .post("/swap-indexes")
+            .send_json(serde_json::json!([{ "indexes": [a, b] }]))?
+            .into_body()
+            .read_json()?;
+        self.wait_for_task(task)?;
         Ok(())
     }
 
@@ -135,6 +249,13 @@ impl SearchClient {
         let url = format!("{}{path}", self.url);
         self.agent
             .post(&url)
+            .header("Authorization", &format!("Bearer {}", self.master_key))
+    }
+
+    fn patch(&self, path: &str) -> ureq::RequestBuilder<ureq::typestate::WithBody> {
+        let url = format!("{}{path}", self.url);
+        self.agent
+            .patch(&url)
             .header("Authorization", &format!("Bearer {}", self.master_key))
     }
 
