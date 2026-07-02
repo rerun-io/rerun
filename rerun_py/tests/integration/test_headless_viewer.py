@@ -68,6 +68,7 @@ def _wait_for_port_closed(port: int, timeout: float) -> None:
     raise TimeoutError(f"viewer still listening on port {port} after teardown")
 
 
+@pytest.mark.skip(reason="RR-5124: linux wheel CI segfaults in llvmpipe/Mesa after the RunsOn AMI rollout")
 def test_save_screenshot(tmp_path: Path) -> None:
     """Log into a spawned headless viewer, then screenshot it to disk."""
     port = _find_free_port()
@@ -80,6 +81,7 @@ def test_save_screenshot(tmp_path: Path) -> None:
 
         out = tmp_path / "screenshot.png"
         viewer.save_screenshot(str(out))
+        _wait_for_file(out, timeout=5.0)
 
         # PNG magic number: 89 50 4E 47 0D 0A 1A 0A
         with out.open("rb") as f:
