@@ -10,6 +10,10 @@ use crate::UiExt as _;
 /// `invalid_hint_text` can be used to highlight invalid input and show an info
 /// label with the text on top of the suggestion list. Input validation itself
 /// has to be done outside of this function.
+///
+/// Leading whitespace in a suggestion is treated as display-only indentation:
+/// it's kept as indentation in the popup, but stripped for filtering and when
+/// the suggestion is written back into the buffer.
 pub fn autocomplete_text_edit(
     ui: &mut egui::Ui,
     text_buffer: &mut dyn egui::TextBuffer,
@@ -17,7 +21,8 @@ pub fn autocomplete_text_edit(
     empty_hint_text: Option<impl Into<egui::WidgetText>>,
     invalid_hint_text: Option<impl Into<String>>,
 ) -> egui::Response {
-    let mut text_edit = egui::TextEdit::singleline(text_buffer);
+    // Grow with the available width instead of egui's default fixed `text_edit_width` cap.
+    let mut text_edit = egui::TextEdit::singleline(text_buffer).desired_width(ui.available_width());
     if let Some(hint) = empty_hint_text {
         text_edit = text_edit.hint_text(hint);
     }
@@ -37,7 +42,10 @@ pub fn autocomplete_text_edit(
     let filtered_suggestions: Vec<_> = suggestions
         .iter()
         .filter(|suggestion| {
-            suggestion.starts_with(text_buffer.as_str()) && *suggestion != text_buffer.as_str()
+            // Trim leading whitespace for input matching,
+            // but keep it for visually indenting the suggestions.
+            let value = suggestion.trim_start();
+            value.starts_with(text_buffer.as_str()) && value != text_buffer.as_str()
         })
         .collect();
 
@@ -82,7 +90,7 @@ pub fn autocomplete_text_edit(
         && let Some(idx) = selected_index
         && let Some(suggestion) = filtered_suggestions.get(idx)
     {
-        text_buffer.replace_with(suggestion);
+        text_buffer.replace_with(suggestion.trim_start());
         response.mark_changed();
         return response;
     }
@@ -93,24 +101,26 @@ pub fn autocomplete_text_edit(
     let suggestions_ui = |ui: &mut egui::Ui| {
         for (idx, suggestion) in filtered_suggestions.iter().enumerate() {
             let is_selected = selected_index == Some(idx);
-            let completion = suggestion.strip_prefix(text_buffer.as_str()).unwrap_or("");
 
+            // Keep any leading indentation, then highlight the matched prefix against the completion.
+            let value = suggestion.trim_start();
+            let indent = &suggestion[..suggestion.len() - value.len()];
+            let completion = value.strip_prefix(text_buffer.as_str()).unwrap_or("");
+
+            let body = ui.style().text_styles[&egui::TextStyle::Body].clone();
             let mut layout_job = egui::text::LayoutJob::default();
+
+            // Already typed part of the suggestion: "highlighted" as normal text.
             layout_job.append(
-                text_buffer.as_str(),
+                &format!("{indent}{}", text_buffer.as_str()),
                 0.0,
-                egui::TextFormat::simple(
-                    ui.style().text_styles[&egui::TextStyle::Body].clone(),
-                    ui.tokens().text_default,
-                ),
+                egui::TextFormat::simple(body.clone(), ui.tokens().text_default),
             );
+            // Completion remainder of the suggestion: subdued.
             layout_job.append(
                 completion,
                 0.0,
-                egui::TextFormat::simple(
-                    ui.style().text_styles[&egui::TextStyle::Body].clone(),
-                    ui.tokens().text_subdued,
-                ),
+                egui::TextFormat::simple(body, ui.tokens().text_subdued),
             );
 
             let button = egui::Button::new(layout_job)
@@ -125,7 +135,7 @@ pub fn autocomplete_text_edit(
 
             if button_response.clicked() {
                 changed = true;
-                text_buffer.replace_with(suggestion);
+                text_buffer.replace_with(value);
             }
         }
     };
