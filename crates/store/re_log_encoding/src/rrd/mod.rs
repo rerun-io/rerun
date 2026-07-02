@@ -31,11 +31,9 @@ mod encoder;
 pub(crate) mod test_util;
 
 #[cfg(feature = "decoder")]
-#[cfg(not(target_arch = "wasm32"))]
 mod chunk_reader;
 
 #[cfg(feature = "decoder")]
-#[cfg(not(target_arch = "wasm32"))]
 mod footer_reader;
 
 #[cfg(feature = "encoder")]
@@ -46,7 +44,6 @@ mod file_sink;
 pub mod stream_from_http;
 
 #[cfg(feature = "decoder")]
-#[cfg(not(target_arch = "wasm32"))]
 pub use self::chunk_reader::read_chunks;
 #[cfg(feature = "decoder")]
 pub use self::decoder::{
@@ -64,7 +61,6 @@ pub use self::footer::{
     RrdManifestStaticMap, RrdManifestTemporalMap, RrdManifestTemporalMapEntry,
 };
 #[cfg(feature = "decoder")]
-#[cfg(not(target_arch = "wasm32"))]
 pub use self::footer_reader::{enumerate_rrd_stores, read_rrd_footer};
 pub use self::frames::{
     Compression, CrateVersion, EncodingOptions, MessageHeader, MessageKind, Serializer,

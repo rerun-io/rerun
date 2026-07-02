@@ -1,5 +1,4 @@
-use std::fs::File;
-use std::io::{Read as _, Seek as _, SeekFrom};
+use std::io::{Read, Seek, SeekFrom};
 use std::sync::Arc;
 
 use itertools::Itertools as _;
@@ -14,15 +13,15 @@ use crate::rrd::CodecError;
 /// Spans separated by more than this are read independently.
 const MERGE_GAP_BYTES: u64 = 64 * 1024; // 64 KiB
 
-/// Read chunks from an open RRD file by their IDs, using byte offsets from the manifest.
+/// Read chunks from an RRD reader by their IDs, using byte offsets from the manifest.
 ///
 /// Internally sorts requested chunks by byte offset for sequential I/O,
 /// and merges adjacent/nearby spans (within 64 kB) into single reads.
 ///
 /// Returns [`CodecError::ChunkNotInManifest`] if any chunk ID is not in the manifest.
 /// Aborts on first error (no partial results).
-pub fn read_chunks(
-    file: &mut File,
+pub fn read_chunks<R: Read + Seek>(
+    reader: &mut R,
     manifest: &RrdManifest,
     chunk_ids: &[ChunkId],
 ) -> Result<Vec<Arc<Chunk>>, CodecError> {
@@ -63,9 +62,9 @@ pub fn read_chunks(
 
     for group in &groups {
         // Read the entire merged span in one I/O call.
-        file.seek(SeekFrom::Start(group.byte_span.start))?;
+        reader.seek(SeekFrom::Start(group.byte_span.start))?;
         let mut buf = vec![0u8; usize::try_from(group.byte_span.len)?];
-        file.read_exact(&mut buf)?;
+        reader.read_exact(&mut buf)?;
 
         // Slice out individual chunks and decode them.
         for &(_chunk_id, chunk_span) in &entries[group.entry_range.clone()] {
@@ -125,7 +124,10 @@ fn decode_chunk_from_bytes(buf: &[u8]) -> Result<Chunk, CodecError> {
 }
 
 #[cfg(test)]
+#[cfg(not(target_arch = "wasm32"))]
 mod tests {
+    use std::fs::File;
+
     use super::*;
     use crate::rrd::test_util::{
         encode_test_rrd, encode_test_rrd_to_file_with_options, make_test_chunks,

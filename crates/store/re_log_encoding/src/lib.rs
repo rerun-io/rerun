@@ -80,7 +80,6 @@ pub use self::app_id_injector::{
     ApplicationIdInjector, CachingApplicationIdInjector, DummyApplicationIdInjector,
 };
 #[cfg(feature = "decoder")]
-#[cfg(not(target_arch = "wasm32"))]
 pub use self::chunk_provider::RrdChunkProvider;
 pub use self::chunk_provider::{ChunkProvider, ChunkProviderError};
 pub use self::rrd::*;

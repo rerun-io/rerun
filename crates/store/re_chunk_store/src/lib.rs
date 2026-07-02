@@ -21,7 +21,6 @@ mod drop_time_range;
 pub mod entity_tree;
 mod events;
 mod gc;
-#[cfg(not(target_arch = "wasm32"))]
 mod lazy_store;
 mod lineage;
 mod missing_chunk_reporter;
@@ -74,7 +73,6 @@ pub use self::subscribers::{
     ChunkStoreSubscriber, ChunkStoreSubscriberHandle, PerStoreChunkSubscriber,
 };
 
-#[cfg(not(target_arch = "wasm32"))]
 pub use self::lazy_store::LazyStore;
 
 pub(crate) use self::store::ColumnMetadataState;

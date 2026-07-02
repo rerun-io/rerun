@@ -5,11 +5,9 @@ use re_chunk::{Chunk, ChunkId};
 use crate::{RawRrdManifest, RrdManifest};
 
 #[cfg(feature = "decoder")]
-#[cfg(not(target_arch = "wasm32"))]
 mod rrd;
 
 #[cfg(feature = "decoder")]
-#[cfg(not(target_arch = "wasm32"))]
 pub use self::rrd::RrdChunkProvider;
 
 /// Synchronous backend that exposes an indexed chunk source.
