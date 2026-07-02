@@ -6,26 +6,8 @@
 # To add examples to the app itself, use the `channel` attribute in the example's readme's frontmatter.
 # See <https://github.com/rerun-io/rerun/tree/main/examples#adding-a-new-example> for more information.
 
-[categories.spatial-computing]
-order = 1
-title = "Spatial computing and XR"
-prelude = """
-Examples related to spatial computing, augmented reality, virtual reality, and mixed reality.
-"""
-examples = [
-  # display order, most interesting first
-  "arkit_scenes",
-  "limap",
-  "objectron",
-  "simplerecon",
-  "slahmr",
-  "vrs",
-  "widebaseline",
-  "arflow",
-]
-
 [categories.robotics]
-order = 2
+order = 1
 title = "Robotics"
 prelude = """
 Examples related to robotics, autonomous systems, and interfacing with sensor hardware.
@@ -40,8 +22,6 @@ examples = [
   "ros_node",
   "chess_robby_fischer",
   "nuscenes_dataset",
-  "ros2_bridge",
-  "ros_bridge",
   "kiss-icp",
   "live_depth_sensor",
   "lidar",
@@ -55,27 +35,29 @@ examples = [
   "any_scalar",
 ]
 
-[categories.generative-vision]
-order = 3
-title = "Diffusion models, LLMs, and machine learning"
+[categories.3d-reconstruction] # NOLINT
+order = 2
+title = "3D reconstruction and modelling"
 prelude = """
-Examples using machine learning and generative AI methods such as diffusion and LLMs.
+SLAM, photogrammetry and other 3D modelling examples.
 """
 examples = [
   # display order, most interesting first
-  "controlnet",
-  "vista",
-  "mcc",
-  "lerobot",
-  "depth_compare",
-  "mini_nvs_solver",
-  "shape_pointe",
-  "llm_embedding_ner",
-  "tfrecord_loader",
+  "structure_from_motion",
+  "open_photogrammetry_format",
+  "kiss-icp",
+  "differentiable_blocks_world",
+  "mast3r_slam",
+  "stereo_vision_slam",
+  "glomap",
+  "hloc_glomap",
+  "instant_splat",
+  "raw_mesh",
+  "vistadream",
 ]
 
 [categories.video-image]
-order = 4
+order = 3
 title = "Image and video understanding"
 prelude = """
 Examples related to image and video processing, highlighting Rerun's 2D capabilities.
@@ -96,25 +78,41 @@ examples = [
   "egoexo_forge",
 ]
 
-[categories.3d-reconstruction] # NOLINT
-order = 5
-title = "3D reconstruction and modelling"
+[categories.spatial-computing]
+order = 4
+title = "Spatial computing and XR"
 prelude = """
-SLAM, photogrammetry and other 3D modelling examples.
+Examples related to spatial computing, augmented reality, virtual reality, and mixed reality.
 """
 examples = [
   # display order, most interesting first
-  "structure_from_motion",
-  "open_photogrammetry_format",
-  "kiss-icp",
-  "differentiable_blocks_world",
-  "mast3r_slam",
-  "stereo_vision_slam",
-  "glomap",
-  "hloc_glomap",
-  "instant_splat",
-  "raw_mesh",
-  "vistadream",
+  "arkit_scenes",
+  "limap",
+  "objectron",
+  "simplerecon",
+  "slahmr",
+  "vrs",
+  "widebaseline",
+  "arflow",
+]
+
+[categories.generative-vision]
+order = 5
+title = "Diffusion models, LLMs, and machine learning"
+prelude = """
+Examples using machine learning and generative AI methods such as diffusion and LLMs.
+"""
+examples = [
+  # display order, most interesting first
+  "controlnet",
+  "vista",
+  "mcc",
+  "lerobot",
+  "depth_compare",
+  "mini_nvs_solver",
+  "shape_pointe",
+  "llm_embedding_ner",
+  "tfrecord_loader",
 ]
 
 [categories.integrations]
