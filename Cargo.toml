@@ -312,8 +312,10 @@ macaw = "0.30.0"
 mcap = "0.25.0"
 memmap2 = "0.9.11"
 memory-stats = "1.2"
-mimalloc = { version = "0.1.52", features = [
-  "v2",
+mimalloc = { version = "=0.1.48", features = [
+  # A) we want to use v3 because of https://github.com/rerun-io/rerun/pull/11703
+  # B) we need to pin to 0.1.48 because of https://github.com/microsoft/mimalloc/issues/1287
+  "v3",
 ] } # Waiting for fix from microsoft/mimalloc/issues/1287 to land in mimalloc crate
 mime_guess2 = "2.3" # infer MIME type by file extension, and map mime to file extension
 mint = "0.5.9"
