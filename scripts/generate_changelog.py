@@ -411,13 +411,14 @@ def main() -> None:
             # Generate summary - prefer PR number, fallback to commit hash
             if pr_number is not None:
                 summary = f"{title} [#{pr_number}](https://github.com/{OWNER}/{REPO}/pull/{pr_number})"
-                dup_check = f"[#{pr_number}]"
+                dup_checks = [f"[#{pr_number}]"]
             else:
                 # No PR number in title, but we have Reality PR info - use hash of synced commit in Rerun repo
                 summary = f"{title} [{hexsha_short}](https://github.com/{OWNER}/{REPO}/commit/{hexsha_full})"
-                dup_check = f"[{hexsha_full}]"
+                # The changelog records the short hash in brackets and the full hash in the URL, so check both.
+                dup_checks = [f"[{hexsha_short}]", f"[{hexsha_full}]"]
 
-            if dup_check in previous_changelog:
+            if any(dup_check in previous_changelog for dup_check in dup_checks):
                 eprint(f"Ignoring dup: {summary}")
                 continue
 
