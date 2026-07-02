@@ -309,7 +309,7 @@ fn load_sources(
                 layer_info,
                 storage_url,
             } => {
-                re_log::info!("Loading RRD: {}", rrd_path.display());
+                re_log::info!("Loading {rrd_path:?}…");
 
                 for (store_id, resolved) in ResolvedStore::load_rrd_file(&rrd_path, store_kind)? {
                     ready.push(ReadySource {

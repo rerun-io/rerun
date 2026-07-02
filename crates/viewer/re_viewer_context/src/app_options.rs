@@ -201,14 +201,15 @@ pub struct ExperimentalAppOptions {
     /// Enable gamepad navigation in 3D spatial views.
     pub gamepad_navigation: bool,
 
-    /// Host an in-process "internal catalog" `re_server` and load `.rrd` files through it instead of
-    /// importing them directly into the viewer.
+    /// Host an in-process "internal catalog" `re_server` and load `.rrd` files through it instead
+    /// of importing them directly into the viewer.
     ///
-    /// When enabled, the desktop app starts a single in-process server (the "internal catalog"),
-    /// registers opened `.rrd` files with it, and connects as an ordinary redap client. When
-    /// disabled (the default), files are imported directly into the viewer as before.
+    /// Read from persisted state at app startup; changes to this setting require a restart to
+    /// take effect. When enabled, opened `.rrd` files are registered with the catalog and surfaced
+    /// as redap datasets under an internal server in the recording panel. When disabled, files are
+    /// imported directly into the viewer as plain recordings.
     ///
-    /// Native-only; ignored unless the viewer was built with the in-memory server.
+    /// Native-only; ignored unless the viewer was built with internal catalog support.
     #[cfg(not(target_arch = "wasm32"))]
     pub use_internal_catalog: bool,
 }

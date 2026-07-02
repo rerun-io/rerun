@@ -788,7 +788,7 @@ impl Dataset {
         on_duplicate: IfDuplicateBehavior,
         store_kind: StoreKind,
     ) -> Result<BTreeSet<SegmentId>, Error> {
-        re_log::info!("Loading RRD: {}", path.display());
+        re_log::info!("Loading {path:?}…");
 
         let layer_name = layer_name.unwrap_or_else(LayerName::base);
         let layer_info = Arc::new(LayerInfo {

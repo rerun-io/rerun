@@ -26,6 +26,12 @@ use crate::context::Context;
 use crate::entries::{Dataset, Entries, Entry, Table};
 use crate::server_modal::{LoginFlow, LoginFlowResult, ServerModal, ServerModalMode};
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum ServerKind {
+    Remote,
+    Internal,
+}
+
 pub struct Server {
     origin: re_uri::Origin,
     entries: Entries,
@@ -33,16 +39,56 @@ pub struct Server {
     /// Session context wrapper which holds all the table-like entries of the server.
     tables_session_ctx: Arc<SessionContext>,
 
-    connection_registry: re_redap_client::ConnectionRegistryHandle,
+    connection_registry: ConnectionRegistryHandle,
     runtime: AsyncRuntimeHandle,
+    kind: ServerKind,
 
     /// Dropping this cancels the background task that listens for catalog events.
     _watch_events_guard: futures::channel::oneshot::Sender<()>,
 }
 
 impl Server {
+    fn new_remote(
+        connection_registry: ConnectionRegistryHandle,
+        runtime: AsyncRuntimeHandle,
+        egui_ctx: &egui::Context,
+        origin: re_uri::Origin,
+        command_sender: crossbeam::channel::Sender<Command>,
+        viewer_command_sender: ViewerCommandSender,
+    ) -> Self {
+        Self::new(
+            connection_registry,
+            ServerKind::Remote,
+            runtime,
+            egui_ctx,
+            origin,
+            command_sender,
+            viewer_command_sender,
+        )
+    }
+
+    fn new_internal(
+        connection_registry: ConnectionRegistryHandle,
+        runtime: AsyncRuntimeHandle,
+        egui_ctx: &egui::Context,
+        origin: re_uri::Origin,
+        command_sender: crossbeam::channel::Sender<Command>,
+        viewer_command_sender: ViewerCommandSender,
+    ) -> Self {
+        Self::new(
+            connection_registry,
+            ServerKind::Internal,
+            runtime,
+            egui_ctx,
+            origin,
+            command_sender,
+            viewer_command_sender,
+        )
+    }
+
     fn new(
-        connection_registry: re_redap_client::ConnectionRegistryHandle,
+        connection_registry: ConnectionRegistryHandle,
+        kind: ServerKind,
         runtime: AsyncRuntimeHandle,
         egui_ctx: &egui::Context,
         origin: re_uri::Origin,
@@ -78,6 +124,7 @@ impl Server {
             tables_session_ctx,
             connection_registry,
             runtime,
+            kind,
             _watch_events_guard: cancel_tx,
         }
     }
@@ -124,6 +171,16 @@ impl Server {
     #[inline]
     pub fn entries(&self) -> &Entries {
         &self.entries
+    }
+
+    #[inline]
+    pub fn is_internal(&self) -> bool {
+        self.kind == ServerKind::Internal
+    }
+
+    #[inline]
+    fn is_remote(&self) -> bool {
+        self.kind == ServerKind::Remote
     }
 
     fn on_frame_start(&mut self) {
@@ -582,7 +639,9 @@ impl serde::Serialize for RedapServers {
         S: serde::Serializer,
     {
         self.servers
-            .keys()
+            .values()
+            .filter(|server| server.is_remote())
+            .map(|server| &server.origin)
             .collect::<Vec<_>>()
             .serialize(serializer)
     }
@@ -707,8 +766,13 @@ impl RedapServers {
         origin: &re_uri::Origin,
         connection_registry: &re_redap_client::ConnectionRegistryHandle,
     ) {
-        self.servers.remove(origin);
-        connection_registry.remove_credentials(origin);
+        if self
+            .servers
+            .remove(origin)
+            .is_some_and(|server| server.is_remote())
+        {
+            connection_registry.remove_credentials(origin);
+        }
     }
 
     /// Add a server to the hub.
@@ -722,6 +786,35 @@ impl RedapServers {
             },
         )
         .ok();
+    }
+
+    pub fn add_internal_server(
+        &mut self,
+        origin: re_uri::Origin,
+        connection_registry: &ConnectionRegistryHandle,
+        runtime: &AsyncRuntimeHandle,
+        egui_ctx: &egui::Context,
+        viewer_command_sender: ViewerCommandSender,
+    ) {
+        if self
+            .servers
+            .get(&origin)
+            .is_some_and(|server| server.is_internal())
+        {
+            return;
+        }
+
+        self.servers.insert(
+            origin.clone(),
+            Server::new_internal(
+                connection_registry.clone(),
+                runtime.clone(),
+                egui_ctx,
+                origin,
+                self.command_sender.clone(),
+                viewer_command_sender,
+            ),
+        );
     }
 
     pub fn iter_servers(&self) -> impl Iterator<Item = &Server> {
@@ -856,7 +949,7 @@ impl RedapServers {
                 } else {
                     self.servers.insert(
                         origin.clone(),
-                        Server::new(
+                        Server::new_remote(
                             connection_registry.clone(),
                             runtime.clone(),
                             egui_ctx,
@@ -881,7 +974,7 @@ impl RedapServers {
             }
 
             Command::UseStoredCredentials(origin) => {
-                connection_registry.set_credentials(&origin, re_redap_client::Credentials::Stored);
+                connection_registry.set_credentials(&origin, Credentials::Stored);
                 send_crossbeam(&self.command_sender, Command::RefreshCollection(origin)).ok();
             }
         }

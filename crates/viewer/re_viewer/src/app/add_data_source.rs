@@ -7,11 +7,10 @@ use re_viewer_context::{StoreHub, SystemCommand, SystemCommandSender as _, TimeC
 
 use super::App;
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(feature = "internal_catalog", not(target_arch = "wasm32")))]
 use {
     anyhow::Context as _, re_protos::cloud::v1alpha1::ext::DataSource,
-    re_protos::common::v1alpha1::ext::IfDuplicateBehavior,
-    re_redap_client::ConnectionRegistryHandle, std::path::Path,
+    re_protos::common::v1alpha1::ext::IfDuplicateBehavior, std::path::Path,
 };
 
 impl App {
@@ -34,6 +33,11 @@ impl App {
         // Otherwise we end up in a situation where we have a data from an unknown server,
         // which is unnecessary and can get us into a strange ui state.
         if let LogSource::RedapGrpcStream { uri, .. } = rx.source() {
+            if self.connection_registry.is_internal_origin(&uri.origin) {
+                self.rx_log.add(rx);
+                return;
+            }
+
             self.command_sender
                 .send_system(SystemCommand::AddRedapServer(uri.origin.clone()));
         }
@@ -108,36 +112,40 @@ impl App {
 
             #[cfg(not(target_arch = "wasm32"))]
             LogDataSource::FilePath { path, follow, .. } => {
-                // If an internal catalog server is running, route `.rrd` files through it.
-                //
-                // `follow` (tailing a growing file) is incompatible with this, followed files
-                // keep the direct loading path.
-                if !*follow
-                    && path.extension().is_some_and(|ext| ext == "rrd")
-                    && let Some(origin) = self.internal_catalog_origin.get().cloned()
+                #[cfg(all(feature = "internal_catalog", not(target_arch = "wasm32")))]
                 {
-                    let path = path.clone();
-                    let connection_registry = self.connection_registry.clone();
-                    let sender = self.command_sender.clone();
-                    self.async_runtime.spawn_future(async move {
-                        match register_local_file(&connection_registry, origin, &path).await {
-                            Ok(uri) => {
-                                sender.send_system(SystemCommand::LoadDataSource(
-                                    LogDataSource::RedapDatasetSegment {
-                                        uri,
-                                        open_behavior: RecordingOpenBehavior::OpenAndSelect,
-                                    },
-                                ));
+                    // If the internal catalog is enabled, route `.rrd` files through it.
+                    //
+                    // TODO(RR-5039): `follow` (tailing a growing file) is incompatible with
+                    // this, followed files keep the direct loading path.
+                    if !*follow
+                        && path.extension().is_some_and(|ext| ext == "rrd")
+                        && self.app_options().experimental.use_internal_catalog
+                        && self.connection_registry.internal_origin().is_some()
+                    {
+                        let path = path.clone();
+                        let connection_registry = self.connection_registry.clone();
+                        let sender = self.command_sender.clone();
+                        self.async_runtime.spawn_future(async move {
+                            match register_local_file(&connection_registry, &path).await {
+                                Ok(uri) => {
+                                    sender.send_system(SystemCommand::LoadDataSource(
+                                        LogDataSource::RedapDatasetSegment {
+                                            uri,
+                                            open_behavior: RecordingOpenBehavior::OpenAndSelect,
+                                        },
+                                    ));
+                                }
+                                Err(err) => {
+                                    re_log::error!(
+                                        "Failed to load file via the Viewer catalog: {err}\nFile path: {}",
+                                        path.display(),
+                                    );
+                                }
                             }
-                            Err(err) => {
-                                re_log::error!(
-                                    "Failed to load file via the internal catalog: {err}\nFile path: {}",
-                                    path.display(),
-                                );
-                            }
-                        }
-                    });
-                    return;
+                        });
+                        return;
+                    }
                 }
 
                 let new_source = LogSource::File {
@@ -212,9 +220,8 @@ impl App {
             }
         }
 
-        let sender = self.command_sender.clone();
         let stream = data_source.clone().stream_with_options(
-            Self::auth_error_handler(sender),
+            Self::auth_error_handler(self.command_sender.clone()),
             &self.connection_registry,
             if let LogDataSource::RedapDatasetSegment { open_behavior, .. } = &data_source
                 && matches!(open_behavior, RecordingOpenBehavior::Background)
@@ -266,9 +273,8 @@ impl App {
             uri: uri.without_fragment(),
             open_behavior: RecordingOpenBehavior::Background,
         };
-        let sender = self.command_sender.clone();
         match data_source.stream_with_options(
-            Self::auth_error_handler(sender),
+            Self::auth_error_handler(self.command_sender.clone()),
             &self.connection_registry,
             re_redap_client::StreamingOptions {
                 download: re_redap_client::SegmentDownload::BLUEPRINT,
@@ -301,12 +307,14 @@ impl App {
 }
 
 /// Register a local `.rrd` file with the catalog server.
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(feature = "internal_catalog", not(target_arch = "wasm32")))]
 async fn register_local_file(
-    connection_registry: &ConnectionRegistryHandle,
-    origin: re_uri::Origin,
+    connection_registry: &re_redap_client::ConnectionRegistryHandle,
     path: &Path,
 ) -> anyhow::Result<re_uri::DatasetSegmentUri> {
+    let origin = connection_registry
+        .internal_origin()
+        .context("internal catalog is not running")?;
     let mut client = connection_registry.client(origin.clone()).await?;
 
     let abs_path = std::path::absolute(path).with_context(|| {

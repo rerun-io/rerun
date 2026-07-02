@@ -213,7 +213,7 @@ fn make_load_fn<'a>(
 
         let fut = async move {
             let mut client = connection_registry.client(origin).await.map_err(|err| {
-                re_log::warn_once!("Failed to connect to remote: {err}");
+                re_log::warn_once!("Failed to connect to server: {err}");
             })?;
             load_chunks(&mut client, &rb).await.map_err(|err| {
                 re_log::warn_once!("{err}");

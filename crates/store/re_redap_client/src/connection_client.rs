@@ -18,6 +18,9 @@ use re_protos::cloud::v1alpha1::ext::{
     UpdateTableEntryRequest, UpdateTableEntryResponse, VersionResponse,
 };
 use re_protos::cloud::v1alpha1::rerun_cloud_service_client::RerunCloudServiceClient;
+use re_protos::cloud::v1alpha1::rerun_cloud_service_server::{
+    RerunCloudService, RerunCloudServiceServer,
+};
 use re_protos::cloud::v1alpha1::{
     CancelTasksRequest, CreateDatasetEntryRequest, DeleteEntryRequest, EntryFilter, EntryKind,
     FetchChunksRequest, FindEntriesRequest, GetDatasetManifestSchemaRequest,
@@ -61,11 +64,11 @@ pub type FetchChunksResponseStream =
 pub type QueryDatasetResponseStream =
     ApiResponseStream<re_protos::cloud::v1alpha1::QueryDatasetResponse>;
 
-pub type BoxedRedapClientStack = tower::util::BoxCloneSyncService<
-    tonic::codegen::http::Request<tonic::body::Body>,
-    tonic::codegen::http::Response<tonic::body::Body>,
-    tonic::Status,
->;
+type RedapHttpRequest = tonic::codegen::http::Request<tonic::body::Body>;
+type RedapHttpResponse = tonic::codegen::http::Response<tonic::body::Body>;
+
+pub type BoxedRedapClientStack =
+    tower::util::BoxCloneSyncService<RedapHttpRequest, RedapHttpResponse, tonic::Status>;
 
 #[derive(Clone)]
 pub struct SegmentQueryParams {
@@ -140,6 +143,27 @@ pub type ConnectionClient = RedapClient<BoxedRedapClientStack>;
 pub struct Connection {
     pub client: ConnectionClient,
     pub analytics: Option<crate::ConnectionAnalyticsExporter>,
+}
+
+impl Connection {
+    /// Create a connection backed by an in-process Rerun catalog implementation.
+    pub fn from_service<T>(handler: Arc<T>) -> Self
+    where
+        T: RerunCloudService,
+    {
+        let service = <RerunCloudServiceServer<T> as tower::ServiceExt<RedapHttpRequest>>::map_err(
+            RerunCloudServiceServer::from_arc(handler)
+                .max_decoding_message_size(crate::MAX_DECODING_MESSAGE_SIZE),
+            |err: std::convert::Infallible| match err {},
+        );
+        let client = RerunCloudServiceClient::new(tower::util::BoxCloneSyncService::new(service))
+            .max_decoding_message_size(crate::MAX_DECODING_MESSAGE_SIZE);
+
+        Self {
+            client: RedapClient::new(client),
+            analytics: None,
+        }
+    }
 }
 
 // ---

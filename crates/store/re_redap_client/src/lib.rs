@@ -38,7 +38,7 @@ pub use self::grpc::PoolChannel;
 /// [`ApiError`]s without taking a direct dependency on `opentelemetry`.
 pub use opentelemetry::TraceId;
 
-const MAX_DECODING_MESSAGE_SIZE: usize = u32::MAX as usize;
+pub const MAX_DECODING_MESSAGE_SIZE: usize = u32::MAX as usize;
 
 /// Per-call deadline for `FetchChunks` requests sent via this client.
 ///

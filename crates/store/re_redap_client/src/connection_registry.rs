@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 use std::error::Error as _;
 use std::fmt::Write as _;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 use re_auth::Jwt;
 use re_auth::credentials::CredentialsProviderError;
@@ -68,6 +68,7 @@ impl ConnectionRegistry {
                 remote_connections: HashMap::new(),
                 uri_errors: Default::default(),
             })),
+            internal: Arc::new(OnceLock::new()),
             use_stored_credentials: true,
         }
     }
@@ -85,6 +86,7 @@ impl ConnectionRegistry {
                 remote_connections: HashMap::new(),
                 uri_errors: Default::default(),
             })),
+            internal: Arc::new(OnceLock::new()),
             use_stored_credentials: false,
         }
     }
@@ -140,6 +142,12 @@ pub enum ClientCredentialsError {
 #[derive(Clone)]
 pub struct ConnectionRegistryHandle {
     inner: Arc<RwLock<ConnectionRegistry>>,
+
+    /// The in-process internal catalog connection, if enabled.
+    ///
+    /// Shared across cloned handles and readable from sync code without taking the async registry
+    /// lock.
+    internal: Arc<OnceLock<(re_uri::Origin, Connection)>>,
 
     /// Whether to use credentials stored on the host machine by default.
     /// Since some tests run on a single-threaded tokio runtime and this is never updated,
@@ -230,6 +238,36 @@ impl ConnectionRegistryHandle {
         self.use_stored_credentials
     }
 
+    pub fn with_internal(self, internal: (re_uri::Origin, Connection)) -> Self {
+        self.set_internal(internal);
+        self
+    }
+
+    pub fn set_internal(&self, internal: (re_uri::Origin, Connection)) {
+        if let Err((new_origin, _connection)) = self.internal.set(internal) {
+            let existing_origin = self
+                .internal
+                .get()
+                .map(|(origin, _connection)| origin.to_string())
+                .unwrap_or_else(|| "<missing>".to_owned());
+            re_log::debug!(
+                "Ignoring duplicate internal connection for {new_origin}; already set for {existing_origin}"
+            );
+        }
+    }
+
+    pub fn internal_origin(&self) -> Option<re_uri::Origin> {
+        self.internal
+            .get()
+            .map(|(origin, _connection)| origin.clone())
+    }
+
+    pub fn is_internal_origin(&self, origin: &re_uri::Origin) -> bool {
+        self.internal
+            .get()
+            .is_some_and(|(internal_origin, _connection)| internal_origin == origin)
+    }
+
     /// Clear the latest error for this URI.
     pub fn clear_uri_error(&self, uri: re_uri::DatasetSegmentUri) {
         wrap_blocking_lock(|| {
@@ -269,7 +307,12 @@ impl ConnectionRegistryHandle {
     /// Failing that, no token will be used.
     #[tracing::instrument(level = "info", skip_all)]
     pub async fn connection(&self, origin: re_uri::Origin) -> ApiResult<Connection> {
-        // happy path
+        if let Some((internal_origin, connection)) = self.internal.get()
+            && internal_origin == &origin
+        {
+            return Ok(connection.clone());
+        }
+
         {
             let inner = self.inner.read().await;
             if let Some(connection) = inner.remote_connections.get(&origin) {

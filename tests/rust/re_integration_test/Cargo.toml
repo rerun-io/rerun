@@ -19,7 +19,7 @@ re_sdk.workspace = true
 re_sdk_types.workspace = true
 re_server = { workspace = true, features = ["lance"] }
 re_uri.workspace = true
-re_viewer = { workspace = true, features = ["testing", "map_view"] }
+re_viewer = { workspace = true, features = ["testing", "map_view", "internal_catalog"] }
 re_viewer_context.workspace = true
 re_viewport_blueprint.workspace = true
 

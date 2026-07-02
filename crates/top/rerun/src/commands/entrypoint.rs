@@ -1097,6 +1097,25 @@ fn start_native_viewer(
             (command_tx, command_rx),
         );
 
+        // The internal catalog is served (loopback-only) on the proxy server's port below, and
+        // also reached in-process by the viewer.
+        #[cfg(all(
+            feature = "server",
+            feature = "oss_server",
+            not(target_arch = "wasm32")
+        ))]
+        let internal_catalog = (!connect && app.app_options().experimental.use_internal_catalog)
+            .then(|| re_viewer::internal_catalog::build(server_addr));
+
+        #[cfg(all(
+            feature = "server",
+            feature = "oss_server",
+            not(target_arch = "wasm32")
+        ))]
+        if let Some(catalog) = &internal_catalog {
+            connection_registry.set_internal((catalog.origin.clone(), catalog.connection.clone()));
+        }
+
         if let Some(memory_limit) = memory_limit {
             app.app_options_mut().memory_limit = memory_limit;
         }
@@ -1104,10 +1123,22 @@ fn start_native_viewer(
         // If we're **not** connecting to an existing server, we spawn a new one and add it to the list of receivers.
         #[cfg(feature = "server")]
         if !connect {
-            let (log_receiver, grpc_server_handle) = re_grpc_server::spawn_with_recv(
+            #[cfg_attr(
+                not(all(feature = "oss_server", not(target_arch = "wasm32"))),
+                expect(unused_mut)
+            )]
+            let mut extra_services = re_grpc_server::LoopbackServices::default();
+
+            #[cfg(all(feature = "oss_server", not(target_arch = "wasm32")))]
+            if let Some(catalog) = &internal_catalog {
+                extra_services.add_service(catalog.grpc_service());
+            }
+
+            let (log_receiver, grpc_server_handle) = re_grpc_server::spawn_with_recv_and_services(
                 server_addr,
                 server_options,
                 re_grpc_server::shutdown::never(),
+                extra_services,
             );
 
             log_receivers.push(log_receiver);
@@ -1130,29 +1161,6 @@ fn start_native_viewer(
             app.add_external_memory_user(Box::new(ProxyHandleWrapper {
                 handle: grpc_server_handle,
             }));
-        }
-
-        // Start the internal catalog server at launch when the experimental option is on.
-        // The server stays up for the lifetime of the viewer (the spawned task owns its handle).
-        #[cfg(all(feature = "oss_server", not(target_arch = "wasm32")))]
-        if app.app_options().experimental.use_internal_catalog {
-            let connection_registry = connection_registry.clone();
-            let internal_catalog_origin = app.internal_catalog_origin();
-            tokio::spawn(async move {
-                match crate::internal_catalog::start(connection_registry).await {
-                    Ok((server_handle, origin)) => {
-                        internal_catalog_origin
-                            .set(origin)
-                            .expect("internal catalog origin already set");
-                        // Keep the server alive for the lifetime of the process.
-                        let _server_handle = server_handle;
-                        std::future::pending::<()>().await;
-                    }
-                    Err(err) => {
-                        re_log::error!("Failed to start the internal catalog server: {err:#}");
-                    }
-                }
-            });
         }
 
         app.set_profiler(profiler);

@@ -192,13 +192,12 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
 
             ui.re_checkbox(
                 use_internal_catalog,
-                "Load files via internal catalog server (restart required)",
+                "Load files via Viewer catalog (restart required)",
             )
             .on_hover_text(
-                "Open .rrd files through an in-process \"internal catalog\" server instead of \
-                     importing them directly into the viewer. The server is hosted inside the \
-                     desktop app and the viewer talks to it like any other server.\n\n\
-                     Takes effect for files opened after enabling; the server starts at launch \
+                "Open .rrd files through the Viewer catalog instead of importing them directly \
+                     into the viewer.\n\n\
+                     Takes effect for files opened after enabling; the catalog starts at launch \
                      when this is on.",
             );
         }

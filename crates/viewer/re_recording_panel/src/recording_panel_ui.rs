@@ -294,10 +294,17 @@ fn server_section_ui(
         origin,
         is_active,
         is_selected,
+        is_internal,
         entries_data,
     } = server_data;
 
-    let content = list_item::LabelContent::header(origin.host.to_string())
+    let title = if *is_internal {
+        "Viewer catalog".to_owned()
+    } else {
+        origin.host.to_string()
+    };
+
+    let content = list_item::LabelContent::header(title)
         .with_always_show_buttons(true)
         .with_button(
             ui.small_icon_button_widget(&icons::MORE, "Actions")
@@ -309,10 +316,11 @@ fn server_section_ui(
                     {
                         servers.send_command(Command::RefreshCollection(origin.clone()));
                     }
-                    if icons::SETTINGS
-                        .as_button_with_label(ui.tokens(), "Edit")
-                        .ui(ui)
-                        .clicked()
+                    if !*is_internal
+                        && icons::SETTINGS
+                            .as_button_with_label(ui.tokens(), "Edit")
+                            .ui(ui)
+                            .clicked()
                     {
                         servers.send_command(Command::OpenEditServerModal(
                             EditRedapServerModalCommand::new(origin.clone()),
@@ -327,10 +335,11 @@ fn server_section_ui(
                         re_log::info!("Copied {url:?} to clipboard");
                         ui.copy_text(url);
                     }
-                    if icons::TRASH
-                        .as_button_with_label(ui.tokens(), "Remove")
-                        .ui(ui)
-                        .clicked()
+                    if !*is_internal
+                        && icons::TRASH
+                            .as_button_with_label(ui.tokens(), "Remove")
+                            .ui(ui)
+                            .clicked()
                     {
                         ctx.command_sender()
                             .send_system(SystemCommand::RemoveRedapServer(origin.clone()));

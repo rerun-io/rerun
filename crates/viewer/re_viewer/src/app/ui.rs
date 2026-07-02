@@ -113,6 +113,19 @@ impl App {
                     let is_start_of_new_frame = ui.current_pass_index() == 0;
 
                     if is_start_of_new_frame {
+                        #[cfg(all(feature = "internal_catalog", not(target_arch = "wasm32")))]
+                        if self.app_options().experimental.use_internal_catalog
+                            && let Some(origin) = self.connection_registry.internal_origin()
+                        {
+                            self.state.redap_servers.add_internal_server(
+                                origin,
+                                &self.connection_registry,
+                                &self.async_runtime,
+                                &self.egui_ctx,
+                                self.command_sender.clone(),
+                            );
+                        }
+
                         self.state.redap_servers.on_frame_start(
                             &self.connection_registry,
                             &self.async_runtime,

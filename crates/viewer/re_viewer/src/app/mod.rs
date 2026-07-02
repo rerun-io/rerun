@@ -1,6 +1,4 @@
 use std::sync::Arc;
-#[cfg(not(target_arch = "wasm32"))]
-use std::sync::OnceLock;
 
 use egui::{FocusDirection, Key};
 use re_auth::credentials::CredentialsProvider as _;
@@ -152,10 +150,6 @@ pub struct App {
     /// * we want the user to have full control over the runtime,
     ///   and not expect that a global runtime exists.
     async_runtime: AsyncRuntimeHandle,
-
-    /// Origin of the in-process internal catalog server.
-    #[cfg(not(target_arch = "wasm32"))]
-    internal_catalog_origin: Arc<OnceLock<re_uri::Origin>>,
 }
 
 impl App {
@@ -197,6 +191,11 @@ impl App {
 
         let is_test = app_env.is_test();
 
+        #[cfg_attr(
+            not(all(feature = "internal_catalog", not(target_arch = "wasm32"))),
+            expect(unused_variables)
+        )]
+        let connection_registry_was_provided = connection_registry.is_some();
         let connection_registry = connection_registry
             .unwrap_or_else(re_redap_client::ConnectionRegistry::new_with_stored_credentials);
 
@@ -284,6 +283,20 @@ impl App {
         if app_env.is_test() {
             state.app_options = AppOptions::test();
         }
+
+        #[cfg(all(feature = "internal_catalog", not(target_arch = "wasm32")))]
+        let connection_registry = if state.app_options.experimental.use_internal_catalog
+            && !connection_registry_was_provided
+            && connection_registry.internal_origin().is_none()
+        {
+            let catalog = crate::internal_catalog::build(std::net::SocketAddr::from((
+                std::net::Ipv4Addr::LOCALHOST,
+                re_uri::DEFAULT_PROXY_PORT,
+            )));
+            connection_registry.with_internal((catalog.origin, catalog.connection))
+        } else {
+            connection_registry
+        };
 
         let reflection = re_sdk_types::reflection::generate_reflection().unwrap_or_else(|err| {
             re_log::error!(
@@ -479,20 +492,12 @@ impl App {
             connection_registry,
             server_latency_trackers: ServerLatencyTrackers::default(),
             async_runtime: tokio_runtime,
-
-            #[cfg(not(target_arch = "wasm32"))]
-            internal_catalog_origin: Arc::new(OnceLock::new()),
         }
     }
 
     #[cfg(not(target_arch = "wasm32"))]
     pub fn set_profiler(&mut self, profiler: re_tracing::Profiler) {
         self.profiler = profiler;
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    pub fn internal_catalog_origin(&self) -> Arc<OnceLock<re_uri::Origin>> {
-        self.internal_catalog_origin.clone()
     }
 
     pub fn connection_registry(&self) -> &ConnectionRegistryHandle {
