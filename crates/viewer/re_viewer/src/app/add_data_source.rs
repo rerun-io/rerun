@@ -330,12 +330,43 @@ async fn register_local_file(
         )
     })?;
 
-    // TODO(RR-4929): extrect application id from the file if possible.
-    let dataset_name = abs_path
-        .file_stem()
-        .and_then(|s| s.to_str())
-        .unwrap_or("recording")
-        .to_owned();
+    let dataset_name = std::fs::File::open(&abs_path)
+        .with_context(|| {
+            format!(
+                "failed to open RRD for application id extraction\nFile path: {}",
+                abs_path.display(),
+            )
+        })
+        .and_then(|mut file| {
+            let file: &mut std::fs::File = &mut file;
+            let store_ids = re_log_encoding::enumerate_rrd_stores(file)?;
+            let first_application_id = store_ids
+                .first()
+                .map(re_log_types::StoreId::application_id)
+                .context("no application id found in RRD")?;
+
+            if store_ids
+                .iter()
+                .any(|store_id| store_id.application_id() != first_application_id)
+            {
+                re_log::warn!(
+                    "RRD contains multiple application ids; using the first as the dataset name: {first_application_id}"
+                );
+            }
+
+            Ok(first_application_id.to_string())
+        })
+        .unwrap_or_else(|err| {
+            re_log::warn!(
+                "Failed to read application id from RRD: {err}\nFile path: {}",
+                abs_path.display(),
+            );
+            let path: &Path = &abs_path;
+            path.file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("recording")
+                .to_owned()
+        });
 
     let data_source = DataSource::new_rrd(file_url.as_str())?;
 
