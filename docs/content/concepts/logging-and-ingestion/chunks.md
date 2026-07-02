@@ -89,7 +89,7 @@ For example, `rr.set_time("frame", sequence=42)` will set the "frame" timeline's
 
 When you later call `rr.log`, the SDK will generate a row id and a value for the built-in `log_time` timeline (enabled by default), as well as `log_tick` if you have opted in to it.
 It will also grab the current values for any custom timelines from the time context.
-Any data passed to `rr.log` or `rr.log_components` becomes component batches.
+Any data passed to `rr.log` becomes component batches.
 
 <picture>
   <img src="https://static.rerun.io/build-row/c617d2b5c233c36ae78f723528c9e0cc3acf1bb0/full.png" alt="A diagram showing how a row gets created in Rerun">
