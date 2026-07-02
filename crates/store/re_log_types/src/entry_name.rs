@@ -23,6 +23,7 @@ impl From<String> for InvalidEntryNameError {
 /// A validated entry name.
 ///
 /// Entry names must:
+/// - Not be empty
 /// - Be at most 180 characters long
 /// - Only contain ASCII alphanumeric characters, underscores, hyphens, dots, spaces,
 ///   brackets, and colons
@@ -43,6 +44,10 @@ impl EntryName {
     /// Create a new entry name, validating that it conforms to the naming rules.
     pub fn new(name: impl Into<String>) -> Result<Self, InvalidEntryNameError> {
         let name = name.into();
+
+        if name.is_empty() {
+            return Err(InvalidEntryNameError("name must not be empty".to_owned()));
+        }
 
         if MAX_ENTRY_NAME_LENGTH < name.len() {
             return Err(InvalidEntryNameError(format!(
@@ -88,5 +93,40 @@ impl EntryName {
 impl std::fmt::Display for EntryName {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.0.fmt(f)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::EntryName;
+
+    #[test]
+    fn rejects_empty() {
+        assert!(EntryName::new("").is_err());
+    }
+
+    #[test]
+    fn rejects_too_long() {
+        assert!(EntryName::new("a".repeat(181)).is_err());
+        assert!(EntryName::new("a".repeat(180)).is_ok());
+    }
+
+    #[test]
+    fn rejects_invalid_characters() {
+        assert!(EntryName::new("no/slashes").is_err());
+        assert!(EntryName::new("no\ttabs").is_err());
+    }
+
+    #[test]
+    fn accepts_valid_names() {
+        for name in [
+            "a",
+            "__entries",
+            "my-dataset.v2",
+            "with spaces",
+            "[bracket]:colon",
+        ] {
+            assert!(EntryName::new(name).is_ok(), "should accept {name:?}");
+        }
     }
 }
