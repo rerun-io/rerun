@@ -3350,7 +3350,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         name: "point_shading",
                         display_name: "Point shading",
                         component_type: "rerun.components.PointShading".into(),
-                        docstring_md: "How points should be shaded.\n\nIf not set, points are rendered with [`components.PointShading#Gradient`](https://rerun.io/docs/reference/types/components/point_shading?speculative-link) by default.",
+                        docstring_md: "How points should be shaded.\n\nIf not set, points are rendered with [`components.PointShading#Gradient`](https://rerun.io/docs/reference/types/components/point_shading) by default.",
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {

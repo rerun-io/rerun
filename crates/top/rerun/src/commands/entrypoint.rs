@@ -625,7 +625,7 @@ enum Command {
 
     /// Run an MCP server that controls a running Rerun Viewer.
     ///
-    /// See the [mcp docs](https://rerun.io/docs/reference/viewer/mcp?speculative-link) for more info about using
+    /// See the [mcp docs](https://rerun.io/docs/reference/viewer/mcp) for more info about using
     /// `rerun viewer-mcp`.
     ///
     /// Use the following to commands to register the mcp with your agent:

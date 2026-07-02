@@ -1,8 +1,8 @@
 # Rerun changelog
 
-## [0.34.0](https://github.com/rerun-io/rerun/compare/0.33.1...0.34.0?speculative-link) - 2026-06-30
+## [0.34.0](https://github.com/rerun-io/rerun/compare/0.33.1...0.34.0) - 2026-07-01
 
-🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-34?speculative-link
+🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-34
 
 ### ✨ Overview & highlights
 
@@ -37,7 +37,7 @@ and then debugged why the fade out animation was still showing particles on the 
   > closely it looks to the original image. Keep going until it's convinced that it looks close.
 </details>
 
-See our [mcp docs](https://rerun.io/docs/reference/viewer/mcp?speculative-link) to get started.
+See our [mcp docs](https://rerun.io/docs/reference/viewer/mcp) to get started.
 
 #### Learning course
 
@@ -59,7 +59,7 @@ The new [learning course](https://rerun.io/learn) also shows how these agent ski
 
 #### `VoxelGridMap` archetype
 
-Rerun now supports sparse voxel grids through a new [`VoxelGridMap`](https://rerun.io/docs/reference/types/archetypes/voxel_grid_map?speculative-link) archetype (thanks to [@makeecat](https://github.com/makeecat) for the contribution!).
+Rerun now supports sparse voxel grids through a new [`VoxelGridMap`](https://rerun.io/docs/reference/types/archetypes/voxel_grid_map) archetype (thanks to [@makeecat](https://github.com/makeecat) for the contribution!).
 The archetype supports sparse indexing, anisotropic voxel sizes, pose offsets, and optional explicit colors or values & colormap per voxel.
 
 Rerun's MCAP importer now also converts the *dense* ROS `nav2_msgs/VoxelGrid` and Foxglove `VoxelGrid` formats to Rerun `VoxelGridMap`.
@@ -107,7 +107,7 @@ https://github.com/user-attachments/assets/b4b1ea6e-bce9-4e88-9ede-262f545e3b47
 - **SDK**: Several deprecated `DatasetEntry` methods have been removed.
 - **SDK**: `ParquetReader` column rules have been removed in favor of [lenses](https://rerun.io/docs/concepts/query-and-transform/lenses).
 
-🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-34?speculative-link
+🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-34
 
 ### 🔎 Details
 
@@ -131,6 +131,7 @@ https://github.com/user-attachments/assets/b4b1ea6e-bce9-4e88-9ede-262f545e3b47
 - Add casting capability to derive lens [f76a7d5](https://github.com/rerun-io/rerun/commit/f76a7d5b2738db5bbda24f089a24147d753b3c91)
 - Introduce `pack` built-in function to lenses [a5ea965](https://github.com/rerun-io/rerun/commit/a5ea96557b4c1f424ff183ea7d0503c63e5c3ca3)
 - Introduce `DeriveLens` helpers for common components [a93eb62](https://github.com/rerun-io/rerun/commit/a93eb62232a480f834abf0797d6d8d8706573ae8)
+- Add support for duration timelines to `FixedRateSampler` [45bddb7](https://github.com/rerun-io/rerun/commit/45bddb7dc2e8eb3ef7cdec743a657f36b756deaf)
 
 #### 🦀 Rust API
 - Add headless viewer mode [7e31c42](https://github.com/rerun-io/rerun/commit/7e31c42409b7c3d3f00b7d28c28573c65240597a)
@@ -152,6 +153,8 @@ https://github.com/user-attachments/assets/b4b1ea6e-bce9-4e88-9ede-262f545e3b47
 - Retain entry list in recording panel on refresh [e7357ba](https://github.com/rerun-io/rerun/commit/e7357baa3858a7cc9f174c194e40d443ab908697)
 - Don't buffer & fetch more of entities based on what's hovered [d9b3008](https://github.com/rerun-io/rerun/commit/d9b3008f8431ec1d8b40a891b6e810fffaa89252)
 - `rerun rrd optimize`: continue on error [63e0882](https://github.com/rerun-io/rerun/commit/63e08824e5e7781104008a64e8273ebf387122a7)
+- Look at `source_component` and `selector` when assigning colors to plots [71e2cf7](https://github.com/rerun-io/rerun/commit/71e2cf7cb75507d0df347a52b645d5ccab52efeb)
+- Fix viewer hang when loading static compressed images [b9acd34](https://github.com/rerun-io/rerun/commit/b9acd34aa2c90631759cbeb426082a68230a2f69)
 
 #### 🌁 Viewer improvements
 - Temporary time pause on scrubbing [bfea333](https://github.com/rerun-io/rerun/commit/bfea333d6fba8766288becf83b10bf5f0b6fa451)
@@ -169,6 +172,13 @@ https://github.com/user-attachments/assets/b4b1ea6e-bce9-4e88-9ede-262f545e3b47
 - Drag & drop scalars into time series view [ae4a157](https://github.com/rerun-io/rerun/commit/ae4a15776f75b385a2a79598254b041e4e68bafd)
 - Always buffer time [81384a4](https://github.com/rerun-io/rerun/commit/81384a43489d9273aef52cbc44484426a8e47f6a)
 - Visualize transform trees in dev panel [a534ac6](https://github.com/rerun-io/rerun/commit/a534ac61ea388f33699940fb93981060e96fbf92)
+- Query only visible parts of the state timeline [9118c03](https://github.com/rerun-io/rerun/commit/9118c03effe1c6d04cae8257de8e3e7fe2948a85)
+- Add `rerun viewer-mcp` [aa56c88](https://github.com/rerun-io/rerun/commit/aa56c88190ab5c4337f6acc6708c94a90454a5aa)
+- Hide screenshot notification on automated screenshots (scripts, mcp) [8924417](https://github.com/rerun-io/rerun/commit/8924417429de45fe52e9c8f073590b82727bb299)
+- State timeline view is now stable [0a26a8b](https://github.com/rerun-io/rerun/commit/0a26a8bfb9b161edee370d34578f415ec3354068)
+
+#### 🗄️ OSS server
+- Fix slow registration calls from OSS Catalog Server [5b74d8f](https://github.com/rerun-io/rerun/commit/5b74d8f078302e01afa0355162f301611d603122)
 
 #### 🚀 Performance improvements
 - Cache string interning calls [a05a4f8](https://github.com/rerun-io/rerun/commit/a05a4f8bb018063e4a63b62036e447df0801fa28)
@@ -195,6 +205,9 @@ https://github.com/user-attachments/assets/b4b1ea6e-bce9-4e88-9ede-262f545e3b47
 - Add Rerun agent skills [6732840](https://github.com/rerun-io/rerun/commit/673284042dda3d6ff218c6c2e954315cbcfc9aa7)
 - Show bound and connect URLs when serving web viewer [#12753](https://github.com/rerun-io/rerun/pull/12753) (thanks [@terror](https://github.com/terror)!)
 - Skills: mandate the idiomatic reader+lens pipeline (steer away from hand-built chunks) [c436da5](https://github.com/rerun-io/rerun/commit/c436da5a61956bb3645de61993b29997d0695e59)
+
+#### 📚 Docs
+- Document catalog entry renaming and directory delimiter [57da6f3](https://github.com/rerun-io/rerun/commit/57da6f3da88e57a23e6d2d6d46990988df30780d)
 
 #### 📦 Dependencies
 - chore: update lance, datafusion, and arrow [47d29ff](https://github.com/rerun-io/rerun/commit/47d29ffce4c53610471469b56d20d7cab6516b18)

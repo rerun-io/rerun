@@ -47,4 +47,4 @@ UInt32
 * [`SeriesPoints`](../archetypes/series_points.md)
 * [`StateConfiguration`](../archetypes/state_configuration.md)
 * [`TextLog`](../archetypes/text_log.md)
-* [`VoxelGridMap`](../archetypes/voxel_grid_map.md?speculative-link)
+* [`VoxelGridMap`](../archetypes/voxel_grid_map.md)
