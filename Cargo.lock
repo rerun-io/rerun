@@ -10022,6 +10022,7 @@ dependencies = [
  "ahash",
  "nohash-hasher",
  "parking_lot",
+ "paste",
  "re_byte_size",
  "serde",
  "static_assertions",

@@ -108,9 +108,8 @@ pub mod time {
 
 pub use re_sdk_types::{
     Archetype, ArchetypeName, AsComponents, Component, ComponentBatch, ComponentDescriptor,
-    ComponentIdentifier, ComponentType, DatatypeName, DeserializationError, DeserializationResult,
-    Loggable, SerializationError, SerializationResult, SerializedComponentBatch,
-    SerializedComponentColumn,
+    ComponentIdentifier, ComponentType, DeserializationError, DeserializationResult, Loggable,
+    SerializationError, SerializationResult, SerializedComponentBatch, SerializedComponentColumn,
 };
 pub use time::{TimeCell, TimePoint, Timeline};
 

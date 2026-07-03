@@ -323,6 +323,9 @@ impl ColumnBlueprint {
     }
 
     /// Set the alternate UI to use for this column
+    ///
+    /// `variant_ui` must be a valid [`VariantName`] (i.e. non-empty); passing an empty
+    /// string literal/const will panic.
     pub fn variant_ui(self, variant_ui: impl Into<VariantName>) -> Self {
         Self {
             variant_ui: Some(variant_ui.into()),

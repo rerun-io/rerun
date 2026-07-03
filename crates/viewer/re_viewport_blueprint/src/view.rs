@@ -149,7 +149,8 @@ impl ViewBlueprint {
 
         // This is a required component. Note that when loading views we crawl the subtree and so
         // cleared empty views paths may exist transiently. The fact that they have an empty class_identifier
-        // is the marker that the have been cleared and not an error.
+        // is the marker that the have been cleared and not an error: an empty string is not a valid
+        // `ViewClassIdentifier`, so the `try_new` below turns it into a `None` and we skip the view.
         let class_identifier = results.component_mono::<blueprint_components::ViewClass>(
             blueprint_archetypes::ViewBlueprint::descriptor_class_identifier().component,
         )?;
@@ -164,7 +165,7 @@ impl ViewBlueprint {
         );
 
         let space_origin = space_origin.map_or_else(EntityPath::root, |origin| origin.0.into());
-        let class_identifier: ViewClassIdentifier = class_identifier.0.as_str().into();
+        let class_identifier = ViewClassIdentifier::try_new(class_identifier.0.as_str()).ok()?;
         let display_name = display_name.map(|v| v.0.to_string());
 
         let space_env = EntityPathSubs::new_with_origin(&space_origin);

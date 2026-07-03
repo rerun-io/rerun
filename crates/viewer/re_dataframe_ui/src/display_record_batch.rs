@@ -255,7 +255,7 @@ impl DisplayComponentColumn {
             if let Some(blob) = blob.as_ref().and_then(|b| b.first())
                 && Self::is_blob_image(blob)
             {
-                variant_name = Some(VariantName::from(REDAP_THUMBNAIL_VARIANT));
+                variant_name = Some(VariantName::from_static_str(REDAP_THUMBNAIL_VARIANT));
 
                 // TODO(ab): we should find an alternative to using content-hashing to generate cache
                 // keys.

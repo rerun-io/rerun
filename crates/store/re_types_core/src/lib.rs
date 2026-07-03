@@ -57,9 +57,7 @@ pub use self::component_descriptor::{
 pub use self::dynamic_archetype::DynamicArchetype;
 pub use self::layer_class::LayerClass;
 pub use self::layer_name::LayerName;
-pub use self::loggable::{
-    Component, ComponentSet, ComponentType, DatatypeName, Loggable, UnorderedComponentSet,
-};
+pub use self::loggable::{Component, ComponentSet, ComponentType, Loggable, UnorderedComponentSet};
 pub use self::result::{
     _Backtrace, DeserializationError, DeserializationResult, ResultExt, SerializationError,
     SerializationResult,

@@ -47,7 +47,7 @@ pub struct DataframeView;
 
 impl ViewClass for DataframeView {
     fn identifier() -> ViewClassIdentifier {
-        re_viewer_context::external::re_string_interner::intern_static!(
+        re_viewer_context::external::re_string_interner::intern_static_nonempty!(
             ViewClassIdentifier,
             "Dataframe"
         )

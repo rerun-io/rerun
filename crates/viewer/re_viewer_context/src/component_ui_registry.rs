@@ -69,7 +69,7 @@ pub enum EditOrView {
     View,
 }
 
-re_string_interner::declare_new_type!(
+re_string_interner::declare_new_type_nonempty!(
     /// The name of a UI variant (see [`ComponentUiIdentifier::Variant`]).
     pub struct VariantName;
 );
@@ -463,6 +463,9 @@ impl ComponentUiRegistry {
     }
 
     /// Registers singleline UI to view Arrow data using a specific [`VariantName`].
+    ///
+    /// `variant_name` must be a valid [`VariantName`] (i.e. non-empty); passing an empty
+    /// string literal/const will panic.
     pub fn add_variant_ui(
         &mut self,
         variant_name: impl Into<VariantName>,

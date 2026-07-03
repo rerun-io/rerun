@@ -40,7 +40,7 @@ pub struct TextLogView {
 impl ::re_types_core::View for TextLogView {
     #[inline]
     fn identifier() -> ::re_types_core::ViewClassIdentifier {
-        ::re_types_core::external::re_string_interner::intern_static!(
+        ::re_types_core::external::re_string_interner::intern_static_nonempty!(
             ::re_types_core::ViewClassIdentifier,
             "TextLog"
         )
