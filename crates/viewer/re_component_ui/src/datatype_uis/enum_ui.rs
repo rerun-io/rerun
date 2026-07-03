@@ -1,4 +1,5 @@
 use re_ui::UiExt as _;
+use re_ui::localizer::t;
 use re_viewer_context::{MaybeMutRef, StoreViewContext};
 
 use crate::response_utils::response_with_changes_of_inner;
@@ -77,7 +78,7 @@ fn edit_view_enum_impl<
         let variants = EnumT::variants();
 
         if variants.is_empty() {
-            ui.label("<no variants>")
+            ui.label(t("<no variants>"))
         } else if variants.len() <= 2 {
             // Short version - only when there are 2 (or fewer) variants.
             // For more variants, this would become too wide, and we use a combobox instead.
@@ -106,7 +107,7 @@ fn edit_view_enum_impl<
 
                     let mut iter = variants.iter().copied();
                     let Some(first) = iter.next() else {
-                        return ui.label("<no variants>");
+                        return ui.label(t("<no variants>"));
                     };
 
                     let mut response = crate::datatype_uis::enum_ui::variant_ui(

@@ -5,6 +5,7 @@ use re_dataframe::QueryEngine;
 use re_log_types::{EntityPath, TimeInt};
 use re_types_core::ViewClassIdentifier;
 use re_ui::{Help, UiExt as _};
+use re_ui::localizer::t;
 use re_viewer_context::{
     Item, SystemCommand, SystemCommandSender as _, SystemExecutionOutput, ViewClass,
     ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _,
@@ -63,7 +64,7 @@ impl ViewClass for DataframeView {
     }
 
     fn display_name(&self) -> &'static str {
-        "Dataframe"
+        t("Dataframe")
     }
 
     fn icon(&self) -> &'static re_ui::Icon {
@@ -71,16 +72,16 @@ impl ViewClass for DataframeView {
     }
 
     fn help(&self, _os: egui::os::OperatingSystem) -> Help {
-        Help::new("Dataframe view")
+        Help::new(t("Dataframe view"))
             .docs_link("https://rerun.io/docs/reference/types/views/dataframe_view")
-            .markdown(
+            .markdown(t(
                 "This view displays entity content in a tabular form.
 
 Configure in the selection panel:
  - Handling of empty cells
  - Column visibility
  - Row filtering by time range",
-            )
+            ))
     }
 
     fn on_register(
@@ -236,13 +237,13 @@ fn timeline_not_found_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, view_id: Vi
     egui::Frame::new()
         .inner_margin(tokens.view_padding())
         .show(ui, |ui| {
-            ui.warning_label("Unknown timeline");
+            ui.warning_label(t("Unknown timeline"));
 
-            ui.label(
+            ui.label(t(
                 "The timeline currently configured for this view does not exist in the current \
                 recording. Select another timeline in the view properties found in the selection \
                 panel.",
-            )
+            ))
         });
 
     // select the view when clicked

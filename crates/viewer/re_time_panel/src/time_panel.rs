@@ -21,6 +21,7 @@ use re_ui::filter_widget::format_matching_text;
 use re_ui::{
     ContextExt as _, DesignTokens, Help, IconText, UiExt as _, filter_widget, icons, list_item,
 };
+use re_ui::localizer::t;
 use re_viewer_context::open_url::ViewerOpenUrl;
 use re_viewer_context::{
     AppContext, AppOptions, CollapseScope, HoverHighlight, Item, ItemCollection, ItemContext,
@@ -351,21 +352,22 @@ impl TimePanel {
         let entity_db = store_ctx.db;
 
         let loading_text = if entity_db.is_downloading_first_part_of_manifest() {
-            Some("Downloading meta-data")
+            Some(t("Downloading meta-data"))
         } else if time_ctrl.is_pending() {
             if entity_db.redap_connection_state() == RedapConnectionState::PartialManifest {
-                Some("Waiting for timeline")
+                Some(t("Waiting for timeline"))
             } else {
                 ui.horizontal(|ui| {
                     ui.centered_and_justified(|ui| {
                         ui.label(format!(
-                            "The recording has no timeline {}",
-                            time_ctrl.timeline_name()
+                    "{} {}",
+                    t("The recording has no timeline"),
+                    time_ctrl.timeline_name()
                         ));
 
                         if ui
                             .button(
-                                egui::RichText::new("Go to default timeline")
+                                egui::RichText::new(t("Go to default timeline"))
                                     .color(ui.style().visuals.weak_text_color()),
                             )
                             .clicked()
@@ -451,8 +453,8 @@ impl TimePanel {
         re_tracing::profile_function!();
 
         if store_ctx.db.is_downloading_first_part_of_manifest() {
-            ui.loading_screen_ui("Downloading meta-data", |ui| {
-                let text = "Downloading meta-data";
+            ui.loading_screen_ui(t("Downloading meta-data"), |ui| {
+                let text = t("Downloading meta-data");
                 ui.label(egui::RichText::from(text).heading().strong());
             });
 
@@ -461,8 +463,8 @@ impl TimePanel {
 
         if store_ctx.time_ctrl.is_pending() {
             if store_ctx.db.redap_connection_state() == RedapConnectionState::PartialManifest {
-                ui.loading_screen_ui("Waiting for timeline", |ui| {
-                    let text = format!("Waiting for timeline: {}", store_ctx.timeline_name());
+                ui.loading_screen_ui(t("Waiting for timeline"), |ui| {
+                    let text = format!("{} {}", t("Waiting for timeline"), store_ctx.timeline_name());
                     ui.label(egui::RichText::from(text).heading().strong());
 
                     let timeline_count = store_ctx.db.timelines().len();
@@ -470,16 +472,16 @@ impl TimePanel {
                     match timeline_count {
                         0 => {}
                         1 => {
-                            ui.label("One other timeline has data");
+                            ui.label(t("One other timeline has data"));
                         }
                         c => {
-                            ui.label(format!("{c} other timelines have data"));
+                            ui.label(format!("{} {}", c, t("other timelines have data")));
                         }
                     }
 
                     if ui
                         .button(
-                            egui::RichText::new("Go to default timeline")
+                            egui::RichText::new(t("Go to default timeline"))
                                 .color(ui.style().visuals.weak_text_color()),
                         )
                         .clicked()
@@ -491,13 +493,14 @@ impl TimePanel {
                 ui.horizontal(|ui| {
                     ui.centered_and_justified(|ui| {
                         ui.label(format!(
-                            "The recording has no timeline {}",
+                            "{} {}",
+                            t("The recording has no timeline"),
                             store_ctx.time_ctrl.timeline_name()
                         ));
 
                         if ui
                             .button(
-                                egui::RichText::new("Go to default timeline")
+                                egui::RichText::new(t("Go to default timeline"))
                                     .color(ui.style().visuals.weak_text_color()),
                             )
                             .clicked()
@@ -574,20 +577,20 @@ impl TimePanel {
                     self.filter_state.section_title_ui(
                         ui,
                         egui::RichText::new(if self.source == TimePanelSource::Blueprint {
-                            "Blueprint Streams"
+                            t("Blueprint Streams")
                         } else {
-                            "Streams"
+                            t("Streams")
                         })
                         .strong(),
                     );
                 });
             })
             .response
-            .on_hover_text(
+            .on_hover_text(t(
                 "A hierarchical view of the paths used during logging.\n\
                         \n\
                         On the right you can see when there was a log event for a stream.",
-            );
+            ));
 
             let bottom = ui.min_rect().bottom();
             Rect::from_x_y_ranges(time_fg_x_range, top..=bottom)
@@ -1025,11 +1028,11 @@ impl TimePanel {
 
                     if total_num_messages == 0 {
                         ui.label(
-                            ui.warning_text(format!("No event logged on timeline {timeline:?}")),
+                            ui.warning_text(format!("{} {timeline:?}", t("No event logged on timeline"))),
                         );
                     } else {
                         list_item::list_item_scope(ui, "hover tooltip", |ui| {
-                            let kind = if is_static { "Static" } else { "Temporal" };
+                            let kind = if is_static { t("Static") } else { t("Temporal") };
 
                             let num_messages = if is_static {
                                 num_static_messages
@@ -1038,9 +1041,9 @@ impl TimePanel {
                             };
 
                             let num_messages = if num_messages == 1 {
-                                "once".to_owned()
+                                t("once").to_string()
                             } else {
-                                format!("{} times", re_format::format_uint(num_messages))
+                                format!("{} {}", re_format::format_uint(num_messages), t("times"))
                             };
 
                             ui.list_item()
@@ -1049,7 +1052,8 @@ impl TimePanel {
                                 .show_flat(
                                     ui,
                                     list_item::LabelContent::new(format!(
-                                        "{kind} {component} component, logged {num_messages}",
+                                        "{kind} {component} {} {num_messages}",
+                                        t("component, logged"),
                                     ))
                                     .truncate(false)
                                     .with_icon(if is_static {
@@ -1421,10 +1425,10 @@ impl TimePanel {
                     let staleness = 1.0 - freshness;
                     let gamma = 1.0 - staleness * staleness;
                     ui.label(
-                        RichText::new(format!("{}/s", re_format::format_bytes(rate)))
+                        RichText::new(format!("{}{}", re_format::format_bytes(rate), t("/s")))
                             .color(ui.style().visuals.text_color().gamma_multiply(gamma as f32)),
                     )
-                    .on_hover_text("Connection throughput");
+                    .on_hover_text(t("Connection throughput"));
                 }
             });
         }
@@ -1600,7 +1604,8 @@ impl TimePanel {
                 self.time_edit_string = None;
             }
             let response = response.on_hover_text(format!(
-                "Timestamp: {}",
+                "{} {}",
+                t("Timestamp"),
                 re_format::format_int(time_int.as_i64())
             ));
 
@@ -1624,8 +1629,8 @@ fn archetype_label_ui(
             list_item::LabelContent::new(
                 RichText::new(
                     archetype
-                        .map(|a| a.short_name())
-                        .unwrap_or("Without archetype"),
+                        .map(|a| a.short_name().to_owned())
+                        .unwrap_or(t("Without archetype").to_string()),
                 )
                 .size(10.0),
             ),
@@ -1686,25 +1691,25 @@ fn help(os: egui::os::OperatingSystem) -> Help {
     // But how can we know?
     // Should we just assume that every mac user has a trackpad, and nobody else does?
     // But some mac users (like @Wumpf) use a mouse with their mac.
-    Help::new("Timeline")
-        .control("Select time segment", "Drag time scale")
-        .control("Snap to grid", icons::SHIFT)
-        .control("Pan", "Middle click drag")
-        .control("Pan vertically", "Scroll")
+    Help::new(t("Timeline"))
+        .control(t("Select time segment"), t("Drag time scale"))
+        .control(t("Snap to grid"), icons::SHIFT)
+        .control(t("Pan"), t("Middle click drag"))
+        .control(t("Pan vertically"), t("Scroll"))
         .control(
-            "Pan horizontally",
-            (IconText::from_modifiers(os, Modifiers::SHIFT), " + Scroll"),
+            t("Pan horizontally"),
+            (IconText::from_modifiers(os, Modifiers::SHIFT), t(" + Scroll")),
         )
         .control(
-            "Zoom",
+            t("Zoom"),
             (
                 IconText::from_modifiers(os, Modifiers::COMMAND),
-                " + Scroll",
+                t(" + Scroll"),
             ),
         )
-        .control("Zoom", "Right click drag")
-        .control("Reset view", "Double click")
-        .control("Play/Pause", "Space")
+        .control(t("Zoom"), t("Right click drag"))
+        .control(t("Reset view"), t("Double click"))
+        .control(t("Play/Pause"), "Space")
 }
 
 fn help_button(ui: &mut egui::Ui) {
@@ -2012,12 +2017,12 @@ fn timeline_properties_context_menu(
     if ui
         .add_enabled(
             copy_command.is_ok() && has_fragment,
-            egui::Button::new("Copy link to timestamp"),
+            egui::Button::new(t("Copy link to timestamp")),
         )
         .on_disabled_hover_text(if let Err(err) = copy_command.as_ref() {
-            format!("Can't share links to the current recording: {err}")
+            format!("{} {err}", t("Can't share links to the current recording"))
         } else {
-            "The current recording doesn't support time stamp links".to_owned()
+            t("The current recording doesn't support time stamp links").to_string()
         })
         .clicked()
         && let Ok(copy_command) = copy_command
@@ -2025,7 +2030,7 @@ fn timeline_properties_context_menu(
         ctx.command_sender().send_system(copy_command);
     }
 
-    if ui.button("Copy timestamp").clicked() {
+    if ui.button(t("Copy timestamp")).clicked() {
         let time = format!("{}", hovered_time.floor().as_i64());
         re_log::info!("Copied hovered timestamp: {}", time);
         ui.copy_text(time);
@@ -2033,7 +2038,7 @@ fn timeline_properties_context_menu(
 }
 
 fn copy_time_properties_context_menu(ui: &mut egui::Ui, time: TimeReal) {
-    if ui.button("Copy timestamp").clicked() {
+    if ui.button(t("Copy timestamp")).clicked() {
         let time = format!("{}", time.floor().as_i64());
         re_log::info!("Copied hovered timestamp: {}", time);
         ui.copy_text(time);

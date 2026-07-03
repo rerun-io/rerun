@@ -7,6 +7,7 @@ use re_sdk_types::{ComponentDescriptor, ComponentIdentifier, RowId, archetypes, 
 use re_types_core::Component as _;
 use re_ui::list_item::{self, ListItemContentButtonsExt as _, PropertyContent};
 use re_ui::{UiExt as _, icons};
+use re_ui::localizer::t;
 use re_viewer_context::{AppContext, StoreViewContext, StoredBlobCacheKey, UiLayout};
 
 use crate::video_ui::VideoUi;
@@ -64,19 +65,19 @@ impl EntityDataUi for Blob {
 
             re_ui::list_item::list_item_scope(ui, "blob_info", |ui| {
                 ui.list_item_flat_noninteractive(
-                    PropertyContent::new("Size").value_text(size_string),
+                    PropertyContent::new(t("Size")).value_text(size_string),
                 );
 
                 if let Some(media_type) = &media_type {
                     ui.list_item_flat_noninteractive(
-                        PropertyContent::new("Media type").value_text(media_type.as_str()),
+                        PropertyContent::new(t("Media type")).value_text(media_type.as_str()),
                     )
                     .on_hover_text("Media type (MIME) based on magic header bytes");
                 } else {
                     ui.list_item_flat_noninteractive(
-                        PropertyContent::new("Media type").value_text("?"),
+                        PropertyContent::new(t("Media type")).value_text(t("?")),
                     )
-                    .on_hover_text("Failed to detect media type (Mime) from magic header bytes");
+                    .on_hover_text(t("Failed to detect media type (Mime) from magic header bytes"));
                 }
                 blob_ui.data_ui(ctx, ui, ui_layout, entity_path);
             });

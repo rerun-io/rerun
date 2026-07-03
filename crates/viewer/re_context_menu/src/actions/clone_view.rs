@@ -1,3 +1,4 @@
+use re_ui::localizer::t;
 use re_viewer_context::{Item, SystemCommand, SystemCommandSender as _, ViewId};
 
 use crate::{ContextMenuAction, ContextMenuContext};
@@ -11,7 +12,7 @@ impl ContextMenuAction for CloneViewAction {
     }
 
     fn label(&self, _ctx: &ContextMenuContext<'_>) -> String {
-        "Clone".to_owned()
+        t("Clone").to_owned()
     }
 
     fn process_view(&self, ctx: &ContextMenuContext<'_>, view_id: &ViewId) {

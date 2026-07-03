@@ -9,6 +9,7 @@ use re_ui::syntax_highlighting::{
     InstanceInBrackets as InstanceWithBrackets, SyntaxHighlightedBuilder,
 };
 use re_ui::{SyntaxHighlighting as _, icons};
+use re_ui::localizer::t;
 use re_viewer_context::{
     ContainerId, Contents, DataResultInteractionAddress, Item, RedapEntryKind, ViewId,
     ViewerContext, contents_name_style,
@@ -72,7 +73,7 @@ impl ItemTitle {
                     item_title.with_tooltip(
                         SyntaxHighlightedBuilder::new()
                             .with(instance_path)
-                            .with_body(" in view ")
+                            .with_body(t(" in view "))
                             .with(&view.display_name_or_default())
                             .into_widget_text(&ctx.egui_ctx().global_style()),
                     )
@@ -119,9 +120,12 @@ impl ItemTitle {
         };
 
         Self::new(title, icon).with_tooltip(format!(
-            "Store kind: {}\nApplication ID: {}\nRecording ID: {}",
+            "{} {}\n{} {}\n{} {}",
+            t("Store kind:"),
             store_id.kind(),
+            t("Application ID:"),
             store_id.application_id(),
+            t("Recording ID:"),
             store_id.recording_id(),
         ))
     }
@@ -169,9 +173,11 @@ impl ItemTitle {
             },
         )
         .with_tooltip(format!(
-            "{} component {} of entity '{}'",
-            if is_static { "Static" } else { "Temporal" },
+            "{} {} {} {} '{}'",
+            if is_static { t("Static") } else { t("Temporal") },
+            t("component"),
             component,
+            t("of entity"),
             entity_path
         ))
     }
@@ -191,11 +197,12 @@ impl ItemTitle {
         if let Some(container_blueprint) = viewport.container(container_id) {
             let hover_text = if let Some(display_name) = container_blueprint.display_name.as_ref() {
                 format!(
-                    "{:?} container {display_name:?}",
+                    "{:?} {} {display_name:?}",
                     container_blueprint.container_kind,
+                    t("container"),
                 )
             } else {
-                format!("{:?} container", container_blueprint.container_kind,)
+                format!("{:?} {}", container_blueprint.container_kind, t("container"))
             };
 
             let container_name = container_blueprint.display_name_or_default();
@@ -207,10 +214,10 @@ impl ItemTitle {
             .with_tooltip(hover_text)
         } else {
             Self::new(
-                format!("Unknown container {container_id}"),
+                format!("{} {}", t("Unknown container"), container_id),
                 &icons::VIEW_UNKNOWN,
             )
-            .with_tooltip("Failed to find container in blueprint")
+            .with_tooltip(t("Failed to find container in blueprint"))
         }
     }
 
@@ -223,9 +230,9 @@ impl ItemTitle {
             let view_class = view.class(ctx.view_class_registry());
 
             let hover_text = if let Some(display_name) = view.display_name.as_ref() {
-                format!("{} view {display_name:?}", view_class.display_name(),)
+                format!("{} {} {display_name:?}", view_class.display_name(), t("view"))
             } else {
-                format!("{} view", view_class.display_name())
+                format!("{} {}", view_class.display_name(), t("view"))
             };
 
             let view_name = view.display_name_or_default();
@@ -237,8 +244,8 @@ impl ItemTitle {
             .with_label_style(contents_name_style(&view_name))
             .with_tooltip(hover_text)
         } else {
-            Self::new(format!("Unknown view {view_id}"), &icons::VIEW_UNKNOWN)
-                .with_tooltip("Failed to find view in blueprint")
+            Self::new(format!("{} {}", t("Unknown view"), view_id), &icons::VIEW_UNKNOWN)
+                .with_tooltip(t("Failed to find view in blueprint"))
         }
     }
 

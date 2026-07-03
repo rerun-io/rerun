@@ -4,6 +4,7 @@ use egui::{NumExt as _, Ui};
 use re_entity_db::FetchStage;
 use re_log_types::{Timestamp, TimestampFormat};
 use re_memory::MemoryLimit;
+use re_ui::localizer::t;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_ui::{DesignTokens, UiExt as _};
 use re_viewer_context::{AppOptions, ExperimentalAppOptions, VideoOptions};
@@ -43,7 +44,7 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
 
     ui.horizontal(|ui| {
         ui.add(egui::Label::new(
-            egui::RichText::new("Settings")
+            egui::RichText::new(t("Settings"))
                 .strong()
                 .line_height(Some(32.0))
                 .text_style(DesignTokens::welcome_screen_h2()),
@@ -54,7 +55,7 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
             egui::Layout::right_to_left(egui::Align::Center),
             |ui| {
                 if ui
-                    .small_icon_button(&re_ui::icons::CLOSE, "Close")
+                    .small_icon_button(&re_ui::icons::CLOSE, t("Close"))
                     .clicked()
                 {
                     *keep_open = false;
@@ -69,10 +70,10 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
 
     separator_with_some_space(ui);
 
-    ui.strong("General");
+    ui.strong(t("General"));
 
     ui.horizontal(|ui| {
-        ui.label("Theme");
+        ui.label(t("Theme"));
         egui::global_theme_preference_buttons(ui);
     });
 
@@ -100,22 +101,22 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
     ui.add_space(8.0);
 
     egui::Grid::new("prefetcher").num_columns(2).show(ui, |ui| {
-        ui.label("Memory budget");
+        ui.label(t("Memory budget"));
         memory_budget_section_ui(ui, memory_limit);
         ui.help_button(|ui| {
-            ui.label("When this limit is reached we start purging data from RAM");
+            ui.label(t("When this limit is reached we start purging data from RAM"));
         });
         ui.end_row();
 
-        ui.label("Prefetch");
+        ui.label(t("Prefetch"));
         prefetch_stage_combo_box_ui(ui, max_fetch_stage);
         ui.help_button(|ui| {
-            ui.label(
+            ui.label(t(
                 "Controls how aggressively we prefetch chunks ahead of what is strictly needed.\n\n\
                 • Required: only chunks required to render the current time cursor.\n\
                 • Similar: also prefetch chunks on the same component paths as required chunks up to a given real-time duration.\n\
                 • Everything: also prefetch every chunk in the recording.",
-            );
+            ));
         });
         ui.end_row();
     });
@@ -124,47 +125,47 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
 
     ui.re_checkbox(
         include_rerun_examples_button_in_recordings_panel,
-        "Show 'Rerun examples' button",
+        t("Show 'Rerun examples' button"),
     );
 
     ui.re_checkbox(
         visualizer_limits_enabled,
-        "Limit number of primitives in a view",
+        t("Limit number of primitives in a view"),
     )
     .on_hover_text(
-        "Caps the number of elements individual visualizers process \
+        t("Caps the number of elements individual visualizers process \
              (e.g. instance caps for 3D shapes, line limits for time series). \
              Disabling this may cause the viewer to become unresponsive \
-             with very large data sets.",
+             with very large data sets."),
     );
 
-    ui.collapsing_header("Timestamp format", false, |ui| {
+    ui.collapsing_header(t("Timestamp format"), false, |ui| {
         time_format_section_ui(ui, timestamp_format);
     });
 
     separator_with_some_space(ui);
-    ui.strong("Title bar");
+    ui.strong(t("Title bar"));
 
     if re_ui::supports_custom_decorations(ui.os()) {
-        ui.re_checkbox(custom_window_decorations, "Use custom window decorations")
+        ui.re_checkbox(custom_window_decorations, t("Use custom window decorations"))
             .on_hover_text(
-                "Hide the native title bar and draw Rerun's top bar as the window frame.\n\n\
-             Opt out of this if you experience any issues with the window's behavior.",
+                t("Hide the native title bar and draw Rerun's top bar as the window frame.\n\n\
+             Opt out of this if you experience any issues with the window's behavior."),
             );
     }
 
-    ui.re_checkbox(show_metrics, "Show performance metrics")
-        .on_hover_text("Show metrics for milliseconds/frame and RAM usage in the top bar");
+    ui.re_checkbox(show_metrics, t("Show performance metrics"))
+        .on_hover_text(t("Show metrics for milliseconds/frame and RAM usage in the top bar"));
 
-    ui.re_checkbox(show_notification_toasts, "Show notification toasts")
-        .on_hover_text("Show toasts for log messages and other notifications");
+    ui.re_checkbox(show_notification_toasts, t("Show notification toasts"))
+        .on_hover_text(t("Show toasts for log messages and other notifications"));
 
     separator_with_some_space(ui);
-    ui.strong("Map view");
+    ui.strong(t("Map view"));
     map_view_section_ui(ui, mapbox_access_token);
 
     separator_with_some_space(ui);
-    ui.strong("Video");
+    ui.strong(t("Video"));
     video_section_ui(ui, video);
 
     {
@@ -172,11 +173,11 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
             table_cards_and_blueprints,
         } = experimental;
         separator_with_some_space(ui);
-        ui.strong("Experimental");
-        ui.re_checkbox(table_cards_and_blueprints, "Table cards and blueprints")
+        ui.strong(t("Experimental"));
+        ui.re_checkbox(table_cards_and_blueprints, t("Table cards and blueprints"))
             .on_hover_text(
-                "Enable table blueprints embedded in Arrow schema metadata, plus grid view mode for server supplied tables.\n\n\
-                 When enabled, tables can carry inline view definitions for segment previews, and a list/grid toggle appears in the table title bar.",
+                t("Enable table blueprints embedded in Arrow schema metadata, plus grid view mode for server supplied tables.\n\n\
+                 When enabled, tables can carry inline view definitions for segment previews, and a list/grid toggle appears in the table title bar."),
             );
     }
 }
@@ -195,7 +196,7 @@ fn memory_budget_section_ui(ui: &mut Ui, memory_limit: &mut MemoryLimit) {
                 if bytes < UPPER_LIMIT_BYTES as f64 {
                     re_format::format_bytes(bytes)
                 } else {
-                    "unlimited".to_owned()
+                    t("unlimited").to_owned()
                 }
             })
             .custom_parser(|s| {
@@ -222,9 +223,9 @@ fn memory_budget_section_ui(ui: &mut Ui, memory_limit: &mut MemoryLimit) {
 fn prefetch_stage_combo_box_ui(ui: &mut Ui, max_fetch_stage: &mut FetchStage) {
     fn label(stage: FetchStage) -> &'static str {
         match stage {
-            FetchStage::Required => "Required",
-            FetchStage::Similar(_) => "Similar",
-            FetchStage::Everything => "Everything",
+            FetchStage::Required => t("Required"),
+            FetchStage::Similar(_) => t("Similar"),
+            FetchStage::Everything => t("Everything"),
         }
     }
 
@@ -312,29 +313,29 @@ fn time_format_section_ui(ui: &mut Ui, timestamp_format: &mut TimestampFormat) {
         jiff::Timestamp::from_str("2023-02-14 21:47:18Z").expect("the timestamp is valid"),
     );
 
-    ui.re_radio_value(timestamp_format, TimestampFormat::utc(), "UTC");
+    ui.re_radio_value(timestamp_format, TimestampFormat::utc(), t("UTC"));
     timestamp_example_ui(ui, timestamp, TimestampFormat::utc());
     ui.re_radio_value(
         timestamp_format,
         TimestampFormat::local_timezone(),
-        "Local (show time zone)",
+        t("Local (show time zone)"),
     );
     timestamp_example_ui(ui, timestamp, TimestampFormat::local_timezone());
     ui.re_radio_value(
         timestamp_format,
         TimestampFormat::local_timezone_implicit(),
-        "Local (hide time zone)",
+        t("Local (hide time zone)"),
     );
     timestamp_example_ui(ui, timestamp, TimestampFormat::local_timezone_implicit());
     ui.horizontal(|ui| {
         ui.add_space(ui.spacing().icon_width + ui.spacing().icon_spacing);
-        ui.label("Note: timestamps without time zone are ambiguous when copied elsewhere.");
+        ui.label(t("Note: timestamps without time zone are ambiguous when copied elsewhere."));
     });
 
     ui.re_radio_value(
         timestamp_format,
         TimestampFormat::unix_epoch(),
-        "Seconds since Unix epoch",
+        t("Seconds since Unix epoch"),
     );
     timestamp_example_ui(ui, timestamp, TimestampFormat::unix_epoch());
 }
@@ -344,12 +345,12 @@ fn map_view_section_ui(ui: &mut Ui, mapbox_access_token: &mut String) {
         // TODO(ab): needed for alignment, we should use egui flex instead
         ui.set_height(19.0);
 
-        ui.label("Mapbox access token:").on_hover_ui(|ui| {
+        ui.label(t("Mapbox access token:")).on_hover_ui(|ui| {
             ui.markdown_ui(
-                "This token is used to enable Mapbox-based map view backgrounds.\n\n\
+                t("This token is used to enable Mapbox-based map view backgrounds.\n\n\
                 Note that the token will be saved in clear text in the configuration file. \
                 The token can also be set using the `RERUN_MAPBOX_ACCESS_TOKEN` environment \
-                variable.",
+                variable."),
             );
         });
 
@@ -362,13 +363,13 @@ fn video_section_ui(ui: &mut Ui, options: &mut VideoOptions) {
     {
         ui.re_checkbox(
             &mut options.override_ffmpeg_path,
-            "Override the FFmpeg binary path",
+            t("Override the FFmpeg binary path"),
         )
         .on_hover_ui(|ui| {
             ui.markdown_ui(
-                "By default, the viewer tries to automatically find a suitable FFmpeg binary in \
+                t("By default, the viewer tries to automatically find a suitable FFmpeg binary in \
                 the system's `PATH`. Enabling this option allows you to specify a custom path to \
-                the FFmpeg binary.",
+                the FFmpeg binary."),
             );
         });
 
@@ -377,7 +378,7 @@ fn video_section_ui(ui: &mut Ui, options: &mut VideoOptions) {
                 // TODO(ab): needed for alignment, we should use egui flex instead
                 ui.set_height(19.0);
 
-                ui.label("Path:");
+                ui.label(t("Path:"));
 
                 ui.add(egui::TextEdit::singleline(&mut options.ffmpeg_path));
             });
@@ -393,7 +394,7 @@ fn video_section_ui(ui: &mut Ui, options: &mut VideoOptions) {
 
         let hardware_acceleration = &mut options.hw_acceleration;
         ui.horizontal(|ui| {
-            ui.label("Decoder:");
+            ui.label(t("Decoder:"));
             egui::ComboBox::from_id_salt("video_decoder_hw_acceleration")
                 .selected_text(hardware_acceleration.to_string())
                 .show_ui(ui, |ui| {
@@ -431,14 +432,14 @@ fn ffmpeg_path_status_ui(ui: &mut Ui, options: &VideoOptions) {
 
     match FFmpegVersion::for_executable_poll(path) {
         Poll::Pending => {
-            ui.loading_indicator("Checking FFmpeg version");
+            ui.loading_indicator(t("Checking FFmpeg version"));
         }
 
         Poll::Ready(Ok(version)) => {
             if version.is_compatible() {
-                ui.success_label(format!("FFmpeg found (version {version})"));
+                ui.success_label(format!("{} ({})", t("FFmpeg found"), version));
             } else {
-                ui.error_label(format!("Incompatible FFmpeg version: {version}"));
+                ui.error_label(format!("{}: {version}", t("Incompatible FFmpeg version")));
             }
         }
         Poll::Ready(Err(FFmpegVersionParseError::ParseVersion { raw_version })) => {
@@ -450,7 +451,7 @@ fn ffmpeg_path_status_ui(ui: &mut Ui, options: &VideoOptions) {
         }
 
         Poll::Ready(Err(FFmpegVersionParseError::FFmpegNotFound(_path))) => {
-            ui.error_label("The specified FFmpeg binary path does not exist or is not a file.");
+            ui.error_label(t("The specified FFmpeg binary path does not exist or is not a file."));
         }
 
         Poll::Ready(Err(err)) => {

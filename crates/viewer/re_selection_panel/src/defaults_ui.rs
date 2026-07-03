@@ -10,6 +10,7 @@ use re_types_core::ComponentDescriptor;
 use re_types_core::reflection::ComponentDescriptorExt as _;
 use re_ui::list_item::{LabelContent, ListItemContentButtonsExt as _};
 use re_ui::{OnResponseExt as _, SyntaxHighlighting as _, UiExt as _};
+use re_ui::localizer::t;
 use re_viewer_context::{
     ComponentUiTypes, QueryContext, StoreViewContext, SystemCommand, SystemCommandSender as _,
     UiLayout, ViewContext, VisualizerCollection, blueprint_timeline,
@@ -62,7 +63,7 @@ pub fn view_components_defaults_section_ui(
 
     let mut add_button_is_open = false;
     let mut add_button = ui
-        .small_icon_button_widget(&re_ui::icons::ADD, "Add overrides…")
+        .small_icon_button_widget(&re_ui::icons::ADD, t("Add overrides…"))
         .on_menu(|ui| {
             add_button_is_open = true;
             ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
@@ -74,17 +75,13 @@ pub fn view_components_defaults_section_ui(
                 components_to_show_in_add_menu.unwrap_or_default(),
             );
         })
-        .on_hover_text("Add more component defaults");
+        .on_hover_text(t("Add more component defaults"));
 
     if let Some(reason) = reason_we_cannot_add_more {
         add_button = add_button.enabled(false).on_disabled_hover_text(reason);
     }
 
-    let markdown = "# Component defaults\n
-This section lists default values for components in the scope of the present view. The visualizers \
-corresponding to this view's entities use these defaults when no per-entity store value or \
-override is specified.\n
-Click on the `+` button to add a new default value.";
+    let markdown = t("# Component defaults\nThis section lists default values for components in the scope of the present view. The visualizers corresponding to this view's entities use these defaults when no per-entity store value or override is specified.\nClick on the `+` button to add a new default value.");
 
     let body = |ui: &mut egui::Ui| {
         active_default_ui(
@@ -96,7 +93,7 @@ Click on the `+` button to add a new default value.";
             view,
         );
     };
-    ui.section_collapsing_header("Component defaults")
+    ui.section_collapsing_header(t("Component defaults"))
         .with_button(add_button)
         .with_help_markdown(markdown)
         .show(ui, body);
@@ -122,7 +119,7 @@ fn active_default_ui(
         ui.spacing_mut().item_spacing.y = 0.0;
 
         if active_defaults.is_empty() {
-            ui.list_item_flat_noninteractive(LabelContent::new("none").weak(true).italics(true));
+            ui.list_item_flat_noninteractive(LabelContent::new(t("none")).weak(true).italics(true));
         }
 
         let mut previous_archetype_name = None;
@@ -165,7 +162,7 @@ fn active_default_ui(
             let response = ui.list_item_flat_noninteractive(
                 re_ui::list_item::PropertyContent::new(component_descr.archetype_field_name())
                     .min_desired_width(150.0)
-                    .with_action_button(&re_ui::icons::CLOSE, "Clear blueprint component", || {
+                    .with_action_button(&re_ui::icons::CLOSE, t("Clear blueprint component"), || {
                         ctx.clear_blueprint_component(
                             view.defaults_path.clone(),
                             component_descr.clone(),
@@ -257,7 +254,7 @@ fn components_to_show_in_add_menu(
     active_defaults: &BTreeMap<ComponentIdentifier, ArrayRef>,
 ) -> Result<BTreeMap<ArchetypeName, Vec<DefaultOverrideEntry>>, String> {
     if visualized_components_by_archetype.is_empty() {
-        return Err("No components to visualize".to_owned());
+        return Err(t("No components to visualize").to_owned());
     }
 
     let mut components_to_show_in_add_menu = visualized_components_by_archetype.clone();
@@ -270,7 +267,7 @@ fn components_to_show_in_add_menu(
         components_to_show_in_add_menu.retain(|_, components| !components.is_empty());
 
         if components_to_show_in_add_menu.is_empty() {
-            return Err("All components already have active defaults".to_owned());
+            return Err(t("All components already have active defaults").to_owned());
         }
     }
     {
@@ -298,7 +295,8 @@ fn components_to_show_in_add_menu(
 
         if components_to_show_in_add_menu.is_empty() {
             return Err(format!(
-                "Rerun lacks edit UI for: {}",
+                "{} {}",
+                t("Rerun lacks edit UI for:"),
                 missing_editors.iter().map(|c| c.display_name()).join(", ")
             ));
         }

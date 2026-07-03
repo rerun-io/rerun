@@ -6,6 +6,7 @@ use poll_promise::Promise;
 use crate::ui::CloudState;
 use crate::ui::welcome_screen::intro_section::intro_section;
 use crate::ui::welcome_screen::welcome_section::welcome_section_ui;
+use re_ui::localizer::t;
 use re_ui::{DesignTokens, UiExt as _};
 use re_viewer_context::AppContext;
 
@@ -274,7 +275,7 @@ impl ExampleSection {
                     // Still waiting for example to load
                     ui.separator();
 
-                    ui.loading_indicator("Fetching example list"); // Placeholder for the examples
+                    ui.loading_indicator(t("Fetching example list")); // Placeholder for the examples
                     return;
                 };
 
@@ -289,12 +290,12 @@ impl ExampleSection {
                 };
 
                 if examples.is_empty() {
-                    ui.label("No examples found.");
+                    ui.label(t("No examples found."));
                     return;
                 }
 
                 ui.add(egui::Label::new(
-                    egui::RichText::new("View example recordings")
+                    egui::RichText::new(t("View example recordings"))
                         .strong()
                         .line_height(Some(32.0))
                         .text_style(DesignTokens::welcome_screen_h2()),
@@ -518,10 +519,10 @@ impl ExampleDescLayout {
                 if ui
                     .add_enabled(
                         source_url.is_some(),
-                        re_ui::icons::GITHUB.as_button_with_label(ui.tokens(), "Source code"),
+                        re_ui::icons::GITHUB.as_button_with_label(ui.tokens(), t("Source code")),
                     )
                     .on_hover_cursor(egui::CursorIcon::PointingHand)
-                    .on_disabled_hover_text("Source code is not available for this example")
+                    .on_disabled_hover_text(t("Source code is not available for this example"))
                     .clicked()
                     && let Some(source_url) = source_url
                 {

@@ -3,6 +3,7 @@ use re_sdk_types::blueprint::archetypes::TextDocumentFormat;
 use re_sdk_types::blueprint::components::Enabled;
 use re_sdk_types::{View as _, ViewClassIdentifier};
 use re_ui::{Help, UiExt as _};
+use re_ui::localizer::t;
 use re_viewer_context::external::re_log_types::EntityPath;
 use re_viewer_context::{
     IdentifiedViewSystem as _, Item, SystemCommand, SystemCommandSender as _, ViewClass,
@@ -51,7 +52,7 @@ impl ViewClass for TextDocumentView {
     }
 
     fn display_name(&self) -> &'static str {
-        "Text document"
+        t("Text document")
     }
 
     fn icon(&self) -> &'static re_ui::Icon {
@@ -59,9 +60,9 @@ impl ViewClass for TextDocumentView {
     }
 
     fn help(&self, _os: egui::os::OperatingSystem) -> Help {
-        Help::new("Text document view")
+        Help::new(t("Text document view"))
             .docs_link("https://rerun.io/docs/reference/types/views/text_document_view")
-            .markdown("Supports raw text and markdown.")
+            .markdown(t("Supports raw text and markdown."))
     }
 
     fn on_register(
@@ -197,7 +198,7 @@ fn text_document_ui(
 
     if text_entries.is_empty() {
         // We get here if we scroll back time to before the first text document was logged.
-        ui.weak("(empty)");
+        ui.weak(t("(empty)"));
     } else if text_entries.len() == 1 {
         let TextDocumentEntry { body, media_type } = &text_entries[0];
 
@@ -230,10 +231,10 @@ fn text_document_ui(
     } else {
         // TODO(jleibs): better handling for multiple results
         ui.error_label(format!(
-            "Can only show one text document at a time; was given {}. Update \
-                                    the query so that it returns a single text document and create \
-                                    additional views for the others.",
-            text_entries.len()
+            "{} {}. {}",
+            t("Can only show one text document at a time; was given"),
+            text_entries.len(),
+            t("Update the query so that it returns a single text document and create additional views for the others."),
         ));
     }
 

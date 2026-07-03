@@ -10,6 +10,7 @@ use re_data_ui::{DataUi as _, item_ui};
 use re_entity_db::InstancePath;
 use re_sdk_types::ArrowString;
 use re_ui::list_item;
+use re_ui::localizer::t;
 use re_viewer_context::{
     DataResultInteractionAddress, HoverHighlight, InteractionHighlight, Item, SelectionHighlight,
     StoreViewContext, SystemCommand, SystemCommandSender as _, UiLayout, ViewHighlights, ViewQuery,
@@ -389,8 +390,10 @@ pub fn draw_graph(
             }
             Node::Implicit { graph_node, .. } => {
                 draw_node(ui, center, node.label(), Default::default(), lod).on_hover_text(format!(
-                    "Implicit node {} created via a reference in a GraphEdge component",
+                    "{} {} {}",
+                    t("Implicit node"),
                     graph_node.as_str(),
+                    t("created via a reference in a GraphEdge component"),
                 ))
             }
         };

@@ -1,6 +1,7 @@
 //! Modal for adding a new view of container to an existing target container.
 
 use re_ui::UiExt as _;
+use re_ui::localizer::t;
 use re_viewer_context::{
     ContainerId, ViewerContext, blueprint_id_to_tile_id, icon_for_container_kind,
 };
@@ -28,7 +29,7 @@ impl AddViewOrContainerModal {
         self.modal_handler.ui(
             egui_ctx,
             || {
-                re_ui::modal::ModalWrapper::new("Add view or container")
+                re_ui::modal::ModalWrapper::new(t("Add view or container"))
                     .min_width(500.0)
                     .full_span_content(true)
                     .scrollable([false, true])
@@ -46,23 +47,23 @@ fn modal_ui(
 ) {
     let container_data = [
         (
-            "Tabs",
-            "Create a new tabbed container.",
+            t("Tabs"),
+            t("Create a new tabbed container."),
             egui_tiles::ContainerKind::Tabs,
         ),
         (
-            "Horizontal",
-            "Create a new horizontal container.",
+            t("Horizontal"),
+            t("Create a new horizontal container."),
             egui_tiles::ContainerKind::Horizontal,
         ),
         (
-            "Vertical",
-            "Create a new vertical container.",
+            t("Vertical"),
+            t("Create a new vertical container."),
             egui_tiles::ContainerKind::Vertical,
         ),
         (
-            "Grid",
-            "Create a new grid container.",
+            t("Grid"),
+            t("Create a new grid container."),
             egui_tiles::ContainerKind::Grid,
         ),
     ];
@@ -91,8 +92,9 @@ fn modal_ui(
             })
             .inner
             .on_disabled_hover_text(format!(
-                "Nested {title} containers in containers of the same type are disallowed and automatically simplified \
-                away as they are not useful."
+                "{} {title} {}",
+                t("Nested"),
+                t("containers in containers of the same type are disallowed and automatically simplified away as they are not useful."),
             ));
 
         if resp.clicked() {
@@ -116,7 +118,7 @@ fn modal_ui(
     let add_view_row = |ui: &mut egui::Ui, view: ViewBlueprint, is_experimental: bool| {
         let icon = view.class(ctx.view_class_registry()).icon();
         let title = view.class(ctx.view_class_registry()).display_name();
-        let subtitle = format!("Create a new view to display {title} content.");
+        let subtitle = format!("{} {title} {}", t("Create a new view to display"), t("content."));
 
         if row_ui(ui, icon, title, &subtitle, is_experimental).clicked() {
             viewport.add_views(std::iter::once(view), target_container, None);

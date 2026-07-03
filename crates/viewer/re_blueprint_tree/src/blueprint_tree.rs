@@ -6,6 +6,7 @@ use re_log_types::{ApplicationId, EntityPath, EntityPathHash};
 use re_ui::drag_and_drop::DropTarget;
 use re_ui::filter_widget::format_matching_text;
 use re_ui::list_item::ListItemContentButtonsExt as _;
+use re_ui::localizer::t;
 use re_ui::{ContextExt as _, DesignTokens, UiExt as _, filter_widget, list_item};
 use re_viewer_context::{
     CollapseScope, ContainerId, Contents, DataResultInteractionAddress, DragAndDropFeedback,
@@ -93,17 +94,17 @@ impl BlueprintTree {
                     list_item::CustomContent::new(|ui, _| {
                         let title_response = self
                             .filter_state
-                            .section_title_ui(ui, egui::RichText::new("Blueprint").strong());
+                            .section_title_ui(ui, egui::RichText::new(t("Blueprint")).strong());
 
                         if let Some(title_response) = title_response {
                             title_response.on_hover_text(
-                                "The blueprint is where you can configure the Rerun Viewer",
+                                t("The blueprint is where you can configure the Rerun Viewer"),
                             );
                         }
                     })
                     .menu_button(
                         &re_ui::icons::MORE,
-                        "Open menu with more options",
+                        t("Open menu with more options"),
                         |ui| {
                             add_new_view_or_container_menu_button(ctx, viewport_blueprint, ui);
                             set_blueprint_to_default_menu_buttons(ctx, ui);
@@ -220,7 +221,8 @@ impl BlueprintTree {
             .show_flat(
                 ui,
                 list_item::LabelContent::new(format!(
-                    "Viewport ({})",
+                    "{} ({})",
+                    t("Viewport"),
                     container_data.name.as_ref()
                 ))
                 .label_style(contents_name_style(&container_data.name))
@@ -334,7 +336,7 @@ impl BlueprintTree {
             .with_buttons(|ui| {
                 visibility_button_ui(ui, parent_visible, &mut visible);
 
-                if remove_button_ui(ui, "Remove container").clicked() {
+                if remove_button_ui(ui, t("Remove container")).clicked() {
                     viewport_blueprint.mark_user_interaction(ctx);
                     viewport_blueprint.remove_contents(content);
                 }
@@ -375,7 +377,7 @@ impl BlueprintTree {
             );
 
         viewport_blueprint.set_content_visibility(ctx, &content, visible);
-        let response = response.on_hover_text(format!("{:?} container", container_data.kind));
+        let response = response.on_hover_text(format!("{} {:?}", t("container"), container_data.kind));
 
         self.handle_interactions_for_item(
             ctx,
@@ -434,7 +436,7 @@ impl BlueprintTree {
             .with_buttons(|ui| {
                 visibility_button_ui(ui, container_visible, &mut visible);
 
-                if remove_button_ui(ui, "Remove view from the viewport").clicked() {
+                if remove_button_ui(ui, t("Remove view from the viewport")).clicked() {
                     viewport_blueprint.mark_user_interaction(ctx);
                     viewport_blueprint.remove_contents(Contents::View(view_data.id));
                 }
@@ -473,7 +475,7 @@ impl BlueprintTree {
                         .interactive(false)
                         .show_flat(
                             ui,
-                            list_item::LabelContent::new("Projections:").italics(true),
+                            list_item::LabelContent::new(t("Projections:")).italics(true),
                         );
 
                     for projection in &view_data.projection_trees {
@@ -490,7 +492,7 @@ impl BlueprintTree {
                 }
             });
 
-        let response = response.on_hover_text(format!("{} view", class.display_name()));
+        let response = response.on_hover_text(format!("{} {}", class.display_name(), t("view")));
 
         if response.clicked() {
             viewport_blueprint.focus_tab(view_data.id);
@@ -588,7 +590,7 @@ impl BlueprintTree {
 
                             if remove_button_ui(
                                 ui,
-                                "Remove this entity and all its children from the view",
+                                t("Remove this entity and all its children from the view"),
                             )
                             .clicked()
                             {
@@ -605,14 +607,14 @@ impl BlueprintTree {
                     .render_offscreen(false)
                     .show_hierarchical(
                         ui,
-                        list_item::LabelContent::new("$origin")
+                        list_item::LabelContent::new(t("$origin"))
                             .subdued(true)
                             .italics(true)
                             .with_icon(&re_ui::icons::INTERNAL_LINK),
                     )
                     .on_hover_text(
-                        "This subtree corresponds to the view's origin, and is displayed above \
-                        the 'Projections' section. Click to select it.",
+                        t("This subtree corresponds to the view's origin, and is displayed above \
+                        the 'Projections' section. Click to select it."),
                     )
                     .clicked()
                 {
@@ -684,7 +686,7 @@ impl BlueprintTree {
                 DataResultKind::EmptyOriginPlaceholder
             ) {
                 ui.label(ui.warning_text(
-                    "This view's query did not match any data under the space origin",
+                    t("This view's query did not match any data under the space origin"),
                 ));
             }
         });
@@ -1239,7 +1241,7 @@ fn add_new_view_or_container_menu_button(
     ui: &mut egui::Ui,
 ) {
     if ui
-        .add(re_ui::icons::ADD.as_button_with_label(ui.tokens(), "Add view or container…"))
+        .add(re_ui::icons::ADD.as_button_with_label(ui.tokens(), t("Add view or container…")))
         .clicked()
     {
         ui.close();
@@ -1265,14 +1267,14 @@ fn set_blueprint_to_default_menu_buttons(ctx: &ViewerContext<'_>, ui: &mut egui:
     let default_blueprint = default_blueprint_id.and_then(|id| ctx.store_bundle().get(id));
 
     let disabled_reason = match default_blueprint {
-        None => Some("No default blueprint is set for this app"),
+        None => Some(t("No default blueprint is set for this app")),
         Some(default_blueprint) => {
             let active_is_clone_of_default =
                 Some(default_blueprint.store_id()) == ctx.store_context.blueprint.cloned_from();
             let last_modified_at_the_same_time =
                 default_blueprint.latest_row_id() == ctx.store_context.blueprint.latest_row_id();
             if active_is_clone_of_default && last_modified_at_the_same_time {
-                Some("No modifications have been made")
+                Some(t("No modifications have been made"))
             } else {
                 None // it is valid to reset to default
             }
@@ -1283,9 +1285,9 @@ fn set_blueprint_to_default_menu_buttons(ctx: &ViewerContext<'_>, ui: &mut egui:
     let mut response = ui
         .add_enabled(
             enabled,
-            re_ui::icons::RESET.as_button_with_label(ui.tokens(), "Reset to default blueprint"),
+            re_ui::icons::RESET.as_button_with_label(ui.tokens(), t("Reset to default blueprint")),
         )
-        .on_hover_text("Reset to the default blueprint for this app");
+        .on_hover_text(t("Reset to the default blueprint for this app"));
 
     if let Some(disabled_reason) = disabled_reason {
         response = response.on_disabled_hover_text(disabled_reason);
@@ -1309,9 +1311,9 @@ fn set_blueprint_to_auto_menu_button(ctx: &ViewerContext<'_>, ui: &mut egui::Ui)
     if ui
         .add_enabled(
             enabled,
-            re_ui::icons::RESET.as_button_with_label(ui.tokens(), "Reset to heuristic blueprint"),
+            re_ui::icons::RESET.as_button_with_label(ui.tokens(), t("Reset to heuristic blueprint")),
         )
-        .on_hover_text("Re-populate viewport with automatically chosen views")
+        .on_hover_text(t("Re-populate viewport with automatically chosen views"))
         .clicked()
     {
         ui.close();
@@ -1348,9 +1350,9 @@ fn remove_button_ui(ui: &mut Ui, alt_text_and_tooltip: &str) -> Response {
 
 fn visibility_button_ui(ui: &mut egui::Ui, enabled: bool, visible: &mut bool) -> egui::Response {
     ui.add_enabled_ui(enabled, |ui| {
-        ui.visibility_toggle_button(visible)
-            .on_hover_text("Toggle visibility")
-            .on_disabled_hover_text("A parent is invisible")
+        ui        .visibility_toggle_button(visible)
+            .on_hover_text(t("Toggle visibility"))
+            .on_disabled_hover_text(t("A parent is invisible"))
     })
     .inner
 }

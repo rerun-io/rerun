@@ -5,6 +5,7 @@ use egui_tiles::TileId;
 use re_chunk::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
+use re_ui::localizer::t;
 use re_sdk_types::blueprint::archetypes as blueprint_archetypes;
 use re_sdk_types::blueprint::components::{
     ActiveTab, ColumnShare, ContainerKind, GridColumns, IncludedContent, RowShare,
@@ -317,10 +318,10 @@ impl ContainerBlueprint {
     #[inline]
     pub fn missing_name_placeholder(&self) -> String {
         match self.container_kind {
-            egui_tiles::ContainerKind::Tabs => "Tab container",
-            egui_tiles::ContainerKind::Horizontal => "Horizontal container",
-            egui_tiles::ContainerKind::Vertical => "Vertical container",
-            egui_tiles::ContainerKind::Grid => "Grid container",
+            egui_tiles::ContainerKind::Tabs => t("Tab container"),
+            egui_tiles::ContainerKind::Horizontal => t("Horizontal container"),
+            egui_tiles::ContainerKind::Vertical => t("Vertical container"),
+            egui_tiles::ContainerKind::Grid => t("Grid container"),
         }
         .to_owned()
     }

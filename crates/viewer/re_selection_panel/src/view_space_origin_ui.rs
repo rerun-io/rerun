@@ -3,6 +3,7 @@ use std::ops::ControlFlow;
 use egui::{Key, NumExt as _, Ui};
 use re_log_types::EntityPath;
 use re_ui::{SyntaxHighlighting as _, UiExt as _, list_item};
+use re_ui::localizer::t;
 use re_viewer_context::ViewerContext;
 use re_viewport_blueprint::{ViewBlueprint, default_created_views};
 
@@ -202,7 +203,7 @@ fn view_space_origin_widget_editing_ui(
         let excluded_count = view_suggestions.len() - filtered_view_suggestions.len();
         if excluded_count > 0 {
             ui.list_item_flat_noninteractive(
-                list_item::LabelContent::new(format!("{excluded_count} hidden suggestions"))
+                list_item::LabelContent::new(format!("{} {}", excluded_count, t("hidden suggestions")))
                     .weak(true)
                     .italics(true),
             );

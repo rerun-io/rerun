@@ -13,6 +13,7 @@ use re_sdk_types::blueprint::components::{Enabled, GridSpacing};
 use re_sdk_types::components::{ViewCoordinates, Visible};
 use re_tf::{image_view_coordinates, query_view_coordinates_at_closest_ancestor};
 use re_ui::{ContextExt as _, Help, IconText, MouseButtonText, UiExt as _, icons};
+use re_ui::localizer::t;
 use re_view::controls::{
     DRAG_PAN3D_BUTTON, ROLL_MOUSE_ALT, ROLL_MOUSE_MODIFIER, ROTATE3D_BUTTON, RuntimeModifiers,
     SPEED_UP_3D_MODIFIER, TRACKED_OBJECT_RESTORE_KEY,
@@ -98,38 +99,38 @@ impl View3DState {
 // ----------------------------------------------------------------------------
 
 pub fn help(os: egui::os::OperatingSystem) -> Help {
-    Help::new("3D view")
+    Help::new(t("3D view"))
         .docs_link("https://rerun.io/docs/reference/types/views/spatial3d_view")
-        .control("Pan", (MouseButtonText(DRAG_PAN3D_BUTTON), "+", "drag"))
-        .control("Zoom", icons::SCROLL)
-        .control("Rotate", (MouseButtonText(ROTATE3D_BUTTON), "+", "drag"))
+        .control(t("Pan"), (MouseButtonText(DRAG_PAN3D_BUTTON), "+", "drag"))
+        .control(t("Zoom"), icons::SCROLL)
+        .control(t("Rotate"), (MouseButtonText(ROTATE3D_BUTTON), "+", "drag"))
         .control(
-            "Roll",
+            t("Roll"),
             IconText::from_modifiers_and(os, ROLL_MOUSE_MODIFIER, MouseButtonText(ROLL_MOUSE_ALT)),
         )
-        .control("Navigate", ("WASD", "/", "QE"))
+        .control(t("Navigate"), ("WASD", "/", "QE"))
         .control(
-            "Slow down / speed up",
+            t("Slow down / speed up"),
             (
                 IconText::from_modifiers(os, RuntimeModifiers::slow_down(&os)),
                 "/",
                 IconText::from_modifiers(os, SPEED_UP_3D_MODIFIER),
             ),
         )
-        .control("Focus", ("double", icons::LEFT_MOUSE_CLICK, "object"))
+        .control(t("Focus"), ("double", icons::LEFT_MOUSE_CLICK, t("object")))
         .control(
-            "Track",
+            t("Track"),
             (
                 IconText::from_modifiers(os, Modifiers::ALT),
                 "+",
                 "double",
                 icons::LEFT_MOUSE_CLICK,
-                "object",
+                t("object"),
             ),
         )
         .control(
-            "Reset view",
-            ("double", icons::LEFT_MOUSE_CLICK, "background"),
+            t("Reset view"),
+            ("double", icons::LEFT_MOUSE_CLICK, t("background")),
         )
 }
 

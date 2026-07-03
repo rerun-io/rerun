@@ -10,6 +10,7 @@ use re_sdk_types::blueprint::archetypes::{Background, NearClipPlane, VisualBound
 use re_sdk_types::blueprint::components as blueprint_components;
 use re_sdk_types::{Archetype as _, archetypes};
 use re_ui::{ContextExt as _, Help, MouseButtonText, icons};
+use re_ui::localizer::t;
 use re_view::controls::DRAG_PAN2D_BUTTON;
 use re_viewer_context::{
     ItemContext, QueryContext, ViewClass as _, ViewClassExt as _, ViewContext, ViewQuery,
@@ -179,14 +180,14 @@ fn clamp_zoom_out(
 pub fn help(os: egui::os::OperatingSystem) -> Help {
     let egui::InputOptions { zoom_modifier, .. } = egui::InputOptions::default(); // This is OK, since we don't allow the user to change this modifier.
 
-    Help::new("2D view")
+    Help::new(t("2D view"))
         .docs_link("https://rerun.io/docs/reference/types/views/spatial2d_view")
-        .control("Pan", (MouseButtonText(DRAG_PAN2D_BUTTON), "+", "drag"))
+        .control(t("Pan"), (MouseButtonText(DRAG_PAN2D_BUTTON), "+", "drag"))
         .control(
-            "Zoom",
+            t("Zoom"),
             re_ui::IconText::from_modifiers_and(os, zoom_modifier, icons::SCROLL),
         )
-        .control("Reset view", ("double", icons::LEFT_MOUSE_CLICK))
+        .control(t("Reset view"), ("double", icons::LEFT_MOUSE_CLICK))
 }
 
 /// Create the outer 2D view, which consists of a scrollable region

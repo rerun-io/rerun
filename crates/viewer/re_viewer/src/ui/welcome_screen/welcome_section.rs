@@ -1,12 +1,19 @@
 use re_ui::DesignTokens;
+use re_ui::localizer::t;
 
 pub(super) const DOCS_URL: &str = "https://www.rerun.io/docs";
-pub(super) const WELCOME_SCREEN_TITLE: &str = "The data layer for physical AI";
-pub(super) const WELCOME_SCREEN_BULLET_TEXT: &[&str] = &[
-    "Log multi-rate, multimodal data with the Rerun SDK in C++, Python, or Rust",
-    "Visualize and explore live or recorded data across the pipeline",
-    "Query with dataframes or SQL, and stream directly to training",
-];
+
+pub(super) fn welcome_screen_title() -> &'static str {
+    t("The data layer for physical AI")
+}
+
+pub(super) fn welcome_screen_bullet_text() -> [&'static str; 3] {
+    [
+        t("Log multi-rate, multimodal data with the Rerun SDK in C++, Python, or Rust"),
+        t("Visualize and explore live or recorded data across the pipeline"),
+        t("Query with dataframes or SQL, and stream directly to training"),
+    ]
+}
 
 /// Show the welcome section.
 pub(super) fn welcome_section_ui(ui: &mut egui::Ui) {
@@ -19,7 +26,7 @@ pub(super) fn welcome_section_ui(ui: &mut egui::Ui) {
 
         ui.add(
             egui::Label::new(
-                egui::RichText::new(WELCOME_SCREEN_TITLE)
+                egui::RichText::new(welcome_screen_title())
                     .strong()
                     .line_height(Some(line_height))
                     .text_style(style),

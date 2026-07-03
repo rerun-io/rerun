@@ -16,6 +16,7 @@ use re_types_core::ComponentDescriptor;
 use re_types_core::external::arrow::array::ArrayRef;
 use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::menu::menu_style;
+use re_ui::localizer::t;
 use re_ui::{ComboItem, OnResponseExt as _, UiExt as _, design_tokens_of_visuals, list_item};
 use re_view::{
     BlueprintResolvedResultsExt as _, ChunksWithComponent, latest_at_with_blueprint_resolved_data,
@@ -54,7 +55,7 @@ pub fn visualizer_ui(
         .lookup_result_by_path(entity_path.hash())
         .cloned()
     else {
-        ui.error_label("Entity not found in view");
+        ui.error_label(t("Entity not found in view"));
         return;
     };
     let view_visualizers = ctx.new_visualizer_collection();
@@ -67,7 +68,7 @@ pub fn visualizer_ui(
     let available_visualizers = available_inactive_visualizers(ctx, &data_result);
 
     let button = ui
-        .small_icon_button_widget(&re_ui::icons::ADD, "Add new visualizer…")
+        .small_icon_button_widget(&re_ui::icons::ADD, t("Add new visualizer…"))
         .on_menu(|ui| {
             menu_add_new_visualizer(
                 ctx,
@@ -78,10 +79,10 @@ pub fn visualizer_ui(
             );
         })
         .enabled(!available_visualizers.is_empty())
-        .on_hover_text("Add additional visualizers")
-        .on_disabled_hover_text("No additional visualizers available");
+        .on_hover_text(t("Add additional visualizers"))
+        .on_disabled_hover_text(t("No additional visualizers available"));
 
-    let markdown = "# Visualizers
+    let markdown = t("# Visualizers
 
 This section lists the active visualizers for the selected entity. Visualizers use an entity's \
 components to display it in the current view.
@@ -97,9 +98,9 @@ function.
 - **Default**: If set, the default value for this component in the current view, which can be set \
 in the blueprint or in the UI by selecting the view.
 - **Fallback**: A context-sensitive value that is used if no other value is available. It is \
-specific to the visualizer and the current view type.";
+specific to the visualizer and the current view type.");
 
-    ui.section_collapsing_header("Visualizers")
+    ui.section_collapsing_header(t("Visualizers"))
         .with_button(button)
         .with_help_markdown(markdown)
         .show(ui, |ui| {
@@ -125,7 +126,7 @@ pub fn visualizer_ui_impl(
     let override_base_path = data_result.override_base_path();
 
     let remove_visualizer_button = |ui: &mut egui::Ui, visualizer_id: &VisualizerInstructionId| {
-        let response = ui.small_icon_button(&re_ui::icons::CLOSE, "Remove visualizer");
+        let response = ui.small_icon_button(&re_ui::icons::CLOSE, t("Remove visualizer"));
         if response.clicked() {
             let active_visualizers = active_visualizers
                 .iter()
@@ -147,7 +148,7 @@ pub fn visualizer_ui_impl(
     list_item::list_item_scope(ui, "visualizers", |ui| {
         if active_visualizers.is_empty() {
             ui.list_item_flat_noninteractive(
-                list_item::LabelContent::new("none")
+                list_item::LabelContent::new(t("none"))
                     .weak(true)
                     .italics(true),
             );
@@ -208,7 +209,7 @@ pub fn visualizer_ui_impl(
                 } else {
                     ui.list_item_flat_noninteractive(
                         list_item::LabelContent::new(format!(
-                            "{visualizer_type} (unknown visualizer type)"
+                            "{} {}", visualizer_type, t("(unknown visualizer type)")
                         ))
                         .weak(true)
                         .min_desired_width(150.0)
@@ -389,7 +390,7 @@ fn visualizer_components(
             // Source component (if available).
             source_component_ui(
                 ui,
-                "Source",
+                t("Source"),
                 &mapping_ctx,
                 &query_result,
                 &entity_components_with_datatype,
@@ -419,7 +420,7 @@ fn visualizer_components(
         if is_ui_editable {
             property_content = property_content.with_menu_button(
                 &re_ui::icons::MORE,
-                "More options",
+                t("More options"),
                 |ui: &mut egui::Ui| {
                     menu_more(
                         ctx,
@@ -841,7 +842,7 @@ fn source_component_items_ui(
     let show_sections = !recommended_options.is_empty() && other_has_non_custom;
 
     if show_sections {
-        ui.add(re_ui::ComboItemHeader::new("Recommended:"));
+        ui.add(re_ui::ComboItemHeader::new(t("Recommended:")));
     }
     for source in &recommended_options {
         source_component_item_ui(
@@ -854,7 +855,7 @@ fn source_component_items_ui(
     }
 
     if show_sections {
-        ui.add(re_ui::ComboItemHeader::new("Other values:"));
+        ui.add(re_ui::ComboItemHeader::new(t("Other values:")));
     }
     for source in &other_options {
         source_component_item_ui(
@@ -881,7 +882,7 @@ fn source_component_items_ui(
         && mapping_ctx.is_ui_editable
         && show_default_and_override
         && has_editor
-        && ui.add(ComboItem::new("Add custom")).clicked()
+        && ui.add(ComboItem::new(t("Add custom"))).clicked()
     {
         save_component_mapping(
             mapping_ctx.view_ctx(),
@@ -982,7 +983,7 @@ fn source_component_item_ui(
         item = item.value_widget(move |ui: &mut Ui| {
             // We intentionally don't show the value if there are multiple values since it can get cluttery. We'll likely iterate on this in the future.
             if num_values > 1 {
-                ui.label(format!("{} values", re_format::format_uint(num_values)));
+                ui.label(format!("{} {}", re_format::format_uint(num_values), t("values")));
             } else {
                 let viewer_ctx = mapping_ctx.viewer_ctx();
                 let store_view_ctx = viewer_ctx.active_recording_store_view_context();
@@ -1092,8 +1093,8 @@ fn component_source_string(source: &VisualizerComponentSource) -> String {
                 format!("{}{}", source_component.as_str(), selector)
             }
         }
-        VisualizerComponentSource::Override => "Custom".to_owned(),
-        VisualizerComponentSource::Default => "View default".to_owned(),
+        VisualizerComponentSource::Override => t("Custom").to_owned(),
+        VisualizerComponentSource::Default => t("View default").to_owned(),
     }
 }
 
@@ -1124,7 +1125,7 @@ fn menu_more(
 ) {
     reset_override_button(ctx, ui, component_descr.clone(), override_path);
 
-    if ui.button("Make default for current view").clicked() {
+    if ui.button(t("Make default for current view")).clicked() {
         ctx.save_blueprint_array(
             ViewBlueprint::defaults_path(ctx.view_id),
             component_descr,
@@ -1151,10 +1152,10 @@ pub fn reset_override_button(
     if ui
         .add_enabled(
             raw_override != raw_override_default_blueprint,
-            egui::Button::new("Reset override to default blueprint"),
+            egui::Button::new(t("Reset override to default blueprint")),
         )
-        .on_hover_text("Resets the override to what is specified in the default blueprint")
-        .on_disabled_hover_text("Current override is the same as the override specified in the default blueprint (if any)")
+        .on_hover_text(t("Resets the override to what is specified in the default blueprint"))
+        .on_disabled_hover_text(t("Current override is the same as the override specified in the default blueprint (if any)"))
         .clicked()
     {
         ctx.reset_blueprint_component(override_path.clone(), component_descr);
@@ -1194,14 +1195,14 @@ fn menu_add_new_visualizer(
     let show_sections = !recommended.is_empty() && !other.is_empty();
 
     if show_sections {
-        ui.add(re_ui::ComboItemHeader::new("Recommended:"));
+        ui.add(re_ui::ComboItemHeader::new(t("Recommended:")));
     }
     for visualizer_type in &recommended {
         add_new_visualizer_button(ctx, ui, data_result, active_visualizers, *visualizer_type);
     }
 
     if show_sections {
-        ui.add(re_ui::ComboItemHeader::new("Other:"));
+        ui.add(re_ui::ComboItemHeader::new(t("Other:")));
     }
     for visualizer_type in &other {
         add_new_visualizer_button(ctx, ui, data_result, active_visualizers, *visualizer_type);

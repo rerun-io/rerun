@@ -3,6 +3,7 @@ use re_log_types::EntityPath;
 use re_sdk_types::components::{self, TransformFrameId};
 use re_sdk_types::{ComponentDescriptor, TransformFrameIdHash, archetypes};
 use re_ui::{HasDesignTokens as _, UiExt as _, UiLayout, icons};
+use re_ui::localizer::t;
 use re_viewer_context::{
     AppContext, DataResultInteractionAddress, Item, StoreViewContext, SystemCommand,
     SystemCommandSender as _, TransformDatabaseStoreCache,
@@ -187,8 +188,8 @@ impl TransformFramesUi {
             let more = *more || frames.len() > show_amount;
 
             if more {
-                ui.add(egui::Label::new("…").selectable(false))
-                    .on_hover_text("There are more frames not displayed here");
+                ui.add(egui::Label::new(t("…")).selectable(false))
+                    .on_hover_text(t("There are more frames not displayed here"));
             }
 
             for (idx, transform) in frames.iter().take(show_amount).enumerate().rev() {
@@ -231,7 +232,7 @@ fn transform_ui(
                     transform.source_entity.is_some(),
                     egui::Button::selectable(is_current, transform.frame_id.as_str()),
                 )
-                .on_disabled_hover_text("No related entity found for frame");
+                .on_disabled_hover_text(t("No related entity found for frame"));
 
             if let Some(source_entity) = &transform.source_entity
                 && response.on_hover_text(source_entity.to_string()).clicked()

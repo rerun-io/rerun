@@ -4,6 +4,7 @@ use re_log_types::{
 };
 use re_time_ruler::TimeRangesUi;
 use re_ui::{Help, IconText, MouseButtonText, UiExt as _, icons};
+use re_ui::localizer::t;
 use re_viewer_context::{
     DataResultInteractionAddress, DragAndDropFeedback, DragAndDropPayload,
     IdentifiedViewSystem as _, Item, TimeControlCommand, TimeView, ViewClass,
@@ -113,7 +114,7 @@ impl ViewClass for StateTimelineView {
     }
 
     fn display_name(&self) -> &'static str {
-        "State timeline"
+        t("State timeline")
     }
 
     // TODO(RR-4506): Remove this function once the State Timeline view graduates from experimental.
@@ -136,22 +137,22 @@ impl ViewClass for StateTimelineView {
             ..
         } = egui::InputOptions::default(); // This is OK, since we don't allow the user to change these modifiers.
 
-        Help::new("State timeline view")
-            .markdown("Shows state transitions as horizontal colored lanes over time.")
-            .control("Move time cursor", icons::RIGHT_MOUSE_CLICK)
+        Help::new(t("State timeline view"))
+            .markdown(t("Shows state transitions as horizontal colored lanes over time."))
+            .control(t("Move time cursor"), icons::RIGHT_MOUSE_CLICK)
             .control(
-                "Pan",
+                t("Pan"),
                 (MouseButtonText(egui::PointerButton::Primary), "+", "drag"),
             )
             .control(
-                "Pan",
+                t("Pan"),
                 IconText::from_modifiers_and(os, horizontal_scroll_modifier, icons::SCROLL),
             )
             .control(
-                "Zoom",
+                t("Zoom"),
                 IconText::from_modifiers_and(os, zoom_modifier, icons::SCROLL),
             )
-            .control("Reset view", ("double", icons::LEFT_MOUSE_CLICK))
+            .control(t("Reset view"), ("double", icons::LEFT_MOUSE_CLICK))
     }
 
     fn on_register(

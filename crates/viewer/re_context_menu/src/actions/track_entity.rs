@@ -1,5 +1,6 @@
 use re_sdk_types::ViewClassIdentifier;
 use re_sdk_types::blueprint::archetypes::EyeControls3D;
+use re_ui::localizer::t;
 use re_viewer_context::{Item, ViewId};
 use re_viewport_blueprint::ViewProperty;
 
@@ -33,7 +34,7 @@ impl ContextMenuAction for TrackEntity {
     }
 
     fn label(&self, _ctx: &ContextMenuContext<'_>) -> String {
-        "Set as eye tracked".to_owned()
+        t("Set as eye tracked").to_owned()
     }
 
     fn process_data_result(

@@ -1,3 +1,4 @@
+use re_ui::localizer::t;
 use re_viewer_context::Item;
 
 use crate::{ContextMenuAction, ContextMenuContext};

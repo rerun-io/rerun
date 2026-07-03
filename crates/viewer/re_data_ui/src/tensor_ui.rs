@@ -4,6 +4,7 @@ use re_log_types::hash::Hash64;
 use re_sdk_types::datatypes::TensorData;
 use re_sdk_types::{ComponentDescriptor, RowId};
 use re_ui::UiExt as _;
+use re_ui::localizer::t;
 use re_viewer_context::{StoreViewContext, TensorStats, TensorStatsCache, UiLayout};
 
 use super::EntityDataUi;
@@ -86,13 +87,13 @@ pub fn tensor_summary_ui_grid_contents(
 ) {
     let TensorData { shape, names, .. } = tensor;
 
-    ui.grid_left_hand_label("Data type")
-        .on_hover_text("Data type used for all individual elements within the tensor");
+    ui.grid_left_hand_label(t("Data type"))
+        .on_hover_text(t("Data type used for all individual elements within the tensor"));
     ui.label(tensor.dtype().to_string());
     ui.end_row();
 
-    ui.grid_left_hand_label("Shape")
-        .on_hover_text("Extent of every dimension");
+    ui.grid_left_hand_label(t("Shape"))
+        .on_hover_text(t("Extent of every dimension"));
     ui.vertical(|ui| {
         // For unnamed tensor dimension more than a single line usually doesn't make sense!
         // But what if some are named and some are not?
@@ -113,8 +114,8 @@ pub fn tensor_summary_ui_grid_contents(
     } = tensor_stats;
 
     if let Some((min, max)) = range {
-        ui.label("Data range")
-            .on_hover_text("All values of the tensor range within these bounds");
+        ui.label(t("Data range"))
+            .on_hover_text(t("All values of the tensor range within these bounds"));
         ui.monospace(format!(
             "[{} - {}]",
             re_format::format_f64(*min),
@@ -124,9 +125,9 @@ pub fn tensor_summary_ui_grid_contents(
     }
     // Show finite range only if it is different from the actual range.
     if range != &Some(*finite_range) {
-        ui.label("Finite data range").on_hover_text(
-            "The finite values (ignoring all NaN & -Inf/+Inf) of the tensor range within these bounds"
-        );
+        ui.label(t("Finite data range")).on_hover_text(t(
+            "The finite values (ignoring all NaN & -Inf/+Inf) of the tensor range within these bounds",
+        ));
         let (min, max) = finite_range;
         ui.monospace(format!(
             "[{} - {}]",

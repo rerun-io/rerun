@@ -16,6 +16,7 @@ use re_sdk_types::components::{AggregationPolicy, Color, Range1D, Visible};
 use re_sdk_types::datatypes::TimeRange;
 use re_sdk_types::{ComponentBatch as _, ComponentIdentifier, View as _, ViewClassIdentifier};
 use re_ui::{Help, IconText, MouseButtonText, UiExt as _, icons, list_item};
+use re_ui::localizer::t;
 use re_view::controls::{MOVE_TIME_CURSOR_BUTTON, SELECTION_RECT_ZOOM_BUTTON};
 use re_view::view_property_ui;
 use re_viewer_context::{
@@ -135,7 +136,7 @@ impl ViewClass for TimeSeriesView {
     }
 
     fn display_name(&self) -> &'static str {
-        "Time series"
+        t("Time series")
     }
 
     fn icon(&self) -> &'static re_ui::Icon {
@@ -150,19 +151,19 @@ impl ViewClass for TimeSeriesView {
             ..
         } = egui::InputOptions::default(); // This is OK, since we don't allow the user to change these modifiers.
 
-        Help::new("Time series view")
+        Help::new(t("Time series view"))
             .docs_link("https://rerun.io/docs/reference/types/views/time_series_view")
-            .control("Pan", (icons::LEFT_MOUSE_CLICK, "+", "drag"))
+            .control(t("Pan"), (icons::LEFT_MOUSE_CLICK, "+", "drag"))
             .control(
-                "Horizontal pan",
+                t("Horizontal pan"),
                 IconText::from_modifiers_and(os, horizontal_scroll_modifier, icons::SCROLL),
             )
             .control(
-                "Zoom",
+                t("Zoom"),
                 IconText::from_modifiers_and(os, zoom_modifier, icons::SCROLL),
             )
             .control(
-                "Zoom X-axis",
+                t("Zoom X-axis"),
                 IconText::from_modifiers_and(
                     os,
                     zoom_modifier | horizontal_scroll_modifier,
@@ -170,7 +171,7 @@ impl ViewClass for TimeSeriesView {
                 ),
             )
             .control(
-                "Zoom Y-axis",
+                t("Zoom Y-axis"),
                 IconText::from_modifiers_and(
                     os,
                     zoom_modifier | vertical_scroll_modifier,
@@ -178,15 +179,15 @@ impl ViewClass for TimeSeriesView {
                 ),
             )
             .control(
-                "Zoom to selection",
+                t("Zoom to selection"),
                 (MouseButtonText(SELECTION_RECT_ZOOM_BUTTON), "+", "drag"),
             )
-            .control("Move time cursor", MouseButtonText(MOVE_TIME_CURSOR_BUTTON))
-            .control("Reset view", ("double", icons::LEFT_MOUSE_CLICK))
+            .control(t("Move time cursor"), MouseButtonText(MOVE_TIME_CURSOR_BUTTON))
+            .control(t("Reset view"), ("double", icons::LEFT_MOUSE_CLICK))
             .control_separator()
-            .control("Hide/show series", (icons::LEFT_MOUSE_CLICK, "legend"))
+            .control(t("Hide/show series"), (icons::LEFT_MOUSE_CLICK, "legend"))
             .control(
-                "Hide/show other series",
+                t("Hide/show other series"),
                 (
                     IconText::from_modifiers_and(os, egui::Modifiers::ALT, icons::LEFT_MOUSE_CLICK),
                     "legend",

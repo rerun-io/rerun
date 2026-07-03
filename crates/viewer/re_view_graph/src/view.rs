@@ -6,6 +6,7 @@ use re_sdk_types::blueprint::archetypes::{
 use re_sdk_types::components::Color;
 use re_sdk_types::{ViewClassIdentifier, blueprint};
 use re_ui::{self, Help, IconText, MouseButtonText, UiExt as _, icons};
+use re_ui::localizer::t;
 use re_view::controls::DRAG_PAN2D_BUTTON;
 use re_view::view_property_ui;
 use re_viewer_context::{
@@ -32,7 +33,7 @@ impl ViewClass for GraphView {
     }
 
     fn display_name(&self) -> &'static str {
-        "Graph"
+        t("Graph")
     }
 
     fn icon(&self) -> &'static re_ui::Icon {
@@ -42,14 +43,14 @@ impl ViewClass for GraphView {
     fn help(&self, os: egui::os::OperatingSystem) -> Help {
         let egui::InputOptions { zoom_modifier, .. } = egui::InputOptions::default(); // This is OK, since we don't allow the user to change this modifier.
 
-        Help::new("Graph view")
+        Help::new(t("Graph view"))
             .docs_link("https://rerun.io/docs/reference/types/views/graph_view")
-            .control("Pan", (MouseButtonText(DRAG_PAN2D_BUTTON), "+", "drag"))
+            .control(t("Pan"), (MouseButtonText(DRAG_PAN2D_BUTTON), "+", "drag"))
             .control(
-                "Zoom",
+                t("Zoom"),
                 IconText::from_modifiers_and(os, zoom_modifier, icons::SCROLL),
             )
-            .control("Reset view", ("double", icons::LEFT_MOUSE_CLICK))
+            .control(t("Reset view"), ("double", icons::LEFT_MOUSE_CLICK))
     }
 
     /// Register all systems (contexts & parts) that the view needs.

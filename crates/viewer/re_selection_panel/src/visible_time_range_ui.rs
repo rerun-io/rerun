@@ -9,6 +9,7 @@ use re_sdk_types::blueprint::components::VisibleTimeRange;
 use re_sdk_types::datatypes::{TimeInt, TimeRange, TimeRangeBoundary};
 use re_ui::list_item::{LabelContent, ListItemContentButtonsExt as _};
 use re_ui::{RelativeTimeRange, TimeDragValue, UiExt as _, relative_time_range_label_text};
+use re_ui::localizer::t;
 use re_viewer_context::{
     BlueprintContext as _, QueryRange, TimeControlCommand, TimeRangeHighlight,
     TimeRangeHighlightKind, ViewClass, ViewState, ViewerContext,
@@ -170,36 +171,36 @@ fn query_range_ui(
 ) {
     let time_ctrl = &ctx.time_ctrl;
     let Some(&timeline) = time_ctrl.timeline() else {
-        ui.weak("No active timeline");
+        ui.weak(t("No active timeline"));
         return;
     };
     let time_type = timeline.typ();
 
-    let markdown = "# Visible time range\n
+    let markdown = t("# Visible time range\n
 This feature controls the time range used to display data in the view.
 
 Notes:
 - The settings are inherited from the enclosing view if not overridden.
 - Visible time range properties are stored on a per-timeline basis.
-- The data current as of the time range starting time is included.";
+- The data current as of the time range starting time is included.");
 
     let collapsing_response = ui
-        .section_collapsing_header("Visible time range")
+        .section_collapsing_header(t("Visible time range"))
         .default_open(true)
         .with_help_markdown(markdown)
         .show(ui, |ui| {
             ui.horizontal(|ui| {
-                ui.re_radio_value(has_individual_time_range, false, "Default")
+                ui.re_radio_value(has_individual_time_range, false, t("Default"))
                     .on_hover_text(if is_view {
-                        "Default query range settings for this kind of view"
+                        t("Default query range settings for this kind of view")
                     } else {
-                        "Query range settings inherited from enclosing view"
+                        t("Query range settings inherited from enclosing view")
                     });
-                ui.re_radio_value(has_individual_time_range, true, "Override")
+                ui.re_radio_value(has_individual_time_range, true, t("Override"))
                     .on_hover_text(if is_view {
-                        "Set query range settings for the contents of this view"
+                        t("Set query range settings for the contents of this view")
                     } else {
-                        "Set query range settings for this entity"
+                        t("Set query range settings for this entity")
                     });
             });
             let time_drag_value =
@@ -245,8 +246,8 @@ Notes:
                     QueryRange::LatestAt => {
                         let current_time =
                             time_type.format(current_time, ctx.app_options().timestamp_format);
-                        ui.label(format!("Latest-at query at: {current_time}"))
-                            .on_hover_text("Uses the latest known value for each component.");
+                        ui.label(format!("{}{}", t("Latest-at query at: "), current_time))
+                            .on_hover_text(t("Uses the latest known value for each component."));
                     }
                 }
             }
@@ -311,17 +312,17 @@ fn show_visual_time_range(
 
     // Show the resolved visible range as labels (user can't edit them):
     if resolved_range == &TimeRange::EVERYTHING {
-        ui.label("Entire timeline").on_hover_text("The full timeline of the recording, which may be bigger than the data range of this plot");
+        ui.label(t("Entire timeline")).on_hover_text(t("The full timeline of the recording, which may be bigger than the data range of this plot"));
     } else if resolved_range == &TimeRange::AT_CURSOR {
         let current_time = time_type.format(current_time, ctx.app_options().timestamp_format);
-        ui.label(format!("At {} = {current_time}", timeline.name())).on_hover_text("Does not perform a latest-at query, shows only data logged at exactly the current time cursor position.");
+        ui.label(format!("{} {} = {}", t("At"), timeline.name(), current_time)).on_hover_text(t("Does not perform a latest-at query, shows only data logged at exactly the current time cursor position."));
     } else {
         egui::Grid::new("from_to_labels").show(ui, |ui| {
-            ui.grid_left_hand_label("From");
+            ui.grid_left_hand_label(t("From"));
             resolved_visible_history_boundary_ui(ctx, ui, &resolved_range.start, time_type, true);
             ui.end_row();
 
-            ui.grid_left_hand_label("To");
+            ui.grid_left_hand_label(t("To"));
             resolved_visible_history_boundary_ui(ctx, ui, &resolved_range.end, time_type, false);
             ui.end_row();
         });
@@ -353,18 +354,18 @@ fn resolved_visible_history_boundary_ui(
 ) {
     let boundary_type = match visible_history_boundary {
         TimeRangeBoundary::CursorRelative(_) => match time_type {
-            TimeType::DurationNs | TimeType::TimestampNs => "current time",
-            TimeType::Sequence => "current frame",
+            TimeType::DurationNs | TimeType::TimestampNs => t("current time"),
+            TimeType::Sequence => t("current frame"),
         },
         TimeRangeBoundary::Absolute(_) => match time_type {
-            TimeType::DurationNs | TimeType::TimestampNs => "absolute time",
-            TimeType::Sequence => "frame",
+            TimeType::DurationNs | TimeType::TimestampNs => t("absolute time"),
+            TimeType::Sequence => t("frame"),
         },
         TimeRangeBoundary::Infinite => {
             if low_bound {
-                "beginning of timeline"
+                t("beginning of timeline")
             } else {
-                "end of timeline"
+                t("end of timeline")
             }
         }
     };
@@ -391,13 +392,15 @@ fn resolved_visible_history_boundary_ui(
                             ("ns", 1.)
                         };
 
-                        write!(label, " with {} {} offset", offset as f64 / factor, unit).ok();
+                        write!(label, "{}{} {}{}", t(" with "), offset as f64 / factor, unit, t(" offset")).ok();
                     }
                     TimeType::Sequence => {
                         write!(
                             label,
-                            " with {} offset",
-                            re_format::format_plural_signed_s(offset, "frame")
+                            "{}{}{}",
+                            t(" with "),
+                            re_format::format_plural_signed_s(offset, t("frame")),
+                            t(" offset")
                         )
                         .ok();
                     }

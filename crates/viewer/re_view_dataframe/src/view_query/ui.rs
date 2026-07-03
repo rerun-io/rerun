@@ -10,6 +10,7 @@ use re_sdk_types::blueprint::components;
 use re_sorbet::ColumnSelector;
 use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{TimeDragValue, UiExt as _, icons, list_item};
+use re_ui::localizer::t;
 use re_viewer_context::{
     TimeControlCommand, TimeRangeHighlight, TimeRangeHighlightKind, ViewId,
     ViewSystemExecutionError, ViewerContext,
@@ -36,7 +37,7 @@ impl Query {
             .num_columns(2)
             .spacing(egui::vec2(8.0, 10.0))
             .show(ui, |ui| -> Result<_, ViewSystemExecutionError> {
-                ui.grid_left_hand_label("Timeline");
+                ui.grid_left_hand_label(t("Timeline"));
 
                 if edit_timeline_name(ctx, ui, &mut timeline_name).changed() {
                     self.save_timeline_name(ctx, &timeline_name);
@@ -67,7 +68,7 @@ impl Query {
             (time_drag_value, timeline.typ())
         });
 
-        ui.label("Filter rows by time range:");
+        ui.label(t("Filter rows by time range:"));
         let range = self.filter_by_range()?;
         let (mut start, mut end) = (range.min(), range.max());
 
@@ -77,7 +78,7 @@ impl Query {
             let mut reset_start = false;
 
             ui.list_item_flat_noninteractive(
-                list_item::PropertyContent::new("Start")
+                list_item::PropertyContent::new(t("Start"))
                     .with_action_button_enabled(
                         &re_ui::icons::RESET,
                         "Reset",
@@ -104,7 +105,7 @@ impl Query {
                         } else {
                             ui.add_enabled(false, egui::Label::new("n/a"))
                                 .on_disabled_hover_text(
-                                    "Select an existing timeline to edit this property",
+                                    t("Select an existing timeline to edit this property"),
                                 );
                         }
                     }),
@@ -118,7 +119,7 @@ impl Query {
             let mut reset_to = false;
 
             ui.list_item_flat_noninteractive(
-                list_item::PropertyContent::new("End")
+                list_item::PropertyContent::new(t("End"))
                     .with_action_button_enabled(
                         &re_ui::icons::RESET,
                         "Reset",
@@ -145,7 +146,7 @@ impl Query {
                         } else {
                             ui.add_enabled(false, egui::Label::new("n/a"))
                                 .on_disabled_hover_text(
-                                    "Select an existing timeline to edit this property",
+                                    t("Select an existing timeline to edit this property"),
                                 );
                         }
                     }),
@@ -199,8 +200,8 @@ impl Query {
 
         let before_active = active;
         ui.add_enabled_ui(timeline.is_some(), |ui| {
-            ui.re_checkbox(&mut active, "Filter rows where column is not null:")
-                .on_disabled_hover_text("Select an existing timeline to edit this property");
+            ui.re_checkbox(&mut active, t("Filter rows where column is not null:"))
+                .on_disabled_hover_text(t("Select an existing timeline to edit this property"));
         });
 
         //
@@ -212,7 +213,7 @@ impl Query {
                 ui.spacing_mut().item_spacing.y = 0.0;
 
                 ui.list_item_flat_noninteractive(
-                    list_item::PropertyContent::new("Entity").value_text(
+                    list_item::PropertyContent::new(t("Entity")).value_text(
                         filter
                             .as_ref()
                             .map(|f| f.entity_path.clone())
@@ -220,13 +221,13 @@ impl Query {
                             .to_string(),
                     ),
                 )
-                .on_disabled_hover_text("Select an existing timeline to edit this property");
+                .on_disabled_hover_text(t("Select an existing timeline to edit this property"));
 
                 ui.list_item_flat_noninteractive(
-                    list_item::PropertyContent::new("Component")
+                    list_item::PropertyContent::new(t("Component"))
                         .value_text(filter.as_ref().map(|f| f.component.as_str()).unwrap_or("-")),
                 )
-                .on_disabled_hover_text("Select an existing timeline to edit this property");
+                .on_disabled_hover_text(t("Select an existing timeline to edit this property"));
             });
 
             return Ok(());
@@ -292,7 +293,7 @@ impl Query {
             ));
 
             ui.list_item_flat_noninteractive(
-                list_item::PropertyContent::new("Component").value_fn(|ui, _| {
+                list_item::PropertyContent::new(t("Component")).value_fn(|ui, _| {
                     egui::ComboBox::new("pov_component", "")
                         .selected_text(filter_component.map_or("-", |c| c.as_str()))
                         .show_ui(ui, |ui| {
@@ -360,7 +361,7 @@ impl Query {
 
         let visible_count = selected_columns.len();
         let hidden_count = view_columns.len() - visible_count;
-        let visible_count_label = format!("{visible_count} visible, {hidden_count} hidden");
+        let visible_count_label = format!("{} {}, {} {}", visible_count, t("visible"), hidden_count, t("hidden"));
 
         let mut new_selected_columns = selected_columns.clone();
 
@@ -412,8 +413,8 @@ impl Query {
                     .iter()
                     .any(|d| matches!(d, ColumnDescriptor::RowId(_)));
                 if ui
-                    .re_checkbox(&mut show_row_id, "RowID")
-                    .on_disabled_hover_text("The query timeline must always be visible")
+                    .re_checkbox(&mut show_row_id, t("RowID"))
+                    .on_disabled_hover_text(t("The query timeline must always be visible"))
                     .changed()
                 {
                     if show_row_id {
@@ -436,7 +437,7 @@ impl Query {
 
                 if first {
                     ui.add_space(6.0);
-                    ui.label("Timelines");
+                    ui.label(t("Timelines"));
                     first = false;
                 }
 
@@ -452,7 +453,7 @@ impl Query {
                 ui.add_enabled_ui(is_enabled, |ui| {
                     if ui
                         .re_checkbox(&mut is_visible, column.display_name())
-                        .on_disabled_hover_text("The query timeline must always be visible")
+                        .on_disabled_hover_text(t("The query timeline must always be visible"))
                         .changed()
                     {
                         if is_visible {
@@ -507,7 +508,7 @@ impl Query {
             }
         };
 
-        ui.list_item_flat_noninteractive(list_item::PropertyContent::new("Columns").value_fn(
+        ui.list_item_flat_noninteractive(list_item::PropertyContent::new(t("Columns")).value_fn(
             |ui, _| {
                 MenuButton::new(&visible_count_label)
                     .config(
@@ -537,11 +538,11 @@ impl Query {
     }
 
     fn column_visibility_ui_fallback(ui: &mut egui::Ui) {
-        ui.list_item_flat_noninteractive(list_item::PropertyContent::new("Columns").value_fn(
+        ui.list_item_flat_noninteractive(list_item::PropertyContent::new(t("Columns")).value_fn(
             |ui, _| {
                 ui.add_enabled_ui(false, |ui| {
                     ui.label("n/a").on_disabled_hover_text(
-                        "Select an existing timeline to edit this property",
+                        t("Select an existing timeline to edit this property"),
                     );
                 });
             },
@@ -556,7 +557,7 @@ impl Query {
     ) -> Result<(), ViewSystemExecutionError> {
         let mut auto_scroll = self.auto_scroll_enabled()?;
         if ui
-            .re_checkbox(&mut auto_scroll, "Auto-scroll with time cursor")
+            .re_checkbox(&mut auto_scroll, t("Auto-scroll with time cursor"))
             .changed()
         {
             self.save_auto_scroll_enabled(ctx, auto_scroll);
@@ -567,7 +568,7 @@ impl Query {
                 timeline.is_some_and(|t| t.name() == ctx.time_ctrl.timeline_name());
             if !timelines_match {
                 ui.warning_label(
-                    "Auto-scroll is only active when the view's timeline matches the time panel's active timeline.",
+                    t("Auto-scroll is only active when the view's timeline matches the time panel's active timeline."),
                 );
             }
         }
@@ -580,14 +581,14 @@ impl Query {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
     ) -> Result<(), ViewSystemExecutionError> {
-        ui.label("Empty cells:");
+        ui.label(t("Empty cells:"));
 
         let mut latest_at = self.latest_at_enabled()?;
         let changed = {
-            ui.re_radio_value(&mut latest_at, false, "Leave empty")
+            ui.re_radio_value(&mut latest_at, false, t("Leave empty"))
                 .changed()
         } | {
-            ui.re_radio_value(&mut latest_at, true, "Fill with latest-at values")
+            ui.re_radio_value(&mut latest_at, true, t("Fill with latest-at values"))
                 .changed()
         };
 
@@ -635,14 +636,14 @@ fn time_boundary_ui(
     time: &mut TimeInt,
 ) -> egui::Response {
     if *time == TimeInt::MAX {
-        let mut response = ui.button("+∞").on_hover_text("Click to edit");
+        let mut response = ui.button(t("+∞")).on_hover_text(t("Click to edit"));
         if response.clicked() {
             *time = time_drag_value.max_time();
             response.mark_changed();
         }
         response
     } else if *time == TimeInt::MIN {
-        let mut response = ui.button("–∞").on_hover_text("Click to edit");
+        let mut response = ui.button(t("–∞")).on_hover_text(t("Click to edit"));
         if response.clicked() {
             *time = time_drag_value.min_time();
             response.mark_changed();

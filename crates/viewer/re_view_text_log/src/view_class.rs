@@ -9,6 +9,7 @@ use re_sdk_types::components::TextLogLevel;
 use re_sdk_types::{View as _, ViewClassIdentifier, datatypes};
 use re_ui::list_item::LabelContent;
 use re_ui::{DesignTokens, Help, UiExt as _};
+use re_ui::localizer::t;
 use re_viewer_context::{
     IdentifiedViewSystem as _, ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewContext,
     ViewId, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
@@ -74,7 +75,7 @@ impl ViewClass for TextView {
     }
 
     fn display_name(&self) -> &'static str {
-        "Text log"
+        t("Text log")
     }
 
     fn icon(&self) -> &'static re_ui::Icon {
@@ -82,13 +83,13 @@ impl ViewClass for TextView {
     }
 
     fn help(&self, _os: egui::os::OperatingSystem) -> Help {
-        Help::new("Text log view")
+        Help::new(t("Text log view"))
             .docs_link("https://rerun.io/docs/reference/types/views/text_log_view")
-            .markdown(
+            .markdown(t(
                 "TextLog entries over time.
 
 Filter message types and toggle column visibility in a selection panel.",
-            )
+            ))
     }
 
     fn on_register(
@@ -537,7 +538,7 @@ fn view_property_ui_rows(ctx: &ViewContext<'_>, ui: &mut egui::Ui) {
                     &|_| {},
                     Some(&|ui| {
                         let Ok(state) = ctx.view_state.downcast_ref::<TextViewState>() else {
-                            ui.error_label("Failed to get text log view state");
+                            ui.error_label(t("Failed to get text log view state"));
                             return;
                         };
 
@@ -545,7 +546,7 @@ fn view_property_ui_rows(ctx: &ViewContext<'_>, ui: &mut egui::Ui) {
                             ctx,
                             TextLogRows::descriptor_filter_by_log_level().component,
                         ) else {
-                            ui.error_label("Failed to query text log levels component");
+                            ui.error_label(t("Failed to query text log levels component"));
                             return;
                         };
 

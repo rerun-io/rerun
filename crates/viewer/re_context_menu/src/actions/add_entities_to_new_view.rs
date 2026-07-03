@@ -3,6 +3,7 @@ use itertools::Itertools as _;
 use nohash_hasher::IntSet;
 use re_log_types::{EntityPath, EntityPathFilter, EntityPathRule, RuleEffect};
 use re_sdk_types::ViewClassIdentifier;
+use re_ui::localizer::t;
 use re_ui::UiExt as _;
 use re_viewer_context::{Item, RecommendedView, SystemCommand, SystemCommandSender as _};
 use re_viewport_blueprint::ViewBlueprint;
@@ -35,7 +36,7 @@ impl ContextMenuAction for AddEntitiesToNewViewAction {
             .copied()
             .collect();
 
-        ui.menu_button("Add to new view", |ui| {
+        ui.menu_button(t("Add to new view"), |ui| {
             let buttons_for_view_classes =
                 |ui: &mut egui::Ui, view_classes: &IntSet<ViewClassIdentifier>| {
                     for (identifier, class) in view_classes
@@ -63,14 +64,14 @@ impl ContextMenuAction for AddEntitiesToNewViewAction {
                     }
                 };
             if recommended_view_classes.is_empty() {
-                ui.label("None");
+                ui.label(t("None"));
             } else {
                 buttons_for_view_classes(ui, &recommended_view_classes);
             }
 
             if !other_view_classes.is_empty() {
                 ui.separator();
-                ui.menu_button("Other views", |ui| {
+                ui.menu_button(t("Other views"), |ui| {
                     buttons_for_view_classes(ui, &other_view_classes);
                 });
             }

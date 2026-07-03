@@ -4,6 +4,7 @@ use re_log_types::{
 };
 use re_sdk_types::blueprint::components::LoopMode;
 use re_ui::{HasDesignTokens as _, UICommand, UICommandSender as _, UiExt as _, list_item};
+use re_ui::localizer::t;
 use re_viewer_context::open_url::ViewerOpenUrl;
 use re_viewer_context::{
     StoreViewContext, SystemCommandSender as _, TimeControl, TimeControlCommand, ViewerContext,
@@ -359,21 +360,21 @@ fn selection_context_menu(
     if ui
         .add_enabled(
             is_on_selection,
-            egui::Button::new("Remove time selection").shortcut_text(format!("{modifier}+Click")),
+            egui::Button::new(t("Remove time selection")).shortcut_text(format!("{modifier}+Click")),
         )
-        .on_disabled_hover_text("Open the context menu on selected time to remove it")
+        .on_disabled_hover_text(t("Open the context menu on selected time to remove it"))
         .clicked()
     {
         time_commands.push(TimeControlCommand::RemoveTimeSelection);
     }
 
-    let mut button = egui::Button::new("Save current time selection…");
+    let mut button = egui::Button::new(t("Save current time selection…"));
     if let Some(shortcut) = UICommand::SaveRecordingSelection.formatted_kb_shortcut(ui.ctx()) {
         button = button.shortcut_text(shortcut);
     }
     if ui
         .add_enabled(is_on_selection, button)
-        .on_disabled_hover_text("Open the context menu on selected time to save it")
+        .on_disabled_hover_text(t("Open the context menu on selected time to save it"))
         .clicked()
     {
         ctx.command_sender()
@@ -386,14 +387,14 @@ fn selection_context_menu(
     if ui
         .add_enabled(
             is_on_selection && copy_command.is_ok() && has_time_range,
-            egui::Button::new("Copy link to time selection"),
+            egui::Button::new(t("Copy link to time selection")),
         )
         .on_disabled_hover_text(if let Err(err) = copy_command.as_ref() {
-            format!("Can't share links to the current recording: {err}")
+            format!("{} {}", t("Can't share links to the current recording:"), err)
         } else if has_time_range {
-            "Open the context menu on selected time to copy link".to_owned()
+            t("Open the context menu on selected time to copy link").to_owned()
         } else {
-            "The current recording doesn't support time selection links".to_owned()
+            t("The current recording doesn't support time selection links").to_owned()
         })
         .clicked()
         && let Ok(copy_command) = copy_command
@@ -421,17 +422,17 @@ impl TimeLoopPart {
         let range = range.to_int();
         list_item::list_item_scope(ui, self, |ui| {
             ui.list_item_flat_noninteractive(
-                list_item::PropertyContent::new("Start")
+                list_item::PropertyContent::new(t("Start"))
                     .value_text(time_type.format(range.min, timestamp_format)),
             );
             ui.list_item_flat_noninteractive(
-                list_item::PropertyContent::new("Stop")
+                list_item::PropertyContent::new(t("Stop"))
                     .value_text(time_type.format(range.max, timestamp_format)),
             );
 
             let length = i64::try_from(range.abs_length()).unwrap_or(i64::MAX);
             ui.list_item_flat_noninteractive(
-                list_item::PropertyContent::new("Length")
+                list_item::PropertyContent::new(t("Length"))
                     .value_text(format_duration(time_type, length.into())),
             );
         });

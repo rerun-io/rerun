@@ -1,6 +1,7 @@
 use re_format::{format_f32, format_uint};
 use re_sdk_types::components::{LineStrip2D, LineStrip3D};
 use re_ui::UiExt as _;
+use re_ui::localizer::t;
 use re_viewer_context::{MaybeMutRef, StoreViewContext, UiLayout};
 
 use crate::DEFAULT_NUMBER_WIDTH;
@@ -39,13 +40,13 @@ fn multiline_view_line_strip_3d(
         .header(tokens.deprecated_table_header_height(), |mut header| {
             re_ui::DesignTokens::setup_table_header(&mut header);
             header.col(|ui| {
-                ui.label("x");
+                ui.label(t("x"));
             });
             header.col(|ui| {
-                ui.label("y");
+                ui.label(t("y"));
             });
             header.col(|ui| {
-                ui.label("z");
+                ui.label(t("z"));
             });
         })
         .body(|mut body| {
@@ -104,10 +105,10 @@ fn multiline_view_line_strip_2d(
         .header(tokens.deprecated_table_header_height(), |mut header| {
             re_ui::DesignTokens::setup_table_header(&mut header);
             header.col(|ui| {
-                ui.label("x");
+                ui.label(t("x"));
             });
             header.col(|ui| {
-                ui.label("y");
+                ui.label(t("y"));
             });
         })
         .body(|mut body| {

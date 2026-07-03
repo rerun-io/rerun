@@ -6,6 +6,7 @@ use egui::ScrollArea;
 #[cfg(debug_assertions)]
 use egui::containers::menu;
 use egui::containers::menu::{MenuButton, MenuConfig};
+use re_ui::localizer::t;
 use re_ui::menu::menu_style;
 use re_ui::{UICommand, UICommandSender as _, UiExt as _, icons};
 use re_viewer_context::ActiveStoreContext;
@@ -26,7 +27,7 @@ impl App {
             .as_image()
             .max_height(12.0)
             .tint(icon_tint)
-            .alt_text("Menu");
+            .alt_text(t("Menu"));
 
         MenuButton::new((image, icons::DROPDOWN_ARROW.as_image().tint(icon_tint)))
             .config(MenuConfig::new().style(menu_style()))
@@ -77,7 +78,7 @@ impl App {
         // no wrapping: make as wide as needed
 
         let build_info = self.build_info();
-        ui.menu_button("About", |ui| {
+        ui.menu_button(t("About"), |ui| {
             about_rerun_ui(ui, build_info, render_state);
         });
 
@@ -111,10 +112,10 @@ impl App {
             // On the web the browser controls the zoom
             let zoom_factor = ui.zoom_factor();
             re_ui::menu::align_non_button_menu_items(ui, |ui| {
-                ui.weak(format!("Current zoom: {:.0}%", zoom_factor * 100.0))
-                    .on_hover_text(
+                ui.weak(format!("{} {:.0}%", t("Current zoom:"), zoom_factor * 100.0))
+                    .on_hover_text(t(
                         "The UI zoom level on top of the operating system's default value",
-                    );
+                    ));
             });
             UICommand::ZoomIn.menu_button_ui(ui, &self.command_sender);
             UICommand::ZoomOut.menu_button_ui(ui, &self.command_sender);
@@ -148,7 +149,7 @@ impl App {
         backend_menu_ui(&self.command_sender, ui, render_state);
 
         #[cfg(debug_assertions)]
-        menu::SubMenuButton::new("Debug")
+        menu::SubMenuButton::new(t("Debug"))
             .config(
                 menu::MenuConfig::new()
                     .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside)
@@ -158,7 +159,7 @@ impl App {
                 ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
                 debug_menu_options_ui(ui, &mut self.state.app_options, &self.command_sender);
 
-                ui.label("egui debug options:");
+                ui.label(t("egui debug options:"));
                 ui.weak(format!("pixels_per_point: {:?}", ui.pixels_per_point()));
                 egui_debug_options_ui(ui);
             });
@@ -188,11 +189,11 @@ impl App {
             ui.add_enabled_ui(false, |ui| {
                 ui.horizontal(|ui| {
                     ui.add(save_recording_button);
-                    ui.loading_indicator("Saving recording");
+                    ui.loading_indicator(t("Saving recording"));
                 });
                 ui.horizontal(|ui| {
                     ui.add(save_selection_button);
-                    ui.loading_indicator("Saving selection");
+                    ui.loading_indicator(t("Saving selection"));
                 });
             });
         } else {
@@ -201,7 +202,7 @@ impl App {
             ui.add_enabled_ui(entity_db_is_nonempty, |ui| {
                 if ui
                     .add(save_recording_button)
-                    .on_hover_text("Save all data to a Rerun data file (.rrd)")
+                    .on_hover_text(t("Save all data to a Rerun data file (.rrd)"))
                     .clicked()
                 {
                     ui.close();
@@ -217,7 +218,7 @@ impl App {
                 if ui
                     .add_enabled(loop_selection.is_some(), save_selection_button)
                     .on_hover_text(
-                        "Save data for the current loop selection to a Rerun data file (.rrd)",
+                        t("Save data for the current loop selection to a Rerun data file (.rrd)"),
                     )
                     .clicked()
                 {
@@ -263,22 +264,22 @@ pub fn about_rerun_ui(
                 .as_image()
                 .fit_to_exact_size(egui::Vec2::splat(logo_size))
                 .corner_radius(4.0)
-                .alt_text("Rerun"),
+                .alt_text(t("Rerun")),
         );
 
         ui.vertical(|ui|{
             ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
-            ui.label(
+            ui.label(t(
                 "Rerun is a toolchain for robotics and physical AI that makes it easy to log, query, visualize, and train on multi-rate, multimodal data.",
-            );
+            ));
 
             ui.add_space(4.0);
 
             ui.horizontal(|ui| {
                 ui.spacing_mut().item_spacing.x = 0.0;
-                ui.label("Learn more at ");
-                ui.hyperlink_to("rerun.io", "https://rerun.io/");
-                ui.label(".");
+                ui.label(t("Learn more at "));
+                ui.hyperlink_to(t("rerun.io"), "https://rerun.io/");
+                ui.label(t("."));
             });
         });
     });
@@ -301,16 +302,16 @@ pub fn about_rerun_ui(
     };
 
     egui::Grid::new("build_info").num_columns(2).show(ui, |ui| {
-        ui.label("Crate");
+        ui.label(t("Crate"));
         ui.label(crate_name.as_ref());
         ui.end_row();
 
-        ui.label("Version");
+        ui.label(t("Version"));
         ui.label(version);
         ui.end_row();
 
         if !datetime.is_empty() {
-            ui.label("Built");
+            ui.label(t("Built"));
             ui.label(datetime.as_ref());
             ui.end_row();
         }
@@ -318,17 +319,17 @@ pub fn about_rerun_ui(
         // It is really the features of `rerun-cli` (the `rerun` binary) that are interesting.
         // For the web-viewer (`crate_name: "re_viewer"`) it is much less interesting.
         if crate_name == "rerun-cli" && !features.is_empty() {
-            ui.label("Features");
+            ui.label(t("Features"));
             ui.label(features.as_ref());
             ui.end_row();
         }
 
-        ui.label("Platform");
+        ui.label(t("Platform"));
         ui.label(target_triple.as_ref());
         ui.end_row();
 
         if !rustc_version.is_empty() {
-            ui.label("Compiler");
+            ui.label(t("Compiler"));
             let mut compiler = format!("rustc {rustc_version}");
             if !llvm_version.is_empty() {
                 write!(compiler, ", LLVM {llvm_version}").ok();
@@ -368,37 +369,37 @@ fn render_state_ui(ui: &mut egui::Ui, render_state: &egui_wgpu::RenderState) {
         // > name: "ANGLE (Apple, Apple M1 Pro, OpenGL 4.1)", device_type: IntegratedGpu, backend: Gl, driver: "", driver_info: ""
 
         egui::Grid::new("adapter_info").show(ui, |ui| {
-            ui.label("Backend");
+            ui.label(t("Backend"));
             ui.label(backend.to_str()); // TODO(wgpu#5170): Use std::fmt::Display for backend.
             ui.end_row();
 
-            ui.label("Device Type");
+            ui.label(t("Device Type"));
             ui.label(format!("{device_type:?}"));
             ui.end_row();
 
             if !name.is_empty() {
-                ui.label("Name");
+                ui.label(t("Name"));
                 ui.label(format!("{name:?}"));
                 ui.end_row();
             }
             if !driver.is_empty() {
-                ui.label("Driver");
+                ui.label(t("Driver"));
                 ui.label(format!("{driver:?}"));
                 ui.end_row();
             }
             if !driver_info.is_empty() {
-                ui.label("Driver info");
+                ui.label(t("Driver info"));
                 ui.label(format!("{driver_info:?}"));
                 ui.end_row();
             }
             if *vendor != 0 {
                 // TODO(emilk): decode using https://github.com/gfx-rs/wgpu/blob/767ac03245ee937d3dc552edc13fe7ab0a860eec/wgpu-hal/src/auxil/mod.rs#L7
-                ui.label("Vendor");
+                ui.label(t("Vendor"));
                 ui.label(format!("0x{vendor:04X}"));
                 ui.end_row();
             }
             if *device != 0 {
-                ui.label("Device");
+                ui.label(t("Device"));
                 ui.label(format!("0x{device:02X}"));
                 ui.end_row();
             }
@@ -414,13 +415,13 @@ fn render_state_ui(ui: &mut egui::Ui, render_state: &egui_wgpu::RenderState) {
     };
 
     egui::Grid::new("wgpu_info").num_columns(2).show(ui, |ui| {
-        ui.label("Rendering backend");
+        ui.label(t("Rendering backend"));
         wgpu_adapter_ui(ui, &render_state.adapter);
         ui.end_row();
 
         #[cfg(not(target_arch = "wasm32"))]
         if 1 < render_state.available_adapters.len() {
-            ui.label("Other rendering backends");
+            ui.label(t("Other rendering backends"));
             ui.vertical(|ui| {
                 for adapter in &*render_state.available_adapters {
                     if adapter.get_info() != render_state.adapter.get_info() {

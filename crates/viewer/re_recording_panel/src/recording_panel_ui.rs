@@ -16,6 +16,8 @@ use re_viewer_context::{
     SystemCommandSender as _, ViewerContext,
 };
 
+use re_ui::localizer::t;
+
 use crate::RecordingPanelCommand;
 use crate::data::{
     AppIdData, DatasetData, EntryData, EntryTreeNode, FailedEntryData, RecordingPanelData,
@@ -59,8 +61,8 @@ impl RecordingPanel {
 
         ui.panel_content(|ui| {
             ui.panel_title_bar_with_buttons(
-                "Sources",
-                Some("Your connected servers, opened recordings and tables."),
+                t("Sources"),
+                Some(t("Your connected servers, opened recordings and tables.")),
                 |ui| {
                     add_button_ui(ctx, ui, &recording_panel_data);
                 },
@@ -110,8 +112,8 @@ fn add_button_ui(
     _recording_panel_data: &RecordingPanelData<'_>,
 ) {
     ui.add(
-        ui.small_icon_button_widget(&re_ui::icons::ADD, "Add…")
-            .on_hover_text("Open a file or connect to a server")
+        ui.small_icon_button_widget(&re_ui::icons::ADD, t("Add…"))
+            .on_hover_text(t("Open a file or connect to a server"))
             .on_menu(|ui| {
                 if re_ui::UICommand::Open
                     .menu_button_ui(ui, ctx.command_sender())
@@ -138,10 +140,10 @@ fn add_button_ui(
                     ui.separator();
                     ui.add_enabled(
                         false,
-                        egui::Button::new(egui::RichText::new("Debug-only tools").italics()),
+                        egui::Button::new(egui::RichText::new(t("Debug-only tools")).italics()),
                     );
 
-                    if ui.button("Print recording entity DBs").clicked() {
+                    if ui.button(t("Print recording entity DBs")).clicked() {
                         let recording_entity_dbs = ctx
                             .store_bundle()
                             .entity_dbs()
@@ -150,7 +152,7 @@ fn add_button_ui(
                         println!("Recording entity DBs:\n{recording_entity_dbs:#?}\n");
                     }
 
-                    if ui.button("Print recording panel data").clicked() {
+                    if ui.button(t("Print recording panel data")).clicked() {
                         println!("Recording panel data:\n{_recording_panel_data:#?}\n");
                     }
                 }
@@ -178,7 +180,7 @@ fn all_sections_ui(
 
     if recording_panel_data.is_empty() {
         ui.add_space(ui.tokens().panel_margin().left as f32);
-        ui.weak("Click + to add a recording, connect to a server or drag and drop a file directly to the viewer");
+        ui.weak(t("Click + to add a recording, connect to a server or drag and drop a file directly to the viewer"));
     }
 
     //
@@ -203,7 +205,7 @@ fn all_sections_ui(
                 ui,
                 id,
                 true,
-                list_item::LabelContent::header("Local"),
+                list_item::LabelContent::header(t("Local")),
                 |ui| {
                     for app_id_data in &recording_panel_data.local_apps {
                         app_id_section_ui(ctx, ui, app_id_data);
@@ -245,7 +247,7 @@ fn welcome_item_ui(
         Route::RedapServer(origin) if origin == &*EXAMPLES_ORIGIN
     );
 
-    let title = list_item::LabelContent::header("Welcome to rerun").with_icon(&icons::HOME);
+    let title = list_item::LabelContent::header(t("Welcome to rerun")).with_icon(&icons::HOME);
 
     let list_item = ui.list_item().header().selected(selected).active(active);
 
@@ -293,17 +295,17 @@ fn server_section_ui(
     let content = list_item::LabelContent::header(origin.host.to_string())
         .with_always_show_buttons(true)
         .with_button(
-            ui.small_icon_button_widget(&icons::MORE, "Actions")
+            ui.small_icon_button_widget(&icons::MORE, t("Actions"))
                 .on_menu(move |ui| {
                     if icons::RESET
-                        .as_button_with_label(ui.tokens(), "Refresh")
+                        .as_button_with_label(ui.tokens(), t("Refresh"))
                         .ui(ui)
                         .clicked()
                     {
                         servers.send_command(Command::RefreshCollection(origin.clone()));
                     }
                     if icons::SETTINGS
-                        .as_button_with_label(ui.tokens(), "Edit")
+                        .as_button_with_label(ui.tokens(), t("Edit"))
                         .ui(ui)
                         .clicked()
                     {
@@ -312,7 +314,7 @@ fn server_section_ui(
                         ));
                     }
                     if icons::TRASH
-                        .as_button_with_label(ui.tokens(), "Remove")
+                        .as_button_with_label(ui.tokens(), t("Remove"))
                         .ui(ui)
                         .clicked()
                     {
@@ -353,7 +355,7 @@ fn server_entries_ui(
             ui.list_item_flat_noninteractive(list_item::CustomContent::new(|ui, _| {
                 // TODO(emilk): ideally we should show this loading indicator left of the server name,
                 // instead of the expand-chevron.
-                ui.loading_indicator("Loading server entries");
+                ui.loading_indicator(t("Loading server entries"));
             }));
         }
 
@@ -362,9 +364,9 @@ fn server_entries_ui(
             is_auth_error,
         } => {
             let (label, color) = if *is_auth_error {
-                ("Authentication required", ui.visuals().weak_text_color())
+                (t("Authentication required"), ui.visuals().weak_text_color())
             } else {
-                ("Failed to load entries", ui.visuals().error_fg_color)
+                (t("Failed to load entries"), ui.visuals().error_fg_color)
             };
             ui.list_item_flat_noninteractive(list_item::LabelContent::new(
                 egui::RichText::new(label).color(color),
@@ -471,7 +473,7 @@ fn dataset_entry_ui(
             // Close-button:
             let resp = ui
                 .small_icon_button(&icons::CLOSE_SMALL, "Close all recordings in this dataset")
-                .on_hover_text("Close all recordings in this dataset. This cannot be undone.");
+                .on_hover_text(t("Close all recordings in this dataset. This cannot be undone."));
 
             if resp.clicked() {
                 for db in displayed_segments.iter().filter_map(SegmentData::entity_db) {
@@ -525,8 +527,8 @@ fn dataset_entry_ui(
         let url = ViewerOpenUrl::from_route(ctx.store_hub(), &new_route)
             .and_then(|url| url.sharable_url(None));
         if ui
-            .add_enabled(url.is_ok(), egui::Button::new("Copy link to dataset"))
-            .on_disabled_hover_text("Can't copy a link to this dataset")
+            .add_enabled(url.is_ok(), egui::Button::new(t("Copy link to dataset")))
+            .on_disabled_hover_text(t("Can't copy a link to this dataset"))
             .clicked()
             && let Ok(url) = url
         {
@@ -534,12 +536,12 @@ fn dataset_entry_ui(
                 .send_system(SystemCommand::CopyViewerUrl(url));
         }
 
-        if ui.button("Copy dataset name").clicked() {
+        if ui.button(t("Copy dataset name")).clicked() {
             re_log::info!("Copied {name:?} to clipboard");
             ui.copy_text(name.to_string());
         }
 
-        if ui.button("Copy dataset id").clicked() {
+        if ui.button(t("Copy dataset id")).clicked() {
             let id = entry_id.id.to_string();
             re_log::info!("Copied {id:?} to clipboard");
             ui.copy_text(id);
@@ -653,7 +655,7 @@ fn app_id_section_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, local_app_id: &
             // Close-button:
             let resp = ui
                 .small_icon_button(&icons::CLOSE_SMALL, "Close all recordings in this dataset")
-                .on_hover_text("Close all recordings in this dataset. This cannot be undone.");
+                .on_hover_text(t("Close all recordings in this dataset. This cannot be undone."));
 
             if resp.clicked() {
                 ctx.command_sender()
@@ -741,13 +743,13 @@ fn receiver_ui(
                 rect,
                 1.0,
                 Some(visuals.text_color()),
-                "Loading data source",
+                t("Loading data source"),
             );
         })
         .with_buttons(|ui| {
             let resp = ui
                 .small_icon_button(&re_ui::icons::REMOVE, "Disconnect")
-                .on_hover_text("Disconnect from this source");
+                .on_hover_text(t("Disconnect from this source"));
 
             if resp.clicked() {
                 ctx.connected_receivers.remove(receiver);
@@ -767,11 +769,11 @@ fn receiver_ui(
     response.context_menu(|ui| {
         let url = ViewerOpenUrl::from_data_source(receiver).and_then(|url| url.sharable_url(None));
         if ui
-            .add_enabled(url.is_ok(), egui::Button::new("Copy link to segment"))
+            .add_enabled(url.is_ok(), egui::Button::new(t("Copy link to segment")))
             .on_disabled_hover_text(if let Err(err) = url.as_ref() {
-                format!("Can't copy a link to this segment: {err}")
+                format!("{}: {err}", t("Can't copy a link to this segment"))
             } else {
-                "Can't copy a link to this segment".to_owned()
+                t("Can't copy a link to this segment").to_string()
             })
             .clicked()
             && let Ok(url) = url
@@ -780,7 +782,7 @@ fn receiver_ui(
                 .send_system(SystemCommand::CopyViewerUrl(url));
         }
 
-        if ui.button("Copy segment name").clicked() {
+        if ui.button(t("Copy segment name")).clicked() {
             re_log::info!("Copied {name:?} to clipboard");
             ui.copy_text(name);
         }

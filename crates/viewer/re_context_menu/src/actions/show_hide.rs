@@ -1,4 +1,5 @@
 use re_entity_db::InstancePath;
+use re_ui::localizer::t;
 use re_viewer_context::{ContainerId, Contents, Item, ViewId};
 
 use crate::visibility_actions::{entity_visibility_in_view, set_entity_visibility_in_view};
@@ -33,9 +34,9 @@ impl ContextMenuAction for ShowAction {
 
     fn label(&self, ctx: &ContextMenuContext<'_>) -> String {
         if ctx.selection.len() > 1 {
-            "Show all".to_owned()
+            t("Show all").to_owned()
         } else {
-            "Show".to_owned()
+            t("Show").to_owned()
         }
     }
 
@@ -93,9 +94,9 @@ impl ContextMenuAction for HideAction {
 
     fn label(&self, ctx: &ContextMenuContext<'_>) -> String {
         if ctx.selection.len() > 1 {
-            "Hide all".to_owned()
+            t("Hide all").to_owned()
         } else {
-            "Hide".to_owned()
+            t("Hide").to_owned()
         }
     }
 

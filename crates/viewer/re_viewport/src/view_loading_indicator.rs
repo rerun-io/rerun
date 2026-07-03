@@ -1,3 +1,5 @@
+use re_ui::localizer::t;
+
 /// Paint the standard loading indicator for views whose required data is still being fetched.
 pub fn paint_view_loading_indicator(
     ui: &mut egui::Ui,
@@ -16,9 +18,9 @@ pub fn paint_view_loading_indicator(
 
     if 0.0 < loading_indicator_opacity {
         let reason = if recording.is_downloading_manifest() {
-            "Downloading manifest from redap"
+            t("Downloading manifest from redap")
         } else {
-            "Fetching chunks from redap"
+            t("Fetching chunks from redap")
         };
 
         re_ui::loading_indicator::paint_loading_indicator_inside(

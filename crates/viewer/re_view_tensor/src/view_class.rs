@@ -12,6 +12,7 @@ use re_sdk_types::components::{
 use re_sdk_types::datatypes::TensorData;
 use re_sdk_types::{View as _, ViewClassIdentifier};
 use re_ui::{Help, UiExt as _, list_item};
+use re_ui::localizer::t;
 use re_view::view_property_ui;
 use re_viewer_context::{
     ColormapWithRange, IdentifiedViewSystem as _, IndicatedEntities, Item, PerVisualizerType,
@@ -62,7 +63,7 @@ impl ViewClass for TensorView {
     }
 
     fn display_name(&self) -> &'static str {
-        "Tensor"
+        t("Tensor")
     }
 
     fn icon(&self) -> &'static re_ui::Icon {
@@ -70,13 +71,13 @@ impl ViewClass for TensorView {
     }
 
     fn help(&self, _os: egui::os::OperatingSystem) -> Help {
-        Help::new("Tensor view")
+        Help::new(t("Tensor view"))
             .docs_link("https://rerun.io/docs/reference/types/views/tensor_view")
-            .markdown(
+            .markdown(t(
                 "An N-dimensional tensor displayed as a 2D slice with a custom colormap.
 
 Set the displayed dimensions in a selection panel.",
-            )
+            ))
     }
 
     fn on_register(
@@ -167,7 +168,7 @@ Set the displayed dimensions in a selection panel.",
             )?;
 
             ui.separator();
-            ui.strong("Dimension Mapping");
+            ui.strong(t("Dimension Mapping"));
             dimension_mapping_ui(
                 ctx,
                 ui,
@@ -178,7 +179,7 @@ Set the displayed dimensions in a selection panel.",
 
             // TODO(andreas): this is a bit too inconsistent with the other UIs - we don't offer the same reset/option buttons here
             if ui
-                .button("Reset to default blueprint")
+                .button(t("Reset to default blueprint"))
                 .on_hover_text("Reset dimension mapping to the previously set default blueprint")
                 .clicked()
             {
@@ -188,7 +189,7 @@ Set the displayed dimensions in a selection panel.",
             if ui
                 .add_enabled(
                     slice_property.any_non_empty(),
-                    egui::Button::new("Reset to heuristic"),
+                    egui::Button::new(t("Reset to heuristic")),
                 )
                 .on_hover_text("Reset dimension mapping to the heuristic, i.e. as if never set")
                 .on_disabled_hover_text("No custom dimension mapping set")

@@ -1569,6 +1569,37 @@ fn paint_gradient_rect(
     ui.painter().add(mesh);
 }
 
+/// Localized UI helpers that call [`crate::localizer::t`] on the input text.
+///
+/// These are the primary API for creating localized UI elements.
+pub trait UiLocalized: UiExt {
+    fn t_label(&mut self, text: &str) -> egui::Response {
+        self.ui_mut().label(crate::localizer::t(text))
+    }
+
+    fn t_small(&mut self, text: &str) -> egui::Response {
+        self.ui_mut().small(crate::localizer::t(text))
+    }
+
+    fn t_strong(&mut self, text: &str) -> egui::Response {
+        self.ui_mut().strong(crate::localizer::t(text))
+    }
+
+    fn t_button(&mut self, text: &str) -> egui::Response {
+        self.ui_mut().button(crate::localizer::t(text))
+    }
+
+    fn t_checkbox(&mut self, text: &str, checked: &mut bool) -> egui::Response {
+        self.ui_mut().checkbox(checked, crate::localizer::t(text))
+    }
+
+    fn t_radio_value(&mut self, text: &str, current: &mut bool) -> egui::Response {
+        self.ui_mut().radio_value(current, true, crate::localizer::t(text))
+    }
+}
+
+impl<T: UiExt + ?Sized> UiLocalized for T {}
+
 impl UiExt for egui::Ui {
     #[inline]
     fn ui(&self) -> &egui::Ui {

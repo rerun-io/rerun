@@ -6,6 +6,7 @@ use re_data_ui::item_ui;
 use re_entity_db::{EntityPath, EntityTree, InstancePath};
 use re_log_types::{ResolvedEntityPathFilter, ResolvedEntityPathRule};
 use re_ui::filter_widget::{FilterMatcher, FilterState, PathRanges, format_matching_text};
+use re_ui::localizer::t;
 use re_ui::{UiExt as _, list_item};
 use re_viewer_context::{DataQueryResult, ViewId, ViewerContext};
 use re_viewport_blueprint::{
@@ -39,7 +40,7 @@ impl ViewEntityPicker {
         self.modal_handler.ui(
             egui_ctx,
             || {
-                re_ui::modal::ModalWrapper::new("Add/remove Entities")
+                re_ui::modal::ModalWrapper::new(t("Add/remove Entities"))
                     .min_height(f32::min(160.0, egui_ctx.content_rect().height() * 0.8))
                     .full_span_content(true)
                     // we set the scroll area ourselves
@@ -61,7 +62,7 @@ impl ViewEntityPicker {
 
                 ui.add_space(5.0);
                 ui.panel_content(|ui| {
-                    self.filter_state.search_field_ui(ui, "Search for entity…");
+                    self.filter_state.search_field_ui(ui, t("Search for entity…"));
                 });
                 ui.add_space(5.0);
 
@@ -115,7 +116,7 @@ fn add_entities_ui(
             );
         });
     } else {
-        ui.label("No entities match the filter.");
+        ui.label(t("No entities match the filter."));
     }
 }
 
@@ -235,7 +236,7 @@ fn add_entities_line_ui(
                 let enabled = add_info.can_add_self_or_descendant.is_compatible();
 
                 ui.add_enabled_ui(enabled, |ui| {
-                    let response = ui.small_icon_button(&re_ui::icons::ADD, "Include entity");
+                    let response = ui.small_icon_button(&re_ui::icons::ADD, t("Include entity"));
 
                     if response.clicked() {
                         view.contents.remove_filter_rule_for(ctx, entity_path);
@@ -247,11 +248,11 @@ fn add_entities_line_ui(
 
                     if enabled {
                         if add_info.can_add.is_compatible_and_missing() {
-                            response.on_hover_text(
+                            response.on_hover_text(t(
                                 "Include this entity and all its descendants in the view",
-                            );
+                            ));
                         } else {
-                            response.on_hover_text("Add descendants of this entity to the view");
+                            response.on_hover_text(t("Add descendants of this entity to the view"));
                         }
                     } else if let CanAddToView::No { reason } = &add_info.can_add {
                         response.on_disabled_hover_text(reason);
@@ -260,22 +261,22 @@ fn add_entities_line_ui(
             } else {
                 // Reset-button
                 // Shows when an entity is explicitly excluded or included
-                let response = ui.small_icon_button(&re_ui::icons::RESET, "Remove this rule");
+                let response = ui.small_icon_button(&re_ui::icons::RESET, t("Remove this rule"));
 
                 if response.clicked() {
                     view.contents.remove_filter_rule_for(ctx, entity_path);
                 }
 
                 if is_explicitly_excluded {
-                    response.on_hover_text("Stop excluding this entity path.");
+                    response.on_hover_text(t("Stop excluding this entity path."));
                 } else if is_explicitly_included {
-                    response.on_hover_text("Stop including this entity path.");
+                    response.on_hover_text(t("Stop including this entity path."));
                 }
             }
         } else if is_included {
             // Remove-button
             // Shows when an entity is already included (but not explicitly)
-            let response = ui.small_icon_button(&re_ui::icons::REMOVE, "Exclude entity");
+            let response = ui.small_icon_button(&re_ui::icons::REMOVE, t("Exclude entity"));
 
             if response.clicked() {
                 view.contents.raw_add_entity_exclusion(
@@ -284,7 +285,7 @@ fn add_entities_line_ui(
                 );
             }
 
-            response.on_hover_text("Exclude this entity and all its descendants from the view");
+            response.on_hover_text(t("Exclude this entity and all its descendants from the view"));
         } else {
             // Add-button:
             // Shows when an entity is not included
@@ -292,7 +293,7 @@ fn add_entities_line_ui(
             let enabled = add_info.can_add_self_or_descendant.is_compatible();
 
             ui.add_enabled_ui(enabled, |ui| {
-                let response = ui.small_icon_button(&re_ui::icons::ADD, "Include entity");
+                let response = ui.small_icon_button(&re_ui::icons::ADD, t("Include entity"));
 
                 if response.clicked() {
                     view.contents.raw_add_entity_inclusion(
@@ -303,11 +304,11 @@ fn add_entities_line_ui(
 
                 if enabled {
                     if add_info.can_add.is_compatible_and_missing() {
-                        response.on_hover_text(
+                        response.on_hover_text(t(
                             "Include this entity and all its descendants in the view",
-                        );
+                        ));
                     } else {
-                        response.on_hover_text("Add descendants of this entity to the view");
+                        response.on_hover_text(t("Add descendants of this entity to the view"));
                     }
                 } else if let CanAddToView::No { reason } = &add_info.can_add {
                     response.on_disabled_hover_text(reason);

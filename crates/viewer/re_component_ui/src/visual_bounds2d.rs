@@ -2,6 +2,7 @@ use egui::NumExt as _;
 use re_sdk_types::blueprint::components::VisualBounds2D;
 use re_sdk_types::datatypes::Range2D;
 use re_ui::UiExt as _;
+use re_ui::localizer::t;
 use re_viewer_context::{MaybeMutRef, StoreViewContext};
 
 pub fn multiline_edit_visual_bounds2d(
@@ -24,7 +25,7 @@ pub fn multiline_edit_visual_bounds2d(
 
     let response_y = ui.list_item().interactive(false).show_hierarchical(
         ui,
-        re_ui::list_item::PropertyContent::new("y").value_fn(|ui, _| {
+        re_ui::list_item::PropertyContent::new(t("y")).value_fn(|ui, _| {
             if let Some(value) = value.as_mut() {
                 any_edit |= range_mut_ui(ui, &mut value.y_range.0).changed();
             } else {

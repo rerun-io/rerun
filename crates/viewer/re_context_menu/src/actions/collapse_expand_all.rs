@@ -4,6 +4,7 @@
 
 use re_entity_db::InstancePath;
 use re_log_types::StoreKind;
+use re_ui::localizer::t;
 use re_viewer_context::{CollapseScope, ContainerId, Item, ItemContext, ViewId};
 
 use crate::collapse_expand::{
@@ -57,8 +58,8 @@ impl ContextMenuAction for CollapseExpandAllAction {
 
     fn label(&self, _ctx: &ContextMenuContext<'_>) -> String {
         match self {
-            Self::CollapseAll => "Collapse all".to_owned(),
-            Self::ExpandAll => "Expand all".to_owned(),
+            Self::CollapseAll => t("Collapse all").to_owned(),
+            Self::ExpandAll => t("Expand all").to_owned(),
         }
     }
 

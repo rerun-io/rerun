@@ -10,6 +10,7 @@ use re_sdk_types::{ComponentDescriptor, components::TransformFrameId};
 use re_tracing::profile_function;
 use re_ui::list_item::{self, ListItemContentButtonsExt as _, PropertyContent};
 use re_ui::text_edit::autocomplete_text_edit;
+use re_ui::localizer::t;
 use re_ui::{
     ComboItem, ComboItemHeader, OnResponseExt as _, SyntaxHighlighting as _, UiExt as _, icons,
 };
@@ -76,9 +77,9 @@ impl SelectionPanel {
 
         panel.show_animated_inside(ui, expanded, |ui: &mut egui::Ui| {
             ui.panel_content(|ui| {
-                let hover = "The selection view contains information and options about \
-                    the currently selected object(s)";
-                ui.panel_title_bar("Selection", Some(hover));
+                let hover = t("The selection view contains information and options about \
+                    the currently selected object(s)");
+                ui.panel_title_bar(t("Selection"), Some(hover));
             });
 
             // move the vertical spacing between the title and the content to _inside_ the scroll
@@ -147,8 +148,9 @@ impl SelectionPanel {
                     .show_flat(
                         ui,
                         list_item::LabelContent::new(format!(
-                            "{} selected items",
-                            re_format::format_uint(selection.len())
+                            "{} {}",
+                            re_format::format_uint(selection.len()),
+                            t("selected items"),
                         )),
                     );
 
@@ -192,17 +194,17 @@ impl SelectionPanel {
                 let is_static = engine
                     .store()
                     .entity_has_static_component(entity_path, component_descriptor.component);
-                ui.list_item_flat_noninteractive(PropertyContent::new("Parent entity").value_fn(
+                ui.list_item_flat_noninteractive(PropertyContent::new(t("Parent entity")).value_fn(
                     |ui, _| {
                         item_ui::entity_path_parts_buttons(&store_view_ctx, ui, None, entity_path);
                     },
                 ));
 
                 ui.list_item_flat_noninteractive(
-                    PropertyContent::new("Index type").value_text(if is_static {
-                        "Static"
+                    PropertyContent::new(t("Index type")).value_text(if is_static {
+                        t("Static")
                     } else {
-                        "Temporal"
+                        t("Temporal")
                     }),
                 );
 
@@ -213,7 +215,7 @@ impl SelectionPanel {
                 } = component_descriptor;
 
                 if let Some(archetype_name) = archetype_name {
-                    ui.list_item_flat_noninteractive(PropertyContent::new("Archetype").value_fn(
+                    ui.list_item_flat_noninteractive(PropertyContent::new(t("Archetype")).value_fn(
                         |ui, _| {
                             ui.label(archetype_name.short_name()).on_hover_ui(|ui| {
                                 ui.spacing_mut().item_spacing.y = 12.0;
@@ -221,7 +223,7 @@ impl SelectionPanel {
                                 ui.strong(archetype_name.full_name());
 
                                 if let Some(doc_url) = archetype_name.doc_url() {
-                                    ui.re_hyperlink("Full documentation", doc_url, true);
+                                    ui.re_hyperlink(t("Full documentation"), doc_url, true);
                                 }
                             });
                         },
@@ -229,12 +231,12 @@ impl SelectionPanel {
                 }
 
                 ui.list_item_flat_noninteractive(
-                    PropertyContent::new("Component").value_text(component.as_str()),
+                    PropertyContent::new(t("Component")).value_text(component.as_str()),
                 );
 
                 if let Some(component_type) = component_type {
                     ui.list_item_flat_noninteractive(
-                        PropertyContent::new("Component type").value_fn(|ui, _| {
+                        PropertyContent::new(t("Component type")).value_fn(|ui, _| {
                             ui.label(component_type.short_name()).on_hover_ui(|ui| {
                                 ui.spacing_mut().item_spacing.y = 12.0;
 
@@ -251,7 +253,7 @@ impl SelectionPanel {
                                 }
 
                                 if let Some(doc_url) = component_type.doc_url() {
-                                    ui.re_hyperlink("Full documentation", doc_url, true);
+                                    ui.re_hyperlink(t("Full documentation"), doc_url, true);
                                 }
                             });
                         }),
@@ -265,7 +267,7 @@ impl SelectionPanel {
                 let store_view_ctx =
                     ctx.guess_store_view_context_for_entity(&instance_path.entity_path);
 
-                ui.list_item_flat_noninteractive(PropertyContent::new("Entity path").value_fn(
+                ui.list_item_flat_noninteractive(PropertyContent::new(t("Entity path")).value_fn(
                     |ui, _| {
                         item_ui::entity_path_parts_buttons(
                             &store_view_ctx,
@@ -278,7 +280,7 @@ impl SelectionPanel {
 
                 if instance_path.instance.is_specific() {
                     ui.list_item_flat_noninteractive(
-                        PropertyContent::new("Instance")
+                        PropertyContent::new(t("Instance"))
                             .value_text(instance_path.instance.to_string()),
                     );
                 }
@@ -304,7 +306,7 @@ impl SelectionPanel {
             }) => {
                 let store_view_ctx =
                     ctx.guess_store_view_context_for_entity(&instance_path.entity_path);
-                ui.list_item_flat_noninteractive(PropertyContent::new("Stream entity").value_fn(
+                ui.list_item_flat_noninteractive(PropertyContent::new(t("Stream entity")).value_fn(
                     |ui, _| {
                         item_ui::entity_path_parts_buttons(
                             &store_view_ctx,
@@ -316,7 +318,7 @@ impl SelectionPanel {
                 ));
 
                 if instance_path.instance.is_specific() {
-                    ui.list_item_flat_noninteractive(PropertyContent::new("Instance").value_fn(
+                    ui.list_item_flat_noninteractive(PropertyContent::new(t("Instance")).value_fn(
                         |ui, _| {
                             let response = ui.button(instance_path.instance.to_string());
                             cursor_interact_with_selectable(
@@ -361,7 +363,7 @@ impl SelectionPanel {
         };
 
         if let Some(data_ui_item) = data_section_ui(item) {
-            ui.section_collapsing_header("Data").show(ui, |ui| {
+            ui.section_collapsing_header(t("Data")).show(ui, |ui| {
                 // TODO(#6075): Because `list_item_scope` changes it. Temporary until everything is `ListItem`.
                 ui.spacing_mut().item_spacing.y = ui.global_style().spacing.item_spacing.y;
                 data_ui_item.data_ui(&store_view_ctx, ui, ui_layout);
@@ -370,7 +372,7 @@ impl SelectionPanel {
 
         match item {
             Item::StoreId(_) => {
-                ui.section_collapsing_header("Properties").show(ui, |ui| {
+                ui.section_collapsing_header(t("Properties")).show(ui, |ui| {
                     show_recording_properties(&store_view_ctx, ui, ui_layout);
                 });
             }
@@ -448,15 +450,15 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
             if view.class(ctx.view_class_registry()).is_experimental() {
                 ui.add_space(6.0);
                 ui.info_label(
-                    "This view is experimental: its API, behavior, and on-disk format may change without notice.",
+                    t("This view is experimental: its API, behavior, and on-disk format may change without notice."),
                 );
                 ui.add_space(8.0);
             }
 
-            ui.section_collapsing_header("Entity path filter")
+            ui.section_collapsing_header(t("Entity path filter"))
                 .with_action_button(
                     &re_ui::icons::EDIT,
-                    "Modify the entity query using the editor",
+                    t("Modify the entity query using the editor"),
                     || {
                         self.view_entity_modal.open(*view_id);
                     },
@@ -480,8 +482,8 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
                 })
                 .header_response
                 .on_hover_text(
-                    "The entity path query consists of a list of include/exclude rules \
-                that determines what entities are part of this view",
+                    t("The entity path query consists of a list of include/exclude rules \
+                that determines what entities are part of this view"),
                 );
         }
 
@@ -497,7 +499,7 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
                 });
             }
 
-            ui.section_collapsing_header("View properties")
+            ui.section_collapsing_header(t("View properties"))
                 .show(ui, |ui| {
                     // TODO(#6075): Because `list_item_scope` changes it. Temporary until everything is `ListItem`.
                     ui.spacing_mut().item_spacing.y = ui.global_style().spacing.item_spacing.y;
@@ -515,7 +517,7 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
                     }
 
                     if cursor == ui.cursor() {
-                        ui.weak("(none)");
+                        ui.weak(t("(none)"));
                     }
                 });
 
@@ -528,9 +530,9 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
     }
 }
 
-const VISUALIZERS_SECTION_HELP: &str = "# Visualizers
-
-This section lists all active visualizers in this view.";
+fn visualizers_section_help() -> String {
+    t("# Visualizers\n\nThis section lists all active visualizers in this view.").to_string()
+}
 
 fn show_visualizers_section(
     ctx: &ViewerContext<'_>,
@@ -539,11 +541,11 @@ fn show_visualizers_section(
     add_options: Vec<(EntityPath, RecommendedVisualizers)>,
     body: &dyn Fn(&mut egui::Ui),
 ) {
-    ui.section_collapsing_header("Visualizers")
+    ui.section_collapsing_header(t("Visualizers"))
         .with_button(move |ui: &mut egui::Ui| {
             visualizer_section_plus_button(ctx, view_id, add_options, ui)
         })
-        .with_help_markdown(VISUALIZERS_SECTION_HELP)
+        .with_help_markdown(&visualizers_section_help())
         .show(ui, |ui| {
             // TODO(#6075): Because `list_item_scope` changes it. Temporary until everything is `ListItem`.
             ui.spacing_mut().item_spacing.y = ui.global_style().spacing.item_spacing.y;
@@ -563,7 +565,7 @@ fn visualizer_section_plus_button(
 
     ui.spacing_mut().menu_margin = egui::Margin::same(0);
     ui.add(
-        ui.small_icon_button_widget(&re_ui::icons::ADD, "Add new visualizer…")
+        ui.small_icon_button_widget(&re_ui::icons::ADD, t("Add new visualizer…"))
             .enabled(!options.is_empty())
             .on_custom_menu(
                 move |popup| popup.style(re_ui::menu::menu_style()),
@@ -571,8 +573,8 @@ fn visualizer_section_plus_button(
                     menu_add_new_visualizer_for_view(viewer_ctx, view_id, options, ui);
                 },
             )
-            .on_hover_text("Add a new visualizer to the current view.")
-            .on_disabled_hover_text("There are no visualizers available to add to this view."),
+            .on_hover_text(t("Add a new visualizer to the current view."))
+            .on_disabled_hover_text(t("There are no visualizers available to add to this view.")),
     )
 }
 
@@ -776,7 +778,7 @@ fn coordinate_frame_ui(ui: &mut egui::Ui, ctx: &ViewContext<'_>, data_result: &D
     };
 
     let mut frame_id = frame_id_before.clone();
-    let property_content = list_item::PropertyContent::new("Coordinate frame")
+    let property_content = list_item::PropertyContent::new(t("Coordinate frame"))
         .value_fn(|ui, _| {
             // Show matching, non-entity-path-derived frame IDs as suggestions when the user edits the frame name.
             let suggestions = {
@@ -800,7 +802,7 @@ fn coordinate_frame_ui(ui: &mut egui::Ui, ctx: &ViewContext<'_>, data_result: &D
                 None::<&str>,
             );
         })
-        .with_menu_button(&re_ui::icons::MORE, "More options", |ui: &mut egui::Ui| {
+        .with_menu_button(&re_ui::icons::MORE, t("More options"), |ui: &mut egui::Ui| {
             crate::visualizer_ui::reset_override_button(
                 ctx,
                 ui,
@@ -812,15 +814,15 @@ fn coordinate_frame_ui(ui: &mut egui::Ui, ctx: &ViewContext<'_>, data_result: &D
     ui.list_item_flat_noninteractive(property_content)
         .on_hover_ui(|ui| {
             ui.markdown_ui(
-                "The coordinate frame this entity is associated with.
+                t("The coordinate frame this entity is associated with.
 
-To learn more about coordinate frames, see the [Spaces & Transforms](https://rerun.io/docs/concepts/logging-and-ingestion/transforms) in the manual.",
+To learn more about coordinate frames, see the [Spaces & Transforms](https://rerun.io/docs/concepts/logging-and-ingestion/transforms) in the manual."),
             );
         });
 
     if frame_id_before.is_empty() {
         ui.warning_label(
-            "Transform relation can't be resolved due to empty coordinate frame name.",
+            t("Transform relation can't be resolved due to empty coordinate frame name."),
         );
     }
 
@@ -849,7 +851,7 @@ fn show_recording_properties(
     property_entities.sort();
 
     if property_entities.is_empty() {
-        ui.label("No properties found for this recording.");
+        ui.label(t("No properties found for this recording."));
     } else {
         list_item::list_item_scope(ui, "recording_properties", |ui| {
             for suffix_path in property_entities {
@@ -919,7 +921,7 @@ fn clone_view_button_ui(
     view_id: ViewId,
 ) {
     ui.list_item_flat_noninteractive(
-        list_item::ButtonContent::new("Clone this view")
+        list_item::ButtonContent::new(t("Clone this view"))
             .on_click(|| {
                 if let Some(new_view_id) = viewport.duplicate_view(&view_id, ctx) {
                     ctx.command_sender()
@@ -927,7 +929,7 @@ fn clone_view_button_ui(
                     viewport.mark_user_interaction(ctx);
                 }
             })
-            .hover_text("Create an exact duplicate of this view including all blueprint settings"),
+            .hover_text(t("Create an exact duplicate of this view including all blueprint settings")),
     );
 }
 
@@ -1012,16 +1014,16 @@ fn entity_path_filter_ui(
     // Show some statistics about the query, print a warning text if something seems off.
     let query = ctx.lookup_query_result(view_id);
     if query.num_matching_entities == 0 {
-        ui.warning_label("Does not match any entity");
+        ui.warning_label(t("Does not match any entity"));
     } else if query.num_matching_entities == 1 {
-        ui.label("Matches 1 entity");
+        ui.label(t("Matches 1 entity"));
     } else {
-        ui.label(format!("Matches {} entities", query.num_matching_entities));
+        ui.label(format!("{} {} {}", t("Matches"), query.num_matching_entities, t("entities")));
     }
     if query.num_matching_entities != 0 && query.num_visualized_entities == 0 {
         // TODO(andreas): Talk about this root bit only if it's a spatial view.
         ui.warning_label(
-            format!("This view is not able to visualize any of the matched entities using the current root \"{origin:?}\"."),
+            format!("{} \"{origin:?}\".", t("This view is not able to visualize any of the matched entities using the current root")),
         );
     }
 
@@ -1052,17 +1054,17 @@ fn container_children(
 
         if !has_child {
             ui.list_item_flat_noninteractive(
-                list_item::LabelContent::new("empty — use the + button to add content")
+                list_item::LabelContent::new(t("empty — use the + button to add content"))
                     .weak(true)
                     .italics(true),
             );
         }
     };
 
-    ui.section_collapsing_header("Contents")
+    ui.section_collapsing_header(t("Contents"))
         .with_action_button(
             &re_ui::icons::ADD,
-            "Add a new view or container to this container",
+            t("Add a new view or container to this container"),
             || {
                 show_add_view_or_container_modal(*container_id);
             },
@@ -1104,7 +1106,7 @@ fn view_button(
             is_selected,
             contents_name_style(&view_name),
         )
-        .on_hover_text(format!("{} view", class.display_name()));
+        .on_hover_text(format!("{} {}", class.display_name(), t("view")));
     item_ui::cursor_interact_with_selectable(&ctx.app_ctx, response, item)
 }
 
@@ -1121,13 +1123,13 @@ fn list_existing_data_blueprints(
     let store_view_ctx = ctx.guess_store_view_context_for_entity(&instance_path.entity_path);
 
     if views_with_path.is_empty() {
-        ui.weak("(Not shown in any view)");
+        ui.weak(t("(Not shown in any view)"));
     } else {
         for &view_id in &views_with_path {
             if let Some(view) = viewport.view(&view_id) {
                 let response = ui.list_item().show_flat(
                     ui,
-                    PropertyContent::new("Shown in").value_fn(|ui, _| {
+                    PropertyContent::new(t("Shown in")).value_fn(|ui, _| {
                         view_button(ctx, ui, view);
                     }),
                 );
@@ -1165,18 +1167,18 @@ fn view_top_level_properties(
     ui: &mut egui::Ui,
     view: &re_viewport_blueprint::ViewBlueprint,
 ) {
-    ui.list_item_flat_noninteractive(PropertyContent::new("Name").value_fn(|ui, _| {
+    ui.list_item_flat_noninteractive(PropertyContent::new(t("Name")).value_fn(|ui, _| {
         ui.spacing_mut().text_edit_width = ui
             .spacing_mut()
             .text_edit_width
             .at_least(ui.available_width());
 
         let mut name = view.display_name.clone().unwrap_or_default();
-        ui.add(egui::TextEdit::singleline(&mut name).hint_text("(default)"));
+        ui.add(egui::TextEdit::singleline(&mut name).hint_text(t("(default)")));
         view.set_display_name(ctx, if name.is_empty() { None } else { Some(name) });
     }));
 
-    ui.list_item_flat_noninteractive(PropertyContent::new("Space origin").value_fn(|ui, _| {
+    ui.list_item_flat_noninteractive(PropertyContent::new(t("Space origin")).value_fn(|ui, _| {
         ui.spacing_mut().text_edit_width = ui
             .spacing_mut()
             .text_edit_width
@@ -1185,16 +1187,16 @@ fn view_top_level_properties(
         super::view_space_origin_ui::view_space_origin_widget_ui(ui, ctx, view);
     }))
     .on_hover_text(
-        "The origin entity for this view. For spatial views, the space \
+        t("The origin entity for this view. For spatial views, the space \
                     view's origin is the same as this entity's origin and all transforms are \
-                    relative to it.",
+                    relative to it."),
     );
 
     ui.list_item_flat_noninteractive(
-        PropertyContent::new("View type")
+        PropertyContent::new(t("View type"))
             .value_text(view.class(ctx.view_class_registry()).display_name()),
     )
-    .on_hover_text("The type of this view");
+    .on_hover_text(t("The type of this view"));
 }
 
 fn container_top_level_properties(
@@ -1207,7 +1209,7 @@ fn container_top_level_properties(
         return;
     };
 
-    ui.list_item_flat_noninteractive(PropertyContent::new("Name").value_fn(|ui, _| {
+    ui.list_item_flat_noninteractive(PropertyContent::new(t("Name")).value_fn(|ui, _| {
         ui.spacing_mut().text_edit_width = ui
             .spacing_mut()
             .text_edit_width
@@ -1218,17 +1220,17 @@ fn container_top_level_properties(
         container.set_display_name(ctx, if name.is_empty() { None } else { Some(name) });
     }));
 
-    ui.list_item_flat_noninteractive(PropertyContent::new("Container kind").value_fn(|ui, _| {
+    ui.list_item_flat_noninteractive(PropertyContent::new(t("Container kind")).value_fn(|ui, _| {
         let mut container_kind = container.container_kind;
         container_kind_selection_ui(ui, &mut container_kind);
         viewport.set_container_kind(*container_id, container_kind);
     }));
 
     if container.container_kind == ContainerKind::Grid {
-        ui.list_item_flat_noninteractive(PropertyContent::new("Columns").value_fn(|ui, _| {
+        ui.list_item_flat_noninteractive(PropertyContent::new(t("Columns")).value_fn(|ui, _| {
             fn columns_to_string(columns: Option<u32>) -> String {
                 match columns {
-                    None => "Auto".to_owned(),
+                    None => t("Auto").to_owned(),
                     Some(cols) => cols.to_string(),
                 }
             }
@@ -1256,7 +1258,7 @@ fn container_top_level_properties(
     }
 
     ui.list_item_flat_noninteractive(
-        list_item::ButtonContent::new("Simplify hierarchy")
+        list_item::ButtonContent::new(t("Simplify hierarchy"))
             .on_click(|| {
                 viewport.simplify_container(
                     container_id,
@@ -1270,7 +1272,7 @@ fn container_top_level_properties(
                     },
                 );
             })
-            .hover_text("Simplify this container and its children"),
+            .hover_text(t("Simplify this container and its children")),
     );
 
     fn equal_shares(shares: &[f32]) -> bool {
@@ -1287,12 +1289,12 @@ fn container_top_level_properties(
         }
     {
         ui.list_item_flat_noninteractive(
-            list_item::ButtonContent::new("Distribute content equally")
+            list_item::ButtonContent::new(t("Distribute content equally"))
                 .on_click(|| {
                     viewport.make_all_children_same_size(container_id);
                 })
                 .enabled(!all_shares_are_equal)
-                .hover_text("Make all children the same size"),
+                .hover_text(t("Make all children the same size")),
         );
     }
 }
@@ -1318,7 +1320,7 @@ fn container_kind_selection_ui(ui: &mut egui::Ui, in_out_kind: &mut ContainerKin
             }
         }
     })
-    .widget_info(|| WidgetInfo::labeled(WidgetType::ComboBox, true, "Container kind"));
+    .widget_info(|| WidgetInfo::labeled(WidgetType::ComboBox, true, t("Container kind")));
 }
 
 // TODO(#4560): this code should be generic and part of re_data_ui
@@ -1347,8 +1349,8 @@ fn show_list_item_for_container_child(
                     .with_icon(view.class(ctx.view_class_registry()).icon())
                     .with_buttons(|ui| {
                         let response = ui
-                            .small_icon_button(&icons::REMOVE, "Remove this view")
-                            .on_hover_text("Remove this view");
+                            .small_icon_button(&icons::REMOVE, t("Remove this view"))
+                            .on_hover_text(t("Remove this view"));
 
                         if response.clicked() {
                             remove_contents = true;
@@ -1371,8 +1373,8 @@ fn show_list_item_for_container_child(
                     .with_icon(icon_for_container_kind(&container.container_kind))
                     .with_buttons(|ui| {
                         let response = ui
-                            .small_icon_button(&icons::REMOVE, "Remove this container")
-                            .on_hover_text("Remove this container");
+                            .small_icon_button(&icons::REMOVE, t("Remove this container"))
+                            .on_hover_text(t("Remove this container"));
 
                         if response.clicked() {
                             remove_contents = true;
@@ -1418,9 +1420,9 @@ fn visible_interactive_toggle_ui(
         let mut visible = visible_before;
 
         ui.list_item_flat_noninteractive(
-            list_item::PropertyContent::new("Visible").value_bool_mut(&mut visible),
+            list_item::PropertyContent::new(t("Visible")).value_bool_mut(&mut visible),
         )
-        .on_hover_text("If disabled, the entity won't be shown in the view.");
+        .on_hover_text(t("If disabled, the entity won't be shown in the view."));
 
         if visible_before != visible {
             data_result.save_visible(ctx.viewer_ctx, &query_result.tree, visible);
@@ -1431,9 +1433,9 @@ fn visible_interactive_toggle_ui(
         let mut interactive = interactive_before;
 
         ui.list_item_flat_noninteractive(
-            list_item::PropertyContent::new("Interactive").value_bool_mut(&mut interactive),
+            list_item::PropertyContent::new(t("Interactive")).value_bool_mut(&mut interactive),
         )
-        .on_hover_text("If disabled, the entity will not react to any mouse interaction.");
+        .on_hover_text(t("If disabled, the entity will not react to any mouse interaction."));
 
         if interactive_before != interactive {
             data_result.save_interactive(ctx.viewer_ctx, &query_result.tree, interactive);

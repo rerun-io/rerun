@@ -9,6 +9,7 @@ use re_sdk_types::components::{self, Color, Name};
 use re_sdk_types::{ComponentDescriptor, Loggable as _};
 use re_ui::UiExt as _;
 use re_ui::egui_ext::response_ext::ResponseExt as _;
+use re_ui::localizer::t;
 use re_viewer_context::external::re_entity_db::InstancePath;
 use re_viewer_context::{
     DataResultInteractionAddress, IdentifiedViewSystem as _, Item, SystemCommandSender as _,
@@ -122,9 +123,9 @@ pub fn visualizer_ui_element(
 
                 if show_visibility_icon {
                     let response = if all_series_invisible {
-                        ui.small_icon_button(&re_ui::icons::INVISIBLE, "Show series")
+                        ui.small_icon_button(&re_ui::icons::INVISIBLE, t("Show series"))
                     } else {
-                        ui.small_icon_button(&re_ui::icons::VISIBLE, "Hide series")
+                        ui.small_icon_button(&re_ui::icons::VISIBLE, t("Hide series"))
                     };
 
                     if response.clicked() {
@@ -200,7 +201,7 @@ fn context_menu_ui(
     all_series_invisible: bool,
 ) {
     // Hide/show toggle
-    let label = if all_series_invisible { "Show" } else { "Hide" };
+    let label = if all_series_invisible { t("Show") } else { t("Hide") };
     if ui.button(label).clicked() {
         instruction.save_override(
             ctx.viewer_ctx,
@@ -211,7 +212,7 @@ fn context_menu_ui(
     }
 
     // Remove visualizer
-    if ui.button("Remove").clicked() {
+    if ui.button(t("Remove")).clicked() {
         let active_visualizers: Vec<_> = node
             .data_result
             .visualizer_instructions

@@ -7,6 +7,7 @@ use re_sdk_types::components::{Color, Visible};
 use re_sdk_types::datatypes::TensorBuffer;
 use re_sdk_types::{View as _, ViewClassIdentifier};
 use re_ui::{Help, IconText, MouseButtonText, icons, list_item};
+use re_ui::localizer::t;
 use re_view::controls::SELECTION_RECT_ZOOM_BUTTON;
 use re_view::view_property_ui;
 use re_viewer_context::{
@@ -30,7 +31,7 @@ impl ViewClass for BarChartView {
     }
 
     fn display_name(&self) -> &'static str {
-        "Bar chart"
+        t("Bar chart")
     }
 
     fn icon(&self) -> &'static re_ui::Icon {
@@ -49,19 +50,19 @@ impl ViewClass for BarChartView {
             ..
         } = egui::InputOptions::default(); // This is OK, since we don't allow the user to change these modifiers.
 
-        Help::new("Bar chart view")
+        Help::new(t("Bar chart view"))
             .docs_link("https://rerun.io/docs/reference/types/views/bar_chart_view")
-            .control("Pan", (icons::LEFT_MOUSE_CLICK, "+", "drag"))
+            .control(t("Pan"), (icons::LEFT_MOUSE_CLICK, "+", "drag"))
             .control(
-                "Horizontal pan",
+                t("Horizontal pan"),
                 IconText::from_modifiers_and(os, horizontal_scroll_modifier, icons::SCROLL),
             )
             .control(
-                "Zoom",
+                t("Zoom"),
                 IconText::from_modifiers_and(os, zoom_modifier, icons::SCROLL),
             )
             .control(
-                "Zoom X-axis",
+                t("Zoom X-axis"),
                 IconText::from_modifiers_and(
                     os,
                     zoom_modifier | horizontal_scroll_modifier,
@@ -69,7 +70,7 @@ impl ViewClass for BarChartView {
                 ),
             )
             .control(
-                "Zoom Y-axis",
+                t("Zoom Y-axis"),
                 IconText::from_modifiers_and(
                     os,
                     zoom_modifier | vertical_scroll_modifier,
@@ -77,10 +78,10 @@ impl ViewClass for BarChartView {
                 ),
             )
             .control(
-                "Zoom to selection",
+                t("Zoom to selection"),
                 (MouseButtonText(SELECTION_RECT_ZOOM_BUTTON), "+", "drag"),
             )
-            .control("Reset view", ("double", icons::LEFT_MOUSE_CLICK))
+            .control(t("Reset view"), ("double", icons::LEFT_MOUSE_CLICK))
     }
 
     fn on_register(

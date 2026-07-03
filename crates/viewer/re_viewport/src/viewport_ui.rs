@@ -9,6 +9,7 @@ use egui::{Key, KeyboardShortcut, Modifiers, remap_clamp};
 use egui_tiles::{Behavior as _, EditAction};
 use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item};
 use re_log_types::{EntityPath, ResolvedEntityPathRule, RuleEffect};
+use re_ui::localizer::t;
 use re_ui::{
     ContextExt as _, Help, Icon, IconText, UICommandSender as _, UiExt as _,
     design_tokens_of_visuals, icons,
@@ -458,7 +459,7 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
         } else {
             // All panes are views, so this shouldn't happen unless we have a bug
             re_log::warn_once!("ViewId missing during egui_tiles");
-            self.ctx.egui_ctx().error_text("Internal error").into()
+            self.ctx.egui_ctx().error_text(t("Internal error")).into()
         }
     }
 
@@ -573,11 +574,11 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
         if *self.maximized == Some(view_id) {
             // Show minimize-button:
             if ui
-                .small_icon_button(&re_ui::icons::MINIMIZE, "Restore viewport")
+                .small_icon_button(&re_ui::icons::MINIMIZE, t("Restore viewport"))
                 .on_hover_ui(|ui| {
                     Help::new_without_title()
                         .control(
-                            "Restore - show all spaces",
+                            t("Restore - show all spaces"),
                             IconText::from_keyboard_shortcut(ui.os(), TOGGLE_MAXIMIZE_VIEW),
                         )
                         .ui(ui);
@@ -595,17 +596,17 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
             let toggle = is_view_the_only_selected
                 && ui.input_mut(|input| input.consume_shortcut(&TOGGLE_MAXIMIZE_VIEW));
             if ui
-                .small_icon_button(&re_ui::icons::MAXIMIZE, "Maximize view")
+                .small_icon_button(&re_ui::icons::MAXIMIZE, t("Maximize view"))
                 .on_hover_ui(|ui| {
                     if is_view_the_only_selected {
                         Help::new_without_title()
                             .control(
-                                "Maximize view",
+                                t("Maximize view"),
                                 IconText::from_keyboard_shortcut(ui.os(), TOGGLE_MAXIMIZE_VIEW),
                             )
                             .ui(ui);
                     } else {
-                        ui.label("Maximize view");
+                        ui.label(t("Maximize view"));
                     }
                 })
                 .clicked()
@@ -624,7 +625,7 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
             // Show button to hide this view:
             let mut visible = true;
             ui.visibility_toggle_button(&mut visible)
-                .on_hover_text("Hide this view");
+                .on_hover_text(t("Hide this view"));
             if !visible {
                 self.viewport_blueprint.set_content_visibility(
                     self.ctx,
@@ -781,21 +782,22 @@ impl TilesDelegate<'_, '_> {
                     icons::WARNING
                         .as_image()
                         .fit_to_exact_size(ui.tokens().small_icon_size)
-                        .alt_text("View warnings")
+                        .alt_text(t("View warnings"))
                         .tint(ui.tokens().alert_warning.icon)
                 } else {
                     icons::ERROR
                         .as_image()
                         .fit_to_exact_size(ui.tokens().small_icon_size)
-                        .alt_text("View errors")
+                        .alt_text(t("View errors"))
                         .tint(ui.tokens().alert_error.icon)
                 };
 
             let response = ui
                 .add(egui::Button::image(report_image))
                 .on_hover_text(format!(
-                    "Show {}",
-                    re_format::format_plural_s(report_count, "visualizer report")
+                    "{} {}",
+                    t("Show"),
+                    re_format::format_plural_s(report_count, t("visualizer report"))
                 ));
 
             egui::Popup::menu(&response)
@@ -868,7 +870,7 @@ impl TilesDelegate<'_, '_> {
                                 ui.label(&report.summary);
 
                                 if let Some(details) = &report.details {
-                                    ui.collapsing("Details", |ui| {
+                                    ui.collapsing(t("Details"), |ui| {
                                         ui.label(details);
                                     });
                                 }
@@ -931,7 +933,7 @@ impl TabWidget {
                     re_log::warn_once!("View {view_id} not found");
 
                     TabDesc {
-                        widget_text: tab_viewer.ctx.egui_ctx().error_text("Unknown view").into(),
+                        widget_text: tab_viewer.ctx.egui_ctx().error_text(t("Unknown view")).into(),
                         icon: &re_ui::icons::VIEW_GENERIC,
                         user_named: false,
                         item: None,
@@ -959,7 +961,7 @@ impl TabWidget {
                             tab_viewer
                                 .ctx
                                 .egui_ctx()
-                                .error_text("Internal error")
+                                .error_text(t("Internal error"))
                                 .into(),
                             false,
                         )
@@ -988,7 +990,7 @@ impl TabWidget {
                         widget_text: tab_viewer
                             .ctx
                             .egui_ctx()
-                            .error_text("Unknown container")
+                            .error_text(t("Unknown container"))
                             .into(),
                         icon: &re_ui::icons::VIEW_GENERIC,
                         user_named: false,

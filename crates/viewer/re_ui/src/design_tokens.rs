@@ -527,17 +527,30 @@ impl DesignTokens {
         assert_eq!(self.typography.fontFamily, "Inter");
         assert_eq!(self.typography.fontWeight, "Medium");
         let mut font_definitions = egui::FontDefinitions::default();
+
+        // Primary font (Latin)
         font_definitions.font_data.insert(
             "Inter-Medium".into(),
             std::sync::Arc::new(egui::FontData::from_static(include_bytes!(
                 "../data/Inter-Medium.otf"
             ))),
         );
-        font_definitions
+
+        // CJK fallback font for Chinese text
+        font_definitions.font_data.insert(
+            "NotoSansSC-VF".into(),
+            std::sync::Arc::new(egui::FontData::from_static(include_bytes!(
+                "../data/NotoSansSC-VF.ttf"
+            ))),
+        );
+
+        let families = font_definitions
             .families
             .get_mut(&egui::FontFamily::Proportional)
-            .unwrap()
-            .insert(0, "Inter-Medium".into());
+            .unwrap();
+        families.insert(0, "Inter-Medium".into());
+        families.push("NotoSansSC-VF".into());
+
         ctx.set_fonts(font_definitions);
     }
 

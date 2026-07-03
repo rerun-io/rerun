@@ -1,6 +1,7 @@
 use re_format::{format_lat_lon, format_uint};
 use re_sdk_types::components::GeoLineString;
 use re_ui::UiExt as _;
+use re_ui::localizer::t;
 use re_viewer_context::{MaybeMutRef, StoreViewContext, UiLayout};
 
 fn singleline_view_geo_line_string(
@@ -36,10 +37,10 @@ fn multiline_view_geo_line_string(
         .header(tokens.deprecated_table_header_height(), |mut header| {
             re_ui::DesignTokens::setup_table_header(&mut header);
             header.col(|ui| {
-                ui.label("Latitude");
+                ui.label(t("Latitude"));
             });
             header.col(|ui| {
-                ui.label("Longitude");
+                ui.label(t("Longitude"));
             });
         })
         .body(|mut body| {

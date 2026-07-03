@@ -5,6 +5,7 @@ use emath::{Rect, RectAlign, Vec2};
 use re_format::format_uint;
 use re_renderer::WgpuResourcePoolStatistics;
 use re_sorbet::TimestampLocation;
+use re_ui::localizer::t;
 use re_ui::{ContextExt as _, UICommand, UiExt as _, icons};
 use re_viewer_context::{ActiveStoreContext, StoreHub, SystemCommand, SystemCommandSender as _};
 
@@ -208,11 +209,11 @@ fn show_warnings(frame: &eframe::Frame, ui: &mut egui::Ui, app_env: &crate::AppE
         show_warning(ui, &mut has_shown_warning, |ui| {
             // Warn if in debug build
             ui.label(
-                egui::RichText::new("⚠ Debug build")
+                egui::RichText::new(t("⚠ Debug build"))
                     .small()
                     .color(ui.visuals().warn_fg_color),
             )
-            .on_hover_text("Rerun was compiled with debug assertions enabled.");
+            .on_hover_text(t("Rerun was compiled with debug assertions enabled."));
         });
     }
 
@@ -228,13 +229,13 @@ fn show_warnings(frame: &eframe::Frame, ui: &mut egui::Ui, app_env: &crate::AppE
 
     if crate::docker_detection::is_docker() {
         show_warning(ui, &mut has_shown_warning, |ui| {
-            let text = egui::RichText::new("⚠ Docker")
+            let text = egui::RichText::new(t("⚠ Docker"))
                 .small()
                 .color(ui.visuals().warn_fg_color);
             let url = "https://github.com/rerun-io/rerun/issues/6835";
             ui.hyperlink_to(text,url).on_hover_ui(|ui| {
-                ui.label("It looks like the Rerun Viewer is running inside a Docker container. This is not officially supported, and may lead to subtle bugs. ");
-                ui.label("Click for more info.");
+                ui.label(t("It looks like the Rerun Viewer is running inside a Docker container. This is not officially supported, and may lead to subtle bugs. "));
+                ui.label(t("Click for more info."));
             });
         });
     }
@@ -242,18 +243,19 @@ fn show_warnings(frame: &eframe::Frame, ui: &mut egui::Ui, app_env: &crate::AppE
 
 fn software_rasterizer_warning_ui(ui: &mut egui::Ui, info: &wgpu::AdapterInfo) {
     ui.hyperlink_to(
-        egui::RichText::new("⚠ Software rasterizer")
+        egui::RichText::new(t("⚠ Software rasterizer"))
             .small()
             .color(ui.visuals().warn_fg_color),
         "https://www.rerun.io/docs/overview/installing-rerun/troubleshooting#graphics-issues",
     )
     .on_hover_ui(|ui| {
-        ui.label("Software rasterizer detected - expect poor performance.");
-        ui.label("Rerun requires hardware accelerated graphics (i.e. a GPU) for good performance.");
-        ui.label("Click for troubleshooting.");
+        ui.label(t("Software rasterizer detected - expect poor performance."));
+        ui.label(t("Rerun requires hardware accelerated graphics (i.e. a GPU) for good performance."));
+        ui.label(t("Click for troubleshooting."));
         ui.add_space(8.0);
         ui.label(format!(
-            "wgpu adapter {}",
+            "{} {}",
+            t("wgpu adapter"),
             re_renderer::adapter_info_summary(info)
         ));
     });
@@ -304,11 +306,11 @@ fn multi_pass_warning_dot_ui(ui: &mut egui::Ui) {
         ui.request_repaint();
     }
 
-    response.on_hover_text(
+    response.on_hover_text(t(
         "A blinking orange dot appears here in debug builds whenever request_discard is called.\n\
         It is expect that the dot appears occasionally, e.g. when showing a new panel for the first time.\n\
         However, it should not be sustained, as that would indicate a performance bug.",
-    );
+    ));
 }
 
 fn connection_status_ui(
@@ -326,7 +328,7 @@ fn connection_status_ui(
         match latency {
             LatencyResult::ToBeAssigned => {}
             LatencyResult::NoConnection => {
-                ui.label(format!("no connection to {url}"));
+                ui.label(format!("{} {url}", t("no connection to")));
             }
             LatencyResult::MostRecent(duration) => {
                 let mut layout_job = egui::text::LayoutJob::default();
@@ -342,7 +344,7 @@ fn connection_status_ui(
                         egui::Align::Center,
                     );
 
-                RichText::new(format!(" latency for {url}")).append_to(
+                RichText::new(format!("{} {url}", t("latency for"))).append_to(
                     &mut layout_job,
                     ui.style(),
                     egui::FontSelection::Default,
@@ -367,14 +369,14 @@ fn panel_buttons_r2l(
     #[cfg(target_arch = "wasm32")]
     if app.is_fullscreen_allowed() {
         let (icon, label) = if app.is_fullscreen_mode() {
-            (&re_ui::icons::MINIMIZE, "Minimize")
+            (&re_ui::icons::MINIMIZE, t("Minimize"))
         } else {
-            (&re_ui::icons::MAXIMIZE, "Maximize")
+            (&re_ui::icons::MAXIMIZE, t("Maximize"))
         };
 
         if ui
             .medium_icon_toggle_button(icon, label, &mut true)
-            .on_hover_text("Toggle fullscreen")
+            .on_hover_text(t("Toggle fullscreen"))
             .clicked()
         {
             app.toggle_fullscreen();
@@ -388,7 +390,7 @@ fn panel_buttons_r2l(
             if ui
                 .medium_icon_toggle_button(
                     &re_ui::icons::RIGHT_PANEL_TOGGLE,
-                    "Selection panel toggle",
+                    t("Selection panel toggle"),
                     &mut app_blueprint.selection_panel_state().is_expanded(),
                 )
                 .on_hover_ui(|ui| UICommand::ToggleSelectionPanel.tooltip_ui(ui))
@@ -406,7 +408,7 @@ fn panel_buttons_r2l(
             if ui
                 .medium_icon_toggle_button(
                     &re_ui::icons::BOTTOM_PANEL_TOGGLE,
-                    "Time panel toggle",
+                    t("Time panel toggle"),
                     &mut app_blueprint.time_panel_state().is_expanded(),
                 )
                 .on_hover_ui(|ui| UICommand::ToggleTimePanel.tooltip_ui(ui))
@@ -424,7 +426,7 @@ fn panel_buttons_r2l(
             if ui
                 .medium_icon_toggle_button(
                     &re_ui::icons::LEFT_PANEL_TOGGLE,
-                    "Blueprint panel toggle",
+                    t("Blueprint panel toggle"),
                     &mut app_blueprint.blueprint_panel_state().is_expanded(),
                 )
                 .on_hover_ui(|ui| UICommand::ToggleBlueprintPanel.tooltip_ui(ui))
@@ -487,7 +489,7 @@ fn panel_buttons_r2l(
                 if !ui.is_sizing_pass() {
                     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                         if ui
-                            .add(re_ui::ReButton::new("Log out").small().primary())
+                            .add(re_ui::ReButton::new(t("Log out")).small().primary())
                             .clicked()
                         {
                             app.command_sender.send_system(SystemCommand::Logout);
@@ -530,7 +532,7 @@ fn frame_time_label_ui(ui: &mut egui::Ui, app: &App) {
         // we use monospace so the width doesn't fluctuate as the numbers change.
         let text = format!("{ms:.1} ms");
         ui.label(egui::RichText::new(text).monospace().color(color))
-            .on_hover_text("CPU time used by Rerun Viewer each frame. Lower is better.");
+            .on_hover_text(t("CPU time used by Rerun Viewer each frame. Lower is better."));
     }
 }
 
@@ -564,7 +566,7 @@ fn fps_ui(ui: &mut egui::Ui, app: &App) {
         // we use monospace so the width doesn't fluctuate as the numbers change.
         let text = format!("{fps:.0} FPS");
         ui.label(egui::RichText::new(text).monospace().color(color))
-            .on_hover_text("Frames per second. Higher is better.");
+            .on_hover_text(t("Frames per second. Higher is better."));
     }
 }
 
@@ -619,40 +621,41 @@ fn memory_use_label_ui(
                     let external_mem = external_usage.total_external_memory();
                     let viewer_mem = global_mem as u64 - external_mem;
 
-                    ui.label("Viewer");
+                    ui.label(t("Viewer"));
                     ui.monospace(re_format::format_bytes(viewer_mem as _));
                     ui.end_row();
 
                     if external_mem > 0 {
-                        ui.label("External");
+                        ui.label(t("External"));
                         ui.monospace(re_format::format_bytes(external_mem as _));
                         ui.end_row();
                     }
 
-                    ui.label("Allocations");
+                    ui.label(t("Allocations"));
                     ui.monospace(format_uint(count.count));
                     ui.end_row();
 
-                    ui.label("GPU");
+                    ui.label(t("GPU"));
                     ui.monospace(re_format::format_bytes(
                         gpu_resource_stats.total_bytes() as _
                     ));
                     ui.end_row();
 
-                    ui.label("GPU textures");
+                    ui.label(t("GPU textures"));
                     ui.monospace(format_uint(gpu_resource_stats.num_textures));
                     ui.end_row();
 
-                    ui.label("GPU buffers");
+                    ui.label(t("GPU buffers"));
                     ui.monospace(format_uint(gpu_resource_stats.num_buffers));
                     ui.end_row();
                 });
 
-            ui.weak("See memory panel for more info");
+            ui.weak(t("See memory panel for more info"));
         });
     } else if let Some(rss) = mem.resident {
         let bytes_used_text = re_format::format_bytes(rss as _);
         click_to_copy(ui, &bytes_used_text, |ui| {
+            // ponytail: format!("…", …) requires a literal, can't use t() as format
             ui.label(format!(
                 "Rerun Viewer is using {} of Resident memory (RSS),\n\
                 plus {} of GPU memory in {} textures and {} buffers.",
@@ -661,22 +664,22 @@ fn memory_use_label_ui(
                 format_uint(gpu_resource_stats.num_textures),
                 format_uint(gpu_resource_stats.num_buffers),
             ));
-            ui.label(
+            ui.label(t(
                 "To get more accurate memory reportings, consider configuring your Rerun \n\
                  viewer to use an AccountingAllocator by adding the following to your \n\
                  code's main entrypoint:",
-            );
+            ));
             ui.code(CODE);
-            ui.label("(click to copy to clipboard)");
+            ui.label(t("(click to copy to clipboard)"));
         });
     } else {
-        click_to_copy(ui, "N/A MiB", |ui| {
-            ui.label(
+        click_to_copy(ui, t("N/A MiB"), |ui| {
+            ui.label(t(
                 "The Rerun viewer was not configured to run with an AccountingAllocator,\n\
                 consider adding the following to your code's main entrypoint:",
-            );
+            ));
             ui.code(CODE);
-            ui.label("(click to copy to clipboard)");
+            ui.label(t("(click to copy to clipboard)"));
         });
     }
 }
@@ -695,7 +698,7 @@ fn latency_snapshot_button_ui(
         return None; // Probably an old recording and not live data.
     }
 
-    let text = format!("Latency: {}", latency_text(ui.visuals(), e2e).text());
+    let text = format!("{} {}", t("Latency:"), latency_text(ui.visuals(), e2e).text());
     let response = ui.weak(text);
 
     let response = response.on_hover_ui(|ui| {
@@ -707,22 +710,22 @@ fn latency_snapshot_button_ui(
 
 fn latency_details_ui(ui: &mut egui::Ui, latency: re_entity_db::LatencySnapshot) {
     let Some(e2e) = latency.e2e() else {
-        ui.label("No latency data available.");
+        ui.label(t("No latency data available."));
         return;
     };
 
     // The user is interested in the latency, so keep it updated.
     ui.request_repaint();
 
-    let e2e_hover_text = "End-to-end latency from when the data was logged by the SDK to when it is shown in the viewer.\n\
+    let e2e_hover_text = t("End-to-end latency from when the data was logged by the SDK to when it is shown in the viewer.\n\
     This includes time for encoding, network latency, and decoding.\n\
     It is also affected by the framerate of the viewer.\n\
-    This latency is inaccurate if the logging was done on a different machine, since it is clock-based.";
+    This latency is inaccurate if the logging was done on a different machine, since it is clock-based.");
 
     let re_entity_db::LatencySnapshot { secs_since_log } = latency;
 
     ui.horizontal(|ui| {
-        ui.label("end-to-end:").on_hover_text(e2e_hover_text);
+        ui.label(t("end-to-end:")).on_hover_text(e2e_hover_text);
         latency_label(ui, e2e);
     });
     ui.separator();

@@ -269,6 +269,7 @@ pub fn customize_eframe_and_setup_renderer(
     }
 
     re_ui::apply_style_and_install_loaders(&cc.egui_ctx);
+    re_ui::localizer::set_global_localizer(&re_ui::zh_localizer::CHINESE_LOCALIZER);
     Ok(())
 }
 

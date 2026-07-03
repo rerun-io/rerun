@@ -7,6 +7,7 @@ use re_sdk_types::blueprint::archetypes::EyeControls3D;
 use re_sdk_types::blueprint::components::VisualBounds2D;
 use re_sdk_types::image::ImageKind;
 use re_ui::UiExt as _;
+use re_ui::localizer::t;
 use re_viewer_context::{
     HoverHighlight, ImageInfo, SelectionHighlight, ViewHighlights, ViewId, ViewState, ViewerContext,
 };
@@ -31,9 +32,9 @@ pub enum AutoSizeUnit {
 impl From<AutoSizeUnit> for WidgetText {
     fn from(val: AutoSizeUnit) -> Self {
         match val {
-            AutoSizeUnit::Auto => "Auto".into(),
-            AutoSizeUnit::UiPoints => "UI points".into(),
-            AutoSizeUnit::World => "Scene units".into(),
+            AutoSizeUnit::Auto => t("Auto").into(),
+            AutoSizeUnit::UiPoints => t("UI points").into(),
+            AutoSizeUnit::World => t("Scene units").into(),
         }
     }
 }
@@ -130,14 +131,14 @@ impl SpatialViewState {
     }
 
     pub fn bounding_box_ui(&self, ui: &mut egui::Ui, spatial_kind: SpatialViewKind) {
-        ui.grid_left_hand_label("Bounding box")
-            .on_hover_text("The bounding box encompassing all Entities in the view right now");
+        ui.grid_left_hand_label(t("Bounding box"))
+            .on_hover_text(t("The bounding box encompassing all Entities in the view right now"));
         ui.vertical(|ui| {
             ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
             let BoundingBox { min, max } = self.bounding_boxes.current;
 
             if self.bounding_boxes.current.is_nothing() {
-                ui.label(egui::RichText::new("empty").italics());
+                ui.label(egui::RichText::new(t("empty")).italics());
             } else {
                 ui.label(format!("x [{} - {}]", format_f32(min.x), format_f32(max.x),));
                 ui.label(format!("y [{} - {}]", format_f32(min.y), format_f32(max.y),));
@@ -158,9 +159,9 @@ impl SpatialViewState {
         );
 
         if ui
-            .button("Reset")
+            .button(t("Reset"))
             .on_hover_text(
-                "Resets camera position & orientation.\nYou can also double-click the 3D view.",
+                t("Resets camera position & orientation.\nYou can also double-click the 3D view."),
             )
             .clicked()
         {

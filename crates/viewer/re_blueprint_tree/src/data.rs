@@ -17,6 +17,7 @@ use re_log_types::EntityPath;
 use re_log_types::external::re_types_core::ViewClassIdentifier;
 use re_sdk_types::blueprint::components::VisualizerInstructionId;
 use re_ui::filter_widget::{FilterMatcher, PathRanges};
+use re_ui::localizer::t;
 use re_viewer_context::{
     CollapseScope, ContainerId, Contents, ContentsName, DataQueryResult,
     DataResultInteractionAddress, DataResultNode, Item, ViewId, ViewerContext, VisitorControlFlow,
@@ -393,7 +394,7 @@ impl DataResultData {
             hierarchy.push(entity_part_ui_string.clone());
             (entity_part_ui_string, true)
         } else {
-            ("/ (root)".to_owned(), false)
+            (t("/ (root)").to_owned(), false)
         };
 
         //

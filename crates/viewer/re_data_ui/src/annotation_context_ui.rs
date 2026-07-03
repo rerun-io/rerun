@@ -8,6 +8,7 @@ use re_sdk_types::datatypes::{
 use re_sdk_types::{Component as _, ComponentDescriptor, RowId};
 use re_ui::UiExt as _;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
+use re_ui::localizer::t;
 use re_viewer_context::{StoreViewContext, UiLayout, auto_color_egui};
 
 use super::DataUi;
@@ -334,8 +335,8 @@ fn color_ui(ui: &mut egui::Ui, info: &AnnotationInfo, size: Vec2) {
             .map_or_else(|| auto_color_egui(info.id), |color| color.into());
         color_picker::show_color(ui, color, size);
         if info.color.is_none() {
-            ui.weak("(auto)")
-                .on_hover_text("Color chosen automatically, since it was not logged");
+            ui.weak(t("(auto)"))
+                .on_hover_text(t("Color chosen automatically, since it was not logged"));
         }
     });
 }

@@ -1,3 +1,4 @@
+use re_ui::localizer::t;
 use re_viewer_context::{
     Item, ScreenshotTarget, SystemCommand, SystemCommandSender as _, ViewId, ViewRectPublisher,
 };
@@ -45,8 +46,8 @@ impl ContextMenuAction for ScreenshotAction {
 
     fn label(&self, _ctx: &ContextMenuContext<'_>) -> String {
         match self {
-            Self::CopyScreenshot => "Copy screenshot".to_owned(),
-            Self::SaveScreenshot => "Save screenshot…".to_owned(),
+            Self::CopyScreenshot => t("Copy screenshot").to_owned(),
+            Self::SaveScreenshot => t("Save screenshot…").to_owned(),
         }
     }
 

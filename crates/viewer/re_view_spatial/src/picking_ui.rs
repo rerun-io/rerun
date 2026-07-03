@@ -5,6 +5,7 @@ use re_log_types::Instance;
 use re_renderer::ViewPickingConfiguration;
 use re_ui::UiExt as _;
 use re_ui::list_item::{PropertyContent, list_item_scope};
+use re_ui::localizer::t;
 use re_view::AnnotationSceneContext;
 use re_viewer_context::{
     DataResultInteractionAddress, IdentifiedViewSystem as _, Item, ItemCollection, ItemContext,
@@ -352,7 +353,7 @@ fn get_pixel_picking_info(
 fn hit_ui(ui: &mut egui::Ui, hit: &crate::picking::PickingRayHit) {
     if hit.hit_type == PickingHitType::GpuPickingResult {
         let glam::Vec3 { x, y, z } = hit.space_position;
-        ui.list_item_flat_noninteractive(PropertyContent::new("Hover position").value_fn(
+        ui.list_item_flat_noninteractive(PropertyContent::new(t("Hover position")).value_fn(
             |ui, _| {
                 ui.add(egui::Label::new(format!("[{x:.5}, {y:.5}, {z:.5}]")).extend());
             },

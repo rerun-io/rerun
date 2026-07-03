@@ -11,6 +11,7 @@ use re_sdk_types::{Archetype as _, archetypes};
 use re_types_core::{ComponentDescriptor, ComponentIdentifier, RowId};
 use re_ui::UiExt as _;
 use re_ui::list_item::{self, PropertyContent};
+use re_ui::localizer::t;
 use re_video::{FrameInfo, VideoDataDescription};
 use re_viewer_context::{
     SharablePlayableVideoStream, StoreViewContext, SystemCommandSender as _, UiLayout,
@@ -111,7 +112,7 @@ fn video_data_ui(
                     ui.label(bit_depth.to_string());
                     if 8 < bit_depth && !is_image_sequence {
                         // TODO(#7594): HDR videos
-                        ui.warning_label("HDR").on_hover_ui(|ui| {
+                        ui.warning_label(t("HDR")).on_hover_ui(|ui| {
                             ui.label(format!(
                                 "High-dynamic-range {stream_kind}s not yet supported by Rerun"
                             ));
@@ -138,7 +139,7 @@ fn video_data_ui(
 
     if let Some(duration) = video_descr.duration() {
         ui.list_item_flat_noninteractive(
-            PropertyContent::new("Duration")
+            PropertyContent::new(t("Duration"))
                 .value_text(format!("{}", re_log_types::Duration::from(duration))),
         );
     }
@@ -242,25 +243,25 @@ fn samples_table_ui(ui: &mut egui::Ui, video_descr: &VideoDataDescription) {
         .header(tokens.deprecated_table_header_height(), |mut header| {
             re_ui::DesignTokens::setup_table_header(&mut header);
             header.col(|ui| {
-                ui.strong("Sample");
+                ui.strong(t("Sample"));
             });
             header.col(|ui| {
                 ui.strong("Frame");
             });
             header.col(|ui| {
-                ui.strong("GOP");
+                ui.strong(t("GOP"));
             });
             header.col(|ui| {
-                ui.strong("Sync");
+                ui.strong(t("Sync"));
             });
             header.col(|ui| {
-                ui.strong("DTS").on_hover_text("Decode timestamp");
+                ui.strong(t("DTS")).on_hover_text(t("Decode timestamp"));
             });
             header.col(|ui| {
-                ui.strong("PTS").on_hover_text("Presentation timestamp");
+                ui.strong(t("PTS")).on_hover_text(t("Presentation timestamp"));
             });
             header.col(|ui| {
-                ui.strong("Duration");
+                ui.strong(t("Duration"));
             });
             header.col(|ui| {
                 ui.strong("Size");
@@ -527,22 +528,22 @@ fn frame_info_ui(
     if let Some(is_sync) = is_sync
         && stream_kind == StreamKind::Video
     {
-        ui.list_item_flat_noninteractive(PropertyContent::new("Sync").value_bool(is_sync))
-            .on_hover_text(
+        ui.list_item_flat_noninteractive(PropertyContent::new(t("Sync")).value_bool(is_sync))
+            .on_hover_text(t(
                 "The start of a new GOP (Group of Frames)?\n\
                 If true, it likely means the frame is a keyframe.",
-            );
+            ));
     }
 
     let presentation_time_range = frame_info.presentation_time_range();
     if let Some(timescale) = video_descr.timescale {
-        ui.list_item_flat_noninteractive(PropertyContent::new("Time range").value_text(format!(
+        ui.list_item_flat_noninteractive(PropertyContent::new(t("Time range")).value_text(format!(
             "{} - {}",
             format_relative_timestamp_secs(presentation_time_range.start.into_secs(timescale)),
             format_relative_timestamp_secs(presentation_time_range.end.into_secs(timescale)),
         )))
     } else {
-        ui.list_item_flat_noninteractive(PropertyContent::new("Time range").value_text(format!(
+        ui.list_item_flat_noninteractive(PropertyContent::new(t("Time range")).value_text(format!(
             "{} - {}",
             presentation_time_range.start.0, presentation_time_range.end.0,
         )))
@@ -564,7 +565,7 @@ fn frame_info_ui(
     if let Some(sample_idx) = sample_idx
         && stream_kind == StreamKind::Video
     {
-        ui.list_item_flat_noninteractive(PropertyContent::new("Sample").value_fn(move |ui, _| {
+        ui.list_item_flat_noninteractive(PropertyContent::new(t("Sample")).value_fn(move |ui, _| {
             ui.monospace(re_format::format_uint(sample_idx));
         }))
         .on_hover_text(
@@ -588,17 +589,21 @@ fn frame_info_ui(
         && stream_kind == StreamKind::Video
     {
         ui.list_item_flat_noninteractive(
-            PropertyContent::new("DTS").value_fn(value_fn_for_time(dts, video_descr)),
+            PropertyContent::new(t("DTS")).value_fn(value_fn_for_time(dts, video_descr)),
         )
-        .on_hover_text("Raw decode timestamp prior to applying the timescale.\n\
-                        If a frame is made up of multiple chunks, this is the last decode timestamp that was needed to decode the frame.");
+        .on_hover_text(t("Raw decode timestamp prior to applying the timescale.\n\
+                        If a frame is made up of multiple chunks, this is the last decode timestamp that was needed to decode the frame."));
     }
 
     ui.list_item_flat_noninteractive(
-        PropertyContent::new("PTS").value_fn(value_fn_for_time(presentation_timestamp, video_descr)),
+        PropertyContent::new(t("PTS")).value_fn(value_fn_for_time(presentation_timestamp, video_descr)),
     )
-    .on_hover_text(format!("Raw presentation timestamp prior to applying the timescale.\n\
-                    This specifies the time at which the {} should be shown relative to the start of a {stream_kind} stream.", stream_kind.frame_word()));
+    .on_hover_text(format!("{}.\n{} {} {}.",
+        t("Raw presentation timestamp prior to applying the timescale"),
+        t("This specifies the time at which the"),
+        stream_kind.frame_word(),
+        t("should be shown relative to the start of a stream"),
+    ));
 
     // Judging the following to be a bit too obscure to be of relevance outside of debugging Rerun itself.
     #[cfg(debug_assertions)]

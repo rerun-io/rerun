@@ -10,6 +10,7 @@ use re_sdk_types::archetypes::RecordingInfo;
 use re_sdk_types::components::{Name, Timestamp};
 use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{SyntaxHighlighting as _, UiExt as _, icons, list_item};
+use re_ui::localizer::t;
 use re_viewer_context::open_url::ViewerOpenUrl;
 use re_viewer_context::{
     AppContext, DataResultInteractionAddress, HoverHighlight, Item, Route, StoreViewContext,
@@ -454,7 +455,7 @@ pub fn timeline_button_to(
 
     let response = ui
         .selectable_label(is_selected, text)
-        .on_hover_text("Click to switch to this timeline");
+        .on_hover_text(t("Click to switch to this timeline"));
     if response.clicked() {
         ctx.send_time_commands_to_active_recording([
             TimeControlCommand::SetActiveTimeline(*timeline_name),
@@ -765,7 +766,7 @@ pub fn table_id_button_ui(
             // Close-button:
             let resp = ui
                 .small_icon_button(&icons::CLOSE_SMALL, "Close table")
-                .on_hover_text("Close this table (all data will be lost)");
+                .on_hover_text(t("Close this table (all data will be lost)"));
             if resp.clicked() {
                 ctx.command_sender()
                     .send_system(SystemCommand::CloseRecordingOrTable(

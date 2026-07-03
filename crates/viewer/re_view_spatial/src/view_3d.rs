@@ -16,6 +16,7 @@ use re_sdk_types::view_coordinates::SignedAxis3;
 use re_sdk_types::{Archetype as _, Component as _, View as _, ViewClassIdentifier, archetypes};
 use re_tf::query_view_coordinates;
 use re_ui::{Help, UiExt as _, list_item};
+use re_ui::localizer::t;
 use re_view::view_property_ui;
 use re_viewer_context::{
     IdentifiedViewSystem as _, IndicatedEntities, PerVisualizerType, QueryContext, RecommendedView,
@@ -494,24 +495,24 @@ impl ViewClass for SpatialView3D {
 
         // TODO(andreas): list_item'ify the rest
         ui.selection_grid("spatial_settings_ui").show(ui, |ui| {
-            ui.grid_left_hand_label("Camera")
-                .on_hover_text("The virtual camera which controls what is shown on screen");
+            ui.grid_left_hand_label(t("Camera"))
+                .on_hover_text(t("The virtual camera which controls what is shown on screen"));
             ui.vertical(|ui| {
                 state.view_eye_ui(ui, ctx, view_id);
             });
             ui.end_row();
 
-            ui.grid_left_hand_label("Coordinates")
-                .on_hover_text("The world coordinate system used for this view");
+            ui.grid_left_hand_label(t("Coordinates"))
+                .on_hover_text(t("The world coordinate system used for this view"));
             ui.vertical(|ui| {
                 let up_description =
                     if let Some(scene_up) = scene_view_coordinates.and_then(|vc| vc.up()) {
-                        format!("Scene up is {scene_up}")
+                        format!("{} {scene_up}", t("Scene up is"))
                     } else {
-                        "Scene up is unspecified".to_owned()
+                        t("Scene up is unspecified").to_string()
                     };
                 ui.label(up_description).on_hover_ui(|ui| {
-                    ui.markdown_ui("Set with `rerun.ViewCoordinates`.");
+                    ui.markdown_ui(t("Set with `rerun.ViewCoordinates`."));
                 });
             });
             ui.end_row();
@@ -520,10 +521,10 @@ impl ViewClass for SpatialView3D {
 
             #[cfg(debug_assertions)]
             {
-                ui.re_checkbox(&mut state.state_3d.show_smoothed_bbox, "Smoothed bbox");
+                ui.re_checkbox(&mut state.state_3d.show_smoothed_bbox, t("Smoothed bbox"));
                 ui.re_checkbox(
                     &mut state.state_3d.show_per_entity_bbox,
-                    "Per-entity bboxes",
+                    t("Per-entity bboxes"),
                 );
             }
         });
@@ -594,7 +595,7 @@ fn view_property_ui_grid3d(ctx: &ViewContext<'_>, ui: &mut egui::Ui) {
                                 LineGrid3D::descriptor_color().component,
                             )
                         else {
-                            ui.error_label("Failed to query color component");
+                            ui.error_label(t("Failed to query color component"));
                             return;
                         };
                         let mut edit_color = egui::Color32::from(*color);

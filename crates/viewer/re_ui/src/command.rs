@@ -136,11 +136,11 @@ pub enum UICommand {
 
 impl UICommand {
     pub fn text(self) -> &'static str {
-        self.text_and_tooltip().0
+        crate::localizer::t(self.text_and_tooltip().0)
     }
 
     pub fn tooltip(self) -> &'static str {
-        self.text_and_tooltip().1
+        crate::localizer::t(self.text_and_tooltip().1)
     }
 
     pub fn text_and_tooltip(self) -> (&'static str, &'static str) {

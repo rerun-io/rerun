@@ -3,6 +3,7 @@ use re_entity_db::EntityDb;
 use re_log_types::TimeType;
 use re_sdk_types::blueprint::components::{LoopMode, PlayState};
 use re_ui::{UICommand, UiExt as _, list_item};
+use re_ui::localizer::t;
 use re_viewer_context::{TimeControl, TimeControlCommand};
 
 #[derive(serde::Deserialize, serde::Serialize, Default)]
@@ -29,7 +30,7 @@ impl TimeControlUi {
                     let timelines = entity_db.timelines();
 
                     if timelines.is_empty() {
-                        ui.weak("The recording has no timelines");
+                        ui.weak(t("The recording has no timelines"));
                         return;
                     }
 
@@ -42,8 +43,9 @@ impl TimeControlUi {
                                     timeline.name().as_str(),
                                     egui::Atom::grow(),
                                     egui::RichText::new(format!(
-                                        "{} rows",
-                                        re_format::format_uint(num_rows)
+                                        "{} {}",
+                                        re_format::format_uint(num_rows),
+                                        t("rows")
                                     ))
                                     .size(10.0)
                                     .color(ui.tokens().text_subdued),
@@ -60,7 +62,7 @@ impl TimeControlUi {
                 .on_hover_ui(|ui| {
                     list_item::list_item_scope(ui, "tooltip", |ui| {
                         ui.markdown_ui(
-                            r"
+                            t(r"
 Select timeline.
 
 Each piece of logged data is associated with one or more timelines.
@@ -71,11 +73,11 @@ The logging SDK always creates two timelines for you:
 
 You can also define your own timelines, e.g. for sensor time or camera frame number.
 "
-                            .trim(),
+                            .trim()),
                         );
 
                         ui.re_hyperlink(
-                            "Full documentation",
+                            t("Full documentation"),
                             "https://rerun.io/docs/concepts/logging-and-ingestion/timelines",
                             // Always open in a new tab
                             true,
@@ -98,9 +100,9 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
                 })
                 .at_pointer_fixed()
                 .show(|ui| {
-                    if ui.button("Copy timeline name").clicked() {
+                    if ui.button(t("Copy timeline name")).clicked() {
                         let timeline = format!("{}", time_ctrl.timeline_name());
-                        re_log::info!("Copied timeline: {}", timeline);
+                        re_log::info!("{} {}", t("Copied timeline:"), timeline);
                         ui.copy_text(timeline);
                     }
                 })
@@ -123,11 +125,11 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
 
                 ui.add(
                     egui::DragValue::new(&mut fps)
-                        .suffix(" FPS")
+                        .suffix(t(" FPS"))
                         .speed(1)
                         .range(0.0..=f32::INFINITY),
                 )
-                .on_hover_text("Frames per second");
+                .on_hover_text(t("Frames per second"));
             });
             if old_fps != fps {
                 time_commands.push(TimeControlCommand::SetFps(fps));
@@ -240,7 +242,7 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
                 LoopMode::Off => {
                     if ui
                         .large_button_selected(icon, false)
-                        .on_hover_text("Looping is off")
+                        .on_hover_text(t("Looping is off"))
                         .clicked()
                     {
                         time_commands.push(TimeControlCommand::SetLoopMode(LoopMode::All));
@@ -250,7 +252,7 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
                     ui.visuals_mut().selection.bg_fill = ui.tokens().loop_everything_color;
                     if ui
                         .large_button_selected(icon, true)
-                        .on_hover_text("Looping entire recording")
+                        .on_hover_text(t("Looping entire recording"))
                         .clicked()
                     {
                         time_commands.push(TimeControlCommand::SetLoopMode(LoopMode::Selection));
@@ -262,7 +264,7 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
 
                     if ui
                         .large_button_selected(icon, true)
-                        .on_hover_text("Looping selection")
+                        .on_hover_text(t("Looping selection"))
                         .clicked()
                     {
                         time_commands.push(TimeControlCommand::SetLoopMode(LoopMode::Off));
@@ -286,9 +288,9 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
             ui.add(
                 egui::DragValue::new(&mut speed)
                     .speed(drag_speed)
-                    .suffix("x"),
+                    .suffix(t("x")),
             )
-            .on_hover_text("Playback speed");
+            .on_hover_text(t("Playback speed"));
         });
 
         if speed != time_ctrl.speed() {

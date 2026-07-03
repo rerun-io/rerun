@@ -10,6 +10,7 @@ use re_sdk_types::blueprint::archetypes::{MapBackground, MapZoom};
 use re_sdk_types::blueprint::components::{MapProvider, ZoomLevel};
 use re_sdk_types::{View as _, ViewClassIdentifier};
 use re_ui::{Help, IconText, icons, list_item};
+use re_ui::localizer::t;
 use re_view::AnnotationSceneContext;
 use re_viewer_context::{
     DataResultInteractionAddress, IdentifiedViewSystem as _, Item, StoreViewContext, SystemCommand,
@@ -126,7 +127,7 @@ impl ViewClass for MapView {
     }
 
     fn display_name(&self) -> &'static str {
-        "Map"
+        t("Map")
     }
 
     fn icon(&self) -> &'static re_ui::Icon {
@@ -134,14 +135,14 @@ impl ViewClass for MapView {
     }
 
     fn help(&self, os: egui::os::OperatingSystem) -> Help {
-        Help::new("Map view")
+        Help::new(t("Map view"))
             .docs_link("https://rerun.io/docs/reference/types/views/map_view")
-            .control("Pan", (icons::LEFT_MOUSE_CLICK, "+", "drag"))
+            .control(t("Pan"), (icons::LEFT_MOUSE_CLICK, "+", "drag"))
             .control(
-                "Zoom",
+                t("Zoom"),
                 IconText::from_modifiers_and(os, Modifiers::COMMAND, icons::SCROLL),
             )
-            .control("Reset view", ("double", icons::LEFT_MOUSE_CLICK))
+            .control(t("Reset view"), ("double", icons::LEFT_MOUSE_CLICK))
     }
 
     fn on_register(

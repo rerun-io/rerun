@@ -9,6 +9,7 @@ use re_format::{format_bytes, format_uint};
 use re_log_channel::LogSource;
 use re_log_types::StoreKind;
 use re_ui::UiExt as _;
+use re_ui::localizer::t;
 use re_viewer_context::{AppContext, UiLayout};
 
 use crate::item_ui::{app_id_button_ui, data_source_button_ui};
@@ -56,7 +57,7 @@ impl crate::AppUi for EntityDb {
                             (true, false) => {
                                 ui.add_space(8.0);
                                 ui.label(
-                                    "This is the default blueprint for the current application.",
+                                    t("This is the default blueprint for the current application."),
                                 );
 
                                 if let Some(active_blueprint) =
@@ -66,25 +67,25 @@ impl crate::AppUi for EntityDb {
                                     // The active blueprint is a clone of the selected blueprint.
                                     if self.latest_row_id() == active_blueprint.latest_row_id() {
                                         ui.label(
-                                            "The active blueprint is a clone of this blueprint.",
+                                            t("The active blueprint is a clone of this blueprint."),
                                         );
                                     } else {
-                                        ui.label("The active blueprint is a modified clone of this blueprint.");
+                                        ui.label(t("The active blueprint is a modified clone of this blueprint."));
                                     }
                                 }
                             }
                             (false, true) => {
                                 ui.add_space(8.0);
-                                ui.label(format!("This is the active blueprint for the current application, '{active_app_id}'"));
+                                ui.label(format!("{} '{active_app_id}'", t("This is the active blueprint for the current application")));
                             }
                             (true, true) => {
                                 ui.add_space(8.0);
-                                ui.label(format!("This is both the active and default blueprint for the current application, '{active_app_id}'"));
+                                ui.label(format!("{} '{active_app_id}'", t("This is both the active and default blueprint for the current application")));
                             }
                         }
                     } else {
                         ui.add_space(8.0);
-                        ui.label("This blueprint is not for the active application");
+                        ui.label(t("This blueprint is not for the active application"));
                     }
                 }
             }
@@ -184,7 +185,7 @@ fn grid_content_ui(ctx: &AppContext<'_>, db: &EntityDb, ui: &mut egui::Ui, ui_la
 
         ui.grid_left_hand_label("Duration");
         ui.label(pretty)
-            .on_hover_text("Duration between earliest and latest log_time.");
+            .on_hover_text(t("Duration between earliest and latest log_time."));
         ui.end_row();
     }
 
@@ -200,11 +201,11 @@ fn grid_content_ui(ctx: &AppContext<'_>, db: &EntityDb, ui: &mut egui::Ui, ui_la
             current_size_bytes
         };
 
-        ui.label(format_bytes(full_size_bytes as _)).on_hover_text(
+        ui.label(format_bytes(full_size_bytes as _)).on_hover_text(t(
             "Approximate size in RAM (decompressed).\n\
             If you hover an entity in the streams view (bottom panel) you can see the \
             size of individual entities.",
-        );
+        ));
         ui.end_row();
 
         if db.rrd_manifest_index().has_manifest() {
@@ -264,7 +265,7 @@ fn grid_content_ui(ctx: &AppContext<'_>, db: &EntityDb, ui: &mut egui::Ui, ui_la
 
             if 0 < num_root_chunks {
                 ui.grid_left_hand_label("Avg chunk size")
-                    .on_hover_text("On remote");
+                    .on_hover_text(t("On remote"));
                 let avg_chunk_size_bytes = full_size_bytes as f64 / num_root_chunks as f64;
                 ui.label(format_bytes(avg_chunk_size_bytes));
                 ui.end_row();
@@ -280,7 +281,7 @@ fn grid_content_ui(ctx: &AppContext<'_>, db: &EntityDb, ui: &mut egui::Ui, ui_la
         let schema = store.schema().chunk_column_descriptors();
 
         ui.grid_left_hand_label("Entities")
-            .on_hover_text("In the ChunkStore");
+            .on_hover_text(t("In the ChunkStore"));
         ui.label(re_format::format_uint(store.all_entities().len()));
         ui.end_row();
 

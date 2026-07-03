@@ -1,6 +1,7 @@
 use eframe::epaint::Margin;
 use egui::{Button, Frame, RichText, TextStyle, Theme, Ui};
 use re_ui::egui_ext::card_layout::{CardLayout, CardLayoutItem};
+use re_ui::localizer::t;
 use re_ui::{ReButtonExt as _, UICommand, UICommandSender as _, UiExt as _, design_tokens_of};
 use re_uri::Origin;
 use re_viewer_context::{
@@ -41,19 +42,19 @@ impl IntroItem {
     fn items(login_enabled: bool) -> Vec<Self> {
         let mut items = vec![
             Self::DocItem {
-                title: "Send data in",
+                title: t("Send data in"),
                 url: "https://rerun.io/docs/getting-started/data-in",
-                body: "Ingest multi-rate, multimodal data from robot logs, sensors, simulation, or video.",
+                body: t("Ingest multi-rate, multimodal data from robot logs, sensors, simulation, or video."),
             },
             Self::DocItem {
-                title: "Explore data",
+                title: t("Explore data"),
                 url: "https://rerun.io/docs/getting-started/configure-the-viewer",
-                body: "Visualize and explore multi-rate, multimodal data across every stage of the pipeline.",
+                body: t("Visualize and explore multi-rate, multimodal data across every stage of the pipeline."),
             },
             Self::DocItem {
-                title: "Query data out",
+                title: t("Query data out"),
                 url: "https://rerun.io/docs/getting-started/data-out",
-                body: "Query raw, intermediate, and derived data with dataframes or SQL, and stream to training.",
+                body: t("Query raw, intermediate, and derived data with dataframes or SQL, and stream to training."),
             },
         ];
         if login_enabled {
@@ -99,7 +100,7 @@ impl IntroItem {
 
                     ui.heading(RichText::new(*title).strong());
                 }, |ui| {
-                    let _response = ui.re_hyperlink("Docs", *url, true);
+                    let _response = ui.re_hyperlink(t("Docs"), *url, true);
                     #[cfg(feature = "analytics")]
                     if _response.clicked() || _response.clicked_with_open_in_background() {
                         re_analytics::record(|| re_analytics::event::WelcomeScreenNavigation {
@@ -120,7 +121,7 @@ impl IntroItem {
                 };
                 ui.set_style(ui.style_of(opposite_theme));
 
-                ui.heading(RichText::new("Rerun Hub").strong());
+                ui.heading(RichText::new(t("Rerun Hub")).strong());
 
                 ui.horizontal_wrapped(|ui| {
                     ui.spacing_mut().item_spacing.x = 0.0;
@@ -140,13 +141,11 @@ impl IntroItem {
                     };
 
                     ui.style_mut().text_styles.get_mut(&TextStyle::Body).expect("Should always have body text style").size = label_size;
-                    ui.label(
-                        "The production backend for the Rerun data layer — turn your object stores into a queryable, streamable foundation. "
-                    );
-                    link(ui, "Learn more", "https://rerun.io/#rerun-data-platform");
-                    ui.label(" or ");
-                    link(ui, "book a demo", "https://calendly.com/d/ctht-4kp-qnt/rerun-demo-meeting");
-                    ui.label(".");
+                    ui.label(t("The production backend for the Rerun data layer — turn your object stores into a queryable, streamable foundation. "));
+                    link(ui, t("Learn more"), "https://rerun.io/#rerun-data-platform");
+                    ui.label(t(" or "));
+                    link(ui, t("book a demo"), "https://calendly.com/d/ctht-4kp-qnt/rerun-demo-meeting");
+                    ui.label(t("."));
                 });
 
                 let analytics = || {
@@ -162,37 +161,37 @@ impl IntroItem {
 
                 match cloud_state {
                     CloudState { has_server: None, login: LoginState::NoAuth } => {
-                        if ui.primary_button("Add server and login").clicked() {
+                        if ui.primary_button(t("Add server and login")).clicked() {
                             analytics();
                             ctx.command_sender.send_ui(UICommand::AddRedapServer);
                         }
                     }
                     CloudState { has_server: None, login } => {
                         ui.horizontal_wrapped(|ui| {
-                            if ui.primary_button("Add server").clicked() {
+                            if ui.primary_button(t("Add server")).clicked() {
                                 analytics();
                                 ctx.command_sender.send_ui(UICommand::AddRedapServer);
                             }
                             if let LoginState::Auth { email: Some(email) } = login {
                                 ui.spacing_mut().item_spacing.x = 0.0;
-                                ui.weak("logged in as ");
+                                ui.weak(t("logged in as "));
                                 ui.strong(email);
                             }
                         });
                     }
                     CloudState { has_server: Some(origin), login: LoginState::NoAuth } => {
                         ui.horizontal_wrapped(|ui| {
-                            if ui.primary_button("Add credentials").clicked() {
+                            if ui.primary_button(t("Add credentials")).clicked() {
                                 analytics();
                                 ctx.command_sender.send_system(SystemCommand::EditRedapServerModal(EditRedapServerModalCommand::new(origin.clone())));
                             }
                             ui.spacing_mut().item_spacing.x = 0.0;
-                            ui.weak("for address ");
+                            ui.weak(t("for address "));
                             ui.strong(format!("{}", &origin.host));
                         });
                     }
                     CloudState { has_server: Some(origin), login: LoginState::Auth { .. } } => {
-                        if ui.primary_button("Explore your data").clicked() {
+                        if ui.primary_button(t("Explore your data")).clicked() {
                             analytics();
                             ctx.command_sender.send_system(SystemCommand::set_selection(Item::RedapServer(origin.clone())));
                         }
@@ -209,9 +208,9 @@ pub fn intro_section(ui: &mut egui::Ui, ctx: &AppContext<'_>, cloud_state: &Clou
     ui.add_space(32.0);
 
     if let Some(auth) = ctx.auth_context {
-        ui.strong(RichText::new(format!("Hi, {}!", &auth.email)).size(15.0));
+        ui.strong(RichText::new(format!("{} {}!", t("Hi,"), &auth.email)).size(15.0));
 
-        if ui.add(Button::new("Log out").secondary().small()).clicked() {
+        if ui.add(Button::new(t("Log out")).secondary().small()).clicked() {
             ctx.command_sender.send_system(SystemCommand::Logout);
         }
 
