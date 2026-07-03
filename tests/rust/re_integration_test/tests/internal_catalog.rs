@@ -133,13 +133,20 @@ async fn internal_catalog_load_rrd() {
                 .unwrap_or_default();
             let app_id_rects = {
                 let selection_panel = harness.selection_panel();
-                selection_panel
-                    .root()
+                let selection_panel_root = selection_panel.root();
+                let selection_panel_rect = selection_panel_root.rect();
+                selection_panel_root
                     .query_all_by(|node| {
                         node.label().is_some_and(|label| label.contains(&app_id))
                             || node.value().is_some_and(|value| value.contains(&app_id))
                     })
-                    .map(|node| node.rect())
+                    .map(|node| {
+                        let rect = node.rect();
+                        egui::Rect::from_min_max(
+                            egui::pos2(selection_panel_rect.left(), rect.top()),
+                            egui::pos2(selection_panel_rect.right(), rect.bottom()),
+                        )
+                    })
                     .collect::<Vec<_>>()
             };
             for rect in app_id_rects {
@@ -158,6 +165,28 @@ async fn internal_catalog_load_rrd() {
                 .map(|node| node.rect())
                 .collect();
             for rect in unstable_path_rects {
+                harness.mask(rect);
+            }
+
+            let selection_panel_path_rects = {
+                let selection_panel = harness.selection_panel();
+                let selection_panel_root = selection_panel.root();
+                let selection_panel_rect = selection_panel_root.rect();
+                selection_panel_root
+                    .query_all_by(|node| {
+                        node.label().is_some_and(|l| l.contains(&temp_dir_path))
+                            || node.value().is_some_and(|v| v.contains(&temp_dir_path))
+                    })
+                    .map(|node| {
+                        let rect = node.rect();
+                        egui::Rect::from_min_max(
+                            egui::pos2(selection_panel_rect.left(), rect.top()),
+                            egui::pos2(selection_panel_rect.right(), rect.bottom()),
+                        )
+                    })
+                    .collect::<Vec<_>>()
+            };
+            for rect in selection_panel_path_rects {
                 harness.mask(rect);
             }
         }

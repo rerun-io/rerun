@@ -8,7 +8,7 @@ use re_log_channel::LogSource;
 use re_log_types::TableId;
 use re_redap_browser::{Command, EXAMPLES_ORIGIN, RedapServers};
 use re_ui::list_item::{LabelContent, ListItemContentButtonsExt as _};
-use re_ui::{OnResponseExt as _, UiExt as _, UiLayout, icons, list_item};
+use re_ui::{ContextExt as _, OnResponseExt as _, UiExt as _, UiLayout, icons, list_item};
 use re_uri::dataset_hierarchy_leaf_name;
 use re_viewer_context::open_url::ViewerOpenUrl;
 use re_viewer_context::{
@@ -284,6 +284,21 @@ fn welcome_item_ui(
 
 // ---
 
+fn server_title(ctx: &AppContext<'_>, origin: &re_uri::Origin, is_internal: bool) -> String {
+    if is_internal {
+        "Viewer catalog".to_owned()
+    } else {
+        let host = origin.format_host();
+        if origin.scheme == re_uri::Scheme::RerunHttps && origin.port == 443 {
+            host
+        } else if ctx.egui_ctx.is_test() {
+            format!("{host}:XXXX")
+        } else {
+            format!("{host}:{}", origin.port)
+        }
+    }
+}
+
 fn server_section_ui(
     ctx: &AppContext<'_>,
     ui: &mut egui::Ui,
@@ -298,54 +313,44 @@ fn server_section_ui(
         entries_data,
     } = server_data;
 
-    let title = if *is_internal {
-        "Viewer catalog".to_owned()
-    } else {
-        origin.host.to_string()
-    };
-
-    let content = list_item::LabelContent::header(title)
-        .with_always_show_buttons(true)
-        .with_button(
-            ui.small_icon_button_widget(&icons::MORE, "Actions")
-                .on_menu(move |ui| {
-                    if icons::RESET
-                        .as_button_with_label(ui.tokens(), "Refresh")
-                        .ui(ui)
-                        .clicked()
-                    {
-                        servers.send_command(Command::RefreshCollection(origin.clone()));
-                    }
-                    if !*is_internal
-                        && icons::SETTINGS
-                            .as_button_with_label(ui.tokens(), "Edit")
-                            .ui(ui)
-                            .clicked()
-                    {
-                        servers.send_command(Command::OpenEditServerModal(
-                            EditRedapServerModalCommand::new(origin.clone()),
-                        ));
-                    }
-                    if icons::COPY
-                        .as_button_with_label(ui.tokens(), "Copy URL")
-                        .ui(ui)
-                        .clicked()
-                    {
-                        let url = origin.to_string();
-                        re_log::info!("Copied {url:?} to clipboard");
-                        ui.copy_text(url);
-                    }
-                    if !*is_internal
-                        && icons::TRASH
-                            .as_button_with_label(ui.tokens(), "Remove")
-                            .ui(ui)
-                            .clicked()
-                    {
-                        ctx.command_sender()
-                            .send_system(SystemCommand::RemoveRedapServer(origin.clone()));
-                    }
-                }),
-        );
+    let content = list_item::LabelContent::header(server_title(ctx, origin, *is_internal))
+        .with_menu_button(&icons::MORE, "Actions", move |ui| {
+            if icons::RESET
+                .as_button_with_label(ui.tokens(), "Refresh")
+                .ui(ui)
+                .clicked()
+            {
+                servers.send_command(Command::RefreshCollection(origin.clone()));
+            }
+            if !*is_internal
+                && icons::SETTINGS
+                    .as_button_with_label(ui.tokens(), "Edit")
+                    .ui(ui)
+                    .clicked()
+            {
+                servers.send_command(Command::OpenEditServerModal(
+                    EditRedapServerModalCommand::new(origin.clone()),
+                ));
+            }
+            if icons::COPY
+                .as_button_with_label(ui.tokens(), "Copy URL")
+                .ui(ui)
+                .clicked()
+            {
+                let url = origin.to_string();
+                re_log::info!("Copied {url:?} to clipboard");
+                ui.copy_text(url);
+            }
+            if !*is_internal
+                && icons::TRASH
+                    .as_button_with_label(ui.tokens(), "Remove")
+                    .ui(ui)
+                    .clicked()
+            {
+                ctx.command_sender()
+                    .send_system(SystemCommand::RemoveRedapServer(origin.clone()));
+            }
+        });
 
     let item_response = ui
         .list_item()

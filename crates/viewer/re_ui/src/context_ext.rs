@@ -3,6 +3,13 @@ use egui::{Align2, Mesh, Rect, Shape, Vec2, pos2};
 
 use crate::{DesignTokens, TopBarStyle};
 
+#[derive(Clone, Copy, serde::Deserialize, serde::Serialize)]
+struct TestMarker;
+
+fn test_marker_id() -> egui::Id {
+    egui::Id::new("__rerun_test_marker")
+}
+
 /// Extension trait for [`egui::Context`].
 ///
 /// This trait provides Rerun-specific helpers and utilities that require access to the egui
@@ -12,6 +19,17 @@ pub trait ContextExt {
 
     fn tokens(&self) -> &'static DesignTokens {
         crate::design_tokens_of(self.ctx().theme())
+    }
+
+    fn mark_as_test(&self) {
+        self.ctx()
+            .data_mut(|data| data.insert_persisted(test_marker_id(), TestMarker));
+    }
+
+    fn is_test(&self) -> bool {
+        self.ctx()
+            .data_mut(|data| data.get_persisted::<TestMarker>(test_marker_id()))
+            .is_some()
     }
 
     // -----------------------------------------------------

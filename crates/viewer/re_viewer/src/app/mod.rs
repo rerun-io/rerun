@@ -12,7 +12,7 @@ use re_log_channel::{LogReceiverSet, RecordingOpenBehavior, SaveScreenshotError}
 use re_log_types::{ApplicationId, FileSource, RecordingId, StoreId};
 use re_redap_client::ConnectionRegistryHandle;
 use re_sdk_types::blueprint::components::PlayState;
-use re_ui::{UICommand, UICommandSender as _, notifications};
+use re_ui::{ContextExt as _, UICommand, UICommandSender as _, notifications};
 use re_viewer_context::open_url::{OpenUrlOptions, ViewerOpenUrl};
 use re_viewer_context::store_hub::{BlueprintPersistence, StoreHub};
 use re_viewer_context::{
@@ -280,7 +280,8 @@ impl App {
             state.app_options.video.hw_acceleration = video_decoder_hw_acceleration;
         }
 
-        if app_env.is_test() {
+        if is_test {
+            creation_context.egui_ctx.mark_as_test();
             state.app_options = AppOptions::test();
         }
 
