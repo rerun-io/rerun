@@ -154,12 +154,11 @@ impl SeriesLinesSystem {
                     };
                     num_vertices += series_vertices;
                 }
-                PlotSeriesKind::Clear => {}
-                PlotSeriesKind::Scatter(_) => {
-                    re_log::debug_panic!(
-                        "Self::load_series produced an unexpected PlotSeriesKind: Scatter"
-                    );
-                }
+                // A series with a single point can't be drawn as a line, so
+                // `util::points_to_series` falls back to `Scatter` for it. This system only
+                // builds line strips, so such series are skipped here too, matching the
+                // `PlotSeriesKind::Scatter(_) | PlotSeriesKind::Clear => continue` arm below.
+                PlotSeriesKind::Clear | PlotSeriesKind::Scatter(_) => {}
             }
         }
 
