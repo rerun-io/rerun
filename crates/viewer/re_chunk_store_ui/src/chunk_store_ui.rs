@@ -12,6 +12,7 @@ use re_log_types::{
 };
 use re_ui::{ContextExt as _, text_edit::autocomplete_text_edit};
 use re_ui::{UiExt as _, list_item};
+use re_ui::localizer::t;
 use re_viewer_context::external::re_entity_db::EntityDb;
 use re_viewer_context::{ActiveStoreContext, StorageContext};
 
@@ -100,10 +101,10 @@ impl FilterSuggestionCache {
 impl ChunkListColumn {
     pub(crate) fn ui(&self, ui: &mut egui::Ui, sort_column: &mut ChunkListSortColumn) {
         match self {
-            Self::ChunkId => sortable_column_header_ui(self, ui, sort_column, "Chunk ID"),
-            Self::EntityPath => sortable_column_header_ui(self, ui, sort_column, "Entity"),
-            Self::RowCount => sortable_column_header_ui(self, ui, sort_column, "# rows"),
-            Self::ChunkSize => sortable_column_header_ui(self, ui, sort_column, "Size"),
+            Self::ChunkId => sortable_column_header_ui(self, ui, sort_column, t("Chunk ID")),
+            Self::EntityPath => sortable_column_header_ui(self, ui, sort_column, t("Entity")),
+            Self::RowCount => sortable_column_header_ui(self, ui, sort_column, t("# rows")),
+            Self::ChunkSize => sortable_column_header_ui(self, ui, sort_column, t("Size")),
             Self::Timeline(timeline_name) => {
                 sortable_column_header_ui(self, ui, sort_column, timeline_name.as_str());
             }
@@ -387,7 +388,7 @@ impl DatastoreUi {
                 row.col(|ui| {
                     ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
 
-                    ui.strong("Components");
+                    ui.strong(t("Components"));
                 });
             };
 
@@ -432,8 +433,8 @@ impl DatastoreUi {
                                         .get(timeline.name())
                                         .is_some_and(|t| !t.is_sorted())
                                     {
-                                        ui.label(ui.warning_text("Unsorted")).on_hover_text(
-                                            "This timeline is unordered relative to RowId",
+                                        ui.label(ui.warning_text(t("Unsorted"))).on_hover_text(
+                                            t("This timeline is unordered relative to RowId"),
                                         );
                                     }
                                     if let Some(time_range) = timeline_ranges.get(timeline.name()) {
@@ -502,11 +503,11 @@ impl DatastoreUi {
                 ui.id().with("chunk_list_filter_icon"),
                 egui::Sense::hover(),
             )
-            .on_hover_text(
+            .on_hover_text(t(
                 "Filter the chunk list by entity path and/or component. Filtering is \
                 case-insensitive text-based.",
-            );
-            ui.label("Entity:");
+            ));
+            ui.label(t("Entity:"));
             autocomplete_text_edit(
                 ui,
                 &mut self.entity_path_filter,
@@ -515,7 +516,7 @@ impl DatastoreUi {
                 None::<&str>,
             );
 
-            ui.label("Component:");
+            ui.label(t("Component:"));
             autocomplete_text_edit(
                 ui,
                 &mut self.component_filter,
@@ -525,7 +526,7 @@ impl DatastoreUi {
             );
 
             if ui
-                .small_icon_button(&re_ui::icons::TRASH, "Clear filters")
+                .small_icon_button(&re_ui::icons::TRASH, t("Clear filters"))
                 .clicked()
             {
                 self.entity_path_filter.clear();
@@ -644,10 +645,10 @@ impl DatastoreUi {
         let should_copy_chunks = ui
             .horizontal(|ui| {
                 ui.selectable_toggle(|ui| {
-                    ui.selectable_value(&mut self.store_kind, StoreKind::Recording, "Recording")
-                        .on_hover_text("Display the current recording's data store");
-                    ui.selectable_value(&mut self.store_kind, StoreKind::Blueprint, "Blueprint")
-                        .on_hover_text("Display the current recording's blueprint store");
+                    ui.selectable_value(&mut self.store_kind, StoreKind::Recording, t("Recording"))
+                        .on_hover_text(t("Display the current recording's data store"));
+                    ui.selectable_value(&mut self.store_kind, StoreKind::Blueprint, t("Blueprint"))
+                        .on_hover_text(t("Display the current recording's blueprint store"));
                 });
 
                 ui.separator();
@@ -656,35 +657,35 @@ impl DatastoreUi {
 
                 info_toggle_button_ui(
                     ui,
-                    "Toggle info panels",
-                    "Show/hide info and config sections",
+                    t("Toggle info panels"),
+                    t("Show/hide info and config sections"),
                     &mut self.show_details_panels,
                 );
 
                 let should_copy_chunks = copy_button_ui(
                     ui,
-                    "Copy chunks",
-                    "Copy the currently listed chunks as text",
+                    t("Copy chunks"),
+                    t("Copy the currently listed chunks as text"),
                 );
 
                 let reset_clicked =
-                    reset_button_ui(ui, "Reset chunk browser", "Reset chunk browser state");
+                    reset_button_ui(ui, t("Reset chunk browser"), t("Reset chunk browser state"));
 
                 ui.selectable_toggle(|ui| {
-                    ui.selectable_value(&mut self.static_filter, StaticOrTemporal::All, "All")
-                        .on_hover_text("Show all chunks regardless of static/temporal status");
+                    ui.selectable_value(&mut self.static_filter, StaticOrTemporal::All, t("All"))
+                        .on_hover_text(t("Show all chunks regardless of static/temporal status"));
                     ui.selectable_value(
                         &mut self.static_filter,
                         StaticOrTemporal::Static,
-                        "Static",
+                        t("Static"),
                     )
-                    .on_hover_text("Show only static chunks");
+                    .on_hover_text(t("Show only static chunks"));
                     ui.selectable_value(
                         &mut self.static_filter,
                         StaticOrTemporal::Temporal,
-                        "Temporal",
+                        t("Temporal"),
                     )
-                    .on_hover_text("Show only non-static chunks");
+                    .on_hover_text(t("Show only non-static chunks"));
                 });
 
                 ui.separator();
@@ -704,8 +705,8 @@ impl DatastoreUi {
 
                 let close_clicked = close_button_right_ui(
                     ui,
-                    "Close datastore browser",
-                    "Close the datastore browser",
+                    t("Close datastore browser"),
+                    t("Close the datastore browser"),
                 );
 
                 if close_clicked {
@@ -738,53 +739,53 @@ impl DatastoreUi {
                 .show(ui, |ui| {
                     list_item::list_item_scope(ui, "chunk store info", |ui| {
                         let stats = chunk_store.stats().total();
-                        ui.list_item_collapsible_noninteractive_label("Info", true, |ui| {
+                        ui.list_item_collapsible_noninteractive_label(t("Info"), true, |ui| {
                             // Note: no need to print the store kind, because it's selected by the top-level toggle.
                             ui.list_item_flat_noninteractive(
-                                list_item::PropertyContent::new("Application ID")
+                                list_item::PropertyContent::new(t("Application ID"))
                                     .value_text(chunk_store.id().application_id().to_string()),
                             );
 
                             ui.list_item_flat_noninteractive(
-                                list_item::PropertyContent::new("Recording ID")
+                                list_item::PropertyContent::new(t("Recording ID"))
                                     .value_text(chunk_store.id().recording_id().to_string()),
                             );
 
                             ui.list_item_flat_noninteractive(
-                                list_item::PropertyContent::new("Chunk count")
+                                list_item::PropertyContent::new(t("Chunk count"))
                                     .value_text(stats.num_chunks.to_string()),
                             );
 
                             ui.list_item_flat_noninteractive(
-                                list_item::PropertyContent::new("Heap size").value_text(
+                                list_item::PropertyContent::new(t("Heap size")).value_text(
                                     re_format::format_bytes(stats.total_size_bytes as f64),
                                 ),
                             );
 
                             ui.list_item_flat_noninteractive(
-                                list_item::PropertyContent::new("Rows")
+                                list_item::PropertyContent::new(t("Rows"))
                                     .value_text(stats.num_rows.to_string()),
                             );
 
                             ui.list_item_flat_noninteractive(
-                                list_item::PropertyContent::new("Events")
+                                list_item::PropertyContent::new(t("Events"))
                                     .value_text(stats.num_events.to_string()),
                             );
 
                             ui.list_item_flat_noninteractive(
-                                list_item::PropertyContent::new("Generation")
+                                list_item::PropertyContent::new(t("Generation"))
                                     .value_text(format!("{:?}", chunk_store.generation())),
                             );
                         });
 
-                        ui.list_item_collapsible_noninteractive_label("Config", true, |ui| {
+                        ui.list_item_collapsible_noninteractive_label(t("Config"), true, |ui| {
                             ui.list_item_flat_noninteractive(
-                                list_item::PropertyContent::new("Enable changelog")
+                                list_item::PropertyContent::new(t("Enable changelog"))
                                     .value_bool(chunk_store.config().enable_changelog),
                             );
 
                             ui.list_item_flat_noninteractive(
-                                list_item::PropertyContent::new("Chunk max byte").value_text(
+                                list_item::PropertyContent::new(t("Chunk max byte")).value_text(
                                     re_format::format_bytes(
                                         chunk_store.config().chunk_max_bytes as f64,
                                     ),
@@ -792,12 +793,12 @@ impl DatastoreUi {
                             );
 
                             ui.list_item_flat_noninteractive(
-                                list_item::PropertyContent::new("Chunk max rows")
+                                list_item::PropertyContent::new(t("Chunk max rows"))
                                     .value_uint(chunk_store.config().chunk_max_rows),
                             );
 
                             ui.list_item_flat_noninteractive(
-                                list_item::PropertyContent::new("Chunk max rows (unsorted)")
+                                list_item::PropertyContent::new(t("Chunk max rows (unsorted)"))
                                     .value_uint(chunk_store.config().chunk_max_rows_if_unsorted),
                             );
                         });
@@ -823,7 +824,7 @@ impl DatastoreUi {
             ui.id().with("selected_recording_icon"),
             egui::Sense::hover(),
         )
-        .on_hover_text("Selected recording");
+        .on_hover_text(t("Selected recording"));
 
         store_selector_combo_ui(
             ui,
@@ -852,7 +853,7 @@ impl DatastoreUi {
             return;
         }
 
-        ui.label("Selected blueprint:");
+        ui.label(t("Selected blueprint:"));
 
         store_selector_combo_ui(
             ui,

@@ -4,6 +4,7 @@ use egui::{Direction, Layout, OpenUrl, RichText};
 use egui_extras::{Size, StripBuilder};
 use re_auth::Jwt;
 use re_redap_client::ConnectionRegistryHandle;
+use re_ui::localizer::t;
 use re_ui::modal::{ModalHandler, ModalWrapper};
 use re_ui::{ReButton, UiExt as _};
 use re_uri::Scheme;
@@ -169,12 +170,12 @@ impl ServerModal {
             ui.ctx(),
             || {
                 let title = match &self.mode {
-                    ServerModalMode::Add => "Add server".to_owned(),
+                    ServerModalMode::Add => t("Add server").to_owned(),
                     ServerModalMode::Edit(edit) => {
                         if let Some(title) = &edit.title {
                             title.clone()
                         } else {
-                            format!("Edit server: {}", edit.origin.host)
+                            format!("{} {}", t("Edit server:"), edit.origin.host)
                         }
                     }
                 };
@@ -184,13 +185,12 @@ impl ServerModal {
             },
             |ui| {
                 if self.mode.should_show_experimental_warning() {
-                    ui.warning_label(
-                        "Rerun Hub is experimental and not generally \
-                available yet. Proceed with caution!",
-                    );
+                    ui.warning_label(t(
+                        "Rerun Hub is experimental and not generally available yet. Proceed with caution!",
+                    ));
                 }
 
-                let label = ui.label("Address:");
+                let label = ui.label(t("Address:"));
 
                 egui::Sides::new()
                     .shrink_left()
@@ -200,20 +200,20 @@ impl ServerModal {
                         |ui| {
                             egui::ComboBox::new("scheme", "")
                                 .selected_text(if self.scheme == Scheme::RerunHttp {
-                                    "http"
+                                    t("http")
                                 } else {
-                                    "https"
+                                    t("https")
                                 })
                                 .show_ui(ui, |ui| {
                                     ui.selectable_value(
                                         &mut self.scheme,
                                         Scheme::RerunHttps,
-                                        "https",
+                                        t("https"),
                                     );
                                     ui.selectable_value(
                                         &mut self.scheme,
                                         Scheme::RerunHttp,
-                                        "http",
+                                        t("http"),
                                     );
                                 });
 
@@ -225,7 +225,7 @@ impl ServerModal {
                                 ui.add(
                                     egui::TextEdit::singleline(&mut self.host)
                                         .lock_focus(false)
-                                        .hint_text("Host name")
+                                        .hint_text(t("Host name"))
                                         .desired_width(ui.available_width()),
                                 )
                                 .labelled_by(label.id);
@@ -266,7 +266,7 @@ impl ServerModal {
 
                 ui.add_space(14.0);
 
-                ui.label("Authentication:");
+                ui.label(t("Authentication:"));
 
                 let login_enabled = app_ctx.login_enabled;
                 ui.selectable_toggle(|ui| {
@@ -280,7 +280,7 @@ impl ServerModal {
                                     if ui
                                         .selectable_label(
                                             matches!(self.auth.kind, AuthKind::RerunAccount(_)),
-                                            "Account login",
+                                            t("Account login"),
                                         )
                                         .clicked()
                                     {
@@ -293,7 +293,7 @@ impl ServerModal {
                                 if ui
                                     .selectable_label(
                                         matches!(self.auth.kind, AuthKind::Token(_)),
-                                        "Access token",
+                                        t("Access token"),
                                     )
                                     .clicked()
                                 {
@@ -305,7 +305,7 @@ impl ServerModal {
                                 if ui
                                     .selectable_label(
                                         matches!(self.auth.kind, AuthKind::None),
-                                        "No authentication",
+                                        t("No authentication"),
                                     )
                                     .clicked()
                                 {
@@ -320,8 +320,8 @@ impl ServerModal {
                 ui.add_space(24.0);
 
                 let save_text = match &self.mode {
-                    ServerModalMode::Add => "Add",
-                    ServerModalMode::Edit(_) => "Save",
+                    ServerModalMode::Add => t("Add"),
+                    ServerModalMode::Edit(_) => t("Save"),
                 };
 
                 let origin = host.map(|host| re_uri::Origin {
@@ -396,7 +396,7 @@ impl ServerModal {
                         .ok();
                     }
 
-                    let cancel_button_response = ui.add(ReButton::new("Cancel").small());
+                    let cancel_button_response = ui.add(ReButton::new(t("Cancel")).small());
                     if cancel_button_response.clicked() {
                         self.auth = Authentication::new(AuthKind::RerunAccount(None));
                         self.auth.reset_login_flow();
@@ -417,7 +417,7 @@ impl ServerModal {
 fn auth_ui(ui: &mut egui::Ui, ctx: &AppContext<'_>, auth: &mut Authentication) {
     match &mut auth.kind {
         AuthKind::RerunAccount(login_flow) => {
-            ui.label("Account login:");
+            ui.label(t("Account login:"));
 
             if let Some(flow) = login_flow {
                 // Login flow is in progress - show login buttons or loading indicator
@@ -436,13 +436,13 @@ fn auth_ui(ui: &mut egui::Ui, ctx: &AppContext<'_>, auth: &mut Authentication) {
             } else if let Some(logged_in) = &ctx.auth_context {
                 // User is logged in
                 ui.horizontal(|ui| {
-                    ui.label("Continue as");
+                    ui.label(t("Continue as"));
                     ui.label(RichText::new(&logged_in.email).strong());
 
-                    ui.weak("or");
+                    ui.weak(t("or"));
 
                     if ui
-                        .link(RichText::new("log out").color(ui.tokens().text_subdued))
+                        .link(RichText::new(t("log out")).color(ui.tokens().text_subdued))
                         .clicked()
                     {
                         ctx.command_sender.send_system(SystemCommand::Logout);
@@ -459,7 +459,7 @@ fn auth_ui(ui: &mut egui::Ui, ctx: &AppContext<'_>, auth: &mut Authentication) {
         }
 
         AuthKind::Token(token) => {
-            ui.label("Access token (will be stored in plain text):");
+            ui.label(t("Access token (will be stored in plain text):"));
 
             ui.scope(|ui| {
                 let jwt = (!token.is_empty())

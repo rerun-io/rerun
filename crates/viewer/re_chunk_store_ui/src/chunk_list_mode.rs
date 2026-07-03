@@ -4,6 +4,7 @@ use re_chunk_store::ChunkStore;
 use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt, Timeline, TimestampFormat};
 use re_types_core::ComponentIdentifier;
 use re_ui::{TimeDragValue, UiExt as _};
+use re_ui::localizer::t;
 
 #[derive(Debug)]
 pub(crate) enum ChunkListQueryMode {
@@ -60,8 +61,8 @@ impl ChunkListMode {
 
         ui.selectable_toggle(|ui| {
             if ui
-                .selectable_label(matches!(self, Self::All), "All")
-                .on_hover_text("Display all chunks")
+                .selectable_label(matches!(self, Self::All), t("All"))
+                .on_hover_text(t("Display all chunks"))
                 .clicked()
             {
                 *self = Self::All;
@@ -76,9 +77,9 @@ impl ChunkListMode {
                             ..
                         }
                     ),
-                    "Latest-at",
+                    t("Latest-at"),
                 )
-                .on_hover_text("Display chunks relevant to the provided latest-at query")
+                .on_hover_text(t("Display chunks relevant to the provided latest-at query"))
                 .clicked()
             {
                 *self = Self::Query {
@@ -98,9 +99,9 @@ impl ChunkListMode {
                             ..
                         }
                     ),
-                    "Range",
+                    t("Range"),
                 )
-                .on_hover_text("Display chunks relevant to the provided range query")
+                .on_hover_text(t("Display chunks relevant to the provided range query"))
                 .clicked()
             {
                 *self = Self::Query {
@@ -138,7 +139,7 @@ impl ChunkListMode {
 
         ui.horizontal(|ui| {
             ui.horizontal(|ui| {
-                ui.label("Timeline:");
+                ui.label(t("Timeline:"));
                 egui::ComboBox::new("timeline", "")
                     .selected_text(current_timeline.name().as_str())
                     .show_ui(ui, |ui| {
@@ -149,7 +150,7 @@ impl ChunkListMode {
                         }
                     });
 
-                ui.label("Entity:");
+                ui.label(t("Entity:"));
                 egui::ComboBox::new("entity_path", "")
                     .selected_text(current_entity.to_string())
                     .show_ui(ui, |ui| {
@@ -160,7 +161,7 @@ impl ChunkListMode {
                         }
                     });
 
-                ui.label("Component:");
+                ui.label(t("Component:"));
                 //TODO(ab): this should be a text edit with auto-complete (like view origin)
                 egui::ComboBox::new("component", "")
                     .selected_text(current_component.as_str())
@@ -187,16 +188,16 @@ impl ChunkListMode {
 
             match query {
                 ChunkListQueryMode::LatestAt(time) => {
-                    ui.label("At:");
+                    ui.label(t("At:"));
                     time_drag_value.drag_value_ui(ui, time_typ, time, true, None, format);
                 }
                 ChunkListQueryMode::Range(range) => {
                     let (mut min, mut max) = (range.min(), range.max());
 
-                    ui.label("From:");
+                    ui.label(t("From:"));
                     time_drag_value.drag_value_ui(ui, time_typ, &mut min, true, None, format);
 
-                    ui.label("To:");
+                    ui.label(t("To:"));
                     time_drag_value.drag_value_ui(ui, time_typ, &mut max, true, Some(min), format);
 
                     range.set_min(min);

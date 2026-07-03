@@ -1,6 +1,7 @@
 use re_sdk_types::blueprint::archetypes;
 use re_sdk_types::datatypes::TensorDimensionIndexSelection;
 use re_ui::UiExt as _;
+use re_ui::localizer::t;
 use re_viewer_context::ViewerContext;
 use re_viewport_blueprint::ViewProperty;
 
@@ -178,7 +179,7 @@ pub fn dimension_mapping_ui(
 
     ui.vertical(|ui| {
         ui.vertical(|ui| {
-            ui.label("Image");
+            ui.label(t("Image"));
             egui::Grid::new("imagegrid").num_columns(2).show(ui, |ui| {
                 tensor_dimension_ui(
                     ui,
@@ -191,7 +192,7 @@ pub fn dimension_mapping_ui(
                 );
                 ui.horizontal(|ui| {
                     if let Some(mut width) = slice_selection.width
-                        && ui.toggle_value(&mut width.invert, "Flip").changed()
+                        && ui.toggle_value(&mut width.invert, t("Flip")).changed()
                     {
                         slice_property.save_blueprint_component(
                             ctx,
@@ -199,7 +200,7 @@ pub fn dimension_mapping_ui(
                             &width,
                         );
                     }
-                    ui.label("width");
+                    ui.label(t("width"));
                 });
                 ui.end_row();
 
@@ -215,7 +216,7 @@ pub fn dimension_mapping_ui(
 
                 ui.horizontal(|ui| {
                     if let Some(mut height) = slice_selection.height
-                        && ui.toggle_value(&mut height.invert, "Flip").changed()
+                        && ui.toggle_value(&mut height.invert, t("Flip")).changed()
                     {
                         slice_property.save_blueprint_component(
                             ctx,
@@ -223,7 +224,7 @@ pub fn dimension_mapping_ui(
                             &height,
                         );
                     }
-                    ui.label("height");
+                    ui.label(t("height"));
                 });
                 ui.end_row();
             });
@@ -232,7 +233,7 @@ pub fn dimension_mapping_ui(
         ui.add_space(4.0);
 
         ui.vertical(|ui| {
-            ui.label("Selectors");
+            ui.label(t("Selectors"));
 
             // Use Grid instead of Vertical layout to match styling of the parallel Grid for
             egui::Grid::new("selectiongrid")
@@ -258,9 +259,9 @@ pub fn dimension_mapping_ui(
 
                         let response = ui.visibility_toggle_button(&mut has_slider);
                         let response = if has_slider {
-                            response.on_hover_text("Hide dimension slider")
+                            response.on_hover_text(t("Hide dimension slider"))
                         } else {
-                            response.on_hover_text("Show dimension slider")
+                            response.on_hover_text(t("Show dimension slider"))
                         };
                         if response.changed() {
                             let mut slider = slice_selection.slider.clone().unwrap_or_default();

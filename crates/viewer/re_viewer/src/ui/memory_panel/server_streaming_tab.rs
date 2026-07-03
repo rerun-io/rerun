@@ -6,6 +6,7 @@ use re_format::{format_bytes, format_uint};
 use re_log_types::EntityPath;
 use re_ui::UiExt as _;
 use re_ui::list_item;
+use re_ui::localizer::t;
 use re_viewer_context::StorageContext;
 
 use super::plot_utils::history_to_plot;
@@ -38,7 +39,7 @@ pub fn server_streaming_tab_ui(
                     .auto_shrink(false)
                     .show(ui, |ui| {
                         if streaming_recordings.is_empty() {
-                            ui.label("No active server streaming connections.");
+                            ui.label(t("No active server streaming connections."));
                         } else {
                             list_item::list_item_scope(ui, "streaming_recordings", |ui| {
                                 for recording in &streaming_recordings {
@@ -77,7 +78,7 @@ fn recording_ui(
                     rect,
                     1.0,
                     Some(visuals.text_color()),
-                    "Downloading chunks",
+                    t("Downloading chunks"),
                 );
             } else {
                 ui.painter()
@@ -111,10 +112,10 @@ fn recording_details_ui(ui: &mut egui::Ui, recording: &re_entity_db::EntityDb, i
 
 fn status_ui(ui: &mut egui::Ui, recording: &re_entity_db::EntityDb) {
     ui.list_item_flat_noninteractive(
-        list_item::PropertyContent::new("Connection")
+        list_item::PropertyContent::new(t("Connection"))
             .value_text(format!("{:?}", recording.redap_connection_state())),
     )
-    .on_hover_text("Connection state to the redap server");
+    .on_hover_text(t("Connection state to the redap server"));
 }
 
 #[derive(Default)]
@@ -165,11 +166,11 @@ fn progress_ui(ui: &mut egui::Ui, recording: &re_entity_db::EntityDb) {
             overall.add(uncompressed_sizes[info.row_id], info.is_fully_loaded());
         }
         ui.list_item_flat_noninteractive(
-            list_item::PropertyContent::new("Overall").value_text(overall.value_text()),
+            list_item::PropertyContent::new(t("Overall")).value_text(overall.value_text()),
         )
-        .on_hover_text(
+        .on_hover_text(t(
             "Fully-loaded root chunks vs. the whole recording advertised by the manifest.",
-        );
+        ));
 
         let protected_roots = &manifest_index.chunk_prioritizer().protected_chunks().roots;
         if !protected_roots.is_empty() {
@@ -181,10 +182,10 @@ fn progress_ui(ui: &mut egui::Ui, recording: &re_entity_db::EntityDb) {
                 }
             }
             ui.list_item_flat_noninteractive(
-                list_item::PropertyContent::new("Loaded protected roots")
+                list_item::PropertyContent::new(t("Loaded protected roots"))
                     .value_text(target.value_text()),
             )
-            .on_hover_text("Protected root chunks are root chunks that won't be GC'd. A chunk is typically protected if it's actively in use.");
+            .on_hover_text(t("Protected root chunks are root chunks that won't be GC'd. A chunk is typically protected if it's actively in use."));
         }
     }
 
@@ -193,9 +194,9 @@ fn progress_ui(ui: &mut egui::Ui, recording: &re_entity_db::EntityDb) {
         .bandwidth()
         .map_or_else(|| "—".to_owned(), |bw| format!("{}/s", format_bytes(bw)));
     ui.list_item_flat_noninteractive(
-        list_item::PropertyContent::new("Bandwidth").value_text(bw_text),
+        list_item::PropertyContent::new(t("Bandwidth")).value_text(bw_text),
     )
-    .on_hover_text("Recent average download speed (compressed on-wire bytes)");
+    .on_hover_text(t("Recent average download speed (compressed on-wire bytes)"));
 }
 
 fn chunks_removed_ui(ui: &mut egui::Ui, recording: &re_entity_db::EntityDb) {
@@ -211,32 +212,32 @@ fn chunks_removed_ui(ui: &mut egui::Ui, recording: &re_entity_db::EntityDb) {
             ui,
             ui.make_persistent_id(("chunks_removed", recording.store_id())),
             false,
-            list_item::PropertyContent::new("Chunks removed")
+            list_item::PropertyContent::new(t("Chunks removed"))
                 .value_text(format_uint(total_removed)),
             |ui| {
                 ui.list_item_flat_noninteractive(
-                    list_item::PropertyContent::new("Garbage collection")
+                    list_item::PropertyContent::new(t("Garbage collection"))
                         .value_text(format_uint(stats.num_chunks_gc)),
                 )
-                .on_hover_text("Memory pressure eviction");
+                .on_hover_text(t("Memory pressure eviction"));
 
                 ui.list_item_flat_noninteractive(
-                    list_item::PropertyContent::new("Split cleanup")
+                    list_item::PropertyContent::new(t("Split cleanup"))
                         .value_text(format_uint(stats.num_chunks_split_cleanup)),
                 )
-                .on_hover_text("Old split chunks removed when their root chunk was re-downloaded");
+                .on_hover_text(t("Old split chunks removed when their root chunk was re-downloaded"));
 
                 ui.list_item_flat_noninteractive(
-                    list_item::PropertyContent::new("Compaction")
+                    list_item::PropertyContent::new(t("Compaction"))
                         .value_text(format_uint(stats.num_chunks_compacted)),
                 )
-                .on_hover_text("Chunk replaced by a compacted version");
+                .on_hover_text(t("Chunk replaced by a compacted version"));
 
                 ui.list_item_flat_noninteractive(
-                    list_item::PropertyContent::new("Overwrite")
+                    list_item::PropertyContent::new(t("Overwrite"))
                         .value_text(format_uint(stats.num_chunks_overwritten)),
                 )
-                .on_hover_text("Static chunk overwritten by a newer value");
+                .on_hover_text(t("Static chunk overwritten by a newer value"));
             },
         );
 }
@@ -247,7 +248,7 @@ fn manifest_ui(ui: &mut egui::Ui, recording: &re_entity_db::EntityDb) {
         return;
     };
 
-    ui.list_item_collapsible_noninteractive_label("Manifest", false, |ui| {
+    ui.list_item_collapsible_noninteractive_label(t("Manifest"), false, |ui| {
         let num_chunks = manifest.num_chunks();
         let num_static = manifest.col_chunk_is_static().filter(|s| *s).count();
         let num_temporal = num_chunks.saturating_sub(num_static);
@@ -257,14 +258,14 @@ fn manifest_ui(ui: &mut egui::Ui, recording: &re_entity_db::EntityDb) {
                 ui,
                 ui.make_persistent_id(("manifest_chunks", recording.store_id())),
                 false,
-                list_item::PropertyContent::new("Chunks").value_text(format_uint(num_chunks)),
+                list_item::PropertyContent::new(t("Chunks")).value_text(format_uint(num_chunks)),
                 |ui| {
                     ui.list_item_flat_noninteractive(
-                        list_item::PropertyContent::new("Static")
+                        list_item::PropertyContent::new(t("Static"))
                             .value_text(format_uint(num_static)),
                     );
                     ui.list_item_flat_noninteractive(
-                        list_item::PropertyContent::new("Temporal")
+                        list_item::PropertyContent::new(t("Temporal"))
                             .value_text(format_uint(num_temporal)),
                     );
                 },
@@ -277,26 +278,26 @@ fn manifest_ui(ui: &mut egui::Ui, recording: &re_entity_db::EntityDb) {
             .collect::<BTreeSet<_>>()
             .len();
         ui.list_item_flat_noninteractive(
-            list_item::PropertyContent::new("Entities").value_text(format_uint(num_entities)),
+            list_item::PropertyContent::new(t("Entities")).value_text(format_uint(num_entities)),
         );
 
         ui.list_item_flat_noninteractive(
-            list_item::PropertyContent::new("Manifest size (in memory)")
+            list_item::PropertyContent::new(t("Manifest size (in memory)"))
                 .value_text(format_bytes(manifest.total_size_bytes() as _)),
         )
-        .on_hover_text("In-memory size of the manifest (the index of all chunks)");
+        .on_hover_text(t("In-memory size of the manifest (the index of all chunks)"));
         ui.list_item_flat_noninteractive(
-            list_item::PropertyContent::new("Index size (in memory)")
+            list_item::PropertyContent::new(t("Index size (in memory)"))
                 .value_text(format_bytes(manifest_index.total_size_bytes() as _)),
         )
-        .on_hover_text(
-            "In-memory size of the manifest plus derived indices (sorted chunks, loaded ranges, prioritizer state, …)",
-        );
+        .on_hover_text(t(
+            "In-memory size of the manifest plus derived indices (sorted chunks, loaded ranges, prioritizer state, \u{2026})",
+        ));
 
         let compressed: u64 = manifest.col_chunk_byte_size().iter().sum();
         let uncompressed: u64 = manifest.col_chunk_byte_size_uncompressed().iter().sum();
         ui.list_item_flat_noninteractive(
-            list_item::PropertyContent::new("Recording uncompressed/compressed size").value_text(
+            list_item::PropertyContent::new(t("Recording uncompressed/compressed size")).value_text(
                 format!(
                     "{} / {}",
                     format_bytes(uncompressed as _),
@@ -304,55 +305,55 @@ fn manifest_ui(ui: &mut egui::Ui, recording: &re_entity_db::EntityDb) {
                 ),
             ),
         )
-        .on_hover_text(
+        .on_hover_text(t(
             "Sum of chunk sizes advertised by the manifest, uncompressed vs. on-storage. \
              The on-storage size equals the uncompressed size when the backend does not compress chunks.",
-        );
+        ));
     });
 }
 
 fn prioritization_ui(ui: &mut egui::Ui, recording: &re_entity_db::EntityDb, is_preview: bool) {
     let manifest_index = recording.rrd_manifest_index();
 
-    ui.list_item_collapsible_noninteractive_label("Prioritization", false, |ui| {
+    ui.list_item_collapsible_noninteractive_label(t("Prioritization"), false, |ui| {
         ui.list_item_flat_noninteractive(
-            list_item::PropertyContent::new("Preview").value_bool(is_preview),
+            list_item::PropertyContent::new(t("Preview")).value_bool(is_preview),
         )
-        .on_hover_text(
+        .on_hover_text(t(
             "Whether this recording was rendered as a preview in the previous frame — \
              previews use a stricter GC budget",
-        );
+        ));
 
         if let Some(prio) = manifest_index.chunk_prioritizer().latest_result() {
             ui.list_item_flat_noninteractive(
-                list_item::PropertyContent::new("Transit budget filled")
+                list_item::PropertyContent::new(t("Transit budget filled"))
                     .value_text(prio.transit_budget_filled.to_string()),
             )
-            .on_hover_text(
+            .on_hover_text(t(
                 "On-wire budget exhausted for this recording — no more concurrent downloads",
-            );
+            ));
 
             ui.list_item_flat_noninteractive(
-                list_item::PropertyContent::new("Memory budget filled")
+                list_item::PropertyContent::new(t("Memory budget filled"))
                     .value_text(prio.memory_budget_filled.to_string()),
             )
-            .on_hover_text(
+            .on_hover_text(t(
                 "Memory budget exhausted for this recording — cannot load more chunks without eviction",
-            );
+            ));
 
             let all_required = match prio.all_required_are_loaded {
                 Some(v) => v.to_string(),
                 None => "unknown".to_owned(),
             };
             ui.list_item_flat_noninteractive(
-                list_item::PropertyContent::new("All required loaded").value_text(all_required),
+                list_item::PropertyContent::new(t("All required loaded")).value_text(all_required),
             )
-            .on_hover_text(
+            .on_hover_text(t(
                 "Whether all required chunks (static, missing, high-priority) are loaded or in transit",
-            );
+            ));
         } else {
             ui.list_item_flat_noninteractive(
-                list_item::LabelContent::new("No fetch data yet").weak(true),
+                list_item::LabelContent::new(t("No fetch data yet")).weak(true),
             );
         }
 
@@ -377,12 +378,12 @@ fn prioritization_ui(ui: &mut egui::Ui, recording: &re_entity_db::EntityDb, is_p
             format_uint(protected.roots.len())
         };
         ui.list_item_flat_noninteractive(
-            list_item::PropertyContent::new("Protected roots").value_text(roots_text),
+            list_item::PropertyContent::new(t("Protected roots")).value_text(roots_text),
         )
-        .on_hover_text(
+        .on_hover_text(t(
             "Root chunks protected from download cancellation (currently needed by queries) \
              vs. all root chunks in the manifest. Uncompressed arrow bytes.",
-        );
+        ));
 
         let store = recording.storage_engine();
         let store = store.store();
@@ -400,13 +401,13 @@ fn prioritization_ui(ui: &mut egui::Ui, recording: &re_entity_db::EntityDb, is_p
             total_count: recording.num_physical_chunks(),
         };
         ui.list_item_flat_noninteractive(
-            list_item::PropertyContent::new("Protected physical")
+            list_item::PropertyContent::new(t("Protected physical"))
                 .value_text(physical_progress.value_text()),
         )
-        .on_hover_text(
+        .on_hover_text(t(
             "Physical chunks protected from garbage collection (actively used by queries) \
              vs. all physical chunks loaded in memory. In-memory Chunk size.",
-        );
+        ));
     });
 }
 
@@ -420,22 +421,22 @@ fn pending_requests_ui(ui: &mut egui::Ui, recording: &re_entity_db::EntityDb) {
         .map(|(_t, count)| count)
         .sum();
 
-    ui.list_item_collapsible_noninteractive_label("Pending requests", false, |ui| {
+    ui.list_item_collapsible_noninteractive_label(t("Pending requests"), false, |ui| {
         ui.list_item_flat_noninteractive(
-            list_item::PropertyContent::new("Batches").value_text(format_uint(pending.len())),
+            list_item::PropertyContent::new(t("Batches")).value_text(format_uint(pending.len())),
         )
-        .on_hover_text("Number of in-flight request batches to the server");
+        .on_hover_text(t("Number of in-flight request batches to the server"));
 
         ui.list_item_flat_noninteractive(
-            list_item::PropertyContent::new("Chunks").value_text(format_uint(num_chunks)),
+            list_item::PropertyContent::new(t("Chunks")).value_text(format_uint(num_chunks)),
         )
-        .on_hover_text("Total number of chunks across all pending batches");
+        .on_hover_text(t("Total number of chunks across all pending batches"));
 
         ui.list_item_flat_noninteractive(
-            list_item::PropertyContent::new("Recently canceled")
+            list_item::PropertyContent::new(t("Recently canceled"))
                 .value_text(format_uint(recently_canceled)),
         )
-        .on_hover_text("Batches canceled in the last second (e.g. due to time cursor movement)");
+        .on_hover_text(t("Batches canceled in the last second (e.g. due to time cursor movement)"));
     });
 }
 
@@ -461,7 +462,7 @@ fn in_flight_entities_ui(ui: &mut egui::Ui, recording: &re_entity_db::EntityDb) 
             ui,
             ui.make_persistent_id(("entities", recording.store_id())),
             false,
-            list_item::LabelContent::new(format!("In-flight entities ({})", entities.len())),
+            list_item::LabelContent::new(format!("{} ({})", t("In-flight entities"), entities.len())),
             |ui| {
                 for entity in &entities {
                     ui.list_item_flat_noninteractive(list_item::LabelContent::new(
@@ -526,7 +527,7 @@ fn streaming_plots(ui: &mut egui::Ui, history: &StreamingHistory) {
     }
 
     ui.columns(3, |columns| {
-        columns[0].label("Progress");
+        columns[0].label(t("Progress"));
         show_plot(
             base_plot("streaming_progress", axis_group, cursor_group)
                 .label_formatter(|name, value| format!("{name}: {}", format_bytes(value.y)))
@@ -535,16 +536,16 @@ fn streaming_plots(ui: &mut egui::Ui, history: &StreamingHistory) {
             &mut following,
             now,
             |plot_ui| {
-                plot_ui.line(history_to_plot("Loaded", &history.loaded_bytes).width(1.5));
+                plot_ui.line(history_to_plot(t("Loaded"), &history.loaded_bytes).width(1.5));
                 plot_ui.line(
-                    history_to_plot("Manifest advertised", &history.total_manifest_bytes)
+                    history_to_plot(t("Manifest advertised"), &history.total_manifest_bytes)
                         .width(1.5)
                         .style(egui_plot::LineStyle::dashed_dense()),
                 );
             },
         );
 
-        columns[1].label("Throughput");
+        columns[1].label(t("Throughput"));
         show_plot(
             base_plot("streaming_throughput", axis_group, cursor_group)
                 .label_formatter(|name, value| format!("{name}: {}", format_bytes(value.y)))
@@ -554,13 +555,13 @@ fn streaming_plots(ui: &mut egui::Ui, history: &StreamingHistory) {
             now,
             |plot_ui| {
                 plot_ui.line(
-                    history_to_plot("Bandwidth (B/s)", &history.bandwidth_bytes_per_sec).width(1.5),
+                    history_to_plot(t("Bandwidth (B/s)"), &history.bandwidth_bytes_per_sec).width(1.5),
                 );
-                plot_ui.line(history_to_plot("Pending bytes", &history.pending_bytes).width(1.5));
+                plot_ui.line(history_to_plot(t("Pending bytes"), &history.pending_bytes).width(1.5));
             },
         );
 
-        columns[2].label("Counts");
+        columns[2].label(t("Counts"));
         show_plot(
             base_plot("streaming_counts", axis_group, cursor_group)
                 .label_formatter(|name, value| format!("{name}: {:.0}", value.y)),
@@ -569,17 +570,17 @@ fn streaming_plots(ui: &mut egui::Ui, history: &StreamingHistory) {
             now,
             |plot_ui| {
                 plot_ui.line(
-                    history_to_plot("Chunks in flight", &history.chunks_in_flight)
+                    history_to_plot(t("Chunks in flight"), &history.chunks_in_flight)
                         .width(1.5)
                         .color(inflight_color),
                 );
                 plot_ui.line(
-                    history_to_plot("Cancellations", &history.batch_cancellations)
+                    history_to_plot(t("Cancellations"), &history.batch_cancellations)
                         .width(1.5)
                         .color(cancel_color),
                 );
                 plot_ui.line(
-                    history_to_plot("Chunks GC'd", &history.chunks_gc_per_frame)
+                    history_to_plot(t("Chunks GC'd"), &history.chunks_gc_per_frame)
                         .width(1.5)
                         .color(removed_color),
                 );

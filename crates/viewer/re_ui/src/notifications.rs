@@ -14,6 +14,7 @@ use jiff::Timestamp;
 pub use re_log::Level;
 
 use crate::{UiExt as _, icons};
+use crate::localizer::t;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum NotificationLevel {
@@ -278,7 +279,7 @@ impl NotificationUi {
         let is_panel_visible = egui::Popup::is_id_open(ui.ctx(), popup_id);
         let button_response = ui.medium_icon_toggle_button(
             &icons::NOTIFICATION,
-            "Notification toggle",
+            t("Notification toggle"),
             &mut is_panel_visible.clone(),
         );
 
@@ -338,7 +339,7 @@ impl NotificationUi {
 
         let notification_list = |ui: &mut egui::Ui| {
             if notifications.is_empty() {
-                ui.label(egui::RichText::new("No notifications yet.").weak());
+                ui.label(egui::RichText::new(t("No notifications yet.")).weak());
 
                 return;
             }
@@ -358,12 +359,12 @@ impl NotificationUi {
 
         ui.horizontal_top(|ui| {
             if !notifications.is_empty() {
-                ui.strong(format!("Notifications ({})", notifications.len()));
+                ui.strong(format!("{} ({})", t("Notifications"), notifications.len()));
             } else {
-                ui.strong("Notifications");
+                ui.strong(t("Notifications"));
             }
             ui.with_layout(egui::Layout::top_down(egui::Align::Max), |ui| {
-                if ui.small_icon_button(&icons::CLOSE, "Close").clicked() {
+                if ui.small_icon_button(&icons::CLOSE, t("Close")).clicked() {
                     ui.close();
                 }
             });
@@ -375,7 +376,7 @@ impl NotificationUi {
 
         if !notifications.is_empty() {
             ui.horizontal_top(|ui| {
-                if ui.button("Dismiss all").clicked() {
+                if ui.button(t("Dismiss all")).clicked() {
                     dismiss_all = true;
                 }
             });
@@ -448,7 +449,7 @@ impl Toasts {
                 notification.toast_ttl = notification.toast_ttl.saturating_sub(dt);
             }
 
-            let response = response.on_hover_text("Click to close and copy contents");
+            let response = response.on_hover_text(t("Click to close and copy contents"));
 
             if response.clicked() {
                 if let Some(link) = &notification.link {
@@ -516,7 +517,7 @@ fn show_notification(
                             ui.label(text);
 
                             if let Some(details) = details {
-                                ui.collapsing_header("Details", false, |ui| ui.label(details));
+                                ui.collapsing_header(t("Details"), false, |ui| ui.label(details));
                             }
                         });
 
@@ -540,12 +541,12 @@ fn show_notification(
                             |ui| {
                                 if show_dismiss {
                                     if permanent_dismiss_id.is_some() {
-                                        if ui.button("Don't show again").clicked() {
+                                        if ui.button(t("Don't show again")).clicked() {
                                             reaction = Some(NotificationReaction::NeverShowAgain);
                                         }
                                     } else {
                                         //
-                                        if ui.button("Dismiss").clicked() {
+                                        if ui.button(t("Dismiss")).clicked() {
                                             reaction = Some(NotificationReaction::Dismissed);
                                         }
                                     }
@@ -570,7 +571,7 @@ fn notification_age_label(ui: &mut egui::Ui, created_at: Timestamp) {
     let formatted = if age < 10.0 {
         ui.request_repaint_after(Duration::from_secs(1));
 
-        "now".to_owned()
+        t("now").to_owned()
     } else if age < 60.0 {
         ui.request_repaint_after(Duration::from_secs(1));
 
