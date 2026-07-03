@@ -375,6 +375,16 @@ impl App {
                 self.command_sender.send_ui(UICommand::ExpandBlueprintPanel);
             }
 
+            SystemCommand::RefreshRedapServer(origin) => {
+                // Only refresh servers we already know about; adding a new server already fetches
+                // its catalog, so there's nothing to refresh in that case.
+                if self.state.redap_servers.has_server(&origin) {
+                    self.state
+                        .redap_servers
+                        .send_command(re_redap_browser::Command::RefreshCollection(origin));
+                }
+            }
+
             SystemCommand::RemoveRedapServer(origin) => {
                 // Clearing blueprints must happen before closing the recordings (so we can know
                 // what to close)

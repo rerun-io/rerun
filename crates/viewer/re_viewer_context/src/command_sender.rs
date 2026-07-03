@@ -34,6 +34,13 @@ pub enum SystemCommand {
     /// Add a new server to the redap browser.
     AddRedapServer(re_uri::Origin),
 
+    /// Refresh the catalog (datasets & tables) of an already-known redap server.
+    ///
+    /// Used when explicitly opening content from a server (e.g. via `.open(uri)` or the web API),
+    /// so that anything the catalog gained meanwhile shows up. Unknown servers are ignored (adding
+    /// a server already fetches its catalog).
+    RefreshRedapServer(re_uri::Origin),
+
     /// Remove a server from the redap browser and clean up associated blueprints.
     RemoveRedapServer(re_uri::Origin),
 
