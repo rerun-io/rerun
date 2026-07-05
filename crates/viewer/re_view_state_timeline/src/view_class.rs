@@ -26,6 +26,12 @@ const TOP_MARGIN: f32 = 4.0;
 /// narrow neighbors. Wide phases always render with their own color.
 const MERGE_PHASE_THRESHOLD_PIXEL: f32 = 4.0;
 
+/// Target screen width of one time-share bucket inside a merged region.
+const MERGED_BUCKET_WIDTH_PIXEL: f32 = 3.0;
+
+/// Upper bound on the number of buckets drawn for a single merged region.
+const MERGED_BUCKET_MAX_COUNT: usize = 512;
+
 /// The chronologically last phase has no real end time. We extend it past the data end
 /// by this fraction of the visible data span so its label stays readable even when the
 /// final state was logged at (or near) the very end of the timeline.
@@ -58,6 +64,9 @@ enum RenderItem<'a> {
         /// End time of the last phase in the group, if known.
         end_time: Option<i64>,
         count: usize,
+
+        /// The phases folded into this region, used to compute each state's time share.
+        phases: &'a [StateLanePhase],
     },
 }
 
@@ -531,17 +540,18 @@ fn compute_render_items<'a>(
         x_start: f32,
         x_end: f32,
         end_time: Option<i64>,
+        index: usize,
     }
 
     /// Accumulator for consecutive narrow visible phases. Tracks only the first
-    /// pending phase and the current tail, since `flush` never needs anything
-    /// in between — emitting a `Single` (count == 1) or a `Merged` (count >= 2)
-    /// uses just the first start and the last end.
+    /// pending phase and the current tail — `flush` only needs the first start,
+    /// the last end, and the index range to slice the underlying phases from.
     #[derive(Default)]
     struct Pending<'a> {
         first: Option<PendingNarrow<'a>>,
         last_x_end: f32,
         last_end_time: Option<i64>,
+        last_index: usize,
         count: usize,
     }
 
@@ -549,13 +559,14 @@ fn compute_render_items<'a>(
         fn push(&mut self, p: PendingNarrow<'a>) {
             self.last_x_end = p.x_end;
             self.last_end_time = p.end_time;
+            self.last_index = p.index;
             self.count += 1;
             if self.first.is_none() {
                 self.first = Some(p);
             }
         }
 
-        fn flush(&mut self, items: &mut Vec<RenderItem<'a>>) {
+        fn flush(&mut self, all_phases: &'a [StateLanePhase], items: &mut Vec<RenderItem<'a>>) {
             let count = std::mem::take(&mut self.count);
             let Some(first) = self.first.take() else {
                 return;
@@ -574,18 +585,20 @@ fn compute_render_items<'a>(
                     start_time: first.phase.start_time,
                     end_time: self.last_end_time,
                     count,
+                    phases: &all_phases[first.index..=self.last_index],
                 });
             }
         }
     }
 
+    let all_phases: &'a [StateLanePhase] = &lane.phases;
     let mut items: Vec<RenderItem<'a>> = Vec::new();
     let mut pending = Pending::default();
 
     for (i, phase) in lane.phases.iter().enumerate() {
         // Gaps break the merge chain.
         if phase.content.is_none() {
-            pending.flush(&mut items);
+            pending.flush(all_phases, &mut items);
             continue;
         }
 
@@ -626,7 +639,7 @@ fn compute_render_items<'a>(
 
         if is_last {
             // The last phase is always its own item (never merged) and open-ended.
-            pending.flush(&mut items);
+            pending.flush(all_phases, &mut items);
             items.push(RenderItem::Single {
                 phase,
                 x_start: visible_x_start,
@@ -634,7 +647,7 @@ fn compute_render_items<'a>(
                 end_time: None,
             });
         } else if width >= MERGE_PHASE_THRESHOLD_PIXEL {
-            pending.flush(&mut items);
+            pending.flush(all_phases, &mut items);
             items.push(RenderItem::Single {
                 phase,
                 x_start: visible_x_start,
@@ -647,10 +660,11 @@ fn compute_render_items<'a>(
                 x_start: visible_x_start,
                 x_end: visible_x_end,
                 end_time: next_time.map(|t| t as i64),
+                index: i,
             });
         }
     }
-    pending.flush(&mut items);
+    pending.flush(all_phases, &mut items);
 
     items
 }
@@ -774,9 +788,7 @@ fn show_lane(
     // bounds as the old whole-area lanes_rect since every lane spans the full width.
     let render_items = compute_render_items(lane, rect, time_ranges_ui, open_end_time);
 
-    let merged_fill_inactive = ui.visuals().widgets.inactive.bg_fill;
     let merged_fill_hovered = ui.visuals().widgets.hovered.bg_fill;
-    let merged_text_color = ui.visuals().text_color();
     let background_color = ui.visuals().extreme_bg_color;
 
     for item in &render_items {
@@ -801,13 +813,21 @@ fn show_lane(
                     background_color,
                 );
             }
-            RenderItem::Merged { count, .. } => {
-                let fill = if hovered {
-                    merged_fill_hovered
-                } else {
-                    merged_fill_inactive
-                };
-                paint_merged(&painter, item_rect, *count, fill, merged_text_color);
+            RenderItem::Merged {
+                start_time,
+                end_time,
+                phases,
+                ..
+            } => {
+                paint_merged(
+                    &painter,
+                    item_rect,
+                    phases,
+                    *start_time,
+                    end_time.unwrap_or(*start_time),
+                    hovered,
+                    merged_fill_hovered,
+                );
             }
         }
 
@@ -905,33 +925,130 @@ fn paint_jagged_band(
     }
 }
 
-/// Paint a merged region: a flat band in a theme widget color signaling that many
-/// narrow phases have been collapsed at the current zoom level. The caller picks the
-/// fill from `widgets.inactive`/`widgets.hovered` so the hover state stays
-/// token-driven rather than relying on an arbitrary multiplier.
+/// Per-bucket, per-color time share of a merged region. `colors` is sorted by label to
+/// keep the stacking order stable; `buckets[b][c]` is the fraction of bucket `b`'s time
+/// spent in `colors[c]`.
+struct MergedBreakdown {
+    colors: Vec<egui::Color32>,
+    buckets: Vec<Vec<f32>>,
+}
+
+/// Break `phases` into `num_buckets` fixed-width time buckets spanning `[start_time,
+/// end_time]`, computing each state color's time share per bucket.
+///
+/// Time-to-bucket mapping is linear rather than going through `TimeRangesUi`, since
+/// `phases` span one contiguous, ungapped time segment.
+fn compute_merged_breakdown(
+    phases: &[StateLanePhase],
+    start_time: i64,
+    end_time: i64,
+    num_buckets: usize,
+) -> MergedBreakdown {
+    // Dedup by color, then sort by label for a stable stacking order.
+    let mut colors_with_labels: Vec<(egui::Color32, &str)> = Vec::new();
+    for phase in phases {
+        if let Some(content) = &phase.content
+            && !colors_with_labels.iter().any(|(c, _)| *c == content.color)
+        {
+            colors_with_labels.push((content.color, content.label.as_str()));
+        }
+    }
+    colors_with_labels.sort_by_key(|(_, label)| *label);
+    let colors: Vec<egui::Color32> = colors_with_labels.into_iter().map(|(c, _)| c).collect();
+
+    let span = (end_time - start_time).max(1) as f64;
+    let mut buckets = vec![vec![0.0_f32; colors.len()]; num_buckets];
+
+    // Two-pointer sweep: `phase_idx` only ever advances as buckets move forward in time.
+    let mut phase_idx = 0;
+    for (b, bucket_shares) in buckets.iter_mut().enumerate() {
+        let bucket_t0 = start_time as f64 + span * (b as f64 / num_buckets as f64);
+        let bucket_t1 = start_time as f64 + span * ((b + 1) as f64 / num_buckets as f64);
+        let bucket_span = (bucket_t1 - bucket_t0).max(f64::EPSILON);
+
+        while phase_idx + 1 < phases.len() && phases[phase_idx + 1].start_time as f64 <= bucket_t0 {
+            phase_idx += 1;
+        }
+
+        let mut p = phase_idx;
+        while p < phases.len() {
+            let phase_start = phases[p].start_time as f64;
+            if phase_start >= bucket_t1 {
+                break;
+            }
+            let phase_end = phases
+                .get(p + 1)
+                .map_or(end_time as f64, |next| next.start_time as f64);
+            let overlap_start = phase_start.max(bucket_t0);
+            let overlap_end = phase_end.min(bucket_t1);
+            if overlap_end > overlap_start
+                && let Some(content) = &phases[p].content
+                && let Some(color_idx) = colors.iter().position(|c| c == &content.color)
+            {
+                bucket_shares[color_idx] += ((overlap_end - overlap_start) / bucket_span) as f32;
+            }
+            p += 1;
+        }
+    }
+
+    MergedBreakdown { colors, buckets }
+}
+
+/// Paint a merged region as a stacked time-share chart: each bucket column stacks every
+/// state's color with height proportional to its time share.
+///
+/// The phase count is only shown in the hover tooltip, not drawn on the region itself.
 fn paint_merged(
     painter: &egui::Painter,
     rect: egui::Rect,
-    count: usize,
-    fill: egui::Color32,
-    text_color: egui::Color32,
+    phases: &[StateLanePhase],
+    start_time: i64,
+    end_time: i64,
+    hovered: bool,
+    hovered_stroke_color: egui::Color32,
 ) {
-    painter.add(egui::epaint::RectShape::new(
-        rect,
-        0.0,
-        fill,
-        egui::Stroke::NONE,
-        egui::StrokeKind::Outside,
-    ));
+    let width = rect.width();
+    if width > 0.0 {
+        let num_buckets = ((width / MERGED_BUCKET_WIDTH_PIXEL).round() as usize)
+            .clamp(1, MERGED_BUCKET_MAX_COUNT);
+        let breakdown = compute_merged_breakdown(phases, start_time, end_time, num_buckets);
+        let bucket_width = width / num_buckets as f32;
 
-    if rect.width() - 6.0 > 24.0 {
-        let label = format!("{count} states");
-        painter.with_clip_rect(rect).text(
-            egui::pos2(rect.left() + 4.0, rect.top() + 3.0),
-            egui::Align2::LEFT_TOP,
-            label,
-            egui::FontId::proportional(12.0),
-            text_color,
+        for (b, shares) in breakdown.buckets.iter().enumerate() {
+            let bx0 = rect.left() + b as f32 * bucket_width;
+            let bx1 = if b + 1 == num_buckets {
+                rect.right()
+            } else {
+                bx0 + bucket_width
+            };
+
+            // Stack each state's share bottom-up in the fixed color order.
+            let mut y = rect.bottom();
+            for (color, &share) in breakdown.colors.iter().zip(shares) {
+                if share <= 0.0 {
+                    continue;
+                }
+                let y0 = (y - rect.height() * share.min(1.0)).max(rect.top());
+                if y0 < y {
+                    painter.add(egui::epaint::RectShape::new(
+                        egui::Rect::from_min_max(egui::pos2(bx0, y0), egui::pos2(bx1, y)),
+                        0.0,
+                        *color,
+                        egui::Stroke::NONE,
+                        egui::StrokeKind::Outside,
+                    ));
+                }
+                y = y0;
+            }
+        }
+    }
+
+    if hovered {
+        painter.rect_stroke(
+            rect,
+            0.0,
+            egui::Stroke::new(1.5, hovered_stroke_color),
+            egui::StrokeKind::Inside,
         );
     }
 }

@@ -89,6 +89,19 @@ fn log_state_data() -> Result<(), Box<dyn std::error::Error>> {
         rec.log(*entity, &rerun::StateChange::new().with_state(*label))?;
     }
 
+    // A densely-packed lane (state flips every tick) so the merged/collapsed time-share
+    // rendering is visible without having to zoom in to a tiny sliver of the timeline.
+    let dense_values = ["A", "B", "C"];
+    for tick in 0..300i64 {
+        rec.set_time_sequence("tick", tick);
+        rec.set_timestamp_secs_since_epoch("timestamp", base_ts + tick as f64 * step_secs);
+        rec.log(
+            "state/dense",
+            &rerun::StateChange::new()
+                .with_state(dense_values[(tick as usize) % dense_values.len()]),
+        )?;
+    }
+
     // Log an alternative string component on robot_mode via DynamicArchetype.
     // This allows switching the state source in the source selector dropdown.
     let alt_states: Vec<(i64, &str)> =
