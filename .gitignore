@@ -104,3 +104,5 @@ justfile
 
 # Saved pytest-benchmark results
 /.benchmarks
+reruntry
+化进度报告.md
