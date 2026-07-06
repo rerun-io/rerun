@@ -263,9 +263,9 @@ impl Localizer for ChineseLocalizer {
             "Enable table blueprints embedded in Arrow schema metadata, plus grid view mode for server supplied tables.\n\n When enabled, tables can carry inline view definitions for segment previews, and a list/grid toggle appears in the table title bar." => {
                 "启用嵌入在 Arrow schema 元数据中的表格蓝图，以及服务器提供表格的网格视图模式。\n\n启用后，表格可携带用于片段预览的内联视图定义，并在表格标题栏显示列表/网格切换。"
             }
-            "Required" => "Required",
-            "Similar" => "Similar",
-            "Everything" => "Everything",
+            "Required" => "必需",
+            "Similar" => "相似",
+            "Everything" => "全部",
             "UTC" => "UTC",
             "Local (show time zone)" => "本地（显示时区）",
             "Local (hide time zone)" => "本地（隐藏时区）",
@@ -664,9 +664,9 @@ impl Localizer for ChineseLocalizer {
             "Info" => "信息",
             "L:" => "L：",
             "Label:" => "标签：",
-            "Latest-at" => "Latest-at",
+            "Latest-at" => "最新时间",
             "latest_at" => "latest_at",
-            "LatestAt" => "LatestAt",
+            "LatestAt" => "最新时间查询",
             "Limit" => "限制",
             "Loaded" => "已加载",
             "Loaded protected roots" => "已加载的保护根",
