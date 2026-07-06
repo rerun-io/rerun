@@ -92,6 +92,9 @@ jobs:
       - name: Check forbidden dependencies
         run: pixi run python scripts/check_forbidden_dependencies.py
 
+      - name: Check skills
+        run: pixi run python scripts/ci/check_skills.py
+
   toml-format-check:
     name: Toml format check
     runs-on: ubuntu-latest

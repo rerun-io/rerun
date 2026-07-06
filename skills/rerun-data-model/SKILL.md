@@ -1,6 +1,6 @@
 ---
 name: rerun-data-model
-description: How raw multimodal robot data maps onto the Rerun data model. Read FIRST, before modeling or converting a dataset — and whenever you are about to convert/ingest/preprocess robot data into an .rrd or build a Rerun recording, even if not asked for the data model. Resolves the entity-vs-component, property-vs-component-vs-layer, and static-vs-temporal decisions and routes to the mechanism (do it with readers and lenses, not hand-built chunks or per-message rr.log): rerun-chunk-processing and the importer skills rerun-mcap, rerun-urdf, rerun-parquet, rerun-lerobot.
+description: "How raw multimodal robot data maps onto the Rerun data model. Read FIRST, before modeling or converting a dataset — and whenever you are about to convert/ingest/preprocess robot data into an .rrd or build a Rerun recording, even if not asked for the data model. Resolves the entity-vs-component, property-vs-component-vs-layer, and static-vs-temporal decisions and routes to the mechanism (do it with readers and lenses, not hand-built chunks or per-message rr.log): rerun-chunk-processing and the importer skills rerun-mcap, rerun-urdf, rerun-parquet, rerun-lerobot."
 user_invocable: true
 allowed-tools: Read, Grep, Bash, WebFetch
 ---
