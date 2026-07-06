@@ -260,7 +260,7 @@ struct SavePoint {
 }
 
 fn query_and_visit_points(caches: &QueryCache, paths: &[EntityPath]) -> Vec<SavePoint> {
-    let timeline_frame_nr = TimelineName::new("frame_nr");
+    let timeline_frame_nr = TimelineName::from("frame_nr");
     let query = LatestAtQuery::new(timeline_frame_nr, NUM_FRAMES_POINTS as i64 / 2);
 
     let mut ret = Vec::with_capacity(NUM_POINTS as _);
@@ -298,7 +298,7 @@ struct SaveString {
 }
 
 fn query_and_visit_strings(caches: &QueryCache, paths: &[EntityPath]) -> Vec<SaveString> {
-    let timeline_frame_nr = TimelineName::new("frame_nr");
+    let timeline_frame_nr = TimelineName::from("frame_nr");
     let query = LatestAtQuery::new(timeline_frame_nr, NUM_FRAMES_STRINGS as i64 / 2);
 
     let mut strings = Vec::with_capacity(NUM_STRINGS as _);

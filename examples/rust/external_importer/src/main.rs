@@ -119,7 +119,7 @@ fn timepoint_from_args(args: &Args) -> anyhow::Result<rerun::TimePoint> {
             continue;
         };
         timepoint.insert_cell(
-            seqline_name,
+            rerun::TimelineName::try_new(seqline_name)?,
             rerun::TimeCell::from_sequence(seq.parse::<i64>()?),
         );
     }
@@ -129,7 +129,7 @@ fn timepoint_from_args(args: &Args) -> anyhow::Result<rerun::TimePoint> {
             continue;
         };
         timepoint.insert_cell(
-            seqline_name,
+            rerun::TimelineName::try_new(seqline_name)?,
             rerun::TimeCell::from_duration_nanos(duration_nd.parse::<i64>()?),
         );
     }
@@ -139,7 +139,7 @@ fn timepoint_from_args(args: &Args) -> anyhow::Result<rerun::TimePoint> {
             continue;
         };
         timepoint.insert_cell(
-            seqline_name,
+            rerun::TimelineName::try_new(seqline_name)?,
             rerun::TimeCell::from_timestamp_nanos_since_epoch(timestamp_nd.parse::<i64>()?),
         );
     }

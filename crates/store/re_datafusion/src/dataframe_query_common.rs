@@ -1215,7 +1215,7 @@ pub fn query_from_query_expression(
     } else if synthesize_latest_at {
         query_expression
             .min_latest_at()
-            .map(|latest_at| QueryLatestAt::global(Some(latest_at.timeline()), latest_at.at()))
+            .map(|latest_at| QueryLatestAt::global(latest_at.timeline(), latest_at.at()))
     } else {
         None
     };
@@ -1322,7 +1322,7 @@ mod tests {
 
         let seg = |s: &str| SegmentId::from(s);
         let at = IndexValue::new_temporal;
-        let timeline = Index::new("my_index");
+        let timeline = Index::from("my_index");
 
         // Three scoped segments, each sampled at specific index values, as set by
         // `filter_segments([…]).reader(using_index_values={…})`.
@@ -1408,7 +1408,7 @@ mod tests {
     #[test]
     fn pushdown_is_noop_unless_scoped_temporal() {
         let seg = |s: &str| SegmentId::from(s);
-        let timeline = Index::new("my_index");
+        let timeline = Index::from("my_index");
         let values: IndexValuesMap = Some(Arc::new(
             once((seg("a"), BTreeSet::from([IndexValue::new_temporal(10)]))).collect(),
         ));

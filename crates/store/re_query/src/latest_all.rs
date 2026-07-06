@@ -73,7 +73,7 @@ impl LatestAllResults {
             let chunk = component_results.chunks.first()?;
             let unit = chunk.to_unit()?;
 
-            let index = unit.index(&self.query.timeline())?;
+            let index = unit.index(self.query.timeline().as_ref())?;
             results.min_index = results.min_index.min(index);
             results.max_index = results.max_index.max(index);
             results.components.insert(component, unit);
@@ -253,15 +253,15 @@ impl QueryCache {
         };
 
         for (component, latest_unit) in components {
-            if let Some((time, _row_id)) = latest_unit.index(&query.timeline()) {
+            if let Some((time, _row_id)) = latest_unit.index(query.timeline().as_ref()) {
                 if time.is_static() {
                     latest_all_results.components.insert(
                         component,
                         LatestAllComponentResults::from_unit(time, latest_unit),
                     );
-                } else {
-                    let range_query =
-                        RangeQuery::new(query.timeline(), AbsoluteTimeRange::new(time, time));
+                } else if let Some(timeline) = query.timeline() {
+                    // NOTE: A non-static `time` implies the query has a timeline.
+                    let range_query = RangeQuery::new(timeline, AbsoluteTimeRange::new(time, time));
                     let mut component_range_result = self.range(
                         tracking_mode,
                         &range_query,

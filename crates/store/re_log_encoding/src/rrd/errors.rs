@@ -88,6 +88,9 @@ pub enum CodecError {
 
     #[error("Chunk {chunk_id} not found in manifest")]
     ChunkNotInManifest { chunk_id: re_chunk::ChunkId },
+
+    #[error("Invalid timeline name: {0}")]
+    InvalidTimelineName(#[from] re_log_types::InvalidTimelineNameError),
 }
 
 const _: () = assert!(

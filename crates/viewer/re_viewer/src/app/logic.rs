@@ -693,7 +693,7 @@ impl App {
 
         // Resolve the target timeline: explicit, else the active one, else the first.
         let timeline_name = if let Some(tl) = timeline {
-            let name = TimelineName::new(tl);
+            let name = TimelineName::try_new(tl).map_err(|err| err.to_string())?;
             if !timelines.contains_key(&name) {
                 let available: Vec<&str> = timelines.keys().map(|n| n.as_str()).collect();
                 return Err(format!(

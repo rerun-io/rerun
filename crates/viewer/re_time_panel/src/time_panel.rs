@@ -1106,7 +1106,7 @@ impl TimePanel {
                 if is_visible {
                     let component_has_data_in_current_timeline = store
                         .entity_has_component_on_timeline(
-                            &store_ctx.timeline_name(),
+                            Some(&store_ctx.timeline_name()),
                             entity_path,
                             component,
                         );

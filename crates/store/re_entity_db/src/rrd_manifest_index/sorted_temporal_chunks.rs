@@ -237,7 +237,7 @@ mod tests {
     #[test]
     fn test_component_chunks_returns_empty_slice_for_missing() {
         let cache = SortedTemporalChunks::default();
-        let timeline = TimelineName::new("test");
+        let timeline = TimelineName::from("test");
         let entity = EntityPath::from("/test");
 
         // When entity doesn't exist, get returns None
@@ -252,7 +252,7 @@ mod tests {
     #[test]
     fn test_chunks_sorted_by_time() {
         let mut cache = SortedTemporalChunks::default();
-        let timeline = TimelineName::new("test");
+        let timeline = TimelineName::from("test");
         let entity = EntityPath::from("/test");
         let component = re_chunk::ComponentIdentifier::new("test:Position");
 
@@ -316,7 +316,7 @@ mod tests {
     #[test]
     fn test_child_chunks_aggregated_to_parent() {
         let mut cache = SortedTemporalChunks::default();
-        let timeline = TimelineName::new("test");
+        let timeline = TimelineName::from("test");
         let parent = EntityPath::from("/parent");
         let child = EntityPath::from("/parent/child");
         let component = re_chunk::ComponentIdentifier::new("test:Position");
@@ -380,7 +380,7 @@ mod tests {
     #[test]
     fn test_duplicate_chunks_merged() {
         let mut cache = SortedTemporalChunks::default();
-        let timeline = TimelineName::new("test");
+        let timeline = TimelineName::from("test");
         let entity = EntityPath::from("/test");
         let component1 = re_chunk::ComponentIdentifier::new("test:Position");
         let component2 = re_chunk::ComponentIdentifier::new("test:Color");

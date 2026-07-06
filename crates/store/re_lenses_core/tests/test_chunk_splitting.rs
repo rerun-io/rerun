@@ -60,7 +60,7 @@ fn three_component_chunk() -> Chunk {
     Chunk::from_auto_row_ids(
         ChunkId::new(),
         "test/entity".into(),
-        std::iter::once((TimelineName::new("tick"), time_column)).collect(),
+        std::iter::once((TimelineName::from("tick"), time_column)).collect(),
         components.collect(),
     )
     .unwrap()

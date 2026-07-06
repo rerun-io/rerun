@@ -48,7 +48,7 @@ pub enum ChunkError {
     Deserialization(#[from] DeserializationError),
 
     #[error(transparent)]
-    UnsupportedTimeType(#[from] re_sorbet::UnsupportedTimeType),
+    IndexColumn(#[from] re_sorbet::IndexColumnError),
 
     #[error(transparent)]
     WrongDatatypeError(#[from] re_arrow_util::WrongDatatypeError),

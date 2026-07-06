@@ -86,11 +86,13 @@ impl TransformDatabaseStoreCache {
             .transform_cache
             .get_or_insert_with(|| TransformResolutionCache::new(entity_db));
 
-        // Remember that this timeline was used this frame.
-        self.used_timelines.insert(query.timeline());
+        if let Some(timeline) = query.timeline() {
+            // Remember that this timeline was used this frame.
+            self.used_timelines.insert(timeline);
 
-        transform_cache
-            .ensure_timeline_is_initialized(entity_db.storage_engine().store(), query.timeline());
+            transform_cache
+                .ensure_timeline_is_initialized(entity_db.storage_engine().store(), timeline);
+        }
 
         let frame_id_registry = transform_cache.frame_id_registry();
         let transforms = transform_cache.transforms_for_timeline(query.timeline());

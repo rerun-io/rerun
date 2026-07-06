@@ -8,7 +8,7 @@ use arrow::array::{
 use arrow::buffer::OffsetBuffer as ArrowOffsetBuffer;
 use arrow::datatypes::Field as ArrowField;
 use arrow::pyarrow::PyArrowType;
-use pyo3::exceptions::PyRuntimeError;
+use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::types::{PyAnyMethods as _, PyDict, PyDictMethods as _, PyString};
 use pyo3::{Bound, PyAny, PyResult};
 use re_arrow_util::ArrowArrayDowncastRef as _;
@@ -94,7 +94,8 @@ pub fn build_chunk_from_components(
             timelines.iter().map(|(name, array)| {
                 let py_name = name.cast::<PyString>()?;
                 let name: std::borrow::Cow<'_, str> = py_name.extract()?;
-                let timeline_name: TimelineName = name.as_ref().into();
+                let timeline_name = TimelineName::try_new(name.as_ref())
+                    .map_err(|err| PyValueError::new_err(err.to_string()))?;
                 array_to_rust(&array).map(|array| (array, timeline_name))
             }),
             |iter| iter.unzip(),

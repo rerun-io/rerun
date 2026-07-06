@@ -341,14 +341,15 @@ pub fn archetype_field_fallbacks(registry: &mut FallbackProviderRegistry) {
         archetypes::EncodedDepthImage::descriptor_depth_range().component,
         |ctx| {
             let blob_component = archetypes::EncodedDepthImage::descriptor_blob().component;
-            if ctx
-                .recording()
-                .latest_at_component::<components::Blob>(
-                    ctx.target_entity_path,
-                    &ctx.query,
-                    blob_component,
-                )
-                .is_some()
+            if let Some(timeline) = ctx.query.timeline()
+                && ctx
+                    .recording()
+                    .latest_at_component::<components::Blob>(
+                        ctx.target_entity_path,
+                        &ctx.query,
+                        blob_component,
+                    )
+                    .is_some()
             {
                 let video = ctx.store_ctx().caches.memoizer(|c: &mut VideoStreamCache| {
                     let media_type = ctx
@@ -363,7 +364,7 @@ pub fn archetype_field_fallbacks(registry: &mut FallbackProviderRegistry) {
                     c.entry(
                         ctx.recording(),
                         ctx.target_entity_path,
-                        ctx.query.timeline(),
+                        timeline,
                         ctx.viewer_ctx().app_options().video_decoder_settings(),
                         blob_component,
                         re_video::VideoCodec::ImageSequence(media_type),

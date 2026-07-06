@@ -1828,7 +1828,7 @@ mod tests {
     }
 
     /// Helper to set the active timeline on the time control.
-    fn set_active_timeline(test_context: &TestContext, timeline_name: &str) {
+    fn set_active_timeline(test_context: &TestContext, timeline_name: &'static str) {
         let store_id = test_context.active_store_id();
         test_context.send_time_commands(
             store_id,

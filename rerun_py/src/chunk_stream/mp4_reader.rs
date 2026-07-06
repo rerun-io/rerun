@@ -4,7 +4,7 @@ use std::sync::Arc;
 use pyo3::exceptions::{PyFileNotFoundError, PyValueError};
 use pyo3::prelude::*;
 use re_chunk::{Chunk, EntityPath};
-use re_log_types::TimeType;
+use re_log_types::{TimeType, TimelineName};
 use re_mp4_reader::{Mode, Mp4Config};
 
 use super::error::ChunkPipelineError;
@@ -96,7 +96,8 @@ impl PyMp4ReaderInternal {
 
         let config = Mp4Config {
             mode,
-            timeline_name: timeline_name.into(),
+            timeline_name: TimelineName::try_new(timeline_name)
+                .map_err(|err| PyValueError::new_err(err.to_string()))?,
             timeline_type,
         };
 

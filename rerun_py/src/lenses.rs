@@ -6,7 +6,7 @@ use pyo3::types::PyModule;
 use pyo3::{Borrowed, FromPyObject};
 
 use re_lenses_core::{CastTo, DynExpr, Lens, OutputMode, Selector};
-use re_types_core::{ComponentDescriptor, ComponentIdentifier};
+use re_types_core::{ComponentDescriptor, ComponentIdentifier, TimelineName};
 
 use crate::python_bridge::PyComponentDescriptor;
 use crate::selector::PySelectorInternal;
@@ -118,7 +118,9 @@ impl PyDeriveLensInternal {
             };
         }
         for (name, timeline_type, selector) in &self.times {
-            builder = builder.to_timeline(name.as_str(), *timeline_type, selector.clone());
+            let timeline_name = TimelineName::try_new(name.as_str())
+                .map_err(|err| PyValueError::new_err(err.to_string()))?;
+            builder = builder.to_timeline(timeline_name, *timeline_type, selector.clone());
         }
         builder
             .build()

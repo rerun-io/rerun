@@ -47,7 +47,7 @@ impl<'a> StoreViewContext<'a> {
 
     /// The currently selected timeline for this store.
     pub fn timeline_name(&self) -> TimelineName {
-        self.query().timeline()
+        *self.time_ctrl.timeline_name()
     }
 
     /// The currently selected timeline for this store.

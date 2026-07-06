@@ -1246,7 +1246,7 @@ mod tests {
                 component: None,
             }),
             when: Some((
-                re_chunk::TimelineName::new("test"),
+                re_chunk::TimelineName::from("test"),
                 re_log_types::TimeCell {
                     typ: re_log_types::TimeType::DurationNs,
                     value: re_log_types::NonMinI64::ONE,

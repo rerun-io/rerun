@@ -40,7 +40,7 @@ impl QueryCache {
         // number of queries for a frame grows linearly with the number of entity paths.
         let components = components.into_iter().filter(|component_identifier| {
             store.entity_has_component_on_timeline(
-                query.timeline(),
+                Some(query.timeline()),
                 entity_path,
                 *component_identifier,
             )
@@ -210,10 +210,10 @@ impl RangeCache {
         self.chunks
             .values()
             .filter_map(|cached| {
-                cached
-                    .chunk
-                    .timelines()
-                    .get(&self.cache_key.timeline_name)
+                self.cache_key
+                    .timeline_name
+                    .as_ref()
+                    .and_then(|timeline_name| cached.chunk.timelines().get(timeline_name))
                     .map(|time_column| time_column.time_range())
             })
             .fold(AbsoluteTimeRange::EMPTY, |mut acc, time_range| {
@@ -300,7 +300,10 @@ impl RangeCache {
     ) -> (Vec<Chunk>, Vec<ChunkId>) {
         re_tracing::profile_scope!("range", format!("{query:?}"));
 
-        re_log::debug_assert_eq!(query.timeline(), &self.cache_key.timeline_name);
+        re_log::debug_assert_eq!(
+            Some(query.timeline()),
+            self.cache_key.timeline_name.as_ref()
+        );
 
         // First, we forward the query as-is to the store.
         //
@@ -324,14 +327,22 @@ impl RangeCache {
                 let (chunk, densified) = raw_chunk.densified(component);
 
                 // Pre-sort the cached chunk according to the cache key's timeline.
+                // (Range caches always have one; a `None` timeline only happens for
+                // static-only latest-at caches.)
                 //
                 // TODO(#7008): avoid unnecessary sorting on the unhappy path
-                let chunk = chunk
-                    .sorted_by_timeline_if_unsorted(&self.cache_key.timeline_name)
-                    .with_id(original_chunk_id);
+                let chunk = match self.cache_key.timeline_name.as_ref() {
+                    Some(timeline_name) => chunk.sorted_by_timeline_if_unsorted(timeline_name),
+                    None => chunk,
+                }
+                .with_id(original_chunk_id);
 
-                let reallocated =
-                    densified || !raw_chunk.is_timeline_sorted(&self.cache_key.timeline_name);
+                let reallocated = densified
+                    || self
+                        .cache_key
+                        .timeline_name
+                        .as_ref()
+                        .is_some_and(|timeline_name| !raw_chunk.is_timeline_sorted(timeline_name));
 
                 RangeCachedChunk { chunk, reallocated }
             });

@@ -1,6 +1,7 @@
 use std::collections::BTreeSet;
 
 use re_data_ui::item_ui::{self, timeline_button};
+use re_log::ResultExt as _;
 use re_log_types::{EntityPath, TimelineName};
 use re_sdk_types::blueprint::archetypes::{TextLogColumns, TextLogFormat, TextLogRows};
 use re_sdk_types::blueprint::components::{Enabled, TextLogColumn, TimelineColumn};
@@ -384,7 +385,11 @@ fn table_ui(
                 }
 
                 header.col(|ui| {
-                    timeline_button(&ctx.app_ctx, ui, &TimelineName::new(&col.timeline));
+                    if let Some(timeline) =
+                        TimelineName::try_new(col.timeline.as_str()).ok_or_log_error_once()
+                    {
+                        timeline_button(&ctx.app_ctx, ui, &timeline);
+                    }
                 });
             }
             for col in columns {
@@ -412,7 +417,11 @@ fn table_ui(
                         continue;
                     }
 
-                    let timeline = TimelineName::new(&col.timeline);
+                    let Some(timeline) =
+                        TimelineName::try_new(col.timeline.as_str()).ok_or_log_error_once()
+                    else {
+                        continue;
+                    };
 
                     row.col(|ui| {
                         let row_time = entry

@@ -67,7 +67,7 @@ pub use self::segment_id::SegmentId;
 pub use self::tuid::tuids_to_arrow;
 pub use self::view::{View, ViewClassIdentifier};
 pub use self::wrapper_component::WrapperComponent;
-pub use timeline_name::TimelineName;
+pub use timeline_name::{InvalidTimelineNameError, TimelineName};
 
 /// Fundamental [`Archetype`]s that are implemented in `re_types_core` directly for convenience and
 /// dependency optimization.

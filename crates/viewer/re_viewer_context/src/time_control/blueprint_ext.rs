@@ -1,4 +1,5 @@
 use re_chunk::{EntityPath, TimelineName};
+use re_log::ResultExt as _;
 use re_log_types::AbsoluteTimeRange;
 use re_sdk_types::blueprint::archetypes::TimePanelBlueprint;
 use re_sdk_types::blueprint::components::{LoopMode, PlayState};
@@ -55,7 +56,7 @@ impl<T: BlueprintContext> TimeBlueprintExt for T {
             TimePanelBlueprint::descriptor_timeline().component,
         )?;
 
-        Some(TimelineName::new(timeline.as_str()))
+        TimelineName::try_new(timeline.as_str()).ok_or_log_error_once()
     }
 
     fn clear_timeline(&self) {

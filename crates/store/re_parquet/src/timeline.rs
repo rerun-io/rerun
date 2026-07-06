@@ -4,7 +4,7 @@ use arrow::array::{Array, AsArray as _};
 use arrow::buffer::ScalarBuffer;
 use arrow::datatypes::DataType;
 use re_chunk::TimeColumn;
-use re_log_types::{TimeType, Timeline};
+use re_log_types::{TimeType, Timeline, TimelineName};
 
 use crate::config::{IndexColumn, IndexType};
 use crate::streaming::ParquetError;
@@ -47,9 +47,12 @@ pub(crate) fn resolve_explicit_index_columns(
                 IndexType::Sequence => TimeType::Sequence,
             };
 
+            let timeline_name = TimelineName::try_new(col.name.as_str())
+                .map_err(|err| ParquetError::from(anyhow::anyhow!(err)))?;
+
             Ok(TimelineInfo {
                 column_index,
-                timeline: Timeline::new(col.name.as_str(), time_type),
+                timeline: Timeline::new(timeline_name, time_type),
                 ns_multiplier: col.index_type.ns_multiplier(),
             })
         })

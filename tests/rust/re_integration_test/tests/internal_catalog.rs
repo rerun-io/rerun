@@ -77,7 +77,7 @@ async fn internal_catalog_load_rrd() {
             .open_url_or_file(&rrd_path.display().to_string());
 
         let points = EntityPath::from("points");
-        let frame = TimelineName::new("frame");
+        let frame = TimelineName::from("frame");
         viewer_test_utils::step_until(
             "file loaded",
             &mut harness,

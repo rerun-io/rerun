@@ -308,7 +308,8 @@ impl TryFrom<CTimeline> for Timeline {
     type Error = CError;
 
     fn try_from(timeline: CTimeline) -> Result<Self, CError> {
-        let name = timeline.name.as_nonempty_str("timeline.name")?;
+        let name = TimelineName::try_new(timeline.name.as_nonempty_str("timeline.name")?)
+            .map_err(|err| CError::new(CErrorCode::InvalidStringArgument, &err.to_string()))?;
         let typ = match timeline.typ {
             CTimeType::Sequence => TimeType::Sequence,
             CTimeType::Duration => TimeType::DurationNs,
@@ -964,7 +965,8 @@ fn rr_recording_stream_set_time_impl(
     time_type: CTimeType,
     value: i64,
 ) -> Result<(), CError> {
-    let timeline = timeline_name.as_nonempty_str("timeline_name")?;
+    let timeline = TimelineName::try_new(timeline_name.as_nonempty_str("timeline_name")?)
+        .map_err(|err| CError::new(CErrorCode::InvalidStringArgument, &err.to_string()))?;
     let stream = recording_stream(stream)?;
     let time_type = match time_type {
         CTimeType::Sequence => TimeType::Sequence,
@@ -994,7 +996,8 @@ fn rr_recording_stream_disable_timeline_impl(
     stream: CRecordingStream,
     timeline_name: CStringView,
 ) -> Result<(), CError> {
-    let timeline = timeline_name.as_nonempty_str("timeline_name")?;
+    let timeline = TimelineName::try_new(timeline_name.as_nonempty_str("timeline_name")?)
+        .map_err(|err| CError::new(CErrorCode::InvalidStringArgument, &err.to_string()))?;
     recording_stream(stream)?.disable_timeline(timeline);
     Ok(())
 }

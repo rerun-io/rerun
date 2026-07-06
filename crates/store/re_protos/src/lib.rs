@@ -145,6 +145,9 @@ pub enum TypeConversionError {
     #[error("invalid entry name: {0}")]
     InvalidEntryName(#[from] InvalidEntryNameError),
 
+    #[error("invalid timeline name: {0}")]
+    InvalidTimelineName(#[from] re_types_core::InvalidTimelineNameError),
+
     #[error("failed to parse timestamp: {0}")]
     InvalidTime(#[from] jiff::Error),
 

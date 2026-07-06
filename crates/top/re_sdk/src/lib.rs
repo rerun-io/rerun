@@ -103,7 +103,9 @@ pub mod log {
 
 /// Time-related types.
 pub mod time {
-    pub use re_log_types::{Duration, TimeCell, TimeInt, TimePoint, TimeType, Timeline, Timestamp};
+    pub use re_log_types::{
+        Duration, TimeCell, TimeInt, TimePoint, TimeType, Timeline, TimelineName, Timestamp,
+    };
 }
 
 pub use re_sdk_types::{
@@ -111,7 +113,7 @@ pub use re_sdk_types::{
     ComponentIdentifier, ComponentType, DeserializationError, DeserializationResult, Loggable,
     SerializationError, SerializationResult, SerializedComponentBatch, SerializedComponentColumn,
 };
-pub use time::{TimeCell, TimePoint, Timeline};
+pub use time::{TimeCell, TimePoint, Timeline, TimelineName};
 
 /// Transformation and reinterpretation of components.
 ///

@@ -406,7 +406,7 @@ pub fn resolve_mono_instance_path(
         // NOTE: While we normally frown upon direct queries to the datastore, `all_components` is fine.
         let Some(components) = engine
             .store()
-            .all_components_on_timeline(&query.timeline(), &instance.entity_path)
+            .all_components_on_timeline(query.timeline().as_ref(), &instance.entity_path)
         else {
             // No components at all, return unindexed entity.
             return re_entity_db::InstancePath::entity_all(instance.entity_path.clone());

@@ -553,7 +553,7 @@ fn test_static_tree_transforms() -> Result<(), Box<dyn std::error::Error>> {
         );
 
         // Timelines that the cache has never seen should still have the static transform.
-        let transforms_per_timeline = cache.transforms_for_timeline(TimelineName::new("other"));
+        let transforms_per_timeline = cache.transforms_for_timeline(TimelineName::from("other"));
         let transforms = transforms_per_timeline
             .frame_transforms(TransformFrameIdHash::from_entity_path(&EntityPath::from(
                 "my_entity",
@@ -563,7 +563,7 @@ fn test_static_tree_transforms() -> Result<(), Box<dyn std::error::Error>> {
             latest_at_transform_test(
                 transforms,
                 &entity_db,
-                &LatestAtQuery::new(TimelineName::new("other"), 123)
+                &LatestAtQuery::new(TimelineName::from("other"), 123)
             ),
             Some(ParentFromChildTransform {
                 parent: TransformFrameIdHash::entity_path_hierarchy_root(),
@@ -651,7 +651,7 @@ fn test_static_pose_transforms() -> Result<(), Box<dyn std::error::Error>> {
         );
 
         // Timelines that the cache has never seen should still have the static poses.
-        let transforms_per_timeline = cache.transforms_for_timeline(TimelineName::new("other"));
+        let transforms_per_timeline = cache.transforms_for_timeline(TimelineName::from("other"));
         let transforms = transforms_per_timeline
             .pose_transforms(EntityPath::from("my_entity").hash())
             .unwrap();
@@ -659,7 +659,7 @@ fn test_static_pose_transforms() -> Result<(), Box<dyn std::error::Error>> {
             latest_at_instance_poses_test(
                 transforms,
                 &entity_db,
-                &LatestAtQuery::new(TimelineName::new("other"), 123)
+                &LatestAtQuery::new(TimelineName::from("other"), 123)
             ),
             vec![
                 DAffine3::from_translation(glam::dvec3(1.0, 2.0, 3.0)),
@@ -762,7 +762,7 @@ fn test_static_pinhole_projection() -> Result<(), Box<dyn std::error::Error>> {
         );
 
         // Timelines that the cache has never seen should still have the static pinhole.
-        let transforms_per_timeline = cache.transforms_for_timeline(TimelineName::new("other"));
+        let transforms_per_timeline = cache.transforms_for_timeline(TimelineName::from("other"));
         let transforms = transforms_per_timeline
             .frame_transforms(TransformFrameIdHash::from_entity_path(&EntityPath::from(
                 "my_entity",
@@ -772,7 +772,7 @@ fn test_static_pinhole_projection() -> Result<(), Box<dyn std::error::Error>> {
             latest_at_pinhole_test(
                 transforms,
                 &entity_db,
-                &LatestAtQuery::new(TimelineName::new("other"), 123)
+                &LatestAtQuery::new(TimelineName::from("other"), 123)
             ),
             Some(ResolvedPinholeProjection {
                 cached: ResolvedPinholeProjectionCached {
@@ -1814,7 +1814,7 @@ fn test_different_associated_paths_for_static_and_temporal()
         );
 
         // Test on a different timeline that never saw the temporal data
-        let other_timeline = TimelineName::new("other");
+        let other_timeline = TimelineName::from("other");
         let transforms_per_timeline = cache.transforms_for_timeline(other_timeline);
         let transforms = transforms_per_timeline
             .frame_transforms(child_frame)

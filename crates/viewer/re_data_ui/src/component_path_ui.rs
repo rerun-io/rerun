@@ -39,7 +39,7 @@ impl DataUi for ComponentPath {
             if any_missing_chunks && ctx.db.can_fetch_chunks_from_redap() {
                 ui.loading_indicator("Fetching chunks from redap");
             } else if engine.store().entity_has_component_on_timeline(
-                &ctx.timeline_name(),
+                Some(&ctx.timeline_name()),
                 &entity_path,
                 component,
             ) {

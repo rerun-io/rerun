@@ -162,10 +162,12 @@ impl ChunkStore {
     ///
     /// Static components are always included in the results.
     ///
+    /// A `None` timeline (a static-only query) yields only the static components.
+    ///
     /// Returns `None` if the entity doesn't exist at all on this `timeline`.
     pub fn all_components_on_timeline(
         &self,
-        timeline: &TimelineName,
+        timeline: Option<&TimelineName>,
         entity_path: &EntityPath,
     ) -> Option<UnorderedComponentSet> {
         re_tracing::profile_function!();
@@ -185,8 +187,8 @@ impl ChunkStore {
             .temporal_chunk_ids_per_entity_per_component
             .get(entity_path)
             .map(|temporal_chunk_ids_per_timeline| {
-                temporal_chunk_ids_per_timeline
-                    .get(timeline)
+                timeline
+                    .and_then(|timeline| temporal_chunk_ids_per_timeline.get(timeline))
                     .map(|temporal_chunk_ids_per_component| {
                         temporal_chunk_ids_per_component
                             .keys()
@@ -261,14 +263,16 @@ impl ChunkStore {
     #[inline]
     pub fn entity_has_component_on_timeline(
         &self,
-        timeline: &TimelineName,
+        timeline: Option<&TimelineName>,
         entity_path: &EntityPath,
         component: ComponentIdentifier,
     ) -> bool {
         // re_tracing::profile_function!(); // This function is too fast; profiling will only add overhead
 
         self.entity_has_static_component(entity_path, component)
-            || self.entity_has_temporal_component_on_timeline(timeline, entity_path, component)
+            || timeline.is_some_and(|timeline| {
+                self.entity_has_temporal_component_on_timeline(timeline, entity_path, component)
+            })
     }
 
     /// Check whether an entity has a static component or a temporal component on any timeline.
@@ -916,7 +920,8 @@ impl ChunkStore {
             .temporal_chunk_ids_per_entity_per_component
             .get(entity_path)
             .and_then(|temporal_chunk_ids_per_timeline| {
-                temporal_chunk_ids_per_timeline.get(&query.timeline())
+                let timeline = query.timeline()?;
+                temporal_chunk_ids_per_timeline.get(&timeline)
             })
             .and_then(|temporal_chunk_ids_per_component| {
                 temporal_chunk_ids_per_component.get(&component)
@@ -967,7 +972,8 @@ impl ChunkStore {
                 .temporal_chunk_ids_per_entity_per_component
                 .get(entity_path)
                 .and_then(|temporal_chunk_ids_per_timeline_per_component| {
-                    temporal_chunk_ids_per_timeline_per_component.get(&query.timeline())
+                    let timeline = query.timeline()?;
+                    temporal_chunk_ids_per_timeline_per_component.get(&timeline)
                 })
                 .map(|temporal_chunk_ids_per_component| {
                     temporal_chunk_ids_per_component
@@ -995,7 +1001,8 @@ impl ChunkStore {
             self.temporal_chunk_ids_per_entity
                 .get(entity_path)
                 .and_then(|temporal_chunk_ids_per_timeline| {
-                    temporal_chunk_ids_per_timeline.get(&query.timeline())
+                    let timeline = query.timeline()?;
+                    temporal_chunk_ids_per_timeline.get(&timeline)
                 })
                 .and_then(|temporal_chunk_ids_per_time| {
                     Self::latest_at(query, temporal_chunk_ids_per_time)

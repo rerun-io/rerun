@@ -198,7 +198,7 @@ impl VideoStreamCache {
             if store
                 .storage_engine()
                 .store()
-                .entity_has_component_on_timeline(&timeline, entity_path, codec_component)
+                .entity_has_component_on_timeline(Some(&timeline), entity_path, codec_component)
             {
                 VideoStreamProcessingError::UnloadedCodec
             } else {

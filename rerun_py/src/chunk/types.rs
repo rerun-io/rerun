@@ -113,8 +113,11 @@ impl PyChunkInternal {
             "columns" => DataframeIndex::Columns(
                 index_columns
                     .iter()
-                    .map(|s| TimelineName::new(s.as_str()))
-                    .collect(),
+                    .map(|s| {
+                        TimelineName::try_new(s.as_str())
+                            .map_err(|err| PyValueError::new_err(err.to_string()))
+                    })
+                    .collect::<PyResult<Vec<_>>>()?,
             ),
             _ => {
                 return Err(PyValueError::new_err(format!(

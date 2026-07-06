@@ -210,7 +210,7 @@ impl TreeTransformsForChildFrame {
         query: &LatestAtQuery,
     ) -> Option<(TimeInt, ParentFromChildTransform)> {
         #[cfg(debug_assertions)] // `self.timeline` is only present with `debug_assertions` enabled.
-        debug_assert!(Some(query.timeline()) == self.timeline || self.timeline.is_none());
+        debug_assert!(query.timeline() == self.timeline || self.timeline.is_none());
 
         let mut events = self.events.write();
 
@@ -278,7 +278,7 @@ impl TreeTransformsForChildFrame {
         query: &LatestAtQuery,
     ) -> Option<(TimeInt, ResolvedPinholeProjection)> {
         #[cfg(debug_assertions)] // `self.timeline` is only present with `debug_assertions` enabled.
-        debug_assert!(Some(query.timeline()) == self.timeline || self.timeline.is_none());
+        debug_assert!(query.timeline() == self.timeline || self.timeline.is_none());
 
         let mut events = self.events.write();
 

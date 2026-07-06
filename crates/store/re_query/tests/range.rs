@@ -409,7 +409,10 @@ fn time_back_and_forth() {
 
     // --- Query #1: `[8, 10]` ---
 
-    let query = RangeQuery::new(TimelineName::new("frame_nr"), AbsoluteTimeRange::new(8, 10));
+    let query = RangeQuery::new(
+        TimelineName::from("frame_nr"),
+        AbsoluteTimeRange::new(8, 10),
+    );
 
     let expected_points = &[
         (
@@ -438,7 +441,7 @@ fn time_back_and_forth() {
 
     // --- Query #2: `[1, 3]` ---
 
-    let query = RangeQuery::new(TimelineName::new("frame_nr"), AbsoluteTimeRange::new(1, 3));
+    let query = RangeQuery::new(TimelineName::from("frame_nr"), AbsoluteTimeRange::new(1, 3));
 
     let expected_points = &[
         (
@@ -474,7 +477,7 @@ fn time_back_and_forth() {
 
     // --- Query #3: `[5, 7]` ---
 
-    let query = RangeQuery::new(TimelineName::new("frame_nr"), AbsoluteTimeRange::new(5, 7));
+    let query = RangeQuery::new(TimelineName::from("frame_nr"), AbsoluteTimeRange::new(5, 7));
 
     let expected_points = &[
         (

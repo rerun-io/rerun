@@ -69,24 +69,6 @@ impl From<Timeline> for TimeColumnSelector {
     }
 }
 
-impl From<&str> for TimeColumnSelector {
-    #[inline]
-    fn from(timeline: &str) -> Self {
-        Self {
-            timeline: timeline.into(),
-        }
-    }
-}
-
-impl From<String> for TimeColumnSelector {
-    #[inline]
-    fn from(timeline: String) -> Self {
-        Self {
-            timeline: timeline.into(),
-        }
-    }
-}
-
 impl From<IndexColumnDescriptor> for TimeColumnSelector {
     #[inline]
     fn from(desc: IndexColumnDescriptor) -> Self {

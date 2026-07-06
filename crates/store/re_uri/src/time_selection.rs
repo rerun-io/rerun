@@ -1,4 +1,4 @@
-use re_log_types::{AbsoluteTimeRange, AbsoluteTimeRangeF, TimeCell, Timeline};
+use re_log_types::{AbsoluteTimeRange, AbsoluteTimeRangeF, TimeCell, Timeline, TimelineName};
 
 use crate::Error;
 
@@ -103,6 +103,8 @@ impl std::str::FromStr for TimeSelection {
             )));
         }
 
+        let timeline = TimelineName::try_new(timeline)
+            .map_err(|err| Error::InvalidTimeRange(format!("Bad timeline name: {err}")))?;
         let timeline = Timeline::new(timeline, min.typ());
         let range = AbsoluteTimeRange::new(min, max);
 

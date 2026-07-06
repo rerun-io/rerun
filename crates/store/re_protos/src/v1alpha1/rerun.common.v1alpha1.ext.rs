@@ -329,9 +329,11 @@ impl TryFrom<crate::common::v1alpha1::IndexRange> for re_log_types::AbsoluteTime
     }
 }
 
-impl From<crate::common::v1alpha1::Timeline> for re_log_types::TimelineName {
-    fn from(value: crate::common::v1alpha1::Timeline) -> Self {
-        Self::new(&value.name)
+impl TryFrom<crate::common::v1alpha1::Timeline> for re_log_types::TimelineName {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::common::v1alpha1::Timeline) -> Result<Self, Self::Error> {
+        Ok(Self::try_new(&value.name)?)
     }
 }
 
@@ -388,7 +390,7 @@ impl TryFrom<crate::common::v1alpha1::IndexColumnSelector> for re_log_types::Tim
             crate::common::v1alpha1::IndexColumnSelector,
             "timeline"
         ))?;
-        Ok(timeline.into())
+        timeline.try_into()
     }
 }
 

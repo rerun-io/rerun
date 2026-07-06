@@ -428,7 +428,8 @@ fn replace_time_in_query(
     synthesize_latest_at: bool,
 ) -> Result<QueryDatasetRequest, DataFusionError> {
     let mut query_clone = dataset_query.clone();
-    let timeline: TimelineName = index.into();
+    let timeline =
+        TimelineName::try_new(index).map_err(|err| DataFusionError::External(Box::new(err)))?;
     // `latest_at` is only meaningful to the server when the caller requested
     // sparse-fill semantics. When `synthesize_latest_at` is false, the caller
     // has opted out of fill and any `latest_at` we paired with the range

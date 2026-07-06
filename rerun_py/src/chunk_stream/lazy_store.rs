@@ -591,7 +591,7 @@ mod pushdown_tests {
         ]);
 
         let filter = StructuredFilter {
-            has_timeline: Some(TimelineName::new("frame")),
+            has_timeline: Some(TimelineName::from("frame")),
             ..Default::default()
         };
         let (matching, _) = evaluate_filter_on_manifest(&filter, store.manifest());
@@ -602,7 +602,7 @@ mod pushdown_tests {
 
         // A non-existent timeline should match nothing.
         let filter = StructuredFilter {
-            has_timeline: Some(TimelineName::new("never_logged")),
+            has_timeline: Some(TimelineName::from("never_logged")),
             ..Default::default()
         };
         let (matching, _) = evaluate_filter_on_manifest(&filter, store.manifest());

@@ -34,7 +34,7 @@ impl DataUi for InstancePath {
             .db
             .storage_engine()
             .store()
-            .all_components_on_timeline(&ctx.timeline_name(), entity_path);
+            .all_components_on_timeline(Some(&ctx.timeline_name()), entity_path);
 
         let Some(unordered_components) = components else {
             // This is fine - e.g. we're looking at `/world` and the user has only logged to `/world/car`.

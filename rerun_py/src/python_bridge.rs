@@ -9,13 +9,15 @@ use std::time::Duration;
 
 use arrow::array::RecordBatch as ArrowRecordBatch;
 use itertools::Itertools as _;
-use pyo3::exceptions::{PyKeyboardInterrupt, PyRuntimeError, PyStopIteration, PyTypeError};
+use pyo3::exceptions::{
+    PyKeyboardInterrupt, PyRuntimeError, PyStopIteration, PyTypeError, PyValueError,
+};
 use pyo3::prelude::*;
 use pyo3::types::{PyBytes, PyDict};
 use re_auth::oauth::Credentials;
 use re_auth::oauth::login_flow::{DeviceCodeFlow, DeviceCodeFlowState};
 //use crate::reflection::ComponentDescriptorExt as _;
-use re_chunk::ChunkBatcherConfig;
+use re_chunk::{ChunkBatcherConfig, TimelineName};
 use re_log::ResultExt as _;
 use re_log_types::external::re_types_core::reflection::ComponentDescriptorExt as _;
 use re_log_types::{BlueprintActivationCommand, EntityPathPart, LogMsg, RecordingId};
@@ -2008,21 +2010,35 @@ impl PyComponentDescriptor {
 /// Set the current time for this thread as an integer sequence.
 #[pyfunction]
 #[pyo3(signature = (timeline, sequence, recording=None))]
-fn set_time_sequence(timeline: &str, sequence: i64, recording: Option<&PyRecordingStream>) {
+fn set_time_sequence(
+    timeline: &str,
+    sequence: i64,
+    recording: Option<&PyRecordingStream>,
+) -> PyResult<()> {
+    let timeline =
+        TimelineName::try_new(timeline).map_err(|err| PyValueError::new_err(err.to_string()))?;
     let Some(recording) = get_data_recording(recording) else {
-        return;
+        return Ok(());
     };
     recording.set_time(timeline, TimeCell::from_sequence(sequence));
+    Ok(())
 }
 
 /// Set the current duration for this thread in nanoseconds.
 #[pyfunction]
 #[pyo3(signature = (timeline, nanos, recording=None))]
-fn set_time_duration_nanos(timeline: &str, nanos: i64, recording: Option<&PyRecordingStream>) {
+fn set_time_duration_nanos(
+    timeline: &str,
+    nanos: i64,
+    recording: Option<&PyRecordingStream>,
+) -> PyResult<()> {
+    let timeline =
+        TimelineName::try_new(timeline).map_err(|err| PyValueError::new_err(err.to_string()))?;
     let Some(recording) = get_data_recording(recording) else {
-        return;
+        return Ok(());
     };
     recording.set_time(timeline, TimeCell::from_duration_nanos(nanos));
+    Ok(())
 }
 
 /// Set the current time for this thread in nanoseconds.
@@ -2032,21 +2048,27 @@ fn set_time_timestamp_nanos_since_epoch(
     timeline: &str,
     nanos: i64,
     recording: Option<&PyRecordingStream>,
-) {
+) -> PyResult<()> {
+    let timeline =
+        TimelineName::try_new(timeline).map_err(|err| PyValueError::new_err(err.to_string()))?;
     let Some(recording) = get_data_recording(recording) else {
-        return;
+        return Ok(());
     };
     recording.set_time(timeline, TimeCell::from_timestamp_nanos_since_epoch(nanos));
+    Ok(())
 }
 
 /// Clear time information for the specified timeline on this thread.
 #[pyfunction]
 #[pyo3(signature = (timeline, recording=None))]
-fn disable_timeline(timeline: &str, recording: Option<&PyRecordingStream>) {
+fn disable_timeline(timeline: &str, recording: Option<&PyRecordingStream>) -> PyResult<()> {
+    let timeline =
+        TimelineName::try_new(timeline).map_err(|err| PyValueError::new_err(err.to_string()))?;
     let Some(recording) = get_data_recording(recording) else {
-        return;
+        return Ok(());
     };
     recording.disable_timeline(timeline);
+    Ok(())
 }
 
 /// Clear all timeline information on this thread.

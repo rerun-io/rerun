@@ -413,7 +413,7 @@ pub fn log_data_for_various_entity_kinds_tests(test_context: &mut TestContext) {
 pub fn log_data(
     test_context: &mut TestContext,
     entity_path: impl Into<EntityPath>,
-    timeline: &str,
+    timeline: &'static str,
     time: i64,
 ) {
     let entity_path = entity_path.into();

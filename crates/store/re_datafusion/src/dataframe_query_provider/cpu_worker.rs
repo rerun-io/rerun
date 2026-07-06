@@ -1510,7 +1510,7 @@ mod tests {
     /// carrying one `MyLabel` component, so the chunk has non-zero
     /// stored bytes and the store's `latest_at` machinery has a
     /// component to find.
-    fn temporal_chunk(entity: &str, timeline_name: &str, time: i64) -> Chunk {
+    fn temporal_chunk(entity: &str, timeline_name: &'static str, time: i64) -> Chunk {
         use re_dataframe::external::re_chunk::RowId;
         use re_log_types::Timeline;
         use re_log_types::example_components::{MyLabel, MyPoints};
@@ -1537,7 +1537,7 @@ mod tests {
         budget: Arc<PipelineBudget>,
     ) -> CurrentStores {
         let query_expression = QueryExpression {
-            filtered_index: Some(TimelineName::new(timeline_name)),
+            filtered_index: Some(TimelineName::try_new(timeline_name).unwrap()),
             ..Default::default()
         };
         let mut stores = CurrentStores::new(
@@ -1911,7 +1911,7 @@ mod tests {
         let mut stores = CurrentStores::new(
             SegmentId::from("seg"),
             &QueryExpression {
-                filtered_index: Some(TimelineName::new("frame")),
+                filtered_index: Some(TimelineName::from("frame")),
                 ..Default::default()
             },
             &None,
@@ -1945,7 +1945,7 @@ mod tests {
         let mut stores = CurrentStores::new(
             SegmentId::from("seg"),
             &QueryExpression {
-                filtered_index: Some(TimelineName::new("frame")),
+                filtered_index: Some(TimelineName::from("frame")),
                 ..Default::default()
             },
             &None,

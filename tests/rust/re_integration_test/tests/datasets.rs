@@ -124,7 +124,7 @@ pub async fn start_with_segment_fragment_url() {
         fragment: re_uri::Fragment {
             selection: None,
             when: Some((
-                TimelineName::new("test_time"),
+                TimelineName::from("test_time"),
                 TimeCell::new(re_sdk::time::TimeType::Sequence, 10),
             )),
             time_selection: Some(re_uri::TimeSelection {
@@ -145,7 +145,7 @@ pub async fn start_with_segment_fragment_url() {
     });
 
     let preview_entity = EntityPath::from("test_entity");
-    let timeline = TimelineName::new("test_time");
+    let timeline = TimelineName::from("test_time");
     viewer_test_utils::step_until(
         "Recording opened, source tree populated, and point data arrived",
         &mut harness,

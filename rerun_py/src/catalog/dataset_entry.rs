@@ -308,6 +308,13 @@ impl PyDatasetEntryInternal {
             .map(|e| py_object_to_time_cell(py, e))
             .transpose()?;
 
+        let timeline = timeline
+            .map(|timeline| {
+                re_chunk::TimelineName::try_new(timeline)
+                    .map_err(|err| PyValueError::new_err(err.to_string()))
+            })
+            .transpose()?;
+
         Ok(re_uri::DatasetSegmentUri {
             origin: connection.origin().clone(),
             dataset_id: self_.entry_details.id.id,
@@ -316,7 +323,7 @@ impl PyDatasetEntryInternal {
                 selection: None,
                 when: timeline.map(|timeline| {
                     (
-                        re_chunk::TimelineName::new(timeline),
+                        timeline,
                         start_cell.unwrap_or_else(|| {
                             re_sdk::TimeCell::new(
                                 re_log_types::TimeType::TimestampNs,

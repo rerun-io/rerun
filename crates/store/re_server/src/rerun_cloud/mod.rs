@@ -2016,10 +2016,7 @@ fn get_entry_id_from_headers<T>(
 fn latest_at_or_static(latest_at: &ext::QueryLatestAt) -> LatestAtQuery {
     match &latest_at.index {
         Some(index) => LatestAtQuery::new(*index, latest_at.at),
-        None => {
-            // Static only data
-            LatestAtQuery::new("".into(), re_log_types::TimeInt::MIN)
-        }
+        None => LatestAtQuery::new_static(),
     }
 }
 

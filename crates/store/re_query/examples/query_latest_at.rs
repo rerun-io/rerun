@@ -18,7 +18,7 @@ fn main() -> anyhow::Result<()> {
     eprintln!("store:\n{store}");
 
     let entity_path = "points";
-    let timeline = TimelineName::new("frame_nr");
+    let timeline = TimelineName::from("frame_nr");
     let query = LatestAtQuery::latest(timeline);
     eprintln!("query:{query:?}");
 

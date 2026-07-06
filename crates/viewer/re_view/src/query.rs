@@ -141,16 +141,18 @@ fn component_not_found_error(
     missing_virtual_chunks: &[re_chunk_store::ChunkId],
     entity_db: &re_entity_db::EntityDb,
     store_engine: &re_query::StorageEngineReadGuard<'_>,
-    timeline_name: re_log_types::TimelineName,
+    timeline_name: Option<re_log_types::TimelineName>,
 ) -> ComponentMappingError {
     // Check whether the component is *ever* present on this entity.
     // Since static data would show up in both latest-at & range queries, we only care about temporal data here.
-    if entity_db.entity_has_temporal_data_on_timeline_for_component(
-        store_engine,
-        &timeline_name,
-        entity_path,
-        component,
-    ) {
+    if timeline_name.is_some_and(|timeline_name| {
+        entity_db.entity_has_temporal_data_on_timeline_for_component(
+            store_engine,
+            &timeline_name,
+            entity_path,
+            component,
+        )
+    }) {
         ComponentMappingError::NoComponentDataForQuery(component)
     } else {
         // Check whether the data *might* come in later.
@@ -159,7 +161,8 @@ fn component_not_found_error(
         {
             let store = store_engine.store();
 
-            let timeline = store.schema().timelines().get(&timeline_name).copied();
+            let timeline = timeline_name
+                .and_then(|timeline_name| store.schema().timelines().get(&timeline_name).copied());
 
             for missing_root_chunk_id in missing_virtual_chunks
                 .iter()
@@ -342,7 +345,7 @@ pub fn range_with_blueprint_resolved_data_polymorphic<'a>(
                         &results.missing_virtual,
                         ctx.recording(),
                         &engine,
-                        range_query.timeline,
+                        Some(range_query.timeline),
                     )),
                 );
             }
@@ -680,7 +683,7 @@ fn query_overrides_at_path(
 
         // If we successfully find a non-empty override, add it to our results.
         if let Some(value) = component_override_result.get(component) {
-            let index = value.index(&ctx.blueprint_query.timeline());
+            let index = value.index(ctx.blueprint_query.timeline().as_ref());
 
             // NOTE: This can never happen, but I'd rather it happens than an unwrap.
             re_log::debug_assert!(index.is_some(), "{value:#?}");

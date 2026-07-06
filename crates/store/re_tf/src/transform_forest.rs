@@ -1309,14 +1309,14 @@ mod tests {
             let mut transform_cache = TransformResolutionCache::new(&test_scene);
             transform_cache.ensure_timeline_is_initialized(
                 test_scene.storage_engine().store(),
-                query.timeline(),
+                query.timeline().unwrap(),
             );
 
             // Add a connection the cache doesn't know about.
             test_scene.add_chunk(&Arc::new(
                 Chunk::builder(EntityPath::from("transforms"))
                     .with_archetype_auto_row(
-                        [(query.timeline(), TimeCell::from_sequence(0))],
+                        [(query.timeline().unwrap(), TimeCell::from_sequence(0))],
                         &archetypes::Transform3D::from_translation([4.0, 0.0, 0.0])
                             .with_child_frame("child2")
                             .with_parent_frame("top"),
@@ -1353,7 +1353,7 @@ mod tests {
             test_scene.add_chunk(&Arc::new(
                 Chunk::builder(EntityPath::from("transforms"))
                     .with_archetype_auto_row(
-                        [(query.timeline(), TimeCell::from_sequence(0))],
+                        [(query.timeline().unwrap(), TimeCell::from_sequence(0))],
                         &archetypes::Transform3D::from_translation([4.0, 0.0, 0.0])
                             .with_child_frame("child2")
                             .with_parent_frame("top"),
@@ -1363,14 +1363,14 @@ mod tests {
             let mut transform_cache = TransformResolutionCache::new(&test_scene);
             transform_cache.ensure_timeline_is_initialized(
                 test_scene.storage_engine().store(),
-                query.timeline(),
+                query.timeline().unwrap(),
             );
 
             test_scene.add_chunk(&Arc::new(
                 // Add a connection the cache doesn't know about.
                 Chunk::builder(EntityPath::from("transforms"))
                     .with_archetype_auto_row(
-                        [(query.timeline(), TimeCell::from_sequence(0))], // Same time before, different parent frame!
+                        [(query.timeline().unwrap(), TimeCell::from_sequence(0))], // Same time before, different parent frame!
                         &archetypes::Transform3D::from_translation([5.0, 0.0, 0.0])
                             .with_child_frame("child2")
                             .with_parent_frame("new_top"),
@@ -1447,8 +1447,10 @@ mod tests {
 
         let query = LatestAtQuery::latest(TimelineName::log_tick());
         let mut transform_cache = TransformResolutionCache::new(&entity_db);
-        transform_cache
-            .ensure_timeline_is_initialized(entity_db.storage_engine().store(), query.timeline());
+        transform_cache.ensure_timeline_is_initialized(
+            entity_db.storage_engine().store(),
+            query.timeline().unwrap(),
+        );
         let transform_forest = TransformForest::new(&entity_db, &transform_cache, &query);
         assert!(!transform_forest.any_missing_chunks());
 

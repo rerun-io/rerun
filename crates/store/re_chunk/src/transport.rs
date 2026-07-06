@@ -450,7 +450,7 @@ mod tests {
         let batch = dataframe_batch(Arc::new(TimestampMicrosecondArray::from(vec![0_i64, 1])));
         let err = Chunk::from_dataframe_record_batch(
             &batch,
-            &re_sorbet::DataframeIndex::Columns(vec![TimelineName::new("frame")]),
+            &re_sorbet::DataframeIndex::Columns(vec![TimelineName::from("frame")]),
             None,
         )
         .unwrap_err();
@@ -458,7 +458,7 @@ mod tests {
             err,
             ChunkError::DataframeToChunks(ref e)
                 if matches!(**e, re_sorbet::DataframeToChunksError::Sorbet(
-                    re_sorbet::SorbetError::UnsupportedTimeType(_)
+                    re_sorbet::SorbetError::IndexColumn(_)
                 ))
         ));
     }

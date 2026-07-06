@@ -6,7 +6,7 @@ use std::io::{Read, Seek, SeekFrom};
 use std::ops::Range;
 
 use re_chunk::{Chunk, ChunkId, EntityPath, RowId, TimeColumn, TimePoint};
-use re_log_types::{TimeType, Timeline};
+use re_log_types::{TimeType, Timeline, TimelineName};
 use re_sdk_types::archetypes::VideoStream;
 use re_sdk_types::components::VideoCodec;
 use re_video::player::GetVideoSource;
@@ -24,7 +24,7 @@ pub(crate) fn iter_chunks<R: Read + Seek>(
     mut reader: R,
     size: u64,
     entity_path: &EntityPath,
-    timeline_name: &str,
+    timeline_name: TimelineName,
     chunk_by_gop: bool,
     timeline_type: TimeType,
     allow_b_frames: bool,
@@ -82,7 +82,7 @@ pub(crate) fn iter_chunks<R: Read + Seek>(
     Ok(StreamChunkIter {
         reader,
         desc,
-        timeline_name: timeline_name.to_owned(),
+        timeline_name,
         timeline_type,
         has_b_frames,
         entity_path: entity_path.clone(),
@@ -104,7 +104,7 @@ pub(crate) struct StreamChunkIter<R> {
     /// be resident in memory.
     reader: R,
     desc: VideoDataDescription,
-    timeline_name: String,
+    timeline_name: TimelineName,
     timeline_type: TimeType,
 
     /// True when the source mp4 has B-frames and the caller opted in via
@@ -138,7 +138,7 @@ impl<R: Read + Seek> Iterator for StreamChunkIter<R> {
                 &mut self.reader,
                 &self.desc,
                 self.timescale,
-                &self.timeline_name,
+                self.timeline_name,
                 self.timeline_type,
                 self.has_b_frames,
                 &self.entity_path,
@@ -171,7 +171,7 @@ fn build_gop_chunk<R: Read + Seek>(
     reader: &mut R,
     desc: &VideoDataDescription,
     timescale: re_video::Timescale,
-    timeline_name: &str,
+    timeline_name: TimelineName,
     timeline_type: TimeType,
     has_b_frames: bool,
     entity_path: &EntityPath,

@@ -716,7 +716,7 @@ pub(super) fn unload_chunks(
         protect_latest: 0,
         protected_chunks: Default::default(),
         protected_time_ranges: std::iter::once((
-            re_chunk::TimelineName::new(TIMELINE_NAME),
+            re_chunk::TimelineName::from(TIMELINE_NAME),
             AbsoluteTimeRange::new(
                 TimeInt::from_secs(keep_range.start),
                 TimeInt::from_secs(keep_range.end.next_down()),

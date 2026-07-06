@@ -120,7 +120,7 @@ fn nullability_chunk() -> Chunk {
     Chunk::from_auto_row_ids(
         ChunkId::new(),
         "nullability".into(),
-        std::iter::once((TimelineName::new("tick"), time_column)).collect(),
+        std::iter::once((TimelineName::from("tick"), time_column)).collect(),
         components.collect(),
     )
     .unwrap()
@@ -221,7 +221,7 @@ fn test_time_column_extraction() {
     let original_chunk = Chunk::from_auto_row_ids(
         ChunkId::new(),
         "timestamped".into(),
-        std::iter::once((TimelineName::new("tick"), time_column)).collect(),
+        std::iter::once((TimelineName::from("tick"), time_column)).collect(),
         components.collect(),
     )
     .unwrap();
@@ -257,17 +257,17 @@ fn test_time_column_extraction() {
     println!("{chunk}");
 
     // Verify the chunk has both the original timeline and the new custom timeline
-    assert!(chunk.timelines().contains_key(&TimelineName::new("tick")));
+    assert!(chunk.timelines().contains_key(&TimelineName::from("tick")));
     assert!(
         chunk
             .timelines()
-            .contains_key(&TimelineName::new("my_timeline"))
+            .contains_key(&TimelineName::from("my_timeline"))
     );
 
     // Verify the custom timeline has the correct values
     let my_timeline = chunk
         .timelines()
-        .get(&TimelineName::new("my_timeline"))
+        .get(&TimelineName::from("my_timeline"))
         .unwrap();
     assert_eq!(my_timeline.times_raw().len(), 5);
     assert_eq!(my_timeline.times_raw()[0], 100);
@@ -399,7 +399,7 @@ fn test_scatter_columns() {
     // Verify tick timeline is replicated correctly
     // Original tick: [1, 2, 3]
     // Scattered tick: [1, 1, 1, 2, 3] (row 0 scatters into 3 rows)
-    let tick_timeline = chunk.timelines().get(&TimelineName::new("tick")).unwrap();
+    let tick_timeline = chunk.timelines().get(&TimelineName::from("tick")).unwrap();
     assert_eq!(tick_timeline.times_raw().len(), 5);
     assert_eq!(tick_timeline.times_raw()[0], 1);
     assert_eq!(tick_timeline.times_raw()[1], 1);
@@ -412,7 +412,7 @@ fn test_scatter_columns() {
     // After scattering: [1, 2, 3, 4, 5]
     let event_timeline = chunk
         .timelines()
-        .get(&TimelineName::new("my_timestamp"))
+        .get(&TimelineName::from("my_timestamp"))
         .unwrap();
     assert_eq!(event_timeline.times_raw().len(), 5);
     assert_eq!(event_timeline.times_raw()[0], 1);
@@ -489,7 +489,7 @@ fn test_scatter_columns_static() {
     // After scattering: [1, 2, 3, 4, 5]
     let event_timeline = chunk
         .timelines()
-        .get(&TimelineName::new("my_timestamp"))
+        .get(&TimelineName::from("my_timestamp"))
         .unwrap();
     assert_eq!(event_timeline.times_raw().len(), 5);
     assert_eq!(event_timeline.times_raw()[0], 1);
@@ -537,7 +537,7 @@ fn test_output_overwrites_same_named_component() {
         ChunkId::new(),
         "collision".into(),
         std::iter::once((
-            TimelineName::new("tick"),
+            TimelineName::from("tick"),
             TimeColumn::new_sequence("tick", 0..2),
         ))
         .collect(),

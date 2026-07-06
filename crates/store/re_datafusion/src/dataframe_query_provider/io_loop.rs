@@ -1107,7 +1107,7 @@ mod tests {
         // Reuse the `create_test_chunk_info` helper, which produces a
         // batch *without* a `{timeline}:start` column.
         let rb = create_test_chunk_info("seg1", &[100]);
-        let manifests = build_segment_manifests(&[rb], Some(TimelineName::new("time"))).unwrap();
+        let manifests = build_segment_manifests(&[rb], Some(TimelineName::from("time"))).unwrap();
         assert!(manifests.is_empty());
     }
 
@@ -1124,7 +1124,7 @@ mod tests {
         let without_start = create_test_chunk_info("seg1", &[20]);
         let manifests = build_segment_manifests(
             &[with_start, without_start],
-            Some(TimelineName::new("time")),
+            Some(TimelineName::from("time")),
         )
         .unwrap();
         assert!(
@@ -1147,7 +1147,7 @@ mod tests {
                 ("seg1", "/d", false, Some(i64::MIN)), // saturates to TimeInt::MIN, kept
             ],
         );
-        let manifests = build_segment_manifests(&[rb], Some(TimelineName::new("time"))).unwrap();
+        let manifests = build_segment_manifests(&[rb], Some(TimelineName::from("time"))).unwrap();
         let m = manifests
             .get(&SegmentId::from("seg1"))
             .expect("seg1 has at least one temporal chunk");
@@ -1168,7 +1168,7 @@ mod tests {
     fn test_build_segment_manifests_entity_path_keys_roundtrip() {
         let rb = create_chunk_info_with_starts("time", &[("seg1", "/foo/bar", false, Some(42))]);
         let mut manifests =
-            build_segment_manifests(&[rb], Some(TimelineName::new("time"))).unwrap();
+            build_segment_manifests(&[rb], Some(TimelineName::from("time"))).unwrap();
         let m = manifests.get_mut(&SegmentId::from("seg1")).unwrap();
         // Looking up via `EntityPath::from(&str)` must hit the entry.
         assert!(m.record_arrival(
@@ -1191,7 +1191,7 @@ mod tests {
                 ("segB", "/c", false, Some(30)),
             ],
         );
-        let manifests = build_segment_manifests(&[rb], Some(TimelineName::new("time"))).unwrap();
+        let manifests = build_segment_manifests(&[rb], Some(TimelineName::from("time"))).unwrap();
         assert!(!manifests.contains_key(&SegmentId::from("segA")));
         let b = &manifests[&SegmentId::from("segB")];
         assert_eq!(b.outstanding_count(), 1);
@@ -1244,7 +1244,7 @@ mod tests {
         )
         .unwrap();
 
-        let manifests = build_segment_manifests(&[rb], Some(TimelineName::new("time"))).unwrap();
+        let manifests = build_segment_manifests(&[rb], Some(TimelineName::from("time"))).unwrap();
         let m = manifests
             .get(&SegmentId::from("seg1"))
             .expect("seg1 has temporal chunks");

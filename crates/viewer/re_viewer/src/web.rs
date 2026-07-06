@@ -10,7 +10,7 @@ use arrow::array::RecordBatch;
 use itertools::Itertools as _;
 use re_log::ResultExt as _;
 use re_log_channel::{LogSender, RecordingOpenBehavior};
-use re_log_types::{TableId, TableMsg};
+use re_log_types::{TableId, TableMsg, TimelineName};
 use re_memory::AccountingAllocator;
 use re_sdk_types::blueprint::components::PlayState;
 use re_viewer_context::{
@@ -448,10 +448,15 @@ impl WebHandle {
             return;
         };
 
+        let Some(timeline_name) = TimelineName::try_new(timeline_name).ok_or_log_error_once()
+        else {
+            return;
+        };
+
         app.command_sender
             .send_system(SystemCommand::TimeControlCommands {
                 store_id: recording_id,
-                time_commands: vec![TimeControlCommand::SetActiveTimeline(timeline_name.into())],
+                time_commands: vec![TimeControlCommand::SetActiveTimeline(timeline_name)],
             });
 
         app.egui_ctx.request_repaint();
@@ -466,8 +471,10 @@ impl WebHandle {
         let store_id = store_id_from_recording_id(hub, recording_id)?;
         let time_ctrl = app.state.time_control(&store_id)?;
 
+        let timeline_name = TimelineName::try_new(timeline_name).ok_or_log_error_once()?;
+
         time_ctrl
-            .time_for_timeline(timeline_name.into())
+            .time_for_timeline(timeline_name)
             .map(|v| v.as_f64())
     }
 
@@ -486,11 +493,16 @@ impl WebHandle {
             return;
         };
 
+        let Some(timeline_name) = TimelineName::try_new(timeline_name).ok_or_log_error_once()
+        else {
+            return;
+        };
+
         app.command_sender
             .send_system(SystemCommand::TimeControlCommands {
                 store_id: recording_id,
                 time_commands: vec![
-                    TimeControlCommand::SetActiveTimeline(timeline_name.into()),
+                    TimeControlCommand::SetActiveTimeline(timeline_name),
                     TimeControlCommand::SetTime(time.into()),
                 ],
             });
@@ -519,7 +531,11 @@ impl WebHandle {
             return JsValue::null();
         };
 
-        let Some(time_range) = recording.time_range_for(&timeline_name.into()) else {
+        let Some(timeline_name) = TimelineName::try_new(timeline_name).ok_or_log_error_once()
+        else {
+            return JsValue::null();
+        };
+        let Some(time_range) = recording.time_range_for(&timeline_name) else {
             return JsValue::null();
         };
 

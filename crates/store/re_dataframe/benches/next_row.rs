@@ -179,7 +179,7 @@ fn make_engine(
 
 fn bench_query() -> QueryExpression {
     QueryExpression {
-        filtered_index: Some(TimelineName::new(TIMELINE)),
+        filtered_index: Some(TimelineName::from(TIMELINE)),
         ..Default::default()
     }
 }

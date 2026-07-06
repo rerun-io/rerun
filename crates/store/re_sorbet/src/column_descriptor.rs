@@ -19,7 +19,7 @@ pub enum ColumnError {
     UnsupportedColumnKind { kind: ColumnKind },
 
     #[error(transparent)]
-    UnsupportedTimeType(#[from] crate::UnsupportedTimeType),
+    IndexColumn(#[from] crate::IndexColumnError),
 }
 
 /// Describes any kind of column.

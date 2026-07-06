@@ -615,7 +615,7 @@ fn all_pov_entities_for_view(
             let comp_for_entity = ctx
                 .recording_engine()
                 .store()
-                .all_components_on_timeline(timeline, &node.data_result.entity_path);
+                .all_components_on_timeline(Some(timeline), &node.data_result.entity_path);
             if comp_for_entity.is_some_and(|components| !components.is_empty()) {
                 all_entities.insert(node.data_result.entity_path.clone());
             }

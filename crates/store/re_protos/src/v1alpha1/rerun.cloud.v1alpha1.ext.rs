@@ -1767,7 +1767,12 @@ impl TryFrom<crate::cloud::v1alpha1::Query> for Query {
                 Ok::<QueryLatestAt, tonic::Status>(QueryLatestAt {
                     index: latest_at
                         .index
-                        .and_then(|index| index.timeline.map(|timeline| timeline.name.into())),
+                        .and_then(|index| index.timeline)
+                        .map(|timeline| {
+                            re_log_types::TimelineName::try_new(timeline.name)
+                                .map_err(|err| tonic::Status::invalid_argument(err.to_string()))
+                        })
+                        .transpose()?,
                     at: latest_at
                         .at
                         .map(|at| TimeInt::new_temporal(at))
@@ -1795,11 +1800,14 @@ impl TryFrom<crate::cloud::v1alpha1::Query> for Query {
                         .into(),
                     index: range
                         .index
-                        .and_then(|index| index.timeline.map(|timeline| timeline.name))
+                        .and_then(|index| index.timeline)
                         .ok_or_else(|| {
                             tonic::Status::invalid_argument("index is required for range query")
-                        })?
-                        .into(),
+                        })
+                        .and_then(|timeline| {
+                            re_log_types::TimelineName::try_new(timeline.name)
+                                .map_err(|err| tonic::Status::invalid_argument(err.to_string()))
+                        })?,
                 })
             })
             .transpose()?;
@@ -2592,7 +2600,7 @@ mod tests {
             ],
             query: Some(crate::cloud::v1alpha1::Query {
                 latest_at: Some(crate::cloud::v1alpha1::QueryLatestAt {
-                    index: Some(re_log_types::TimelineName::new("log_time").into()),
+                    index: Some(re_log_types::TimelineName::from("log_time").into()),
                     at: None,
                     per_segment_values: vec![crate::cloud::v1alpha1::IndexValueList {
                         values: vec![1],
@@ -2613,7 +2621,7 @@ mod tests {
             segment_ids: vec![],
             query: Some(crate::cloud::v1alpha1::Query {
                 latest_at: Some(crate::cloud::v1alpha1::QueryLatestAt {
-                    index: Some(re_log_types::TimelineName::new("log_time").into()),
+                    index: Some(re_log_types::TimelineName::from("log_time").into()),
                     at: None,
                     per_segment_values: vec![crate::cloud::v1alpha1::IndexValueList {
                         values: vec![1],
@@ -2637,7 +2645,7 @@ mod tests {
             segment_ids: vec![dup.clone(), dup],
             query: Some(crate::cloud::v1alpha1::Query {
                 latest_at: Some(crate::cloud::v1alpha1::QueryLatestAt {
-                    index: Some(re_log_types::TimelineName::new("log_time").into()),
+                    index: Some(re_log_types::TimelineName::from("log_time").into()),
                     at: None,
                     per_segment_values: vec![
                         crate::cloud::v1alpha1::IndexValueList { values: vec![1] },

@@ -87,7 +87,8 @@ impl std::str::FromStr for Fragment {
                     },
                     "when" => {
                         if let Some((timeline, time)) = value.split_once('@') {
-                            let timeline = TimelineName::from(timeline);
+                            let timeline = TimelineName::try_new(timeline)
+                                .map_err(|err| format!("Bad timeline name {timeline:?}: {err}"))?;
                             match time.parse::<TimeCell>() {
                                 Ok(time_cell) => {
                                     // If there were when fragments before this we ignore them.

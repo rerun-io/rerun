@@ -628,9 +628,13 @@ impl EntityDb {
         component: ComponentIdentifier,
         query: &LatestAtQuery,
     ) -> bool {
+        let Some(timeline) = query.timeline() else {
+            return true; // Static-only query: there are no temporal chunks to load.
+        };
+
         !self
             .rrd_manifest_index()
-            .unloaded_temporal_entries_for(&query.timeline(), entity_path, Some(component))
+            .unloaded_temporal_entries_for(&timeline, entity_path, Some(component))
             .any(|chunk| chunk.time_range.contains(query.at()))
     }
 

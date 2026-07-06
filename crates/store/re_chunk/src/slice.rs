@@ -1208,7 +1208,7 @@ mod tests {
         eprintln!("chunk:\n{chunk}");
 
         {
-            let got = chunk.deduped_latest_on_index(&TimelineName::new("frame"));
+            let got = chunk.deduped_latest_on_index(&TimelineName::from("frame"));
             eprintln!("got:\n{got}");
             assert_eq!(2, got.num_rows());
 
@@ -1343,7 +1343,7 @@ mod tests {
         eprintln!("chunk:\n{chunk}");
 
         {
-            let got = chunk.deduped_latest_on_index(&TimelineName::new("frame"));
+            let got = chunk.deduped_latest_on_index(&TimelineName::from("frame"));
             eprintln!("got:\n{got}");
             assert_eq!(1, got.num_rows());
 

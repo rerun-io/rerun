@@ -57,7 +57,11 @@ impl QueryCache {
         // has non-negligible overhead even if the final result ends up being nothing, and our
         // number of queries for a frame grows linearly with the number of entity paths.
         let components = components.into_iter().filter(|component| {
-            store.entity_has_component_on_timeline(&query.timeline(), entity_path, *component)
+            store.entity_has_component_on_timeline(
+                query.timeline().as_ref(),
+                entity_path,
+                *component,
+            )
         });
 
         // Query-time clears
@@ -133,7 +137,7 @@ impl QueryCache {
                         // For (recursive) parents, we need to deserialize the data to make sure the
                         // recursive flag is set.
                         if (clear_entity_path == *entity_path || found_recursive_clear)
-                            && let Some(index) = cached.index(&query.timeline())
+                            && let Some(index) = cached.index(query.timeline().as_ref())
                             && compare_indices(index, max_clear_index)
                                 == std::cmp::Ordering::Greater
                         {
@@ -189,7 +193,7 @@ impl QueryCache {
                 // 1. A `Clear` component doesn't shadow its own self.
                 // 2. If a `Clear` component was found with an index greater than or equal to the
                 //    component data, then we know for sure that it should shadow it.
-                if let Some(index) = cached.index(&query.timeline())
+                if let Some(index) = cached.index(query.timeline().as_ref())
                     && (component == archetypes::Clear::descriptor_is_recursive().component
                         || compare_indices(index, max_clear_index) == std::cmp::Ordering::Greater)
                 {
@@ -742,7 +746,8 @@ impl LatestAtCache {
             .into_iter()
             .filter_map(|chunk| {
                 let unit = chunk.latest_at(query, component)?;
-                unit.index(&query.timeline()).map(|index| (index, unit))
+                unit.index(query.timeline().as_ref())
+                    .map(|index| (index, unit))
             })
             .max_by_key(|(index, _chunk)| *index)
         else {
