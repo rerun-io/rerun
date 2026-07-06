@@ -40,9 +40,9 @@ jobs:
           full_commit="${{ (github.event_name == 'pull_request' && github.event.pull_request.head.sha) || github.sha }}"
           echo "sha=$full_commit" >> "$GITHUB_OUTPUT"
 
-      - uses: prefix-dev/setup-pixi@v0.9.4
+      - uses: prefix-dev/setup-pixi@v0.10.0
         with:
-          pixi-version: v0.55.0
+          pixi-version: v0.71.3
 
       - id: "auth"
         uses: google-github-actions/auth@v2

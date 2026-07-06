@@ -51,9 +51,9 @@ jobs:
         with:
           lfs: true
 
-      - uses: prefix-dev/setup-pixi@v0.9.4
+      - uses: prefix-dev/setup-pixi@v0.10.0
         with:
-          pixi-version: v0.55.0
+          pixi-version: v0.71.3
 
       - name: Build rerun-cli
         run: |

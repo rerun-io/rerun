@@ -7,7 +7,7 @@ from __future__ import annotations
 import subprocess
 import sys
 
-PIXI_VERSION = "0.55.0"
+PIXI_VERSION = "0.71.3"
 CARGO_VERSION = "1.92.0"
 RUST_VERSION = "1.92.0"
 

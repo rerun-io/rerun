@@ -117,9 +117,9 @@ jobs:
           fetch-depth: 0 # Don't do a shallow clone since we need it for finding the full commit hash
           ref: ${{ inputs.release-commit }}
 
-      - uses: prefix-dev/setup-pixi@v0.9.4
+      - uses: prefix-dev/setup-pixi@v0.10.0
         with:
-          pixi-version: v0.55.0
+          pixi-version: v0.71.3
 
       - id: "auth"
         uses: google-github-actions/auth@v2
