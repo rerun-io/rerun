@@ -389,6 +389,14 @@ impl StoreHub {
                 break 'ctx None;
             };
 
+            // The welcome/example screen has an app-id and a blueprint, but no
+            // real recording. It must never surface as an active store context,
+            // or downstream UI (menus, panels, …) will treat it as if a
+            // recording is active.
+            if app_id == Self::welcome_screen_app_id() {
+                break 'ctx None;
+            }
+
             self.ensure_active_blueprint_for_app(app_id);
             let should_enable_heuristics = self.should_enable_heuristics_by_app_id.remove(app_id);
 

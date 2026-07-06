@@ -3,9 +3,11 @@ use std::sync::LazyLock;
 use re_entity_db::EntityDb;
 use re_log_types::{ApplicationId, StoreId};
 
-use crate::{Cache, CacheEntryAccess, StoreCache, TimeControl, ViewClassRegistry};
+use crate::{Cache, CacheEntryAccess, StoreCache, StoreHub, TimeControl, ViewClassRegistry};
 
-/// The current Blueprint and Recording being displayed by the viewer
+/// The current Blueprint and Recording being displayed by the viewer.
+///
+/// This is only constructed when the viewer is currently displaying a recording.
 pub struct ActiveStoreContext<'a> {
     /// The current active blueprint.
     pub blueprint: &'a EntityDb,
@@ -36,6 +38,10 @@ impl ActiveStoreContext<'_> {
     }
 
     pub fn application_id(&self) -> &ApplicationId {
+        re_log::debug_assert!(
+            self.recording.application_id() != StoreHub::welcome_screen_app_id(),
+            "Bug: we should not be treating the welcome screen as a recording"
+        );
         self.recording.application_id()
     }
 
