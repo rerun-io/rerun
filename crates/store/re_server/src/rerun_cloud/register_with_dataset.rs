@@ -1,8 +1,13 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
+#[cfg(not(target_arch = "wasm32"))]
+use std::collections::BTreeSet;
+#[cfg(not(target_arch = "wasm32"))]
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use re_log_types::{EntryId, StoreId, StoreKind};
+#[cfg(not(target_arch = "wasm32"))]
+use re_log_types::StoreId;
+use re_log_types::{EntryId, StoreKind};
 use re_protos::cloud::v1alpha1::ext;
 use re_protos::common::v1alpha1::TaskId;
 use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, SegmentId};
@@ -38,6 +43,7 @@ pub struct RegisterWithDatasetResult {
 /// A data source that has been validated (paths confirmed to exist, duplicates checked)
 /// but not yet loaded into memory.
 enum ValidatedSource {
+    #[cfg(not(target_arch = "wasm32"))]
     File {
         rrd_path: PathBuf,
         layer_info: Arc<LayerInfo>,
@@ -105,9 +111,19 @@ fn validate_sources(
         // TODO(ab): Should some or all of these errors be returned as task error instead?
         // (No point in doing so unless this is tested in re_redap_tests.)
         if is_prefix {
-            return Err(tonic::Status::internal(
-                "register_with_dataset: prefix data sources should have been resolved already",
-            ));
+            #[cfg(target_arch = "wasm32")]
+            {
+                return Err(tonic::Status::invalid_argument(
+                    "prefix data sources are not supported on wasm",
+                ));
+            }
+
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                return Err(tonic::Status::internal(
+                    "register_with_dataset: prefix data sources should have been resolved already",
+                ));
+            }
         }
 
         match kind {
@@ -136,6 +152,15 @@ fn validate_sources(
             continue;
         }
 
+        #[cfg(target_arch = "wasm32")]
+        {
+            let _ = (&store_kind, &layer_info, &seen);
+            return Err(tonic::Status::unimplemented(
+                "register_with_dataset only supports memory:// data sources on wasm",
+            ));
+        }
+
+        #[cfg(not(target_arch = "wasm32"))]
         if let Some(file_source) =
             validate_file_source(store_kind, &storage_url, layer_info, &mut seen)?
         {
@@ -184,6 +209,7 @@ fn validate_memory_source(
 }
 
 /// Returns `None` if the file's store kind doesn't match (silently skipped).
+#[cfg(not(target_arch = "wasm32"))]
 fn validate_file_source(
     store_kind: StoreKind,
     storage_url: &url::Url,
@@ -281,6 +307,9 @@ fn load_sources(
     validated: Vec<ValidatedSource>,
     store_kind: StoreKind,
 ) -> tonic::Result<Vec<ReadySource>> {
+    #[cfg(target_arch = "wasm32")]
+    let _ = store_kind;
+
     let mut ready: Vec<ReadySource> = Vec::new();
 
     for source in validated {
@@ -304,6 +333,7 @@ fn load_sources(
                 });
             }
 
+            #[cfg(not(target_arch = "wasm32"))]
             ValidatedSource::File {
                 rrd_path,
                 layer_info,
@@ -414,6 +444,7 @@ async fn register_sources(
 ///
 /// Returns a deduplicated set because a single RRD can contain duplicate
 /// `SetStoreInfo` messages for the same store.
+#[cfg(not(target_arch = "wasm32"))]
 fn load_store_ids(rrd_path: &std::path::Path) -> tonic::Result<BTreeSet<StoreId>> {
     let mut file = std::fs::File::open(rrd_path)
         .map_err(|err| tonic::Status::internal(format!("Failed to open RRD file: {err:#}")))?;

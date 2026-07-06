@@ -19,7 +19,7 @@ use re_protos::cloud::v1alpha1::ext::{
 #[derive(Clone)]
 pub enum TableType {
     DataFusionTable(Arc<dyn TableProvider>),
-    #[cfg(feature = "lance")]
+    #[cfg(all(feature = "lance", not(target_arch = "wasm32")))]
     LanceDataset(Arc<lance::Dataset>),
 }
 
@@ -110,7 +110,7 @@ impl Table {
     pub fn schema(&self) -> SchemaRef {
         match &self.table {
             TableType::DataFusionTable(t) => t.schema(),
-            #[cfg(feature = "lance")]
+            #[cfg(all(feature = "lance", not(target_arch = "wasm32")))]
             TableType::LanceDataset(dataset) => {
                 Arc::new(arrow::datatypes::Schema::from(dataset.schema()))
             }
@@ -120,7 +120,7 @@ impl Table {
     pub fn provider(&self) -> Arc<dyn TableProvider> {
         match &self.table {
             TableType::DataFusionTable(t) => Arc::clone(t),
-            #[cfg(feature = "lance")]
+            #[cfg(all(feature = "lance", not(target_arch = "wasm32")))]
             TableType::LanceDataset(dataset) => {
                 Arc::new(lance::datafusion::LanceTableProvider::new(
                     Arc::new(dataset.as_ref().clone()),
@@ -138,7 +138,10 @@ impl Table {
     ) -> Result<(), DataFusionError> {
         let schema = rb.schema();
 
-        #[cfg_attr(not(feature = "lance"), expect(irrefutable_let_patterns))]
+        #[cfg_attr(
+            not(all(feature = "lance", not(target_arch = "wasm32"))),
+            expect(irrefutable_let_patterns)
+        )]
         let TableType::DataFusionTable(provider) = &self.table else {
             return exec_err!("Expected DataFusion Table Provider");
         };
@@ -165,7 +168,7 @@ impl Table {
         Ok(())
     }
 
-    #[cfg(feature = "lance")]
+    #[cfg(all(feature = "lance", not(target_arch = "wasm32")))]
     async fn write_table_lance_dataset(
         &mut self,
         rb: RecordBatch,
@@ -251,20 +254,23 @@ impl Table {
         Ok(())
     }
 
-    #[cfg_attr(not(feature = "lance"), expect(clippy::needless_pass_by_ref_mut))]
+    #[cfg_attr(
+        not(all(feature = "lance", not(target_arch = "wasm32"))),
+        expect(clippy::needless_pass_by_ref_mut)
+    )]
     pub async fn write_table(
         &mut self,
         rb: RecordBatch,
         insert_op: TableInsertMode,
     ) -> Result<(), DataFusionError> {
         match &self.table {
-            #[cfg(feature = "lance")]
+            #[cfg(all(feature = "lance", not(target_arch = "wasm32")))]
             TableType::LanceDataset(_) => self.write_table_lance_dataset(rb, insert_op).await,
             TableType::DataFusionTable(_) => self.write_table_provider(rb, insert_op).await,
         }
     }
 
-    #[cfg(feature = "lance")]
+    #[cfg(all(feature = "lance", not(target_arch = "wasm32")))]
     pub async fn create_table_entry(
         id: EntryId,
         name: EntryName,
@@ -299,7 +305,7 @@ impl Table {
         ))
     }
 
-    #[cfg(not(feature = "lance"))]
+    #[cfg(not(all(feature = "lance", not(target_arch = "wasm32"))))]
     #[expect(clippy::unused_async)]
     pub async fn create_table_entry(
         _id: EntryId,

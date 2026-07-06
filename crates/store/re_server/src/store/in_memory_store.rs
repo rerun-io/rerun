@@ -12,17 +12,22 @@ use re_chunk_store::{Chunk, ChunkStoreConfig};
 use re_log_types::{EntryId, StoreId, StoreKind};
 use re_protos::EntryName;
 use re_protos::cloud::v1alpha1::EntryKind;
-#[cfg(feature = "lance")] // only used by the `lance` feature
+#[cfg(all(feature = "lance", not(target_arch = "wasm32")))] // only used by the `lance` feature
 use re_protos::cloud::v1alpha1::ext as cloud_ext;
 use re_protos::cloud::v1alpha1::ext::{
     DatasetDetails, EntryDetails, ProviderDetails, TableDetails, TableEntry,
 };
+#[cfg(not(target_arch = "wasm32"))]
 use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
 use re_tuid::Tuid;
-use re_types_core::{ComponentBatch as _, LayerName, Loggable as _};
+#[cfg(not(target_arch = "wasm32"))]
+use re_types_core::LayerName;
+use re_types_core::{ComponentBatch as _, Loggable as _};
 
+#[cfg(not(target_arch = "wasm32"))]
+use crate::NamedPath;
+#[cfg(not(target_arch = "wasm32"))]
 use crate::OnError;
-use crate::entrypoint::NamedPath;
 use crate::store::store_pool::StorePool;
 use crate::store::table::TableType;
 use crate::store::task_registry::TaskRegistry;
@@ -37,7 +42,7 @@ pub struct InMemoryStore {
 
     /// Config applied to eager (in-memory) chunk stores created by this server.
     ///
-    /// Lazy stores load their config from the RRD file they back and ignore this
+    /// Lazy stores load their config from their RRD manifest and ignore this
     /// value. Exposed via the builder as a testing hook so integration tests can
     /// tune eager chunk-store knobs without relying on global env vars.
     eager_chunk_store_config: ChunkStoreConfig,
@@ -105,7 +110,7 @@ impl InMemoryStore {
     /// Important: there is no guarantee on the order of the returned chunks.
     ///
     /// For Lazy stores, chunks are loaded in a single batched call per distinct store,
-    /// amortizing the file-mutex and IPC-parse overhead that per-key loading would pay N times.
+    /// amortizing the provider and IPC-parse overhead that per-key loading would pay N times.
     /// The returned chunks are owned by the caller — no caching happens in the Lazy store.
     pub fn chunks_from_chunk_keys(
         &self,
@@ -139,9 +144,8 @@ impl InMemoryStore {
             resolved_per_key.push((resolved, chunk_key));
         }
 
-        // Step 2: one batched load per Lazy store. Preserves the existing I/O amortization (file
-        // mutex, IPC parse paid once per store). Concurrent requests for overlapping chunk sets
-        // will each re-read from disk — the OS page cache absorbs the cost.
+        // Step 2: one batched load per Lazy store. Preserves the existing provider and IPC-parse
+        // amortization. The Lazy store does not cache returned chunks.
         let mut loaded: HashMap<(StoreSlotId, re_chunk_store::ChunkId), Arc<Chunk>> =
             HashMap::default();
         for (slot_id, mut ids) in ids_per_lazy {
@@ -190,6 +194,7 @@ impl InMemoryStore {
     }
 
     /// Load a single RRD into an existing dataset, registering stores in the pool.
+    #[cfg(not(target_arch = "wasm32"))]
     pub async fn register_rrd_to_dataset(
         &mut self,
         dataset_id: EntryId,
@@ -215,6 +220,7 @@ impl InMemoryStore {
 
     /// Load a directory of RRDs.
     //TODO(ab): maybe we could be smart with .rbl and auto-setup a blueprint dataset?
+    #[cfg(not(target_arch = "wasm32"))]
     pub async fn load_directory_as_dataset(
         &mut self,
         named_path: &NamedPath,
@@ -287,7 +293,7 @@ impl InMemoryStore {
         Ok(())
     }
 
-    #[cfg(feature = "lance")]
+    #[cfg(all(feature = "lance", not(target_arch = "wasm32")))]
     pub async fn load_directory_as_table(
         &mut self,
         named_path: &NamedPath,
@@ -393,7 +399,7 @@ impl InMemoryStore {
         }
     }
 
-    #[cfg(feature = "lance")] // only used by the `lance` feature
+    #[cfg(all(feature = "lance", not(target_arch = "wasm32")))] // only used by the `lance` feature
     fn add_table_entry(
         &mut self,
         entry_name: EntryName,

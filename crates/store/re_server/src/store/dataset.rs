@@ -1,4 +1,7 @@
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+#[cfg(not(target_arch = "wasm32"))]
+use std::collections::BTreeSet;
+use std::collections::{BTreeMap, HashMap, HashSet};
+#[cfg(not(target_arch = "wasm32"))]
 use std::path::Path;
 use std::sync::Arc;
 
@@ -17,9 +20,10 @@ use re_protos::cloud::v1alpha1::{EntryKind, ScanSegmentTableResponse};
 use re_protos::common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, SegmentId};
 use re_types_core::LayerName;
 
+#[cfg(not(target_arch = "wasm32"))]
+use crate::store::store_pool::StorePool;
 use crate::store::{
     Error, LayerInfo, ResolvedStore, Segment, Source, SourceInsertOutcome, StoreSlotId, Tracked,
-    store_pool::StorePool,
 };
 
 /// The mutable inner state of a [`Dataset`], wrapped in [`Tracked`] for automatic timestamp updates.
@@ -780,6 +784,7 @@ impl Dataset {
     ///
     /// Only stores with matching kinds will be loaded. The stores are registered in the provided
     /// [`StorePool`] automatically.
+    #[cfg(not(target_arch = "wasm32"))]
     pub async fn register_rrd(
         &mut self,
         pool: &mut StorePool,

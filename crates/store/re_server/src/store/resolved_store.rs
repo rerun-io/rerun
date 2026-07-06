@@ -1,16 +1,22 @@
+#[cfg(not(target_arch = "wasm32"))]
 use std::path::Path;
 use std::sync::Arc;
 
 use arrow::array::RecordBatch;
 use nohash_hasher::IntSet;
+#[cfg(not(target_arch = "wasm32"))]
+use re_chunk_store::ChunkStore;
 use re_chunk_store::{
-    ChunkStore, ChunkStoreHandle, ChunkStoreHandleWeak, ChunkTrackingMode, LazyStore, QueryResults,
-    StoreSchema,
+    ChunkStoreHandle, ChunkStoreHandleWeak, ChunkTrackingMode, LazyStore, QueryResults, StoreSchema,
 };
-use re_log_encoding::{RrdChunkProvider, RrdManifest};
-use re_log_types::{EntityPath, StoreId, StoreKind};
+#[cfg(not(target_arch = "wasm32"))]
+use re_log_encoding::RrdChunkProvider;
+use re_log_encoding::RrdManifest;
+#[cfg(not(target_arch = "wasm32"))]
+use re_log_types::StoreKind;
+use re_log_types::{EntityPath, StoreId};
 
-/// A store backend: either an in-memory eager store or a file-backed lazy store.
+/// A store backend: either an in-memory eager store or a provider-backed lazy store.
 ///
 /// Both variants are `Arc`-based, so `Clone` is cheap.
 #[derive(Clone)]
@@ -18,7 +24,7 @@ pub enum ResolvedStore {
     /// Fully in-memory store (e.g. from `write_chunks` or legacy RRD without footer).
     Eager(ChunkStoreHandle),
 
-    /// File-backed store with on-demand chunk loading.
+    /// Provider-backed store with on-demand chunk loading.
     Lazy(Arc<LazyStore>),
 }
 
@@ -117,6 +123,7 @@ impl ResolvedStore {
     /// Prefers the lazy path (chunks loaded on demand) when the RRD has a footer; falls back to
     /// eager loading (whole file read into memory) when the footer is missing or unreadable.
     /// Stores whose kind does not match `store_kind` are filtered out.
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn load_rrd_file(
         path: &Path,
         store_kind: StoreKind,
@@ -173,7 +180,7 @@ impl ResolvedStoreWeak {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(target_arch = "wasm32")))]
 mod tests {
     use std::collections::BTreeSet;
     use std::sync::Arc;
@@ -202,18 +209,18 @@ mod tests {
                             [(MyPoints::descriptor_points(), Some(&points as _))],
                         )
                         .build()
-                        .unwrap(),
+                        .expect("test chunk should be valid"),
                 )
             })
             .collect();
 
-        let mut file = std::fs::File::create(path).unwrap();
+        let mut file = std::fs::File::create(path).expect("failed to create test RRD file");
         let mut encoder = re_log_encoding::Encoder::new_eager(
             re_build_info::CrateVersion::LOCAL,
             re_log_encoding::EncodingOptions::PROTOBUF_COMPRESSED,
             &mut file,
         )
-        .unwrap();
+        .expect("failed to create test RRD encoder");
         if !with_footer {
             encoder.do_not_emit_footer();
         }
@@ -222,16 +229,18 @@ mod tests {
                 row_id: *RowId::ZERO,
                 info: StoreInfo::new(store_id.clone(), StoreSource::Unknown),
             }))
-            .unwrap();
+            .expect("failed to write test store info");
         for chunk in &chunks {
             encoder
                 .append(&LogMsg::ArrowMsg(
                     store_id.clone(),
-                    chunk.to_arrow_msg().unwrap(),
+                    chunk
+                        .to_arrow_msg()
+                        .expect("test chunk should encode as arrow"),
                 ))
-                .unwrap();
+                .expect("failed to write test chunk");
         }
-        encoder.finish().unwrap();
+        encoder.finish().expect("failed to finish test RRD");
     }
 
     /// The register VALIDATION phase enumerates store IDs via
@@ -243,21 +252,22 @@ mod tests {
     #[test]
     fn enumerate_and_load_agree_on_store_ids() {
         for with_footer in [true, false] {
-            let file = tempfile::NamedTempFile::new().unwrap();
+            let file = tempfile::NamedTempFile::new().expect("failed to create temp RRD file");
             let path = file.path();
             let store_id = StoreId::random(StoreKind::Recording, "test");
             write_rrd(path, &store_id, with_footer);
 
-            let validated: BTreeSet<StoreId> =
-                re_log_encoding::enumerate_rrd_stores(&mut std::fs::File::open(path).unwrap())
-                    .unwrap()
-                    .into_iter()
-                    .filter(|id| id.kind() == StoreKind::Recording)
-                    .collect();
+            let validated: BTreeSet<StoreId> = re_log_encoding::enumerate_rrd_stores(
+                &mut std::fs::File::open(path).expect("failed to open test RRD file"),
+            )
+            .expect("failed to enumerate test RRD stores")
+            .into_iter()
+            .filter(|id| id.kind() == StoreKind::Recording)
+            .collect();
 
             let loaded: BTreeSet<StoreId> =
                 ResolvedStore::load_rrd_file(path, StoreKind::Recording)
-                    .unwrap()
+                    .expect("failed to load test RRD file")
                     .into_iter()
                     .map(|(id, _)| id)
                     .collect();
