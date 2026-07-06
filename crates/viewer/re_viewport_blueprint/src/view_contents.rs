@@ -4,6 +4,7 @@ use arrow::array::AsArray as _;
 use nohash_hasher::{IntMap, IntSet};
 use re_entity_db::external::re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, EntityTree};
+use re_log::ResultExt as _;
 use re_log_types::path::RuleEffect;
 use re_log_types::{
     EntityPath, EntityPathFilter, EntityPathHash, EntityPathSubs, ResolvedEntityPathFilter,
@@ -523,7 +524,10 @@ impl DataQueryPropertyResolver<'_> {
                             .component_mono_quiet::<blueprint_components::VisualizerType>(
                                 type_component,
                             )
-                            .map_or_else(|| "No type specified".into(), |vt| vt.as_str().into());
+                            .and_then(|vt| {
+                                ViewSystemIdentifier::try_new(vt.as_str()).ok_or_log_error_once()
+                            })
+                            .unwrap_or_else(|| "No type specified".into());
 
                         VisualizerInstruction::new(
                             instruction_id,

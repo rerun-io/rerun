@@ -2,17 +2,16 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use re_log_types::EntityPath;
 
-re_string_interner::declare_new_type!(
+re_string_interner::declare_new_type_nonempty!(
     /// Unique name for a system within a given [`crate::ViewClass`].
     ///
     /// Note that this is *not* unique across the entire application.
-    #[derive(serde::Deserialize, serde::Serialize)]
     pub struct ViewSystemIdentifier;
 );
 
 impl Default for ViewSystemIdentifier {
     fn default() -> Self {
-        re_string_interner::intern_static!(ViewSystemIdentifier, "unknown")
+        re_string_interner::intern_static_nonempty!(ViewSystemIdentifier, "unknown")
     }
 }
 
