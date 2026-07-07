@@ -334,7 +334,7 @@ pub(super) fn draw_transform_cache_contents(
             rect,
             tokens.small_corner_radius(),
             if highlighted {
-                tokens.widget_hovered_bg_fill
+                tokens.widget_hovered_color
             } else {
                 tokens.panel_bg_color
             },

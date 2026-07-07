@@ -219,29 +219,8 @@
     "extreme_fg_color": {
       "color": "{Gray.0}"
     },
-    "widget_noninteractive_weak_bg_fill": {
-      "color": "{Gray.550}"
-    },
-    "widget_noninteractive_bg_fill": {
-      "color": "{Gray.800}"
-    },
     "widget_inactive_bg_fill": {
       "color": "{Gray.800}"
-    },
-    "widget_hovered_weak_bg_fill": {
-      "color": "{Gray.800}"
-    },
-    "widget_hovered_bg_fill": {
-      "color": "{Gray.700}"
-    },
-    "widget_active_weak_bg_fill": {
-      "color": "{Gray.750}"
-    },
-    "widget_active_bg_fill": {
-      "color": "{Gray.650}"
-    },
-    "widget_open_weak_bg_fill": {
-      "color": "{Gray.650}"
     },
     "widget_noninteractive_bg_stroke": {
       "color": "{Gray.800}"
@@ -476,6 +455,38 @@
     "text": {
        "color": "{Red.100}"
     },
+  },
+
+  "button_primary": {
+    "fill": { "color": "{Gray.250}" },
+    "fill_hovered": { "color": "{Gray.150}" },
+    "fill_pressed": { "color": "{Gray.100}" },
+    "text": { "color": "{Gray.1000}" },
+  },
+  "button_secondary": {
+    "fill": { "color": "{Gray.650}" },
+    "fill_hovered": { "color": "{Gray.800}" },
+    "fill_pressed": { "color": "{Gray.850}" },
+    "text": { "color": "{Gray.250}" },
+  },
+  "button_ghost": {
+    "fill": { "color": "{Gray.900}", "alpha": 0 },
+    "fill_hovered": { "color": "{Gray.800}" },
+    "fill_pressed": { "color": "{Gray.700}" },
+    "text": { "color": "{Gray.250}" },
+  },
+  "button_outlined": {
+    "fill": { "color": "{Gray.900}", "alpha": 0 },
+    "fill_hovered": { "color": "{Gray.900}" },
+    "fill_pressed": { "color": "{Gray.800}" },
+    "text": { "color": "{Gray.250}" },
+    "stroke": { "color": "{Gray.250}", "width": 1 },
+  },
+  "button_opened": {
+    "fill": { "color": "#e8f0fc" },
+    "fill_hovered": { "color": "#d1e1f8" },
+    "fill_pressed": { "color": "#bad2f5" },
+    "text": { "color": "{Gray.250}" },
   },
 
   "Global": {

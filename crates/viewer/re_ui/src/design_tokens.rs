@@ -30,6 +30,46 @@ impl AlertVisuals {
     }
 }
 
+/// Colors for a single button [`crate::Variant`].
+#[derive(Debug)]
+pub struct ButtonVisuals {
+    /// Background fill when resting.
+    pub fill: Color32,
+
+    /// Background fill when hovered.
+    pub fill_hovered: Color32,
+
+    /// Background fill when pressed (and while open).
+    pub fill_pressed: Color32,
+
+    /// Text and icon color.
+    pub text: Color32,
+
+    /// Outline around the button. [`Stroke::NONE`] when the variant has no outline.
+    pub stroke: Stroke,
+}
+
+impl ButtonVisuals {
+    fn try_get(color_table: &ColorTable, ron: &ron::Value, name: &str) -> anyhow::Result<Self> {
+        let value = ron.get(name)?;
+
+        Ok(Self {
+            fill: color_from_json(color_table, value.get("fill")?)?,
+            fill_hovered: color_from_json(color_table, value.get("fill_hovered")?)?,
+            fill_pressed: color_from_json(color_table, value.get("fill_pressed")?)?,
+            text: color_from_json(color_table, value.get("text")?)?,
+            stroke: match value.get("stroke") {
+                Ok(stroke) => stroke_from_json(color_table, stroke)?,
+                Err(_) => Stroke::NONE,
+            },
+        })
+    }
+
+    fn get(color_table: &ColorTable, ron: &ron::Value, name: &str) -> Self {
+        Self::try_get(color_table, ron, name).expect("Failed to parse ButtonVisuals")
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum WindowFrameConfig {
     Native,
@@ -204,13 +244,6 @@ pub struct DesignTokens {
     pub extreme_fg_color: Color32,
     pub widget_inactive_bg_fill: Color32,
     pub widget_hovered_color: Color32,
-    pub widget_hovered_weak_bg_fill: Color32,
-    pub widget_hovered_bg_fill: Color32,
-    pub widget_active_weak_bg_fill: Color32,
-    pub widget_active_bg_fill: Color32,
-    pub widget_open_weak_bg_fill: Color32,
-    pub widget_noninteractive_weak_bg_fill: Color32,
-    pub widget_noninteractive_bg_fill: Color32,
     pub widget_noninteractive_bg_stroke: Color32,
     pub text_subdued: Color32,
     pub text_default: Color32,
@@ -223,6 +256,12 @@ pub struct DesignTokens {
     pub alert_info: AlertVisuals,
     pub alert_warning: AlertVisuals,
     pub alert_error: AlertVisuals,
+
+    pub button_primary: ButtonVisuals,
+    pub button_secondary: ButtonVisuals,
+    pub button_ghost: ButtonVisuals,
+    pub button_outlined: ButtonVisuals,
+    pub button_opened: ButtonVisuals,
 
     pub density_graph_selected: Color32,
     pub density_graph_unselected: Color32,
@@ -417,13 +456,6 @@ impl DesignTokens {
             extreme_fg_color: get_color("extreme_fg_color"),
             widget_inactive_bg_fill: get_color("widget_inactive_bg_fill"),
             widget_hovered_color: get_color("widget_hovered_color"),
-            widget_hovered_weak_bg_fill: get_color("widget_hovered_weak_bg_fill"),
-            widget_hovered_bg_fill: get_color("widget_hovered_bg_fill"),
-            widget_active_weak_bg_fill: get_color("widget_active_weak_bg_fill"),
-            widget_active_bg_fill: get_color("widget_active_bg_fill"),
-            widget_open_weak_bg_fill: get_color("widget_open_weak_bg_fill"),
-            widget_noninteractive_weak_bg_fill: get_color("widget_noninteractive_weak_bg_fill"),
-            widget_noninteractive_bg_fill: get_color("widget_noninteractive_bg_fill"),
             widget_noninteractive_bg_stroke: get_color("widget_noninteractive_bg_stroke"),
             text_subdued: get_color("text_subdued"),
             text_default: get_color("text_default"),
@@ -435,6 +467,12 @@ impl DesignTokens {
             alert_info: AlertVisuals::get(&colors, &theme_json, "alert_info"),
             alert_warning: AlertVisuals::get(&colors, &theme_json, "alert_warning"),
             alert_error: AlertVisuals::get(&colors, &theme_json, "alert_error"),
+
+            button_primary: ButtonVisuals::get(&colors, &theme_json, "button_primary"),
+            button_secondary: ButtonVisuals::get(&colors, &theme_json, "button_secondary"),
+            button_ghost: ButtonVisuals::get(&colors, &theme_json, "button_ghost"),
+            button_outlined: ButtonVisuals::get(&colors, &theme_json, "button_outlined"),
+            button_opened: ButtonVisuals::get(&colors, &theme_json, "button_opened"),
 
             popup_shadow_color: get_color("popup_shadow_color"),
 
@@ -1044,6 +1082,16 @@ fn color_from_json(color_table: &ColorTable, color_alias: &ron::Value) -> anyhow
     }
 
     Ok(color)
+}
+
+/// Parse a `{ "color": …, "width": … }` block into a [`Stroke`].
+fn stroke_from_json(color_table: &ColorTable, value: &ron::Value) -> anyhow::Result<Stroke> {
+    let color = color_from_json(color_table, value)?;
+    let width = value
+        .get("width")?
+        .as_f32()
+        .ok_or_else(|| anyhow::anyhow!("stroke 'width' not a number"))?;
+    Ok(Stroke::new(width, color))
 }
 
 fn try_get_scalar(json: &ron::Value, path: &str) -> anyhow::Result<f32> {
