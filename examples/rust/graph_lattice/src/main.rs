@@ -1,30 +1,12 @@
 //! Shows how to draw a graph with various node properties.
-//!
-//! Usage:
-//! ```
-//!  cargo run -p graph_lattice -- --connect
-//! ```
 
 use itertools::Itertools as _;
-use rerun::external::re_log;
 use rerun::{Color, GraphEdges, GraphNodes};
-
-#[derive(Debug, clap::Parser)]
-#[clap(author, version, about)]
-pub struct Args {
-    #[command(flatten)]
-    rerun: rerun::clap::RerunArgs,
-}
 
 const NUM_NODES: usize = 10;
 
 fn main() -> anyhow::Result<()> {
-    re_log::setup_logging();
-
-    use clap::Parser as _;
-    let args = Args::parse();
-
-    let (rec, _serve_guard) = args.rerun.init("rerun_example_graph_lattice")?;
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_graph_lattice").spawn()?;
 
     let coordinates = (0..NUM_NODES).cartesian_product(0..NUM_NODES);
 

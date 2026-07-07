@@ -4401,7 +4401,6 @@ name = "graph_lattice"
 version = "0.35.0-alpha.1+dev"
 dependencies = [
  "anyhow",
- "clap",
  "itertools 0.14.0",
  "rerun",
 ]
@@ -12264,6 +12263,7 @@ checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
 name = "state_timeline_example"
 version = "0.35.0-alpha.1+dev"
 dependencies = [
+ "anyhow",
  "arrow",
  "rerun",
 ]
