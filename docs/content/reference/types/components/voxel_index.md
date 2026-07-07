@@ -17,11 +17,11 @@ FixedSizeList(3 x non-null Int32)
 ```
 
 ## API reference links
- * 🌊 [C++ API docs for `VoxelIndex`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1VoxelIndex.html?speculative-link)
- * 🐍 [Python API docs for `VoxelIndex`](https://ref.rerun.io/docs/python/stable/common/components?speculative-link#rerun.components.VoxelIndex)
- * 🦀 [Rust API docs for `VoxelIndex`](https://docs.rs/rerun/latest/rerun/components/struct.VoxelIndex.html?speculative-link)
+ * 🌊 [C++ API docs for `VoxelIndex`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1VoxelIndex.html)
+ * 🐍 [Python API docs for `VoxelIndex`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.VoxelIndex)
+ * 🦀 [Rust API docs for `VoxelIndex`](https://docs.rs/rerun/latest/rerun/components/struct.VoxelIndex.html)
 
 
 ## Used by
 
-* [`VoxelGridMap`](../archetypes/voxel_grid_map.md?speculative-link)
+* [`VoxelGridMap`](../archetypes/voxel_grid_map.md)

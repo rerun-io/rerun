@@ -96,6 +96,14 @@ const HIGH_THRESHOLD_TESTS: &[&str] = &[
     "animated_urdf",
 ];
 
+/// Height in points of the bottom strip we mask to hide the collapsed time-control bar.
+///
+/// The bar renders a timeline track whose playhead and ticks are positioned by time value.
+/// On the `log_time` timeline those values are wall-clock based, so they drift between runs.
+/// The collapsed bar is 32 points tall. We mask a little extra to also cover the playhead
+/// marker, which pokes slightly above the track.
+const TIME_BAR_MASK_HEIGHT: f32 = 40.0;
+
 /// An entry from the examples manifest hosted at `app.rerun.io`.
 #[derive(serde::Deserialize)]
 struct ManifestEntry {
@@ -267,22 +275,14 @@ async fn test_old_rrds_in_current_viewer() {
         );
 
         // Pause playback and seek to the end of the recording so the snapshot
-        // is deterministic. If the default active timeline is `log_time`
-        // (inherently unstable across runs), switch to `log_tick` first.
-        harness.run_with_app_context(|ctx| {
-            let mut commands = vec![];
-            let time_ctrl = ctx
-                .active_time_ctrl()
-                .expect("active recording route should have a time control");
-            if *time_ctrl.timeline_name() == TimelineName::log_time() {
-                // log_time is inherently unstable and non-deterministic, so change to log_tick
-                commands.push(TimeControlCommand::SetActiveTimeline(
-                    TimelineName::log_tick(),
-                ));
-            }
-            commands.push(TimeControlCommand::Pause);
-            commands.push(TimeControlCommand::MoveEnd);
-            ctx.send_time_commands_to_active_recording(commands);
+        // is deterministic.
+        let on_log_time = harness.run_with_app_context(|ctx| {
+            ctx.send_time_commands_to_active_recording(vec![
+                TimeControlCommand::Pause,
+                TimeControlCommand::MoveEnd,
+            ]);
+            ctx.active_time_ctrl()
+                .is_some_and(|time_ctrl| *time_ctrl.timeline_name() == TimelineName::log_time())
         });
         harness.run();
 
@@ -303,6 +303,19 @@ async fn test_old_rrds_in_current_viewer() {
         if MAP_VIEW_EXAMPLES.contains(&example_name.as_str()) {
             let map_rect = harness.get_by_role_and_label(Role::Pane, "MapView").rect();
             harness.mask(map_rect);
+        }
+
+        // On `log_time` the timeline track's playhead and tick positions are wall-clock based,
+        // so they drift between runs and would break the snapshot when it's regenerated on a
+        // patch release. The track is painted, not text, so `mask_dates` can't reach it. Mask
+        // the whole collapsed time bar at the bottom instead.
+        if on_log_time {
+            let screen = harness.ctx.content_rect();
+            let time_bar = egui::Rect::from_min_max(
+                egui::pos2(screen.left(), screen.bottom() - TIME_BAR_MASK_HEIGHT),
+                screen.max,
+            );
+            harness.mask(time_bar);
         }
 
         if !NONDETERMINISTIC_EXAMPLES.contains(&example_name.as_str()) {
