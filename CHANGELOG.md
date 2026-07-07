@@ -1,5 +1,18 @@
 # Rerun changelog
 
+## [0.34.1](https://github.com/rerun-io/rerun/compare/0.34.0...0.34.1) - 2026-07-07
+
+### 🔎 Details
+
+#### 🪳 Bug fixes
+- Fix: auto-refresh collections when opening a recording [9d40120](https://github.com/rerun-io/rerun/commit/9d40120bc4a83e7403c9487674f860339cdc83d3)
+- Better error for unsupported mp4 codec [949b6a8](https://github.com/rerun-io/rerun/commit/949b6a89cc53fc22726a15797d69070609281129)
+- Fix stack overflow for live-streamed data [1f3f5af](https://github.com/rerun-io/rerun/commit/1f3f5af16af5d82fc9987364cb5df77eaf399464)
+
+#### 📦 Dependencies
+- Patch `tonic-web-wasm-client` with cherry-picked trailer changes [7436cda](https://github.com/rerun-io/rerun/commit/7436cda05cb74b8ff092b4b64dfdf65092074be6)
+
+
 ## [0.34.0](https://github.com/rerun-io/rerun/compare/0.33.1...0.34.0) - 2026-07-06
 
 🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-34
