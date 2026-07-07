@@ -222,6 +222,7 @@ jobs:
                 - [ ] pip install: does it install and run?
                 - [ ] cargo install of cli tool: does it install and run?
                 - [ ] C++ SDK zip: does it contain rerun_c for all platforms?
+                - [ ] Web Viewer: does it run and connect to Rerun Hub servers?
               - [ ] Edit and publish the GitHub release:
                 - Do NOT create a GitHub release draft yourself! Let the release job do it.
                 - Populate the release with the changelog and a nice header video/picture
