@@ -22,12 +22,12 @@ use re_viewer_context::{
     ViewClassRegistry, ViewClassRegistryError, command_channel,
 };
 
-use crate::AppState;
 use crate::app_blueprint::{AppBlueprint, PanelStateOverrides};
 use crate::background_tasks::BackgroundTasks;
 use crate::event::ViewerEventDispatcher;
 use crate::latency_tracker::ServerLatencyTrackers;
 use crate::startup_options::StartupOptions;
+use crate::{AppState, command_palette::CommandPaletteAction};
 
 mod add_data_source;
 mod command_handling;
@@ -42,6 +42,16 @@ mod ui;
 const RERUN_VERSION_KEY: &str = "rerun.version";
 
 const REDAP_TOKEN_KEY: &str = "rerun.redap_token";
+
+/// The egui temp-data key under which the `on_begin_pass` hook stashes the timeline
+/// keyboard shortcut it consumed this frame.
+///
+/// The hook (which only has an [`egui::Context`]) consumes these keys early, but `App::ui`
+/// pairs the stashed command with the *live* active recording and dispatches it — so it can
+/// never target a stale recording.
+fn pending_timeline_shortcut_key() -> egui::Id {
+    egui::Id::new("rerun_pending_timeline_shortcut")
+}
 
 #[cfg(target_arch = "wasm32")]
 struct PendingFilePromise {
@@ -400,7 +410,6 @@ impl App {
             // Egui's built in behavior is to interact with focus, and we don't want that.
             // TODO(emilk/egui#7899): allow consuming events before egui uses them to move keyboard focus.
             // TODO(emilk/egui#7659): allow disabling certain egui shortcuts.
-            let command_sender = command_sender.clone();
             creation_context.egui_ctx.on_begin_pass(
                 "rerun-kb-shortcuts",
                 Arc::new(move |ctx| {
@@ -417,9 +426,14 @@ impl App {
                         });
                     }
 
-                    // Consumes the used shortcut (including the "space" key):
-                    if let Some(cmd) = UICommand::listen_for_kb_shortcut(ctx) {
-                        command_sender.send_ui(cmd);
+                    // Consume the timeline shortcuts (space/arrows/home/end) here, before egui
+                    // uses them for focus/scroll. We only stash which command was pressed; it is
+                    // paired with the live active recording and dispatched later, in `App::ui`, so
+                    // it can never target a stale recording.
+                    if let Some(kind) = re_ui::consume_timeline_shortcut(ctx) {
+                        ctx.data_mut(|data| {
+                            data.insert_temp(pending_timeline_shortcut_key(), kind);
+                        });
                     }
                 }),
             );
@@ -544,6 +558,16 @@ impl App {
     /// The active recording [`StoreId`], if any, derived from the current [`Route`].
     pub fn active_recording_id(&self) -> Option<&StoreId> {
         self.state.active_recording_id()
+    }
+
+    /// Select `item` and navigate the viewer to it (if it maps to a route).
+    fn select_and_navigate_to(&self, item: &Item) {
+        self.command_sender
+            .send_system(SystemCommand::set_selection(item.clone()));
+        if let Some(route) = Route::from_item(item) {
+            self.command_sender
+                .send_system(SystemCommand::SetRoute(route));
+        }
     }
 
     /// Open a content URL in the viewer.
@@ -1431,17 +1455,124 @@ impl eframe::App for App {
                 ui::paint_custom_window_frame(ui);
             }
 
-            if let Some(cmd) = self
-                .cmd_palette
-                .show(ui, &crate::open_url_description::command_palette_parse_url)
+            let selected_redap_server = if let Some(Item::RedapServer(origin)) =
+                self.state.selection_state.selected_items().single_item()
             {
+                Some(origin.clone())
+            } else {
+                None
+            };
+
+            let active_recording_id = store_context
+                .as_ref()
+                .map(|ctx| ctx.recording_store_id().clone());
+
+            // The Redap entry currently being viewed (if any), so its commands (e.g. refresh)
+            // are offered in the command palette.
+            let current_redap_entry = match self.state.navigation.current() {
+                Route::RedapEntry { origin, kind } => {
+                    kind.entry_id().map(|entry_id| (origin.clone(), entry_id))
+                }
+                _ => None,
+            };
+
+            let cmd_env = re_ui::CommandEnvironment {
+                recording: active_recording_id.clone(),
+                has_editable_redap_server: selected_redap_server
+                    .as_ref()
+                    .is_some_and(|origin| !self.state.redap_servers.is_internal_server(origin)),
+                redap_server: selected_redap_server,
+                redap_entry: current_redap_entry,
+            };
+
+            // Handle keyboard shortcuts, now that we have a live `CommandEnvironment`:
+            {
+                use re_ui::{
+                    RecordingCommandSender as _, RedapServerCommandSender as _,
+                    TableCommandSender as _,
+                };
+
+                // Non-timeline shortcuts, resolved against the current environment:
+                if let Some(resolved) = re_ui::listen_for_kb_shortcuts(ui.ctx(), &cmd_env) {
+                    match resolved {
+                        re_ui::ResolvedCommand::Ui(cmd) => self.command_sender.send_ui(cmd),
+                        re_ui::ResolvedCommand::Recording(cmd) => {
+                            self.command_sender.send_recording_command(cmd);
+                        }
+                        re_ui::ResolvedCommand::RedapServer(cmd) => {
+                            self.command_sender.send_redap_server_command(cmd);
+                        }
+                        re_ui::ResolvedCommand::Table(cmd) => {
+                            self.command_sender.send_table_command(cmd);
+                        }
+                    }
+                }
+
+                // Timeline shortcuts (space/arrows/home/end) were consumed early in
+                // `on_begin_pass` and stashed; pair them with the live recording here:
+                let pending_timeline = ui.ctx().data_mut(|data| {
+                    let key = pending_timeline_shortcut_key();
+                    let kind = data.get_temp::<re_ui::RecordingCommandKind>(key);
+                    data.remove::<re_ui::RecordingCommandKind>(key);
+                    kind
+                });
+                if let Some(cmd) = pending_timeline.and_then(|kind| kind.for_environment(&cmd_env))
+                {
+                    self.command_sender.send_recording_command(cmd);
+                }
+            }
+
+            let mut cmd_palette_provider = crate::command_palette::CommandPaletteProviderImpl {
+                recording: store_context.as_ref().map(|ctx| ctx.recording()),
+                redap_servers: &self.state.redap_servers,
+                cmd_env,
+            };
+            if let Some(cmd) = self.cmd_palette.show(ui.ctx(), &mut cmd_palette_provider) {
                 match cmd {
-                    re_ui::CommandPaletteAction::UiCommand(cmd) => {
+                    CommandPaletteAction::UiCommand(cmd) => {
                         self.command_sender.send_ui(cmd);
                     }
-                    re_ui::CommandPaletteAction::OpenUrl(url_desc) => {
+                    CommandPaletteAction::RecordingCommand(cmd) => {
+                        use re_ui::RecordingCommandSender as _;
+                        self.command_sender.send_recording_command(cmd);
+                    }
+                    CommandPaletteAction::RedapServerCommand(cmd) => {
+                        use re_ui::RedapServerCommandSender as _;
+                        self.command_sender.send_redap_server_command(cmd);
+                    }
+                    CommandPaletteAction::SelectEntityPath(entity_path) => {
+                        self.command_sender
+                            .send_system(SystemCommand::set_selection(Item::from(
+                                entity_path.clone(),
+                            )));
+                        self.command_sender
+                            .send_system(SystemCommand::SetFocus(entity_path.into()));
+                    }
+                    CommandPaletteAction::SelectComponentPath(component_path) => {
+                        let item = Item::from(component_path);
+                        self.command_sender
+                            .send_system(SystemCommand::set_selection(item.clone()));
+                        self.command_sender
+                            .send_system(SystemCommand::SetFocus(item.into()));
+                    }
+                    CommandPaletteAction::SelectRedapServer(origin) => {
+                        self.select_and_navigate_to(&Item::RedapServer(origin));
+                    }
+                    CommandPaletteAction::SelectRedapEntry {
+                        origin, entry_id, ..
+                    } => {
+                        self.select_and_navigate_to(&Item::RedapEntry {
+                            origin,
+                            kind: re_viewer_context::RedapEntryKind::Entry(entry_id),
+                        });
+                    }
+                    CommandPaletteAction::TableCommand(cmd) => {
+                        use re_ui::TableCommandSender as _;
+                        self.command_sender.send_table_command(cmd);
+                    }
+                    CommandPaletteAction::OpenUrl(url) => {
                         match ViewerOpenUrl::parse_with_options(
-                            &url_desc.url,
+                            url.as_str(),
                             &re_data_source::FromUriOptions {
                                 accept_extensionless_http: true,
                                 ..Default::default()
@@ -1481,6 +1612,12 @@ impl eframe::App for App {
                 &storage_context,
                 store_context.as_ref(),
                 &route,
+            );
+            self.run_pending_recording_commands(
+                ui,
+                &app_blueprint,
+                &storage_context,
+                store_context.as_ref(),
             );
         }
         self.run_pending_system_commands(&mut store_hub, ui);

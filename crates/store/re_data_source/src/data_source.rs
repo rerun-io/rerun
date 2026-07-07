@@ -143,6 +143,13 @@ impl LogDataSource {
 
             let path = std::path::Path::new(url).to_path_buf();
 
+            if url == "/" {
+                // Technically an existing path, but not likely what the user wants.
+                // In particular, when typing `/` in the command palette,
+                // we don't want to offer opening the entire filesystem.
+                return None;
+            }
+
             if url.starts_with("file://") || path.exists() {
                 return Some(Self::FilePath {
                     file_source: _file_source,

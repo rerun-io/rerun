@@ -44,6 +44,7 @@ re_log.workspace = true
 re_log_types.workspace = true # syntax-highlighting for EntityPath
 re_mutex.workspace = true
 re_tracing.workspace = true
+re_uri.workspace = true # for commands that act on a specific server
 
 ahash.workspace = true
 anyhow.workspace = true
@@ -56,13 +57,13 @@ getrandom.workspace = true
 itertools.workspace = true
 jiff.workspace = true
 num-traits.workspace = true
+nucleo-matcher.workspace = true
 parking_lot.workspace = true
 ron.workspace = true
 serde = { workspace = true, features = ["derive"] }
 smallvec.workspace = true
 strum_macros.workspace = true
 strum.workspace = true
-sublime_fuzzy.workspace = true
 url.workspace = true
 web-time.workspace = true
 

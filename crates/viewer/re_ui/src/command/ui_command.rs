@@ -1,5 +1,5 @@
 use egui::os::OperatingSystem;
-use egui::{Id, Key, KeyboardShortcut, Modifiers};
+use egui::{Key, KeyboardShortcut, Modifiers};
 use smallvec::{SmallVec, smallvec};
 
 use crate::context_ext::ContextExt as _;
@@ -7,15 +7,6 @@ use crate::context_ext::ContextExt as _;
 /// Interface for sending [`UICommand`] messages.
 pub trait UICommandSender {
     fn send_ui(&self, command: UICommand);
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct SetPlaybackSpeed(pub egui::emath::OrderedFloat<f32>);
-
-impl Default for SetPlaybackSpeed {
-    fn default() -> Self {
-        Self(egui::emath::OrderedFloat(1.0))
-    }
 }
 
 /// All the commands we support.
@@ -30,11 +21,6 @@ pub enum UICommand {
     OpenUrl,
     Import,
 
-    /// Save the current recording, or all selected recordings
-    SaveRecording,
-    SaveRecordingSelection,
-    SaveBlueprint,
-    CloseCurrentRecording,
     CloseAllEntries,
 
     NextRecording,
@@ -42,9 +28,6 @@ pub enum UICommand {
 
     NavigateBack,
     NavigateForward,
-
-    Undo,
-    Redo,
 
     #[cfg(not(target_arch = "wasm32"))]
     Quit,
@@ -54,8 +37,6 @@ pub enum UICommand {
     OpenRerunDiscord,
 
     ResetViewer,
-    ClearActiveBlueprint,
-    ClearActiveBlueprintAndEnableHeuristics,
 
     #[cfg(not(target_arch = "wasm32"))]
     OpenProfiler,
@@ -70,12 +51,7 @@ pub enum UICommand {
     ExpandBlueprintPanel,
     ToggleSelectionPanel,
     ExpandSelectionPanel,
-    ToggleTimePanel,
-    ToggleChunkStoreBrowser,
     Settings,
-
-    #[cfg(debug_assertions)]
-    ToggleBlueprintInspectionPanel,
 
     #[cfg(debug_assertions)]
     ToggleEguiDebugPanel,
@@ -90,29 +66,9 @@ pub enum UICommand {
 
     ToggleCommandPalette,
 
-    // Playback:
-    PlaybackTogglePlayPause,
-    PlaybackFollow,
-    PlaybackStepBack,
-    PlaybackStepForward,
-    PlaybackBack,
-    PlaybackForward,
-    PlaybackBackFast,
-    PlaybackForwardFast,
-    PlaybackBeginning,
-    PlaybackEnd,
-    PlaybackRestart,
-    PlaybackSpeed(SetPlaybackSpeed),
-
     // Dev-tools:
     #[cfg(not(target_arch = "wasm32"))]
     ScreenshotWholeApp,
-    #[cfg(not(target_arch = "wasm32"))]
-    PrintChunkStore,
-    #[cfg(not(target_arch = "wasm32"))]
-    PrintBlueprintStore,
-    #[cfg(not(target_arch = "wasm32"))]
-    PrintPrimaryCache,
 
     #[cfg(debug_assertions)]
     ResetEguiMemory,
@@ -145,21 +101,6 @@ impl UICommand {
 
     pub fn text_and_tooltip(self) -> (&'static str, &'static str) {
         match self {
-            Self::SaveRecording => (
-                "Save recording…",
-                "Save all data to a Rerun data file (.rrd)",
-            ),
-
-            Self::SaveRecordingSelection => (
-                "Save current time selection…",
-                "Save data for the current loop selection to a Rerun data file (.rrd)",
-            ),
-
-            Self::SaveBlueprint => (
-                "Save blueprint…",
-                "Save the current viewer setup as a Rerun blueprint file (.rbl)",
-            ),
-
             Self::Open => (
                 "Open file…",
                 "Open any supported files (.rrd, images, meshes, …) in a new recording",
@@ -171,11 +112,6 @@ impl UICommand {
             Self::Import => (
                 "Import into current recording…",
                 "Import any supported files (.rrd, images, meshes, …) in the current recording",
-            ),
-
-            Self::CloseCurrentRecording => (
-                "Close current recording",
-                "Close the current recording (unsaved data will be lost)",
             ),
 
             Self::CloseAllEntries => (
@@ -191,12 +127,6 @@ impl UICommand {
 
             Self::NavigateBack => ("Back in history", "Go back in history"),
             Self::NavigateForward => ("Forward in history", "Go forward in history"),
-
-            Self::Undo => (
-                "Undo",
-                "Undo the last blueprint edit for the open recording",
-            ),
-            Self::Redo => ("Redo", "Redo the last undone thing"),
 
             #[cfg(not(target_arch = "wasm32"))]
             Self::Quit => ("Quit", "Close the Rerun Viewer"),
@@ -214,16 +144,6 @@ impl UICommand {
             Self::ResetViewer => (
                 "Reset Viewer",
                 "Reset the Viewer to how it looked the first time you ran it, forgetting UI state and all stored blueprints, except the ones loaded from *.rbl resources",
-            ),
-
-            Self::ClearActiveBlueprint => (
-                "Reset to default blueprint",
-                "Clear active blueprint and use the default blueprint instead. If no default blueprint is set, this will use a heuristic blueprint.",
-            ),
-
-            Self::ClearActiveBlueprintAndEnableHeuristics => (
-                "Reset to heuristic blueprint",
-                "Re-populate viewport with automatically chosen views using default visualizers",
             ),
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -252,18 +172,7 @@ impl UICommand {
             Self::ExpandBlueprintPanel => ("Expand blueprint panel", "Expand the left panel"),
             Self::ToggleSelectionPanel => ("Toggle selection panel", "Toggle the right panel"),
             Self::ExpandSelectionPanel => ("Expand selection panel", "Expand the right panel"),
-            Self::ToggleTimePanel => ("Toggle time panel", "Toggle the bottom panel"),
-            Self::ToggleChunkStoreBrowser => (
-                "Toggle chunk store browser",
-                "Toggle the chunk store browser",
-            ),
             Self::Settings => ("Settings…", "Show the settings screen"),
-
-            #[cfg(debug_assertions)]
-            Self::ToggleBlueprintInspectionPanel => (
-                "Toggle blueprint inspection panel",
-                "Inspect the timeline of the internal blueprint data.",
-            ),
 
             #[cfg(debug_assertions)]
             Self::ToggleEguiDebugPanel => (
@@ -295,62 +204,11 @@ impl UICommand {
 
             Self::ToggleCommandPalette => ("Command palette…", "Toggle the Command Palette"),
 
-            Self::PlaybackTogglePlayPause => ("Toggle play/pause", "Either play or pause the time"),
-            Self::PlaybackFollow => ("Follow", "Follow on from end of timeline"),
-            Self::PlaybackStepBack => (
-                "Step backwards",
-                "Move the time marker back to the previous point in time with any data",
-            ),
-            Self::PlaybackStepForward => (
-                "Step forwards",
-                "Move the time marker to the next point in time with any data",
-            ),
-            Self::PlaybackBack => (
-                "Move backwards",
-                "Move the time marker backward by 1 second",
-            ),
-            Self::PlaybackForward => (
-                "Move forwards",
-                "Move the time marker forward by 0.1 seconds",
-            ),
-            Self::PlaybackBackFast => (
-                "Move backwards fast",
-                "Move the time marker backwards by 1 second",
-            ),
-            Self::PlaybackForwardFast => (
-                "Move forwards fast",
-                "Move the time marker forwards by 0.1 seconds",
-            ),
-            Self::PlaybackBeginning => ("Go to beginning", "Go to beginning of timeline"),
-            Self::PlaybackEnd => ("Go to end", "Go to end of timeline"),
-            Self::PlaybackRestart => ("Restart", "Restart from beginning of timeline"),
-
-            Self::PlaybackSpeed(_) => (
-                "Set playback speed",
-                "This is a chord, so you can press 5+0 to set the speed to 50x",
-            ),
-
             #[cfg(not(target_arch = "wasm32"))]
             Self::ScreenshotWholeApp => (
                 "Screenshot",
                 "Copy screenshot of the whole app to clipboard",
             ),
-            #[cfg(not(target_arch = "wasm32"))]
-            Self::PrintChunkStore => (
-                "Print datastore",
-                "Prints the entire chunk store to the console and clipboard. WARNING: this may be A LOT of text.",
-            ),
-            #[cfg(not(target_arch = "wasm32"))]
-            Self::PrintBlueprintStore => (
-                "Print blueprint store",
-                "Prints the entire blueprint store to the console and clipboard. WARNING: this may be A LOT of text.",
-            ),
-            #[cfg(not(target_arch = "wasm32"))]
-            Self::PrintPrimaryCache => (
-                "Print primary cache",
-                "Prints the state of the entire primary cache to the console and clipboard. WARNING: this may be A LOT of text.",
-            ),
-
             #[cfg(debug_assertions)]
             Self::ResetEguiMemory => (
                 "Reset egui memory",
@@ -392,25 +250,16 @@ impl UICommand {
     }
 
     /// All keyboard shortcuts, with the primary first.
+    // `os` is only used by OS-specific shortcuts (e.g. `Quit`), which are all native-only,
+    // so it is unused on wasm:
+    #[allow(clippy::allow_attributes, unused_variables)]
     pub fn kb_shortcuts(self, os: OperatingSystem) -> SmallVec<[KeyboardShortcut; 2]> {
         fn key(key: Key) -> KeyboardShortcut {
             KeyboardShortcut::new(Modifiers::NONE, key)
         }
 
-        fn ctrl(key: Key) -> KeyboardShortcut {
-            KeyboardShortcut::new(Modifiers::CTRL, key)
-        }
-
         fn cmd(key: Key) -> KeyboardShortcut {
             KeyboardShortcut::new(Modifiers::COMMAND, key)
-        }
-
-        fn alt(key: Key) -> KeyboardShortcut {
-            KeyboardShortcut::new(Modifiers::ALT, key)
-        }
-
-        fn shift(key: Key) -> KeyboardShortcut {
-            KeyboardShortcut::new(Modifiers::SHIFT, key)
         }
 
         fn cmd_shift(key: Key) -> KeyboardShortcut {
@@ -426,16 +275,12 @@ impl UICommand {
         }
 
         match self {
-            Self::SaveRecording => smallvec![cmd(Key::S)],
-            Self::SaveRecordingSelection => smallvec![cmd_alt(Key::S)],
-            Self::SaveBlueprint => smallvec![],
             Self::Open => smallvec![cmd(Key::O)],
             // Some browsers have a "paste and go" action.
             // But unfortunately there's no standard shortcut for this.
             // Claude however thinks it's this one (it's not). Let's go with that anyways!
             Self::OpenUrl => smallvec![cmd_shift(Key::L)],
             Self::Import => smallvec![cmd_shift(Key::O)],
-            Self::CloseCurrentRecording => smallvec![],
             Self::CloseAllEntries => smallvec![],
 
             Self::NextRecording => smallvec![cmd_alt(Key::ArrowDown)],
@@ -443,15 +288,6 @@ impl UICommand {
 
             Self::NavigateBack => smallvec![cmd(Key::OpenBracket)],
             Self::NavigateForward => smallvec![cmd(Key::CloseBracket)],
-
-            Self::Undo => smallvec![cmd(Key::Z)],
-            Self::Redo => {
-                if os == OperatingSystem::Mac {
-                    smallvec![cmd_shift(Key::Z), cmd(Key::Y)]
-                } else {
-                    smallvec![ctrl(Key::Y), ctrl_shift(Key::Z)]
-                }
-            }
 
             #[cfg(not(target_arch = "wasm32"))]
             Self::Quit => {
@@ -467,8 +303,6 @@ impl UICommand {
             Self::OpenRerunDiscord => smallvec![],
 
             Self::ResetViewer => smallvec![ctrl_shift(Key::R)],
-            Self::ClearActiveBlueprint => smallvec![],
-            Self::ClearActiveBlueprintAndEnableHeuristics => smallvec![],
 
             #[cfg(not(target_arch = "wasm32"))]
             Self::OpenProfiler => smallvec![ctrl_shift(Key::P)],
@@ -481,12 +315,7 @@ impl UICommand {
             Self::ExpandBlueprintPanel => smallvec![],
             Self::ToggleSelectionPanel => smallvec![ctrl_shift(Key::S)],
             Self::ExpandSelectionPanel => smallvec![],
-            Self::ToggleTimePanel => smallvec![ctrl_shift(Key::T)],
-            Self::ToggleChunkStoreBrowser => smallvec![ctrl_shift(Key::D)],
             Self::Settings => smallvec![cmd(Key::Comma)],
-
-            #[cfg(debug_assertions)]
-            Self::ToggleBlueprintInspectionPanel => smallvec![ctrl_shift(Key::I)],
 
             #[cfg(debug_assertions)]
             Self::ToggleEguiDebugPanel => smallvec![ctrl_shift(Key::U)],
@@ -506,33 +335,10 @@ impl UICommand {
             #[cfg(not(target_arch = "wasm32"))]
             Self::ZoomReset => smallvec![egui::gui_zoom::kb_shortcuts::ZOOM_RESET],
 
-            Self::ToggleCommandPalette => smallvec![cmd(Key::P), cmd(Key::K)],
-
-            Self::PlaybackTogglePlayPause => smallvec![key(Key::Space)],
-            Self::PlaybackFollow => smallvec![alt(Key::ArrowRight)],
-            Self::PlaybackStepBack => smallvec![cmd(Key::ArrowLeft)],
-            Self::PlaybackStepForward => smallvec![cmd(Key::ArrowRight)],
-            Self::PlaybackBack => smallvec![key(Key::ArrowLeft)],
-            Self::PlaybackForward => smallvec![key(Key::ArrowRight)],
-            Self::PlaybackBackFast => smallvec![shift(Key::ArrowLeft)],
-            Self::PlaybackForwardFast => smallvec![shift(Key::ArrowRight)],
-            Self::PlaybackBeginning => smallvec![key(Key::Home)],
-            Self::PlaybackEnd => smallvec![key(Key::End)],
-            Self::PlaybackRestart => smallvec![alt(Key::ArrowLeft)],
-
-            Self::PlaybackSpeed(_) => {
-                // This is a chord, so no single shortcut.
-                smallvec![]
-            }
+            Self::ToggleCommandPalette => smallvec![cmd(Key::K), cmd(Key::P)],
 
             #[cfg(not(target_arch = "wasm32"))]
             Self::ScreenshotWholeApp => smallvec![],
-            #[cfg(not(target_arch = "wasm32"))]
-            Self::PrintChunkStore => smallvec![],
-            #[cfg(not(target_arch = "wasm32"))]
-            Self::PrintBlueprintStore => smallvec![],
-            #[cfg(not(target_arch = "wasm32"))]
-            Self::PrintPrimaryCache => smallvec![],
 
             #[cfg(debug_assertions)]
             Self::ResetEguiMemory => smallvec![],
@@ -561,9 +367,6 @@ impl UICommand {
     /// Return the keyboard shortcut for this command, nicely formatted
     // TODO(emilk): use Help/IconText instead
     pub fn formatted_kb_shortcut(self, egui_ctx: &egui::Context) -> Option<String> {
-        if matches!(self, Self::PlaybackSpeed(_)) {
-            return Some("01-99".to_owned());
-        }
         // Note: we only show the primary shortcut to the user.
         // The fallbacks are there for people who have muscle memory for the other shortcuts.
         self.primary_kb_shortcut(egui_ctx.os())
@@ -582,118 +385,14 @@ impl UICommand {
         matches!(self, Self::OpenWebHelp | Self::OpenRerunDiscord)
     }
 
-    fn handle_playback_chord(ctx: &egui::Context) -> Option<Self> {
-        const CHORD_TIMEOUT: std::time::Duration = std::time::Duration::from_millis(500);
-        const NUMBER_KEYS: [Key; 10] = [
-            Key::Num0,
-            Key::Num1,
-            Key::Num2,
-            Key::Num3,
-            Key::Num4,
-            Key::Num5,
-            Key::Num6,
-            Key::Num7,
-            Key::Num8,
-            Key::Num9,
-        ];
-
-        fn key_to_digit(key: Key) -> Option<char> {
-            let i = NUMBER_KEYS.iter().position(|&k| k == key)?;
-            char::from_digit(i as u32, 10)
-        }
-
-        #[derive(Default, Clone)]
-        struct PlaybackChordState {
-            last_key_time: Option<web_time::Instant>,
-            accumulated: String,
-        }
-
-        if ctx.text_edit_focused() {
-            return None;
-        }
-
-        let mut chord_state = ctx.data_mut(|data| {
-            data.get_temp_mut_or_default::<PlaybackChordState>(Id::NULL)
-                .clone()
-        });
-
-        let now = web_time::Instant::now();
-
-        let pressed_number = ctx.input(|i| {
-            let mut pressed_number = NUMBER_KEYS.iter().find(|&&k| i.key_pressed(k)).copied();
-            let has_other = i.keys_down.iter().any(|k| !NUMBER_KEYS.contains(k));
-
-            if has_other || i.modifiers.any() {
-                chord_state = PlaybackChordState::default();
-                pressed_number = None;
-            }
-
-            pressed_number
-        });
-
-        // Check if timeout expired - clear old state
-        if let Some(last_time) = chord_state.last_key_time
-            && now.duration_since(last_time) >= CHORD_TIMEOUT
-        {
-            chord_state = PlaybackChordState::default();
-        }
-
-        let mut command = None;
-
-        // Handle number key press
-        if let Some(key) = pressed_number {
-            if let Some(digit) = key_to_digit(key) {
-                chord_state.accumulated.push(digit);
-            }
-
-            chord_state.last_key_time = Some(now);
-
-            // Leading zeros should divide the speed by 10 for each zero.
-            // So e.g. 05 = 0.5x speed, 005 = 0.05x speed, etc.
-            let leading_zeros = chord_state
-                .accumulated
-                .chars()
-                .take_while(|&c| c == '0')
-                .count();
-
-            let factor = 10usize.pow(leading_zeros as u32);
-
-            if let Ok(speed) = chord_state.accumulated.parse::<f32>()
-                && speed > 0.0
-            {
-                command = Some(Self::PlaybackSpeed(SetPlaybackSpeed(
-                    egui::emath::OrderedFloat(speed / factor as f32),
-                )));
-            }
-        }
-
-        ctx.data_mut(|data| data.insert_temp(Id::NULL, chord_state.clone()));
-
-        command
-    }
-
-    #[must_use = "Returns the Command that was triggered by some keyboard shortcut"]
+    /// Listen for keyboard shortcuts of [`UICommand`]s only.
+    ///
+    /// The viewer should use [`super::listen_for_kb_shortcuts`] instead,
+    /// which also matches recording commands.
     pub fn listen_for_kb_shortcut(egui_ctx: &egui::Context) -> Option<Self> {
-        fn conflicts_with_text_editing(kb_shortcut: &KeyboardShortcut) -> bool {
-            // TODO(emilk): move this into egui
-            kb_shortcut.modifiers.is_none()
-                || matches!(
-                    kb_shortcut.logical_key,
-                    Key::Space
-                        | Key::ArrowLeft
-                        | Key::ArrowRight
-                        | Key::ArrowUp
-                        | Key::ArrowDown
-                        | Key::Home
-                        | Key::End
-                )
-        }
-
         use strum::IntoEnumIterator as _;
 
-        let text_edit_has_focus = egui_ctx.text_edit_focused();
-
-        let mut commands: Vec<(KeyboardShortcut, Self)> = Self::iter()
+        let commands = Self::iter()
             .flat_map(|cmd| {
                 cmd.kb_shortcuts(egui_ctx.os())
                     .into_iter()
@@ -701,39 +400,7 @@ impl UICommand {
             })
             .collect();
 
-        // If the user pressed `Cmd-Shift-S` then egui will match that
-        // with both `Cmd-Shift-S` and `Cmd-S`.
-        // The reason is that `Shift` (and `Alt`) are sometimes required to produce certain keys,
-        // such as `+` (`Shift =` on an american keyboard).
-        // The result of this is that we must check for `Cmd-Shift-S` before `Cmd-S`, etc.
-        // So we order the commands here so that the commands with `Shift` and `Alt` in them
-        // are checked first.
-        commands.sort_by_key(|(kb_shortcut, _cmd)| {
-            let num_shift_alts =
-                kb_shortcut.modifiers.shift as i32 + kb_shortcut.modifiers.alt as i32;
-            -num_shift_alts // most first
-        });
-
-        let command = egui_ctx.input_mut(|input| {
-            for (kb_shortcut, command) in commands {
-                if text_edit_has_focus && conflicts_with_text_editing(&kb_shortcut) {
-                    continue; // Make sure we can move text cursor with alt-arrow keys, etc
-                }
-
-                if input.consume_shortcut(&kb_shortcut) {
-                    // Clear the shortcut key from input to prevent it from propagating to other UI component.
-                    input.keys_down.remove(&kb_shortcut.logical_key);
-                    return Some(command);
-                }
-            }
-            None
-        });
-
-        if command.is_none() {
-            Self::handle_playback_chord(egui_ctx)
-        } else {
-            command
-        }
+        super::consume_best_shortcut(egui_ctx, commands)
     }
 
     /// Show this command as a menu-button.
@@ -744,8 +411,22 @@ impl UICommand {
         ui: &mut egui::Ui,
         command_sender: &impl UICommandSender,
     ) -> egui::Response {
+        self.menu_button_ui_enabled(ui, true, command_sender)
+    }
+
+    /// Show this command as a (possibly disabled) menu-button.
+    ///
+    /// If clicked, enqueue the command.
+    pub fn menu_button_ui_enabled(
+        self,
+        ui: &mut egui::Ui,
+        enabled: bool,
+        command_sender: &impl UICommandSender,
+    ) -> egui::Response {
         let button = self.menu_button(ui.ctx());
-        let mut response = ui.add(button).on_hover_text(self.tooltip());
+        let mut response = ui
+            .add_enabled(enabled, button)
+            .on_hover_text(self.tooltip());
 
         if self.is_link() {
             response = response.on_hover_cursor(egui::CursorIcon::PointingHand);
@@ -796,51 +477,5 @@ impl UICommand {
 
         ui.set_max_width(220.0);
         ui.label(details);
-    }
-}
-
-#[test]
-fn check_for_clashing_command_shortcuts() {
-    fn clashes(a: KeyboardShortcut, b: KeyboardShortcut) -> bool {
-        if a.logical_key != b.logical_key {
-            return false;
-        }
-
-        if a.modifiers.alt != b.modifiers.alt {
-            return false;
-        }
-
-        if a.modifiers.shift != b.modifiers.shift {
-            return false;
-        }
-
-        // On Non-Mac, command is interpreted as ctrl!
-        (a.modifiers.command || a.modifiers.ctrl) == (b.modifiers.command || b.modifiers.ctrl)
-    }
-
-    use strum::IntoEnumIterator as _;
-
-    for os in [
-        OperatingSystem::Mac,
-        OperatingSystem::Windows,
-        OperatingSystem::Nix,
-    ] {
-        for a_cmd in UICommand::iter() {
-            for a_shortcut in a_cmd.kb_shortcuts(os) {
-                for b_cmd in UICommand::iter() {
-                    if a_cmd == b_cmd {
-                        continue;
-                    }
-                    for b_shortcut in b_cmd.kb_shortcuts(os) {
-                        assert!(
-                            !clashes(a_shortcut, b_shortcut),
-                            "Command '{a_cmd:?}' and '{b_cmd:?}' have overlapping keyboard shortcuts: {:?} vs {:?}",
-                            a_shortcut.format(&egui::ModifierNames::NAMES, true),
-                            b_shortcut.format(&egui::ModifierNames::NAMES, true),
-                        );
-                    }
-                }
-            }
-        }
     }
 }

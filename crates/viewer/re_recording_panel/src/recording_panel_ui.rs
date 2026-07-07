@@ -1,19 +1,19 @@
 use std::sync::Arc;
 
 use egui::collapsing_header::CollapsingState;
-use egui::{RichText, Widget as _, WidgetInfo, WidgetType};
+use egui::{RichText, WidgetInfo, WidgetType};
 use re_data_ui::AppUi as _;
 use re_data_ui::item_ui::{entity_db_button_ui, table_id_button_ui};
 use re_log_channel::LogSource;
 use re_log_types::TableId;
-use re_redap_browser::{Command, EXAMPLES_ORIGIN, RedapServers};
+use re_redap_browser::{EXAMPLES_ORIGIN, RedapServers};
 use re_ui::list_item::{LabelContent, ListItemContentButtonsExt as _};
 use re_ui::{ContextExt as _, OnResponseExt as _, UiExt as _, UiLayout, icons, list_item};
 use re_uri::dataset_hierarchy_leaf_name;
 use re_viewer_context::open_url::ViewerOpenUrl;
 use re_viewer_context::{
-    AppContext, EditRedapServerModalCommand, Item, RecordingOrTable, RedapEntryKind, Route,
-    SystemCommand, SystemCommandSender as _,
+    AppContext, Item, RecordingOrTable, RedapEntryKind, Route, SystemCommand,
+    SystemCommandSender as _,
 };
 
 use crate::RecordingPanelCommand;
@@ -73,7 +73,7 @@ impl RecordingPanel {
             .show(ui, |ui| {
                 ui.panel_content(|ui| {
                     re_ui::list_item::list_item_scope(ui, "recording panel", |ui| {
-                        all_sections_ui(ctx, ui, servers, &recording_panel_data);
+                        all_sections_ui(ctx, ui, &recording_panel_data);
                     })
                     .response
                     .widget_info(|| {
@@ -168,7 +168,6 @@ fn add_button_ui(
 fn all_sections_ui(
     ctx: &AppContext<'_>,
     ui: &mut egui::Ui,
-    servers: &RedapServers,
     recording_panel_data: &RecordingPanelData<'_>,
 ) {
     //
@@ -193,7 +192,7 @@ fn all_sections_ui(
     //
 
     for server_data in &recording_panel_data.servers {
-        server_section_ui(ctx, ui, servers, server_data);
+        server_section_ui(ctx, ui, server_data);
     }
 
     //
@@ -299,12 +298,7 @@ fn server_title(ctx: &AppContext<'_>, origin: &re_uri::Origin, is_internal: bool
     }
 }
 
-fn server_section_ui(
-    ctx: &AppContext<'_>,
-    ui: &mut egui::Ui,
-    servers: &RedapServers,
-    server_data: &ServerData<'_>,
-) {
+fn server_section_ui(ctx: &AppContext<'_>, ui: &mut egui::Ui, server_data: &ServerData<'_>) {
     let ServerData {
         origin,
         is_active,
@@ -315,40 +309,11 @@ fn server_section_ui(
 
     let content = list_item::LabelContent::header(server_title(ctx, origin, *is_internal))
         .with_menu_button(&icons::MORE, "Actions", move |ui| {
-            if icons::RESET
-                .as_button_with_label(ui.tokens(), "Refresh")
-                .ui(ui)
-                .clicked()
-            {
-                servers.send_command(Command::RefreshCollection(origin.clone()));
-            }
-            if !*is_internal
-                && icons::SETTINGS
-                    .as_button_with_label(ui.tokens(), "Edit")
-                    .ui(ui)
-                    .clicked()
-            {
-                servers.send_command(Command::OpenEditServerModal(
-                    EditRedapServerModalCommand::new(origin.clone()),
-                ));
-            }
-            if icons::COPY
-                .as_button_with_label(ui.tokens(), "Copy URL")
-                .ui(ui)
-                .clicked()
-            {
-                let url = origin.to_string();
-                re_log::info!("Copied {url:?} to clipboard");
-                ui.copy_text(url);
-            }
-            if !*is_internal
-                && icons::TRASH
-                    .as_button_with_label(ui.tokens(), "Remove")
-                    .ui(ui)
-                    .clicked()
-            {
-                ctx.command_sender()
-                    .send_system(SystemCommand::RemoveRedapServer(origin.clone()));
+            for command in re_ui::RedapServerCommand::all_for_server(origin) {
+                if command.requires_editable_server() && *is_internal {
+                    continue;
+                }
+                command.menu_button_ui(ui, ctx.command_sender());
             }
         });
 

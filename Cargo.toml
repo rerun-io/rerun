@@ -324,6 +324,12 @@ ndarray = "0.16.1" # pinned by `lance-index` (lance family) and `numpy` to 0.16;
 never = "0.1.0"
 nohash-hasher = "0.2.0"
 notify = { version = "8.2", features = ["macos_kqueue"] }
+# `unicode-segmentation` is off so that match indices are plain `char` indices,
+# which is what we index with when highlighting matched characters.
+nucleo-matcher = { version = "0.3.1", default-features = false, features = [
+  "unicode-casefold",
+  "unicode-normalization",
+] }
 num-derive = "0.4.2"
 num-traits = "0.2.19"
 numpy = "0.28.0"
@@ -406,7 +412,6 @@ static_assertions = "1.1"
 stl_io = "0.11.0"
 strum = { version = "0.26.3", features = ["derive"] } # need to update re_rav1d first
 strum_macros = "0.26.4" # need to update re_rav1d first
-sublime_fuzzy = "0.7.0"
 syn = "2.0"
 sysinfo = { version = "0.38.4", default-features = false }
 tap = "1.0"

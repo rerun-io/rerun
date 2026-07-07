@@ -808,8 +808,15 @@ impl<'a> DataFusionTableWidget<'a> {
                         },
                         |ui| {
                             ui.set_height(height);
+                            let refresh_tooltip = match re_ui::TableCommandKind::Refresh
+                                .formatted_kb_shortcut(ui.ctx())
+                            {
+                                Some(shortcut) => format!("Refresh table ({shortcut})"),
+                                None => "Refresh table".to_owned(),
+                            };
                             if ui
                                 .small_icon_button(&icons::RESET, "Refresh table")
+                                .on_hover_text(refresh_tooltip)
                                 .clicked()
                             {
                                 action = Some(BottomBarAction::Refresh);

@@ -760,6 +760,13 @@ impl RedapServers {
         self.servers.contains_key(origin) || self.pending_servers.contains(origin)
     }
 
+    /// Is this the viewer's built-in catalog server?
+    pub fn is_internal_server(&self, origin: &re_uri::Origin) -> bool {
+        self.servers
+            .get(origin)
+            .is_some_and(|server| server.is_internal())
+    }
+
     /// Remove a server and its credentials.
     pub fn remove_server(
         &mut self,
@@ -819,6 +826,28 @@ impl RedapServers {
 
     pub fn iter_servers(&self) -> impl Iterator<Item = &Server> {
         self.servers.values()
+    }
+
+    /// Refresh the dataframe contents of a single entry (dataset or table).
+    ///
+    /// This clears the cached query results so the next frame re-fetches from the server —
+    /// the same effect as the "Refresh table" button in the entry view.
+    pub fn refresh_entry(
+        &self,
+        origin: &re_uri::Origin,
+        entry_id: EntryId,
+        egui_ctx: &egui::Context,
+    ) {
+        if let Some(server) = self.servers.get(origin)
+            && let Some(entry) = server.find_entry(entry_id)
+        {
+            re_dataframe_ui::DataFusionTableWidget::refresh(
+                &server.runtime,
+                egui_ctx.clone(),
+                server.tables_session_ctx.clone(),
+                TableReference::bare(entry.name().to_string()),
+            );
+        }
     }
 
     pub fn is_authenticated(&self, origin: &re_uri::Origin) -> bool {

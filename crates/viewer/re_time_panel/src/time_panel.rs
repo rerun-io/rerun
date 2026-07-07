@@ -774,6 +774,27 @@ impl TimePanel {
                         &filter_matcher,
                     );
 
+                // If an item is focused, expand every node leading to it so it becomes visible
+                // (the actual scroll happens in `show_entity`). We do this up-front, because a
+                // collapsed node's children aren't drawn at all, so expanding inline while drawing
+                // would only reveal one level per frame for a deeply-nested target.
+                if let Some(focused) = store_ctx.focused_item()
+                    && let Some(focused_entity_path) = focused.item.entity_path()
+                {
+                    let collapse_scope = self.collapse_scope();
+
+                    // If the focus is a component, also expand its entity so the component row
+                    // (drawn as a child of the entity) is revealed; if it's an entity, we only
+                    // need to expand its ancestors.
+                    let expand_target_itself = matches!(focused.item, Item::ComponentPath(_));
+
+                    for node in EntityPath::incremental_walk(None, focused_entity_path) {
+                        if expand_target_itself || &node != focused_entity_path {
+                            collapse_scope.entity(node).set_open(ui.ctx(), true);
+                        }
+                    }
+                }
+
                 for child in &streams_tree_data.children {
                     self.show_entity(
                         store_ctx,
@@ -816,18 +837,11 @@ impl TimePanel {
 
         let collapse_scope = self.collapse_scope();
 
-        // Expand if one of the children is focused
+        // Nodes leading to a focused item are expanded up-front in `tree_ui`; here we only need
+        // to scroll to the focused entity once it's drawn (see below).
         let focused_entity_path = store_ctx
             .focused_item()
             .and_then(|item| item.item.entity_path());
-
-        if focused_entity_path
-            .is_some_and(|focused_entity_path| focused_entity_path.is_descendant_of(entity_path))
-        {
-            collapse_scope
-                .entity(entity_path.clone())
-                .set_open(ui.ctx(), true);
-        }
 
         // Globally unique id that is dependent on the "nature" of the tree (recording or blueprint,
         // in a filter session or not)

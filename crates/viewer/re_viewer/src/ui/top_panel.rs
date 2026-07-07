@@ -410,7 +410,7 @@ fn panel_buttons_r2l(
                     "Time panel toggle",
                     &mut app_blueprint.time_panel_state().is_expanded(),
                 )
-                .on_hover_ui(|ui| UICommand::ToggleTimePanel.tooltip_ui(ui))
+                .on_hover_ui(|ui| re_ui::RecordingCommandKind::ToggleTimePanel.tooltip_ui(ui))
                 .clicked()
             {
                 app_blueprint.toggle_time_panel(&app.command_sender);

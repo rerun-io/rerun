@@ -6,7 +6,7 @@ use re_entity_db::{EntityDb, LogSource};
 use re_log_channel::RecordingOpenBehavior;
 use re_log_types::{ApplicationId, LogMsg, RecordingId, StoreId, StoreKind};
 use re_sdk_types::blueprint::components::PlayState;
-use re_ui::{UICommand, UICommandSender as _};
+use re_ui::{RecordingCommand, UICommand, UICommandSender as _};
 use re_viewer_context::open_url::{OpenUrlOptions, ViewerOpenUrl};
 use re_viewer_context::{
     ActiveStoreContext, AppBlueprintCtx, NeedsRepaint, Route, StorageContext, StoreHub,
@@ -445,6 +445,46 @@ impl App {
                 self.state.redap_servers.open_edit_server_modal(command);
             }
 
+            SystemCommand::RedapServer(command) => {
+                let re_ui::RedapServerCommand { origin, kind } = command;
+                match kind {
+                    re_ui::RedapServerCommandKind::Refresh => {
+                        self.command_sender
+                            .send_system(SystemCommand::RefreshRedapServer(origin));
+                    }
+                    re_ui::RedapServerCommandKind::Edit => {
+                        self.command_sender
+                            .send_system(SystemCommand::EditRedapServerModal(
+                                re_viewer_context::EditRedapServerModalCommand::new(origin),
+                            ));
+                    }
+                    re_ui::RedapServerCommandKind::CopyUrl => {
+                        let url = origin.to_string();
+                        re_log::info!("Copied {url:?} to clipboard");
+                        egui_ctx.copy_text(url);
+                    }
+                    re_ui::RedapServerCommandKind::Remove => {
+                        self.command_sender
+                            .send_system(SystemCommand::RemoveRedapServer(origin));
+                    }
+                }
+            }
+
+            SystemCommand::Table(command) => {
+                let re_ui::TableCommand {
+                    origin,
+                    entry_id,
+                    kind,
+                } = command;
+                match kind {
+                    re_ui::TableCommandKind::Refresh => {
+                        self.state
+                            .redap_servers
+                            .refresh_entry(&origin, entry_id, egui_ctx);
+                    }
+                }
+            }
+
             SystemCommand::LoadDataSource(data_source) => {
                 self.load_data_source(store_hub, egui_ctx, &data_source);
             }
@@ -773,75 +813,6 @@ impl App {
             });
 
         match cmd {
-            UICommand::SaveRecording => {
-                #[cfg(target_arch = "wasm32")] // Web
-                {
-                    if let Err(err) = save_active_recording(self, store_context) {
-                        re_log::error!("Failed to save recording: {err}");
-                    }
-                }
-
-                #[cfg(not(target_arch = "wasm32"))] // Native
-                {
-                    let mut selected_stores = vec![];
-                    for item in self.state.selection_state.selected_items().iter_items() {
-                        use re_viewer_context::Item;
-
-                        match item {
-                            Item::AppId(selected_app_id) => {
-                                for recording in storage_context.bundle.recordings() {
-                                    if recording.application_id() == selected_app_id {
-                                        selected_stores.push(recording.store_id().clone());
-                                    }
-                                }
-                            }
-                            Item::StoreId(store_id) => {
-                                selected_stores.push(store_id.clone());
-                            }
-                            _ => {}
-                        }
-                    }
-
-                    let selected_stores = selected_stores
-                        .iter()
-                        .filter_map(|store_id| storage_context.bundle.get(store_id))
-                        .collect_vec();
-
-                    if selected_stores.is_empty() {
-                        if let Err(err) = save_active_recording(self, store_context) {
-                            re_log::error!("Failed to save recording: {err}");
-                        }
-                    } else if selected_stores.len() == 1 {
-                        // Common case: saving a single recording.
-                        // In this case we want the user to be able to pick a file name (not just a folder):
-                        if let Err(err) = save_recording(self, selected_stores[0], None) {
-                            re_log::error!("Failed to save recording: {err}");
-                        }
-                    } else {
-                        // Save all selected recordings to a folder:
-                        if let Some(folder) = rfd::FileDialog::new()
-                            .set_title("Save recordings to folder")
-                            .pick_folder()
-                        {
-                            self.save_many_recordings(&selected_stores, &folder);
-                        } else {
-                            re_log::info!("No folder selected - recordings not saved.");
-                        }
-                    }
-                }
-            }
-            UICommand::SaveRecordingSelection => {
-                if let Err(err) = save_active_recording(self, store_context) {
-                    re_log::error!("Failed to save recording: {err}");
-                }
-            }
-
-            UICommand::SaveBlueprint => {
-                if let Err(err) = save_blueprint(self, store_context) {
-                    re_log::error!("Failed to save blueprint: {err}");
-                }
-            }
-
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::Open => {
                 use re_data_source::LogDataSource;
@@ -912,13 +883,6 @@ impl App {
                 self.state.open_url_modal.open();
             }
 
-            UICommand::CloseCurrentRecording => {
-                let cur_rec = store_context.map(|ctx| ctx.recording.store_id());
-                if let Some(cur_rec) = cur_rec {
-                    self.command_sender
-                        .send_system(SystemCommand::CloseRecordingOrTable(cur_rec.clone().into()));
-                }
-            }
             UICommand::CloseAllEntries => {
                 self.command_sender
                     .send_system(SystemCommand::CloseAllEntries);
@@ -962,21 +926,6 @@ impl App {
                 }
             }
 
-            UICommand::Undo => {
-                if let Some(store_context) = store_context {
-                    let blueprint_id = store_context.blueprint.store_id().clone();
-                    self.command_sender
-                        .send_system(SystemCommand::UndoBlueprint { blueprint_id });
-                }
-            }
-            UICommand::Redo => {
-                if let Some(store_context) = store_context {
-                    let blueprint_id = store_context.blueprint.store_id().clone();
-                    self.command_sender
-                        .send_system(SystemCommand::RedoBlueprint { blueprint_id });
-                }
-            }
-
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::Quit => {
                 egui_ctx.send_viewport_cmd(egui::ViewportCommand::Close);
@@ -1002,15 +951,6 @@ impl App {
             }
 
             UICommand::ResetViewer => self.command_sender.send_system(SystemCommand::ResetViewer),
-            UICommand::ClearActiveBlueprint => {
-                self.command_sender
-                    .send_system(SystemCommand::ClearActiveBlueprint);
-            }
-            UICommand::ClearActiveBlueprintAndEnableHeuristics => {
-                self.command_sender
-                    .send_system(SystemCommand::ClearActiveBlueprintAndEnableHeuristics);
-            }
-
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::OpenProfiler => {
                 self.profiler.start();
@@ -1049,27 +989,6 @@ impl App {
                     app_blueprint.toggle_selection_panel(&self.command_sender);
                 }
             }
-            UICommand::ToggleTimePanel => app_blueprint.toggle_time_panel(&self.command_sender),
-
-            UICommand::ToggleChunkStoreBrowser => match self.state.navigation.current() {
-                Route::ChunkStoreBrowser { return_route, .. } => {
-                    self.state.navigation.replace((**return_route).clone());
-                }
-
-                current => {
-                    self.state.navigation.replace(Route::ChunkStoreBrowser {
-                        store_id: current.recording_id().cloned(),
-                        selected_chunk: None,
-                        return_route: Box::new(current.clone()),
-                    });
-                }
-            },
-
-            #[cfg(debug_assertions)]
-            UICommand::ToggleBlueprintInspectionPanel => {
-                self.app_options_mut().inspect_blueprint_timeline ^= true;
-            }
-
             #[cfg(debug_assertions)]
             UICommand::ToggleEguiDebugPanel => {
                 self.egui_debug_panel_open ^= true;
@@ -1108,159 +1027,10 @@ impl App {
                 self.cmd_palette.toggle();
             }
 
-            UICommand::PlaybackTogglePlayPause => {
-                if let Some(store_id) = route.recording_id() {
-                    self.command_sender
-                        .send_system(SystemCommand::TimeControlCommands {
-                            store_id: store_id.clone(),
-                            time_commands: vec![TimeControlCommand::TogglePlayPause],
-                        });
-                }
-            }
-            UICommand::PlaybackFollow => {
-                if let Some(store_id) = route.recording_id() {
-                    self.command_sender
-                        .send_system(SystemCommand::TimeControlCommands {
-                            store_id: store_id.clone(),
-                            time_commands: vec![TimeControlCommand::SetPlayState(
-                                PlayState::Following,
-                            )],
-                        });
-                }
-            }
-            UICommand::PlaybackStepBack => {
-                if let Some(store_id) = route.recording_id() {
-                    self.command_sender
-                        .send_system(SystemCommand::TimeControlCommands {
-                            store_id: store_id.clone(),
-                            time_commands: vec![TimeControlCommand::StepTimeBack],
-                        });
-                }
-            }
-            UICommand::PlaybackStepForward => {
-                if let Some(store_id) = route.recording_id() {
-                    self.command_sender
-                        .send_system(SystemCommand::TimeControlCommands {
-                            store_id: store_id.clone(),
-                            time_commands: vec![TimeControlCommand::StepTimeForward],
-                        });
-                }
-            }
-            UICommand::PlaybackBack => {
-                if let Some(store_id) = route.recording_id() {
-                    self.command_sender
-                        .send_system(SystemCommand::TimeControlCommands {
-                            store_id: store_id.clone(),
-                            time_commands: vec![TimeControlCommand::Move {
-                                direction: MoveDirection::Back,
-                                speed: MoveSpeed::Normal,
-                            }],
-                        });
-                }
-            }
-            UICommand::PlaybackForward => {
-                if let Some(store_id) = route.recording_id() {
-                    self.command_sender
-                        .send_system(SystemCommand::TimeControlCommands {
-                            store_id: store_id.clone(),
-                            time_commands: vec![TimeControlCommand::Move {
-                                direction: MoveDirection::Forward,
-                                speed: MoveSpeed::Normal,
-                            }],
-                        });
-                }
-            }
-            UICommand::PlaybackBackFast => {
-                if let Some(store_id) = route.recording_id() {
-                    self.command_sender
-                        .send_system(SystemCommand::TimeControlCommands {
-                            store_id: store_id.clone(),
-                            time_commands: vec![TimeControlCommand::Move {
-                                direction: MoveDirection::Back,
-                                speed: MoveSpeed::Fast,
-                            }],
-                        });
-                }
-            }
-            UICommand::PlaybackForwardFast => {
-                if let Some(store_id) = route.recording_id() {
-                    self.command_sender
-                        .send_system(SystemCommand::TimeControlCommands {
-                            store_id: store_id.clone(),
-                            time_commands: vec![TimeControlCommand::Move {
-                                direction: MoveDirection::Forward,
-                                speed: MoveSpeed::Fast,
-                            }],
-                        });
-                }
-            }
-            UICommand::PlaybackBeginning => {
-                if let Some(store_id) = route.recording_id() {
-                    self.command_sender
-                        .send_system(SystemCommand::TimeControlCommands {
-                            store_id: store_id.clone(),
-                            time_commands: vec![TimeControlCommand::MoveBeginning],
-                        });
-                }
-            }
-            UICommand::PlaybackEnd => {
-                if let Some(store_id) = route.recording_id() {
-                    self.command_sender
-                        .send_system(SystemCommand::TimeControlCommands {
-                            store_id: store_id.clone(),
-                            time_commands: vec![TimeControlCommand::MoveEnd],
-                        });
-                }
-            }
-            UICommand::PlaybackRestart => {
-                if let Some(store_id) = route.recording_id() {
-                    self.command_sender
-                        .send_system(SystemCommand::TimeControlCommands {
-                            store_id: store_id.clone(),
-                            time_commands: vec![TimeControlCommand::Restart],
-                        });
-                }
-            }
-
-            UICommand::PlaybackSpeed(speed) => {
-                if let Some(store_id) = route.recording_id() {
-                    self.command_sender
-                        .send_system(SystemCommand::TimeControlCommands {
-                            store_id: store_id.clone(),
-                            time_commands: vec![TimeControlCommand::SetSpeed(speed.0.0)],
-                        });
-                }
-            }
-
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::ScreenshotWholeApp => {
                 self.screenshotter.request_screenshot(egui_ctx);
             }
-            #[cfg(not(target_arch = "wasm32"))]
-            UICommand::PrintChunkStore => {
-                if let Some(ctx) = store_context {
-                    let text = format!("{}", ctx.recording.storage_engine().store());
-                    egui_ctx.copy_text(text.clone());
-                    println!("{text}");
-                }
-            }
-            #[cfg(not(target_arch = "wasm32"))]
-            UICommand::PrintBlueprintStore => {
-                if let Some(ctx) = store_context {
-                    let text = format!("{}", ctx.blueprint.storage_engine().store());
-                    egui_ctx.copy_text(text.clone());
-                    println!("{text}");
-                }
-            }
-            #[cfg(not(target_arch = "wasm32"))]
-            UICommand::PrintPrimaryCache => {
-                if let Some(ctx) = store_context {
-                    let text = format!("{:?}", ctx.recording.storage_engine().cache());
-                    egui_ctx.copy_text(text.clone());
-                    println!("{text}");
-                }
-            }
-
             #[cfg(debug_assertions)]
             UICommand::ResetEguiMemory => {
                 egui_ctx.memory_mut(|mem| *mem = Default::default());
@@ -1340,6 +1110,234 @@ impl App {
 
             UICommand::AddRedapServer => {
                 self.state.redap_servers.open_add_server_modal();
+            }
+        }
+    }
+
+    pub(super) fn run_pending_recording_commands(
+        &mut self,
+        egui_ctx: &egui::Context,
+        app_blueprint: &AppBlueprint<'_>,
+        storage_context: &StorageContext<'_>,
+        store_context: Option<&ActiveStoreContext<'_>>,
+    ) {
+        re_tracing::profile_function!();
+        while let Some(cmd) = self.command_receiver.recv_recording() {
+            self.run_recording_command(
+                egui_ctx,
+                app_blueprint,
+                storage_context,
+                store_context,
+                cmd,
+            );
+        }
+    }
+
+    #[allow(clippy::allow_attributes, unused_variables)] // some parameters are only used on some platforms
+    fn run_recording_command(
+        &mut self,
+        egui_ctx: &egui::Context,
+        app_blueprint: &AppBlueprint<'_>,
+        storage_context: &StorageContext<'_>,
+        store_context: Option<&ActiveStoreContext<'_>>,
+        cmd: RecordingCommand,
+    ) {
+        use re_ui::RecordingCommandKind;
+
+        let RecordingCommand { recording_id, kind } = cmd;
+
+        match kind {
+            RecordingCommandKind::Save => {
+                #[cfg(target_arch = "wasm32")] // Web
+                {
+                    if let Err(err) = save_active_recording(self, store_context) {
+                        re_log::error!("Failed to save recording: {err}");
+                    }
+                }
+
+                #[cfg(not(target_arch = "wasm32"))] // Native
+                {
+                    let mut selected_stores = vec![];
+                    for item in self.state.selection_state.selected_items().iter_items() {
+                        use re_viewer_context::Item;
+
+                        match item {
+                            Item::AppId(selected_app_id) => {
+                                for recording in storage_context.bundle.recordings() {
+                                    if recording.application_id() == selected_app_id {
+                                        selected_stores.push(recording.store_id().clone());
+                                    }
+                                }
+                            }
+                            Item::StoreId(store_id) => {
+                                selected_stores.push(store_id.clone());
+                            }
+                            _ => {}
+                        }
+                    }
+
+                    let selected_stores = selected_stores
+                        .iter()
+                        .filter_map(|store_id| storage_context.bundle.get(store_id))
+                        .collect_vec();
+
+                    if selected_stores.is_empty() {
+                        if let Err(err) = save_active_recording(self, store_context) {
+                            re_log::error!("Failed to save recording: {err}");
+                        }
+                    } else if selected_stores.len() == 1 {
+                        // Common case: saving a single recording.
+                        // In this case we want the user to be able to pick a file name (not just a folder):
+                        if let Err(err) = save_recording(self, selected_stores[0], None) {
+                            re_log::error!("Failed to save recording: {err}");
+                        }
+                    } else {
+                        // Save all selected recordings to a folder:
+                        if let Some(folder) = rfd::FileDialog::new()
+                            .set_title("Save recordings to folder")
+                            .pick_folder()
+                        {
+                            self.save_many_recordings(&selected_stores, &folder);
+                        } else {
+                            re_log::info!("No folder selected - recordings not saved.");
+                        }
+                    }
+                }
+            }
+            RecordingCommandKind::SaveTimeSelection => {
+                if let Err(err) = save_active_recording(self, store_context) {
+                    re_log::error!("Failed to save recording: {err}");
+                }
+            }
+
+            RecordingCommandKind::SaveBlueprint => {
+                if let Err(err) = save_blueprint(self, store_context) {
+                    re_log::error!("Failed to save blueprint: {err}");
+                }
+            }
+
+            RecordingCommandKind::Close => {
+                self.command_sender
+                    .send_system(SystemCommand::CloseRecordingOrTable(recording_id.into()));
+            }
+            RecordingCommandKind::Undo => {
+                if let Some(store_context) = store_context {
+                    let blueprint_id = store_context.blueprint.store_id().clone();
+                    self.command_sender
+                        .send_system(SystemCommand::UndoBlueprint { blueprint_id });
+                }
+            }
+            RecordingCommandKind::Redo => {
+                if let Some(store_context) = store_context {
+                    let blueprint_id = store_context.blueprint.store_id().clone();
+                    self.command_sender
+                        .send_system(SystemCommand::RedoBlueprint { blueprint_id });
+                }
+            }
+
+            RecordingCommandKind::AddViewOrContainer => {
+                if let Some(ctx) = store_context {
+                    let blueprint_query =
+                        self.state.blueprint_query_for_viewer(Some(ctx.blueprint));
+                    let viewport = re_viewport_blueprint::ViewportBlueprint::from_db(
+                        ctx.blueprint,
+                        &blueprint_query,
+                    );
+
+                    // If a single container is selected, we use it as target.
+                    // Otherwise, we target the root container.
+                    let target_container_id =
+                        if let Some(re_viewer_context::Item::Container(container_id)) =
+                            self.state.selection_state.selected_items().single_item()
+                        {
+                            *container_id
+                        } else {
+                            viewport.root_container
+                        };
+
+                    re_viewport_blueprint::ui::show_add_view_or_container_modal(
+                        target_container_id,
+                    );
+                }
+            }
+            RecordingCommandKind::ClearActiveBlueprint => {
+                self.command_sender
+                    .send_system(SystemCommand::ClearActiveBlueprint);
+            }
+            RecordingCommandKind::ClearActiveBlueprintAndEnableHeuristics => {
+                self.command_sender
+                    .send_system(SystemCommand::ClearActiveBlueprintAndEnableHeuristics);
+            }
+
+            RecordingCommandKind::ToggleTimePanel => {
+                app_blueprint.toggle_time_panel(&self.command_sender);
+            }
+
+            RecordingCommandKind::ToggleChunkStoreBrowser => {
+                match self.state.navigation.current() {
+                    Route::ChunkStoreBrowser { return_route, .. } => {
+                        self.state.navigation.replace((**return_route).clone());
+                    }
+
+                    current => {
+                        self.state.navigation.replace(Route::ChunkStoreBrowser {
+                            store_id: current.recording_id().cloned(),
+                            selected_chunk: None,
+                            return_route: Box::new(current.clone()),
+                        });
+                    }
+                }
+            }
+
+            #[cfg(debug_assertions)]
+            RecordingCommandKind::ToggleBlueprintInspectionPanel => {
+                self.app_options_mut().inspect_blueprint_timeline ^= true;
+            }
+
+            RecordingCommandKind::PlaybackTogglePlayPause
+            | RecordingCommandKind::PlaybackFollow
+            | RecordingCommandKind::PlaybackStepBack
+            | RecordingCommandKind::PlaybackStepForward
+            | RecordingCommandKind::PlaybackBack
+            | RecordingCommandKind::PlaybackForward
+            | RecordingCommandKind::PlaybackBackFast
+            | RecordingCommandKind::PlaybackForwardFast
+            | RecordingCommandKind::PlaybackBeginning
+            | RecordingCommandKind::PlaybackEnd
+            | RecordingCommandKind::PlaybackRestart
+            | RecordingCommandKind::PlaybackSpeed(_) => {
+                if let Some(time_command) = playback_time_command(kind) {
+                    self.command_sender
+                        .send_system(SystemCommand::TimeControlCommands {
+                            store_id: recording_id,
+                            time_commands: vec![time_command],
+                        });
+                }
+            }
+
+            #[cfg(not(target_arch = "wasm32"))]
+            RecordingCommandKind::PrintChunkStore => {
+                if let Some(ctx) = store_context {
+                    let text = format!("{}", ctx.recording.storage_engine().store());
+                    egui_ctx.copy_text(text.clone());
+                    println!("{text}");
+                }
+            }
+            #[cfg(not(target_arch = "wasm32"))]
+            RecordingCommandKind::PrintBlueprintStore => {
+                if let Some(ctx) = store_context {
+                    let text = format!("{}", ctx.blueprint.storage_engine().store());
+                    egui_ctx.copy_text(text.clone());
+                    println!("{text}");
+                }
+            }
+            #[cfg(not(target_arch = "wasm32"))]
+            RecordingCommandKind::PrintPrimaryCache => {
+                if let Some(ctx) = store_context {
+                    let text = format!("{:?}", ctx.recording.storage_engine().cache());
+                    egui_ctx.copy_text(text.clone());
+                    println!("{text}");
+                }
             }
         }
     }
@@ -1755,6 +1753,42 @@ async fn async_open_rrd_dialog() -> Vec<re_data_source::FileContents> {
     }
 
     file_contents
+}
+
+/// The time-control command a playback [`re_ui::RecordingCommandKind`] maps to.
+///
+/// Returns `None` for non-playback kinds.
+fn playback_time_command(kind: re_ui::RecordingCommandKind) -> Option<TimeControlCommand> {
+    use re_ui::RecordingCommandKind;
+    Some(match kind {
+        RecordingCommandKind::PlaybackTogglePlayPause => TimeControlCommand::TogglePlayPause,
+        RecordingCommandKind::PlaybackFollow => {
+            TimeControlCommand::SetPlayState(PlayState::Following)
+        }
+        RecordingCommandKind::PlaybackStepBack => TimeControlCommand::StepTimeBack,
+        RecordingCommandKind::PlaybackStepForward => TimeControlCommand::StepTimeForward,
+        RecordingCommandKind::PlaybackBack => TimeControlCommand::Move {
+            direction: MoveDirection::Back,
+            speed: MoveSpeed::Normal,
+        },
+        RecordingCommandKind::PlaybackForward => TimeControlCommand::Move {
+            direction: MoveDirection::Forward,
+            speed: MoveSpeed::Normal,
+        },
+        RecordingCommandKind::PlaybackBackFast => TimeControlCommand::Move {
+            direction: MoveDirection::Back,
+            speed: MoveSpeed::Fast,
+        },
+        RecordingCommandKind::PlaybackForwardFast => TimeControlCommand::Move {
+            direction: MoveDirection::Forward,
+            speed: MoveSpeed::Fast,
+        },
+        RecordingCommandKind::PlaybackBeginning => TimeControlCommand::MoveBeginning,
+        RecordingCommandKind::PlaybackEnd => TimeControlCommand::MoveEnd,
+        RecordingCommandKind::PlaybackRestart => TimeControlCommand::Restart,
+        RecordingCommandKind::PlaybackSpeed(speed) => TimeControlCommand::SetSpeed(speed.0.0),
+        _ => return None,
+    })
 }
 
 fn save_active_recording(

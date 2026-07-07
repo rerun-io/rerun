@@ -1054,6 +1054,9 @@ mod tests {
             "",
             "   ",
             "aaaaaaaaaaa",
+            // The filesystem root exists, but should not be treated as an openable path
+            // (a leading `/` is how the user searches for an entity path in the command palette):
+            "/",
         ];
 
         for url in invalid_urls {

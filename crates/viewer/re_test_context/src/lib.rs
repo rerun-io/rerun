@@ -928,6 +928,8 @@ impl TestContext {
                 | SystemCommand::RefreshRedapServer(_)
                 | SystemCommand::RemoveRedapServer(_)
                 | SystemCommand::EditRedapServerModal { .. }
+                | SystemCommand::RedapServer(_)
+                | SystemCommand::Table(_)
                 | SystemCommand::UndoBlueprint { .. }
                 | SystemCommand::RedoBlueprint { .. }
                 | SystemCommand::CloseAllEntries

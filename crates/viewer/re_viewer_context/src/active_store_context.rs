@@ -46,7 +46,14 @@ impl ActiveStoreContext<'_> {
     }
 
     pub fn recording_store_id(&self) -> &StoreId {
+        re_log::debug_assert!(self.recording.store_id() != &StoreId::empty_recording());
         self.recording.store_id()
+    }
+
+    /// The active recording
+    pub fn recording(&self) -> &EntityDb {
+        re_log::debug_assert!(self.recording.store_id() != &StoreId::empty_recording());
+        self.recording
     }
 
     /// Currently selected section of time, if any.

@@ -9,7 +9,9 @@
 use re_integration_test::HarnessExt as _;
 use re_sdk::TimePoint;
 use re_sdk::log::RowId;
-use re_viewer::external::re_ui::{UICommand, UICommandSender as _};
+use re_viewer::external::re_ui::{
+    RecordingCommand, RecordingCommandKind, RecordingCommandSender as _,
+};
 use re_viewer::external::re_viewer_context::ViewClass as _;
 use re_viewer::external::{re_sdk_types, re_view_spatial};
 use re_viewer::viewer_test_utils::{self, HarnessOptions};
@@ -80,13 +82,25 @@ fn drag_rotate_view(
 
 /// Send undo command (Cmd/Ctrl+Z).
 fn send_undo(harness: &mut egui_kittest::Harness<'_, re_viewer::App>) {
-    harness.state().command_sender.send_ui(UICommand::Undo);
-    harness.run();
+    send_recording_command(harness, RecordingCommandKind::Undo);
 }
 
 /// Send redo command (Cmd/Ctrl+Shift+Z).
 fn send_redo(harness: &mut egui_kittest::Harness<'_, re_viewer::App>) {
-    harness.state().command_sender.send_ui(UICommand::Redo);
+    send_recording_command(harness, RecordingCommandKind::Redo);
+}
+
+fn send_recording_command(
+    harness: &mut egui_kittest::Harness<'_, re_viewer::App>,
+    kind: RecordingCommandKind,
+) {
+    let app = harness.state();
+    let recording_id = app
+        .active_recording_id()
+        .expect("expected an active recording")
+        .clone();
+    app.command_sender
+        .send_recording_command(RecordingCommand { recording_id, kind });
     harness.run();
 }
 
