@@ -4,8 +4,10 @@ use re_test_context::TestContext;
 use re_test_context::external::egui_kittest::SnapshotResults;
 use re_test_viewport::TestContextExt as _;
 use re_view_state_timeline::StateTimelineView;
-use re_viewer_context::{TimeControlCommand, ViewClass as _, ViewId};
-use re_viewport_blueprint::ViewBlueprint;
+use re_viewer_context::{
+    BlueprintContext as _, GLOBAL_VIEW_ID, TimeControlCommand, ViewClass as _, ViewId,
+};
+use re_viewport_blueprint::{ViewBlueprint, ViewProperty};
 
 fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
     test_context.setup_viewport_blueprint(|_ctx, blueprint| {
@@ -767,4 +769,114 @@ fn test_state_timeline_edge_cases() {
             None,
         )
         .unwrap();
+}
+
+/// When the time axis is linked to global, the state timeline view must drive its pan/zoom
+/// window from the shared global blueprint view range — and write pan/zoom back to it,
+/// so it stays in sync with other plots (e.g. time series views) linked to the same range.
+#[test]
+fn test_state_timeline_link_to_global() {
+    use re_sdk_types::blueprint;
+
+    let mut test_context = TestContext::new_with_view_class::<StateTimelineView>();
+
+    let timeline = Timeline::new_sequence("tick");
+
+    let state_data: Vec<(i64, &str, &str)> = vec![
+        (0, "state/robot_mode", "Idle"),
+        (10, "state/robot_mode", "Moving"),
+        (25, "state/robot_mode", "Working"),
+        (40, "state/robot_mode", "Idle"),
+    ];
+    for (tick, entity, state) in &state_data {
+        let timepoint = TimePoint::from([(timeline, *tick)]);
+        test_context.log_entity(*entity, |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                timepoint,
+                &re_sdk_types::archetypes::StateChange::new().with_state(*state),
+            )
+        });
+    }
+
+    test_context.set_active_timeline(*timeline.name());
+
+    // Create the view and link its time axis to global.
+    let view_id = test_context.setup_viewport_blueprint(|ctx, blueprint_ctx| {
+        let view = ViewBlueprint::new_with_root_wildcard(StateTimelineView::identifier());
+        let time_axis = ViewProperty::from_archetype::<blueprint::archetypes::TimeAxis>(
+            ctx.blueprint_db(),
+            ctx.blueprint_query,
+            view.id,
+        );
+        time_axis.save_blueprint_component(
+            ctx,
+            &blueprint::archetypes::TimeAxis::descriptor_link(),
+            &blueprint::components::LinkAxis::LinkToGlobal,
+        );
+        blueprint_ctx.add_view_at_root(view)
+    });
+
+    let read_global_range = |test_context: &TestContext| {
+        test_context.with_blueprint_ctx(|ctx, _store_hub| {
+            ViewProperty::from_archetype::<blueprint::archetypes::TimeAxis>(
+                ctx.current_blueprint(),
+                ctx.blueprint_query(),
+                GLOBAL_VIEW_ID,
+            )
+            .component_or_empty::<blueprint::components::TimeRange>(
+                blueprint::archetypes::TimeAxis::descriptor_view_range().component,
+            )
+            .expect("failed to read global time range")
+        })
+    };
+
+    // The global range starts out unset (the view falls back to the full timeline range).
+    assert!(
+        read_global_range(&test_context).is_none(),
+        "global view range should be unset before any interaction"
+    );
+
+    let size = egui::vec2(800.0, 150.0);
+    let mut harness = test_context
+        .setup_kittest_for_rendering_3d(size)
+        .build_ui(|ui| {
+            test_context.run_with_single_view(ui, view_id);
+        });
+
+    // Let the linked view settle (reads the global range, falling back to the full range).
+    harness.run();
+
+    // Pan the view; in linked mode this must persist the new window to the global range.
+    // Smooth scrolling keeps the ui repainting, so step a fixed number of frames rather than
+    // `run()` (which bails out once it sees continuous repaints).
+    let center = egui::pos2(size.x * 0.5, size.y * 0.5);
+    harness.hover_at(center);
+    for _ in 0..4 {
+        harness.event(egui::Event::MouseWheel {
+            unit: egui::MouseWheelUnit::Point,
+            delta: egui::vec2(-200.0, 0.0),
+            phase: egui::TouchPhase::Move,
+            modifiers: egui::Modifiers::NONE,
+        });
+        harness.step();
+    }
+    // Let the scroll momentum decay so the view (and the written range) settles.
+    for _ in 0..10 {
+        harness.step();
+    }
+
+    // The pan should have written an explicit, finite range to the global view.
+    let global_range = read_global_range(&test_context)
+        .expect("panning a linked view must write the global view range");
+    assert!(
+        matches!(
+            global_range.start,
+            re_sdk_types::datatypes::TimeRangeBoundary::Absolute(_)
+        ) && matches!(
+            global_range.end,
+            re_sdk_types::datatypes::TimeRangeBoundary::Absolute(_)
+        ),
+        "linked pan should write an absolute range, got {global_range:?}"
+    );
 }

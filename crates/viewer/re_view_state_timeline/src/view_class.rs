@@ -2,14 +2,17 @@ use re_log_types::{
     AbsoluteTimeRange, ComponentPath, EntityPath, TimeCell, TimeInt, TimeReal, TimeType,
     TimelineName, TimestampFormat,
 };
+use re_sdk_types::blueprint::archetypes::TimeAxis;
+use re_sdk_types::blueprint::components::LinkAxis;
 use re_time_ruler::TimeRangesUi;
-use re_ui::{Help, IconText, MouseButtonText, UiExt as _, icons};
+use re_ui::{Help, IconText, MouseButtonText, UiExt as _, icons, list_item};
 use re_viewer_context::{
-    DataResultInteractionAddress, DragAndDropFeedback, IdentifiedViewSystem as _, Item,
-    TimeControlCommand, TimeView, ViewClass, ViewClassLayoutPriority, ViewClassRegistryError,
-    ViewId, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
-    ViewerContext,
+    DataQueryResult, DataResultInteractionAddress, DragAndDropFeedback, GLOBAL_VIEW_ID,
+    IdentifiedViewSystem as _, Item, TimeControlCommand, TimeView, ViewClass, ViewClassExt as _,
+    ViewClassLayoutPriority, ViewClassRegistryError, ViewContext, ViewId, ViewQuery,
+    ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewerContext,
 };
+use re_viewport_blueprint::ViewProperty;
 
 use crate::data::{StateLane, StateLanePhase, StateLanesData};
 
@@ -107,6 +110,26 @@ impl ViewState for StateTimelineViewState {
 #[derive(Default)]
 pub struct StateTimelineView;
 
+impl StateTimelineView {
+    /// Read the configured time-axis link mode for this view.
+    fn time_axis_link(
+        &self,
+        ctx: &ViewerContext<'_>,
+        state: &dyn ViewState,
+        view_id: ViewId,
+        space_origin: &EntityPath,
+    ) -> Result<LinkAxis, ViewSystemExecutionError> {
+        let time_axis = ViewProperty::from_archetype::<TimeAxis>(
+            ctx.blueprint_db(),
+            ctx.blueprint_query,
+            view_id,
+        );
+        let view_ctx = self.view_context(ctx, view_id, state, space_origin);
+        Ok(time_axis
+            .component_or_fallback::<LinkAxis>(&view_ctx, TimeAxis::descriptor_link().component)?)
+    }
+}
+
 impl ViewClass for StateTimelineView {
     fn identifier() -> re_sdk_types::ViewClassIdentifier {
         "StateTimeline".into()
@@ -185,13 +208,71 @@ impl ViewClass for StateTimelineView {
 
     fn selection_ui(
         &self,
-        _ctx: &ViewerContext<'_>,
-        _ui: &mut egui::Ui,
-        _state: &mut dyn ViewState,
-        _space_origin: &EntityPath,
-        _view_id: ViewId,
+        viewer_ctx: &ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        state: &mut dyn ViewState,
+        space_origin: &EntityPath,
+        view_id: ViewId,
     ) -> Result<(), ViewSystemExecutionError> {
-        Ok(())
+        list_item::list_item_scope(ui, "state_timeline_selection_ui", |ui| {
+            let ctx = self.view_context(viewer_ctx, view_id, state, space_origin);
+            let time_axis = ViewProperty::from_archetype::<TimeAxis>(
+                ctx.blueprint_db(),
+                ctx.blueprint_query(),
+                view_id,
+            );
+            let link = time_axis
+                .component_or_fallback::<LinkAxis>(&ctx, TimeAxis::descriptor_link().component)?;
+
+            // Only the link mode is editable per-view. The view range is driven by pan/zoom.
+            let query_ctx = time_axis.query_context(&ctx);
+            if let Some(field) = ctx
+                .viewer_ctx
+                .reflection()
+                .field_reflection(&TimeAxis::descriptor_link())
+            {
+                re_view::view_property_component_ui(
+                    &query_ctx,
+                    ui,
+                    &time_axis,
+                    field.display_name,
+                    field,
+                );
+            }
+
+            // When linked to global, expose the shared view range (stored on the global view).
+            if link == LinkAxis::LinkToGlobal
+                && let Some(field) = ctx
+                    .viewer_ctx
+                    .reflection()
+                    .field_reflection(&TimeAxis::descriptor_view_range())
+            {
+                let global_time_axis = ViewProperty::from_archetype::<TimeAxis>(
+                    ctx.blueprint_db(),
+                    ctx.blueprint_query(),
+                    GLOBAL_VIEW_ID,
+                );
+                let global_ctx = ViewContext {
+                    viewer_ctx,
+                    view_id: GLOBAL_VIEW_ID,
+                    view_class_identifier: Self::identifier(),
+                    space_origin,
+                    view_state: state,
+                    query_result: &DataQueryResult::default(),
+                };
+                let global_query_ctx = global_time_axis.query_context(&global_ctx);
+                re_view::view_property_component_ui(
+                    &global_query_ctx,
+                    ui,
+                    &global_time_axis,
+                    field.display_name,
+                    field,
+                );
+            }
+
+            Ok::<(), ViewSystemExecutionError>(())
+        })
+        .inner
     }
 
     /// Accept drops of components onto the state timeline view. For each dropped component, a new
@@ -254,26 +335,48 @@ impl ViewClass for StateTimelineView {
         }
 
         // Compute data time range.
-        let timeline_end: Option<i64> = ctx
-            .recording()
-            .time_range_for(&query.timeline)
-            .map(|r| r.max.as_i64());
+        let timeline_range = ctx.recording().time_range_for(&query.timeline);
+        let timeline_end: Option<i64> = timeline_range.map(|r| r.max.as_i64());
         let (data_min, data_max) = data_time_range(&all_lanes, timeline_end);
+
+        // How is the time (X) axis linked? When linked to global, the pan/zoom window is
+        // shared with all other plots (e.g. time series views) via the global blueprint view,
+        // rather than kept local to this view.
+        let link = self.time_axis_link(ctx, state, query.view_id, query.space_origin)?;
+        let global_time_axis = (link == LinkAxis::LinkToGlobal).then(|| {
+            ViewProperty::from_archetype::<TimeAxis>(
+                ctx.blueprint_db(),
+                ctx.blueprint_query,
+                GLOBAL_VIEW_ID,
+            )
+        });
 
         // The last phase has no real end; extend it past the data end by `overhang`.
         let data_span = (data_max - data_min).max(1.0);
         let overhang = data_span * LAST_PHASE_OVERHANG_FRACTION;
         let open_end_time: Option<f64> = timeline_end.map(|end| end as f64 + overhang);
 
-        // Auto-fit the first time we render this timeline.
-        let mut time_view = *state.time_views.entry(query.timeline).or_insert_with(|| {
-            let min = data_min - data_span * 0.05;
-            let max = data_max + overhang + data_span * 0.05;
-            TimeView {
-                min: TimeReal::from(min),
-                time_spanned: max - min,
-            }
-        });
+        // When linked to global, derive the pan/zoom window from the shared blueprint view
+        // range. Otherwise auto-fit the first time we render this timeline (stored per-view).
+        let mut time_view = if let Some(global_time_axis) = &global_time_axis {
+            resolve_linked_time_view(
+                global_time_axis,
+                timeline_range,
+                query.latest_at,
+                data_min,
+                data_max,
+            )
+        } else {
+            *state.time_views.entry(query.timeline).or_insert_with(|| {
+                let min = data_min - data_span * 0.05;
+                let max = data_max + overhang + data_span * 0.05;
+                TimeView {
+                    min: TimeReal::from(min),
+                    time_spanned: max - min,
+                }
+            })
+        };
+        let original_time_view = time_view;
 
         // Allocate the full available rect.
         let (rect, response) =
@@ -459,7 +562,25 @@ impl ViewClass for StateTimelineView {
 
         // Double click anywhere in the view to reset zoom.
         // Doesn't reset global time cursor.
-        if response.double_clicked() {
+        if let Some(global_time_axis) = &global_time_axis {
+            // Linked to global: persist pan/zoom to the shared blueprint view range.
+            if response.double_clicked() {
+                global_time_axis.reset_blueprint_component(ctx, TimeAxis::descriptor_view_range());
+                ui.request_repaint();
+            } else if time_view != original_time_view {
+                save_linked_time_view(ctx, global_time_axis, time_view);
+                ui.request_repaint();
+            }
+
+            // Keep the query window in sync with what we drew: the visualizer derives its
+            // `RangeQuery` from `visible_time_range` (i.e. `time_views`). Without this, a view
+            // that rendered independently before being linked would keep querying its stale
+            // local window while drawing the global one, dropping transitions outside it.
+            // Re-query (repaint) whenever that window changes.
+            if state.time_views.insert(query.timeline, time_view) != Some(time_view) {
+                ui.request_repaint();
+            }
+        } else if response.double_clicked() {
             state.time_views.remove(&query.timeline);
             ui.request_repaint();
         } else {
@@ -676,6 +797,72 @@ fn data_time_range(lanes: &[&StateLane], timeline_end: Option<i64>) -> (f64, f64
     } else {
         (min, max)
     }
+}
+
+/// Resolve the pan/zoom window shared via the global blueprint view range.
+///
+/// The range is read without a fallback (none is registered for it in this crate), so an unset or
+/// infinite range resolves to the full timeline range — or the data range when the timeline range
+/// is unknown.
+fn resolve_linked_time_view(
+    global_time_axis: &ViewProperty,
+    timeline_range: Option<AbsoluteTimeRange>,
+    latest_at: TimeInt,
+    data_min: f64,
+    data_max: f64,
+) -> TimeView {
+    let view_range = global_time_axis
+        .component_or_empty::<re_sdk_types::blueprint::components::TimeRange>(
+            TimeAxis::descriptor_view_range().component,
+        )
+        .ok()
+        .flatten()
+        .unwrap_or(re_sdk_types::blueprint::components::TimeRange(
+            re_sdk_types::datatypes::TimeRange::EVERYTHING,
+        ));
+
+    let cursor = re_sdk_types::datatypes::TimeInt(latest_at.as_i64());
+    let min = match view_range.start {
+        re_sdk_types::datatypes::TimeRangeBoundary::Infinite => {
+            timeline_range.map_or(data_min as i64, |r| r.min.as_i64())
+        }
+        _ => view_range.start.start_boundary_time(cursor).0,
+    };
+    let max = match view_range.end {
+        re_sdk_types::datatypes::TimeRangeBoundary::Infinite => {
+            timeline_range.map_or_else(|| data_max.ceil() as i64, |r| r.max.as_i64())
+        }
+        _ => view_range.end.end_boundary_time(cursor).0,
+    };
+    let span = ((max - min) as f64).max(1.0);
+    TimeView {
+        min: TimeReal::from(min as f64),
+        time_spanned: span,
+    }
+}
+
+/// Persist the pan/zoom window to the shared global blueprint view range.
+///
+/// Both endpoints are rounded (rather than floored/ceiled) so the width is preserved: asymmetric
+/// rounding would inflate the range by up to a unit every frame during a continuous pan, feeding
+/// back through [`resolve_linked_time_view`] on the next frame.
+fn save_linked_time_view(
+    ctx: &ViewerContext<'_>,
+    global_time_axis: &ViewProperty,
+    time_view: TimeView,
+) {
+    let start = time_view.min.round();
+    let end = (time_view.min + TimeReal::from(time_view.time_spanned)).round();
+    let new_range =
+        re_sdk_types::blueprint::components::TimeRange(re_sdk_types::datatypes::TimeRange {
+            start: re_sdk_types::datatypes::TimeRangeBoundary::Absolute(
+                re_sdk_types::datatypes::TimeInt(start.as_i64()),
+            ),
+            end: re_sdk_types::datatypes::TimeRangeBoundary::Absolute(
+                re_sdk_types::datatypes::TimeInt(end.as_i64()),
+            ),
+        });
+    global_time_axis.save_blueprint_component(ctx, &TimeAxis::descriptor_view_range(), &new_range);
 }
 
 /// Returns the entity path of the lane whose band contains `pos`, if any.
