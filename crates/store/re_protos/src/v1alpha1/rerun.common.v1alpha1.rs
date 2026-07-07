@@ -233,8 +233,14 @@ pub struct DatasetHandle {
     #[prost(message, optional, tag = "1")]
     pub entry_id: ::core::option::Option<EntryId>,
     /// The kind of dataset this handle refers to.
+    ///
+    /// Deprecated: use `dataset_kind` instead.
+    #[deprecated]
     #[prost(enumeration = "StoreKind", tag = "3")]
     pub store_kind: i32,
+    /// The kind of dataset this handle refers to.
+    #[prost(enumeration = "DatasetKind", tag = "4")]
+    pub dataset_kind: i32,
     /// Path to Dataset backing storage (e.g. s3://bucket/file or file:///path/to/file)
     #[prost(string, optional, tag = "2")]
     pub dataset_url: ::core::option::Option<::prost::alloc::string::String>,
@@ -640,6 +646,42 @@ impl StoreKind {
             "STORE_KIND_UNSPECIFIED" => Some(Self::Unspecified),
             "STORE_KIND_RECORDING" => Some(Self::Recording),
             "STORE_KIND_BLUEPRINT" => Some(Self::Blueprint),
+            _ => None,
+        }
+    }
+}
+/// What type of dataset.
+///
+/// This affects limits on what can be registered to the dataset.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum DatasetKind {
+    /// Always reserve unspecified as default value
+    Unspecified = 0,
+    Recording = 1,
+    Blueprint = 2,
+    Asset = 3,
+}
+impl DatasetKind {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "DATASET_KIND_UNSPECIFIED",
+            Self::Recording => "DATASET_KIND_RECORDING",
+            Self::Blueprint => "DATASET_KIND_BLUEPRINT",
+            Self::Asset => "DATASET_KIND_ASSET",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "DATASET_KIND_UNSPECIFIED" => Some(Self::Unspecified),
+            "DATASET_KIND_RECORDING" => Some(Self::Recording),
+            "DATASET_KIND_BLUEPRINT" => Some(Self::Blueprint),
+            "DATASET_KIND_ASSET" => Some(Self::Asset),
             _ => None,
         }
     }

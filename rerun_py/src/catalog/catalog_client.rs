@@ -187,10 +187,15 @@ impl PyCatalogClientInternal {
                 py,
                 EntryFilter::new().with_entry_kind(EntryKind::BlueprintDataset),
             )?);
+            entry_details.extend(connection.find_entries(
+                py,
+                EntryFilter::new().with_entry_kind(EntryKind::AssetDataset),
+            )?);
         }
 
         entry_details
             .into_iter()
+            .filter(|details| include_hidden || !details.name.is_hidden())
             .map(|details| {
                 let dataset_entry = connection.read_dataset(py, details.id)?;
                 Py::new(

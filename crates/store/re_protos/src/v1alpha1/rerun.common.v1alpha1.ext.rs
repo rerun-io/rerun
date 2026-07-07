@@ -5,7 +5,7 @@ use arrow::error::ArrowError;
 use itertools::Itertools as _;
 
 use re_log_types::external::re_types_core::ComponentDescriptor;
-use re_log_types::{RecordingId, StoreKind, TableId};
+use re_log_types::{RecordingId, TableId};
 
 use crate::{TypeConversionError, invalid_field, missing_field};
 
@@ -157,23 +157,179 @@ impl From<&str> for crate::common::v1alpha1::SegmentId {
     }
 }
 
+// --- DatasetKind ---
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum DatasetKind {
+    Recording,
+    Blueprint,
+    Asset,
+}
+
+impl DatasetKind {
+    pub fn name(&self) -> &str {
+        match self {
+            DatasetKind::Recording => "dataset",
+            DatasetKind::Blueprint => "blueprint dataset",
+            DatasetKind::Asset => "asset dataset",
+        }
+    }
+
+    /// Name of the thing this dataset contains.
+    pub fn contained_name(&self) -> &str {
+        match self {
+            DatasetKind::Recording => "segment",
+            DatasetKind::Blueprint => "blueprint",
+            DatasetKind::Asset => "asset",
+        }
+    }
+
+    pub fn store_kind(self) -> re_log_types::StoreKind {
+        match self {
+            Self::Recording | Self::Asset => re_log_types::StoreKind::Recording,
+            Self::Blueprint => re_log_types::StoreKind::Blueprint,
+        }
+    }
+
+    /// The limits enforced when registering segments into a dataset of this kind.
+    pub fn limits(self) -> DatasetLimits {
+        match self {
+            Self::Recording => DatasetLimits::UNLIMITED,
+
+            // Blueprint datasets aren't expected to have huge segments.
+            //
+            // The size limit of 25MB, comes from a blueprint with 100 empty
+            // views being ~555 KiB. So some good head-room on top of that.
+            Self::Blueprint => {
+                DatasetLimits {
+                    static_chunks_only: false,
+                    max_segment_size_bytes: Some(25 * 1024 * 1024), // 25 MB
+                    max_segment_count: None,
+                }
+            }
+
+            // Asset datasets hold a small set of static blobs shared across a
+            // dataset's segments, so we keep them deliberately small.
+            //
+            // The exact numbers here aren't important, and are there as a starting
+            // point.
+            Self::Asset => DatasetLimits {
+                static_chunks_only: true,
+                max_segment_size_bytes: Some(300 * 1024 * 1024), // 300 MiB
+                max_segment_count: Some(12),
+            },
+        }
+    }
+}
+
+/// Limits enforced when registering segments into a dataset.
+///
+/// Which limits apply depends on the dataset's [`DatasetKind`]; see [`DatasetKind::limits`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DatasetLimits {
+    /// Reject any segment that contains temporal chunks.
+    pub static_chunks_only: bool,
+
+    /// Reject any segment whose total encoded size exceeds this many bytes.
+    ///
+    /// Measured as the sum of each chunk's `chunk_byte_len`, i.e. its IPC byte
+    /// length as stored in the recording. This is the on-disk size, not the
+    /// uncompressed in-memory size.
+    pub max_segment_size_bytes: Option<u64>,
+
+    /// Reject registration once the dataset already holds this many segments.
+    pub max_segment_count: Option<u64>,
+}
+
+impl DatasetLimits {
+    /// No limits: a dataset may hold any number of segments of any size and kind.
+    pub const UNLIMITED: Self = Self {
+        static_chunks_only: false,
+        max_segment_size_bytes: None,
+        max_segment_count: None,
+    };
+}
+
+impl From<DatasetKind> for crate::common::v1alpha1::DatasetKind {
+    fn from(value: DatasetKind) -> Self {
+        match value {
+            DatasetKind::Recording => Self::Recording,
+            DatasetKind::Blueprint => Self::Blueprint,
+            DatasetKind::Asset => Self::Asset,
+        }
+    }
+}
+
+impl From<crate::common::v1alpha1::DatasetKind> for DatasetKind {
+    fn from(value: crate::common::v1alpha1::DatasetKind) -> Self {
+        match value {
+            crate::common::v1alpha1::DatasetKind::Unspecified
+            | crate::common::v1alpha1::DatasetKind::Recording => Self::Recording,
+            crate::common::v1alpha1::DatasetKind::Blueprint => Self::Blueprint,
+            crate::common::v1alpha1::DatasetKind::Asset => Self::Asset,
+        }
+    }
+}
+
+impl From<super::rerun_cloud_v1alpha1::EntryKind> for DatasetKind {
+    fn from(value: super::rerun_cloud_v1alpha1::EntryKind) -> Self {
+        match value {
+            super::rerun_cloud_v1alpha1::EntryKind::BlueprintDataset => DatasetKind::Blueprint,
+            super::rerun_cloud_v1alpha1::EntryKind::AssetDataset => DatasetKind::Asset,
+            super::rerun_cloud_v1alpha1::EntryKind::Unspecified
+            | super::rerun_cloud_v1alpha1::EntryKind::Dataset
+            | super::rerun_cloud_v1alpha1::EntryKind::DatasetView
+            | super::rerun_cloud_v1alpha1::EntryKind::Table
+            | super::rerun_cloud_v1alpha1::EntryKind::TableView => DatasetKind::Recording,
+        }
+    }
+}
+
+impl std::fmt::Display for DatasetKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Recording => f.write_str("Recording"),
+            Self::Blueprint => f.write_str("Blueprint"),
+            Self::Asset => f.write_str("Asset"),
+        }
+    }
+}
+
+impl std::str::FromStr for DatasetKind {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "Recording" => Ok(Self::Recording),
+            "Blueprint" => Ok(Self::Blueprint),
+            "Asset" => Ok(Self::Asset),
+            other => Err(format!("unknown DatasetKind: {other:?}")),
+        }
+    }
+}
+
 // --- DatasetHandle ---
 
 #[derive(Debug, Clone)]
 pub struct DatasetHandle {
     pub id: Option<re_log_types::EntryId>,
-    pub store_kind: StoreKind,
+    pub dataset_kind: DatasetKind,
     pub url: url::Url,
 }
 
 impl DatasetHandle {
     /// Create a new dataset handle
-    pub fn new(url: url::Url, store_kind: StoreKind) -> Self {
+    pub fn new(url: url::Url, dataset_kind: DatasetKind) -> Self {
         Self {
             id: None,
-            store_kind,
+            dataset_kind,
             url,
         }
+    }
+
+    pub fn with_id(mut self, id: re_log_types::EntryId) -> Self {
+        self.id = Some(id);
+        self
     }
 }
 
@@ -181,9 +337,35 @@ impl TryFrom<crate::common::v1alpha1::DatasetHandle> for DatasetHandle {
     type Error = TypeConversionError;
 
     fn try_from(value: crate::common::v1alpha1::DatasetHandle) -> Result<Self, Self::Error> {
+        let dataset_kind = crate::common::v1alpha1::DatasetKind::try_from(value.dataset_kind);
+        // TODO(RR-5123): Remove once new client -> old server isn't needed anymore.
+        #[expect(deprecated)]
+        let store_kind = crate::common::v1alpha1::StoreKind::try_from(value.store_kind);
+
+        let dataset_kind = if let Ok(store_kind) = store_kind
+            && !matches!(store_kind, crate::common::v1alpha1::StoreKind::Unspecified)
+            && matches!(
+                dataset_kind,
+                Ok(crate::common::v1alpha1::DatasetKind::Unspecified) | Err(_)
+            ) {
+            Ok(match store_kind {
+                crate::common::v1alpha1::StoreKind::Unspecified => {
+                    crate::common::v1alpha1::DatasetKind::Unspecified
+                }
+                crate::common::v1alpha1::StoreKind::Recording => {
+                    crate::common::v1alpha1::DatasetKind::Recording
+                }
+                crate::common::v1alpha1::StoreKind::Blueprint => {
+                    crate::common::v1alpha1::DatasetKind::Blueprint
+                }
+            })
+        } else {
+            dataset_kind
+        };
+
         Ok(Self {
             id: value.entry_id.map(|id| id.try_into()).transpose()?,
-            store_kind: crate::common::v1alpha1::StoreKind::try_from(value.store_kind)?.into(),
+            dataset_kind: dataset_kind?.into(),
             url: value
                 .dataset_url
                 .ok_or(missing_field!(
@@ -199,10 +381,16 @@ impl TryFrom<crate::common::v1alpha1::DatasetHandle> for DatasetHandle {
 }
 
 impl From<DatasetHandle> for crate::common::v1alpha1::DatasetHandle {
+    // The deprecated `store_kind` field is still populated for old servers,
+    // see the TODO below.
+    #[allow(deprecated)]
     fn from(value: DatasetHandle) -> Self {
         Self {
             entry_id: value.id.map(Into::into),
-            store_kind: crate::common::v1alpha1::StoreKind::from(value.store_kind) as i32,
+            // TODO(RR-5123): Remove once new client -> old server isn't needed anymore.
+            store_kind: crate::common::v1alpha1::StoreKind::from(value.dataset_kind.store_kind())
+                as i32,
+            dataset_kind: crate::common::v1alpha1::DatasetKind::from(value.dataset_kind) as i32,
             dataset_url: Some(value.url.to_string()),
         }
     }

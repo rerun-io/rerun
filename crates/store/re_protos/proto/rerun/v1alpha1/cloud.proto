@@ -144,6 +144,14 @@ service RerunCloudService {
   // That means it is always semantically valid to concatenate the data from these RRD manifests.
   rpc GetRrdManifest(GetRrdManifestRequest) returns (stream GetRrdManifestResponse) {}
 
+  // Get the assets that apply to this dataset.
+  //
+  // Returns the dataset's asset dataset and the asset segments within it.
+  // The asset segment ids may be spread over multiple responses, at the discretion of the server.
+  //
+  // This endpoint requires the standard dataset headers.
+  rpc GetAssetsForSegment(GetAssetsForSegmentRequest) returns (stream GetAssetsForSegmentResponse) {}
+
   /* Indexing */
 
   // Reserved (removed): the custom-index / vector-search subsystem was removed.
@@ -367,29 +375,14 @@ message DataSource {
   // What kind of data is it (e.g. rrd, mcap, Lance, etc)?
   DataSourceKind typ = 2;
 
-  // ⚠️ UNSTABLE: Is this an asset layer (shared across all segments) or a segment layer (one recording per segment)?
-  // Defaults to LAYER_CLASS_SEGMENT if unspecified.
-  //
-  // TODO(RR-4797): remove unstable-warning
-  LayerClass layer_class = 5;
+  // Removed experimental field.
+  reserved 5;
+  reserved "layer_class";
 }
 
 enum DataSourceKind {
   DATA_SOURCE_KIND_UNSPECIFIED = 0;
   DATA_SOURCE_KIND_RRD = 1;
-}
-
-// ⚠️ UNSTABLE: Describes the class of a dataset layer.
-//
-// TODO(RR-4797): remove unstable-warning.
-enum LayerClass {
-  LAYER_CLASS_UNSPECIFIED = 0;
-
-  // Asset layer: a single source (recording) shared across all segments in the layer.
-  LAYER_CLASS_ASSET = 1;
-
-  // Segment layer: one (or zero) sources (recordings) per segment in the layer.
-  LAYER_CLASS_SEGMENT = 2;
 }
 
 message RegisterWithDatasetRequest {
@@ -508,6 +501,16 @@ message GetRrdManifestRequest {
 
 message GetRrdManifestResponse {
   rerun.log_msg.v1alpha1.RrdManifest rrd_manifest = 1;
+}
+
+message GetAssetsForSegmentRequest {}
+
+message GetAssetsForSegmentResponse {
+  // The asset dataset. Set on every response in the stream.
+  rerun.common.v1alpha1.EntryId assets_entry = 1;
+
+  // The segments of the asset dataset. Concatenate across all responses in the stream.
+  repeated rerun.common.v1alpha1.SegmentId asset_segment_ids = 2;
 }
 
 /* Indexing */
@@ -1044,6 +1047,8 @@ enum EntryKind {
   ENTRY_KIND_TABLE_VIEW = 4;
 
   ENTRY_KIND_BLUEPRINT_DATASET = 5;
+
+  ENTRY_KIND_ASSET_DATASET = 6;
 }
 
 // Minimal info about an Entry for high-level catalog summary
@@ -1078,6 +1083,10 @@ message DatasetDetails {
   // The segment of the blueprint dataset corresponding to the default blueprint for this dataset's
   // segment table (if any).
   optional rerun.common.v1alpha1.SegmentId default_segment_table_blueprint_segment = 6;
+
+  // The asset dataset associated with this dataset (if any).
+  // This association is owned for lifecycle purposes: deleting this dataset also deletes the associated asset dataset.
+  optional rerun.common.v1alpha1.EntryId asset_dataset = 7;
 
   reserved 4;
   reserved "default_blueprint";

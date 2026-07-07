@@ -15,12 +15,14 @@ from typing import TYPE_CHECKING
 
 import pyarrow as pa
 import pytest
+import rerun as rr
 from rerun.catalog import CatalogClient, TableEntry
 from rerun.server import Server
 from syrupy.extensions.amber import AmberSnapshotExtension
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import Callable, Generator, Sequence
+    from pathlib import Path
 
     from rerun.catalog import DatasetEntry
     from syrupy import SnapshotAssertion
@@ -283,6 +285,46 @@ def entry_factory(catalog_client: CatalogClient, request: pytest.FixtureRequest)
     factory = EntryFactory(catalog_client, prefix)
     yield factory
     factory.cleanup()
+
+
+@pytest.fixture(scope="function")
+def recording_factory(tmp_path: Path) -> Callable[[Sequence[str]], list[str]]:
+    def create_recordings(recording_ids: Sequence[str]) -> list[str]:
+        uris = []
+        for i, recording_id in enumerate(recording_ids):
+            rrd_path = tmp_path / f"recording_{i}.rrd"
+            with rr.RecordingStream(f"test_recording_{i}", recording_id=recording_id) as rec:
+                # log_tick is opt-in; enable it for a deterministic index column.
+                rec.set_log_tick_enabled(True)
+                rec.save(rrd_path)
+                rec.log("points", rr.Points2D([[i, i]]))
+                rec.flush()
+            uris.append(rrd_path.absolute().as_uri())
+        return uris
+
+    return create_recordings
+
+
+@pytest.fixture(scope="function")
+def static_recording_factory(tmp_path: Path) -> Callable[[Sequence[str]], list[str]]:
+    """
+    Like `recording_factory`, but logs only static data.
+
+    Asset datasets reject temporal chunks, so assets must be registered from static-only recordings.
+    """
+
+    def create_recordings(recording_ids: Sequence[str]) -> list[str]:
+        uris = []
+        for i, recording_id in enumerate(recording_ids):
+            rrd_path = tmp_path / f"static_recording_{i}.rrd"
+            with rr.RecordingStream(f"test_recording_{i}", recording_id=recording_id) as rec:
+                rec.save(rrd_path)
+                rec.log("points", rr.Points2D([[i, i]]), static=True)
+                rec.flush()
+            uris.append(rrd_path.absolute().as_uri())
+        return uris
+
+    return create_recordings
 
 
 @pytest.fixture(scope="session")

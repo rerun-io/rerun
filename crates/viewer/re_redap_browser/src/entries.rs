@@ -100,9 +100,10 @@ impl Entry {
 
     pub fn icon(&self) -> Icon {
         match &self.details.kind {
-            EntryKind::Dataset | EntryKind::DatasetView | EntryKind::BlueprintDataset => {
-                icons::DATASET
-            }
+            EntryKind::Dataset
+            | EntryKind::DatasetView
+            | EntryKind::BlueprintDataset
+            | EntryKind::AssetDataset => icons::DATASET,
             EntryKind::Table | EntryKind::TableView => icons::TABLE,
             EntryKind::Unspecified => icons::VIEW_UNKNOWN,
         }
@@ -282,7 +283,7 @@ fn fetch_entry_details(
     match &entry.kind {
         // These are often empty datasets, and thus fail.
         // Since we don't need these tables yet, we just skip them for now.
-        EntryKind::BlueprintDataset => None,
+        EntryKind::BlueprintDataset | EntryKind::AssetDataset => None,
         EntryKind::Dataset => Some(Left(Left(
             fetch_dataset_details(client, entry.id, origin, runtime, command_sender)
                 .map_ok(|(dataset, table_provider)| (EntryInner::Dataset(dataset), table_provider))

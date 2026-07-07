@@ -188,6 +188,10 @@ async fn snapshot_entries_table(service: &impl RerunCloudService, snapshot_name:
         r"__bp_[0-9a-fA-F]{32}",
         "__bp_********************************",
     );
+    settings.add_filter(
+        r"__as_[0-9a-fA-F]{32}",
+        "__as_********************************",
+    );
     settings.bind(|| {
         insta::assert_snapshot!(snapshot_name, batch.format_snapshot(false));
     });

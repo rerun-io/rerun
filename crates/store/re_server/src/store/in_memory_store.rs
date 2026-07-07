@@ -17,6 +17,7 @@ use re_protos::cloud::v1alpha1::ext as cloud_ext;
 use re_protos::cloud::v1alpha1::ext::{
     DatasetDetails, EntryDetails, ProviderDetails, TableDetails, TableEntry,
 };
+use re_protos::common::v1alpha1::ext::DatasetKind;
 #[cfg(not(target_arch = "wasm32"))]
 use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
 use re_tuid::Tuid;
@@ -437,7 +438,7 @@ impl InMemoryStore {
         dataset_name: EntryName,
         dataset_id: Option<EntryId>,
     ) -> Result<EntryId, Error> {
-        self.create_dataset_with_kind(dataset_name, dataset_id, StoreKind::Recording)
+        self.create_dataset_with_kind(dataset_name, dataset_id, DatasetKind::Recording)
     }
 
     pub(crate) fn create_blueprint_dataset_for_entry(
@@ -450,11 +451,28 @@ impl InMemoryStore {
         self.create_dataset_impl(
             blueprint_dataset_name,
             blueprint_dataset_id,
-            StoreKind::Blueprint,
+            DatasetKind::Blueprint,
             None,
         )?;
 
         Ok(blueprint_dataset_id)
+    }
+
+    pub(crate) fn create_asset_dataset_for_entry(
+        &mut self,
+        entry_id: EntryId,
+    ) -> Result<EntryId, Error> {
+        let asset_dataset_id = EntryId::new();
+        let asset_dataset_name = EntryName::asset_for(entry_id);
+
+        self.create_dataset_impl(
+            asset_dataset_name,
+            asset_dataset_id,
+            DatasetKind::Asset,
+            None,
+        )?;
+
+        Ok(asset_dataset_id)
     }
 
     /// Create a dataset of the given kind.
@@ -465,16 +483,18 @@ impl InMemoryStore {
         &mut self,
         dataset_name: EntryName,
         dataset_id: Option<EntryId>,
-        store_kind: StoreKind,
+        dataset_kind: DatasetKind,
     ) -> Result<EntryId, Error> {
         let dataset_id = dataset_id.unwrap_or_else(EntryId::new);
 
-        match store_kind {
-            StoreKind::Recording => {
+        match dataset_kind {
+            DatasetKind::Recording => {
                 let blueprint_dataset_id = self.create_blueprint_dataset_for_entry(dataset_id)?;
+                let asset_dataset_id = self.create_asset_dataset_for_entry(dataset_id)?;
 
                 let dataset_details = DatasetDetails {
                     blueprint_dataset: Some(blueprint_dataset_id),
+                    asset_dataset: Some(asset_dataset_id),
                     default_blueprint_segment: None,
                     default_segment_table_blueprint_segment: None,
                 };
@@ -482,12 +502,12 @@ impl InMemoryStore {
                 self.create_dataset_impl(
                     dataset_name,
                     dataset_id,
-                    StoreKind::Recording,
+                    DatasetKind::Recording,
                     Some(dataset_details),
                 )
             }
-            StoreKind::Blueprint => {
-                self.create_dataset_impl(dataset_name, dataset_id, StoreKind::Blueprint, None)
+            DatasetKind::Blueprint | DatasetKind::Asset => {
+                self.create_dataset_impl(dataset_name, dataset_id, dataset_kind, None)
             }
         }
     }
@@ -497,7 +517,7 @@ impl InMemoryStore {
         &mut self,
         name: EntryName,
         entry_id: EntryId,
-        store_kind: StoreKind,
+        dataset_kind: DatasetKind,
         details: Option<DatasetDetails>,
     ) -> Result<EntryId, Error> {
         re_log::debug!(%name, "create_dataset");
@@ -513,7 +533,7 @@ impl InMemoryStore {
 
         self.datasets.insert(
             entry_id,
-            Dataset::new(entry_id, name, store_kind, details.unwrap_or_default()),
+            Dataset::new(entry_id, name, dataset_kind, details.unwrap_or_default()),
         );
 
         self.update_entries_table()?;
@@ -540,12 +560,20 @@ impl InMemoryStore {
             self.id_by_name.remove(dataset.name());
             self.update_entries_table()?;
 
-            let result =
-                if let Some(blueprint_entry_id) = dataset.dataset_details().blueprint_dataset {
-                    self.delete_entry(blueprint_entry_id)
-                } else {
-                    Ok(())
-                };
+            // Blueprint and asset datasets are owned by this dataset, so deleting it deletes them too.
+            let owned_datasets = [
+                dataset.dataset_details().blueprint_dataset,
+                dataset.dataset_details().asset_dataset,
+            ];
+
+            // Attempt all deletions even if one fails, so we don't leave the others orphaned.
+            let mut result = Ok(());
+            for owned_entry_id in owned_datasets.into_iter().flatten() {
+                let owned_result = self.delete_entry(owned_entry_id);
+                if result.is_ok() {
+                    result = owned_result;
+                }
+            }
 
             self.cleanup_store_pool();
 

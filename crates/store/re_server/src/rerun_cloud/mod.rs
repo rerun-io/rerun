@@ -32,7 +32,7 @@ use re_protos::cloud::v1alpha1::{
     ScanDatasetManifestResponse, ScanSegmentTableResponse, ScanTableResponse, WatchEventsResponse,
     watch_events_response,
 };
-use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, SegmentId};
+use re_protos::common::v1alpha1::ext::{DatasetKind, IfDuplicateBehavior, SegmentId};
 use re_protos::headers::RerunHeadersExtractorExt as _;
 use re_protos::missing_field;
 use re_protos::{
@@ -358,6 +358,7 @@ macro_rules! decl_stream {
 decl_stream!(DoBandwidthTestResponseStream<rerun_cloud:DoBandwidthTestResponse>);
 decl_stream!(WatchEventsResponseStream<rerun_cloud:WatchEventsResponse>);
 decl_stream!(FetchChunksResponseStream<manifest:FetchChunksResponse>);
+decl_stream!(GetAssetsForSegmentResponseStream<rerun_cloud:GetAssetsForSegmentResponse>);
 decl_stream!(GetRrdManifestResponseStream<manifest:GetRrdManifestResponse>);
 decl_stream!(QueryDatasetResponseStream<manifest:QueryDatasetResponse>);
 decl_stream!(QueryTasksOnCompletionResponseStream<tasks:QueryTasksOnCompletionResponse>);
@@ -492,6 +493,29 @@ fn validate_blueprint_dataset(
     Ok(())
 }
 
+/// Same as [`validate_blueprint_dataset`], for the asset dataset.
+fn validate_asset_dataset(
+    store: &InMemoryStore,
+    asset_dataset: Option<EntryId>,
+) -> tonic::Result<()> {
+    let Some(asset_dataset) = asset_dataset else {
+        return Ok(());
+    };
+
+    let asset_dataset = store.dataset(asset_dataset).map_err(|err| {
+        tonic::Status::invalid_argument(format!("asset dataset does not exist: {err}"))
+    })?;
+
+    let kind = asset_dataset.dataset_kind();
+    if kind != DatasetKind::Asset {
+        return Err(tonic::Status::invalid_argument(format!(
+            "asset dataset reference must point to an asset dataset, this is a {kind:?} dataset"
+        )));
+    }
+
+    Ok(())
+}
+
 #[tonic::async_trait]
 impl RerunCloudService for RerunCloudHandler {
     async fn version(
@@ -609,7 +633,7 @@ impl RerunCloudService for RerunCloudHandler {
             })?;
 
         let entries = match kind {
-            Some(EntryKind::Dataset) => {
+            Some(EntryKind::Dataset | EntryKind::AssetDataset) => {
                 self.find_datasets(entry_id, name, Some(StoreKind::Recording))
                     .await?
             }
@@ -723,9 +747,30 @@ impl RerunCloudService for RerunCloudHandler {
         let mut store = self.store.write().await;
         validate_blueprint_dataset(&store, request.dataset_details.blueprint_dataset, "dataset")?;
 
+        let mut dataset_details = request.dataset_details;
+
+        // The asset dataset reference is server-managed: unless the client explicitly points it
+        // at a new asset dataset, keep the stored one. Recording datasets created before asset
+        // datasets were introduced have none, so create the missing one on demand, and replace a
+        // reference left dangling by a deleted asset dataset the same way.
+        let dataset = store.dataset(request.id)?;
+        let stored_asset_dataset = dataset.dataset_details().asset_dataset;
+        let dataset_kind = dataset.dataset_kind();
+        let client_chosen_asset_dataset = dataset_details.asset_dataset.is_some()
+            && dataset_details.asset_dataset != stored_asset_dataset;
+        if client_chosen_asset_dataset {
+            validate_asset_dataset(&store, dataset_details.asset_dataset)?;
+        } else if dataset_kind == DatasetKind::Recording {
+            let existing = stored_asset_dataset.filter(|id| store.dataset(*id).is_ok());
+            dataset_details.asset_dataset = Some(match existing {
+                Some(existing) => existing,
+                None => store.create_asset_dataset_for_entry(request.id)?,
+            });
+        }
+
         let dataset = store.dataset_mut(request.id)?;
 
-        dataset.set_dataset_details(request.dataset_details);
+        dataset.set_dataset_details(dataset_details);
 
         Ok(tonic::Response::new(
             UpdateDatasetEntryResponse {
@@ -1016,7 +1061,6 @@ impl RerunCloudService for RerunCloudHandler {
                     entity_path,
                     Arc::new(LayerInfo {
                         name: LayerName::base(),
-                        layer_class: re_types_core::LayerClass::Segment,
                     }),
                     store_slot_id,
                     resolved,
@@ -1266,6 +1310,55 @@ impl RerunCloudService for RerunCloudHandler {
 
         Ok(tonic::Response::new(
             Box::pin(rrd_manifest_stream) as Self::GetRrdManifestStream
+        ))
+    }
+
+    type GetAssetsForSegmentStream = GetAssetsForSegmentResponseStream;
+
+    async fn get_assets_for_segment(
+        &self,
+        request: tonic::Request<re_protos::cloud::v1alpha1::GetAssetsForSegmentRequest>,
+    ) -> tonic::Result<tonic::Response<Self::GetAssetsForSegmentStream>> {
+        let store = self.store.read().await;
+
+        let dataset_id = get_entry_id_from_headers(&store, &request)?;
+
+        let dataset = store.dataset(dataset_id)?;
+
+        let dataset_kind = dataset.dataset_kind();
+        if dataset_kind != DatasetKind::Recording {
+            return Err(tonic::Status::invalid_argument(format!(
+                "assets can only be queried on recording datasets, this is a {dataset_kind:?} dataset"
+            )));
+        }
+
+        // Datasets created before asset datasets were introduced don't have one, which simply
+        // means no assets were ever registered. One is created on demand when the dataset entry
+        // is next updated.
+        let Some(asset_dataset) = dataset.dataset_details().asset_dataset else {
+            return Ok(tonic::Response::new(
+                Box::pin(futures::stream::empty()) as Self::GetAssetsForSegmentStream
+            ));
+        };
+
+        // TODO(RR-4979): Filter by properties here.
+        let asset_segment_ids = store
+            .dataset(asset_dataset)?
+            .segments()
+            .keys()
+            .cloned()
+            .map(Into::into)
+            .collect();
+
+        let response = futures::stream::once(futures::future::ok(
+            re_protos::cloud::v1alpha1::GetAssetsForSegmentResponse {
+                assets_entry: Some(asset_dataset.into()),
+                asset_segment_ids,
+            },
+        ));
+
+        Ok(tonic::Response::new(
+            Box::pin(response) as Self::GetAssetsForSegmentStream
         ))
     }
 
@@ -2163,4 +2256,74 @@ fn bandwidth_test_stream(
     num_bytes: u64,
 ) -> impl futures::Stream<Item = tonic::Result<DoBandwidthTestResponse>> + Send {
     futures::stream::iter(ext::BandwidthTestPayloadIter::new(num_bytes).map(Ok))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use futures::TryStreamExt as _;
+    use re_protos::cloud::v1alpha1::GetAssetsForSegmentRequest;
+    use re_protos::headers::RerunHeadersInjectorExt as _;
+
+    /// Datasets created before asset datasets were introduced don't have one. Querying assets on
+    /// such a dataset returns no assets, and updating its entry creates the missing asset dataset.
+    #[tokio::test]
+    async fn legacy_dataset_without_asset_dataset() {
+        let handler = RerunCloudHandlerBuilder::new().build();
+
+        let dataset_id = EntryId::new();
+        handler
+            .store
+            .write()
+            .await
+            .create_dataset_impl(
+                EntryName::new("legacy_dataset").unwrap(),
+                dataset_id,
+                DatasetKind::Recording,
+                None,
+            )
+            .unwrap();
+
+        let responses: Vec<_> = handler
+            .get_assets_for_segment(
+                tonic::Request::new(GetAssetsForSegmentRequest {}).with_entry_id(dataset_id),
+            )
+            .await
+            .expect("querying assets should succeed without an asset dataset")
+            .into_inner()
+            .try_collect()
+            .await
+            .unwrap();
+        assert!(
+            responses.is_empty(),
+            "a dataset without an asset dataset should have no assets"
+        );
+
+        let updated: ext::DatasetEntry = handler
+            .update_dataset_entry(tonic::Request::new(
+                UpdateDatasetEntryRequest {
+                    id: dataset_id,
+                    dataset_details: Default::default(),
+                }
+                .into(),
+            ))
+            .await
+            .expect("updating the entry should succeed")
+            .into_inner()
+            .dataset
+            .unwrap()
+            .try_into()
+            .unwrap();
+
+        let asset_dataset_id = updated
+            .dataset_details
+            .asset_dataset
+            .expect("updating the entry should create the missing asset dataset");
+        let store = handler.store.read().await;
+        assert_eq!(
+            store.dataset(asset_dataset_id).unwrap().dataset_kind(),
+            DatasetKind::Asset,
+        );
+    }
 }

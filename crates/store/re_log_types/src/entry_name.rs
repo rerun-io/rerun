@@ -80,6 +80,12 @@ impl EntryName {
             .expect("EntryId can always be converted to a valid entry name")
     }
 
+    /// The name of the asset dataset associated with a given dataset entry.
+    pub fn asset_for(dataset_id: crate::EntryId) -> Self {
+        Self::new(format!("__as_{dataset_id}"))
+            .expect("EntryId can always be converted to a valid entry name")
+    }
+
     /// Hidden entries have names starting with `__` (e.g. `__entries`, `__bp_…`).
     pub fn is_hidden(&self) -> bool {
         self.0.starts_with("__")

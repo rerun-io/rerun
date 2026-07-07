@@ -11,7 +11,7 @@ use re_log_types::{EntryId, StoreKind};
 use re_protos::cloud::v1alpha1::ext;
 use re_protos::common::v1alpha1::TaskId;
 use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, SegmentId};
-use re_types_core::{LayerClass, LayerName};
+use re_types_core::LayerName;
 use url::Url;
 
 use crate::store::{
@@ -92,9 +92,8 @@ fn validate_sources(
     data_sources: Vec<ext::DataSource>,
 ) -> tonic::Result<(StoreKind, Vec<ValidatedSource>)> {
     // `seen` tracks (layer_name, segment_id) → URLs to detect intra-request dups.
-    // Asset layers have no segment id (`None`).
     // The `on_duplicate` flag only applies to cross-request conflicts.
-    let mut seen: BTreeMap<(LayerName, Option<SegmentId>), Vec<url::Url>> = BTreeMap::new();
+    let mut seen: BTreeMap<(LayerName, SegmentId), Vec<url::Url>> = BTreeMap::new();
     let mut validated: Vec<ValidatedSource> = Vec::new();
 
     let store_kind = store.dataset(dataset_id)?.store_kind();
@@ -105,7 +104,6 @@ fn validate_sources(
             is_prefix,
             layer,
             kind,
-            layer_class,
         } = source;
 
         // TODO(ab): Should some or all of these errors be returned as task error instead?
@@ -136,10 +134,7 @@ fn validate_sources(
             layer
         };
 
-        let layer_info = Arc::new(LayerInfo {
-            name: layer_name,
-            layer_class,
-        });
+        let layer_info = Arc::new(LayerInfo { name: layer_name });
 
         if storage_url.scheme() == "memory" {
             validated.push(validate_memory_source(
@@ -178,7 +173,7 @@ fn validate_memory_source(
     expected_store_kind: StoreKind,
     storage_url: &url::Url,
     layer_info: Arc<LayerInfo>,
-    seen: &mut BTreeMap<(LayerName, Option<SegmentId>), Vec<url::Url>>,
+    seen: &mut BTreeMap<(LayerName, SegmentId), Vec<url::Url>>,
 ) -> tonic::Result<ValidatedSource> {
     let store_slot_id = parse_memory_url(storage_url)?;
     let resolved = store.resolve_store(&store_slot_id).ok_or_else(|| {
@@ -192,12 +187,7 @@ fn validate_memory_source(
         )));
     }
     let segment_id = SegmentId::new(store_id.recording_id().to_string());
-    // Asset layers have no per-segment ID; use an empty key so duplicates are caught by layer name only.
-    let dedup_segment_id = match layer_info.layer_class {
-        LayerClass::Asset => None,
-        LayerClass::Segment => Some(segment_id.clone()),
-    };
-    seen.entry((layer_info.name.clone(), dedup_segment_id))
+    seen.entry((layer_info.name.clone(), segment_id.clone()))
         .or_default()
         .push(storage_url.clone());
     Ok(ValidatedSource::Memory {
@@ -214,7 +204,7 @@ fn validate_file_source(
     store_kind: StoreKind,
     storage_url: &url::Url,
     layer_info: Arc<LayerInfo>,
-    seen: &mut BTreeMap<(LayerName, Option<SegmentId>), Vec<url::Url>>,
+    seen: &mut BTreeMap<(LayerName, SegmentId), Vec<url::Url>>,
 ) -> tonic::Result<Option<ValidatedSource>> {
     let Ok(rrd_path) = storage_url.to_file_path() else {
         return if storage_url.scheme() == "file" && storage_url.host().is_some() {
@@ -250,13 +240,12 @@ fn validate_file_source(
             continue;
         }
         matched = true;
-        let dedup_segment_id = match layer_info.layer_class {
-            LayerClass::Asset => None,
-            LayerClass::Segment => Some(SegmentId::from(store_id.recording_id())),
-        };
-        seen.entry((layer_info.name.clone(), dedup_segment_id))
-            .or_default()
-            .push(storage_url.clone());
+        seen.entry((
+            layer_info.name.clone(),
+            SegmentId::from(store_id.recording_id()),
+        ))
+        .or_default()
+        .push(storage_url.clone());
     }
 
     if !matched {
@@ -271,7 +260,7 @@ fn validate_file_source(
 }
 
 fn check_intra_request_duplicates(
-    seen: &BTreeMap<(LayerName, Option<SegmentId>), Vec<url::Url>>,
+    seen: &BTreeMap<(LayerName, SegmentId), Vec<url::Url>>,
 ) -> tonic::Result<()> {
     let duplicates: Vec<_> = seen.iter().filter(|(_, urls)| urls.len() > 1).collect();
     if duplicates.is_empty() {
@@ -286,11 +275,7 @@ fn check_intra_request_duplicates(
                 .map(|u| format!("    {u}"))
                 .collect::<Vec<_>>()
                 .join("\n");
-            if let Some(segment_id) = segment_id {
-                format!("  segment id: {segment_id}, layer name: {layer}\n{uri_lines}")
-            } else {
-                format!("  layer name: {layer}\n{uri_lines}")
-            }
+            format!("  segment id: {segment_id}, layer name: {layer}\n{uri_lines}")
         })
         .collect();
 
@@ -377,29 +362,15 @@ async fn register_sources(
         let dataset = store.dataset_mut(dataset_id)?;
 
         for source in ready {
-            let add_result = match source.layer_info.layer_class {
-                LayerClass::Asset => {
-                    dataset
-                        .add_asset_source(
-                            source.store_slot_id,
-                            source.resolved,
-                            source.layer_info.clone(),
-                            on_duplicate,
-                        )
-                        .await
-                }
-                LayerClass::Segment => {
-                    dataset
-                        .add_source(
-                            source.segment_id.clone(),
-                            source.layer_info.clone(),
-                            source.store_slot_id,
-                            source.resolved,
-                            on_duplicate,
-                        )
-                        .await
-                }
-            };
+            let add_result = dataset
+                .add_source(
+                    source.segment_id.clone(),
+                    source.layer_info.clone(),
+                    source.store_slot_id,
+                    source.resolved,
+                    on_duplicate,
+                )
+                .await;
 
             match add_result {
                 Ok(()) => {
@@ -412,7 +383,9 @@ async fn register_sources(
                     });
                 }
 
-                Err(Error::SchemaConflict(msg)) => {
+                // Schema conflicts and asset-segment rejections fail just this source's task,
+                // matching how the cloud server reports them during registration.
+                Err(Error::SchemaConflict(msg) | Error::SegmentRejected(msg)) => {
                     result.segment_ids.push(SegmentId::new(String::new()));
                     result.segment_layers.push(source.layer_info.name.clone());
                     result.segment_types.push(ext::DataSourceKind::Rrd);
@@ -423,6 +396,7 @@ async fn register_sources(
                     failed_task_results.push((task_id, TaskResult::failed(&msg)));
                 }
 
+                // Everything else, including the synchronous segment-count limit, aborts the batch.
                 Err(other_err) => {
                     return Err(other_err.into());
                 }

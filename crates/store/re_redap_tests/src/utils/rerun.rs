@@ -980,15 +980,51 @@ pub fn create_recording_with_static_components(
     segment_id: &str,
     components: BTreeMap<EntityPath, Box<dyn AsComponents>>,
 ) -> anyhow::Result<TempPath> {
+    create_store_with_static_components(
+        tuid_prefix,
+        segment_id,
+        components,
+        re_log_types::StoreKind::Recording,
+    )
+}
+
+/// Like [`create_recording_with_static_components`], but writes a blueprint store.
+pub fn create_blueprint_with_static_components(
+    tuid_prefix: TuidPrefix,
+    segment_id: &str,
+    components: BTreeMap<EntityPath, Box<dyn AsComponents>>,
+) -> anyhow::Result<TempPath> {
+    create_store_with_static_components(
+        tuid_prefix,
+        segment_id,
+        components,
+        re_log_types::StoreKind::Blueprint,
+    )
+}
+
+fn create_store_with_static_components(
+    tuid_prefix: TuidPrefix,
+    segment_id: &str,
+    components: BTreeMap<EntityPath, Box<dyn AsComponents>>,
+    store_kind: re_log_types::StoreKind,
+) -> anyhow::Result<TempPath> {
     use re_chunk::Chunk;
 
+    let extension = match store_kind {
+        re_log_types::StoreKind::Recording => "rrd",
+        re_log_types::StoreKind::Blueprint => "rbl",
+    };
     let tmp_path = {
         let dir = tempfile::tempdir()?;
-        let path = dir.path().join(format!("{segment_id}.rrd"));
+        let path = dir.path().join(format!("{segment_id}.{extension}"));
         TempPath::new(dir, path)
     };
 
-    let rec = re_sdk::RecordingStreamBuilder::new("rerun_example_properties")
+    let mut builder = re_sdk::RecordingStreamBuilder::new("rerun_example_properties");
+    if store_kind == re_log_types::StoreKind::Blueprint {
+        builder = builder.blueprint();
+    }
+    let rec = builder
         .recording_id(segment_id)
         .send_properties(false)
         .save(tmp_path.clone())?;
@@ -1007,6 +1043,25 @@ pub fn create_recording_with_static_components(
     rec.flush_blocking()?;
 
     Ok(tmp_path)
+}
+
+/// Create a recording containing only a single static chunk.
+pub fn create_minimal_static_recording(
+    tuid_prefix: TuidPrefix,
+    segment_id: &str,
+) -> anyhow::Result<TempPath> {
+    use re_sdk_types::AnyValues;
+    create_recording_with_static_components(
+        tuid_prefix,
+        segment_id,
+        BTreeMap::from([(
+            EntityPath::from("static/data"),
+            Box::new(AnyValues::default().with_component_from_data(
+                "test",
+                std::sync::Arc::new(arrow::array::Int32Array::from(vec![1i32])),
+            )) as Box<dyn AsComponents>,
+        )]),
+    )
 }
 
 /// Create a minimal rerun recording with one entity and one component.

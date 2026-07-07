@@ -1,11 +1,11 @@
 use re_log_types::EntryId;
-use re_protos::cloud::v1alpha1::ReadTableEntryRequest;
 use re_protos::cloud::v1alpha1::ext::{
     CreateDatasetEntryRequest, DatasetDetails, DatasetEntry, EntryDetailsUpdate, TableDetails,
     TableEntry, UpdateDatasetEntryRequest, UpdateEntryRequest, UpdateEntryResponse,
     UpdateTableEntryRequest,
 };
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
+use re_protos::cloud::v1alpha1::{DeleteEntryRequest, ReadTableEntryRequest};
 use re_protos::common::v1alpha1::ext::SegmentId;
 
 use super::common::{create_table_entry_with_name, entry_name};
@@ -299,6 +299,12 @@ pub async fn update_dataset_entry_rejects_invalid_blueprint_details(
         .dataset_details
         .blueprint_dataset
         .expect("recording datasets should get an implicit blueprint dataset");
+
+    let hidden_asset = dataset_entry
+        .dataset_details
+        .asset_dataset
+        .expect("recording datasets should get an implicit asset dataset");
+
     let default_blueprint_segment = SegmentId::from("default_dataset_blueprint");
     let default_segment_table_blueprint_segment =
         SegmentId::from("default_dataset_segment_table_blueprint");
@@ -309,6 +315,7 @@ pub async fn update_dataset_entry_rejects_invalid_blueprint_details(
             id: dataset_id,
             dataset_details: DatasetDetails {
                 blueprint_dataset: Some(hidden_blueprint),
+                asset_dataset: Some(hidden_asset),
                 default_blueprint_segment: Some(default_blueprint_segment.clone()),
                 default_segment_table_blueprint_segment: Some(
                     default_segment_table_blueprint_segment.clone(),
@@ -339,6 +346,7 @@ pub async fn update_dataset_entry_rejects_invalid_blueprint_details(
             id: dataset_id,
             dataset_details: DatasetDetails {
                 blueprint_dataset: None,
+                asset_dataset: None,
                 default_blueprint_segment: Some(SegmentId::from("missing_blueprint_dataset")),
                 default_segment_table_blueprint_segment: None,
             },
@@ -358,6 +366,7 @@ pub async fn update_dataset_entry_rejects_invalid_blueprint_details(
             id: dataset_id,
             dataset_details: DatasetDetails {
                 blueprint_dataset: Some(EntryId::new()),
+                asset_dataset: Some(EntryId::new()),
                 default_blueprint_segment: None,
                 default_segment_table_blueprint_segment: None,
             },
@@ -380,6 +389,163 @@ pub async fn update_dataset_entry_rejects_invalid_blueprint_details(
             id: dataset_id,
             dataset_details: DatasetDetails {
                 blueprint_dataset: Some(recording_dataset.details.id),
+                asset_dataset: None,
+                default_blueprint_segment: None,
+                default_segment_table_blueprint_segment: None,
+            },
+        },
+    )
+    .await
+    .unwrap_err();
+    assert_eq!(
+        status.code(),
+        tonic::Code::InvalidArgument,
+        "unexpected status: {status:?}"
+    );
+}
+
+/// Updating a dataset without providing an asset dataset keeps the existing one. The field is
+/// managed by the server, so a client that doesn't know about it cannot accidentally clear it.
+pub async fn update_dataset_entry_keeps_asset_dataset(service: impl RerunCloudService) {
+    let dataset_entry = create_dataset_entry(&service, "dataset_keeps_asset_dataset")
+        .await
+        .unwrap();
+    let dataset_id = dataset_entry.details.id;
+    let hidden_asset = dataset_entry
+        .dataset_details
+        .asset_dataset
+        .expect("recording datasets should get an implicit asset dataset");
+
+    let updated = update_dataset_entry(
+        &service,
+        UpdateDatasetEntryRequest {
+            id: dataset_id,
+            dataset_details: DatasetDetails {
+                blueprint_dataset: dataset_entry.dataset_details.blueprint_dataset,
+                asset_dataset: None,
+                default_blueprint_segment: None,
+                default_segment_table_blueprint_segment: None,
+            },
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(
+        updated.dataset_details.asset_dataset,
+        Some(hidden_asset),
+        "an update without an asset dataset should keep the existing one"
+    );
+}
+
+/// A dataset whose asset dataset was deleted is left with a dangling reference. Updating the
+/// entry replaces the dangling reference with a new asset dataset, whether the client omits the
+/// reference or sends the stale one back unchanged.
+pub async fn update_dataset_entry_replaces_deleted_asset_dataset(service: impl RerunCloudService) {
+    let dataset_entry = create_dataset_entry(&service, "dataset_replaces_deleted_asset")
+        .await
+        .unwrap();
+    let dataset_id = dataset_entry.details.id;
+    let blueprint_dataset = dataset_entry.dataset_details.blueprint_dataset;
+    let original_asset = dataset_entry
+        .dataset_details
+        .asset_dataset
+        .expect("recording datasets should get an implicit asset dataset");
+
+    // Delete the asset dataset directly, leaving the dataset's reference dangling.
+    service
+        .delete_entry(tonic::Request::new(DeleteEntryRequest {
+            id: Some(original_asset.into()),
+        }))
+        .await
+        .expect("failed to delete the asset dataset");
+
+    let updated = update_dataset_entry(
+        &service,
+        UpdateDatasetEntryRequest {
+            id: dataset_id,
+            dataset_details: DatasetDetails {
+                blueprint_dataset,
+                asset_dataset: None,
+                default_blueprint_segment: None,
+                default_segment_table_blueprint_segment: None,
+            },
+        },
+    )
+    .await
+    .unwrap();
+    let replacement = updated
+        .dataset_details
+        .asset_dataset
+        .expect("the dangling asset dataset reference should be replaced");
+    assert_ne!(replacement, original_asset);
+
+    // A client sending the stored reference back unchanged is not choosing a new one: after
+    // deleting the replacement, the stale reference is replaced too.
+    service
+        .delete_entry(tonic::Request::new(DeleteEntryRequest {
+            id: Some(replacement.into()),
+        }))
+        .await
+        .expect("failed to delete the replacement asset dataset");
+    let updated = update_dataset_entry(
+        &service,
+        UpdateDatasetEntryRequest {
+            id: dataset_id,
+            dataset_details: DatasetDetails {
+                blueprint_dataset,
+                asset_dataset: Some(replacement),
+                default_blueprint_segment: None,
+                default_segment_table_blueprint_segment: None,
+            },
+        },
+    )
+    .await
+    .unwrap();
+    let second_replacement = updated
+        .dataset_details
+        .asset_dataset
+        .expect("the stale asset dataset reference should be replaced again");
+    assert_ne!(second_replacement, replacement);
+}
+
+/// The asset dataset reference of a dataset must point to an existing asset dataset.
+pub async fn update_dataset_entry_rejects_invalid_asset_details(service: impl RerunCloudService) {
+    let dataset_entry = create_dataset_entry(&service, "dataset_with_asset_validation")
+        .await
+        .unwrap();
+    let dataset_id = dataset_entry.details.id;
+    let blueprint_dataset = dataset_entry.dataset_details.blueprint_dataset;
+
+    let status = update_dataset_entry(
+        &service,
+        UpdateDatasetEntryRequest {
+            id: dataset_id,
+            dataset_details: DatasetDetails {
+                blueprint_dataset,
+                asset_dataset: Some(EntryId::new()),
+                default_blueprint_segment: None,
+                default_segment_table_blueprint_segment: None,
+            },
+        },
+    )
+    .await
+    .unwrap_err();
+    assert_eq!(
+        status.code(),
+        tonic::Code::InvalidArgument,
+        "unexpected status: {status:?}"
+    );
+
+    let recording_dataset = create_dataset_entry(&service, "recording_is_not_asset_dataset")
+        .await
+        .unwrap();
+    let status = update_dataset_entry(
+        &service,
+        UpdateDatasetEntryRequest {
+            id: dataset_id,
+            dataset_details: DatasetDetails {
+                blueprint_dataset,
+                asset_dataset: Some(recording_dataset.details.id),
                 default_blueprint_segment: None,
                 default_segment_table_blueprint_segment: None,
             },

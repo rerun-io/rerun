@@ -33,32 +33,6 @@ def temp_empty_directory() -> Iterator[str]:
     os.rmdir(tmp_dir)
 
 
-@pytest.fixture(scope="function")
-def recording_factory(tmp_path: Path) -> Callable[[Sequence[str]], list[str]]:
-    """
-    Factory fixture for creating test recordings with known recording IDs.
-
-    Returns a callable that takes a sequence of recording IDs and returns the
-    corresponding file URIs.
-    """
-
-    def create_recordings(recording_ids: Sequence[str]) -> list[str]:
-        uris = []
-        for i, recording_id in enumerate(recording_ids):
-            rrd_path = tmp_path / f"recording_{i}.rrd"
-            with rr.RecordingStream(f"test_recording_{i}", recording_id=recording_id) as rec:
-                # `log_tick` is opt-in; enable it so these recordings have a deterministic
-                # index column to assert on below.
-                rec.set_log_tick_enabled(True)
-                rec.save(rrd_path)
-                rec.log("points", rr.Points2D([[i, i]]))
-                rec.flush()
-            uris.append(rrd_path.absolute().as_uri())
-        return uris
-
-    return create_recordings
-
-
 @pytest.mark.local_only
 def test_registration_invalidargs(
     catalog_client: CatalogClient, temp_empty_file: str, temp_empty_directory: str

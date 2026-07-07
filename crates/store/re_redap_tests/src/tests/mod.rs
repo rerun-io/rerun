@@ -8,7 +8,7 @@ mod fetch_chunks;
 mod query_dataset;
 mod query_filter;
 mod query_index_values;
-mod register_asset_layer;
+mod register_asset;
 mod register_segment;
 mod rrd_manifest;
 mod unregister_segment;
@@ -126,6 +126,13 @@ define_redap_tests! {
     query_index_values::query_dataset_per_segment_values_validation_rejected,
     query_index_values::query_dataset_per_segment_values_with_chunk_ids_intersects,
     query_index_values::query_dataset_per_segment_values_empty_entity_paths_short_circuits,
+    register_asset::asset_dataset_enforces_segment_limit,
+    register_asset::asset_dataset_enforces_segment_size_limit,
+    register_asset::asset_dataset_rejects_temporal_recording,
+    register_asset::blueprint_dataset_enforces_segment_size_limit,
+    register_asset::deleting_dataset_deletes_asset_dataset,
+    register_asset::get_assets_for_segment_rejects_non_recording_dataset,
+    register_asset::get_assets_for_segment_returns_registered_assets,
     register_segment::register_and_attach_table_blueprint_dataset,
     register_segment::register_and_scan_blueprint_dataset,
     register_segment::register_and_scan_empty_dataset,
@@ -158,24 +165,17 @@ define_redap_tests! {
     unregister_segment::unregister_products,
     unregister_segment::unregister_simple,
     unregister_segment::unregister_then_query,
+    update_entry::update_dataset_entry_keeps_asset_dataset,
+    update_entry::update_dataset_entry_rejects_invalid_asset_details,
     update_entry::update_dataset_entry_rejects_invalid_blueprint_details,
+    update_entry::update_dataset_entry_replaces_deleted_asset_dataset,
     update_entry::update_entry_bumps_timestamp,
     update_entry::update_entry_tests,
     update_entry::update_table_entry_blueprint_details,
     update_entry::update_table_entry_rejects_invalid_blueprint_details,
     write_table::write_table,
     ; // Tests that return `anyhow::Result<()>`:
-    ; // OSS-only tests (TODO(RR-4761): implement asset layers on the cloud server):
-    register_asset_layer::asset_layer_name_collision_with_segment_layer_errors,
-    register_asset_layer::query_dataset_asset_chunk_ids_duplicated_across_segments,
-    register_asset_layer::query_dataset_asset_layer_included_in_all_segments,
-    register_asset_layer::register_asset_layer_appears_in_manifest,
-    register_asset_layer::register_asset_layer_coexists_with_segment_layers,
-    register_asset_layer::register_asset_layer_duplicate_error,
-    register_asset_layer::register_asset_layer_duplicate_overwrite,
-    register_asset_layer::reregister_layer_change_class,
-    register_asset_layer::segment_layer_name_collision_with_asset_layer_errors,
-    register_asset_layer::unregister_asset_and_segment_layers,
+    ; // OSS-only tests:
     // TODO(RR-4859): the cloud server returns `Unimplemented` for `WatchEvents`.
     watch_events::watch_events_entry_created,
     watch_events::watch_events_entry_deleted,

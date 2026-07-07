@@ -109,6 +109,11 @@ impl Source {
         }
     }
 
+    /// Whether this layer holds any temporal data rather than only static data.
+    pub fn has_temporal_chunks(&self) -> bool {
+        !self.index_ranges().is_empty()
+    }
+
     pub fn schema(&self) -> Schema {
         let fields = self
             .resolved
@@ -366,7 +371,6 @@ mod tests {
         }
         let test_layer_info = Arc::new(LayerInfo {
             name: re_types_core::LayerName::base(),
-            layer_class: re_types_core::LayerClass::Segment,
         });
         let eager_layer = Source::new(
             StoreSlotId::new(),

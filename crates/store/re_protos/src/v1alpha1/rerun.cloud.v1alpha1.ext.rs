@@ -9,7 +9,7 @@ use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::TimelineName;
 use re_log_types::AbsoluteTimeRange;
 use re_log_types::{EntityPath, EntryId, TimeInt};
-use re_types_core::{LayerClass, LayerName};
+use re_types_core::LayerName;
 
 use crate::cloud::v1alpha1::ext::{QueryDatasetDataframe, ScanSegmentTableDataframe};
 use crate::cloud::v1alpha1::{
@@ -800,6 +800,7 @@ pub struct InconsistentBlueprintDetailsError {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct DatasetDetails {
     pub blueprint_dataset: Option<EntryId>,
+    pub asset_dataset: Option<EntryId>,
     pub default_blueprint_segment: Option<SegmentId>,
     pub default_segment_table_blueprint_segment: Option<SegmentId>,
 }
@@ -860,6 +861,7 @@ impl TryFrom<crate::cloud::v1alpha1::DatasetDetails> for DatasetDetails {
 
         Ok(Self {
             blueprint_dataset: value.blueprint_dataset.map(TryInto::try_into).transpose()?,
+            asset_dataset: value.asset_dataset.map(TryInto::try_into).transpose()?,
             default_blueprint_segment,
             default_segment_table_blueprint_segment,
         })
@@ -870,6 +872,7 @@ impl From<DatasetDetails> for crate::cloud::v1alpha1::DatasetDetails {
     fn from(value: DatasetDetails) -> Self {
         Self {
             blueprint_dataset: value.blueprint_dataset.map(Into::into),
+            asset_dataset: value.asset_dataset.map(Into::into),
             default_blueprint_segment: value.default_blueprint_segment.clone().map(Into::into),
             default_segment_table_blueprint_segment: value
                 .default_segment_table_blueprint_segment
@@ -1716,6 +1719,7 @@ impl EntryKind {
             EntryKind::DatasetView => "Dataset View",
             EntryKind::TableView => "Table View",
             EntryKind::BlueprintDataset => "Blueprint Dataset",
+            EntryKind::AssetDataset => "Asset Dataset",
         }
     }
 }
@@ -2011,19 +2015,13 @@ impl ScanSegmentTableResponse {
 /// Column constants and helpers for the dataset manifest.
 ///
 /// Terminology:
-/// * A *layer* is a named slice of data that spans many segments (e.g. "base", "embeddings").
-///     * A *Segment Layer* has one source per segment it appears in (=every segment is different)
-///     * An *Asset Layer* consists of a single source shared by all segments of the dataset (e.g. "robot_urdf").
+/// * A *layer* is a named slice of data that spans many segments (e.g. "base", "embeddings"),
+///   with one source per segment it appears in.
 /// * A *source* is a single `.rrd` (or, in the future, `.mcap` etc)
 /// * A single segment is the concatenation of all the sources of all the layers it has data in.
 ///
 /// The dataset manifest has one row per (layer, segment) pair,
-/// i.e. a segment layer appears once per segment it has data in.
-/// An asset layer is also listed once per segment,
-/// even though all of those rows are backed by the same shared source.
-/// Corollary: an asset layer registered to a dataset without segments is invisible in the manifest.
-//
-// TODO(RR-4807): consider this choice, e.g. a single row per asset layer with a NULL segment id instead.
+/// i.e. a layer appears once per segment it has data in.
 impl ScanDatasetManifestResponse {
     pub fn data(&self) -> Result<&DataframePart, TypeConversionError> {
         Ok(self
@@ -2155,8 +2153,7 @@ fn datasourcekind_roundtrip() {
 ///
 /// A `DataSource` identifies a single file (when `is_prefix = false`) or
 /// all files that share a common URL prefix (when `is_prefix = true`).
-/// Every source belongs to a named [`LayerName`] within the dataset and
-/// carries a [`LayerClass`] that describes how segments relate to the layer.
+/// Every source belongs to a named [`LayerName`] within the dataset.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct DataSource {
     /// URL of the recording file, or the common prefix when `is_prefix` is `true`.
@@ -2170,9 +2167,6 @@ pub struct DataSource {
 
     /// File format of the recording data.
     pub kind: DataSourceKind,
-
-    /// Whether this layer holds asset data (shared across segments) or per-segment data.
-    pub layer_class: LayerClass,
 }
 
 impl DataSource {
@@ -2184,7 +2178,6 @@ impl DataSource {
             is_prefix: false,
             layer: LayerName::base(),
             kind: DataSourceKind::Rrd,
-            layer_class: LayerClass::Segment,
         })
     }
 
@@ -2194,7 +2187,6 @@ impl DataSource {
             is_prefix: true,
             layer: LayerName::base(),
             kind: DataSourceKind::Rrd,
-            layer_class: LayerClass::Segment,
         })
     }
 
@@ -2207,7 +2199,6 @@ impl DataSource {
             is_prefix: false,
             layer: LayerName::new(layer.as_ref()),
             kind: DataSourceKind::Rrd,
-            layer_class: LayerClass::Segment,
         })
     }
 
@@ -2220,7 +2211,6 @@ impl DataSource {
             is_prefix: true,
             layer: LayerName::new(layer.as_ref()),
             kind: DataSourceKind::Rrd,
-            layer_class: LayerClass::Segment,
         })
     }
 
@@ -2230,7 +2220,6 @@ impl DataSource {
             is_prefix: false,
             layer: LayerName::base(),
             kind: DataSourceKind::Rrd,
-            layer_class: LayerClass::Segment,
         }
     }
 
@@ -2240,50 +2229,6 @@ impl DataSource {
             is_prefix: true,
             layer: LayerName::base(),
             kind: DataSourceKind::Rrd,
-            layer_class: LayerClass::Segment,
-        }
-    }
-
-    pub fn new_rrd_asset_layer(layer: impl AsRef<str>, storage_url: url::Url) -> Self {
-        Self {
-            storage_url,
-            is_prefix: false,
-            layer: LayerName::new(layer.as_ref()),
-            kind: DataSourceKind::Rrd,
-            layer_class: LayerClass::Asset,
-        }
-    }
-}
-
-impl TryFrom<crate::cloud::v1alpha1::LayerClass> for LayerClass {
-    type Error = TypeConversionError;
-
-    fn try_from(class: crate::cloud::v1alpha1::LayerClass) -> Result<Self, Self::Error> {
-        match class {
-            crate::cloud::v1alpha1::LayerClass::Asset => Ok(Self::Asset),
-            crate::cloud::v1alpha1::LayerClass::Segment => Ok(Self::Segment),
-            crate::cloud::v1alpha1::LayerClass::Unspecified => {
-                Err(TypeConversionError::InvalidField {
-                    package_name: "rerun.cloud.v1alpha1",
-                    type_name: "LayerClass",
-                    field_name: "",
-                    reason: "enum value unspecified".to_owned(),
-                })
-            }
-        }
-    }
-}
-
-fn layer_class_from_i32(class: i32) -> Result<LayerClass, TypeConversionError> {
-    let class = crate::cloud::v1alpha1::LayerClass::try_from(class)?;
-    class.try_into()
-}
-
-impl From<LayerClass> for crate::cloud::v1alpha1::LayerClass {
-    fn from(value: LayerClass) -> Self {
-        match value {
-            LayerClass::Asset => Self::Asset,
-            LayerClass::Segment => Self::Segment,
         }
     }
 }
@@ -2295,7 +2240,6 @@ impl From<DataSource> for crate::cloud::v1alpha1::DataSource {
             prefix: value.is_prefix,
             layer: Some(value.layer.into()),
             typ: value.kind as i32,
-            layer_class: crate::cloud::v1alpha1::LayerClass::from(value.layer_class) as i32,
         }
     }
 }
@@ -2318,18 +2262,11 @@ impl TryFrom<crate::cloud::v1alpha1::DataSource> for DataSource {
 
         let prefix = data_source.prefix;
 
-        let layer_class = if data_source.layer_class == 0 {
-            LayerClass::Segment // default when unspecified
-        } else {
-            layer_class_from_i32(data_source.layer_class)?
-        };
-
         Ok(Self {
             storage_url,
             is_prefix: prefix,
             layer,
             kind,
-            layer_class,
         })
     }
 }

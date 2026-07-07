@@ -123,13 +123,32 @@ message EntryId {
   Tuid id = 1;
 }
 
+// What type of dataset.
+//
+// This affects limits on what can be registered to the dataset.
+enum DatasetKind {
+  // Always reserve unspecified as default value
+  DATASET_KIND_UNSPECIFIED = 0;
+
+  DATASET_KIND_RECORDING = 1;
+
+  DATASET_KIND_BLUEPRINT = 2;
+
+  DATASET_KIND_ASSET = 3;
+}
+
 // Entry point for all ManifestWriterService APIs
 message DatasetHandle {
   // Unique entry identifier (for debug purposes)
   EntryId entry_id = 1;
 
   // The kind of dataset this handle refers to.
-  StoreKind store_kind = 3;
+  //
+  // Deprecated: use `dataset_kind` instead.
+  StoreKind store_kind = 3 [deprecated = true];
+
+  // The kind of dataset this handle refers to.
+  DatasetKind dataset_kind = 4;
 
   // Path to Dataset backing storage (e.g. s3://bucket/file or file:///path/to/file)
   optional string dataset_url = 2;
