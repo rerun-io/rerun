@@ -91,8 +91,28 @@ impl App {
 
         self.state.cleanup(&store_hub);
 
+        self.sync_native_window_theme(egui_ctx);
+
         // Return the `StoreHub` to the Viewer so we have it on the next frame
         self.store_hub = Some(store_hub);
+    }
+
+    /// Keep the OS window's appearance in sync with our egui theme.
+    ///
+    /// This affects the way the macOS traffic light buttons are painted. Without this,
+    /// they look wrong when the themes mismatch and the window isn't focused.
+    // TODO(emilk/egui#8299): Remove once the egui fix lands
+    fn sync_native_window_theme(&mut self, egui_ctx: &egui::Context) {
+        let window_theme = match egui_ctx.options(|o| o.theme_preference) {
+            egui::ThemePreference::System => egui::SystemTheme::SystemDefault,
+            egui::ThemePreference::Dark => egui::SystemTheme::Dark,
+            egui::ThemePreference::Light => egui::SystemTheme::Light,
+        };
+
+        if self.last_window_theme != Some(window_theme) {
+            self.last_window_theme = Some(window_theme);
+            egui_ctx.send_viewport_cmd(egui::ViewportCommand::SetTheme(window_theme));
+        }
     }
 
     fn receive_messages(&mut self, store_hub: &mut StoreHub, egui_ctx: &egui::Context) {

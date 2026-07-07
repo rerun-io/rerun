@@ -133,6 +133,9 @@ pub struct App {
     /// Measures how long a frame takes to paint
     pub(crate) frame_time_history: egui::util::History<f32>,
 
+    /// The last theme we pushed to the OS window (via [`egui::ViewportCommand::SetTheme`]).
+    last_window_theme: Option<egui::SystemTheme>,
+
     /// Commands to run at the end of the frame.
     pub command_sender: CommandSender,
     command_receiver: CommandReceiver,
@@ -490,6 +493,7 @@ impl App {
             latest_latency_interest: None,
 
             frame_time_history: egui::util::History::new(1..100, 0.5),
+            last_window_theme: None,
 
             command_sender,
             command_receiver,
