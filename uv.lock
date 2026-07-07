@@ -4774,7 +4774,7 @@ requires-dist = [{ name = "sitecustomize-entrypoints" }]
 
 [[package]]
 name = "rerun-notebook"
-version = "0.34.0"
+version = "0.34.1rc1"
 source = { editable = "rerun_notebook" }
 dependencies = [
     { name = "anywidget" },
