@@ -447,6 +447,9 @@ impl CurrentStores {
             return Ok(());
         }
         let Some(horizon) = self.manifest.as_ref().and_then(|m| m.safe_horizon()) else {
+            // No horizon info available — feeds the stall detector
+            // because nothing else will here.
+            self.pipeline_budget.notify_empty_emit();
             return Ok(()); // path 1 — no horizon info available
         };
 
@@ -469,6 +472,7 @@ impl CurrentStores {
         if let Some(last) = self.processed_through_time
             && horizon <= last
         {
+            self.pipeline_budget.notify_empty_emit();
             return Ok(());
         }
 
@@ -486,12 +490,16 @@ impl CurrentStores {
             .max_arrived_time_max
             .is_none_or(|tmax| self.processed_through_time.is_some_and(|p| tmax <= p))
         {
+            // No emittable rows in range — still an empty emit cycle,
+            // so feed the stall detector before short-circuiting.
+            self.pipeline_budget.notify_empty_emit();
             self.gc_up_to_horizon(horizon);
             self.processed_through_time = Some(horizon);
             return Ok(());
         }
 
         // Path 2: emit + GC up to the new horizon.
+        let rows_before = *rows_sent;
         self.emit_up_to(
             Some(horizon),
             projected_schema,
@@ -500,6 +508,11 @@ impl CurrentStores {
             limit_rows,
         )
         .await?;
+        if *rows_sent > rows_before {
+            self.pipeline_budget.notify_row_emitted();
+        } else {
+            self.pipeline_budget.notify_empty_emit();
+        }
         self.gc_up_to_horizon(horizon);
         Ok(())
     }
@@ -685,6 +698,14 @@ impl Drop for CurrentStores {
         // comment in the CPU worker about why `store_bytes >= reserved_sum`
         // and the resulting under-utilization is benign.
         self.pipeline_budget.release(self.store_bytes() as usize);
+
+        // Free the segment's slot in the segment-count gate so a
+        // parked higher-priority reserver can be admitted. The byte
+        // refund above and the segment-gate slot are independent: the
+        // slot must be vacated here regardless of how the bytes were
+        // released.
+        self.pipeline_budget
+            .publish_segment_finalized(self.segment_id.as_str());
     }
 }
 

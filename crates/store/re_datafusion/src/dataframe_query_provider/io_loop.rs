@@ -6,7 +6,7 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-use arrow::array::RecordBatch;
+use arrow::array::{RecordBatch, StringArray};
 use futures::StreamExt as _;
 use re_dataframe::TimelineName;
 use re_log_types::TimeInt;
@@ -25,7 +25,7 @@ use crate::chunk_fetcher::{
 };
 use crate::dataframe_query_common::{DataframeClientAPI, force_grpc};
 use crate::metrics_capture::QueryMetrics;
-use crate::pipeline_budget::PipelineBudget;
+use crate::pipeline_budget::{MAX_CONCURRENT_SEGMENTS, PipelineBudget};
 use crate::segment_chunk_manifest::SegmentChunkManifest;
 use re_dataframe::external::re_chunk::{Chunk, TimeColumn};
 
@@ -187,6 +187,75 @@ fn count_chunks_per_segment(chunk_infos: &[RecordBatch]) -> ApiResult<Vec<(Segme
         .collect())
 }
 
+/// Extend `seen` / `order` with the distinct `segment_id`s present
+/// in a fetch batch, preserving first-seen order. Used by the IO
+/// side to feed the budget's segment-count gate atomically with the
+/// byte reservation. Taking a shared `seen` lets a multi-batch fetch
+/// dedup across batches in one pass instead of building per-batch
+/// `Vec`s and re-deduping at the caller.
+fn extend_distinct_segment_ids(
+    batch: &RecordBatch,
+    seen: &mut HashSet<String>,
+    order: &mut Vec<String>,
+) -> ApiResult<()> {
+    let seg_col = batch
+        .column_by_name(QueryDatasetDataframe::COLUMN_CHUNK_SEGMENT_ID_NAME)
+        .ok_or_else(|| ApiError::internal("missing segment_id column in fetch batch"))?
+        .as_any()
+        .downcast_ref::<StringArray>()
+        .ok_or_else(|| ApiError::internal("segment_id column is not a string array"))?;
+    for i in 0..batch.num_rows() {
+        let s = seg_col.value(i);
+        if !seen.contains(s) {
+            seen.insert(s.to_owned());
+            order.push(s.to_owned());
+        }
+    }
+    Ok(())
+}
+
+/// Smallest `time_min` (i.e. earliest `:start` value) across the
+/// chunks in a fetch batch, on the query's `filtered_index`
+/// timeline. Used by the IO side as the budget's priority key —
+/// reservations with the lowest `task_time_min` wake first so the
+/// horizon-advancing chunk preempts later-time chunks under
+/// saturation.
+///
+/// Returns [`TimeInt::MAX`] (back-of-the-queue priority) when:
+/// * `filtered_timeline` is `None` (static-only query),
+/// * the `{timeline}:start` column is absent (old server),
+/// * the `{timeline}:start` column has an unsupported dtype, or
+/// * every row in the batch has a null `:start` (static chunks only).
+///
+/// `:start` carries the raw `i64` for the timeline's `time_min`. The OSS
+/// server emits `Int64`; other servers may emit `TimestampNanosecondArray`
+/// / `Time64NanosecondArray` / `DurationNanosecondArray` matching the
+/// timeline's native dtype. All four are i64 under the hood, so we go
+/// through [`TimeColumn::read_nullable_array`] rather than downcasting —
+/// matches what [`build_segment_manifests`] does for the same column.
+fn extract_task_time_min(batch: &RecordBatch, filtered_timeline: Option<&str>) -> TimeInt {
+    let Some(timeline) = filtered_timeline else {
+        return TimeInt::MAX;
+    };
+    let col_name = format!("{timeline}:start");
+    let Some(start_col) = batch.column_by_name(&col_name) else {
+        return TimeInt::MAX;
+    };
+    let Ok((start_values, start_nulls)) = TimeColumn::read_nullable_array(start_col.as_ref())
+    else {
+        return TimeInt::MAX;
+    };
+    let mut min_seen: Option<i64> = None;
+    for i in 0..start_values.len() {
+        if start_nulls.as_ref().is_some_and(|n| n.is_null(i)) {
+            continue;
+        }
+        let v = start_values[i];
+        min_seen = Some(min_seen.map_or(v, |m| m.min(v)));
+    }
+    min_seen.map_or(TimeInt::MAX, TimeInt::saturated_temporal_i64)
+}
+
 /// Extract segment ID from a `chunk_info` `RecordBatch`. Each `chunk_info` batch contains
 /// chunks *for a single segment*, hence we can just take the first row's `segment_id`. This is
 /// guaranteed by the implementation in `group_chunk_infos_by_segment_id`.
@@ -227,6 +296,7 @@ fn create_request_batches(
     let mut request_batches = Vec::new();
     let mut current_batch = Vec::new();
     let mut current_batch_size = 0u64;
+    let mut current_batch_segments: HashSet<SegmentId> = HashSet::new();
     let mut segment_order = Vec::new();
     let mut segment_seen = HashSet::new();
 
@@ -240,14 +310,25 @@ fn create_request_batches(
             segment_order.push(segment_id.clone());
         }
 
-        // Check if this segment would make the current batch too large
-        if !current_batch.is_empty() && current_batch_size + segment_size > target_size_bytes {
+        // Check if this chunk_info would push the current batch past
+        // either the byte target OR the segment-count cap. The
+        // segment-count check matters when small segments would
+        // otherwise merge >`MAX_CONCURRENT_SEGMENTS` distinct
+        // segments into a single fetch: the resulting reservation
+        // could never satisfy the segment-count gate in
+        // `PipelineBudget::try_admit` and would deadlock.
+        let adds_new_segment = !current_batch_segments.contains(&segment_id);
+        let would_exceed_size = current_batch_size + segment_size > target_size_bytes;
+        let would_exceed_segments =
+            adds_new_segment && current_batch_segments.len() >= MAX_CONCURRENT_SEGMENTS;
+        if !current_batch.is_empty() && (would_exceed_size || would_exceed_segments) {
             // Merge current batch and add to results
             let merged_batch = re_arrow_util::concat_polymorphic_batches(&current_batch)
                 .map_err(|err| merge_err(err, "merging chunk-info batches"))?;
             request_batches.push(merged_batch);
             current_batch = Vec::new();
             current_batch_size = 0;
+            current_batch_segments.clear();
         }
 
         // Split the large segment into multiple requests
@@ -259,6 +340,7 @@ fn create_request_batches(
                 request_batches.push(merged_batch);
                 current_batch = Vec::new();
                 current_batch_size = 0;
+                current_batch_segments.clear();
             }
 
             let split_batches =
@@ -271,6 +353,7 @@ fn create_request_batches(
         } else {
             current_batch.push(chunk_info);
             current_batch_size += segment_size;
+            current_batch_segments.insert(segment_id);
         }
     }
 
@@ -413,6 +496,7 @@ async fn fetch_remaining_via_grpc<T: DataframeClientAPI>(
     batches: &[RecordBatch],
     client: &T,
     global_segment_order: &[SegmentId],
+    filtered_index_timeline: Option<&str>,
     output_channel: &Sender<ApiResult<CpuWorkerMsg>>,
     pipeline_budget: &PipelineBudget,
 ) -> ApiResult<()> {
@@ -429,10 +513,25 @@ async fn fetch_remaining_via_grpc<T: DataframeClientAPI>(
             .iter()
             .map(|b| batch_byte_size_uncompressed(b).unwrap_or_else(|| batch_byte_size(b)))
             .sum::<u64>() as usize;
-        let guard = pipeline_budget.reserve_guarded(estimated).await;
-        // `?` here is safe: `guard` returns the reservation on drop so an
-        // error from the gRPC fetch does not leak headroom to the shared
-        // cross-partition budget.
+        let task_time_min = batch_group
+            .iter()
+            .map(|b| extract_task_time_min(b, filtered_index_timeline))
+            .min()
+            .unwrap_or(TimeInt::MAX);
+        let mut segment_ids: Vec<String> = Vec::new();
+        {
+            let mut seen: HashSet<String> = HashSet::new();
+            for b in batch_group {
+                extend_distinct_segment_ids(b, &mut seen, &mut segment_ids)?;
+            }
+        }
+        let guard = pipeline_budget
+            .reserve_guarded_with_priority(estimated, task_time_min, segment_ids)
+            .await;
+        // `?` here is safe: `guard` returns the reservation on drop —
+        // both the reserved bytes and the segment-count gate slots — so
+        // an error from the gRPC fetch does not leak headroom to the
+        // shared cross-partition budget.
         let all_chunks = fetch_batch_group_via_grpc(batch_group, client).await?;
 
         let actual: usize = all_chunks
@@ -521,6 +620,13 @@ pub(super) async fn chunk_stream_io_loop<T: DataframeClientAPI>(
     // Empty result map = no temporal info available (static-only query,
     // or old server without `:start`) → worker falls back to
     // completion-only flush, governed by the chunk counts above.
+    // Owned copy of the timeline name for the budget's priority key —
+    // `build_segment_manifests` consumes the `Option<TimelineName>` below.
+    // Wrapped in `Arc<str>` so the per-task fetch fan-out clones a
+    // pointer per spawn instead of an owned `String`.
+    let filtered_index_timeline_str: Option<Arc<str>> = filtered_index_timeline
+        .as_ref()
+        .map(|t| Arc::<str>::from(t.as_str()));
     let manifests = build_segment_manifests(&chunk_infos, filtered_index_timeline)?;
     for (segment_id, manifest) in manifests {
         if output_channel
@@ -568,6 +674,7 @@ pub(super) async fn chunk_stream_io_loop<T: DataframeClientAPI>(
             &request_batches,
             &client,
             &global_segment_order,
+            filtered_index_timeline_str.as_deref(),
             &output_channel,
             &pipeline_budget,
         )
@@ -635,21 +742,31 @@ pub(super) async fn chunk_stream_io_loop<T: DataframeClientAPI>(
             let pending_analytics = pending_analytics.clone();
             let pipeline_budget = Arc::clone(&pipeline_budget);
             let metrics = Arc::clone(&metrics);
+            let filtered_index_timeline = filtered_index_timeline_str.as_ref().map(Arc::clone);
             async move {
                 // Task-local stats buffer — flushed once to the shared atomics
                 // at the end of this task to avoid cross-core cache-line
                 // contention on the hot counters.
                 let mut stats = TaskFetchStats::default();
 
-                let estimated = match &task {
-                    FetchTask::Direct(b) | FetchTask::Grpc(b) => batch_byte_size_uncompressed(b)
-                        .unwrap_or_else(|| batch_byte_size(b))
-                        as usize,
+                let batch_ref = match &task {
+                    FetchTask::Direct(b) | FetchTask::Grpc(b) => b,
                 };
-                // RAII guard: refunds the reservation on any early `return Err(_)`
+                let estimated = batch_byte_size_uncompressed(batch_ref)
+                    .unwrap_or_else(|| batch_byte_size(batch_ref))
+                    as usize;
+                let task_time_min =
+                    extract_task_time_min(batch_ref, filtered_index_timeline.as_deref());
+                let mut seen: HashSet<String> = HashSet::new();
+                let mut segment_ids: Vec<String> = Vec::new();
+                extend_distinct_segment_ids(batch_ref, &mut seen, &mut segment_ids)?;
+                // RAII guard: refunds the reservation — bytes and
+                // segment-count gate slots — on any early `return Err(_)`
                 // below so the shared budget keeps its full headroom for other
                 // partitions on fetch failure.
-                let guard = pipeline_budget.reserve_guarded(estimated).await;
+                let guard = pipeline_budget
+                    .reserve_guarded_with_priority(estimated, task_time_min, segment_ids)
+                    .await;
 
                 let chunks = match task {
                     FetchTask::Direct(batch) => {
@@ -752,8 +869,8 @@ mod tests {
     use std::collections::HashMap;
 
     use arrow::array::{
-        BooleanArray, FixedSizeBinaryBuilder, Int64Array, RecordBatchOptions, StringArray,
-        UInt64Array,
+        Array as _, BooleanArray, FixedSizeBinaryBuilder, Int64Array, RecordBatchOptions,
+        StringArray, UInt64Array,
     };
     use arrow::datatypes::{Field, Schema};
     use re_log_types::EntityPath;
@@ -853,6 +970,52 @@ mod tests {
         assert_eq!(
             segment_order_as_strs(&segment_order),
             vec!["seg1", "seg2", "seg3", "seg4"]
+        );
+    }
+
+    /// Many tiny segments must not all merge into a single fetch
+    /// batch: the merged batch's distinct-segment count would exceed
+    /// `MAX_CONCURRENT_SEGMENTS` and the segment-count gate in
+    /// `PipelineBudget::try_admit` would deadlock on it. Verify the
+    /// merger flushes the batch at the cap regardless of byte
+    /// headroom.
+    #[test]
+    fn test_create_request_batches_caps_segments_per_batch() {
+        // Six tiny segments, target size large enough that all six
+        // would otherwise pack into one batch.
+        let chunk_infos = vec![
+            create_test_chunk_info("seg1", &[10]),
+            create_test_chunk_info("seg2", &[10]),
+            create_test_chunk_info("seg3", &[10]),
+            create_test_chunk_info("seg4", &[10]),
+            create_test_chunk_info("seg5", &[10]),
+            create_test_chunk_info("seg6", &[10]),
+        ];
+        let target_size = 100_000; // far more than 6 * 10
+
+        let (batches, segment_order) = create_request_batches(chunk_infos, target_size).unwrap();
+
+        // 6 segments / MAX_CONCURRENT_SEGMENTS=3 = exactly 2 batches.
+        assert_eq!(batches.len(), 2);
+        // Each batch's distinct-segment count must not exceed the cap.
+        for batch in &batches {
+            let seg_col = batch
+                .column_by_name(QueryDatasetDataframe::COLUMN_CHUNK_SEGMENT_ID_NAME)
+                .unwrap()
+                .as_any()
+                .downcast_ref::<StringArray>()
+                .unwrap();
+            let distinct: HashSet<&str> = (0..seg_col.len()).map(|i| seg_col.value(i)).collect();
+            assert!(
+                distinct.len() <= MAX_CONCURRENT_SEGMENTS,
+                "batch has {} distinct segments, cap is {}",
+                distinct.len(),
+                MAX_CONCURRENT_SEGMENTS,
+            );
+        }
+        assert_eq!(
+            segment_order_as_strs(&segment_order),
+            vec!["seg1", "seg2", "seg3", "seg4", "seg5", "seg6"]
         );
     }
 
