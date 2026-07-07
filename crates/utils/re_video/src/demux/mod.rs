@@ -1427,13 +1427,17 @@ mod tests {
         data.windows(4).any(|w| w == ANNEXB_NAL_START_CODE)
     }
 
-    fn video_test_file_mp4(codec: &VideoCodec, need_dts_equal_pts: bool) -> std::path::PathBuf {
-        let workspace_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+    fn workspace_dir() -> std::path::PathBuf {
+        std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .parent()
             .and_then(|p| p.parent())
             .and_then(|p| p.parent())
             .unwrap()
-            .to_path_buf();
+            .to_path_buf()
+    }
+
+    fn video_test_file_mp4(codec: &VideoCodec, need_dts_equal_pts: bool) -> std::path::PathBuf {
+        let workspace_dir = workspace_dir();
 
         let codec_str = match codec {
             VideoCodec::H264 => "h264",
@@ -1515,6 +1519,22 @@ mod tests {
             VideoCodec::VP9,
         ] {
             test_video_codec_sampling(&codec, false);
+        }
+    }
+
+    #[test]
+    fn test_unsupported_codec_reports_codec_not_missing_track() {
+        // A video file whose track uses a codec we don't support, such as MPEG-4 Part 2,
+        // should report the unsupported codec rather than claim the file has no video track.
+        let data =
+            std::fs::read(workspace_dir().join("tests/assets/video/mpeg4_part2.mp4")).unwrap();
+
+        match VideoDataDescription::load_from_bytes(&data, "video/mp4", "mpeg4_part2") {
+            Err(VideoLoadError::UnsupportedCodec(fourcc)) => {
+                assert_eq!(fourcc, re_mp4::FourCC::from(*b"mp4v"));
+            }
+            Err(other) => panic!("expected UnsupportedCodec, got {other:?}"),
+            Ok(_) => panic!("expected loading MPEG-4 Part 2 to fail"),
         }
     }
 
