@@ -19,9 +19,9 @@ impl AlertVisuals {
         let value = ron.get(name)?;
 
         Ok(Self {
-            fill: color_from_json(color_table, value.get("fill")?)?,
-            icon: color_from_json(color_table, value.get("icon")?)?,
-            text: color_from_json(color_table, value.get("text")?)?,
+            fill: color_from_value(color_table, value.get("fill")?)?,
+            icon: color_from_value(color_table, value.get("icon")?)?,
+            text: color_from_value(color_table, value.get("text")?)?,
         })
     }
 
@@ -54,12 +54,12 @@ impl ButtonVisuals {
         let value = ron.get(name)?;
 
         Ok(Self {
-            fill: color_from_json(color_table, value.get("fill")?)?,
-            fill_hovered: color_from_json(color_table, value.get("fill_hovered")?)?,
-            fill_pressed: color_from_json(color_table, value.get("fill_pressed")?)?,
-            text: color_from_json(color_table, value.get("text")?)?,
+            fill: color_from_value(color_table, value.get("fill")?)?,
+            fill_hovered: color_from_value(color_table, value.get("fill_hovered")?)?,
+            fill_pressed: color_from_value(color_table, value.get("fill_pressed")?)?,
+            text: color_from_value(color_table, value.get("text")?)?,
             stroke: match value.get("stroke") {
-                Ok(stroke) => stroke_from_json(color_table, stroke)?,
+                Ok(stroke) => stroke_from_value(color_table, stroke)?,
                 Err(_) => Stroke::NONE,
             },
         })
@@ -349,14 +349,14 @@ impl DesignTokens {
             .expect("Failed to parse data/color_table.ron");
         let colors = load_color_table(&color_table_ron);
 
-        let theme_json: ron::Value = ron::from_str(tokens_ron)
+        let theme_value: ron::Value = ron::from_str(tokens_ron)
             .with_context(|| format!("Failed to parse {theme:?} theme .ron"))?;
 
-        let typography: Typography = parse_path(&theme_json, "{Global.Typography.Default}");
+        let typography: Typography = parse_path(&theme_value, "{Global.Typography.Default}");
 
-        let get_scalar = |scalar_name: &str| try_get_scalar(&theme_json, scalar_name);
-        let get_color = |color_name: &str| get_aliased_color(&colors, &theme_json, color_name);
-        let get_stroke = |stroke_name: &str| get_aliased_stroke(&colors, &theme_json, stroke_name);
+        let get_scalar = |scalar_name: &str| try_get_scalar(&theme_value, scalar_name);
+        let get_color = |color_name: &str| get_aliased_color(&colors, &theme_value, color_name);
+        let get_stroke = |stroke_name: &str| get_aliased_stroke(&colors, &theme_value, stroke_name);
 
         let selection_bg_fill = get_color("selection_bg_fill");
 
@@ -463,16 +463,16 @@ impl DesignTokens {
             error_fg_color: get_color("error_fg_color"),
             warn_fg_color: get_color("warn_fg_color"),
 
-            alert_success: AlertVisuals::get(&colors, &theme_json, "alert_success"),
-            alert_info: AlertVisuals::get(&colors, &theme_json, "alert_info"),
-            alert_warning: AlertVisuals::get(&colors, &theme_json, "alert_warning"),
-            alert_error: AlertVisuals::get(&colors, &theme_json, "alert_error"),
+            alert_success: AlertVisuals::get(&colors, &theme_value, "alert_success"),
+            alert_info: AlertVisuals::get(&colors, &theme_value, "alert_info"),
+            alert_warning: AlertVisuals::get(&colors, &theme_value, "alert_warning"),
+            alert_error: AlertVisuals::get(&colors, &theme_value, "alert_error"),
 
-            button_primary: ButtonVisuals::get(&colors, &theme_json, "button_primary"),
-            button_secondary: ButtonVisuals::get(&colors, &theme_json, "button_secondary"),
-            button_ghost: ButtonVisuals::get(&colors, &theme_json, "button_ghost"),
-            button_outlined: ButtonVisuals::get(&colors, &theme_json, "button_outlined"),
-            button_opened: ButtonVisuals::get(&colors, &theme_json, "button_opened"),
+            button_primary: ButtonVisuals::get(&colors, &theme_value, "button_primary"),
+            button_secondary: ButtonVisuals::get(&colors, &theme_value, "button_secondary"),
+            button_ghost: ButtonVisuals::get(&colors, &theme_value, "button_ghost"),
+            button_outlined: ButtonVisuals::get(&colors, &theme_value, "button_outlined"),
+            button_opened: ButtonVisuals::get(&colors, &theme_value, "button_opened"),
 
             popup_shadow_color: get_color("popup_shadow_color"),
 
@@ -971,7 +971,7 @@ impl DesignTokens {
 // ----------------------------------------------------------------------------
 
 trait RonExt {
-    /// Supports path-like access to the JSON structure.
+    /// Supports path-like access to the value structure.
     fn get(&self, path: &str) -> anyhow::Result<&Self> {
         let mut value = self;
         for component in path.split('.') {
@@ -1024,9 +1024,9 @@ impl RonExt for ron::Value {
 }
 
 /// Build the [`ColorTable`] based on the content of `design_token.ron`
-fn load_color_table(json: &ron::Value) -> ColorTable {
-    fn get_color_from_json(json: &ron::Value, global_path: &str) -> Option<Color32> {
-        let value = follow_path(json, global_path)?;
+fn load_color_table(value: &ron::Value) -> ColorTable {
+    fn get_color_from_value(value: &ron::Value, global_path: &str) -> Option<Color32> {
+        let value = follow_path(value, global_path)?;
         let hex = value.get_child("value")?.as_str()?;
         Some(Color32::from_hex(hex).unwrap())
     }
@@ -1035,20 +1035,20 @@ fn load_color_table(json: &ron::Value) -> ColorTable {
     // Missing entries get magenta so they're obvious if ever accidentally referenced.
     ColorTable::new(|color_token| {
         let path = format!("{{Global.Color.{}.{}}}", color_token.hue, color_token.scale);
-        get_color_from_json(json, &path).unwrap_or(Color32::DEBUG_COLOR)
+        get_color_from_value(value, &path).unwrap_or(Color32::DEBUG_COLOR)
     })
 }
 
 fn try_get_alias_color(
     color_table: &ColorTable,
-    json: &ron::Value,
+    value: &ron::Value,
     color_name: &str,
 ) -> anyhow::Result<Color32> {
-    let color_alias = json.get("Alias")?.get(color_name)?;
-    color_from_json(color_table, color_alias)
+    let color_alias = value.get("Alias")?.get(color_name)?;
+    color_from_value(color_table, color_alias)
 }
 
-fn color_from_json(color_table: &ColorTable, color_alias: &ron::Value) -> anyhow::Result<Color32> {
+fn color_from_value(color_table: &ColorTable, color_alias: &ron::Value) -> anyhow::Result<Color32> {
     let color = color_alias
         .get("color")?
         .as_str()
@@ -1085,8 +1085,8 @@ fn color_from_json(color_table: &ColorTable, color_alias: &ron::Value) -> anyhow
 }
 
 /// Parse a `{ "color": …, "width": … }` block into a [`Stroke`].
-fn stroke_from_json(color_table: &ColorTable, value: &ron::Value) -> anyhow::Result<Stroke> {
-    let color = color_from_json(color_table, value)?;
+fn stroke_from_value(color_table: &ColorTable, value: &ron::Value) -> anyhow::Result<Stroke> {
+    let color = color_from_value(color_table, value)?;
     let width = value
         .get("width")?
         .as_f32()
@@ -1094,32 +1094,33 @@ fn stroke_from_json(color_table: &ColorTable, value: &ron::Value) -> anyhow::Res
     Ok(Stroke::new(width, color))
 }
 
-fn try_get_scalar(json: &ron::Value, path: &str) -> anyhow::Result<f32> {
-    json.get(path)?
+fn try_get_scalar(value: &ron::Value, path: &str) -> anyhow::Result<f32> {
+    value
+        .get(path)?
         .as_f32()
         .ok_or_else(|| anyhow::anyhow!("'{path}' not a number"))
 }
 
-fn get_aliased_color(color_table: &ColorTable, json: &ron::Value, alias_path: &str) -> Color32 {
-    try_get_alias_color(color_table, json, alias_path).unwrap_or_else(|err| {
+fn get_aliased_color(color_table: &ColorTable, value: &ron::Value, alias_path: &str) -> Color32 {
+    try_get_alias_color(color_table, value, alias_path).unwrap_or_else(|err| {
         panic!("Failed to get aliased color at {alias_path:?}: {err}");
     })
 }
 
-fn get_aliased_stroke(color_table: &ColorTable, json: &ron::Value, alias_path: &str) -> Stroke {
-    try_get_aliased_stroke(color_table, json, alias_path).unwrap_or_else(|err| {
+fn get_aliased_stroke(color_table: &ColorTable, value: &ron::Value, alias_path: &str) -> Stroke {
+    try_get_aliased_stroke(color_table, value, alias_path).unwrap_or_else(|err| {
         panic!("Failed to get aliased stroke at {alias_path:?}: {err}");
     })
 }
 
 fn try_get_aliased_stroke(
     color_table: &ColorTable,
-    json: &ron::Value,
+    value: &ron::Value,
     alias_path: &str,
 ) -> anyhow::Result<Stroke> {
-    let color_alias = json.get("Alias")?.get(alias_path)?;
+    let color_alias = value.get("Alias")?.get(alias_path)?;
 
-    let color = color_from_json(color_table, color_alias)?;
+    let color = color_from_value(color_table, color_alias)?;
     let width = color_alias
         .get("width")?
         .as_f32()
@@ -1128,27 +1129,27 @@ fn try_get_aliased_stroke(
     Ok(stroke)
 }
 
-fn global_path_value<'json>(value: &'json ron::Value, global_path: &str) -> &'json ron::Value {
+fn global_path_value<'value>(value: &'value ron::Value, global_path: &str) -> &'value ron::Value {
     follow_path_or_panic(value, global_path)
         .get("value")
         .unwrap()
 }
 
-fn parse_path<T: serde::de::DeserializeOwned>(json: &ron::Value, global_path: &str) -> T {
-    let global_value = global_path_value(json, global_path);
+fn parse_path<T: serde::de::DeserializeOwned>(value: &ron::Value, global_path: &str) -> T {
+    let global_value = global_path_value(value, global_path);
     global_value.clone().into_rust().unwrap_or_else(|err| {
         panic!(
-            "Failed to convert {global_path:?} to {}: {err}. Json: {json:?}",
+            "Failed to convert {global_path:?} to {}: {err}. value: {value:?}",
             std::any::type_name::<T>()
         )
     })
 }
 
-fn follow_path_or_panic<'json>(json: &'json ron::Value, json_path: &str) -> &'json ron::Value {
-    follow_path(json, json_path).unwrap_or_else(|| panic!("Failed to find {json_path:?}"))
+fn follow_path_or_panic<'value>(value: &'value ron::Value, value_path: &str) -> &'value ron::Value {
+    follow_path(value, value_path).unwrap_or_else(|| panic!("Failed to find {value_path:?}"))
 }
 
-fn follow_path<'json>(mut value: &'json ron::Value, path: &str) -> Option<&'json ron::Value> {
+fn follow_path<'value>(mut value: &'value ron::Value, path: &str) -> Option<&'value ron::Value> {
     let path = path.strip_prefix('{')?;
     let path = path.strip_suffix('}')?;
     for component in path.split('.') {
