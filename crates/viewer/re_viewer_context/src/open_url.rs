@@ -615,9 +615,6 @@ impl ViewerOpenUrl {
                 ));
             }
             Self::RedapDatasetSegment(uri) => {
-                // We might be opening a segment that the catalog gained since we last looked, so
-                // refresh it in case it's already on screen.
-                command_sender.send_system(SystemCommand::RefreshRedapServer(uri.origin.clone()));
                 command_sender.send_system(SystemCommand::LoadDataSource(
                     LogDataSource::RedapDatasetSegment {
                         uri,
@@ -643,7 +640,10 @@ impl ViewerOpenUrl {
             }
             Self::RedapEntry(uri) => {
                 command_sender.send_system(SystemCommand::AddRedapServer(uri.origin.clone()));
-                command_sender.send_system(SystemCommand::RefreshRedapServer(uri.origin.clone()));
+                command_sender.send_system(SystemCommand::RefreshRedapEntry {
+                    origin: uri.origin.clone(),
+                    entry_id: uri.entry_id,
+                });
                 let item = Item::from(uri);
                 command_sender.send_system(SystemCommand::set_selection(item.clone()));
                 command_sender.send_system(SystemCommand::SetFocus(item.into()));

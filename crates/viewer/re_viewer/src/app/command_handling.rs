@@ -385,6 +385,12 @@ impl App {
                 }
             }
 
+            SystemCommand::RefreshRedapEntry { origin, entry_id } => {
+                self.state
+                    .redap_servers
+                    .refresh_entry(&origin, entry_id, egui_ctx);
+            }
+
             SystemCommand::RemoveRedapServer(origin) => {
                 // Clearing blueprints must happen before closing the recordings (so we can know
                 // what to close)

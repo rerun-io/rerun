@@ -129,6 +129,11 @@ impl App {
                         self.async_runtime.spawn_future(async move {
                             match register_local_file(&connection_registry, &path).await {
                                 Ok(uri) => {
+                                    // Refresh the dataset if its open
+                                    sender.send_system(SystemCommand::RefreshRedapEntry {
+                                        origin: uri.origin.clone(),
+                                        entry_id: uri.dataset_id.into(),
+                                    });
                                     sender.send_system(SystemCommand::LoadDataSource(
                                         LogDataSource::RedapDatasetSegment {
                                             uri,
