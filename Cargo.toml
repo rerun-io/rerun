@@ -428,7 +428,8 @@ tonic = { version = "0.14.6", default-features = false }
 tonic-prost = { version = "0.14.6", default-features = false }
 tonic-prost-build = { version = "0.14.6", default-features = false }
 tonic-web = "0.14.6"
-tonic-web-wasm-client = "0.8.0" # 0.9 pulls wasm-streams 0.5, duplicating the 0.4 from reqwest 0.12. Update when we update to reqwest 0.13.
+# tonic-web-wasm-client = "0.8.0" # 0.9 pulls wasm-streams 0.5, duplicating the 0.4 from reqwest 0.12. Update when we update to reqwest 0.13.
+tonic-web-wasm-client = { version = "0.8.1", package = "rerun-tonic-web-wasm-client" } # our fork of 0.8.1
 tower = "0.5.3"
 tower-http = "0.6.11" # 0.7 duplicates the 0.6 that reqwest 0.12 (via http-cache-reqwest/walkers) requires. Update when we update to reqwest 0.13.
 tower-service = "0.3.3"
