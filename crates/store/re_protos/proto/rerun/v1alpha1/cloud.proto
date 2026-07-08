@@ -452,6 +452,16 @@ message ScanSegmentTableRequest {
   // If a projected column does not exist, or is projected more than once, the `ScanSegmentTable` call will fail with
   // an `InvalidArgument` error.
   repeated string columns = 1;
+
+  // An optional best-effort filter hint, expressed as a SQL boolean expression over the
+  // segment-table columns (e.g. `rerun_segment_id = 'abc'`).
+  //
+  // If empty, no filter hint is provided.
+  // Column names use the public (segment) terminology.
+  // Servers may apply this filter, ignore it, or reject malformed/unsupported filters with an
+  // `InvalidArgument` error.
+  // Clients must re-apply filters locally if correctness depends on them.
+  string sql_filter = 2;
 }
 
 message ScanSegmentTableResponse {
@@ -476,6 +486,16 @@ message ScanDatasetManifestRequest {
   // If a projected column does not exist, or is projected more than once, the `ScanDatasetManifest` call will fail with
   // an `InvalidArgument` error.
   repeated string columns = 3;
+
+  // An optional best-effort filter hint, expressed as a SQL boolean expression over the
+  // dataset-manifest columns (e.g. `rerun_segment_id = 'abc'`).
+  //
+  // If empty, no filter hint is provided.
+  // Column names use the public (segment) terminology.
+  // Servers may apply this filter, ignore it, or reject malformed/unsupported filters with an
+  // `InvalidArgument` error.
+  // Clients must re-apply filters locally if correctness depends on them.
+  string sql_filter = 4;
 }
 
 message ScanDatasetManifestResponse {

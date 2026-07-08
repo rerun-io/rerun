@@ -23,6 +23,26 @@ use futures_util::StreamExt as _;
 use re_redap_client::{ApiResponseStream, ApiResult};
 use tokio_stream::Stream;
 
+/// The pushdown filters and row limit offered to a scan.
+///
+/// Threaded from [`TableProvider::scan`] down to [`GrpcStreamToTable::send_streaming_request`]
+/// (so an implementor can build a narrower request) and [`GrpcStreamToTable::process_response`]
+/// (so it can filter streamed responses client-side). Cheap to clone — the filters are shared.
+#[derive(Debug, Clone, Default)]
+pub struct ScanParams {
+    /// Filters offered by DataFusion, combined with a logical AND.
+    ///
+    /// No filters = everything passes.
+    pub filters: Arc<[Expr]>,
+
+    /// Maximum number of rows the scan will consume, if bounded.
+    ///
+    /// Plumbed through so implementors can push it into their request once the backends grow
+    /// server-side limit support; the coalescer already enforces it downstream in the meantime.
+    #[expect(dead_code, reason = "plumbed for future server-side limit pushdown")]
+    pub limit: Option<usize>,
+}
+
 #[async_trait]
 pub trait GrpcStreamToTable:
     std::fmt::Debug + 'static + Send + Sync + Clone + std::marker::Unpin
@@ -31,10 +51,15 @@ pub trait GrpcStreamToTable:
 
     async fn fetch_schema(&mut self) -> ApiResult<SchemaRef>;
 
-    fn process_response(&mut self, response: Self::GrpcStreamData) -> ApiResult<RecordBatch>;
+    fn process_response(
+        &mut self,
+        response: Self::GrpcStreamData,
+        params: &ScanParams,
+    ) -> ApiResult<RecordBatch>;
 
     async fn send_streaming_request(
         &mut self,
+        params: &ScanParams,
     ) -> ApiResult<ApiResponseStream<Self::GrpcStreamData>>;
 
     fn supports_filters_pushdown(
@@ -108,12 +133,17 @@ where
         &self,
         _state: &dyn Session,
         projection: Option<&Vec<usize>>,
-        _filters: &[Expr],
+        filters: &[Expr],
         limit: Option<usize>,
     ) -> DataFusionResult<Arc<dyn ExecutionPlan>> {
         let analytics = self
             .client
             .begin_scan_analytics(&self.schema, projection, limit);
+
+        let params = ScanParams {
+            filters: Arc::from(filters),
+            limit,
+        };
 
         StreamingTableExec::try_new(
             self.schema.clone(),
@@ -121,6 +151,7 @@ where
                 &self.schema,
                 self.client.clone(),
                 analytics,
+                params,
             ))],
             projection,
             Vec::default(),
@@ -162,14 +193,21 @@ pub struct GrpcStreamPartitionStream<T: GrpcStreamToTable> {
     schema: SchemaRef,
     client: T,
     analytics: Option<PendingTableQueryAnalytics>,
+    params: ScanParams,
 }
 
 impl<T: GrpcStreamToTable> GrpcStreamPartitionStream<T> {
-    fn new(schema: &SchemaRef, client: T, analytics: Option<PendingTableQueryAnalytics>) -> Self {
+    fn new(
+        schema: &SchemaRef,
+        client: T,
+        analytics: Option<PendingTableQueryAnalytics>,
+        params: ScanParams,
+    ) -> Self {
         Self {
             schema: Arc::clone(schema),
             client,
             analytics,
+            params,
         }
     }
 }
@@ -188,6 +226,7 @@ where
             &self.schema,
             self.client.clone(),
             self.analytics.clone(),
+            self.params.clone(),
         ))
     }
 }
@@ -202,6 +241,7 @@ impl GrpcStream {
         schema: &SchemaRef,
         mut client: T,
         analytics: Option<PendingTableQueryAnalytics>,
+        params: ScanParams,
     ) -> Self
     where
         T::GrpcStreamData: Send + 'static,
@@ -217,7 +257,8 @@ impl GrpcStream {
             // rebuilt fresh.
             let mut stream = re_redap_client::with_retry_resource_exhausted("grpc_stream_open", || {
                     let mut client = client.clone();
-                    async move { client.send_streaming_request().await }
+                    let params = &params;
+                    async move { client.send_streaming_request(params).await }
                 })
                 .await
                 .map_err(|err| {
@@ -242,7 +283,7 @@ impl GrpcStream {
                 if let Some(analytics) = analytics.as_ref() {
                     analytics.record_first_response();
                 }
-                let processed = client.process_response(msg)
+                let processed = client.process_response(msg, &params)
                     .map_err(|err| {
                         if let Some(analytics) = analytics.as_ref() {
                             analytics.record_error(QueryErrorKind::Decode);
@@ -395,7 +436,11 @@ mod table_query_pipeline_tests {
             Ok(fake_schema())
         }
 
-        fn process_response(&mut self, response: u32) -> ApiResult<RecordBatch> {
+        fn process_response(
+            &mut self,
+            response: u32,
+            _params: &ScanParams,
+        ) -> ApiResult<RecordBatch> {
             if self.fail_decode {
                 return Err(ApiError::deserialization(None, "fake decode error"));
             }
@@ -410,6 +455,7 @@ mod table_query_pipeline_tests {
 
         async fn send_streaming_request(
             &mut self,
+            _params: &ScanParams,
         ) -> ApiResult<ApiResponseStream<Self::GrpcStreamData>> {
             // Simulate fail-fast admission control: reject the first `n` opens with
             // ResourceExhausted (shared across the retry wrapper's per-attempt clones). The branch
@@ -511,7 +557,12 @@ mod table_query_pipeline_tests {
     async fn pipeline_records_per_batch_stats_and_first_response() {
         let provider = FakeProvider::new(vec![Ok(1), Ok(2), Ok(3)]);
         let pending = make_pending();
-        let stream = GrpcStream::execute(&fake_schema(), provider, Some(pending.clone()));
+        let stream = GrpcStream::execute(
+            &fake_schema(),
+            provider,
+            Some(pending.clone()),
+            ScanParams::default(),
+        );
 
         let items = drain(stream).await;
         assert_eq!(items.len(), 3);
@@ -535,7 +586,12 @@ mod table_query_pipeline_tests {
     async fn pipeline_records_grpc_fetch_error_when_send_request_fails() {
         let provider = FakeProvider::fail_send_request();
         let pending = make_pending();
-        let stream = GrpcStream::execute(&fake_schema(), provider, Some(pending.clone()));
+        let stream = GrpcStream::execute(
+            &fake_schema(),
+            provider,
+            Some(pending.clone()),
+            ScanParams::default(),
+        );
 
         let items = drain(stream).await;
         assert_eq!(items.len(), 1);
@@ -558,7 +614,12 @@ mod table_query_pipeline_tests {
             Err(ApiError::deserialization(None, "fake mid-stream err")),
         ]);
         let pending = make_pending();
-        let stream = GrpcStream::execute(&fake_schema(), provider, Some(pending.clone()));
+        let stream = GrpcStream::execute(
+            &fake_schema(),
+            provider,
+            Some(pending.clone()),
+            ScanParams::default(),
+        );
 
         let items = drain(stream).await;
         // First batch decoded successfully, second iteration surfaces the error.
@@ -578,7 +639,12 @@ mod table_query_pipeline_tests {
     async fn pipeline_records_decode_error() {
         let provider = FakeProvider::fail_decode(vec![1, 2]);
         let pending = make_pending();
-        let stream = GrpcStream::execute(&fake_schema(), provider, Some(pending.clone()));
+        let stream = GrpcStream::execute(
+            &fake_schema(),
+            provider,
+            Some(pending.clone()),
+            ScanParams::default(),
+        );
 
         let items = drain(stream).await;
         assert_eq!(items.len(), 1);
@@ -598,7 +664,12 @@ mod table_query_pipeline_tests {
         let trace_id = opentelemetry::TraceId::from_bytes([9u8; 16]);
         let provider = FakeProvider::new(vec![Ok(1)]).with_trace_id(trace_id);
         let pending = make_pending();
-        let stream = GrpcStream::execute(&fake_schema(), provider, Some(pending.clone()));
+        let stream = GrpcStream::execute(
+            &fake_schema(),
+            provider,
+            Some(pending.clone()),
+            ScanParams::default(),
+        );
 
         let _ = drain(stream).await;
 
@@ -613,7 +684,7 @@ mod table_query_pipeline_tests {
         // stream still produces correct output. Smoke test for the
         // `if let Some(analytics) = analytics.as_ref()` branches.
         let provider = FakeProvider::new(vec![Ok(1), Ok(2)]);
-        let stream = GrpcStream::execute(&fake_schema(), provider, None);
+        let stream = GrpcStream::execute(&fake_schema(), provider, None, ScanParams::default());
 
         let items = drain(stream).await;
         assert_eq!(items.len(), 2);
@@ -625,7 +696,7 @@ mod table_query_pipeline_tests {
         // The first two stream-opens are rejected with `ResourceExhausted`; the retry wrapper in
         // `GrpcStream::execute` should ride them out and then stream all three rows.
         let provider = FakeProvider::resource_exhausted_then(2, vec![1, 2, 3]);
-        let stream = GrpcStream::execute(&fake_schema(), provider, None);
+        let stream = GrpcStream::execute(&fake_schema(), provider, None, ScanParams::default());
 
         let items = drain(stream).await;
         assert_eq!(items.len(), 3);

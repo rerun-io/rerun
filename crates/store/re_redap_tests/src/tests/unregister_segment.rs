@@ -289,10 +289,8 @@ async fn scan_segment_table_and_snapshot(
 ) -> RecordBatch {
     let responses: Vec<_> = service
         .scan_segment_table(
-            tonic::Request::new(ScanSegmentTableRequest {
-                columns: vec![], // all of them
-            })
-            .with_entry_name(entry_name(dataset_name)),
+            tonic::Request::new(ScanSegmentTableRequest::all())
+                .with_entry_name(entry_name(dataset_name)),
         )
         .await
         .unwrap()
@@ -377,10 +375,8 @@ async fn scan_dataset_manifest_and_snapshot(
 ) -> RecordBatch {
     let responses: Vec<_> = service
         .scan_dataset_manifest(
-            tonic::Request::new(ScanDatasetManifestRequest {
-                columns: vec![], // all of them
-            })
-            .with_entry_name(entry_name(dataset_name)),
+            tonic::Request::new(ScanDatasetManifestRequest::all())
+                .with_entry_name(entry_name(dataset_name)),
         )
         .await
         .unwrap()

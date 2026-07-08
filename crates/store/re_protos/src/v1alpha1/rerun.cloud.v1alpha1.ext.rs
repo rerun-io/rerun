@@ -14,8 +14,9 @@ use re_types_core::LayerName;
 use crate::cloud::v1alpha1::ext::{QueryDatasetDataframe, ScanSegmentTableDataframe};
 use crate::cloud::v1alpha1::{
     DoBandwidthTestResponse, EntryKind, FetchChunksRequest, GetDatasetSchemaResponse,
-    QueryDatasetResponse, QueryTasksResponse, ScanDatasetManifestResponse,
-    ScanSegmentTableResponse,
+    QueryDatasetResponse, QueryTasksResponse, ScanDatasetManifestRequest,
+    ScanDatasetManifestResponse, ScanSegmentTableRequest, ScanSegmentTableResponse,
+    UnregisterFromDatasetResponse,
 };
 use crate::common::v1alpha1::ext as common_ext;
 use crate::common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, SegmentId};
@@ -464,6 +465,42 @@ impl QueryDatasetResponse {
         }
         .into_record_batch()
         .map_err(|err| ArrowError::InvalidArgumentError(err.to_string()))
+    }
+}
+
+impl ScanSegmentTableRequest {
+    /// Request every segment-table column with no filter hint.
+    pub fn all() -> Self {
+        Self {
+            columns: Vec::new(),
+            sql_filter: String::new(),
+        }
+    }
+
+    /// Request selected segment-table columns with no filter hint.
+    pub fn with_columns(columns: impl IntoIterator<Item = impl Into<String>>) -> Self {
+        Self {
+            columns: columns.into_iter().map(Into::into).collect(),
+            sql_filter: String::new(),
+        }
+    }
+}
+
+impl ScanDatasetManifestRequest {
+    /// Request every dataset-manifest column with no filter hint.
+    pub fn all() -> Self {
+        Self {
+            columns: Vec::new(),
+            sql_filter: String::new(),
+        }
+    }
+
+    /// Request selected dataset-manifest columns with no filter hint.
+    pub fn with_columns(columns: impl IntoIterator<Item = impl Into<String>>) -> Self {
+        Self {
+            columns: columns.into_iter().map(Into::into).collect(),
+            sql_filter: String::new(),
+        }
     }
 }
 
@@ -1956,6 +1993,19 @@ pub struct RegisterWithDatasetTaskDescriptor {
     pub segment_type: DataSourceKind,
     pub storage_url: url::Url,
     pub task_id: TaskId,
+}
+
+// --- UnregisterFromDatasetResponse ---
+
+/// The dataframe follows the same schema as
+/// [`ScanDatasetManifestDataframe`](crate::cloud::v1alpha1::ext::ScanDatasetManifestDataframe).
+impl UnregisterFromDatasetResponse {
+    pub fn data(&self) -> Result<&DataframePart, TypeConversionError> {
+        Ok(self
+            .data
+            .as_ref()
+            .ok_or_else(|| missing_field!(Self, "data"))?)
+    }
 }
 
 // --- ScanSegmentTableResponse --

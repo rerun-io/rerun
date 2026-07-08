@@ -630,10 +630,8 @@ where
                 client
                     .inner()
                     .scan_segment_table(
-                        tonic::Request::new(ScanSegmentTableRequest {
-                            columns: vec![COLUMN_NAME.to_owned()],
-                        })
-                        .with_entry_id(entry_id),
+                        tonic::Request::new(ScanSegmentTableRequest::with_columns([COLUMN_NAME]))
+                            .with_entry_id(entry_id),
                     )
                     .await
                     .map_err(|err| ApiError::tonic(err, "/ScanSegmentTable failed"))

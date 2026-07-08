@@ -29,7 +29,7 @@ use tracing::instrument;
 
 use crate::IntoDfError as _;
 use crate::analytics::{TableQueryInfo, expr_filter_signature};
-use crate::grpc_streaming_provider::{GrpcStreamProvider, GrpcStreamToTable};
+use crate::grpc_streaming_provider::{GrpcStreamProvider, GrpcStreamToTable, ScanParams};
 use crate::wasm_compat::make_future_send;
 use crate::{ConnectionAnalytics, PendingTableQueryAnalytics, TableKind, TableQueryCaller};
 
@@ -229,9 +229,10 @@ impl GrpcStreamToTable for TableEntryTableProvider {
         ))
     }
 
-    #[instrument(skip(self), err, parent = &self.parent_span)]
+    #[instrument(skip(self, _params), err, parent = &self.parent_span)]
     async fn send_streaming_request(
         &mut self,
+        _params: &ScanParams,
     ) -> ApiResult<re_redap_client::ApiResponseStream<Self::GrpcStreamData>> {
         let table_id = self.table_id().await?;
         let request = tonic::Request::new(ScanTableRequest {
@@ -256,7 +257,11 @@ impl GrpcStreamToTable for TableEntryTableProvider {
         ))
     }
 
-    fn process_response(&mut self, response: Self::GrpcStreamData) -> ApiResult<RecordBatch> {
+    fn process_response(
+        &mut self,
+        response: Self::GrpcStreamData,
+        _params: &ScanParams,
+    ) -> ApiResult<RecordBatch> {
         response
             .dataframe_part
             .ok_or_else(|| {

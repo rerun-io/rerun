@@ -1,4 +1,4 @@
-use arrow::datatypes::SchemaRef;
+use arrow::datatypes::{DataType, Schema, SchemaRef};
 use datafusion::common::{DataFusionError, ScalarValue, exec_err};
 use datafusion::logical_expr::{BinaryExpr, Expr, Operator, TableProviderFilterPushDown};
 use itertools::Itertools as _;
@@ -6,7 +6,132 @@ use re_log_types::{AbsoluteTimeRange, TimeInt, TimelineName};
 use re_protos::cloud::v1alpha1::ext::{Query, QueryDatasetRequest, QueryLatestAt, QueryRange};
 use re_sorbet::metadata::RERUN_KIND;
 use re_types_core::SegmentId;
+use std::collections::HashSet;
 use std::ops::Not as _;
+
+/// True if every column `expr` references is in `supported_columns`.
+///
+/// Used to decide whether a filter can be serialized for server-side pushdown — we only push
+/// filters that reference columns the server knows how to parse.
+pub(crate) fn expr_columns_supported(expr: &Expr, supported_columns: &HashSet<String>) -> bool {
+    expr.column_refs()
+        .iter()
+        .all(|col| supported_columns.contains(col.name.as_str()))
+}
+
+/// True when `expr` only uses constructs that survive the SQL round trip to any server: plain
+/// column/literal comparisons, boolean logic, `IN` lists, `BETWEEN`, `LIKE`, casts, and the like.
+///
+/// Anything else is rejected — most notably scalar functions, which may be client-only UDFs the
+/// server cannot parse. The server rejects a filter it can't parse with `InvalidArgument`, which
+/// would fail the whole scan; keeping such filters client-side keeps pushdown a pure optimization.
+fn expr_shape_supports_pushdown(expr: &Expr) -> bool {
+    use datafusion::common::tree_node::{TreeNode as _, TreeNodeRecursion};
+
+    let mut supported = true;
+    let walked = expr.apply(|expr| match expr {
+        Expr::Alias(_)
+        | Expr::Column(_)
+        | Expr::Literal(..)
+        | Expr::BinaryExpr(_)
+        | Expr::Like(_)
+        | Expr::Not(_)
+        | Expr::IsNotNull(_)
+        | Expr::IsNull(_)
+        | Expr::IsTrue(_)
+        | Expr::IsFalse(_)
+        | Expr::IsUnknown(_)
+        | Expr::IsNotTrue(_)
+        | Expr::IsNotFalse(_)
+        | Expr::IsNotUnknown(_)
+        | Expr::Negative(_)
+        | Expr::Between(_)
+        | Expr::Case(_)
+        | Expr::Cast(_)
+        | Expr::TryCast(_)
+        | Expr::InList(_) => Ok(TreeNodeRecursion::Continue),
+
+        _ => {
+            supported = false;
+            Ok(TreeNodeRecursion::Stop)
+        }
+    });
+    walked.is_ok() && supported
+}
+
+/// True when `filter` can be offered to the server: every referenced column is supported *and*
+/// the expression shape survives the SQL round trip.
+pub(crate) fn expr_supports_pushdown(expr: &Expr, supported_columns: &HashSet<String>) -> bool {
+    expr_columns_supported(expr, supported_columns) && expr_shape_supports_pushdown(expr)
+}
+
+/// Classify `filters` for [`TableProvider::supports_filters_pushdown`]: pushdown-eligible filters
+/// are [`TableProviderFilterPushDown::Inexact`] (serialized for the server but re-applied by
+/// DataFusion, so the server pushdown stays a pure optimization), the rest
+/// [`TableProviderFilterPushDown::Unsupported`].
+///
+/// [`TableProvider::supports_filters_pushdown`]: datafusion::catalog::TableProvider::supports_filters_pushdown
+pub(crate) fn classify_filters_for_pushdown(
+    filters: &[&Expr],
+    supported_columns: &HashSet<String>,
+) -> Vec<TableProviderFilterPushDown> {
+    filters
+        .iter()
+        .map(|filter| {
+            if expr_supports_pushdown(filter, supported_columns) {
+                TableProviderFilterPushDown::Inexact
+            } else {
+                TableProviderFilterPushDown::Unsupported
+            }
+        })
+        .collect()
+}
+
+/// The columns of `schema` whose Arrow types are safe candidates for filter pushdown.
+///
+/// List and binary-like columns are excluded because their SQL literal representation is not
+/// currently supported.
+pub(crate) fn pushdown_filterable_columns(schema: &Schema) -> HashSet<String> {
+    schema
+        .fields()
+        .iter()
+        .filter(|field| {
+            !matches!(
+                field.data_type(),
+                DataType::List(_)
+                    | DataType::LargeList(_)
+                    | DataType::ListView(_)
+                    | DataType::LargeListView(_)
+                    | DataType::FixedSizeList(..)
+                    | DataType::Binary
+                    | DataType::LargeBinary
+                    | DataType::FixedSizeBinary(_)
+            )
+        })
+        .map(|field| field.name().clone())
+        .collect()
+}
+
+/// Combine the pushdown-eligible `filters` (see [`expr_supports_pushdown`]) into a single SQL
+/// boolean expression string for a server-side `filter` request field.
+///
+/// Returns `None` when no filter is eligible or the combined expression can't be unparsed to SQL.
+/// Callers should report these filters as [`TableProviderFilterPushDown::Inexact`] so DataFusion
+/// re-applies them regardless of what the server does.
+pub(crate) fn filters_to_pushdown_sql(
+    filters: &[Expr],
+    supported_columns: &HashSet<String>,
+) -> Option<String> {
+    let combined = filters
+        .iter()
+        .filter(|filter| expr_supports_pushdown(filter, supported_columns))
+        .cloned()
+        .reduce(|acc, filter| acc.and(filter))?;
+
+    datafusion::sql::unparser::expr_to_sql(&combined)
+        .ok()
+        .map(|sql| sql.to_string())
+}
 
 fn arrange_binary_expr_as_col_on_left(expr: &BinaryExpr) -> BinaryExpr {
     if let Expr::Column(_) = expr.left.as_ref() {
@@ -524,6 +649,160 @@ mod tests {
     use datafusion::logical_expr::{col, lit};
     use std::collections::HashMap;
     use std::sync::Arc;
+
+    fn supported() -> HashSet<String> {
+        ["rerun_segment_id".to_owned(), "rerun_layer_name".to_owned()]
+            .into_iter()
+            .collect()
+    }
+
+    #[test]
+    fn pushdown_sql_serializes_supported_filters() {
+        let filters = vec![col("rerun_segment_id").eq(lit("abc"))];
+        let sql = filters_to_pushdown_sql(&filters, &supported()).unwrap();
+        assert!(sql.contains("rerun_segment_id"), "got: {sql}");
+        assert!(sql.contains("abc"), "got: {sql}");
+    }
+
+    #[test]
+    fn pushdown_sql_and_multiple_supported_filters() {
+        let filters = vec![
+            col("rerun_segment_id").eq(lit("abc")),
+            col("rerun_layer_name").eq(lit("base")),
+        ];
+        let sql = filters_to_pushdown_sql(&filters, &supported()).unwrap();
+        assert!(sql.contains("rerun_segment_id"), "got: {sql}");
+        assert!(sql.contains("rerun_layer_name"), "got: {sql}");
+        assert!(sql.to_uppercase().contains("AND"), "got: {sql}");
+    }
+
+    #[test]
+    fn pushdown_sql_skips_unsupported_columns() {
+        // Only the supported filter is serialized; the unsupported one is dropped.
+        let filters = vec![
+            col("rerun_segment_id").eq(lit("abc")),
+            col("rerun_num_chunks").gt(lit(5i64)),
+        ];
+        let sql = filters_to_pushdown_sql(&filters, &supported()).unwrap();
+        assert!(sql.contains("rerun_segment_id"), "got: {sql}");
+        assert!(!sql.contains("rerun_num_chunks"), "got: {sql}");
+    }
+
+    #[test]
+    fn pushdown_sql_none_when_nothing_supported() {
+        let filters = vec![col("rerun_num_chunks").gt(lit(5i64))];
+        assert!(filters_to_pushdown_sql(&filters, &supported()).is_none());
+    }
+
+    #[test]
+    fn columns_supported_checks_all_refs() {
+        assert!(expr_columns_supported(
+            &col("rerun_segment_id").eq(lit("a")),
+            &supported()
+        ));
+        assert!(!expr_columns_supported(
+            &col("rerun_segment_id").eq(col("rerun_num_chunks")),
+            &supported()
+        ));
+    }
+
+    #[test]
+    fn pushdown_rejects_scalar_functions() {
+        // A scalar function may be a client-only UDF the server can't parse — pushing it would
+        // fail the whole scan with `InvalidArgument`, so it must stay client-side.
+        let expr = datafusion::functions::expr_fn::lower(col("rerun_segment_id")).eq(lit("abc"));
+        assert!(!expr_supports_pushdown(&expr, &supported()));
+        assert!(filters_to_pushdown_sql(std::slice::from_ref(&expr), &supported()).is_none());
+    }
+
+    #[test]
+    fn pushdown_accepts_plain_shapes() {
+        for expr in [
+            col("rerun_segment_id").eq(lit("a")),
+            col("rerun_segment_id").in_list(vec![lit("a"), lit("b")], false),
+            col("rerun_segment_id").is_not_null(),
+            col("rerun_segment_id").like(lit("a%")),
+            col("rerun_segment_id").between(lit("a"), lit("b")),
+        ] {
+            assert!(
+                expr_supports_pushdown(&expr, &supported()),
+                "expected pushdown support for: {expr:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn classify_filters_maps_to_inexact_or_unsupported() {
+        let pushable = col("rerun_segment_id").eq(lit("a"));
+        let unsupported_column = col("rerun_num_chunks").gt(lit(5i64));
+        let unsupported_shape =
+            datafusion::functions::expr_fn::lower(col("rerun_segment_id")).eq(lit("a"));
+
+        assert_eq!(
+            classify_filters_for_pushdown(
+                &[&pushable, &unsupported_column, &unsupported_shape],
+                &supported()
+            ),
+            vec![
+                TableProviderFilterPushDown::Inexact,
+                TableProviderFilterPushDown::Unsupported,
+                TableProviderFilterPushDown::Unsupported,
+            ]
+        );
+    }
+
+    #[test]
+    fn filterable_columns_exclude_lists_and_binaries() {
+        use arrow::datatypes::Field;
+
+        let schema = Schema::new_with_metadata(
+            vec![
+                Field::new("id", arrow::datatypes::DataType::Utf8, false),
+                Field::new("count", arrow::datatypes::DataType::UInt64, false),
+                Field::new(
+                    "names",
+                    arrow::datatypes::DataType::List(Arc::new(Field::new(
+                        "item",
+                        arrow::datatypes::DataType::Utf8,
+                        true,
+                    ))),
+                    false,
+                ),
+                Field::new(
+                    "view_names",
+                    arrow::datatypes::DataType::ListView(Arc::new(Field::new(
+                        "item",
+                        arrow::datatypes::DataType::Utf8,
+                        true,
+                    ))),
+                    false,
+                ),
+                Field::new(
+                    "large_view_names",
+                    arrow::datatypes::DataType::LargeListView(Arc::new(Field::new(
+                        "item",
+                        arrow::datatypes::DataType::Utf8,
+                        true,
+                    ))),
+                    false,
+                ),
+                Field::new(
+                    "sha",
+                    arrow::datatypes::DataType::FixedSizeBinary(32),
+                    false,
+                ),
+            ],
+            HashMap::default(),
+        );
+
+        let columns = pushdown_filterable_columns(&schema);
+        assert!(columns.contains("id"));
+        assert!(columns.contains("count"));
+        assert!(!columns.contains("names"));
+        assert!(!columns.contains("view_names"));
+        assert!(!columns.contains("large_view_names"));
+        assert!(!columns.contains("sha"));
+    }
 
     fn make_schema_with_index(index_name: &str) -> SchemaRef {
         let mut metadata = HashMap::new();

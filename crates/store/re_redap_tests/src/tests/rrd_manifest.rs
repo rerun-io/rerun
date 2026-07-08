@@ -197,7 +197,7 @@ pub async fn layered_segment_stress(service: impl RerunCloudService) {
 
                 let responses: Vec<_> = service
                     .scan_segment_table(
-                        tonic::Request::new(ScanSegmentTableRequest { columns: vec![] })
+                        tonic::Request::new(ScanSegmentTableRequest::all())
                             .with_entry_name(entry_name(dataset_name)),
                     )
                     .await

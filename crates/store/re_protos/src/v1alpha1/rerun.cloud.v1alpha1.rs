@@ -441,6 +441,16 @@ pub struct ScanSegmentTableRequest {
     /// an `InvalidArgument` error.
     #[prost(string, repeated, tag = "1")]
     pub columns: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    /// An optional best-effort filter hint, expressed as a SQL boolean expression over the
+    /// segment-table columns (e.g. `rerun_segment_id = 'abc'`).
+    ///
+    /// If empty, no filter hint is provided.
+    /// Column names use the public (segment) terminology.
+    /// Servers may apply this filter, ignore it, or reject malformed/unsupported filters with an
+    /// `InvalidArgument` error.
+    /// Clients must re-apply filters locally if correctness depends on them.
+    #[prost(string, tag = "2")]
+    pub sql_filter: ::prost::alloc::string::String,
 }
 impl ::prost::Name for ScanSegmentTableRequest {
     const NAME: &'static str = "ScanSegmentTableRequest";
@@ -508,6 +518,16 @@ pub struct ScanDatasetManifestRequest {
     /// an `InvalidArgument` error.
     #[prost(string, repeated, tag = "3")]
     pub columns: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    /// An optional best-effort filter hint, expressed as a SQL boolean expression over the
+    /// dataset-manifest columns (e.g. `rerun_segment_id = 'abc'`).
+    ///
+    /// If empty, no filter hint is provided.
+    /// Column names use the public (segment) terminology.
+    /// Servers may apply this filter, ignore it, or reject malformed/unsupported filters with an
+    /// `InvalidArgument` error.
+    /// Clients must re-apply filters locally if correctness depends on them.
+    #[prost(string, tag = "4")]
+    pub sql_filter: ::prost::alloc::string::String,
 }
 impl ::prost::Name for ScanDatasetManifestRequest {
     const NAME: &'static str = "ScanDatasetManifestRequest";
