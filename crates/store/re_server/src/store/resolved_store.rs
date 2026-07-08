@@ -4,17 +4,13 @@ use std::sync::Arc;
 
 use arrow::array::RecordBatch;
 use nohash_hasher::IntSet;
-#[cfg(not(target_arch = "wasm32"))]
-use re_chunk_store::ChunkStore;
 use re_chunk_store::{
     ChunkStoreHandle, ChunkStoreHandleWeak, ChunkTrackingMode, LazyStore, QueryResults, StoreSchema,
 };
 #[cfg(not(target_arch = "wasm32"))]
 use re_log_encoding::RrdChunkProvider;
 use re_log_encoding::RrdManifest;
-#[cfg(not(target_arch = "wasm32"))]
-use re_log_types::StoreKind;
-use re_log_types::{EntityPath, StoreId};
+use re_log_types::{EntityPath, StoreId, StoreKind};
 
 /// A store backend: either an in-memory eager store or a provider-backed lazy store.
 ///
@@ -118,6 +114,25 @@ impl ResolvedStore {
         }
     }
 
+    /// Load an RRD reader as one or more _eager_ [`ResolvedStore`]s, one per store found in the stream.
+    ///
+    /// Stores whose kind does not match `store_kind` are filtered out.
+    // TODO(RR-5086): Ultimately, we want to be able to load from a reader into a lazy store too.
+    fn load_rrd_reader_eager(
+        reader: impl std::io::Read,
+        store_kind: StoreKind,
+        config: &re_chunk_store::ChunkStoreConfig,
+    ) -> Result<Vec<(StoreId, Self)>, super::Error> {
+        Ok(
+            re_chunk_store::ChunkStore::handle_from_rrd_reader(config, reader)
+                .map_err(super::Error::RrdLoadingError)?
+                .into_iter()
+                .filter(|(store_id, _)| store_id.kind() == store_kind)
+                .map(|(store_id, handle)| (store_id, Self::Eager(handle)))
+                .collect(),
+        )
+    }
+
     /// Load an RRD file as one or more [`ResolvedStore`]s, one per store found in the file.
     ///
     /// Prefers the lazy path (chunks loaded on demand) when the RRD has a footer; falls back to
@@ -150,17 +165,13 @@ impl ResolvedStore {
             Ok(out)
         } else {
             // Legacy fallback: eager load (no footer, or footer read error).
-            let contents = ChunkStore::handle_from_rrd_filepath(
+            use std::io::Seek as _;
+            file.seek(std::io::SeekFrom::Start(0))?;
+            Self::load_rrd_reader_eager(
+                file,
+                store_kind,
                 &super::InMemoryStore::default_eager_chunk_store_config(),
-                path,
             )
-            .map_err(super::Error::RrdLoadingError)?;
-
-            Ok(contents
-                .into_iter()
-                .filter(|(store_id, _)| store_id.kind() == store_kind)
-                .map(|(store_id, handle)| (store_id, Self::Eager(handle)))
-                .collect())
         }
     }
 }

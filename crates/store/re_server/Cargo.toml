@@ -43,7 +43,7 @@ re_byte_size.workspace = true
 re_chunk_store.workspace = true
 re_entity_db.workspace = true
 re_log = { workspace = true, features = ["setup"] }
-re_log_encoding.workspace = true
+re_log_encoding = { workspace = true, features = ["decoder"] }
 re_log_types.workspace = true
 re_protos.workspace = true
 re_sorbet.workspace = true

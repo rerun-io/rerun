@@ -803,6 +803,7 @@ impl ChunkStore {
     /// See also:
     /// * [`ChunkStore::new`]
     /// * [`ChunkStore::from_rrd_filepath`]
+    /// * [`ChunkStore::from_rrd_reader`]
     #[inline]
     pub fn new(id: StoreId, config: ChunkStoreConfig) -> Self {
         Self {
@@ -1164,17 +1165,33 @@ impl ChunkStore {
 
         use anyhow::Context as _;
 
-        let mut stores = BTreeMap::new();
-
         let rrd_file = std::fs::File::open(path_to_rrd)
             .with_context(|| format!("couldn't open {path_to_rrd:?}"))?;
 
-        let decoder = re_log_encoding::Decoder::decode_eager(std::io::BufReader::new(rrd_file))
-            .with_context(|| format!("couldn't decode {path_to_rrd:?}"))?;
+        Self::from_rrd_reader(store_config, rrd_file)
+            .with_context(|| format!("couldn't decode {path_to_rrd:?}"))
+    }
+
+    /// Instantiate a new `ChunkStore` with the given [`ChunkStoreConfig`].
+    ///
+    /// The stores will be prefilled with the data from the given RRD reader.
+    ///
+    /// See also:
+    /// * [`ChunkStore::new`]
+    pub fn from_rrd_reader(
+        store_config: &ChunkStoreConfig,
+        reader: impl std::io::Read,
+    ) -> anyhow::Result<BTreeMap<StoreId, Self>> {
+        use anyhow::Context as _;
+
+        let decoder = re_log_encoding::Decoder::decode_eager(std::io::BufReader::new(reader))
+            .with_context(|| "couldn't decode RRD stream".to_owned())?;
+
+        let mut stores = BTreeMap::new();
 
         // TODO(cmc): offload the decoding to a background thread.
         for res in decoder {
-            let msg = res.with_context(|| format!("couldn't decode message {path_to_rrd:?}"))?;
+            let msg = res.with_context(|| "couldn't decode message from RRD stream".to_owned())?;
             match msg {
                 re_log_types::LogMsg::SetStoreInfo(info) => {
                     stores.entry(info.info.store_id.clone()).or_insert_with(|| {
@@ -1188,11 +1205,11 @@ impl ChunkStore {
                     };
 
                     let chunk = Chunk::from_arrow_msg(&msg)
-                        .with_context(|| format!("couldn't decode chunk {path_to_rrd:?}"))?;
+                        .with_context(|| "couldn't decode chunk".to_owned())?;
 
                     store
                         .insert_chunk(&Arc::new(chunk))
-                        .with_context(|| format!("couldn't insert chunk {path_to_rrd:?}"))?;
+                        .with_context(|| "couldn't insert chunk".to_owned())?;
                 }
 
                 re_log_types::LogMsg::BlueprintActivationCommand(_) => {}
@@ -1246,6 +1263,25 @@ impl ChunkStore {
         }
 
         Ok(stores)
+    }
+
+    /// Instantiate a new `ChunkStore` with the given [`ChunkStoreConfig`].
+    ///
+    /// Wraps the results in [`ChunkStoreHandle`]s.
+    ///
+    ///
+    /// The stores will be prefilled with the data from the given RRD reader.
+    ///
+    /// See also:
+    /// * [`ChunkStore::new_handle`]
+    pub fn handle_from_rrd_reader(
+        store_config: &ChunkStoreConfig,
+        reader: impl std::io::Read,
+    ) -> anyhow::Result<BTreeMap<StoreId, ChunkStoreHandle>> {
+        Ok(Self::from_rrd_reader(store_config, reader)?
+            .into_iter()
+            .map(|(store_id, store)| (store_id, ChunkStoreHandle::new(store)))
+            .collect())
     }
 
     /// Instantiate a new `ChunkStore` with the given [`ChunkStoreConfig`].
