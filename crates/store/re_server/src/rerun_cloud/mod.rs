@@ -83,6 +83,51 @@ fn create_data_dir() -> Result<tempfile::TempDir, crate::store::Error> {
     Ok(tempfile::Builder::new().prefix("rerun-data-").tempdir()?)
 }
 
+/// Apply a client-supplied SQL boolean `filter` to an in-memory `RecordBatch`.
+///
+/// The SQL references the batch's own (public) column names. An empty filter is a no-op. Used to
+/// serve the `filter` field of `ScanSegmentTable` / `ScanDatasetManifest`.
+fn apply_sql_filter(batch: RecordBatch, filter_sql: &str) -> tonic::Result<RecordBatch> {
+    if filter_sql.is_empty() {
+        return Ok(batch);
+    }
+
+    let df_schema = datafusion::common::DFSchema::try_from(batch.schema().as_ref().clone())
+        .map_err(|err| Status::internal(format!("Unable to build filter schema: {err:#}")))?;
+
+    let expr = SessionContext::new()
+        .parse_sql_expr(filter_sql, &df_schema)
+        .map_err(|err| {
+            Status::invalid_argument(format!("Unable to parse filter SQL {filter_sql:?}: {err}"))
+        })?;
+
+    // Neither `parse_sql_expr` nor `create_physical_expr` applies type coercion, so an untyped
+    // SQL literal keeps its parsed type and e.g. `uint64_col > 100` (Int64 literal) would fail
+    // at evaluation time with a type mismatch. Coerce against the schema here.
+    let expr = datafusion::optimizer::simplify_expressions::ExprSimplifier::new(
+        datafusion::logical_expr::simplify::SimplifyContext::default(),
+    )
+    .coerce(expr, &df_schema)
+    .map_err(|err| Status::invalid_argument(format!("Unable to coerce filter: {err}")))?;
+
+    let physical =
+        datafusion::physical_expr::create_physical_expr(&expr, &df_schema, &Default::default())
+            .map_err(|err| Status::invalid_argument(format!("Unable to plan filter: {err}")))?;
+
+    let evaluated = physical
+        .evaluate(&batch)
+        .and_then(|value| value.into_array(batch.num_rows()))
+        .map_err(|err| Status::invalid_argument(format!("Unable to evaluate filter: {err:#}")))?;
+
+    let mask = evaluated
+        .as_any()
+        .downcast_ref::<arrow::array::BooleanArray>()
+        .ok_or_else(|| Status::invalid_argument("filter expression is not a boolean"))?;
+
+    arrow::compute::filter_record_batch(&batch, mask)
+        .map_err(|err| Status::internal(format!("Unable to apply filter: {err:#}")))
+}
+
 #[derive(Default)]
 pub struct RerunCloudHandlerBuilder {
     settings: RerunCloudHandlerSettings,
@@ -1172,15 +1217,18 @@ impl RerunCloudService for RerunCloudHandler {
         &self,
         request: tonic::Request<re_protos::cloud::v1alpha1::ScanSegmentTableRequest>,
     ) -> tonic::Result<tonic::Response<Self::ScanSegmentTableStream>> {
-        let store = self.store.read().await;
-        let entry_id = get_entry_id_from_headers(&store, &request)?;
+        let (mut record_batch, request) = {
+            let store = self.store.read().await;
+            let entry_id = get_entry_id_from_headers(&store, &request)?;
+            let dataset = store.dataset(entry_id)?;
+            let record_batch = dataset.segment_table().map_err(|err| {
+                tonic::Status::internal(format!("Unable to read segment table: {err:#}"))
+            })?;
+            (record_batch, request.into_inner())
+        };
 
-        let request = request.into_inner();
-
-        let dataset = store.dataset(entry_id)?;
-        let mut record_batch = dataset.segment_table().map_err(|err| {
-            tonic::Status::internal(format!("Unable to read segment table: {err:#}"))
-        })?;
+        // Filter before projection so the filter can reference columns that aren't projected out.
+        record_batch = apply_sql_filter(record_batch, &request.sql_filter)?;
 
         // project columns
         if !request.columns.is_empty() {
@@ -1233,13 +1281,16 @@ impl RerunCloudService for RerunCloudHandler {
         &self,
         request: Request<ScanDatasetManifestRequest>,
     ) -> tonic::Result<Response<Self::ScanDatasetManifestStream>> {
-        let store = self.store.read().await;
-        let entry_id = get_entry_id_from_headers(&store, &request)?;
+        let (mut record_batch, request) = {
+            let store = self.store.read().await;
+            let entry_id = get_entry_id_from_headers(&store, &request)?;
+            let dataset = store.dataset(entry_id)?;
+            let record_batch = dataset.dataset_manifest()?;
+            (record_batch, request.into_inner())
+        };
 
-        let request = request.into_inner();
-
-        let dataset = store.dataset(entry_id)?;
-        let mut record_batch = dataset.dataset_manifest()?;
+        // Filter before projection so the filter can reference columns that aren't projected out.
+        record_batch = apply_sql_filter(record_batch, &request.sql_filter)?;
 
         // project columns
         if !request.columns.is_empty() {
