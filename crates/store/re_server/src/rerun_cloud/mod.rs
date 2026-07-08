@@ -8,6 +8,7 @@ use arrow::record_batch::RecordBatch;
 use datafusion::prelude::SessionContext;
 use futures::StreamExt as _;
 use nohash_hasher::{IntMap, IntSet};
+use re_protos::common::v1alpha1::TaskId;
 use tonic::{Code, Request, Response, Status};
 
 use re_arrow_util::RecordBatchExt as _;
@@ -20,6 +21,7 @@ use re_log_types::{AbsoluteTimeRange, EntityPath, EntryId, StoreId, StoreKind, T
 use re_protos::cloud::v1alpha1::ext::{CreateTableEntryResponse, ProviderDetails};
 use re_protos::cloud::v1alpha1::ext::{
     QueryDatasetDataframe, QueryTasksDataframe, RegisterWithDatasetDataframe,
+    ScanDatasetManifestDataframe,
 };
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::cloud::v1alpha1::{
@@ -56,10 +58,10 @@ use self::register_with_dataset::{RegisterWithDatasetResult, do_register_with_da
 use crate::NamedPath;
 #[cfg(not(target_arch = "wasm32"))]
 use crate::OnError;
-use crate::store::LayerInfo;
 use crate::store::{
     ChunkKey, Dataset, InMemoryStore, ResolvedStore, StoreSlotId, Table, TaskResult,
 };
+use crate::store::{LayerInfo, TASK_ID_SUCCESS};
 
 #[derive(Debug)]
 pub struct RerunCloudHandlerSettings {
@@ -962,9 +964,6 @@ impl RerunCloudService for RerunCloudHandler {
         let layers_to_drop: Option<HashSet<&LayerName>> =
             (!layers_to_drop.is_empty()).then(|| layers_to_drop.iter().collect());
 
-        let dataset_manifest_removed = dataset
-            .dataset_manifest_filtered(segments_to_drop.as_ref(), layers_to_drop.as_ref())?;
-
         _ = dataset
             .remove_layers(segments_to_drop.as_ref(), layers_to_drop.as_ref())
             .await?;
@@ -973,7 +972,10 @@ impl RerunCloudService for RerunCloudHandler {
 
         let stream = futures::stream::once(async move {
             Ok(re_protos::cloud::v1alpha1::UnregisterFromDatasetResponse {
-                data: Some(dataset_manifest_removed.into()),
+                data: Some(ScanDatasetManifestDataframe::empty_record_batch().into()),
+                task_id: Some(TaskId {
+                    id: TASK_ID_SUCCESS.to_owned(),
+                }),
             })
         });
 

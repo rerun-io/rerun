@@ -18,6 +18,7 @@ use super::registration_handle::PyRegistrationHandleInternal;
 use super::{PyCatalogClientInternal, PyEntryDetails, PyTableProviderAdapterInternal, to_py_err};
 use crate::catalog::PySchemaInternal;
 use crate::catalog::entry::set_entry_name;
+use crate::catalog::unregistration_handle::PyUnregistrationHandleInternal;
 use crate::chunk_stream::lazy_store::PyLazyStoreInternal;
 use crate::trace_context::read_trace_context_from_python;
 use crate::utils::{get_tokio_runtime, wait_for_future};
@@ -460,14 +461,14 @@ impl PyDatasetEntryInternal {
         segments_to_drop: Vec<String>,
         layers_to_drop: Vec<String>,
         force: bool,
-    ) -> PyResult<()> {
+    ) -> PyResult<PyUnregistrationHandleInternal> {
         let py = self_.py();
         let _span = read_trace_context_from_python(py, "DatasetEntry.unregister").entered();
         let connection = self_.client.borrow(py).connection().clone();
 
         let segments_to_drop = segments_to_drop.into_iter().map(SegmentId::new).collect();
         let layers_to_drop = layers_to_drop.into_iter().map(LayerName::new).collect();
-        let _results = connection.unregister_from_dataset(
+        let (request_trace_id, task_ids) = connection.unregister_from_dataset(
             py,
             self_.entry_details.id,
             segments_to_drop,
@@ -475,7 +476,11 @@ impl PyDatasetEntryInternal {
             force,
         )?;
 
-        Ok(())
+        Ok(PyUnregistrationHandleInternal::new(
+            self_.client.clone_ref(py),
+            task_ids,
+            request_trace_id,
+        ))
     }
 
     /// Register all RRDs under a given prefix to the dataset and return a handle to the tasks.

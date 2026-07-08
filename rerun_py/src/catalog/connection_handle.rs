@@ -339,11 +339,7 @@ impl ConnectionHandle {
 
     /// Unregisters segments and layers from the dataset.
     ///
-    /// Excluding IO errors, this will always succeed as long the target dataset exists.
-    /// Corollary: unregistering data that doesn't exist is a no-op.
-    ///
-    /// This always returns a subset of the data from `ScanDatasetManifest`, and therefore the data will
-    /// also follow the schema returned by [`Self::get_dataset_manifest_schema`].
+    /// This is an asynchronous operation, and returns a list of task ids.
     ///
     /// This method acts as a *product* filter:
     /// * empty `segments_to_drop` + empty `layers_to_drop`: invalid argument error
@@ -363,7 +359,7 @@ impl ConnectionHandle {
         segments_to_drop: Vec<SegmentId>,
         layers_to_drop: Vec<LayerName>,
         force: bool,
-    ) -> PyResult<Vec<RecordBatch>> {
+    ) -> PyResult<(Option<TraceId>, Vec<TaskId>)> {
         wait_for_future(py, async {
             self.client()
                 .await?

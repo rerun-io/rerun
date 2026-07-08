@@ -15,7 +15,7 @@ use crate::cloud::v1alpha1::ext::{QueryDatasetDataframe, ScanSegmentTableDatafra
 use crate::cloud::v1alpha1::{
     DoBandwidthTestResponse, EntryKind, FetchChunksRequest, GetDatasetSchemaResponse,
     QueryDatasetResponse, QueryTasksResponse, ScanDatasetManifestResponse,
-    ScanSegmentTableResponse, UnregisterFromDatasetResponse,
+    ScanSegmentTableResponse,
 };
 use crate::common::v1alpha1::ext as common_ext;
 use crate::common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, SegmentId};
@@ -1956,19 +1956,6 @@ pub struct RegisterWithDatasetTaskDescriptor {
     pub segment_type: DataSourceKind,
     pub storage_url: url::Url,
     pub task_id: TaskId,
-}
-
-// --- UnregisterFromDatasetResponse ---
-
-/// The dataframe follows the same schema as
-/// [`ScanDatasetManifestDataframe`](crate::cloud::v1alpha1::ext::ScanDatasetManifestDataframe).
-impl UnregisterFromDatasetResponse {
-    pub fn data(&self) -> Result<&DataframePart, TypeConversionError> {
-        Ok(self
-            .data
-            .as_ref()
-            .ok_or_else(|| missing_field!(Self, "data"))?)
-    }
 }
 
 // --- ScanSegmentTableResponse --

@@ -356,12 +356,13 @@ impl ::prost::Name for UnregisterFromDatasetRequest {
 }
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct UnregisterFromDatasetResponse {
-    /// This contains all the information about the segments and layers that were actually removed.
-    ///
-    /// This dataframe is always guaranteed to be a subset of the one found in `ScanDatasetManifestResponse`.
-    /// They share the same semantics, schemas, etc.
+    /// This dataframe is always empty. It remains here for format compatibility with older SDKs.
+    /// TODO(ilya): remove this once the clients are all new enough
     #[prost(message, optional, tag = "1")]
     pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
+    /// Id of the task that performs the unregistration. The data is not deleted until the task completes.
+    #[prost(message, optional, tag = "2")]
+    pub task_id: ::core::option::Option<super::super::common::v1alpha1::TaskId>,
 }
 impl ::prost::Name for UnregisterFromDatasetResponse {
     const NAME: &'static str = "UnregisterFromDatasetResponse";
@@ -2367,11 +2368,8 @@ pub mod rerun_cloud_service_client {
         }
         /// Unregisters segments and layers from the Dataset.
         ///
-        /// Excluding IO errors, this will always succeed as long the target dataset exists.
-        /// Corollary: unregistering data that doesn't exist is a no-op.
-        ///
-        /// This always returns a subset of the data from `ScanDatasetManifest`, and therefore the data will
-        /// also follow the schema returned by `GetDatasetManifestSchema`.
+        /// This is an asynchronous operation, and returns a list of task ids.
+        /// The response is a stream only for historical reasons.
         ///
         /// This endpoint requires the standard dataset headers.
         pub async fn unregister_from_dataset(
@@ -2973,11 +2971,8 @@ pub mod rerun_cloud_service_server {
             + 'static;
         /// Unregisters segments and layers from the Dataset.
         ///
-        /// Excluding IO errors, this will always succeed as long the target dataset exists.
-        /// Corollary: unregistering data that doesn't exist is a no-op.
-        ///
-        /// This always returns a subset of the data from `ScanDatasetManifest`, and therefore the data will
-        /// also follow the schema returned by `GetDatasetManifestSchema`.
+        /// This is an asynchronous operation, and returns a list of task ids.
+        /// The response is a stream only for historical reasons.
         ///
         /// This endpoint requires the standard dataset headers.
         async fn unregister_from_dataset(

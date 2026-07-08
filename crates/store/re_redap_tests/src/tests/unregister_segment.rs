@@ -47,40 +47,28 @@ pub async fn unregister_simple(service: impl RerunCloudService) {
         scan_dataset_manifest_and_snapshot(&service, dataset_name, snapshot_name).await;
     }
 
-    let removed = service
-        .unregister_from_dataset_name(dataset_name, &["my_segment_id2"], &["base"])
-        .await;
+    service
+        .unregister_from_dataset_name_blocking(dataset_name, &["my_segment_id2"], &["base"])
+        .await
+        .expect("removal should succeed");
     let dataset_updated_at_2 = get_dataset_updated_at_nanos(&service, dataset_name).await;
     {
         let snapshot_name = "simple_2_remove_segment_id2";
-        snapshot_response(
-            &service,
-            dataset_name,
-            snapshot_name,
-            removed.expect("removal should succeed"),
-        )
-        .await;
         scan_segment_table_and_snapshot(&service, dataset_name, snapshot_name).await;
         scan_dataset_manifest_and_snapshot(&service, dataset_name, snapshot_name).await;
     }
 
-    let removed = service
-        .unregister_from_dataset_name(
+    service
+        .unregister_from_dataset_name_blocking(
             dataset_name,
             &["my_segment_id1", "my_segment_id3"],
             &["base"],
         )
-        .await;
+        .await
+        .expect("removal should succeed");
     let dataset_updated_at_3 = get_dataset_updated_at_nanos(&service, dataset_name).await;
     {
         let snapshot_name = "simple_3_remove_remaining_segments";
-        snapshot_response(
-            &service,
-            dataset_name,
-            snapshot_name,
-            removed.expect("removal should succeed"),
-        )
-        .await;
         scan_segment_table_and_snapshot(&service, dataset_name, snapshot_name).await;
         scan_dataset_manifest_and_snapshot(&service, dataset_name, snapshot_name).await;
     }
@@ -142,54 +130,40 @@ pub async fn unregister_products(service: impl RerunCloudService) {
         scan_dataset_manifest_and_snapshot(&service, dataset_name, snapshot_name).await;
     }
 
-    let removed = service
-        .unregister_from_dataset_name(
+    service
+        .unregister_from_dataset_name_blocking(
             dataset_name,
             &["my_segment_id1", "my_segment_id3"],
             &["B", "D"],
         )
-        .await;
+        .await
+        .expect("removal should succeed");
     {
         let snapshot_name = "products_2_remove_layers_BD_for_segments_13";
-        snapshot_response(
-            &service,
-            dataset_name,
-            snapshot_name,
-            removed.expect("removal should succeed"),
-        )
-        .await;
         scan_segment_table_and_snapshot(&service, dataset_name, snapshot_name).await;
         scan_dataset_manifest_and_snapshot(&service, dataset_name, snapshot_name).await;
     }
 
-    let removed = service
-        .unregister_from_dataset_name(dataset_name, &[], &["B", "D"])
-        .await;
+    service
+        .unregister_from_dataset_name_blocking(dataset_name, &[], &["B", "D"])
+        .await
+        .expect("removal should succeed");
     {
         let snapshot_name = "products_3_remove_layers_BD_for_all_segments";
-        snapshot_response(
-            &service,
-            dataset_name,
-            snapshot_name,
-            removed.expect("removal should succeed"),
-        )
-        .await;
         scan_segment_table_and_snapshot(&service, dataset_name, snapshot_name).await;
         scan_dataset_manifest_and_snapshot(&service, dataset_name, snapshot_name).await;
     }
 
-    let removed = service
-        .unregister_from_dataset_name(dataset_name, &["my_segment_id2", "my_segment_id3"], &[])
-        .await;
+    service
+        .unregister_from_dataset_name_blocking(
+            dataset_name,
+            &["my_segment_id2", "my_segment_id3"],
+            &[],
+        )
+        .await
+        .expect("removal should succeed");
     {
         let snapshot_name = "products_4_remove_all_layers_for_segments_23";
-        snapshot_response(
-            &service,
-            dataset_name,
-            snapshot_name,
-            removed.expect("removal should succeed"),
-        )
-        .await;
         scan_segment_table_and_snapshot(&service, dataset_name, snapshot_name).await;
         scan_dataset_manifest_and_snapshot(&service, dataset_name, snapshot_name).await;
     }
@@ -199,7 +173,7 @@ pub async fn unregister_missing_dataset(service: impl RerunCloudService) {
     let dataset_name = "my_dataset_thats_not_there";
 
     let err = service
-        .unregister_from_dataset_name(dataset_name, &["my_segment"], &[])
+        .unregister_from_dataset_name_blocking(dataset_name, &["my_segment"], &[])
         .await
         .unwrap_err();
     assert_eq!(tonic::Code::NotFound, err.code());
@@ -221,7 +195,7 @@ pub async fn unregister_missing_segment(service: impl RerunCloudService) {
         .await;
 
     let removed = service
-        .unregister_from_dataset_name(dataset_name, &["some_segment_thats_not_there"], &[])
+        .unregister_from_dataset_name_blocking(dataset_name, &["some_segment_thats_not_there"], &[])
         .await;
     {
         let snapshot_name = "missing_1_should_be_empty";
@@ -240,7 +214,7 @@ pub async fn unregister_invalid_args(service: impl RerunCloudService) {
         let dataset_name = "my_dataset_thats_not_there";
 
         let err = service
-            .unregister_from_dataset_name(dataset_name, &[], &[])
+            .unregister_from_dataset_name_blocking(dataset_name, &[], &[])
             .await
             .unwrap_err();
         assert_eq!(tonic::Code::NotFound, err.code());
@@ -262,7 +236,7 @@ pub async fn unregister_invalid_args(service: impl RerunCloudService) {
             .await;
 
         let err = service
-            .unregister_from_dataset_name(dataset_name, &[], &[])
+            .unregister_from_dataset_name_blocking(dataset_name, &[], &[])
             .await
             .unwrap_err();
         assert_eq!(tonic::Code::InvalidArgument, err.code());
@@ -293,7 +267,7 @@ pub async fn unregister_then_query(service: impl RerunCloudService) {
     .await;
 
     service
-        .unregister_from_dataset_name(dataset_name, &["my_segment_id"], &[])
+        .unregister_from_dataset_name_blocking(dataset_name, &["my_segment_id"], &[])
         .await
         .unwrap();
 

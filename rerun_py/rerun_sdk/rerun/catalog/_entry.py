@@ -38,6 +38,7 @@ if TYPE_CHECKING:
         IndexValuesLike,
         RegistrationHandle,
         Schema,
+        UnregistrationHandle,
     )
 
 
@@ -549,7 +550,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         segments_to_drop: str | Sequence[str],
         layers_to_drop: str | Sequence[str],
         force: bool = False,
-    ) -> None:
+    ) -> UnregistrationHandle:
         """
         Unregisters segments and layers from the dataset.
 
@@ -589,7 +590,11 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         else:
             layers_to_drop = list(layers_to_drop)
 
-        self._internal.unregister(segments_to_drop=segments_to_drop, layers_to_drop=layers_to_drop, force=force)
+        from ._unregistration_handle import UnregistrationHandle
+
+        return UnregistrationHandle(
+            self._internal.unregister(segments_to_drop=segments_to_drop, layers_to_drop=layers_to_drop, force=force)
+        )
 
     def register_prefix(
         self,

@@ -27,8 +27,8 @@ use re_protos::cloud::v1alpha1::{
     GetDatasetManifestSchemaResponse, GetDatasetSchemaRequest, GetRrdManifestResponse,
     GetSegmentTableSchemaRequest, GetSegmentTableSchemaResponse, QueryDatasetResponse,
     QueryTasksOnCompletionResponse, QueryTasksResponse, ReadDatasetEntryRequest,
-    ReadTableEntryRequest, RegisterWithDatasetResponse, ScanSegmentTableRequest,
-    UnregisterFromDatasetResponse, VersionRequest, WriteTableRequest,
+    ReadTableEntryRequest, RegisterWithDatasetResponse, ScanSegmentTableRequest, VersionRequest,
+    WriteTableRequest,
 };
 use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, ScanParameters, SegmentId};
 use re_protos::common::v1alpha1::{DataframePart, TaskId};
@@ -1070,11 +1070,7 @@ where
 
     /// Unregisters segments and layers from the dataset.
     ///
-    /// Excluding IO errors, this will always succeed as long the target dataset exists.
-    /// Corollary: unregistering data that doesn't exist is a no-op.
-    ///
-    /// This always returns a subset of the data from `ScanDatasetManifest`, and therefore the data will
-    /// also follow the schema returned by [`Self::get_dataset_manifest_schema`].
+    /// This is an asynchronous operation, and returns a list of task ids.
     ///
     /// This method acts as a *product* filter:
     /// * empty `segments_to_drop` + empty `layers_to_drop`: invalid argument error
@@ -1093,7 +1089,7 @@ where
         segments_to_drop: Vec<SegmentId>,
         layers_to_drop: Vec<LayerName>,
         force: bool,
-    ) -> ApiResult<Vec<RecordBatch>> {
+    ) -> ApiResult<(Option<TraceId>, Vec<TaskId>)> {
         let req = tonic::Request::new(
             UnregisterFromDatasetRequest {
                 segments_to_drop,
@@ -1111,34 +1107,17 @@ where
             .await
             .map_err(|err| ApiError::tonic(err, "/UnregisterFromDataset failed"))?;
 
+        let trace_id = extract_trace_id(response.metadata());
+
         let stream = ApiResponseStream::from_tonic_response(response, "/UnregisterFromDataset");
-        let trace_id = stream.trace_id();
         let responses: Vec<_> = stream.try_collect().await?;
 
-        let batches: ApiResult<Vec<RecordBatch>> = responses
+        let tasks = responses
             .into_iter()
-            .map(|resp| {
-                resp.data
-                    .ok_or_else(|| {
-                        let err = missing_field!(UnregisterFromDatasetResponse, "data");
-                        ApiError::deserialization_with_source(
-                            trace_id,
-                            err,
-                            "missing field in /UnregisterFromDataset response",
-                        )
-                    })?
-                    .try_into()
-                    .map_err(|err| {
-                        ApiError::deserialization_with_source(
-                            trace_id,
-                            err,
-                            "failed decoding /UnregisterFromDataset response",
-                        )
-                    })
-            })
+            .filter_map(|resp| resp.task_id)
             .collect();
 
-        batches
+        Ok((trace_id, tasks))
     }
 
     /// Register a foreign Lance table to a new table entry in the catalog.
