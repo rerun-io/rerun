@@ -249,10 +249,29 @@ impl Default for SpanMetadata {
     }
 }
 
+/// Number of in-flight gRPC requests/streams, labeled by `endpoint`.
+///
+/// An entry lives in `SPAN_METADATA` for exactly the lifetime of a request (inserted in
+/// [`GrpcMakeSpan`]'s `make_span`, removed at end-of-stream, on immediate error, or on span close),
+/// so counting `+1` on a genuine insert and `-1` on a real removal makes this gauge exactly the
+/// number of live entries per endpoint — balanced by construction, no matter which termination path
+/// a request takes. It is a non-monotonic sum, so it exports as a gauge.
+fn requests_in_flight() -> &'static opentelemetry::metrics::UpDownCounter<i64> {
+    static INSTANCE: std::sync::OnceLock<opentelemetry::metrics::UpDownCounter<i64>> =
+        std::sync::OnceLock::new();
+    INSTANCE.get_or_init(|| {
+        opentelemetry::global::meter("grpc")
+            .i64_up_down_counter("grpc_requests_in_flight")
+            .with_description("Number of in-flight gRPC requests/streams, by endpoint")
+            .build()
+    })
+}
+
 impl SpanMetadata {
     /// Returns the new size of the map.
     #[expect(clippy::needless_pass_by_value)]
     fn insert(span_id: tracing::span::Id, metadata: Self, expect_conflict: bool) -> usize {
+        let endpoint = metadata.endpoint.clone();
         let (is_overwrite, new_len) = {
             let mut state = SPAN_METADATA.get_or_init(Default::default).write();
             let is_overwrite = state.insert(span_id.clone(), metadata).is_some();
@@ -262,6 +281,12 @@ impl SpanMetadata {
 
         if is_overwrite && !expect_conflict {
             tracing::warn!(id=?span_id, "overwritten span metadata -- this should never happen");
+        }
+
+        // Only a genuine new entry (not an in-place update of an existing request's metadata) adds
+        // an in-flight request; the matching -1 happens in `remove`/`remove_silent`.
+        if !is_overwrite {
+            requests_in_flight().add(1, &[opentelemetry::KeyValue::new("endpoint", endpoint)]);
         }
 
         new_len
@@ -301,7 +326,15 @@ impl SpanMetadata {
             .get()
             .and_then(|spans| spans.write().remove(span_id));
 
-        if md.is_none() {
+        if let Some(md) = &md {
+            requests_in_flight().add(
+                -1,
+                &[opentelemetry::KeyValue::new(
+                    "endpoint",
+                    md.endpoint.clone(),
+                )],
+            );
+        } else {
             tracing::warn!(id=?span_id, "missing span metadata -- this should never happen");
         }
 
@@ -319,7 +352,17 @@ impl SpanMetadata {
     /// already been removed by [`GrpcOnEos`] or [`GrpcOnResponse`].
     fn remove_silent(span_id: &tracing::span::Id) -> Option<Self> {
         let spans = SPAN_METADATA.get()?;
-        spans.write().remove(span_id)
+        let md = spans.write().remove(span_id);
+        if let Some(md) = &md {
+            requests_in_flight().add(
+                -1,
+                &[opentelemetry::KeyValue::new(
+                    "endpoint",
+                    md.endpoint.clone(),
+                )],
+            );
+        }
+        md
     }
 }
 
