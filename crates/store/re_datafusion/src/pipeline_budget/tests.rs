@@ -729,6 +729,48 @@ async fn test_segment_count_gate_caps_at_max() {
     parked.await.unwrap();
 }
 
+/// A *single* reservation spanning more than `MAX_CONCURRENT_SEGMENTS`
+/// distinct segments can never satisfy the segment-count gate (an empty
+/// gate admits at most `MAX_CONCURRENT_SEGMENTS` new segments), so it
+/// must be admitted via the deadlock-avoidance bypass rather than
+/// parking forever. This is the exact shape the gRPC fetch path
+/// produces when a query partition holds more segments than the cap: it
+/// merges up to `GRPC_BATCH_SIZE` request-batches into one reservation.
+/// Regression test for the macOS-arm64 snippet-CI deadlock.
+#[tokio::test]
+async fn test_reserve_spanning_more_than_cap_segments_does_not_deadlock() {
+    let budget = Arc::new(PipelineBudget::with_exact_budget(1 << 30));
+    budget.set_multiplier(1.0);
+
+    let segments: Vec<String> = (0..(MAX_CONCURRENT_SEGMENTS + 4))
+        .map(|i| format!("seg{i}"))
+        .collect();
+
+    // Must resolve immediately — no `publish_segment_finalized` /
+    // `release` is coming, so if this parked it would hang the test.
+    let b = Arc::clone(&budget);
+    let segs = segments.clone();
+    let reserve = tokio::spawn(async move { b.reserve_with_priority(1, ti(0), &segs).await });
+    for _ in 0..16 {
+        tokio::task::yield_now().await;
+    }
+    assert!(
+        reserve.is_finished(),
+        "reservation spanning >MAX_CONCURRENT_SEGMENTS segments must bypass the gate, not park"
+    );
+    let reserved = reserve.await.unwrap();
+    assert_eq!(reserved, 1);
+
+    // All segments are tracked, and as bypass so the cap self-heals on
+    // finalization instead of wedging future admissions shut.
+    let gate = budget.active_segments.lock();
+    assert_eq!(gate.all.len(), segments.len());
+    assert_eq!(gate.bypass.len(), segments.len());
+    // Being over-cap by design, the bypass segments consume no effective
+    // slots — a normal reserver can still be admitted.
+    assert_eq!(gate.effective_len(), 0);
+}
+
 /// After `STALL_EMPTY_EMIT_THRESHOLD` consecutive
 /// `notify_empty_emit` calls *with the budget ≥
 /// `STALL_SATURATION_THRESHOLD` saturated*, `force_overcommit`

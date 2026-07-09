@@ -981,6 +981,31 @@ impl PipelineBudget {
             return reserved_bytes;
         }
 
+        re_log::debug_assert!(
+            segment_ids
+                .iter()
+                .enumerate()
+                .all(|(idx, segment_id)| !segment_ids[..idx].contains(segment_id)),
+            "segment_ids must be distinct"
+        );
+        let distinct_segments = segment_ids.len();
+        if distinct_segments > MAX_CONCURRENT_SEGMENTS {
+            re_log::warn_once!(
+                "Single fetch reservation spans {distinct_segments} distinct segments, \
+                 exceeding the concurrent-segment cap ({MAX_CONCURRENT_SEGMENTS}) — allowing \
+                 it through to avoid deadlock.",
+            );
+            let new_cur = self.current.fetch_add(reserved_bytes, AcqRel) + reserved_bytes;
+            self.peak_current.fetch_max(new_cur, AcqRel);
+            let mut segments = self.active_segments.lock();
+            for s in segment_ids {
+                if segments.all.insert(s.clone()) {
+                    segments.bypass.insert(s.clone());
+                }
+            }
+            return reserved_bytes;
+        }
+
         let mut wait_count: u32 = 0;
         loop {
             // Fast path: combined byte + segment-count gate.

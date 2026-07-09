@@ -490,6 +490,54 @@ async fn send_sorted_chunks(
     .await
 }
 
+/// Group gRPC fetch batches without ever exceeding the segment-count gate.
+///
+/// `create_request_batches` guarantees each individual batch contains at most
+/// `MAX_CONCURRENT_SEGMENTS` distinct segments, but the gRPC path reserves budget
+/// once for a group of batches. Preserve the same invariant at the group level so
+/// the reservation can always be admitted by `PipelineBudget` once enough prior
+/// segments finalize.
+fn create_grpc_batch_groups(batches: &[RecordBatch]) -> ApiResult<Vec<&[RecordBatch]>> {
+    let mut groups = Vec::new();
+    let mut group_start = 0usize;
+    let mut group_segments: HashSet<String> = HashSet::new();
+
+    for (idx, batch) in batches.iter().enumerate() {
+        let mut batch_seen = HashSet::new();
+        let mut batch_segments = Vec::new();
+        extend_distinct_segment_ids(batch, &mut batch_seen, &mut batch_segments)?;
+
+        if batch_segments.len() > MAX_CONCURRENT_SEGMENTS {
+            return Err(ApiError::internal(format!(
+                "single gRPC fetch batch spans {} distinct segments, exceeding the cap of {}",
+                batch_segments.len(),
+                MAX_CONCURRENT_SEGMENTS,
+            )));
+        }
+
+        let would_exceed_batch_count = idx - group_start >= GRPC_BATCH_SIZE;
+        let new_segments = batch_segments
+            .iter()
+            .filter(|segment_id| !group_segments.contains(*segment_id))
+            .count();
+        let would_exceed_segments = group_segments.len() + new_segments > MAX_CONCURRENT_SEGMENTS;
+
+        if idx > group_start && (would_exceed_batch_count || would_exceed_segments) {
+            groups.push(&batches[group_start..idx]);
+            group_start = idx;
+            group_segments.clear();
+        }
+
+        group_segments.extend(batch_segments);
+    }
+
+    if group_start < batches.len() {
+        groups.push(&batches[group_start..]);
+    }
+
+    Ok(groups)
+}
+
 /// Fetch remaining batches via batched gRPC (groups of `GRPC_BATCH_SIZE`),
 /// preserving ordering.
 async fn fetch_remaining_via_grpc<T: DataframeClientAPI>(
@@ -502,7 +550,7 @@ async fn fetch_remaining_via_grpc<T: DataframeClientAPI>(
 ) -> ApiResult<()> {
     let total_batches = batches.len();
     let mut batches_completed = 0usize;
-    for batch_group in batches.chunks(GRPC_BATCH_SIZE) {
+    for batch_group in create_grpc_batch_groups(batches)? {
         #[cfg(not(target_arch = "wasm32"))]
         {
             let bytes: u64 = batch_group.iter().map(batch_byte_size).sum();
@@ -525,6 +573,10 @@ async fn fetch_remaining_via_grpc<T: DataframeClientAPI>(
                 extend_distinct_segment_ids(b, &mut seen, &mut segment_ids)?;
             }
         }
+        re_log::debug_assert!(
+            segment_ids.len() <= MAX_CONCURRENT_SEGMENTS,
+            "gRPC batch group exceeded segment gate cap"
+        );
         let guard = pipeline_budget
             .reserve_guarded_with_priority(estimated, task_time_min, segment_ids)
             .await;
@@ -1017,6 +1069,54 @@ mod tests {
             segment_order_as_strs(&segment_order),
             vec!["seg1", "seg2", "seg3", "seg4", "seg5", "seg6"]
         );
+    }
+
+    fn distinct_segments_in_batches<'a>(
+        batches: impl IntoIterator<Item = &'a RecordBatch>,
+    ) -> HashSet<String> {
+        let mut seen = HashSet::new();
+        let mut order = Vec::new();
+        for batch in batches {
+            extend_distinct_segment_ids(batch, &mut seen, &mut order).unwrap();
+        }
+        seen
+    }
+
+    #[test]
+    fn test_create_grpc_batch_groups_preserves_segment_cap() {
+        let chunk_infos = vec![
+            create_test_chunk_info("seg1", &[10]),
+            create_test_chunk_info("seg2", &[10]),
+            create_test_chunk_info("seg3", &[10]),
+            create_test_chunk_info("seg4", &[10]),
+            create_test_chunk_info("seg5", &[10]),
+            create_test_chunk_info("seg6", &[10]),
+        ];
+        let (batches, _) = create_request_batches(chunk_infos, 100_000).unwrap();
+        assert_eq!(batches.len(), 2);
+
+        let groups = create_grpc_batch_groups(&batches).unwrap();
+
+        assert_eq!(groups.len(), 2);
+        for group in groups {
+            assert!(group.len() <= GRPC_BATCH_SIZE);
+            assert!(distinct_segments_in_batches(group.iter()).len() <= MAX_CONCURRENT_SEGMENTS);
+        }
+    }
+
+    #[test]
+    fn test_create_grpc_batch_groups_keeps_same_segment_batches_together() {
+        let chunk_info = create_test_chunk_info("seg1", &[10; GRPC_BATCH_SIZE + 1]);
+        let (batches, _) = create_request_batches(vec![chunk_info], 10).unwrap();
+        assert_eq!(batches.len(), GRPC_BATCH_SIZE + 1);
+
+        let groups = create_grpc_batch_groups(&batches).unwrap();
+
+        assert_eq!(groups.len(), 2);
+        assert_eq!(groups[0].len(), GRPC_BATCH_SIZE);
+        assert_eq!(groups[1].len(), 1);
+        assert_eq!(distinct_segments_in_batches(groups[0].iter()).len(), 1);
+        assert_eq!(distinct_segments_in_batches(groups[1].iter()).len(), 1);
     }
 
     #[test]
