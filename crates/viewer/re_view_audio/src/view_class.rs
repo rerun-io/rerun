@@ -14,6 +14,7 @@ use re_viewer_context::{
     VisualizableReason, suggest_view_for_each_entity,
 };
 
+use crate::processing::{AudioProcessingSettings, FilterKind, WindowFunction};
 use crate::visualizer_system::{AudioVisualizerSystem, AudioWaveform};
 
 #[derive(Default)]
@@ -25,6 +26,7 @@ type ViewType = re_sdk_types::blueprint::views::AudioView;
 pub struct AudioViewState {
     channel_visible: Vec<bool>,
     show_mixdown: bool,
+    processing: AudioProcessingSettings,
     #[cfg(not(target_arch = "wasm32"))]
     #[size_bytes(ignore)]
     playback: Mutex<Option<crate::playback::AudioPlayback>>,
@@ -194,10 +196,62 @@ fn toolbar_ui(
         }
     });
 
+    processing_ui(ui, &mut state.processing);
+
     #[cfg(not(target_arch = "wasm32"))]
     if let Some(err) = &state.playback_error {
         ui.error_label(err);
     }
+}
+
+fn processing_ui(ui: &mut egui::Ui, processing: &mut AudioProcessingSettings) {
+    ui.horizontal_wrapped(|ui| {
+        ui.label("window");
+        egui::ComboBox::from_id_salt("audio_window")
+            .selected_text(processing.window.label())
+            .show_ui(ui, |ui| {
+                for window in WindowFunction::ALL {
+                    ui.selectable_value(&mut processing.window, window, window.label());
+                }
+            });
+
+        ui.label("filter");
+        egui::ComboBox::from_id_salt("audio_filter")
+            .selected_text(processing.filter.label())
+            .show_ui(ui, |ui| {
+                for filter in FilterKind::ALL {
+                    ui.selectable_value(&mut processing.filter, filter, filter.label());
+                }
+            });
+
+        if matches!(
+            processing.filter,
+            FilterKind::HighPass | FilterKind::BandPass
+        ) {
+            ui.label("low Hz");
+            ui.add(
+                egui::DragValue::new(&mut processing.low_cut_hz)
+                    .range(1.0..=96_000.0)
+                    .speed(10.0),
+            );
+        }
+
+        if matches!(
+            processing.filter,
+            FilterKind::LowPass | FilterKind::BandPass
+        ) {
+            ui.label("high Hz");
+            ui.add(
+                egui::DragValue::new(&mut processing.high_cut_hz)
+                    .range(1.0..=96_000.0)
+                    .speed(10.0),
+            );
+        }
+
+        if processing.is_active() && ui.button("Reset").clicked() {
+            *processing = AudioProcessingSettings::default();
+        }
+    });
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -225,6 +279,7 @@ fn playback_buttons_ui(
             waveform,
             &enabled_channels,
             state.show_mixdown,
+            &state.processing,
             cursor_time,
         ) {
             Ok(playback) => {
@@ -383,7 +438,7 @@ fn draw_waveform(
             continue;
         }
 
-        let points = channel_points(waveform, channel_idx, channel_idx as f64);
+        let points = channel_points(waveform, channel_idx, channel_idx as f64, &state.processing);
         if points.is_empty() {
             continue;
         }
@@ -401,7 +456,12 @@ fn draw_waveform(
     }
 
     if state.show_mixdown && channel_count > 1 {
-        let points = mixdown_points(waveform, channel_count, channel_count as f64);
+        let points = mixdown_points(
+            waveform,
+            channel_count,
+            channel_count as f64,
+            &state.processing,
+        );
         if !points.is_empty() {
             plot_ui.line(
                 Line::new(format!("{entity_path} mix"), PlotPoints::Owned(points))
@@ -416,13 +476,15 @@ fn channel_points(
     waveform: &AudioWaveform,
     channel_idx: usize,
     y_offset: f64,
+    processing: &AudioProcessingSettings,
 ) -> Vec<egui_plot::PlotPoint> {
     let mut points = Vec::new();
     for chunk in &waveform.chunks {
         let Some(samples) = chunk.channels.get(channel_idx) else {
             continue;
         };
-        points.extend(samples.iter().enumerate().map(|(sample_idx, sample)| {
+        let processed = crate::processing::process_samples(samples, chunk.sample_rate, processing);
+        points.extend(processed.iter().enumerate().map(|(sample_idx, sample)| {
             egui_plot::PlotPoint::new(
                 chunk.start_time.as_f64() + sample_idx as f64 / chunk.sample_rate * 1_000_000_000.0,
                 y_offset + sample.clamp(-1.0, 1.0) * 0.45,
@@ -436,6 +498,7 @@ fn mixdown_points(
     waveform: &AudioWaveform,
     channel_count: usize,
     y_offset: f64,
+    processing: &AudioProcessingSettings,
 ) -> Vec<egui_plot::PlotPoint> {
     let mut points = Vec::new();
     for chunk in &waveform.chunks {
@@ -445,6 +508,7 @@ fn mixdown_points(
             .map(Vec::len)
             .min()
             .unwrap_or_default();
+        let mut mixed = Vec::with_capacity(sample_count);
         for sample_idx in 0..sample_count {
             let sum = chunk
                 .channels
@@ -452,9 +516,14 @@ fn mixdown_points(
                 .take(channel_count)
                 .map(|channel| channel[sample_idx])
                 .sum::<f64>();
+            mixed.push(sum / channel_count as f64);
+        }
+
+        let processed = crate::processing::process_samples(&mixed, chunk.sample_rate, processing);
+        for (sample_idx, sample) in processed.iter().enumerate() {
             points.push(egui_plot::PlotPoint::new(
                 chunk.start_time.as_f64() + sample_idx as f64 / chunk.sample_rate * 1_000_000_000.0,
-                y_offset + (sum / channel_count as f64).clamp(-1.0, 1.0) * 0.45,
+                y_offset + sample.clamp(-1.0, 1.0) * 0.45,
             ));
         }
     }

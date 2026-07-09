@@ -7,5 +7,6 @@ mod visualizer_system;
 
 #[cfg(not(target_arch = "wasm32"))]
 mod playback;
+mod processing;
 
 pub use view_class::AudioView;

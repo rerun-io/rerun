@@ -4,6 +4,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use re_log_types::{TimeInt, TimeReal};
 use tinyaudio::{OutputDevice, OutputDeviceParameters, run_output_device};
 
+use crate::processing::AudioProcessingSettings;
 use crate::visualizer_system::AudioWaveform;
 
 pub struct AudioPlayback {
@@ -19,9 +20,11 @@ impl AudioPlayback {
         waveform: &AudioWaveform,
         enabled_channels: &[usize],
         mixdown: bool,
+        processing: &AudioProcessingSettings,
         cursor_time: TimeInt,
     ) -> Result<Self, String> {
-        let buffer = PlaybackBuffer::from_waveform(waveform, enabled_channels, mixdown)?;
+        let buffer =
+            PlaybackBuffer::from_waveform(waveform, enabled_channels, mixdown, processing)?;
         let start_frame = buffer
             .frame_for_time(cursor_time)
             .min(buffer.total_frames());
@@ -100,6 +103,7 @@ impl PlaybackBuffer {
         waveform: &AudioWaveform,
         enabled_channels: &[usize],
         mixdown: bool,
+        processing: &AudioProcessingSettings,
     ) -> Result<Self, String> {
         let Some(first_chunk) = waveform.chunks.first() else {
             return Err("no audio chunks to play".to_owned());
@@ -139,6 +143,30 @@ impl PlaybackBuffer {
                 .map(Vec::len)
                 .min()
                 .unwrap_or_default();
+            let processed_channels = enabled_channels
+                .iter()
+                .filter_map(|channel_idx| chunk.channels.get(*channel_idx))
+                .map(|channel| {
+                    crate::processing::process_samples(channel, chunk.sample_rate, processing)
+                })
+                .collect::<Vec<_>>();
+
+            if processed_channels.is_empty() {
+                continue;
+            }
+
+            let processed_mix = mixdown.then(|| {
+                let mut mixed = vec![0.0; chunk_frames];
+                for channel in &processed_channels {
+                    for (sample_idx, sample) in channel.iter().take(chunk_frames).enumerate() {
+                        mixed[sample_idx] += sample;
+                    }
+                }
+                for sample in &mut mixed {
+                    *sample /= processed_channels.len() as f64;
+                }
+                mixed
+            });
 
             for frame_idx in 0..chunk_frames {
                 let dst_frame = dst_start + frame_idx;
@@ -147,20 +175,21 @@ impl PlaybackBuffer {
                 }
 
                 if mixdown {
-                    let sum = enabled_channels
-                        .iter()
-                        .filter_map(|channel_idx| chunk.channels.get(*channel_idx))
-                        .map(|channel| channel[frame_idx])
-                        .sum::<f64>();
-                    let sample = (sum / enabled_channels.len() as f64).clamp(-1.0, 1.0) as f32;
+                    let sample = processed_mix
+                        .as_ref()
+                        .and_then(|mix| mix.get(frame_idx))
+                        .copied()
+                        .unwrap_or_default()
+                        .clamp(-1.0, 1.0) as f32;
                     samples[dst_frame] = sample;
                 } else {
-                    for (out_channel_idx, source_channel_idx) in enabled_channels.iter().enumerate()
-                    {
-                        if let Some(channel) = chunk.channels.get(*source_channel_idx) {
-                            samples[dst_frame * channels_count + out_channel_idx] =
-                                channel[frame_idx].clamp(-1.0, 1.0) as f32;
-                        }
+                    for (out_channel_idx, channel) in processed_channels.iter().enumerate() {
+                        samples[dst_frame * channels_count + out_channel_idx] = channel
+                            .get(frame_idx)
+                            .copied()
+                            .unwrap_or_default()
+                            .clamp(-1.0, 1.0)
+                            as f32;
                     }
                 }
             }
