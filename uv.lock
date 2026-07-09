@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 2
 requires-python = ">=3.10, <3.12"
 resolution-markers = [
     "python_full_version >= '3.11' and platform_machine == 'aarch64' and sys_platform == 'linux'",
@@ -4796,7 +4796,7 @@ test = [
 requires-dist = [
     { name = "anywidget" },
     { name = "hatch", marker = "extra == 'dev'" },
-    { name = "ipykernel", specifier = "<7.0.0" },
+    { name = "ipykernel", specifier = "!=7.0.*" },
     { name = "jupyter-ui-poll" },
     { name = "jupyterlab", marker = "extra == 'dev'" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=8.0" },

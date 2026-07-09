@@ -9,9 +9,8 @@ version = "0.35.0-alpha.1+dev"
 dependencies = [
   "anywidget",
   "jupyter-ui-poll",
-  # ipykernel 7.0.0 has a bug that prevents it from sending display data from a different thread.
-  # TODO(ipython/ipykernel/#1450)
-  "ipykernel<7.0.0",
+  # ipykernel 7.0.x has a bug that prevents it from sending display data from a different thread.
+  "ipykernel != 7.0.*",
 ]
 readme = "README.md"
 keywords = ["rerun", "notebook"]
