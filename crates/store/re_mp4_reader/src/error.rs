@@ -1,3 +1,5 @@
+use re_sdk_types::components::VideoCodec;
+
 /// Errors produced by the mp4 reader.
 #[derive(Debug, thiserror::Error)]
 pub enum Mp4Error {
@@ -17,11 +19,27 @@ pub enum Mp4Error {
     Demux(#[from] re_video::VideoLoadError),
 
     #[error(
-        "MP4 contains B-frames; the `VideoStream` archetype does not yet model differing \
-         DTS/PTS (see https://github.com/rerun-io/rerun/issues/10090). \
-         Use `Mode::Asset` or pass `allow_b_frames = true` and transcode downstream."
+        "MP4 contains B-frames; stripping them requires FFmpeg, which is not \
+         available in this build. Use `Mode::Asset` instead."
     )]
-    BFramesInStreamMode,
+    BFramesRequireFfmpeg,
+
+    #[error(
+        "MP4 contains B-frames; stripping them with FFmpeg requires a seekable file, but this \
+         stream was provided as in-memory bytes. Load it from a file path (`load_mp4`), or use \
+         `Mode::Asset`."
+    )]
+    BFramesFromInMemoryBytes,
+
+    #[error("Failed to strip B-frames from MP4 stream via FFmpeg: {0}")]
+    Transcode(String),
+
+    #[error(
+        "MP4 stream uses codec {codec:?}, whose B-frames (DTS != PTS) the `VideoStream` \
+         archetype cannot yet model (see https://github.com/rerun-io/rerun/issues/10090). \
+         Only H.264 and H.265 B-frame sources can be transcoded; use `Mode::Asset` instead."
+    )]
+    BFramesUnsupportedCodec { codec: VideoCodec },
 
     #[error("MP4 with image-sequence codec is not supported by `Mode::Stream`; use `Mode::Asset`")]
     ImageSequenceInStreamMode,

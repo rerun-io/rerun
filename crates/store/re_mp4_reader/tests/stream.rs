@@ -35,10 +35,7 @@ fn fixture_path(file_name: &str) -> PathBuf {
 
 fn stream_config() -> Mp4Config {
     Mp4Config {
-        mode: Mode::Stream {
-            chunk_by_gop: true,
-            allow_b_frames: false,
-        },
+        mode: Mode::Stream { chunk_by_gop: true },
         ..Default::default()
     }
 }
@@ -100,4 +97,93 @@ fn streaming_from_path_matches_in_memory() {
             );
         }
     }
+}
+
+/// A B-frame mp4 in stream mode is transcoded with ffmpeg and emitted as a
+/// normal `VideoStream` — a codec chunk plus per-GOP sample chunks.
+///
+/// Skipped (not failed) when ffmpeg isn't installed, so the suite still passes
+/// on machines without it.
+#[test]
+fn b_frames_are_transcoded_into_a_video_stream() {
+    let entity_path = EntityPath::from("video");
+    let path = fixture_path("Big_Buck_Bunny_1080_1s_h264.mp4");
+    let config = Mp4Config {
+        mode: Mode::Stream { chunk_by_gop: true },
+        ..Default::default()
+    };
+
+    let iter = match load_mp4(&path, &config, &entity_path) {
+        Ok(iter) => iter,
+        Err(err) if err.to_string().contains("FFmpeg") => {
+            eprintln!("skipping: ffmpeg not available ({err})");
+            return;
+        }
+        Err(err) => panic!("unexpected error transcoding B-frames: {err}"),
+    };
+
+    let chunks = collect_chunks(iter, "h264_bframes");
+    let static_chunks = chunks.iter().filter(|c| c.is_static()).count();
+    assert_eq!(static_chunks, 1, "expected exactly one static codec chunk");
+
+    // The B-frame fixture is the same content as the no-B-frame one, so the
+    // transcoded output must carry the same number of samples — proves no frame
+    // is dropped or duplicated by the round-trip through ffmpeg.
+    let expected_samples = total_sample_rows(&collect_chunks(
+        load_mp4(
+            &fixture_path("Big_Buck_Bunny_1080_1s_h264_nobframes.mp4"),
+            &stream_config(),
+            &entity_path,
+        )
+        .unwrap(),
+        "h264_nobframes",
+    ));
+
+    let mut times: Vec<i64> = Vec::new();
+    for chunk in chunks.iter().filter(|c| !c.is_static()) {
+        assert_eq!(chunk.timelines().len(), 1);
+        times.extend_from_slice(chunk.timelines().values().next().unwrap().times_raw());
+    }
+    assert_eq!(
+        times.len(),
+        expected_samples,
+        "transcoded sample count must match the source frame count"
+    );
+    assert!(
+        times.windows(2).all(|w| w[0] < w[1]),
+        "transcoded PTS must be strictly increasing (B-frames stripped): {times:?}"
+    );
+}
+
+/// Total number of sample rows across the non-static (temporal) chunks.
+fn total_sample_rows(chunks: &[Chunk]) -> usize {
+    chunks
+        .iter()
+        .filter(|c| !c.is_static())
+        .map(Chunk::num_rows)
+        .sum()
+}
+
+/// When ffmpeg is missing (here forced via a bogus `ffmpeg_override`), a B-frame
+/// source surfaces the "not installed" error instead of loading. Forcing the
+/// path keeps this deterministic regardless of the test machine's ffmpeg.
+#[test]
+fn b_frames_without_ffmpeg_reports_missing_ffmpeg() {
+    let entity_path = EntityPath::from("video");
+    let path = fixture_path("Big_Buck_Bunny_1080_1s_h264.mp4");
+
+    let config = Mp4Config {
+        mode: Mode::Stream { chunk_by_gop: true },
+        ffmpeg_override: Some(PathBuf::from("/definitely/not/a/real/ffmpeg")),
+        ..Default::default()
+    };
+
+    let msg = match load_mp4(&path, &config, &entity_path) {
+        Ok(_) => panic!("expected a transcode error when ffmpeg is missing"),
+        Err(err) => err.to_string(),
+    };
+    assert!(
+        msg.contains("Couldn't find an installation of the FFmpeg executable"),
+        "expected the FFmpeg-not-installed message, got: {msg}"
+    );
 }

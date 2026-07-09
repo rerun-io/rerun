@@ -1566,12 +1566,12 @@ class Mp4ReaderInternal:
 
     def __init__(
         self,
-        path: str,
+        path: Path,
         mode: Literal["asset", "stream"] = "stream",
         chunk_by_gop: bool = True,
         timeline_name: str = "video",
         timeline_type: Literal["duration", "timestamp"] = "duration",
-        allow_b_frames: bool = False,
+        ffmpeg_override: Path | None = None,
         entity_path: str | None = None,
     ) -> None: ...
     def stream(self) -> LazyChunkStreamInternal: ...

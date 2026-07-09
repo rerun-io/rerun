@@ -278,6 +278,7 @@ fn load_video(
         mode: re_mp4_reader::Mode::Asset { timepoint },
         timeline_name: "video".into(),
         timeline_type: re_log_types::TimeType::DurationNs,
+        ffmpeg_override: None,
     };
 
     // An up-front failure (e.g. the asset being too large) aborts the import.

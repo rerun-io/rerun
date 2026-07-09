@@ -50,20 +50,14 @@ pub fn load_mp4(
             timepoint.clone(),
         )?)),
 
-        Mode::Stream {
-            chunk_by_gop,
-            allow_b_frames,
-        } => {
-            let file = std::fs::File::open(path)?;
-            let size = file.metadata()?.len();
+        Mode::Stream { chunk_by_gop } => {
             let iter = stream::iter_chunks(
-                std::io::BufReader::new(file),
-                size,
+                stream::StreamInput::Path(path.to_path_buf()),
                 entity_path,
                 config.timeline_name,
                 *chunk_by_gop,
                 config.timeline_type,
-                *allow_b_frames,
+                config.ffmpeg_override.as_deref(),
                 &debug_name,
             )?;
             Ok(Either::Right(iter))
@@ -101,19 +95,14 @@ pub fn load_mp4_from_bytes(
             timepoint.clone(),
         )?)),
 
-        Mode::Stream {
-            chunk_by_gop,
-            allow_b_frames,
-        } => {
-            let size = bytes.len() as u64;
+        Mode::Stream { chunk_by_gop } => {
             let iter = stream::iter_chunks(
-                std::io::Cursor::new(bytes),
-                size,
+                stream::StreamInput::Bytes(bytes),
                 entity_path,
                 config.timeline_name,
                 *chunk_by_gop,
                 config.timeline_type,
-                *allow_b_frames,
+                config.ffmpeg_override.as_deref(),
                 debug_name,
             )?;
             Ok(Either::Right(iter))

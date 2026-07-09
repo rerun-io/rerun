@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use re_chunk::TimePoint;
 use re_log_types::{TimeType, TimelineName};
 
@@ -22,17 +24,21 @@ pub struct Mp4Config {
     /// way — only the timeline's declared type differs. Pair `TimestampNs` with
     /// a downstream retag step that supplies the real wall-clock times.
     pub timeline_type: TimeType,
+
+    /// Overrides the `ffmpeg` executable used by [`Mode::Stream`] to transcode a
+    /// source that contains B-frames.
+    ///
+    /// `None` (default) looks it up on `PATH`.
+    pub ffmpeg_override: Option<PathBuf>,
 }
 
 impl Default for Mp4Config {
     fn default() -> Self {
         Self {
-            mode: Mode::Stream {
-                chunk_by_gop: true,
-                allow_b_frames: false,
-            },
+            mode: Mode::Stream { chunk_by_gop: true },
             timeline_name: "video".into(),
             timeline_type: TimeType::DurationNs,
+            ffmpeg_override: None,
         }
     }
 }
@@ -53,19 +59,17 @@ pub enum Mode {
     ///
     /// The timeline used for the samples is named [`Mp4Config::timeline_name`]
     /// and typed [`Mp4Config::timeline_type`].
+    ///
+    /// A source containing B-frames is transcoded with ffmpeg into an equivalent
+    /// B-frame-free stream before emission, because the `VideoStream` archetype
+    /// cannot yet model differing DTS/PTS. This requires an `ffmpeg` executable
+    /// (see [`Mp4Config::ffmpeg_override`]).
+    // TODO(#10090): emit B-frames directly once `VideoStream` can model DTS != PTS.
     Stream {
-        /// Should the sampls be grouped into one Rerun chunk per GOP?
+        /// Should the samples be grouped into one Rerun chunk per GOP?
         ///
         /// If `true`, groups samples into one Rerun chunk per GOP (keyframe through the sample just
         /// before the next keyframe). Otherwise, emits one Rerun chunk per sample.
         chunk_by_gop: bool,
-
-        /// Opts in to mp4s with B-frames, which the `VideoStream` archetype does not yet model
-        /// (DTS != PTS — see issue #10090).
-        ///
-        /// When `true`, the emitted time column is marked unsorted because PTS values in decode
-        /// order may not be monotonic. Intended to be combined with a downstream transcode step
-        /// that drops the B-frames.
-        allow_b_frames: bool,
     },
 }

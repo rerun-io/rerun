@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 
 import pytest
@@ -12,9 +13,11 @@ VIDEO_ASSETS_DIR = Path(__file__).resolve().parents[3] / "tests" / "assets" / "v
 # H.264 fixture encoded without B-frames — usable in both modes.
 H264_NO_BFRAMES = VIDEO_ASSETS_DIR / "Big_Buck_Bunny_1080_1s_h264_nobframes.mp4"
 
-# Same content but encoded with B-frames — stream mode should reject it unless
-# `allow_b_frames=True`; asset mode is unaffected.
+# Same content but encoded with B-frames — stream mode transcodes it with ffmpeg
+# to strip the B-frames; asset mode is unaffected.
 H264_WITH_BFRAMES = VIDEO_ASSETS_DIR / "Big_Buck_Bunny_1080_1s_h264.mp4"
+
+_HAS_FFMPEG = shutil.which("ffmpeg") is not None
 
 
 def _cols(chunk: Chunk) -> list[str]:
@@ -118,10 +121,24 @@ def test_custom_entity_path_applies_to_every_chunk() -> None:
 
 
 def test_default_entity_path_derives_from_file_path() -> None:
-    """Default `entity_path=None` mirrors the importer: full filesystem path as entity hierarchy."""
+    """Default `entity_path=None` uses the absolute filesystem path as the entity hierarchy."""
     chunks = Mp4Reader(H264_NO_BFRAMES, mode="asset").stream().to_chunks()
     for c in chunks:
         assert c.entity_path.endswith("/Big_Buck_Bunny_1080_1s_h264_nobframes.mp4")
+
+
+def test_relative_path_is_absolutized(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A relative source path is resolved to absolute for both `.path` and the default entity path."""
+    monkeypatch.chdir(H264_NO_BFRAMES.parent)
+    reader = Mp4Reader(Path(H264_NO_BFRAMES.name), mode="asset")
+
+    assert Path(reader.path).is_absolute()
+    assert Path(reader.path) == H264_NO_BFRAMES
+    # The default entity path reflects the absolute path (parent dirs included),
+    # not just the bare filename that was passed in.
+    entity_path = reader.stream().to_chunks()[0].entity_path
+    assert "/tests/assets/video/" in entity_path
+    assert entity_path.endswith("/Big_Buck_Bunny_1080_1s_h264_nobframes.mp4")
 
 
 # ---------------------------------------------------------------------------
@@ -129,12 +146,17 @@ def test_default_entity_path_derives_from_file_path() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_b_frames_in_stream_mode_raise() -> None:
-    """B-frames are unsupported in stream mode (VideoStream archetype limitation #10090)."""
-    with pytest.raises(Exception, match="B-frame"):
+def test_b_frames_without_ffmpeg_reports_missing_ffmpeg() -> None:
+    """
+    A missing ffmpeg surfaces the "not installed" error rather than silently succeeding.
+
+    We force the missing-ffmpeg case with a bogus `ffmpeg_override` so this is
+    deterministic regardless of whether ffmpeg is installed on the test machine.
+    """
+    with pytest.raises(RuntimeError, match="Couldn't find an installation of the FFmpeg executable"):
         # The error is raised eagerly inside the loader thread; we surface it on
         # the first pull, so iterating is enough to trigger it.
-        list(Mp4Reader(H264_WITH_BFRAMES).stream())
+        list(Mp4Reader(H264_WITH_BFRAMES, ffmpeg_override="/definitely/not/a/real/ffmpeg").stream())
 
 
 def test_b_frames_in_asset_mode_are_fine() -> None:
@@ -157,12 +179,6 @@ def test_chunk_by_gop_false_with_asset_mode_rejected() -> None:
     """chunk_by_gop only makes sense in stream mode — passing it for asset mode is a user error."""
     with pytest.raises(ValueError, match="chunk_by_gop"):
         Mp4Reader(H264_NO_BFRAMES, mode="asset", chunk_by_gop=False)  # type: ignore[call-overload]
-
-
-def test_allow_b_frames_with_asset_mode_rejected() -> None:
-    """allow_b_frames only makes sense in stream mode."""
-    with pytest.raises(ValueError, match="allow_b_frames"):
-        Mp4Reader(H264_NO_BFRAMES, mode="asset", allow_b_frames=True)  # type: ignore[call-overload]
 
 
 def test_invalid_timeline_type() -> None:
@@ -206,21 +222,19 @@ def test_asset_mode_timeline_type_timestamp_applies_to_index_chunk() -> None:
 
 
 # ---------------------------------------------------------------------------
-# allow_b_frames marks the time column unsorted
+# B-frame sources are transcoded via ffmpeg
 # ---------------------------------------------------------------------------
 
 
-def test_allow_b_frames_opts_in_to_b_frame_inputs() -> None:
+@pytest.mark.skipif(not _HAS_FFMPEG, reason="ffmpeg not installed")
+def test_b_frames_are_transcoded_into_a_video_stream() -> None:
     """
-    `allow_b_frames=True` unblocks reading a B-frame mp4 in stream mode.
+    A B-frame mp4 in stream mode is transcoded with ffmpeg into a normal `VideoStream`.
 
-    Without the opt-in the same input raises (verified by
-    `test_b_frames_in_stream_mode_raise`). With it, the reader produces the
-    same shape of chunks as the no-B-frame happy path. The chunk store may
-    internally re-sort the time column, so we don't assert on Arrow sortedness
-    metadata — the user-visible contract is "doesn't raise + produces chunks."
+    It yields a static codec chunk plus per-GOP sample chunks — the same shape as
+    the no-B-frame happy path.
     """
-    chunks = Mp4Reader(H264_WITH_BFRAMES, allow_b_frames=True).stream().to_chunks()
+    chunks = Mp4Reader(H264_WITH_BFRAMES).stream().to_chunks()
     static_chunks = [c for c in chunks if c.is_static]
     temporal_chunks = [c for c in chunks if not c.is_static]
     assert len(static_chunks) == 1

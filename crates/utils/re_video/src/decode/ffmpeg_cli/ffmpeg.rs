@@ -902,7 +902,7 @@ impl FFmpegCliDecoder {
     }
 }
 
-fn check_ffmpeg_version(
+pub(super) fn check_ffmpeg_version(
     ffmpeg_version_result: Result<FFmpegVersion, FFmpegVersionParseError>,
 ) -> Result<(), Error> {
     match ffmpeg_version_result {
