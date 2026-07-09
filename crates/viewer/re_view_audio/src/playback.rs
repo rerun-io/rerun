@@ -13,6 +13,7 @@ pub struct AudioPlayback {
     start_time_ns: f64,
     sample_rate: f64,
     total_frames: usize,
+    loop_start_frame: Option<usize>,
 }
 
 impl AudioPlayback {
@@ -21,12 +22,15 @@ impl AudioPlayback {
         enabled_channels: &[usize],
         mixdown: bool,
         processing: &AudioProcessingSettings,
+        loop_region_ns: Option<(f64, f64)>,
         cursor_time: TimeInt,
     ) -> Result<Self, String> {
         let buffer =
             PlaybackBuffer::from_waveform(waveform, enabled_channels, mixdown, processing)?;
-        let start_frame = buffer
-            .frame_for_time(cursor_time)
+        let loop_start_frame = loop_region_ns.map(|(start, _)| buffer.frame_for_time_ns(start));
+        let loop_end_frame = loop_region_ns.map(|(_, end)| buffer.frame_for_time_ns(end));
+        let start_frame = loop_start_frame
+            .unwrap_or_else(|| buffer.frame_for_time(cursor_time))
             .min(buffer.total_frames());
         let cursor_frame = Arc::new(AtomicUsize::new(start_frame));
         let callback_cursor = Arc::clone(&cursor_frame);
@@ -34,6 +38,11 @@ impl AudioPlayback {
         let samples = Arc::new(buffer.samples);
         let callback_samples = Arc::clone(&samples);
         let channels_count = buffer.channels_count;
+        let callback_loop_start = loop_start_frame.unwrap_or(0);
+        let callback_loop_end = loop_end_frame
+            .unwrap_or(total_frames)
+            .min(total_frames)
+            .max(callback_loop_start + 1);
 
         let params = OutputDeviceParameters {
             sample_rate: buffer.sample_rate.round() as usize,
@@ -43,7 +52,11 @@ impl AudioPlayback {
 
         let device = run_output_device(params, move |data| {
             for frame in data.chunks_mut(channels_count) {
-                let frame_idx = callback_cursor.fetch_add(1, Ordering::Relaxed);
+                let mut frame_idx = callback_cursor.fetch_add(1, Ordering::Relaxed);
+                if loop_region_ns.is_some() && frame_idx >= callback_loop_end {
+                    callback_cursor.store(callback_loop_start + 1, Ordering::Relaxed);
+                    frame_idx = callback_loop_start;
+                }
                 let sample_idx = frame_idx * channels_count;
                 if sample_idx + channels_count <= callback_samples.len() {
                     frame.copy_from_slice(
@@ -62,6 +75,7 @@ impl AudioPlayback {
             start_time_ns: buffer.start_time_ns,
             sample_rate: buffer.sample_rate,
             total_frames,
+            loop_start_frame,
         })
     }
 
@@ -74,7 +88,8 @@ impl AudioPlayback {
     }
 
     pub fn is_finished(&self) -> bool {
-        self.cursor_frame.load(Ordering::Relaxed) >= self.total_frames
+        self.loop_start_frame.is_none()
+            && self.cursor_frame.load(Ordering::Relaxed) >= self.total_frames
     }
 }
 
@@ -95,8 +110,12 @@ impl PlaybackBuffer {
             return 0;
         }
 
-        (((time.as_f64() - self.start_time_ns).max(0.0) / 1_000_000_000.0) * self.sample_rate)
-            .floor() as usize
+        self.frame_for_time_ns(time.as_f64())
+    }
+
+    fn frame_for_time_ns(&self, time_ns: f64) -> usize {
+        (((time_ns - self.start_time_ns).max(0.0) / 1_000_000_000.0) * self.sample_rate).floor()
+            as usize
     }
 
     fn from_waveform(

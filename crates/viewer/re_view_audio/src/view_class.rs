@@ -29,6 +29,9 @@ pub struct AudioViewState {
     channel_visible: Vec<bool>,
     show_mixdown: bool,
     processing: AudioProcessingSettings,
+    loop_region_enabled: bool,
+    loop_start_ns: Option<f64>,
+    loop_end_ns: Option<f64>,
     #[cfg(not(target_arch = "wasm32"))]
     #[size_bytes(ignore)]
     playback: Mutex<Option<crate::playback::AudioPlayback>>,
@@ -203,11 +206,76 @@ fn toolbar_ui(
     });
 
     processing_ui(ui, &mut state.processing);
+    loop_region_ui(ctx, ui, state, first_waveform);
 
     #[cfg(not(target_arch = "wasm32"))]
     if let Some(err) = &state.playback_error {
         ui.error_label(err);
     }
+}
+
+fn loop_region_ui(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    state: &mut AudioViewState,
+    first_waveform: Option<&AudioWaveform>,
+) {
+    ui.horizontal_wrapped(|ui| {
+        ui.checkbox(&mut state.loop_region_enabled, "loop");
+
+        let region = active_loop_region(state, first_waveform);
+        let mut start_seconds = region
+            .map(|(start, _)| start / 1_000_000_000.0)
+            .unwrap_or_default();
+        let mut end_seconds = region
+            .map(|(_, end)| end / 1_000_000_000.0)
+            .unwrap_or(start_seconds + 1.0);
+
+        ui.label("start s");
+        if ui
+            .add(egui::DragValue::new(&mut start_seconds).speed(0.01))
+            .changed()
+        {
+            state.loop_start_ns = Some(start_seconds * 1_000_000_000.0);
+        }
+
+        ui.label("end s");
+        if ui
+            .add(egui::DragValue::new(&mut end_seconds).speed(0.01))
+            .changed()
+        {
+            state.loop_end_ns = Some(end_seconds * 1_000_000_000.0);
+        }
+
+        if ui.button("start = cursor").clicked() {
+            state.loop_start_ns = ctx.time_ctrl.time_int().map(TimeInt::as_f64);
+        }
+
+        if ui.button("end = cursor").clicked() {
+            state.loop_end_ns = ctx.time_ctrl.time_int().map(TimeInt::as_f64);
+        }
+
+        if ui.button("Reset").clicked() {
+            state.loop_start_ns = None;
+            state.loop_end_ns = None;
+            state.loop_region_enabled = false;
+        }
+    });
+}
+
+fn active_loop_region(
+    state: &AudioViewState,
+    first_waveform: Option<&AudioWaveform>,
+) -> Option<(f64, f64)> {
+    let waveform_range = first_waveform.and_then(AudioWaveform::time_range_ns);
+    let start = state
+        .loop_start_ns
+        .or_else(|| waveform_range.map(|(start, _)| start))?;
+    let end = state
+        .loop_end_ns
+        .or_else(|| waveform_range.map(|(_, end)| end))?;
+
+    (end > start).then_some((start, end))
 }
 
 fn processing_ui(ui: &mut egui::Ui, processing: &mut AudioProcessingSettings) {
@@ -286,6 +354,10 @@ fn playback_buttons_ui(
             &enabled_channels,
             state.show_mixdown,
             &state.processing,
+            state
+                .loop_region_enabled
+                .then(|| active_loop_region(state, Some(waveform)))
+                .flatten(),
             cursor_time,
         ) {
             Ok(playback) => {
@@ -393,6 +465,7 @@ fn plot_audio(
         .map(AudioWaveform::num_channels)
         .max()
         .unwrap_or(1) as f64;
+    let loop_region = active_loop_region(state, waveforms.values().next());
 
     let plot = Plot::new("audio_waveform_plot")
         .allow_boxed_zoom(false)
@@ -419,6 +492,9 @@ fn plot_audio(
             draw_waveform(plot_ui, state, entity_idx, entity_path, waveform);
         }
         draw_annotations(plot_ui, annotations, y_max);
+        if let Some((start, end)) = loop_region {
+            draw_loop_region(plot_ui, start, end, y_max);
+        }
 
         if (plot_ui.response().clicked() || plot_ui.response().dragged())
             && let Some(pointer) = plot_ui.pointer_coordinate()
@@ -434,6 +510,26 @@ fn plot_audio(
         ctx.selection_state()
             .set_hovered(re_viewer_context::Item::View(view_id));
     }
+}
+
+fn draw_loop_region(plot_ui: &mut egui_plot::PlotUi<'_>, start: f64, end: f64, y_max: f64) {
+    let color = egui::Color32::from_rgba_unmultiplied(120, 180, 255, 45);
+    plot_ui.polygon(
+        egui_plot::Polygon::new(
+            "loop region",
+            vec![
+                [start, -0.95],
+                [end, -0.95],
+                [end, y_max + 0.65],
+                [start, y_max + 0.65],
+            ],
+        )
+        .fill_color(color)
+        .stroke(egui::Stroke::new(
+            1.0,
+            egui::Color32::from_rgba_unmultiplied(120, 180, 255, 120),
+        )),
+    );
 }
 
 fn draw_annotations(
