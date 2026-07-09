@@ -15,6 +15,7 @@ An N-dimensional array of numbers.
 
 ## Can be shown in
 * [TensorView](../views/tensor_view.md)
+* [SignalHeatmapView](../views/signal_heatmap_view.md)
 * [BarChartView](../views/bar_chart_view.md) (for 1D tensors)
 * [DataframeView](../views/dataframe_view.md)
 

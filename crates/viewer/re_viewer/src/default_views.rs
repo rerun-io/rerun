@@ -62,6 +62,11 @@ fn populate_view_class_registry_with_builtin(
         app_options,
         fallback_registry,
     )?;
+    view_class_registry.add_class::<re_view_tensor::SignalHeatmapView>(
+        reflection,
+        app_options,
+        fallback_registry,
+    )?;
     view_class_registry.add_class::<re_view_text_document::TextDocumentView>(
         reflection,
         app_options,

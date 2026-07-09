@@ -244,11 +244,31 @@ fn find_width_height_dim_indices(shape: &[TensorDimension]) -> (usize, usize) {
 }
 
 fn is_name_like_width(lowercase: &str) -> bool {
-    matches!(lowercase, "w" | "width" | "right" | "left")
+    matches!(
+        lowercase,
+        "w" | "width" | "right" | "left" | "t" | "time" | "frame" | "frames"
+    )
 }
 
 fn is_name_like_height(lowercase: &str) -> bool {
-    matches!(lowercase, "h" | "height" | "up" | "down")
+    matches!(
+        lowercase,
+        "h" | "height"
+            | "up"
+            | "down"
+            | "f"
+            | "freq"
+            | "frequency"
+            | "frequency_hz"
+            | "mel"
+            | "mel_bin"
+            | "mel_bins"
+            | "coefficient"
+            | "coefficients"
+            | "mfcc"
+            | "channel"
+            | "channels"
+    )
 }
 
 /// Returns the longest and second longest dimensions
@@ -317,6 +337,16 @@ mod tests {
             wh(&[named(2, "height"), dim(800), named(3, "width")]),
             (2, 0),
             "fully named"
+        );
+        assert_eq!(
+            wh(&[named(400, "time"), named(64, "frequency")]),
+            (0, 1),
+            "signal heatmap"
+        );
+        assert_eq!(
+            wh(&[named(200, "time"), named(32, "channel"), named(64, "mel")]),
+            (0, 2),
+            "multi-channel signal heatmap"
         );
 
         assert_eq!(

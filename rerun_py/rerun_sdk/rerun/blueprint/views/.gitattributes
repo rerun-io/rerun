@@ -6,6 +6,7 @@ bar_chart_view.py linguist-generated=true
 dataframe_view.py linguist-generated=true
 graph_view.py linguist-generated=true
 map_view.py linguist-generated=true
+signal_heatmap_view.py linguist-generated=true
 spatial2d_view.py linguist-generated=true
 spatial3d_view.py linguist-generated=true
 state_timeline_view.py linguist-generated=true

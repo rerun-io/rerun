@@ -3610,7 +3610,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Tensor",
                 deprecation_summary: None,
                 scope: None,
-                view_types: &["TensorView", "BarChartView"],
+                view_types: &["TensorView", "SignalHeatmapView", "BarChartView"],
                 fields: vec![
                     ArchetypeFieldReflection {
                         name: "data",

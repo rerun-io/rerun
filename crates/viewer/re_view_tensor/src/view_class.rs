@@ -30,7 +30,12 @@ use crate::visualizer_system::{TensorSystem, TensorVisualization};
 #[derive(Default)]
 pub struct TensorView;
 
-type ViewType = re_sdk_types::blueprint::views::TensorView;
+type TensorViewType = re_sdk_types::blueprint::views::TensorView;
+
+#[derive(Default)]
+pub struct SignalHeatmapView;
+
+type SignalHeatmapViewType = re_sdk_types::blueprint::views::SignalHeatmapView;
 
 #[derive(Default, re_byte_size::SizeBytes)]
 pub struct ViewTensorState {
@@ -55,7 +60,7 @@ impl ViewState for ViewTensorState {
 
 impl ViewClass for TensorView {
     fn identifier() -> ViewClassIdentifier {
-        ViewType::identifier()
+        TensorViewType::identifier()
     }
 
     fn display_name(&self) -> &'static str {
@@ -130,72 +135,13 @@ Set the displayed dimensions in a selection panel.",
         view_id: ViewId,
     ) -> Result<(), ViewSystemExecutionError> {
         let state = state.downcast_mut::<ViewTensorState>()?;
-
-        // TODO(andreas): Listitemify
-        ui.selection_grid("tensor_selection_ui").show(ui, |ui| {
-            if let Some(TensorVisualization {
-                tensor,
-                tensor_row_id,
-                ..
-            }) = &state.tensor
-            {
-                let tensor_stats = ctx.store_context.memoizer(|c: &mut TensorStatsCache| {
-                    c.entry(Hash64::hash(*tensor_row_id), tensor)
-                });
-
-                tensor_summary_ui_grid_contents(ui, tensor, &tensor_stats);
-            }
-        });
-
-        list_item::list_item_scope(ui, "tensor_selection_ui", |ui| {
-            let ctx = self.view_context(ctx, view_id, state, space_origin);
-            view_property_ui::<TensorScalarMapping>(&ctx, ui);
-            view_property_ui::<TensorViewFit>(&ctx, ui);
-        });
-
-        // TODO(#6075): Listitemify
-        if let Some(TensorVisualization { tensor, .. }) = &state.tensor {
-            let slice_property = ViewProperty::from_archetype::<
-                re_sdk_types::blueprint::archetypes::TensorSliceSelection,
-            >(ctx.blueprint_db(), ctx.blueprint_query, view_id);
-            let slice_selection = TensorSliceSelection::load_and_make_valid(
-                &slice_property,
-                &TensorDimension::from_tensor_data(tensor),
-            )?;
-
-            ui.separator();
-            ui.strong("Dimension Mapping");
-            dimension_mapping_ui(
-                ctx,
-                ui,
-                &TensorDimension::from_tensor_data(tensor),
-                &slice_selection,
-                &slice_property,
-            );
-
-            // TODO(andreas): this is a bit too inconsistent with the other UIs - we don't offer the same reset/option buttons here
-            if ui
-                .button("Reset to default blueprint")
-                .on_hover_text("Reset dimension mapping to the previously set default blueprint")
-                .clicked()
-            {
-                slice_property.reset_all_components(ctx);
-            }
-
-            if ui
-                .add_enabled(
-                    slice_property.any_non_empty(),
-                    egui::Button::new("Reset to heuristic"),
-                )
-                .on_hover_text("Reset dimension mapping to the heuristic, i.e. as if never set")
-                .on_disabled_hover_text("No custom dimension mapping set")
-                .clicked()
-            {
-                slice_property.reset_all_components_to_empty(ctx);
-            }
-        }
-
-        Ok(())
+        tensor_selection_ui(
+            &self.view_context(ctx, view_id, state, space_origin),
+            ctx,
+            ui,
+            state,
+            view_id,
+        )
     }
 
     fn spawn_heuristics(
@@ -244,12 +190,12 @@ Set the displayed dimensions in a selection panel.",
                     });
             } else if let Some(tensor_view) = tensors.first() {
                 state.tensor = Some(tensor_view.clone());
-                self.view_tensor(
+                view_tensor(
                     ctx,
                     &mut ui,
+                    &self.view_context(ctx, query.view_id, state, query.space_origin),
                     state,
                     query.view_id,
-                    query.space_origin,
                     &tensor_view.tensor,
                 )?;
             } else {
@@ -272,181 +218,407 @@ Set the displayed dimensions in a selection panel.",
     }
 }
 
-impl TensorView {
-    fn view_tensor(
+impl ViewClass for SignalHeatmapView {
+    fn identifier() -> ViewClassIdentifier {
+        SignalHeatmapViewType::identifier()
+    }
+
+    fn display_name(&self) -> &'static str {
+        "Signal heatmap"
+    }
+
+    fn icon(&self) -> &'static re_ui::Icon {
+        &re_ui::icons::VIEW_TENSOR
+    }
+
+    fn help(&self, _os: egui::os::OperatingSystem) -> Help {
+        Help::new("Signal heatmap view")
+            .docs_link("https://rerun.io/docs/reference/types/views/signal_heatmap_view")
+            .markdown(
+                "A precomputed signal tensor displayed as a 2D heatmap.
+
+Use it for spectrograms, mel spectrograms, MFCCs, channel-frequency maps, and similar dense signal features.",
+            )
+    }
+
+    fn on_register(
+        &self,
+        system_registry: &mut re_viewer_context::ViewSystemRegistrator<'_>,
+    ) -> Result<(), ViewClassRegistryError> {
+        system_registry.register_fallback_provider(
+            TensorScalarMapping::descriptor_colormap().component,
+            |_| Colormap::Magma,
+        );
+
+        system_registry.register_visualizer::<TensorSystem>()
+    }
+
+    fn preferred_tile_aspect_ratio(&self, _state: &dyn ViewState) -> Option<f32> {
+        None
+    }
+
+    fn layout_priority(&self) -> re_viewer_context::ViewClassLayoutPriority {
+        re_viewer_context::ViewClassLayoutPriority::Medium
+    }
+
+    fn new_state(&self) -> Box<dyn ViewState> {
+        Box::<ViewTensorState>::default()
+    }
+
+    fn recommended_visualizers_for_entity(
+        &self,
+        _entity_path: &EntityPath,
+        visualizers_with_reason: &[(ViewSystemIdentifier, &VisualizableReason)],
+        _indicated_entities_per_visualizer: &PerVisualizerType<&IndicatedEntities>,
+    ) -> RecommendedVisualizers {
+        if visualizers_with_reason
+            .iter()
+            .any(|(viz, _)| *viz == TensorSystem::identifier())
+        {
+            RecommendedVisualizers::default(TensorSystem::identifier())
+        } else {
+            RecommendedVisualizers::empty()
+        }
+    }
+
+    fn spawn_heuristics(
+        &self,
+        _ctx: &ViewerContext<'_>,
+        _include_entity: &dyn Fn(&EntityPath) -> bool,
+    ) -> re_viewer_context::ViewSpawnHeuristics {
+        re_viewer_context::ViewSpawnHeuristics::empty()
+    }
+
+    fn selection_ui(
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &ViewTensorState,
-        view_id: ViewId,
+        state: &mut dyn ViewState,
         space_origin: &EntityPath,
-        tensor: &TensorData,
+        view_id: ViewId,
+    ) -> Result<(), ViewSystemExecutionError> {
+        let state = state.downcast_mut::<ViewTensorState>()?;
+        tensor_selection_ui(
+            &self.view_context(ctx, view_id, state, space_origin),
+            ctx,
+            ui,
+            state,
+            view_id,
+        )
+    }
+
+    fn ui(
+        &self,
+        ctx: &ViewerContext<'_>,
+        _missing_chunk_reporter: &re_viewer_context::MissingChunkReporter,
+        ui: &mut egui::Ui,
+        state: &mut dyn ViewState,
+        query: &ViewQuery<'_>,
+        system_output: re_viewer_context::SystemExecutionOutput,
     ) -> Result<(), ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
+        let tokens = ui.tokens();
+        let state = state.downcast_mut::<ViewTensorState>()?;
+        state.tensor = None;
+
+        let tensors = system_output
+            .visualizer_data_or_default::<Vec<TensorVisualization>>(TensorSystem::identifier())?;
+
+        let response = {
+            let mut ui = ui.new_child(egui::UiBuilder::new().sense(egui::Sense::click()));
+
+            if tensors.len() > 1 {
+                egui::Frame {
+                    inner_margin: tokens.view_padding().into(),
+                    ..egui::Frame::default()
+                }
+                .show(&mut ui, |ui| {
+                    ui.error_label(format!(
+                        "Can only show one signal heatmap at a time; was given {}. Update the query so that it \
+                    returns a single tensor entity and create additional views for the others.",
+                        tensors.len()
+                    ));
+                });
+            } else if let Some(tensor_view) = tensors.first() {
+                state.tensor = Some(tensor_view.clone());
+                view_tensor(
+                    ctx,
+                    &mut ui,
+                    &self.view_context(ctx, query.view_id, state, query.space_origin),
+                    state,
+                    query.view_id,
+                    &tensor_view.tensor,
+                )?;
+            } else {
+                ui.centered_and_justified(|ui| ui.label("(empty)"));
+            }
+
+            ui.response()
+        };
+
+        if response.hovered() {
+            ctx.selection_state().set_hovered(Item::View(query.view_id));
+        }
+
+        if response.clicked() {
+            ctx.command_sender()
+                .send_system(SystemCommand::set_selection(Item::View(query.view_id)));
+        }
+
+        Ok(())
+    }
+}
+
+fn tensor_selection_ui(
+    view_ctx: &ViewContext<'_>,
+    viewer_ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    state: &ViewTensorState,
+    view_id: ViewId,
+) -> Result<(), ViewSystemExecutionError> {
+    // TODO(andreas): Listitemify
+    ui.selection_grid("tensor_selection_ui").show(ui, |ui| {
+        if let Some(TensorVisualization {
+            tensor,
+            tensor_row_id,
+            ..
+        }) = &state.tensor
+        {
+            let tensor_stats = viewer_ctx
+                .store_context
+                .memoizer(|c: &mut TensorStatsCache| c.entry(Hash64::hash(*tensor_row_id), tensor));
+
+            tensor_summary_ui_grid_contents(ui, tensor, &tensor_stats);
+        }
+    });
+
+    list_item::list_item_scope(ui, "tensor_selection_ui", |ui| {
+        view_property_ui::<TensorScalarMapping>(view_ctx, ui);
+        view_property_ui::<TensorViewFit>(view_ctx, ui);
+    });
+
+    // TODO(#6075): Listitemify
+    if let Some(TensorVisualization { tensor, .. }) = &state.tensor {
         let slice_property = ViewProperty::from_archetype::<
             re_sdk_types::blueprint::archetypes::TensorSliceSelection,
-        >(ctx.blueprint_db(), ctx.blueprint_query, view_id);
+        >(
+            viewer_ctx.blueprint_db(),
+            viewer_ctx.blueprint_query,
+            view_id,
+        );
         let slice_selection = TensorSliceSelection::load_and_make_valid(
             &slice_property,
             &TensorDimension::from_tensor_data(tensor),
         )?;
 
-        let default_item_spacing = ui.spacing_mut().item_spacing;
-        ui.spacing_mut().item_spacing.y = 0.0; // No extra spacing between sliders and tensor
-
-        if slice_selection
-            .slider
-            .as_ref()
-            .is_none_or(|s| !s.is_empty())
-        {
-            egui::Frame {
-                inner_margin: egui::Margin::symmetric(16, 8),
-                ..Default::default()
-            }
-            .show(ui, |ui| {
-                ui.spacing_mut().item_spacing = default_item_spacing; // keep the default spacing between sliders
-                selectors_ui(
-                    ctx,
-                    ui,
-                    &TensorDimension::from_tensor_data(tensor),
-                    &slice_selection,
-                    &slice_property,
-                );
-            });
-        }
-
-        let dimension_labels = [
-            slice_selection.width.map(|width| {
-                (
-                    dimension_name(&TensorDimension::from_tensor_data(tensor), width.dimension),
-                    width.invert,
-                )
-            }),
-            slice_selection.height.map(|height| {
-                (
-                    dimension_name(&TensorDimension::from_tensor_data(tensor), height.dimension),
-                    height.invert,
-                )
-            }),
-        ];
-
-        egui::ScrollArea::both().auto_shrink(false).show(ui, |ui| {
-            let ctx = self.view_context(ctx, view_id, state, space_origin);
-            if let Err(err) =
-                Self::tensor_slice_ui(&ctx, ui, state, dimension_labels, &slice_selection)
-            {
-                ui.error_label(err.to_string());
-            }
-        });
-
-        Ok(())
-    }
-
-    fn tensor_slice_ui(
-        ctx: &ViewContext<'_>,
-        ui: &mut egui::Ui,
-        state: &ViewTensorState,
-        dimension_labels: [Option<(String, bool)>; 2],
-        slice_selection: &TensorSliceSelection,
-    ) -> anyhow::Result<()> {
-        let (response, image_rect) = Self::paint_tensor_slice(ctx, ui, state, slice_selection)?;
-
-        if !response.hovered() {
-            let font_id = egui::TextStyle::Body.resolve(ui.style());
-            paint_axis_names(ui, image_rect, font_id, dimension_labels);
-        }
-
-        Ok(())
-    }
-
-    fn paint_tensor_slice(
-        ctx: &ViewContext<'_>,
-        ui: &mut egui::Ui,
-        state: &ViewTensorState,
-        slice_selection: &TensorSliceSelection,
-    ) -> anyhow::Result<(egui::Response, egui::Rect)> {
-        re_tracing::profile_function!();
-
-        let Some(tensor_view) = state.tensor.as_ref() else {
-            anyhow::bail!("No tensor data available.");
-        };
-        let TensorVisualization {
-            tensor_row_id,
-            tensor,
-            data_range,
-        } = &tensor_view;
-
-        let scalar_mapping = ViewProperty::from_archetype::<TensorScalarMapping>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query(),
-            ctx.view_id,
+        ui.separator();
+        ui.strong("Dimension Mapping");
+        dimension_mapping_ui(
+            viewer_ctx,
+            ui,
+            &TensorDimension::from_tensor_data(tensor),
+            &slice_selection,
+            &slice_property,
         );
-        let colormap: Colormap = scalar_mapping
-            .component_or_fallback(ctx, TensorScalarMapping::descriptor_colormap().component)?;
-        let gamma: GammaCorrection = scalar_mapping
-            .component_or_fallback(ctx, TensorScalarMapping::descriptor_gamma().component)?;
-        let mag_filter: MagnificationFilter = scalar_mapping
-            .component_or_fallback(ctx, TensorScalarMapping::descriptor_mag_filter().component)?;
 
-        let colormap = ColormapWithRange {
-            colormap,
-            value_range: [data_range.start() as f32, data_range.end() as f32],
-        };
-        let colormapped_texture = super::tensor_slice_to_gpu::colormapped_texture(
-            ctx.render_ctx(),
-            *tensor_row_id,
-            tensor,
-            slice_selection,
-            &colormap,
-            gamma,
-        )?;
-        let [width, height] = colormapped_texture.width_height();
+        // TODO(andreas): this is a bit too inconsistent with the other UIs - we don't offer the same reset/option buttons here
+        if ui
+            .button("Reset to default blueprint")
+            .on_hover_text("Reset dimension mapping to the previously set default blueprint")
+            .clicked()
+        {
+            slice_property.reset_all_components(viewer_ctx);
+        }
 
-        let view_fit: ViewFit = ViewProperty::from_archetype::<TensorViewFit>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query(),
-            ctx.view_id,
-        )
-        .component_or_fallback(ctx, TensorViewFit::descriptor_scaling().component)?;
-
-        let img_size = egui::vec2(width as _, height as _);
-        let img_size = Vec2::max(Vec2::splat(1.0), img_size); // better safe than sorry
-        let desired_size = match view_fit {
-            ViewFit::Original => img_size,
-            ViewFit::Fill => ui.available_size(),
-            ViewFit::FillKeepAspectRatio => {
-                let scale = (ui.available_size() / img_size).min_elem();
-                img_size * scale
-            }
-        };
-
-        let (response, painter) = ui.allocate_painter(desired_size, egui::Sense::hover());
-        let rect = response.rect;
-        let image_rect = egui::Rect::from_min_max(rect.min, rect.max);
-        let texture_options = egui::TextureOptions {
-            magnification: match mag_filter {
-                MagnificationFilter::Nearest => egui::TextureFilter::Nearest,
-                MagnificationFilter::Linear | MagnificationFilter::Bicubic => {
-                    egui::TextureFilter::Linear
-                }
-            },
-            minification: egui::TextureFilter::Linear, // TODO(andreas): allow for mipmapping based filter
-            wrap_mode: egui::TextureWrapMode::ClampToEdge,
-            mipmap_mode: None,
-        };
-
-        gpu_bridge::render_image(
-            ctx.render_ctx(),
-            &painter,
-            image_rect,
-            colormapped_texture,
-            texture_options,
-            re_renderer::Label::from("tensor_slice"),
-        )?;
-
-        Ok((response, image_rect))
+        if ui
+            .add_enabled(
+                slice_property.any_non_empty(),
+                egui::Button::new("Reset to heuristic"),
+            )
+            .on_hover_text("Reset dimension mapping to the heuristic, i.e. as if never set")
+            .on_disabled_hover_text("No custom dimension mapping set")
+            .clicked()
+        {
+            slice_property.reset_all_components_to_empty(viewer_ctx);
+        }
     }
+
+    Ok(())
+}
+
+fn view_tensor(
+    viewer_ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    ctx: &ViewContext<'_>,
+    state: &ViewTensorState,
+    view_id: ViewId,
+    tensor: &TensorData,
+) -> Result<(), ViewSystemExecutionError> {
+    re_tracing::profile_function!();
+
+    let slice_property =
+        ViewProperty::from_archetype::<re_sdk_types::blueprint::archetypes::TensorSliceSelection>(
+            viewer_ctx.blueprint_db(),
+            viewer_ctx.blueprint_query,
+            view_id,
+        );
+    let slice_selection = TensorSliceSelection::load_and_make_valid(
+        &slice_property,
+        &TensorDimension::from_tensor_data(tensor),
+    )?;
+
+    let default_item_spacing = ui.spacing_mut().item_spacing;
+    ui.spacing_mut().item_spacing.y = 0.0; // No extra spacing between sliders and tensor
+
+    if slice_selection
+        .slider
+        .as_ref()
+        .is_none_or(|s| !s.is_empty())
+    {
+        egui::Frame {
+            inner_margin: egui::Margin::symmetric(16, 8),
+            ..Default::default()
+        }
+        .show(ui, |ui| {
+            ui.spacing_mut().item_spacing = default_item_spacing; // keep the default spacing between sliders
+            selectors_ui(
+                viewer_ctx,
+                ui,
+                &TensorDimension::from_tensor_data(tensor),
+                &slice_selection,
+                &slice_property,
+            );
+        });
+    }
+
+    let dimension_labels = [
+        slice_selection.width.map(|width| {
+            (
+                dimension_name(&TensorDimension::from_tensor_data(tensor), width.dimension),
+                width.invert,
+            )
+        }),
+        slice_selection.height.map(|height| {
+            (
+                dimension_name(&TensorDimension::from_tensor_data(tensor), height.dimension),
+                height.invert,
+            )
+        }),
+    ];
+
+    egui::ScrollArea::both().auto_shrink(false).show(ui, |ui| {
+        if let Err(err) = tensor_slice_ui(ctx, ui, state, dimension_labels, &slice_selection) {
+            ui.error_label(err.to_string());
+        }
+    });
+
+    Ok(())
+}
+
+fn tensor_slice_ui(
+    ctx: &ViewContext<'_>,
+    ui: &mut egui::Ui,
+    state: &ViewTensorState,
+    dimension_labels: [Option<(String, bool)>; 2],
+    slice_selection: &TensorSliceSelection,
+) -> anyhow::Result<()> {
+    let (response, image_rect) = paint_tensor_slice(ctx, ui, state, slice_selection)?;
+
+    if !response.hovered() {
+        let font_id = egui::TextStyle::Body.resolve(ui.style());
+        paint_axis_names(ui, image_rect, font_id, dimension_labels);
+    }
+
+    Ok(())
+}
+
+fn paint_tensor_slice(
+    ctx: &ViewContext<'_>,
+    ui: &mut egui::Ui,
+    state: &ViewTensorState,
+    slice_selection: &TensorSliceSelection,
+) -> anyhow::Result<(egui::Response, egui::Rect)> {
+    re_tracing::profile_function!();
+
+    let Some(tensor_view) = state.tensor.as_ref() else {
+        anyhow::bail!("No tensor data available.");
+    };
+    let TensorVisualization {
+        tensor_row_id,
+        tensor,
+        data_range,
+    } = &tensor_view;
+
+    let scalar_mapping = ViewProperty::from_archetype::<TensorScalarMapping>(
+        ctx.blueprint_db(),
+        ctx.blueprint_query(),
+        ctx.view_id,
+    );
+    let colormap: Colormap = scalar_mapping
+        .component_or_fallback(ctx, TensorScalarMapping::descriptor_colormap().component)?;
+    let gamma: GammaCorrection = scalar_mapping
+        .component_or_fallback(ctx, TensorScalarMapping::descriptor_gamma().component)?;
+    let mag_filter: MagnificationFilter = scalar_mapping
+        .component_or_fallback(ctx, TensorScalarMapping::descriptor_mag_filter().component)?;
+
+    let colormap = ColormapWithRange {
+        colormap,
+        value_range: [data_range.start() as f32, data_range.end() as f32],
+    };
+    let colormapped_texture = super::tensor_slice_to_gpu::colormapped_texture(
+        ctx.render_ctx(),
+        *tensor_row_id,
+        tensor,
+        slice_selection,
+        &colormap,
+        gamma,
+    )?;
+    let [width, height] = colormapped_texture.width_height();
+
+    let view_fit: ViewFit = ViewProperty::from_archetype::<TensorViewFit>(
+        ctx.blueprint_db(),
+        ctx.blueprint_query(),
+        ctx.view_id,
+    )
+    .component_or_fallback(ctx, TensorViewFit::descriptor_scaling().component)?;
+
+    let img_size = egui::vec2(width as _, height as _);
+    let img_size = Vec2::max(Vec2::splat(1.0), img_size); // better safe than sorry
+    let desired_size = match view_fit {
+        ViewFit::Original => img_size,
+        ViewFit::Fill => ui.available_size(),
+        ViewFit::FillKeepAspectRatio => {
+            let scale = (ui.available_size() / img_size).min_elem();
+            img_size * scale
+        }
+    };
+
+    let (response, painter) = ui.allocate_painter(desired_size, egui::Sense::hover());
+    let rect = response.rect;
+    let image_rect = egui::Rect::from_min_max(rect.min, rect.max);
+    let texture_options = egui::TextureOptions {
+        magnification: match mag_filter {
+            MagnificationFilter::Nearest => egui::TextureFilter::Nearest,
+            MagnificationFilter::Linear | MagnificationFilter::Bicubic => {
+                egui::TextureFilter::Linear
+            }
+        },
+        minification: egui::TextureFilter::Linear, // TODO(andreas): allow for mipmapping based filter
+        wrap_mode: egui::TextureWrapMode::ClampToEdge,
+        mipmap_mode: None,
+    };
+
+    gpu_bridge::render_image(
+        ctx.render_ctx(),
+        &painter,
+        image_rect,
+        colormapped_texture,
+        texture_options,
+        re_renderer::Label::from("tensor_slice"),
+    )?;
+
+    Ok((response, image_rect))
 }
 
 // ----------------------------------------------------------------------------

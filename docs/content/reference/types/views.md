@@ -12,6 +12,7 @@ Views are the panels shown in the viewer's viewport and the primary means of ins
 * [`DataframeView`](views/dataframe_view.md): A view to display any data in a tabular form.
 * [`GraphView`](views/graph_view.md): A graph view to display time-variying, directed or undirected graph visualization.
 * [`MapView`](views/map_view.md): A 2D map view to display geospatial primitives.
+* [`SignalHeatmapView`](views/signal_heatmap_view.md): A view for precomputed signal tensors such as spectrograms, mel spectrograms, MFCCs, or channel-frequency heatmaps.
 * [`Spatial2DView`](views/spatial2d_view.md): For viewing spatial 2D data.
 * [`Spatial3DView`](views/spatial3d_view.md): For viewing spatial 3D data.
 * [`StateTimelineView`](views/state_timeline_view.md): A view for displaying state transitions over time, for use with [`archetypes.StateChange`](https://rerun.io/docs/reference/types/archetypes/state_change).

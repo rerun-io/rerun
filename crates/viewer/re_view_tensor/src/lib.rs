@@ -10,7 +10,7 @@ mod tensor_tests;
 mod view_class;
 mod visualizer_system;
 
-pub use view_class::TensorView;
+pub use view_class::{SignalHeatmapView, TensorView};
 
 /// Information about a dimension of a tensor.
 struct TensorDimension {

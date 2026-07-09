@@ -6,6 +6,7 @@ dataframe_view.rs linguist-generated=true
 graph_view.rs linguist-generated=true
 map_view.rs linguist-generated=true
 mod.rs linguist-generated=true
+signal_heatmap_view.rs linguist-generated=true
 spatial2d_view.rs linguist-generated=true
 spatial3d_view.rs linguist-generated=true
 state_timeline_view.rs linguist-generated=true

@@ -1,0 +1,20 @@
+namespace rerun.blueprint.views;
+
+/// A view for precomputed signal tensors such as spectrograms, mel spectrograms, MFCCs, or channel-frequency heatmaps.
+///
+/// The view displays an N-dimensional tensor as a 2D heatmap, with blueprint-controlled
+/// dimension mapping and scalar-to-color mapping.
+///
+/// \example views/signal_heatmap title="Use a blueprint to create a SignalHeatmapView."
+table SignalHeatmapView (
+    "attr.rerun.view_identifier": "SignalHeatmap"
+) {
+    /// How to select the signal dimensions to show.
+    slice_selection: rerun.blueprint.archetypes.TensorSliceSelection (order: 1000);
+
+    /// Configures how signal values are mapped to color.
+    scalar_mapping: rerun.blueprint.archetypes.TensorScalarMapping (order: 2000);
+
+    /// Configures how the selected heatmap should fit into the view.
+    view_fit: rerun.blueprint.archetypes.TensorViewFit (order: 3000);
+}
