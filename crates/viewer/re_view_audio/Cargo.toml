@@ -40,6 +40,9 @@ tinyaudio = { workspace = true, features = ["alsa"] }
 [target.'cfg(all(not(target_os = "linux"), not(target_arch = "wasm32")))'.dependencies]
 tinyaudio.workspace = true
 
+[target.'cfg(all(target_os = "unknown", target_arch = "wasm32"))'.dependencies]
+tinyaudio.workspace = true
+
 [dev-dependencies]
 re_test_context.workspace = true
 re_test_viewport.workspace = true

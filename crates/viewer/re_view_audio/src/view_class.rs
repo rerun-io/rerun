@@ -1,5 +1,4 @@
 use std::collections::BTreeMap;
-#[cfg(not(target_arch = "wasm32"))]
 use std::sync::Mutex;
 
 use egui_plot::{Line, Plot, PlotPoints, VLine};
@@ -33,10 +32,8 @@ pub struct AudioViewState {
     loop_region_enabled: bool,
     loop_start_ns: Option<f64>,
     loop_end_ns: Option<f64>,
-    #[cfg(not(target_arch = "wasm32"))]
     #[size_bytes(ignore)]
     playback: Mutex<Option<crate::playback::AudioPlayback>>,
-    #[cfg(not(target_arch = "wasm32"))]
     playback_error: Option<String>,
 }
 
@@ -210,7 +207,6 @@ fn toolbar_ui(
     loop_region_ui(ctx, ui, state, first_waveform);
     export_ui(ctx, ui, state, first_waveform);
 
-    #[cfg(not(target_arch = "wasm32"))]
     if let Some(err) = &state.playback_error {
         ui.error_label(err);
     }
@@ -370,7 +366,6 @@ fn processing_ui(ui: &mut egui::Ui, processing: &mut AudioProcessingSettings) {
     });
 }
 
-#[cfg(not(target_arch = "wasm32"))]
 fn playback_buttons_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
@@ -428,17 +423,6 @@ fn playback_buttons_ui(
     }
 }
 
-#[cfg(target_arch = "wasm32")]
-fn playback_buttons_ui(
-    _ctx: &ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    _state: &mut AudioViewState,
-    _first_waveform: Option<&AudioWaveform>,
-) {
-    ui.add_enabled(false, egui::Button::new("Play"));
-}
-
-#[cfg(not(target_arch = "wasm32"))]
 fn playback_progress_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, state: &mut AudioViewState) {
     let Ok(mut playback) = state.playback.lock() else {
         return;
@@ -456,10 +440,6 @@ fn playback_progress_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, state: &mut 
             ui.ctx().request_repaint();
         }
     }
-}
-
-#[cfg(target_arch = "wasm32")]
-fn playback_progress_ui(_ctx: &ViewerContext<'_>, _ui: &mut egui::Ui, _state: &mut AudioViewState) {
 }
 
 fn enabled_channels(state: &AudioViewState) -> Vec<usize> {
