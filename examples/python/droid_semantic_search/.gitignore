@@ -1,5 +1,6 @@
-# Local LanceDB vector index built by `ingest.py`
+# Local vector index built by `ingest.py` (LanceDB / Qdrant backends)
 droid_lancedb/
+droid_qdrant/
 # DROID episodes downloaded by `prepare_dataset.py` (Hugging Face path)
 data/
 # Optimized (keyframe-fixed) episode copies written by `prepare_dataset.py`

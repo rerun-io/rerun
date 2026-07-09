@@ -1,6 +1,6 @@
 <!--[metadata]
 title = "DROID semantic frame search"
-tags = ["Robotics", "Semantic search", "Embeddings", "SigLIP", "LanceDB", "Rerun Hub"]
+tags = ["Robotics", "Semantic search", "Embeddings", "SigLIP", "LanceDB", "Qdrant", "Rerun Hub"]
 thumbnail = "https://static.rerun.io/droid_semantic_search/fd265e110c9d05c9fdd018c68dd83561aa836c52/480w.png"
 thumbnail_dimensions = [480, 320]
 include_in_manifest = true
@@ -17,7 +17,8 @@ Find moments in robot demonstrations by describing them in plain language, and j
 </picture>
 
 This pulls frame embeddings from a Rerun dataset, indexes them in an external vector store, and resolves text queries back into deep-links that open the relevant frames in the viewer.
-It uses [LanceDB](https://lancedb.com) as the concrete store, but the pattern — embeddings out of Rerun, search in your vector database of choice, deep-links back into the viewer — applies to any vector store.
+It ships two interchangeable backends — [LanceDB](https://lancedb.com) (default) and [Qdrant](https://qdrant.tech), both fully local on disk and selected with `--backend`.
+They're worked examples of one pattern — embeddings out of Rerun, search in your vector database of choice, deep-links back into the viewer — that applies to any vector store.
 
 ## What it shows off
 
@@ -36,9 +37,12 @@ Three scripts:
    - **Read path:** if the dataset already has a `/camera/{role}/embedding` column (DROID registered with `--create-embeddings`), it reads those vectors directly via a DataFusion query — no model, no video decoding.
    - **Compute path:** otherwise it streams the `VideoStream` through the dataloader, decodes frames, and embeds them with SigLIP-2.
 
-   Either way it writes `(segment_id, camera, timestamp_ms, vector)` rows into a searchable LanceDB table.
+   Either way it writes `(segment_id, camera, timestamp_ms, vector)` rows into the selected vector store: LanceDB by default, or Qdrant with `--backend qdrant`.
 
-3. `search.py` — embeds your example image or text prompt with the SigLIP-2 encoder, runs a vector search over the LanceDB table, prints the ranked matches, and opens the best one in the viewer.
+3. `search.py` — embeds your example image or text prompt with the SigLIP-2 encoder, runs a vector search over that store (pass the same `--backend`), prints the ranked matches, and opens the best one in the viewer.
+
+Both scripts reach the store only through a small `VectorStore` interface in `vector_store.py`, so picking a backend is one `--backend` choice and adding one is a single subclass.
+Each backend keeps its index in its own directory (`./droid_lancedb` vs `./droid_qdrant`, override with `--db-path`), so the `--backend` you pass to `search.py` must match the one `ingest.py` wrote.
 
 ## Run the code
 
@@ -124,6 +128,14 @@ Or search by example image instead of text (same vector space):
 uv run python search.py --image ./query.jpg --top-k 5
 ```
 
+Both scripts default to LanceDB; pass `--backend qdrant` to use [Qdrant](https://qdrant.tech) instead.
+Give the same `--backend` to `ingest.py` and `search.py`, since each writes to its own directory:
+
+```bash
+uv run python ingest.py --backend qdrant --num-segments 15 --cameras ext1
+uv run python search.py --backend qdrant "an open drawer full of tools" --top-k 5
+```
+
 Queries that discriminate well on DROID describe concrete, visible objects/scenes, e.g. `"a pink flower"`, `"a cardboard box"`, `"a white plastic bag"`, `"a robot arm over an empty table"`.
 
 Run `ingest.py --help` and `search.py --help` for the full flag list — index multiple cameras, change the sampling rate, widen the time selection around a hit, and more.
@@ -131,7 +143,7 @@ Run `ingest.py --help` and `search.py --help` for the full flag list — index m
 ## Scope and extension points
 
 - **Text or image queries.** Search by a text prompt or, with `--image <path>`, by an example frame. SigLIP-2 puts text and image features in one space, so image-to-image search reuses the exact same index and ranking — only the query encoder differs.
-- **Bring your own vector store.** Rerun supplies the embeddings (read from the dataset, or computed from platform-hosted video) and resolves matches back into viewer deep-links; search itself runs in an external store. This example uses LanceDB, but the same write-then-query flow drops onto any vector database — point `ingest.py` and `search.py` at your store of choice.
+- **Bring your own vector store.** Rerun supplies the embeddings (read from the dataset, or computed from platform-hosted video) and resolves matches back into viewer deep-links; search itself runs in an external store. This example ships two backends, LanceDB and Qdrant, behind the small `VectorStore` interface in `vector_store.py` — the same write-then-query flow drops onto any vector database, so adding a third is a single subclass.
 
 ## Notes and gotchas
 
@@ -144,6 +156,7 @@ Run `ingest.py --help` and `search.py --help` for the full flag list — index m
 ## Files
 
 - `prepare_dataset.py` — register DROID sample episodes (bundled or downloaded) to the catalog.
-- `ingest.py` — build the LanceDB index from the dataset.
+- `ingest.py` — build the vector index from the dataset.
 - `search.py` — query the index and open results in the viewer.
+- `vector_store.py` — the `VectorStore` interface, with LanceDB and Qdrant backends.
 - `embeddings.py` — SigLIP-2 helpers (adapted from the DROID loader's `embedding_util.py`).

@@ -1,4 +1,4 @@
-"""Build a local LanceDB vector index of DROID camera frames.
+"""Build a local vector index of DROID camera frames.
 
 For each requested camera the script auto-detects how to get embeddings:
 
@@ -9,7 +9,8 @@ For each requested camera the script auto-detects how to get embeddings:
   experimental dataloader, decode frames, and embed them with SigLIP-2.
 
 Either way we end up with a columnar `(segment_id, camera, timestamp_ms, vector)`
-Arrow table, which we write to LanceDB and (best-effort) index for ANN search.
+Arrow table, which we write to a local vector store (LanceDB or Qdrant, see
+`--backend`) and index for ANN search.
 
 Run inside the rerun SDK venv, e.g.:
 
@@ -23,10 +24,10 @@ import itertools
 from collections.abc import Iterator
 from typing import Any
 
-import lancedb
 import numpy as np
 import pyarrow as pa
 import pyarrow.compute as pc
+from vector_store import BACKENDS, DEFAULT_PATHS, open_store
 
 from rerun.catalog import CatalogClient
 
@@ -53,8 +54,18 @@ def parse_args() -> argparse.Namespace:
         help="Comma-separated camera roles, or 'all'. Exterior cams (ext1/ext2) give better scene-level matches.",
     )
     parser.add_argument("--num-segments", type=int, default=10, help="Number of segments to index (0 for all)")
-    parser.add_argument("--lancedb-path", default="./droid_lancedb", help="Directory for the local LanceDB database")
-    parser.add_argument("--table", default="droid_frames", help="LanceDB table name")
+    parser.add_argument(
+        "--backend",
+        choices=BACKENDS,
+        default="lance",
+        help="Local vector store to write the index to.",
+    )
+    parser.add_argument(
+        "--db-path",
+        default=None,
+        help="Directory for the local vector DB (default: ./droid_lancedb or ./droid_qdrant per backend).",
+    )
+    parser.add_argument("--table", default="droid_frames", help="Table/collection name")
     parser.add_argument(
         "--rate-hz",
         type=float,
@@ -277,22 +288,6 @@ def compute_embedding_table(
     return out
 
 
-def write_index(table: pa.Table, lancedb_path: str, table_name: str) -> None:
-    dim = table.schema.field("vector").type.list_size
-
-    db = lancedb.connect(lancedb_path)
-    tbl = db.create_table(table_name, data=table, mode="overwrite")
-    print(f"Wrote {table.num_rows} rows ({dim}-dim) to '{table_name}' in {lancedb_path}")
-
-    # An ANN index needs enough rows to train; small demo tables fall back to
-    # brute-force search, which is exact and plenty fast at this scale.
-    try:
-        tbl.create_index(metric="cosine", vector_column_name="vector")
-        print("Built ANN index (cosine).")
-    except Exception as exc:
-        print(f"Skipped ANN index ({exc}); brute-force cosine search will be used.")
-
-
 def main() -> None:
     args = parse_args()
     cameras = resolve_cameras(args.cameras)
@@ -327,7 +322,8 @@ def main() -> None:
     if not tables:
         raise SystemExit("No embeddings produced; nothing to index.")
 
-    write_index(pa.concat_tables(tables), args.lancedb_path, args.table)
+    db_path = args.db_path or DEFAULT_PATHS[args.backend]
+    open_store(args.backend, db_path, args.table).write(pa.concat_tables(tables))
 
 
 if __name__ == "__main__":

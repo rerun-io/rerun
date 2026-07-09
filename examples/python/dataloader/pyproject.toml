@@ -18,6 +18,10 @@ package = false
 # Ignore LeRobot's pinned rerun-sdk so resolution picks the local source below.
 # Scoped to this project — does not affect the root workspace.
 override-dependencies = ["rerun-sdk[dataloader,catalog,tracing]"]
+# pyarrow 24.0.0 segfaults rerun on import and ships an incomplete py.typed that breaks mypy.
+# Isolated examples don't inherit the workspace root's constraint-dependencies, so pin it here.
+# pyarrow arrives transitively (via rerun-sdk), hence a constraint rather than a direct dependency.
+constraint-dependencies = ["pyarrow>=23.0.1,<24"]
 
 # Default `uv sync` uses the in-repo editable rerun-sdk (monorepo dev mode).
 # After syncing, also run `uv pip install ../../../rerun_py/rerun_dev_fixup` to
