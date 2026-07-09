@@ -5,6 +5,7 @@
 mod view_class;
 mod visualizer_system;
 
+mod export;
 #[cfg(not(target_arch = "wasm32"))]
 mod playback;
 mod processing;

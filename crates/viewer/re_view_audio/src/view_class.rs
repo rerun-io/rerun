@@ -3,6 +3,7 @@ use std::collections::BTreeMap;
 use std::sync::Mutex;
 
 use egui_plot::{Line, Plot, PlotPoints, VLine};
+use re_capabilities::MainThreadToken;
 use re_log_types::{EntityPath, TimeInt, TimeReal};
 use re_sdk_types::{View as _, ViewClassIdentifier};
 use re_ui::{Help, UiExt as _};
@@ -207,11 +208,52 @@ fn toolbar_ui(
 
     processing_ui(ui, &mut state.processing);
     loop_region_ui(ctx, ui, state, first_waveform);
+    export_ui(ctx, ui, state, first_waveform);
 
     #[cfg(not(target_arch = "wasm32"))]
     if let Some(err) = &state.playback_error {
         ui.error_label(err);
     }
+}
+
+fn export_ui(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    state: &AudioViewState,
+    first_waveform: Option<&AudioWaveform>,
+) {
+    ui.horizontal_wrapped(|ui| {
+        if ui
+            .add_enabled(first_waveform.is_some(), egui::Button::new("Save WAV"))
+            .on_hover_text("Export the full waveform, or the loop region when enabled")
+            .clicked()
+            && let Some(waveform) = first_waveform
+        {
+            let region = state
+                .loop_region_enabled
+                .then(|| active_loop_region(state, Some(waveform)))
+                .flatten();
+            match crate::export::export_wav(
+                waveform,
+                &enabled_channels(state),
+                state.show_mixdown,
+                &state.processing,
+                region,
+            ) {
+                Ok(wav_bytes) => {
+                    ctx.command_sender().save_file_dialog(
+                        MainThreadToken::from_egui_ui(ui),
+                        "audio-region.wav",
+                        "Save audio waveform".to_owned(),
+                        wav_bytes,
+                    );
+                }
+                Err(err) => {
+                    re_log::error!("Failed to export audio WAV: {err}");
+                }
+            }
+        }
+    });
 }
 
 fn loop_region_ui(
@@ -420,7 +462,6 @@ fn playback_progress_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, state: &mut 
 fn playback_progress_ui(_ctx: &ViewerContext<'_>, _ui: &mut egui::Ui, _state: &mut AudioViewState) {
 }
 
-#[cfg(not(target_arch = "wasm32"))]
 fn enabled_channels(state: &AudioViewState) -> Vec<usize> {
     state
         .channel_visible
