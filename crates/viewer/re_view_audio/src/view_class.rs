@@ -1,9 +1,11 @@
 use std::collections::BTreeMap;
+#[cfg(not(target_arch = "wasm32"))]
+use std::sync::Mutex;
 
 use egui_plot::{Line, Plot, PlotPoints, VLine};
 use re_log_types::{EntityPath, TimeInt, TimeReal};
 use re_sdk_types::{View as _, ViewClassIdentifier};
-use re_ui::Help;
+use re_ui::{Help, UiExt as _};
 use re_viewer_context::{
     IdentifiedViewSystem as _, IndicatedEntities, PerVisualizerType, QueryRange,
     RecommendedVisualizers, SystemExecutionOutput, TimeControlCommand, ViewClass,
@@ -23,6 +25,11 @@ type ViewType = re_sdk_types::blueprint::views::AudioView;
 pub struct AudioViewState {
     channel_visible: Vec<bool>,
     show_mixdown: bool,
+    #[cfg(not(target_arch = "wasm32"))]
+    #[size_bytes(ignore)]
+    playback: Mutex<Option<crate::playback::AudioPlayback>>,
+    #[cfg(not(target_arch = "wasm32"))]
+    playback_error: Option<String>,
 }
 
 impl ViewState for AudioViewState {
@@ -155,7 +162,8 @@ impl ViewClass for AudioView {
             .unwrap_or_default();
         resize_channel_visibility(&mut state.channel_visible, max_channels);
 
-        toolbar_ui(ui, state, max_channels);
+        playback_progress_ui(ctx, ui, state);
+        toolbar_ui(ctx, ui, state, max_channels, waveforms.values().next());
         plot_audio(ctx, ui, state, query.view_id, &waveforms);
 
         Ok(())
@@ -170,14 +178,123 @@ fn resize_channel_visibility(channel_visible: &mut Vec<bool>, num_channels: usiz
     }
 }
 
-fn toolbar_ui(ui: &mut egui::Ui, state: &mut AudioViewState, num_channels: usize) {
+fn toolbar_ui(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    state: &mut AudioViewState,
+    num_channels: usize,
+    first_waveform: Option<&AudioWaveform>,
+) {
     ui.horizontal_wrapped(|ui| {
+        playback_buttons_ui(ctx, ui, state, first_waveform);
         ui.checkbox(&mut state.show_mixdown, "mix");
         for channel_idx in 0..num_channels {
             let label = format!("ch {}", channel_idx + 1);
             ui.checkbox(&mut state.channel_visible[channel_idx], label);
         }
     });
+
+    #[cfg(not(target_arch = "wasm32"))]
+    if let Some(err) = &state.playback_error {
+        ui.error_label(err);
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn playback_buttons_ui(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    state: &mut AudioViewState,
+    first_waveform: Option<&AudioWaveform>,
+) {
+    let is_playing = state
+        .playback
+        .lock()
+        .is_ok_and(|playback| playback.is_some());
+    if ui
+        .add_enabled(
+            !is_playing && first_waveform.is_some(),
+            egui::Button::new("Play"),
+        )
+        .clicked()
+        && let Some(waveform) = first_waveform
+    {
+        let enabled_channels = enabled_channels(state);
+        let cursor_time = ctx.time_ctrl.time_int().unwrap_or(TimeInt::ZERO);
+        match crate::playback::AudioPlayback::start(
+            waveform,
+            &enabled_channels,
+            state.show_mixdown,
+            cursor_time,
+        ) {
+            Ok(playback) => {
+                if let Ok(mut current_playback) = state.playback.lock() {
+                    *current_playback = Some(playback);
+                }
+                state.playback_error = None;
+                ctx.send_time_commands([TimeControlCommand::Pause]);
+            }
+            Err(err) => {
+                if let Ok(mut current_playback) = state.playback.lock() {
+                    *current_playback = None;
+                }
+                state.playback_error = Some(err);
+            }
+        }
+    }
+
+    if ui
+        .add_enabled(is_playing, egui::Button::new("Stop"))
+        .clicked()
+    {
+        if let Ok(mut current_playback) = state.playback.lock() {
+            *current_playback = None;
+        }
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+fn playback_buttons_ui(
+    _ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    _state: &mut AudioViewState,
+    _first_waveform: Option<&AudioWaveform>,
+) {
+    ui.add_enabled(false, egui::Button::new("Play"));
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn playback_progress_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, state: &mut AudioViewState) {
+    let Ok(mut playback) = state.playback.lock() else {
+        return;
+    };
+
+    if let Some(current_playback) = playback.as_ref() {
+        if current_playback.is_finished() {
+            let time = current_playback.current_time();
+            *playback = None;
+            ctx.send_time_commands([TimeControlCommand::SetTimeClamped(time)]);
+        } else {
+            ctx.send_time_commands([TimeControlCommand::SetTimeClamped(
+                current_playback.current_time(),
+            )]);
+            ui.ctx().request_repaint();
+        }
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+fn playback_progress_ui(_ctx: &ViewerContext<'_>, _ui: &mut egui::Ui, _state: &mut AudioViewState) {
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn enabled_channels(state: &AudioViewState) -> Vec<usize> {
+    state
+        .channel_visible
+        .iter()
+        .enumerate()
+        .filter_map(|(idx, visible)| visible.then_some(idx))
+        .collect()
 }
 
 fn plot_audio(

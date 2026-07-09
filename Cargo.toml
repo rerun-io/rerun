@@ -420,6 +420,7 @@ tempfile = "3.27"
 thiserror = "2.0"
 tiff = "0.9.1" # 0.11 duplicates `png` (via the older `image`/`png` stack) and adds a `DecodingResult::F16` variant. Bump once `image` moves to the matching `png`.
 tiny_http = { version = "0.12.0", default-features = false }
+tinyaudio = { version = "2.0.0", default-features = false }
 tobj = "4.0"
 tokio = { version = "1.52", default-features = false }
 tokio-stream = "0.1.18"
