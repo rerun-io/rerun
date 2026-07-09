@@ -15,6 +15,7 @@ from .annotation_context import (
     AnnotationContextBatch,
     AnnotationContextLike,
 )
+from .audio_channel_name import AudioChannelName, AudioChannelNameBatch
 from .axis_length import AxisLength, AxisLengthBatch
 from .blob import Blob, BlobBatch
 from .cell_size import CellSize, CellSizeBatch
@@ -87,6 +88,7 @@ from .range1d import Range1D, Range1DBatch
 from .resolution import Resolution, ResolutionBatch
 from .rotation_axis_angle import RotationAxisAngle, RotationAxisAngleBatch
 from .rotation_quat import RotationQuat, RotationQuatBatch
+from .sample_rate import SampleRate, SampleRateBatch
 from .scalar import Scalar, ScalarBatch
 from .scale3d import Scale3D, Scale3DBatch
 from .schema_id import SchemaId, SchemaIdBatch
@@ -133,6 +135,8 @@ __all__ = [
     "AnnotationContextArrayLike",
     "AnnotationContextBatch",
     "AnnotationContextLike",
+    "AudioChannelName",
+    "AudioChannelNameBatch",
     "AxisLength",
     "AxisLengthBatch",
     "Blob",
@@ -263,6 +267,8 @@ __all__ = [
     "RotationAxisAngleBatch",
     "RotationQuat",
     "RotationQuatBatch",
+    "SampleRate",
+    "SampleRateBatch",
     "Scalar",
     "ScalarBatch",
     "Scale3D",

@@ -26,12 +26,38 @@ def stft_magnitude_db(
     *,
     window_size: int = 1024,
     hop_size: int = 256,
+    window: str = "hanning",
 ) -> np.ndarray:
     frames = frame_signal(waveform, window_size=window_size, hop_size=hop_size)
-    window = np.hanning(window_size).astype(np.float32)
-    spectrum = np.fft.rfft(frames * window, axis=-1)
+    window_values = window_function(window, window_size)
+    spectrum = np.fft.rfft(frames * window_values, axis=-1)
     magnitude = np.abs(spectrum).astype(np.float32)
     return 20.0 * np.log10(np.maximum(magnitude, 1e-6))
+
+
+def window_function(name: str, window_size: int) -> np.ndarray:
+    if name == "hanning":
+        return np.hanning(window_size).astype(np.float32)
+    if name == "hamming":
+        return np.hamming(window_size).astype(np.float32)
+    raise ValueError(f"unsupported window: {name}")
+
+
+def fft_filter(
+    waveform: np.ndarray,
+    *,
+    sample_rate: int,
+    low_hz: float | None = None,
+    high_hz: float | None = None,
+) -> np.ndarray:
+    frequencies = np.fft.rfftfreq(waveform.shape[-1], 1.0 / sample_rate)
+    spectrum = np.fft.rfft(waveform, axis=-1)
+    mask = np.ones_like(frequencies, dtype=bool)
+    if low_hz is not None:
+        mask &= frequencies >= low_hz
+    if high_hz is not None:
+        mask &= frequencies <= high_hz
+    return np.fft.irfft(spectrum * mask, n=waveform.shape[-1], axis=-1).astype(np.float32)
 
 
 def hz_to_mel(frequency_hz: np.ndarray) -> np.ndarray:
@@ -155,6 +181,22 @@ def main() -> None:
     mono = stereo.mean(axis=0)
 
     stft = stft_magnitude_db(mono, window_size=window_size, hop_size=hop_size)
+    stft_hamming = stft_magnitude_db(mono, window_size=window_size, hop_size=hop_size, window="hamming")
+    low_pass = stft_magnitude_db(
+        fft_filter(mono, sample_rate=sample_rate, high_hz=600.0),
+        window_size=window_size,
+        hop_size=hop_size,
+    )
+    high_pass = stft_magnitude_db(
+        fft_filter(mono, sample_rate=sample_rate, low_hz=600.0),
+        window_size=window_size,
+        hop_size=hop_size,
+    )
+    band_pass = stft_magnitude_db(
+        fft_filter(mono, sample_rate=sample_rate, low_hz=300.0, high_hz=1200.0),
+        window_size=window_size,
+        hop_size=hop_size,
+    )
     mel = mel_spectrogram_db(mono, sample_rate=sample_rate, window_size=window_size, hop_size=hop_size)
     cepstra = mfcc(mono, sample_rate=sample_rate, window_size=window_size, hop_size=hop_size)
     multichannel = np.moveaxis(
@@ -163,12 +205,26 @@ def main() -> None:
         1,
     )
 
+    rr.set_time("time", duration=0.0)
+    rr.log(
+        "audio/clip",
+        rr.AudioClip(
+            stereo.T,
+            sample_rate=sample_rate,
+            channel_names=["left", "right"],
+        ),
+    )
+
     rr.log("audio/waveform", rr.SeriesLines(names=["left", "right"]), static=True)
     for sample_idx, values in enumerate(stereo[:, ::160].T):
         rr.set_time("time", duration=float(sample_idx) * 160.0 / sample_rate)
         rr.log("audio/waveform", rr.Scalars(values))
 
     rr.log("features/stft", rr.Tensor(stft, dim_names=("time", "frequency")))
+    rr.log("features/stft_hamming", rr.Tensor(stft_hamming, dim_names=("time", "frequency")))
+    rr.log("features/low_pass", rr.Tensor(low_pass, dim_names=("time", "frequency")))
+    rr.log("features/high_pass", rr.Tensor(high_pass, dim_names=("time", "frequency")))
+    rr.log("features/band_pass", rr.Tensor(band_pass, dim_names=("time", "frequency")))
     rr.log("features/mel", rr.Tensor(mel, dim_names=("time", "mel")))
     rr.log("features/mfcc", rr.Tensor(cepstra, dim_names=("time", "coefficient")))
     rr.log(
@@ -184,14 +240,29 @@ def main() -> None:
             rr.Tensor(stft[offset : offset + window_frames], dim_names=("time", "frequency")),
         )
 
+    for timestamp, token in [
+        (0.20, "rising"),
+        (0.72, "tone"),
+        (1.30, "pulse"),
+        (2.10, "right-channel event"),
+    ]:
+        rr.set_time("time", duration=timestamp)
+        rr.log("asr/tokens", rr.TextLog(token))
+
     rr.send_blueprint(
         rrb.Grid(
+            rrb.AudioView(origin="audio/clip", name="Audio clip"),
             signal_view("features/stft", "STFT", height_dimension=1),
+            signal_view("features/stft_hamming", "Hamming window STFT", height_dimension=1),
             signal_view("features/mel", "Mel", height_dimension=1),
             signal_view("features/mfcc", "MFCC", height_dimension=1),
             signal_view("features/multichannel_stft", "Channel STFT", height_dimension=2, indexed_dimension=1),
+            signal_view("features/low_pass", "Low-pass STFT", height_dimension=1),
+            signal_view("features/high_pass", "High-pass STFT", height_dimension=1),
+            signal_view("features/band_pass", "Band-pass STFT", height_dimension=1),
             signal_view("features/streaming_window", "Streaming window", height_dimension=1),
             rrb.TimeSeriesView(origin="audio/waveform", name="Waveform"),
+            rrb.TextLogView(origin="asr/tokens", name="ASR tokens"),
             grid_columns=2,
         )
     )

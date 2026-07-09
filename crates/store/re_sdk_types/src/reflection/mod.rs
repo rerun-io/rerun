@@ -668,6 +668,17 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <AudioChannelName as Component>::name(),
+            ComponentReflection {
+                docstring_md: "Display name for an audio channel.",
+                deprecation_summary: None,
+                custom_placeholder: None,
+                datatype: AudioChannelName::arrow_datatype(),
+                is_enum: false,
+                verify_arrow_array: AudioChannelName::verify_arrow_array,
+            },
+        ),
+        (
             <AxisLength as Component>::name(),
             ComponentReflection {
                 docstring_md: "The length of an axis in local units of the space.",
@@ -1240,6 +1251,17 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <SampleRate as Component>::name(),
+            ComponentReflection {
+                docstring_md: "Audio sample rate in Hertz.",
+                deprecation_summary: None,
+                custom_placeholder: None,
+                datatype: SampleRate::arrow_datatype(),
+                is_enum: false,
+                verify_arrow_array: SampleRate::verify_arrow_array,
+            },
+        ),
+        (
             <Scalar as Component>::name(),
             ComponentReflection {
                 docstring_md: "A scalar value, encoded as a 64-bit floating point.\n\nUsed for time series plots.",
@@ -1764,6 +1786,38 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Media type",
                         component_type: "rerun.components.MediaType".into(),
                         docstring_md: "The Media Type of the asset.\n\nSupported values:\n* `video/mp4`\n\nIf omitted, the viewer will try to guess from the data blob.\nIf it cannot guess, it won't be able to render the asset.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.archetypes.AudioClip"),
+            ArchetypeReflection {
+                display_name: "Audio clip",
+                deprecation_summary: None,
+                scope: None,
+                view_types: &["AudioView"],
+                fields: vec![
+                    ArchetypeFieldReflection {
+                        name: "samples",
+                        display_name: "Samples",
+                        component_type: "rerun.components.TensorData".into(),
+                        docstring_md: "PCM audio samples.",
+                        flags: ArchetypeFieldFlags::REQUIRED,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "sample_rate",
+                        display_name: "Sample rate",
+                        component_type: "rerun.components.SampleRate".into(),
+                        docstring_md: "Sample rate in Hertz.",
+                        flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "channel_names",
+                        display_name: "Channel names",
+                        component_type: "rerun.components.AudioChannelName".into(),
+                        docstring_md: "Optional display names for each audio channel.",
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                 ],

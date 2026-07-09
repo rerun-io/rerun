@@ -17,6 +17,7 @@ on [Entities and Components](../../concepts/logging-and-ingestion/entity-compone
 * [`AggregationPolicy`](components/aggregation_policy.md): Policy for aggregation of multiple scalar plot values.
 * [`AlbedoFactor`](components/albedo_factor.md): A color multiplier, usually applied to a whole entity, e.g. a mesh.
 * [`AnnotationContext`](components/annotation_context.md): The annotation context provides additional information on how to display entities.
+* [`AudioChannelName`](components/audio_channel_name.md): Display name for an audio channel.
 * [`AxisLength`](components/axis_length.md): The length of an axis in local units of the space.
 * [`Blob`](components/blob.md): A binary blob of data.
 * [`CellSize`](components/cell_size.md): The metric size of one grid cell in local scene units.
@@ -69,6 +70,7 @@ on [Entities and Components](../../concepts/logging-and-ingestion/entity-compone
 * [`Resolution`](components/resolution.md): Pixel resolution width & height, e.g. of a camera sensor.
 * [`RotationAxisAngle`](components/rotation_axis_angle.md): 3D rotation represented by a rotation around a given axis.
 * [`RotationQuat`](components/rotation_quat.md): A 3D rotation expressed as a quaternion.
+* [`SampleRate`](components/sample_rate.md): Audio sample rate in Hertz.
 * [`Scalar`](components/scalar.md): A scalar value, encoded as a 64-bit floating point.
 * [`Scale3D`](components/scale3d.md): A 3D scale factor.
 * [`SchemaId`](components/schema_id.md): A 16-bit unique identifier for a schema within the MCAP file.

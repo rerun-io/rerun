@@ -104,6 +104,7 @@ re_uri.workspace = true
 re_video.workspace = true
 re_gamepad.workspace = true
 re_view.workspace = true
+re_view_audio.workspace = true
 re_view_bar_chart.workspace = true
 re_view_dataframe.workspace = true
 re_view_graph.workspace = true

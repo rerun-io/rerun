@@ -3,6 +3,7 @@
 include "./components/aggregation_policy.fbs";
 include "./components/albedo_factor.fbs";
 include "./components/annotation_context.fbs";
+include "./components/audio_channel_name.fbs";
 include "./components/axis_length.fbs";
 include "./components/blob.fbs";
 include "./components/cell_size.fbs";
@@ -55,6 +56,7 @@ include "./components/range1d.fbs";
 include "./components/resolution.fbs";
 include "./components/rotation_axis_angle.fbs";
 include "./components/rotation_quat.fbs";
+include "./components/sample_rate.fbs";
 include "./components/scalar.fbs";
 include "./components/scale3d.fbs";
 include "./components/schema_id.fbs";

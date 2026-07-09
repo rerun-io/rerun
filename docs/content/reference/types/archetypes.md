@@ -11,6 +11,10 @@ built-in support. See [Entities and Components](../../concepts/logging-and-inges
 
 This page lists all built-in archetypes.
 
+## Audio
+
+* [`AudioClip`](archetypes/audio_clip.md): A chunk of PCM audio samples.
+
 ## Geospatial
 
 * [`GeoLineStrings`](archetypes/geo_line_strings.md): Geospatial line strings with positions expressed in [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees), and optional colors and radii.

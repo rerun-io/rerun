@@ -10400,6 +10400,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_view_audio"
+version = "0.35.0-alpha.1+dev"
+dependencies = [
+ "egui",
+ "egui_plot",
+ "itertools 0.14.0",
+ "re_byte_size",
+ "re_chunk_store",
+ "re_log_types",
+ "re_sdk_types",
+ "re_test_context",
+ "re_test_viewport",
+ "re_tracing",
+ "re_ui",
+ "re_view",
+ "re_viewer_context",
+]
+
+[[package]]
 name = "re_view_bar_chart"
 version = "0.35.0-alpha.1+dev"
 dependencies = [
@@ -10765,6 +10784,7 @@ dependencies = [
  "re_uri",
  "re_video",
  "re_view",
+ "re_view_audio",
  "re_view_bar_chart",
  "re_view_dataframe",
  "re_view_graph",

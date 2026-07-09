@@ -8,6 +8,7 @@ sort_children: alphabetical
 Views are the panels shown in the viewer's viewport and the primary means of inspecting & visualizing previously logged data. This page lists all built-in views.
 
 
+* [`AudioView`](views/audio_view.md): A view for audio clips and audio-aligned waveforms.
 * [`BarChartView`](views/bar_chart_view.md): A bar chart view.
 * [`DataframeView`](views/dataframe_view.md): A view to display any data in a tabular form.
 * [`GraphView`](views/graph_view.md): A graph view to display time-variying, directed or undirected graph visualization.

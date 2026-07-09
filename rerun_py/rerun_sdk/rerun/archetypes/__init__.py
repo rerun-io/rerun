@@ -7,6 +7,7 @@ from .arrows2d import Arrows2D
 from .arrows3d import Arrows3D
 from .asset3d import Asset3D
 from .asset_video import AssetVideo
+from .audio_clip import AudioClip
 from .bar_chart import BarChart
 from .boxes2d import Boxes2D
 from .boxes3d import Boxes3D
@@ -59,6 +60,7 @@ __all__ = [
     "Arrows3D",
     "Asset3D",
     "AssetVideo",
+    "AudioClip",
     "BarChart",
     "Boxes2D",
     "Boxes3D",

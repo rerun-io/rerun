@@ -26,6 +26,11 @@ fn populate_view_class_registry_with_builtin(
     fallback_registry: &mut FallbackProviderRegistry,
 ) -> Result<(), ViewClassRegistryError> {
     re_tracing::profile_function!();
+    view_class_registry.add_class::<re_view_audio::AudioView>(
+        reflection,
+        app_options,
+        fallback_registry,
+    )?;
     view_class_registry.add_class::<re_view_bar_chart::BarChartView>(
         reflection,
         app_options,

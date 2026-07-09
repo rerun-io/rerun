@@ -1,0 +1,36 @@
+namespace rerun.archetypes;
+
+/// A chunk of PCM audio samples.
+///
+/// The samples are stored as a numeric tensor. 1D tensors are interpreted as mono audio.
+/// 2D tensors are interpreted as `[sample, channel]` audio, and may include dimension
+/// names such as `"sample"` and `"channel"`.
+///
+/// Log audio chunks on a time timeline at the time where the first sample starts. The
+/// [components.SampleRate] determines how sample indices map to time, allowing the
+/// viewer to display waveforms and keep audio-aligned views in sync with the global
+/// timeline.
+///
+/// \py The audio samples are not decoded or transformed by Rerun. If you want to show
+/// \py spectrograms, mel spectrograms, MFCCs, or filtered versions, log those derived
+/// \py tensors next to the audio clip and place them in a `SignalHeatmapView`.
+///
+/// \example archetypes/audio_clip title="Log a multi-channel audio clip."
+table AudioClip (
+  "attr.docs.category": "Audio",
+  "attr.docs.view_types": "AudioView",
+  "attr.rerun.state": "unstable",
+  "attr.rerun.visualizer": "Audio",
+  "attr.rust.derive": "PartialEq"
+) {
+  /// PCM audio samples.
+  samples: rerun.components.TensorData ("attr.rerun.component_required", "attr.rerun.component_no_ui_edit", order: 1000);
+
+  /// Sample rate in Hertz.
+  sample_rate: rerun.components.SampleRate ("attr.rerun.component_required", order: 1100);
+
+  // --- Optional ---
+
+  /// Optional display names for each audio channel.
+  channel_names: [rerun.components.AudioChannelName] ("attr.rerun.component_optional", nullable, order: 1200);
+}

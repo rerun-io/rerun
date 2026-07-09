@@ -46,5 +46,6 @@ Struct(
 
 ## Used by
 
+* [`AudioClip`](../archetypes/audio_clip.md)
 * [`BarChart`](../archetypes/bar_chart.md)
 * [`Tensor`](../archetypes/tensor.md)

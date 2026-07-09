@@ -1,0 +1,14 @@
+namespace rerun.components;
+
+// ---
+
+/// Display name for an audio channel.
+table AudioChannelName (
+  "attr.arrow.transparent",
+  "attr.python.aliases": "str",
+  "attr.python.array_aliases": "str | Sequence[str]",
+  "attr.rust.derive": "PartialEq, Eq, PartialOrd, Ord",
+  "attr.rust.repr": "transparent"
+) {
+    value: rerun.datatypes.Utf8 (order: 100);
+}

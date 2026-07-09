@@ -1,0 +1,9 @@
+namespace rerun.blueprint.views;
+
+/// A view for audio clips and audio-aligned waveforms.
+///
+/// \example views/audio title="Use a blueprint to create an AudioView."
+table AudioView (
+    "attr.rerun.view_identifier": "Audio"
+) {
+}

@@ -20,4 +20,5 @@ Float64
 ## Used by
 
 * [`LinearSpeed`](../components/linear_speed.md)
+* [`SampleRate`](../components/sample_rate.md)
 * [`Scalar`](../components/scalar.md)
