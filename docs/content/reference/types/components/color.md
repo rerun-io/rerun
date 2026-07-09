@@ -27,6 +27,7 @@ UInt32
 
 * [`Arrows2D`](../archetypes/arrows2d.md)
 * [`Arrows3D`](../archetypes/arrows3d.md)
+* [`AudioAnnotation`](../archetypes/audio_annotation.md)
 * [`BarChart`](../archetypes/bar_chart.md)
 * [`Boxes2D`](../archetypes/boxes2d.md)
 * [`Boxes3D`](../archetypes/boxes3d.md)

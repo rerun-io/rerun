@@ -19,5 +19,6 @@ snippet: views/audio
 
 ## Visualized archetypes
 
+* [`AudioAnnotation`](../archetypes/audio_annotation.md)
 * [`AudioClip`](../archetypes/audio_clip.md)
 

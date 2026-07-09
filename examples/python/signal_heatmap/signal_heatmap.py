@@ -240,18 +240,20 @@ def main() -> None:
             rr.Tensor(stft[offset : offset + window_frames], dim_names=("time", "frequency")),
         )
 
-    for timestamp, token in [
-        (0.20, "rising"),
-        (0.72, "tone"),
-        (1.30, "pulse"),
-        (2.10, "right-channel event"),
+    rr.set_time("time", duration=0.0)
+    for start, end, token in [
+        (0.20, 0.62, "rising"),
+        (0.72, 1.04, "tone"),
+        (1.22, 1.42, "pulse"),
+        (2.02, 2.32, "right-channel event"),
     ]:
-        rr.set_time("time", duration=timestamp)
+        rr.log("asr/spans", rr.AudioAnnotation(token, span=[start, end]))
+        rr.set_time("time", duration=start)
         rr.log("asr/tokens", rr.TextLog(token))
 
     rr.send_blueprint(
         rrb.Grid(
-            rrb.AudioView(origin="audio/clip", name="Audio clip"),
+            rrb.AudioView(origin="/", name="Audio clip + ASR spans"),
             signal_view("features/stft", "STFT", height_dimension=1),
             signal_view("features/stft_hamming", "Hamming window STFT", height_dimension=1),
             signal_view("features/mel", "Mel", height_dimension=1),

@@ -7,6 +7,7 @@
 #include "archetypes/arrows3d.hpp"
 #include "archetypes/asset3d.hpp"
 #include "archetypes/asset_video.hpp"
+#include "archetypes/audio_annotation.hpp"
 #include "archetypes/audio_clip.hpp"
 #include "archetypes/bar_chart.hpp"
 #include "archetypes/boxes2d.hpp"

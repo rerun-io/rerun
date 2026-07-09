@@ -1792,6 +1792,38 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
+            ArchetypeName::new("rerun.archetypes.AudioAnnotation"),
+            ArchetypeReflection {
+                display_name: "Audio annotation",
+                deprecation_summary: None,
+                scope: None,
+                view_types: &["AudioView"],
+                fields: vec![
+                    ArchetypeFieldReflection {
+                        name: "text",
+                        display_name: "Text",
+                        component_type: "rerun.components.Text".into(),
+                        docstring_md: "Annotation text, such as an ASR word or phrase.",
+                        flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "span",
+                        display_name: "Span",
+                        component_type: "rerun.components.Range1D".into(),
+                        docstring_md: "Time span in seconds relative to the row timestamp.",
+                        flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "color",
+                        display_name: "Color",
+                        component_type: "rerun.components.Color".into(),
+                        docstring_md: "Optional color to use for the annotation span.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                ],
+            },
+        ),
+        (
             ArchetypeName::new("rerun.archetypes.AudioClip"),
             ArchetypeReflection {
                 display_name: "Audio clip",

@@ -16,8 +16,8 @@ The example intentionally computes the audio features in user code. Rerun displa
 - Streaming/rolling spectrogram windows: `[time, frequency]`
 - Window comparison with Hanning and Hamming windows
 - Simple low-pass, high-pass, and band-pass filtered spectrograms
-- Timestamped ASR-style tokens in a `TextLogView`
+- ASR-style word spans in `AudioView`, plus timestamped tokens in a `TextLogView`
 
 ## Used Rerun types
 
-[`AudioClip`](https://www.rerun.io/docs/reference/types/archetypes/audio_clip), [`AudioView`](https://www.rerun.io/docs/reference/types/views/audio_view), [`Tensor`](https://www.rerun.io/docs/reference/types/archetypes/tensor), [`SignalHeatmapView`](https://www.rerun.io/docs/reference/types/views/signal_heatmap_view), [`Scalars`](https://www.rerun.io/docs/reference/types/archetypes/scalars), [`SeriesLines`](https://www.rerun.io/docs/reference/types/archetypes/series_lines), [`TextLog`](https://www.rerun.io/docs/reference/types/archetypes/text_log), [`TextLogView`](https://www.rerun.io/docs/reference/types/views/text_log_view)
+[`AudioClip`](https://www.rerun.io/docs/reference/types/archetypes/audio_clip), [`AudioAnnotation`](https://www.rerun.io/docs/reference/types/archetypes/audio_annotation), [`AudioView`](https://www.rerun.io/docs/reference/types/views/audio_view), [`Tensor`](https://www.rerun.io/docs/reference/types/archetypes/tensor), [`SignalHeatmapView`](https://www.rerun.io/docs/reference/types/views/signal_heatmap_view), [`Scalars`](https://www.rerun.io/docs/reference/types/archetypes/scalars), [`SeriesLines`](https://www.rerun.io/docs/reference/types/archetypes/series_lines), [`TextLog`](https://www.rerun.io/docs/reference/types/archetypes/text_log), [`TextLogView`](https://www.rerun.io/docs/reference/types/views/text_log_view)

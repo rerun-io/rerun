@@ -4,8 +4,8 @@ use re_chunk_store::{RangeQuery, RowId};
 use re_log_types::{AbsoluteTimeRange, TimeInt};
 use re_sdk_types::Archetype as _;
 use re_sdk_types::{
-    archetypes::AudioClip,
-    components::{SampleRate, TensorData},
+    archetypes::{AudioAnnotation, AudioClip},
+    components::{Color, Range1D, SampleRate, TensorData, Text},
     datatypes::TensorBuffer,
 };
 use re_viewer_context::{
@@ -26,6 +26,14 @@ pub struct AudioChunk {
 pub struct AudioWaveform {
     pub chunks: Vec<AudioChunk>,
     pub channel_names: Vec<String>,
+}
+
+#[derive(Clone, Debug, re_byte_size::SizeBytes)]
+pub struct AudioAnnotationSpan {
+    pub start_time: TimeInt,
+    pub end_time: TimeInt,
+    pub text: String,
+    pub color: Option<Color>,
 }
 
 impl AudioWaveform {
@@ -55,6 +63,129 @@ impl AudioWaveform {
         }
 
         min.is_finite().then_some((min, max))
+    }
+}
+
+#[derive(Default)]
+pub struct AudioAnnotationSystem;
+
+impl IdentifiedViewSystem for AudioAnnotationSystem {
+    fn identifier() -> re_viewer_context::ViewSystemIdentifier {
+        re_viewer_context::external::re_string_interner::intern_static!(
+            re_viewer_context::ViewSystemIdentifier,
+            "AudioAnnotation"
+        )
+    }
+}
+
+impl VisualizerSystem for AudioAnnotationSystem {
+    fn visualizer_query_info(
+        &self,
+        _app_options: &re_viewer_context::AppOptions,
+    ) -> VisualizerQueryInfo {
+        VisualizerQueryInfo::single_required_component::<Range1D>(
+            &AudioAnnotation::descriptor_span(),
+            &AudioAnnotation::all_components(),
+        )
+    }
+
+    fn execute(
+        &self,
+        ctx: &ViewContext<'_>,
+        query: &ViewQuery<'_>,
+        _context_systems: &ViewContextCollection,
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        re_tracing::profile_function!();
+
+        let output = VisualizerExecutionOutput::default();
+        let mut annotations = Vec::new();
+
+        for (data_result, instruction) in query.iter_visualizer_instruction_for(Self::identifier())
+        {
+            let range_query = match data_result.query_range() {
+                QueryRange::TimeRange(time_range) => {
+                    let current_time = ctx.viewer_ctx.time_ctrl.time_int().unwrap_or(TimeInt::ZERO);
+                    RangeQuery::new(
+                        query.timeline,
+                        AbsoluteTimeRange::from_relative_time_range(time_range, current_time),
+                    )
+                }
+                QueryRange::LatestAt => {
+                    RangeQuery::new(query.timeline, AbsoluteTimeRange::EVERYTHING)
+                }
+            };
+
+            let range_results = re_view::range_with_blueprint_resolved_data(
+                ctx,
+                None,
+                &range_query,
+                data_result,
+                AudioAnnotation::all_component_identifiers(),
+                instruction,
+            );
+            let results =
+                re_view::BlueprintResolvedResults::Range(range_query.clone(), range_results);
+            let results =
+                re_view::VisualizerInstructionQueryResults::new(instruction, &results, &output);
+
+            let span_chunks = results.iter_required(AudioAnnotation::descriptor_span().component);
+            let text_chunks = results.iter_required(AudioAnnotation::descriptor_text().component);
+            if span_chunks.is_empty() || text_chunks.is_empty() {
+                continue;
+            }
+
+            let mut spans = Vec::new();
+            for chunk in span_chunks.chunks().iter() {
+                for ((time, _row_id), ranges) in std::iter::zip(
+                    chunk.iter_component_indices(query.timeline),
+                    chunk.iter_component::<Range1D>(),
+                ) {
+                    spans.extend(ranges.iter().map(|range| (time, *range)));
+                }
+            }
+
+            let mut texts = Vec::new();
+            for chunk in text_chunks.chunks().iter() {
+                for text_values in chunk.iter_component::<Text>() {
+                    texts.extend(text_values.iter().map(|text| text.as_str().to_owned()));
+                }
+            }
+
+            let mut colors = Vec::new();
+            for chunk in results
+                .iter_optional(AudioAnnotation::descriptor_color().component)
+                .chunks()
+                .iter()
+            {
+                for color_values in chunk.iter_component::<Color>() {
+                    colors.extend(color_values.iter().copied());
+                }
+            }
+
+            for (idx, (row_time, span)) in spans.into_iter().enumerate() {
+                let text = texts.get(idx).cloned().unwrap_or_default();
+                let [start_seconds, end_seconds] = span.0.0;
+                let start_time = TimeInt::new_temporal(
+                    row_time
+                        .as_i64()
+                        .saturating_add((start_seconds * 1_000_000_000.0).round() as i64),
+                );
+                let end_time = TimeInt::new_temporal(
+                    row_time
+                        .as_i64()
+                        .saturating_add((end_seconds * 1_000_000_000.0).round() as i64),
+                );
+
+                annotations.push(AudioAnnotationSpan {
+                    start_time,
+                    end_time,
+                    text,
+                    color: colors.get(idx).copied(),
+                });
+            }
+        }
+
+        Ok(output.with_visualizer_data(annotations))
     }
 }
 

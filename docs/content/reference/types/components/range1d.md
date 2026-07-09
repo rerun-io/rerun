@@ -20,3 +20,6 @@ FixedSizeList(2 x non-null Float64)
  * 🦀 [Rust API docs for `Range1D`](https://docs.rs/rerun/latest/rerun/components/struct.Range1D.html)
 
 
+## Used by
+
+* [`AudioAnnotation`](../archetypes/audio_annotation.md)

@@ -1,0 +1,26 @@
+namespace rerun.archetypes;
+
+/// A text annotation for a time window in an audio clip.
+///
+/// The `span` is measured in seconds relative to the row timestamp. For example,
+/// log an ASR word at the start of the utterance with `span=[0.0, 0.42]`, or log
+/// a complete transcript once at time zero with each word carrying its own
+/// `span=[word_start, word_end]`.
+///
+/// \example archetypes/audio_annotation title="Log ASR word spans for audio."
+table AudioAnnotation (
+  "attr.docs.category": "Audio",
+  "attr.docs.view_types": "AudioView",
+  "attr.rerun.state": "unstable",
+  "attr.rerun.visualizer": "AudioAnnotation",
+  "attr.rust.derive": "PartialEq"
+) {
+  /// Annotation text, such as an ASR word or phrase.
+  text: rerun.components.Text ("attr.rerun.component_required", order: 1000);
+
+  /// Time span in seconds relative to the row timestamp.
+  span: rerun.components.Range1D ("attr.rerun.component_required", order: 1100);
+
+  /// Optional color to use for the annotation span.
+  color: rerun.components.Color ("attr.rerun.component_optional", nullable, order: 1200);
+}

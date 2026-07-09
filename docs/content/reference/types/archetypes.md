@@ -13,6 +13,7 @@ This page lists all built-in archetypes.
 
 ## Audio
 
+* [`AudioAnnotation`](archetypes/audio_annotation.md): A text annotation for a time window in an audio clip.
 * [`AudioClip`](archetypes/audio_clip.md): A chunk of PCM audio samples.
 
 ## Geospatial

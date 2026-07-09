@@ -15,7 +15,9 @@ use re_viewer_context::{
 };
 
 use crate::processing::{AudioProcessingSettings, FilterKind, WindowFunction};
-use crate::visualizer_system::{AudioVisualizerSystem, AudioWaveform};
+use crate::visualizer_system::{
+    AudioAnnotationSpan, AudioAnnotationSystem, AudioVisualizerSystem, AudioWaveform,
+};
 
 #[derive(Default)]
 pub struct AudioView;
@@ -91,7 +93,8 @@ impl ViewClass for AudioView {
         &self,
         system_registry: &mut re_viewer_context::ViewSystemRegistrator<'_>,
     ) -> Result<(), ViewClassRegistryError> {
-        system_registry.register_visualizer::<AudioVisualizerSystem>()
+        system_registry.register_visualizer::<AudioVisualizerSystem>()?;
+        system_registry.register_visualizer::<AudioAnnotationSystem>()
     }
 
     fn new_state(&self) -> Box<dyn ViewState> {
@@ -151,8 +154,11 @@ impl ViewClass for AudioView {
             .visualizer_data_or_default::<BTreeMap<EntityPath, AudioWaveform>>(
                 AudioVisualizerSystem::identifier(),
             )?;
+        let annotations = system_output.visualizer_data_or_default::<Vec<AudioAnnotationSpan>>(
+            AudioAnnotationSystem::identifier(),
+        )?;
 
-        if waveforms.is_empty() {
+        if waveforms.is_empty() && annotations.is_empty() {
             ui.centered_and_justified(|ui| ui.label("(empty)"));
             return Ok(());
         }
@@ -166,7 +172,7 @@ impl ViewClass for AudioView {
 
         playback_progress_ui(ctx, ui, state);
         toolbar_ui(ctx, ui, state, max_channels, waveforms.values().next());
-        plot_audio(ctx, ui, state, query.view_id, &waveforms);
+        plot_audio(ctx, ui, state, query.view_id, &waveforms, &annotations);
 
         Ok(())
     }
@@ -358,6 +364,7 @@ fn plot_audio(
     state: &AudioViewState,
     view_id: ViewId,
     waveforms: &BTreeMap<EntityPath, AudioWaveform>,
+    annotations: &[AudioAnnotationSpan],
 ) {
     let current_time = ctx.time_ctrl.time_int().unwrap_or(TimeInt::ZERO);
     let current_time_ns = current_time.as_f64();
@@ -372,6 +379,20 @@ fn plot_audio(
             });
         }
     }
+    for annotation in annotations {
+        let min = annotation.start_time.as_f64();
+        let max = annotation.end_time.as_f64();
+        x_range = Some(match x_range {
+            Some((range_min, range_max)) => (range_min.min(min), range_max.max(max)),
+            None => (min, max),
+        });
+    }
+
+    let y_max = waveforms
+        .values()
+        .map(AudioWaveform::num_channels)
+        .max()
+        .unwrap_or(1) as f64;
 
     let plot = Plot::new("audio_waveform_plot")
         .allow_boxed_zoom(false)
@@ -381,13 +402,7 @@ fn plot_audio(
         .show_y(false)
         .clamp_grid(true)
         .include_y(-1.25)
-        .include_y(
-            waveforms
-                .values()
-                .map(AudioWaveform::num_channels)
-                .max()
-                .unwrap_or(1) as f64,
-        );
+        .include_y(y_max);
 
     let response = plot.show(ui, |plot_ui| {
         if let Some((min, max)) = x_range {
@@ -403,6 +418,7 @@ fn plot_audio(
         for (entity_idx, (entity_path, waveform)) in waveforms.iter().enumerate() {
             draw_waveform(plot_ui, state, entity_idx, entity_path, waveform);
         }
+        draw_annotations(plot_ui, annotations, y_max);
 
         if (plot_ui.response().clicked() || plot_ui.response().dragged())
             && let Some(pointer) = plot_ui.pointer_coordinate()
@@ -417,6 +433,44 @@ fn plot_audio(
     if response.response.hovered() {
         ctx.selection_state()
             .set_hovered(re_viewer_context::Item::View(view_id));
+    }
+}
+
+fn draw_annotations(
+    plot_ui: &mut egui_plot::PlotUi<'_>,
+    annotations: &[AudioAnnotationSpan],
+    y_max: f64,
+) {
+    for annotation in annotations {
+        let start = annotation.start_time.as_f64();
+        let end = annotation.end_time.as_f64().max(start);
+        let color = annotation
+            .color
+            .map(egui::Color32::from)
+            .unwrap_or_else(|| egui::Color32::from_rgba_unmultiplied(255, 210, 80, 70));
+        let stroke = egui::Stroke::new(1.0, color.gamma_multiply(1.8));
+
+        plot_ui.polygon(
+            egui_plot::Polygon::new(
+                annotation.text.clone(),
+                vec![
+                    [start, -0.65],
+                    [end, -0.65],
+                    [end, y_max + 0.35],
+                    [start, y_max + 0.35],
+                ],
+            )
+            .fill_color(color)
+            .stroke(stroke),
+        );
+        plot_ui.text(
+            egui_plot::Text::new(
+                annotation.text.clone(),
+                egui_plot::PlotPoint::new((start + end) * 0.5, y_max + 0.45),
+                annotation.text.clone(),
+            )
+            .color(stroke.color),
+        );
     }
 }
 

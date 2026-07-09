@@ -24,6 +24,7 @@ Utf8
 
 * [`Arrows2D`](../archetypes/arrows2d.md)
 * [`Arrows3D`](../archetypes/arrows3d.md)
+* [`AudioAnnotation`](../archetypes/audio_annotation.md)
 * [`Boxes2D`](../archetypes/boxes2d.md)
 * [`Boxes3D`](../archetypes/boxes3d.md)
 * [`Capsules3D`](../archetypes/capsules3d.md)
