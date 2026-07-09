@@ -3,21 +3,20 @@ use egui::{Align2, NumExt as _, Vec2};
 use ndarray::Axis;
 use re_data_ui::tensor_summary_ui_grid_contents;
 use re_log_types::EntityPath;
-use re_log_types::hash::Hash64;
 use re_sdk_types::blueprint::archetypes::{self, TensorScalarMapping, TensorViewFit};
 use re_sdk_types::blueprint::components::ViewFit;
 use re_sdk_types::components::{
     Colormap, GammaCorrection, MagnificationFilter, TensorDimensionIndexSelection,
 };
-use re_sdk_types::datatypes::TensorData;
+use re_sdk_types::datatypes::{TensorData, TimeRange};
 use re_sdk_types::{View as _, ViewClassIdentifier};
 use re_ui::{Help, UiExt as _, list_item};
 use re_view::view_property_ui;
 use re_viewer_context::{
     ColormapWithRange, IdentifiedViewSystem as _, IndicatedEntities, Item, PerVisualizerType,
-    RecommendedVisualizers, SystemCommand, SystemCommandSender as _, TensorStatsCache, ViewClass,
-    ViewClassExt as _, ViewClassRegistryError, ViewContext, ViewId, ViewQuery, ViewState,
-    ViewStateExt as _, ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext,
+    QueryRange, RecommendedVisualizers, SystemCommand, SystemCommandSender as _, TensorStatsCache,
+    ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewContext, ViewId, ViewQuery,
+    ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext,
     VisualizableReason, gpu_bridge, suggest_view_for_each_entity,
 };
 use re_viewport_blueprint::ViewProperty;
@@ -25,7 +24,7 @@ use re_viewport_blueprint::ViewProperty;
 use crate::TensorDimension;
 use crate::dimension_mapping::TensorSliceSelection;
 use crate::tensor_dimension_mapper::dimension_mapping_ui;
-use crate::visualizer_system::{TensorSystem, TensorVisualization};
+use crate::visualizer_system::{SignalHeatmapSystem, TensorSystem, TensorVisualization};
 
 #[derive(Default)]
 pub struct TensorView;
@@ -90,7 +89,7 @@ Set the displayed dimensions in a selection panel.",
             |_| Colormap::Viridis,
         );
 
-        system_registry.register_visualizer::<TensorSystem>()
+        system_registry.register_visualizer::<SignalHeatmapSystem>()
     }
 
     fn preferred_tile_aspect_ratio(&self, _state: &dyn ViewState) -> Option<f32> {
@@ -118,12 +117,20 @@ Set the displayed dimensions in a selection panel.",
         // Keeping this implementation simple: We know there's only a single visualizer here.
         if visualizers_with_reason
             .iter()
-            .any(|(viz, _)| *viz == TensorSystem::identifier())
+            .any(|(viz, _)| *viz == SignalHeatmapSystem::identifier())
         {
-            RecommendedVisualizers::default(TensorSystem::identifier())
+            RecommendedVisualizers::default(SignalHeatmapSystem::identifier())
         } else {
             RecommendedVisualizers::empty()
         }
+    }
+
+    fn supports_visible_time_range(&self) -> bool {
+        true
+    }
+
+    fn default_query_range(&self, _view_state: &dyn ViewState) -> QueryRange {
+        QueryRange::TimeRange(TimeRange::EVERYTHING)
     }
 
     fn selection_ui(
@@ -170,8 +177,9 @@ Set the displayed dimensions in a selection panel.",
         let state = state.downcast_mut::<ViewTensorState>()?;
         state.tensor = None;
 
-        let tensors = system_output
-            .visualizer_data_or_default::<Vec<TensorVisualization>>(TensorSystem::identifier())?;
+        let tensors = system_output.visualizer_data_or_default::<Vec<TensorVisualization>>(
+            SignalHeatmapSystem::identifier(),
+        )?;
 
         let response = {
             let mut ui = ui.new_child(egui::UiBuilder::new().sense(egui::Sense::click()));
@@ -381,13 +389,13 @@ fn tensor_selection_ui(
     ui.selection_grid("tensor_selection_ui").show(ui, |ui| {
         if let Some(TensorVisualization {
             tensor,
-            tensor_row_id,
+            tensor_cache_key,
             ..
         }) = &state.tensor
         {
             let tensor_stats = viewer_ctx
                 .store_context
-                .memoizer(|c: &mut TensorStatsCache| c.entry(Hash64::hash(*tensor_row_id), tensor));
+                .memoizer(|c: &mut TensorStatsCache| c.entry(*tensor_cache_key, tensor));
 
             tensor_summary_ui_grid_contents(ui, tensor, &tensor_stats);
         }
@@ -545,9 +553,10 @@ fn paint_tensor_slice(
         anyhow::bail!("No tensor data available.");
     };
     let TensorVisualization {
-        tensor_row_id,
+        tensor_cache_key,
         tensor,
         data_range,
+        ..
     } = &tensor_view;
 
     let scalar_mapping = ViewProperty::from_archetype::<TensorScalarMapping>(
@@ -568,7 +577,7 @@ fn paint_tensor_slice(
     };
     let colormapped_texture = super::tensor_slice_to_gpu::colormapped_texture(
         ctx.render_ctx(),
-        *tensor_row_id,
+        *tensor_cache_key,
         tensor,
         slice_selection,
         &colormap,

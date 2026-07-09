@@ -1,4 +1,4 @@
-use re_chunk_store::RowId;
+use re_log_types::hash::Hash64;
 use re_renderer::renderer::ColormappedTexture;
 use re_renderer::resource_managers::{GpuTexture2D, ImageDataDesc, TextureManager2DError};
 use re_sdk_types::components::GammaCorrection;
@@ -21,7 +21,7 @@ pub enum TensorUploadError {
 
 pub fn colormapped_texture(
     render_ctx: &re_renderer::RenderContext,
-    tensor_data_row_id: RowId,
+    tensor_cache_key: Hash64,
     tensor: &TensorData,
     slice_selection: &TensorSliceSelection,
     colormap: &ColormapWithRange,
@@ -30,7 +30,7 @@ pub fn colormapped_texture(
     re_tracing::profile_function!();
 
     let texture =
-        upload_texture_slice_to_gpu(render_ctx, tensor_data_row_id, tensor, slice_selection)?;
+        upload_texture_slice_to_gpu(render_ctx, tensor_cache_key, tensor, slice_selection)?;
 
     Ok(ColormappedTexture {
         texture,
@@ -47,11 +47,11 @@ pub fn colormapped_texture(
 
 fn upload_texture_slice_to_gpu(
     render_ctx: &re_renderer::RenderContext,
-    tensor_data_row_id: RowId,
+    tensor_cache_key: Hash64,
     tensor: &TensorData,
     slice_selection: &TensorSliceSelection,
 ) -> Result<GpuTexture2D, TextureManager2DError<TensorUploadError>> {
-    let id = egui::util::hash((tensor_data_row_id, slice_selection));
+    let id = egui::util::hash((tensor_cache_key, slice_selection));
 
     gpu_bridge::try_get_or_create_texture(render_ctx, id, || {
         texture_desc_from_tensor(tensor, slice_selection)
