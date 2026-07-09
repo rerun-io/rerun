@@ -804,3 +804,146 @@ fn optimize_strips_user_supplied_is_keyframe_from_sample_chunks() {
     assert_eq!(count_true_keyframes(&compacted), 6);
     assert_eq!(count_false_keyframes(&compacted), 0);
 }
+
+// --- Timeline-map iteration order ---
+
+/// Rebuild `chunk`'s timeline map by inserting the timelines in `order`.
+///
+/// Insertion order affects iteration order when keys collide — mimics one video entity mixing
+/// chunks whose maps were built by different code paths (deserialization, slicing, prior
+/// concatenations).
+fn with_reinserted_timelines(chunk: &Chunk, order: &[re_log_types::TimelineName]) -> Chunk {
+    let mut timelines = nohash_hasher::IntMap::default();
+    for name in order {
+        timelines.insert(*name, chunk.timelines()[name].clone());
+    }
+    Chunk::from_native_row_ids(
+        chunk.id(),
+        chunk.entity_path().clone(),
+        None,
+        chunk.row_ids_slice(),
+        timelines,
+        chunk.components().clone(),
+    )
+    .expect("rebuild chunk with reordered timeline map")
+}
+
+/// GoP rebatching must not be defeated by timeline-map iteration order.
+///
+/// Regression test for "skipping GoP rebatching … cannot concatenate chunks with different
+/// timelines" where both printed timeline sets are identical.
+#[test]
+fn rebatching_is_insensitive_to_timeline_map_iteration_order() {
+    use itertools::Itertools as _;
+    use re_log_types::TimelineName;
+
+    // Find names whose map iteration order depends on insertion order. Deterministic
+    // (fixed-seed hashes); panics if map internals change and nothing diverges anymore.
+    let iteration_order = |insertion_order: &[TimelineName]| {
+        let mut set = nohash_hasher::IntSet::<TimelineName>::default();
+        for name in insertion_order {
+            set.insert(*name);
+        }
+        set.iter().copied().collect::<Vec<_>>()
+    };
+    let (order1, order2) = 'search: {
+        for i in 0..100 {
+            let names = ["a", "b", "c"]
+                .map(|s| TimelineName::try_new(format!("timeline_{s}_{i}")).unwrap());
+            let reference = iteration_order(&names);
+            for perm in names.iter().copied().permutations(names.len()) {
+                if iteration_order(&perm) != reference {
+                    break 'search (names.to_vec(), perm);
+                }
+            }
+        }
+        panic!(
+            "no timeline-name set found whose map iteration order depends on insertion order; \
+             did the hasher or hash-map internals change?"
+        );
+    };
+
+    let num_samples: i64 = 12;
+    let period: i64 = 4;
+
+    let store_id = re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "video_test");
+    let mut store = ChunkStore::new(store_id, ChunkStoreConfig::ALL_DISABLED);
+    let entity_path: EntityPath = "/video".into();
+
+    let codec_chunk = Chunk::builder(entity_path.clone())
+        .with_component(
+            RowId::new(),
+            TimePoint::default(),
+            VideoStream::descriptor_codec(),
+            &VideoCodec::H264,
+        )
+        .expect("build codec chunk")
+        .build()
+        .expect("finalize codec chunk");
+    store
+        .insert_chunk(&Arc::new(codec_chunk))
+        .expect("insert codec");
+
+    // One sample chunk per frame over the three searched timelines; alternate the timeline-map
+    // insertion order per frame so adjacent chunks' maps iterate differently.
+    for i in 0..num_samples {
+        let timepoint: TimePoint = std::iter::zip(order1.iter(), 1i64..)
+            .map(|(name, timeline_index)| {
+                (Timeline::new_sequence(*name), 1000 * timeline_index + i)
+            })
+            .collect();
+        let sample = VideoSample::from(vec![0u8; 4]);
+        let chunk = Chunk::builder(entity_path.clone())
+            .with_component(
+                RowId::new(),
+                timepoint,
+                VideoStream::descriptor_sample(),
+                &sample,
+            )
+            .expect("build sample chunk")
+            .build()
+            .expect("finalize sample chunk");
+        let order = if i % 2 == 0 { &order1 } else { &order2 };
+        let chunk = with_reinserted_timelines(&chunk, order);
+        assert_eq!(
+            chunk
+                .timelines()
+                .keys()
+                .copied()
+                .collect::<std::collections::BTreeSet<_>>(),
+            order1
+                .iter()
+                .copied()
+                .collect::<std::collections::BTreeSet<_>>(),
+            "rebuilt chunk must keep the same timeline set"
+        );
+        store.insert_chunk(&Arc::new(chunk)).expect("insert sample");
+    }
+
+    let sample_chunk_count = |store: &ChunkStore| {
+        store
+            .iter_physical_chunks()
+            .filter(|c| chunk_has_component(c, "VideoStream:sample"))
+            .count()
+    };
+    let before = sample_chunk_count(&store);
+
+    let (compacted, warnings) = with_captured_warnings(|| {
+        store
+            .compacted(&video_options(num_samples, period))
+            .expect("optimize must succeed")
+    });
+
+    assert!(
+        !warnings
+            .iter()
+            .any(|w| w.contains("skipping GoP rebatching") || w.contains("cannot concatenate")),
+        "no chunk should have been refused concatenation over map iteration order: {warnings:#?}"
+    );
+    assert!(
+        sample_chunk_count(&compacted) < before,
+        "GoP rebatching must actually merge the per-frame sample chunks \
+         ({before} chunks before, {} after)",
+        sample_chunk_count(&compacted)
+    );
+}
