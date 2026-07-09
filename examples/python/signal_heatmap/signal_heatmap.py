@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import argparse
+import shutil
+import subprocess
 import wave
 from pathlib import Path
 
@@ -162,6 +164,35 @@ def load_wav(path: Path) -> tuple[int, np.ndarray]:
     return sample_rate, samples.astype(np.float32)
 
 
+def load_audio_with_ffmpeg(path: Path, *, sample_rate: int, channels: int) -> tuple[int, np.ndarray]:
+    ffmpeg = shutil.which("ffmpeg")
+    if ffmpeg is None:
+        raise RuntimeError("loading compressed audio requires ffmpeg on PATH")
+
+    result = subprocess.run(
+        [
+            ffmpeg,
+            "-v",
+            "error",
+            "-i",
+            str(path),
+            "-f",
+            "f32le",
+            "-acodec",
+            "pcm_f32le",
+            "-ac",
+            str(channels),
+            "-ar",
+            str(sample_rate),
+            "pipe:1",
+        ],
+        check=True,
+        stdout=subprocess.PIPE,
+    )
+    samples = np.frombuffer(result.stdout, dtype="<f4").reshape(-1, channels).T
+    return sample_rate, samples.astype(np.float32)
+
+
 def signal_view(
     origin: str,
     name: str,
@@ -191,10 +222,29 @@ def signal_view(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Log precomputed signal heatmap tensors.")
-    parser.add_argument(
+    audio_input = parser.add_mutually_exclusive_group()
+    audio_input.add_argument(
         "--wav",
         type=Path,
         help="Optional PCM WAV file to load instead of generating synthetic audio.",
+    )
+    audio_input.add_argument(
+        "--audio",
+        type=Path,
+        help="Optional audio file to decode with ffmpeg, e.g. MP3, Opus, FLAC, or AAC.",
+    )
+    parser.add_argument(
+        "--audio-sample-rate",
+        type=int,
+        default=16_000,
+        help="Sample rate used when decoding --audio with ffmpeg.",
+    )
+    parser.add_argument(
+        "--audio-channels",
+        type=int,
+        choices=[1, 2],
+        default=2,
+        help="Channel count used when decoding --audio with ffmpeg.",
     )
     rr.script_add_args(parser)
     args = parser.parse_args()
@@ -203,14 +253,21 @@ def main() -> None:
 
     window_size = 1024
     hop_size = 256
-    if args.wav is None:
+    if args.wav is not None:
+        sample_rate, stereo = load_wav(args.wav)
+    elif args.audio is not None:
+        sample_rate, stereo = load_audio_with_ffmpeg(
+            args.audio,
+            sample_rate=args.audio_sample_rate,
+            channels=args.audio_channels,
+        )
+    else:
         sample_rate = 16_000
         duration_seconds = 3.0
         _t, stereo = make_audio(sample_rate, duration_seconds)
-    else:
-        sample_rate, stereo = load_wav(args.wav)
-        if stereo.shape[0] == 1:
-            stereo = np.repeat(stereo, 2, axis=0)
+
+    if stereo.shape[0] == 1:
+        stereo = np.repeat(stereo, 2, axis=0)
 
     mono = stereo.mean(axis=0)
 
