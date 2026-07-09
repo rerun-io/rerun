@@ -5,14 +5,182 @@ use uuid::Uuid;
 
 use re_log_types::EntityPath;
 use re_sdk_types::blueprint::archetypes::{
-    ActiveVisualizers, ForceCenter, ForceCollisionRadius, ForceLink, ForceManyBody, ForcePosition,
-    GraphBackground, MapBackground, ViewBlueprint, ViewContents, VisualBounds2D,
-    VisualizerInstruction,
+    ActiveVisualizers, ViewBlueprint, ViewContents, VisualizerInstruction,
 };
 use re_sdk_types::blueprint::components::{QueryExpression, ViewClass};
 use re_sdk_types::components::{Name, Visible};
 use re_sdk_types::datatypes::Bool;
 use re_sdk_types::{AsComponents, SerializedComponentBatch, Visualizer};
+
+macro_rules! impl_view_common_methods {
+    () => {
+        /// Set the origin entity path.
+        pub fn with_origin(mut self, origin: impl Into<EntityPath>) -> Self {
+            self.0.origin = origin.into();
+            self
+        }
+
+        /// Set the contents query expressions.
+        pub fn with_contents(
+            mut self,
+            queries: impl IntoIterator<Item = impl Into<String>>,
+        ) -> Self {
+            self.0.contents = queries.into_iter().map(Into::into).collect();
+            self
+        }
+
+        /// Set visibility.
+        pub fn with_visible(mut self, visible: bool) -> Self {
+            self.0.visible = Some(visible);
+            self
+        }
+
+        /// Add a default archetype that applies to all entities in the view.
+        pub fn with_defaults(mut self, archetype: &dyn AsComponents) -> Self {
+            self.0.add_defaults(archetype);
+            self
+        }
+
+        /// Add a visualizer override for a specific entity.
+        pub fn with_override(
+            self,
+            entity_path: impl Into<EntityPath>,
+            visualizers: impl Into<Visualizer>,
+        ) -> Self {
+            self.with_overrides(entity_path, [visualizers])
+        }
+
+        /// Add visualizer overrides for a specific entity.
+        pub fn with_overrides(
+            mut self,
+            entity_path: impl Into<EntityPath>,
+            visualizers: impl IntoIterator<Item = impl Into<Visualizer>>,
+        ) -> Self {
+            self.0.add_overrides(entity_path, visualizers);
+            self
+        }
+    };
+}
+
+/// Converts a value into a blueprint property archetype for a view.
+///
+/// This mirrors Python's view constructor aliases while keeping the Rust view
+/// setters strongly typed.
+pub trait IntoViewProperty<T> {
+    /// Convert into the archetype stored as the view property.
+    fn into_view_property(self) -> T;
+}
+
+impl IntoViewProperty<re_sdk_types::blueprint::archetypes::Background>
+    for re_sdk_types::blueprint::components::BackgroundKind
+{
+    fn into_view_property(self) -> re_sdk_types::blueprint::archetypes::Background {
+        re_sdk_types::blueprint::archetypes::Background::new(self)
+    }
+}
+
+impl IntoViewProperty<re_sdk_types::blueprint::archetypes::Background>
+    for &re_sdk_types::blueprint::components::BackgroundKind
+{
+    fn into_view_property(self) -> re_sdk_types::blueprint::archetypes::Background {
+        re_sdk_types::blueprint::archetypes::Background::new(self.clone())
+    }
+}
+
+impl IntoViewProperty<re_sdk_types::blueprint::archetypes::Background>
+    for re_sdk_types::components::Color
+{
+    fn into_view_property(self) -> re_sdk_types::blueprint::archetypes::Background {
+        re_sdk_types::blueprint::archetypes::Background::new(
+            re_sdk_types::blueprint::components::BackgroundKind::SolidColor,
+        )
+        .with_color(self)
+    }
+}
+
+impl IntoViewProperty<re_sdk_types::blueprint::archetypes::Background>
+    for &re_sdk_types::components::Color
+{
+    fn into_view_property(self) -> re_sdk_types::blueprint::archetypes::Background {
+        self.clone().into_view_property()
+    }
+}
+
+impl IntoViewProperty<re_sdk_types::blueprint::archetypes::LineGrid3D> for bool {
+    fn into_view_property(self) -> re_sdk_types::blueprint::archetypes::LineGrid3D {
+        re_sdk_types::blueprint::archetypes::LineGrid3D::new().with_visible(self)
+    }
+}
+
+impl IntoViewProperty<re_sdk_types::blueprint::archetypes::MapBackground>
+    for re_sdk_types::blueprint::components::MapProvider
+{
+    fn into_view_property(self) -> re_sdk_types::blueprint::archetypes::MapBackground {
+        re_sdk_types::blueprint::archetypes::MapBackground::new(self)
+    }
+}
+
+impl IntoViewProperty<re_sdk_types::blueprint::archetypes::MapBackground>
+    for &re_sdk_types::blueprint::components::MapProvider
+{
+    fn into_view_property(self) -> re_sdk_types::blueprint::archetypes::MapBackground {
+        re_sdk_types::blueprint::archetypes::MapBackground::new(self.clone())
+    }
+}
+
+impl IntoViewProperty<re_sdk_types::blueprint::archetypes::MapZoom>
+    for re_sdk_types::blueprint::components::ZoomLevel
+{
+    fn into_view_property(self) -> re_sdk_types::blueprint::archetypes::MapZoom {
+        re_sdk_types::blueprint::archetypes::MapZoom::new(self)
+    }
+}
+
+impl IntoViewProperty<re_sdk_types::blueprint::archetypes::MapZoom>
+    for &re_sdk_types::blueprint::components::ZoomLevel
+{
+    fn into_view_property(self) -> re_sdk_types::blueprint::archetypes::MapZoom {
+        re_sdk_types::blueprint::archetypes::MapZoom::new(self.clone())
+    }
+}
+
+impl IntoViewProperty<re_sdk_types::blueprint::archetypes::MapZoom> for f64 {
+    fn into_view_property(self) -> re_sdk_types::blueprint::archetypes::MapZoom {
+        re_sdk_types::blueprint::archetypes::MapZoom::new(self)
+    }
+}
+
+impl IntoViewProperty<re_sdk_types::blueprint::archetypes::PlotLegend>
+    for re_sdk_types::blueprint::components::Corner2D
+{
+    fn into_view_property(self) -> re_sdk_types::blueprint::archetypes::PlotLegend {
+        re_sdk_types::blueprint::archetypes::PlotLegend::new().with_corner(self)
+    }
+}
+
+impl IntoViewProperty<re_sdk_types::blueprint::archetypes::PlotLegend>
+    for &re_sdk_types::blueprint::components::Corner2D
+{
+    fn into_view_property(self) -> re_sdk_types::blueprint::archetypes::PlotLegend {
+        re_sdk_types::blueprint::archetypes::PlotLegend::new().with_corner(self.clone())
+    }
+}
+
+impl IntoViewProperty<re_sdk_types::blueprint::archetypes::TensorViewFit>
+    for re_sdk_types::blueprint::components::ViewFit
+{
+    fn into_view_property(self) -> re_sdk_types::blueprint::archetypes::TensorViewFit {
+        re_sdk_types::blueprint::archetypes::TensorViewFit::new().with_scaling(self)
+    }
+}
+
+impl IntoViewProperty<re_sdk_types::blueprint::archetypes::TensorViewFit>
+    for &re_sdk_types::blueprint::components::ViewFit
+{
+    fn into_view_property(self) -> re_sdk_types::blueprint::archetypes::TensorViewFit {
+        re_sdk_types::blueprint::archetypes::TensorViewFit::new().with_scaling(self.clone())
+    }
+}
 
 /// A view in the blueprint.
 #[derive(Debug)]
@@ -45,6 +213,15 @@ impl Default for View {
 }
 
 impl View {
+    /// Create a new view wrapper for a registered view class.
+    pub(crate) fn new(class_identifier: impl Into<String>, name: Option<String>) -> Self {
+        Self {
+            class_identifier: class_identifier.into(),
+            name,
+            ..Default::default()
+        }
+    }
+
     /// Get the blueprint path for this view.
     pub fn blueprint_path(&self) -> EntityPath {
         format!("view/{}", self.id).into()
@@ -165,404 +342,4 @@ impl View {
     }
 }
 
-/// Time series view for scalars over time.
-pub struct TimeSeriesView(pub(crate) View);
-
-impl TimeSeriesView {
-    /// Create a new time series view.
-    pub fn new(name: impl Into<String>) -> Self {
-        Self(View {
-            class_identifier: "TimeSeries".into(),
-            name: Some(name.into()),
-            ..Default::default()
-        })
-    }
-
-    /// Set the origin entity path.
-    pub fn with_origin(mut self, origin: impl Into<EntityPath>) -> Self {
-        self.0.origin = origin.into();
-        self
-    }
-
-    /// Set the contents query expressions.
-    pub fn with_contents(mut self, queries: impl IntoIterator<Item = impl Into<String>>) -> Self {
-        self.0.contents = queries.into_iter().map(Into::into).collect();
-        self
-    }
-
-    /// Set visibility.
-    pub fn with_visible(mut self, visible: bool) -> Self {
-        self.0.visible = Some(visible);
-        self
-    }
-
-    /// Add a default archetype that applies to all entities in the view.
-    pub fn with_defaults(mut self, archetype: &dyn AsComponents) -> Self {
-        self.0.add_defaults(archetype);
-        self
-    }
-
-    /// Add a visualizer override for a specific entity.
-    pub fn with_override(
-        self,
-        entity_path: impl Into<EntityPath>,
-        visualizers: impl Into<Visualizer>,
-    ) -> Self {
-        self.with_overrides(entity_path, [visualizers])
-    }
-
-    /// Add visualizer overrides for a specific entity.
-    pub fn with_overrides(
-        mut self,
-        entity_path: impl Into<EntityPath>,
-        visualizers: impl IntoIterator<Item = impl Into<Visualizer>>,
-    ) -> Self {
-        self.0.add_overrides(entity_path, visualizers);
-        self
-    }
-}
-
-/// Spatial 2D view.
-pub struct Spatial2DView(pub(crate) View);
-
-impl Spatial2DView {
-    /// Create a new spatial 2D view.
-    pub fn new(name: impl Into<String>) -> Self {
-        Self(View {
-            class_identifier: "2D".into(),
-            name: Some(name.into()),
-            ..Default::default()
-        })
-    }
-
-    /// Set the origin entity path.
-    pub fn with_origin(mut self, origin: impl Into<EntityPath>) -> Self {
-        self.0.origin = origin.into();
-        self
-    }
-
-    /// Set the contents query expressions.
-    pub fn with_contents(mut self, queries: impl IntoIterator<Item = impl Into<String>>) -> Self {
-        self.0.contents = queries.into_iter().map(Into::into).collect();
-        self
-    }
-
-    /// Set visibility.
-    pub fn with_visible(mut self, visible: bool) -> Self {
-        self.0.visible = Some(visible);
-        self
-    }
-
-    /// Add a default archetype that applies to all entities in the view.
-    pub fn with_defaults(mut self, archetype: &dyn AsComponents) -> Self {
-        self.0.add_defaults(archetype);
-        self
-    }
-
-    /// Add a visualizer override for a specific entity.
-    pub fn with_override(
-        self,
-        entity_path: impl Into<EntityPath>,
-        visualizers: impl Into<Visualizer>,
-    ) -> Self {
-        self.with_overrides(entity_path, [visualizers])
-    }
-
-    /// Add visualizer overrides for a specific entity.
-    pub fn with_overrides(
-        mut self,
-        entity_path: impl Into<EntityPath>,
-        visualizers: impl IntoIterator<Item = impl Into<Visualizer>>,
-    ) -> Self {
-        self.0.add_overrides(entity_path, visualizers);
-        self
-    }
-}
-
-/// Spatial 3D view.
-pub struct Spatial3DView(pub(crate) View);
-
-impl Spatial3DView {
-    /// Create a new spatial 3D view.
-    pub fn new(name: impl Into<String>) -> Self {
-        Self(View {
-            class_identifier: "3D".into(),
-            name: Some(name.into()),
-            ..Default::default()
-        })
-    }
-
-    /// Set the origin entity path.
-    pub fn with_origin(mut self, origin: impl Into<EntityPath>) -> Self {
-        self.0.origin = origin.into();
-        self
-    }
-
-    /// Set the contents query expressions.
-    pub fn with_contents(mut self, queries: impl IntoIterator<Item = impl Into<String>>) -> Self {
-        self.0.contents = queries.into_iter().map(Into::into).collect();
-        self
-    }
-
-    /// Set visibility.
-    pub fn with_visible(mut self, visible: bool) -> Self {
-        self.0.visible = Some(visible);
-        self
-    }
-
-    /// Add a default archetype that applies to all entities in the view.
-    pub fn with_defaults(mut self, archetype: &dyn AsComponents) -> Self {
-        self.0.add_defaults(archetype);
-        self
-    }
-
-    /// Add a visualizer override for a specific entity.
-    pub fn with_override(
-        self,
-        entity_path: impl Into<EntityPath>,
-        visualizers: impl Into<Visualizer>,
-    ) -> Self {
-        self.with_overrides(entity_path, [visualizers])
-    }
-
-    /// Add visualizer overrides for a specific entity.
-    pub fn with_overrides(
-        mut self,
-        entity_path: impl Into<EntityPath>,
-        visualizers: impl IntoIterator<Item = impl Into<Visualizer>>,
-    ) -> Self {
-        self.0.add_overrides(entity_path, visualizers);
-        self
-    }
-}
-
-/// Map view for geospatial data.
-pub struct MapView(pub(crate) View);
-
-impl MapView {
-    /// Create a new map view.
-    pub fn new(name: impl Into<String>) -> Self {
-        Self(View {
-            class_identifier: "Map".into(),
-            name: Some(name.into()),
-            ..Default::default()
-        })
-    }
-
-    /// Set the origin entity path.
-    pub fn with_origin(mut self, origin: impl Into<EntityPath>) -> Self {
-        self.0.origin = origin.into();
-        self
-    }
-
-    /// Set the contents query expressions.
-    pub fn with_contents(mut self, queries: impl IntoIterator<Item = impl Into<String>>) -> Self {
-        self.0.contents = queries.into_iter().map(Into::into).collect();
-        self
-    }
-
-    /// Set visibility.
-    pub fn with_visible(mut self, visible: bool) -> Self {
-        self.0.visible = Some(visible);
-        self
-    }
-
-    /// Add a default archetype that applies to all entities in the view.
-    pub fn with_defaults(mut self, archetype: &dyn AsComponents) -> Self {
-        self.0.add_defaults(archetype);
-        self
-    }
-
-    /// Add a visualizer override for a specific entity.
-    pub fn with_override(
-        self,
-        entity_path: impl Into<EntityPath>,
-        visualizers: impl Into<Visualizer>,
-    ) -> Self {
-        self.with_overrides(entity_path, [visualizers])
-    }
-
-    /// Add visualizer overrides for a specific entity.
-    pub fn with_overrides(
-        mut self,
-        entity_path: impl Into<EntityPath>,
-        visualizers: impl IntoIterator<Item = impl Into<Visualizer>>,
-    ) -> Self {
-        self.0.add_overrides(entity_path, visualizers);
-        self
-    }
-
-    /// Set the map provider (background tiles).
-    pub fn with_map_provider(
-        mut self,
-        provider: re_sdk_types::blueprint::components::MapProvider,
-    ) -> Self {
-        self.0
-            .add_property("MapBackground", &MapBackground::new(provider));
-        self
-    }
-}
-
-/// Graph view for visualizing directed or undirected graphs.
-pub struct GraphView(pub(crate) View);
-
-impl GraphView {
-    /// Create a new graph view.
-    pub fn new(name: impl Into<String>) -> Self {
-        Self(View {
-            class_identifier: "Graph".into(),
-            name: Some(name.into()),
-            ..Default::default()
-        })
-    }
-
-    /// Set the origin entity path.
-    pub fn with_origin(mut self, origin: impl Into<EntityPath>) -> Self {
-        self.0.origin = origin.into();
-        self
-    }
-
-    /// Set the contents query expressions.
-    pub fn with_contents(mut self, queries: impl IntoIterator<Item = impl Into<String>>) -> Self {
-        self.0.contents = queries.into_iter().map(Into::into).collect();
-        self
-    }
-
-    /// Set visibility.
-    pub fn with_visible(mut self, visible: bool) -> Self {
-        self.0.visible = Some(visible);
-        self
-    }
-
-    /// Add a default archetype that applies to all entities in the view.
-    pub fn with_defaults(mut self, archetype: &dyn AsComponents) -> Self {
-        self.0.add_defaults(archetype);
-        self
-    }
-
-    /// Add a visualizer override for a specific entity.
-    pub fn with_override(
-        self,
-        entity_path: impl Into<EntityPath>,
-        visualizers: impl Into<Visualizer>,
-    ) -> Self {
-        self.with_overrides(entity_path, [visualizers])
-    }
-
-    /// Add visualizer overrides for a specific entity.
-    pub fn with_overrides(
-        mut self,
-        entity_path: impl Into<EntityPath>,
-        visualizers: impl IntoIterator<Item = impl Into<Visualizer>>,
-    ) -> Self {
-        self.0.add_overrides(entity_path, visualizers);
-        self
-    }
-
-    /// Configure the background of the graph.
-    pub fn with_background(mut self, background: &GraphBackground) -> Self {
-        self.0.add_property("GraphBackground", background);
-        self
-    }
-
-    /// Set the visual bounds of the graph.
-    ///
-    /// Everything within these bounds is guaranteed to be visible. Some things outside of
-    /// these bounds may also be visible due to letterboxing.
-    pub fn with_visual_bounds(mut self, visual_bounds: &VisualBounds2D) -> Self {
-        self.0.add_property("VisualBounds2D", visual_bounds);
-        self
-    }
-
-    /// Configure the link force, which controls the interaction between two nodes connected by an edge.
-    pub fn with_force_link(mut self, force_link: &ForceLink) -> Self {
-        self.0.add_property("ForceLink", force_link);
-        self
-    }
-
-    /// Configure the many-body force, a force between each pair of nodes that resembles an electrical charge.
-    pub fn with_force_many_body(mut self, force_many_body: &ForceManyBody) -> Self {
-        self.0.add_property("ForceManyBody", force_many_body);
-        self
-    }
-
-    /// Configure the position force, which pulls nodes towards a specific position (similar to gravity).
-    pub fn with_force_position(mut self, force_position: &ForcePosition) -> Self {
-        self.0.add_property("ForcePosition", force_position);
-        self
-    }
-
-    /// Configure the collision radius force, which resolves collisions between bounding circles
-    /// according to the radius of the nodes.
-    pub fn with_force_collision_radius(
-        mut self,
-        force_collision_radius: &ForceCollisionRadius,
-    ) -> Self {
-        self.0
-            .add_property("ForceCollisionRadius", force_collision_radius);
-        self
-    }
-
-    /// Configure the center force, which tries to move the center of mass of the graph to the origin.
-    pub fn with_force_center(mut self, force_center: &ForceCenter) -> Self {
-        self.0.add_property("ForceCenter", force_center);
-        self
-    }
-}
-
-/// Text document view for markdown rendering.
-pub struct TextDocumentView(pub(crate) View);
-
-impl TextDocumentView {
-    /// Create a new text document view.
-    pub fn new(name: impl Into<String>) -> Self {
-        Self(View {
-            class_identifier: "TextDocument".into(),
-            name: Some(name.into()),
-            ..Default::default()
-        })
-    }
-
-    /// Set the origin entity path.
-    pub fn with_origin(mut self, origin: impl Into<EntityPath>) -> Self {
-        self.0.origin = origin.into();
-        self
-    }
-
-    /// Set the contents query expressions.
-    pub fn with_contents(mut self, queries: impl IntoIterator<Item = impl Into<String>>) -> Self {
-        self.0.contents = queries.into_iter().map(Into::into).collect();
-        self
-    }
-
-    /// Set visibility.
-    pub fn with_visible(mut self, visible: bool) -> Self {
-        self.0.visible = Some(visible);
-        self
-    }
-
-    /// Add a default archetype that applies to all entities in the view.
-    pub fn with_defaults(mut self, archetype: &dyn AsComponents) -> Self {
-        self.0.add_defaults(archetype);
-        self
-    }
-
-    /// Add a visualizer override for a specific entity.
-    pub fn with_override(
-        self,
-        entity_path: impl Into<EntityPath>,
-        visualizers: impl Into<Visualizer>,
-    ) -> Self {
-        self.with_overrides(entity_path, [visualizers])
-    }
-
-    /// Add visualizer overrides for a specific entity.
-    pub fn with_overrides(
-        mut self,
-        entity_path: impl Into<EntityPath>,
-        visualizers: impl IntoIterator<Item = impl Into<Visualizer>>,
-    ) -> Self {
-        self.0.add_overrides(entity_path, visualizers);
-        self
-    }
-}
+include!("generated_views.rs");

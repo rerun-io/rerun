@@ -9,7 +9,9 @@ pub use api::{Blueprint, BlueprintActivation, BlueprintOpts};
 pub use container::{ContainerLike, Grid, Horizontal, Tabs, Vertical};
 pub use panel::{BlueprintPanel, SelectionPanel, TimePanel};
 pub use view::{
-    GraphView, MapView, Spatial2DView, Spatial3DView, TextDocumentView, TimeSeriesView, View,
+    BarChartView, DataframeView, GraphView, IntoViewProperty, MapView, Spatial2DView,
+    Spatial3DView, StateTimelineView, TensorView, TextDocumentView, TextLogView, TimeSeriesView,
+    View,
 };
 
 // Re-export types for working with visualizers and component mappings
@@ -19,6 +21,11 @@ pub use re_sdk_types::{VisualizableArchetype, Visualizer};
 /// Components used exclusively in blueprint stores.
 pub mod components {
     pub use re_sdk_types::blueprint::components::*;
+}
+
+/// Archetypes used exclusively in blueprint stores.
+pub mod archetypes {
+    pub use re_sdk_types::blueprint::archetypes::*;
 }
 
 /// Datatypes used exclusively in blueprint stores.

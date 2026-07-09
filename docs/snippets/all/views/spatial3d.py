@@ -1,17 +1,25 @@
 """Use a blueprint to customize a Spatial3DView."""
 
-from numpy.random import default_rng
+import numpy as np
 
 import rerun as rr
 import rerun.blueprint as rrb
 
 rr.init("rerun_example_spatial_3d", spawn=True)
 
-# Create some random points.
-rng = default_rng(12345)
-positions = rng.uniform(-5, 5, size=[50, 3])
-colors = rng.uniform(0, 255, size=[50, 3])
-radii = rng.uniform(0.1, 0.5, size=[50])
+# Create some deterministic points.
+i = np.arange(50)
+positions = np.column_stack((
+    np.sin(i * 0.37) * 4.0,
+    np.cos(i * 0.21) * 4.0,
+    np.linspace(-5.0, 5.0, 50),
+))
+colors = np.column_stack((
+    (i * 53) % 255,
+    (128 + i * 29) % 255,
+    (255 - i * 17) % 255,
+))
+radii = np.linspace(0.1, 0.5, 50)
 
 rr.log("points", rr.Points3D(positions, colors=colors, radii=radii))
 rr.log("box", rr.Boxes3D(half_sizes=[5, 5, 5], colors=0))
