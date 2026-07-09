@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import argparse
+import wave
+from pathlib import Path
 
 import numpy as np
 
@@ -139,6 +141,27 @@ def make_audio(sample_rate: int, duration_seconds: float) -> tuple[np.ndarray, n
     return t, np.stack([left, right], axis=0)
 
 
+def load_wav(path: Path) -> tuple[int, np.ndarray]:
+    with wave.open(str(path), "rb") as wav:
+        sample_rate = wav.getframerate()
+        channels = wav.getnchannels()
+        sample_width = wav.getsampwidth()
+        frame_count = wav.getnframes()
+        raw = wav.readframes(frame_count)
+
+    if sample_width == 1:
+        samples = (np.frombuffer(raw, dtype=np.uint8).astype(np.float32) - 128.0) / 128.0
+    elif sample_width == 2:
+        samples = np.frombuffer(raw, dtype="<i2").astype(np.float32) / np.iinfo(np.int16).max
+    elif sample_width == 4:
+        samples = np.frombuffer(raw, dtype="<i4").astype(np.float32) / np.iinfo(np.int32).max
+    else:
+        raise ValueError(f"unsupported WAV sample width: {sample_width} bytes")
+
+    samples = samples.reshape(-1, channels).T
+    return sample_rate, samples.astype(np.float32)
+
+
 def signal_view(
     origin: str,
     name: str,
@@ -168,16 +191,27 @@ def signal_view(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Log precomputed signal heatmap tensors.")
+    parser.add_argument(
+        "--wav",
+        type=Path,
+        help="Optional PCM WAV file to load instead of generating synthetic audio.",
+    )
     rr.script_add_args(parser)
     args = parser.parse_args()
 
     rr.script_setup(args, "rerun_example_signal_heatmap")
 
-    sample_rate = 16_000
     window_size = 1024
     hop_size = 256
-    duration_seconds = 3.0
-    _t, stereo = make_audio(sample_rate, duration_seconds)
+    if args.wav is None:
+        sample_rate = 16_000
+        duration_seconds = 3.0
+        _t, stereo = make_audio(sample_rate, duration_seconds)
+    else:
+        sample_rate, stereo = load_wav(args.wav)
+        if stereo.shape[0] == 1:
+            stereo = np.repeat(stereo, 2, axis=0)
+
     mono = stereo.mean(axis=0)
 
     stft = stft_magnitude_db(mono, window_size=window_size, hop_size=hop_size)

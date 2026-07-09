@@ -7,6 +7,8 @@ include_in_manifest = true
 
 This example logs a synthetic multi-channel audio clip, precomputed signal features, and timestamped ASR-style text so they can be inspected on the same Rerun timeline.
 
+Pass `--wav path/to/audio.wav` to load a PCM WAV file instead of using the synthetic signal.
+
 The example intentionally computes the audio features in user code. Rerun displays the raw PCM audio clip and resulting tensors, but does not perform the spectral transforms itself. It includes small NumPy-only helpers for:
 
 - STFT magnitude spectrograms: `[time, frequency]`
