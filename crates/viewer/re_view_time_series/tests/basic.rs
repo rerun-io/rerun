@@ -1,10 +1,13 @@
 use std::sync::Arc;
 
 use re_chunk::{Chunk, ChunkBuilder};
-use re_log_types::external::arrow::array::Float64Array;
+use re_log_types::external::arrow::array::{Array, Float64Array, StringArray, StructArray};
+use re_log_types::external::arrow::datatypes::{DataType, Field};
 use re_log_types::{EntityPath, TimeInt, TimePoint, Timeline};
-use re_sdk_types::DynamicArchetype;
 use re_sdk_types::blueprint::{archetypes::PlotLegend, components::Corner2D};
+use re_sdk_types::{
+    Component as _, ComponentDescriptor, DynamicArchetype, RowId, SerializedComponentBatch,
+};
 use re_test_context::TestContext;
 use re_test_context::external::egui_kittest::SnapshotResults;
 use re_test_viewport::TestContextExt as _;
@@ -146,6 +149,62 @@ fn test_multi_channel_scalars_per_entity() {
         view_id,
         "multi_channel_scalars_per_entity",
         egui::vec2(400.0, 300.0),
+        None,
+    ));
+}
+
+#[test]
+fn test_custom_scalar_component_identifier() {
+    let mut test_context = TestContext::new_with_view_class::<TimeSeriesView>();
+
+    let timeline = Timeline::log_tick();
+
+    for i in 0..32 {
+        let t = i as f64 / 5.0;
+        test_context.log_entity("custom_scalar", |builder| {
+            builder.with_archetype_auto_row(
+                [(timeline, i)],
+                &DynamicArchetype::new("custom")
+                    .with_component::<re_sdk_types::components::Scalar>("custom_scalar", [t.sin()]),
+            )
+        });
+
+        let struct_array = StructArray::from(vec![
+            (
+                Arc::new(Field::new("sin", DataType::Float64, false)),
+                Arc::new(Float64Array::from(vec![t.sin() - 2.0])) as Arc<dyn Array>,
+            ),
+            (
+                Arc::new(Field::new("cos", DataType::Float64, false)),
+                Arc::new(Float64Array::from(vec![t.cos() - 4.0])) as Arc<dyn Array>,
+            ),
+            (
+                Arc::new(Field::new("label", DataType::Utf8, false)),
+                Arc::new(StringArray::from(vec!["not plottable"])) as Arc<dyn Array>,
+            ),
+        ]);
+        test_context.log_entity("custom_struct_scalar", |builder| {
+            builder.with_serialized_batch(
+                RowId::new(),
+                [(timeline, i)],
+                SerializedComponentBatch {
+                    descriptor: ComponentDescriptor::partial("custom_struct")
+                        .with_archetype("CustomArchetype".into())
+                        .with_component_type(re_sdk_types::components::Scalar::name()),
+                    array: Arc::new(struct_array),
+                },
+            )
+        });
+    }
+
+    test_context.set_active_timeline(*timeline.name());
+
+    let view_id = setup_blueprint(&mut test_context);
+    let mut snapshot_results = SnapshotResults::new();
+    snapshot_results.add(test_context.run_view_ui_and_save_snapshot(
+        view_id,
+        "custom_scalar_component_identifier",
+        egui::vec2(300.0, 300.0),
         None,
     ));
 }

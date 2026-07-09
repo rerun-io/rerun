@@ -5,10 +5,10 @@
 use std::sync::Arc;
 
 use re_integration_test::HarnessExt as _;
-use re_sdk::Timeline;
 use re_sdk::external::arrow::array::Float64Array;
+use re_sdk::{Component as _, Timeline};
 use re_view_time_series::TimeSeriesView;
-use re_viewer::external::re_sdk_types;
+use re_viewer::external::re_sdk_types::{self, components, datatypes};
 use re_viewer::external::re_viewer_context::ViewClass as _;
 use re_viewer::viewer_test_utils;
 
@@ -85,4 +85,42 @@ pub async fn test_time_series_max_views_spawned() {
     origin: /native_4, filter: ResolvedEntityPathFilter("+ $origin\n- /__properties/**")
     origin: /native_5, filter: ResolvedEntityPathFilter("+ $origin\n- /__properties/**")
     "#);
+}
+
+#[tokio::test(flavor = "multi_thread")]
+pub async fn test_time_series_does_not_spawn_for_non_scalar_physical_type() {
+    let mut harness = viewer_test_utils::viewer_harness(&Default::default());
+    harness.init_recording();
+
+    let timeline = Timeline::new_sequence("frame");
+
+    for frame in 0..10 {
+        harness.log_entity("string_scalar", |builder| {
+            builder.with_archetype_auto_row(
+                [(timeline, frame)],
+                &re_sdk_types::DynamicArchetype::new("custom")
+                    .with_component_override::<datatypes::Utf8>(
+                        "text_field",
+                        components::Scalar::name(), // We attach a semantic value.
+                        ["hello"],
+                    ),
+            )
+        });
+    }
+
+    harness.setup_viewport_blueprint(|ctx, blueprint| {
+        blueprint.set_auto_layout(true, ctx);
+        blueprint.set_auto_views(true, ctx);
+    });
+
+    let num_time_series_views = harness.setup_viewport_blueprint(|_ctx, blueprint| {
+        blueprint
+            .views
+            .values()
+            .filter(|view| view.class_identifier() == TimeSeriesView::identifier())
+            .count()
+    });
+
+    // But naturally don't spawn a view, because we can't visualize the `Utf8`.
+    assert_eq!(num_time_series_views, 0);
 }

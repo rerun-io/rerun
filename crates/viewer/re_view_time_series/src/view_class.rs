@@ -282,9 +282,7 @@ impl ViewClass for TimeSeriesView {
                     if !include_entity(entity_path) {
                         return None;
                     }
-                    reason
-                        .full_native_match(Scalars::descriptor_scalars().component)
-                        .then_some(entity_path)
+                    should_auto_spawn_time_series(reason).then_some(entity_path)
                 });
 
         ViewSpawnHeuristics::new_with_order_preserved(
@@ -1162,6 +1160,30 @@ fn scalar_datatype_priority(datatype: &re_log_types::external::arrow::datatypes:
 const RECOMMENDED_DATATYPES: &[DataType] =
     &[DataType::Float64, DataType::Float32, DataType::Float16];
 
+fn should_auto_spawn_time_series(reason: &VisualizableReason) -> bool {
+    has_native_scalar_semantics(reason) && all_scalar_mappings(reason).next().is_some()
+}
+
+fn has_native_scalar_semantics(reason: &VisualizableReason) -> bool {
+    // This is always going to be `Some`, but nicer than writing `expect`.
+    let Some(scalar_type) = Scalars::descriptor_scalars().component_type else {
+        return false;
+    };
+
+    let VisualizableReason::SingleRequiredComponentMatch(m) = reason else {
+        return reason.full_native_match(Scalars::descriptor_scalars().component);
+    };
+
+    m.matches.values().any(|match_info| {
+        matches!(
+            match_info,
+            DatatypeMatch::NativeSemantics { component_type, .. }
+            | DatatypeMatch::PhysicalDatatypeOnly { component_type, .. }
+                if component_type.as_ref() == Some(&scalar_type)
+        )
+    })
+}
+
 fn all_scalar_mappings(
     reason: &VisualizableReason,
 ) -> impl Iterator<Item = (ComponentIdentifier, VisualizerComponentSource)> {
@@ -1217,7 +1239,9 @@ fn all_scalar_mappings(
                 ..
             } => {
                 if selectors.is_empty() {
-                    if RECOMMENDED_DATATYPES.contains(match_info.arrow_datatype()) {
+                    if is_rerun_native_type
+                        || RECOMMENDED_DATATYPES.contains(match_info.arrow_datatype())
+                    {
                         Either::Left(Either::Left(std::iter::once((
                             primary_match_order,
                             is_rerun_native_type,
@@ -1233,14 +1257,15 @@ fn all_scalar_mappings(
                     // Nested field access: selector_index preserves field definition order.
                     Either::Right(selectors.iter().enumerate().filter_map(
                         move |(selector_index, (selector, datatype))| {
-                            RECOMMENDED_DATATYPES.contains(datatype).then_some((
-                                primary_match_order,
-                                is_rerun_native_type,
-                                scalar_datatype_priority(datatype),
-                                *source_component,
-                                selector_index,
-                                selector.to_string(),
-                            ))
+                            (is_rerun_native_type || RECOMMENDED_DATATYPES.contains(datatype))
+                                .then_some((
+                                    primary_match_order,
+                                    is_rerun_native_type,
+                                    scalar_datatype_priority(datatype),
+                                    *source_component,
+                                    selector_index,
+                                    selector.to_string(),
+                                ))
                         },
                     ))
                 }
