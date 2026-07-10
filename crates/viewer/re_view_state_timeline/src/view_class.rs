@@ -4,7 +4,7 @@ use re_log_types::{
 };
 use re_sdk_types::blueprint::archetypes::TimeAxis;
 use re_sdk_types::blueprint::components::LinkAxis;
-use re_time_ruler::TimeRangesUi;
+use re_time_ruler::{MAX_ZIG_WIDTH, TimeRangesUi};
 use re_ui::{Help, IconText, MouseButtonText, UiExt as _, icons, list_item};
 use re_viewer_context::{
     DataQueryResult, DataResultInteractionAddress, DragAndDropFeedback, GLOBAL_VIEW_ID,
@@ -28,16 +28,6 @@ const TOP_MARGIN: f32 = 4.0;
 /// Phases narrower than this on screen get folded into a merged region with their
 /// narrow neighbors. Wide phases always render with their own color.
 const MERGE_PHASE_THRESHOLD_PIXEL: f32 = 4.0;
-
-/// The chronologically last phase has no real end time. We extend it past the data end
-/// by this fraction of the visible data span so its label stays readable even when the
-/// final state was logged at (or near) the very end of the timeline.
-const LAST_PHASE_OVERHANG_FRACTION: f64 = 0.05;
-
-/// Jagged ("open-ended") right edge: how far each tooth sticks out, and how many teeth
-/// span the band height.
-const JAGGED_TOOTH_DEPTH: f32 = 5.0;
-const JAGGED_TOOTH_COUNT: usize = 5;
 
 /// One drawable item along a lane: either a single phase or a merged region.
 #[derive(Debug)]
@@ -351,10 +341,7 @@ impl ViewClass for StateTimelineView {
             )
         });
 
-        // The last phase has no real end; extend it past the data end by `overhang`.
         let data_span = (data_max - data_min).max(1.0);
-        let overhang = data_span * LAST_PHASE_OVERHANG_FRACTION;
-        let open_end_time: Option<f64> = timeline_end.map(|end| end as f64 + overhang);
 
         // When linked to global, derive the pan/zoom window from the shared blueprint view
         // range. Otherwise auto-fit the first time we render this timeline (stored per-view).
@@ -369,7 +356,7 @@ impl ViewClass for StateTimelineView {
         } else {
             *state.time_views.entry(query.timeline).or_insert_with(|| {
                 let min = data_min - data_span * 0.05;
-                let max = data_max + overhang + data_span * 0.05;
+                let max = data_max + data_span * 0.05;
                 TimeView {
                     min: TimeReal::from(min),
                     time_spanned: max - min,
@@ -407,6 +394,14 @@ impl ViewClass for StateTimelineView {
             time_view,
             std::slice::from_ref(&data_segment),
         );
+
+        // The last phase has no real end; it extends to the (slightly expanded) end of the
+        // segment, i.e. right up to the zig-zag "end of timeline" band (same as in the time
+        // panel). Using the timeline end itself would leave a bare strip the width of the
+        // segment expansion between the last phase and the band.
+        let open_end_time: Option<f64> = timeline_end
+            .and_then(|_| time_ranges_ui.segments.last())
+            .map(|segment| segment.time.max.as_f64());
 
         let current_time = TimeReal::from(query.latest_at.as_i64() as f64);
         let cursor_x = time_ranges_ui.x_from_time_f32(current_time);
@@ -497,13 +492,24 @@ impl ViewClass for StateTimelineView {
                             &time_ranges_ui,
                             time_type,
                             timestamp_format,
-                            label_color,
                             open_end_time,
                         );
                         visible_lane_band_rects.push((band_rect, *lane));
                     }
                 });
         });
+
+        // Mark the limits of the timeline with the same zig-zag bands the time panel uses.
+        // Painted over the lanes: the open-ended last phase of each lane extends slightly
+        // under the band, so its teeth carve into the phase.
+        re_time_ruler::paint_time_ranges_gaps(&time_ranges_ui, ui, &painter, rect.y_range());
+
+        // Lane labels go on top of the zig-zag bands; their translucent background plates
+        // keep them readable over the teeth.
+        let lanes_painter = painter.with_clip_rect(lanes_rect);
+        for (band_rect, lane) in &visible_lane_band_rects {
+            paint_lane_label(ui, lane, label_color, &lanes_painter, *band_rect);
+        }
 
         // Dragging the time cursor.
         if let Some(cursor_response) = &cursor_response
@@ -594,7 +600,7 @@ impl ViewClass for StateTimelineView {
         // Publish the hovered phase so other views can highlight the same range.
         if let Some(pos) = hover_pos
             && let Some((phase_start, phase_end, phase_color)) =
-                find_hovered_phase(pos, lanes_rect, &all_lanes, &time_ranges_ui)
+                find_hovered_phase(pos, lanes_rect, &all_lanes, &time_ranges_ui, open_end_time)
         {
             let [r, g, b, _] = phase_color.to_array();
             #[expect(clippy::disallowed_methods)]
@@ -746,12 +752,14 @@ fn compute_render_items<'a>(
         }
 
         if is_last {
-            // The last phase is always its own item (never merged) and open-ended.
+            // The last phase is always its own item (never merged) and open-ended. It
+            // extends slightly under the zig-zag "end of timeline" band so the band's
+            // teeth carve into it instead of leaving background notches along its edge.
             pending.flush(&mut items);
             items.push(RenderItem::Single {
                 phase,
                 x_start: visible_x_start,
-                x_end: visible_x_end,
+                x_end: (visible_x_end + MAX_ZIG_WIDTH).min(lanes_rect.right()),
                 end_time: None,
             });
         } else if width >= MERGE_PHASE_THRESHOLD_PIXEL {
@@ -882,6 +890,7 @@ fn find_hovered_phase(
     lanes_rect: egui::Rect,
     lanes: &[&StateLane],
     time_ranges_ui: &TimeRangesUi,
+    open_end_time: Option<f64>,
 ) -> Option<(i64, Option<i64>, egui::Color32)> {
     re_tracing::profile_function!();
 
@@ -903,10 +912,16 @@ fn find_hovered_phase(
             };
             let next_phase = lane.phases.get(i + 1);
             let x_start = x_start.max(lanes_rect.left());
-            let x_end = next_phase
-                .and_then(|n| time_ranges_ui.x_from_time_f32(TimeReal::from(n.start_time as f64)))
-                .unwrap_or_else(|| lanes_rect.right())
-                .min(lanes_rect.right());
+            // The last phase extends to the end of the timeline, not the rect edge.
+            let x_end = match next_phase {
+                Some(next) => time_ranges_ui
+                    .x_from_time_f32(TimeReal::from(next.start_time as f64))
+                    .unwrap_or_else(|| lanes_rect.right()),
+                None => open_end_time
+                    .and_then(|t| time_ranges_ui.x_from_time_f32(TimeReal::from(t)))
+                    .unwrap_or_else(|| lanes_rect.right()),
+            }
+            .min(lanes_rect.right());
             if x_end <= x_start {
                 continue;
             }
@@ -930,7 +945,6 @@ fn show_lane(
     time_ranges_ui: &TimeRangesUi,
     time_type: TimeType,
     timestamp_format: TimestampFormat,
-    label_color: egui::Color32,
     open_end_time: Option<f64>,
 ) -> egui::Rect {
     let (response, painter) = ui.allocate_painter(
@@ -946,15 +960,6 @@ fn show_lane(
         ),
     );
 
-    // Lane label.
-    painter.text(
-        egui::pos2(rect.left() + 4.0, rect.top()),
-        egui::Align2::LEFT_TOP,
-        &lane.label,
-        egui::FontId::proportional(11.0),
-        label_color,
-    );
-
     let hover_pos = response.hover_pos();
     // `compute_render_items` uses the rect's x bounds for clipping phases to the
     // visible time range; y is unused. Passing the lane's own rect gives the same
@@ -964,7 +969,6 @@ fn show_lane(
     let merged_fill_inactive = ui.visuals().widgets.inactive.bg_fill;
     let merged_fill_hovered = ui.visuals().widgets.hovered.bg_fill;
     let merged_text_color = ui.visuals().text_color();
-    let background_color = ui.visuals().extreme_bg_color;
 
     for item in &render_items {
         let (x_start, x_end) = item.x_range();
@@ -975,18 +979,8 @@ fn show_lane(
         let hovered = hover_pos.is_some_and(|pos| item_rect.contains(pos));
 
         match item {
-            RenderItem::Single {
-                phase, end_time, ..
-            } => {
-                let open_ended = end_time.is_none();
-                paint_single(
-                    &painter,
-                    item_rect,
-                    phase,
-                    hovered,
-                    open_ended,
-                    background_color,
-                );
+            RenderItem::Single { phase, .. } => {
+                paint_single_phase(&painter, item_rect, phase, hovered);
             }
             RenderItem::Merged { count, .. } => {
                 let fill = if hovered {
@@ -994,7 +988,7 @@ fn show_lane(
                 } else {
                     merged_fill_inactive
                 };
-                paint_merged(&painter, item_rect, *count, fill, merged_text_color);
+                paint_merged_phase(&painter, item_rect, *count, fill, merged_text_color);
             }
         }
 
@@ -1008,15 +1002,40 @@ fn show_lane(
     band_rect
 }
 
+/// Paint a lane's entity label (above `band_rect`) on a translucent background-colored
+/// plate, so it stays readable where it overlaps the zig-zag "end of timeline" bands.
+/// Over the plain background (the common case) the plate is invisible.
+fn paint_lane_label(
+    ui: &egui::Ui,
+    lane: &StateLane,
+    label_color: egui::Color32,
+    painter: &egui::Painter,
+    band_rect: egui::Rect,
+) {
+    let label_pos = egui::pos2(band_rect.left() + 4.0, band_rect.top() - LANE_LABEL_HEIGHT);
+    let label_galley = painter.layout_no_wrap(
+        lane.label.clone(),
+        egui::FontId::proportional(11.0),
+        label_color,
+    );
+    let bg_color = ui.visuals().extreme_bg_color;
+    #[expect(clippy::disallowed_methods)] // Data-driven visualization color, not a UI theme color.
+    let label_bg_color =
+        egui::Color32::from_rgba_unmultiplied(bg_color.r(), bg_color.g(), bg_color.b(), 160);
+    painter.rect_filled(
+        egui::Rect::from_min_size(label_pos, label_galley.size()).expand2(egui::vec2(3.0, 1.0)),
+        2.0,
+        label_bg_color,
+    );
+    painter.galley(label_pos, label_galley, label_color);
+}
+
 /// Paint one normal phase: filled band (dimmed when not hovered) + clipped label.
-#[expect(clippy::fn_params_excessive_bools)] // `hovered` and `open_ended` are independent flags.
-fn paint_single(
+fn paint_single_phase(
     painter: &egui::Painter,
     rect: egui::Rect,
     phase: &StateLanePhase,
     hovered: bool,
-    open_ended: bool,
-    background_color: egui::Color32,
 ) {
     let Some(style) = &phase.content else {
         return;
@@ -1030,19 +1049,14 @@ fn paint_single(
         egui::Color32::from_rgba_unmultiplied(r, g, b, 200)
     };
 
-    if open_ended {
-        paint_jagged_band(painter, rect, fill, background_color);
-    } else {
-        painter.add(egui::epaint::RectShape::new(
-            rect,
-            0.0,
-            fill,
-            egui::Stroke::NONE,
-            egui::StrokeKind::Outside,
-        ));
-    }
+    painter.add(egui::epaint::RectShape::new(
+        rect,
+        0.0,
+        fill,
+        egui::Stroke::NONE,
+        egui::StrokeKind::Outside,
+    ));
 
-    // Label is clipped to the original band (left of the carved notches).
     if rect.width() - 6.0 > 10.0 {
         painter.with_clip_rect(rect).text(
             egui::pos2(rect.left() + 4.0, rect.top() + 3.0),
@@ -1054,49 +1068,11 @@ fn paint_single(
     }
 }
 
-/// Paint a band whose right edge is an inverse saw-tooth ("torn out") edge.
-fn paint_jagged_band(
-    painter: &egui::Painter,
-    rect: egui::Rect,
-    fill: egui::Color32,
-    background_color: egui::Color32,
-) {
-    let outer_right = rect.right() + JAGGED_TOOTH_DEPTH;
-
-    // Solid band, extended by one tooth depth.
-    let body = egui::Rect::from_min_max(rect.min, egui::pos2(outer_right, rect.bottom()));
-    painter.add(egui::epaint::RectShape::new(
-        body,
-        0.0,
-        fill,
-        egui::Stroke::NONE,
-        egui::StrokeKind::Outside,
-    ));
-
-    // Carve background-colored notches: base on the extended edge, apex pointing back in.
-    let jagged_right = outer_right + 0.5;
-    let tooth_h = rect.height() / JAGGED_TOOTH_COUNT as f32;
-    for k in 0..=JAGGED_TOOTH_COUNT {
-        let y0 = rect.top() + (k as f32 - 0.5) * tooth_h;
-        let y1 = y0 + tooth_h;
-        let apex = egui::pos2(rect.right(), f32::midpoint(y0, y1));
-        painter.add(egui::epaint::PathShape::convex_polygon(
-            vec![
-                egui::pos2(jagged_right, y0),
-                apex,
-                egui::pos2(jagged_right, y1),
-            ],
-            background_color,
-            egui::Stroke::NONE,
-        ));
-    }
-}
-
 /// Paint a merged region: a flat band in a theme widget color signaling that many
 /// narrow phases have been collapsed at the current zoom level. The caller picks the
 /// fill from `widgets.inactive`/`widgets.hovered` so the hover state stays
 /// token-driven rather than relying on an arbitrary multiplier.
-fn paint_merged(
+fn paint_merged_phase(
     painter: &egui::Painter,
     rect: egui::Rect,
     count: usize,
@@ -1416,8 +1392,9 @@ mod tests {
 
     #[test]
     fn last_phase_is_open_ended_and_extends_to_open_end_time() {
-        // Viewport t=[0, 100], one phase at t=0, open_end_time=50 (data end + overhang).
-        // The phase is open-ended (jagged edge) and ends at x=50 rather than the rect edge.
+        // Viewport t=[0, 100], one phase at t=0, open_end_time=50 (end of the timeline).
+        // The phase is open-ended and ends at x=50 plus the overshoot that tucks it
+        // under the zig-zag "end of timeline" band, rather than at the rect edge.
         let lane = lane(&[(0, true)]);
         let items = compute_render_items(&lane, unit_rect(), &ranges_ui(0.0, 100.0), Some(50.0));
         assert_eq!(items.len(), 1, "{items:?}");
@@ -1431,30 +1408,20 @@ mod tests {
             *end_time, None,
             "open-ended last phase has no end time: {items:?}"
         );
-        assert!((x_end - 50.0).abs() < 0.5, "x_end={x_end} items={items:?}");
+        assert!(
+            (x_end - (50.0 + MAX_ZIG_WIDTH)).abs() < 0.5,
+            "x_end={x_end} items={items:?}"
+        );
     }
 
     #[test]
-    fn open_end_overhang_keeps_last_phase_visible_when_logged_at_data_end() {
-        // Phase logged at the data end (t=100). With the viewport extending to t=120, the
-        // overhang (open_end_time=110) gives the last phase a non-zero width so its label
-        // stays readable, drawn open-ended. Maps 1 time unit -> 100/120 px.
+    fn last_phase_starting_at_open_end_has_zero_width_and_is_not_drawn() {
+        // Phase starting exactly at open_end_time gets zero width and produces no item.
+        // (In the view this doesn't normally happen: open_end_time is the segment's
+        // *expanded* end, so a state logged at the last tick keeps a small width.)
         let lane = lane(&[(0, true), (100, true)]);
-        let items = compute_render_items(&lane, unit_rect(), &ranges_ui(0.0, 120.0), Some(110.0));
-        assert_eq!(items.len(), 2, "{items:?}");
-        let RenderItem::Single {
-            x_start,
-            x_end,
-            end_time,
-            ..
-        } = &items[1]
-        else {
-            panic!("expected Single, got {items:?}");
-        };
-        assert_eq!(*end_time, None, "last phase is open-ended: {items:?}");
-        assert!(
-            x_end - x_start > 4.0,
-            "expected visible width, got {items:?}"
-        );
+        let items = compute_render_items(&lane, unit_rect(), &ranges_ui(0.0, 120.0), Some(100.0));
+        assert_eq!(items.len(), 1, "{items:?}");
+        assert!(is_single(&items[0], 0), "{items:?}");
     }
 }
