@@ -17,6 +17,13 @@ impl Plane3D {
     pub fn new(normal: impl Into<crate::datatypes::Vec3D>, distance: f32) -> Self {
         Self(crate::datatypes::Plane3D::new(normal, distance))
     }
+
+    /// Returns the same plane with a different distance from the origin.
+    #[inline]
+    pub const fn with_distance(mut self, distance: f32) -> Self {
+        self.0.0[3] = distance;
+        self
+    }
 }
 
 #[cfg(feature = "glam")]

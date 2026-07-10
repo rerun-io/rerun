@@ -28,3 +28,6 @@ FixedSizeList(4 x non-null Float32)
  * 🦀 [Rust API docs for `Plane3D`](https://docs.rs/rerun/latest/rerun/components/struct.Plane3D.html)
 
 
+## Used by
+
+* [`Planes3D`](../archetypes/planes3d.md)

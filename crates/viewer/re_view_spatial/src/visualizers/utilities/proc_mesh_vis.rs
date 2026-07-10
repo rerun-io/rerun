@@ -348,7 +348,9 @@ impl<'ctx> ProcMeshDrawableBuilder<'ctx> {
                         InstancePathHash::instance(entity_path, instance),
                     ),
                     additive_tint: tint,
-                    cull_mode: if tint.is_opaque() {
+                    cull_mode: if tint.is_opaque()
+                        && !matches!(proc_mesh_key, proc_mesh::ProcMeshKey::Plane)
+                    {
                         Some(re_renderer::external::wgpu::Face::Back)
                     } else {
                         None

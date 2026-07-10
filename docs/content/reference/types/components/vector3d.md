@@ -24,3 +24,4 @@ FixedSizeList(3 x non-null Float32)
 
 * [`Arrows3D`](../archetypes/arrows3d.md)
 * [`Mesh3D`](../archetypes/mesh3d.md)
+* [`Rays3D`](../archetypes/rays3d.md)

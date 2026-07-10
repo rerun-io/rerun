@@ -1,0 +1,56 @@
+namespace rerun.archetypes;
+
+// ---
+
+/// 3D rays with optional origins, colors, radii, labels, etc.
+///
+/// Each ray is represented by an origin and a vector. The vector gives both the direction and the
+/// finite length used for rendering. If no origin is specified, (0, 0, 0) is used.
+///
+/// \example archetypes/geometry3d_primitives missing="cpp" title="3D geometry primitives"
+table Rays3D (
+  "attr.cpp.no_field_ctors",
+  "attr.docs.category": "Spatial 3D",
+  "attr.docs.view_types": "Spatial3DView, Spatial2DView: if logged above active projection",
+  "attr.rerun.state": "stable",
+  "attr.rerun.visualizer": "Rays3D",
+  "attr.rust.derive": "PartialEq",
+  "attr.rust.new_pub_crate"
+) {
+  // --- Required ---
+
+  /// All the vectors for each ray in the batch.
+  vectors: [rerun.components.Vector3D] ("attr.rerun.component_required", order: 1000);
+
+  // --- Recommended ---
+
+  /// All the origin positions for each ray in the batch.
+  ///
+  /// If no origins are set, (0, 0, 0) is used as the origin for each ray.
+  origins: [rerun.components.Position3D] ("attr.rerun.component_recommended", nullable, order: 2000);
+
+  // --- Optional ---
+
+  /// Optional radii for the rays.
+  radii: [rerun.components.Radius] ("attr.rerun.component_optional", nullable, order: 3000);
+
+  /// Optional colors for the rays.
+  colors: [rerun.components.Color] ("attr.rerun.component_optional", nullable, order: 3100);
+
+  /// Optional text labels for the rays.
+  ///
+  /// If there's a single label present, it will be placed at the center of the entity.
+  /// Otherwise, each instance will have its own label.
+  labels: [rerun.components.Text] ("attr.rerun.component_optional", nullable, order: 3200);
+
+  /// Whether the text labels should be shown.
+  ///
+  /// If not set, labels will automatically appear when there is exactly one label for this entity
+  /// or the number of instances on this entity is under a certain threshold.
+  show_labels: rerun.components.ShowLabels ("attr.rerun.component_optional", nullable, order: 3250);
+
+  /// Optional class IDs for the rays.
+  ///
+  /// The [components.ClassId] provides colors and labels if not specified explicitly.
+  class_ids: [rerun.components.ClassId] ("attr.rerun.component_optional", nullable, order: 3300);
+}

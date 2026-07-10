@@ -83,6 +83,23 @@ pub enum ProcMeshKey {
         /// showing a minimal set of lines that outline the shape.
         axes_only: bool,
     },
+
+    /// The cone always has base radius 1 and length 2, centered on the origin.
+    /// It should be scaled to obtain the desired radius and length.
+    /// It always extends along the positive direction of the Z axis.
+    Cone {
+        /// Number of triangle subdivisions to use to create a finer, rounder mesh.
+        ///
+        /// The cone is approximated as a mesh with (N + 1) × 4 flat faces.
+        subdivisions: usize,
+
+        /// If true, wireframe meshes are generated with reduced complexity,
+        /// showing a minimal set of lines that outline the shape.
+        axes_only: bool,
+    },
+
+    /// A square plane patch in the XY plane, centered at the origin.
+    Plane,
 }
 
 impl ProcMeshKey {
@@ -113,6 +130,17 @@ impl ProcMeshKey {
                 // cylinder's radius is 1, so its size is 2
                 macaw::BoundingBox::from_center_size(Vec3::splat(0.0), Vec3::splat(2.0))
             }
+            Self::Cone {
+                subdivisions: _,
+                axes_only: _,
+            } => macaw::BoundingBox::from_min_max(
+                Vec3::new(-1.0, -1.0, -1.0),
+                Vec3::new(1.0, 1.0, 1.0),
+            ),
+            Self::Plane => macaw::BoundingBox::from_min_max(
+                Vec3::new(-1.0, -1.0, 0.0),
+                Vec3::new(1.0, 1.0, 0.0),
+            ),
         }
     }
 }
@@ -376,6 +404,60 @@ fn generate_wireframe(key: &ProcMeshKey, render_ctx: &RenderContext) -> Wirefram
                 line_strips,
             }
         }
+        ProcMeshKey::Cone {
+            subdivisions,
+            axes_only,
+        } => {
+            let n = ((subdivisions + 1) * 4).max(3);
+            let delta = std::f32::consts::TAU / (n as f32);
+            let z_base = -1.0;
+            let z_tip = 1.0;
+            let tip = Vec3::new(0.0, 0.0, z_tip);
+            let base_center = Vec3::new(0.0, 0.0, z_base);
+
+            let mut line_strips: Vec<Vec<Vec3>> = Vec::new();
+
+            let mut base_loop = Vec::with_capacity(n + 1);
+            for i in 0..n {
+                let theta = i as f32 * delta;
+                base_loop.push(Vec3::new(theta.cos(), theta.sin(), z_base));
+            }
+            base_loop.push(base_loop[0]);
+            line_strips.push(base_loop);
+
+            let num_spokes = if axes_only { 6 } else { n };
+            let delta = std::f32::consts::TAU / (num_spokes as f32);
+            for i in 0..num_spokes {
+                let theta = (i as f32) * delta;
+                let base = Vec3::new(theta.cos(), theta.sin(), z_base);
+                line_strips.push(vec![base, tip]);
+
+                if !axes_only {
+                    line_strips.push(vec![base, base_center]);
+                }
+            }
+
+            WireframeMesh {
+                bbox: key.simple_bounding_box(),
+                vertex_count: line_strips.iter().map(|strip| strip.len()).sum(),
+                line_strips,
+            }
+        }
+        ProcMeshKey::Plane => {
+            let line_strips = vec![vec![
+                Vec3::new(-1.0, -1.0, 0.0),
+                Vec3::new(1.0, -1.0, 0.0),
+                Vec3::new(1.0, 1.0, 0.0),
+                Vec3::new(-1.0, 1.0, 0.0),
+                Vec3::new(-1.0, -1.0, 0.0),
+            ]];
+
+            WireframeMesh {
+                bbox: key.simple_bounding_box(),
+                vertex_count: line_strips.iter().map(|strip| strip.len()).sum(),
+                line_strips,
+            }
+        }
     }
 }
 
@@ -615,6 +697,38 @@ fn generate_solid(key: &ProcMeshKey, render_ctx: &RenderContext) -> Result<Solid
             push_cylinder_solid(&mut mg, 1.0, 2.0, mg_subdivisions);
             mesh_from_mesh_gen(format!("{key:?}").into(), mg, render_ctx, bbox)
         }
+        ProcMeshKey::Cone {
+            subdivisions,
+            axes_only: _, // not used for solid mesh
+        } => {
+            let mg_subdivisions = (subdivisions + 1) * 4;
+            let mut mg = macaw::MeshGen::new();
+
+            push_cone_solid(&mut mg, 1.0, 2.0, mg_subdivisions);
+            mesh_from_mesh_gen(format!("{key:?}").into(), mg, render_ctx, bbox)
+        }
+        ProcMeshKey::Plane => {
+            let vertex_positions = vec![
+                Vec3::new(-1.0, -1.0, 0.0),
+                Vec3::new(1.0, -1.0, 0.0),
+                Vec3::new(1.0, 1.0, 0.0),
+                Vec3::new(-1.0, 1.0, 0.0),
+            ];
+            let triangle_indices = vec![uvec3(0, 1, 2), uvec3(0, 2, 3)];
+            let num_vertices = vertex_positions.len();
+            let materials = materials_for_uncolored_mesh(render_ctx, triangle_indices.len());
+
+            mesh::CpuMesh {
+                label: format!("{key:?}").into(),
+                triangle_indices,
+                vertex_positions,
+                vertex_normals: vec![Vec3::Z; num_vertices],
+                vertex_colors: vec![re_renderer::Rgba32Unmul::BLACK; num_vertices],
+                vertex_texcoords: vec![glam::Vec2::ZERO; num_vertices],
+                materials,
+                bbox,
+            }
+        }
     };
 
     mesh.sanity_check()?;
@@ -623,6 +737,54 @@ fn generate_solid(key: &ProcMeshKey, render_ctx: &RenderContext) -> Result<Solid
         bbox: key.simple_bounding_box(),
         gpu_mesh: Arc::new(GpuMesh::new(render_ctx, &mesh)?),
     })
+}
+
+/// Creates a cone aligned along the Z axis, centered vertically.
+fn push_cone_solid(mesh_gen: &mut MeshGen, radius: f32, height: f32, subdivisions: usize) {
+    let index_offset = mesh_gen.positions.len() as u32;
+    let n = subdivisions.max(3) as u32;
+    let half_height = height * 0.5;
+    let delta = 2.0 * std::f32::consts::PI / n as f32;
+
+    let tip_index = index_offset;
+    let base_center_index = index_offset + 1;
+
+    mesh_gen.positions.push(Vec3::new(0.0, 0.0, half_height));
+    mesh_gen.normals.push(Vec3::new(0.0, 0.0, 1.0));
+    mesh_gen.positions.push(Vec3::new(0.0, 0.0, -half_height));
+    mesh_gen.normals.push(Vec3::new(0.0, 0.0, -1.0));
+
+    for i in 0..n {
+        let theta = i as f32 * delta;
+        let (cos_theta, sin_theta) = (theta.cos(), theta.sin());
+        let x = radius * cos_theta;
+        let y = radius * sin_theta;
+
+        mesh_gen.positions.push(Vec3::new(x, y, -half_height));
+        mesh_gen.normals.push(Vec3::new(0.0, 0.0, -1.0));
+
+        mesh_gen.positions.push(Vec3::new(x, y, -half_height));
+        mesh_gen
+            .normals
+            .push(Vec3::new(cos_theta, sin_theta, radius / height).normalize());
+    }
+
+    for i in 0..n {
+        let base_rim = index_offset + 2 + i * 2;
+        let next_base_rim = index_offset + 2 + ((i + 1) % n) * 2;
+        mesh_gen
+            .indices
+            .extend_from_slice(&[base_center_index, next_base_rim, base_rim]);
+    }
+
+    let side_base = index_offset + 3;
+    for i in 0..n {
+        let side_rim = side_base + i * 2;
+        let next_side_rim = side_base + ((i + 1) % n) * 2;
+        mesh_gen
+            .indices
+            .extend_from_slice(&[tip_index, side_rim, next_side_rim]);
+    }
 }
 
 /// Creates a cylinder aligned along the Y axis, centered vertically.

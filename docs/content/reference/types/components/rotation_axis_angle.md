@@ -30,6 +30,7 @@ Struct(
 
 * [`Boxes3D`](../archetypes/boxes3d.md)
 * [`Capsules3D`](../archetypes/capsules3d.md)
+* [`Cones3D`](../archetypes/cones3d.md)
 * [`Cylinders3D`](../archetypes/cylinders3d.md)
 * [`Ellipsoids3D`](../archetypes/ellipsoids3d.md)
 * [`GridMap`](../archetypes/grid_map.md)

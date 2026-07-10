@@ -29,3 +29,4 @@ FixedSizeList(2 x non-null Float32)
 
 * [`Boxes2D`](../archetypes/boxes2d.md)
 * [`Ellipses2D`](../archetypes/ellipses2d.md)
+* [`Planes3D`](../archetypes/planes3d.md)

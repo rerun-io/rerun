@@ -27,4 +27,5 @@ Float32
 
 * [`BarChart`](../archetypes/bar_chart.md)
 * [`Capsules3D`](../archetypes/capsules3d.md)
+* [`Cones3D`](../archetypes/cones3d.md)
 * [`Cylinders3D`](../archetypes/cylinders3d.md)

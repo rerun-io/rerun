@@ -12,6 +12,7 @@ from .boxes2d import Boxes2D
 from .boxes3d import Boxes3D
 from .capsules3d import Capsules3D
 from .clear import Clear
+from .cones3d import Cones3D
 from .coordinate_frame import CoordinateFrame
 from .cylinders3d import Cylinders3D
 from .depth_image import DepthImage
@@ -34,8 +35,10 @@ from .mcap_schema import McapSchema
 from .mcap_statistics import McapStatistics
 from .mesh3d import Mesh3D
 from .pinhole import Pinhole
+from .planes3d import Planes3D
 from .points2d import Points2D
 from .points3d import Points3D
+from .rays3d import Rays3D
 from .recording_info import RecordingInfo
 from .scalars import Scalars
 from .segmentation_image import SegmentationImage
@@ -48,6 +51,7 @@ from .text_document import TextDocument
 from .text_log import TextLog
 from .transform3d import Transform3D
 from .transform_axes3d import TransformAxes3D
+from .triangles3d import Triangles3D
 from .video_frame_reference import VideoFrameReference
 from .video_stream import VideoStream
 from .view_coordinates import ViewCoordinates
@@ -64,6 +68,7 @@ __all__ = [
     "Boxes3D",
     "Capsules3D",
     "Clear",
+    "Cones3D",
     "CoordinateFrame",
     "Cylinders3D",
     "DepthImage",
@@ -86,8 +91,10 @@ __all__ = [
     "McapStatistics",
     "Mesh3D",
     "Pinhole",
+    "Planes3D",
     "Points2D",
     "Points3D",
+    "Rays3D",
     "RecordingInfo",
     "Scalars",
     "SegmentationImage",
@@ -100,6 +107,7 @@ __all__ = [
     "TextLog",
     "Transform3D",
     "TransformAxes3D",
+    "Triangles3D",
     "VideoFrameReference",
     "VideoStream",
     "ViewCoordinates",

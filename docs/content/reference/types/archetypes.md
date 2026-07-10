@@ -60,13 +60,17 @@ This page lists all built-in archetypes.
 * [`Asset3D`](archetypes/asset3d.md): A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, `.stl`, etc.).
 * [`Boxes3D`](archetypes/boxes3d.md): 3D boxes with half-extents and optional center, rotations, colors etc.
 * [`Capsules3D`](archetypes/capsules3d.md): 3D capsules; cylinders with hemispherical caps.
+* [`Cones3D`](archetypes/cones3d.md): 3D cones with flat circular bases.
 * [`Cylinders3D`](archetypes/cylinders3d.md): 3D cylinders with flat caps.
 * [`Ellipsoids3D`](archetypes/ellipsoids3d.md): 3D ellipsoids or spheres.
 * [`GridMap`](archetypes/grid_map.md): A 2D grid map stored as raster data in an image buffer, with a cell size in scene units and pose.
 * [`InstancePoses3D`](archetypes/instance_poses3d.md): One or more transforms applied on the current entity's transform frame.
 * [`LineStrips3D`](archetypes/line_strips3d.md): 3D line strips with positions and optional colors, radii, labels, etc.
 * [`Mesh3D`](archetypes/mesh3d.md): A 3D triangle mesh as specified by its per-mesh and per-vertex properties.
+* [`Planes3D`](archetypes/planes3d.md): 3D planes with finite viewer extents.
 * [`Points3D`](archetypes/points3d.md): A 3D point cloud with positions and optional colors, radii, labels, etc.
+* [`Rays3D`](archetypes/rays3d.md): 3D rays with optional origins, colors, radii, labels, etc.
+* [`Triangles3D`](archetypes/triangles3d.md): 3D triangles with optional colors, radii, labels, etc.
 * [`VoxelGridMap`](archetypes/voxel_grid_map.md): A sparse 3D voxel grid map with grid indices and voxel dimensions.
 
 ## Text
