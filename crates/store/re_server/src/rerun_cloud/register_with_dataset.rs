@@ -419,13 +419,16 @@ async fn register_sources(
 /// Returns a deduplicated set because a single RRD can contain duplicate
 /// `SetStoreInfo` messages for the same store.
 #[cfg(not(target_arch = "wasm32"))]
-#[expect(clippy::unused_async)]
 async fn load_store_ids(rrd_path: &RrdPath) -> tonic::Result<BTreeSet<StoreId>> {
-    let mut file = std::fs::File::open(rrd_path).map_err(|err| {
-        tonic::Status::internal(format!(
-            "Failed to open RRD file: {err:#}\nFile path: {rrd_path:?}"
-        ))
-    })?;
+    let mut file = tokio::fs::File::open(rrd_path)
+        .await
+        .map_err(|err| {
+            tonic::Status::internal(format!(
+                "Failed to open RRD file: {err:#}\nFile path: {rrd_path:?}"
+            ))
+        })?
+        .into_std()
+        .await;
 
     let store_ids = re_log_encoding::enumerate_rrd_stores(&mut file).map_err(|err| {
         tonic::Status::internal(format!("Failed to enumerate RRD stores: {err:#}"))

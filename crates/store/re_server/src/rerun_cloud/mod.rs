@@ -277,7 +277,7 @@ impl RerunCloudHandler {
             .collect())
     }
 
-    fn resolve_data_sources(data_sources: &[DataSource]) -> tonic::Result<Vec<DataSource>> {
+    async fn resolve_data_sources(data_sources: &[DataSource]) -> tonic::Result<Vec<DataSource>> {
         let mut resolved = Vec::<DataSource>::with_capacity(data_sources.len());
         for source in data_sources {
             if source.is_prefix {
@@ -302,14 +302,17 @@ impl RerunCloudHandler {
                             source.storage_url
                         ))
                     })?;
-                    let meta = std::fs::metadata(&path).map_err(|err| match err.kind() {
-                        std::io::ErrorKind::NotFound => tonic::Status::invalid_argument(format!(
-                            "Directory not found: {path:?}"
-                        )),
-                        _ => tonic::Status::invalid_argument(format!(
-                            "Failed to read directory metadata {path:?}: {err:#}"
-                        )),
-                    })?;
+                    let meta =
+                        tokio::fs::metadata(&path)
+                            .await
+                            .map_err(|err| match err.kind() {
+                                std::io::ErrorKind::NotFound => tonic::Status::invalid_argument(
+                                    format!("Directory not found: {path:?}"),
+                                ),
+                                _ => tonic::Status::invalid_argument(format!(
+                                    "Failed to read directory metadata {path:?}: {err:#}"
+                                )),
+                            })?;
                     if !meta.is_dir() {
                         return Err(tonic::Status::invalid_argument(format!(
                             "expected prefix / directory but got an object ({path:?})"
@@ -321,21 +324,26 @@ impl RerunCloudHandler {
                     let mut files = Vec::new();
 
                     while let Some(current_dir) = dirs_to_visit.pop() {
-                        let entries = std::fs::read_dir(&current_dir).map_err(|err| {
-                            tonic::Status::internal(format!(
-                                "Failed to read directory {current_dir:?}: {err:#}"
-                            ))
-                        })?;
-
-                        for entry in entries {
-                            let entry = entry.map_err(|err| {
+                        let mut entries =
+                            tokio::fs::read_dir(&current_dir).await.map_err(|err| {
                                 tonic::Status::internal(format!(
-                                    "Failed to read directory entry: {err:#}"
+                                    "Failed to read directory {current_dir:?}: {err:#}"
                                 ))
                             })?;
-                            let entry_path = entry.path();
 
-                            if entry_path.is_dir() {
+                        while let Some(entry) = entries.next_entry().await.map_err(|err| {
+                            tonic::Status::internal(format!(
+                                "Failed to read directory entry: {err:#}"
+                            ))
+                        })? {
+                            let entry_path = entry.path();
+                            let file_type = entry.file_type().await.map_err(|err| {
+                                tonic::Status::internal(format!(
+                                    "Failed to read directory entry metadata: {err:#}"
+                                ))
+                            })?;
+
+                            if file_type.is_dir() {
                                 dirs_to_visit.push(entry_path);
                             } else if let Some(extension) = entry_path.extension()
                                 && extension == "rrd"
@@ -954,7 +962,7 @@ impl RerunCloudService for RerunCloudHandler {
             on_duplicate,
         } = request.into_inner().try_into()?;
 
-        let data_sources = Self::resolve_data_sources(&data_sources)?;
+        let data_sources = Self::resolve_data_sources(&data_sources).await?;
         if data_sources.is_empty() {
             return Err(tonic::Status::invalid_argument(
                 "no data sources to register",

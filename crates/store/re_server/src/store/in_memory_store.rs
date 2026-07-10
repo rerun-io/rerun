@@ -230,7 +230,7 @@ impl InMemoryStore {
         on_duplicate: IfDuplicateBehavior,
         on_error: OnError,
     ) -> Result<(), Error> {
-        let directory = named_path.path.canonicalize()?;
+        let directory = tokio::fs::canonicalize(&named_path.path).await?;
         if !directory.is_dir() {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidInput,
@@ -253,9 +253,9 @@ impl InMemoryStore {
             .create_dataset(entry_name, None)
             .expect("Name cannot yet exist");
 
-        for entry in std::fs::read_dir(&directory)? {
-            let entry = entry?;
-            if entry.file_type()?.is_file() {
+        let mut entries = tokio::fs::read_dir(&directory).await?;
+        while let Some(entry) = entries.next_entry().await? {
+            if entry.file_type().await?.is_file() {
                 let is_rrd = entry
                     .file_name()
                     .to_str()
@@ -306,7 +306,7 @@ impl InMemoryStore {
 
         use re_protos::cloud::v1alpha1::ext::LanceTable;
 
-        let directory = named_path.path.canonicalize()?;
+        let directory = tokio::fs::canonicalize(&named_path.path).await?;
         if !directory.is_dir() {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidInput,
