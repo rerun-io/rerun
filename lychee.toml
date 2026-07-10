@@ -161,6 +161,7 @@ exclude = [
   'https://claude.site/artifacts/*', # Giving a 500, but only from CI
   'https://fifteen-thirtyeight.rerun.io/script.js', # Gives 403 forbidden on CI.
   'https://github.com/user-attachments/assets/.*', # Gives Not Found on CI, but works locally.
+  'https://git.sr.ht/*', # Bot protection returns 418 I'm a teapot on CI.
   'https://lib.rs/*', # Gives 403 forbidden on CI.
   'https://math.stackexchange.com/*', # Gives 403 forbidden on CI.
   'https://pixabay.com/photos/brother-sister-girl-family-boy-977170/', # Gives 403 forbidden on CI.
