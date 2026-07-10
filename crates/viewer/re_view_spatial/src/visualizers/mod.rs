@@ -124,8 +124,10 @@ pub fn register_3d_spatial_visualizers(
     system_registry.register_visualizer::<lines2d::Lines2DVisualizer>()?;
     system_registry.register_visualizer::<lines3d::Lines3DVisualizer>()?;
     system_registry.register_visualizer::<meshes::Mesh3DVisualizer>()?;
+    system_registry.register_visualizer::<planes3d::Planes3DVisualizer>()?;
     system_registry.register_visualizer::<points2d::Points2DVisualizer>()?;
     system_registry.register_visualizer::<points3d::Points3DVisualizer>()?;
+    system_registry.register_visualizer::<rays3d::Rays3DVisualizer>()?;
     system_registry.register_visualizer::<segmentation_images::SegmentationImageVisualizer>()?;
     system_registry.register_visualizer::<transform_axes_3d::TransformAxes3DVisualizer>()?;
     system_registry.register_visualizer::<triangles3d::Triangles3DVisualizer>()?;
