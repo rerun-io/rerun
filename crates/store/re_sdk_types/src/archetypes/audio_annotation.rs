@@ -36,8 +36,9 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// ### Log ASR word spans for audio.
 /// ```ignore
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_audio_annotation")
-///         .spawn()?;
+///     let rec =
+///         rerun::RecordingStreamBuilder::new("rerun_example_audio_annotation")
+///             .spawn()?;
 ///
 ///     rec.set_time("time", rerun::Duration::from_secs(0.0));
 ///     rec.log(

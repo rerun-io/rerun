@@ -5,6 +5,7 @@ import shutil
 import subprocess
 import wave
 from pathlib import Path
+from typing import cast
 
 import numpy as np
 
@@ -36,7 +37,7 @@ def stft_magnitude_db(
     window_values = window_function(window, window_size)
     spectrum = np.fft.rfft(frames * window_values, axis=-1)
     magnitude = np.abs(spectrum).astype(np.float32)
-    return 20.0 * np.log10(np.maximum(magnitude, 1e-6))
+    return cast("np.ndarray", (20.0 * np.log10(np.maximum(magnitude, 1e-6))).astype(np.float32))
 
 
 def window_function(name: str, window_size: int) -> np.ndarray:
@@ -106,7 +107,7 @@ def mel_spectrogram_db(
     window = np.hanning(window_size).astype(np.float32)
     power = np.abs(np.fft.rfft(frames * window, axis=-1)).astype(np.float32) ** 2
     mel_power = power @ mel_filterbank(sample_rate=sample_rate, fft_size=window_size, num_mels=num_mels).T
-    return 10.0 * np.log10(np.maximum(mel_power, 1e-10))
+    return cast("np.ndarray", (10.0 * np.log10(np.maximum(mel_power, 1e-10))).astype(np.float32))
 
 
 def mfcc(

@@ -60,10 +60,12 @@ from .containers import (
     Vertical as Vertical,
 )
 from .views import (
+    AudioView as AudioView,
     BarChartView as BarChartView,
     DataframeView as DataframeView,
     GraphView as GraphView,
     MapView as MapView,
+    SignalHeatmapView as SignalHeatmapView,
     Spatial2DView as Spatial2DView,
     Spatial3DView as Spatial3DView,
     StateTimelineView as StateTimelineView,
