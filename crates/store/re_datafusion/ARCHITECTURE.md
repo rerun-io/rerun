@@ -49,13 +49,10 @@ working set stays bounded.
    - one **IO loop** task (`chunk_stream_io_loop`)
    connected by a single bounded `tokio::mpsc` channel carrying `CpuWorkerMsg`.
 
-2. The IO loop iterates the partition's `chunk_info` rows
-   (already grouped by segment), groups fetches into target-sized batches
-   (`create_request_batches`), and dispatches them via `buffer_unordered`.
+2. The IO loop iterates the partition's `chunk_info` rows (already grouped by segment), groups fetches into target-sized batches (`create_request_batches`), and assigns those batches to segment waves of at most `MAX_CONCURRENT_SEGMENTS` segments.
 
-3. Each fetch task reserves bytes from the shared `PipelineBudget` *before*
-   the actual fetch starts, then commits the post-decode delta via
-   `ReservationGuard::commit` and pushes decoded chunks downstream.
+3. Before a wave can allocate CPU-worker state or enter the fetch buffer, the IO loop admits that wave through `PipelineBudget`'s segment-count gate with a zero-byte reservation.
+   Within the admitted wave, each fetch task reserves bytes from the shared `PipelineBudget` *before* the actual fetch starts, then commits the post-decode delta via `ReservationGuard::commit` and pushes decoded chunks downstream.
 
 4. The CPU worker keys a `HashMap<SegmentId, CurrentStores>` and routes
    incoming chunks to the right per-segment in-memory `ChunkStore`. After
@@ -147,10 +144,9 @@ reasons:
    across the worker still scales with the number of open segments times
    each manifest's size. A bounded segment count caps that aggregate.
 
-The cap is admitted **atomically with the byte reservation** under the
-`active_segments` lock in `PipelineBudget::try_admit`. Admitting only a
-representative segment_id would let a multi-segment fetch from
-`create_request_batches` stealth-open additional segments past the cap.
+The cap is admitted under the `active_segments` lock in `PipelineBudget::try_admit` before a segment wave is allowed to allocate CPU-worker state or enter the fetch buffer.
+Fetches inside an admitted wave still reserve bytes before decode, but they no longer use the fetch-concurrency buffer to wait for not-yet-admissible future segments.
+Admitting only a representative segment_id would let a multi-segment fetch from `create_request_batches` stealth-open additional segments past the cap.
 
 ### 4. Do not add a CPU-side `publish_segment_started` path back
 
@@ -181,13 +177,10 @@ reservation. Concrete failure:
    is now advisory; the per-segment HashMap + manifest cost the cap
    exists to bound can blow up unboundedly.
 
-The fix is to fire the signal on the IO side, atomically with the
-byte reservation, under the same `active_segments` lock that admits
-the bytes. `PipelineBudget::try_admit` takes `(segment_ids, bytes)`
-together: either both gates clear and the slots + bytes are taken,
-or neither is and the caller parks. The IO side already knows which
-segments a batch covers (from `create_request_batches`), so it has
-everything it needs at admission time.
+The fix is to fire the signal on the IO side, under the same `active_segments` lock that admits byte reservations.
+`PipelineBudget::try_admit` takes `(segment_ids, bytes)` together: either both gates clear and the slots + bytes are taken, or neither is and the caller parks.
+The segment-wave scheduler uses the same path with a zero-byte reservation before it sends CPU metadata or starts fetches for that wave.
+The IO side already knows which segments a batch covers (from `create_request_batches`), so it has everything it needs at admission time.
 
 `publish_segment_finalized` is the symmetric counterpart but lives on
 the *CPU* side, and that asymmetry is deliberate. Finalization

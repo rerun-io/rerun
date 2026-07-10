@@ -276,6 +276,29 @@ fn extract_chunk_sizes(chunk_info: &RecordBatch) -> ApiResult<quiver::Column<u64
 
 type BatchingResult = (Vec<RecordBatch>, Vec<SegmentId>);
 
+enum FetchTask {
+    Direct(RecordBatch),
+    Grpc(RecordBatch),
+}
+
+fn split_batches_into_fetch_tasks(batches: &[RecordBatch]) -> (Vec<FetchTask>, usize, usize) {
+    let mut work_items: Vec<FetchTask> = Vec::new();
+    let mut n_direct = 0usize;
+    let mut n_grpc = 0usize;
+    for batch in batches {
+        let (direct_batch, grpc_batch) = split_batch_by_direct_url(batch);
+        if let Some(b) = direct_batch {
+            n_direct += 1;
+            work_items.push(FetchTask::Direct(b));
+        }
+        if let Some(b) = grpc_batch {
+            n_grpc += 1;
+            work_items.push(FetchTask::Grpc(b));
+        }
+    }
+    (work_items, n_direct, n_grpc)
+}
+
 /// Groups `chunk_infos` into batches targeting the specified size, with special handling
 /// for segments larger than the target size (which get split). Batches smaller than `target_size`
 /// are merged together to reduce the number of requests.
@@ -538,6 +561,131 @@ fn create_grpc_batch_groups(batches: &[RecordBatch]) -> ApiResult<Vec<&[RecordBa
     Ok(groups)
 }
 
+fn distinct_segment_ids_for_batch(batch: &RecordBatch) -> ApiResult<Vec<String>> {
+    let mut seen = HashSet::new();
+    let mut segment_ids = Vec::new();
+    extend_distinct_segment_ids(batch, &mut seen, &mut segment_ids)?;
+    Ok(segment_ids)
+}
+
+fn segment_wave_index(
+    segment_id: &str,
+    segment_to_wave: &HashMap<String, usize>,
+) -> ApiResult<usize> {
+    segment_to_wave.get(segment_id).copied().ok_or_else(|| {
+        ApiError::internal(format!(
+            "fetch batch references segment {segment_id} that is not present in global segment order"
+        ))
+    })
+}
+
+fn batches_by_segment_wave(
+    batches: &[RecordBatch],
+    global_segment_order: &[SegmentId],
+) -> ApiResult<Vec<Vec<RecordBatch>>> {
+    let n_waves = global_segment_order.len().div_ceil(MAX_CONCURRENT_SEGMENTS);
+    let mut segment_to_wave = HashMap::new();
+    for (idx, segment_id) in global_segment_order.iter().enumerate() {
+        segment_to_wave.insert(
+            segment_id.as_ref().to_owned(),
+            idx / MAX_CONCURRENT_SEGMENTS,
+        );
+    }
+
+    let mut waves = vec![Vec::new(); n_waves];
+    for batch in batches {
+        let segment_ids = distinct_segment_ids_for_batch(batch)?;
+        let Some(first_segment) = segment_ids.first() else {
+            continue;
+        };
+        let wave_idx = segment_wave_index(first_segment, &segment_to_wave)?;
+        for segment_id in &segment_ids[1..] {
+            let other_wave_idx = segment_wave_index(segment_id, &segment_to_wave)?;
+            if other_wave_idx != wave_idx {
+                return Err(ApiError::internal(format!(
+                    "fetch batch spans segment waves: first segment {first_segment} is in wave \
+                     {wave_idx}, but segment {segment_id} is in wave {other_wave_idx}"
+                )));
+            }
+        }
+        waves[wave_idx].push(batch.clone());
+    }
+
+    Ok(waves)
+}
+
+async fn admit_segment_wave(
+    wave_segments: &[SegmentId],
+    wave_batches: &[RecordBatch],
+    segment_chunk_counts: &HashMap<SegmentId, usize>,
+    manifests: &mut HashMap<SegmentId, SegmentChunkManifest>,
+    output_channel: &Sender<ApiResult<CpuWorkerMsg>>,
+    pipeline_budget: &PipelineBudget,
+    filtered_index_timeline: Option<&str>,
+) -> ApiResult<bool> {
+    if wave_segments.is_empty() {
+        return Ok(true);
+    }
+
+    let task_time_min = wave_batches
+        .iter()
+        .map(|b| extract_task_time_min(b, filtered_index_timeline))
+        .min()
+        .unwrap_or(TimeInt::MAX);
+    let segment_ids = wave_segments
+        .iter()
+        .map(|segment_id| segment_id.as_ref().to_owned())
+        .collect();
+
+    // Admit the segment wave before it can allocate CPU-worker state or enter
+    // the fetch buffer. This keeps the segment-count gate's O(open segments)
+    // memory/CPU invariant, while avoiding the deadlock where non-admissible
+    // segment waiters occupy all `buffer_unordered` slots needed by already-open
+    // segments. The zero-byte guard is intentionally committed only after the
+    // CPU metadata is queued; if the channel closes while sending metadata,
+    // dropping the guard vacates the segment slots that the CPU worker will never
+    // observe.
+    let admission_guard = pipeline_budget
+        .reserve_guarded_with_priority(0, task_time_min, segment_ids)
+        .await;
+
+    for segment_id in wave_segments {
+        let count = segment_chunk_counts
+            .get(segment_id)
+            .copied()
+            .ok_or_else(|| {
+                ApiError::internal(format!(
+                    "missing chunk count for admitted segment {segment_id}"
+                ))
+            })?;
+        if output_channel
+            .send(Ok(CpuWorkerMsg::SegmentChunkCount {
+                segment_id: segment_id.clone(),
+                count,
+            }))
+            .await
+            .is_err()
+        {
+            return Ok(false);
+        }
+
+        if let Some(manifest) = manifests.remove(segment_id)
+            && output_channel
+                .send(Ok(CpuWorkerMsg::SegmentManifest {
+                    segment_id: segment_id.clone(),
+                    manifest: Box::new(manifest),
+                }))
+                .await
+                .is_err()
+        {
+            return Ok(false);
+        }
+    }
+
+    admission_guard.commit(0);
+    Ok(true)
+}
+
 /// Fetch remaining batches via batched gRPC (groups of `GRPC_BATCH_SIZE`),
 /// preserving ordering.
 async fn fetch_remaining_via_grpc<T: DataframeClientAPI>(
@@ -649,52 +797,23 @@ pub(super) async fn chunk_stream_io_loop<T: DataframeClientAPI>(
     // One row per chunk in each `RecordBatch` of chunk-info.
     let n_chunks: usize = chunk_infos.iter().map(|rb| rb.num_rows()).sum();
 
-    // Announce the per-segment chunk count to the CPU worker before any
-    // fetch dispatches start, so the worker can fire each segment's
-    // final drain as soon as it receives the last chunk rather than
-    // waiting for the channel to close.
-    let segment_chunk_counts = count_chunks_per_segment(&chunk_infos)?;
-    for (segment_id, count) in segment_chunk_counts {
-        if output_channel
-            .send(Ok(CpuWorkerMsg::SegmentChunkCount { segment_id, count }))
-            .await
-            .is_err()
-        {
-            // Consumer hung up before we even started fetching — no
-            // point continuing.
-            return Ok(());
-        }
-    }
+    let segment_chunk_counts: HashMap<SegmentId, usize> = count_chunks_per_segment(&chunk_infos)?
+        .into_iter()
+        .collect();
 
-    // When a temporal `filtered_index` is set, build per-segment
-    // manifests from the `{timeline}:start` columns and ship them down
-    // so the CPU worker can run horizon-driven incremental emit + GC.
-    // Empty result map = no temporal info available (static-only query,
-    // or old server without `:start`) → worker falls back to
-    // completion-only flush, governed by the chunk counts above.
-    // Owned copy of the timeline name for the budget's priority key —
-    // `build_segment_manifests` consumes the `Option<TimelineName>` below.
-    // Wrapped in `Arc<str>` so the per-task fetch fan-out clones a
-    // pointer per spawn instead of an owned `String`.
+    // When a temporal `filtered_index` is set, build per-segment manifests from the
+    // `{timeline}:start` columns. Metadata is sent to the CPU worker wave-by-wave,
+    // only after the corresponding segment IDs have been admitted by the budget's
+    // segment-count gate; sending it all up front would let the CPU worker allocate
+    // per-segment state for hundreds of not-yet-admissible segments.
     let filtered_index_timeline_str: Option<Arc<str>> = filtered_index_timeline
         .as_ref()
         .map(|t| Arc::<str>::from(t.as_str()));
-    let manifests = build_segment_manifests(&chunk_infos, filtered_index_timeline)?;
-    for (segment_id, manifest) in manifests {
-        if output_channel
-            .send(Ok(CpuWorkerMsg::SegmentManifest {
-                segment_id,
-                manifest: Box::new(manifest),
-            }))
-            .await
-            .is_err()
-        {
-            return Ok(());
-        }
-    }
+    let mut manifests = build_segment_manifests(&chunk_infos, filtered_index_timeline)?;
 
     let (request_batches, global_segment_order) =
         create_request_batches(chunk_infos, target_size_bytes)?;
+    let request_batches_by_wave = batches_by_segment_wave(&request_batches, &global_segment_order)?;
 
     let span = tracing::Span::current();
     span.record("n_chunks", n_chunks);
@@ -710,8 +829,13 @@ pub(super) async fn chunk_stream_io_loop<T: DataframeClientAPI>(
     // Allow overriding the fetch strategy via environment variable.
     let force_grpc = force_grpc();
 
-    // Fast path: if no batches contain direct URLs (or gRPC is forced), fetch everything via gRPC.
-    if force_grpc || !request_batches.iter().any(batch_has_any_direct_urls) {
+    // Process segment waves sequentially. Within a wave, fetch concurrency is still
+    // high and byte-bounded by PipelineBudget. Across waves, segment admission happens
+    // outside the fetch buffer so non-admissible future segments cannot occupy every
+    // `buffer_unordered` slot and starve the fetches needed to complete the currently
+    // admitted segments.
+    let grpc_only = force_grpc || !request_batches.iter().any(batch_has_any_direct_urls);
+    if grpc_only {
         let reason = if force_grpc {
             "grpc_forced"
         } else {
@@ -719,17 +843,41 @@ pub(super) async fn chunk_stream_io_loop<T: DataframeClientAPI>(
         };
         span.record("fetch_strategy", reason);
         re_log::debug!(
-            "{reason}, fetching all {} chunks via FetchChunks gRPC",
+            "{reason}, fetching all {} chunks via FetchChunks gRPC in segment waves",
             request_batches.len()
         );
-        let result = fetch_remaining_via_grpc(
-            &request_batches,
-            &client,
-            &global_segment_order,
-            filtered_index_timeline_str.as_deref(),
-            &output_channel,
-            &pipeline_budget,
-        )
+
+        let result = async {
+            for (wave_idx, wave_batches) in request_batches_by_wave.iter().enumerate() {
+                let start = wave_idx * MAX_CONCURRENT_SEGMENTS;
+                let end = (start + MAX_CONCURRENT_SEGMENTS).min(global_segment_order.len());
+                let wave_segments = &global_segment_order[start..end];
+                if !admit_segment_wave(
+                    wave_segments,
+                    wave_batches,
+                    &segment_chunk_counts,
+                    &mut manifests,
+                    &output_channel,
+                    &pipeline_budget,
+                    filtered_index_timeline_str.as_deref(),
+                )
+                .await?
+                {
+                    return Ok(());
+                }
+
+                fetch_remaining_via_grpc(
+                    wave_batches,
+                    &client,
+                    &global_segment_order,
+                    filtered_index_timeline_str.as_deref(),
+                    &output_channel,
+                    &pipeline_budget,
+                )
+                .await?;
+            }
+            Ok(())
+        }
         .await;
 
         match &result {
@@ -749,108 +897,114 @@ pub(super) async fn chunk_stream_io_loop<T: DataframeClientAPI>(
         return result;
     }
 
-    // Split each batch into direct-URL rows and non-URL rows, producing independent work items.
-    // Each work item gets a sequential index for the reorder buffer.
-    enum FetchTask {
-        Direct(RecordBatch),
-        Grpc(RecordBatch),
-    }
-
-    let mut work_items: Vec<FetchTask> = Vec::new();
-    let mut n_direct = 0usize;
-    let mut n_grpc = 0usize;
-    for batch in &request_batches {
-        let (direct_batch, grpc_batch) = split_batch_by_direct_url(batch);
-        if let Some(b) = direct_batch {
-            n_direct += 1;
-            work_items.push(FetchTask::Direct(b));
-        }
-        if let Some(b) = grpc_batch {
-            n_grpc += 1;
-            work_items.push(FetchTask::Grpc(b));
-        }
-    }
-
-    if n_grpc == 0 {
+    let total_n_direct: usize = request_batches
+        .iter()
+        .filter_map(|batch| split_batch_by_direct_url(batch).0)
+        .count();
+    let total_n_grpc: usize = request_batches
+        .iter()
+        .filter_map(|batch| split_batch_by_direct_url(batch).1)
+        .count();
+    if total_n_grpc == 0 {
         span.record("fetch_strategy", "direct");
     } else {
         span.record(
             "fetch_strategy",
-            format!("hybrid(direct={n_direct},grpc={n_grpc})"),
+            format!("hybrid(direct={total_n_direct},grpc={total_n_grpc})"),
         );
     }
-    re_log::debug!("Fetch tasks: {n_direct} direct, {n_grpc} gRPC fallback");
+    re_log::debug!("Fetch tasks: {total_n_direct} direct, {total_n_grpc} gRPC fallback");
 
     let http_client = reqwest::Client::new();
+    let total_tasks = total_n_direct + total_n_grpc;
+    let mut tasks_completed: usize = 0;
 
-    // `work_items` may differ from `request_batches.len()` when a batch is split
-    // into a direct part + a gRPC part. Track the count we'll actually iterate.
-    let total_tasks = work_items.len();
+    for (wave_idx, wave_batches) in request_batches_by_wave.into_iter().enumerate() {
+        let start = wave_idx * MAX_CONCURRENT_SEGMENTS;
+        let end = (start + MAX_CONCURRENT_SEGMENTS).min(global_segment_order.len());
+        let wave_segments = &global_segment_order[start..end];
+        if !admit_segment_wave(
+            wave_segments,
+            &wave_batches,
+            &segment_chunk_counts,
+            &mut manifests,
+            &output_channel,
+            &pipeline_budget,
+            filtered_index_timeline_str.as_deref(),
+        )
+        .await?
+        {
+            return Ok(());
+        }
 
-    let fetch_stream = futures::stream::iter(work_items.into_iter().enumerate())
-        .map(|(task_idx, task)| {
-            let http_client = http_client.clone();
-            let client = client.clone();
-            let pending_analytics = pending_analytics.clone();
-            let pipeline_budget = Arc::clone(&pipeline_budget);
-            let metrics = Arc::clone(&metrics);
-            let filtered_index_timeline = filtered_index_timeline_str.as_ref().map(Arc::clone);
-            async move {
-                // Task-local stats buffer — flushed once to the shared atomics
-                // at the end of this task to avoid cross-core cache-line
-                // contention on the hot counters.
-                let mut stats = TaskFetchStats::default();
+        let (work_items, _n_direct, _n_grpc) = split_batches_into_fetch_tasks(&wave_batches);
+        let fetch_stream = futures::stream::iter(work_items.into_iter().enumerate())
+            .map(|(task_idx, task)| {
+                let http_client = http_client.clone();
+                let client = client.clone();
+                let pending_analytics = pending_analytics.clone();
+                let pipeline_budget = Arc::clone(&pipeline_budget);
+                let metrics = Arc::clone(&metrics);
+                let filtered_index_timeline = filtered_index_timeline_str.as_ref().map(Arc::clone);
+                async move {
+                    // Task-local stats buffer — flushed once to the shared atomics
+                    // at the end of this task to avoid cross-core cache-line
+                    // contention on the hot counters.
+                    let mut stats = TaskFetchStats::default();
 
-                let batch_ref = match &task {
-                    FetchTask::Direct(b) | FetchTask::Grpc(b) => b,
-                };
-                let estimated = batch_byte_size_uncompressed(batch_ref)
-                    .unwrap_or_else(|| batch_byte_size(batch_ref))
-                    as usize;
-                let task_time_min =
-                    extract_task_time_min(batch_ref, filtered_index_timeline.as_deref());
-                let mut seen: HashSet<String> = HashSet::new();
-                let mut segment_ids: Vec<String> = Vec::new();
-                extend_distinct_segment_ids(batch_ref, &mut seen, &mut segment_ids)?;
-                // RAII guard: refunds the reservation — bytes and
-                // segment-count gate slots — on any early `return Err(_)`
-                // below so the shared budget keeps its full headroom for other
-                // partitions on fetch failure.
-                let guard = pipeline_budget
-                    .reserve_guarded_with_priority(estimated, task_time_min, segment_ids)
-                    .await;
+                    let batch_ref = match &task {
+                        FetchTask::Direct(b) | FetchTask::Grpc(b) => b,
+                    };
+                    let estimated = batch_byte_size_uncompressed(batch_ref)
+                        .unwrap_or_else(|| batch_byte_size(batch_ref))
+                        as usize;
+                    let task_time_min =
+                        extract_task_time_min(batch_ref, filtered_index_timeline.as_deref());
+                    let mut seen: HashSet<String> = HashSet::new();
+                    let mut segment_ids: Vec<String> = Vec::new();
+                    extend_distinct_segment_ids(batch_ref, &mut seen, &mut segment_ids)?;
+                    // RAII guard: refunds the byte reservation on any early
+                    // `return Err(_)`. Segment slots are already admitted by the
+                    // wave guard above; since these are existing active segments,
+                    // committing keeps them active until the CPU worker finalizes
+                    // each segment.
+                    let guard = pipeline_budget
+                        .reserve_guarded_with_priority(estimated, task_time_min, segment_ids)
+                        .await;
 
-                let chunks = match task {
-                    FetchTask::Direct(batch) => {
-                        let bytes = batch_byte_size(&batch);
-                        let chunks = match fetch_batch_direct(
-                            &batch,
-                            &http_client,
-                            &mut stats,
-                            &pending_analytics,
-                        )
-                        .await
-                        {
-                            Ok(chunks) => chunks,
-                            Err(err) => {
-                                stats.try_flush_into(
-                                    &pending_analytics,
-                                    &metrics,
-                                    Err(QueryErrorKind::DirectFetch),
-                                );
-                                return Err(err);
-                            }
-                        };
-                        stats.record_direct_fetch(bytes);
-                        chunks
-                    }
-                    FetchTask::Grpc(batch) => {
-                        let bytes = batch_byte_size(&batch);
-                        #[cfg(not(target_arch = "wasm32"))]
-                        crate::chunk_fetcher::metrics::record_grpc_no_direct_urls(bytes);
-                        let chunks =
-                            match fetch_batch_group_via_grpc(std::slice::from_ref(&batch), &client)
-                                .await
+                    let chunks = match task {
+                        FetchTask::Direct(batch) => {
+                            let bytes = batch_byte_size(&batch);
+                            let chunks = match fetch_batch_direct(
+                                &batch,
+                                &http_client,
+                                &mut stats,
+                                &pending_analytics,
+                            )
+                            .await
+                            {
+                                Ok(chunks) => chunks,
+                                Err(err) => {
+                                    stats.try_flush_into(
+                                        &pending_analytics,
+                                        &metrics,
+                                        Err(QueryErrorKind::DirectFetch),
+                                    );
+                                    return Err(err);
+                                }
+                            };
+                            stats.record_direct_fetch(bytes);
+                            chunks
+                        }
+                        FetchTask::Grpc(batch) => {
+                            let bytes = batch_byte_size(&batch);
+                            #[cfg(not(target_arch = "wasm32"))]
+                            crate::chunk_fetcher::metrics::record_grpc_no_direct_urls(bytes);
+                            let chunks = match fetch_batch_group_via_grpc(
+                                std::slice::from_ref(&batch),
+                                &client,
+                            )
+                            .await
                             {
                                 Ok(chunks) => chunks,
                                 Err(err) => {
@@ -862,51 +1016,44 @@ pub(super) async fn chunk_stream_io_loop<T: DataframeClientAPI>(
                                     return Err(err);
                                 }
                             };
-                        stats.record_grpc_fetch(bytes);
-                        chunks
-                    }
-                };
+                            stats.record_grpc_fetch(bytes);
+                            chunks
+                        }
+                    };
 
-                stats.try_flush_into(&pending_analytics, &metrics, Ok(()));
-                let actual: usize = chunks
-                    .iter()
-                    .flat_map(|seg| {
-                        seg.iter()
-                            .map(|(c, _)| re_byte_size::SizeBytes::total_size_bytes(c) as usize)
-                    })
-                    .sum();
-                guard.commit(actual);
+                    stats.try_flush_into(&pending_analytics, &metrics, Ok(()));
+                    let actual: usize = chunks
+                        .iter()
+                        .flat_map(|seg| {
+                            seg.iter()
+                                .map(|(c, _)| re_byte_size::SizeBytes::total_size_bytes(c) as usize)
+                        })
+                        .sum();
+                    guard.commit(actual);
 
-                Ok::<_, ApiError>(chunks)
+                    Ok::<_, ApiError>(chunks)
+                }
+                .instrument(tracing::info_span!("fetch_task", wave_idx, task_idx))
+            })
+            .buffer_unordered(IO_PIPELINE_BUFFER);
+
+        tokio::pin!(fetch_stream);
+
+        while let Some(result) = fetch_stream.next().await {
+            let chunks = result?;
+            tasks_completed += 1;
+            if !send_sorted_chunks(chunks, &global_segment_order, &output_channel).await {
+                // Consumer hung up — log task progress so cancel timing is
+                // visible. `buffer_unordered` will RST_STREAM any in-flight
+                // fetches when its driver task is dropped.
+                tracing::info!(
+                    total_tasks,
+                    tasks_completed,
+                    in_flight_or_pending = total_tasks.saturating_sub(tasks_completed),
+                    "FetchChunks IO loop short-circuited (hybrid path): downstream consumer closed (likely LIMIT or plan cancellation)"
+                );
+                return Ok(());
             }
-            .instrument(tracing::info_span!("fetch_task", task_idx))
-        })
-        .buffer_unordered(IO_PIPELINE_BUFFER);
-
-    tokio::pin!(fetch_stream);
-
-    // No reorder buffer: with the CPU side keyed on segment_id in a
-    // `HashMap<SegmentId, CurrentStores>`, chunks for different segments
-    // may interleave freely without breaking the worker's invariants.
-    // The reorder buffer existed to preserve the one-segment-at-a-time
-    // CPU invariant; that invariant is gone (see worker comments), and
-    // the buffer was pinning bytes outside the budget's accounting in
-    // the meantime.
-    let mut tasks_completed: usize = 0;
-    while let Some(result) = fetch_stream.next().await {
-        let chunks = result?;
-        tasks_completed += 1;
-        if !send_sorted_chunks(chunks, &global_segment_order, &output_channel).await {
-            // Consumer hung up — log task progress so cancel timing is
-            // visible. `buffer_unordered` will RST_STREAM any in-flight
-            // fetches when its driver task is dropped.
-            tracing::info!(
-                total_tasks,
-                tasks_completed,
-                in_flight_or_pending = total_tasks.saturating_sub(tasks_completed),
-                "FetchChunks IO loop short-circuited (hybrid path): downstream consumer closed (likely LIMIT or plan cancellation)"
-            );
-            return Ok(());
         }
     }
 
@@ -1080,6 +1227,32 @@ mod tests {
             extend_distinct_segment_ids(batch, &mut seen, &mut order).unwrap();
         }
         seen
+    }
+
+    #[test]
+    fn test_batches_by_segment_wave_keeps_each_wave_within_segment_cap() {
+        let chunk_infos = vec![
+            create_test_chunk_info("seg1", &[100]),
+            create_test_chunk_info("seg2", &[100]),
+            create_test_chunk_info("seg3", &[100]),
+            create_test_chunk_info("seg4", &[100]),
+            create_test_chunk_info("seg5", &[100]),
+        ];
+        let (batches, segment_order) = create_request_batches(chunk_infos, 10_000).unwrap();
+
+        let waves = batches_by_segment_wave(&batches, &segment_order).unwrap();
+
+        assert_eq!(waves.len(), 2);
+        assert_eq!(waves[0].len(), 1);
+        assert_eq!(waves[1].len(), 1);
+        assert_eq!(
+            distinct_segments_in_batches(&waves[0]),
+            HashSet::from_iter(["seg1".to_owned(), "seg2".to_owned(), "seg3".to_owned()])
+        );
+        assert_eq!(
+            distinct_segments_in_batches(&waves[1]),
+            HashSet::from_iter(["seg4".to_owned(), "seg5".to_owned()])
+        );
     }
 
     #[test]

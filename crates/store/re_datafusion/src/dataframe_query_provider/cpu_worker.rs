@@ -279,6 +279,13 @@ struct CurrentStores {
     /// crosses 10.
     max_arrived_time_max: Option<TimeInt>,
 
+    /// Whether this segment has already left the segment-count gate.
+    /// Completed segments can wait in `ready_pending` behind earlier
+    /// segments, but they no longer need IO admission, so holding their
+    /// segment slot would block the missing earlier segments that are
+    /// required to make ordered emit progress.
+    segment_slot_released: bool,
+
     /// Scratch storage for the `protected_chunks` set built by
     /// [`Self::gc_up_to_horizon`]. Kept on the struct (rather than
     /// allocated per call) so the underlying `HashMap` capacity is
@@ -329,7 +336,16 @@ impl CurrentStores {
             processed_through_time: None,
             last_horizon: None,
             max_arrived_time_max: None,
+            segment_slot_released: false,
             protected_chunks_scratch: ahash::HashSet::default(),
+        }
+    }
+
+    fn release_segment_slot(&mut self) {
+        if !self.segment_slot_released {
+            self.pipeline_budget
+                .publish_segment_finalized(self.segment_id.as_str());
+            self.segment_slot_released = true;
         }
     }
 
@@ -704,8 +720,7 @@ impl Drop for CurrentStores {
         // refund above and the segment-gate slot are independent: the
         // slot must be vacated here regardless of how the bytes were
         // released.
-        self.pipeline_budget
-            .publish_segment_finalized(self.segment_id.as_str());
+        self.release_segment_slot();
     }
 }
 
@@ -840,6 +855,7 @@ pub(super) async fn chunk_store_cpu_worker_thread(
                 // announcement arrived (out-of-order on the channel),
                 // park the segment as ready-to-emit and try to drain.
                 if stores.is_complete() {
+                    stores.release_segment_slot();
                     let taken = current_stores
                         .remove(&segment_id)
                         .expect("just inserted via entry()");
@@ -1014,6 +1030,7 @@ pub(super) async fn chunk_store_cpu_worker_thread(
 
                 let complete = stores.is_complete();
                 if complete {
+                    stores.release_segment_slot();
                     let taken = current_stores
                         .remove(&segment_id)
                         .expect("just inserted via entry()");
@@ -1179,6 +1196,45 @@ mod tests {
     /// early-return on an upstream error, consumer hangup mid-segment,
     /// panic. Without the refund, the reservation would be pinned for
     /// the remainder of the query.
+    #[tokio::test]
+    async fn test_completed_segment_releases_gate_before_flush() {
+        let budget = Arc::new(PipelineBudget::new(1 << 30, 1));
+
+        let ready_segment = SegmentId::from("ready-pending");
+        budget
+            .reserve_with_priority(1, TimeInt::MAX, &[ready_segment.as_ref().to_owned()])
+            .await;
+        for i in 1..crate::pipeline_budget::MAX_CONCURRENT_SEGMENTS {
+            budget
+                .reserve_with_priority(1, TimeInt::MAX, &[format!("held-{i}")])
+                .await;
+        }
+
+        let b = Arc::clone(&budget);
+        let parked = tokio::spawn(async move {
+            b.reserve_with_priority(1, TimeInt::MAX, &["new-segment".to_owned()])
+                .await;
+        });
+        for _ in 0..16 {
+            tokio::task::yield_now().await;
+        }
+        assert!(!parked.is_finished());
+
+        let mut stores = CurrentStores::new(
+            ready_segment,
+            &QueryExpression::default(),
+            &None,
+            Arc::clone(&budget),
+        );
+        stores.release_segment_slot();
+
+        for _ in 0..16 {
+            tokio::task::yield_now().await;
+        }
+        assert!(parked.is_finished());
+        parked.await.unwrap();
+    }
+
     #[tokio::test]
     async fn test_current_stores_drop_refunds_budget() {
         let budget = Arc::new(PipelineBudget::new(1 << 30, 1));
