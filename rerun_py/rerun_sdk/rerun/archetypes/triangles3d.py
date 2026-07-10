@@ -38,9 +38,18 @@ class Triangles3D(Triangles3DExt, Archetype, VisualizableArchetype):
     -------
     ### 3D geometry primitives:
     ```python
+    import numpy as np
+
     import rerun as rr
 
     rr.init("rerun_example_geometry3d_primitives", spawn=True)
+
+    texture = np.zeros((96, 96, 4), dtype=np.uint8)
+    texture[:, :, 3] = 255
+    texture[:48, :48, :3] = [0, 216, 255]
+    texture[:48, 48:, :3] = [255, 210, 0]
+    texture[48:, :48, :3] = [255, 84, 170]
+    texture[48:, 48:, :3] = [255, 255, 255]
 
     rr.log(
         "cones",
@@ -48,7 +57,7 @@ class Triangles3D(Triangles3DExt, Archetype, VisualizableArchetype):
             lengths=[1.6, 2.2, 1.2],
             radii=[0.6, 0.35, 0.8],
             centers=[(-2.0, 0.0, 0.0), (-0.5, 0.0, 0.3), (1.0, 0.0, -0.2)],
-            colors=[(255, 120, 80), (255, 210, 80), (120, 200, 255)],
+            albedo_texture=texture,
         ),
     )
 
@@ -67,10 +76,11 @@ class Triangles3D(Triangles3DExt, Archetype, VisualizableArchetype):
         rr.Planes3D(
             planes=[
                 rr.components.Plane3D.XY.with_distance(-0.75),
-                rr.components.Plane3D([0.5, 0.0, 1.0, 0.2]),
+                rr.components.Plane3D([0.5, 0.0, 1.0], 0.2),
             ],
             half_sizes=[(2.5, 1.2), (1.4, 1.0)],
-            colors=[(120, 120, 255, 96), (255, 160, 80, 96)],
+            albedo_texture=texture,
+            albedo_factor=(255, 255, 255, 160),
             fill_mode=rr.components.FillMode.TransparentFillMajorWireframe,
         ),
     )
@@ -86,7 +96,8 @@ class Triangles3D(Triangles3DExt, Archetype, VisualizableArchetype):
                 (1.0, 1.4, 0.0),
                 (0.5, 2.2, 0.6),
             ],
-            colors=[(255, 80, 140), (120, 255, 120)],
+            vertex_texcoords=[(0, 0), (1, 0), (0.5, 1), (0, 0), (1, 0), (0.5, 1)],
+            albedo_texture=texture,
             fill_mode=rr.components.FillMode.TransparentFillMajorWireframe,
         ),
     )
@@ -103,8 +114,12 @@ class Triangles3D(Triangles3DExt, Archetype, VisualizableArchetype):
         self.__attrs_init__(
             vertex_positions=None,
             colors=None,
+            vertex_texcoords=None,
             line_radii=None,
             fill_mode=None,
+            albedo_factor=None,
+            albedo_texture_buffer=None,
+            albedo_texture_format=None,
             labels=None,
             show_labels=None,
             class_ids=None,
@@ -124,8 +139,12 @@ class Triangles3D(Triangles3DExt, Archetype, VisualizableArchetype):
         clear_unset: bool = False,
         vertex_positions: datatypes.Vec3DArrayLike | None = None,
         colors: datatypes.Rgba32ArrayLike | None = None,
+        vertex_texcoords: datatypes.Vec2DArrayLike | None = None,
         line_radii: datatypes.Float32ArrayLike | None = None,
         fill_mode: components.FillModeLike | None = None,
+        albedo_factor: datatypes.Rgba32Like | None = None,
+        albedo_texture_buffer: datatypes.BlobLike | None = None,
+        albedo_texture_format: datatypes.ImageFormatLike | None = None,
         labels: datatypes.Utf8ArrayLike | None = None,
         show_labels: datatypes.BoolLike | None = None,
         class_ids: datatypes.ClassIdArrayLike | None = None,
@@ -143,10 +162,29 @@ class Triangles3D(Triangles3DExt, Archetype, VisualizableArchetype):
             Optional colors for the triangles.
 
             Alpha channel is used for transparency for solid fill-mode.
+        vertex_texcoords:
+            Optional UV texture coordinates for each triangle vertex.
+
+            Used with `albedo_texture_buffer`.
         line_radii:
             Optional radii for the lines used when triangles are rendered as wireframes.
         fill_mode:
             Optionally choose whether the triangles are drawn with lines or solid.
+        albedo_factor:
+            A color multiplier applied to all solid triangles.
+
+            Alpha channel governs the overall solid triangle transparency.
+        albedo_texture_buffer:
+            Optional albedo texture.
+
+            Used with `vertex_texcoords`.
+
+            Currently supports only sRGB(A) textures, ignoring alpha.
+            (meaning that the tensor must have 3 or 4 channels and use the `u8` format)
+
+            The alpha channel is ignored.
+        albedo_texture_format:
+            The format of the `albedo_texture_buffer`, if any.
         labels:
             Optional text labels for the triangles, which will be located at triangle centroids.
         show_labels:
@@ -166,8 +204,12 @@ class Triangles3D(Triangles3DExt, Archetype, VisualizableArchetype):
             kwargs = {
                 "vertex_positions": vertex_positions,
                 "colors": colors,
+                "vertex_texcoords": vertex_texcoords,
                 "line_radii": line_radii,
                 "fill_mode": fill_mode,
+                "albedo_factor": albedo_factor,
+                "albedo_texture_buffer": albedo_texture_buffer,
+                "albedo_texture_format": albedo_texture_format,
                 "labels": labels,
                 "show_labels": show_labels,
                 "class_ids": class_ids,
@@ -204,6 +246,14 @@ class Triangles3D(Triangles3DExt, Archetype, VisualizableArchetype):
         )
 
     @staticmethod
+    def descriptor_vertex_texcoords() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Triangles3D:vertex_texcoords",
+            archetype=Triangles3D.NAME,
+            component_type=components.Texcoord2DBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
     def descriptor_line_radii() -> ComponentDescriptor:
         return ComponentDescriptor(
             "Triangles3D:line_radii",
@@ -217,6 +267,30 @@ class Triangles3D(Triangles3DExt, Archetype, VisualizableArchetype):
             "Triangles3D:fill_mode",
             archetype=Triangles3D.NAME,
             component_type=components.FillModeBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_albedo_factor() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Triangles3D:albedo_factor",
+            archetype=Triangles3D.NAME,
+            component_type=components.AlbedoFactorBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_albedo_texture_buffer() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Triangles3D:albedo_texture_buffer",
+            archetype=Triangles3D.NAME,
+            component_type=components.ImageBufferBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_albedo_texture_format() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Triangles3D:albedo_texture_format",
+            archetype=Triangles3D.NAME,
+            component_type=components.ImageFormatBatch._COMPONENT_TYPE,
         )
 
     @staticmethod
@@ -249,8 +323,12 @@ class Triangles3D(Triangles3DExt, Archetype, VisualizableArchetype):
         *,
         vertex_positions: datatypes.Vec3DArrayLike | None = None,
         colors: datatypes.Rgba32ArrayLike | None = None,
+        vertex_texcoords: datatypes.Vec2DArrayLike | None = None,
         line_radii: datatypes.Float32ArrayLike | None = None,
         fill_mode: components.FillModeArrayLike | None = None,
+        albedo_factor: datatypes.Rgba32ArrayLike | None = None,
+        albedo_texture_buffer: datatypes.BlobArrayLike | None = None,
+        albedo_texture_format: datatypes.ImageFormatArrayLike | None = None,
         labels: datatypes.Utf8ArrayLike | None = None,
         show_labels: datatypes.BoolArrayLike | None = None,
         class_ids: datatypes.ClassIdArrayLike | None = None,
@@ -271,10 +349,29 @@ class Triangles3D(Triangles3DExt, Archetype, VisualizableArchetype):
             Optional colors for the triangles.
 
             Alpha channel is used for transparency for solid fill-mode.
+        vertex_texcoords:
+            Optional UV texture coordinates for each triangle vertex.
+
+            Used with `albedo_texture_buffer`.
         line_radii:
             Optional radii for the lines used when triangles are rendered as wireframes.
         fill_mode:
             Optionally choose whether the triangles are drawn with lines or solid.
+        albedo_factor:
+            A color multiplier applied to all solid triangles.
+
+            Alpha channel governs the overall solid triangle transparency.
+        albedo_texture_buffer:
+            Optional albedo texture.
+
+            Used with `vertex_texcoords`.
+
+            Currently supports only sRGB(A) textures, ignoring alpha.
+            (meaning that the tensor must have 3 or 4 channels and use the `u8` format)
+
+            The alpha channel is ignored.
+        albedo_texture_format:
+            The format of the `albedo_texture_buffer`, if any.
         labels:
             Optional text labels for the triangles, which will be located at triangle centroids.
         show_labels:
@@ -294,8 +391,12 @@ class Triangles3D(Triangles3DExt, Archetype, VisualizableArchetype):
             inst.__attrs_init__(
                 vertex_positions=vertex_positions,
                 colors=colors,
+                vertex_texcoords=vertex_texcoords,
                 line_radii=line_radii,
                 fill_mode=fill_mode,
+                albedo_factor=albedo_factor,
+                albedo_texture_buffer=albedo_texture_buffer,
+                albedo_texture_format=albedo_texture_format,
                 labels=labels,
                 show_labels=show_labels,
                 class_ids=class_ids,
@@ -308,8 +409,12 @@ class Triangles3D(Triangles3DExt, Archetype, VisualizableArchetype):
         kwargs = {
             "Triangles3D:vertex_positions": vertex_positions,
             "Triangles3D:colors": colors,
+            "Triangles3D:vertex_texcoords": vertex_texcoords,
             "Triangles3D:line_radii": line_radii,
             "Triangles3D:fill_mode": fill_mode,
+            "Triangles3D:albedo_factor": albedo_factor,
+            "Triangles3D:albedo_texture_buffer": albedo_texture_buffer,
+            "Triangles3D:albedo_texture_format": albedo_texture_format,
             "Triangles3D:labels": labels,
             "Triangles3D:show_labels": show_labels,
             "Triangles3D:class_ids": class_ids,
@@ -367,6 +472,17 @@ class Triangles3D(Triangles3DExt, Archetype, VisualizableArchetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
+    vertex_texcoords: components.Texcoord2DBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.Texcoord2DBatch._converter,  # type: ignore[misc]
+    )
+    # Optional UV texture coordinates for each triangle vertex.
+    #
+    # Used with `albedo_texture_buffer`.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
     line_radii: components.RadiusBatch | None = field(
         metadata={"component": True},
         default=None,
@@ -382,6 +498,42 @@ class Triangles3D(Triangles3DExt, Archetype, VisualizableArchetype):
         converter=components.FillModeBatch._converter,  # type: ignore[misc]
     )
     # Optionally choose whether the triangles are drawn with lines or solid.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    albedo_factor: components.AlbedoFactorBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.AlbedoFactorBatch._converter,  # type: ignore[misc]
+    )
+    # A color multiplier applied to all solid triangles.
+    #
+    # Alpha channel governs the overall solid triangle transparency.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    albedo_texture_buffer: components.ImageBufferBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.ImageBufferBatch._converter,  # type: ignore[misc]
+    )
+    # Optional albedo texture.
+    #
+    # Used with `vertex_texcoords`.
+    #
+    # Currently supports only sRGB(A) textures, ignoring alpha.
+    # (meaning that the tensor must have 3 or 4 channels and use the `u8` format)
+    #
+    # The alpha channel is ignored.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    albedo_texture_format: components.ImageFormatBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.ImageFormatBatch._converter,  # type: ignore[misc]
+    )
+    # The format of the `albedo_texture_buffer`, if any.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

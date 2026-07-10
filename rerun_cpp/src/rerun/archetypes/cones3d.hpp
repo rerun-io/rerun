@@ -6,9 +6,12 @@
 #include "../collection.hpp"
 #include "../component_batch.hpp"
 #include "../component_column.hpp"
+#include "../components/albedo_factor.hpp"
 #include "../components/class_id.hpp"
 #include "../components/color.hpp"
 #include "../components/fill_mode.hpp"
+#include "../components/image_buffer.hpp"
+#include "../components/image_format.hpp"
 #include "../components/length.hpp"
 #include "../components/radius.hpp"
 #include "../components/rotation_axis_angle.hpp"
@@ -64,6 +67,20 @@ namespace rerun::archetypes {
         /// Optionally choose whether the cones are drawn with lines or solid.
         std::optional<ComponentBatch> fill_mode;
 
+        /// Optional color multiplier for textured cones.
+        ///
+        /// If there is no texture, this acts as a color for the solid fill.
+        std::optional<ComponentBatch> albedo_factor;
+
+        /// Optional albedo texture buffer for solid cones.
+        ///
+        /// The texture is mapped procedurally around the cone: U wraps around the base and V runs from base to tip.
+        /// The flat base uses a radial mapping into the same texture.
+        std::optional<ComponentBatch> albedo_texture_buffer;
+
+        /// Optional albedo texture format for solid cones.
+        std::optional<ComponentBatch> albedo_texture_format;
+
         /// Optional text labels for the cones, which will be located at their centers.
         std::optional<ComponentBatch> labels;
 
@@ -116,6 +133,21 @@ namespace rerun::archetypes {
         /// `ComponentDescriptor` for the `fill_mode` field.
         static constexpr auto Descriptor_fill_mode = ComponentDescriptor(
             ArchetypeName, "Cones3D:fill_mode", Loggable<rerun::components::FillMode>::ComponentType
+        );
+        /// `ComponentDescriptor` for the `albedo_factor` field.
+        static constexpr auto Descriptor_albedo_factor = ComponentDescriptor(
+            ArchetypeName, "Cones3D:albedo_factor",
+            Loggable<rerun::components::AlbedoFactor>::ComponentType
+        );
+        /// `ComponentDescriptor` for the `albedo_texture_buffer` field.
+        static constexpr auto Descriptor_albedo_texture_buffer = ComponentDescriptor(
+            ArchetypeName, "Cones3D:albedo_texture_buffer",
+            Loggable<rerun::components::ImageBuffer>::ComponentType
+        );
+        /// `ComponentDescriptor` for the `albedo_texture_format` field.
+        static constexpr auto Descriptor_albedo_texture_format = ComponentDescriptor(
+            ArchetypeName, "Cones3D:albedo_texture_format",
+            Loggable<rerun::components::ImageFormat>::ComponentType
         );
         /// `ComponentDescriptor` for the `labels` field.
         static constexpr auto Descriptor_labels = ComponentDescriptor(
@@ -219,6 +251,84 @@ namespace rerun::archetypes {
         Cones3D with_many_fill_mode(const Collection<rerun::components::FillMode>& _fill_mode) && {
             fill_mode =
                 ComponentBatch::from_loggable(_fill_mode, Descriptor_fill_mode).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// Optional color multiplier for textured cones.
+        ///
+        /// If there is no texture, this acts as a color for the solid fill.
+        Cones3D with_albedo_factor(const rerun::components::AlbedoFactor& _albedo_factor) && {
+            albedo_factor = ComponentBatch::from_loggable(_albedo_factor, Descriptor_albedo_factor)
+                                .value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `albedo_factor` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_albedo_factor` should
+        /// be used when logging a single row's worth of data.
+        Cones3D with_many_albedo_factor(
+            const Collection<rerun::components::AlbedoFactor>& _albedo_factor
+        ) && {
+            albedo_factor = ComponentBatch::from_loggable(_albedo_factor, Descriptor_albedo_factor)
+                                .value_or_throw();
+            return std::move(*this);
+        }
+
+        /// Optional albedo texture buffer for solid cones.
+        ///
+        /// The texture is mapped procedurally around the cone: U wraps around the base and V runs from base to tip.
+        /// The flat base uses a radial mapping into the same texture.
+        Cones3D with_albedo_texture_buffer(
+            const rerun::components::ImageBuffer& _albedo_texture_buffer
+        ) && {
+            albedo_texture_buffer = ComponentBatch::from_loggable(
+                                        _albedo_texture_buffer,
+                                        Descriptor_albedo_texture_buffer
+            )
+                                        .value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `albedo_texture_buffer` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_albedo_texture_buffer` should
+        /// be used when logging a single row's worth of data.
+        Cones3D with_many_albedo_texture_buffer(
+            const Collection<rerun::components::ImageBuffer>& _albedo_texture_buffer
+        ) && {
+            albedo_texture_buffer = ComponentBatch::from_loggable(
+                                        _albedo_texture_buffer,
+                                        Descriptor_albedo_texture_buffer
+            )
+                                        .value_or_throw();
+            return std::move(*this);
+        }
+
+        /// Optional albedo texture format for solid cones.
+        Cones3D with_albedo_texture_format(
+            const rerun::components::ImageFormat& _albedo_texture_format
+        ) && {
+            albedo_texture_format = ComponentBatch::from_loggable(
+                                        _albedo_texture_format,
+                                        Descriptor_albedo_texture_format
+            )
+                                        .value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `albedo_texture_format` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_albedo_texture_format` should
+        /// be used when logging a single row's worth of data.
+        Cones3D with_many_albedo_texture_format(
+            const Collection<rerun::components::ImageFormat>& _albedo_texture_format
+        ) && {
+            albedo_texture_format = ComponentBatch::from_loggable(
+                                        _albedo_texture_format,
+                                        Descriptor_albedo_texture_format
+            )
+                                        .value_or_throw();
             return std::move(*this);
         }
 

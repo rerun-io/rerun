@@ -6,12 +6,16 @@
 #include "../collection.hpp"
 #include "../component_batch.hpp"
 #include "../component_column.hpp"
+#include "../components/albedo_factor.hpp"
 #include "../components/class_id.hpp"
 #include "../components/color.hpp"
 #include "../components/fill_mode.hpp"
+#include "../components/image_buffer.hpp"
+#include "../components/image_format.hpp"
 #include "../components/position3d.hpp"
 #include "../components/radius.hpp"
 #include "../components/show_labels.hpp"
+#include "../components/texcoord2d.hpp"
 #include "../components/text.hpp"
 #include "../result.hpp"
 
@@ -33,11 +37,34 @@ namespace rerun::archetypes {
         /// Alpha channel is used for transparency for solid fill-mode.
         std::optional<ComponentBatch> colors;
 
+        /// Optional UV texture coordinates for each triangle vertex.
+        ///
+        /// Used with `albedo_texture_buffer`.
+        std::optional<ComponentBatch> vertex_texcoords;
+
         /// Optional radii for the lines used when triangles are rendered as wireframes.
         std::optional<ComponentBatch> line_radii;
 
         /// Optionally choose whether the triangles are drawn with lines or solid.
         std::optional<ComponentBatch> fill_mode;
+
+        /// A color multiplier applied to all solid triangles.
+        ///
+        /// Alpha channel governs the overall solid triangle transparency.
+        std::optional<ComponentBatch> albedo_factor;
+
+        /// Optional albedo texture.
+        ///
+        /// Used with `vertex_texcoords`.
+        ///
+        /// Currently supports only sRGB(A) textures, ignoring alpha.
+        /// (meaning that the tensor must have 3 or 4 channels and use the `u8` format)
+        ///
+        /// The alpha channel is ignored.
+        std::optional<ComponentBatch> albedo_texture_buffer;
+
+        /// The format of the `albedo_texture_buffer`, if any.
+        std::optional<ComponentBatch> albedo_texture_format;
 
         /// Optional text labels for the triangles, which will be located at triangle centroids.
         std::optional<ComponentBatch> labels;
@@ -66,6 +93,11 @@ namespace rerun::archetypes {
         static constexpr auto Descriptor_colors = ComponentDescriptor(
             ArchetypeName, "Triangles3D:colors", Loggable<rerun::components::Color>::ComponentType
         );
+        /// `ComponentDescriptor` for the `vertex_texcoords` field.
+        static constexpr auto Descriptor_vertex_texcoords = ComponentDescriptor(
+            ArchetypeName, "Triangles3D:vertex_texcoords",
+            Loggable<rerun::components::Texcoord2D>::ComponentType
+        );
         /// `ComponentDescriptor` for the `line_radii` field.
         static constexpr auto Descriptor_line_radii = ComponentDescriptor(
             ArchetypeName, "Triangles3D:line_radii",
@@ -75,6 +107,21 @@ namespace rerun::archetypes {
         static constexpr auto Descriptor_fill_mode = ComponentDescriptor(
             ArchetypeName, "Triangles3D:fill_mode",
             Loggable<rerun::components::FillMode>::ComponentType
+        );
+        /// `ComponentDescriptor` for the `albedo_factor` field.
+        static constexpr auto Descriptor_albedo_factor = ComponentDescriptor(
+            ArchetypeName, "Triangles3D:albedo_factor",
+            Loggable<rerun::components::AlbedoFactor>::ComponentType
+        );
+        /// `ComponentDescriptor` for the `albedo_texture_buffer` field.
+        static constexpr auto Descriptor_albedo_texture_buffer = ComponentDescriptor(
+            ArchetypeName, "Triangles3D:albedo_texture_buffer",
+            Loggable<rerun::components::ImageBuffer>::ComponentType
+        );
+        /// `ComponentDescriptor` for the `albedo_texture_format` field.
+        static constexpr auto Descriptor_albedo_texture_format = ComponentDescriptor(
+            ArchetypeName, "Triangles3D:albedo_texture_format",
+            Loggable<rerun::components::ImageFormat>::ComponentType
         );
         /// `ComponentDescriptor` for the `labels` field.
         static constexpr auto Descriptor_labels = ComponentDescriptor(
@@ -124,6 +171,18 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
+        /// Optional UV texture coordinates for each triangle vertex.
+        ///
+        /// Used with `albedo_texture_buffer`.
+        Triangles3D with_vertex_texcoords(
+            const Collection<rerun::components::Texcoord2D>& _vertex_texcoords
+        ) && {
+            vertex_texcoords =
+                ComponentBatch::from_loggable(_vertex_texcoords, Descriptor_vertex_texcoords)
+                    .value_or_throw();
+            return std::move(*this);
+        }
+
         /// Optional radii for the lines used when triangles are rendered as wireframes.
         Triangles3D with_line_radii(const Collection<rerun::components::Radius>& _line_radii) && {
             line_radii =
@@ -146,6 +205,88 @@ namespace rerun::archetypes {
         ) && {
             fill_mode =
                 ComponentBatch::from_loggable(_fill_mode, Descriptor_fill_mode).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// A color multiplier applied to all solid triangles.
+        ///
+        /// Alpha channel governs the overall solid triangle transparency.
+        Triangles3D with_albedo_factor(const rerun::components::AlbedoFactor& _albedo_factor) && {
+            albedo_factor = ComponentBatch::from_loggable(_albedo_factor, Descriptor_albedo_factor)
+                                .value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `albedo_factor` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_albedo_factor` should
+        /// be used when logging a single row's worth of data.
+        Triangles3D with_many_albedo_factor(
+            const Collection<rerun::components::AlbedoFactor>& _albedo_factor
+        ) && {
+            albedo_factor = ComponentBatch::from_loggable(_albedo_factor, Descriptor_albedo_factor)
+                                .value_or_throw();
+            return std::move(*this);
+        }
+
+        /// Optional albedo texture.
+        ///
+        /// Used with `vertex_texcoords`.
+        ///
+        /// Currently supports only sRGB(A) textures, ignoring alpha.
+        /// (meaning that the tensor must have 3 or 4 channels and use the `u8` format)
+        ///
+        /// The alpha channel is ignored.
+        Triangles3D with_albedo_texture_buffer(
+            const rerun::components::ImageBuffer& _albedo_texture_buffer
+        ) && {
+            albedo_texture_buffer = ComponentBatch::from_loggable(
+                                        _albedo_texture_buffer,
+                                        Descriptor_albedo_texture_buffer
+            )
+                                        .value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `albedo_texture_buffer` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_albedo_texture_buffer` should
+        /// be used when logging a single row's worth of data.
+        Triangles3D with_many_albedo_texture_buffer(
+            const Collection<rerun::components::ImageBuffer>& _albedo_texture_buffer
+        ) && {
+            albedo_texture_buffer = ComponentBatch::from_loggable(
+                                        _albedo_texture_buffer,
+                                        Descriptor_albedo_texture_buffer
+            )
+                                        .value_or_throw();
+            return std::move(*this);
+        }
+
+        /// The format of the `albedo_texture_buffer`, if any.
+        Triangles3D with_albedo_texture_format(
+            const rerun::components::ImageFormat& _albedo_texture_format
+        ) && {
+            albedo_texture_format = ComponentBatch::from_loggable(
+                                        _albedo_texture_format,
+                                        Descriptor_albedo_texture_format
+            )
+                                        .value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `albedo_texture_format` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_albedo_texture_format` should
+        /// be used when logging a single row's worth of data.
+        Triangles3D with_many_albedo_texture_format(
+            const Collection<rerun::components::ImageFormat>& _albedo_texture_format
+        ) && {
+            albedo_texture_format = ComponentBatch::from_loggable(
+                                        _albedo_texture_format,
+                                        Descriptor_albedo_texture_format
+            )
+                                        .value_or_throw();
             return std::move(*this);
         }
 

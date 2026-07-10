@@ -30,11 +30,34 @@ table Triangles3D (
 
   // --- Optional ---
 
+  /// Optional UV texture coordinates for each triangle vertex.
+  ///
+  /// Used with `albedo_texture_buffer`.
+  vertex_texcoords: [rerun.components.Texcoord2D] ("attr.rerun.component_optional", nullable, order: 2900);
+
   /// Optional radii for the lines used when triangles are rendered as wireframes.
   line_radii: [rerun.components.Radius] ("attr.rerun.component_optional", nullable, order: 3000);
 
   /// Optionally choose whether the triangles are drawn with lines or solid.
   fill_mode: rerun.components.FillMode ("attr.rerun.component_optional", nullable, order: 3100);
+
+  /// A color multiplier applied to all solid triangles.
+  ///
+  /// Alpha channel governs the overall solid triangle transparency.
+  albedo_factor: rerun.components.AlbedoFactor ("attr.rerun.component_optional", nullable, order: 3150);
+
+  /// Optional albedo texture.
+  ///
+  /// Used with `vertex_texcoords`.
+  ///
+  /// Currently supports only sRGB(A) textures, ignoring alpha.
+  /// (meaning that the tensor must have 3 or 4 channels and use the `u8` format)
+  ///
+  /// The alpha channel is ignored.
+  albedo_texture_buffer: rerun.components.ImageBuffer ("attr.rerun.component_optional", nullable, order: 3160);
+
+  /// The format of the `albedo_texture_buffer`, if any.
+  albedo_texture_format: rerun.components.ImageFormat ("attr.rerun.component_optional", nullable, order: 3170);
 
   /// Optional text labels for the triangles, which will be located at triangle centroids.
   labels: [rerun.components.Text] ("attr.rerun.component_optional", nullable, order: 3200);

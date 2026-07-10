@@ -106,11 +106,34 @@ pub struct Triangles3D {
     /// Alpha channel is used for transparency for solid fill-mode.
     pub colors: Option<SerializedComponentBatch>,
 
+    /// Optional UV texture coordinates for each triangle vertex.
+    ///
+    /// Used with `albedo_texture_buffer`.
+    pub vertex_texcoords: Option<SerializedComponentBatch>,
+
     /// Optional radii for the lines used when triangles are rendered as wireframes.
     pub line_radii: Option<SerializedComponentBatch>,
 
     /// Optionally choose whether the triangles are drawn with lines or solid.
     pub fill_mode: Option<SerializedComponentBatch>,
+
+    /// A color multiplier applied to all solid triangles.
+    ///
+    /// Alpha channel governs the overall solid triangle transparency.
+    pub albedo_factor: Option<SerializedComponentBatch>,
+
+    /// Optional albedo texture.
+    ///
+    /// Used with `vertex_texcoords`.
+    ///
+    /// Currently supports only sRGB(A) textures, ignoring alpha.
+    /// (meaning that the tensor must have 3 or 4 channels and use the `u8` format)
+    ///
+    /// The alpha channel is ignored.
+    pub albedo_texture_buffer: Option<SerializedComponentBatch>,
+
+    /// The format of the `albedo_texture_buffer`, if any.
+    pub albedo_texture_format: Option<SerializedComponentBatch>,
 
     /// Optional text labels for the triangles, which will be located at triangle centroids.
     pub labels: Option<SerializedComponentBatch>,
@@ -156,6 +179,20 @@ impl Triangles3D {
         (*DESCRIPTOR).clone()
     }
 
+    /// Returns the [`ComponentDescriptor`] for [`Self::vertex_texcoords`].
+    ///
+    /// The corresponding component is [`crate::components::Texcoord2D`].
+    #[inline]
+    pub fn descriptor_vertex_texcoords() -> ComponentDescriptor {
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Triangles3D".into()),
+                component: "Triangles3D:vertex_texcoords".into(),
+                component_type: Some("rerun.components.Texcoord2D".into()),
+            });
+        (*DESCRIPTOR).clone()
+    }
+
     /// Returns the [`ComponentDescriptor`] for [`Self::line_radii`].
     ///
     /// The corresponding component is [`crate::components::Radius`].
@@ -180,6 +217,48 @@ impl Triangles3D {
                 archetype: Some("rerun.archetypes.Triangles3D".into()),
                 component: "Triangles3D:fill_mode".into(),
                 component_type: Some("rerun.components.FillMode".into()),
+            });
+        (*DESCRIPTOR).clone()
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::albedo_factor`].
+    ///
+    /// The corresponding component is [`crate::components::AlbedoFactor`].
+    #[inline]
+    pub fn descriptor_albedo_factor() -> ComponentDescriptor {
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Triangles3D".into()),
+                component: "Triangles3D:albedo_factor".into(),
+                component_type: Some("rerun.components.AlbedoFactor".into()),
+            });
+        (*DESCRIPTOR).clone()
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::albedo_texture_buffer`].
+    ///
+    /// The corresponding component is [`crate::components::ImageBuffer`].
+    #[inline]
+    pub fn descriptor_albedo_texture_buffer() -> ComponentDescriptor {
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Triangles3D".into()),
+                component: "Triangles3D:albedo_texture_buffer".into(),
+                component_type: Some("rerun.components.ImageBuffer".into()),
+            });
+        (*DESCRIPTOR).clone()
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::albedo_texture_format`].
+    ///
+    /// The corresponding component is [`crate::components::ImageFormat`].
+    #[inline]
+    pub fn descriptor_albedo_texture_format() -> ComponentDescriptor {
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Triangles3D".into()),
+                component: "Triangles3D:albedo_texture_format".into(),
+                component_type: Some("rerun.components.ImageFormat".into()),
             });
         (*DESCRIPTOR).clone()
     }
@@ -233,24 +312,32 @@ static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
 static RECOMMENDED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
     std::sync::LazyLock::new(|| [Triangles3D::descriptor_colors()]);
 
-static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 5usize]> =
+static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 9usize]> =
     std::sync::LazyLock::new(|| {
         [
+            Triangles3D::descriptor_vertex_texcoords(),
             Triangles3D::descriptor_line_radii(),
             Triangles3D::descriptor_fill_mode(),
+            Triangles3D::descriptor_albedo_factor(),
+            Triangles3D::descriptor_albedo_texture_buffer(),
+            Triangles3D::descriptor_albedo_texture_format(),
             Triangles3D::descriptor_labels(),
             Triangles3D::descriptor_show_labels(),
             Triangles3D::descriptor_class_ids(),
         ]
     });
 
-static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 7usize]> =
+static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 11usize]> =
     std::sync::LazyLock::new(|| {
         [
             Triangles3D::descriptor_vertex_positions(),
             Triangles3D::descriptor_colors(),
+            Triangles3D::descriptor_vertex_texcoords(),
             Triangles3D::descriptor_line_radii(),
             Triangles3D::descriptor_fill_mode(),
+            Triangles3D::descriptor_albedo_factor(),
+            Triangles3D::descriptor_albedo_texture_buffer(),
+            Triangles3D::descriptor_albedo_texture_format(),
             Triangles3D::descriptor_labels(),
             Triangles3D::descriptor_show_labels(),
             Triangles3D::descriptor_class_ids(),
@@ -258,8 +345,8 @@ static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 7usize]> =
     });
 
 impl Triangles3D {
-    /// The total number of components in the archetype: 1 required, 1 recommended, 5 optional
-    pub const NUM_COMPONENTS: usize = 7usize;
+    /// The total number of components in the archetype: 1 required, 1 recommended, 9 optional
+    pub const NUM_COMPONENTS: usize = 11usize;
 }
 
 impl ::re_types_core::Archetype for Triangles3D {
@@ -311,6 +398,11 @@ impl ::re_types_core::Archetype for Triangles3D {
         let colors = arrays_by_descr
             .get(&Self::descriptor_colors())
             .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_colors()));
+        let vertex_texcoords = arrays_by_descr
+            .get(&Self::descriptor_vertex_texcoords())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_vertex_texcoords())
+            });
         let line_radii = arrays_by_descr
             .get(&Self::descriptor_line_radii())
             .map(|array| {
@@ -320,6 +412,27 @@ impl ::re_types_core::Archetype for Triangles3D {
             .get(&Self::descriptor_fill_mode())
             .map(|array| {
                 SerializedComponentBatch::new(array.clone(), Self::descriptor_fill_mode())
+            });
+        let albedo_factor = arrays_by_descr
+            .get(&Self::descriptor_albedo_factor())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_albedo_factor())
+            });
+        let albedo_texture_buffer = arrays_by_descr
+            .get(&Self::descriptor_albedo_texture_buffer())
+            .map(|array| {
+                SerializedComponentBatch::new(
+                    array.clone(),
+                    Self::descriptor_albedo_texture_buffer(),
+                )
+            });
+        let albedo_texture_format = arrays_by_descr
+            .get(&Self::descriptor_albedo_texture_format())
+            .map(|array| {
+                SerializedComponentBatch::new(
+                    array.clone(),
+                    Self::descriptor_albedo_texture_format(),
+                )
             });
         let labels = arrays_by_descr
             .get(&Self::descriptor_labels())
@@ -337,8 +450,12 @@ impl ::re_types_core::Archetype for Triangles3D {
         Ok(Self {
             vertex_positions,
             colors,
+            vertex_texcoords,
             line_radii,
             fill_mode,
+            albedo_factor,
+            albedo_texture_buffer,
+            albedo_texture_format,
             labels,
             show_labels,
             class_ids,
@@ -353,8 +470,12 @@ impl ::re_types_core::AsComponents for Triangles3D {
         [
             self.vertex_positions.clone(),
             self.colors.clone(),
+            self.vertex_texcoords.clone(),
             self.line_radii.clone(),
             self.fill_mode.clone(),
+            self.albedo_factor.clone(),
+            self.albedo_texture_buffer.clone(),
+            self.albedo_texture_format.clone(),
             self.labels.clone(),
             self.show_labels.clone(),
             self.class_ids.clone(),
@@ -386,8 +507,12 @@ impl Triangles3D {
                 vertex_positions,
             ),
             colors: None,
+            vertex_texcoords: None,
             line_radii: None,
             fill_mode: None,
+            albedo_factor: None,
+            albedo_texture_buffer: None,
+            albedo_texture_format: None,
             labels: None,
             show_labels: None,
             class_ids: None,
@@ -413,6 +538,10 @@ impl Triangles3D {
                 crate::components::Color::arrow_empty(),
                 Self::descriptor_colors(),
             )),
+            vertex_texcoords: Some(SerializedComponentBatch::new(
+                crate::components::Texcoord2D::arrow_empty(),
+                Self::descriptor_vertex_texcoords(),
+            )),
             line_radii: Some(SerializedComponentBatch::new(
                 crate::components::Radius::arrow_empty(),
                 Self::descriptor_line_radii(),
@@ -420,6 +549,18 @@ impl Triangles3D {
             fill_mode: Some(SerializedComponentBatch::new(
                 crate::components::FillMode::arrow_empty(),
                 Self::descriptor_fill_mode(),
+            )),
+            albedo_factor: Some(SerializedComponentBatch::new(
+                crate::components::AlbedoFactor::arrow_empty(),
+                Self::descriptor_albedo_factor(),
+            )),
+            albedo_texture_buffer: Some(SerializedComponentBatch::new(
+                crate::components::ImageBuffer::arrow_empty(),
+                Self::descriptor_albedo_texture_buffer(),
+            )),
+            albedo_texture_format: Some(SerializedComponentBatch::new(
+                crate::components::ImageFormat::arrow_empty(),
+                Self::descriptor_albedo_texture_format(),
             )),
             labels: Some(SerializedComponentBatch::new(
                 crate::components::Text::arrow_empty(),
@@ -461,11 +602,23 @@ impl Triangles3D {
             self.colors
                 .map(|colors| colors.partitioned(_lengths.clone()))
                 .transpose()?,
+            self.vertex_texcoords
+                .map(|vertex_texcoords| vertex_texcoords.partitioned(_lengths.clone()))
+                .transpose()?,
             self.line_radii
                 .map(|line_radii| line_radii.partitioned(_lengths.clone()))
                 .transpose()?,
             self.fill_mode
                 .map(|fill_mode| fill_mode.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.albedo_factor
+                .map(|albedo_factor| albedo_factor.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.albedo_texture_buffer
+                .map(|albedo_texture_buffer| albedo_texture_buffer.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.albedo_texture_format
+                .map(|albedo_texture_format| albedo_texture_format.partitioned(_lengths.clone()))
                 .transpose()?,
             self.labels
                 .map(|labels| labels.partitioned(_lengths.clone()))
@@ -490,16 +643,24 @@ impl Triangles3D {
     ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
         let len_vertex_positions = self.vertex_positions.as_ref().map(|b| b.array.len());
         let len_colors = self.colors.as_ref().map(|b| b.array.len());
+        let len_vertex_texcoords = self.vertex_texcoords.as_ref().map(|b| b.array.len());
         let len_line_radii = self.line_radii.as_ref().map(|b| b.array.len());
         let len_fill_mode = self.fill_mode.as_ref().map(|b| b.array.len());
+        let len_albedo_factor = self.albedo_factor.as_ref().map(|b| b.array.len());
+        let len_albedo_texture_buffer = self.albedo_texture_buffer.as_ref().map(|b| b.array.len());
+        let len_albedo_texture_format = self.albedo_texture_format.as_ref().map(|b| b.array.len());
         let len_labels = self.labels.as_ref().map(|b| b.array.len());
         let len_show_labels = self.show_labels.as_ref().map(|b| b.array.len());
         let len_class_ids = self.class_ids.as_ref().map(|b| b.array.len());
         let len = None
             .or(len_vertex_positions)
             .or(len_colors)
+            .or(len_vertex_texcoords)
             .or(len_line_radii)
             .or(len_fill_mode)
+            .or(len_albedo_factor)
+            .or(len_albedo_texture_buffer)
+            .or(len_albedo_texture_format)
             .or(len_labels)
             .or(len_show_labels)
             .or(len_class_ids)
@@ -530,6 +691,19 @@ impl Triangles3D {
         self
     }
 
+    /// Optional UV texture coordinates for each triangle vertex.
+    ///
+    /// Used with `albedo_texture_buffer`.
+    #[inline]
+    pub fn with_vertex_texcoords(
+        mut self,
+        vertex_texcoords: impl IntoIterator<Item = impl Into<crate::components::Texcoord2D>>,
+    ) -> Self {
+        self.vertex_texcoords =
+            try_serialize_field(Self::descriptor_vertex_texcoords(), vertex_texcoords);
+        self
+    }
+
     /// Optional radii for the lines used when triangles are rendered as wireframes.
     #[inline]
     pub fn with_line_radii(
@@ -557,6 +731,96 @@ impl Triangles3D {
         fill_mode: impl IntoIterator<Item = impl Into<crate::components::FillMode>>,
     ) -> Self {
         self.fill_mode = try_serialize_field(Self::descriptor_fill_mode(), fill_mode);
+        self
+    }
+
+    /// A color multiplier applied to all solid triangles.
+    ///
+    /// Alpha channel governs the overall solid triangle transparency.
+    #[inline]
+    pub fn with_albedo_factor(
+        mut self,
+        albedo_factor: impl Into<crate::components::AlbedoFactor>,
+    ) -> Self {
+        self.albedo_factor = try_serialize_field(Self::descriptor_albedo_factor(), [albedo_factor]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::AlbedoFactor`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_albedo_factor`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_albedo_factor(
+        mut self,
+        albedo_factor: impl IntoIterator<Item = impl Into<crate::components::AlbedoFactor>>,
+    ) -> Self {
+        self.albedo_factor = try_serialize_field(Self::descriptor_albedo_factor(), albedo_factor);
+        self
+    }
+
+    /// Optional albedo texture.
+    ///
+    /// Used with `vertex_texcoords`.
+    ///
+    /// Currently supports only sRGB(A) textures, ignoring alpha.
+    /// (meaning that the tensor must have 3 or 4 channels and use the `u8` format)
+    ///
+    /// The alpha channel is ignored.
+    #[inline]
+    pub fn with_albedo_texture_buffer(
+        mut self,
+        albedo_texture_buffer: impl Into<crate::components::ImageBuffer>,
+    ) -> Self {
+        self.albedo_texture_buffer = try_serialize_field(
+            Self::descriptor_albedo_texture_buffer(),
+            [albedo_texture_buffer],
+        );
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::ImageBuffer`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_albedo_texture_buffer`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_albedo_texture_buffer(
+        mut self,
+        albedo_texture_buffer: impl IntoIterator<Item = impl Into<crate::components::ImageBuffer>>,
+    ) -> Self {
+        self.albedo_texture_buffer = try_serialize_field(
+            Self::descriptor_albedo_texture_buffer(),
+            albedo_texture_buffer,
+        );
+        self
+    }
+
+    /// The format of the `albedo_texture_buffer`, if any.
+    #[inline]
+    pub fn with_albedo_texture_format(
+        mut self,
+        albedo_texture_format: impl Into<crate::components::ImageFormat>,
+    ) -> Self {
+        self.albedo_texture_format = try_serialize_field(
+            Self::descriptor_albedo_texture_format(),
+            [albedo_texture_format],
+        );
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::ImageFormat`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_albedo_texture_format`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_albedo_texture_format(
+        mut self,
+        albedo_texture_format: impl IntoIterator<Item = impl Into<crate::components::ImageFormat>>,
+    ) -> Self {
+        self.albedo_texture_format = try_serialize_field(
+            Self::descriptor_albedo_texture_format(),
+            albedo_texture_format,
+        );
         self
     }
 

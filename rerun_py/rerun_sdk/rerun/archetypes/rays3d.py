@@ -39,9 +39,18 @@ class Rays3D(Rays3DExt, Archetype, VisualizableArchetype):
     -------
     ### 3D geometry primitives:
     ```python
+    import numpy as np
+
     import rerun as rr
 
     rr.init("rerun_example_geometry3d_primitives", spawn=True)
+
+    texture = np.zeros((96, 96, 4), dtype=np.uint8)
+    texture[:, :, 3] = 255
+    texture[:48, :48, :3] = [0, 216, 255]
+    texture[:48, 48:, :3] = [255, 210, 0]
+    texture[48:, :48, :3] = [255, 84, 170]
+    texture[48:, 48:, :3] = [255, 255, 255]
 
     rr.log(
         "cones",
@@ -49,7 +58,7 @@ class Rays3D(Rays3DExt, Archetype, VisualizableArchetype):
             lengths=[1.6, 2.2, 1.2],
             radii=[0.6, 0.35, 0.8],
             centers=[(-2.0, 0.0, 0.0), (-0.5, 0.0, 0.3), (1.0, 0.0, -0.2)],
-            colors=[(255, 120, 80), (255, 210, 80), (120, 200, 255)],
+            albedo_texture=texture,
         ),
     )
 
@@ -68,10 +77,11 @@ class Rays3D(Rays3DExt, Archetype, VisualizableArchetype):
         rr.Planes3D(
             planes=[
                 rr.components.Plane3D.XY.with_distance(-0.75),
-                rr.components.Plane3D([0.5, 0.0, 1.0, 0.2]),
+                rr.components.Plane3D([0.5, 0.0, 1.0], 0.2),
             ],
             half_sizes=[(2.5, 1.2), (1.4, 1.0)],
-            colors=[(120, 120, 255, 96), (255, 160, 80, 96)],
+            albedo_texture=texture,
+            albedo_factor=(255, 255, 255, 160),
             fill_mode=rr.components.FillMode.TransparentFillMajorWireframe,
         ),
     )
@@ -87,7 +97,8 @@ class Rays3D(Rays3DExt, Archetype, VisualizableArchetype):
                 (1.0, 1.4, 0.0),
                 (0.5, 2.2, 0.6),
             ],
-            colors=[(255, 80, 140), (120, 255, 120)],
+            vertex_texcoords=[(0, 0), (1, 0), (0.5, 1), (0, 0), (1, 0), (0.5, 1)],
+            albedo_texture=texture,
             fill_mode=rr.components.FillMode.TransparentFillMajorWireframe,
         ),
     )

@@ -42,9 +42,18 @@ class Cones3D(Cones3DExt, Archetype, VisualizableArchetype):
     -------
     ### 3D geometry primitives:
     ```python
+    import numpy as np
+
     import rerun as rr
 
     rr.init("rerun_example_geometry3d_primitives", spawn=True)
+
+    texture = np.zeros((96, 96, 4), dtype=np.uint8)
+    texture[:, :, 3] = 255
+    texture[:48, :48, :3] = [0, 216, 255]
+    texture[:48, 48:, :3] = [255, 210, 0]
+    texture[48:, :48, :3] = [255, 84, 170]
+    texture[48:, 48:, :3] = [255, 255, 255]
 
     rr.log(
         "cones",
@@ -52,7 +61,7 @@ class Cones3D(Cones3DExt, Archetype, VisualizableArchetype):
             lengths=[1.6, 2.2, 1.2],
             radii=[0.6, 0.35, 0.8],
             centers=[(-2.0, 0.0, 0.0), (-0.5, 0.0, 0.3), (1.0, 0.0, -0.2)],
-            colors=[(255, 120, 80), (255, 210, 80), (120, 200, 255)],
+            albedo_texture=texture,
         ),
     )
 
@@ -71,10 +80,11 @@ class Cones3D(Cones3DExt, Archetype, VisualizableArchetype):
         rr.Planes3D(
             planes=[
                 rr.components.Plane3D.XY.with_distance(-0.75),
-                rr.components.Plane3D([0.5, 0.0, 1.0, 0.2]),
+                rr.components.Plane3D([0.5, 0.0, 1.0], 0.2),
             ],
             half_sizes=[(2.5, 1.2), (1.4, 1.0)],
-            colors=[(120, 120, 255, 96), (255, 160, 80, 96)],
+            albedo_texture=texture,
+            albedo_factor=(255, 255, 255, 160),
             fill_mode=rr.components.FillMode.TransparentFillMajorWireframe,
         ),
     )
@@ -90,7 +100,8 @@ class Cones3D(Cones3DExt, Archetype, VisualizableArchetype):
                 (1.0, 1.4, 0.0),
                 (0.5, 2.2, 0.6),
             ],
-            colors=[(255, 80, 140), (120, 255, 120)],
+            vertex_texcoords=[(0, 0), (1, 0), (0.5, 1), (0, 0), (1, 0), (0.5, 1)],
+            albedo_texture=texture,
             fill_mode=rr.components.FillMode.TransparentFillMajorWireframe,
         ),
     )
@@ -113,6 +124,9 @@ class Cones3D(Cones3DExt, Archetype, VisualizableArchetype):
             colors=None,
             line_radii=None,
             fill_mode=None,
+            albedo_factor=None,
+            albedo_texture_buffer=None,
+            albedo_texture_format=None,
             labels=None,
             show_labels=None,
             class_ids=None,
@@ -138,6 +152,9 @@ class Cones3D(Cones3DExt, Archetype, VisualizableArchetype):
         colors: datatypes.Rgba32ArrayLike | None = None,
         line_radii: datatypes.Float32ArrayLike | None = None,
         fill_mode: components.FillModeLike | None = None,
+        albedo_factor: datatypes.Rgba32Like | None = None,
+        albedo_texture_buffer: datatypes.BlobLike | None = None,
+        albedo_texture_format: datatypes.ImageFormatLike | None = None,
         labels: datatypes.Utf8ArrayLike | None = None,
         show_labels: datatypes.BoolLike | None = None,
         class_ids: datatypes.ClassIdArrayLike | None = None,
@@ -173,6 +190,17 @@ class Cones3D(Cones3DExt, Archetype, VisualizableArchetype):
             Optional radii for the lines used when the cone is rendered as a wireframe.
         fill_mode:
             Optionally choose whether the cones are drawn with lines or solid.
+        albedo_factor:
+            Optional color multiplier for textured cones.
+
+            If there is no texture, this acts as a color for the solid fill.
+        albedo_texture_buffer:
+            Optional albedo texture buffer for solid cones.
+
+            The texture is mapped procedurally around the cone: U wraps around the base and V runs from base to tip.
+            The flat base uses a radial mapping into the same texture.
+        albedo_texture_format:
+            Optional albedo texture format for solid cones.
         labels:
             Optional text labels for the cones, which will be located at their centers.
         show_labels:
@@ -198,6 +226,9 @@ class Cones3D(Cones3DExt, Archetype, VisualizableArchetype):
                 "colors": colors,
                 "line_radii": line_radii,
                 "fill_mode": fill_mode,
+                "albedo_factor": albedo_factor,
+                "albedo_texture_buffer": albedo_texture_buffer,
+                "albedo_texture_format": albedo_texture_format,
                 "labels": labels,
                 "show_labels": show_labels,
                 "class_ids": class_ids,
@@ -282,6 +313,30 @@ class Cones3D(Cones3DExt, Archetype, VisualizableArchetype):
         )
 
     @staticmethod
+    def descriptor_albedo_factor() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Cones3D:albedo_factor",
+            archetype=Cones3D.NAME,
+            component_type=components.AlbedoFactorBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_albedo_texture_buffer() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Cones3D:albedo_texture_buffer",
+            archetype=Cones3D.NAME,
+            component_type=components.ImageBufferBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_albedo_texture_format() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Cones3D:albedo_texture_format",
+            archetype=Cones3D.NAME,
+            component_type=components.ImageFormatBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
     def descriptor_labels() -> ComponentDescriptor:
         return ComponentDescriptor(
             "Cones3D:labels",
@@ -317,6 +372,9 @@ class Cones3D(Cones3DExt, Archetype, VisualizableArchetype):
         colors: datatypes.Rgba32ArrayLike | None = None,
         line_radii: datatypes.Float32ArrayLike | None = None,
         fill_mode: components.FillModeArrayLike | None = None,
+        albedo_factor: datatypes.Rgba32ArrayLike | None = None,
+        albedo_texture_buffer: datatypes.BlobArrayLike | None = None,
+        albedo_texture_format: datatypes.ImageFormatArrayLike | None = None,
         labels: datatypes.Utf8ArrayLike | None = None,
         show_labels: datatypes.BoolArrayLike | None = None,
         class_ids: datatypes.ClassIdArrayLike | None = None,
@@ -355,6 +413,17 @@ class Cones3D(Cones3DExt, Archetype, VisualizableArchetype):
             Optional radii for the lines used when the cone is rendered as a wireframe.
         fill_mode:
             Optionally choose whether the cones are drawn with lines or solid.
+        albedo_factor:
+            Optional color multiplier for textured cones.
+
+            If there is no texture, this acts as a color for the solid fill.
+        albedo_texture_buffer:
+            Optional albedo texture buffer for solid cones.
+
+            The texture is mapped procedurally around the cone: U wraps around the base and V runs from base to tip.
+            The flat base uses a radial mapping into the same texture.
+        albedo_texture_format:
+            Optional albedo texture format for solid cones.
         labels:
             Optional text labels for the cones, which will be located at their centers.
         show_labels:
@@ -380,6 +449,9 @@ class Cones3D(Cones3DExt, Archetype, VisualizableArchetype):
                 colors=colors,
                 line_radii=line_radii,
                 fill_mode=fill_mode,
+                albedo_factor=albedo_factor,
+                albedo_texture_buffer=albedo_texture_buffer,
+                albedo_texture_format=albedo_texture_format,
                 labels=labels,
                 show_labels=show_labels,
                 class_ids=class_ids,
@@ -398,6 +470,9 @@ class Cones3D(Cones3DExt, Archetype, VisualizableArchetype):
             "Cones3D:colors": colors,
             "Cones3D:line_radii": line_radii,
             "Cones3D:fill_mode": fill_mode,
+            "Cones3D:albedo_factor": albedo_factor,
+            "Cones3D:albedo_texture_buffer": albedo_texture_buffer,
+            "Cones3D:albedo_texture_format": albedo_texture_format,
             "Cones3D:labels": labels,
             "Cones3D:show_labels": show_labels,
             "Cones3D:class_ids": class_ids,
@@ -512,6 +587,38 @@ class Cones3D(Cones3DExt, Archetype, VisualizableArchetype):
         converter=components.FillModeBatch._converter,  # type: ignore[misc]
     )
     # Optionally choose whether the cones are drawn with lines or solid.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    albedo_factor: components.AlbedoFactorBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.AlbedoFactorBatch._converter,  # type: ignore[misc]
+    )
+    # Optional color multiplier for textured cones.
+    #
+    # If there is no texture, this acts as a color for the solid fill.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    albedo_texture_buffer: components.ImageBufferBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.ImageBufferBatch._converter,  # type: ignore[misc]
+    )
+    # Optional albedo texture buffer for solid cones.
+    #
+    # The texture is mapped procedurally around the cone: U wraps around the base and V runs from base to tip.
+    # The flat base uses a radial mapping into the same texture.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    albedo_texture_format: components.ImageFormatBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.ImageFormatBatch._converter,  # type: ignore[misc]
+    )
+    # Optional albedo texture format for solid cones.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

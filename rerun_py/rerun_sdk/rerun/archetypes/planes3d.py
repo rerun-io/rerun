@@ -40,9 +40,18 @@ class Planes3D(Planes3DExt, Archetype, VisualizableArchetype):
     -------
     ### 3D geometry primitives:
     ```python
+    import numpy as np
+
     import rerun as rr
 
     rr.init("rerun_example_geometry3d_primitives", spawn=True)
+
+    texture = np.zeros((96, 96, 4), dtype=np.uint8)
+    texture[:, :, 3] = 255
+    texture[:48, :48, :3] = [0, 216, 255]
+    texture[:48, 48:, :3] = [255, 210, 0]
+    texture[48:, :48, :3] = [255, 84, 170]
+    texture[48:, 48:, :3] = [255, 255, 255]
 
     rr.log(
         "cones",
@@ -50,7 +59,7 @@ class Planes3D(Planes3DExt, Archetype, VisualizableArchetype):
             lengths=[1.6, 2.2, 1.2],
             radii=[0.6, 0.35, 0.8],
             centers=[(-2.0, 0.0, 0.0), (-0.5, 0.0, 0.3), (1.0, 0.0, -0.2)],
-            colors=[(255, 120, 80), (255, 210, 80), (120, 200, 255)],
+            albedo_texture=texture,
         ),
     )
 
@@ -69,10 +78,11 @@ class Planes3D(Planes3DExt, Archetype, VisualizableArchetype):
         rr.Planes3D(
             planes=[
                 rr.components.Plane3D.XY.with_distance(-0.75),
-                rr.components.Plane3D([0.5, 0.0, 1.0, 0.2]),
+                rr.components.Plane3D([0.5, 0.0, 1.0], 0.2),
             ],
             half_sizes=[(2.5, 1.2), (1.4, 1.0)],
-            colors=[(120, 120, 255, 96), (255, 160, 80, 96)],
+            albedo_texture=texture,
+            albedo_factor=(255, 255, 255, 160),
             fill_mode=rr.components.FillMode.TransparentFillMajorWireframe,
         ),
     )
@@ -88,7 +98,8 @@ class Planes3D(Planes3DExt, Archetype, VisualizableArchetype):
                 (1.0, 1.4, 0.0),
                 (0.5, 2.2, 0.6),
             ],
-            colors=[(255, 80, 140), (120, 255, 120)],
+            vertex_texcoords=[(0, 0), (1, 0), (0.5, 1), (0, 0), (1, 0), (0.5, 1)],
+            albedo_texture=texture,
             fill_mode=rr.components.FillMode.TransparentFillMajorWireframe,
         ),
     )
@@ -108,6 +119,9 @@ class Planes3D(Planes3DExt, Archetype, VisualizableArchetype):
             colors=None,
             line_radii=None,
             fill_mode=None,
+            albedo_factor=None,
+            albedo_texture_buffer=None,
+            albedo_texture_format=None,
             labels=None,
             show_labels=None,
             class_ids=None,
@@ -130,6 +144,9 @@ class Planes3D(Planes3DExt, Archetype, VisualizableArchetype):
         colors: datatypes.Rgba32ArrayLike | None = None,
         line_radii: datatypes.Float32ArrayLike | None = None,
         fill_mode: components.FillModeLike | None = None,
+        albedo_factor: datatypes.Rgba32Like | None = None,
+        albedo_texture_buffer: datatypes.BlobLike | None = None,
+        albedo_texture_format: datatypes.ImageFormatLike | None = None,
         labels: datatypes.Utf8ArrayLike | None = None,
         show_labels: datatypes.BoolLike | None = None,
         class_ids: datatypes.ClassIdArrayLike | None = None,
@@ -155,6 +172,21 @@ class Planes3D(Planes3DExt, Archetype, VisualizableArchetype):
             Optional radii for the lines used when the plane patch is rendered as a wireframe.
         fill_mode:
             Optionally choose whether the plane patches are drawn with lines or solid.
+        albedo_factor:
+            A color multiplier applied to all solid plane patches.
+
+            Alpha channel governs the overall solid plane transparency.
+        albedo_texture_buffer:
+            Optional albedo texture.
+
+            Plane patches use procedural UV coordinates spanning `[0, 1]` across each finite patch.
+
+            Currently supports only sRGB(A) textures, ignoring alpha.
+            (meaning that the tensor must have 3 or 4 channels and use the `u8` format)
+
+            The alpha channel is ignored.
+        albedo_texture_format:
+            The format of the `albedo_texture_buffer`, if any.
         labels:
             Optional text labels for the planes, which will be located at their patch centers.
         show_labels:
@@ -177,6 +209,9 @@ class Planes3D(Planes3DExt, Archetype, VisualizableArchetype):
                 "colors": colors,
                 "line_radii": line_radii,
                 "fill_mode": fill_mode,
+                "albedo_factor": albedo_factor,
+                "albedo_texture_buffer": albedo_texture_buffer,
+                "albedo_texture_format": albedo_texture_format,
                 "labels": labels,
                 "show_labels": show_labels,
                 "class_ids": class_ids,
@@ -237,6 +272,30 @@ class Planes3D(Planes3DExt, Archetype, VisualizableArchetype):
         )
 
     @staticmethod
+    def descriptor_albedo_factor() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Planes3D:albedo_factor",
+            archetype=Planes3D.NAME,
+            component_type=components.AlbedoFactorBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_albedo_texture_buffer() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Planes3D:albedo_texture_buffer",
+            archetype=Planes3D.NAME,
+            component_type=components.ImageBufferBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_albedo_texture_format() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Planes3D:albedo_texture_format",
+            archetype=Planes3D.NAME,
+            component_type=components.ImageFormatBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
     def descriptor_labels() -> ComponentDescriptor:
         return ComponentDescriptor(
             "Planes3D:labels",
@@ -269,6 +328,9 @@ class Planes3D(Planes3DExt, Archetype, VisualizableArchetype):
         colors: datatypes.Rgba32ArrayLike | None = None,
         line_radii: datatypes.Float32ArrayLike | None = None,
         fill_mode: components.FillModeArrayLike | None = None,
+        albedo_factor: datatypes.Rgba32ArrayLike | None = None,
+        albedo_texture_buffer: datatypes.BlobArrayLike | None = None,
+        albedo_texture_format: datatypes.ImageFormatArrayLike | None = None,
         labels: datatypes.Utf8ArrayLike | None = None,
         show_labels: datatypes.BoolArrayLike | None = None,
         class_ids: datatypes.ClassIdArrayLike | None = None,
@@ -297,6 +359,21 @@ class Planes3D(Planes3DExt, Archetype, VisualizableArchetype):
             Optional radii for the lines used when the plane patch is rendered as a wireframe.
         fill_mode:
             Optionally choose whether the plane patches are drawn with lines or solid.
+        albedo_factor:
+            A color multiplier applied to all solid plane patches.
+
+            Alpha channel governs the overall solid plane transparency.
+        albedo_texture_buffer:
+            Optional albedo texture.
+
+            Plane patches use procedural UV coordinates spanning `[0, 1]` across each finite patch.
+
+            Currently supports only sRGB(A) textures, ignoring alpha.
+            (meaning that the tensor must have 3 or 4 channels and use the `u8` format)
+
+            The alpha channel is ignored.
+        albedo_texture_format:
+            The format of the `albedo_texture_buffer`, if any.
         labels:
             Optional text labels for the planes, which will be located at their patch centers.
         show_labels:
@@ -319,6 +396,9 @@ class Planes3D(Planes3DExt, Archetype, VisualizableArchetype):
                 colors=colors,
                 line_radii=line_radii,
                 fill_mode=fill_mode,
+                albedo_factor=albedo_factor,
+                albedo_texture_buffer=albedo_texture_buffer,
+                albedo_texture_format=albedo_texture_format,
                 labels=labels,
                 show_labels=show_labels,
                 class_ids=class_ids,
@@ -334,6 +414,9 @@ class Planes3D(Planes3DExt, Archetype, VisualizableArchetype):
             "Planes3D:colors": colors,
             "Planes3D:line_radii": line_radii,
             "Planes3D:fill_mode": fill_mode,
+            "Planes3D:albedo_factor": albedo_factor,
+            "Planes3D:albedo_texture_buffer": albedo_texture_buffer,
+            "Planes3D:albedo_texture_format": albedo_texture_format,
             "Planes3D:labels": labels,
             "Planes3D:show_labels": show_labels,
             "Planes3D:class_ids": class_ids,
@@ -417,6 +500,42 @@ class Planes3D(Planes3DExt, Archetype, VisualizableArchetype):
         converter=components.FillModeBatch._converter,  # type: ignore[misc]
     )
     # Optionally choose whether the plane patches are drawn with lines or solid.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    albedo_factor: components.AlbedoFactorBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.AlbedoFactorBatch._converter,  # type: ignore[misc]
+    )
+    # A color multiplier applied to all solid plane patches.
+    #
+    # Alpha channel governs the overall solid plane transparency.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    albedo_texture_buffer: components.ImageBufferBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.ImageBufferBatch._converter,  # type: ignore[misc]
+    )
+    # Optional albedo texture.
+    #
+    # Plane patches use procedural UV coordinates spanning `[0, 1]` across each finite patch.
+    #
+    # Currently supports only sRGB(A) textures, ignoring alpha.
+    # (meaning that the tensor must have 3 or 4 channels and use the `u8` format)
+    #
+    # The alpha channel is ignored.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    albedo_texture_format: components.ImageFormatBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.ImageFormatBatch._converter,  # type: ignore[misc]
+    )
+    # The format of the `albedo_texture_buffer`, if any.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

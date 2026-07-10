@@ -134,6 +134,20 @@ pub struct Cones3D {
     /// Optionally choose whether the cones are drawn with lines or solid.
     pub fill_mode: Option<SerializedComponentBatch>,
 
+    /// Optional color multiplier for textured cones.
+    ///
+    /// If there is no texture, this acts as a color for the solid fill.
+    pub albedo_factor: Option<SerializedComponentBatch>,
+
+    /// Optional albedo texture buffer for solid cones.
+    ///
+    /// The texture is mapped procedurally around the cone: U wraps around the base and V runs from base to tip.
+    /// The flat base uses a radial mapping into the same texture.
+    pub albedo_texture_buffer: Option<SerializedComponentBatch>,
+
+    /// Optional albedo texture format for solid cones.
+    pub albedo_texture_format: Option<SerializedComponentBatch>,
+
     /// Optional text labels for the cones, which will be located at their centers.
     pub labels: Option<SerializedComponentBatch>,
 
@@ -262,6 +276,48 @@ impl Cones3D {
         (*DESCRIPTOR).clone()
     }
 
+    /// Returns the [`ComponentDescriptor`] for [`Self::albedo_factor`].
+    ///
+    /// The corresponding component is [`crate::components::AlbedoFactor`].
+    #[inline]
+    pub fn descriptor_albedo_factor() -> ComponentDescriptor {
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Cones3D".into()),
+                component: "Cones3D:albedo_factor".into(),
+                component_type: Some("rerun.components.AlbedoFactor".into()),
+            });
+        (*DESCRIPTOR).clone()
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::albedo_texture_buffer`].
+    ///
+    /// The corresponding component is [`crate::components::ImageBuffer`].
+    #[inline]
+    pub fn descriptor_albedo_texture_buffer() -> ComponentDescriptor {
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Cones3D".into()),
+                component: "Cones3D:albedo_texture_buffer".into(),
+                component_type: Some("rerun.components.ImageBuffer".into()),
+            });
+        (*DESCRIPTOR).clone()
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::albedo_texture_format`].
+    ///
+    /// The corresponding component is [`crate::components::ImageFormat`].
+    #[inline]
+    pub fn descriptor_albedo_texture_format() -> ComponentDescriptor {
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Cones3D".into()),
+                component: "Cones3D:albedo_texture_format".into(),
+                component_type: Some("rerun.components.ImageFormat".into()),
+            });
+        (*DESCRIPTOR).clone()
+    }
+
     /// Returns the [`ComponentDescriptor`] for [`Self::labels`].
     ///
     /// The corresponding component is [`crate::components::Text`].
@@ -311,20 +367,23 @@ static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 2usize]> =
 static RECOMMENDED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 2usize]> =
     std::sync::LazyLock::new(|| [Cones3D::descriptor_centers(), Cones3D::descriptor_colors()]);
 
-static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 7usize]> =
+static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 10usize]> =
     std::sync::LazyLock::new(|| {
         [
             Cones3D::descriptor_rotation_axis_angles(),
             Cones3D::descriptor_quaternions(),
             Cones3D::descriptor_line_radii(),
             Cones3D::descriptor_fill_mode(),
+            Cones3D::descriptor_albedo_factor(),
+            Cones3D::descriptor_albedo_texture_buffer(),
+            Cones3D::descriptor_albedo_texture_format(),
             Cones3D::descriptor_labels(),
             Cones3D::descriptor_show_labels(),
             Cones3D::descriptor_class_ids(),
         ]
     });
 
-static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 11usize]> =
+static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 14usize]> =
     std::sync::LazyLock::new(|| {
         [
             Cones3D::descriptor_lengths(),
@@ -335,6 +394,9 @@ static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 11usize]> =
             Cones3D::descriptor_quaternions(),
             Cones3D::descriptor_line_radii(),
             Cones3D::descriptor_fill_mode(),
+            Cones3D::descriptor_albedo_factor(),
+            Cones3D::descriptor_albedo_texture_buffer(),
+            Cones3D::descriptor_albedo_texture_format(),
             Cones3D::descriptor_labels(),
             Cones3D::descriptor_show_labels(),
             Cones3D::descriptor_class_ids(),
@@ -342,8 +404,8 @@ static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 11usize]> =
     });
 
 impl Cones3D {
-    /// The total number of components in the archetype: 2 required, 2 recommended, 7 optional
-    pub const NUM_COMPONENTS: usize = 11usize;
+    /// The total number of components in the archetype: 2 required, 2 recommended, 10 optional
+    pub const NUM_COMPONENTS: usize = 14usize;
 }
 
 impl ::re_types_core::Archetype for Cones3D {
@@ -422,6 +484,27 @@ impl ::re_types_core::Archetype for Cones3D {
             .map(|array| {
                 SerializedComponentBatch::new(array.clone(), Self::descriptor_fill_mode())
             });
+        let albedo_factor = arrays_by_descr
+            .get(&Self::descriptor_albedo_factor())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_albedo_factor())
+            });
+        let albedo_texture_buffer = arrays_by_descr
+            .get(&Self::descriptor_albedo_texture_buffer())
+            .map(|array| {
+                SerializedComponentBatch::new(
+                    array.clone(),
+                    Self::descriptor_albedo_texture_buffer(),
+                )
+            });
+        let albedo_texture_format = arrays_by_descr
+            .get(&Self::descriptor_albedo_texture_format())
+            .map(|array| {
+                SerializedComponentBatch::new(
+                    array.clone(),
+                    Self::descriptor_albedo_texture_format(),
+                )
+            });
         let labels = arrays_by_descr
             .get(&Self::descriptor_labels())
             .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_labels()));
@@ -444,6 +527,9 @@ impl ::re_types_core::Archetype for Cones3D {
             colors,
             line_radii,
             fill_mode,
+            albedo_factor,
+            albedo_texture_buffer,
+            albedo_texture_format,
             labels,
             show_labels,
             class_ids,
@@ -464,6 +550,9 @@ impl ::re_types_core::AsComponents for Cones3D {
             self.colors.clone(),
             self.line_radii.clone(),
             self.fill_mode.clone(),
+            self.albedo_factor.clone(),
+            self.albedo_texture_buffer.clone(),
+            self.albedo_texture_format.clone(),
             self.labels.clone(),
             self.show_labels.clone(),
             self.class_ids.clone(),
@@ -499,6 +588,9 @@ impl Cones3D {
             colors: None,
             line_radii: None,
             fill_mode: None,
+            albedo_factor: None,
+            albedo_texture_buffer: None,
+            albedo_texture_format: None,
             labels: None,
             show_labels: None,
             class_ids: None,
@@ -547,6 +639,18 @@ impl Cones3D {
             fill_mode: Some(SerializedComponentBatch::new(
                 crate::components::FillMode::arrow_empty(),
                 Self::descriptor_fill_mode(),
+            )),
+            albedo_factor: Some(SerializedComponentBatch::new(
+                crate::components::AlbedoFactor::arrow_empty(),
+                Self::descriptor_albedo_factor(),
+            )),
+            albedo_texture_buffer: Some(SerializedComponentBatch::new(
+                crate::components::ImageBuffer::arrow_empty(),
+                Self::descriptor_albedo_texture_buffer(),
+            )),
+            albedo_texture_format: Some(SerializedComponentBatch::new(
+                crate::components::ImageFormat::arrow_empty(),
+                Self::descriptor_albedo_texture_format(),
             )),
             labels: Some(SerializedComponentBatch::new(
                 crate::components::Text::arrow_empty(),
@@ -606,6 +710,15 @@ impl Cones3D {
             self.fill_mode
                 .map(|fill_mode| fill_mode.partitioned(_lengths.clone()))
                 .transpose()?,
+            self.albedo_factor
+                .map(|albedo_factor| albedo_factor.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.albedo_texture_buffer
+                .map(|albedo_texture_buffer| albedo_texture_buffer.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.albedo_texture_format
+                .map(|albedo_texture_format| albedo_texture_format.partitioned(_lengths.clone()))
+                .transpose()?,
             self.labels
                 .map(|labels| labels.partitioned(_lengths.clone()))
                 .transpose()?,
@@ -635,6 +748,9 @@ impl Cones3D {
         let len_colors = self.colors.as_ref().map(|b| b.array.len());
         let len_line_radii = self.line_radii.as_ref().map(|b| b.array.len());
         let len_fill_mode = self.fill_mode.as_ref().map(|b| b.array.len());
+        let len_albedo_factor = self.albedo_factor.as_ref().map(|b| b.array.len());
+        let len_albedo_texture_buffer = self.albedo_texture_buffer.as_ref().map(|b| b.array.len());
+        let len_albedo_texture_format = self.albedo_texture_format.as_ref().map(|b| b.array.len());
         let len_labels = self.labels.as_ref().map(|b| b.array.len());
         let len_show_labels = self.show_labels.as_ref().map(|b| b.array.len());
         let len_class_ids = self.class_ids.as_ref().map(|b| b.array.len());
@@ -647,6 +763,9 @@ impl Cones3D {
             .or(len_colors)
             .or(len_line_radii)
             .or(len_fill_mode)
+            .or(len_albedo_factor)
+            .or(len_albedo_texture_buffer)
+            .or(len_albedo_texture_format)
             .or(len_labels)
             .or(len_show_labels)
             .or(len_class_ids)
@@ -752,6 +871,92 @@ impl Cones3D {
         fill_mode: impl IntoIterator<Item = impl Into<crate::components::FillMode>>,
     ) -> Self {
         self.fill_mode = try_serialize_field(Self::descriptor_fill_mode(), fill_mode);
+        self
+    }
+
+    /// Optional color multiplier for textured cones.
+    ///
+    /// If there is no texture, this acts as a color for the solid fill.
+    #[inline]
+    pub fn with_albedo_factor(
+        mut self,
+        albedo_factor: impl Into<crate::components::AlbedoFactor>,
+    ) -> Self {
+        self.albedo_factor = try_serialize_field(Self::descriptor_albedo_factor(), [albedo_factor]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::AlbedoFactor`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_albedo_factor`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_albedo_factor(
+        mut self,
+        albedo_factor: impl IntoIterator<Item = impl Into<crate::components::AlbedoFactor>>,
+    ) -> Self {
+        self.albedo_factor = try_serialize_field(Self::descriptor_albedo_factor(), albedo_factor);
+        self
+    }
+
+    /// Optional albedo texture buffer for solid cones.
+    ///
+    /// The texture is mapped procedurally around the cone: U wraps around the base and V runs from base to tip.
+    /// The flat base uses a radial mapping into the same texture.
+    #[inline]
+    pub fn with_albedo_texture_buffer(
+        mut self,
+        albedo_texture_buffer: impl Into<crate::components::ImageBuffer>,
+    ) -> Self {
+        self.albedo_texture_buffer = try_serialize_field(
+            Self::descriptor_albedo_texture_buffer(),
+            [albedo_texture_buffer],
+        );
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::ImageBuffer`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_albedo_texture_buffer`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_albedo_texture_buffer(
+        mut self,
+        albedo_texture_buffer: impl IntoIterator<Item = impl Into<crate::components::ImageBuffer>>,
+    ) -> Self {
+        self.albedo_texture_buffer = try_serialize_field(
+            Self::descriptor_albedo_texture_buffer(),
+            albedo_texture_buffer,
+        );
+        self
+    }
+
+    /// Optional albedo texture format for solid cones.
+    #[inline]
+    pub fn with_albedo_texture_format(
+        mut self,
+        albedo_texture_format: impl Into<crate::components::ImageFormat>,
+    ) -> Self {
+        self.albedo_texture_format = try_serialize_field(
+            Self::descriptor_albedo_texture_format(),
+            [albedo_texture_format],
+        );
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::ImageFormat`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_albedo_texture_format`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_albedo_texture_format(
+        mut self,
+        albedo_texture_format: impl IntoIterator<Item = impl Into<crate::components::ImageFormat>>,
+    ) -> Self {
+        self.albedo_texture_format = try_serialize_field(
+            Self::descriptor_albedo_texture_format(),
+            albedo_texture_format,
+        );
         self
     }
 

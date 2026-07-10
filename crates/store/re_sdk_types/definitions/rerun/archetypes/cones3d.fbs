@@ -58,6 +58,20 @@ table Cones3D (
   /// Optionally choose whether the cones are drawn with lines or solid.
   fill_mode: rerun.components.FillMode ("attr.rerun.component_optional", nullable, order: 3100);
 
+  /// Optional color multiplier for textured cones.
+  ///
+  /// If there is no texture, this acts as a color for the solid fill.
+  albedo_factor: rerun.components.AlbedoFactor ("attr.rerun.component_optional", nullable, order: 3150);
+
+  /// Optional albedo texture buffer for solid cones.
+  ///
+  /// The texture is mapped procedurally around the cone: U wraps around the base and V runs from base to tip.
+  /// The flat base uses a radial mapping into the same texture.
+  albedo_texture_buffer: rerun.components.ImageBuffer ("attr.rerun.component_optional", nullable, order: 3160);
+
+  /// Optional albedo texture format for solid cones.
+  albedo_texture_format: rerun.components.ImageFormat ("attr.rerun.component_optional", nullable, order: 3170);
+
   /// Optional text labels for the cones, which will be located at their centers.
   labels: [rerun.components.Text] ("attr.rerun.component_optional", nullable, order: 3200);
 

@@ -31,6 +31,15 @@ namespace rerun::archetypes {
         archetype.fill_mode =
             ComponentBatch::empty<rerun::components::FillMode>(Descriptor_fill_mode)
                 .value_or_throw();
+        archetype.albedo_factor =
+            ComponentBatch::empty<rerun::components::AlbedoFactor>(Descriptor_albedo_factor)
+                .value_or_throw();
+        archetype.albedo_texture_buffer =
+            ComponentBatch::empty<rerun::components::ImageBuffer>(Descriptor_albedo_texture_buffer)
+                .value_or_throw();
+        archetype.albedo_texture_format =
+            ComponentBatch::empty<rerun::components::ImageFormat>(Descriptor_albedo_texture_format)
+                .value_or_throw();
         archetype.labels =
             ComponentBatch::empty<rerun::components::Text>(Descriptor_labels).value_or_throw();
         archetype.show_labels =
@@ -44,7 +53,7 @@ namespace rerun::archetypes {
 
     Collection<ComponentColumn> Cones3D::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(11);
+        columns.reserve(14);
         if (lengths.has_value()) {
             columns.push_back(lengths.value().partitioned(lengths_).value_or_throw());
         }
@@ -68,6 +77,15 @@ namespace rerun::archetypes {
         }
         if (fill_mode.has_value()) {
             columns.push_back(fill_mode.value().partitioned(lengths_).value_or_throw());
+        }
+        if (albedo_factor.has_value()) {
+            columns.push_back(albedo_factor.value().partitioned(lengths_).value_or_throw());
+        }
+        if (albedo_texture_buffer.has_value()) {
+            columns.push_back(albedo_texture_buffer.value().partitioned(lengths_).value_or_throw());
+        }
+        if (albedo_texture_format.has_value()) {
+            columns.push_back(albedo_texture_format.value().partitioned(lengths_).value_or_throw());
         }
         if (labels.has_value()) {
             columns.push_back(labels.value().partitioned(lengths_).value_or_throw());
@@ -106,6 +124,15 @@ namespace rerun::archetypes {
         if (fill_mode.has_value()) {
             return columns(std::vector<uint32_t>(fill_mode.value().length(), 1));
         }
+        if (albedo_factor.has_value()) {
+            return columns(std::vector<uint32_t>(albedo_factor.value().length(), 1));
+        }
+        if (albedo_texture_buffer.has_value()) {
+            return columns(std::vector<uint32_t>(albedo_texture_buffer.value().length(), 1));
+        }
+        if (albedo_texture_format.has_value()) {
+            return columns(std::vector<uint32_t>(albedo_texture_format.value().length(), 1));
+        }
         if (labels.has_value()) {
             return columns(std::vector<uint32_t>(labels.value().length(), 1));
         }
@@ -126,7 +153,7 @@ namespace rerun {
     ) {
         using namespace archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(11);
+        cells.reserve(14);
 
         if (archetype.lengths.has_value()) {
             cells.push_back(archetype.lengths.value());
@@ -151,6 +178,15 @@ namespace rerun {
         }
         if (archetype.fill_mode.has_value()) {
             cells.push_back(archetype.fill_mode.value());
+        }
+        if (archetype.albedo_factor.has_value()) {
+            cells.push_back(archetype.albedo_factor.value());
+        }
+        if (archetype.albedo_texture_buffer.has_value()) {
+            cells.push_back(archetype.albedo_texture_buffer.value());
+        }
+        if (archetype.albedo_texture_format.has_value()) {
+            cells.push_back(archetype.albedo_texture_format.value());
         }
         if (archetype.labels.has_value()) {
             cells.push_back(archetype.labels.value());

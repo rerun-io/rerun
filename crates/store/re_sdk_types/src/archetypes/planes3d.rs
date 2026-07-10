@@ -119,6 +119,24 @@ pub struct Planes3D {
     /// Optionally choose whether the plane patches are drawn with lines or solid.
     pub fill_mode: Option<SerializedComponentBatch>,
 
+    /// A color multiplier applied to all solid plane patches.
+    ///
+    /// Alpha channel governs the overall solid plane transparency.
+    pub albedo_factor: Option<SerializedComponentBatch>,
+
+    /// Optional albedo texture.
+    ///
+    /// Plane patches use procedural UV coordinates spanning `[0, 1]` across each finite patch.
+    ///
+    /// Currently supports only sRGB(A) textures, ignoring alpha.
+    /// (meaning that the tensor must have 3 or 4 channels and use the `u8` format)
+    ///
+    /// The alpha channel is ignored.
+    pub albedo_texture_buffer: Option<SerializedComponentBatch>,
+
+    /// The format of the `albedo_texture_buffer`, if any.
+    pub albedo_texture_format: Option<SerializedComponentBatch>,
+
     /// Optional text labels for the planes, which will be located at their patch centers.
     pub labels: Option<SerializedComponentBatch>,
 
@@ -205,6 +223,48 @@ impl Planes3D {
         (*DESCRIPTOR).clone()
     }
 
+    /// Returns the [`ComponentDescriptor`] for [`Self::albedo_factor`].
+    ///
+    /// The corresponding component is [`crate::components::AlbedoFactor`].
+    #[inline]
+    pub fn descriptor_albedo_factor() -> ComponentDescriptor {
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Planes3D".into()),
+                component: "Planes3D:albedo_factor".into(),
+                component_type: Some("rerun.components.AlbedoFactor".into()),
+            });
+        (*DESCRIPTOR).clone()
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::albedo_texture_buffer`].
+    ///
+    /// The corresponding component is [`crate::components::ImageBuffer`].
+    #[inline]
+    pub fn descriptor_albedo_texture_buffer() -> ComponentDescriptor {
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Planes3D".into()),
+                component: "Planes3D:albedo_texture_buffer".into(),
+                component_type: Some("rerun.components.ImageBuffer".into()),
+            });
+        (*DESCRIPTOR).clone()
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::albedo_texture_format`].
+    ///
+    /// The corresponding component is [`crate::components::ImageFormat`].
+    #[inline]
+    pub fn descriptor_albedo_texture_format() -> ComponentDescriptor {
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Planes3D".into()),
+                component: "Planes3D:albedo_texture_format".into(),
+                component_type: Some("rerun.components.ImageFormat".into()),
+            });
+        (*DESCRIPTOR).clone()
+    }
+
     /// Returns the [`ComponentDescriptor`] for [`Self::labels`].
     ///
     /// The corresponding component is [`crate::components::Text`].
@@ -259,18 +319,21 @@ static RECOMMENDED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 2usize]
         ]
     });
 
-static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 5usize]> =
+static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 8usize]> =
     std::sync::LazyLock::new(|| {
         [
             Planes3D::descriptor_line_radii(),
             Planes3D::descriptor_fill_mode(),
+            Planes3D::descriptor_albedo_factor(),
+            Planes3D::descriptor_albedo_texture_buffer(),
+            Planes3D::descriptor_albedo_texture_format(),
             Planes3D::descriptor_labels(),
             Planes3D::descriptor_show_labels(),
             Planes3D::descriptor_class_ids(),
         ]
     });
 
-static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 8usize]> =
+static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 11usize]> =
     std::sync::LazyLock::new(|| {
         [
             Planes3D::descriptor_planes(),
@@ -278,6 +341,9 @@ static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 8usize]> =
             Planes3D::descriptor_colors(),
             Planes3D::descriptor_line_radii(),
             Planes3D::descriptor_fill_mode(),
+            Planes3D::descriptor_albedo_factor(),
+            Planes3D::descriptor_albedo_texture_buffer(),
+            Planes3D::descriptor_albedo_texture_format(),
             Planes3D::descriptor_labels(),
             Planes3D::descriptor_show_labels(),
             Planes3D::descriptor_class_ids(),
@@ -285,8 +351,8 @@ static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 8usize]> =
     });
 
 impl Planes3D {
-    /// The total number of components in the archetype: 1 required, 2 recommended, 5 optional
-    pub const NUM_COMPONENTS: usize = 8usize;
+    /// The total number of components in the archetype: 1 required, 2 recommended, 8 optional
+    pub const NUM_COMPONENTS: usize = 11usize;
 }
 
 impl ::re_types_core::Archetype for Planes3D {
@@ -351,6 +417,27 @@ impl ::re_types_core::Archetype for Planes3D {
             .map(|array| {
                 SerializedComponentBatch::new(array.clone(), Self::descriptor_fill_mode())
             });
+        let albedo_factor = arrays_by_descr
+            .get(&Self::descriptor_albedo_factor())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_albedo_factor())
+            });
+        let albedo_texture_buffer = arrays_by_descr
+            .get(&Self::descriptor_albedo_texture_buffer())
+            .map(|array| {
+                SerializedComponentBatch::new(
+                    array.clone(),
+                    Self::descriptor_albedo_texture_buffer(),
+                )
+            });
+        let albedo_texture_format = arrays_by_descr
+            .get(&Self::descriptor_albedo_texture_format())
+            .map(|array| {
+                SerializedComponentBatch::new(
+                    array.clone(),
+                    Self::descriptor_albedo_texture_format(),
+                )
+            });
         let labels = arrays_by_descr
             .get(&Self::descriptor_labels())
             .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_labels()));
@@ -370,6 +457,9 @@ impl ::re_types_core::Archetype for Planes3D {
             colors,
             line_radii,
             fill_mode,
+            albedo_factor,
+            albedo_texture_buffer,
+            albedo_texture_format,
             labels,
             show_labels,
             class_ids,
@@ -387,6 +477,9 @@ impl ::re_types_core::AsComponents for Planes3D {
             self.colors.clone(),
             self.line_radii.clone(),
             self.fill_mode.clone(),
+            self.albedo_factor.clone(),
+            self.albedo_texture_buffer.clone(),
+            self.albedo_texture_format.clone(),
             self.labels.clone(),
             self.show_labels.clone(),
             self.class_ids.clone(),
@@ -418,6 +511,9 @@ impl Planes3D {
             colors: None,
             line_radii: None,
             fill_mode: None,
+            albedo_factor: None,
+            albedo_texture_buffer: None,
+            albedo_texture_format: None,
             labels: None,
             show_labels: None,
             class_ids: None,
@@ -454,6 +550,18 @@ impl Planes3D {
             fill_mode: Some(SerializedComponentBatch::new(
                 crate::components::FillMode::arrow_empty(),
                 Self::descriptor_fill_mode(),
+            )),
+            albedo_factor: Some(SerializedComponentBatch::new(
+                crate::components::AlbedoFactor::arrow_empty(),
+                Self::descriptor_albedo_factor(),
+            )),
+            albedo_texture_buffer: Some(SerializedComponentBatch::new(
+                crate::components::ImageBuffer::arrow_empty(),
+                Self::descriptor_albedo_texture_buffer(),
+            )),
+            albedo_texture_format: Some(SerializedComponentBatch::new(
+                crate::components::ImageFormat::arrow_empty(),
+                Self::descriptor_albedo_texture_format(),
             )),
             labels: Some(SerializedComponentBatch::new(
                 crate::components::Text::arrow_empty(),
@@ -504,6 +612,15 @@ impl Planes3D {
             self.fill_mode
                 .map(|fill_mode| fill_mode.partitioned(_lengths.clone()))
                 .transpose()?,
+            self.albedo_factor
+                .map(|albedo_factor| albedo_factor.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.albedo_texture_buffer
+                .map(|albedo_texture_buffer| albedo_texture_buffer.partitioned(_lengths.clone()))
+                .transpose()?,
+            self.albedo_texture_format
+                .map(|albedo_texture_format| albedo_texture_format.partitioned(_lengths.clone()))
+                .transpose()?,
             self.labels
                 .map(|labels| labels.partitioned(_lengths.clone()))
                 .transpose()?,
@@ -530,6 +647,9 @@ impl Planes3D {
         let len_colors = self.colors.as_ref().map(|b| b.array.len());
         let len_line_radii = self.line_radii.as_ref().map(|b| b.array.len());
         let len_fill_mode = self.fill_mode.as_ref().map(|b| b.array.len());
+        let len_albedo_factor = self.albedo_factor.as_ref().map(|b| b.array.len());
+        let len_albedo_texture_buffer = self.albedo_texture_buffer.as_ref().map(|b| b.array.len());
+        let len_albedo_texture_format = self.albedo_texture_format.as_ref().map(|b| b.array.len());
         let len_labels = self.labels.as_ref().map(|b| b.array.len());
         let len_show_labels = self.show_labels.as_ref().map(|b| b.array.len());
         let len_class_ids = self.class_ids.as_ref().map(|b| b.array.len());
@@ -539,6 +659,9 @@ impl Planes3D {
             .or(len_colors)
             .or(len_line_radii)
             .or(len_fill_mode)
+            .or(len_albedo_factor)
+            .or(len_albedo_texture_buffer)
+            .or(len_albedo_texture_format)
             .or(len_labels)
             .or(len_show_labels)
             .or(len_class_ids)
@@ -607,6 +730,96 @@ impl Planes3D {
         fill_mode: impl IntoIterator<Item = impl Into<crate::components::FillMode>>,
     ) -> Self {
         self.fill_mode = try_serialize_field(Self::descriptor_fill_mode(), fill_mode);
+        self
+    }
+
+    /// A color multiplier applied to all solid plane patches.
+    ///
+    /// Alpha channel governs the overall solid plane transparency.
+    #[inline]
+    pub fn with_albedo_factor(
+        mut self,
+        albedo_factor: impl Into<crate::components::AlbedoFactor>,
+    ) -> Self {
+        self.albedo_factor = try_serialize_field(Self::descriptor_albedo_factor(), [albedo_factor]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::AlbedoFactor`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_albedo_factor`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_albedo_factor(
+        mut self,
+        albedo_factor: impl IntoIterator<Item = impl Into<crate::components::AlbedoFactor>>,
+    ) -> Self {
+        self.albedo_factor = try_serialize_field(Self::descriptor_albedo_factor(), albedo_factor);
+        self
+    }
+
+    /// Optional albedo texture.
+    ///
+    /// Plane patches use procedural UV coordinates spanning `[0, 1]` across each finite patch.
+    ///
+    /// Currently supports only sRGB(A) textures, ignoring alpha.
+    /// (meaning that the tensor must have 3 or 4 channels and use the `u8` format)
+    ///
+    /// The alpha channel is ignored.
+    #[inline]
+    pub fn with_albedo_texture_buffer(
+        mut self,
+        albedo_texture_buffer: impl Into<crate::components::ImageBuffer>,
+    ) -> Self {
+        self.albedo_texture_buffer = try_serialize_field(
+            Self::descriptor_albedo_texture_buffer(),
+            [albedo_texture_buffer],
+        );
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::ImageBuffer`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_albedo_texture_buffer`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_albedo_texture_buffer(
+        mut self,
+        albedo_texture_buffer: impl IntoIterator<Item = impl Into<crate::components::ImageBuffer>>,
+    ) -> Self {
+        self.albedo_texture_buffer = try_serialize_field(
+            Self::descriptor_albedo_texture_buffer(),
+            albedo_texture_buffer,
+        );
+        self
+    }
+
+    /// The format of the `albedo_texture_buffer`, if any.
+    #[inline]
+    pub fn with_albedo_texture_format(
+        mut self,
+        albedo_texture_format: impl Into<crate::components::ImageFormat>,
+    ) -> Self {
+        self.albedo_texture_format = try_serialize_field(
+            Self::descriptor_albedo_texture_format(),
+            [albedo_texture_format],
+        );
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::ImageFormat`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_albedo_texture_format`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_albedo_texture_format(
+        mut self,
+        albedo_texture_format: impl IntoIterator<Item = impl Into<crate::components::ImageFormat>>,
+    ) -> Self {
+        self.albedo_texture_format = try_serialize_field(
+            Self::descriptor_albedo_texture_format(),
+            albedo_texture_format,
+        );
         self
     }
 

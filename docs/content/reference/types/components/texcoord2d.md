@@ -38,3 +38,4 @@ FixedSizeList(2 x non-null Float32)
 ## Used by
 
 * [`Mesh3D`](../archetypes/mesh3d.md)
+* [`Triangles3D`](../archetypes/triangles3d.md)

@@ -15,8 +15,12 @@ Every triplet of positions is interpreted as one triangle.
 * `colors`: [`Color`](../components/color.md)
 
 ### Optional
+* `vertex_texcoords`: [`Texcoord2D`](../components/texcoord2d.md)
 * `line_radii`: [`Radius`](../components/radius.md)
 * `fill_mode`: [`FillMode`](../components/fill_mode.md)
+* `albedo_factor`: [`AlbedoFactor`](../components/albedo_factor.md)
+* `albedo_texture_buffer`: [`ImageBuffer`](../components/image_buffer.md)
+* `albedo_texture_format`: [`ImageFormat`](../components/image_format.md)
 * `labels`: [`Text`](../components/text.md)
 * `show_labels`: [`ShowLabels`](../components/show_labels.md)
 * `class_ids`: [`ClassId`](../components/class_id.md)

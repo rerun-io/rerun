@@ -28,8 +28,11 @@ Struct(
 
 ## Used by
 
+* [`Cones3D`](../archetypes/cones3d.md)
 * [`DepthImage`](../archetypes/depth_image.md)
 * [`GridMap`](../archetypes/grid_map.md)
 * [`Image`](../archetypes/image.md)
 * [`Mesh3D`](../archetypes/mesh3d.md)
+* [`Planes3D`](../archetypes/planes3d.md)
 * [`SegmentationImage`](../archetypes/segmentation_image.md)
+* [`Triangles3D`](../archetypes/triangles3d.md)

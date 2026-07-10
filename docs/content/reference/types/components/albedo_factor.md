@@ -23,4 +23,7 @@ UInt32
 ## Used by
 
 * [`Asset3D`](../archetypes/asset3d.md)
+* [`Cones3D`](../archetypes/cones3d.md)
 * [`Mesh3D`](../archetypes/mesh3d.md)
+* [`Planes3D`](../archetypes/planes3d.md)
+* [`Triangles3D`](../archetypes/triangles3d.md)
