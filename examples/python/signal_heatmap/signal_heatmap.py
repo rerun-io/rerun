@@ -312,16 +312,17 @@ def main() -> None:
         rr.set_time("time", duration=float(sample_idx) * 160.0 / sample_rate)
         rr.log("audio/waveform", rr.Scalars(values))
 
-    rr.log("features/stft", rr.Tensor(stft, dim_names=("time", "frequency")))
-    rr.log("features/stft_hamming", rr.Tensor(stft_hamming, dim_names=("time", "frequency")))
-    rr.log("features/low_pass", rr.Tensor(low_pass, dim_names=("time", "frequency")))
-    rr.log("features/high_pass", rr.Tensor(high_pass, dim_names=("time", "frequency")))
-    rr.log("features/band_pass", rr.Tensor(band_pass, dim_names=("time", "frequency")))
-    rr.log("features/mel", rr.Tensor(mel, dim_names=("time", "mel")))
-    rr.log("features/mfcc", rr.Tensor(cepstra, dim_names=("time", "coefficient")))
+    rr.log("features/stft", rr.Tensor(stft, dim_names=("time", "frequency")), static=True)
+    rr.log("features/stft_hamming", rr.Tensor(stft_hamming, dim_names=("time", "frequency")), static=True)
+    rr.log("features/low_pass", rr.Tensor(low_pass, dim_names=("time", "frequency")), static=True)
+    rr.log("features/high_pass", rr.Tensor(high_pass, dim_names=("time", "frequency")), static=True)
+    rr.log("features/band_pass", rr.Tensor(band_pass, dim_names=("time", "frequency")), static=True)
+    rr.log("features/mel", rr.Tensor(mel, dim_names=("time", "mel")), static=True)
+    rr.log("features/mfcc", rr.Tensor(cepstra, dim_names=("time", "coefficient")), static=True)
     rr.log(
         "features/multichannel_stft",
         rr.Tensor(multichannel, dim_names=("time", "channel", "frequency")),
+        static=True,
     )
 
     window_frames = 24
