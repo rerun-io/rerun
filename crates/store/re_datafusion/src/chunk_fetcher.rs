@@ -387,6 +387,7 @@ fn status_retryable(status: reqwest::StatusCode) -> bool {
             | reqwest::StatusCode::UNAUTHORIZED
             | reqwest::StatusCode::FORBIDDEN
             | reqwest::StatusCode::METHOD_NOT_ALLOWED
+            | reqwest::StatusCode::RANGE_NOT_SATISFIABLE
     )
 }
 
@@ -866,6 +867,13 @@ async fn fetch_merged_range(
         return Err(classify_http_status(response.status()));
     }
 
+    let expected_len = validate_range_response_headers(
+        response.status(),
+        response.headers(),
+        *range_start,
+        range_end,
+    )?;
+
     // Captured for decode-failure attribution (RR-4549): compared against
     // `expected_etag` if the chunk fails to decode. `last_modified` is
     // logged alongside for diagnostics.
@@ -884,6 +892,16 @@ async fn fetch_merged_range(
         .bytes()
         .await
         .map_err(|err| DirectFetchError::new(format!("failed to read body: {err}"), true))?;
+    if merged_bytes.len() != expected_len {
+        return Err(DirectFetchError::new(
+            format!(
+                "HTTP range response body length mismatch: expected {expected_len} bytes for \
+                 bytes={range_start}-{range_end}, got {}",
+                merged_bytes.len()
+            ),
+            false,
+        ));
+    }
 
     tracing::Span::current().record("bytes", merged_bytes.len());
 
@@ -935,4 +953,184 @@ async fn fetch_merged_range(
                 .map(|chunk_with_segment| (info.original_row_index, chunk_with_segment))
         })
         .try_collect()
+}
+
+fn validate_range_response_headers(
+    status: reqwest::StatusCode,
+    headers: &reqwest::header::HeaderMap,
+    range_start: usize,
+    range_end: usize,
+) -> Result<usize, DirectFetchError> {
+    if range_end < range_start {
+        return Err(DirectFetchError::new(
+            format!("invalid HTTP range bytes={range_start}-{range_end}"),
+            false,
+        ));
+    }
+    let expected_len = range_end - range_start + 1;
+
+    if status != reqwest::StatusCode::PARTIAL_CONTENT {
+        return Err(DirectFetchError::new(
+            format!(
+                "HTTP range request returned status {status}; expected 206 Partial Content for \
+                 bytes={range_start}-{range_end}"
+            ),
+            false,
+        ));
+    }
+
+    let content_range = headers
+        .get(reqwest::header::CONTENT_RANGE)
+        .ok_or_else(|| {
+            DirectFetchError::new(
+                format!(
+                    "HTTP 206 response missing Content-Range for bytes={range_start}-{range_end}"
+                ),
+                false,
+            )
+        })?
+        .to_str()
+        .map_err(|err| {
+            DirectFetchError::new(
+                format!("invalid Content-Range header for bytes={range_start}-{range_end}: {err}"),
+                false,
+            )
+        })?;
+    let (actual_start, actual_end) = parse_content_range(content_range).ok_or_else(|| {
+        DirectFetchError::new(
+            format!("invalid Content-Range header {content_range:?}"),
+            false,
+        )
+    })?;
+    if actual_start != range_start || actual_end != range_end {
+        return Err(DirectFetchError::new(
+            format!(
+                "HTTP Content-Range mismatch: expected bytes {range_start}-{range_end}, got \
+                 {actual_start}-{actual_end}"
+            ),
+            false,
+        ));
+    }
+
+    let content_length = headers
+        .get(reqwest::header::CONTENT_LENGTH)
+        .ok_or_else(|| {
+            DirectFetchError::new(
+                format!(
+                    "HTTP 206 response missing Content-Length for bytes={range_start}-{range_end}"
+                ),
+                false,
+            )
+        })?
+        .to_str()
+        .map_err(|err| {
+            DirectFetchError::new(
+                format!("invalid Content-Length header for bytes={range_start}-{range_end}: {err}"),
+                false,
+            )
+        })?
+        .parse::<usize>()
+        .map_err(|err| {
+            DirectFetchError::new(
+                format!("invalid Content-Length header for bytes={range_start}-{range_end}: {err}"),
+                false,
+            )
+        })?;
+    if content_length != expected_len {
+        return Err(DirectFetchError::new(
+            format!(
+                "HTTP Content-Length mismatch: expected {expected_len} bytes for \
+                 bytes={range_start}-{range_end}, got {content_length}"
+            ),
+            false,
+        ));
+    }
+
+    Ok(expected_len)
+}
+
+fn parse_content_range(content_range: &str) -> Option<(usize, usize)> {
+    let range = content_range.trim().strip_prefix("bytes ")?;
+    let (range, _complete_len) = range.split_once('/')?;
+    let (start, end) = range.split_once('-')?;
+    Some((start.parse().ok()?, end.parse().ok()?))
+}
+
+#[cfg(test)]
+mod tests {
+    use reqwest::header::{CONTENT_LENGTH, CONTENT_RANGE, HeaderMap, HeaderValue};
+
+    use super::*;
+
+    fn range_headers(content_range: &str, content_length: &str) -> HeaderMap {
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            CONTENT_RANGE,
+            HeaderValue::from_str(content_range).expect("valid content range"),
+        );
+        headers.insert(
+            CONTENT_LENGTH,
+            HeaderValue::from_str(content_length).expect("valid content length"),
+        );
+        headers
+    }
+
+    #[test]
+    fn validates_exact_partial_content_response() {
+        let headers = range_headers("bytes 10-19/100", "10");
+
+        let len =
+            validate_range_response_headers(reqwest::StatusCode::PARTIAL_CONTENT, &headers, 10, 19)
+                .expect("valid range response");
+
+        assert_eq!(len, 10);
+    }
+
+    #[test]
+    fn rejects_range_response_when_server_ignored_range_header() {
+        let headers = range_headers("bytes 10-19/100", "10");
+
+        let err = validate_range_response_headers(reqwest::StatusCode::OK, &headers, 10, 19)
+            .expect_err("200 means the range header was ignored");
+
+        assert!(!err.retryable);
+        assert!(err.to_string().contains("expected 206 Partial Content"));
+    }
+
+    #[test]
+    fn rejects_partial_content_with_mismatched_content_range() {
+        let headers = range_headers("bytes 0-99/100", "100");
+
+        let err =
+            validate_range_response_headers(reqwest::StatusCode::PARTIAL_CONTENT, &headers, 10, 19)
+                .expect_err("Content-Range must describe the requested byte window");
+
+        assert!(!err.retryable);
+        assert!(err.to_string().contains("Content-Range mismatch"));
+    }
+
+    #[test]
+    fn rejects_partial_content_with_mismatched_content_length() {
+        let headers = range_headers("bytes 10-19/100", "11");
+
+        let err =
+            validate_range_response_headers(reqwest::StatusCode::PARTIAL_CONTENT, &headers, 10, 19)
+                .expect_err("Content-Length must match the requested byte window");
+
+        assert!(!err.retryable);
+        assert!(err.to_string().contains("Content-Length mismatch"));
+    }
+
+    #[test]
+    fn rejects_partial_content_without_content_length() {
+        let mut headers = HeaderMap::new();
+        headers.insert(CONTENT_RANGE, HeaderValue::from_static("bytes 10-19/100"));
+
+        let err =
+            validate_range_response_headers(reqwest::StatusCode::PARTIAL_CONTENT, &headers, 10, 19)
+                .expect_err("Content-Length gates body reads for direct fetches");
+
+        assert!(!err.retryable);
+        assert!(err.to_string().contains("missing Content-Length"));
+    }
 }
