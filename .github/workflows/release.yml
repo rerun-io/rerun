@@ -321,9 +321,18 @@ jobs:
       release-commit: ${{ needs.version.outputs.release-commit }}
     secrets: inherit
 
+  web-test:
+    name: "Web tests"
+    needs: [version]
+    uses: ./.github/workflows/reusable_web_test.yml
+    with:
+      CONCURRENCY: ${{ github.ref_name }}
+      REF: ${{ needs.version.outputs.release-commit }}
+    secrets: inherit
+
   publish-web:
     name: "Build and Publish Web"
-    needs: [version, publish-wheels]
+    needs: [version, publish-wheels, web-test]
     uses: ./.github/workflows/reusable_publish_web.yml
     with:
       release-version: ${{ needs.version.outputs.current }}

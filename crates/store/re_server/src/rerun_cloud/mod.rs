@@ -283,6 +283,7 @@ impl RerunCloudHandler {
             if source.is_prefix {
                 #[cfg(target_arch = "wasm32")]
                 {
+                    // TODO(RR-5155): Support enumerating OPFS directories for prefix registration.
                     return Err(tonic::Status::invalid_argument(
                         "prefix data sources are not supported on wasm",
                     ));

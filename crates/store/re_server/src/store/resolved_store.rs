@@ -117,7 +117,6 @@ impl ResolvedStore {
     /// Load an RRD reader as one or more _eager_ [`ResolvedStore`]s, one per store found in the stream.
     ///
     /// Stores whose kind does not match `store_kind` are filtered out.
-    // TODO(RR-5086): Ultimately, we want to be able to load from a reader into a lazy store too.
     fn load_rrd_reader_eager(
         reader: impl std::io::Read,
         store_kind: StoreKind,
@@ -133,17 +132,32 @@ impl ResolvedStore {
         )
     }
 
+    #[cfg(target_arch = "wasm32")]
+    pub async fn load_rrd_file(
+        path: &crate::opfs::PathBuf,
+        store_kind: StoreKind,
+    ) -> Result<Vec<(StoreId, Self)>, super::Error> {
+        let bytes = crate::opfs::read(path).await?;
+
+        // TODO(RR-5086): Ultimately, we want to be able to load from an opfs file into a lazy store too.
+        Self::load_rrd_reader_eager(
+            std::io::Cursor::new(bytes),
+            store_kind,
+            &super::InMemoryStore::default_eager_chunk_store_config(),
+        )
+    }
+
     /// Load an RRD file as one or more [`ResolvedStore`]s, one per store found in the file.
     ///
     /// Prefers the lazy path (chunks loaded on demand) when the RRD has a footer; falls back to
     /// eager loading (whole file read into memory) when the footer is missing or unreadable.
     /// Stores whose kind does not match `store_kind` are filtered out.
     #[cfg(not(target_arch = "wasm32"))]
-    pub fn load_rrd_file(
+    pub async fn load_rrd_file(
         path: &Path,
         store_kind: StoreKind,
     ) -> Result<Vec<(StoreId, Self)>, super::Error> {
-        let mut file = std::fs::File::open(path)?;
+        let mut file = tokio::fs::File::open(path).await?.into_std().await;
 
         if let Ok(Some(footer)) = re_log_encoding::read_rrd_footer(&mut file) {
             // The footer-reading handle is no longer needed — each `LazyStore` holds its own.
@@ -154,7 +168,7 @@ impl ResolvedStore {
                 if store_id.kind() != store_kind {
                     continue;
                 }
-                let store_file = std::fs::File::open(path)?;
+                let store_file = tokio::fs::File::open(path).await?.into_std().await;
                 let provider = Arc::new(
                     RrdChunkProvider::try_from_file(store_file, path, Arc::new(raw_manifest))
                         .map_err(|err| super::Error::RrdLoadingError(err.into()))?,
@@ -260,8 +274,8 @@ mod tests {
     /// frame-scan vs eager decode for legacy RRDs) and MUST agree, or registration would validate
     /// a different set of segments than it ends up loading. This pins that invariant for both the
     /// modern (footer) and legacy (no-footer) representations.
-    #[test]
-    fn enumerate_and_load_agree_on_store_ids() {
+    #[tokio::test]
+    async fn enumerate_and_load_agree_on_store_ids() {
         for with_footer in [true, false] {
             let file = tempfile::NamedTempFile::new().expect("failed to create temp RRD file");
             let path = file.path();
@@ -278,6 +292,7 @@ mod tests {
 
             let loaded: BTreeSet<StoreId> =
                 ResolvedStore::load_rrd_file(path, StoreKind::Recording)
+                    .await
                     .expect("failed to load test RRD file")
                     .into_iter()
                     .map(|(id, _)| id)

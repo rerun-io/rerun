@@ -9,7 +9,9 @@ use datafusion::catalog::MemTable;
 use datafusion::common::DataFusionError;
 use itertools::Itertools as _;
 use re_chunk_store::{Chunk, ChunkStoreConfig};
-use re_log_types::{EntryId, StoreId, StoreKind};
+#[cfg(not(target_arch = "wasm32"))]
+use re_log_types::StoreKind;
+use re_log_types::{EntryId, StoreId};
 use re_protos::EntryName;
 use re_protos::cloud::v1alpha1::EntryKind;
 #[cfg(all(feature = "lance", not(target_arch = "wasm32")))] // only used by the `lance` feature

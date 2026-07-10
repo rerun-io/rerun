@@ -1,22 +1,25 @@
-use std::collections::BTreeMap;
-#[cfg(not(target_arch = "wasm32"))]
-use std::collections::BTreeSet;
-#[cfg(not(target_arch = "wasm32"))]
-use std::path::PathBuf;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
-#[cfg(not(target_arch = "wasm32"))]
-use re_log_types::StoreId;
-use re_log_types::{EntryId, StoreKind};
+use re_log_types::{EntryId, StoreId, StoreKind};
 use re_protos::cloud::v1alpha1::ext;
 use re_protos::common::v1alpha1::TaskId;
 use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, SegmentId};
 use re_types_core::LayerName;
 use url::Url;
 
+#[cfg(target_arch = "wasm32")]
+use crate::opfs as fs;
 use crate::store::{
     Error, InMemoryStore, LayerInfo, ResolvedStore, StoreSlotId, TASK_ID_SUCCESS, TaskResult,
 };
+#[cfg(not(target_arch = "wasm32"))]
+use tokio::fs;
+
+#[cfg(target_arch = "wasm32")]
+type RrdPath = crate::opfs::PathBuf;
+#[cfg(not(target_arch = "wasm32"))]
+type RrdPath = std::path::PathBuf;
 
 /// Return type of [`do_register_with_dataset`].
 #[derive(Default)]
@@ -43,9 +46,8 @@ pub struct RegisterWithDatasetResult {
 /// A data source that has been validated (paths confirmed to exist, duplicates checked)
 /// but not yet loaded into memory.
 enum ValidatedSource {
-    #[cfg(not(target_arch = "wasm32"))]
     File {
-        rrd_path: PathBuf,
+        rrd_path: RrdPath,
         layer_info: Arc<LayerInfo>,
         storage_url: url::Url,
     },
@@ -74,8 +76,8 @@ pub async fn do_register_with_dataset(
     data_sources: Vec<ext::DataSource>,
     on_duplicate: IfDuplicateBehavior,
 ) -> tonic::Result<RegisterWithDatasetResult> {
-    let (store_kind, validated) = validate_sources(store, dataset_id, data_sources)?;
-    let ready = load_sources(validated, store_kind)?;
+    let (store_kind, validated) = validate_sources(store, dataset_id, data_sources).await?;
+    let ready = load_sources(validated, store_kind).await?;
     register_sources(store, dataset_id, ready, on_duplicate).await
 }
 
@@ -86,7 +88,7 @@ pub async fn do_register_with_dataset(
 ///
 /// Returns the dataset's [`StoreKind`] alongside the validated sources, since
 /// callers need it to filter stores when loading files.
-fn validate_sources(
+async fn validate_sources(
     store: &InMemoryStore,
     dataset_id: EntryId,
     data_sources: Vec<ext::DataSource>,
@@ -109,19 +111,9 @@ fn validate_sources(
         // TODO(ab): Should some or all of these errors be returned as task error instead?
         // (No point in doing so unless this is tested in re_redap_tests.)
         if is_prefix {
-            #[cfg(target_arch = "wasm32")]
-            {
-                return Err(tonic::Status::invalid_argument(
-                    "prefix data sources are not supported on wasm",
-                ));
-            }
-
-            #[cfg(not(target_arch = "wasm32"))]
-            {
-                return Err(tonic::Status::internal(
-                    "register_with_dataset: prefix data sources should have been resolved already",
-                ));
-            }
+            return Err(tonic::Status::internal(
+                "register_with_dataset: prefix data sources should have been resolved already",
+            ));
         }
 
         match kind {
@@ -147,17 +139,8 @@ fn validate_sources(
             continue;
         }
 
-        #[cfg(target_arch = "wasm32")]
-        {
-            let _ = (&store_kind, &layer_info, &seen);
-            return Err(tonic::Status::unimplemented(
-                "register_with_dataset only supports memory:// data sources on wasm",
-            ));
-        }
-
-        #[cfg(not(target_arch = "wasm32"))]
         if let Some(file_source) =
-            validate_file_source(store_kind, &storage_url, layer_info, &mut seen)?
+            validate_file_source(store_kind, &storage_url, layer_info, &mut seen).await?
         {
             validated.push(file_source);
         }
@@ -199,40 +182,30 @@ fn validate_memory_source(
 }
 
 /// Returns `None` if the file's store kind doesn't match (silently skipped).
-#[cfg(not(target_arch = "wasm32"))]
-fn validate_file_source(
+async fn validate_file_source(
     store_kind: StoreKind,
     storage_url: &url::Url,
     layer_info: Arc<LayerInfo>,
     seen: &mut BTreeMap<(LayerName, SegmentId), Vec<url::Url>>,
 ) -> tonic::Result<Option<ValidatedSource>> {
-    let Ok(rrd_path) = storage_url.to_file_path() else {
-        return if storage_url.scheme() == "file" && storage_url.host().is_some() {
-            Err(tonic::Status::not_found(format!(
-                "RRD file not found, file URI should not have a host: {storage_url} \
-                 (this may be caused by invalid relative-path URI)"
-            )))
-        } else {
-            Err(tonic::Status::not_found(format!(
-                "RRD file not found, could not load URI: {storage_url}"
-            )))
-        };
-    };
-
-    if !rrd_path.exists() {
-        return Err(tonic::Status::not_found(format!(
-            "RRD file not found, file does not exists: {rrd_path:?}"
-        )));
-    }
-
-    if !rrd_path.is_file() {
+    let rrd_path = rrd_path_from_url(storage_url)?;
+    let metadata = fs::metadata(&rrd_path)
+        .await
+        .map_err(|err| match err.kind() {
+            std::io::ErrorKind::NotFound => tonic::Status::not_found(format!(
+                "RRD file not found, file does not exist: {rrd_path:?}"
+            )),
+            _ => tonic::Status::internal(format!(
+                "Failed to check whether RRD file exists: {err:#}\nFile path: {rrd_path:?}"
+            )),
+        })?;
+    if !metadata.is_file() {
         return Err(tonic::Status::not_found(format!(
             "RRD file not found, path is not a file: {rrd_path:?}"
         )));
     }
 
-    // Extract store IDs cheaply (footer or message scan, no chunk loading)
-    let store_ids = load_store_ids(&rrd_path)?;
+    let store_ids = load_store_ids(&rrd_path).await?;
 
     let mut matched = false;
     for store_id in store_ids {
@@ -257,6 +230,35 @@ fn validate_file_source(
         layer_info,
         storage_url: storage_url.clone(),
     }))
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn rrd_path_from_url(storage_url: &url::Url) -> tonic::Result<RrdPath> {
+    let Ok(rrd_path) = storage_url.to_file_path() else {
+        return if storage_url.scheme() == "file" && storage_url.host().is_some() {
+            Err(tonic::Status::not_found(format!(
+                "RRD file not found, file URI should not have a host: {storage_url} \
+                 (this may be caused by invalid relative-path URI)"
+            )))
+        } else {
+            Err(tonic::Status::not_found(format!(
+                "RRD file not found, could not load URI: {storage_url}"
+            )))
+        };
+    };
+
+    Ok(rrd_path)
+}
+
+#[cfg(target_arch = "wasm32")]
+fn rrd_path_from_url(storage_url: &url::Url) -> tonic::Result<RrdPath> {
+    if storage_url.scheme() != "opfs" {
+        return Err(tonic::Status::unimplemented(
+            "register_with_dataset only supports memory:// and opfs:// data sources on wasm",
+        ));
+    }
+
+    crate::opfs::PathBuf::from_url(storage_url)
 }
 
 fn check_intra_request_duplicates(
@@ -288,13 +290,10 @@ fn check_intra_request_duplicates(
 // ---
 
 /// Phase 2: load file-backed sources into memory and unify with already-in-memory sources.
-fn load_sources(
+async fn load_sources(
     validated: Vec<ValidatedSource>,
     store_kind: StoreKind,
 ) -> tonic::Result<Vec<ReadySource>> {
-    #[cfg(target_arch = "wasm32")]
-    let _ = store_kind;
-
     let mut ready: Vec<ReadySource> = Vec::new();
 
     for source in validated {
@@ -318,7 +317,6 @@ fn load_sources(
                 });
             }
 
-            #[cfg(not(target_arch = "wasm32"))]
             ValidatedSource::File {
                 rrd_path,
                 layer_info,
@@ -326,7 +324,9 @@ fn load_sources(
             } => {
                 re_log::info!("Loading {rrd_path:?}…");
 
-                for (store_id, resolved) in ResolvedStore::load_rrd_file(&rrd_path, store_kind)? {
+                let stores = ResolvedStore::load_rrd_file(&rrd_path, store_kind).await?;
+
+                for (store_id, resolved) in stores {
                     ready.push(ReadySource {
                         store_slot_id: StoreSlotId::new(),
                         resolved,
@@ -419,9 +419,30 @@ async fn register_sources(
 /// Returns a deduplicated set because a single RRD can contain duplicate
 /// `SetStoreInfo` messages for the same store.
 #[cfg(not(target_arch = "wasm32"))]
-fn load_store_ids(rrd_path: &std::path::Path) -> tonic::Result<BTreeSet<StoreId>> {
-    let mut file = std::fs::File::open(rrd_path)
-        .map_err(|err| tonic::Status::internal(format!("Failed to open RRD file: {err:#}")))?;
+#[expect(clippy::unused_async)]
+async fn load_store_ids(rrd_path: &RrdPath) -> tonic::Result<BTreeSet<StoreId>> {
+    let mut file = std::fs::File::open(rrd_path).map_err(|err| {
+        tonic::Status::internal(format!(
+            "Failed to open RRD file: {err:#}\nFile path: {rrd_path:?}"
+        ))
+    })?;
+
+    let store_ids = re_log_encoding::enumerate_rrd_stores(&mut file).map_err(|err| {
+        tonic::Status::internal(format!("Failed to enumerate RRD stores: {err:#}"))
+    })?;
+
+    Ok(store_ids.into_iter().collect())
+}
+
+#[cfg(target_arch = "wasm32")]
+async fn load_store_ids(rrd_path: &RrdPath) -> tonic::Result<BTreeSet<StoreId>> {
+    let bytes = fs::read(rrd_path).await.map_err(|err| {
+        tonic::Status::internal(format!(
+            "Failed to open RRD file: {err:#}\nFile path: {rrd_path:?}"
+        ))
+    })?;
+    // TODO(RR-5154): Avoid buffering the full OPFS file once footer enumeration can use range reads.
+    let mut file = std::io::Cursor::new(bytes);
 
     let store_ids = re_log_encoding::enumerate_rrd_stores(&mut file).map_err(|err| {
         tonic::Status::internal(format!("Failed to enumerate RRD stores: {err:#}"))

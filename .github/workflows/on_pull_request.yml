@@ -203,6 +203,15 @@ jobs:
       CHANNEL: main
     secrets: inherit
 
+  web-test:
+    name: "Web tests"
+    needs: [paths-filter]
+    if: github.event.pull_request.head.repo.owner.login == 'rerun-io' && needs.paths-filter.outputs.web_changes == 'true'
+    uses: ./.github/workflows/reusable_web_test.yml
+    with:
+      CONCURRENCY: pr-${{ github.event.pull_request.number }}
+    secrets: inherit
+
   upload-web:
     name: "Upload Web"
     needs: [build-web]

@@ -469,6 +469,7 @@ wildmatch = "2.6"
 wasm-bindgen = "0.2.117" # ⚠️ read above notice before touching this!
 wasm-bindgen-cli-support = "0.2.117" # ⚠️ read above notice before touching this!
 wasm-bindgen-futures = "0.4.67"
+wasm-bindgen-test = "0.3.67"
 wayland-client = "0.31.14"
 wayland-protocols = { version = "0.32.13", default-features = false }
 wayland-sys = "0.31.11"

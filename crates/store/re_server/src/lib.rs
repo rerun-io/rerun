@@ -5,6 +5,8 @@ mod entrypoint;
 #[cfg(not(target_arch = "wasm32"))]
 mod layers;
 mod named_path;
+#[cfg(any(test, target_arch = "wasm32"))]
+pub mod opfs;
 mod rerun_cloud;
 #[cfg(not(target_arch = "wasm32"))]
 mod server;

@@ -681,7 +681,7 @@ impl Dataset {
         });
         let mut new_segment_ids = BTreeSet::default();
 
-        for (store_id, resolved) in ResolvedStore::load_rrd_file(path, store_kind)? {
+        for (store_id, resolved) in ResolvedStore::load_rrd_file(path, store_kind).await? {
             let segment_id = SegmentId::new(store_id.recording_id().to_string());
             let slot_id = pool.register(&resolved);
 

@@ -82,6 +82,7 @@ lance = { workspace = true, optional = true }
 opentelemetry.workspace = true
 tempfile.workspace = true
 tokio = { workspace = true, features = [
+  "fs",
   "macros",
   "net",
   "rt-multi-thread",
@@ -98,7 +99,23 @@ tracing.workspace = true
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 chrono = { workspace = true, features = ["wasmbind"] }
 getrandom = { workspace = true, features = ["wasm_js"] }
-
+js-sys.workspace = true
+percent-encoding.workspace = true
+wasm-bindgen.workspace = true
+wasm-bindgen-futures.workspace = true
+web-sys = { workspace = true, features = [
+  "Blob",
+  "DomException",
+  "File",
+  "FileSystemDirectoryHandle",
+  "FileSystemFileHandle",
+  "FileSystemGetFileOptions",
+  "FileSystemWritableFileStream",
+  "Navigator",
+  "StorageManager",
+  "Window",
+  "WritableStream",
+] }
 
 [dev-dependencies]
 re_chunk.workspace = true
@@ -106,11 +123,16 @@ re_chunk_store.workspace = true
 # `encoder` (decoder comes transitively via re_chunk_store) lets tests author RRDs
 # with and without footers to cross-check store enumeration vs lazy loading.
 re_log_encoding = { workspace = true, features = ["encoder"] }
-re_redap_tests.workspace = true
 re_tuid.workspace = true
 ehttp = { workspace = true, features = ["native-async"] }
-tempfile.workspace = true
+percent-encoding.workspace = true
 
+[target.'cfg(target_arch = "wasm32")'.dev-dependencies]
+wasm-bindgen-test.workspace = true
+
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+re_redap_tests.workspace = true
+tempfile.workspace = true
 
 [build-dependencies]
 re_build_tools.workspace = true
