@@ -19,7 +19,7 @@ namespace rerun::archetypes {
     ///
     /// Useful for representing discrete state machines, mode transitions, or
     /// state changes over time. Each logged `archetypes::StateChange` marks a new state
-    /// at the given time. A `null` state is ignored by the state timeline view.
+    /// at the given time. A `null` state resets the state, showing a gap in the state timeline view.
     ///
     /// The state timeline view displays these as horizontal colored lanes over time.
     ///
@@ -48,8 +48,9 @@ namespace rerun::archetypes {
     struct StateChange {
         /// The new state value.
         ///
-        /// A `null` state is ignored, it can be used to partially update a multi-instance state array.
-        /// An empty string is treated as state reset, and a gap is shown in the state timeline view.
+        /// A `null` value in the state batch is treated as a state reset: the previous state ends
+        /// and a gap is shown in the state timeline view until the next state. An empty string and
+        /// an empty state batch (e.g. from clearing the field) act the same way.
         std::optional<ComponentBatch> state;
 
       public:
@@ -78,8 +79,9 @@ namespace rerun::archetypes {
 
         /// The new state value.
         ///
-        /// A `null` state is ignored, it can be used to partially update a multi-instance state array.
-        /// An empty string is treated as state reset, and a gap is shown in the state timeline view.
+        /// A `null` value in the state batch is treated as a state reset: the previous state ends
+        /// and a gap is shown in the state timeline view until the next state. An empty string and
+        /// an empty state batch (e.g. from clearing the field) act the same way.
         StateChange with_state(const rerun::components::Text& _state) && {
             state = ComponentBatch::from_loggable(_state, Descriptor_state).value_or_throw();
             return std::move(*this);

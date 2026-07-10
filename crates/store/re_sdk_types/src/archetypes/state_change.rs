@@ -26,7 +26,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// Useful for representing discrete state machines, mode transitions, or
 /// state changes over time. Each logged [`archetypes::StateChange`][crate::archetypes::StateChange] marks a new state
-/// at the given time. A `null` state is ignored by the state timeline view.
+/// at the given time. A `null` state resets the state, showing a gap in the state timeline view.
 ///
 /// The state timeline view displays these as horizontal colored lanes over time.
 ///
@@ -63,8 +63,9 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 pub struct StateChange {
     /// The new state value.
     ///
-    /// A `null` state is ignored, it can be used to partially update a multi-instance state array.
-    /// An empty string is treated as state reset, and a gap is shown in the state timeline view.
+    /// A `null` value in the state batch is treated as a state reset: the previous state ends
+    /// and a gap is shown in the state timeline view until the next state. An empty string and
+    /// an empty state batch (e.g. from clearing the field) act the same way.
     pub state: Option<SerializedComponentBatch>,
 }
 
@@ -231,8 +232,9 @@ impl StateChange {
 
     /// The new state value.
     ///
-    /// A `null` state is ignored, it can be used to partially update a multi-instance state array.
-    /// An empty string is treated as state reset, and a gap is shown in the state timeline view.
+    /// A `null` value in the state batch is treated as a state reset: the previous state ends
+    /// and a gap is shown in the state timeline view until the next state. An empty string and
+    /// an empty state batch (e.g. from clearing the field) act the same way.
     #[inline]
     pub fn with_state(mut self, state: impl Into<crate::components::Text>) -> Self {
         self.state = try_serialize_field(Self::descriptor_state(), [state]);

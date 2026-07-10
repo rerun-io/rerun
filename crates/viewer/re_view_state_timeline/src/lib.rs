@@ -8,5 +8,5 @@ mod visualizer;
 mod visualizer_ui;
 
 pub use data::{StateLane, StateLanePhase, StateLanePhaseContent, StateLanesData, StateValueKind};
-pub use view_class::StateTimelineView;
+pub use view_class::{StateTimelineView, StateTimelineViewState};
 pub use visualizer::StateVisualizer;

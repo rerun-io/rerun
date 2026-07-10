@@ -463,21 +463,31 @@ impl StateLabel for bool {
     }
 }
 
-/// Format a typed iterator of rows into `(time, RowId, Some(label))` events.
+/// Format a typed iterator of rows into `(time, RowId, event)` tuples.
+///
+/// A null (`None`) value is a state reset and becomes a gap event; any other value starts a
+/// new phase labeled with the value. An empty batch (a row with zero values, e.g. from
+/// `clear_fields`) also resets: it means "component cleared" everywhere else in Rerun
+/// (`Clear`, latest-at queries), so the lane treats it the same.
 fn collect_typed_events<T, ChunkIter, RowValues>(
     rows: ChunkIter,
 ) -> Vec<(i64, RowId, Option<String>)>
 where
     T: StateLabel,
     ChunkIter: IntoIterator<Item = (TimeInt, RowId, RowValues)>,
-    RowValues: IntoIterator<Item = T>,
+    RowValues: IntoIterator<Item = Option<T>>,
 {
     rows.into_iter()
         .flat_map(|(data_time, row_id, row_values)| {
             let t = data_time.as_i64();
-            row_values
+            let mut events: Vec<_> = row_values
                 .into_iter()
-                .map(move |v| (t, row_id, Some(v.to_lane_label())))
+                .map(|v| (t, row_id, v.map(|v| v.to_lane_label())))
+                .collect();
+            if events.is_empty() {
+                events.push((t, row_id, None));
+            }
+            events
         })
         .collect()
 }
@@ -563,37 +573,36 @@ fn collect_state_events(
 ) -> Vec<(i64, RowId, Option<String>)> {
     match element_type {
         DataType::Utf8 | DataType::LargeUtf8 => {
-            // `slice::<Option<String>>` preserves null vs empty-string: a null entry is `None`
-            // (partial update, no event) while `Some("")` is an explicit reset (gap).
+            // Null values, empty strings, and empty batches (zero values in a row) all reset
+            // the lane; any other string starts a new phase.
             values
                 .slice::<Option<String>>()
                 .flat_map(|((data_time, row_id), texts)| {
                     let t = data_time.as_i64();
-                    texts.into_iter().filter_map(move |opt| {
-                        opt.map(|s| {
-                            let event = (!s.is_empty()).then(|| s.to_lane_label());
+                    let mut events: Vec<_> = texts
+                        .into_iter()
+                        .map(|opt| {
+                            let event = opt.filter(|s| !s.is_empty()).map(|s| s.to_lane_label());
                             (t, row_id, event)
                         })
-                    })
+                        .collect();
+                    if events.is_empty() {
+                        events.push((t, row_id, None));
+                    }
+                    events
                 })
                 .collect()
         }
         DataType::Float64 => collect_typed_events::<f64, _, _>(
             values
-                .slice::<f64>()
-                .map(|((data_time, row_id), values)| (data_time, row_id, values.iter().copied())),
+                .slice::<Option<f64>>()
+                .map(|((data_time, row_id), values)| (data_time, row_id, values)),
         ),
-        DataType::Boolean => collect_typed_events::<bool, _, _>(values.slice::<bool>().map(
-            |((data_time, row_id), values)| {
-                // `BooleanBuffer` only iterates via a borrow on `values`, so materialize a
-                // `Vec<bool>` whose lifetime is detached from this row's stack frame.
-                (
-                    data_time,
-                    row_id,
-                    (&values).into_iter().collect::<Vec<bool>>(),
-                )
-            },
-        )),
+        DataType::Boolean => collect_typed_events::<bool, _, _>(
+            values
+                .slice::<Option<bool>>()
+                .map(|((data_time, row_id), values)| (data_time, row_id, values)),
+        ),
         _ => Vec::new(),
     }
 }

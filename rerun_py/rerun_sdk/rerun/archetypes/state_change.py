@@ -33,7 +33,7 @@ class StateChange(Archetype, VisualizableArchetype):
 
     Useful for representing discrete state machines, mode transitions, or
     state changes over time. Each logged [`archetypes.StateChange`][rerun.archetypes.StateChange] marks a new state
-    at the given time. A `null` state is ignored by the state timeline view.
+    at the given time. A `null` state resets the state, showing a gap in the state timeline view.
 
     The state timeline view displays these as horizontal colored lanes over time.
 
@@ -79,8 +79,9 @@ class StateChange(Archetype, VisualizableArchetype):
         state:
             The new state value.
 
-            A `null` state is ignored, it can be used to partially update a multi-instance state array.
-            An empty string is treated as state reset, and a gap is shown in the state timeline view.
+            A `null` value in the state batch is treated as a state reset: the previous state ends
+            and a gap is shown in the state timeline view until the next state. An empty string and
+            an empty state batch (e.g. from clearing the field) act the same way.
 
         """
 
@@ -120,8 +121,9 @@ class StateChange(Archetype, VisualizableArchetype):
         state:
             The new state value.
 
-            A `null` state is ignored, it can be used to partially update a multi-instance state array.
-            An empty string is treated as state reset, and a gap is shown in the state timeline view.
+            A `null` value in the state batch is treated as a state reset: the previous state ends
+            and a gap is shown in the state timeline view until the next state. An empty string and
+            an empty state batch (e.g. from clearing the field) act the same way.
 
         """
 
@@ -172,8 +174,9 @@ class StateChange(Archetype, VisualizableArchetype):
         state:
             The new state value.
 
-            A `null` state is ignored, it can be used to partially update a multi-instance state array.
-            An empty string is treated as state reset, and a gap is shown in the state timeline view.
+            A `null` value in the state batch is treated as a state reset: the previous state ends
+            and a gap is shown in the state timeline view until the next state. An empty string and
+            an empty state batch (e.g. from clearing the field) act the same way.
 
         """
 
@@ -228,8 +231,9 @@ class StateChange(Archetype, VisualizableArchetype):
     )
     # The new state value.
     #
-    # A `null` state is ignored, it can be used to partially update a multi-instance state array.
-    # An empty string is treated as state reset, and a gap is shown in the state timeline view.
+    # A `null` value in the state batch is treated as a state reset: the previous state ends
+    # and a gap is shown in the state timeline view until the next state. An empty string and
+    # an empty state batch (e.g. from clearing the field) act the same way.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

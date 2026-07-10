@@ -121,16 +121,16 @@ fn test_state_timeline_time_cursor() {
         .unwrap();
 }
 
-/// A null state is a fallthrough: it must not terminate the preceding phase.
+/// A null state is a reset: it must end the preceding phase and leave a gap until the
+/// next non-null state.
 #[test]
-fn test_state_timeline_null_is_fallthrough() {
+fn test_state_timeline_null_is_reset() {
     let mut test_context = TestContext::new_with_view_class::<StateTimelineView>();
 
     let timeline = Timeline::log_tick();
 
     // Log a state, then a null in the middle, then another state.
-    // The null should be ignored so that the first phase extends all the way
-    // until the next non-null state.
+    // The null should end the first phase, leaving a gap until the next state.
     let timepoint_0 = TimePoint::from([(timeline, 0)]);
     test_context.log_entity("state/mode", |builder| {
         builder.with_archetype(
@@ -167,8 +167,7 @@ fn test_state_timeline_null_is_fallthrough() {
 
     test_context.set_active_timeline(*timeline.name());
 
-    // Place the cursor in the null region to confirm the previous phase
-    // visibly extends through the null.
+    // Place the cursor in the null region to confirm the gap left by the reset.
     let store_id = test_context.active_store_id();
     test_context.send_time_commands(
         store_id,
@@ -182,7 +181,7 @@ fn test_state_timeline_null_is_fallthrough() {
     test_context
         .run_view_ui_and_save_snapshot(
             view_id,
-            "state_timeline_null_is_fallthrough",
+            "state_timeline_null_is_reset",
             egui::vec2(400.0, 120.0),
             None,
         )
@@ -658,15 +657,15 @@ fn test_state_timeline_pan_before_data() {
 /// -----+-------------------+-------------
 ///  1   | ["hi!"]           | (not logged)
 ///  2   | (not logged)      | [1]          // no state update at this tick
-///  3   | []                | [2]          // empty list (clear_fields) — no inner items, no event
-///  5   | [""]              | [1, 2, 3]    // explicit empty → gap
+///  3   | []                | [2]          // empty list (clear_fields) — reset → gap
+///  5   | [""]              | [1, 2, 3]    // explicit empty → gap (collapses into the open one)
 ///  6   | ["bye!"]          | (not logged)
-///  7   | [null]            | [4]          // null *inside* the list — fallthrough
-///  12  | ["end"]           | (not logged) // trailing state so the gap is clearly visible
+///  7   | [null]            | [4]          // null *inside* the list — reset → gap
+///  12  | ["end"]           | (not logged) // trailing state so the gaps are clearly visible
 /// ```
 ///
-/// Expected lane: `hi!` (1..5), gap (5..6), `bye!` (6..12), `end` (12..). The degenerate
-/// inputs at ticks 2, 3, 7 must not break the lane.
+/// Expected lane: `hi!` (1..3), gap (3..6), `bye!` (6..7), gap (7..12), `end` (12..). The
+/// degenerate input at tick 2 must not break the lane.
 #[test]
 fn test_state_timeline_edge_cases() {
     let mut test_context = TestContext::new_with_view_class::<StateTimelineView>();
@@ -691,7 +690,7 @@ fn test_state_timeline_edge_cases() {
         )
     });
 
-    // tick 3: `clear_fields` serializes state as an empty list; scalars co-logged.
+    // tick 3: `clear_fields` serializes state as an empty list — a reset; scalars co-logged.
     test_context.log_entity(entity, |builder| {
         builder.with_archetype_auto_row(
             TimePoint::from([(timeline, 3)]),
@@ -727,7 +726,7 @@ fn test_state_timeline_edge_cases() {
         )
     });
 
-    // tick 7: single null `Text` inside the list — must be treated as fallthrough.
+    // tick 7: single null `Text` inside the list — a reset, opening a gap until tick 12.
     let null_state_array =
         <re_sdk_types::components::Text as re_sdk_types::external::re_types_core::Loggable>::to_arrow_opt(
             [None::<re_sdk_types::components::Text>],
