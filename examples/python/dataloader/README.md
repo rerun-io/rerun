@@ -6,8 +6,8 @@ For an explanation of the dataloader API and how the example fits together, see 
 
 ### 1. Install dependencies
 
-This example has its own `uv` project, separate from the workspace `.venv`, because LeRobot pins an
-incompatible `rerun-sdk`.
+This example has its own `uv` project, separate from the workspace `.venv`, because LeRobot requires
+Python >=3.12 while the workspace supports older versions.
 
 **Standalone** (sparse-checkout of just this directory, no local Rerun build):
 

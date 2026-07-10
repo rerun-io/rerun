@@ -85,9 +85,9 @@ examples = [
   "segment-anything @ git+https://github.com/facebookresearch/segment-anything.git",
   "torch>=2.5.1", # require at least 2.5.1 for some examples
   "torchvision>=0.20.1", # require at least 0.20.1 for some examples
-  # lerobot (used by the dataloader example) is not listed here to avoid
-  # override-dependencies conflicts during normal uv sync. Use
-  # `uv sync --package dataloader` to install it with its lerobot dependency.
+  # lerobot (used by the dataloader example) is not listed here because it
+  # requires Python >=3.12 while this workspace supports 3.10+. The dataloader
+  # is an isolated uv project — sync it from its own directory.
   # Example packages from workspace
   "air_traffic_data",
   "animated_urdf",
@@ -162,10 +162,6 @@ package = false
 # 23.x has no type stubs (so mypy leaves it untyped) and clears RUSTSEC/GHSA pyarrow alert >= 23.0.1.
 constraint-dependencies = ["pyarrow>=23.0.1,<24"]
 
-# Override lerobot's dependency on rerun-sdk to use the workspace version
-# TODO(RR-3548): Figure out how to have lerobot as a workspace member without causing dependency issues.
-# override-dependencies = ["rerun-sdk"]
-
 [tool.uv.sources]
 rerun-sdk = { workspace = true }
 rerun-notebook = { workspace = true }
@@ -207,7 +203,7 @@ objectron = { workspace = true }
 open_photogrammetry_format = { workspace = true }
 openstreetmap_data = { workspace = true }
 # TODO(RR-3548): Figure out a way to include this, without lerobot causing dependency issues.
-# dataloader = { workspace = true }  # Excluded: lerobot pins old rerun-sdk.
+# dataloader = { workspace = true }  # Excluded: lerobot requires Python >=3.12.
 plots = { workspace = true }
 raw_mesh = { workspace = true }
 rgbd = { workspace = true }
@@ -264,7 +260,7 @@ members = [
   # "examples/python/ocr",  # Excluded: paddleclas has incompatible opencv requirements
   "examples/python/open_photogrammetry_format",
   "examples/python/openstreetmap_data",
-  # "examples/python/dataloader" # Excluded: RR-3548 (lerobot pins old rerun-sdk).
+  # "examples/python/dataloader" # Excluded: RR-3548 (lerobot requires Python >=3.12).
   "examples/python/plots",
   "examples/python/raw_mesh",
   "examples/python/rgbd",
