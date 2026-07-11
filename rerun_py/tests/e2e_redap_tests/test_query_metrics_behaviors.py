@@ -21,11 +21,32 @@ from datafusion import col, lit
 from rerun.experimental import query_metrics
 
 if TYPE_CHECKING:
+    import pyarrow as pa
     from rerun.catalog import DatasetEntry
 
 
 # `time_1` hits the datafusion-python bug noted in other tests in this suite.
 _INDEX = "time_2"
+
+
+def _valid_index_values(dataset: DatasetEntry, time_idx: str) -> list[pa.Scalar]:
+    times = dataset.reader(index=time_idx).select(time_idx).sort(col(time_idx)).collect()
+    return [v for rb in times for v in rb[0] if v.is_valid]
+
+
+def _index_range_seek_points(dataset: DatasetEntry, time_idx: str) -> list[tuple[str, pa.Scalar]]:
+    start_col = f"{time_idx}:start"
+    ranges = dataset.get_index_ranges().select("rerun_segment_id", start_col).sort("rerun_segment_id").collect()
+
+    points = []
+    for rb in ranges:
+        segment_ids = rb.column(0)
+        starts = rb.column(1)
+        for row_idx in range(rb.num_rows):
+            start = starts[row_idx]
+            if start.is_valid:
+                points.append((segment_ids[row_idx].as_py(), start))
+    return points
 
 
 @pytest.mark.skip(reason="failing in CI")
@@ -79,8 +100,7 @@ def test_empty_result_filter_still_pushes_down(readonly_test_dataset: DatasetEnt
     fetch path that bails out early.
     """
     # Find the dataset's max time so we can build a filter just past it.
-    times = readonly_test_dataset.reader(index=_INDEX).select(_INDEX).sort(col(_INDEX)).collect()
-    values = [v for rb in times for v in rb[0] if v.is_valid]
+    values = _valid_index_values(readonly_test_dataset, _INDEX)
     assert values, f"expected readonly_test_dataset to contain at least one valid {_INDEX} value"
     max_time = values[-1]
 
@@ -139,6 +159,69 @@ def test_no_filter_no_pushdown(readonly_test_dataset: DatasetEntry) -> None:
     assert qm is not None
     assert qm.filters_pushed_down == 0
     assert qm.filters_applied_client_side == 0
+
+
+def test_scrub_seeks_fetch_bounded_slices(readonly_test_dataset: DatasetEntry) -> None:
+    """
+    Repeated timeline seeks must not degenerate into repeated full-dataset scans.
+
+    This is the CI-sized proxy for the issue #11315 user story: an interactive
+    viewer scrubbing through a large remote dataset should ask REDAP for narrow
+    index slices, then fetch only the chunks in those slices. The committed
+    fixture is intentionally small, but it still has enough chunks/segments to
+    catch the class of regression where every seek plans and fetches the full
+    dataset.
+    """
+    points = _index_range_seek_points(readonly_test_dataset, _INDEX)
+    assert len(points) >= 5, f"expected enough {_INDEX} ranges to simulate multiple seeks"
+
+    # Pick points away from the exact edges so the test exercises real middle
+    # slices rather than "before all data" / "after all data" early-outs.
+    seek_points = [points[len(points) // 4], points[len(points) // 2], points[(3 * len(points)) // 4]]
+
+    with query_metrics() as m:
+        full_rows = sum(rb.num_rows for rb in readonly_test_dataset.reader(index=_INDEX).collect())
+
+    full = m.last_query()
+    assert full is not None
+    assert full_rows > 0
+    assert full.query_chunks > 1
+    assert full.fetch_requests >= 1
+    assert full.fetch_bytes > 0
+    assert full.error_kind is None
+
+    for segment_id, seek_value in seek_points:
+        with query_metrics() as m:
+            rows = sum(
+                rb.num_rows
+                for rb in (
+                    readonly_test_dataset
+                    .filter_segments(segment_id)
+                    .reader(index=_INDEX)
+                    .filter(col(_INDEX) == lit(seek_value))
+                    .collect()
+                )
+            )
+
+        qm = m.last_query()
+        assert qm is not None, f"no QueryMetrics captured for seek at {segment_id} / {seek_value}"
+        assert rows > 0, f"seek at {segment_id} / {seek_value} should hit at least one row in the fixture"
+        assert qm.error_kind is None
+        assert qm.filters_pushed_down >= 1
+        assert qm.filters_applied_client_side == 0
+        assert qm.query_segments == 1
+        assert qm.query_chunks < full.query_chunks, (
+            f"seek at {segment_id} / {seek_value} planned too much data: "
+            f"seek={qm.query_chunks} full={full.query_chunks}"
+        )
+        assert qm.query_bytes < full.query_bytes, (
+            f"seek at {segment_id} / {seek_value} planned too many bytes: seek={qm.query_bytes} full={full.query_bytes}"
+        )
+        assert qm.fetch_requests >= 1
+        assert qm.fetch_bytes > 0
+        assert qm.fetch_bytes < full.fetch_bytes, (
+            f"seek at {segment_id} / {seek_value} fetched too many bytes: seek={qm.fetch_bytes} full={full.fetch_bytes}"
+        )
 
 
 def test_queries_outside_scope_do_not_appear(readonly_test_dataset: DatasetEntry) -> None:
