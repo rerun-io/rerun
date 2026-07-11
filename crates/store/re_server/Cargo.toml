@@ -95,6 +95,7 @@ tonic-web.workspace = true
 tower.workspace = true
 tower-service.workspace = true
 tracing.workspace = true
+ureq.workspace = true
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 chrono = { workspace = true, features = ["wasmbind"] }

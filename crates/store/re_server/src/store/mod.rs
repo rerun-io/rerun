@@ -1,6 +1,8 @@
 mod chunk_key;
 mod dataset;
 mod error;
+#[cfg(not(target_arch = "wasm32"))]
+mod http_range_reader;
 mod in_memory_store;
 mod layer_info;
 mod resolved_store;
@@ -14,6 +16,8 @@ mod tracked;
 pub use self::chunk_key::ChunkKey;
 pub use self::dataset::Dataset;
 pub use self::error::Error;
+#[cfg(not(target_arch = "wasm32"))]
+pub use self::http_range_reader::HttpRangeReader;
 pub use self::in_memory_store::InMemoryStore;
 pub use self::layer_info::LayerInfo;
 pub use self::resolved_store::ResolvedStore;

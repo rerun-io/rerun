@@ -51,6 +51,10 @@ enum ValidatedSource {
         layer_info: Arc<LayerInfo>,
         storage_url: url::Url,
     },
+    Http {
+        storage_url: url::Url,
+        layer_info: Arc<LayerInfo>,
+    },
     Memory {
         store_slot_id: StoreSlotId,
         resolved: ResolvedStore,
@@ -139,6 +143,15 @@ async fn validate_sources(
             continue;
         }
 
+        if matches!(storage_url.scheme(), "http" | "https") {
+            if let Some(http_source) =
+                validate_http_source(store_kind, &storage_url, layer_info, &mut seen).await?
+            {
+                validated.push(http_source);
+            }
+            continue;
+        }
+
         if let Some(file_source) =
             validate_file_source(store_kind, &storage_url, layer_info, &mut seen).await?
         {
@@ -179,6 +192,52 @@ fn validate_memory_source(
         segment_id,
         layer_info,
     })
+}
+
+/// Returns `None` if the file's store kind doesn't match (silently skipped).
+#[cfg(not(target_arch = "wasm32"))]
+async fn validate_http_source(
+    store_kind: StoreKind,
+    storage_url: &url::Url,
+    layer_info: Arc<LayerInfo>,
+    seen: &mut BTreeMap<(LayerName, SegmentId), Vec<url::Url>>,
+) -> tonic::Result<Option<ValidatedSource>> {
+    let store_ids = load_store_ids_http_url(storage_url).await?;
+
+    let mut matched = false;
+    for store_id in store_ids {
+        if store_id.kind() != store_kind {
+            continue;
+        }
+        matched = true;
+        seen.entry((
+            layer_info.name.clone(),
+            SegmentId::from(store_id.recording_id()),
+        ))
+        .or_default()
+        .push(storage_url.clone());
+    }
+
+    if !matched {
+        return Ok(None);
+    }
+
+    Ok(Some(ValidatedSource::Http {
+        storage_url: storage_url.clone(),
+        layer_info,
+    }))
+}
+
+#[cfg(target_arch = "wasm32")]
+async fn validate_http_source(
+    _store_kind: StoreKind,
+    storage_url: &url::Url,
+    _layer_info: Arc<LayerInfo>,
+    _seen: &mut BTreeMap<(LayerName, SegmentId), Vec<url::Url>>,
+) -> tonic::Result<Option<ValidatedSource>> {
+    Err(tonic::Status::unimplemented(format!(
+        "register_with_dataset only supports HTTP(S) RRD sources on native targets: {storage_url}"
+    )))
 }
 
 /// Returns `None` if the file's store kind doesn't match (silently skipped).
@@ -336,6 +395,23 @@ async fn load_sources(
                     });
                 }
             }
+
+            ValidatedSource::Http {
+                storage_url,
+                layer_info,
+            } => {
+                let stores = ResolvedStore::load_rrd_http_url(&storage_url, store_kind).await?;
+
+                for (store_id, resolved) in stores {
+                    ready.push(ReadySource {
+                        store_slot_id: StoreSlotId::new(),
+                        resolved,
+                        segment_id: SegmentId::new(store_id.recording_id().to_string()),
+                        layer_info: layer_info.clone(),
+                        storage_url: storage_url.clone(),
+                    });
+                }
+            }
         }
     }
 
@@ -452,6 +528,29 @@ async fn load_store_ids(rrd_path: &RrdPath) -> tonic::Result<BTreeSet<StoreId>> 
     })?;
 
     Ok(store_ids.into_iter().collect())
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+async fn load_store_ids_http_url(storage_url: &url::Url) -> tonic::Result<BTreeSet<StoreId>> {
+    let storage_url = storage_url.clone();
+    tokio::task::spawn_blocking(move || {
+        let mut reader =
+            crate::store::HttpRangeReader::new(storage_url.clone()).map_err(|err| {
+                tonic::Status::internal(format!(
+                    "Failed to open remote RRD source {storage_url}: {err:#}"
+                ))
+            })?;
+
+        let store_ids = re_log_encoding::enumerate_rrd_stores(&mut reader).map_err(|err| {
+            tonic::Status::internal(format!(
+                "Failed to enumerate remote RRD stores {storage_url}: {err:#}"
+            ))
+        })?;
+
+        Ok(store_ids.into_iter().collect())
+    })
+    .await
+    .map_err(|err| tonic::Status::internal(format!("remote RRD task failed: {err:#}")))?
 }
 
 /// Parses a `memory:///store/{store_slot_id}` URL and returns the [`StoreSlotId`].

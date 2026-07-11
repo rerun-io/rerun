@@ -11,6 +11,8 @@ use re_chunk_store::{
 use re_log_encoding::RrdChunkProvider;
 use re_log_encoding::RrdManifest;
 use re_log_types::{EntityPath, StoreId, StoreKind};
+#[cfg(not(target_arch = "wasm32"))]
+use url::Url;
 
 /// A store backend: either an in-memory eager store or a provider-backed lazy store.
 ///
@@ -187,6 +189,43 @@ impl ResolvedStore {
                 &super::InMemoryStore::default_eager_chunk_store_config(),
             )
         }
+    }
+
+    /// Load an HTTP(S) RRD as lazy [`ResolvedStore`]s by reading only footer/manifest ranges.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub async fn load_rrd_http_url(
+        url: &Url,
+        store_kind: StoreKind,
+    ) -> Result<Vec<(StoreId, Self)>, super::Error> {
+        let url = url.clone();
+        tokio::task::spawn_blocking(move || {
+            let mut footer_reader = super::HttpRangeReader::new(url.clone())?;
+            let footer = re_log_encoding::read_rrd_footer(&mut footer_reader)
+                .map_err(|err| super::Error::RrdLoadingError(err.into()))?
+                .ok_or_else(|| {
+                    super::Error::RrdLoadingError(anyhow::anyhow!(
+                        "HTTP RRD sources must have a footer for lazy registration: {url}"
+                    ))
+                })?;
+
+            let mut out = Vec::with_capacity(footer.manifests.len());
+            for (store_id, raw_manifest) in footer.manifests {
+                if store_id.kind() != store_kind {
+                    continue;
+                }
+                let reader = super::HttpRangeReader::new(url.clone())?;
+                let provider = Arc::new(
+                    RrdChunkProvider::from_reader(reader, url.to_string(), Arc::new(raw_manifest))
+                        .map_err(|err| super::Error::RrdLoadingError(err.into()))?,
+                );
+                let lazy = Arc::new(LazyStore::new(provider));
+                out.push((store_id, Self::Lazy(lazy)));
+            }
+
+            Ok(out)
+        })
+        .await
+        .map_err(|err| super::Error::RrdLoadingError(anyhow::anyhow!(err)))?
     }
 }
 

@@ -10083,6 +10083,7 @@ dependencies = [
  "tower",
  "tower-service",
  "tracing",
+ "ureq 3.3.0",
  "url",
  "wasm-bindgen",
  "wasm-bindgen-futures",
