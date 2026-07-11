@@ -19,9 +19,9 @@ use tracing::Instrument as _;
 
 use crate::analytics::{QueryErrorKind, TaskFetchStats};
 use crate::chunk_fetcher::{
-    ChunksWithSegment, SortedChunksWithSegment, batch_byte_size, batch_byte_size_uncompressed,
-    batch_has_any_direct_urls, fetch_batch_direct, fetch_batch_group_via_grpc,
-    split_batch_by_direct_url,
+    ChunksWithSegment, DirectFetchErrorKind, SortedChunksWithSegment, batch_byte_size,
+    batch_byte_size_uncompressed, batch_has_any_direct_urls, fetch_batch_direct,
+    fetch_batch_group_via_grpc, split_batch_by_direct_url,
 };
 use crate::dataframe_query_common::{DataframeClientAPI, force_grpc};
 use crate::metrics_capture::QueryMetrics;
@@ -979,21 +979,58 @@ pub(super) async fn chunk_stream_io_loop<T: DataframeClientAPI>(
                                 &batch,
                                 &http_client,
                                 &mut stats,
-                                &pending_analytics,
                             )
                             .await
                             {
-                                Ok(chunks) => chunks,
+                                Ok(chunks) => {
+                                    stats.record_direct_fetch(bytes);
+                                    chunks
+                                }
                                 Err(err) => {
-                                    stats.try_flush_into(
-                                        &pending_analytics,
-                                        &metrics,
-                                        Err(QueryErrorKind::DirectFetch),
+                                    let reason =
+                                        crate::analytics::DirectFetchFailureReason::classify(&err);
+                                    if err.kind == DirectFetchErrorKind::SourceChanged {
+                                        pending_analytics.record_direct_terminal_failure(reason);
+                                        stats.try_flush_into(
+                                            &pending_analytics,
+                                            &metrics,
+                                            Err(QueryErrorKind::DirectFetch),
+                                        );
+                                        return Err(re_redap_client::ApiError::connection_with_source(
+                                            None,
+                                            err,
+                                            "fetching chunks via direct URLs",
+                                        ));
+                                    }
+
+                                    re_log::warn!(
+                                        %err,
+                                        reason = reason.as_str(),
+                                        "Direct chunk fetch failed; retrying batch via FetchChunks gRPC"
                                     );
-                                    return Err(err);
+                                    match fetch_batch_group_via_grpc(
+                                        std::slice::from_ref(&batch),
+                                        &client,
+                                    )
+                                    .await
+                                    {
+                                        Ok(chunks) => {
+                                            stats.record_grpc_fetch(bytes);
+                                            chunks
+                                        }
+                                        Err(grpc_err) => {
+                                            pending_analytics
+                                                .record_direct_terminal_failure(reason);
+                                            stats.try_flush_into(
+                                                &pending_analytics,
+                                                &metrics,
+                                                Err(QueryErrorKind::GrpcFetch),
+                                            );
+                                            return Err(grpc_err);
+                                        }
+                                    }
                                 }
                             };
-                            stats.record_direct_fetch(bytes);
                             chunks
                         }
                         FetchTask::Grpc(batch) => {

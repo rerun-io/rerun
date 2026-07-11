@@ -25,7 +25,7 @@ use re_protos::{
 };
 use re_redap_client::ApiResult;
 
-use crate::analytics::{DirectFetchFailureReason, PendingQueryAnalytics, TaskFetchStats};
+use crate::analytics::{DirectFetchFailureReason, TaskFetchStats};
 use crate::dataframe_query_common::DataframeClientAPI;
 
 // --- Telemetry ---
@@ -274,8 +274,7 @@ pub async fn fetch_batch_direct(
     batch: &RecordBatch,
     http_client: &reqwest::Client,
     stats: &mut TaskFetchStats,
-    pending: &PendingQueryAnalytics,
-) -> ApiResult<Vec<ChunksWithSegment>> {
+) -> Result<Vec<ChunksWithSegment>, DirectFetchError> {
     #[cfg(not(target_arch = "wasm32"))]
     let byte_size = batch_byte_size(batch);
 
@@ -292,14 +291,9 @@ pub async fn fetch_batch_direct(
         }
         Err(err) => {
             let reason = DirectFetchFailureReason::classify(&err);
-            pending.record_direct_terminal_failure(reason);
             #[cfg(not(target_arch = "wasm32"))]
             metrics::record_direct_failure(reason.as_str());
-            Err(re_redap_client::ApiError::connection_with_source(
-                None,
-                err,
-                "fetching chunks via direct URLs",
-            ))
+            Err(err)
         }
     }
 }
@@ -310,7 +304,7 @@ impl DirectFetchFailureReason {
     /// Source-changed errors are matched on the typed [`DirectFetchErrorKind`]
     /// discriminant; everything else still falls through to message
     /// pattern-matching for now.
-    fn classify(err: &DirectFetchError) -> Self {
+    pub(crate) fn classify(err: &DirectFetchError) -> Self {
         if err.kind == DirectFetchErrorKind::SourceChanged {
             return Self::SourceChanged;
         }
