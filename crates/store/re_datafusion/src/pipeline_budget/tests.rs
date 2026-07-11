@@ -2,48 +2,40 @@ use std::sync::Arc;
 
 use super::*;
 
-// Default constants are tuned to leave the budget effectively
-// disengaged (FRACTION=1.0, MIN=4 GiB, MAX=1 TiB). The tests below
-// assert the clamp logic still selects the right bound at the
-// extremes — not that the budget meaningfully restricts in-flight
-// bytes at typical data sizes. Once the CPU-worker streaming-release
-// refactor lands and the constants come back down (FRACTION=0.25,
-// MIN=64 MiB, MAX=1 GiB), tighten these to also assert proportional
-// sizing in the small/medium ranges.
-
 #[test]
 fn test_budget_clamps_to_min() {
-    // 10 MB total, 1 partition → 100% = 10 MB, clamped to MIN_BUDGET_PER_PARTITION (4 GiB)
+    // 10 MiB total, 1 partition → 25% = 2.5 MiB,
+    // clamped to MIN_BUDGET_PER_PARTITION (64 MiB).
     let budget = PipelineBudget::new(10 * 1024 * 1024, 1);
     assert_eq!(budget.budget, MIN_BUDGET_PER_PARTITION);
 }
 
 #[test]
 fn test_budget_clamps_to_max() {
-    // 8 PiB total, 1 partition → 100% = 8 PiB, clamped to MAX_BUDGET_PER_PARTITION (1 TiB)
-    let budget = PipelineBudget::new(8 * 1024 * 1024 * 1024 * 1024 * 1024, 1);
+    // 8 GiB total, 1 partition → 25% = 2 GiB,
+    // clamped to MAX_BUDGET_PER_PARTITION (1 GiB).
+    let budget = PipelineBudget::new(8 * 1024 * 1024 * 1024, 1);
     assert_eq!(budget.budget, MAX_BUDGET_PER_PARTITION);
 }
 
 #[test]
 fn test_budget_scales_with_partitions() {
-    // 64 PiB total, 14 partitions → 100% / 14 ≈ 4.6 PiB per partition,
-    // clamped to MAX_BUDGET_PER_PARTITION (1 TiB) each.
-    let budget = PipelineBudget::new(64 * 1024 * 1024 * 1024 * 1024 * 1024, 14);
-    assert_eq!(budget.budget, MAX_BUDGET_PER_PARTITION * 14);
+    // 4 GiB total, 4 partitions → (25% / 4) = 256 MiB per partition.
+    let budget = PipelineBudget::new(4 * 1024 * 1024 * 1024, 4);
+    assert_eq!(budget.budget, 1024 * 1024 * 1024);
 }
 
 #[test]
 fn test_budget_small_data_many_partitions() {
-    // 100 MB total, 4 partitions → 100% / 4 = 25 MB per partition,
-    // clamped to MIN_BUDGET_PER_PARTITION (4 GiB) each.
+    // 100 MiB total, 4 partitions → (25% / 4) = 6.25 MiB per partition,
+    // clamped to MIN_BUDGET_PER_PARTITION (64 MiB) each.
     let budget = PipelineBudget::new(100 * 1024 * 1024, 4);
     assert_eq!(budget.budget, MIN_BUDGET_PER_PARTITION * 4);
 }
 
 #[tokio::test]
 async fn test_reserve_blocks_when_budget_exhausted() {
-    let budget = Arc::new(PipelineBudget::new(0, 1)); // clamps up to MIN_BUDGET_PER_PARTITION (4 GiB)
+    let budget = Arc::new(PipelineBudget::new(0, 1)); // clamps up to MIN_BUDGET_PER_PARTITION
     budget.set_multiplier(1.0);
     let half = budget.budget / 2;
 
@@ -86,7 +78,7 @@ async fn test_reserve_blocks_when_budget_exhausted() {
 
 #[tokio::test]
 async fn test_adjust_reservation_corrects_estimate() {
-    let budget = Arc::new(PipelineBudget::new(0, 1)); // clamps up to MIN_BUDGET_PER_PARTITION (4 GiB)
+    let budget = Arc::new(PipelineBudget::new(0, 1)); // clamps up to MIN_BUDGET_PER_PARTITION
     budget.set_multiplier(1.0);
 
     let estimated = 1000;

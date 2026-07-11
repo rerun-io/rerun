@@ -28,29 +28,16 @@
 //! budget       = per_partition * num_partitions
 //! ```
 //!
-//! ## Compile-time defaults: budget is currently effectively disengaged
+//! ## Compile-time defaults
 //!
-//! The shipping defaults (`FRACTION=1.0`, `MIN=4 GiB`, `MAX=1 TiB`) are
-//! picked so the budget never bites in practice. The current CPU worker
-//! buffers an entire segment before releasing, so a per-partition cap
-//! below the largest decoded segment's working set deadlocks: chunks
-//! pin the budget at full before the segment-finalization `release`
-//! fires, with no path to forward progress. Reproduced on PR #1736
-//! against `rerun-synthetic-structs-10k` at 50 segments — adaptive
-//! sizing produced a 283 MB total budget that pinned at 282/283 with
-//! 72 IO tasks parked at wait #1 and zero `release` calls.
-//!
-//! Once the follow-up CPU-worker streaming-release refactor lands —
-//! which releases chunks as the safe time horizon advances rather than
-//! at segment boundaries — dial these back to realistic host RSS
-//! budgets (originally targeted: `FRACTION=0.25`, `MIN=64 MiB`, `MAX=1 GiB`).
-//! With those values, for a 4 GB query at most ~1 GB of decoded chunks
-//! live in RAM while the remaining ~3 GB are still on the wire, on disk,
-//! or already flushed downstream — small queries still stream (no reason
-//! to buffer everything when the working set is tiny) and large queries
-//! stay well clear of the host RSS limit. Tighter fractions trade memory
-//! headroom for more frequent IO stalls; looser fractions risk OOM under
-//! co-tenancy.
+//! The shipping defaults (`FRACTION=0.25`, `MIN=64 MiB`, `MAX=1 GiB`) keep the
+//! IO side ahead of the CPU side without letting it run away. For a 4 GB query,
+//! at most ~1 GB of decoded chunks live in RAM while the remaining ~3 GB are
+//! still on the wire, on disk, or already flushed downstream. Small queries
+//! still stream, because the per-partition floor avoids spending more time
+//! parking tasks than fetching data; large queries stay well clear of unbounded
+//! host RSS growth. Tighter fractions trade memory headroom for more frequent
+//! IO stalls; looser fractions risk OOM under co-tenancy.
 //!
 //! When the server does not provide uncompressed sizes (older server), the
 //! compressed wire size is used as a fallback — this under-estimates, producing
@@ -63,9 +50,9 @@
 //!
 //! | Variable                          | Type   | Accepted range | Default |
 //! |-----------------------------------|--------|----------------|---------|
-//! | `RERUN_PIPELINE_BUDGET_MIN`       | size   | `> 0`          | `4GiB`  |
-//! | `RERUN_PIPELINE_BUDGET_MAX`       | size   | `> 0`          | `1TiB`  |
-//! | `RERUN_PIPELINE_BUDGET_FRACTION`  | float  | `(0.0, 1.0]`   | 1.0     |
+//! | `RERUN_PIPELINE_BUDGET_MIN`       | size   | `> 0`          | `64MiB` |
+//! | `RERUN_PIPELINE_BUDGET_MAX`       | size   | `> 0`          | `1GiB`  |
+//! | `RERUN_PIPELINE_BUDGET_FRACTION`  | float  | `(0.0, 1.0]`   | 0.25    |
 //!
 //! Sizes accept either a SI/IEC suffix (`64MB`, `1GiB`, `512KiB`) or a
 //! bare positive integer interpreted as bytes. Values are trimmed of
@@ -223,45 +210,17 @@ use re_log_types::TimeInt;
 use parking_lot::Mutex;
 use tokio::sync::Notify;
 
-// ---------------------------------------------------------------------------
-// Defaults are intentionally tuned to leave the budget effectively disengaged.
-//
-// The current CPU worker buffers an entire segment before releasing, so any
-// per-partition cap below the largest decoded segment's working set risks
-// deadlock: a segment's chunks pin the budget at full before that segment's
-// release fires at finalization, with no way to make forward progress.
-// Empirically reproduced on PR #1736 against `rerun-synthetic-structs-10k`
-// at 50 segments — adaptive sizing produced a 283 MB total budget that
-// pinned at 282/283 with 72 IO tasks parked at wait #1, no `release` ever
-// fired (zero `remote materialize` lines after 22 min stall).
-//
-// Until the follow-up CPU-worker refactor lands — which releases chunks as
-// the safe time horizon advances rather than at segment boundaries — both
-// FRACTION and the MIN/MAX clamps are set so the budget never bites in
-// practice:
-//
-//   per_partition = (total * 1.0) / num_partitions
-//   per_partition = clamp(per_partition, 4 GiB, 1 TiB)   // both bounds huge
-//   budget        = per_partition * num_partitions       // ≥ 4 GiB * N
-//
-// Once streaming release is in place, dial these back to realistic host
-// RSS budgets (originally targeted: FRACTION=0.25, MIN=64 MiB, MAX=1 GiB).
-// ---------------------------------------------------------------------------
-
 /// Default fraction of total query data to allow in-flight at once.
-/// Override with [`ENV_BUDGET_FRACTION`]. Set to `1.0` so adaptive sizing
-/// uses the full uncompressed estimate; see top-of-section note for why.
-const BUDGET_FRACTION: f64 = 1.0;
+/// Override with [`ENV_BUDGET_FRACTION`].
+const BUDGET_FRACTION: f64 = 0.25;
 
 /// Default minimum adaptive budget per partition.
-/// Override with [`ENV_BUDGET_MIN`]. Set high so the per-partition clamp's
-/// lower bound dominates and adaptive sizing can't pull the budget below
-/// a single segment's working set; see top-of-section note for why.
-pub(crate) const MIN_BUDGET_PER_PARTITION: usize = 4 * 1024 * 1024 * 1024; // 4 GiB
+/// Override with [`ENV_BUDGET_MIN`].
+pub(crate) const MIN_BUDGET_PER_PARTITION: usize = 64 * 1024 * 1024; // 64 MiB
 
 /// Default maximum adaptive budget per partition.
-/// Override with [`ENV_BUDGET_MAX`]. See top-of-section note.
-pub(crate) const MAX_BUDGET_PER_PARTITION: usize = 1024 * 1024 * 1024 * 1024; // 1 TiB
+/// Override with [`ENV_BUDGET_MAX`].
+pub(crate) const MAX_BUDGET_PER_PARTITION: usize = 1024 * 1024 * 1024; // 1 GiB
 
 /// Environment variable to override the minimum per-partition budget.
 /// Value accepts a SI/IEC suffix (`64MB`, `1GiB`, `512KiB`) or a bare
