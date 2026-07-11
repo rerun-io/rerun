@@ -851,7 +851,8 @@ async fn fetch_merged_range(
 
     let mut http_request = http_client
         .get(url)
-        .header("Range", format!("bytes={range_start}-{range_end}"));
+        .header("Range", format!("bytes={range_start}-{range_end}"))
+        .header(reqwest::header::ACCEPT_ENCODING, "identity");
 
     // If-Match header to detect manifest drift at the source.
     if let Some(etag) = expected_etag.and_then(ETag::as_if_match) {
@@ -888,20 +889,8 @@ async fn fetch_merged_range(
         .and_then(|v| v.to_str().ok())
         .map(str::to_owned);
 
-    let merged_bytes = response
-        .bytes()
-        .await
-        .map_err(|err| DirectFetchError::new(format!("failed to read body: {err}"), true))?;
-    if merged_bytes.len() != expected_len {
-        return Err(DirectFetchError::new(
-            format!(
-                "HTTP range response body length mismatch: expected {expected_len} bytes for \
-                 bytes={range_start}-{range_end}, got {}",
-                merged_bytes.len()
-            ),
-            false,
-        ));
-    }
+    let merged_bytes =
+        read_range_response_body(response, expected_len, *range_start, range_end).await?;
 
     tracing::Span::current().record("bytes", merged_bytes.len());
 
@@ -953,6 +942,68 @@ async fn fetch_merged_range(
                 .map(|chunk_with_segment| (info.original_row_index, chunk_with_segment))
         })
         .try_collect()
+}
+
+async fn read_range_response_body(
+    mut response: reqwest::Response,
+    expected_len: usize,
+    range_start: usize,
+    range_end: usize,
+) -> Result<Vec<u8>, DirectFetchError> {
+    let mut body = Vec::with_capacity(expected_len);
+    while let Some(chunk) = response
+        .chunk()
+        .await
+        .map_err(|err| DirectFetchError::new(format!("failed to read body: {err}"), true))?
+    {
+        append_range_response_body_chunk(
+            &mut body,
+            chunk.as_ref(),
+            expected_len,
+            range_start,
+            range_end,
+        )?;
+    }
+
+    if body.len() != expected_len {
+        return Err(DirectFetchError::new(
+            format!(
+                "HTTP range response body length mismatch: expected {expected_len} bytes for \
+                 bytes={range_start}-{range_end}, got {}",
+                body.len()
+            ),
+            false,
+        ));
+    }
+
+    Ok(body)
+}
+
+fn append_range_response_body_chunk(
+    body: &mut Vec<u8>,
+    chunk: &[u8],
+    expected_len: usize,
+    range_start: usize,
+    range_end: usize,
+) -> Result<(), DirectFetchError> {
+    let Some(next_len) = body
+        .len()
+        .checked_add(chunk.len())
+        .filter(|next_len| *next_len <= expected_len)
+    else {
+        return Err(DirectFetchError::new(
+            format!(
+                "HTTP range response body exceeded Content-Length: expected {expected_len} bytes \
+                 for bytes={range_start}-{range_end}, got at least {}",
+                body.len().saturating_add(chunk.len())
+            ),
+            false,
+        ));
+    };
+
+    body.extend_from_slice(chunk);
+    debug_assert_eq!(body.len(), next_len);
+    Ok(())
 }
 
 fn validate_range_response_headers(
@@ -1132,5 +1183,27 @@ mod tests {
 
         assert!(!err.retryable);
         assert!(err.to_string().contains("missing Content-Length"));
+    }
+
+    #[test]
+    fn bounded_body_reader_accepts_chunks_up_to_exact_length() {
+        let mut body = Vec::new();
+
+        append_range_response_body_chunk(&mut body, b"abc", 5, 10, 14).expect("first chunk fits");
+        append_range_response_body_chunk(&mut body, b"de", 5, 10, 14).expect("second chunk fits");
+
+        assert_eq!(body, b"abcde");
+    }
+
+    #[test]
+    fn bounded_body_reader_rejects_chunks_past_exact_length() {
+        let mut body = b"abcd".to_vec();
+
+        let err = append_range_response_body_chunk(&mut body, b"ef", 5, 10, 14)
+            .expect_err("response body must not grow beyond the requested range");
+
+        assert!(!err.retryable);
+        assert!(err.to_string().contains("exceeded Content-Length"));
+        assert_eq!(body, b"abcd");
     }
 }
