@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import json
+import urllib.error
+import urllib.parse
+import urllib.request
 from abc import ABC
 from collections.abc import Sequence
 from enum import Enum
@@ -24,6 +28,9 @@ from . import ContentFilter, EntryId
 _BatchesType: TypeAlias = (
     RecordBatchReader | pa.RecordBatch | Sequence[pa.RecordBatch] | Sequence[Sequence[pa.RecordBatch]]
 )
+
+_HF_DATASET_TREE_API = "https://huggingface.co/api/datasets/{repo_id}/tree/{revision}/{path}"
+_HF_DATASET_RESOLVE_URL = "https://huggingface.co/datasets/{repo_id}/resolve/{revision}/{path}"
 
 if TYPE_CHECKING:
     from datetime import datetime, timedelta
@@ -57,6 +64,116 @@ class OnDuplicateSegmentLayer(str, Enum):
     ERROR = "error"
     SKIP = "skip"
     REPLACE = "replace"
+
+
+def _resolve_huggingface_rrd_urls_from_tree(
+    repo_id: str,
+    revision: str,
+    tree: Sequence[dict[str, Any]],
+    *,
+    limit: int | None,
+) -> list[str]:
+    """Resolve `.rrd` file entries from a Hugging Face dataset tree response."""
+    urls = []
+    quoted_repo = urllib.parse.quote(repo_id, safe="/")
+    quoted_revision = urllib.parse.quote(revision, safe="")
+
+    for entry in tree:
+        if entry.get("type") != "file":
+            continue
+
+        path = entry.get("path")
+        if not isinstance(path, str) or not path.endswith(".rrd"):
+            continue
+
+        quoted_path = urllib.parse.quote(path, safe="/")
+        urls.append(
+            _HF_DATASET_RESOLVE_URL.format(
+                repo_id=quoted_repo,
+                revision=quoted_revision,
+                path=quoted_path,
+            )
+        )
+
+        if limit is not None and len(urls) >= limit:
+            break
+
+    return urls
+
+
+def _huggingface_next_link(link_header: str | None) -> str | None:
+    if not link_header:
+        return None
+
+    for part in link_header.split(","):
+        pieces = [piece.strip() for piece in part.split(";")]
+        if len(pieces) < 2:
+            continue
+        if 'rel="next"' not in pieces[1:]:
+            continue
+
+        target = pieces[0]
+        if target.startswith("<") and target.endswith(">"):
+            return target[1:-1]
+
+    return None
+
+
+def _resolve_huggingface_rrd_urls(
+    repo_id: str,
+    *,
+    revision: str = "main",
+    path: str = "",
+    token: str | None = None,
+    limit: int | None = None,
+) -> list[str]:
+    """List `.rrd` files in a Hugging Face dataset repo as raw `resolve/` URLs."""
+    if limit is not None and limit <= 0:
+        raise ValueError("`limit` must be greater than zero")
+
+    quoted_repo = urllib.parse.quote(repo_id, safe="/")
+    quoted_revision = urllib.parse.quote(revision, safe="")
+    quoted_path = urllib.parse.quote(path.strip("/"), safe="/")
+    api_url = _HF_DATASET_TREE_API.format(
+        repo_id=quoted_repo,
+        revision=quoted_revision,
+        path=quoted_path,
+    )
+    api_url = f"{api_url}?recursive=1"
+
+    headers = {"Accept": "application/json"}
+    if token is not None:
+        headers["Authorization"] = f"Bearer {token}"
+
+    urls: list[str] = []
+    next_url: str | None = api_url
+    while next_url is not None:
+        request = urllib.request.Request(next_url, headers=headers)
+
+        try:
+            with urllib.request.urlopen(request) as response:
+                payload = json.loads(response.read().decode("utf-8"))
+                next_url = _huggingface_next_link(response.headers.get("Link"))
+        except urllib.error.HTTPError as err:
+            raise ValueError(f"failed to list Hugging Face dataset {repo_id!r}: HTTP {err.code}") from err
+        except urllib.error.URLError as err:
+            raise ValueError(f"failed to list Hugging Face dataset {repo_id!r}: {err.reason}") from err
+
+        if not isinstance(payload, list):
+            raise ValueError(f"unexpected Hugging Face tree response for dataset {repo_id!r}")
+
+        remaining = None if limit is None else limit - len(urls)
+        urls.extend(_resolve_huggingface_rrd_urls_from_tree(repo_id, revision, payload, limit=remaining))
+        if limit is not None and len(urls) >= limit:
+            break
+
+    if not urls:
+        target = f"{repo_id}@{revision}"
+        if path:
+            target = f"{target}/{path.strip('/')}"
+        raise ValueError(f"no .rrd files found in Hugging Face dataset {target!r}")
+
+    return urls
 
 
 InternalEntryT = TypeVar("InternalEntryT", DatasetEntryInternal, TableEntryInternal)
@@ -635,6 +752,63 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
             layer_name = "base"
 
         return RegistrationHandle(self._internal.register_prefix(recordings_prefix, layer_name, on_duplicate))
+
+    def register_huggingface(
+        self,
+        repo_id: str,
+        *,
+        revision: str = "main",
+        path: str = "",
+        layer_name: str = "base",
+        token: str | None = None,
+        limit: int | None = None,
+        on_duplicate: OnDuplicateSegmentLayer = OnDuplicateSegmentLayer.ERROR,
+    ) -> RegistrationHandle:
+        """
+        Register `.rrd` files from a Hugging Face dataset repo.
+
+        The Hugging Face dataset tree is expanded client-side into canonical
+        `https://huggingface.co/datasets/{repo}/resolve/{revision}/...` URLs,
+        then registered as ordinary remote RRD URLs. This keeps the registration
+        request explicit and makes downstream REDAP chunk fetches use normal
+        HTTP range requests against the Hugging Face CDN/object backend.
+
+        Parameters
+        ----------
+        repo_id:
+            Hugging Face dataset repo id, e.g. `"rerun/droid_sample"`.
+        revision:
+            Branch, tag, or commit to resolve. Defaults to `"main"`.
+        path:
+            Optional subdirectory within the dataset repo.
+        layer_name:
+            Dataset layer for all registered files. Defaults to `"base"`.
+        token:
+            Optional Hugging Face token for private/gated datasets or higher
+            rate limits.
+        limit:
+            Optional maximum number of `.rrd` files to register.
+        on_duplicate:
+            How to handle duplicate segment layers.
+
+        !!! note
+            The target REDAP service must be able to register and later read
+            HTTPS storage URLs. The local in-process OSS server only supports
+            local file/memory registration today.
+
+        Returns
+        -------
+        A handle to track and wait on the registration tasks.
+
+        """
+        urls = _resolve_huggingface_rrd_urls(
+            repo_id,
+            revision=revision,
+            path=path,
+            token=token,
+            limit=limit,
+        )
+        return self.register(urls, layer_name=layer_name, on_duplicate=on_duplicate)
 
     def segment_store(self, segment_id: str) -> LazyStore:
         """

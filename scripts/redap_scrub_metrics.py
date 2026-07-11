@@ -65,9 +65,22 @@ def _query_metrics_dict(metrics: QueryMetrics) -> dict[str, Any]:
 def _dataset(args: argparse.Namespace):
     client = CatalogClient(url=args.redap_url, token=args.redap_token)
 
+    if args.hf_repo is not None:
+        dataset = client.create_dataset(args.dataset, exist_ok=True)
+        handle = dataset.register_huggingface(
+            args.hf_repo,
+            revision=args.hf_revision,
+            path=args.hf_path,
+            layer_name=args.layer_name,
+            token=args.hf_token,
+            limit=args.hf_limit,
+        )
+        handle.wait(timeout_secs=args.registration_timeout_secs)
+        return dataset
+
     if args.register_prefix is not None:
         dataset = client.create_dataset(args.dataset, exist_ok=True)
-        handle = dataset.register_prefix(args.register_prefix)
+        handle = dataset.register_prefix(args.register_prefix, layer_name=args.layer_name)
         handle.wait(timeout_secs=args.registration_timeout_secs)
         return dataset
 
@@ -153,11 +166,21 @@ def main() -> None:
     parser.add_argument("--redap-token", default=None, help="Optional REDAP auth token")
     parser.add_argument("--dataset", required=True, help="Dataset name")
     parser.add_argument("--index", required=True, help="Timeline/index name to scrub on")
+    parser.add_argument("--layer-name", default="base", help="Layer name used when registering a remote source")
     parser.add_argument(
         "--register-prefix",
         default=None,
         help="Optional remote RRD prefix to register into --dataset before measuring",
     )
+    parser.add_argument(
+        "--hf-repo",
+        default=None,
+        help="Optional Hugging Face dataset repo id containing .rrd files, e.g. rerun/droid_sample",
+    )
+    parser.add_argument("--hf-revision", default="main", help="Hugging Face revision to resolve")
+    parser.add_argument("--hf-path", default="", help="Optional subdirectory inside the Hugging Face dataset repo")
+    parser.add_argument("--hf-token", default=None, help="Optional Hugging Face token")
+    parser.add_argument("--hf-limit", type=int, default=None, help="Optional maximum number of HF .rrd files to register")
     parser.add_argument("--registration-timeout-secs", type=int, default=600)
     parser.add_argument("--seek-count", type=int, default=8)
     parser.add_argument(
@@ -167,6 +190,9 @@ def main() -> None:
     )
     parser.add_argument("--json", action="store_true", help="Emit JSON instead of a compact text table")
     args = parser.parse_args()
+
+    if args.register_prefix is not None and args.hf_repo is not None:
+        raise ValueError("--register-prefix and --hf-repo are mutually exclusive")
 
     dataset = _dataset(args)
     seek_points = _sample_seek_points(dataset, args.index, args.seek_count)
