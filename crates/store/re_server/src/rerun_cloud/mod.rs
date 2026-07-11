@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use arrow::array::BinaryArray;
+use arrow::array::{Array as _, BinaryArray};
 use arrow::record_batch::RecordBatch;
 use datafusion::prelude::SessionContext;
 use futures::StreamExt as _;
@@ -40,11 +40,11 @@ use re_protos::missing_field;
 use re_protos::{
     EntryName,
     cloud::v1alpha1::ext::{
-        self, CreateDatasetEntryRequest, CreateDatasetEntryResponse, CreateTableEntryRequest,
-        DataSource, EntryDetailsUpdate, QueryDatasetRequest, ReadDatasetEntryResponse,
-        ReadTableEntryResponse, TableInsertMode, UpdateDatasetEntryRequest,
-        UpdateDatasetEntryResponse, UpdateEntryRequest, UpdateEntryResponse,
-        UpdateTableEntryRequest, UpdateTableEntryResponse,
+        self, ChunkKey as DirectChunkKey, CreateDatasetEntryRequest, CreateDatasetEntryResponse,
+        CreateTableEntryRequest, DataSource, DataSourceKind, EntryDetailsUpdate,
+        QueryDatasetRequest, ReadDatasetEntryResponse, ReadTableEntryResponse, RrdChunkLocation,
+        TableInsertMode, UpdateDatasetEntryRequest, UpdateDatasetEntryResponse, UpdateEntryRequest,
+        UpdateEntryResponse, UpdateTableEntryRequest, UpdateTableEntryResponse,
     },
 };
 #[cfg(not(target_arch = "wasm32"))]
@@ -1452,7 +1452,7 @@ impl RerunCloudService for RerunCloudHandler {
             exclude_temporal_data,
             scan_parameters,
             query,
-            generate_direct_urls: _,
+            generate_direct_urls,
         } = request.into_inner().try_into()?;
 
         if scan_parameters.is_some() {
@@ -1630,6 +1630,18 @@ impl RerunCloudService for RerunCloudHandler {
                 };
 
                 let num_chunks = metadata_vec.len();
+                let direct_rrd_source_url = if generate_direct_urls {
+                    match &resolved {
+                        ResolvedStore::Lazy(lazy) => lazy
+                            .source()
+                            .parse::<url::Url>()
+                            .ok()
+                            .filter(|url| matches!(url.scheme(), "http" | "https")),
+                        ResolvedStore::Eager(_) => None,
+                    }
+                } else {
+                    None
+                };
 
                 let mut chunk_ids = Vec::with_capacity(num_chunks);
                 let mut chunk_segment_ids = Vec::with_capacity(num_chunks);
@@ -1704,15 +1716,22 @@ impl RerunCloudService for RerunCloudHandler {
                     // OSS server stores decoded data, so compressed == uncompressed.
                     chunk_byte_sizes_uncompressed.push(Some(meta.byte_size));
 
-                    chunk_keys.push(
-                        ChunkKey {
-                            chunk_id: meta.chunk_id,
-                            store_slot_id,
-                        }
-                        .encode()?,
-                    );
-
-                    chunk_direct_urls.push(None);
+                    if let Some(direct_url) = &direct_rrd_source_url
+                        && let Some((direct_chunk_key, direct_url)) =
+                            direct_rrd_chunk_key(&resolved, direct_url, meta.chunk_id)
+                    {
+                        chunk_keys.push(direct_chunk_key);
+                        chunk_direct_urls.push(Some(direct_url));
+                    } else {
+                        chunk_keys.push(
+                            ChunkKey {
+                                chunk_id: meta.chunk_id,
+                                store_slot_id,
+                            }
+                            .encode()?,
+                        );
+                        chunk_direct_urls.push(None);
+                    }
                     chunk_direct_url_expiry.push(None);
                 }
 
@@ -1758,7 +1777,8 @@ impl RerunCloudService for RerunCloudHandler {
         // worth noting that FetchChunks is not per-dataset request, it simply contains chunk infos
         let request = request.into_inner();
 
-        let mut chunk_keys = vec![];
+        let mut local_chunk_keys = vec![];
+        let mut direct_rrd_chunk_keys = vec![];
         for chunk_info_data in request.chunk_infos {
             let chunk_info_batch: RecordBatch = chunk_info_data.try_into().map_err(|err| {
                 tonic::Status::internal(format!("Failed to decode chunk_info: {err:#}"))
@@ -1787,7 +1807,10 @@ impl RerunCloudService for RerunCloudHandler {
                     ))
                 })?;
 
-            for chunk_key in chunk_keys_arr {
+            let direct_url_col = chunk_info_batch
+                .column_by_name(QueryDatasetDataframe::COLUMN_RERUN_LAYER_DIRECT_URL_NAME);
+
+            for (row_idx, chunk_key) in chunk_keys_arr.iter().enumerate() {
                 let chunk_key = chunk_key.ok_or_else(|| {
                     tonic::Status::invalid_argument(format!(
                         "{} must not be null",
@@ -1795,16 +1818,45 @@ impl RerunCloudService for RerunCloudHandler {
                     ))
                 })?;
 
-                let chunk_key = ChunkKey::decode(chunk_key)?;
-                chunk_keys.push(chunk_key);
+                let has_direct_url = direct_url_col.is_some_and(|col| !col.is_null(row_idx));
+                if has_direct_url {
+                    match DirectChunkKey::try_from(chunk_key) {
+                        Ok(chunk_key) => direct_rrd_chunk_keys.push(chunk_key),
+                        Err(direct_err) => {
+                            let chunk_key = ChunkKey::decode(chunk_key).map_err(|local_err| {
+                                tonic::Status::invalid_argument(format!(
+                                    "Failed to decode chunk_key as direct RRD key ({direct_err:#}) or local key ({local_err:#})"
+                                ))
+                            })?;
+                            local_chunk_keys.push(chunk_key);
+                        }
+                    }
+                } else {
+                    match ChunkKey::decode(chunk_key) {
+                        Ok(chunk_key) => local_chunk_keys.push(chunk_key),
+                        Err(local_err) => {
+                            let chunk_key =
+                                DirectChunkKey::try_from(chunk_key).map_err(|direct_err| {
+                                    tonic::Status::invalid_argument(format!(
+                                        "Failed to decode chunk_key as local key ({local_err:#}) or direct RRD key ({direct_err:#})"
+                                    ))
+                                })?;
+                            direct_rrd_chunk_keys.push(chunk_key);
+                        }
+                    }
+                }
             }
         }
 
-        let chunks = self
+        let mut chunks = self
             .store
             .read()
             .await
-            .chunks_from_chunk_keys(&chunk_keys)?;
+            .chunks_from_chunk_keys(&local_chunk_keys)?;
+
+        for chunk_key in direct_rrd_chunk_keys {
+            chunks.push(load_direct_rrd_chunk(chunk_key)?);
+        }
 
         let stream = futures::stream::iter(chunks).map(|(store_id, chunk)| {
             let arrow_msg = re_log_types::ArrowMsg {
@@ -2214,6 +2266,108 @@ impl ChunkMetadata {
             timelines: chunk_timelines.cloned().unwrap_or_default(),
         }
     }
+}
+
+fn direct_rrd_chunk_key(
+    resolved: &ResolvedStore,
+    source_url: &url::Url,
+    chunk_id: ChunkId,
+) -> Option<(Vec<u8>, String)> {
+    let ResolvedStore::Lazy(lazy) = resolved else {
+        return None;
+    };
+
+    let row_idx = lazy.chunk_row_index(&chunk_id)?;
+    let manifest = lazy.manifest();
+    let payload_offset = *manifest.col_chunk_byte_offset().get(row_idx)?;
+    let payload_length = *manifest.col_chunk_byte_size().get(row_idx)?;
+    let header_length = re_log_encoding::MessageHeader::ENCODED_SIZE_BYTES as u64;
+    let offset = payload_offset.checked_sub(header_length)?;
+    let length = payload_length.checked_add(header_length)?;
+
+    let location = RrdChunkLocation {
+        url: source_url.clone(),
+        offset,
+        length,
+    };
+    let chunk_key = DirectChunkKey {
+        chunk_id,
+        data_source_kind: DataSourceKind::Rrd,
+        location: location.as_bytes(),
+        etag: None,
+        registration_time: None,
+    };
+
+    Some((chunk_key.as_bytes(), source_url.to_string()))
+}
+
+fn load_direct_rrd_chunk(chunk_key: DirectChunkKey) -> tonic::Result<(StoreId, Arc<Chunk>)> {
+    if chunk_key.data_source_kind != DataSourceKind::Rrd {
+        return Err(tonic::Status::invalid_argument(format!(
+            "unsupported direct chunk data source kind: {:?}",
+            chunk_key.data_source_kind
+        )));
+    }
+
+    let location = RrdChunkLocation::try_from(chunk_key.location.as_slice()).map_err(|err| {
+        tonic::Status::invalid_argument(format!("failed to decode RRD chunk location: {err:#}"))
+    })?;
+
+    let mut reader = crate::store::HttpRangeReader::new(location.url.clone()).map_err(|err| {
+        tonic::Status::internal(format!(
+            "failed to open remote RRD source {}: {err:#}",
+            location.url
+        ))
+    })?;
+
+    use std::io::{Read as _, Seek as _};
+    reader
+        .seek(std::io::SeekFrom::Start(location.offset))
+        .map_err(|err| {
+            tonic::Status::internal(format!(
+                "failed to seek remote RRD source {} to {}: {err:#}",
+                location.url, location.offset
+            ))
+        })?;
+
+    let mut bytes = vec![
+        0;
+        usize::try_from(location.length).map_err(|err| {
+            tonic::Status::invalid_argument(format!("RRD chunk length does not fit usize: {err:#}"))
+        })?
+    ];
+    reader.read_exact(&mut bytes).map_err(|err| {
+        tonic::Status::internal(format!(
+            "failed to read RRD chunk range {} bytes at {} from {}: {err:#}",
+            location.length, location.offset, location.url
+        ))
+    })?;
+
+    use re_log_encoding::{Decodable, ToApplication as _};
+    let raw_msg =
+        <Option<re_protos::log_msg::v1alpha1::log_msg::Msg> as Decodable>::from_rrd_bytes(&bytes)
+            .map_err(|err| tonic::Status::internal(format!("failed to decode RRD chunk: {err:#}")))?
+            .ok_or_else(|| tonic::Status::internal("empty RRD chunk message"))?;
+    let re_protos::log_msg::v1alpha1::log_msg::Msg::ArrowMsg(transport_arrow_msg) = raw_msg else {
+        return Err(tonic::Status::internal(
+            "RRD chunk did not contain ArrowMsg",
+        ));
+    };
+
+    let store_id: StoreId = transport_arrow_msg
+        .store_id
+        .clone()
+        .ok_or_else(|| tonic::Status::internal("RRD chunk ArrowMsg missing store_id"))?
+        .try_into()
+        .map_err(|err| tonic::Status::internal(format!("failed to decode store_id: {err:#?}")))?;
+    let app_arrow_msg = transport_arrow_msg
+        .to_application(())
+        .map_err(|err| tonic::Status::internal(format!("failed to convert ArrowMsg: {err:#}")))?;
+    let chunk = Chunk::from_record_batch(&app_arrow_msg.batch).map_err(|err| {
+        tonic::Status::internal(format!("error decoding chunk from record batch: {err:#}"))
+    })?;
+
+    Ok((store_id, Arc::new(chunk)))
 }
 
 /// Returns physical chunks and missing virtual chunk IDs for a query.
