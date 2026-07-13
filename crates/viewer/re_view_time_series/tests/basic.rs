@@ -549,6 +549,55 @@ fn test_non_finite_islands() {
     ));
 }
 
+#[test]
+fn test_series_lines_single_logged_point() {
+    let mut test_context = TestContext::new_with_view_class::<TimeSeriesView>();
+    let timeline = Timeline::log_tick();
+
+    test_context.log_entity("plots/line", |builder| {
+        builder.with_archetype_auto_row(
+            TimePoint::default(),
+            &re_sdk_types::archetypes::SeriesLines::new().with_widths([8.0]),
+        )
+    });
+    test_context.log_entity("plots/line", |builder| {
+        builder.with_archetype_auto_row(
+            [(timeline, 10)],
+            &re_sdk_types::archetypes::Scalars::single(1.0),
+        )
+    });
+
+    test_context.set_active_timeline(*timeline.name());
+
+    let view_id = test_context.setup_viewport_blueprint(|ctx, blueprint| {
+        let view = ViewBlueprint::new_with_root_wildcard(TimeSeriesView::identifier());
+
+        ViewProperty::from_archetype::<re_sdk_types::blueprint::archetypes::TimeAxis>(
+            ctx.blueprint_db(),
+            ctx.blueprint_query,
+            view.id,
+        )
+        .save_blueprint_component(
+            ctx,
+            &re_sdk_types::blueprint::archetypes::TimeAxis::descriptor_view_range(),
+            &re_sdk_types::datatypes::TimeRange {
+                start: re_sdk_types::datatypes::TimeRangeBoundary::Absolute(0.into()),
+                end: re_sdk_types::datatypes::TimeRangeBoundary::Absolute(20.into()),
+            },
+        );
+
+        blueprint.add_view_at_root(view)
+    });
+
+    let mut snapshot_results = SnapshotResults::new();
+    snapshot_results.add(test_context.run_view_ui_and_save_snapshot(
+        view_id,
+        "series_lines_single_logged_point",
+        egui::vec2(300.0, 300.0),
+        None,
+    ));
+}
+
 /// Series containing only `±inf` values (no finite data).
 ///
 /// The viewer must not crash and should fall back to a sane y-range.
@@ -712,9 +761,8 @@ fn temporal_anchor_between_sequence_steps() {
 
     let chunks = &mut time_series_chunks(timeline);
 
-    // Add the first two (ticks 0 and 10). A single point would trip
-    // `line_visualizer_system.rs`'s debug-assert via util's single-point
-    // Scatter fallback, so we need at least two.
+    // Add the first two ticks so the initial snapshot has a visible segment before the
+    // anchored cursor.
     test_context.add_chunks(chunks.take(2));
     test_context.set_active_timeline(*timeline.name());
 
