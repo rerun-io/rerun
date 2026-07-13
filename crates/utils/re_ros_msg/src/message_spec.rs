@@ -610,11 +610,9 @@ fn strip_comment(s: &str) -> &str {
             continue;
         }
         match c {
-            '\\' => {
-                // escape next character only inside quotes; outside it doesn't matter for '#'
-                if in_quote {
-                    escaped = true;
-                }
+            // Escape the next character only inside quotes; outside it doesn't matter for '#'.
+            '\\' if in_quote => {
+                escaped = true;
             }
             '"' | '\'' => {
                 if !in_quote {

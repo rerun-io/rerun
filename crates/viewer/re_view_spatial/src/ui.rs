@@ -124,10 +124,10 @@ impl SpatialViewState {
             if self.bounding_boxes.current.is_nothing() {
                 ui.label(egui::RichText::new("empty").italics());
             } else {
-                ui.label(format!("x [{} - {}]", format_f32(min.x), format_f32(max.x),));
-                ui.label(format!("y [{} - {}]", format_f32(min.y), format_f32(max.y),));
+                ui.label(format!("x [{} - {}]", format_f32(min.x), format_f32(max.x)));
+                ui.label(format!("y [{} - {}]", format_f32(min.y), format_f32(max.y)));
                 if spatial_kind == SpatialViewKind::ThreeD {
-                    ui.label(format!("z [{} - {}]", format_f32(min.z), format_f32(max.z),));
+                    ui.label(format!("z [{} - {}]", format_f32(min.z), format_f32(max.z)));
                 }
             }
         });

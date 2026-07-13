@@ -613,7 +613,7 @@ impl PythonCodeGenerator {
 
             if ext_class.found {
                 code.push_unindented(
-                    format!("from .{} import {}", ext_class.module_name, ext_class.name,),
+                    format!("from .{} import {}", ext_class.module_name, ext_class.name),
                     1,
                 );
             }

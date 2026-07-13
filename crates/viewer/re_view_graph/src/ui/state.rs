@@ -25,8 +25,8 @@ impl GraphViewState {
         ui.vertical(|ui| {
             ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
             let egui::Rect { min, max } = rect;
-            ui.label(format!("x [{} - {}]", format_f32(min.x), format_f32(max.x),));
-            ui.label(format!("y [{} - {}]", format_f32(min.y), format_f32(max.y),));
+            ui.label(format!("x [{} - {}]", format_f32(min.x), format_f32(max.x)));
+            ui.label(format!("y [{} - {}]", format_f32(min.y), format_f32(max.y)));
         });
         ui.end_row();
     }

@@ -195,7 +195,7 @@ impl ItemTitle {
                     container_blueprint.container_kind,
                 )
             } else {
-                format!("{:?} container", container_blueprint.container_kind,)
+                format!("{:?} container", container_blueprint.container_kind)
             };
 
             let container_name = container_blueprint.display_name_or_default();
@@ -223,7 +223,7 @@ impl ItemTitle {
             let view_class = view.class(ctx.view_class_registry());
 
             let hover_text = if let Some(display_name) = view.display_name.as_ref() {
-                format!("{} view {display_name:?}", view_class.display_name(),)
+                format!("{} view {display_name:?}", view_class.display_name())
             } else {
                 format!("{} view", view_class.display_name())
             };

@@ -63,7 +63,7 @@ impl CError {
     pub fn invalid_str_argument(parameter_name: &str, utf8_error: std::str::Utf8Error) -> Self {
         Self::new(
             CErrorCode::InvalidStringArgument,
-            &format!("Argument {parameter_name:?} is not valid UTF-8: {utf8_error}",),
+            &format!("Argument {parameter_name:?} is not valid UTF-8: {utf8_error}"),
         )
     }
 

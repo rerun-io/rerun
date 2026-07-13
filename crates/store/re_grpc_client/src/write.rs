@@ -181,16 +181,18 @@ impl Client {
 
         if let Ok(handle) = tokio::runtime::Handle::try_current() {
             if handle.runtime_flavor() == runtime::RuntimeFlavor::MultiThread {
-                tokio::task::block_in_place(|| self.cmd_tx.blocking_send(cmd))
+                tokio::task::block_in_place(|| {
+                    self.cmd_tx.blocking_send(cmd).map_err(|_ignored_err| ())
+                })
             } else {
                 re_log::warn_once!(
                     "Single-threaded tokio runtime detected - please use a multi-threaded runtime for best performance with Rerun's gRPC client. Falling back to async send."
                 );
-                self.cmd_tx.blocking_send(cmd)
+                self.cmd_tx.blocking_send(cmd).map_err(|_ignored_err| ())
             }
         } else {
-            self.cmd_tx.blocking_send(cmd)
-        }.map_err(|_ignored_err| ())
+            self.cmd_tx.blocking_send(cmd).map_err(|_ignored_err| ())
+        }
     }
 
     /// Whether the client is connected to a remote server.

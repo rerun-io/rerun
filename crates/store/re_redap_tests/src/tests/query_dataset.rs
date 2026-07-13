@@ -219,7 +219,7 @@ pub async fn query_dataset_should_fail(service: impl RerunCloudService) {
 
         match response {
             Ok(_) => {
-                panic!("expected failure with code {expected_code}, but got success ({descr})",);
+                panic!("expected failure with code {expected_code}, but got success ({descr})");
             }
             Err(err) => {
                 assert_eq!(

@@ -949,7 +949,7 @@ impl TestContext {
             }
 
             if !handled {
-                eprintln!("Ignored system command: {command_name:?}",);
+                eprintln!("Ignored system command: {command_name:?}");
             }
         }
     }

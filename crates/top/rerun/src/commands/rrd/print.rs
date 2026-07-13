@@ -251,7 +251,7 @@ fn print_msg(options: &Options, msg: LogMsg) -> anyhow::Result<()> {
                             .map(|(descr, _)| descr.to_string())
                             .collect_vec()
                             .join(" ");
-                        println!("data columns: [{column_descriptors}]",);
+                        println!("data columns: [{column_descriptors}]");
                     }
                     _ => {
                         println!("\n{}\n", options.format_record_batch(&migrared_chunk));

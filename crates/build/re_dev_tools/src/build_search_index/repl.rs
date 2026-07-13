@@ -72,7 +72,7 @@ impl Repl {
                         .collect::<Vec<_>>()
                         .join("\n");
 
-                    println!("### {} [{}]", result.title(), result.url(),);
+                    println!("### {} [{}]", result.title(), result.url());
                     if content.len() > 200 {
                         println!("{}…\n", &content[..200]);
                     } else {

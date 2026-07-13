@@ -88,7 +88,7 @@ impl DownloadCommand {
                             );
                         }
                         None => {
-                            eprint!("\r  {}", re_format::format_bytes(bytes_downloaded as _),);
+                            eprint!("\r  {}", re_format::format_bytes(bytes_downloaded as _));
                         }
                     }
                 })),
