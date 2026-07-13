@@ -124,7 +124,7 @@ fn recording_rrd(
 
     log_data(&stream);
 
-    stream.flush_with_timeout(Duration::from_secs(60))?;
+    stream.flush_with_timeout(Duration::from_mins(1))?;
 
     Ok(path)
 }

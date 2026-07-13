@@ -38,7 +38,7 @@ fn recording_time_context(ctx: &StoreViewContext<'_>) -> Option<RecordingTimeCon
         time_ctrl
             .time_i64()
             .unwrap_or_default()
-            .at_least(*time_drag_value.range.start()),
+            .at_least(time_drag_value.range.start),
     ); // accounts for static time (TimeInt::MIN)
 
     Some(RecordingTimeContext {

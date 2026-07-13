@@ -1686,11 +1686,9 @@ impl ChunkSampleIterators {
             "We make sure to never keep empty queues around here"
         );
 
-        if !f(next.samples.front()?.decode_timestamp()) {
-            return None;
-        }
-
-        let sample = next.samples.pop_front()?;
+        let sample = next
+            .samples
+            .pop_front_if(|sample| f(sample.decode_timestamp()))?;
 
         // Don't keep empty queues around.
         if next.samples.is_empty() {

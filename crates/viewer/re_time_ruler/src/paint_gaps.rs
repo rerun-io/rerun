@@ -118,7 +118,7 @@ pub fn paint_time_ranges_gaps(
     const GAP_END_MARGIN: f32 = 100.0;
 
     if let Some(segment) = time_ranges_ui.segments.first() {
-        let gap_edge = *segment.x.start() as f32;
+        let gap_edge = segment.x.start as f32;
         let gap_edge_left_side = ui.content_rect().left() - GAP_END_MARGIN;
 
         if zig_zag_first_and_last_edges {
@@ -136,11 +136,11 @@ pub fn paint_time_ranges_gaps(
     }
 
     for (a, b) in time_ranges_ui.segments.iter().tuple_windows() {
-        paint_time_gap(*a.x.end() as f32, *b.x.start() as f32);
+        paint_time_gap(a.x.last as f32, b.x.start as f32);
     }
 
     if let Some(segment) = time_ranges_ui.segments.last() {
-        let gap_edge = *segment.x.end() as f32;
+        let gap_edge = segment.x.last as f32;
         let gap_edge_right_side = ui.content_rect().right() + GAP_END_MARGIN;
 
         if zig_zag_first_and_last_edges {

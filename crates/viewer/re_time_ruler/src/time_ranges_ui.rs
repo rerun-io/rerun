@@ -4,7 +4,7 @@
 //! In this file we need to use `f64` precision because when zoomed in, the screen-space
 //! time-ranges of are way outside the screen, leading to precision issues with `f32`.
 
-use std::ops::RangeInclusive;
+use core::range::RangeInclusive;
 
 use egui::emath::Rangef;
 use egui::{NumExt as _, lerp, remap};
@@ -84,7 +84,7 @@ impl Default for TimeRangesUi {
     /// Safe, meaningless default
     fn default() -> Self {
         Self {
-            x_range: 0.0..=1.0,
+            x_range: (0.0..=1.0).into(),
             time_view: TimeView {
                 min: TimeReal::from(0),
                 time_spanned: 1.0,
@@ -113,8 +113,11 @@ impl TimeRangesUi {
         //             ^ gap
 
         let gap_width_in_ui = gap_width(&time_x_range, time_ranges);
-        let x_range = (time_x_range.min as f64)..=(time_x_range.max as f64);
-        let width_in_ui = *x_range.end() - *x_range.start();
+        let x_range = RangeInclusive {
+            start: time_x_range.min as f64,
+            last: time_x_range.max as f64,
+        };
+        let width_in_ui = x_range.last - x_range.start;
         let points_per_time = width_in_ui / time_view.time_spanned;
         let points_per_time = if points_per_time > 0.0 && points_per_time.is_finite() {
             points_per_time
@@ -148,13 +151,18 @@ impl TimeRangesUi {
             .map(|&tight_time_range| {
                 let range_width = tight_time_range.abs_length() as f64 * points_per_time;
                 let right = left + range_width;
-                let x_range_unexpanded = left..=right;
+                let x_range_unexpanded = RangeInclusive {
+                    start: left,
+                    last: right,
+                };
                 left = right + gap_width_in_ui;
 
                 // expand each span outwards a bit to make selection of outer data points easier.
                 // Also gives zero-width segments some width!
-                let x_range = (*x_range_unexpanded.start() - expansion_in_ui)
-                    ..=(*x_range_unexpanded.end() + expansion_in_ui);
+                let x_range = RangeInclusive {
+                    start: x_range_unexpanded.start - expansion_in_ui,
+                    last: x_range_unexpanded.last + expansion_in_ui,
+                };
 
                 let time_range = AbsoluteTimeRangeF::new(
                     tight_time_range.min() - expansion_in_time,
@@ -170,7 +178,7 @@ impl TimeRangesUi {
             .collect();
 
         let mut slf = Self {
-            x_range: x_range.clone(),
+            x_range,
             time_view,
             segments,
             points_per_time,
@@ -178,16 +186,17 @@ impl TimeRangesUi {
 
         if let Some(time_start_x) = slf.x_from_time(time_view.min) {
             // Now move things left/right to align `x_range` and `time_view`:
-            let x_translate = *x_range.start() - time_start_x;
+            let x_translate = x_range.start - time_start_x;
             for segment in &mut slf.segments {
-                segment.x = (*segment.x.start() + x_translate)..=(*segment.x.end() + x_translate);
+                segment.x.start += x_translate;
+                segment.x.last += x_translate;
             }
         }
 
         #[cfg(debug_assertions)]
         for (a, b) in slf.segments.iter().tuple_windows() {
             debug_assert!(
-                a.x.end() < b.x.start(),
+                a.x.last < b.x.start,
                 "Overlapping x in segments: {a:#?}, {b:#?}"
             );
             debug_assert!(
@@ -267,7 +276,7 @@ impl TimeRangesUi {
 
     pub fn x_from_time(&self, needle_time: TimeReal) -> Option<f64> {
         let first_segment = self.segments.first()?;
-        let mut last_x = *first_segment.x.start();
+        let mut last_x = first_segment.x.start;
         let mut last_time = first_segment.time.min;
 
         if needle_time < last_time {
@@ -279,12 +288,12 @@ impl TimeRangesUi {
             if needle_time < segment.time.min {
                 let t =
                     AbsoluteTimeRangeF::new(last_time, segment.time.min).inverse_lerp(needle_time);
-                return Some(lerp(last_x..=*segment.x.start(), t));
+                return Some(lerp(last_x..=segment.x.start, t));
             } else if needle_time <= segment.time.max {
                 let t = segment.time.inverse_lerp(needle_time);
-                return Some(lerp(segment.x.clone(), t));
+                return Some(lerp(segment.x, t));
             } else {
-                last_x = *segment.x.end();
+                last_x = segment.x.last;
                 last_time = segment.time.max;
             }
         }
@@ -325,7 +334,7 @@ impl TimeRangesUi {
 
     pub fn time_from_x_f64(&self, needle_x: f64) -> Option<TimeReal> {
         let first_segment = self.segments.first()?;
-        let mut last_x = *first_segment.x.start();
+        let mut last_x = first_segment.x.start;
         let mut last_time = first_segment.time.min;
 
         if needle_x < last_x {
@@ -334,14 +343,14 @@ impl TimeRangesUi {
         }
 
         for segment in &self.segments {
-            if needle_x < *segment.x.start() {
-                let t = remap(needle_x, last_x..=*segment.x.start(), 0.0..=1.0);
+            if needle_x < segment.x.start {
+                let t = remap(needle_x, last_x..=segment.x.start, 0.0..=1.0);
                 return Some(AbsoluteTimeRangeF::new(last_time, segment.time.min).lerp(t));
-            } else if needle_x <= *segment.x.end() {
-                let t = remap(needle_x, segment.x.clone(), 0.0..=1.0);
+            } else if needle_x <= segment.x.last {
+                let t = remap(needle_x, segment.x, 0.0..=1.0);
                 return Some(segment.time.lerp(t));
             } else {
-                last_x = *segment.x.end();
+                last_x = segment.x.last;
                 last_time = segment.time.max;
             }
         }
@@ -351,7 +360,7 @@ impl TimeRangesUi {
     }
 
     pub fn time_range_from_x_range(&self, x_range: RangeInclusive<f32>) -> AbsoluteTimeRange {
-        let (min_x, max_x) = (*x_range.start(), *x_range.end());
+        let (min_x, max_x) = (x_range.start, x_range.last);
         AbsoluteTimeRange::new(
             self.time_from_x_f32(min_x)
                 .map_or(TimeInt::MIN, |tf| tf.floor()),
@@ -363,7 +372,7 @@ impl TimeRangesUi {
     /// Pan the view, returning the new view.
     pub fn pan(&self, delta_x: f32) -> Option<TimeView> {
         Some(TimeView {
-            min: self.time_from_x_f64(*self.x_range.start() + delta_x as f64)?,
+            min: self.time_from_x_f64(self.x_range.start + delta_x as f64)?,
             time_spanned: self.time_view.time_spanned,
         })
     }
@@ -378,8 +387,8 @@ impl TimeRangesUi {
         let min_zoom_factor = self.time_view.time_spanned / max_time_spanned;
         let zoom_factor = (zoom_factor as f64).at_least(min_zoom_factor);
 
-        let mut min_x = *self.x_range.start();
-        let max_x = *self.x_range.end();
+        let mut min_x = self.x_range.start;
+        let max_x = self.x_range.last;
         let t = remap(x, min_x..=max_x, 0.0..=1.0);
 
         let width = max_x - min_x;
@@ -418,24 +427,24 @@ fn test_time_ranges_ui() {
     // Sanity check round-tripping:
     for segment in &time_range_ui.segments {
         assert_eq!(
-            time_range_ui.time_from_x_f64(*segment.x.start()).unwrap(),
+            time_range_ui.time_from_x_f64(segment.x.start).unwrap(),
             segment.time.min
         );
         assert_eq!(
-            time_range_ui.time_from_x_f64(*segment.x.end()).unwrap(),
+            time_range_ui.time_from_x_f64(segment.x.last).unwrap(),
             segment.time.max
         );
 
         if segment.time.is_empty() {
             let x = time_range_ui.x_from_time(segment.time.min).unwrap();
-            let mid_x = lerp(segment.x.clone(), 0.5);
+            let mid_x = lerp(segment.x, 0.5);
             assert!((mid_x - x).abs() < pixel_precision);
         } else {
             let min_x = time_range_ui.x_from_time(segment.time.min).unwrap();
-            assert!((min_x - *segment.x.start()).abs() < pixel_precision);
+            assert!((min_x - segment.x.start).abs() < pixel_precision);
 
             let max_x = time_range_ui.x_from_time(segment.time.max).unwrap();
-            assert!((max_x - *segment.x.end()).abs() < pixel_precision);
+            assert!((max_x - segment.x.last).abs() < pixel_precision);
         }
     }
 }

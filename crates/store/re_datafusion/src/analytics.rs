@@ -1646,14 +1646,14 @@ mod tests {
     fn build_query_span_records_fetch_stats() {
         let qi = dummy_query_info();
         let mut snap = snapshot_from_info(qi);
-        snap.total_duration = Duration::from_micros(1_000);
+        snap.total_duration = Duration::from_millis(1);
         snap.fetch_grpc_requests = 2;
         snap.fetch_grpc_bytes = 5_000;
         snap.fetch_direct_requests = 1;
         snap.fetch_direct_bytes = 10_000;
         snap.fetch_direct_retries = 2;
         snap.fetch_direct_requests_retried = 1;
-        snap.fetch_direct_retry_sleep = Duration::from_micros(12_000);
+        snap.fetch_direct_retry_sleep = Duration::from_millis(12);
         snap.fetch_direct_max_attempt = 3;
         snap.fetch_direct_original_ranges = 8;
         snap.fetch_direct_merged_ranges = 4;
@@ -1758,7 +1758,7 @@ mod tests {
     fn build_query_span_uses_wall_clock_range() {
         let qi = dummy_query_info();
         let snap = snapshot_from_info(qi);
-        let start = SystemTime::UNIX_EPOCH + Duration::from_millis(2_000);
+        let start = SystemTime::UNIX_EPOCH + Duration::from_secs(2);
         let end = SystemTime::UNIX_EPOCH + Duration::from_millis(2_500);
 
         let span = build_query_span(&snap, start..end);
@@ -1921,7 +1921,7 @@ mod table_query_tests {
             &info,
             stats,
             SystemTime::UNIX_EPOCH..SystemTime::UNIX_EPOCH + Duration::from_secs(1),
-            Duration::from_micros(2_000),
+            Duration::from_millis(2),
             None,
             None,
             None,
@@ -1945,7 +1945,7 @@ mod table_query_tests {
             &info,
             empty_stats(),
             SystemTime::UNIX_EPOCH..SystemTime::UNIX_EPOCH + Duration::from_secs(1),
-            Duration::from_micros(1_000),
+            Duration::from_millis(1),
             Some(Duration::from_micros(50)),
             Some(Duration::from_micros(75)),
             Some(trace_id),
@@ -1980,7 +1980,7 @@ mod table_query_tests {
     #[test]
     fn build_table_query_span_uses_wall_clock_range() {
         let info = dummy_table_query_info();
-        let start = SystemTime::UNIX_EPOCH + Duration::from_millis(2_000);
+        let start = SystemTime::UNIX_EPOCH + Duration::from_secs(2);
         let end = SystemTime::UNIX_EPOCH + Duration::from_millis(2_500);
 
         let span = build_table_query_span(
@@ -2193,7 +2193,7 @@ mod explain_metrics_set_tests {
             query_chunks_per_segment_mean: 2.5,
             query_type: QueryType::LatestAt,
             primary_index_name: Some("log_time".to_owned()),
-            time_to_first_chunk_info: Some(Duration::from_micros(2_000)),
+            time_to_first_chunk_info: Some(Duration::from_millis(2)),
             trace_id: None,
             filters_pushed_down,
             filters_applied_client_side,

@@ -9,7 +9,6 @@ run-wasm = "run --release --package run_wasm --"
 
 [unstable]
 codegen-backend = true
-config-include = true
 
 [build]
 # Incremental compilation blows up the size of the target folder, and is also buggy.

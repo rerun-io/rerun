@@ -79,7 +79,7 @@ pub const MAX_DECODING_MESSAGE_SIZE: usize = u32::MAX as usize;
 /// The value is sized to be a hard cap above observed real `FetchChunks` p95
 /// (≈ 250s for large queries on production traffic), so it kills stuck calls
 /// without truncating legitimate large fetches.
-pub const FETCH_CHUNKS_DEADLINE: std::time::Duration = std::time::Duration::from_secs(300);
+pub const FETCH_CHUNKS_DEADLINE: std::time::Duration = std::time::Duration::from_mins(5);
 
 /// Responses from the catalog server can optionally include this header to communicate back the trace id of the request.
 const GRPC_RESPONSE_TRACEID_HEADER: &str = "x-request-trace-id";

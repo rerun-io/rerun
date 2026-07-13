@@ -588,8 +588,10 @@ pub fn build_density_graph<'a>(
 
     // Collect all relevant chunks in the visible time range.
     // We do this as a separate step so that we can also deduplicate chunks.
-    let visible_time_range = time_ranges_ui
-        .time_range_from_x_range((row_rect.left() - MARGIN_X)..=(row_rect.right() + MARGIN_X));
+    let visible_time_range = time_ranges_ui.time_range_from_x_range(core::range::RangeInclusive {
+        start: row_rect.left() - MARGIN_X,
+        last: row_rect.right() + MARGIN_X,
+    });
 
     {
         re_tracing::profile_scope!("unloaded chunks");

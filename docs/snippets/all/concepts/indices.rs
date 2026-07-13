@@ -11,7 +11,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     rec.set_time(
         "precise_time",
         std::time::SystemTime::UNIX_EPOCH
-            + std::time::Duration::from_nanos(1_741_017_564_987_654_000),
+            + std::time::Duration::from_micros(1_741_017_564_987_654),
     );
 
     // All following logged data will be timestamped with the above times:

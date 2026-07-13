@@ -27,7 +27,7 @@ impl CError {
                 break;
             }
 
-            let mut bytes = [0; 4];
+            let mut bytes = [0; char::MAX_LEN_UTF8];
             c.encode_utf8(&mut bytes);
 
             for byte in &bytes[..c.len_utf8()] {

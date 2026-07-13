@@ -896,23 +896,17 @@ impl PipelineBudget {
     /// and bail out spuriously (the "thundering herd" pattern of the
     /// older `fetch_add → check → fetch_sub` design).
     fn try_acquire(&self, reserved_bytes: usize) -> Option<usize> {
-        let mut cur = self.current.load(Acquire);
-        loop {
-            let next = cur + reserved_bytes;
-            if next > self.budget {
-                return None;
-            }
-            match self
-                .current
-                .compare_exchange_weak(cur, next, AcqRel, Acquire)
-            {
-                Ok(_) => {
-                    self.peak_current.fetch_max(next, AcqRel);
-                    return Some(next);
-                }
-                Err(actual) => cur = actual,
-            }
-        }
+        let previous = self
+            .current
+            .try_update(AcqRel, Acquire, |cur| {
+                let next = cur + reserved_bytes;
+                (next <= self.budget).then_some(next)
+            })
+            .ok()?;
+        let current = previous + reserved_bytes;
+
+        self.peak_current.fetch_max(current, AcqRel);
+        Some(current)
     }
 
     /// Single-arg wrapper kept for backward compatibility with the

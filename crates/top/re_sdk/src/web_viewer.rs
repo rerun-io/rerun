@@ -126,7 +126,7 @@ impl Drop for WebViewerSink {
             // before the browser has a chance to connect.
             // Let's give it a little more time:
             re_log::info!("Sleeping a short while to give the browser time to connect…");
-            std::thread::sleep(std::time::Duration::from_millis(1000));
+            std::thread::sleep(std::time::Duration::from_secs(1));
         }
 
         self.server_shutdown_signal.stop();

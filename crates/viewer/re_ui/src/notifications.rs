@@ -612,7 +612,7 @@ fn notification_age_label(ui: &mut egui::Ui, created_at: Timestamp) {
 
         format!("{age:.0}s")
     } else {
-        ui.request_repaint_after(Duration::from_secs(60));
+        ui.request_repaint_after(Duration::from_mins(1));
 
         created_at.strftime("%H:%M").to_string()
     };

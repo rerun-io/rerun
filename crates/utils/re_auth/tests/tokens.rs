@@ -19,7 +19,7 @@ fn generate_read_only_token_with_duration() {
 
     let token = provider
         .token(
-            Duration::from_secs(2 * 60 * 60),
+            Duration::from_hours(2),
             "re_auth_test",
             "test@rerun.io",
             re_auth::Permission::ReadWrite,

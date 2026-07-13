@@ -53,7 +53,7 @@ fn test_rrd() -> (tempfile::TempDir, PathBuf) {
     .send(&rec, Default::default())
     .expect("failed to log blueprint");
 
-    rec.flush_with_timeout(Duration::from_secs(60))
+    rec.flush_with_timeout(Duration::from_mins(1))
         .expect("failed to flush .rrd");
 
     (dir, path)
