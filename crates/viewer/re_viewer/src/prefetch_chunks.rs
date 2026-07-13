@@ -220,12 +220,9 @@ fn make_load_fn<'a>(
             })
         };
 
-        cfg_if::cfg_if! {
-            if #[cfg(target_arch = "wasm32")] {
-                poll_promise::Promise::spawn_local(fut)
-            } else {
-                poll_promise::Promise::spawn_async(fut)
-            }
+        cfg_select! {
+            target_arch = "wasm32" => poll_promise::Promise::spawn_local(fut),
+            _ => poll_promise::Promise::spawn_async(fut),
         }
     }
 }

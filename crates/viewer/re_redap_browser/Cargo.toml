@@ -36,7 +36,6 @@ re_uri.workspace = true
 re_viewer_context.workspace = true
 
 ahash.workspace = true
-cfg-if.workspace = true
 crossbeam.workspace = true
 datafusion.workspace = true
 egui_extras.workspace = true

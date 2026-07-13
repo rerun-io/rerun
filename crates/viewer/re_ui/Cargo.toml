@@ -48,7 +48,6 @@ re_uri.workspace = true # for commands that act on a specific server
 
 ahash.workspace = true
 anyhow.workspace = true
-cfg-if.workspace = true
 eframe = { workspace = true, default-features = false, features = ["wgpu"] }
 egui_commonmark = { workspace = true, features = ["pulldown_cmark"] }
 egui_extras.workspace = true

@@ -231,7 +231,6 @@ camino = "1.2"
 cargo_metadata = "0.23.1"
 cargo-run-wasm = "0.4.0"
 cfg_aliases = "0.2.1"
-cfg-if = "1.0"
 chrono = { version = "0.4.45", default-features = false } # Needed for datafusion, see `re_datafusion`'s Cargo.toml
 clang-format = "0.3.0"
 clap = { version = "4.6", features = ["derive"] }

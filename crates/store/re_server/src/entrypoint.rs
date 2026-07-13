@@ -124,15 +124,16 @@ impl Args {
 
             #[cfg_attr(not(feature = "lance"), expect(clippy::never_loop))]
             for table in &tables {
-                cfg_if::cfg_if! {
-                    if #[cfg(feature = "lance")] {
+                cfg_select! {
+                    feature = "lance" => {
                         builder = builder
                             .with_directory_as_table(
                                 table,
                                 ext::IfDuplicateBehavior::Error,
                             )
                             .await?;
-                    } else {
+                    }
+                    _ => {
                         _ = table;
                         anyhow::bail!("re_server was not compiled with the 'lance' feature");
                     }

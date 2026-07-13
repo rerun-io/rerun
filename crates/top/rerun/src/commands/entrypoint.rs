@@ -918,8 +918,8 @@ fn run_impl(
             server_options,
         )
     } else if args.serve_grpc {
-        cfg_if::cfg_if! {
-            if #[cfg(feature = "server")] {
+        cfg_select! {
+            feature = "server" => {
                 let receivers = ReceiversFromUrlParams::new(
                     url_or_paths,
                     &UrlParamProcessingConfig::convert_everything_to_data_sources(),
@@ -933,23 +933,20 @@ fn run_impl(
                     server_addr,
                     server_options,
                 )
-            } else {
-                Err(anyhow::anyhow!(
-                    "rerun-cli must be compiled with the 'server' feature enabled"
-                ))
             }
+            _ => Err(anyhow::anyhow!(
+                "rerun-cli must be compiled with the 'server' feature enabled"
+            )),
         }
     } else if args.serve_web {
-        cfg_if::cfg_if! {
-            if #[cfg(not(feature = "server"))] {
-                Err(anyhow::anyhow!(
-                    "Can't host server - rerun was not compiled with the 'server' feature"
-                ))
-            } else if #[cfg(not(feature = "web_viewer"))] {
-                Err(anyhow::anyhow!(
-                    "Can't host web-viewer - rerun was not compiled with the 'web_viewer' feature"
-                ))
-            } else {
+        cfg_select! {
+            not(feature = "server") => Err(anyhow::anyhow!(
+                "Can't host server - rerun was not compiled with the 'server' feature"
+            )),
+            not(feature = "web_viewer") => Err(anyhow::anyhow!(
+                "Can't host web-viewer - rerun was not compiled with the 'web_viewer' feature"
+            )),
+            _ => {
                 // We always host the web-viewer in case the users wants it,
                 // but we only open a browser automatically with the `--web-viewer` flag.
                 let open_browser = args.web_viewer;
@@ -984,27 +981,24 @@ fn run_impl(
         )?;
         connect_to_existing_server(receivers, server_addr)
     } else {
-        cfg_if::cfg_if! {
-            if #[cfg(feature = "native_viewer")] {
-                start_native_viewer(
-                    &args,
-                    url_or_paths,
-                    _main_thread_token,
-                    _build_info,
-                    _call_source,
-                    tokio_runtime_handle,
-                    profiler,
-                    connection_registry,
-                    #[cfg(feature = "server")]
-                    server_addr,
-                    #[cfg(feature = "server")]
-                    server_options,
-                )
-            } else {
-                Err(anyhow::anyhow!(
-                    "Can't start viewer - rerun was compiled without the 'native_viewer' feature"
-                ))
-            }
+        cfg_select! {
+            feature = "native_viewer" => start_native_viewer(
+                &args,
+                url_or_paths,
+                _main_thread_token,
+                _build_info,
+                _call_source,
+                tokio_runtime_handle,
+                profiler,
+                connection_registry,
+                #[cfg(feature = "server")]
+                server_addr,
+                #[cfg(feature = "server")]
+                server_options,
+            ),
+            _ => Err(anyhow::anyhow!(
+                "Can't start viewer - rerun was compiled without the 'native_viewer' feature"
+            )),
         }
     }
 }

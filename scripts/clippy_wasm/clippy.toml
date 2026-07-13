@@ -31,6 +31,7 @@ too-many-lines-threshold = 600 # TODO(emilk): decrease this
 disallowed-macros = [
   'std::dbg',
 
+  { path = "cfg_if::cfg_if", reason = "Use the standard library's `cfg_select!` instead" },
   { path = "egui::hex_color", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
 
   { path = "std::debug_assert", reason = "Use `re_log::debug_assert` instead" },

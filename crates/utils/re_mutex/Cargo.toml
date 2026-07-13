@@ -23,4 +23,3 @@ re_byte_size.workspace = true
 re_log.workspace = true
 
 parking_lot.workspace = true
-cfg-if.workspace = true

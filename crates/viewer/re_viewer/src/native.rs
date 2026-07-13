@@ -61,16 +61,18 @@ pub fn eframe_options(force_wgpu_backend: Option<&str>) -> eframe::NativeOptions
 fn icon_data() -> egui::IconData {
     re_tracing::profile_function!();
 
-    cfg_if::cfg_if! {
-        if #[cfg(target_os = "macos")] {
+    cfg_select! {
+        target_os = "macos" => {
             let app_icon_png_bytes = include_bytes!("../data/app_icon_mac.png");
-        } else if #[cfg(target_os = "windows")] {
+        }
+        target_os = "windows" => {
             let app_icon_png_bytes = include_bytes!("../data/app_icon.png");
-        } else {
+        }
+        _ => {
             // Use the same icon for X11 as for Windows, at least for now.
             let app_icon_png_bytes = include_bytes!("../data/app_icon.png");
         }
-    };
+    }
 
     // We include the .png with `include_bytes`. If that fails, things are extremely broken.
     match eframe::icon_data::from_png_bytes(app_icon_png_bytes) {

@@ -8918,7 +8918,6 @@ dependencies = [
  "ahash",
  "arrow",
  "async-trait",
- "cfg-if",
  "crossbeam",
  "datafusion",
  "egui",
@@ -9172,7 +9171,6 @@ dependencies = [
  "ahash",
  "anyhow",
  "arrow",
- "cfg-if",
  "crossbeam",
  "image",
  "indexmap 2.14.0",
@@ -9498,7 +9496,6 @@ dependencies = [
 name = "re_mutex"
 version = "0.35.0-alpha.1+dev"
 dependencies = [
- "cfg-if",
  "parking_lot",
  "re_byte_size",
  "re_log",
@@ -9706,7 +9703,6 @@ name = "re_redap_browser"
 version = "0.35.0-alpha.1+dev"
 dependencies = [
  "ahash",
- "cfg-if",
  "crossbeam",
  "datafusion",
  "egui",
@@ -10038,7 +10034,6 @@ dependencies = [
  "axum",
  "bincode",
  "bytes",
- "cfg-if",
  "chrono",
  "clap",
  "datafusion",
@@ -10371,7 +10366,6 @@ version = "0.35.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "anyhow",
- "cfg-if",
  "crossbeam",
  "eframe",
  "egui",
@@ -10790,7 +10784,6 @@ dependencies = [
  "arrow",
  "bytemuck",
  "camino",
- "cfg-if",
  "crossbeam",
  "eframe",
  "egui",
@@ -11243,7 +11236,6 @@ dependencies = [
  "anyhow",
  "arrow",
  "camino",
- "cfg-if",
  "clap",
  "crossbeam",
  "document-features",

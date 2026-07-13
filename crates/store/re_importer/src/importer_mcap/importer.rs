@@ -252,10 +252,11 @@ impl Importer for McapImporter {
         // `load` will spawn a bunch of importers on the common rayon thread pool and wait for
         // their response via channels: we cannot be waiting for these responses on the
         // common rayon thread pool.
-        cfg_if::cfg_if! {
-            if #[cfg(target_arch = "wasm32")] {
+        cfg_select! {
+            target_arch = "wasm32" => {
                 loader.load_and_send(&contents, &settings, &tx)?;
-            } else {
+            }
+            _ => {
                 std::thread::Builder::new()
                     .name(format!("load_mcap({filepath:?})"))
                     .spawn(move || {

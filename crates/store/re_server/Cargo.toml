@@ -74,7 +74,6 @@ re_grpc_server.workspace = true
 
 axum.workspace = true
 bytes.workspace = true
-cfg-if.workspace = true
 clap = { workspace = true, features = ["derive", "env"] }
 http.workspace = true
 http-body.workspace = true

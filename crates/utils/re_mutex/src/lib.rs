@@ -46,8 +46,8 @@ impl<T> Mutex<T> {
     #[inline(always)]
     #[cfg_attr(debug_assertions, track_caller)]
     pub fn lock(&self) -> MutexGuard<'_, T> {
-        cfg_if::cfg_if! {
-            if #[cfg(debug_assertions)] {
+        cfg_select! {
+            debug_assertions => {
                 let loc = Location::caller();
                 let guard = self
                     .lock
@@ -67,9 +67,8 @@ impl<T> Mutex<T> {
                 *self.last_lock_location.lock() = Some(Location::caller());
 
                 guard
-            } else {
-                self.lock.lock()
             }
+            _ => self.lock.lock(),
         }
     }
 
