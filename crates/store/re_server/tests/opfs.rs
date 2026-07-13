@@ -38,11 +38,11 @@ async fn version() {
 }
 
 #[wasm_bindgen_test]
-async fn register_rrd_from_opfs() {
+async fn register_rrd_from_file_url_in_opfs() {
     let service = RerunCloudHandlerBuilder::new().build();
     let dataset_name = EntryName::new("opfs_dataset").expect("valid dataset name");
     let file_name = format!("{}.rrd", re_tuid::Tuid::new());
-    let url = format!("opfs:///{file_name}");
+    let url = format!("file:///{file_name}");
 
     write_opfs_file(&file_name, &encode_rrd()).await;
 

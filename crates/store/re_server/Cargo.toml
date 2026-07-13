@@ -125,7 +125,6 @@ re_chunk_store.workspace = true
 re_log_encoding = { workspace = true, features = ["encoder"] }
 re_tuid.workspace = true
 ehttp = { workspace = true, features = ["native-async"] }
-percent-encoding.workspace = true
 
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
 wasm-bindgen-test.workspace = true
