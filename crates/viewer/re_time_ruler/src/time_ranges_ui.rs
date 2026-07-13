@@ -371,7 +371,12 @@ impl TimeRangesUi {
     /// Zoom the view around the given x, returning the new view.
     pub fn zoom_at(&self, x: f32, zoom_factor: f32) -> Option<TimeView> {
         let x = x as f64;
-        let zoom_factor = zoom_factor as f64;
+
+        // Don't zoom out beyond the maximum allowed time span of 10 years.
+        let max_time_spanned: f64 =
+            std::time::Duration::from_hours(24 * 365 * 10).as_nanos() as f64;
+        let min_zoom_factor = self.time_view.time_spanned / max_time_spanned;
+        let zoom_factor = (zoom_factor as f64).at_least(min_zoom_factor);
 
         let mut min_x = *self.x_range.start();
         let max_x = *self.x_range.end();
