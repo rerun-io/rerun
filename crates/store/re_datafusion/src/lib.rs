@@ -5,6 +5,7 @@ mod batch_coalescer;
 mod catalog_provider;
 #[cfg(not(target_arch = "wasm32"))]
 mod chunk_fetcher;
+mod cpu_count;
 mod dataframe_query_common;
 #[cfg(not(target_arch = "wasm32"))]
 mod dataframe_query_provider;
@@ -31,6 +32,7 @@ pub(crate) use analytics::{
 };
 pub use analytics::{TableKind, TableQueryCaller};
 pub use catalog_provider::RedapCatalogProviderList;
+pub use cpu_count::{available_cpus, rerun_sdk_num_cpus};
 pub use dataframe_query_common::{
     DataframeClientAPI, DataframeQueryTableProvider, query_from_query_expression,
 };

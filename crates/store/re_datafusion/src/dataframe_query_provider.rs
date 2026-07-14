@@ -5,8 +5,8 @@ use std::any::Any;
 use std::collections::BTreeMap;
 use std::fmt::Debug;
 use std::pin::Pin;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::sync::{Arc, OnceLock};
 use std::task::{Context, Poll};
 
 use crate::analytics::{QueryErrorKind, build_metrics_set_for_explain};
@@ -44,7 +44,6 @@ use re_redap_client::{ApiError, ApiResult};
 use crate::IntoDfError as _;
 use re_sorbet::{ColumnDescriptor, ColumnSelector};
 use tokio::runtime::Handle;
-use tokio::sync::Notify;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::task::JoinHandle;
 use tracing::Instrument as _;
@@ -81,7 +80,6 @@ pub(crate) struct SegmentStreamExec<T: DataframeClientAPI> {
     query_expression: QueryExpression,
     projected_schema: Arc<Schema>,
     target_partitions: usize,
-    worker_runtime: Arc<CpuRuntime>,
     client: T,
 
     /// Optional row limit pushed down from the scan. When set, background
@@ -151,12 +149,6 @@ pub struct DataframeSegmentStreamInner<T: DataframeClientAPI> {
     chunk_tx: Option<Sender<ApiResult<CpuWorkerMsg>>>,
     store_output_channel: Receiver<RecordBatch>,
     io_join_handle: Option<JoinHandle<ApiResult<()>>>,
-
-    /// We must keep a handle on the cpu runtime because the execution plan
-    /// is dropped during streaming. We need this handle to continue to exist
-    /// so that our worker does not shut down unexpectedly.
-    #[expect(dead_code)]
-    cpu_runtime: Arc<CpuRuntime>,
     cpu_join_handle: Option<JoinHandle<ApiResult<()>>>,
 
     /// Request trace-headers.
@@ -554,8 +546,6 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
         let chunk_info = group_chunk_infos_by_segment_id(chunk_info_batches.as_slice())?;
         drop(chunk_info_batches);
 
-        let worker_runtime = Arc::new(CpuRuntime::try_new(num_partitions)?);
-
         // The analytics' `QueryMetrics` carries the plan-time `QueryInfo`
         // (set by the caller in `dataframe_query_common::scan`) plus
         // zero-initialized fetch atomics that the IO loop will populate.
@@ -575,7 +565,6 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
             index_values,
             projected_schema,
             target_partitions: num_partitions,
-            worker_runtime,
             client,
             limit_rows,
             trace_headers,
@@ -698,7 +687,7 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
         let projected_schema = self.projected_schema.clone();
         let limit_rows = self.limit_rows;
         let cpu_join_handle = Some(
-            self.worker_runtime.handle().spawn(
+            CpuRuntime::try_get()?.handle().spawn(
                 chunk_store_cpu_worker_thread(
                     chunk_rx,
                     batches_tx,
@@ -723,7 +712,6 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
             chunk_tx: Some(chunk_tx),
             io_join_handle: None,
             cpu_join_handle,
-            cpu_runtime: Arc::clone(&self.worker_runtime),
             trace_headers: self.trace_headers.clone(),
             server_trace_id: self.server_trace_id,
             pending_analytics: self.pending_analytics.clone(),
@@ -767,7 +755,6 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
             index_values: self.index_values.clone(),
             projected_schema: self.projected_schema.clone(),
             target_partitions,
-            worker_runtime: Arc::new(CpuRuntime::try_new(target_partitions)?),
             client: self.client.clone(),
             limit_rows: self.limit_rows,
             trace_headers: self.trace_headers.clone(),
@@ -836,63 +823,81 @@ impl<T: DataframeClientAPI> DisplayAs for SegmentStreamExec<T> {
     }
 }
 
-#[derive(Debug)]
-struct CpuRuntime {
-    /// Handle is the tokio structure for interacting with a Runtime.
-    handle: Handle,
-
-    /// Signal to start shutting down
-    notify_shutdown: Arc<Notify>,
-
-    /// When thread is active, is Some
-    thread_join_handle: Option<std::thread::JoinHandle<()>>,
+/// Number of worker threads for the shared CPU runtime ([`CpuRuntime::try_get`]).
+///
+/// Sized to the machine's available parallelism, overridable via the
+/// `RERUN_SDK_NUM_CPUS` environment variable. This is a process-level resource
+/// decision, deliberately decoupled from any single query's `target_partitions` —
+/// that governs how many `cpu_worker` tasks are spawned, and they simply queue
+/// onto this fixed-size pool.
+fn shared_cpu_runtime_threads() -> usize {
+    crate::rerun_sdk_num_cpus().unwrap_or_else(crate::available_cpus)
 }
 
-impl Drop for CpuRuntime {
-    fn drop(&mut self) {
-        // Notify the thread to shut down.
-        self.notify_shutdown.notify_one();
-        if let Some(thread_join_handle) = self.thread_join_handle.take() {
-            // If the thread is still running, we wait for it to finish
-            if thread_join_handle.join().is_err() {
-                re_log::error!("Error joining CPU runtime thread");
-            }
-        }
-    }
+/// A multi-threaded Tokio runtime dedicated to CPU-bound tasks.
+///
+/// The shared instance is held in a `static` inside [`CpuRuntime::try_get`] and
+/// is never dropped, so its worker threads persist for the lifetime of the
+/// process.
+#[derive(Debug)]
+struct CpuRuntime {
+    runtime: tokio::runtime::Runtime,
 }
 
 impl CpuRuntime {
-    /// Create a new Tokio Runtime for CPU bound tasks
+    /// Create a new multi-threaded Tokio runtime for CPU-bound tasks.
+    // Deliberately not `pub`, because CpuRuntime should be a singleton
     #[tracing::instrument(level = "trace", skip_all)]
-    pub fn try_new(num_threads: usize) -> Result<Self, DataFusionError> {
-        let cpu_runtime = tokio::runtime::Builder::new_multi_thread()
+    fn try_new(num_threads: usize) -> Result<Self, DataFusionError> {
+        let runtime = tokio::runtime::Builder::new_multi_thread()
             .worker_threads(num_threads)
+            .thread_name("datafusion_cpu_worker")
             .build()?;
-        let handle = cpu_runtime.handle().clone();
-        let notify_shutdown = Arc::new(Notify::new());
-        let notify_shutdown_captured: Arc<Notify> = Arc::clone(&notify_shutdown);
-
-        // The cpu_runtime runs and is dropped on a separate thread
-
-        let thread_join_handle = std::thread::Builder::new()
-            .name("datafusion_query_cpu_thread".to_owned())
-            .spawn(move || {
-                cpu_runtime.block_on(async move {
-                    notify_shutdown_captured.notified().await;
-                });
-                // Note: cpu_runtime is dropped here, which will wait for all tasks
-                // to complete
-            })?;
-
-        Ok(Self {
-            handle,
-            notify_shutdown,
-            thread_join_handle: Some(thread_join_handle),
-        })
+        Ok(Self { runtime })
     }
 
-    /// Return a handle suitable for spawning CPU bound tasks
-    pub fn handle(&self) -> &Handle {
-        &self.handle
+    /// Return the process-wide, long-lived CPU runtime shared by every
+    /// [`SegmentStreamExec`], creating it on first use.
+    ///
+    /// This is where every `cpu_worker` task runs the CPU-bound half of the
+    /// streaming pipeline: chunk-store inserts, horizon-driven emits, and GC.
+    /// (Chunk *decode* happens on the IO side, in the fetch tasks.) Keeping
+    /// that work off the ambient IO runtime stops heavy CPU bursts from
+    /// starving IO polling, and sharing a single instance across queries
+    /// bounds the total number of CPU worker threads to the pool size
+    /// regardless of how many queries or scan leaves run concurrently — the
+    /// canonical "one dedicated CPU executor per process" design (DataFusion's
+    /// `thread_pools` example, derived from `InfluxDB IOx`).
+    ///
+    /// On failure the construction error is returned rather than cached: the cell
+    /// is left empty so a later call can retry. (`DataFusionError` isn't `Clone`,
+    /// so a cached error couldn't be handed back anyway, and
+    /// `OnceLock::get_or_try_init` — which has exactly these semantics — is still
+    /// unstable, so we hand-roll the double-checked lock.)
+    fn try_get() -> Result<Arc<Self>, DataFusionError> {
+        // Fast path: already initialized — a lock-free read.
+        static SHARED: OnceLock<Arc<CpuRuntime>> = OnceLock::new();
+        if let Some(runtime) = SHARED.get() {
+            return Ok(Arc::clone(runtime));
+        }
+
+        // Cold path: serialize construction so a raced (or retried-after-error)
+        // call never builds a spare runtime only to immediately drop it —
+        // dropping a Tokio runtime from within another runtime's worker thread
+        // panics.
+        static INIT: parking_lot::Mutex<()> = parking_lot::Mutex::new(());
+        let _guard = INIT.lock();
+        if let Some(runtime) = SHARED.get() {
+            return Ok(Arc::clone(runtime));
+        }
+        // We hold `INIT` and just re-checked, so `get_or_init` is guaranteed to
+        // run the closure and install this runtime.
+        let runtime = Self::try_new(shared_cpu_runtime_threads())?;
+        Ok(Arc::clone(SHARED.get_or_init(|| Arc::new(runtime))))
+    }
+
+    /// Return a handle suitable for spawning CPU-bound tasks.
+    fn handle(&self) -> &Handle {
+        self.runtime.handle()
     }
 }

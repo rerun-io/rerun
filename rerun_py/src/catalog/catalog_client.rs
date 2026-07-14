@@ -1,25 +1,4 @@
-use std::sync::{Arc, LazyLock};
-
-static RERUN_SDK_NUM_CPUS: LazyLock<Option<u64>> = LazyLock::new(|| {
-    let physical_cpus = std::thread::available_parallelism()
-        .map(|n| n.get() as u64)
-        .unwrap_or(2);
-
-    std::env::var("RERUN_SDK_NUM_CPUS").ok().map(|val| {
-        // DataFusion's target_partitions requires a positive integer.
-        // If a fractional value is provided, truncate it. Clamp to
-        // [1, physical_cpus] so we never exceed the machine's actual
-        // core count (guards against infinity / huge values).
-        if let Ok(f) = val.trim().parse::<f64>() {
-            (f as u64).clamp(1, physical_cpus)
-        } else {
-            re_log::warn_once!(
-                "Failed to parse RERUN_SDK_NUM_CPUS={val:?}, defaulting to {physical_cpus}"
-            );
-            physical_cpus
-        }
-    })
-});
+use std::sync::Arc;
 
 use arrow::datatypes::Schema;
 use arrow::pyarrow::PyArrowType;
@@ -64,7 +43,7 @@ fn setup_datafusion_context(py: Python<'_>) -> PyResult<Py<PyAny>> {
     let config_options = PyDict::new(py);
     config_options.set_item("datafusion.execution.coalesce_batches", "false")?;
 
-    if let Some(cores) = *RERUN_SDK_NUM_CPUS {
+    if let Some(cores) = re_datafusion::rerun_sdk_num_cpus() {
         config_options.set_item("datafusion.execution.target_partitions", cores.to_string())?;
     }
 

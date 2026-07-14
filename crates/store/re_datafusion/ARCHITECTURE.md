@@ -45,8 +45,8 @@ working set stays bounded.
 
 1. `SegmentStreamExec::execute` is the DataFusion entry point. For each output
    partition it spawns:
-   - one **CPU worker** task (`chunk_store_cpu_worker_thread`)
-   - one **IO loop** task (`chunk_stream_io_loop`)
+   - one **CPU worker** task (`chunk_store_cpu_worker_thread`), onto the process-global CPU runtime (see [threading model](#threading-model-the-shared-cpu-runtime))
+   - one **IO loop** task (`chunk_stream_io_loop`), onto the ambient runtime that first polls the output stream
    connected by a single bounded `tokio::mpsc` channel carrying `CpuWorkerMsg`.
 
 2. The IO loop iterates the partition's `chunk_info` rows (already grouped by segment), groups fetches into target-sized batches (`create_request_batches`), and assigns those batches to segment waves of at most `MAX_CONCURRENT_SEGMENTS` segments.
@@ -58,6 +58,28 @@ working set stays bounded.
    incoming chunks to the right per-segment in-memory `ChunkStore`. After
    every chunk insert it runs `flush_incremental` to emit any rows the safe
    horizon now allows and GC any chunks the horizon has passed.
+
+## Threading model: the shared CPU runtime
+
+The two tasks above run on different Tokio runtimes, and the split is deliberate:
+
+- The **IO loop** runs on the ambient runtime — whichever runtime drives the output stream (captured via `Handle::current()` on first poll).
+- The **CPU worker** runs on a dedicated multi-threaded runtime shared by the whole process (`CpuRuntime` in `dataframe_query_provider.rs`).
+
+`CpuRuntime::try_get` creates the runtime lazily on first use and holds it in a `static`.
+It is never dropped, so its worker threads (named `datafusion_cpu_worker`) persist for the lifetime of the process.
+Every `SegmentStreamExec` — across concurrent queries, sessions, and scan leaves — spawns its `cpu_worker` tasks onto this one pool.
+This is the canonical "one dedicated CPU executor per process" design (DataFusion's `thread_pools` example, derived from InfluxDB IOx), and it buys two properties:
+
+1. **IO stays responsive under CPU load.**
+   The worker's store inserts, horizon-driven emits, and GC are CPU-bound; running them on the ambient runtime would starve gRPC polling and stream consumers.
+2. **Total CPU threads are bounded per process.**
+   A query's `target_partitions` only governs how many `cpu_worker` *tasks* it spawns; the tasks queue onto the fixed-size pool, so N concurrent queries share threads instead of multiplying them.
+
+### Sizing
+
+The pool gets one thread per available core, overridable via the `RERUN_SDK_NUM_CPUS` environment variable (parsed, clamped to `[1, available cores]`, and cached at first read — see `cpu_count.rs`).
+The same variable also sets `datafusion.execution.target_partitions` for Python catalog sessions (`catalog_client.rs` in `rerun_py`), so one knob scales plan fan-out and pool width together.
 
 ## Per-segment lifecycle
 

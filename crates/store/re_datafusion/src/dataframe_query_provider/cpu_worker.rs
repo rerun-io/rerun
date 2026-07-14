@@ -2216,4 +2216,69 @@ mod tests {
             "Drop for CurrentStores must run exactly once for the cancelled segment",
         );
     }
+
+    /// In production `SegmentStreamExec::execute` spawns the worker on the
+    /// process-wide CPU runtime and the stream holds its `JoinHandle`; when
+    /// the stream is dropped mid-flight the handle is dropped too, which
+    /// *detaches* the task rather than aborting it. Nothing joins or aborts
+    /// the detached worker — it must self-terminate via channel closure and
+    /// refund its budget reservation, without any runtime teardown.
+    #[tokio::test]
+    async fn test_detached_cpu_worker_winds_down_after_stream_drop() {
+        let budget = Arc::new(PipelineBudget::new(1 << 30, 4));
+        let releases_before = budget.total_releases();
+
+        let (input_tx, input_rx) = tokio::sync::mpsc::channel::<ApiResult<CpuWorkerMsg>>(8);
+        let (output_tx, output_rx) = tokio::sync::mpsc::channel::<RecordBatch>(8);
+
+        // Announce more chunks than we deliver, so a reservation is held and
+        // the segment never completes on its own.
+        input_tx
+            .send(Ok(CpuWorkerMsg::SegmentChunkCount {
+                segment_id: SegmentId::from("A"),
+                count: 5,
+            }))
+            .await
+            .unwrap();
+        input_tx
+            .send(Ok(CpuWorkerMsg::Chunks((
+                SegmentId::from("A"),
+                vec![empty_chunk()],
+            ))))
+            .await
+            .unwrap();
+
+        // Spawn the worker as a detached task; dropping the `JoinHandle` matches `execute`'s detach behavior.
+        let join = tokio::spawn(chunk_store_cpu_worker_thread(
+            input_rx,
+            output_tx,
+            QueryExpression::default(),
+            Arc::new(Schema::empty()),
+            None,
+            None,
+            budget.clone(),
+        ));
+
+        // Simulate the stream being dropped mid-flight: the consumer hangs up,
+        // the IO side finishes, and the join handle is dropped (detach, not
+        // abort). None of this tears down the runtime the task runs on.
+        drop(output_rx);
+        drop(input_tx);
+        drop(join);
+
+        // The detached worker must wind down on its own and refund the budget.
+        tokio::time::timeout(std::time::Duration::from_secs(5), async {
+            while budget.total_releases() == releases_before {
+                tokio::time::sleep(std::time::Duration::from_millis(1)).await;
+            }
+        })
+        .await
+        .expect("detached worker must terminate and refund its budget after the stream is dropped");
+
+        assert_eq!(
+            budget.total_releases(),
+            releases_before + 1,
+            "exactly one budget release for the abandoned segment",
+        );
+    }
 }
