@@ -346,39 +346,3 @@ impl From<crate::blueprint::View> for ContainerLike {
         Self::View(view)
     }
 }
-
-impl From<crate::blueprint::TimeSeriesView> for ContainerLike {
-    fn from(view: crate::blueprint::TimeSeriesView) -> Self {
-        Self::View(view.0)
-    }
-}
-
-impl From<crate::blueprint::MapView> for ContainerLike {
-    fn from(view: crate::blueprint::MapView) -> Self {
-        Self::View(view.0)
-    }
-}
-
-impl From<crate::blueprint::TextDocumentView> for ContainerLike {
-    fn from(view: crate::blueprint::TextDocumentView) -> Self {
-        Self::View(view.0)
-    }
-}
-
-impl From<crate::blueprint::Spatial2DView> for ContainerLike {
-    fn from(view: crate::blueprint::Spatial2DView) -> Self {
-        Self::View(view.0)
-    }
-}
-
-impl From<crate::blueprint::Spatial3DView> for ContainerLike {
-    fn from(view: crate::blueprint::Spatial3DView) -> Self {
-        Self::View(view.0)
-    }
-}
-
-impl From<crate::blueprint::GraphView> for ContainerLike {
-    fn from(view: crate::blueprint::GraphView) -> Self {
-        Self::View(view.0)
-    }
-}

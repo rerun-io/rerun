@@ -426,7 +426,7 @@ def run_prebuilt_rust(
             target_dir = f"{CARGO_TARGET_DIR}/{mode}/snippets"
 
     cmd = [f"{target_dir}{extension}"]
-    cmd += [example.name]
+    cmd += [str(example)]
     cmd += example.extra_args()
 
     env = None
