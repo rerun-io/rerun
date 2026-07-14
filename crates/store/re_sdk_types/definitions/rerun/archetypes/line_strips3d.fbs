@@ -27,6 +27,8 @@ table LineStrips3D (
   radii: [rerun.components.Radius] ("attr.rerun.component_recommended", nullable, order: 2000);
 
   /// Optional colors for the line strips.
+  ///
+  /// The alpha channel is ignored.
   colors: [rerun.components.Color] ("attr.rerun.component_recommended", nullable, order: 2100);
 
   // --- Optional ---
