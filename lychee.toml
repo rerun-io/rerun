@@ -131,6 +131,7 @@ exclude = [
   'file://somehost/file/path.rrd',
   'http://foo.*',
   'http://x/',
+  'https://x/',
   'https://foo.*',
   'https://link.to',
   'https://rerun.rs',

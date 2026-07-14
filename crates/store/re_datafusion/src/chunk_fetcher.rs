@@ -113,6 +113,10 @@ const MAX_MERGED_RANGE_SIZE: usize = 16 * 1024 * 1024;
 /// Number of times to retry direct fetch on transient errors before returning a hard error.
 const DIRECT_FETCH_MAX_RETRIES: usize = 10;
 
+/// Maximum number of `Error::source` levels to unwind when building an error
+/// message. A safety bound against a pathological self-referential source chain.
+const MAX_ERROR_SOURCE_DEPTH: usize = 10;
+
 // --- Range merging types ---
 
 /// Where a single chunk lives within a merged range response.
@@ -314,8 +318,11 @@ impl DirectFetchFailureReason {
         if err.kind == DirectFetchErrorKind::SourceChanged {
             return Self::SourceChanged;
         }
-        let msg = &err.msg;
-        if msg.contains("timed out") || msg.contains("Timeout") {
+        // Lowercase before substring matching: reqwest/hyper capitalize their
+        // transport errors (e.g. `client error (Connect)`), so a case-sensitive
+        // match would misfile connection failures as `Other`.
+        let msg = err.msg.to_lowercase();
+        if msg.contains("timed out") || msg.contains("timeout") {
             Self::Timeout
         } else if msg.contains("status 4") {
             Self::Http4xx
@@ -392,17 +399,43 @@ fn status_retryable(status: reqwest::StatusCode) -> bool {
 
 impl From<reqwest::Error> for DirectFetchError {
     fn from(err: reqwest::Error) -> Self {
-        let mut msg = match err.status() {
+        let status = err.status();
+        let retryable = status.is_none_or(status_retryable);
+
+        // Strip the query string before the URL enters any error message:
+        // presigned URLs carry credentials (`X-Amz-Security-Token`, signature)
+        // that must not leak into logs.
+        let redacted_url = err.url().map(|u| url_strip_query(u.as_str()).to_owned());
+        let err = err.without_url();
+
+        let mut msg = match status {
             Some(status) => {
                 format!("HTTP request failed with status {status}: {err}")
             }
             None => format!("HTTP request failed: {err}"),
         };
 
-        let retryable = err.status().is_none_or(status_retryable);
+        // Walk the full source chain, not just the first level: reqwest's
+        // immediate source is often an opaque wrapper (e.g. `client error
+        // (Connect)`) whose own source carries the actionable OS cause
+        // (`connection refused`, `operation timed out`, `no route to host`).
+        // Bounded so a pathological self-referential source chain can't spin
+        // forever while formatting an error.
+        let mut source = err.source();
+        for _ in 0..MAX_ERROR_SOURCE_DEPTH {
+            let Some(cause) = source else { break };
+            // If there is an error on the chain just return what we've seen so far
+            if let Err(err) = write!(msg, " ({cause})") {
+                re_log::debug!("Failed to append error source to message: {err}");
+                break;
+            }
+            source = cause.source();
+        }
 
-        if let Some(source) = err.source() {
-            write!(msg, " ({source})").expect("Can append");
+        if let Some(url) = redacted_url
+            && let Err(err) = write!(msg, "\nURL: {url}")
+        {
+            re_log::debug!("Failed to append URL to message: {err}");
         }
 
         Self {
@@ -935,4 +968,55 @@ async fn fetch_merged_range(
                 .map(|chunk_with_segment| (info.original_row_index, chunk_with_segment))
         })
         .try_collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn reason(msg: &str) -> DirectFetchFailureReason {
+        DirectFetchFailureReason::classify(&DirectFetchError::new(msg.to_owned(), false))
+    }
+
+    #[test]
+    fn classifies_hyper_connect_as_connection() {
+        // reqwest/hyper capitalize the transport error kind — the exact shape
+        // seen in the field. Must classify as `Connection`, not `Other`.
+        assert_eq!(
+            reason(
+                "HTTP request failed: error sending request for url (https://x) \
+                 (client error (Connect))"
+            ),
+            DirectFetchFailureReason::Connection,
+        );
+        // Deeper OS cause now appended by the source-chain walk.
+        assert_eq!(
+            reason("HTTP request failed: … (tcp connect error: Connection refused (os error 111))"),
+            DirectFetchFailureReason::Connection,
+        );
+    }
+
+    #[test]
+    fn classifies_timeout_regardless_of_case() {
+        assert_eq!(
+            reason("operation Timeout"),
+            DirectFetchFailureReason::Timeout
+        );
+        assert_eq!(
+            reason("request timed out"),
+            DirectFetchFailureReason::Timeout
+        );
+    }
+
+    #[test]
+    fn classifies_http_status() {
+        assert_eq!(
+            reason("HTTP request returned status 404 Not Found"),
+            DirectFetchFailureReason::Http4xx,
+        );
+        assert_eq!(
+            reason("HTTP request returned status 503 Service Unavailable"),
+            DirectFetchFailureReason::Http5xx,
+        );
+    }
 }
