@@ -12,10 +12,10 @@ use crate::command_sender::{SelectionSource, SetSelection};
 use crate::drag_and_drop::DragAndDropPayload;
 use crate::time_control::TimeControlCommand;
 use crate::{
-    ActiveStoreContext, AppOptions, ApplicationSelectionState, CommandSender, ComponentUiRegistry,
-    DragAndDropManager, FallbackProviderRegistry, FocusTarget, Item, ItemCollection, Route,
-    StorageContext, StoreHub, SystemCommand, SystemCommandSender as _, TableStores, TimeControl,
-    ViewClassRegistry,
+    ActiveStoreContext, AppCaches, AppOptions, ApplicationSelectionState, CommandSender,
+    ComponentUiRegistry, DragAndDropManager, FallbackProviderRegistry, FocusTarget, Item,
+    ItemCollection, Route, StorageContext, StoreHub, SystemCommand, SystemCommandSender as _,
+    TableStores, TimeControl, ViewClassRegistry,
 };
 
 /// Application context that is shared across all parts of the viewer.
@@ -55,6 +55,9 @@ pub struct AppContext<'a> {
     ///
     /// This is `None` if the current [`Route`] is not pointing to a recording.
     pub active_store_context: Option<&'a ActiveStoreContext<'a>>,
+
+    /// App-level caches for data that is not tied to any particular store.
+    pub app_caches: &'a AppCaches,
 
     /// How to display components.
     pub component_ui_registry: &'a ComponentUiRegistry,

@@ -19,7 +19,7 @@ use re_ui::{UiExt as _, icons};
 use re_uri::DATASET_HIERARCHY_SEPARATOR;
 use re_viewer_context::{
     AppContext, AsyncRuntimeHandle, CommandSender as ViewerCommandSender,
-    EditRedapServerModalCommand, StoreViewContext, ViewStates,
+    EditRedapServerModalCommand, ViewStates,
 };
 
 use crate::context::Context;
@@ -222,7 +222,7 @@ impl Server {
     /// Central panel UI for when a server is selected.
     fn server_ui(
         &self,
-        viewer_ctx: &StoreViewContext<'_>,
+        app_ctx: &AppContext<'_>,
         ctx: &Context<'_>,
         ui: &mut egui::Ui,
         inline_login_flow: &mut Option<(re_uri::Origin, Box<LoginFlow>)>,
@@ -230,7 +230,7 @@ impl Server {
     ) {
         if let Poll::Ready(Err(err)) = self.entries.state() {
             self.title_ui(self.origin.host.to_string(), ctx, ui, |ui| {
-                error_ui(viewer_ctx, ctx, ui, &self.origin, err, inline_login_flow);
+                error_ui(app_ctx, ctx, ui, &self.origin, err, inline_login_flow);
             });
             return;
         }
@@ -271,19 +271,19 @@ impl Server {
                     )
                     .and(col("name").not_eq(lit("__entries"))),
             )
-            .show(viewer_ctx, &self.runtime, ui, view_states);
+            .show(app_ctx, &self.runtime, ui, view_states);
     }
 
     fn folder_ui(
         &self,
-        viewer_ctx: &StoreViewContext<'_>,
+        app_ctx: &AppContext<'_>,
         ui: &mut egui::Ui,
         origin: &re_uri::Origin,
         path_prefix: &str,
     ) {
         use re_viewer_context::{RedapEntryKind, Route, SystemCommand, SystemCommandSender as _};
 
-        let command_sender = viewer_ctx.command_sender().clone();
+        let command_sender = app_ctx.command_sender().clone();
 
         Frame::new().inner_margin(Margin::same(16)).show(ui, |ui| {
             ui.horizontal(|ui| {
@@ -342,7 +342,7 @@ impl Server {
 
     fn dataset_entry_ui(
         &self,
-        viewer_ctx: &StoreViewContext<'_>,
+        app_ctx: &AppContext<'_>,
         ui: &mut egui::Ui,
         dataset: &Dataset,
         view_states: &mut ViewStates,
@@ -402,12 +402,12 @@ impl Server {
             self.origin.clone(),
             dataset.id(),
         )
-        .show(viewer_ctx, &self.runtime, ui, view_states);
+        .show(app_ctx, &self.runtime, ui, view_states);
     }
 
     fn table_entry_ui(
         &self,
-        viewer_ctx: &StoreViewContext<'_>,
+        app_ctx: &AppContext<'_>,
         ui: &mut egui::Ui,
         table: &Table,
         view_states: &mut ViewStates,
@@ -419,12 +419,12 @@ impl Server {
         .table_id(TableId::new(table.id().to_string()))
         .title(table.name().to_string())
         .url(re_uri::EntryUri::new(table.origin.clone(), table.id()).to_string())
-        .show(viewer_ctx, &self.runtime, ui, view_states);
+        .show(app_ctx, &self.runtime, ui, view_states);
     }
 }
 
 fn error_ui(
-    viewer_ctx: &StoreViewContext<'_>,
+    app_ctx: &AppContext<'_>,
     ctx: &Context<'_>,
     ui: &mut egui::Ui,
     origin: &re_uri::Origin,
@@ -473,7 +473,7 @@ fn error_ui(
                 ui.vertical(|ui| {
                     ui.strong(message);
 
-                    if let Some(auth) = viewer_ctx.app_ctx.auth_context {
+                    if let Some(auth) = app_ctx.auth_context {
                         let identity = if let Some(org) = &auth.org_name {
                             format!("Logged in as {} ({})", auth.email, org)
                         } else {
@@ -505,7 +505,7 @@ fn error_ui(
                         });
                     } else {
                         ui.horizontal(|ui| {
-                            if let Some(auth) = viewer_ctx.app_ctx.auth_context {
+                            if let Some(auth) = app_ctx.auth_context {
                                 // User is already logged in — offer to use stored credentials
                                 if ui
                                     .add(
@@ -521,7 +521,7 @@ fn error_ui(
                                     )
                                     .ok();
                                 }
-                            } else if viewer_ctx.app_ctx.login_enabled {
+                            } else if app_ctx.login_enabled {
                                 // User is not logged in — start login flow
                                 // Opening the popup synchronously in the click handler is
                                 // required for Safari, which blocks popups not initiated
@@ -532,7 +532,7 @@ fn error_ui(
                                 {
                                     match LoginFlow::open_and_start(
                                         ui.ctx(),
-                                        viewer_ctx.app_ctx.login_signed_in_url,
+                                        app_ctx.login_signed_in_url,
                                     ) {
                                         Ok(flow) => {
                                             *inline_login_flow =
@@ -563,7 +563,7 @@ fn error_ui(
                 });
             });
         } else {
-            warning_with_edit_button(ctx, ui, origin, message, viewer_ctx.app_ctx.auth_context);
+            warning_with_edit_button(ctx, ui, origin, message, app_ctx.auth_context);
         }
     } else if matches!(
         &err.kind,
@@ -1010,7 +1010,7 @@ impl RedapServers {
 
     pub fn server_central_panel_ui(
         &mut self,
-        viewer_ctx: &StoreViewContext<'_>,
+        app_ctx: &AppContext<'_>,
         ui: &mut egui::Ui,
         origin: &re_uri::Origin,
         view_states: &mut ViewStates,
@@ -1019,29 +1019,23 @@ impl RedapServers {
             let ctx = Context {
                 command_sender: &self.command_sender,
             };
-            server.server_ui(
-                viewer_ctx,
-                &ctx,
-                ui,
-                &mut self.inline_login_flow,
-                view_states,
-            );
+            server.server_ui(app_ctx, &ctx, ui, &mut self.inline_login_flow, view_states);
         } else {
-            viewer_ctx.revert_to_default_route();
+            app_ctx.revert_to_default_route();
         }
     }
 
     pub fn folder_central_panel_ui(
         &self,
-        viewer_ctx: &StoreViewContext<'_>,
+        ctx: &AppContext<'_>,
         ui: &mut egui::Ui,
         origin: &re_uri::Origin,
         path_prefix: &str,
     ) {
         if let Some(server) = self.servers.get(origin) {
-            server.folder_ui(viewer_ctx, ui, origin, path_prefix);
+            server.folder_ui(ctx, ui, origin, path_prefix);
         } else {
-            viewer_ctx.revert_to_default_route();
+            ctx.revert_to_default_route();
         }
     }
 
@@ -1055,7 +1049,7 @@ impl RedapServers {
 
     pub fn entry_ui(
         &self,
-        ctx: &StoreViewContext<'_>,
+        ctx: &AppContext<'_>,
         ui: &mut egui::Ui,
         active_entry: EntryId,
         view_states: &mut ViewStates,

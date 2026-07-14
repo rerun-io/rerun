@@ -972,6 +972,7 @@ impl App {
                 self.active_recording_id(),
                 &|store_id| self.state.time_cursor_for(store_id).map(|t| t.time_cursor),
             );
+            self.state.app_caches.purge_memory();
 
             let mem_use_after = MemoryUse::capture();
 

@@ -60,6 +60,11 @@ pub struct TestContext {
     pub store_hub: Mutex<StoreHub>,
     pub view_class_registry: ViewClassRegistry,
 
+    /// App-level caches for data that is not tied to any particular store.
+    ///
+    /// See [`AppContext::app_caches`].
+    pub app_caches: re_viewer_context::AppCaches,
+
     // Mutex is needed, so we can update these from the `run` method
     pub selection_state: Mutex<ApplicationSelectionState>,
     pub focused_item: Mutex<Option<re_viewer_context::FocusTarget>>,
@@ -317,6 +322,7 @@ impl TestContext {
             called_setup_kittest_for_rendering: AtomicBool::new(false),
 
             store_hub: Mutex::new(store_hub),
+            app_caches: Default::default(),
         }
     }
 
@@ -610,6 +616,7 @@ impl TestContext {
 
         let mut store_hub = self.store_hub.lock();
         store_hub.begin_frame_caches(Some(&self.recording_store_id));
+        self.app_caches.begin_frame();
 
         let db = store_hub.entity_db_mut(&self.recording_store_id).unwrap();
         if db.can_fetch_chunks_from_redap() {
@@ -675,6 +682,7 @@ impl TestContext {
 
                 storage_context: &storage_context,
                 active_store_context: Some(&store_context),
+                app_caches: &self.app_caches,
 
                 component_ui_registry: &self.component_ui_registry,
                 view_class_registry: &self.view_class_registry,

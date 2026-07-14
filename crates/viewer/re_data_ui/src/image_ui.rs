@@ -10,8 +10,8 @@ use re_ui::list_item::ListItemContentButtonsExt as _;
 use re_ui::{UiExt as _, icons, list_item};
 use re_viewer_context::gpu_bridge::{self, image_data_range_heuristic, image_to_gpu};
 use re_viewer_context::{
-    AppContext, ColormapWithRange, DownloadAction, ImageHistogramCache, ImageInfo, ImageStatsCache,
-    Rgb8Histogram, StoreViewContext, UiLayout,
+    AppContext, ColormapWithRange, DownloadAction, ImageHistogramCache, ImageInfo, Rgb8Histogram,
+    StoreViewContext, UiLayout,
 };
 use std::sync::Arc;
 
@@ -21,7 +21,7 @@ use crate::find_and_deserialize_archetype_mono_component;
 ///
 /// For segmentation images, the annotation context is looked up in `store_ctx`.
 pub fn image_preview_ui(
-    app_ctx: &StoreViewContext<'_>,
+    app_ctx: &AppContext<'_>,
     store_ctx: Option<&StoreViewContext<'_>>,
     ui: &mut egui::Ui,
     ui_layout: UiLayout,
@@ -29,7 +29,7 @@ pub fn image_preview_ui(
     image: &ImageInfo,
     colormap_with_range: Option<&ColormapWithRange>,
 ) -> Option<()> {
-    let image_stats = app_ctx.memoizer(|c: &mut ImageStatsCache| c.entry(image));
+    let image_stats = app_ctx.app_caches.image_stats.write().entry(image);
     let annotations = store_ctx.map(|store_ctx| crate::annotations(store_ctx, entity_path));
     let debug_name = entity_path.to_string();
 
@@ -344,8 +344,8 @@ pub struct ImageUi {
 }
 
 impl ImageUi {
-    pub fn new(ctx: &StoreViewContext<'_>, image: ImageInfo) -> Self {
-        let image_stats = ctx.memoizer(|c: &mut ImageStatsCache| c.entry(&image));
+    pub fn new(ctx: &AppContext<'_>, image: ImageInfo) -> Self {
+        let image_stats = ctx.app_caches.image_stats.write().entry(&image);
         let data_range = image_data_range_heuristic(&image_stats, &image.format);
         Self {
             image,
@@ -355,7 +355,7 @@ impl ImageUi {
     }
 
     pub fn from_components(
-        ctx: &StoreViewContext<'_>,
+        ctx: &AppContext<'_>,
         image_buffer_descr: &ComponentDescriptor,
         image_buffer_chunk: &UnitChunkShared,
         entity_components: &[(ComponentDescriptor, UnitChunkShared)],
@@ -386,7 +386,7 @@ impl ImageUi {
             image_format.0,
             kind,
         );
-        let image_stats = ctx.memoizer(|c: &mut ImageStatsCache| c.entry(&image));
+        let image_stats = ctx.app_caches.image_stats.write().entry(&image);
 
         let colormap = find_and_deserialize_archetype_mono_component::<components::Colormap>(
             entity_components,

@@ -139,7 +139,7 @@ impl<'a> ViewerContext<'a> {
             app_ctx: &self.app_ctx,
             db: self.store_context.blueprint,
             time_ctrl: self.blueprint_time_ctrl,
-            caches: self.store_context.caches, // TODO(RR-3033): what cache to use here?
+            caches: self.store_context.caches,
         }
     }
 

@@ -8,7 +8,7 @@ use re_log_types::{Instance, StoreId};
 use re_sdk_types::{ComponentDescriptor, ComponentType};
 use re_ui::{UiExt as _, UiLayout};
 
-use crate::{MaybeMutRef, QueryContext, StoreViewContext};
+use crate::{AppContext, MaybeMutRef, QueryContext, StoreViewContext};
 
 /// Describes where an edit should be written to if any
 pub struct EditTarget {
@@ -50,7 +50,7 @@ impl ComponentUiTypes {
 
 type LegacyDisplayComponentUiCallback = Box<
     dyn Fn(
-            &StoreViewContext<'_>,
+            &AppContext<'_>,
             &mut egui::Ui,
             UiLayout,
             &EntityPath,
@@ -103,7 +103,7 @@ impl From<VariantName> for ComponentUiIdentifier {
 /// If no edit was made, should return `None`.
 pub type UntypedComponentEditOrViewCallback = Box<
     dyn Fn(
-            &StoreViewContext<'_>,
+            &AppContext<'_>,
             &mut egui::Ui,
             &ComponentDescriptor,
             Option<RowId>,
@@ -197,11 +197,7 @@ impl ComponentUiRegistry {
     ///     * Make sure that changes are propagated via [`egui::Response::mark_changed`] if necessary.
     pub fn add_singleline_edit_or_view<C: re_sdk_types::Component>(
         &mut self,
-        callback: impl Fn(
-            &StoreViewContext<'_>,
-            &mut egui::Ui,
-            &mut MaybeMutRef<'_, C>,
-        ) -> egui::Response
+        callback: impl Fn(&AppContext<'_>, &mut egui::Ui, &mut MaybeMutRef<'_, C>) -> egui::Response
         + Send
         + Sync
         + 'static,
@@ -216,7 +212,7 @@ impl ComponentUiRegistry {
         &mut self,
         component_identifier: ComponentIdentifier,
         callback: impl Fn(
-            &StoreViewContext<'_>,
+            &AppContext<'_>,
             &mut egui::Ui,
             &ComponentDescriptor,
             &mut MaybeMutRef<'_, C>,
@@ -285,11 +281,7 @@ impl ComponentUiRegistry {
     ///     * Make sure that changes are propagated via [`egui::Response::mark_changed`] if necessary.
     pub fn add_multiline_edit_or_view<C: re_sdk_types::Component>(
         &mut self,
-        callback: impl Fn(
-            &StoreViewContext<'_>,
-            &mut egui::Ui,
-            &mut MaybeMutRef<'_, C>,
-        ) -> egui::Response
+        callback: impl Fn(&AppContext<'_>, &mut egui::Ui, &mut MaybeMutRef<'_, C>) -> egui::Response
         + Send
         + Sync
         + 'static,
@@ -317,7 +309,7 @@ impl ComponentUiRegistry {
     pub fn add_singleline_array_edit_or_view<C: re_sdk_types::Component>(
         &mut self,
         callback: impl Fn(
-            &StoreViewContext<'_>,
+            &AppContext<'_>,
             &mut egui::Ui,
             &mut MaybeMutRef<'_, Vec<C>>,
         ) -> egui::Response
@@ -346,7 +338,7 @@ impl ComponentUiRegistry {
     pub fn add_multiline_array_edit_or_view<C: re_sdk_types::Component>(
         &mut self,
         callback: impl Fn(
-            &StoreViewContext<'_>,
+            &AppContext<'_>,
             &mut egui::Ui,
             &mut MaybeMutRef<'_, Vec<C>>,
         ) -> egui::Response
@@ -361,11 +353,7 @@ impl ComponentUiRegistry {
     fn add_editor_ui<C: re_sdk_types::Component>(
         &mut self,
         multiline: bool,
-        callback: impl Fn(
-            &StoreViewContext<'_>,
-            &mut egui::Ui,
-            &mut MaybeMutRef<'_, C>,
-        ) -> egui::Response
+        callback: impl Fn(&AppContext<'_>, &mut egui::Ui, &mut MaybeMutRef<'_, C>) -> egui::Response
         + Send
         + Sync
         + 'static,
@@ -407,7 +395,7 @@ impl ComponentUiRegistry {
         &mut self,
         multiline: bool,
         callback: impl Fn(
-            &StoreViewContext<'_>,
+            &AppContext<'_>,
             &mut egui::Ui,
             &mut MaybeMutRef<'_, Vec<C>>,
         ) -> egui::Response
@@ -470,7 +458,7 @@ impl ComponentUiRegistry {
         &mut self,
         variant_name: impl Into<VariantName>,
         callback: impl Fn(
-            &StoreViewContext<'_>,
+            &AppContext<'_>,
             &mut egui::Ui,
             ComponentIdentifier,
             Option<RowId>,
@@ -498,12 +486,7 @@ impl ComponentUiRegistry {
                         "UI for variant {variant_name} failed to display the provided data {err}"
                     );
 
-                    fallback_ui(
-                        ui,
-                        UiLayout::List,
-                        ctx.app_options().timestamp_format,
-                        value,
-                    );
+                    fallback_ui(ui, UiLayout::List, ctx.app_options.timestamp_format, value);
                 }
 
                 None
@@ -674,7 +657,7 @@ impl ComponentUiRegistry {
     /// Show a UI for a single raw component.
     pub fn component_ui_raw(
         &self,
-        ctx: &StoreViewContext<'_>,
+        ctx: &AppContext<'_>,
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
         entity_path: &EntityPath,
@@ -728,7 +711,7 @@ impl ComponentUiRegistry {
         fallback_ui(
             ui,
             ui_layout,
-            ctx.app_options().timestamp_format,
+            ctx.app_options.timestamp_format,
             component_raw,
         );
     }
@@ -736,7 +719,7 @@ impl ComponentUiRegistry {
     /// Show a UI corresponding to the provided variant name.
     pub fn variant_ui_raw(
         &self,
-        ctx: &StoreViewContext<'_>,
+        ctx: &AppContext<'_>,
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
         variant_name: VariantName,
@@ -781,7 +764,7 @@ impl ComponentUiRegistry {
         fallback_ui(
             ui,
             ui_layout,
-            ctx.app_options().timestamp_format,
+            ctx.app_options.timestamp_format,
             component_raw,
         );
     }

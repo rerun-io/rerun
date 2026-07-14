@@ -1351,6 +1351,7 @@ impl eframe::App for App {
             // IMPORTANT: only call this once per FRAME even if we run multiple passes.
             // Otherwise we might incorrectly evict something that was invisible in the first (discarded) pass.
             store_hub.begin_frame_caches(self.active_recording_id()); // Call AFTER `purge_memory_if_needed`
+            self.state.app_caches.begin_frame();
         }
 
         ui::file_saver_progress_ui(ui, &mut self.background_tasks); // toasts for background file saver

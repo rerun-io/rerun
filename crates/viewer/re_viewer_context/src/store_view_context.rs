@@ -31,6 +31,18 @@ impl<'a> std::ops::Deref for StoreViewContext<'a> {
 }
 
 impl<'a> StoreViewContext<'a> {
+    /// Builds a [`StoreViewContext`] for the active recording of an [`AppContext`], if any.
+    ///
+    /// Returns `None` when no recording is active (e.g. catalog browsing, welcome screen).
+    pub fn for_active_recording(app_ctx: &'a AppContext<'a>) -> Option<Self> {
+        app_ctx.active_store_context.map(|store_ctx| Self {
+            app_ctx,
+            db: store_ctx.recording,
+            time_ctrl: store_ctx.time_ctrl,
+            caches: store_ctx.caches,
+        })
+    }
+
     /// Move time cursor
     #[must_use]
     pub fn with_time_ctrl(&self, time_ctrl: &'a TimeControl) -> Self {

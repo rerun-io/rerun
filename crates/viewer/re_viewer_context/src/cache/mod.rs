@@ -3,6 +3,7 @@
 //! Caches are registered lazily upon first use, see [`Memoizers::entry`].
 //! The concrete caches exposed here are always available for all viewer crates.
 
+mod app_caches;
 mod cache_trait;
 mod image_decode_cache;
 mod image_histogram_cache;
@@ -14,6 +15,7 @@ mod transform_database_store;
 mod video_asset_cache;
 mod video_stream_cache;
 
+pub use app_caches::AppCaches;
 pub use cache_trait::{Cache, CacheEntryAccess};
 pub use memoizers::Memoizers;
 pub use store_cache::StoreCache;

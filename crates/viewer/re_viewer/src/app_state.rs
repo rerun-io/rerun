@@ -17,9 +17,9 @@ use re_viewer_context::{
     ActiveStoreContext, AppBlueprintCtx, AppContext, AppOptions, ApplicationSelectionState,
     AsyncRuntimeHandle, AuthContext, BlueprintContext, BlueprintUndoState, CommandSender,
     ComponentUiRegistry, DragAndDropManager, FallbackProviderRegistry, FocusTarget, Item,
-    ItemCollection, Route, SelectionChange, StorageContext, StoreHub, StoreViewContext,
-    SystemCommand, SystemCommandSender as _, TableStore, TimeControl, TimeControlCommand,
-    ViewClassRegistry, ViewStates, ViewerContext,
+    ItemCollection, Route, SelectionChange, StorageContext, StoreHub, SystemCommand,
+    SystemCommandSender as _, TableStore, TimeControl, TimeControlCommand, ViewClassRegistry,
+    ViewStates, ViewerContext,
 };
 use re_viewport::ViewportUi;
 use re_viewport_blueprint::ViewportBlueprint;
@@ -52,6 +52,13 @@ pub struct AppState {
     /// Created lazily on first use with a given store.
     #[serde(skip)]
     pub time_controls: HashMap<StoreId, TimeControl>,
+
+    /// App-level caches for data that is not tied to any particular store.
+    ///
+    /// See [`AppContext::app_caches`].
+    #[serde(skip)]
+    pub app_caches: re_viewer_context::AppCaches,
+
     #[serde(skip)]
     pub blueprint_time_control: TimeControl,
 
@@ -138,6 +145,7 @@ impl Default for AppState {
         Self {
             app_options: Default::default(),
             time_controls: Default::default(),
+            app_caches: Default::default(),
             blueprint_undo_state: Default::default(),
             blueprint_time_control: Default::default(),
             selection_panel: Default::default(),
@@ -262,6 +270,7 @@ impl AppState {
             connection_registry,
             storage_context,
             active_store_context,
+            app_caches: &self.app_caches,
 
             component_ui_registry,
             view_class_registry,
@@ -277,18 +286,6 @@ impl AppState {
                 .login
                 .as_ref()
                 .map(|l| l.signed_in_url.as_str()),
-        };
-
-        // TODO(RR-3033): Routes where we don't have an active store context shouldn't need a StoreViewContext.
-        let empty_store_context = ActiveStoreContext::empty();
-        let store_view_ctx = {
-            let active = active_store_context.unwrap_or(&empty_store_context);
-            StoreViewContext {
-                app_ctx: &app_ctx,
-                db: active.recording,
-                time_ctrl: active.time_ctrl,
-                caches: active.caches,
-            }
         };
 
         // check state early, before the UI has a chance to close these popups
@@ -664,7 +661,7 @@ impl AppState {
                             .table_id(table_id.clone())
                             .title(table_id.as_str())
                             .show(
-                                &store_view_ctx,
+                                &app_ctx,
                                 runtime,
                                 ui,
                                 &mut self.view_states,
@@ -727,7 +724,7 @@ impl AppState {
                             );
                         } else {
                             self.redap_servers.server_central_panel_ui(
-                                &store_view_ctx, // TODO(RR-3033): server_central_panel_ui should not know about any recording/blueprint
+                                &app_ctx,
                                 ui,
                                 origin,
                                 &mut self.view_states,
@@ -755,12 +752,8 @@ impl AppState {
                 egui::CentralPanel::default()
                     .frame(viewport_frame)
                     .show(ui, |ui| {
-                        self.redap_servers.entry_ui(
-                            &store_view_ctx, // TODO(RR-1127): this makes no sense
-                            ui,
-                            *entry_id,
-                            &mut self.view_states,
-                        );
+                        self.redap_servers
+                            .entry_ui(&app_ctx, ui, *entry_id, &mut self.view_states);
                     });
             }
 
@@ -784,7 +777,7 @@ impl AppState {
                     .frame(viewport_frame)
                     .show(ui, |ui| {
                         self.redap_servers.folder_central_panel_ui(
-                            &store_view_ctx,
+                            &app_ctx,
                             ui,
                             origin,
                             path_prefix,

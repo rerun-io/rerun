@@ -1,10 +1,10 @@
 use re_format::format_lat_lon;
 use re_sdk_types::components::LatLon;
 use re_ui::UiExt as _;
-use re_viewer_context::{MaybeMutRef, StoreViewContext, UiLayout};
+use re_viewer_context::{AppContext, MaybeMutRef, UiLayout};
 
 pub fn singleline_view_lat_lon(
-    _ctx: &StoreViewContext<'_>,
+    _ctx: &AppContext<'_>,
     ui: &mut egui::Ui,
     value: &mut MaybeMutRef<'_, LatLon>,
 ) -> egui::Response {

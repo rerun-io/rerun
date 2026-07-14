@@ -6,15 +6,13 @@ use re_types_core::{ComponentIdentifier, RowId};
 use re_ui::UiExt as _;
 use re_uri::RedapUri;
 use re_viewer_context::open_url::ViewerOpenUrl;
-use re_viewer_context::{
-    RecordingOrTable, StoreViewContext, SystemCommand, SystemCommandSender as _,
-};
+use re_viewer_context::{AppContext, RecordingOrTable, SystemCommand, SystemCommandSender as _};
 
 /// Display an URL as an `Open` button (instead of spelling the full URL).
 ///
 /// Requires a String mono-component which is valid [`RedapUri`].
 pub fn redap_uri_button(
-    ctx: &StoreViewContext<'_>,
+    ctx: &AppContext<'_>,
     ui: &mut egui::Ui,
     _component: ComponentIdentifier,
     _row_id: Option<RowId>,

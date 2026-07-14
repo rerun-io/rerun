@@ -26,7 +26,7 @@ async fn test_no_sort() {
                 DataFusionTableWidget::new(Arc::clone(&session_context), table_ref)
                     .title("No sort")
                     .show(
-                        ctx,
+                        ctx.app_ctx,
                         &runtime_handle,
                         ui,
                         &mut test_context.view_states.lock(),
@@ -55,7 +55,7 @@ async fn test_ascending() {
                         ..Default::default()
                     })
                     .show(
-                        ctx,
+                        ctx.app_ctx,
                         &runtime_handle,
                         ui,
                         &mut test_context.view_states.lock(),
@@ -84,7 +84,7 @@ async fn test_descending() {
                         ..Default::default()
                     })
                     .show(
-                        ctx,
+                        ctx.app_ctx,
                         &runtime_handle,
                         ui,
                         &mut test_context.view_states.lock(),
@@ -109,7 +109,7 @@ async fn test_column_menu_button() {
                 DataFusionTableWidget::new(Arc::clone(&session_context), table_ref)
                     .title("Column menu button")
                     .show(
-                        ctx,
+                        ctx.app_ctx,
                         &runtime_handle,
                         ui,
                         &mut test_context.view_states.lock(),

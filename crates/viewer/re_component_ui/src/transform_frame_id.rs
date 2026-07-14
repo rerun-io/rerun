@@ -5,13 +5,13 @@ use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_ui::text_edit::autocomplete_text_edit;
 use re_viewer_context::external::re_tf::transform_cache_snapshot;
 use re_viewer_context::{
-    MaybeMutRef, MissingChunkReporter, StoreViewContext, TransformDatabaseStoreCache, UiLayout,
+    AppContext, MaybeMutRef, MissingChunkReporter, TransformDatabaseStoreCache, UiLayout,
 };
 
 /// Shows a potentially editable `frame_id`.
 /// If the `frame_id` is being edited, a list of matching frame names is shown as suggestions.
 pub fn edit_or_view_transform_frame_id(
-    ctx: &StoreViewContext<'_>,
+    ctx: &AppContext<'_>,
     ui: &mut egui::Ui,
     frame_id: &mut MaybeMutRef<'_, TransformFrameId>,
 ) -> egui::Response {
@@ -53,7 +53,7 @@ pub fn edit_or_view_transform_frame_id(
 ///
 /// The snapshot is filtered based on the current input: by default only named (TF-style) frames,
 /// otherwise if `tf#/…` was typed we only request implicit (entity-path-derived) frames.
-fn transform_frame_suggestions(ctx: &StoreViewContext<'_>, current_text: &str) -> FrameSuggestions {
+fn transform_frame_suggestions(ctx: &AppContext<'_>, current_text: &str) -> FrameSuggestions {
     let Some(store_ctx) = ctx.active_store_context else {
         return FrameSuggestions::default();
     };

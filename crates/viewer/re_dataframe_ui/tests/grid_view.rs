@@ -39,7 +39,7 @@ async fn test_grid_view() {
                     DataFusionTableWidget::new(Arc::clone(&session_context), table_ref)
                         .title("Grid view test")
                         .show(
-                            ctx,
+                            ctx.app_ctx,
                             &runtime_handle,
                             ui,
                             &mut test_context.view_states.lock(),
@@ -80,7 +80,7 @@ async fn test_grid_view_resize() {
                     DataFusionTableWidget::new(Arc::clone(&session_context), table_ref)
                         .title("Grid resize test")
                         .show(
-                            ctx,
+                            ctx.app_ctx,
                             &runtime_handle,
                             ui,
                             &mut test_context.view_states.lock(),
@@ -133,7 +133,7 @@ async fn test_grid_view_flagging() {
                         .title("Flag test")
                         .url(remote_uri.to_string())
                         .show(
-                            ctx,
+                            ctx.app_ctx,
                             &runtime_handle,
                             ui,
                             &mut test_context.view_states.lock(),
@@ -180,7 +180,7 @@ async fn test_grid_view_non_uniform_cards() {
                 DataFusionTableWidget::new(Arc::clone(&session_context), table_ref)
                     .title("Non-uniform cards")
                     .show(
-                        ctx,
+                        ctx.app_ctx,
                         &runtime_handle,
                         ui,
                         &mut test_context.view_states.lock(),

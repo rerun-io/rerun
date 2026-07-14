@@ -2,7 +2,7 @@ use re_data_ui::item_ui::timeline_button;
 use re_log::ResultExt as _;
 use re_log_types::TimelineName;
 use re_sdk_types::blueprint::components::TimelineColumn;
-use re_viewer_context::{MaybeMutRef, StoreViewContext};
+use re_viewer_context::{AppContext, MaybeMutRef};
 
 use crate::visible_dnd::visible_dnd;
 
@@ -12,7 +12,7 @@ fn column_timeline_name(col: &TimelineColumn) -> Option<TimelineName> {
 }
 
 pub fn edit_or_view_columns_singleline(
-    ctx: &StoreViewContext<'_>,
+    ctx: &AppContext<'_>,
     ui: &mut egui::Ui,
     columns: &mut MaybeMutRef<'_, Vec<TimelineColumn>>,
 ) -> egui::Response {
@@ -29,7 +29,7 @@ pub fn edit_or_view_columns_singleline(
 }
 
 pub fn edit_or_view_columns_multiline(
-    ctx: &StoreViewContext<'_>,
+    ctx: &AppContext<'_>,
     ui: &mut egui::Ui,
     columns: &mut MaybeMutRef<'_, Vec<TimelineColumn>>,
 ) -> egui::Response {

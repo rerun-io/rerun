@@ -4,7 +4,7 @@ use egui::{Frame, RichText, Ui};
 
 use re_ui::egui_ext::card_layout::CardLayout;
 use re_ui::{UiExt as _, UiLayout};
-use re_viewer_context::{StoreViewContext, ViewStates};
+use re_viewer_context::{AppContext, ViewStates};
 
 use crate::DisplayRecordBatch;
 use crate::datafusion_table_widget::{
@@ -36,7 +36,7 @@ struct CardConfig<'a> {
 ///
 /// Returns a list of flag toggle changes that need to be applied to the underlying data.
 pub fn grid_ui(
-    ctx: &StoreViewContext<'_>,
+    ctx: &AppContext<'_>,
     ui: &mut Ui,
     columns: &Columns<'_>,
     display_record_batches: &[DisplayRecordBatch],
@@ -126,7 +126,7 @@ fn lookup_column(columns: &Columns<'_>, name: &str, kind: &str) -> Option<usize>
 ///
 /// This renders only the card interior — the frame is handled by [`CardLayout`].
 fn card_content_ui(
-    ctx: &StoreViewContext<'_>,
+    ctx: &AppContext<'_>,
     config: &CardConfig<'_>,
     ui: &mut Ui,
     view_renderer: Option<&RecordingPreviewRenderer<'_>>,
@@ -230,7 +230,7 @@ fn card_content_ui(
             );
 
             renderer.show_preview(
-                ctx.app_ctx,
+                ctx,
                 &mut child_ui,
                 row_idx,
                 card_hovered,

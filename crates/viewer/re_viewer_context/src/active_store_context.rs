@@ -1,9 +1,7 @@
-use std::sync::LazyLock;
-
 use re_entity_db::EntityDb;
 use re_log_types::{ApplicationId, StoreId};
 
-use crate::{Cache, CacheEntryAccess, StoreCache, StoreHub, TimeControl, ViewClassRegistry};
+use crate::{Cache, CacheEntryAccess, StoreCache, StoreHub, TimeControl};
 
 /// The current Blueprint and Recording being displayed by the viewer.
 ///
@@ -92,37 +90,5 @@ impl ActiveStoreContext<'_> {
         C: CacheEntryAccess<Key, Value> + Default,
     {
         self.caches.memoizer_read_or_compute::<C, Key, Value>(key)
-    }
-}
-
-impl ActiveStoreContext<'static> {
-    /// A sentinel "empty" store context, backed by static empty stores.
-    ///
-    /// Useful as a last-resort fallback for code paths that require a
-    /// non-optional [`ActiveStoreContext`] but can be reached while no
-    /// recording/blueprint is active (e.g. Redap catalog browsing). Prefer
-    /// propagating `Option<ActiveStoreContext>` upwards when possible.
-    // TODO(RR-3033): should not be needed, instead we the application should handle absence of an active store context explicitly.
-    pub fn empty() -> Self {
-        static EMPTY_RECORDING: LazyLock<EntityDb> =
-            LazyLock::new(|| EntityDb::new(StoreId::empty_recording()));
-        static EMPTY_BLUEPRINT: LazyLock<EntityDb> = LazyLock::new(|| {
-            EntityDb::new(StoreId::default_blueprint(
-                StoreId::empty_recording().application_id().clone(),
-            ))
-        });
-        static EMPTY_CACHES: LazyLock<StoreCache> = LazyLock::new(|| {
-            StoreCache::empty(&ViewClassRegistry::default(), StoreId::empty_recording())
-        });
-        static EMPTY_TIME_CTRL: LazyLock<TimeControl> = LazyLock::new(TimeControl::default);
-
-        Self {
-            blueprint: &EMPTY_BLUEPRINT,
-            default_blueprint: None,
-            recording: &EMPTY_RECORDING,
-            caches: &EMPTY_CACHES,
-            time_ctrl: &EMPTY_TIME_CTRL,
-            should_enable_heuristics: false,
-        }
     }
 }

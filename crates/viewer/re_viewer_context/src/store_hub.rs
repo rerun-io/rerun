@@ -759,7 +759,6 @@ impl StoreHub {
     /// Ensure caches and blueprints are set up for the given recording.
     ///
     /// Call this when a recording becomes active (e.g. via [`Route::LocalRecording`]).
-    // TODO(RR-3033): get rid of this?
     pub fn load_blueprint_and_caches(
         &mut self,
         recording_id: &StoreId,
