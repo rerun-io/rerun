@@ -11,7 +11,7 @@ A string of text, e.g. for labels and text documents.
 
 ## Arrow datatype
 ```
-utf8
+Utf8
 ```
 
 ## API reference links
@@ -28,6 +28,7 @@ utf8
 * [`Boxes3D`](../archetypes/boxes3d.md)
 * [`Capsules3D`](../archetypes/capsules3d.md)
 * [`Cylinders3D`](../archetypes/cylinders3d.md)
+* [`Ellipses2D`](../archetypes/ellipses2d.md)
 * [`Ellipsoids3D`](../archetypes/ellipsoids3d.md)
 * [`GraphNodes`](../archetypes/graph_nodes.md)
 * [`LineStrips2D`](../archetypes/line_strips2d.md)
@@ -36,5 +37,7 @@ utf8
 * [`McapSchema`](../archetypes/mcap_schema.md)
 * [`Points2D`](../archetypes/points2d.md)
 * [`Points3D`](../archetypes/points3d.md)
+* [`StateChange`](../archetypes/state_change.md)
+* [`StateConfiguration`](../archetypes/state_configuration.md)
 * [`TextDocument`](../archetypes/text_document.md)
 * [`TextLog`](../archetypes/text_log.md)

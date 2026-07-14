@@ -1,3 +1,5 @@
+use std::fmt::Write as _;
+
 use indexmap::IndexMap;
 use itertools::Itertools as _;
 use re_chunk::EntityPath;
@@ -5,7 +7,7 @@ use re_entity_db::EntityDb;
 use re_log_types::StoreKind;
 use re_sdk_types::external::glam;
 
-use crate::{Item, ViewId, resolve_mono_instance_path_item};
+use crate::{DataResultInteractionAddress, Item, ViewId, resolve_mono_instance_path_item};
 
 /// Context information that a view might attach to an item from [`ItemCollection`] and useful
 /// for how a selection might be displayed and interacted with.
@@ -54,7 +56,7 @@ pub enum ItemContext {
 /// An ordered collection of [`Item`] and optional associated context objects.
 ///
 /// Used to store what is currently selected and/or hovered.
-#[derive(Debug, Default, Clone, PartialEq, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Default, Clone, PartialEq)]
 pub struct ItemCollection(IndexMap<Item, Option<ItemContext>>);
 
 impl From<Item> for ItemCollection {
@@ -75,12 +77,7 @@ impl ItemCollection {
     pub fn is_view_the_only_selected(&self, needle: &ViewId) -> bool {
         let mut is_selected = false;
         for item in self.iter_items() {
-            let item_is_view = match item {
-                Item::View(id) | Item::DataResult(id, _) => id == needle,
-                _ => false,
-            };
-
-            if item_is_view {
+            if item.view_id() == Some(*needle) {
                 is_selected = true;
             } else {
                 return false; // More than one view selected
@@ -212,6 +209,7 @@ impl ItemCollection {
             AppId,
             StoreId,
             EntityPath,
+            ComponentPath,
         }
 
         #[expect(clippy::match_same_arms)]
@@ -219,19 +217,20 @@ impl ItemCollection {
             .iter()
             .filter_map(|(item, _)| match item {
                 Item::Container(_) => None,
-                // TODO(gijsd): These are copyable, but we're currently unable to display a meaningful toast.
-                Item::ComponentPath(_) => None,
+                Item::ComponentPath(component_path) => {
+                    Some((ClipboardTextDesc::ComponentPath, component_path.to_string()))
+                }
                 Item::View(_) => None,
                 // TODO(lucasmerlin): Should these be copyable as URLs?
                 Item::RedapServer(_) => None,
-                Item::RedapEntry(_) => None,
+                Item::RedapEntry { .. } => None,
                 Item::TableId(_) => None, // TODO(grtlr): Make `TableId`s copyable too
 
                 Item::DataSource(source) => match source {
-                    LogSource::File(path) => {
+                    LogSource::File { path, .. } => {
                         Some((ClipboardTextDesc::FilePath, path.to_string_lossy().into()))
                     }
-                    LogSource::RrdHttpStream { url, follow: _ } => {
+                    LogSource::HttpStream { url, follow: _ } => {
                         Some((ClipboardTextDesc::Url, url.clone()))
                     }
                     LogSource::RrdWebEvent => None,
@@ -251,7 +250,8 @@ impl ItemCollection {
                 // in-memory recordings, and that's what we should copy here.
                 Item::StoreId(id) => Some((ClipboardTextDesc::StoreId, format!("{id:?}"))),
 
-                Item::DataResult(_, instance_path) | Item::InstancePath(instance_path) => Some((
+                Item::DataResult(DataResultInteractionAddress { instance_path, .. })
+                | Item::InstancePath(instance_path) => Some((
                     ClipboardTextDesc::EntityPath,
                     instance_path.entity_path.to_string(),
                 )),
@@ -270,14 +270,17 @@ impl ItemCollection {
                 ClipboardTextDesc::AppId => "app id",
                 ClipboardTextDesc::StoreId => "store id",
                 ClipboardTextDesc::EntityPath => "entity path",
+                ClipboardTextDesc::ComponentPath => "component path",
             };
             if !content_description.is_empty() {
                 content_description.push_str(", ");
             }
             if entries.len() == 1 {
+                // Singular
                 content_description.push_str(desc);
             } else {
-                content_description.push_str(&format!("{desc}s"));
+                // Plural
+                write!(content_description, "{desc}s").ok();
             }
 
             let texts = entries.into_iter().join("\n");

@@ -3,7 +3,7 @@
 # -----------------------------------------------------------------------------
 # Section identical to the main scripts/clippy_wasm/clippy.toml:
 
-msrv = "1.90"
+msrv = "1.95"
 
 allow-unwrap-in-tests = true
 
@@ -29,7 +29,11 @@ too-many-lines-threshold = 600 # TODO(emilk): decrease this
 disallowed-macros = [
   'std::dbg',
 
+  { path = "cfg_if::cfg_if", reason = "Use the standard library's `cfg_select!` instead" },
   { path = "egui::hex_color", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
+
+  { path = "std::debug_assert", reason = "Use `re_log::debug_assert` instead" },
+  { path = "std::debug_assert_eq", reason = "Use `re_log::debug_assert_eq` instead" },
 
   # TODO(emilk): consider forbidding these to encourage the use of proper log stream, and then explicitly allow legitimate uses
   # 'std::eprint',
@@ -47,7 +51,8 @@ disallowed-methods = [
   { path = "arrow::compute::filter", reason = "Use `re_arrow_util::arrow_util::filter_array` instead" },
   { path = "arrow::compute::take", reason = "Use `re_arrow_util::arrow_util::take_array` instead" },
   { path = "arrow::datatypes::Schema::new", reason = "Use `arrow::datatypes::Schema::new_with_metadata` instead. There is usually some metadata you want to preserve." },
-  { path = "crossbeam::channel::unbounded", reason = "Use bounded channels (like re_quota_channel) to apply backpressure." },
+  { path = "crossbeam::channel::Sender::send", reason = "Use `re_quota_channel::send_crossbeam` instead, which warns if the channel is full." },
+  { path = "crossbeam::channel::unbounded", reason = "Consider using bounded channels (like re_quota_channel) to apply backpressure. Only use unbounded channels when the sender and receiver are on the same thread." },
   { path = "ecolor::Color32::from_additive_luminance", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
   { path = "ecolor::Color32::from_black_alpha", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
   { path = "ecolor::Color32::from_gray", reason = "Do not hard-code colors - declare them design_tokens.rs instead, and define in light/dark_theme.json" },
@@ -65,11 +70,15 @@ disallowed-methods = [
   { path = "egui_extras::TableBody::row", reason = "`row` doesn't scale. Use `rows` instead." },
   { path = "egui::Ui::checkbox", reason = "Use `re_checkbox` from `re_ui::UiEx" },
   { path = "egui::Ui::radio_value", reason = "Use `re_radio_value` from `re_ui::UiEx" },
+  { path = "egui::Ui::spinner", reason = "Use `ui.loading_indicator` from `re_ui::UiEx" },
   { path = "glam::Vec2::normalize", reason = "normalize() can create NaNs. Use try_normalize or normalize_or_zero" },
   { path = "glam::Vec3::normalize", reason = "normalize() can create NaNs. Use try_normalize or normalize_or_zero" },
+  { path = "macaw::BoundingBox::from_points", reason = "from_points propagates NaN/inf. Use re_renderer::util::bounding_box_from_points instead" },
+  { path = "opentelemetry::metrics::HistogramBuilder::with_boundaries", reason = "We have automatic bucketing - with_boundaries has no effect" },
   { path = "sha1::Digest::new", reason = "SHA1 is cryptographically broken" },
   { path = "std::env::temp_dir", reason = "Use the tempdir crate instead" },
   { path = "std::panic::catch_unwind", reason = "We compile with `panic = 'abort'`" },
+  { path = "std::sync::mpsc::channel", reason = "Use bounded channels (like re_quota_channel) to apply backpressure." },
   { path = "std::thread::spawn", reason = "Use `std::thread::Builder` and name the thread" },
   { path = "std::time::Duration::from_secs_f32", reason = "Use try_from_secs_f32 instead to avoid panics" },
   { path = "std::time::Duration::from_secs_f64", reason = "Use try_from_secs_f64 instead to avoid panics" },
@@ -86,6 +95,7 @@ disallowed-names = []
 # https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_types
 disallowed-types = [
   { path = "egui::Checkbox", reason = "Use `re_checkbox` from `re_ui::UiEx" },
+  { path = "egui::Spinner", reason = "Use re_ui::loading_indicator" },
   { path = "once_cell::sync::OnceCell", reason = "Use `std::sync::OnceLock` instead" },
   { path = "std::sync::Condvar", reason = "Use parking_lot instead" },
   { path = "std::sync::Mutex", reason = "Use parking_lot instead" },
@@ -103,6 +113,8 @@ doc-valid-idents = [
   "GitHub",
   "GLB",
   "GLTF",
+  "GoP", # Group of Pictures - common video term
+  "GoPs", # Group of Pictures - common video term
   "iOS",
   "IPv4",
   "IPv6",

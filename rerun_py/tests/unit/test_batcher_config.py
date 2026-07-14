@@ -77,7 +77,7 @@ def test_flush_always() -> None:
 
         rec = rr.RecordingStream(
             "rerun_example_multi_stream",
-            batcher_config=rr.ChunkBatcherConfig.ALWAYS(),
+            batcher_config=rr.ChunkBatcherConfig.ALWAYS_TEST_ONLY(),
         )
         rec.save(rec_path)
 

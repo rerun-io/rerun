@@ -2,18 +2,18 @@ use std::collections::HashSet;
 
 use futures::StreamExt as _;
 use itertools::Itertools as _;
+use re_protos::cloud::v1alpha1::FetchChunksRequest;
+use re_protos::cloud::v1alpha1::ext::QueryDatasetDataframe;
 use re_protos::cloud::v1alpha1::ext::QueryDatasetRequest;
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
-use re_protos::cloud::v1alpha1::{FetchChunksRequest, QueryDatasetResponse};
 use re_protos::common::v1alpha1::ext::ScanParameters;
 use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_sdk::external::re_log_encoding::ToApplication as _;
-use re_tuid::Tuid;
-use re_types_core::Loggable as _;
 
 use crate::RecordBatchTestExt as _;
 use crate::tests::common::{
     DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _, concat_record_batches,
+    entry_name,
 };
 
 /// This test makes a snapshot of all the chunks returned for a simple dataset.
@@ -44,8 +44,7 @@ pub async fn simple_dataset_fetch_chunk_snapshot(service: impl RerunCloudService
     let chunk_info = service
         .query_dataset(
             tonic::Request::new(QueryDatasetRequest::default().into())
-                .with_entry_name(dataset_name)
-                .unwrap(),
+                .with_entry_name(entry_name(dataset_name)),
         )
         .await
         .unwrap()
@@ -58,11 +57,11 @@ pub async fn simple_dataset_fetch_chunk_snapshot(service: impl RerunCloudService
     let required_columns = FetchChunksRequest::required_column_names();
     let required_columns_ref = required_columns.iter().map(|s| s.as_str()).collect_vec();
     let chunk_keys = concat_record_batches(&chunk_info)
-        .sort_rows_by(&[QueryDatasetResponse::FIELD_CHUNK_ID])
+        .sort_rows_by(&[QueryDatasetDataframe::COLUMN_CHUNK_ID_NAME])
         .unwrap()
         .project_columns(&required_columns_ref);
 
-    let mut chunks = service
+    let mut chunks: Vec<_> = service
         .fetch_chunks(tonic::Request::new(FetchChunksRequest {
             chunk_infos: vec![chunk_keys.into()],
         }))
@@ -74,7 +73,7 @@ pub async fn simple_dataset_fetch_chunk_snapshot(service: impl RerunCloudService
         .collect::<Vec<_>>()
         .await
         .into_iter()
-        .collect::<Result<Vec<_>, _>>()
+        .try_collect()
         .unwrap();
 
     // IMPORTANT: `FetchChunks` does not guarantee chunk ordering
@@ -148,8 +147,7 @@ pub async fn multi_dataset_fetch_chunk_completeness(service: impl RerunCloudServ
                 }
                 .into(),
             )
-            .with_entry_name(dataset_name_1)
-            .unwrap(),
+            .with_entry_name(entry_name(dataset_name_1)),
         )
         .await
         .unwrap()
@@ -177,8 +175,7 @@ pub async fn multi_dataset_fetch_chunk_completeness(service: impl RerunCloudServ
                 }
                 .into(),
             )
-            .with_entry_name(dataset_name_1)
-            .unwrap(),
+            .with_entry_name(entry_name(dataset_name_1)),
         )
         .await
         .unwrap()
@@ -195,7 +192,7 @@ pub async fn multi_dataset_fetch_chunk_completeness(service: impl RerunCloudServ
     chunk_info_1.extend(chunk_info_2);
     let chunk_info = concat_record_batches(&chunk_info_1);
 
-    let chunks = service
+    let chunks: Vec<_> = service
         .fetch_chunks(tonic::Request::new(FetchChunksRequest {
             chunk_infos: vec![chunk_info.clone().into()],
         }))
@@ -207,21 +204,19 @@ pub async fn multi_dataset_fetch_chunk_completeness(service: impl RerunCloudServ
         .collect::<Vec<_>>()
         .await
         .into_iter()
-        .collect::<Result<Vec<_>, _>>()
+        .try_collect()
         .unwrap();
 
     //
     // Check we have everything.
     //
 
-    let requested_ids = Tuid::from_arrow(
-        chunk_info
-            .column_by_name(QueryDatasetResponse::FIELD_CHUNK_ID)
-            .unwrap(),
-    )
-    .unwrap()
-    .into_iter()
-    .collect::<HashSet<_>>();
+    let requested_ids = QueryDatasetDataframe::COLUMN_CHUNK_ID
+        .extract(&chunk_info)
+        .unwrap()
+        .iter_owned()
+        .map(|id| id.as_tuid())
+        .collect::<HashSet<_>>();
 
     let received_ids = chunks
         .into_iter()

@@ -11,8 +11,8 @@ use re_entity_db::InstancePath;
 use re_sdk_types::ArrowString;
 use re_ui::list_item;
 use re_viewer_context::{
-    HoverHighlight, InteractionHighlight, Item, SelectionHighlight, SystemCommand,
-    SystemCommandSender as _, UiLayout, ViewHighlights, ViewQuery, ViewerContext,
+    DataResultInteractionAddress, HoverHighlight, InteractionHighlight, Item, SelectionHighlight,
+    StoreViewContext, SystemCommand, SystemCommandSender as _, UiLayout, ViewHighlights, ViewQuery,
 };
 
 use crate::graph::{Graph, Node};
@@ -290,12 +290,11 @@ pub fn draw_entity_rect(
         .overall
         .is_some()
     {
-        ui.ctx().style().visuals.text_color()
+        ui.global_style().visuals.text_color()
     } else {
-        ui.ctx()
-            .style()
+        ui.global_style()
             .visuals
-            .gray_out(ui.ctx().style().visuals.text_color())
+            .gray_out(ui.global_style().visuals.text_color())
     };
 
     let padded = rect.expand(10.0);
@@ -311,7 +310,7 @@ pub fn draw_entity_rect(
     ui.painter().text(
         padded.left_top(),
         Align2::LEFT_BOTTOM,
-        entity_path.to_string(),
+        entity_path.ui_string(),
         FontId {
             size: 12.0,
             family: Default::default(),
@@ -325,7 +324,7 @@ pub fn draw_entity_rect(
 /// Draws the graph using the layout.
 pub fn draw_graph(
     ui: &mut Ui,
-    ctx: &ViewerContext<'_>,
+    ctx: &StoreViewContext<'_>,
     graph: &Graph,
     layout: &Layout,
     query: &ViewQuery<'_>,
@@ -349,8 +348,13 @@ pub fn draw_graph(
         let center = layout.get_node(&node.id()).unwrap_or(Rect::ZERO).center();
 
         let response = match node {
-            Node::Explicit { instance, .. } => {
-                let highlight = entity_highlights.index_highlight(instance.instance_index);
+            Node::Explicit {
+                instance,
+                visualizer_instruction_id,
+                ..
+            } => {
+                let highlight = entity_highlights
+                    .index_highlight(instance.instance_index, *visualizer_instruction_id);
                 let mut response = draw_node(ui, center, node.label(), highlight, lod);
 
                 let instance_path =
@@ -358,32 +362,27 @@ pub fn draw_graph(
 
                 response = response.on_hover_ui(|ui| {
                     list_item::list_item_scope(ui, "graph_node_hover", |ui| {
-                        item_ui::instance_path_button(
-                            ctx,
-                            &query.latest_at_query(),
-                            ctx.recording(),
-                            ui,
-                            Some(query.view_id),
-                            &instance_path,
-                        );
+                        item_ui::instance_path_button(ctx, ui, Some(query.view_id), &instance_path);
 
-                        instance_path.data_ui_recording(ctx, ui, UiLayout::Tooltip);
+                        instance_path.data_ui(ctx, ui, UiLayout::Tooltip);
                     });
                 });
+
+                let address = DataResultInteractionAddress {
+                    view_id: query.view_id,
+                    instance_path: instance_path.clone(),
+                    visualizer: Some(*visualizer_instruction_id),
+                };
 
                 // Warning! The order is very important here.
                 if response.double_clicked() {
                     // Select the entire entity
                     ctx.command_sender()
                         .send_system(SystemCommand::set_selection(Item::DataResult(
-                            query.view_id,
-                            instance_path.entity_path.clone().into(),
+                            address.as_entity_all(),
                         )));
                 } else if response.hovered() || response.clicked() {
-                    *hover_click_item = Some((
-                        Item::DataResult(query.view_id, instance_path.clone()),
-                        response.clone(),
-                    ));
+                    *hover_click_item = Some((Item::DataResult(address), response.clone()));
                 }
 
                 response
@@ -405,10 +404,12 @@ pub fn draw_graph(
         for (entity_path, rect) in layout.entities() {
             let resp = draw_entity_rect(ui, *rect, entity_path, &query.highlights);
             current_rect = current_rect.union(resp.rect);
-            let instance_path = InstancePath::entity_all(entity_path.clone());
             ctx.handle_select_hover_drag_interactions(
                 &resp,
-                Item::DataResult(query.view_id, instance_path),
+                Item::DataResult(DataResultInteractionAddress::from_entity_path(
+                    query.view_id,
+                    entity_path.clone(),
+                )),
                 false,
             );
         }

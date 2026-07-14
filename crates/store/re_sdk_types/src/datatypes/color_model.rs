@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -25,7 +26,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Datatype**: Specified what color components are present in an [`archetypes::Image`][crate::archetypes::Image].
 ///
 /// This combined with [`datatypes::ChannelDatatype`][crate::datatypes::ChannelDatatype] determines the pixel format of an image.
-#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Default)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Default, ::re_byte_size::SizeBytes)]
 #[repr(u8)]
 pub enum ColorModel {
     /// Grayscale luminance intencity/brightness/value, sometimes called `Y`
@@ -111,17 +112,16 @@ impl ::re_types_core::Loggable for ColorModel {
             .with_context("rerun.datatypes.ColorModel#enum")?
             .into_iter()
             .map(|typ| match typ {
-                Some(1) => Ok(Some(Self::L)),
-                Some(2) => Ok(Some(Self::RGB)),
-                Some(3) => Ok(Some(Self::RGBA)),
-                Some(4) => Ok(Some(Self::BGR)),
-                Some(5) => Ok(Some(Self::BGRA)),
+                Some(val) => <Self as ::re_types_core::reflection::Enum>::try_from_integer(val)
+                    .map(Some)
+                    .ok_or_else(|| {
+                        DeserializationError::missing_union_arm(
+                            Self::arrow_datatype(),
+                            "<invalid>",
+                            val as _,
+                        )
+                    }),
                 None => Ok(None),
-                Some(invalid) => Err(DeserializationError::missing_union_arm(
-                    Self::arrow_datatype(),
-                    "<invalid>",
-                    invalid as _,
-                )),
             })
             .collect::<DeserializationResult<Vec<Option<_>>>>()
             .with_context("rerun.datatypes.ColorModel")?)
@@ -141,6 +141,8 @@ impl std::fmt::Display for ColorModel {
 }
 
 impl ::re_types_core::reflection::Enum for ColorModel {
+    type Repr = u8;
+
     #[inline]
     fn variants() -> &'static [Self] {
         &[Self::L, Self::RGB, Self::RGBA, Self::BGR, Self::BGRA]
@@ -156,16 +158,11 @@ impl ::re_types_core::reflection::Enum for ColorModel {
             Self::BGRA => "Blue, Green, Red, Alpha",
         }
     }
-}
-
-impl ::re_byte_size::SizeBytes for ColorModel {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
 
     #[inline]
-    fn is_pod() -> bool {
-        true
+    fn try_from_integer(value: u8) -> Option<Self> {
+        Self::variants()
+            .get((value as usize).wrapping_sub(1))
+            .copied()
     }
 }

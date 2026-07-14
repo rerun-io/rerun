@@ -7,7 +7,7 @@
 
 use egui::{Pos2, Rect, Vec2};
 use fjadra::{self as fj, Simulation};
-use re_log::error_once;
+use re_log::{debug_assert, debug_panic, error_once};
 
 use super::params::ForceLayoutParams;
 use super::request::NodeTemplate;
@@ -95,8 +95,11 @@ pub fn update_simulation(
     simulation
 }
 
+#[derive(re_byte_size::SizeBytes)]
 pub struct ForceLayoutProvider {
     // If all nodes are fixed, we can skip the simulation.
+    // `fjadra::Simulation` keeps its internals private; count layout inputs we own.
+    #[size_bytes(ignore)]
     simulation: Option<fj::Simulation>,
     pub request: LayoutRequest,
 }
@@ -205,7 +208,7 @@ impl ForceLayoutProvider {
 
             for (node, template) in &graph.nodes {
                 let pos = positions.next().unwrap_or_else(|| {
-                    debug_assert!(false, "not enough positions returned for layout request");
+                    debug_panic!("not enough positions returned for layout request");
                     error_once!("not enough positions returned for layout request");
                     Pos2::ZERO
                 });

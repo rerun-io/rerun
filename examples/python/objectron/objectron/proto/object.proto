@@ -72,8 +72,8 @@ message Object {
   // Enum to reflect how this object is created.
   enum Method {
     UNKNOWN_METHOD = 0;
-    ANNOTATION = 1;    // Created by data annotation.
-    AUGMENTATION = 2;  // Created by data augmentation.
+    ANNOTATION = 1; // Created by data annotation.
+    AUGMENTATION = 2; // Created by data augmentation.
   }
   Method method = 8;
 }

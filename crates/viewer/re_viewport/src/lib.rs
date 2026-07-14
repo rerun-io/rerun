@@ -6,12 +6,14 @@
 
 mod system_execution;
 mod view_highlights;
+mod view_loading_indicator;
 mod viewport_ui;
 
+pub use view_loading_indicator::paint_view_loading_indicator;
 pub use viewport_ui::ViewportUi;
 
 pub mod external {
-    pub use {re_sdk_types, re_view};
+    pub use re_sdk_types;
 }
 
 // TODO(andreas): cfg test this only?

@@ -15,7 +15,7 @@ pub fn format_duration_short(timestamp: Timestamp, fallback_format: TimestampFor
     let duration = Timestamp::now().sub(timestamp);
     let seconds = duration.as_secs_f64() as u64;
 
-    let format_plural = |n: u64, unit: &str| format!("{n} {unit}{} ago", format_plural_s(n));
+    let format_plural = |n: u64, unit: &'static str| format!("{} ago", format_plural_s(n, unit));
 
     if seconds < 10 {
         "just now".to_owned()
@@ -54,8 +54,7 @@ pub fn short_duration_ui(
     } else {
         3600
     };
-    ui.ctx()
-        .request_repaint_after(std::time::Duration::from_secs(repaint_in_sec));
+    ui.request_repaint_after(std::time::Duration::from_secs(repaint_in_sec));
 
     let short = format_duration_short(timestamp, format);
     show(ui, short).on_hover_text(timestamp.format(format))

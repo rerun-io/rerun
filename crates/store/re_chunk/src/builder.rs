@@ -146,7 +146,7 @@ impl ChunkBuilder {
         component_descr: re_types_core::ComponentDescriptor,
         value: &Component,
     ) -> re_types_core::SerializationResult<Self> {
-        debug_assert_eq!(component_descr.component_type, Some(Component::name()));
+        re_log::debug_assert_eq!(component_descr.component_type, Some(Component::name()));
         Ok(self.with_serialized_batches(
             row_id,
             timepoint,

@@ -64,6 +64,12 @@ struct VertexOut {
 
     @location(4) @interpolate(flat)
     picking_instance_id: vec2u,
+
+    // Offset vector from `point_center` to the quad.
+    // Interpolating along this small-scale local offset for coverage math avoids float-precision issues,
+    // compared to subtracting potentially large world positions in the fragment shader.
+    @location(5) @interpolate(perspective)
+    quad_offset_from_center: vec3f,
 };
 
 struct PointData {
@@ -104,7 +110,10 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     let point_data = read_data(quad_idx);
 
     // Span quad
-    let camera_distance = distance(frame.camera_position, point_data.pos);
+    // The pixel size formula `pixel_world_size_from_camera_distance` is derived from
+    // `screen_in_world = tan(FOV/2) * depth * 2` so it expects a distance along the
+    // camera forward axis.
+    let camera_distance = dot(point_data.pos - frame.camera_position, frame.camera_forward);
     let world_scale_factor = average_scale_from_transform(batch.world_from_obj); // TODO(andreas): somewhat costly, should precompute this
     let world_radius = unresolved_size_to_world(point_data.unresolved_radius, camera_distance, world_scale_factor) +
                        world_size_from_point_size(draw_data.radius_boost_in_ui_points, camera_distance);
@@ -118,44 +127,41 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     out.radius = quad.point_resolved_radius;
     out.world_position = quad.pos_in_world;
     out.point_center = point_data.pos;
+    out.quad_offset_from_center = quad.pos_in_world - point_data.pos;
     out.picking_instance_id = point_data.picking_instance_id;
 
     return out;
 }
 
-// TODO(andreas): move this to sphere_quad.wgsl once https://github.com/gfx-rs/naga/issues/1743 is resolved
-// point_cloud.rs has a specific workaround in place so we don't need to split vertex/fragment shader here
-//
-/// Computes coverage of a 2D sphere placed at `circle_center` in the fragment shader using the currently set camera.
-///
-/// 2D primitives are always facing the camera - the difference to sphere_quad_coverage is that
-/// perspective projection is not taken into account.
-fn circle_quad_coverage(world_position: vec3f, radius: f32, circle_center: vec3f) -> f32 {
-    let circle_distance = distance(circle_center, world_position);
-    let feathering_radius = fwidth(circle_distance) * 0.5;
-    return smoothstep(radius + feathering_radius, radius - feathering_radius, circle_distance);
-}
-
-fn coverage(world_position: vec3f, radius: f32, point_center: vec3f) -> f32 {
+fn coverage(world_position: vec3f, radius: f32, point_center: vec3f, quad_offset_from_center: vec3f) -> f32 {
     if is_camera_orthographic() || has_any_flag(batch.flags, FLAG_DRAW_AS_CIRCLES) {
-        return circle_quad_coverage(world_position, radius, point_center);
+        return circle_quad_coverage(quad_offset_from_center, radius);
     } else {
         return sphere_quad_coverage(world_position, radius, point_center);
     }
 }
 
-
 @fragment
 fn fs_main(in: VertexOut) -> @location(0) vec4f {
-    var coverage = coverage(in.world_position, in.radius, in.point_center);
+    var coverage = coverage(
+        in.world_position,
+        in.radius,
+        in.point_center,
+        in.quad_offset_from_center,
+    );
 
     if frame.deterministic_rendering == 1 {
         coverage = step(0.5, coverage);
     }
 
-    if coverage < 0.001 {
-        discard;
-    }
+    // As per benchmarking on Apple Silicon M5, putting a discard can be
+    // a significant pessimization in high-overdraw situations and at best only a very mild optimization.
+    // Desktop graphics cards like the tested RTX4070 do not exhibit this behavior and aren't affected by it at all.
+    // This is likely due to Apple Silicon being a tile based GPU, it's still a bit surprising though int he presence of alpha-to-coverage.
+    // (Disabling alpha-to-coverage also shows performance benefits _independently_ of the discard instructionß)
+    // if coverage < 0.001 {
+    //     discard;
+    // }
 
     // TODO(andreas): Do we want manipulate the depth buffer depth to actually render spheres?
     // TODO(andreas): Proper shading
@@ -169,7 +175,12 @@ fn fs_main(in: VertexOut) -> @location(0) vec4f {
 
 @fragment
 fn fs_main_picking_layer(in: VertexOut) -> @location(0) vec4u {
-    let cov = coverage(in.world_position, in.radius, in.point_center);
+    let cov = coverage(
+        in.world_position,
+        in.radius,
+        in.point_center,
+        in.quad_offset_from_center,
+    );
     if cov <= 0.5 {
         discard;
     }
@@ -180,7 +191,12 @@ fn fs_main_picking_layer(in: VertexOut) -> @location(0) vec4u {
 fn fs_main_outline_mask(in: VertexOut) -> @location(0) vec2u {
     // Output is an integer target so we can't use coverage even though
     // the target is anti-aliased.
-    let cov = coverage(in.world_position, in.radius, in.point_center);
+    let cov = coverage(
+        in.world_position,
+        in.radius,
+        in.point_center,
+        in.quad_offset_from_center,
+    );
     if cov <= 0.5 {
         discard;
     }

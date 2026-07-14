@@ -33,11 +33,8 @@ indicatif.workspace = true
 itertools.workspace = true
 rayon.workspace = true
 roxmltree.workspace = true
-rustdoc-json.workspace = true
-rustdoc-types.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
-serde_yaml.workspace = true
 tempfile.workspace = true
 toml = { workspace = true, features = ["parse", "preserve_order", "serde"] }
 ureq = { workspace = true, features = ["json"] }

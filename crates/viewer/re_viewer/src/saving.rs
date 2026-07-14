@@ -55,6 +55,17 @@ pub fn default_blueprint_path(app_id: &ApplicationId) -> anyhow::Result<std::pat
     Ok(blueprint_dir.join(format!("{sanitized_app_id}.rbl")))
 }
 
+/// Delete the persisted blueprint for the given `ApplicationId` from disk, if it exists.
+#[cfg(not(target_arch = "wasm32"))]
+pub fn delete_blueprint(app_id: &ApplicationId) -> anyhow::Result<()> {
+    let blueprint_path = default_blueprint_path(app_id)?;
+    if blueprint_path.exists() {
+        std::fs::remove_file(&blueprint_path)?;
+        re_log::debug!("Deleted persisted blueprint for {app_id} at {blueprint_path:?}");
+    }
+    Ok(())
+}
+
 #[cfg(not(target_arch = "wasm32"))]
 pub fn encode_to_file(
     version: re_build_info::CrateVersion,

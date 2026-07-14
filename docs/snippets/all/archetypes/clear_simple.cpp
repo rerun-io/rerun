@@ -7,7 +7,7 @@
 #include <string> // to_string
 #include <vector>
 
-int main() {
+int main(int argc, char* argv[]) {
     const auto rec = rerun::RecordingStream("rerun_example_clear");
     rec.spawn().exit_on_failure();
 

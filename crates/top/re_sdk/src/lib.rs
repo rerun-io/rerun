@@ -67,6 +67,11 @@ impl crate::sink::LogSink for re_log_encoding::FileSink {
             FileFlushError::Timeout => sink::SinkFlushError::Timeout,
         })
     }
+
+    #[inline]
+    fn defers_finalization_to_shutdown(&self) -> bool {
+        true
+    }
 }
 
 // ---------------
@@ -78,7 +83,7 @@ impl crate::sink::LogSink for re_log_encoding::FileSink {
 /// sent over gRPC, written to file, etc.
 pub mod sink {
     #[cfg(not(target_arch = "wasm32"))]
-    pub use re_log_encoding::{FileSink, FileSinkError};
+    pub use re_log_encoding::{FileSink, FileSinkError, FileSinkOptions};
 
     pub use crate::binary_stream_sink::{BinaryStreamSink, BinaryStreamStorage};
     pub use crate::log_sink::{
@@ -98,16 +103,17 @@ pub mod log {
 
 /// Time-related types.
 pub mod time {
-    pub use re_log_types::{Duration, TimeCell, TimeInt, TimePoint, TimeType, Timeline, Timestamp};
+    pub use re_log_types::{
+        Duration, TimeCell, TimeInt, TimePoint, TimeType, Timeline, TimelineName, Timestamp,
+    };
 }
 
 pub use re_sdk_types::{
     Archetype, ArchetypeName, AsComponents, Component, ComponentBatch, ComponentDescriptor,
-    ComponentIdentifier, ComponentType, DatatypeName, DeserializationError, DeserializationResult,
-    Loggable, SerializationError, SerializationResult, SerializedComponentBatch,
-    SerializedComponentColumn,
+    ComponentIdentifier, ComponentType, DeserializationError, DeserializationResult, Loggable,
+    SerializationError, SerializationResult, SerializedComponentBatch, SerializedComponentColumn,
 };
-pub use time::{TimeCell, TimePoint, Timeline};
+pub use time::{TimeCell, TimePoint, Timeline, TimelineName};
 
 /// Transformation and reinterpretation of components.
 ///
@@ -117,8 +123,25 @@ pub use time::{TimeCell, TimePoint, Timeline};
 pub mod lenses;
 
 pub use re_byte_size::SizeBytes;
-#[cfg(feature = "data_loaders")]
-pub use re_data_loader::{DataLoader, DataLoaderError, DataLoaderSettings, LoadedData};
+#[cfg(feature = "importers")]
+pub use re_importer::{ImportedData, Importer, ImporterError, ImporterSettings};
+
+#[cfg(feature = "importers")]
+#[deprecated(since = "0.32.0", note = "Renamed to `Importer`.")]
+#[doc(hidden)]
+pub use re_importer::Importer as DataLoader;
+#[cfg(feature = "importers")]
+#[deprecated(since = "0.32.0", note = "Renamed to `ImporterError`.")]
+#[doc(hidden)]
+pub type DataLoaderError = re_importer::ImporterError;
+#[cfg(feature = "importers")]
+#[deprecated(since = "0.32.0", note = "Renamed to `ImporterSettings`.")]
+#[doc(hidden)]
+pub type DataLoaderSettings = re_importer::ImporterSettings;
+#[cfg(feature = "importers")]
+#[deprecated(since = "0.32.0", note = "Renamed to `ImportedData`.")]
+#[doc(hidden)]
+pub type LoadedData = re_importer::ImportedData;
 
 /// Methods for spawning the web viewer and streaming the SDK log stream to it.
 #[cfg(feature = "web_viewer")]
@@ -134,11 +157,13 @@ pub use re_grpc_server::{MemoryLimit, PlaybackBehavior, ServerOptions};
 /// Re-exports of other crates.
 pub mod external {
     pub use re_chunk::external::*;
-    #[cfg(feature = "data_loaders")]
-    pub use re_data_loader::{self, external::*};
+    #[cfg(feature = "server")]
+    pub use re_grpc_server;
+    #[cfg(feature = "importers")]
+    pub use re_importer::{self, external::*};
     pub use re_log::external::*;
     pub use re_log_types::external::*;
-    pub use {re_grpc_client, re_grpc_server, re_log, re_log_encoding, re_log_types, re_uri};
+    pub use {re_grpc_client, re_log, re_log_encoding, re_log_types, re_uri};
 }
 
 #[cfg(feature = "web_viewer")]

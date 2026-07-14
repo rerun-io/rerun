@@ -1,4 +1,5 @@
-use pyo3::{pyclass, pymethods};
+use pyo3::exceptions::PyValueError;
+use pyo3::{PyResult, pyclass, pymethods};
 use re_sorbet::{IndexColumnDescriptor, TimeColumnSelector};
 
 /// The descriptor of an index column.
@@ -11,6 +12,7 @@ use re_sorbet::{IndexColumnDescriptor, TimeColumnSelector};
 /// column, use [`IndexColumnSelector`][rerun.catalog.IndexColumnSelector].
 #[pyclass(
     frozen,
+    from_py_object,
     eq,
     hash,
     name = "IndexColumnDescriptor",
@@ -58,6 +60,7 @@ impl From<IndexColumnDescriptor> for PyIndexColumnDescriptor {
 ///     The name of the index to select. Usually the name of a timeline.
 #[pyclass(
     frozen,
+    from_py_object,
     eq,
     name = "IndexColumnSelector",
     module = "rerun_bindings.rerun_bindings"
@@ -79,8 +82,10 @@ impl PyIndexColumnSelector {
     // Note: the `Parameters` section goes into the class docstring.
     #[new]
     #[pyo3(text_signature = "(self, index)")]
-    fn new(index: &str) -> Self {
-        Self(TimeColumnSelector::from(index))
+    fn new(index: &str) -> PyResult<Self> {
+        let timeline = re_chunk::TimelineName::try_new(index)
+            .map_err(|err| PyValueError::new_err(err.to_string()))?;
+        Ok(Self(TimeColumnSelector::from(timeline)))
     }
 
     fn __repr__(&self) -> String {

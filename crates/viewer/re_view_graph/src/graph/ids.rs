@@ -3,7 +3,7 @@ use re_sdk_types::components;
 
 use super::GraphNodeHash;
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, re_byte_size::SizeBytes)]
 pub struct NodeId {
     pub entity_hash: EntityPathHash,
     pub node_hash: GraphNodeHash,
@@ -35,7 +35,7 @@ impl std::fmt::Debug for NodeId {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, re_byte_size::SizeBytes)]
 pub struct EdgeId {
     // TODO(grtlr): Consider something more storage efficient here
     pub source: NodeId,

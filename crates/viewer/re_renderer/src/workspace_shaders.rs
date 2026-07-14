@@ -182,6 +182,12 @@ pub fn init() {
     }
 
     {
+        let virtpath = Path::new("shader/utils/lighting.wgsl");
+        let content = include_str!("../shader/utils/lighting.wgsl").into();
+        fs.create_file(virtpath, content).unwrap();
+    }
+
+    {
         let virtpath = Path::new("shader/utils/plane.wgsl");
         let content = include_str!("../shader/utils/plane.wgsl").into();
         fs.create_file(virtpath, content).unwrap();
@@ -208,6 +214,12 @@ pub fn init() {
     {
         let virtpath = Path::new("shader/utils/srgb.wgsl");
         let content = include_str!("../shader/utils/srgb.wgsl").into();
+        fs.create_file(virtpath, content).unwrap();
+    }
+
+    {
+        let virtpath = Path::new("shader/voxel_grid.wgsl");
+        let content = include_str!("../shader/voxel_grid.wgsl").into();
         fs.create_file(virtpath, content).unwrap();
     }
 

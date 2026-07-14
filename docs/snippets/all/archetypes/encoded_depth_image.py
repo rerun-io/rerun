@@ -6,7 +6,9 @@ from pathlib import Path
 import rerun as rr
 
 if len(sys.argv) < 2:
-    print(f"Usage: {sys.argv[0]} <path_to_depth_image.[png|rvl]>", file=sys.stderr)
+    print(
+        f"Usage: {sys.argv[0]} <path_to_depth_image.[png|rvl]>", file=sys.stderr
+    )
     sys.exit(1)
 
 depth_path = Path(sys.argv[1])

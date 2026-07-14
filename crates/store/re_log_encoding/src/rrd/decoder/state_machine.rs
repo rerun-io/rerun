@@ -7,7 +7,7 @@ use re_build_info::CrateVersion;
 use crate::rrd::MessageHeader;
 use crate::{
     CachingApplicationIdInjector, CodecError, Decodable as _, DecodeError, DecoderEntrypoint,
-    EncodingOptions, RrdManifest, Serializer, StreamFooter, StreamFooterEntry, StreamHeader,
+    EncodingOptions, RawRrdManifest, Serializer, StreamFooter, StreamFooterEntry, StreamHeader,
     ToApplication as _,
 };
 
@@ -140,7 +140,7 @@ impl<T: DecoderEntrypoint> Decoder<T> {
     /// case of concatenated streams.
     ///
     /// This is not cheap: it automatically performs the transport to app level conversion.
-    pub fn rrd_manifests(&self) -> Result<Vec<RrdManifest>, DecodeError> {
+    pub fn rrd_manifests(&self) -> Result<Vec<RawRrdManifest>, DecodeError> {
         re_tracing::profile_function!();
         self.rrd_manifests
             .iter()
@@ -266,7 +266,7 @@ impl<T: DecoderEntrypoint> Decoder<T> {
                             return self.try_read();
                         }
 
-                        err @ Err(_) => err?,
+                        Err(err) => Err(err)?,
                     };
 
                     self.byte_chunks
@@ -287,10 +287,7 @@ impl<T: DecoderEntrypoint> Decoder<T> {
 
                 if let Some(bytes) = self.byte_chunks.try_read(header.len as usize) {
                     let bytes_len = bytes.len() as u64;
-                    let byte_span = re_chunk::Span {
-                        start: start_offset,
-                        len: bytes_len,
-                    };
+                    let byte_span = re_chunk::Span::from_start_len(start_offset, bytes_len);
                     let message = match T::decode(
                         bytes.clone(),
                         byte_span,
@@ -652,7 +649,7 @@ mod tests {
     fn two_concatenated_streams_protobuf() {
         let (input1, data1) = test_data(EncodingOptions::PROTOBUF_UNCOMPRESSED, 16);
         let (input2, data2) = test_data(EncodingOptions::PROTOBUF_UNCOMPRESSED, 16);
-        let input = input1.into_iter().chain(input2).collect::<Vec<_>>();
+        let input = std::iter::chain(input1, input2).collect::<Vec<_>>();
 
         let mut decoder = DecoderApp::new();
 

@@ -1,21 +1,32 @@
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 use std::error::Error as _;
-use std::sync::Arc;
+use std::fmt::Write as _;
+use std::sync::{Arc, OnceLock};
 
 use re_auth::Jwt;
 use re_auth::credentials::CredentialsProviderError;
-use re_protos::cloud::v1alpha1::{EntryFilter, FindEntriesRequest};
+use re_protos::cloud::v1alpha1::{EntryFilter, FindEntriesRequest, WhoAmIRequest};
+use re_uri::Origin;
 use tokio::sync::RwLock;
 use tonic::Code;
 
-use crate::connection_client::GenericConnectionClient;
-use crate::grpc::{RedapClient, RedapClientInner};
+use crate::connection_client::{Connection, ConnectionClient, RedapClient};
+use crate::grpc::RedapClientStack;
 use crate::{ApiError, ApiResult, TonicStatusError};
 
-/// This is the type of `ConnectionClient` used throughout the viewer, where the
-/// `ConnectionRegistry` is used.
-pub type ConnectionClient = GenericConnectionClient<RedapClientInner>;
+/// Returns a suggested host if the user likely forgot the "api." prefix.
+///
+/// This detects the common mistake of connecting to `xxx.cloud.rerun.io` instead of
+/// `api.xxx.cloud.rerun.io`.
+fn suggest_api_prefix(origin: &Origin) -> Option<String> {
+    let host = origin.format_host();
+    if !host.starts_with("api.") && host.ends_with(".cloud.rerun.io") {
+        Some(format!("api.{host}"))
+    } else {
+        None
+    }
+}
 
 //TODO(#11016): refactor this to achieve lazy auth retry.
 pub struct ConnectionRegistry {
@@ -33,11 +44,14 @@ pub struct ConnectionRegistry {
     /// If set, the fallback token is used when no specific token is registered for a given origin.
     fallback_token: Option<Jwt>,
 
-    /// The cached clients.
+    /// The cached remote connections, keyed by origin.
     ///
-    /// Clients are much cheaper to clone than create (since the latter involves establishing an
+    /// Connections are much cheaper to clone than create (since the latter involves establishing an
     /// actual TCP connection), so we keep them around once created.
-    clients: HashMap<re_uri::Origin, RedapClient>,
+    remote_connections: HashMap<re_uri::Origin, Connection>,
+
+    /// Latest errors received for specific redap URIs.
+    uri_errors: HashMap<re_uri::DatasetSegmentUri, String>,
 }
 
 impl ConnectionRegistry {
@@ -51,8 +65,10 @@ impl ConnectionRegistry {
             inner: Arc::new(RwLock::new(Self {
                 saved_credentials: HashMap::new(),
                 fallback_token: None,
-                clients: HashMap::new(),
+                remote_connections: HashMap::new(),
+                uri_errors: Default::default(),
             })),
+            internal: Arc::new(OnceLock::new()),
             use_stored_credentials: true,
         }
     }
@@ -67,10 +83,31 @@ impl ConnectionRegistry {
             inner: Arc::new(RwLock::new(Self {
                 saved_credentials: HashMap::new(),
                 fallback_token: None,
-                clients: HashMap::new(),
+                remote_connections: HashMap::new(),
+                uri_errors: Default::default(),
             })),
+            internal: Arc::new(OnceLock::new()),
             use_stored_credentials: false,
         }
+    }
+
+    // URI errors
+
+    /// Clear the latest error for this URI.
+    pub fn clear_uri_error(&mut self, uri: re_uri::DatasetSegmentUri) {
+        self.uri_errors.remove(&uri.without_fragment());
+    }
+
+    /// Set the latest error for this URI.
+    pub fn set_uri_error(&mut self, uri: re_uri::DatasetSegmentUri, error: String) {
+        self.uri_errors.insert(uri.without_fragment(), error);
+    }
+
+    /// Get the latest error for this URI.
+    pub fn error_for_uri(&self, uri: re_uri::DatasetSegmentUri) -> Option<&str> {
+        self.uri_errors
+            .get(&uri.without_fragment())
+            .map(|s| s.as_str())
     }
 }
 
@@ -91,6 +128,12 @@ pub enum ClientCredentialsError {
         status: TonicStatusError,
         credentials: SourcedCredentials,
     },
+
+    #[error("{0}")]
+    HostMismatch(re_auth::HostMismatchError),
+
+    #[error("the server requires authentication for read access")]
+    NotAuthorized,
 }
 
 /// Registry of all tokens and connections to the redap servers.
@@ -99,6 +142,12 @@ pub enum ClientCredentialsError {
 #[derive(Clone)]
 pub struct ConnectionRegistryHandle {
     inner: Arc<RwLock<ConnectionRegistry>>,
+
+    /// The in-process internal catalog connection, if enabled.
+    ///
+    /// Shared across cloned handles and readable from sync code without taking the async registry
+    /// lock.
+    internal: Arc<OnceLock<(re_uri::Origin, Connection)>>,
 
     /// Whether to use credentials stored on the host machine by default.
     /// Since some tests run on a single-threaded tokio runtime and this is never updated,
@@ -115,11 +164,37 @@ pub enum Credentials {
     Stored,
 }
 
+impl Credentials {
+    /// Whether these credentials have write permission.
+    ///
+    /// Returns `None` for [`Credentials::Stored`] (resolved at connect time,
+    /// permissions unknown) or if the token claims cannot be decoded.
+    pub fn has_write_permission(&self) -> Option<bool> {
+        match self {
+            Self::Token(jwt) => {
+                let claims: re_auth::Claims = jwt.decode_claims().ok()?;
+                Some(claims.has_write_permission())
+            }
+            Self::Stored => None,
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub enum CredentialSource {
     PerOrigin,
     Fallback,
     EnvVar,
+}
+
+impl std::fmt::Display for CredentialSource {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::PerOrigin => f.write_str("per-origin"),
+            Self::Fallback => f.write_str("fallback"),
+            Self::EnvVar => f.write_str("env-var"),
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -133,7 +208,7 @@ impl ConnectionRegistryHandle {
         wrap_blocking_lock(|| {
             let mut inner = self.inner.blocking_write();
             inner.saved_credentials.insert(origin.clone(), credentials);
-            inner.clients.remove(origin);
+            inner.remote_connections.remove(origin);
         });
     }
 
@@ -148,7 +223,7 @@ impl ConnectionRegistryHandle {
         wrap_blocking_lock(|| {
             let mut inner = self.inner.blocking_write();
             inner.saved_credentials.remove(origin);
-            inner.clients.remove(origin);
+            inner.remote_connections.remove(origin);
         });
     }
 
@@ -163,29 +238,89 @@ impl ConnectionRegistryHandle {
         self.use_stored_credentials
     }
 
-    /// Get a client for the given origin, creating one if it doesn't exist yet.
+    pub fn with_internal(self, internal: (re_uri::Origin, Connection)) -> Self {
+        self.set_internal(internal);
+        self
+    }
+
+    pub fn set_internal(&self, internal: (re_uri::Origin, Connection)) {
+        if let Err((new_origin, _connection)) = self.internal.set(internal) {
+            let existing_origin = self
+                .internal
+                .get()
+                .map(|(origin, _connection)| origin.to_string())
+                .unwrap_or_else(|| "<missing>".to_owned());
+            re_log::debug!(
+                "Ignoring duplicate internal connection for {new_origin}; already set for {existing_origin}"
+            );
+        }
+    }
+
+    pub fn internal_origin(&self) -> Option<re_uri::Origin> {
+        self.internal
+            .get()
+            .map(|(origin, _connection)| origin.clone())
+    }
+
+    pub fn is_internal_origin(&self, origin: &re_uri::Origin) -> bool {
+        self.internal
+            .get()
+            .is_some_and(|(internal_origin, _connection)| internal_origin == origin)
+    }
+
+    /// Clear the latest error for this URI.
+    pub fn clear_uri_error(&self, uri: re_uri::DatasetSegmentUri) {
+        wrap_blocking_lock(|| {
+            self.inner.blocking_write().clear_uri_error(uri);
+        });
+    }
+
+    /// Set the latest error for this URI.
+    pub fn set_uri_error(&self, uri: re_uri::DatasetSegmentUri, error: String) {
+        wrap_blocking_lock(|| {
+            self.inner.blocking_write().set_uri_error(uri, error);
+        });
+    }
+
+    /// Get the latest error for this URI.
+    pub fn error_for_uri(&self, uri: re_uri::DatasetSegmentUri) -> Option<String> {
+        wrap_blocking_lock(|| {
+            self.inner
+                .blocking_read()
+                .error_for_uri(uri)
+                .map(str::to_owned)
+        })
+    }
+
+    /// Get a connection for the given origin, creating one if it doesn't exist yet.
     ///
-    /// Note: although `RedapClient` is cheap to clone, callsites should generally *not* hold on to
-    /// client instances for longer than the immediate needs. In the future, authentication may
-    /// require periodic tokens refresh, so it is necessary to always get a "fresh" client.
+    /// Note: although `ConnectionClient` is cheap to clone, callsites should generally *not* hold on
+    /// to client instances for longer than the immediate needs. In the future, authentication may
+    /// require periodic tokens refresh, so it is necessary to always get a "fresh" connection.
     ///
     /// If a token has already been registered for this origin, it will be used. Otherwise, it will attempt to
     /// use the following token, in this order:
     /// - The fallback token, if set via [`Self::set_fallback_token`].
     /// - The `REDAP_TOKEN` environment variable is set.
-    /// - Local credentials for Rerun Cloud
+    /// - Local credentials for Rerun Hub
     ///
     /// Failing that, no token will be used.
-    pub async fn client(&self, origin: re_uri::Origin) -> ApiResult<ConnectionClient> {
-        // happy path
+    #[tracing::instrument(level = "info", skip_all)]
+    pub async fn connection(&self, origin: re_uri::Origin) -> ApiResult<Connection> {
+        if let Some((internal_origin, connection)) = self.internal.get()
+            && internal_origin == &origin
+        {
+            return Ok(connection.clone());
+        }
+
         {
             let inner = self.inner.read().await;
-            if let Some(client) = inner.clients.get(&origin) {
-                return Ok(ConnectionClient::new(client.clone()));
+            if let Some(connection) = inner.remote_connections.get(&origin) {
+                return Ok(connection.clone());
             }
         }
 
-        // Don't hold the lock while creating the client - this may take a while and we may
+        // Don't hold the lock while creating the connection — this may take a while and we may
         // want to read the tokens in the meantime for other purposes.
         let (saved_credentials, fallback_token) = {
             let inner = self.inner.read().await;
@@ -225,20 +360,28 @@ impl ConnectionRegistryHandle {
             add_cred(&mut credentials_to_try, cred);
         }
 
-        let (raw_client, successful_credentials) =
-            Self::try_create_raw_client(origin.clone(), credentials_to_try.into_iter()).await?;
+        let (client_stack, successful_credentials) =
+            Self::try_connect_client_stack(origin.clone(), credentials_to_try.into_iter()).await?;
 
-        let client = ConnectionClient::new(raw_client.clone());
+        let connection = Connection {
+            client: RedapClient::new(crate::grpc::boxed_redap_grpc_client(client_stack.clone())),
+            analytics: Some(crate::ConnectionAnalyticsExporter::from_remote_service(
+                origin.clone(),
+                client_stack,
+            )),
+        };
 
-        // We have a successful client, so we cache it and remember about the successful token.
+        // We have a successful connection, so we cache it and remember about the successful token.
         //
         // Note: because we only acquire the lock now, a race is possible where two threads
-        // concurrently attempt to create the client and would override each-other's results. This
+        // concurrently attempt to create the connection and would override each-other's results. This
         // is acceptable since both should reach the same conclusion, and preferable that holding
         // the lock for the entire time, as the connection process can take a while.
         {
             let mut inner = self.inner.write().await;
-            inner.clients.insert(origin.clone(), raw_client.clone());
+            inner
+                .remote_connections
+                .insert(origin.clone(), connection.clone());
 
             let successful_credentials = successful_credentials.map(|c| c.credentials);
 
@@ -253,27 +396,34 @@ impl ConnectionRegistryHandle {
             }
         }
 
-        Ok(client)
+        Ok(connection)
     }
 
-    /// Try creating (and validating) a raw client using whatever token we might have available.
+    /// Get a redap RPC client for the given origin, creating a connection if it doesn't exist yet.
+    #[tracing::instrument(level = "info", skip_all)]
+    pub async fn client(&self, origin: re_uri::Origin) -> ApiResult<ConnectionClient> {
+        Ok(self.connection(origin).await?.client)
+    }
+
+    /// Try connecting with whatever credentials we have available.
     ///
-    /// If successful, returns both the client and the working token.
-    async fn try_create_raw_client(
+    /// On success returns the configured client stack and the credentials specification that worked.
+    #[tracing::instrument(level = "info", skip_all)]
+    async fn try_connect_client_stack(
         origin: re_uri::Origin,
         possible_credentials: impl Iterator<Item = SourcedCredentials>,
-    ) -> ApiResult<(RedapClient, Option<SourcedCredentials>)> {
+    ) -> ApiResult<(RedapClientStack, Option<SourcedCredentials>)> {
         let mut first_failed_attempt = None;
 
         for credentials in possible_credentials {
-            let result = Self::create_and_validate_raw_client_with_token(
-                origin.clone(),
-                Some(credentials.clone()),
-            )
-            .await;
+            let result =
+                Self::connect_and_validate_client_stack(origin.clone(), Some(credentials.clone()))
+                    .await;
 
             match result {
-                Ok(raw_client) => return Ok((raw_client, Some(credentials))),
+                Ok(client_stack) => {
+                    return Ok((client_stack, Some(credentials)));
+                }
 
                 Err(err) if err.is_client_credentials_error() => {
                     // remember about the first occurrence of this error but continue trying other
@@ -288,10 +438,10 @@ impl ConnectionRegistryHandle {
         }
 
         // Everything failed, last ditch effort without a token.
-        let result = Self::create_and_validate_raw_client_with_token(origin.clone(), None).await;
+        let result = Self::connect_and_validate_client_stack(origin.clone(), None).await;
 
         match result {
-            Ok(raw_client) => Ok((raw_client, None)),
+            Ok(client_stack) => Ok((client_stack, None)),
 
             Err(err) => {
                 // If we actually tried tokens, this error is more relevant.
@@ -304,73 +454,184 @@ impl ConnectionRegistryHandle {
         }
     }
 
-    async fn create_and_validate_raw_client_with_token(
+    /// Probe `{origin}/version` to detect non-Rerun endpoints (e.g. user typed
+    /// `asdf.rerun.io` instead of `api.asdf.rerun.io`).
+    ///
+    /// Returns `Ok(())` if the probe is inconclusive (server responded as expected),
+    /// `Err(_)` with a friendly diagnostic if the origin is clearly not a Rerun server.
+    #[tracing::instrument(level = "info", skip_all)]
+    async fn ensure_is_rerun_server(origin: &re_uri::Origin) -> ApiResult<()> {
+        let res = crate::with_retry("http_version_fetch", || async {
+            ehttp::fetch_async(ehttp::Request::get(format!("{}/version", origin.as_url())))
+                .await
+                .map_err(|err| {
+                    let mut msg = format!("failed to connect to server '{origin}': {err}");
+                    if let Some(suggested) = suggest_api_prefix(origin) {
+                        write!(msg, ". Did you mean '{suggested}'?").ok();
+                    }
+                    ApiError::connection(msg)
+                })
+        })
+        .await?;
+
+        if res.ok {
+            // Server responded as expected — probe is inconclusive about why gRPC failed.
+            return Ok(());
+        }
+
+        let hint = suggest_api_prefix(origin).map(|suggested| {
+            format!("Did you mean '{suggested}'? Rerun Hub endpoints require the 'api.' prefix")
+        });
+        // Truncate the body so we don't dump an entire HTML error page into the error.
+        let body_snippet = std::str::from_utf8(&res.bytes)
+            .ok()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty())
+            .map(|s| {
+                const MAX: usize = 200;
+                if s.len() > MAX {
+                    format!("{}…", &s[..s.floor_char_boundary(MAX)])
+                } else {
+                    s.to_owned()
+                }
+            });
+        Err(ApiError::invalid_server_with_response(
+            origin.clone(),
+            res.status,
+            &res.status_text,
+            body_snippet.as_deref(),
+            hint.as_deref(),
+        ))
+    }
+
+    #[tracing::instrument(level = "info", skip_all)]
+    async fn connect_and_validate_client_stack(
         origin: re_uri::Origin,
         credentials: Option<SourcedCredentials>,
-    ) -> ApiResult<RedapClient> {
+    ) -> ApiResult<RedapClientStack> {
+        // Check the token's allowed hosts before wrapping it in a provider that
+        // would blindly attach it to every outgoing request. If the host
+        // doesn't match, return a credentials error so the caller can skip
+        // this credential and try the next one.
+        let host = origin.host.to_string();
         let provider: Option<Arc<dyn re_auth::credentials::CredentialsProvider + Send + Sync>> =
             match credentials.as_ref().map(|c| &c.credentials) {
-                Some(Credentials::Token(token)) => Some(Arc::new(
-                    re_auth::credentials::StaticCredentialsProvider::new(token.clone()),
-                )),
+                Some(Credentials::Token(token)) => {
+                    token.for_host(&host).map_err(|err| {
+                        ApiError::credentials_with_source(
+                            None,
+                            ClientCredentialsError::HostMismatch(err),
+                            format!("token not allowed for host '{host}'"),
+                        )
+                    })?;
+                    Some(Arc::new(
+                        re_auth::credentials::StaticCredentialsProvider::new(token.clone()),
+                    ))
+                }
                 Some(Credentials::Stored) => {
+                    // For stored credentials, load the token to check its allowed hosts
+                    // before committing to using it.
+                    if let Ok(Some(c)) = re_auth::oauth::load_credentials() {
+                        c.access_token().jwt().for_host(&host).map_err(|err| {
+                            ApiError::credentials_with_source(
+                                None,
+                                ClientCredentialsError::HostMismatch(err),
+                                format!("stored token not allowed for host '{host}'"),
+                            )
+                        })?;
+                    }
                     Some(Arc::new(re_auth::credentials::CliCredentialsProvider::new()))
                 }
                 None => None,
             };
 
-        // It's a common mistake to connect to `asdf.rerun.io` instead of `api.asdf.rerun.io`,
-        // so if what we're trying to connect to is not a valid Rerun server, then cut out
-        // a layer of noise:
-        {
-            let res = match ehttp::fetch_async(ehttp::Request::get(format!(
-                "{}/version",
-                origin.as_url()
-            )))
-            .await
-            {
-                Ok(res) => res,
-                Err(err) => {
-                    return Err(ApiError::connection(format!(
-                        "failed to connect to server '{origin}': {err}"
-                    )));
+        let (mut grpc_client, client_stack) =
+            match crate::grpc::connect_grpc_client(origin.clone(), provider).await {
+                Ok(pair) => pair,
+                Err(grpc_err) => {
+                    // It's a common mistake to connect to `asdf.rerun.io` instead of `api.asdf.rerun.io`,
+                    // so if what we're trying to connect to is not a valid Rerun server, then cut out
+                    // a layer of noise:
+                    Self::ensure_is_rerun_server(&origin).await?;
+
+                    return Err(grpc_err);
                 }
             };
-            if !res.ok {
-                return Err(ApiError::invalid_server(origin));
+
+        // Call the WhoAmI endpoint to check that authentication is successful. It's ok to do
+        // this since we're caching the client, so we're not spamming such a request unnecessarily.
+        let request_result = grpc_client.who_am_i(WhoAmIRequest {}).await;
+
+        // TODO(rerun-io/dataplatform#1069): remove the `FindEntries` fallback once all servers
+        // have been updated to support the `WhoAmI` endpoint.
+        let request_result = match request_result {
+            Err(err) if err.code() == Code::Unimplemented => {
+                re_log::debug_once!(
+                    "Server at {origin} does not support WhoAmI, falling back to FindEntries"
+                );
+                grpc_client
+                    .find_entries(FindEntriesRequest {
+                        filter: Some(EntryFilter {
+                            id: None,
+                            name: None,
+                            entry_kind: None,
+                        }),
+                    })
+                    .await
+                    .map(drop)
             }
-        }
-
-        let mut raw_client = crate::grpc::client(origin.clone(), provider).await?;
-
-        // Call the version endpoint to check that authentication is successful. It's ok to do this
-        // since we're caching the client, so we're not spamming such a request unnecessarily.
-        // TODO(rerun-io/dataplatform#1069): use the `whoami` endpoint instead when it exists.
-        let request_result = raw_client
-            .find_entries(FindEntriesRequest {
-                filter: Some(EntryFilter {
-                    id: None,
-                    name: None,
-                    entry_kind: None,
-                }),
-            })
-            .await;
+            Ok(resp) => {
+                let trace_id = crate::extract_trace_id(resp.metadata());
+                let re_protos::cloud::v1alpha1::WhoAmIResponse {
+                    user_id,
+                    can_read,
+                    can_write,
+                } = resp.into_inner();
+                let is_anonymous = user_id.is_none();
+                let user_id = user_id.as_deref().unwrap_or("<anonymous>");
+                re_log::debug_once!(
+                    "Connected to {origin}: {user_id}, can_read={can_read}, can_write={can_write}",
+                );
+                if !can_read {
+                    if is_anonymous {
+                        // Anonymous user without read access — treat as a credentials error
+                        // so the auth flow is triggered.
+                        return Err(ApiError::credentials_with_source(
+                            trace_id,
+                            ClientCredentialsError::NotAuthorized,
+                            "the server requires authentication for read access",
+                        ));
+                    }
+                    return Err(ApiError::permission_denied(
+                        trace_id,
+                        "the server reports that you do not have read access",
+                    ));
+                }
+                Ok(())
+            }
+            Err(err) => Err(err),
+        };
 
         match request_result {
+            Ok(()) => Ok(client_stack),
+
             // catch unauthenticated errors and forget the token if they happen
             Err(err) if err.code() == Code::Unauthenticated => {
+                let trace_id = crate::extract_trace_id(err.metadata());
                 if let Some(credentials) = credentials {
                     Err(ApiError::credentials_with_source(
+                        trace_id,
                         ClientCredentialsError::UnauthenticatedBadToken {
                             status: err.into(),
                             credentials,
                         },
-                        "verifying connection to server",
+                        "unauthenticated: bad token",
                     ))
                 } else {
                     Err(ApiError::credentials_with_source(
+                        trace_id,
                         ClientCredentialsError::UnauthenticatedMissingToken(err.into()),
-                        "verifying connection to server",
+                        "unauthenticated: missing token",
                     ))
                 }
             }
@@ -382,12 +643,14 @@ impl ConnectionRegistryHandle {
                     match cred_error {
                         CredentialsProviderError::SessionExpired => {
                             Err(ApiError::credentials_with_source(
+                                None,
                                 ClientCredentialsError::SessionExpired,
                                 "session expired",
                             ))
                         }
                         CredentialsProviderError::Custom(_) => {
                             Err(ApiError::credentials_with_source(
+                                None,
                                 ClientCredentialsError::RefreshError(err.into()),
                                 "refreshing credentials",
                             ))
@@ -397,8 +660,6 @@ impl ConnectionRegistryHandle {
                     Err(ApiError::tonic(err, "verifying connection to server"))
                 }
             }
-
-            Ok(_) => Ok(raw_client),
         }
     }
 

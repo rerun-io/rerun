@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -33,7 +34,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// All these formats support random access.
 ///
 /// For more compressed image formats, see [`archetypes::EncodedImage`][crate::archetypes::EncodedImage].
-#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Default)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Default, ::re_byte_size::SizeBytes)]
 #[repr(u8)]
 pub enum PixelFormat {
     /// `Y_U_V12` is a YUV 4:2:0 fully planar YUV format without chroma downsampling, also known as `I420`.
@@ -190,22 +191,16 @@ impl ::re_types_core::Loggable for PixelFormat {
             .with_context("rerun.datatypes.PixelFormat#enum")?
             .into_iter()
             .map(|typ| match typ {
-                Some(20) => Ok(Some(Self::Y_U_V12_LimitedRange)),
-                Some(26) => Ok(Some(Self::NV12)),
-                Some(27) => Ok(Some(Self::YUY2)),
-                Some(30) => Ok(Some(Self::Y8_FullRange)),
-                Some(39) => Ok(Some(Self::Y_U_V24_LimitedRange)),
-                Some(40) => Ok(Some(Self::Y_U_V24_FullRange)),
-                Some(41) => Ok(Some(Self::Y8_LimitedRange)),
-                Some(44) => Ok(Some(Self::Y_U_V12_FullRange)),
-                Some(49) => Ok(Some(Self::Y_U_V16_LimitedRange)),
-                Some(50) => Ok(Some(Self::Y_U_V16_FullRange)),
+                Some(val) => <Self as ::re_types_core::reflection::Enum>::try_from_integer(val)
+                    .map(Some)
+                    .ok_or_else(|| {
+                        DeserializationError::missing_union_arm(
+                            Self::arrow_datatype(),
+                            "<invalid>",
+                            val as _,
+                        )
+                    }),
                 None => Ok(None),
-                Some(invalid) => Err(DeserializationError::missing_union_arm(
-                    Self::arrow_datatype(),
-                    "<invalid>",
-                    invalid as _,
-                )),
             })
             .collect::<DeserializationResult<Vec<Option<_>>>>()
             .with_context("rerun.datatypes.PixelFormat")?)
@@ -230,6 +225,8 @@ impl std::fmt::Display for PixelFormat {
 }
 
 impl ::re_types_core::reflection::Enum for PixelFormat {
+    type Repr = u8;
+
     #[inline]
     fn variants() -> &'static [Self] {
         &[
@@ -281,16 +278,21 @@ impl ::re_types_core::reflection::Enum for PixelFormat {
             }
         }
     }
-}
-
-impl ::re_byte_size::SizeBytes for PixelFormat {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
 
     #[inline]
-    fn is_pod() -> bool {
-        true
+    fn try_from_integer(value: u8) -> Option<Self> {
+        match value {
+            20 => Some(Self::Y_U_V12_LimitedRange),
+            26 => Some(Self::NV12),
+            27 => Some(Self::YUY2),
+            30 => Some(Self::Y8_FullRange),
+            39 => Some(Self::Y_U_V24_LimitedRange),
+            40 => Some(Self::Y_U_V24_FullRange),
+            41 => Some(Self::Y8_LimitedRange),
+            44 => Some(Self::Y_U_V12_FullRange),
+            49 => Some(Self::Y_U_V16_LimitedRange),
+            50 => Some(Self::Y_U_V16_FullRange),
+            _ => None,
+        }
     }
 }

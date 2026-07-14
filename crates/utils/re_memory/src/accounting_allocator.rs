@@ -242,13 +242,14 @@ pub fn tracking_stats() -> Option<TrackingStatistics> {
             let mut top_medium_callstacks = tracker_stats(&MEDIUM_ALLOCATION_TRACKER.lock());
             is_thread_in_allocation_tracker.set(false);
 
-            let mut top_callstacks: Vec<_> = top_big_callstacks
-                .drain(..)
-                .chain(top_medium_callstacks.drain(..))
-                .collect();
+            let mut top_callstacks: Vec<_> = std::iter::chain(
+                top_big_callstacks.drain(..),
+                top_medium_callstacks.drain(..),
+            )
+            .collect();
 
             #[expect(clippy::cast_possible_wrap)]
-            top_callstacks.sort_by_key(|c| -(c.extant.size as i64));
+            top_callstacks.sort_by_key(|c| -(c.estimated().size as i64));
 
             TrackingStatistics {
                 track_size_threshold: GLOBAL.small_size.load(Relaxed),
@@ -314,11 +315,13 @@ unsafe impl<InnerAllocator: std::alloc::GlobalAlloc> std::alloc::GlobalAlloc
     }
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: std::alloc::Layout) {
+        // Note deallocation first, otherwise there'd be a race where another allocation could allocate
+        // at this pointer before we note down the dealloc.
+        note_dealloc(ptr, layout.size());
+
         // SAFETY:
         // We just do book-keeping and then let another allocator do all the actual work.
         unsafe { self.allocator.dealloc(ptr, layout) };
-
-        note_dealloc(ptr, layout.size());
     }
 
     unsafe fn realloc(
@@ -352,7 +355,10 @@ fn note_alloc(ptr: *mut u8, size: usize) {
             // track the allocations made by the allocation tracker:
 
             IS_THREAD_IN_ALLOCATION_TRACKER.with(|is_thread_in_allocation_tracker| {
-                if !is_thread_in_allocation_tracker.get() {
+                if is_thread_in_allocation_tracker.get() {
+                    // This is the ALLOCATION_TRACKER allocating memory.
+                    GLOBAL.overhead.add(size);
+                } else {
                     is_thread_in_allocation_tracker.set(true);
 
                     let ptr_hash = PtrHash::new(ptr);
@@ -365,9 +371,6 @@ fn note_alloc(ptr: *mut u8, size: usize) {
                     }
 
                     is_thread_in_allocation_tracker.set(false);
-                } else {
-                    // This is the ALLOCATION_TRACKER allocating memory.
-                    GLOBAL.overhead.add(size);
                 }
             });
         }
@@ -386,7 +389,10 @@ fn note_dealloc(ptr: *mut u8, size: usize) {
             // Big enough to track - but make sure we don't create a deadlock by trying to
             // track the allocations made by the allocation tracker:
             IS_THREAD_IN_ALLOCATION_TRACKER.with(|is_thread_in_allocation_tracker| {
-                if !is_thread_in_allocation_tracker.get() {
+                if is_thread_in_allocation_tracker.get() {
+                    // This is the ALLOCATION_TRACKER freeing memory.
+                    GLOBAL.overhead.sub(size);
+                } else {
                     is_thread_in_allocation_tracker.set(true);
 
                     let ptr_hash = PtrHash::new(ptr);
@@ -399,9 +405,6 @@ fn note_dealloc(ptr: *mut u8, size: usize) {
                     }
 
                     is_thread_in_allocation_tracker.set(false);
-                } else {
-                    // This is the ALLOCATION_TRACKER freeing memory.
-                    GLOBAL.overhead.sub(size);
                 }
             });
         }

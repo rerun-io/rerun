@@ -14,9 +14,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import numpy as np
+from scipy.spatial.transform import Rotation as R
+
 import rerun as rr  # pip install rerun-sdk
 import rerun.blueprint as rrb
-from scipy.spatial.transform import Rotation as R
 
 from .download_dataset import (
     ANNOTATIONS_FILENAME,

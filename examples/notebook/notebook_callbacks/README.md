@@ -24,7 +24,7 @@ Check out the [minimal notebook example](https://rerun.io/examples/integrations/
 
 This notebook spins up a colorful point cloud and pipes it into the viewer so you can experiment with callbacks in real time. As the camera, timeline, and selection change, `Viewer.on_event` emits rich event payloads that we translate into friendly [`ipywidgets`](https://ipywidgets.readthedocs.io/) readouts.
 
-Scrub the timeline, pick individual points, or activate entire views to see how each interaction updates the labels—handy for building responsive dashboards or debugging custom tooling around the Rerun Viewer.
+Scrub the timeline, pick individual points, or activate entire views to see how each interaction updates the labels — handy for building responsive dashboards or debugging custom tooling around the Rerun Viewer.
 
 ## Running in Jupyter
 

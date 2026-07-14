@@ -20,7 +20,7 @@ all-features = true
 
 
 [features]
-
+test = ["dep:datafusion"]
 
 [dependencies]
 re_log.workspace = true
@@ -29,11 +29,12 @@ re_tuid = { workspace = true, features = ["bytemuck"] }
 
 anyhow.workspace = true
 arrow.workspace = true
-datafusion.workspace = true
 half.workspace = true
 itertools.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
+
+datafusion = { workspace = true, optional = true }
 
 [dev-dependencies]
 insta.workspace = true

@@ -116,19 +116,23 @@ macro_rules! icon_from_path {
     };
 }
 
-pub const RERUN_MENU: Icon = icon_from_path!("../data/icons/rerun_menu.svg");
+/// The monochrome `rerun` wordmark
+pub const RERUN_WORDMARK: Icon = icon_from_path!("../data/icons/rerun_wordmark.svg");
 
-pub const RERUN_IO_TEXT: Icon = icon_from_path!("../data/icons/rerun_io.svg");
+/// The square and colorful `RE`
+pub const RERUN_LOGO: Icon = icon_from_path!("../data/icons/rerun_logo.png");
 
 pub const HELP: Icon = icon_from_path!("../data/icons/help.svg");
 
 pub const PLAY: Icon = icon_from_path!("../data/icons/play.svg");
 pub const FOLLOW: Icon = icon_from_path!("../data/icons/follow.svg");
 pub const PAUSE: Icon = icon_from_path!("../data/icons/pause.svg");
+pub const CHEVRON: Icon = icon_from_path!("../data/icons/chevron.svg");
 pub const ARROW_LEFT: Icon = icon_from_path!("../data/icons/arrow_left.svg");
 pub const ARROW_RIGHT: Icon = icon_from_path!("../data/icons/arrow_right.svg");
 pub const ARROW_UP: Icon = icon_from_path!("../data/icons/arrow_up.svg");
 pub const ARROW_DOWN: Icon = icon_from_path!("../data/icons/arrow_down.svg");
+pub const COMBO_ARROW: Icon = icon_from_path!("../data/icons/combo_arrow.svg");
 pub const LOOP: Icon = icon_from_path!("../data/icons/loop.svg");
 pub const FILTER: Icon = icon_from_path!("../data/icons/filter.svg");
 
@@ -158,6 +162,13 @@ pub const MORE: Icon = icon_from_path!("../data/icons/more.svg");
 pub const CLOSE: Icon = icon_from_path!("../data/icons/close.svg");
 pub const CLOSE_SMALL: Icon = icon_from_path!("../data/icons/close_small.svg");
 
+// Caption controls, matching the glyphs documented by Microsoft:
+// https://learn.microsoft.com/en-us/windows/apps/design/basics/titlebar-design#caption-controls-minimize-maximize-restore-close
+pub const CHROME_MINIMIZE: Icon = icon_from_path!("../data/icons/chrome_minimize.svg");
+pub const CHROME_MAXIMIZE: Icon = icon_from_path!("../data/icons/chrome_maximize.svg");
+pub const CHROME_RESTORE: Icon = icon_from_path!("../data/icons/chrome_restore.svg");
+pub const CHROME_CLOSE: Icon = icon_from_path!("../data/icons/chrome_close.svg");
+
 /// Used for HTTP URLs that lead out of the app.
 ///
 /// Remember to also use `.on_hover_cursor(egui::CursorIcon::PointingHand)`,
@@ -180,12 +191,13 @@ pub const VIEW_GENERIC: Icon = icon_from_path!("../data/icons/view_generic.svg")
 pub const VIEW_HISTOGRAM: Icon = icon_from_path!("../data/icons/view_histogram.svg");
 pub const VIEW_LOG: Icon = icon_from_path!("../data/icons/view_log.svg");
 pub const VIEW_MAP: Icon = icon_from_path!("../data/icons/view_map.svg");
+pub const VIEW_STATE_TIMELINE: Icon = icon_from_path!("../data/icons/view_state_timeline.svg");
 pub const VIEW_TENSOR: Icon = icon_from_path!("../data/icons/view_tensor.svg");
 pub const VIEW_TEXT: Icon = icon_from_path!("../data/icons/view_text.svg");
 pub const VIEW_TIMESERIES: Icon = icon_from_path!("../data/icons/view_timeseries.svg");
 pub const VIEW_UNKNOWN: Icon = icon_from_path!("../data/icons/view_unknown.svg");
 
-pub const GROUP: Icon = icon_from_path!("../data/icons/group.svg");
+//pub const GROUP: Icon = icon_from_path!("../data/icons/group.svg");
 pub const ENTITY: Icon = icon_from_path!("../data/icons/entity.svg");
 pub const ENTITY_EMPTY: Icon = icon_from_path!("../data/icons/entity_empty.svg");
 pub const ENTITY_RESERVED: Icon = icon_from_path!("../data/icons/entity_reserved.svg");
@@ -242,3 +254,11 @@ pub const DOWNLOAD: Icon = icon_from_path!("../data/icons/download.svg");
 
 // Other non-icon-sized images:
 pub const DROPDOWN_ARROW: Icon = icon_from_path!("../data/icons/dropdown_arrow.svg");
+pub const CHECKED: Icon = icon_from_path!("../data/icons/checked.svg");
+
+// Datafusion tables:
+pub const TABLE_ROW_VIEW: Icon = icon_from_path!("../data/icons/table_row_view.svg");
+pub const TABLE_GRID_VIEW: Icon = icon_from_path!("../data/icons/table_grid_view.svg");
+pub const TABLE_COLUMNS: Icon = icon_from_path!("../data/icons/columns.svg");
+pub const FLAG_UNTOGGLED: Icon = icon_from_path!("../data/icons/flag_untoggled.svg");
+pub const FLAG_TOGGLED: Icon = icon_from_path!("../data/icons/flag_toggled.svg");

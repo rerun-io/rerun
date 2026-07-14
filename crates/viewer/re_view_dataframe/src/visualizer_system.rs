@@ -9,7 +9,10 @@ pub struct EmptySystem {}
 
 impl IdentifiedViewSystem for EmptySystem {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "Empty".into()
+        re_viewer_context::external::re_string_interner::intern_static!(
+            re_viewer_context::ViewSystemIdentifier,
+            "Empty"
+        )
     }
 }
 
@@ -22,7 +25,7 @@ impl VisualizerSystem for EmptySystem {
     }
 
     fn execute(
-        &mut self,
+        &self,
         _ctx: &ViewContext<'_>,
         _query: &ViewQuery<'_>,
         _context_systems: &ViewContextCollection,

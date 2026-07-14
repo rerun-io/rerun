@@ -2,7 +2,6 @@ use arrow::array::{Array as _, ListArray as ArrowListArray, RecordBatch as Arrow
 use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 use re_arrow_util::{ArrowArrayDowncastRef as _, into_arrow_ref};
-use re_byte_size::SizeBytes as _;
 use re_types_core::arrow_helpers::as_array_ref;
 use re_types_core::{ComponentDescriptor, SerializedComponentColumn};
 
@@ -35,7 +34,6 @@ impl Chunk {
             self.num_rows()
         ));
 
-        let heap_size_bytes = self.heap_size_bytes();
         let Self {
             id,
             entity_path,
@@ -65,7 +63,7 @@ impl Chunk {
 
                     let array = info.times_array();
 
-                    debug_assert_eq!(&timeline.datatype(), array.data_type());
+                    re_log::debug_assert_eq!(&timeline.datatype(), array.data_type());
 
                     let schema =
                         re_sorbet::IndexColumnDescriptor::from_timeline(*timeline, *is_sorted);
@@ -130,8 +128,7 @@ impl Chunk {
             index_schemas,
             data_schemas,
             Default::default(),
-        )
-        .with_heap_size_bytes(heap_size_bytes);
+        );
 
         Ok(re_sorbet::ChunkBatch::try_new(
             schema,
@@ -141,7 +138,11 @@ impl Chunk {
         )?)
     }
 
-    #[tracing::instrument(level = "trace", skip_all)]
+    /// Convert a chunk record batch to a chunk.
+    ///
+    /// This is for well-formed chunk batches. For generic record-batch-to-chunks conversion, see
+    /// [`Self::from_dataframe_record_batch`].
+    //TODO(RR-4700): rename to `from_chunk_record_batch`
     pub fn from_record_batch(batch: &ArrowRecordBatch) -> ChunkResult<Self> {
         re_tracing::profile_function!(format!(
             "num_columns={} num_rows={}",
@@ -151,7 +152,27 @@ impl Chunk {
         Self::from_chunk_batch(&re_sorbet::ChunkBatch::try_from(batch)?)
     }
 
-    #[tracing::instrument(level = "trace", skip_all)]
+    /// Convert an arbitrary record batch to one or more [`Chunk`]s.
+    ///
+    /// See [`re_sorbet::chunk_batches_from_dataframe_record_batch`] for details.
+    //TODO(RR-4700): rename to `from_record_batch`
+    pub fn from_dataframe_record_batch(
+        batch: &ArrowRecordBatch,
+        index: &re_sorbet::DataframeIndex,
+        entity_path: Option<&re_log_types::EntityPath>,
+    ) -> ChunkResult<Vec<Self>> {
+        re_tracing::profile_function!(format!(
+            "num_columns={} num_rows={}",
+            batch.num_columns(),
+            batch.num_rows()
+        ));
+        re_sorbet::chunk_batches_from_dataframe_record_batch(batch, index, entity_path)
+            .map_err(Box::new)?
+            .iter()
+            .map(Self::from_chunk_batch)
+            .collect()
+    }
+
     pub fn from_chunk_batch(batch: &re_sorbet::ChunkBatch) -> ChunkResult<Self> {
         re_tracing::profile_function!(format!(
             "num_columns={} num_rows={}",
@@ -235,7 +256,7 @@ impl Chunk {
             None // Check whether or not it is sorted
         };
 
-        let mut res = Self::new(
+        let res = Self::new(
             batch.chunk_id(),
             batch.entity_path().clone(),
             is_sorted_by_row_id,
@@ -244,10 +265,6 @@ impl Chunk {
             components,
         )?;
 
-        if let Some(heap_size_bytes) = batch.heap_size_bytes() {
-            res.heap_size_bytes = heap_size_bytes.into();
-        }
-
         Ok(res)
     }
 }
@@ -255,6 +272,7 @@ impl Chunk {
 impl Chunk {
     #[inline]
     pub fn from_arrow_msg(msg: &re_log_types::ArrowMsg) -> ChunkResult<Self> {
+        re_tracing::profile_function!();
         let re_log_types::ArrowMsg {
             chunk_id: _,
             batch,
@@ -279,11 +297,16 @@ impl Chunk {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
+    use arrow::array::{Float32Array, Int64Array, TimestampMicrosecondArray};
+    use arrow::datatypes::{Field as ArrowField, Schema as ArrowSchema};
     use nohash_hasher::IntMap;
+    use similar_asserts::assert_eq;
+
     use re_log_types::example_components::{MyColor, MyPoint, MyPoints};
     use re_log_types::{EntityPath, Timeline};
-    use re_types_core::{ChunkId, Loggable as _, RowId};
-    use similar_asserts::assert_eq;
+    use re_types_core::{ChunkId, Loggable as _, RowId, TimelineName};
 
     use super::*;
 
@@ -374,10 +397,6 @@ mod tests {
             let chunk_after = Chunk::from_chunk_batch(&chunk_batch_after).unwrap();
 
             assert_eq!(chunk_before.entity_path(), chunk_after.entity_path());
-            assert_eq!(
-                chunk_before.heap_size_bytes(),
-                chunk_after.heap_size_bytes(),
-            );
             assert_eq!(chunk_before.num_columns(), chunk_after.num_columns());
             assert_eq!(chunk_before.num_rows(), chunk_after.num_rows());
             assert!(chunk_before.are_equal(&chunk_after));
@@ -385,5 +404,80 @@ mod tests {
         }
 
         Ok(())
+    }
+
+    fn dataframe_batch(index: arrow::array::ArrayRef) -> ArrowRecordBatch {
+        let frame = ArrowField::new("frame", index.data_type().clone(), true).with_metadata(
+            [(
+                re_sorbet::metadata::RERUN_KIND.to_owned(),
+                re_sorbet::ColumnKind::Index.to_string(),
+            )]
+            .into(),
+        );
+        let values = ArrowField::new("/e:c", arrow::datatypes::DataType::Float32, true)
+            .with_metadata(
+                [(
+                    re_sorbet::metadata::SORBET_ENTITY_PATH.to_owned(),
+                    "/e".to_owned(),
+                )]
+                .into(),
+            );
+        ArrowRecordBatch::try_new_with_options(
+            Arc::new(ArrowSchema::new_with_metadata(
+                vec![frame, values],
+                Default::default(),
+            )),
+            vec![index, Arc::new(Float32Array::from(vec![1.0_f32, 2.0]))],
+            &arrow::array::RecordBatchOptions::default().with_row_count(Some(2)),
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn from_dataframe_record_batch_temporal() {
+        let batch = dataframe_batch(Arc::new(Int64Array::from(vec![0_i64, 1])));
+        let chunks =
+            Chunk::from_dataframe_record_batch(&batch, &re_sorbet::DataframeIndex::Auto, None)
+                .unwrap();
+        assert_eq!(chunks.len(), 1);
+        assert_eq!(chunks[0].entity_path(), &EntityPath::from("/e"));
+        assert!(!chunks[0].is_static());
+    }
+
+    #[test]
+    fn from_dataframe_record_batch_bad_index_dtype() {
+        // `timestamp(us)` is not a supported time type; this fails at classification.
+        let batch = dataframe_batch(Arc::new(TimestampMicrosecondArray::from(vec![0_i64, 1])));
+        let err = Chunk::from_dataframe_record_batch(
+            &batch,
+            &re_sorbet::DataframeIndex::Columns(vec![TimelineName::from("frame")]),
+            None,
+        )
+        .unwrap_err();
+        assert!(matches!(
+            err,
+            ChunkError::DataframeToChunks(ref e)
+                if matches!(**e, re_sorbet::DataframeToChunksError::Sorbet(
+                    re_sorbet::SorbetError::IndexColumn(_)
+                ))
+        ));
+    }
+
+    #[test]
+    fn from_dataframe_record_batch_null_index() {
+        // A null in a promoted index column is rejected eagerly by the re_sorbet conversion.
+        let index = Arc::new(Int64Array::from(vec![Some(0_i64), None]));
+        let batch = dataframe_batch(index);
+        let err =
+            Chunk::from_dataframe_record_batch(&batch, &re_sorbet::DataframeIndex::Auto, None)
+                .unwrap_err();
+        assert!(
+            matches!(
+                err,
+                ChunkError::DataframeToChunks(ref e)
+                    if matches!(**e, re_sorbet::DataframeToChunksError::NullIndexColumn(_))
+            ),
+            "got {err}"
+        );
     }
 }

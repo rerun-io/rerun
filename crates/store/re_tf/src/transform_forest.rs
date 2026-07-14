@@ -1,8 +1,8 @@
 use nohash_hasher::{IntMap, IntSet};
-use re_byte_size::SizeBytes;
-use re_chunk_store::LatestAtQuery;
+use re_byte_size::SizeBytes as _;
+use re_chunk_store::{LatestAtQuery, MissingChunkReporter};
 use re_entity_db::EntityDb;
-use re_sdk_types::components::TransformFrameId;
+use re_log::debug_assert;
 
 use crate::frame_id_registry::FrameIdRegistry;
 use crate::transform_resolution_cache::ParentFromChildTransform;
@@ -12,7 +12,7 @@ use crate::{
 };
 
 /// Details on how to transform from a source to a target frame.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, re_byte_size::SizeBytes)]
 pub struct TreeTransform {
     /// Root frame this transform belongs to.
     ///
@@ -59,14 +59,19 @@ impl TreeTransform {
     }
 }
 
-impl SizeBytes for TreeTransform {
-    fn heap_size_bytes(&self) -> u64 {
+impl re_byte_size::MemUsageTreeCapture for TreeTransform {
+    fn capture_mem_usage_tree(&self) -> re_byte_size::MemUsageTree {
+        re_tracing::profile_function!();
+
         let Self {
             root,
             target_from_source,
         } = self;
 
-        root.heap_size_bytes() + target_from_source.heap_size_bytes()
+        re_byte_size::MemUsageNode::new()
+            .with_child("root", root.total_size_bytes())
+            .with_child("target_from_source", target_from_source.total_size_bytes())
+            .into_tree()
     }
 }
 
@@ -119,7 +124,7 @@ struct SourceInfo<'a> {
 /// Each pinhole forms its own subtree which may be embedded into a 3D space.
 /// Everything at and below the pinhole tree root is considered to be 2D,
 /// everything above is considered to be 3D.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, re_byte_size::SizeBytes)]
 pub struct PinholeTreeRoot {
     /// The tree root of the parent of this pinhole.
     pub parent_tree_root: TransformFrameIdHash,
@@ -135,24 +140,10 @@ pub struct PinholeTreeRoot {
     pub parent_root_from_pinhole_root: glam::DAffine3,
 }
 
-impl SizeBytes for PinholeTreeRoot {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            parent_tree_root,
-            pinhole_projection,
-            parent_root_from_pinhole_root,
-        } = self;
-
-        parent_tree_root.heap_size_bytes()
-            + pinhole_projection.heap_size_bytes()
-            + parent_root_from_pinhole_root.heap_size_bytes()
-    }
-}
-
 /// Properties of a transform root.
 ///
 /// [`TransformForest`] tries to identify all roots.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, re_byte_size::SizeBytes)]
 pub enum TransformTreeRootInfo {
     /// Regular root without any extra meta information.
     TransformFrameRoot,
@@ -162,21 +153,17 @@ pub enum TransformTreeRootInfo {
     Pinhole(PinholeTreeRoot),
 }
 
-impl SizeBytes for TransformTreeRootInfo {
-    fn heap_size_bytes(&self) -> u64 {
-        match self {
-            Self::TransformFrameRoot => 0,
-            Self::Pinhole(pinhole_tree_root) => pinhole_tree_root.heap_size_bytes(),
-        }
-    }
-}
-
 /// Analyzes & propagates the transform graph of a recording at a given time & timeline.
 ///
 /// Identifies different transform trees present in the recording and computes transforms relative to their roots,
 /// such that arbitrary transforms within the tree can be resolved (relatively) quickly.
-#[derive(Default, Clone)]
+#[derive(Default, Clone, re_byte_size::SizeBytes)]
 pub struct TransformForest {
+    /// Are there any chunks missing from the chunk store,
+    /// leading to an incomplete forest?
+    #[size_bytes(ignore)]
+    missing_chunk_reporter: MissingChunkReporter,
+
     /// All known tree roots.
     roots: IntMap<TransformFrameIdHash, TransformTreeRootInfo>,
 
@@ -213,10 +200,8 @@ impl TransformForest {
         // Repeat steps 1) & 2) until we've processed all frames.
 
         let transforms = transform_cache.transforms_for_timeline(query.timeline());
-        let mut unprocessed_frames: IntSet<_> = transform_cache
-            .frame_id_registry()
-            .iter_frame_id_hashes()
-            .collect();
+        let frame_id_registry = transform_cache.frame_id_registry();
+        let mut unprocessed_frames: IntSet<_> = frame_id_registry.iter_frame_id_hashes().collect();
         let mut transform_stack = Vec::new(); // Keep pushing & draining from the same vector as a simple performance optimization.
 
         let mut forest = Self::default();
@@ -226,10 +211,11 @@ impl TransformForest {
             // Walk as long as we can until we hit something we already processed or end up in a dead end.
             walk_towards_parent(
                 entity_db,
+                &forest.missing_chunk_reporter,
                 query,
                 current_frame,
-                transform_cache.frame_id_registry(),
-                transforms,
+                &frame_id_registry,
+                &transforms,
                 &mut unprocessed_frames,
                 &mut transform_stack,
             );
@@ -247,6 +233,12 @@ impl TransformForest {
         }
 
         forest
+    }
+
+    /// Were there any chunks missing from the chunk store,
+    /// leading to an incomplete forest?
+    pub fn any_missing_chunks(&self) -> bool {
+        self.missing_chunk_reporter.any_missing()
     }
 
     /// Adds a stack of transforms produced by [`walk_towards_parent`] to the forest.
@@ -271,7 +263,10 @@ impl TransformForest {
             // We have a connection further up the stack. That means we must have stopped because we already know that target!
             if let Some(root_from_frame) = self.root_from_frame.get(&parent_frame) {
                 // Yes, we can short-circuit to a known root!
-                debug_assert!(self.roots.contains_key(&root_from_frame.root));
+                debug_assert!(
+                    self.roots.contains_key(&root_from_frame.root),
+                    "Known root must be registered as such"
+                );
                 (root_from_frame.root, root_from_frame.target_from_source)
             } else {
                 // We didn't know the target. Must mean that the target is a new root!
@@ -346,46 +341,50 @@ impl TransformForest {
                 target_from_source: root_from_current_frame,
             };
 
-            let previous_transform = self
+            let _previous_transform = self
                 .root_from_frame
                 .insert(transforms.child_frame, transform_root_from_current);
 
             // TODO(RR-2667): Build out into cycle detection
-            debug_assert!(
-                previous_transform.is_none(),
-                "Root from frame relationship was added already for {:?}. Now targeting {:?}, previously {:?}",
-                cache
-                    .frame_id_registry()
-                    .lookup_frame_id(transforms.child_frame),
-                cache.frame_id_registry().lookup_frame_id(root_frame),
-                previous_transform.and_then(|f| cache.frame_id_registry().lookup_frame_id(f.root))
-            );
+            #[cfg(debug_assertions)]
+            {
+                let frame_id_registry = cache.frame_id_registry();
+                debug_assert!(
+                    _previous_transform.is_none(),
+                    "Root from frame relationship was added already for {:?}. Now targeting {:?}, previously {:?}",
+                    frame_id_registry.lookup_frame_id(transforms.child_frame),
+                    frame_id_registry.lookup_frame_id(root_frame),
+                    _previous_transform.and_then(|f| frame_id_registry.lookup_frame_id(f.root))
+                );
+            }
 
             root_from_target = root_from_current_frame;
         }
     }
 }
 
-impl SizeBytes for TransformForest {
-    fn heap_size_bytes(&self) -> u64 {
+impl re_byte_size::MemUsageTreeCapture for TransformForest {
+    fn capture_mem_usage_tree(&self) -> re_byte_size::MemUsageTree {
         re_tracing::profile_function!();
 
         let Self {
+            missing_chunk_reporter: _,
             roots,
             root_from_frame,
         } = self;
 
-        roots.heap_size_bytes() + root_from_frame.heap_size_bytes()
+        re_byte_size::MemUsageNode::new()
+            .with_child("roots", roots.total_size_bytes())
+            .with_child("root_from_frame", root_from_frame.total_size_bytes())
+            .into_tree()
     }
 }
-
-static UNKNOWN_TRANSFORM_ID: std::sync::LazyLock<TransformFrameId> =
-    std::sync::LazyLock::new(|| TransformFrameId::new("<unknown>"));
 
 /// Starting from a `current_frame`, walks towards the parent and accumulates transforms into `transform_stack`.
 /// Stops until not more connection is found or an already processed `frame_id` is hit.
 fn walk_towards_parent(
     entity_db: &EntityDb,
+    missing_chunk_reporter: &MissingChunkReporter,
     query: &LatestAtQuery,
     current_frame: TransformFrameIdHash,
     id_registry: &FrameIdRegistry,
@@ -405,7 +404,14 @@ fn walk_towards_parent(
         && unprocessed_frames.remove(&current_frame)
     {
         // We either already processed this frame, or we reached the end of our path if this source is not in the list of unprocessed frames.
-        let transforms = transforms_at(current_frame, entity_db, query, id_registry, transforms);
+        let transforms = transforms_at(
+            entity_db,
+            missing_chunk_reporter,
+            current_frame,
+            query,
+            id_registry,
+            transforms,
+        );
         next_frame = transforms.parent_frame;
 
         // No matter whether there's a next frame or not, we push the transform information we got about this frame onto the stack
@@ -668,12 +674,8 @@ fn pinhole3d_from_image_plane(
     resolved_pinhole_projection: &ResolvedPinholeProjection,
     pinhole_image_plane_distance: f64,
 ) -> glam::DAffine3 {
-    let ResolvedPinholeProjection {
-        parent: _, // TODO(andreas): Make use of this.
-        image_from_camera,
-        resolution: _,
-        view_coordinates,
-    } = resolved_pinhole_projection;
+    let image_from_camera = resolved_pinhole_projection.image_from_camera;
+    let view_coordinates = resolved_pinhole_projection.view_coordinates;
 
     // Everything under a pinhole camera is a 2D projection, thus doesn't actually have a proper 3D representation.
     // Our visualization interprets this as looking at a 2D image plane from a single point (the pinhole).
@@ -716,8 +718,9 @@ struct ParentChildTransforms {
 }
 
 fn transforms_at(
-    child_frame: TransformFrameIdHash,
     entity_db: &EntityDb,
+    missing_chunk_reporter: &MissingChunkReporter,
+    child_frame: TransformFrameIdHash,
     query: &LatestAtQuery,
     id_registry: &FrameIdRegistry,
     transforms_for_timeline: &CachedTransformsForTimeline,
@@ -728,8 +731,10 @@ fn transforms_at(
     let pinhole_projection;
 
     if let Some(source_transforms) = transforms_for_timeline.frame_transforms(child_frame) {
-        parent_from_child = source_transforms.latest_at_transform(entity_db, query);
-        pinhole_projection = source_transforms.latest_at_pinhole(entity_db, query);
+        parent_from_child =
+            source_transforms.latest_at_transform(entity_db, missing_chunk_reporter, query);
+        pinhole_projection =
+            source_transforms.latest_at_pinhole(entity_db, missing_chunk_reporter, query);
     } else {
         parent_from_child = None;
         pinhole_projection = None;
@@ -741,18 +746,32 @@ fn transforms_at(
         if let Some(pinhole_projection) = pinhole_projection.as_ref()
             && pinhole_projection.parent != transform.parent
         {
-            re_log::warn_once!(
-                "The transform frame {:?} is connected to {:?} via a pinhole but also connected to {:?} via a transform. Any frame is only ever allowed to have a single parent at any given time.",
-                id_registry
-                    .lookup_frame_id(child_frame)
-                    .unwrap_or(&UNKNOWN_TRANSFORM_ID),
-                id_registry
-                    .lookup_frame_id(pinhole_projection.parent)
-                    .unwrap_or(&UNKNOWN_TRANSFORM_ID),
-                id_registry
-                    .lookup_frame_id(transform.parent)
-                    .unwrap_or(&UNKNOWN_TRANSFORM_ID),
-            );
+            let transform_frame = id_registry.lookup_frame_id(child_frame);
+            let pinhole_parent_frame = id_registry.lookup_frame_id(pinhole_projection.parent);
+            let transform_parent_frame = id_registry.lookup_frame_id(transform.parent);
+
+            // If any of the frames ids can't be resolved to a string, we're in bigger trouble and can't show a useful error
+            // as this implies that the registry is in an invalid state.
+            if let Some(transform_frame) = transform_frame
+                && let Some(pinhole_parent_frame) = pinhole_parent_frame
+                && let Some(transform_parent_frame) = transform_parent_frame
+            {
+                re_log::warn_once!(
+                    "The transform frame {transform_frame:?} is connected to {pinhole_parent_frame:?} via a pinhole but also connected to {transform_parent_frame:?} via a transform. Any frame is only ever allowed to have a single parent at any given time.",
+                );
+            } else {
+                for frame in [
+                    transform_frame,
+                    pinhole_parent_frame,
+                    transform_parent_frame,
+                ] {
+                    if frame.is_none() {
+                        re_log::debug_panic!(
+                            "Couldn't resolve frame id for {frame:?} in the registry, even though it was present in the transforms for timeline.",
+                        );
+                    }
+                }
+            }
         }
 
         Some(transform.parent)
@@ -790,6 +809,8 @@ mod tests {
     use re_sdk_types::components::TransformFrameId;
     use re_sdk_types::{RowId, archetypes, components};
 
+    use crate::transform_resolution_cache::ResolvedPinholeProjectionCached;
+
     use super::*;
 
     fn test_pinhole() -> archetypes::Pinhole {
@@ -798,12 +819,15 @@ mod tests {
 
     fn test_resolved_pinhole(parent: TransformFrameIdHash) -> ResolvedPinholeProjection {
         ResolvedPinholeProjection {
-            parent,
-            image_from_camera: components::PinholeProjection::from_focal_length_and_principal_point(
-                [1.0, 2.0],
-                [50.0, 100.0],
-            ),
-            resolution: Some([100.0, 200.0].into()),
+            cached: ResolvedPinholeProjectionCached {
+                parent,
+                image_from_camera:
+                    components::PinholeProjection::from_focal_length_and_principal_point(
+                        [1.0, 2.0],
+                        [50.0, 100.0],
+                    ),
+                resolution: Some([100.0, 200.0].into()),
+            },
             view_coordinates: archetypes::Pinhole::DEFAULT_CAMERA_XYZ,
         }
     }
@@ -887,11 +911,15 @@ mod tests {
     #[test]
     fn test_simple_entity_hierarchy() -> Result<(), Box<dyn std::error::Error>> {
         let test_scene = entity_hierarchy_test_scene()?;
-        let mut transform_cache = TransformResolutionCache::default();
-        transform_cache.add_chunks(test_scene.storage_engine().store().iter_physical_chunks());
+        let mut transform_cache = TransformResolutionCache::new(&test_scene);
+        transform_cache.ensure_timeline_is_initialized(
+            test_scene.storage_engine().store(),
+            TimelineName::log_tick(),
+        );
 
         let query = LatestAtQuery::latest(TimelineName::log_tick());
         let transform_forest = TransformForest::new(&test_scene, &transform_cache, &query);
+        assert!(!transform_forest.any_missing_chunks());
 
         // Check that we get the expected roots.
         {
@@ -1092,11 +1120,15 @@ mod tests {
         multiple_entities: bool,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let test_scene = simple_frame_hierarchy_test_scene(multiple_entities)?;
-        let mut transform_cache = TransformResolutionCache::default();
-        transform_cache.add_chunks(test_scene.storage_engine().store().iter_physical_chunks());
+        let mut transform_cache = TransformResolutionCache::new(&test_scene);
+        transform_cache.ensure_timeline_is_initialized(
+            test_scene.storage_engine().store(),
+            TimelineName::log_tick(),
+        );
 
         let query = LatestAtQuery::latest(TimelineName::log_tick());
         let transform_forest = TransformForest::new(&test_scene, &transform_cache, &query);
+        assert!(!transform_forest.any_missing_chunks());
 
         // Check that we get the expected roots.
         {
@@ -1227,6 +1259,7 @@ mod tests {
             let test_scene = EntityDb::new(StoreInfo::testing().store_id);
             let transform_cache = TransformResolutionCache::default();
             let transform_forest = TransformForest::new(&test_scene, &transform_cache, &query);
+            assert!(!transform_forest.any_missing_chunks());
 
             assert_eq!(
                 transform_forest
@@ -1250,6 +1283,7 @@ mod tests {
             let transform_cache = TransformResolutionCache::default();
             let test_scene = simple_frame_hierarchy_test_scene(true)?;
             let transform_forest = TransformForest::new(&test_scene, &transform_cache, &query);
+            assert!(!transform_forest.any_missing_chunks());
 
             // The forest doesn't know about any of the frames despite having seen the populated store.
             assert_eq!(
@@ -1271,15 +1305,18 @@ mod tests {
 
         // Handle creation from partially filled cache gracefully.
         {
-            let mut transform_cache = TransformResolutionCache::default();
             let mut test_scene = simple_frame_hierarchy_test_scene(true)?;
-            transform_cache.add_chunks(test_scene.storage_engine().store().iter_physical_chunks());
+            let mut transform_cache = TransformResolutionCache::new(&test_scene);
+            transform_cache.ensure_timeline_is_initialized(
+                test_scene.storage_engine().store(),
+                query.timeline().unwrap(),
+            );
 
             // Add a connection the cache doesn't know about.
             test_scene.add_chunk(&Arc::new(
                 Chunk::builder(EntityPath::from("transforms"))
                     .with_archetype_auto_row(
-                        [(query.timeline(), TimeCell::from_sequence(0))],
+                        [(query.timeline().unwrap(), TimeCell::from_sequence(0))],
                         &archetypes::Transform3D::from_translation([4.0, 0.0, 0.0])
                             .with_child_frame("child2")
                             .with_parent_frame("top"),
@@ -1288,6 +1325,7 @@ mod tests {
             ))?;
             // But the forest seen the scene with it.
             let transform_forest = TransformForest::new(&test_scene, &transform_cache, &query);
+            assert!(!transform_forest.any_missing_chunks());
 
             // Forest doesn't know about the newly added `child2` frame.
             assert_eq!(
@@ -1310,26 +1348,29 @@ mod tests {
         // Extra nasty case: given a cold cache, the cache knows about everything except for a row _on the same time_ which talks about a new frame.
         // (this also makes sure that we get the right transform back for the known frames even when a latest-at query would yield something the cache doesn't know about)
         {
-            let mut transform_cache = TransformResolutionCache::default();
             let mut test_scene = simple_frame_hierarchy_test_scene(true)?;
 
             test_scene.add_chunk(&Arc::new(
                 Chunk::builder(EntityPath::from("transforms"))
                     .with_archetype_auto_row(
-                        [(query.timeline(), TimeCell::from_sequence(0))],
+                        [(query.timeline().unwrap(), TimeCell::from_sequence(0))],
                         &archetypes::Transform3D::from_translation([4.0, 0.0, 0.0])
                             .with_child_frame("child2")
                             .with_parent_frame("top"),
                     )
                     .build()?,
             ))?;
-            transform_cache.add_chunks(test_scene.storage_engine().store().iter_physical_chunks());
+            let mut transform_cache = TransformResolutionCache::new(&test_scene);
+            transform_cache.ensure_timeline_is_initialized(
+                test_scene.storage_engine().store(),
+                query.timeline().unwrap(),
+            );
 
             test_scene.add_chunk(&Arc::new(
                 // Add a connection the cache doesn't know about.
                 Chunk::builder(EntityPath::from("transforms"))
                     .with_archetype_auto_row(
-                        [(query.timeline(), TimeCell::from_sequence(0))], // Same time before, different parent frame!
+                        [(query.timeline().unwrap(), TimeCell::from_sequence(0))], // Same time before, different parent frame!
                         &archetypes::Transform3D::from_translation([5.0, 0.0, 0.0])
                             .with_child_frame("child2")
                             .with_parent_frame("new_top"),
@@ -1337,8 +1378,9 @@ mod tests {
                     .build()?,
             ))?;
             let transform_forest = TransformForest::new(&test_scene, &transform_cache, &query);
+            assert!(transform_forest.any_missing_chunks());
 
-            // Forest sees the new relationship despite not having it reported since the cold cache will pick it up.
+            // Forest can't see the new relationship since it hasn't been reported to the cache.
             assert_eq!(
                 transform_forest
                     .transform_from_to(
@@ -1349,12 +1391,9 @@ mod tests {
                     .collect::<Vec<_>>(),
                 vec![(
                     TransformFrameIdHash::from_str("new_top"),
-                    Ok(TreeTransform {
-                        root: TransformFrameIdHash::from_str("new_top"),
-                        target_from_source: glam::DAffine3::from_translation(glam::dvec3(
-                            -5.0, 0.0, 0.0
-                        )),
-                    })
+                    Err(TransformFromToError::UnknownSourceFrame(
+                        TransformFrameIdHash::from_str("new_top")
+                    ))
                 )]
             );
             assert_eq!(
@@ -1370,12 +1409,80 @@ mod tests {
                     Err(TransformFromToError::NoPathBetweenFrames {
                         target: TransformFrameIdHash::from_str("child2"),
                         src: TransformFrameIdHash::from_str("top"),
-                        target_root: TransformFrameIdHash::from_str("new_top"),
+                        target_root: TransformFrameIdHash::from_str("child2"),
                         source_root: TransformFrameIdHash::from_str("root"),
                     })
                 )]
             );
         }
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_implicit_transform_at_root_being_ignored_with_warning()
+    -> Result<(), Box<dyn std::error::Error>> {
+        re_log::setup_logging();
+        let log_rx = re_log::add_log_msg_receiver(re_log::LevelFilter::WARN);
+
+        let mut entity_db = EntityDb::new(StoreInfo::testing().store_id);
+
+        // Add a transform that tries to make a root frame a child of something else
+        entity_db.add_chunk(&Arc::new(
+            Chunk::builder(EntityPath::root())
+                .with_archetype_auto_row(
+                    TimePoint::STATIC,
+                    &archetypes::Transform3D::from_translation([1.0, 0.0, 0.0]),
+                )
+                .build()?,
+        ))?;
+        entity_db.add_chunk(&Arc::new(
+            Chunk::builder("/child")
+                .with_archetype_auto_row(
+                    TimePoint::STATIC,
+                    &archetypes::Transform3D::from_translation([0.0, 1.0, 0.0]),
+                )
+                .build()?,
+        ))?;
+
+        let query = LatestAtQuery::latest(TimelineName::log_tick());
+        let mut transform_cache = TransformResolutionCache::new(&entity_db);
+        transform_cache.ensure_timeline_is_initialized(
+            entity_db.storage_engine().store(),
+            query.timeline().unwrap(),
+        );
+        let transform_forest = TransformForest::new(&entity_db, &transform_cache, &query);
+        assert!(!transform_forest.any_missing_chunks());
+
+        // Child still connects up to the root.
+        assert_eq!(
+            transform_forest
+                .transform_from_to(
+                    TransformFrameIdHash::from_entity_path(&"child".into()),
+                    std::iter::once(TransformFrameIdHash::from_entity_path(&EntityPath::root())),
+                    &|_| 1.0
+                )
+                .collect::<Vec<_>>(),
+            vec![(
+                TransformFrameIdHash::from_entity_path(&EntityPath::root()),
+                Ok(TreeTransform {
+                    root: TransformFrameIdHash::from_entity_path(&EntityPath::root()),
+                    target_from_source: glam::DAffine3::from_translation(glam::dvec3(
+                        0.0, -1.0, 0.0
+                    )),
+                })
+            )]
+        );
+
+        let received_log = log_rx.try_recv()?;
+        assert_eq!(received_log.level, re_log::Level::WARN);
+        assert!(
+            received_log
+                .message
+                .contains("Ignoring transform at root entity"),
+            "Expected warning about ignoring implicit root parent frame, got: {}",
+            received_log.message
+        );
 
         Ok(())
     }

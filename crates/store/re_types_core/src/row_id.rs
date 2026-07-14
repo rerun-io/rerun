@@ -13,13 +13,15 @@ use crate::Loggable as _;
 ///
 /// ### Uniqueness
 ///
-/// Duplicated [`RowId`]s within a single recording is considered undefined behavior.
+/// [`RowId::new`] generates fresh monotonic IDs, so each logged row normally has a unique
+/// [`RowId`]. Multiple chunks may share a [`RowId`] though, and queries handle that correctly.
 ///
-/// While it is benign in most cases, care has to be taken when manually crafting [`RowId`]s.
-/// Ideally: don't do so and stick to [`RowId::new`] instead to avoid bad surprises.
+/// But there are secondary caches that use row id in a way that requires uniqueness for a
+/// specific component.
 ///
-/// This makes it easy to build and maintain secondary indices around [`RowId`]s with few to no
-/// extraneous state tracking.
+/// ### Immutability
+///
+/// Because of secondary caches, a row id & component pair should never be mutated.
 ///
 /// ### Query
 ///
@@ -58,8 +60,10 @@ use crate::Loggable as _;
     Hash,
     bytemuck::AnyBitPattern,
     bytemuck::NoUninit,
+    re_byte_size::SizeBytes,
+    serde::Deserialize,
+    serde::Serialize,
 )]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct RowId(pub(crate) re_tuid::Tuid);
 
 impl std::fmt::Display for RowId {
@@ -149,20 +153,8 @@ impl RowId {
 
     /// Panics if the array is of the wrong width
     pub fn slice_from_arrow(array: &arrow::array::FixedSizeBinaryArray) -> &[Self] {
-        debug_assert_eq!(array.data_type(), &Self::arrow_datatype());
+        re_log::debug_assert_eq!(array.data_type(), &Self::arrow_datatype());
         bytemuck::cast_slice(array.value_data())
-    }
-}
-
-impl re_byte_size::SizeBytes for RowId {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
     }
 }
 

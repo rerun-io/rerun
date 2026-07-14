@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING, Annotated, Literal
 
 import numpy as np
 import numpy.typing as npt
+
 import rerun as rr
 import rerun.blueprint as rrb
 
@@ -98,8 +99,7 @@ class RRTTree:
         while len(nxt) >= 1:
             cur = nxt.pop()
             yield cur
-            for child in cur.children:
-                nxt.append(child)
+            nxt.extend(cur.children)
 
     def segments(self) -> list[tuple[Point2D, Point2D]]:
         """Returns all the edges of the tree."""
@@ -176,7 +176,7 @@ def rrt(
     max_step_size: float,
     neighborhood_size: float,
     num_iter: int | None,
-) -> list[tuple[Point2D, Point2D]] | None:
+) -> list[Point2D] | None:
     tree = RRTTree(start)
 
     path = None

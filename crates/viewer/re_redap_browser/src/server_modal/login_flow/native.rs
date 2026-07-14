@@ -5,7 +5,7 @@ use egui::mutex::Mutex;
 use re_auth::callback_server::OauthCallbackServer;
 use re_auth::oauth::Credentials;
 use re_auth::oauth::api::{AuthenticateWithCode, Pkce, send_native};
-use re_ui::{Variant, icons};
+use re_ui::{UiExt as _, Variant, icons};
 
 use super::ActionButton;
 
@@ -25,7 +25,7 @@ impl State {
         // The native login flow uses oauth 2.0 code authorization flow with PKCE
 
         if self.pending_authentication {
-            ui.spinner();
+            ui.loading_indicator("Waiting for native login");
         } else {
             ui.horizontal(|ui| {
                 if ActionButton::new(&icons::EXTERNAL_LINK, "Log in", "Link opened!")
@@ -40,13 +40,12 @@ impl State {
                     .show(ui, &mut self.show_copy_feedback)
                     .clicked()
                 {
-                    ui.ctx()
-                        .copy_text(self.callback_server.get_login_url().to_owned());
+                    ui.copy_text(self.callback_server.get_login_url().to_owned());
                 }
             });
         }
 
-        ui.ctx().request_repaint_after(Duration::from_millis(10));
+        ui.request_repaint_after(Duration::from_millis(10));
     }
 
     pub fn done(&mut self) -> Result<Option<Credentials>, String> {
@@ -84,7 +83,7 @@ impl State {
 
                             on_done(Ok(credentials));
                         }
-                        Err(res) => on_done(Err(res.to_string())),
+                        Err(err) => on_done(Err(err.to_string())),
                     },
                 );
                 self.pending_authentication = true;
@@ -96,7 +95,13 @@ impl State {
         }
     }
 
-    pub fn open(_ui: &mut egui::Ui) -> Result<Self, String> {
+    #[expect(clippy::needless_pass_by_ref_mut)] // compat with web api
+    pub fn start(&mut self) -> Result<(), String> {
+        webbrowser::open(self.callback_server.get_login_url()).map_err(|err| err.to_string())?;
+        Ok(())
+    }
+
+    pub fn open(_egui_ctx: &egui::Context) -> Result<Self, String> {
         let pkce = Pkce::new();
 
         // Whenever the modal is open, we always keep the callback server running:

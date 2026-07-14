@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -32,7 +33,9 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// use ndarray::{Array, ShapeBuilder as _, s};
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_depth_image_3d").spawn()?;
+///     let rec =
+///         rerun::RecordingStreamBuilder::new("rerun_example_depth_image_3d")
+///             .spawn()?;
 ///
 ///     let width = 300;
 ///     let height = 200;
@@ -67,7 +70,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/depth_image_3d/924e9d4d6a39d63d4fdece82582855fdaa62d15e/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug, PartialEq, Default)]
+#[derive(Clone, Debug, PartialEq, Default, ::re_byte_size::SizeBytes)]
 pub struct DepthImage {
     /// The raw depth image data.
     pub buffer: Option<SerializedComponentBatch>,
@@ -118,6 +121,13 @@ pub struct DepthImage {
     /// Objects with higher values are drawn on top of those with lower values.
     /// Defaults to `-20.0`.
     pub draw_order: Option<SerializedComponentBatch>,
+
+    /// Optional filter used when a texel is magnified (displayed larger than a screen pixel) in 2D views.
+    ///
+    /// The filter is applied to the scalar values *before* they are mapped to color via the colormap.
+    ///
+    /// Has no effect in 3D views.
+    pub magnification_filter: Option<SerializedComponentBatch>,
 }
 
 impl DepthImage {
@@ -126,11 +136,13 @@ impl DepthImage {
     /// The corresponding component is [`crate::components::ImageBuffer`].
     #[inline]
     pub fn descriptor_buffer() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.DepthImage".into()),
-            component: "DepthImage:buffer".into(),
-            component_type: Some("rerun.components.ImageBuffer".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.DepthImage".into()),
+                component: "DepthImage:buffer".into(),
+                component_type: Some("rerun.components.ImageBuffer".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::format`].
@@ -138,11 +150,13 @@ impl DepthImage {
     /// The corresponding component is [`crate::components::ImageFormat`].
     #[inline]
     pub fn descriptor_format() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.DepthImage".into()),
-            component: "DepthImage:format".into(),
-            component_type: Some("rerun.components.ImageFormat".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.DepthImage".into()),
+                component: "DepthImage:format".into(),
+                component_type: Some("rerun.components.ImageFormat".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::meter`].
@@ -150,11 +164,13 @@ impl DepthImage {
     /// The corresponding component is [`crate::components::DepthMeter`].
     #[inline]
     pub fn descriptor_meter() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.DepthImage".into()),
-            component: "DepthImage:meter".into(),
-            component_type: Some("rerun.components.DepthMeter".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.DepthImage".into()),
+                component: "DepthImage:meter".into(),
+                component_type: Some("rerun.components.DepthMeter".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::colormap`].
@@ -162,11 +178,13 @@ impl DepthImage {
     /// The corresponding component is [`crate::components::Colormap`].
     #[inline]
     pub fn descriptor_colormap() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.DepthImage".into()),
-            component: "DepthImage:colormap".into(),
-            component_type: Some("rerun.components.Colormap".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.DepthImage".into()),
+                component: "DepthImage:colormap".into(),
+                component_type: Some("rerun.components.Colormap".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::depth_range`].
@@ -174,11 +192,13 @@ impl DepthImage {
     /// The corresponding component is [`crate::components::ValueRange`].
     #[inline]
     pub fn descriptor_depth_range() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.DepthImage".into()),
-            component: "DepthImage:depth_range".into(),
-            component_type: Some("rerun.components.ValueRange".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.DepthImage".into()),
+                component: "DepthImage:depth_range".into(),
+                component_type: Some("rerun.components.ValueRange".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::point_fill_ratio`].
@@ -186,11 +206,13 @@ impl DepthImage {
     /// The corresponding component is [`crate::components::FillRatio`].
     #[inline]
     pub fn descriptor_point_fill_ratio() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.DepthImage".into()),
-            component: "DepthImage:point_fill_ratio".into(),
-            component_type: Some("rerun.components.FillRatio".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.DepthImage".into()),
+                component: "DepthImage:point_fill_ratio".into(),
+                component_type: Some("rerun.components.FillRatio".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::draw_order`].
@@ -198,11 +220,27 @@ impl DepthImage {
     /// The corresponding component is [`crate::components::DrawOrder`].
     #[inline]
     pub fn descriptor_draw_order() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.DepthImage".into()),
-            component: "DepthImage:draw_order".into(),
-            component_type: Some("rerun.components.DrawOrder".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.DepthImage".into()),
+                component: "DepthImage:draw_order".into(),
+                component_type: Some("rerun.components.DrawOrder".into()),
+            });
+        (*DESCRIPTOR).clone()
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::magnification_filter`].
+    ///
+    /// The corresponding component is [`crate::components::MagnificationFilter`].
+    #[inline]
+    pub fn descriptor_magnification_filter() -> ComponentDescriptor {
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.DepthImage".into()),
+                component: "DepthImage:magnification_filter".into(),
+                component_type: Some("rerun.components.MagnificationFilter".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -217,7 +255,7 @@ static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 2usize]> =
 static RECOMMENDED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
     std::sync::LazyLock::new(|| []);
 
-static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 5usize]> =
+static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 6usize]> =
     std::sync::LazyLock::new(|| {
         [
             DepthImage::descriptor_meter(),
@@ -225,10 +263,11 @@ static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 5usize]> =
             DepthImage::descriptor_depth_range(),
             DepthImage::descriptor_point_fill_ratio(),
             DepthImage::descriptor_draw_order(),
+            DepthImage::descriptor_magnification_filter(),
         ]
     });
 
-static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 7usize]> =
+static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 8usize]> =
     std::sync::LazyLock::new(|| {
         [
             DepthImage::descriptor_buffer(),
@@ -238,18 +277,22 @@ static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 7usize]> =
             DepthImage::descriptor_depth_range(),
             DepthImage::descriptor_point_fill_ratio(),
             DepthImage::descriptor_draw_order(),
+            DepthImage::descriptor_magnification_filter(),
         ]
     });
 
 impl DepthImage {
-    /// The total number of components in the archetype: 2 required, 0 recommended, 5 optional
-    pub const NUM_COMPONENTS: usize = 7usize;
+    /// The total number of components in the archetype: 2 required, 0 recommended, 6 optional
+    pub const NUM_COMPONENTS: usize = 8usize;
 }
 
 impl ::re_types_core::Archetype for DepthImage {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.archetypes.DepthImage".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.archetypes.DepthImage"
+        )
     }
 
     #[inline]
@@ -311,6 +354,14 @@ impl ::re_types_core::Archetype for DepthImage {
             .map(|array| {
                 SerializedComponentBatch::new(array.clone(), Self::descriptor_draw_order())
             });
+        let magnification_filter = arrays_by_descr
+            .get(&Self::descriptor_magnification_filter())
+            .map(|array| {
+                SerializedComponentBatch::new(
+                    array.clone(),
+                    Self::descriptor_magnification_filter(),
+                )
+            });
         Ok(Self {
             buffer,
             format,
@@ -319,6 +370,7 @@ impl ::re_types_core::Archetype for DepthImage {
             depth_range,
             point_fill_ratio,
             draw_order,
+            magnification_filter,
         })
     }
 }
@@ -335,6 +387,7 @@ impl ::re_types_core::AsComponents for DepthImage {
             self.depth_range.clone(),
             self.point_fill_ratio.clone(),
             self.draw_order.clone(),
+            self.magnification_filter.clone(),
         ]
         .into_iter()
         .flatten()
@@ -366,6 +419,7 @@ impl DepthImage {
             depth_range: None,
             point_fill_ratio: None,
             draw_order: None,
+            magnification_filter: None,
         }
     }
 
@@ -407,6 +461,10 @@ impl DepthImage {
             draw_order: Some(SerializedComponentBatch::new(
                 crate::components::DrawOrder::arrow_empty(),
                 Self::descriptor_draw_order(),
+            )),
+            magnification_filter: Some(SerializedComponentBatch::new(
+                crate::components::MagnificationFilter::arrow_empty(),
+                Self::descriptor_magnification_filter(),
             )),
         }
     }
@@ -451,6 +509,9 @@ impl DepthImage {
             self.draw_order
                 .map(|draw_order| draw_order.partitioned(_lengths.clone()))
                 .transpose()?,
+            self.magnification_filter
+                .map(|magnification_filter| magnification_filter.partitioned(_lengths.clone()))
+                .transpose()?,
         ];
         Ok(columns.into_iter().flatten())
     }
@@ -470,6 +531,7 @@ impl DepthImage {
         let len_depth_range = self.depth_range.as_ref().map(|b| b.array.len());
         let len_point_fill_ratio = self.point_fill_ratio.as_ref().map(|b| b.array.len());
         let len_draw_order = self.draw_order.as_ref().map(|b| b.array.len());
+        let len_magnification_filter = self.magnification_filter.as_ref().map(|b| b.array.len());
         let len = None
             .or(len_buffer)
             .or(len_format)
@@ -478,6 +540,7 @@ impl DepthImage {
             .or(len_depth_range)
             .or(len_point_fill_ratio)
             .or(len_draw_order)
+            .or(len_magnification_filter)
             .unwrap_or(0);
         self.columns(std::iter::repeat_n(1, len))
     }
@@ -658,17 +721,39 @@ impl DepthImage {
         self.draw_order = try_serialize_field(Self::descriptor_draw_order(), draw_order);
         self
     }
-}
 
-impl ::re_byte_size::SizeBytes for DepthImage {
+    /// Optional filter used when a texel is magnified (displayed larger than a screen pixel) in 2D views.
+    ///
+    /// The filter is applied to the scalar values *before* they are mapped to color via the colormap.
+    ///
+    /// Has no effect in 3D views.
     #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.buffer.heap_size_bytes()
-            + self.format.heap_size_bytes()
-            + self.meter.heap_size_bytes()
-            + self.colormap.heap_size_bytes()
-            + self.depth_range.heap_size_bytes()
-            + self.point_fill_ratio.heap_size_bytes()
-            + self.draw_order.heap_size_bytes()
+    pub fn with_magnification_filter(
+        mut self,
+        magnification_filter: impl Into<crate::components::MagnificationFilter>,
+    ) -> Self {
+        self.magnification_filter = try_serialize_field(
+            Self::descriptor_magnification_filter(),
+            [magnification_filter],
+        );
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::MagnificationFilter`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_magnification_filter`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_magnification_filter(
+        mut self,
+        magnification_filter: impl IntoIterator<
+            Item = impl Into<crate::components::MagnificationFilter>,
+        >,
+    ) -> Self {
+        self.magnification_filter = try_serialize_field(
+            Self::descriptor_magnification_filter(),
+            magnification_filter,
+        );
+        self
     }
 }

@@ -102,6 +102,25 @@ pub trait LogSink: Send + Sync + 'static + std::any::Any {
     fn default_batcher_config(&self) -> ChunkBatcherConfig {
         ChunkBatcherConfig::DEFAULT
     }
+
+    /// True if this sink can only finalize its on-disk format at process shutdown (i.e. file-like
+    /// sinks that write a footer at the end).
+    ///
+    /// Used to surface warnings when a batcher config would cause unbounded memory growth, since
+    /// these sinks have to keep per-chunk metadata around until the footer can be written.
+    fn defers_finalization_to_shutdown(&self) -> bool {
+        false
+    }
+
+    /// Best-effort finalization of any deferred-finalization children that can be retired in
+    /// place without tearing down the rest of this sink.
+    ///
+    /// Composite sinks (e.g. [`MultiSink`]) override this to drop their file-like children while
+    /// keeping streaming children alive. Returns `true` if the sink handled finalization itself,
+    /// or `false` if the caller must replace the entire sink to write footers.
+    fn finalize_deferred_in_place(&self) -> bool {
+        false
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -154,6 +173,23 @@ impl LogSink for MultiSink {
     #[inline]
     fn drain_backlog(&self) -> Vec<LogMsg> {
         Vec::new()
+    }
+
+    fn defers_finalization_to_shutdown(&self) -> bool {
+        self.0
+            .lock()
+            .iter()
+            .any(|sink| sink.defers_finalization_to_shutdown())
+    }
+
+    fn finalize_deferred_in_place(&self) -> bool {
+        // Drop any children that need a footer-style finalization. Their `Drop` impls join their
+        // writer threads, which is what actually emits the footer. Non-deferring children (e.g.
+        // a long-lived gRPC sink) stay live in this MultiSink.
+        self.0
+            .lock()
+            .retain(|sink| !sink.defers_finalization_to_shutdown());
+        true
     }
 
     fn default_batcher_config(&self) -> ChunkBatcherConfig {
@@ -238,6 +274,10 @@ impl MultiSinkCompatible for crate::sink::FileSink {}
 impl private::Sealed for crate::sink::GrpcSink {}
 
 impl MultiSinkCompatible for crate::sink::GrpcSink {}
+
+impl private::Sealed for crate::binary_stream_sink::BinaryStreamSink {}
+
+impl MultiSinkCompatible for crate::binary_stream_sink::BinaryStreamSink {}
 
 // ----------------------------------------------------------------------------
 
@@ -433,9 +473,7 @@ impl MemorySinkStorage {
             let mut inner = sink.inner.lock();
             inner.has_been_used = true;
 
-            for message in &inner.msgs {
-                encoder.append(message)?;
-            }
+            encoder.extend(inner.msgs.iter().map(Ok))?;
         }
 
         encoder.finish()?;

@@ -1,78 +1,79 @@
 use re_log_types::AbsoluteTimeRange;
 use re_log_types::external::arrow;
 use re_sdk_types::blueprint::archetypes::TimeAxis;
-use re_sdk_types::blueprint::components::LinkAxis;
+use re_sdk_types::blueprint::components::{LinkAxis, VisualizerInstructionId};
 use re_sdk_types::components::AggregationPolicy;
-use re_sdk_types::datatypes::{TimeRange, TimeRangeBoundary};
+use re_sdk_types::datatypes::TimeRange;
 use re_viewer_context::external::re_entity_db::InstancePath;
 use re_viewer_context::{ViewContext, ViewQuery, ViewerContext};
 use re_viewport_blueprint::{ViewProperty, ViewPropertyQueryError};
 
 use crate::aggregation::{AverageAggregator, MinMaxAggregator};
-use crate::{PlotPoint, PlotSeries, PlotSeriesKind, ScatterAttrs};
+use crate::{PlotPoint, PlotSeries, PlotSeriesKind};
 
 pub fn series_supported_datatypes() -> impl IntoIterator<Item = arrow::datatypes::DataType> {
     [
         arrow::datatypes::DataType::Float32,
         arrow::datatypes::DataType::Float64,
         arrow::datatypes::DataType::Int8,
+        arrow::datatypes::DataType::Int16,
         arrow::datatypes::DataType::Int32,
         arrow::datatypes::DataType::Int64,
         arrow::datatypes::DataType::UInt8,
+        arrow::datatypes::DataType::UInt16,
         arrow::datatypes::DataType::UInt32,
         arrow::datatypes::DataType::UInt64,
-        // TODO(andreas): Support bool types?
+        arrow::datatypes::DataType::Boolean,
     ]
 }
 
-/// Find the number of time units per physical pixel.
-pub fn determine_time_per_pixel(
+/// The overlap of an entity's query range with the range we have data on the entity for in the store.
+pub fn data_result_time_range(
     ctx: &ViewerContext<'_>,
-    plot_mem: Option<&egui_plot::PlotMemory>,
-) -> f64 {
-    let egui_ctx = ctx.egui_ctx();
+    data_result: &re_viewer_context::DataResult,
+    timeline: re_log_types::TimelineName,
+) -> AbsoluteTimeRange {
+    let current_time = ctx
+        .time_ctrl
+        .time_int()
+        .unwrap_or(re_log_types::TimeInt::ZERO);
 
-    // How many ui points per time unit?
-    let points_per_time = plot_mem
-        .as_ref()
-        .map_or(1.0, |mem| mem.transform().dpos_dvalue_x());
-    let pixels_per_time = egui_ctx.pixels_per_point() as f64 * points_per_time;
+    let query_range = match data_result.query_range() {
+        re_viewer_context::QueryRange::TimeRange(time_range) => *time_range,
 
-    // How many time units per physical pixel?
-    1.0 / pixels_per_time.max(f64::EPSILON)
+        re_viewer_context::QueryRange::LatestAt => {
+            // Latest-at doesn't make sense for time series and should also never happen.
+            re_log::debug_warn_once!(
+                "Unexpected LatestAt query for time series data result at path {:?}",
+                data_result.entity_path
+            );
+            TimeRange::EVERYTHING
+        }
+    };
+
+    let data_range = ctx
+        .recording()
+        .storage_engine()
+        .store()
+        .entity_time_range(&timeline, &data_result.entity_path);
+
+    AbsoluteTimeRange::from_relative_time_range(&query_range, current_time)
+        .intersection(data_range.unwrap_or(AbsoluteTimeRange::EMPTY))
+        .unwrap_or(AbsoluteTimeRange::EMPTY)
 }
 
-pub fn determine_time_range(
+/// The range we should be using for queries in time series visualizers.
+///
+/// This cuts the configured time range with what the view is looking at right now.
+pub fn determine_query_range(
     ctx: &ViewContext<'_>,
-    data_result: &re_viewer_context::DataResult,
+    configured_time_range: AbsoluteTimeRange,
 ) -> Result<AbsoluteTimeRange, ViewPropertyQueryError> {
     let current_time = ctx
         .viewer_ctx
         .time_ctrl
         .time_int()
         .unwrap_or(re_log_types::TimeInt::ZERO);
-
-    let query_range = data_result.query_range();
-
-    // Latest-at doesn't make sense for time series and should also never happen.
-    let visible_time_range = match query_range {
-        re_viewer_context::QueryRange::TimeRange(time_range) => time_range.clone(),
-        re_viewer_context::QueryRange::LatestAt => {
-            if cfg!(debug_assertions) {
-                re_log::error_once!(
-                    "[DEBUG] Unexpected LatestAt query for time series data result at path {:?}",
-                    data_result.entity_path
-                );
-            }
-            TimeRange {
-                start: TimeRangeBoundary::AT_CURSOR,
-                end: TimeRangeBoundary::AT_CURSOR,
-            }
-        }
-    };
-
-    let data_time_range =
-        AbsoluteTimeRange::from_relative_time_range(&visible_time_range, current_time);
 
     let time_axis = ViewProperty::from_archetype::<TimeAxis>(
         ctx.viewer_ctx.blueprint_db(),
@@ -93,26 +94,22 @@ pub fn determine_time_range(
     };
 
     let view_time_range = time_range_property
-        .component_or_empty::<re_sdk_types::blueprint::components::TimeRange>(
+        .component_or_fallback::<re_sdk_types::blueprint::components::TimeRange>(
+            ctx,
             re_sdk_types::blueprint::archetypes::TimeAxis::descriptor_view_range().component,
-        )
-        .ok()
-        .flatten();
+        )?;
 
-    let view_time_range = view_time_range
-        .map(|range| AbsoluteTimeRange::from_relative_time_range(&range, current_time))
-        // If we don't have an overridden time range, we want to show everything.
-        .unwrap_or(AbsoluteTimeRange::EVERYTHING);
+    let view_time_range =
+        AbsoluteTimeRange::from_relative_time_range(&view_time_range, current_time);
 
     Ok(view_time_range
-        .intersection(data_time_range)
+        .intersection(configured_time_range)
         .unwrap_or(AbsoluteTimeRange::EMPTY))
 }
 
 // We have a bunch of raw points, and now we need to group them into individual series.
 // A series is a continuous run of points with identical attributes: each time
 // we notice a change in attributes, we need a new series.
-#[expect(clippy::too_many_arguments)]
 pub fn points_to_series(
     instance_path: InstancePath,
     time_per_pixel: f64,
@@ -123,20 +120,13 @@ pub fn points_to_series(
     series_label: String,
     aggregator: AggregationPolicy,
     all_series: &mut Vec<PlotSeries>,
-) -> Result<(), String> {
-    re_tracing::profile_scope!("secondary", &instance_path.to_string());
+    visualizer_instruction_id: VisualizerInstructionId,
+) {
+    re_tracing::profile_function!(&instance_path.to_string());
 
     if points.is_empty() {
         // No values being present is not an error, maybe data comes in later!
-        return Ok(());
-    }
-
-    // Filter out static times if any slipped in.
-    // It's enough to check the first one since an entire column has to be either temporal or static.
-    if let Some(first) = points.first()
-        && first.time == re_log_types::TimeInt::STATIC.as_i64()
-    {
-        return Err("Can't plot data that was logged statically in a time series since there's no temporal dimension.".to_owned());
+        return;
     }
 
     let (aggregation_factor, points) = apply_aggregation(aggregator, time_per_pixel, points, query);
@@ -147,40 +137,17 @@ pub fn points_to_series(
             |time| time.as_i64(),
         );
 
-    if points.len() == 1 {
-        // Can't draw a single point as a continuous line, so fall back on scatter
-        let mut kind = points[0].attrs.kind;
-        if kind == PlotSeriesKind::Continuous {
-            kind = PlotSeriesKind::Scatter(ScatterAttrs::default());
-        }
-
-        all_series.push(PlotSeries {
-            visible,
-            id: egui::Id::new(&instance_path),
-            label: series_label,
-            color: points[0].attrs.color,
-            radius_ui: points[0].attrs.radius_ui,
-            kind,
-            points: vec![(points[0].time, points[0].value)],
-            instance_path,
-            aggregator,
-            aggregation_factor,
-            min_time,
-        });
-    } else {
-        add_series_runs(
-            visible,
-            series_label,
-            points,
-            instance_path,
-            aggregator,
-            aggregation_factor,
-            min_time,
-            all_series,
-        );
-    }
-
-    Ok(())
+    add_series_runs(
+        instance_path,
+        visible,
+        series_label,
+        points,
+        aggregator,
+        aggregation_factor,
+        min_time,
+        all_series,
+        visualizer_instruction_id,
+    );
 }
 
 /// Apply the given aggregation to the provided points.
@@ -248,45 +215,43 @@ pub fn apply_aggregation(
     (actual_aggregation_factor, points)
 }
 
-#[expect(clippy::too_many_arguments)]
 #[expect(clippy::needless_pass_by_value)]
 #[inline(never)] // Better callstacks on crashes
 fn add_series_runs(
+    instance_path: InstancePath,
     visible: bool,
     series_label: String,
     points: Vec<PlotPoint>,
-    instance_path: InstancePath,
     aggregator: AggregationPolicy,
     aggregation_factor: f64,
     min_time: i64,
     all_series: &mut Vec<PlotSeries>,
+    visualizer_instruction_id: VisualizerInstructionId,
 ) {
     re_tracing::profile_function!();
-
-    let id = egui::Id::new(&instance_path);
 
     let num_points = points.len();
     let mut attrs = points[0].attrs.clone();
     let mut series: PlotSeries = PlotSeries {
+        instance_path: instance_path.clone(),
         visible,
-        id,
         label: series_label.clone(),
         color: attrs.color,
         radius_ui: attrs.radius_ui,
         points: Vec::with_capacity(num_points),
+        value_range: None,
         kind: attrs.kind,
-        instance_path: instance_path.clone(),
         aggregator,
         aggregation_factor,
         min_time,
+        visualizer_instruction_id,
     };
 
     for (i, p) in points.into_iter().enumerate() {
         #[expect(clippy::branches_sharing_code)]
         if p.attrs == attrs {
             // Same attributes, just add to the current series.
-
-            series.points.push((p.time, p.value));
+            series.push_point(p.time, p.value);
         } else {
             // Attributes changed since last point, break up the current run into a
             // its own series, and start the next one.
@@ -295,22 +260,29 @@ fn add_series_runs(
             let prev_series = std::mem::replace(
                 &mut series,
                 PlotSeries {
+                    instance_path: instance_path.clone(),
                     visible,
-                    id,
                     label: series_label.clone(),
                     color: attrs.color,
                     radius_ui: attrs.radius_ui,
                     kind: attrs.kind,
                     points: Vec::with_capacity(num_points - i),
-                    instance_path: instance_path.clone(),
+                    value_range: None,
                     aggregator,
                     aggregation_factor,
                     min_time,
+                    visualizer_instruction_id,
                 },
             );
 
-            let cur_continuous = matches!(attrs.kind, PlotSeriesKind::Continuous);
-            let prev_continuous = matches!(prev_series.kind, PlotSeriesKind::Continuous);
+            let cur_continuous = matches!(
+                attrs.kind,
+                PlotSeriesKind::Continuous | PlotSeriesKind::Stepped(_)
+            );
+            let prev_continuous = matches!(
+                prev_series.kind,
+                PlotSeriesKind::Continuous | PlotSeriesKind::Stepped(_)
+            );
 
             #[expect(clippy::unwrap_used)] // prev_series.points can't be empty here
             let prev_point = *prev_series.points.last().unwrap();
@@ -320,11 +292,11 @@ fn add_series_runs(
             // too, then we want the 2 segments to appear continuous even though they
             // are actually split from a data standpoint.
             if cur_continuous && prev_continuous {
-                series.points.push(prev_point);
+                series.push_point(prev_point.0, prev_point.1);
             }
 
             // Add the point that triggered the split to the new segment.
-            series.points.push((p.time, p.value));
+            series.push_point(p.time, p.value);
         }
     }
 

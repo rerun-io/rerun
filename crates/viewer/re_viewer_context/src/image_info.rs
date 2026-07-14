@@ -15,6 +15,8 @@ pub fn resolution_of_image_at(
     query: &re_chunk_store::LatestAtQuery,
     entity_path: &re_log_types::EntityPath,
 ) -> Option<components::Resolution> {
+    re_tracing::profile_function!();
+
     let entity_db = ctx.recording();
     let storage_engine = entity_db.storage_engine();
 
@@ -22,7 +24,7 @@ pub fn resolution_of_image_at(
     // TODO(andreas): can we do this more efficiently?
     // TODO(andreas): doesn't take blueprint into account!
     let all_components = storage_engine
-        .store()
+        .schema()
         .all_components_for_entity(entity_path)?;
     let image_format_descr = all_components
         .get(&archetypes::Image::descriptor_format().component)
@@ -41,69 +43,101 @@ pub fn resolution_of_image_at(
         ]));
     }
 
-    // Check for an encoded image.
-    if let Some(((_time, row_id), blob)) = entity_db
-        .latest_at_component::<re_sdk_types::components::Blob>(
+    // Check for a video stream.
+    let video_stream_sample_component = archetypes::VideoStream::descriptor_sample().component;
+    if let Some(((_time, _), _)) = entity_db
+        .latest_at_component::<re_sdk_types::components::VideoSample>(
             entity_path,
             query,
-            archetypes::EncodedImage::descriptor_blob().component,
+            video_stream_sample_component,
         )
     {
-        let media_type = entity_db
-            .latest_at_component::<components::MediaType>(
-                entity_path,
-                query,
-                archetypes::EncodedImage::descriptor_media_type().component,
-            )
-            .map(|(_, c)| c);
-
-        let image = ctx
+        let video = ctx
             .store_context
-            .caches
-            .entry(|c: &mut crate::ImageDecodeCache| {
-                c.entry_encoded_color(
-                    row_id,
-                    archetypes::EncodedImage::descriptor_blob().component,
-                    &blob,
-                    media_type.as_ref(),
+            .memoizer(|c: &mut crate::VideoStreamCache| {
+                let codec = entity_db
+                    .latest_at_component::<components::VideoCodec>(
+                        entity_path,
+                        query,
+                        archetypes::EncodedImage::descriptor_media_type().component,
+                    )
+                    .map(|(_, c)| re_video::VideoCodec::from(c))
+                    .ok_or(crate::VideoStreamProcessingError::MissingCodec);
+                let codec = codec?;
+
+                c.entry(
+                    entity_db,
+                    entity_path,
+                    *ctx.time_ctrl.timeline_name(),
+                    ctx.app_options().video_decoder_settings(),
+                    video_stream_sample_component,
+                    codec,
                 )
             });
 
-        if let Ok(image) = image {
-            return Some(image.width_height_f32().into());
+        if let Ok(video) = video
+            && let Some(encoding_details) = &video.read_arc().video_descr().encoding_details
+        {
+            return Some(components::Resolution::from(
+                encoding_details.coded_dimensions.map(|e| e as f32),
+            ));
         }
     }
 
-    // Check for an encoded depth image.
-    if let Some(((_time, row_id), blob)) = entity_db
-        .latest_at_component::<re_sdk_types::components::Blob>(
-            entity_path,
-            query,
-            archetypes::EncodedDepthImage::descriptor_blob().component,
-        )
-    {
-        let media_type = entity_db
-            .latest_at_component::<components::MediaType>(
+    // Check for an encoded image & encoded depth image.
+    let encoded_image_resolution = |image_blob_component, media_type_component| {
+        if let Some(((_time, _), _)) = entity_db
+            .latest_at_component::<re_sdk_types::components::Blob>(
                 entity_path,
                 query,
-                archetypes::EncodedDepthImage::descriptor_media_type().component,
+                image_blob_component,
             )
-            .map(|(_, c)| c);
+        {
+            let video = ctx
+                .store_context
+                .memoizer(|c: &mut crate::VideoStreamCache| {
+                    let media_type = entity_db
+                        .latest_at_component::<components::MediaType>(
+                            entity_path,
+                            query,
+                            media_type_component,
+                        )
+                        .map(|(_, c)| c.to_string());
 
-        let depth_image = ctx
-            .store_context
-            .caches
-            .entry(|c: &mut crate::ImageDecodeCache| {
-                c.entry_encoded_depth(
-                    row_id,
-                    archetypes::EncodedDepthImage::descriptor_blob().component,
-                    &blob,
-                    media_type.as_ref(),
-                )
-            });
+                    c.entry(
+                        entity_db,
+                        entity_path,
+                        *ctx.time_ctrl.timeline_name(),
+                        ctx.app_options().video_decoder_settings(),
+                        image_blob_component,
+                        re_video::VideoCodec::ImageSequence(media_type),
+                    )
+                });
 
-        if let Ok(depth_image) = depth_image {
-            return Some(depth_image.width_height_f32().into());
+            if let Ok(video) = video
+                && let Some(encoding_details) = &video.read_arc().video_descr().encoding_details
+            {
+                return Some(components::Resolution::from(
+                    encoding_details.coded_dimensions.map(|e| e as f32),
+                ));
+            }
+        }
+
+        None
+    };
+
+    for (image_blob_component, media_type_component) in [
+        (
+            archetypes::EncodedImage::descriptor_blob().component,
+            archetypes::EncodedImage::descriptor_media_type().component,
+        ),
+        (
+            archetypes::EncodedDepthImage::descriptor_blob().component,
+            archetypes::EncodedDepthImage::descriptor_media_type().component,
+        ),
+    ] {
+        if let Some(res) = encoded_image_resolution(image_blob_component, media_type_component) {
+            return Some(res);
         }
     }
 
@@ -138,18 +172,8 @@ impl ColormapWithRange {
 }
 
 /// Hash used for identifying blobs stored in a store.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, re_byte_size::SizeBytes)]
 pub struct StoredBlobCacheKey(pub Hash64);
-
-impl re_byte_size::SizeBytes for StoredBlobCacheKey {
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    fn is_pod() -> bool {
-        true
-    }
-}
 
 impl StoredBlobCacheKey {
     pub const ZERO: Self = Self(Hash64::ZERO);
@@ -262,7 +286,7 @@ impl ImageInfo {
         } else {
             let num_channels = self.format.color_model().num_channels();
 
-            debug_assert!(channel < num_channels as u32);
+            re_log::debug_assert!(channel < num_channels as u32);
             if num_channels as u32 <= channel {
                 return None;
             }
@@ -309,12 +333,10 @@ impl ImageInfo {
             // But it can happen, e.g. when logging a `1x1xu8` image followed by a `1x1xf32` image
             // to the same entity path, and they are put in the same chunk.
 
-            if cfg!(debug_assertions) {
-                re_log::warn_once!(
-                    "The image buffer was not aligned to the element type {}",
-                    std::any::type_name::<T>()
-                );
-            }
+            re_log::debug_warn_once!(
+                "The image buffer was not aligned to the element type {}",
+                std::any::type_name::<T>()
+            );
             re_tracing::profile_scope!("copy_image_buffer");
 
             let mut dest = vec![T::zeroed(); num_elements];

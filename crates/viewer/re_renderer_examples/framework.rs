@@ -36,6 +36,25 @@ pub trait Example {
     fn on_key_event(&mut self, _event: winit::event::KeyEvent) {}
 
     fn on_cursor_moved(&mut self, _position_in_pixel: glam::UVec2) {}
+
+    fn suppress_frame_time_logging(&self) -> bool {
+        false
+    }
+
+    fn present_mode(&self) -> wgpu::PresentMode {
+        wgpu::PresentMode::AutoVsync
+    }
+
+    fn should_exit(&self) -> bool {
+        false
+    }
+
+    fn on_frame_finished(
+        &mut self,
+        _re_ctx: &RenderContext,
+        _submission_index: wgpu::SubmissionIndex,
+    ) {
+    }
 }
 
 #[allow(clippy::allow_attributes, dead_code)] // false positive
@@ -111,16 +130,15 @@ impl<E: Example + 'static> Application<E> {
         // Run without validation layers, they can be annoying on shader reload depending on the backend.
         instance_desc.flags.remove(wgpu::InstanceFlags::VALIDATION);
 
-        let instance = wgpu::Instance::new(&instance_desc);
+        let instance = wgpu::Instance::new(instance_desc);
         let surface = instance.create_surface(window.clone()).unwrap();
-        let adapter = instance
-            .request_adapter(&wgpu::RequestAdapterOptions {
-                power_preference: wgpu::PowerPreference::HighPerformance,
-                force_fallback_adapter: false,
-                compatible_surface: Some(&surface),
-            })
-            .await
-            .context("failed to find an appropriate adapter")?;
+        let adapter = {
+            let enabled_backends = re_renderer::device_caps::default_backends();
+            let adapters = instance.enumerate_adapters(enabled_backends).await;
+            re_renderer::device_caps::select_adapter(&adapters, enabled_backends, Some(&surface))
+                .map_err(anyhow::Error::msg)
+                .context("failed to find an appropriate adapter")?
+        };
 
         let device_caps = DeviceCaps::from_adapter(&adapter)?;
         let (device, queue) = adapter
@@ -167,9 +185,7 @@ impl<E: Example + 'static> Application<E> {
         }
 
         let surface_config = wgpu::SurfaceConfiguration {
-            // Use AutoNoVSync if you want to do quick perf checking.
-            // Otherwise, use AutoVsync is much more pleasant to use - laptops don't heat up and desktop won't have annoying coil whine on trivial examples.
-            present_mode: wgpu::PresentMode::AutoVsync,
+            present_mode: self.example.present_mode(),
             format: self.re_ctx.output_format_color(),
             view_formats: vec![self.re_ctx.output_format_color()],
             ..self
@@ -181,7 +197,7 @@ impl<E: Example + 'static> Application<E> {
         self.window.request_redraw();
     }
 
-    fn on_window_event(&mut self, event: WindowEvent) {
+    fn on_window_event(&mut self, event: WindowEvent) -> bool {
         match event {
             WindowEvent::Resized(size) => {
                 self.configure_surface(size);
@@ -195,30 +211,26 @@ impl<E: Example + 'static> Application<E> {
                 .on_cursor_moved(glam::uvec2(position.x as u32, position.y as u32)),
 
             WindowEvent::RedrawRequested => {
-                self.re_ctx.begin_frame();
-
-                // native debug build
-                #[cfg(all(not(target_arch = "wasm32"), debug_assertions))]
                 let frame = match self.surface.get_current_texture() {
-                    Ok(frame) => frame,
-                    Err(wgpu::SurfaceError::Timeout | wgpu::SurfaceError::Outdated) => {
-                        // We haven't been able to present anything to the swapchain for
-                        // a while, because the pipeline is poisoned.
-                        // Recreate a sane surface to restart the cycle and see if the
-                        // user has fixed the issue.
-                        self.configure_surface(self.window.inner_size());
-                        return;
+                    wgpu::CurrentSurfaceTexture::Success(surface_texture)
+                    | wgpu::CurrentSurfaceTexture::Suboptimal(surface_texture) => surface_texture,
+                    wgpu::CurrentSurfaceTexture::Timeout
+                    | wgpu::CurrentSurfaceTexture::Occluded => {
+                        // Try again later.
+                        self.window.request_redraw();
+                        return false;
                     }
-                    Err(err) => {
-                        re_log::warn!("Dropped frame: {err}");
-                        return;
+                    wgpu::CurrentSurfaceTexture::Outdated | wgpu::CurrentSurfaceTexture::Lost => {
+                        // Reconfigure and try again later.
+                        self.configure_surface(self.window.inner_size());
+                        return false;
+                    }
+                    wgpu::CurrentSurfaceTexture::Validation => {
+                        panic!("Validation error when acquiring next swap chain texture");
                     }
                 };
-                #[cfg(not(all(not(target_arch = "wasm32"), debug_assertions)))] // otherwise
-                let frame = self
-                    .surface
-                    .get_current_texture()
-                    .expect("failed to acquire next swap chain texture");
+
+                self.re_ctx.begin_frame();
 
                 let view = frame
                     .texture
@@ -257,6 +269,7 @@ impl<E: Example + 'static> Application<E> {
                             depth_stencil_attachment: None,
                             timestamp_writes: None,
                             occlusion_query_set: None,
+                            multiview_mask: None,
                         });
 
                     for draw_result in &draw_results {
@@ -275,20 +288,18 @@ impl<E: Example + 'static> Application<E> {
                 };
 
                 self.re_ctx.before_submit();
-                self.re_ctx.queue.submit(
-                    draw_results
-                        .into_iter()
-                        .map(|d| d.command_buffer)
-                        .chain(std::iter::once(composite_cmd_encoder.finish())),
-                );
+                let submission_index = self.re_ctx.queue.submit(std::iter::chain(
+                    draw_results.into_iter().map(|d| d.command_buffer),
+                    std::iter::once(composite_cmd_encoder.finish()),
+                ));
                 self.window.pre_present_notify();
                 frame.present();
 
-                // Note that this measures time spent on CPU, not GPU
-                // However, iff we're GPU bound (likely for this sample) and GPU times are somewhat stable,
-                // we eventually end up waiting for GPU in `get_current_texture`
-                // (wgpu has a swap chain with a limited amount of buffers, the exact count is dependent on `present_mode` and backend!).
-                // It's important to keep in mind that depending on the `present_mode`, the GPU might be waiting on the screen in turn.
+                self.example
+                    .on_frame_finished(&self.re_ctx, submission_index);
+
+                // Note that this measures CPU wall-clock frame time.
+                // Examples may wait for the GPU in `on_frame_finished` to include GPU completion backpressure.
                 let current_time = Instant::now();
                 let time_passed = current_time - self.time.last_draw_time;
                 self.time.last_draw_time = current_time;
@@ -297,7 +308,9 @@ impl<E: Example + 'static> Application<E> {
                 // TODO(andreas): Display a median over n frames and while we're on it also stddev thereof.
                 // Do it only every second.
                 let time_until_next_report = 1.0 - self.time.secs_since_startup().fract();
-                if time_until_next_report - time_passed.as_secs_f32() < 0.0 {
+                if !self.example.suppress_frame_time_logging()
+                    && time_until_next_report - time_passed.as_secs_f32() < 0.0
+                {
                     let time_info_str = format!(
                         "{:.2} ms ({:.2} fps)",
                         time_passed.as_secs_f32() * 1000.0,
@@ -306,11 +319,17 @@ impl<E: Example + 'static> Application<E> {
                     re_log::info!("{time_info_str}");
                 }
 
+                if self.example.should_exit() {
+                    return true;
+                }
+
                 self.window.request_redraw(); // Busy-painting
             }
 
             _ => {}
         }
+
+        false
     }
 }
 
@@ -356,8 +375,10 @@ impl<E: Example + 'static> ApplicationHandler for WrapApp<E> {
             event_loop.exit();
         }
 
-        if let Some(app) = &mut self.app {
-            app.on_window_event(event);
+        if let Some(app) = &mut self.app
+            && app.on_window_event(event)
+        {
+            event_loop.exit();
         }
     }
 }
@@ -397,7 +418,7 @@ pub fn start<E: Example + 'static>() {
         #[expect(deprecated)]
         let window = event_loop.create_window(window).unwrap();
 
-        use winit::platform::web::WindowExtWebSys;
+        use winit::platform::web::WindowExtWebSys as _;
         let canvas = window.canvas().expect("Couldn't get canvas");
         canvas.style().set_css_text("height: 100%; width: 100%;");
         web_sys::window()

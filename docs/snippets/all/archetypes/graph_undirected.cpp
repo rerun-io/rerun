@@ -2,7 +2,7 @@
 
 #include <rerun.hpp>
 
-int main() {
+int main(int argc, char* argv[]) {
     const auto rec = rerun::RecordingStream("rerun_example_graph_undirected");
     rec.spawn().exit_on_failure();
 
@@ -13,6 +13,6 @@ int main() {
             .with_labels({"A", "B", "C"}),
         rerun::GraphEdges({{"a", "b"}, {"b", "c"}, {"c", "a"}})
             // Optional: graphs are undirected by default.
-            .with_graph_type(rerun::components::GraphType::Undirected)
+            .with_graph_type(rerun::GraphType::Undirected)
     );
 }

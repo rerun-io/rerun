@@ -11,7 +11,7 @@ A 16-bit ID representing a type of semantic keypoint within a class.
 
 ## Arrow datatype
 ```
-uint16
+UInt16
 ```
 
 ## API reference links

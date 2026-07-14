@@ -1,14 +1,16 @@
 use std::sync::LazyLock;
 
+use re_chunk::ChunkId;
 use re_data_source::LogDataSource;
-use re_log_channel::LogSource;
+use re_log_channel::{LogSource, RecordingOpenBehavior};
+use re_log_types::StoreId;
 use re_uri::Scheme;
 use re_uri::external::url::{self, Url};
 use vec1::{Vec1, vec1};
 
 use crate::{
-    CommandSender, DisplayMode, Item, ItemCollection, StoreHub, SystemCommand,
-    SystemCommandSender as _, ViewerContext,
+    AppContext, CommandSender, Item, ItemCollection, Route, StoreHub, SystemCommand,
+    SystemCommandSender as _,
 };
 
 /// A URL that points to a selection (typically an entity) within the currently active recording.
@@ -33,8 +35,9 @@ pub static EXAMPLES_ORIGIN: LazyLock<re_uri::Origin> = LazyLock::new(|| re_uri::
 /// Types of URLs that can be opened directly in the viewer.
 ///
 /// This is the highest level way of handling arbitrary URLs inside the viewer.
-/// The only higher level way of opening URLs is `ui.ctx().open_url(...)` which will
+/// The only higher level way of opening URLs is `ui.open_url(...)` which will
 /// open the URL in a browser if it's not a content URL that we can open inside the viewer.
+// TODO(emilk): there is a lot of overlap between this and `LogDataSource`
 #[derive(Clone, PartialEq)]
 pub enum ViewerOpenUrl {
     /// A URL that points to a selection (typically an entity) within the currently active recording.
@@ -42,11 +45,11 @@ pub enum ViewerOpenUrl {
     // that we can re-use in any fragment.
     IntraRecordingSelection(Item),
 
-    /// A remote RRD file, served over http.
+    /// A remote file, served over http.
     ///
-    /// Could be either an `.rrd` recording or a `.rbl` blueprint.
-    /// See also [`LogDataSource::RrdHttpUrl`].
-    RrdHttpUrl(Url),
+    /// Could be an `.rrd` recording, `.rbl` blueprint, `.mcap`, `.png`, `.glb`, etc.
+    /// See also [`LogDataSource::HttpUrl`].
+    HttpUrl(Url),
 
     /// A path to a local file.
     ///
@@ -70,6 +73,9 @@ pub enum ViewerOpenUrl {
     /// A URL that points to a redap entry.
     RedapEntry(re_uri::EntryUri),
 
+    /// A URL that points to a folder (dataset-name prefix) within a redap server.
+    RedapFolder(re_uri::FolderUri),
+
     /// A URL that points to a web event listener.
     ///
     /// This is used only for legacy notebooks.
@@ -90,21 +96,25 @@ pub enum ViewerOpenUrl {
     /// The url to the settings screen.
     Settings,
 
-    /// A url to the chunk store browser.
-    ChunkStoreBrowser,
+    /// A url to the chunk store browser, optionally focused on a specific chunk.
+    ChunkStoreBrowser {
+        recording_id: Option<StoreId>,
+        selected_chunk: Option<ChunkId>,
+    },
 }
 
 impl std::fmt::Debug for ViewerOpenUrl {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::IntraRecordingSelection(item) => write!(f, "IntraRecordingSelection{item:?}"),
-            Self::RrdHttpUrl(url) => write!(f, "RrdHttpUrl{url}"),
+            Self::HttpUrl(url) => write!(f, "HttpUrl({url})"),
             #[cfg(not(target_arch = "wasm32"))]
             Self::FilePath(path) => write!(f, "FilePath({path:?})"),
             Self::RedapDatasetSegment(uri) => write!(f, "RedapDatasetSegment({uri})"),
             Self::RedapProxy(uri) => write!(f, "RedapProxy({uri})"),
             Self::RedapCatalog(uri) => write!(f, "RedapCatalog({uri})"),
             Self::RedapEntry(uri) => write!(f, "RedapEntry({uri})"),
+            Self::RedapFolder(uri) => write!(f, "RedapFolder({uri})"),
             Self::WebEventListener => write!(f, "WebEventListener"),
             Self::WebViewerUrl {
                 base_url,
@@ -115,7 +125,12 @@ impl std::fmt::Debug for ViewerOpenUrl {
                 .field("url_parameters", url_parameters)
                 .finish(),
             Self::Settings => write!(f, "Settings"),
-            Self::ChunkStoreBrowser => write!(f, "ChunkStoreBrowser"),
+            Self::ChunkStoreBrowser {
+                recording_id,
+                selected_chunk,
+            } => {
+                write!(f, "ChunkStoreBrowser({recording_id:?}, {selected_chunk:?})")
+            }
         }
     }
 }
@@ -125,6 +140,7 @@ impl From<re_uri::RedapUri> for ViewerOpenUrl {
         match value {
             re_uri::RedapUri::Catalog(uri) => Self::RedapCatalog(uri),
             re_uri::RedapUri::Entry(uri) => Self::RedapEntry(uri),
+            re_uri::RedapUri::Folder(uri) => Self::RedapFolder(uri),
             re_uri::RedapUri::DatasetData(uri) => Self::RedapDatasetSegment(uri),
             re_uri::RedapUri::Proxy(uri) => Self::RedapProxy(uri),
         }
@@ -136,21 +152,34 @@ impl std::str::FromStr for ViewerOpenUrl {
 
     /// Tries to parse a content URL or file inside the viewer.
     ///
-    /// This is for handling opening arbitrary URLs inside the viewer
-    /// (as opposed to opening them in a new tab) for both native and web.
-    /// Supported are:
-    /// * any URL or file path that can be interpreted as a [`LogDataSource`]
-    /// * intra-recording links (typically links to an entity)
-    /// * web event listeners
+    /// Uses conservative defaults: extensionless HTTP URLs are **not** accepted,
+    /// so plain URLs like `https://rerun.io/docs/getting-started/data-in` fall through to be opened
+    /// in the browser. Use [`Self::parse_with_options`] to control this behavior.
     fn from_str(url: &str) -> Result<Self, Self::Err> {
+        Self::parse_with_options(url, &re_data_source::FromUriOptions::default())
+    }
+}
+
+impl ViewerOpenUrl {
+    /// Like [`std::str::FromStr`], but with explicit control over URI parsing options.
+    ///
+    /// Use this at entry points where the user explicitly provides a URL
+    /// (e.g. the "Open URL" modal, command palette) with
+    /// [`re_data_source::FromUriOptions::accept_extensionless_http`] set to `true`.
+    pub fn parse_with_options(
+        url: &str,
+        from_uri_options: &re_data_source::FromUriOptions,
+    ) -> anyhow::Result<Self> {
         if url == SETTINGS_URL {
             Ok(Self::Settings)
-        } else if url == CHUNK_STORE_BROWSER_URL {
-            Ok(Self::ChunkStoreBrowser)
+        } else if let Some(url) = parse_chunk_store_browser_url(url)? {
+            Ok(url)
         } else if let Ok(uri) = url.parse::<re_uri::CatalogUri>() {
             Ok(Self::RedapCatalog(uri))
         } else if let Ok(uri) = url.parse::<re_uri::EntryUri>() {
             Ok(Self::RedapEntry(uri))
+        } else if let Ok(uri) = url.parse::<re_uri::FolderUri>() {
+            Ok(Self::RedapFolder(uri))
         } else if let Some(selection) = url.strip_prefix(INTRA_RECORDING_URL_SCHEME) {
             match selection.parse::<Item>() {
                 Ok(item) => Ok(Self::IntraRecordingSelection(item)),
@@ -162,13 +191,13 @@ impl std::str::FromStr for ViewerOpenUrl {
             // Web event listener (legacy notebooks).
             Ok(Self::WebEventListener)
         } else if let Some(data_source) =
-            LogDataSource::from_uri(re_log_types::FileSource::Uri, url)
+            LogDataSource::from_uri(re_log_types::FileSource::Uri, url, from_uri_options)
         {
             match data_source {
-                LogDataSource::RrdHttpUrl { url, follow: _ } => Ok(Self::RrdHttpUrl(url)),
+                LogDataSource::HttpUrl { url, .. } => Ok(Self::HttpUrl(url)),
 
                 #[cfg(not(target_arch = "wasm32"))]
-                LogDataSource::FilePath(_file_source, path_buf) => Ok(Self::FilePath(path_buf)),
+                LogDataSource::FilePath { path, .. } => Ok(Self::FilePath(path)),
 
                 LogDataSource::FileContents(..) => {
                     unreachable!("FileContents can not be shared as a URL");
@@ -179,7 +208,7 @@ impl std::str::FromStr for ViewerOpenUrl {
 
                 LogDataSource::RedapDatasetSegment {
                     uri,
-                    select_when_loaded: _,
+                    open_behavior: _,
                 } => Ok(Self::RedapDatasetSegment(uri)),
 
                 LogDataSource::RedapProxy(proxy_uri) => Ok(Self::RedapProxy(proxy_uri)),
@@ -219,32 +248,46 @@ pub fn base_url(url: &Url) -> Url {
     base_url
 }
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy)]
 pub struct OpenUrlOptions {
-    pub follow_if_http: bool,
-    pub select_redap_source_when_loaded: bool,
+    /// Follow live HTTP or file paths.
+    //
+    // TODO(emilk): consider making this part of `ViewerOpenUrl::RrdHttpUrl/FilePath` instead
+    pub follow: bool,
+
+    pub recording_open_behavior: RecordingOpenBehavior,
 
     /// Shows the loading screen.
     pub show_loader: bool,
 }
 
+impl Default for OpenUrlOptions {
+    fn default() -> Self {
+        Self {
+            follow: false,
+            recording_open_behavior: RecordingOpenBehavior::Open,
+            show_loader: false,
+        }
+    }
+}
+
 impl ViewerOpenUrl {
-    pub fn from_context(ctx: &ViewerContext<'_>) -> anyhow::Result<Self> {
+    pub fn from_context(ctx: &AppContext<'_>) -> anyhow::Result<Self> {
         Self::from_context_expanded(
-            ctx.storage_context.hub,
-            ctx.display_mode(),
-            Some(ctx.time_ctrl),
+            ctx.store_hub(),
+            ctx.route,
+            ctx.active_time_ctrl(),
             ctx.selection(),
         )
     }
 
     pub fn from_context_expanded(
         store_hub: &StoreHub,
-        display_mode: &DisplayMode,
+        route: &Route,
         time_ctrl: Option<&crate::TimeControl>,
         selection: &ItemCollection,
     ) -> anyhow::Result<Self> {
-        let mut this = Self::from_display_mode(store_hub, display_mode)?;
+        let mut this = Self::from_route(store_hub, route)?;
 
         if let Some(fragment) = this.fragment_mut() {
             fragment.selection = selection.first_item().and_then(|item| item.to_data_path());
@@ -273,24 +316,22 @@ impl ViewerOpenUrl {
 
     /// Create a link for a channel source.
     ///
-    /// Refer to [`Self::from_display_mode`] for more information.
+    /// Refer to [`Self::from_route`] for more information.
     pub fn from_data_source(data_source: &LogSource) -> anyhow::Result<Self> {
         // Note that some of these data sources aren't actually sharable URLs.
         // But since we have to handles this for `open_url` and `sharable_url` anyways,
         // we just preserve as much as possible here.
         match data_source {
-            LogSource::RrdHttpStream { url, follow: _ } => {
-                Ok(Self::RrdHttpUrl(url.parse::<Url>()?))
-            }
+            LogSource::HttpStream { url, .. } => Ok(Self::HttpUrl(url.parse::<Url>()?)),
 
-            LogSource::File(path_buf) => {
+            LogSource::File { path, .. } => {
                 #[cfg(not(target_arch = "wasm32"))]
                 {
-                    Ok(Self::FilePath(path_buf.clone()))
+                    Ok(Self::FilePath(path.clone()))
                 }
                 #[cfg(target_arch = "wasm32")]
                 {
-                    _ = path_buf;
+                    _ = path;
                     Err(anyhow::anyhow!(
                         "Can't share links to local files on the web."
                     ))
@@ -311,16 +352,13 @@ impl ViewerOpenUrl {
                 "Can't share links to recordings streamed from stdin."
             )),
 
-            LogSource::RedapGrpcStream {
-                uri,
-                select_when_loaded: _,
-            } => Ok(Self::RedapDatasetSegment(uri.clone())),
+            LogSource::RedapGrpcStream { uri, .. } => Ok(Self::RedapDatasetSegment(uri.clone())),
 
             LogSource::MessageProxy(proxy_uri) => Ok(Self::RedapProxy(proxy_uri.clone())),
         }
     }
 
-    /// Tries to create a viewer import URL for a [`DisplayMode`] (typically for sharing purposes).
+    /// Tries to create a viewer import URL for a [`Route`] (typically for sharing purposes).
     ///
     /// Conceptually, this is the inverse of [`Self::open`]. However, some import URLs like
     /// intra-recording links aren't stand-alone enough to be returned by this function.
@@ -328,23 +366,20 @@ impl ViewerOpenUrl {
     /// To produce a sharable url, from this result, call [`Self::sharable_url`].
     ///
     /// Returns Err(reason) if the current state can't be shared with a url.
-    pub fn from_display_mode(
-        store_hub: &StoreHub,
-        display_mode: &DisplayMode,
-    ) -> anyhow::Result<Self> {
-        match display_mode {
-            DisplayMode::Settings(_) => Ok(Self::Settings),
+    pub fn from_route(store_hub: &StoreHub, route: &Route) -> anyhow::Result<Self> {
+        match route {
+            Route::Settings { .. } => Ok(Self::Settings),
 
-            DisplayMode::Loading(source) => Self::from_data_source(source),
+            Route::Loading(source) => Self::from_data_source(source),
 
-            DisplayMode::LocalRecordings(store_id) => {
+            Route::LocalRecording { recording_id } => {
                 // Local recordings includes those downloaded from rrd urls
                 // (as of writing this includes the sample recordings!)
                 // If it's one of those we want to update the address bar accordingly.
 
                 let recording = store_hub
                     .store_bundle()
-                    .get(store_id)
+                    .get(recording_id)
                     .ok_or_else(|| anyhow::anyhow!("No data for active recording"))?;
                 let data_source = recording
                     .data_source
@@ -354,20 +389,34 @@ impl ViewerOpenUrl {
                 Self::from_data_source(data_source)
             }
 
-            DisplayMode::LocalTable(_table_id) => {
+            Route::LocalTable(_table_id) => {
                 // We can't share links to local tables, so can't update the url.
                 Err(anyhow::anyhow!("Can't share links to local tables."))
             }
 
-            DisplayMode::RedapEntry(entry) => Ok(Self::RedapEntry(entry.clone())),
+            Route::RedapEntry { origin, kind } => match kind {
+                crate::RedapEntryKind::Entry(id) => {
+                    Ok(Self::RedapEntry(re_uri::EntryUri::new(origin.clone(), *id)))
+                }
+                crate::RedapEntryKind::Folder(path) => Ok(Self::RedapFolder(
+                    re_uri::FolderUri::new(origin.clone(), path.clone()),
+                )),
+            },
 
-            DisplayMode::RedapServer(origin) => {
+            Route::RedapServer(server) => {
                 // `as_url` on the origin gives us an http link.
                 // We want a rerun link here instead.
-                Ok(Self::RedapCatalog(re_uri::CatalogUri::new(origin.clone())))
+                Ok(Self::RedapCatalog(re_uri::CatalogUri::new(server.clone())))
             }
 
-            DisplayMode::ChunkStoreBrowser(_) => Ok(Self::ChunkStoreBrowser),
+            Route::ChunkStoreBrowser {
+                store_id,
+                selected_chunk,
+                ..
+            } => Ok(Self::ChunkStoreBrowser {
+                recording_id: store_id.clone(),
+                selected_chunk: *selected_chunk,
+            }),
         }
     }
 
@@ -391,10 +440,10 @@ impl ViewerOpenUrl {
                 )]
             }
 
-            Self::RrdHttpUrl(url) => vec1![url.to_string()],
+            Self::HttpUrl(url) => vec1![url.to_string()],
 
             #[cfg(not(target_arch = "wasm32"))]
-            Self::FilePath(path_buf) => vec1![(*path_buf.to_string_lossy()).to_owned()],
+            Self::FilePath(path) => vec1![(*path.to_string_lossy()).to_owned()],
 
             Self::RedapDatasetSegment(dataset_segment_uri) => {
                 vec1![dataset_segment_uri.to_string()]
@@ -417,6 +466,8 @@ impl ViewerOpenUrl {
             }
 
             Self::RedapEntry(entry) => vec1![entry.to_string()],
+
+            Self::RedapFolder(folder) => vec1![folder.to_string()],
 
             Self::WebEventListener => vec1![WEB_EVENT_LISTENER_SCHEME.to_owned()],
 
@@ -443,8 +494,29 @@ impl ViewerOpenUrl {
             Self::Settings => {
                 vec1![SETTINGS_URL.to_owned()]
             }
-            Self::ChunkStoreBrowser => {
-                vec1![CHUNK_STORE_BROWSER_URL.to_owned()]
+            Self::ChunkStoreBrowser {
+                recording_id,
+                selected_chunk,
+            } => {
+                let mut url = CHUNK_STORE_BROWSER_URL.to_owned();
+                let mut serializer = url::form_urlencoded::Serializer::new(String::new());
+
+                if let Some(recording_id) = recording_id {
+                    serializer.append_pair("app_id", recording_id.application_id().as_str());
+                    serializer.append_pair("recording_id", recording_id.recording_id().as_str());
+                }
+
+                if let Some(selected_chunk) = selected_chunk {
+                    serializer.append_pair("chunk", &selected_chunk.to_string());
+                }
+
+                let query = serializer.finish();
+                if !query.is_empty() {
+                    url.push('?');
+                    url.push_str(&query);
+                }
+
+                vec1![url]
             }
         };
 
@@ -465,19 +537,24 @@ impl ViewerOpenUrl {
         match &self {
             Self::RedapCatalog(_)
             | Self::RedapEntry(_)
+            | Self::RedapFolder(_)
             | Self::IntraRecordingSelection(_)
             | Self::Settings
-            | Self::ChunkStoreBrowser => None,
+            | Self::ChunkStoreBrowser { .. } => None,
 
-            Self::RrdHttpUrl(url) => Some(LogSource::RrdHttpStream {
+            Self::HttpUrl(url) => Some(LogSource::HttpStream {
                 url: url.to_string(),
                 follow: false,
             }),
             #[cfg(not(target_arch = "wasm32"))]
-            Self::FilePath(path_buf) => Some(LogSource::File(path_buf.clone())),
+            Self::FilePath(path) => Some(LogSource::File {
+                path: path.clone(),
+                follow: false,
+            }),
             Self::RedapDatasetSegment(uri) => Some(LogSource::RedapGrpcStream {
                 uri: uri.clone(),
-                select_when_loaded: false,
+                open_behavior: RecordingOpenBehavior::Background,
+                table_blueprint: None,
             }),
             Self::RedapProxy(uri) => Some(LogSource::MessageProxy(uri.clone())),
             Self::WebEventListener => Some(LogSource::RrdWebEvent),
@@ -497,7 +574,7 @@ impl ViewerOpenUrl {
     /// * web event listeners
     ///
     /// This is the highest level way of opening arbitrary URLs inside the viewer.
-    /// The only higher level way of opening URLs is `ui.ctx().open_url(...)` which will
+    /// The only higher level way of opening URLs is `ui.open_url(...)` which will
     /// open the URL in a browser if it's not a content URL that we can open inside the viewer.
     pub fn open(
         self,
@@ -512,37 +589,37 @@ impl ViewerOpenUrl {
         {
             // It doesn't matter if this is overridden by some command below, as that most likely
             // means we want to skip the loading screen anyway.
-            command_sender.send_system(SystemCommand::ChangeDisplayMode(DisplayMode::Loading(
-                Box::new(data_source),
-            )));
+            command_sender.send_system(SystemCommand::SetRoute(Route::Loading(Box::new(
+                data_source,
+            ))));
         }
 
         match self {
             Self::IntraRecordingSelection(item) => {
                 command_sender.send_system(SystemCommand::set_selection(item));
             }
-            Self::RrdHttpUrl(url) => {
-                command_sender.send_system(SystemCommand::LoadDataSource(
-                    LogDataSource::RrdHttpUrl {
-                        url,
-                        // `follow` is not encoded in the url itself right now.
-                        follow: options.follow_if_http,
-                    },
-                ));
+            Self::HttpUrl(url) => {
+                command_sender.send_system(SystemCommand::LoadDataSource(LogDataSource::HttpUrl {
+                    url,
+                    follow: options.follow,
+                }));
             }
             #[cfg(not(target_arch = "wasm32"))]
-            Self::FilePath(path_buf) => {
-                command_sender.send_system(SystemCommand::LoadDataSource(LogDataSource::FilePath(
-                    re_log_types::FileSource::Uri,
-                    path_buf,
-                )));
+            Self::FilePath(path) => {
+                command_sender.send_system(SystemCommand::LoadDataSource(
+                    LogDataSource::FilePath {
+                        file_source: re_log_types::FileSource::Uri,
+                        path,
+                        follow: options.follow,
+                    },
+                ));
             }
             Self::RedapDatasetSegment(uri) => {
                 command_sender.send_system(SystemCommand::LoadDataSource(
                     LogDataSource::RedapDatasetSegment {
                         uri,
-                        // `select_when_loaded` is not encoded in the url itself right now.
-                        select_when_loaded: options.select_redap_source_when_loaded,
+                        // Open behavior is not encoded in the url right now.
+                        open_behavior: options.recording_open_behavior,
                     },
                 ));
             }
@@ -556,12 +633,30 @@ impl ViewerOpenUrl {
             }
             Self::RedapCatalog(uri) => {
                 command_sender.send_system(SystemCommand::AddRedapServer(uri.origin.clone()));
-                command_sender
-                    .send_system(SystemCommand::set_selection(Item::RedapServer(uri.origin)));
+                command_sender.send_system(SystemCommand::RefreshRedapServer(uri.origin.clone()));
+                let item = Item::RedapServer(uri.origin);
+                command_sender.send_system(SystemCommand::set_selection(item.clone()));
+                command_sender.send_system(SystemCommand::SetFocus(item.into()));
             }
             Self::RedapEntry(uri) => {
                 command_sender.send_system(SystemCommand::AddRedapServer(uri.origin.clone()));
-                command_sender.send_system(SystemCommand::set_selection(Item::RedapEntry(uri)));
+                command_sender.send_system(SystemCommand::RefreshRedapEntry {
+                    origin: uri.origin.clone(),
+                    entry_id: uri.entry_id,
+                });
+                let item = Item::from(uri);
+                command_sender.send_system(SystemCommand::set_selection(item.clone()));
+                command_sender.send_system(SystemCommand::SetFocus(item.into()));
+            }
+            Self::RedapFolder(uri) => {
+                command_sender.send_system(SystemCommand::AddRedapServer(uri.origin.clone()));
+                command_sender.send_system(SystemCommand::RefreshRedapServer(uri.origin.clone()));
+                let item = Item::RedapEntry {
+                    origin: uri.origin,
+                    kind: crate::RedapEntryKind::Folder(uri.path),
+                };
+                command_sender.send_system(SystemCommand::set_selection(item.clone()));
+                command_sender.send_system(SystemCommand::SetFocus(item.into()));
             }
             Self::WebEventListener => {
                 handle_web_event_listener(egui_ctx, command_sender);
@@ -605,8 +700,14 @@ impl ViewerOpenUrl {
             Self::Settings => {
                 command_sender.send_system(SystemCommand::OpenSettings);
             }
-            Self::ChunkStoreBrowser => {
-                command_sender.send_system(SystemCommand::OpenChunkStoreBrowser);
+            Self::ChunkStoreBrowser {
+                recording_id,
+                selected_chunk,
+            } => {
+                command_sender.send_system(SystemCommand::OpenChunkStoreBrowser {
+                    store_id: recording_id,
+                    selected_chunk,
+                });
             }
         }
     }
@@ -614,16 +715,18 @@ impl ViewerOpenUrl {
     pub fn without_fragment(self) -> Self {
         match self {
             Self::Settings
-            | Self::ChunkStoreBrowser
             | Self::IntraRecordingSelection(..)
-            | Self::RrdHttpUrl(..)
+            | Self::HttpUrl(..)
             | Self::RedapProxy(..)
             | Self::RedapCatalog(..)
             | Self::RedapEntry(..)
+            | Self::RedapFolder(..)
             | Self::WebEventListener => self,
 
             #[cfg(not(target_arch = "wasm32"))]
             Self::FilePath(..) => self,
+
+            Self::ChunkStoreBrowser { .. } => self,
 
             Self::RedapDatasetSegment(uri) => Self::RedapDatasetSegment(uri.without_fragment()),
             Self::WebViewerUrl {
@@ -646,13 +749,14 @@ impl ViewerOpenUrl {
     pub fn fragment_mut(&mut self) -> Option<&mut re_uri::Fragment> {
         match self {
             Self::IntraRecordingSelection(..) => None,
-            Self::RrdHttpUrl(..) => None,
+            Self::HttpUrl(..) => None,
             #[cfg(not(target_arch = "wasm32"))]
             Self::FilePath(..) => None,
             Self::RedapDatasetSegment(uri) => Some(&mut uri.fragment),
             Self::RedapProxy(..) => None,
             Self::RedapCatalog(..) => None,
             Self::RedapEntry(..) => None,
+            Self::RedapFolder(..) => None,
             Self::WebEventListener => None,
             Self::WebViewerUrl {
                 base_url: _,
@@ -665,9 +769,52 @@ impl ViewerOpenUrl {
                 }
             }
             Self::Settings => None,
-            Self::ChunkStoreBrowser => None,
+            Self::ChunkStoreBrowser { .. } => None,
         }
     }
+}
+
+fn parse_chunk_store_browser_url(url: &str) -> anyhow::Result<Option<ViewerOpenUrl>> {
+    let Some(rest) = url.strip_prefix(CHUNK_STORE_BROWSER_URL) else {
+        return Ok(None);
+    };
+
+    if rest.is_empty() {
+        return Ok(Some(ViewerOpenUrl::ChunkStoreBrowser {
+            recording_id: None,
+            selected_chunk: None,
+        }));
+    }
+
+    let Some(query) = rest.strip_prefix('?') else {
+        anyhow::bail!("Invalid chunk store browser URL: {url}");
+    };
+
+    let mut selected_chunk = None;
+    let mut application_id = None;
+    let mut recording_name = None;
+
+    for (key, value) in url::form_urlencoded::parse(query.as_bytes()) {
+        match key.as_ref() {
+            "app_id" => application_id = Some(value.into_owned()),
+            "recording_id" => recording_name = Some(value.into_owned()),
+            "chunk" => selected_chunk = Some(value.parse::<ChunkId>()?),
+            _ => {}
+        }
+    }
+
+    let recording_id = match (application_id, recording_name) {
+        (Some(application_id), Some(recording_id)) => {
+            Some(StoreId::recording(application_id, recording_id))
+        }
+        (None, None) => None,
+        _ => anyhow::bail!("Chunk store browser URL must include both app_id and recording_id"),
+    };
+
+    Ok(Some(ViewerOpenUrl::ChunkStoreBrowser {
+        recording_id,
+        selected_chunk,
+    }))
 }
 
 /// Combines a base url, for example a web viewer url
@@ -737,7 +884,7 @@ fn handle_web_event_listener(egui_ctx: &egui::Context, command_sender: &CommandS
                     ControlFlow::Break(())
                 }
                 HttpMessage::Failure(err) => {
-                    tx.quit(Some(err))
+                    tx.quit(Some(Box::new(err)))
                         .warn_on_err_once("Failed to send quit marker");
                     ControlFlow::Break(())
                 }
@@ -750,16 +897,23 @@ fn handle_web_event_listener(egui_ctx: &egui::Context, command_sender: &CommandS
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr as _;
+    use std::{
+        net::{Ipv4Addr, SocketAddrV4},
+        str::FromStr as _,
+    };
 
+    use re_chunk::ChunkId;
     use re_entity_db::{EntityDb, EntityPath, InstancePath};
-    use re_log_channel::LogSource;
+    use re_log_channel::{LogSource, RecordingOpenBehavior};
     use re_log_types::{EntryId, StoreId, StoreKind, TableId};
-    use re_uri::external::url::{self, Url};
-    use re_uri::{CatalogUri, DatasetSegmentUri, Fragment};
+    use re_uri::{CatalogUri, DatasetSegmentUri, Fragment, Scheme};
+    use re_uri::{
+        Origin,
+        external::url::{self, Url},
+    };
 
-    use super::ViewerOpenUrl;
-    use crate::{DisplayMode, Item, StoreHub};
+    use super::{CHUNK_STORE_BROWSER_URL, ViewerOpenUrl};
+    use crate::{Item, Route, StoreHub};
 
     #[test]
     fn test_viewer_open_url_from_str() {
@@ -768,6 +922,15 @@ mod tests {
         assert_eq!(
             ViewerOpenUrl::from_str(url).unwrap(),
             ViewerOpenUrl::RedapCatalog(re_uri::CatalogUri::from_str(url).unwrap())
+        );
+
+        let url = "rerun http://127.0.0.1:9876/proxy";
+        assert_eq!(
+            ViewerOpenUrl::from_str(url).unwrap(),
+            ViewerOpenUrl::RedapProxy(re_uri::ProxyUri::new(Origin::from_scheme_and_socket_addr(
+                Scheme::RerunHttp,
+                SocketAddrV4::new(Ipv4Addr::LOCALHOST, 9876).into()
+            )))
         );
 
         // RedapEntry
@@ -808,7 +971,7 @@ mod tests {
             let url = "https://example.com/data.rrd";
             assert_eq!(
                 ViewerOpenUrl::from_str(url).unwrap(),
-                ViewerOpenUrl::RrdHttpUrl(Url::parse("https://example.com/data.rrd").unwrap())
+                ViewerOpenUrl::HttpUrl(Url::parse("https://example.com/data.rrd").unwrap())
             );
 
             // Test file path (native only)
@@ -829,11 +992,41 @@ mod tests {
             let url = "https://foo.com/test?url=https://example.com/data.rrd";
             let expected = ViewerOpenUrl::WebViewerUrl {
                 base_url: Url::parse("https://foo.com/test").unwrap(),
-                url_parameters: vec1::vec1![ViewerOpenUrl::RrdHttpUrl(
+                url_parameters: vec1::vec1![ViewerOpenUrl::HttpUrl(
                     Url::parse("https://example.com/data.rrd").unwrap()
                 )],
             };
             assert_eq!(ViewerOpenUrl::from_str(url).unwrap(), expected);
+
+            let chunk_id = ChunkId::new();
+            let recording_id = StoreId::recording("test_app", "test_recording");
+            assert_eq!(
+                ViewerOpenUrl::from_str(CHUNK_STORE_BROWSER_URL).unwrap(),
+                ViewerOpenUrl::ChunkStoreBrowser {
+                    recording_id: None,
+                    selected_chunk: None,
+                }
+            );
+            assert_eq!(
+                ViewerOpenUrl::from_str(&format!("{CHUNK_STORE_BROWSER_URL}?chunk={chunk_id}"))
+                    .unwrap(),
+                ViewerOpenUrl::ChunkStoreBrowser {
+                    recording_id: None,
+                    selected_chunk: Some(chunk_id),
+                }
+            );
+            assert_eq!(
+                ViewerOpenUrl::from_str(&format!(
+                    "{CHUNK_STORE_BROWSER_URL}?app_id={}&recording_id={}&chunk={chunk_id}",
+                    recording_id.application_id(),
+                    recording_id.recording_id(),
+                ))
+                .unwrap(),
+                ViewerOpenUrl::ChunkStoreBrowser {
+                    recording_id: Some(recording_id),
+                    selected_chunk: Some(chunk_id),
+                }
+            );
 
             // Complex - multiple URL parameters of different typesl
             let url = "https://foo.com/?url=rerun://localhost:51234/catalog&url=recording://camera&url=https://example.com/data.rrd";
@@ -846,7 +1039,7 @@ mod tests {
                     ViewerOpenUrl::IntraRecordingSelection(Item::InstancePath(
                         InstancePath::entity_all(EntityPath::from("camera"))
                     )),
-                    ViewerOpenUrl::RrdHttpUrl(Url::parse("https://example.com/data.rrd").unwrap())
+                    ViewerOpenUrl::HttpUrl(Url::parse("https://example.com/data.rrd").unwrap())
                 ],
             };
             assert_eq!(ViewerOpenUrl::from_str(url).unwrap(), expected);
@@ -861,25 +1054,26 @@ mod tests {
             "",
             "   ",
             "aaaaaaaaaaa",
+            // The filesystem root exists, but should not be treated as an openable path
+            // (a leading `/` is how the user searches for an entity path in the command palette):
+            "/",
         ];
 
         for url in invalid_urls {
-            assert!(
-                url.parse::<ViewerOpenUrl>().is_err(),
-                "Expected error for {url}"
-            );
+            let result = url.parse::<ViewerOpenUrl>();
+            assert!(result.is_err(), "Expected error for {url}: {result:?}");
         }
     }
 
     #[test]
-    fn test_viewer_open_url_from_display_mode() {
+    fn test_viewer_open_url_from_route() {
         let store_hub = StoreHub::test_hub();
 
         // RedapServer
         assert_eq!(
-            ViewerOpenUrl::from_display_mode(
+            ViewerOpenUrl::from_route(
                 &store_hub,
-                &DisplayMode::RedapServer("rerun://localhost:51234".parse().unwrap()),
+                &Route::RedapServer("rerun://localhost:51234".parse().unwrap()),
             )
             .unwrap(),
             ViewerOpenUrl::RedapCatalog("rerun://localhost:51234".parse().unwrap())
@@ -887,50 +1081,70 @@ mod tests {
 
         // LocalTable
         assert!(
-            ViewerOpenUrl::from_display_mode(
+            ViewerOpenUrl::from_route(
                 &store_hub,
-                &DisplayMode::LocalTable(TableId::new("test_table".to_owned())),
+                &Route::LocalTable(TableId::new("test_table".to_owned())),
             )
             .is_err()
         );
 
         // RedapEntry
-        let origin = "rerun://localhost:51234".parse().unwrap();
-        let entry_uri = re_uri::EntryUri::new(origin, EntryId::new());
+        let origin: re_uri::Origin = "rerun://localhost:51234".parse().unwrap();
+        let entry_uri = re_uri::EntryUri::new(origin.clone(), EntryId::new());
         assert_eq!(
-            ViewerOpenUrl::from_display_mode(
-                &store_hub,
-                &DisplayMode::RedapEntry(entry_uri.clone()),
-            )
-            .unwrap(),
+            ViewerOpenUrl::from_route(&store_hub, &Route::from(entry_uri.clone())).unwrap(),
             ViewerOpenUrl::RedapEntry(entry_uri.clone())
         );
 
-        let dummy_mode = DisplayMode::RedapEntry(entry_uri);
+        // Folder route round-trips through ViewerOpenUrl + parser.
+        let folder_path = "perception.detection".to_owned();
+        let folder_route = Route::RedapEntry {
+            origin: origin.clone(),
+            kind: crate::RedapEntryKind::Folder(folder_path.clone()),
+        };
+        let folder_url = ViewerOpenUrl::from_route(&store_hub, &folder_route).unwrap();
+        assert_eq!(
+            folder_url,
+            ViewerOpenUrl::RedapFolder(re_uri::FolderUri::new(origin, folder_path)),
+        );
+        // Display → parse round-trip.
+        let serialized = folder_url.sharable_url(None).unwrap();
+        assert_eq!(serialized.parse::<ViewerOpenUrl>().unwrap(), folder_url);
+
+        let dummy_mode = Route::from(entry_uri);
 
         assert_eq!(
-            ViewerOpenUrl::from_display_mode(
+            ViewerOpenUrl::from_route(
                 &store_hub,
-                &DisplayMode::Settings(Box::new(dummy_mode.clone()))
+                &Route::Settings {
+                    return_route: Box::new(dummy_mode.clone())
+                }
             )
             .unwrap(),
             ViewerOpenUrl::Settings
         );
 
         assert_eq!(
-            ViewerOpenUrl::from_display_mode(
+            ViewerOpenUrl::from_route(
                 &store_hub,
-                &DisplayMode::ChunkStoreBrowser(Box::new(dummy_mode))
+                &Route::ChunkStoreBrowser {
+                    store_id: Some(StoreId::empty_recording()),
+                    selected_chunk: None,
+                    return_route: Box::new(dummy_mode),
+                }
             )
             .unwrap(),
-            ViewerOpenUrl::ChunkStoreBrowser
+            ViewerOpenUrl::ChunkStoreBrowser {
+                recording_id: Some(StoreId::empty_recording()),
+                selected_chunk: None,
+            }
         );
 
-        // Local recordings is handled in `test_viewer_open_url_from_local_recordings_display_mode`
+        // Local recordings is handled in `test_viewer_open_url_from_local_recordings_route`
     }
 
     #[test]
-    fn test_viewer_open_url_from_local_recordings_display_mode() {
+    fn test_viewer_open_url_from_local_recordings_route() {
         let mut store_hub = StoreHub::test_hub();
 
         fn add_store(store_hub: &mut StoreHub, data_source: Option<LogSource>) -> StoreId {
@@ -938,19 +1152,19 @@ mod tests {
             let mut entity_db = EntityDb::new(store_id.clone());
             entity_db.data_source = data_source;
             store_hub.insert_entity_db(entity_db);
-            store_hub.set_active_recording(store_id.clone());
             store_id
         }
 
         // originating from a file.
         let id = add_store(
             &mut store_hub,
-            Some(LogSource::File(std::path::PathBuf::from(
-                "/path/to/test.rrd",
-            ))),
+            Some(LogSource::File {
+                path: std::path::PathBuf::from("/path/to/test.rrd"),
+                follow: false,
+            }),
         );
         assert_eq!(
-            ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings(id))
+            ViewerOpenUrl::from_route(&store_hub, &Route::LocalRecording { recording_id: id })
                 .unwrap(),
             ViewerOpenUrl::FilePath(std::path::PathBuf::from("/path/to/test.rrd"))
         );
@@ -958,35 +1172,35 @@ mod tests {
         // originating from HTTP stream.
         let id = add_store(
             &mut store_hub,
-            Some(LogSource::RrdHttpStream {
+            Some(LogSource::HttpStream {
                 url: "https://example.com/recording.rrd".to_owned(),
                 follow: false,
             }),
         );
         assert_eq!(
-            ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings(id))
+            ViewerOpenUrl::from_route(&store_hub, &Route::LocalRecording { recording_id: id })
                 .unwrap(),
-            ViewerOpenUrl::RrdHttpUrl("https://example.com/recording.rrd".parse().unwrap())
+            ViewerOpenUrl::HttpUrl("https://example.com/recording.rrd".parse().unwrap())
         );
 
         // originating from SDK (not possible).
         let id = add_store(&mut store_hub, Some(LogSource::Sdk));
         assert!(
-            ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings(id))
+            ViewerOpenUrl::from_route(&store_hub, &Route::LocalRecording { recording_id: id })
                 .is_err(),
         );
 
         // originating from stdin (not possible).
         let id = add_store(&mut store_hub, Some(LogSource::Stdin));
         assert!(
-            ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings(id))
+            ViewerOpenUrl::from_route(&store_hub, &Route::LocalRecording { recording_id: id })
                 .is_err(),
         );
 
         // originating from web event listener.
         let id = add_store(&mut store_hub, Some(LogSource::RrdWebEvent));
         assert_eq!(
-            ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings(id))
+            ViewerOpenUrl::from_route(&store_hub, &Route::LocalRecording { recording_id: id })
                 .unwrap(),
             ViewerOpenUrl::WebEventListener
         );
@@ -999,7 +1213,7 @@ mod tests {
             }),
         );
         assert!(
-            ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings(id))
+            ViewerOpenUrl::from_route(&store_hub, &Route::LocalRecording { recording_id: id })
                 .is_err(),
         );
 
@@ -1010,15 +1224,21 @@ mod tests {
             &mut store_hub,
             Some(LogSource::RedapGrpcStream {
                 uri: uri.parse().unwrap(),
-                select_when_loaded: false,
+                open_behavior: RecordingOpenBehavior::Background,
+                table_blueprint: None,
             }),
         );
 
         let mut uri: re_uri::DatasetSegmentUri = uri.parse().unwrap();
 
         assert_eq!(
-            ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings(id.clone()))
-                .unwrap(),
+            ViewerOpenUrl::from_route(
+                &store_hub,
+                &Route::LocalRecording {
+                    recording_id: id.clone()
+                }
+            )
+            .unwrap(),
             ViewerOpenUrl::RedapDatasetSegment(uri.clone())
         );
 
@@ -1029,7 +1249,7 @@ mod tests {
                 component: None,
             }),
             when: Some((
-                re_chunk::TimelineName::new("test"),
+                re_chunk::TimelineName::from("test"),
                 re_log_types::TimeCell {
                     typ: re_log_types::TimeType::DurationNs,
                     value: re_log_types::NonMinI64::ONE,
@@ -1041,7 +1261,7 @@ mod tests {
         uri.fragment = fragment.clone();
 
         let mut url =
-            ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings(id))
+            ViewerOpenUrl::from_route(&store_hub, &Route::LocalRecording { recording_id: id })
                 .unwrap();
 
         *url.fragment_mut().unwrap() = fragment;
@@ -1055,7 +1275,7 @@ mod tests {
             Some(LogSource::MessageProxy(uri.parse().unwrap())),
         );
         assert_eq!(
-            ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings(id))
+            ViewerOpenUrl::from_route(&store_hub, &Route::LocalRecording { recording_id: id })
                 .unwrap(),
             ViewerOpenUrl::RedapProxy(uri.parse().unwrap())
         );
@@ -1063,7 +1283,7 @@ mod tests {
         // with no data source (not possible).
         let id = add_store(&mut store_hub, None);
         assert!(
-            ViewerOpenUrl::from_display_mode(&store_hub, &DisplayMode::LocalRecordings(id))
+            ViewerOpenUrl::from_route(&store_hub, &Route::LocalRecording { recording_id: id })
                 .is_err(),
         );
     }
@@ -1078,7 +1298,7 @@ mod tests {
         );
 
         assert_eq!(
-            ViewerOpenUrl::RrdHttpUrl(Url::parse("https://example.com/data.rrd").unwrap())
+            ViewerOpenUrl::HttpUrl(Url::parse("https://example.com/data.rrd").unwrap())
                 .sharable_url(None)
                 .unwrap(),
             "https://example.com/data.rrd"
@@ -1127,10 +1347,24 @@ mod tests {
             "web_event:"
         );
 
+        let recording_id = StoreId::recording("test_app", "test_recording");
+        let chunk_id = ChunkId::new();
+        assert_eq!(
+            ViewerOpenUrl::ChunkStoreBrowser {
+                recording_id: Some(recording_id),
+                selected_chunk: Some(chunk_id),
+            }
+            .sharable_url(None)
+            .unwrap(),
+            format!(
+                "{CHUNK_STORE_BROWSER_URL}?app_id=test_app&recording_id=test_recording&chunk={chunk_id}"
+            )
+        );
+
         assert_eq!(
             ViewerOpenUrl::WebViewerUrl {
                 base_url: Url::parse("https://foo.com/test").unwrap(),
-                url_parameters: vec1::vec1![ViewerOpenUrl::RrdHttpUrl(
+                url_parameters: vec1::vec1![ViewerOpenUrl::HttpUrl(
                     Url::parse("https://example.com/data.rrd").unwrap()
                 )],
             }
@@ -1142,7 +1376,7 @@ mod tests {
             ViewerOpenUrl::WebViewerUrl {
                 base_url: Url::parse("https://foo.com/test").unwrap(),
                 url_parameters: vec1::vec1![
-                    ViewerOpenUrl::RrdHttpUrl(Url::parse("https://example.com/bar.rrd").unwrap()),
+                    ViewerOpenUrl::HttpUrl(Url::parse("https://example.com/bar.rrd").unwrap()),
                     ViewerOpenUrl::RedapProxy("rerun://localhost:51234/proxy".parse().unwrap())
                 ],
             }
@@ -1164,7 +1398,7 @@ mod tests {
         );
 
         assert_eq!(
-            ViewerOpenUrl::RrdHttpUrl("https://example.com/data.rrd".parse().unwrap())
+            ViewerOpenUrl::HttpUrl("https://example.com/data.rrd".parse().unwrap())
                 .sharable_url(base_url_param)
                 .unwrap(),
             "https://foo.com/test?url=https%3A%2F%2Fexample.com%2Fdata.rrd"
@@ -1178,9 +1412,7 @@ mod tests {
             )
             .sharable_url(base_url_param)
             .unwrap(),
-            format!(
-                "https://foo.com/test?url=rerun%3A%2F%2F127.0.0.1%3A1234%2Fdataset%2F1830B33B45B963E7774455beb91701ae%3Fsegment_id%3Dpid"
-            )
+            "https://foo.com/test?url=rerun%3A%2F%2F127.0.0.1%3A1234%2Fdataset%2F1830B33B45B963E7774455beb91701ae%3Fsegment_id%3Dpid".to_owned()
         );
 
         assert_eq!(
@@ -1217,7 +1449,7 @@ mod tests {
         assert_eq!(
             ViewerOpenUrl::WebViewerUrl {
                 base_url: Url::parse("http://foo.com/doesn't-matter").unwrap(),
-                url_parameters: vec1::vec1![ViewerOpenUrl::RrdHttpUrl(
+                url_parameters: vec1::vec1![ViewerOpenUrl::HttpUrl(
                     Url::parse("https://example.com/data.rrd").unwrap()
                 )],
             }
@@ -1229,7 +1461,7 @@ mod tests {
             ViewerOpenUrl::WebViewerUrl {
                 base_url: Url::parse("http://foo.com/doesn't-matter").unwrap(),
                 url_parameters: vec1::vec1![
-                    ViewerOpenUrl::RrdHttpUrl(Url::parse("https://example.com/bar.rrd").unwrap()),
+                    ViewerOpenUrl::HttpUrl(Url::parse("https://example.com/bar.rrd").unwrap()),
                     ViewerOpenUrl::RedapProxy("rerun://localhost:51234/proxy".parse().unwrap())
                 ],
             }
@@ -1253,7 +1485,7 @@ mod tests {
                 ViewerOpenUrl::RedapDatasetSegment(DatasetSegmentUri {
                     origin: "rerun+http://localhost:51234".parse().unwrap(),
                     dataset_id: "187A3200CAE4DD795748a7ad187e21a3".parse().unwrap(),
-                    segment_id: "6977dcfd524a45b3b786c9a5a0bde4e1".parse().unwrap(),
+                    segment_id: "6977dcfd524a45b3b786c9a5a0bde4e1".into(),
                     fragment: Default::default(),
                 }),
             ),
@@ -1262,7 +1494,7 @@ mod tests {
                 ViewerOpenUrl::RedapDatasetSegment(DatasetSegmentUri {
                     origin: "rerun+http://localhost:51234".parse().unwrap(),
                     dataset_id: "187A3200CAE4DD795748a7ad187e21a3".parse().unwrap(),
-                    segment_id: "6977dcfd524a45b3b786c9a5a0bde4e1".parse().unwrap(),
+                    segment_id: "6977dcfd524a45b3b786c9a5a0bde4e1".into(),
                     fragment: re_uri::Fragment {
                         time_selection: Some("stable_time@+1.096s..+2.097s".parse().unwrap()),
                         ..Default::default()
@@ -1274,7 +1506,7 @@ mod tests {
                 ViewerOpenUrl::RedapDatasetSegment(DatasetSegmentUri {
                     origin: "rerun+http://localhost:51234".parse().unwrap(),
                     dataset_id: "187A3200CAE4DD795748a7ad187e21a3".parse().unwrap(),
-                    segment_id: "6977dcfd524a45b3b786c9a5a0bde4e1".parse().unwrap(),
+                    segment_id: "6977dcfd524a45b3b786c9a5a0bde4e1".into(),
                     fragment: re_uri::Fragment {
                         when: Some((
                             "stable_time".into(),

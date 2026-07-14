@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from ._converters import to_np_float32, to_np_float64, to_np_uint32, to_np_uint64
+from ._converters import to_np_float32, to_np_float64, to_np_int32, to_np_uint32, to_np_uint64
 
 if TYPE_CHECKING:
     import numpy as np
@@ -61,6 +61,13 @@ def flat_np_float64_array_from_array_like(data: Any, dimension: int) -> npt.NDAr
     return flat_np_array_from_array_like(array, dimension)
 
 
+def flat_np_int32_array_from_array_like(data: Any, dimension: int) -> npt.NDArray[np.int32]:
+    """Converts to a flat int numpy array from an arbitrary vector, validating for an expected dimensionality."""
+
+    array = to_np_int32(data)
+    return flat_np_array_from_array_like(array, dimension)
+
+
 def flat_np_uint32_array_from_array_like(data: Any, dimension: int) -> npt.NDArray[np.uint32]:
     """Converts to a flat uint numpy array from an arbitrary vector, validating for an expected dimensionality."""
 
@@ -91,7 +98,7 @@ def flat_np_array_from_array_like(array: npt.NDArray[Any], dimension: int) -> np
             f"Expected either a flat array with a length multiple of {dimension} elements, or an array with shape (`num_elements`, {dimension}). Shape of passed array was {array.shape}.",
         )
 
-    return array.reshape((-1,))
+    return array.ravel()
 
 
 if __name__ == "__main__":

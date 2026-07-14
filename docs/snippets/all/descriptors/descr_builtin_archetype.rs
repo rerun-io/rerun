@@ -1,6 +1,8 @@
 use rerun::{ChunkStore, ChunkStoreConfig, ComponentDescriptor};
 
-fn example(rec: &rerun::RecordingStream) -> Result<(), Box<dyn std::error::Error>> {
+fn example(
+    rec: &rerun::RecordingStream,
+) -> Result<(), Box<dyn std::error::Error>> {
     rec.log_static(
         "data",
         &rerun::Points3D::new([(1.0, 2.0, 3.0)]).with_radii([0.3, 0.2, 0.1]),
@@ -34,8 +36,11 @@ fn check_tags(rec: &rerun::RecordingStream) {
     if let Ok(path_to_rrd) = std::env::var("_RERUN_TEST_FORCE_SAVE") {
         rec.flush_blocking().unwrap();
 
-        let stores =
-            ChunkStore::from_rrd_filepath(&ChunkStoreConfig::ALL_DISABLED, path_to_rrd).unwrap();
+        let stores = ChunkStore::from_rrd_filepath(
+            &ChunkStoreConfig::ALL_DISABLED,
+            path_to_rrd,
+        )
+        .unwrap();
         assert_eq!(1, stores.len());
 
         let store = stores.into_values().next().unwrap();

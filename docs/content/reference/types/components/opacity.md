@@ -14,7 +14,7 @@ Unless otherwise specified, the default value is 1.
 
 ## Arrow datatype
 ```
-float32
+Float32
 ```
 
 ## API reference links
@@ -26,7 +26,9 @@ float32
 ## Used by
 
 * [`EncodedImage`](../archetypes/encoded_image.md)
+* [`GridMap`](../archetypes/grid_map.md)
 * [`Image`](../archetypes/image.md)
 * [`SegmentationImage`](../archetypes/segmentation_image.md)
 * [`VideoFrameReference`](../archetypes/video_frame_reference.md)
 * [`VideoStream`](../archetypes/video_stream.md)
+* [`VoxelGridMap`](../archetypes/voxel_grid_map.md)

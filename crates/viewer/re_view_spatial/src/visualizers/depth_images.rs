@@ -1,45 +1,43 @@
+use std::sync::Arc;
+
 use nohash_hasher::IntMap;
 
 use re_entity_db::EntityPath;
 use re_log_types::EntityPathHash;
 use re_renderer::renderer::{ColormappedTexture, DepthCloud, DepthClouds};
 use re_sdk_types::archetypes::DepthImage;
-use re_sdk_types::components::{Colormap, DepthMeter, FillRatio, ImageFormat};
+use re_sdk_types::components::{
+    Colormap, DepthMeter, FillRatio, ImageBuffer, ImageFormat, MagnificationFilter,
+};
 use re_sdk_types::{Archetype as _, ArchetypeName, ComponentIdentifier};
 use re_viewer_context::{
     ColormapWithRange, IdentifiedViewSystem, ImageInfo, ImageStatsCache, QueryContext,
     ViewClass as _, ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError,
-    VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
+    VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerReportSeverity, VisualizerSystem,
+    typed_fallback_for,
 };
 
 use super::entity_iterator::process_archetype;
 use super::{SpatialViewVisualizerData, textured_rect_from_image};
-use crate::contexts::{SpatialSceneEntityContext, TransformTreeContext};
-use crate::view_kind::SpatialViewKind;
+use crate::contexts::{SpatialSceneVisualizerInstructionContext, TransformTreeContext};
 use crate::visualizers::first_copied;
 use crate::{PickableRectSourceData, PickableTexturedRect, SpatialView3D};
+use re_sdk_types::reflection::Enum as _;
 
 pub struct DepthImageProcessResult {
-    pub image_info: ImageInfo,
+    /// Raw image data for pixel-level picking.
+    /// `None` for video-decoded depth images where raw pixel data isn't available.
+    pub image_info: Option<ImageInfo>,
     pub depth_meter: DepthMeter,
     pub colormap: ColormappedTexture,
 }
 
-pub struct DepthImageVisualizer {
-    pub data: SpatialViewVisualizerData,
-
-    /// Expose image infos for depth clouds - we need this for picking interaction.
+pub struct DepthImageVisualizerOutput {
     pub depth_cloud_entities: IntMap<EntityPathHash, DepthImageProcessResult>,
 }
 
-impl Default for DepthImageVisualizer {
-    fn default() -> Self {
-        Self {
-            data: SpatialViewVisualizerData::new(Some(SpatialViewKind::TwoD)),
-            depth_cloud_entities: IntMap::default(),
-        }
-    }
-}
+#[derive(Default)]
+pub struct DepthImageVisualizer;
 
 pub struct DepthImageComponentData {
     pub image: ImageInfo,
@@ -47,12 +45,12 @@ pub struct DepthImageComponentData {
     pub fill_ratio: Option<FillRatio>,
     pub colormap: Option<Colormap>,
     pub value_range: Option<[f64; 2]>,
+    pub magnification_filter: MagnificationFilter,
 }
 
-#[expect(clippy::too_many_arguments)]
 pub fn process_depth_image_data(
     ctx: &QueryContext<'_>,
-    ent_context: &mut SpatialSceneEntityContext<'_>,
+    ent_context: &SpatialSceneVisualizerInstructionContext<'_>,
     data_store: &mut SpatialViewVisualizerData,
     depth_cloud_entities: &mut IntMap<EntityPathHash, DepthImageProcessResult>,
     depth_clouds: &mut Vec<DepthCloud>,
@@ -61,6 +59,7 @@ pub fn process_depth_image_data(
     archetype_name: ArchetypeName,
     depth_meter_identifier: ComponentIdentifier,
     colormap_identifier: ComponentIdentifier,
+    report_error: &mut impl FnMut(String),
 ) {
     let is_3d_view = ent_context.view_class_identifier == SpatialView3D::identifier();
     let entity_path = ctx.target_entity_path;
@@ -71,6 +70,7 @@ pub fn process_depth_image_data(
         fill_ratio,
         colormap,
         value_range,
+        magnification_filter,
     } = component_data;
 
     let depth_meter =
@@ -82,10 +82,9 @@ pub fn process_depth_image_data(
         .map(|r| [r[0] as f32, r[1] as f32])
         .unwrap_or_else(|| {
             // Don't use fallback provider since it has to query information we already have.
-            let image_stats = ctx
-                .store_ctx()
-                .caches
-                .entry(|c: &mut ImageStatsCache| c.entry(&image_info));
+            let store_ctx = ctx.store_ctx();
+            let image_stats =
+                store_ctx.memoizer_read_or_compute::<ImageStatsCache, _, _>(&image_info);
             ColormapWithRange::default_range_for_depth_images(&image_stats)
         });
     let colormap_with_range = ColormapWithRange {
@@ -103,13 +102,12 @@ pub fn process_depth_image_data(
         &image_info,
         Some(&colormap_with_range),
         re_renderer::Rgba::WHITE,
+        magnification_filter,
         archetype_name,
     ) {
         Ok(textured_rect) => textured_rect,
         Err(err) => {
-            ent_context
-                .output
-                .report_error_for(ctx.target_entity_path.clone(), re_error::format(err));
+            report_error(re_error::format(err));
 
             // If we can't create a textured rect from this, we don't have to bother with clouds either.
             return;
@@ -145,15 +143,14 @@ pub fn process_depth_image_data(
             depth_cloud_entities.insert(
                 entity_path.hash(),
                 DepthImageProcessResult {
-                    image_info,
+                    image_info: Some(image_info),
                     depth_meter,
                     colormap: textured_rect.colormapped_texture,
                 },
             );
             depth_clouds.push(cloud);
         } else {
-            ent_context.output.report_error_for(
-                ctx.target_entity_path.clone(),
+            report_error(
                 "Cannot draw depth image as 3D point cloud since it is not under a pinhole camera."
                     .to_owned(),
             );
@@ -174,7 +171,7 @@ pub fn process_depth_image_data(
 }
 
 fn process_entity_view_as_depth_cloud(
-    ent_context: &SpatialSceneEntityContext<'_>,
+    ent_context: &SpatialSceneVisualizerInstructionContext<'_>,
     ent_path: &EntityPath,
     pinhole_tree_root_info: &re_tf::PinholeTreeRoot,
     world_from_view: glam::Affine3A,
@@ -225,7 +222,10 @@ fn process_entity_view_as_depth_cloud(
 
 impl IdentifiedViewSystem for DepthImageVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "DepthImage".into()
+        re_viewer_context::external::re_string_interner::intern_static!(
+            re_viewer_context::ViewSystemIdentifier,
+            "DepthImage"
+        )
     }
 }
 
@@ -234,57 +234,55 @@ impl VisualizerSystem for DepthImageVisualizer {
         &self,
         _app_options: &re_viewer_context::AppOptions,
     ) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<DepthImage>()
+        VisualizerQueryInfo::buffer_and_format::<ImageBuffer, ImageFormat>(
+            &DepthImage::descriptor_buffer(),
+            &DepthImage::descriptor_format(),
+            &DepthImage::all_components(),
+        )
+    }
+
+    fn affinity(&self) -> Option<re_sdk_types::ViewClassIdentifier> {
+        Some(crate::SpatialView2D::identifier())
     }
 
     fn execute(
-        &mut self,
+        &self,
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
-        let preferred_view_kind = self.data.preferred_view_kind;
-
-        let mut output = VisualizerExecutionOutput::default();
+        let output = VisualizerExecutionOutput::default();
         let mut depth_clouds = Vec::new();
+        let mut data = SpatialViewVisualizerData::default();
+        let mut depth_cloud_entities = IntMap::default();
 
-        let transforms = context_systems.get::<TransformTreeContext>()?;
+        let transforms = context_systems.get::<TransformTreeContext>(&output)?;
 
-        process_archetype::<Self, DepthImage, _>(
+        process_archetype::<DepthImage, _, _>(
             ctx,
             view_query,
             context_systems,
-            &mut output,
-            preferred_view_kind,
+            &output,
+            self,
             |ctx, spatial_ctx, results| {
-                use super::entity_iterator::{iter_component, iter_slices};
-                use re_view::RangeResultsExt as _;
-
-                let Some(all_buffer_chunks) =
-                    results.get_required_chunks(DepthImage::descriptor_buffer().component)
-                else {
+                let all_buffers = results.iter_required(DepthImage::descriptor_buffer().component);
+                if all_buffers.is_empty() {
                     return Ok(());
-                };
-                let Some(all_format_chunks) =
-                    results.get_required_chunks(DepthImage::descriptor_format().component)
-                else {
+                }
+                let all_formats = results.iter_required(DepthImage::descriptor_format().component);
+                if all_formats.is_empty() {
                     return Ok(());
-                };
-
-                let timeline = ctx.query.timeline();
-                let all_buffers_indexed = iter_slices::<&[u8]>(&all_buffer_chunks, timeline);
-                let all_formats_indexed =
-                    iter_component::<ImageFormat>(&all_format_chunks, timeline);
+                }
                 let all_colormaps =
-                    results.iter_as(timeline, DepthImage::descriptor_colormap().component);
+                    results.iter_optional(DepthImage::descriptor_colormap().component);
                 let all_value_ranges =
-                    results.iter_as(timeline, DepthImage::descriptor_depth_range().component);
+                    results.iter_optional(DepthImage::descriptor_depth_range().component);
                 let all_depth_meters =
-                    results.iter_as(timeline, DepthImage::descriptor_meter().component);
-                let all_fill_ratios = results.iter_as(
-                    timeline,
-                    DepthImage::descriptor_point_fill_ratio().component,
-                );
+                    results.iter_optional(DepthImage::descriptor_meter().component);
+                let all_fill_ratios =
+                    results.iter_optional(DepthImage::descriptor_point_fill_ratio().component);
+                let all_magnification_filters =
+                    results.iter_optional(DepthImage::descriptor_magnification_filter().component);
 
                 for (
                     (_time, row_id),
@@ -294,30 +292,26 @@ impl VisualizerSystem for DepthImageVisualizer {
                     value_range,
                     depth_meter,
                     fill_ratio,
-                ) in re_query::range_zip_1x5(
-                    all_buffers_indexed,
-                    all_formats_indexed,
+                    magnification_filter,
+                ) in re_query::range_zip_1x6(
+                    all_buffers.slice::<&[u8]>(),
+                    all_formats.component_slow::<ImageFormat>(),
                     all_colormaps.slice::<u8>(),
                     all_value_ranges.slice::<[f64; 2]>(),
                     all_depth_meters.slice::<f32>(),
                     all_fill_ratios.slice::<f32>(),
+                    all_magnification_filters.slice::<u8>(),
                 ) {
                     let Some(buffer) = buffers.first() else {
-                        spatial_ctx.output.report_error_for(
-                            ctx.target_entity_path.clone(),
-                            "Depth image buffer is empty.".to_owned(),
-                        );
+                        // If missing we already reported an error.
                         continue;
                     };
                     let Some(format) = first_copied(format.as_deref()) else {
-                        spatial_ctx.output.report_error_for(
-                            ctx.target_entity_path.clone(),
-                            "Depth image format is missing.".to_owned(),
-                        );
+                        // If missing we already reported an error.
                         continue;
                     };
 
-                    let data = DepthImageComponentData {
+                    let component_data = DepthImageComponentData {
                         image: ImageInfo::from_stored_blob(
                             row_id,
                             DepthImage::descriptor_buffer().component,
@@ -327,21 +321,28 @@ impl VisualizerSystem for DepthImageVisualizer {
                         ),
                         depth_meter: first_copied(depth_meter).map(Into::into),
                         fill_ratio: first_copied(fill_ratio).map(Into::into),
-                        colormap: first_copied(colormap).and_then(Colormap::from_u8),
+                        colormap: colormap.and_then(|s| Colormap::from_integer_slice(s).next()?),
                         value_range: first_copied(value_range),
+                        magnification_filter: first_copied(magnification_filter)
+                            .and_then(MagnificationFilter::from_u8)
+                            .unwrap_or_default(),
                     };
 
+                    let mut report_error = |error: String| {
+                        results.report_unspecified_source(VisualizerReportSeverity::Error, error);
+                    };
                     process_depth_image_data(
                         ctx,
                         spatial_ctx,
-                        &mut self.data,
-                        &mut self.depth_cloud_entities,
+                        &mut data,
+                        &mut depth_cloud_entities,
                         &mut depth_clouds,
                         transforms,
-                        data,
+                        component_data,
                         DepthImage::name(),
                         DepthImage::descriptor_meter().component,
                         DepthImage::descriptor_colormap().component,
+                        &mut report_error,
                     );
                 }
 
@@ -349,11 +350,13 @@ impl VisualizerSystem for DepthImageVisualizer {
             },
         )?;
 
-        populate_depth_visualizer_execution_result(ctx, &self.data, depth_clouds, output)
-    }
-
-    fn data(&self) -> Option<&dyn std::any::Any> {
-        Some(self.data.as_any())
+        populate_depth_visualizer_execution_result(ctx, &data, depth_clouds, output).map(|output| {
+            output
+                .with_visualizer_data(data)
+                .with_visualizer_data(DepthImageVisualizerOutput {
+                    depth_cloud_entities,
+                })
+        })
     }
 }
 
@@ -371,7 +374,7 @@ pub fn populate_depth_visualizer_execution_result(
                 re_view::SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
         },
     )
-    .map_err(|err| ViewSystemExecutionError::DrawDataCreationError(Box::new(err)))?;
+    .map_err(|err| ViewSystemExecutionError::DrawDataCreationError(Arc::new(err)))?;
     output.draw_data.push(depth_cloud.into());
     output.draw_data.push(PickableTexturedRect::to_draw_data(
         ctx.viewer_ctx.render_ctx(),

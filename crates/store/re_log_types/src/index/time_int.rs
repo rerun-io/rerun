@@ -5,37 +5,29 @@ use crate::{Duration, NonMinI64, TryFromIntError};
 /// Must be matched with a [`crate::TimeType`] to know what.
 ///
 /// Used both for time points and durations.
-#[derive(Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[derive(
+    Clone,
+    Copy,
+    Hash,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    re_byte_size::SizeBytes,
+    serde::Deserialize,
+    serde::Serialize,
+)]
 pub struct TimeInt(Option<NonMinI64>);
 
 static_assertions::assert_eq_size!(TimeInt, i64);
 static_assertions::assert_eq_align!(TimeInt, i64);
 
-impl re_byte_size::SizeBytes for TimeInt {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
-    }
-}
-
 impl std::fmt::Debug for TimeInt {
     #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self.0 {
-            Some(NonMinI64::MIN) => f
-                .debug_tuple("TimeInt::MIN")
-                .field(&NonMinI64::MIN)
-                .finish(),
-            Some(NonMinI64::MAX) => f
-                .debug_tuple("TimeInt::MAX")
-                .field(&NonMinI64::MAX)
-                .finish(),
+            Some(NonMinI64::MIN) => f.debug_tuple("TimeInt::MIN").finish(),
+            Some(NonMinI64::MAX) => f.debug_tuple("TimeInt::MAX").finish(),
             Some(t) => f.write_fmt(format_args!("TimeInt({})", re_format::format_int(t.get()))),
             None => f.debug_tuple("TimeInt::STATIC").finish(),
         }
@@ -165,11 +157,12 @@ impl TimeInt {
     }
 
     pub fn closest_multiple_of(&self, snap_interval: i64) -> Self {
-        debug_assert!(1 <= snap_interval);
+        re_log::debug_assert!(1 <= snap_interval);
         match self.0 {
             Some(t) => {
                 let v = t.get();
-                let snapped = (v + snap_interval / 2).div_euclid(snap_interval) * snap_interval;
+                let snapped =
+                    (v.saturating_add(snap_interval / 2)).div_euclid(snap_interval) * snap_interval;
                 Self::new_temporal(snapped)
             }
             None => Self::STATIC,

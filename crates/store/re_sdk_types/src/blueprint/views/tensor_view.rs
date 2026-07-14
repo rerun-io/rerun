@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -24,7 +25,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **View**: A view on a tensor of any dimensionality.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, ::re_byte_size::SizeBytes)]
 pub struct TensorView {
     /// How to select the slice of the tensor to show.
     pub slice_selection: crate::blueprint::archetypes::TensorSliceSelection,
@@ -39,22 +40,9 @@ pub struct TensorView {
 impl ::re_types_core::View for TensorView {
     #[inline]
     fn identifier() -> ::re_types_core::ViewClassIdentifier {
-        "Tensor".into()
-    }
-}
-
-impl ::re_byte_size::SizeBytes for TensorView {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.slice_selection.heap_size_bytes()
-            + self.scalar_mapping.heap_size_bytes()
-            + self.view_fit.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::blueprint::archetypes::TensorSliceSelection>::is_pod()
-            && <crate::blueprint::archetypes::TensorScalarMapping>::is_pod()
-            && <crate::blueprint::archetypes::TensorViewFit>::is_pod()
+        ::re_types_core::external::re_string_interner::intern_static_nonempty!(
+            ::re_types_core::ViewClassIdentifier,
+            "Tensor"
+        )
     }
 }

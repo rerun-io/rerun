@@ -9,6 +9,7 @@
 
 #import <./types.wgsl>
 #import <./global_bindings.wgsl>
+#import <./utils/camera.wgsl>
 
 struct UniformBuffer {
     screen_resolution: vec2f,
@@ -42,7 +43,7 @@ fn main_vs(@builtin(vertex_index) vertex_index: u32) -> VertexOutput {
     // But this is not the point here - we want to debug this and other things rapidly by editing the shader.
     let screen_fraction = texcoord * (uniforms.extent_in_pixel / uniforms.screen_resolution) +
                         uniforms.position_in_pixel / uniforms.screen_resolution;
-    let screen_ndc = vec2f(screen_fraction.x * 2.0 - 1.0, 1.0 - screen_fraction.y * 2.0);
+    let screen_ndc = screenuv_to_ndc(screen_fraction);
 
     var out: VertexOutput;
     out.position = vec4f(screen_ndc, 0.0, 1.0);

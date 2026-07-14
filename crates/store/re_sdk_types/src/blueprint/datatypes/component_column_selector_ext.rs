@@ -14,7 +14,7 @@ impl super::ComponentColumnSelector {
         EntityPath::from(self.entity_path.as_str())
     }
 
-    /// The parsed omponent column selector.
+    /// The parsed component column selector.
     pub fn column_selector(&self) -> re_sorbet::ComponentColumnSelector {
         let entity_path = EntityPath::from(self.entity_path.as_str());
         let component = self.component.to_string();

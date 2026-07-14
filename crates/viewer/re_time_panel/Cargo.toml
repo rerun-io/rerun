@@ -23,20 +23,23 @@ default = []
 testing = ["smallvec/serde"]
 
 [dependencies]
+re_byte_size.workspace = true
+re_chunk.workspace = true
 re_chunk_store.workspace = true
 re_context_menu.workspace = true
 re_data_ui.workspace = true
 re_entity_db.workspace = true
 re_format.workspace = true
-re_int_histogram.workspace = true
-re_log.workspace = true
 re_log_types.workspace = true
-re_tracing.workspace = true
+re_log.workspace = true
 re_sdk_types.workspace = true
+re_time_ruler.workspace = true
+re_tracing.workspace = true
 re_ui.workspace = true
 re_viewer_context.workspace = true
 re_viewport_blueprint.workspace = true
 
+ahash.workspace = true
 egui.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true

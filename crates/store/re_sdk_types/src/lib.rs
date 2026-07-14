@@ -284,7 +284,7 @@ pub mod external {
     pub use glam;
     #[cfg(feature = "image")]
     pub use image;
-    pub use {anyhow, arrow, ndarray, re_types_core, uuid};
+    pub use {arrow, ndarray, re_types_core, uuid};
 }
 
 // Has to live here because otherwise we can't use it to implement `Hash` for `crate::components::TransformFrameId`.
@@ -308,7 +308,7 @@ pub use visualizer::{VisualizableArchetype, Visualizer};
 
 // Has to live here otherwise we can't export it from `re_sdk_types`.
 mod colormap_category;
-pub use colormap_category::ColormapCategory;
+pub use colormap_category::{ColormapCategory, ColormapSelection};
 
 #[cfg(feature = "testing")]
 pub mod testing;

@@ -1,14 +1,29 @@
-# This file is read in `compare_snippet_output.py` and the `snippets` command in `re_dev_tools`/`build_examples`.
+# This file controls snippet testing and documentation indexing.
+# It is read in `compare_snippet_output.py` and the `snippets` command in `re_dev_tools`/`build_examples`.
+#
+# Sections:
+#   [snippets_ref.snippets.opt_out]  — snippets excluded from the documentation index
+#   [snippets_ref.archetypes.opt_out] — archetypes that ignore associated snippets in the index
+#   [snippets_ref.components.opt_out] — components that ignore associated snippets in the index
+#   [snippets_ref.features]          — groups snippets by feature for documentation
+#   [opt_out.run]                    — snippets that won't be executed for certain SDKs
+#   [opt_out.compare]                — snippets that run but whose output isn't compared across
+#                                      languages (e.g. different RNG implementations)
+#   [extra_args]                     — extra arguments passed to snippets when running them
+#
+# Items within each section are in alphabetical order.
 
 # These snippets will be excluded from the snippet index, unconditionally.
 [snippets_ref.snippets.opt_out]
 # Migration snippets rarely make sense as part of the snippet index.
 "migration/log_line" = ["cpp", "rust", "py"]
+"migration/log_tick_enabled" = ["cpp", "rust", "py"]
 "migration/transactional_transforms" = ["cpp", "rust", "py"]
 
 # These archetypes will ignore the associated snippets in the snippet index.
 [snippets_ref.archetypes.opt_out]
 "DataframeQuery" = ["howto/visualization/save_blueprint"]
+"Tensor" = ["howto/dataloader"] # snippet uses `torch.Tensor`, not Rerun's `Tensor` archetype
 
 # These components will ignore the associated snippets in the snippet index.
 [snippets_ref.components.opt_out]
@@ -21,10 +36,16 @@
 [snippets_ref]
 features = [
   [
-    "Query dataplatform",
+    "Catalog server",
     [
       "howto/dataframe_operations",
+      "howto/dataframe_performance",
+      "howto/dataset_resampling",
+      "howto/lerobot_export",
       "howto/query_images",
+      "howto/query_videos",
+      "howto/query_video_keyframes",
+      "howto/sub_dataset",
       "howto/time_alignment",
       "howto/view_operations",
     ],
@@ -33,6 +54,8 @@ features = [
     "Setting recording properties",
     [
       "concepts/recording_properties",
+      "concepts/query-and-transform/segment_properties",
+      "howto/layers",
     ],
   ],
   [
@@ -104,18 +127,47 @@ features = [
       "howto/send_table",
     ],
   ],
+  [
+    "Convert custom MCAP Protobuf",
+    [
+      "howto/convert_mcap_protobuf",
+    ],
+  ],
 ]
 
 # --------------------------------------------------------------------------------------------------
 
 [opt_out]
 backwards_check = [
+  "archetypes/image_advanced", # Uses Pillow to encode a PNG; Pillow encodes differently on different OSes, so the bytes in the RRD won't match the checked-in reference.
   "archetypes/video_stream_synthetic", # Video encodes differently on CI :(
+  "concepts/build_chunk", # Python-only experimental API; no reference RRD checked in
+  "concepts/build_chunk_from_record_batch", # Python-only experimental API; builds and prints chunks, generates no rrd
   "concepts/explicit_recording", # The file path differs locally and on CI
-  # Dataplatform examples don't generate rrds
+  "concepts/send_dataframe", # Python-only API; no reference RRD checked in
+  "howto/convert_mcap_protobuf", # Processes video from MCAP, non-deterministic encoding
+  "howto/convert_mcap_protobuf_send_column",
+  "concepts/chunk_processing", # Python-only experimental API; output rrd may shift across versions
+  "concepts/chunk_processing_intro", # Python-only experimental API; output rrd may shift across versions
+  "concepts/chunk_processing_query", # Python-only experimental API; queries in-process, generates no rrd
+  "concepts/rrd_format", # Python-only experimental API; output rrd may shift across versions
+  "howto/optimize_chunks", # Compacts a video-bearing MCAP; chunk layout may shift across optimizer versions
+  # Catalog server examples don't generate rrds
+  "concepts/query-and-transform/dataframe_query_example",
+  "concepts/query-and-transform/segment_properties",
   "howto/dataframe_operations",
+  "howto/dataframe_performance",
+  "howto/dataloader",
+  "tutorials/getting_started",
+  "howto/dataset_resampling",
+  "howto/layers",
+  "howto/lerobot_export",
   "howto/query_images",
+  "howto/query_videos",
+  "howto/query_video_keyframes",
+  "howto/sub_dataset",
   "howto/time_alignment",
+  "howto/query-and-transform/segment_url",
   "howto/view_operations",
 ]
 
@@ -135,6 +187,30 @@ backwards_check = [
   "cpp",
   "rust",
 ]
+"concepts/build_chunk" = [ # Python-only experimental API
+  "cpp",
+  "rust",
+]
+"concepts/build_chunk_from_record_batch" = [ # Python-only experimental API
+  "cpp",
+  "rust",
+]
+"concepts/chunk_processing" = [ # `rerun.experimental` is Python-only
+  "cpp",
+  "rust",
+]
+"concepts/chunk_processing_intro" = [ # `rerun.experimental` is Python-only
+  "cpp",
+  "rust",
+]
+"concepts/chunk_processing_query" = [ # `rerun.experimental` is Python-only
+  "cpp",
+  "rust",
+]
+"concepts/rrd_format" = [ # `rerun.experimental` is Python-only
+  "cpp",
+  "rust",
+]
 "concepts/explicit_recording" = [ # python-specific check
   "cpp",
   "rust",
@@ -144,10 +220,14 @@ backwards_check = [
   "cpp",
   "rust",
 ]
-"concepts/send_recording" = [
+"concepts/send_chunks" = [
   "py", # Requires context (an RRD file to be exported by the user)
   "cpp", # Not implemented for C++
   "rust", # Requires context (an RRD file to be exported by the user)
+]
+"concepts/send_dataframe" = [ # Python-only API
+  "cpp",
+  "rust",
 ]
 "concepts/static/log_static" = [ # pseudo-code
   "py",
@@ -196,8 +276,14 @@ backwards_check = [
   "cpp",
   "rust",
 ]
-"concepts/query-and-transform/dataframe_query_example" = [ # Creates and reads its own RRD, incompatible with _RERUN_TEST_FORCE_SAVE
-  "py",
+"concepts/lenses" = [
+  "cpp", # Not implemented
+]
+"concepts/query-and-transform/dataframe_query_example" = [ # Skips backwards compatibility check, to opt out of _RERUN_TEST_FORCE_SAVE
+  "cpp",
+  "rust",
+]
+"concepts/query-and-transform/segment_properties" = [ # Skips backwards compatibility check, to opt out of _RERUN_TEST_FORCE_SAVE
   "cpp",
   "rust",
 ]
@@ -206,7 +292,47 @@ backwards_check = [
   "cpp", # TODO(#2353): Doesn't exist
   "rust", # Runs indefinitely.
 ]
+"howto/convert_mcap_protobuf" = [
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
+"howto/convert_mcap_protobuf_send_column" = [
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
+"howto/component_mapping" = [
+  "cpp", # Not implemented
+]
+"howto/state_remapping" = [
+  "cpp", # Blueprint component-mapping API is Python-only
+  "rust", # Blueprint component-mapping API is Python-only
+]
 "howto/dataframe_operations" = [
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
+"howto/dataloader" = [
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
+"howto/dataframe_performance" = [
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
+"howto/dataset_resampling" = [
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
+"howto/layers" = [
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
+"howto/sub_dataset" = [
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
+"howto/lerobot_export" = [
+  "py", # lerobot is not part of our environment as it causes dependency issues
   "cpp", # Not implemented
   "rust", # Not implemented
 ]
@@ -217,7 +343,19 @@ backwards_check = [
 "howto/micro_batching" = [
   "cpp", # TODO(#10661): Doesn't exist
 ]
+"howto/optimize_chunks" = [
+  "cpp", # `rerun.experimental` is Python-only
+  "rust", # `rerun.experimental` is Python-only
+]
 "howto/query_images" = [
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
+"howto/query_videos" = [
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
+"howto/query_video_keyframes" = [
   "cpp", # Not implemented
   "rust", # Not implemented
 ]
@@ -241,6 +379,10 @@ backwards_check = [
   "cpp", # Doesn't exist
   "rust", # Doesn't exist
 ]
+"howto/query-and-transform/segment_url" = [
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
 "howto/time_alignment" = [
   "cpp", # Not implemented
   "rust", # Not implemented
@@ -253,9 +395,17 @@ backwards_check = [
   "cpp", # Missing examples
   "rust", # Missing examples
 ]
+"archetypes/grid_map_pose" = [
+  "cpp", # Missing examples
+  "rust", # Missing examples
+]
 "archetypes/entity_behavior" = [
   "cpp", # Blueprint API doesn't exist for C++/Rust
   "rust", # Blueprint API doesn't exist for C++/Rust
+]
+"archetypes/line_strips3d_time_window" = [
+  "cpp", # Python-only blueprint example
+  "rust", # Python-only blueprint example
 ]
 "archetypes/pinhole_projections" = [
   "cpp", # Blueprint API doesn't exist for C++/Rust
@@ -271,6 +421,11 @@ backwards_check = [
   "rust", # Not implemented
 ]
 "migration/log_line" = [ # Not a complete example -- just a single log line
+  "cpp",
+  "rust",
+  "py",
+]
+"migration/log_tick_enabled" = [ # Not a complete example -- just a couple of method calls
   "cpp",
   "rust",
   "py",
@@ -320,6 +475,25 @@ backwards_check = [
   "rust",
   "py",
 ]
+"tutorials/dna" = [ # Calls spawn() with non-deterministic RNG output — see tutorials/dna_connect_grpc for a CI-friendly variant
+  "cpp",
+  "rust",
+  "py",
+]
+"tutorials/dna_connect_grpc" = [ # Requires a separately-running viewer
+  "cpp",
+  "rust",
+  "py",
+]
+"tutorials/getting_started" = [
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
+"tutorials/getting_started_convert" = [
+  "py", # Requires an input.mcap file
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
 "tutorials/fixed_window_plot" = [
   "cpp", # Not implemented
   "rust", # Not implemented
@@ -333,6 +507,7 @@ backwards_check = [
   "cpp", # Not implemented
   "rust", # Not implemented
 ]
+"howto/dual_color_point_cloud" = ["cpp"] # Not implemented
 "tutorials/visualization" = [
   "py", # Requires passing RRD as argument
   "cpp", # Not implemented
@@ -386,6 +561,9 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "py",
   "rust",
 ]
+"archetypes/image_advanced" = [
+  "py", # Pillow encodes pngs differently on different OSes, and differently from Rust or C++.
+]
 "archetypes/arrows3d_simple" = [
   "py", # Python has different colors. TODO(emilk): fix that
 ]
@@ -422,12 +600,103 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "py",
   "rust",
 ]
+"archetypes/video_stream_synthetic" = [ # No comparison because video is different on CI
+  "cpp",
+  "py",
+  "rust",
+]
+"concepts/query-and-transform/dataframe_query_example" = [ # Cloud examples don't generate rrds
+  "cpp",
+  "py",
+  "rust",
+]
+"concepts/query-and-transform/segment_properties" = [ # Cloud examples don't generate rrds
+  "cpp",
+  "py",
+  "rust",
+]
 "howto/dataframe_operations" = [ # Cloud examples don't generate rrds
   "cpp",
   "py",
   "rust",
 ]
+"howto/convert_mcap_protobuf" = [ # Uses external MCAP file, depends on mcap_protobuf package
+  "cpp",
+  "py",
+  "rust",
+]
+"howto/convert_mcap_protobuf_send_column" = [ # Uses external MCAP file, depends on mcap_protobuf package
+  "cpp",
+  "py",
+  "rust",
+]
+"concepts/chunk_processing" = [ # Python-only; nothing to compare across languages
+  "cpp",
+  "py",
+  "rust",
+]
+"concepts/chunk_processing_intro" = [ # Python-only; nothing to compare across languages
+  "cpp",
+  "py",
+  "rust",
+]
+"concepts/chunk_processing_query" = [ # Python-only; nothing to compare across languages
+  "cpp",
+  "py",
+  "rust",
+]
+"concepts/rrd_format" = [ # Python-only; nothing to compare across languages
+  "cpp",
+  "py",
+  "rust",
+]
+"howto/optimize_chunks" = [ # Python-only; nothing to compare across languages
+  "cpp",
+  "py",
+  "rust",
+]
+"howto/dataframe_performance" = [ # Cloud examples don't generate rrds
+  "cpp",
+  "py",
+  "rust",
+]
+"howto/dataset_resampling" = [ # Cloud examples don't generate rrds
+  "cpp",
+  "py",
+  "rust",
+]
+"howto/dual_color_point_cloud" = ["py", "rust"] # Uses random point generation
+"howto/layers" = [ # Cloud examples don't generate rrds
+  "cpp",
+  "py",
+  "rust",
+]
+"howto/sub_dataset" = [ # Cloud examples don't generate rrds
+  "cpp",
+  "py",
+  "rust",
+]
+"howto/lerobot_export" = [ # Cloud examples don't generate rrds
+  "cpp",
+  "py",
+  "rust",
+]
 "howto/query_images" = [ # Cloud examples don't generate rrds
+  "cpp",
+  "py",
+  "rust",
+]
+"howto/query_videos" = [ # Cloud examples don't generate rrds
+  "cpp",
+  "py",
+  "rust",
+]
+"howto/query_video_keyframes" = [ # Cloud examples don't generate rrds
+  "cpp",
+  "py",
+  "rust",
+]
+"howto/query-and-transform/segment_url" = [ # Cloud examples don't generate rrds
   "cpp",
   "py",
   "rust",
@@ -447,12 +716,16 @@ quick_start = [ # These examples don't have exactly the same implementation.
 
 # `$config_dir` will be replaced with the absolute path of `docs/snippets`.
 [extra_args]
-"concepts/send_recording" = ["$config_dir/../../tests/assets/rrd/dna.rrd"]
-"archetypes/asset3d_simple" = ["$config_dir/../../tests/assets/cube.glb"]
-"archetypes/asset3d_out_of_tree" = ["$config_dir/../../tests/assets/cube.glb"]
+"concepts/send_chunks" = ["$config_dir/../../tests/assets/rrd/dna.rrd"]
+"archetypes/asset3d_simple" = ["$config_dir/../../tests/assets/mesh/cube.glb"]
+"archetypes/asset3d_out_of_tree" = ["$config_dir/../../tests/assets/mesh/cube.glb"]
 "archetypes/encoded_depth_image" = ["$config_dir/../../tests/assets/encoded_depth_image.rvl"]
 "archetypes/video_auto_frames" = [
   "$config_dir/../../tests/assets/video/Big_Buck_Bunny_1080_10s_av1.mp4",
 ]
 "archetypes/video_manual_frames" = ["$config_dir/../../tests/assets/video/Sintel_1080_10s_av1.mp4"]
 "howto/load_mcap" = ["$config_dir/../../tests/assets/mcap/r2b_galileo.mcap"]
+"howto/convert_mcap_protobuf" = ["$config_dir/../../tests/assets/mcap/trossen_transfer_cube.mcap"]
+"howto/convert_mcap_protobuf_send_column" = [
+  "$config_dir/../../tests/assets/mcap/trossen_transfer_cube.mcap",
+]

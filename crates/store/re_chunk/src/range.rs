@@ -1,4 +1,4 @@
-use re_log_types::{AbsoluteTimeRange, TimeInt, TimelineName};
+use re_log_types::{AbsoluteTimeRange, TimelineName};
 use re_types_core::ComponentIdentifier;
 
 use crate::Chunk;
@@ -75,32 +75,44 @@ impl Default for RangeQueryOptions {
 
 impl std::fmt::Debug for RangeQuery {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self {
+            timeline,
+            range,
+            options,
+        } = self;
+
+        let RangeQueryOptions {
+            keep_extra_timelines,
+            keep_extra_components,
+            include_extended_bounds,
+        } = options;
+
         f.write_fmt(format_args!(
-            "<ranging {:?}..={:?} on {:?} ([{}]keep_timelines [{}]keep_components [{}]extended_bounds)>",
-            self.range.min(),
-            self.range.max(),
-            self.timeline,
-            if self.options.keep_extra_timelines {
-                "✓"
+            "<ranging {:?}..={:?} on {:?}{}{}{}",
+            range.min(),
+            range.max(),
+            timeline,
+            if *keep_extra_timelines {
+                " keep_extra_timelines"
             } else {
-                " "
+                ""
             },
-            if self.options.keep_extra_components {
-                "✓"
+            if *keep_extra_components {
+                " keep_extra_components"
             } else {
-                " "
+                ""
             },
-            if self.options.include_extended_bounds {
-                "✓"
+            if *include_extended_bounds {
+                " include_extended_bounds"
             } else {
-                " "
+                ""
             },
         ))
     }
 }
 
 impl RangeQuery {
-    /// The returned query is guaranteed to never include [`TimeInt::STATIC`].
+    /// The returned query is guaranteed to never include [`TimeInt::STATIC`](re_log_types::TimeInt::STATIC).
     #[inline]
     pub const fn new(timeline: TimelineName, range: AbsoluteTimeRange) -> Self {
         Self {
@@ -110,7 +122,7 @@ impl RangeQuery {
         }
     }
 
-    /// The returned query is guaranteed to never include [`TimeInt::STATIC`].
+    /// The returned query is guaranteed to never include [`TimeInt::STATIC`](re_log_types::TimeInt::STATIC).
     ///
     /// Keeps all extra timelines and components around.
     #[inline]
@@ -191,8 +203,10 @@ impl Chunk {
     /// See [`Self::timeline_sliced`] and [`Self::component_sliced`] if you do want to filter this
     /// extra data.
     //
-    // TODO(apache/arrow-rs#5375): Since we don't have access to arrow's ListView yet, we must actually clone the
-    // data if the chunk requires sorting.
+    // TODO(RR-3865): Use arrow's `ListView` to avoid cloning data when the chunk requires sorting.
+    //
+    /// The returned [`Chunk`] always gets a new [`crate::ChunkId`], unless the input chunk
+    /// is empty (in which case it's cloned as-is with the original ID).
     pub fn range(&self, query: &RangeQuery, component: ComponentIdentifier) -> Self {
         if self.is_empty() {
             return self.clone();
@@ -209,25 +223,26 @@ impl Chunk {
         // Pre-slice the data if the caller allowed us: this will make further slicing
         // (e.g. the range query itself) much cheaper to compute.
         use std::borrow::Cow;
-        let chunk = if !keep_extra_timelines {
-            Cow::Owned(self.timeline_sliced(*query.timeline()))
-        } else {
+        let chunk = if keep_extra_timelines {
             Cow::Borrowed(self)
-        };
-        let chunk = if !keep_extra_components {
-            Cow::Owned(chunk.component_sliced(component))
         } else {
+            Cow::Owned(self.timeline_sliced(*query.timeline()))
+        };
+        let chunk = if keep_extra_components {
             chunk
+        } else {
+            Cow::Owned(chunk.component_sliced(component))
         };
 
         if chunk.is_static() {
             // NOTE: A given component for a given entity can only have one static entry associated
             // with it, and this entry overrides everything else, which means it is functionally
             // equivalent to just running a latest-at query.
-            chunk.latest_at(
-                &crate::LatestAtQuery::new(*query.timeline(), TimeInt::MAX),
-                component,
-            )
+            if let Some(unit) = chunk.latest_at(&crate::LatestAtQuery::new_static(), component) {
+                std::sync::Arc::unwrap_or_clone(unit.into_chunk())
+            } else {
+                chunk.emptied()
+            }
         } else {
             let Some(is_sorted_by_time) = chunk
                 .timelines

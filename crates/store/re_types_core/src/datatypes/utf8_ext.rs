@@ -1,3 +1,5 @@
+use crate::ComponentIdentifier;
+
 use super::Utf8;
 
 impl Utf8 {
@@ -48,6 +50,13 @@ impl std::ops::Deref for Utf8 {
     #[inline]
     fn deref(&self) -> &str {
         self.as_str()
+    }
+}
+
+impl From<ComponentIdentifier> for Utf8 {
+    #[inline]
+    fn from(value: ComponentIdentifier) -> Self {
+        Self(value.as_str().into())
     }
 }
 

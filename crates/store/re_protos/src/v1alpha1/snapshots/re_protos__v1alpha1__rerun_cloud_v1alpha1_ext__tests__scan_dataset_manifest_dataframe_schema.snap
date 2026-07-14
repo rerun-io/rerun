@@ -1,0 +1,14 @@
+---
+source: crates/store/re_protos/src/v1alpha1/./rerun.cloud.v1alpha1.ext.rs
+expression: "format_schema(&ScanDatasetManifestDataframe::max_schema())"
+---
+rerun_layer_name: non-null Utf8
+rerun_segment_id: non-null Utf8
+rerun_storage_url: non-null Utf8
+rerun_layer_type: non-null Utf8
+rerun_registration_time: non-null Timestamp(ns)
+rerun_last_updated_at: non-null Timestamp(ns)
+rerun_num_chunks: non-null UInt64
+rerun_size_bytes: non-null UInt64
+rerun_schema_sha256: non-null FixedSizeBinary(32)
+rerun_registration_status: non-null Utf8

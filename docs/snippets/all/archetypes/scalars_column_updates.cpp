@@ -8,8 +8,9 @@
 
 #include <rerun.hpp>
 
-int main() {
-    const auto rec = rerun::RecordingStream("rerun_example_scalar_column_updates");
+int main(int argc, char* argv[]) {
+    const auto rec =
+        rerun::RecordingStream("rerun_example_scalar_column_updates");
     rec.spawn().exit_on_failure();
 
     // Native scalars & times.

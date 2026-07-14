@@ -3,8 +3,9 @@ use std::sync::OnceLock;
 use ahash::HashMap;
 use nohash_hasher::{IntMap, IntSet};
 use re_chunk_store::{
-    ChunkStore, ChunkStoreEvent, ChunkStoreSubscriber, ChunkStoreSubscriberHandle,
+    ChunkStore, ChunkStoreDiff, ChunkStoreEvent, ChunkStoreSubscriber, ChunkStoreSubscriberHandle,
 };
+use re_log::debug_assert;
 use re_log_types::{EntityPath, EntityPathHash, StoreId};
 use re_sdk_types::Component as _;
 use re_sdk_types::components::{PinholeProjection, ViewCoordinates};
@@ -16,11 +17,29 @@ bitflags::bitflags! {
     }
 }
 
+impl re_byte_size::SizeBytes for SubSpaceConnectionFlags {
+    const IS_POD: bool = true;
+
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+}
+
 bitflags::bitflags! {
     /// Marks entities that are of special interest for heuristics.
     #[derive(PartialEq, Eq, Debug, Copy, Clone)]
     pub struct HeuristicHints: u8 {
         const ViewCoordinates3d = 0b0000001;
+    }
+}
+
+impl re_byte_size::SizeBytes for HeuristicHints {
+    const IS_POD: bool = true;
+
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
     }
 }
 
@@ -34,7 +53,7 @@ bitflags::bitflags! {
 /// Within the tree of all subspaces, every entity is contained in exactly one subspace.
 /// The subtree at (and including) the `origin` minus the
 /// subtrees of all child spaces are considered to be contained in a subspace.
-#[derive(Debug)]
+#[derive(Debug, re_byte_size::SizeBytes)]
 pub struct SubSpace {
     /// The transform root of this subspace.
     ///
@@ -120,6 +139,22 @@ impl SpatialTopologyStoreSubscriber {
     }
 }
 
+impl re_byte_size::MemUsageTreeCapture for SpatialTopologyStoreSubscriber {
+    fn capture_mem_usage_tree(&self) -> re_byte_size::MemUsageTree {
+        use re_byte_size::SizeBytes as _;
+        let mut node = re_byte_size::MemUsageNode::new();
+        for (store_id, topology) in &self.topologies {
+            let name = format!(
+                "{}/{}",
+                store_id.application_id().as_str(),
+                store_id.recording_id().as_str()
+            );
+            node.add(name, topology.total_size_bytes());
+        }
+        node.into_tree()
+    }
+}
+
 impl ChunkStoreSubscriber for SpatialTopologyStoreSubscriber {
     #[inline]
     fn name(&self) -> String {
@@ -140,20 +175,21 @@ impl ChunkStoreSubscriber for SpatialTopologyStoreSubscriber {
         re_tracing::profile_function!();
 
         for event in events {
-            let Some(add) = event.to_addition() else {
-                // Topology is only additive, don't care about removals.
+            let ChunkStoreDiff::SchemaAddition(add) = &event.diff else {
                 continue;
             };
 
-            // Possible optimization:
-            // only update topologies if an entity is logged the first time or a new relevant component was added.
-            self.topologies
-                .entry(event.store_id.clone())
-                .or_default()
-                .on_store_diff(
-                    add.delta_chunk().entity_path(),
-                    add.delta_chunk().component_descriptors(),
-                );
+            for meta in &add.new_columns {
+                self.topologies
+                    .entry(event.store_id.clone())
+                    .or_default()
+                    .on_store_diff(
+                        &meta.entity_path,
+                        meta.components
+                            .iter()
+                            .map(|component| &component.descriptor),
+                    );
+            }
         }
     }
 }
@@ -167,6 +203,7 @@ impl ChunkStoreSubscriber for SpatialTopologyStoreSubscriber {
 ///
 /// Spatial topology is time independent but may change as new data comes in.
 /// Generally, the assumption is that topological cuts stay constant over time.
+#[derive(Debug, re_byte_size::SizeBytes)]
 pub struct SpatialTopology {
     /// All subspaces, identified by their origin-hash.
     subspaces: IntMap<EntityPathHash, SubSpace>,

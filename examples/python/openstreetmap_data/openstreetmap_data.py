@@ -8,6 +8,7 @@ from typing import Any
 from urllib.parse import urlencode
 
 import requests
+
 import rerun as rr
 import rerun.blueprint as rrb
 

@@ -5,13 +5,14 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, ClassVar
 
 from attrs import define, field
 
 from ... import components, datatypes
 from ..._baseclasses import (
     Archetype,
+    ComponentDescriptor,
 )
 from ...blueprint import components as blueprint_components
 from ...error_utils import catch_and_log_exceptions
@@ -26,6 +27,8 @@ class ScalarAxis(Archetype):
 
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
+
+    NAME: ClassVar[str] = "rerun.blueprint.archetypes.ScalarAxis"
 
     def __init__(
         self: Any, *, range: datatypes.Range1DLike | None = None, zoom_lock: datatypes.BoolLike | None = None
@@ -108,6 +111,22 @@ class ScalarAxis(Archetype):
     def cleared(cls) -> ScalarAxis:
         """Clear all the fields of a `ScalarAxis`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_range() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "ScalarAxis:range",
+            archetype=ScalarAxis.NAME,
+            component_type=components.Range1DBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_zoom_lock() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "ScalarAxis:zoom_lock",
+            archetype=ScalarAxis.NAME,
+            component_type=blueprint_components.LockRangeDuringZoomBatch._COMPONENT_TYPE,
+        )
 
     range: components.Range1DBatch | None = field(
         metadata={"component": True},

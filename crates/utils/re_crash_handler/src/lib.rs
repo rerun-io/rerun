@@ -64,7 +64,7 @@ fn install_panic_hook(_build_info: BuildInfo) {
 
             eprintln!(
                 "\n\
-            Troubleshooting Rerun: https://www.rerun.io/docs/getting-started/troubleshooting \n\
+            Troubleshooting Rerun: https://www.rerun.io/docs/overview/installing-rerun/troubleshooting \n\
             Report bugs: https://github.com/rerun-io/rerun/issues"
             );
 
@@ -101,7 +101,7 @@ fn panic_info_message(panic_info: &std::panic::PanicHookInfo<'_>) -> Option<Stri
 #[cfg(not(target_os = "windows"))]
 #[expect(unsafe_code)]
 #[expect(clippy::fn_to_numeric_cast_any)]
-fn install_signal_handler(build_info: BuildInfo) {
+pub fn install_signal_handler(build_info: BuildInfo) {
     *BUILD_INFO.lock() = Some(build_info); // Share it with the signal handler
 
     for signum in [
@@ -126,7 +126,7 @@ fn install_signal_handler(build_info: BuildInfo) {
             write_to_stderr(signal_name);
             write_to_stderr("\n");
             write_to_stderr(
-                "Troubleshooting Rerun: https://www.rerun.io/docs/getting-started/troubleshooting \n",
+                "Troubleshooting Rerun: https://www.rerun.io/docs/overview/installing-rerun/troubleshooting \n",
             );
             write_to_stderr("Report bugs: https://github.com/rerun-io/rerun/issues \n");
             write_to_stderr("\n");
@@ -216,9 +216,7 @@ pub fn callstack_from(start_patterns: &[&str]) -> String {
     // Trim it a bit:
     let mut stack = stack.as_str();
 
-    let start_patterns = start_patterns
-        .iter()
-        .chain(std::iter::once(&"callstack_from"));
+    let start_patterns = std::iter::chain(start_patterns, std::iter::once(&"callstack_from"));
 
     // Trim the top (closest to the panic handler) to cut out some noise:
     for start_pattern in start_patterns {

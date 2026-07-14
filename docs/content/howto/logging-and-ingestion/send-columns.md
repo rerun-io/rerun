@@ -4,12 +4,13 @@ order: 100
 description: How to use the Rerun SDK to log big chunks of data in one call
 ---
 
-The [`log` API](../../getting-started/data-in/python.md#logging-our-first-points) is designed to extract data from your running code as it's being generated. It is, by nature, *row-oriented*.
+The [`log` API](../../getting-started/data-in.md#logging-our-first-points) is designed to extract data from your running code as it's being generated. It is, by nature, *row-oriented*.
 If you already have data stored in something more *column-oriented*, it can be both a lot easier and more efficient to send it to Rerun in that form directly.
 
 This is what the `send_columns` API is for: it lets you efficiently update the state of an entity over time, sending data for multiple index and component columns in a single operation.
 
-> ⚠️ `send_columns` API bypasses the time context and [micro-batcher](../../reference/sdk/micro-batching.md) ⚠️
+> [!WARNING]
+> `send_columns` API bypasses the time context and [micro-batcher](../../reference/sdk/micro-batching.md).
 >
 > In contrast to the `log` API, `send_columns` does NOT add any other timelines to the data. Neither the built-in timelines `log_time` and `log_tick`, nor any [user timelines](../../concepts/logging-and-ingestion/timelines.md). Only the timelines explicitly included in the call to `send_columns` will be included.
 

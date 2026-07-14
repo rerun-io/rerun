@@ -7,7 +7,7 @@
 //! that case. You can learn more about these traits below.
 //!
 //! If you are working with actual RRD streams (i.e. everything that does not go through gRPC:
-//! files, standard I/O, HTTP, data loaders, etc), then have a look into the [`rrd`] module.
+//! files, standard I/O, HTTP, importers, etc), then have a look into the [`rrd`] module.
 //! The [`ToTransport`]/[`ToApplication`] traits will also be useful to you. You can learn more
 //! about these traits below.
 //!
@@ -59,13 +59,14 @@
 //! * SDK comms: our legacy gRPC-based protocol, currently used by everything relying on the old
 //!   `StoreHub` model (logging, message proxy, etc).
 //! * RRD streams: the binary protocol that we use for all stream-based interfaces (files, stdio,
-//!   data-loaders, HTTP fetches, etc).
+//!   importers, HTTP fetches, etc).
 //!
 //! *All these protocols use the exact same encoding*. There is only one encoding: the Rerun encoding.
 //! It often happens that one protocol makes use of some types while others don't (e.g. the
 //! top-level `LogMsg` object is never used in RRD streams, but is used in SDK comms), but for all
 //! the types they do share, the encoding will be the exact same.
 
+pub mod chunk_provider;
 pub mod rrd;
 
 mod app_id_injector;
@@ -78,5 +79,8 @@ pub mod external {
 pub use self::app_id_injector::{
     ApplicationIdInjector, CachingApplicationIdInjector, DummyApplicationIdInjector,
 };
+#[cfg(feature = "decoder")]
+pub use self::chunk_provider::RrdChunkProvider;
+pub use self::chunk_provider::{ChunkProvider, ChunkProviderError};
 pub use self::rrd::*;
 pub use self::transport_to_app::{ToApplication, ToTransport};

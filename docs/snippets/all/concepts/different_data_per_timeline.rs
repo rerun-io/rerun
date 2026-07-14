@@ -1,8 +1,10 @@
 //! Log different data on different timelines.
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let rec =
-        rerun::RecordingStreamBuilder::new("rerun_example_different_data_per_timeline").spawn()?;
+    let rec = rerun::RecordingStreamBuilder::new(
+        "rerun_example_different_data_per_timeline",
+    )
+    .spawn()?;
 
     rec.set_time_sequence("blue timeline", 0);
     rec.set_duration_secs("red timeline", 0.0);

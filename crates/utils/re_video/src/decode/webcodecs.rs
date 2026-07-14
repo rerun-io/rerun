@@ -1,5 +1,4 @@
 use std::collections::hash_map::Entry;
-use std::sync::LazyLock;
 
 use ahash::HashMap;
 use js_sys::{Function, Uint8Array};
@@ -12,21 +11,17 @@ use web_sys::{
     VideoDecoderInit,
 };
 
-use super::{AsyncDecoder, Chunk, DecodeHardwareAcceleration, Frame, FrameInfo, Result};
+use super::{
+    AsyncDecoder, Chunk, DecodeHardwareAcceleration, Frame, FrameContent, FrameInfo, Result,
+};
 use crate::{
     DecodeError, FrameResult, Sender, Time, Timescale, TryRecvError, VideoCodec,
-    VideoDataDescription, VideoEncodingDetails,
+    VideoDataDescription, VideoEncodingDetails, player::VideoPlaybackIssueSeverity,
 };
 
-#[derive(Clone)]
+#[derive(Clone, re_byte_size::SizeBytes)]
 #[repr(transparent)]
-pub struct WebVideoFrame(web_sys::VideoFrame);
-
-impl re_byte_size::SizeBytes for WebVideoFrame {
-    fn heap_size_bytes(&self) -> u64 {
-        0 // Part of Browser's memory, not wasm heap.
-    }
-}
+pub struct WebVideoFrame(#[size_bytes(ignore)] pub(super) web_sys::VideoFrame);
 
 impl Drop for WebVideoFrame {
     fn drop(&mut self) {
@@ -44,6 +39,7 @@ impl std::ops::Deref for WebVideoFrame {
 }
 
 /// Messages sent to the output callback.
+#[derive(re_byte_size::SizeBytes)]
 enum OutputCallbackMessage {
     Reset,
     FrameInfo {
@@ -52,18 +48,13 @@ enum OutputCallbackMessage {
     },
 }
 
-impl re_byte_size::SizeBytes for OutputCallbackMessage {
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-}
-
 pub struct WebVideoDecoder {
     codec: VideoCodec,
 
     timescale: Timescale,
     first_frame_pts: Time,
 
+    codec_config: Option<web_sys::VideoDecoderConfig>,
     decoder: web_sys::VideoDecoder,
     hw_acceleration: DecodeHardwareAcceleration,
     output_sender: Sender<FrameResult>,
@@ -100,6 +91,15 @@ pub enum WebError {
     NotEnoughCodecInformation,
 }
 
+impl WebError {
+    pub fn severity(&self) -> VideoPlaybackIssueSeverity {
+        match self {
+            Self::NotEnoughCodecInformation => VideoPlaybackIssueSeverity::Informational,
+            _ => VideoPlaybackIssueSeverity::Error,
+        }
+    }
+}
+
 // SAFETY: There is no way to access the same JS object from different OS threads
 //         in a way that could result in a data race.
 
@@ -119,25 +119,9 @@ unsafe impl Send for WebVideoFrame {}
 #[expect(clippy::undocumented_unsafe_blocks)]
 unsafe impl Sync for WebVideoFrame {}
 
-static IS_SAFARI: LazyLock<bool> = LazyLock::new(|| {
-    web_sys::window().is_some_and(|w| w.has_own_property(&wasm_bindgen::JsValue::from("safari")))
-});
-
-static IS_FIREFOX: LazyLock<bool> = LazyLock::new(|| {
-    web_sys::window()
-        .and_then(|w| w.navigator().user_agent().ok())
-        .is_some_and(|ua| ua.to_lowercase().contains("firefox"))
-});
-
 impl Drop for WebVideoDecoder {
     fn drop(&mut self) {
         re_log::debug!("Dropping WebVideoDecoder");
-        if *IS_FIREFOX {
-            // As of Firefox 140.0.4 we observe frequent tab crashes when calling `close` on a video decoder.
-            // It would be nice to at least call `reset` instead, but that _also_ tends to crash the tab.
-            // See https://bugzilla.mozilla.org/show_bug.cgi?id=1976929 for more details.
-            return;
-        }
 
         if let Err(err) = self.decoder.close() {
             if let Some(dom_exception) = err.dyn_ref::<web_sys::DomException>()
@@ -150,7 +134,7 @@ impl Drop for WebVideoDecoder {
 
             re_log::warn!(
                 "Error when closing video decoder: {}",
-                js_error_to_string(&err)
+                string_from_js_value(&err)
             );
         }
     }
@@ -176,17 +160,33 @@ impl WebVideoDecoder {
             .find_map(|s| s.sample())
             .map_or(Time::ZERO, |s| s.presentation_timestamp);
 
+        let codec_config = video_descr
+            .encoding_details
+            .as_ref()
+            .map(|encoding_details| js_video_decoder_config(encoding_details, hw_acceleration));
+
         Ok(Self {
-            codec: video_descr.codec,
+            codec: video_descr.codec.clone(),
 
             timescale,
             first_frame_pts,
 
+            codec_config,
             decoder,
             hw_acceleration,
             output_sender,
             output_callback_tx,
         })
+    }
+
+    fn configure_webdecoder(&self) -> Result<(), WebError> {
+        let codec_config = self
+            .codec_config
+            .as_ref()
+            .ok_or(WebError::NotEnoughCodecInformation)?;
+        self.decoder
+            .configure(codec_config)
+            .map_err(|err| WebError::ConfigureFailure(string_from_js_value(&err)))
     }
 }
 
@@ -248,14 +248,46 @@ impl AsyncDecoder for WebVideoDecoder {
         // Given that we err on the side of providing too much than too little information.
         if let Some(duration) = video_chunk.duration {
             let duration_micros = 1e-3 * duration.duration(self.timescale).as_nanos() as f64;
-            web_chunk.set_duration(duration_micros);
+            web_chunk.set_duration_f64(duration_micros);
         }
 
         let web_chunk = EncodedVideoChunk::new(&web_chunk)
-            .map_err(|err| WebError::CreateChunk(js_error_to_string(&err)))?;
+            .map_err(|err| WebError::CreateChunk(string_from_js_value(&err)))?;
+
+        // Check the state of the decoder before submitting a chunk.
+        // We observed the decoder sometimes to enter into a closed or unconfigured state on its own,
+        // so we simply always do configuration just in time.
+        match self.decoder.state() {
+            // https://www.w3.org/TR/webcodecs/#dom-codecstate-closed
+            // "The codec is no longer usable and underlying system resources have been released."
+            // So we recreate the whole decoder from scratch.
+            web_sys::CodecState::Closed => {
+                let (decoder, output_callback_tx) = init_video_decoder(self.output_sender.clone())?;
+                self.decoder = decoder;
+                self.output_callback_tx = output_callback_tx;
+
+                self.configure_webdecoder()?;
+            }
+
+            // https://www.w3.org/TR/webcodecs/#dom-codecstate-unconfigured
+            // "The codec is not configured for encoding or decoding."
+            web_sys::CodecState::Unconfigured => {
+                self.configure_webdecoder()?;
+            }
+
+            // https://www.w3.org/TR/webcodecs/#dom-codecstate-configured
+            //A valid configuration has been provided. The codec is ready for encoding or decoding.
+            web_sys::CodecState::Configured => {}
+
+            // Shouldn't happen other than for spec changes or bugs in the stack.
+            other => {
+                re_log::warn_once!("Unexpected video decoder state: {other:?}");
+            }
+        }
+
         self.decoder
             .decode(&web_chunk)
-            .map_err(|err| WebError::DecodeChunk(js_error_to_string(&err)))?;
+            .map_err(|err| WebError::DecodeChunk(string_from_js_value(&err)))?;
 
         Ok(())
     }
@@ -270,15 +302,10 @@ impl AsyncDecoder for WebVideoDecoder {
             .send(OutputCallbackMessage::Reset)
             .ok();
 
-        if *IS_FIREFOX {
-            // As of Firefox 140.0.4 we observe frequent tab crashes when calling `reset` on a video decoder.
-            // See https://bugzilla.mozilla.org/show_bug.cgi?id=1976929 for more details.
-            let (decoder, output_callback_tx) = init_video_decoder(self.output_sender.clone())?;
-            self.decoder = decoder;
-            self.output_callback_tx = output_callback_tx;
-        } else if let Err(_err) = self.decoder.reset() {
+        if let Err(_err) = self.decoder.reset() {
             // It can happen that reset fails after a previously encountered error.
             // In that case, start over completely and try again!
+            // We don't do this bit lazily since we don't know for sure what state the decoder is in after a failed reset.
             re_log::debug!("Video decoder reset failed, recreating decoder.");
             let (decoder, output_callback_tx) = init_video_decoder(self.output_sender.clone())?;
             self.decoder = decoder;
@@ -296,13 +323,13 @@ impl AsyncDecoder for WebVideoDecoder {
             .encoding_details
             .as_ref()
             .ok_or(WebError::NotEnoughCodecInformation)?;
+        self.codec_config = Some(js_video_decoder_config(
+            encoding_details,
+            self.hw_acceleration,
+        ));
 
-        self.decoder
-            .configure(&js_video_decoder_config(
-                encoding_details,
-                self.hw_acceleration,
-            ))
-            .map_err(|err| WebError::ConfigureFailure(js_error_to_string(&err)).into())
+        // Actual codec configuration happens lazily on the first call to `submit_chunk`.
+        Ok(())
     }
 
     /// Called after submitting the last chunk.
@@ -330,18 +357,15 @@ impl AsyncDecoder for WebVideoDecoder {
         // If we don't handle potential flush errors, we'll get a lot of spam in the console.
         wasm_bindgen_futures::spawn_local(async move {
             let flush_result = wasm_bindgen_futures::JsFuture::from(flush_promise).await;
-            if let Err(flush_error) = flush_result {
-                if let Some(dom_exception) = flush_error.dyn_ref::<web_sys::DomException>()
+            if let Err(err) = flush_result {
+                if let Some(dom_exception) = err.dyn_ref::<web_sys::DomException>()
                     && dom_exception.code() == web_sys::DomException::ABORT_ERR
                 {
                     // Video decoder got closed, that's fine.
                     return;
                 }
 
-                re_log::debug!(
-                    "Failed to flush video: {}",
-                    js_error_to_string(&flush_error)
-                );
+                re_log::debug!("Failed to flush video: {}", string_from_js_value(&err));
             }
         });
 
@@ -349,10 +373,17 @@ impl AsyncDecoder for WebVideoDecoder {
     }
 
     fn min_num_samples_to_enqueue_ahead(&self) -> usize {
-        // TODO(#8848): For some h264 videos (which??) we need to enqueue more samples, otherwise Safari will not provide us with any frames.
+        // TODO(#8848): For some h264 videos we need to enqueue more samples. For example videos in
+        // `s3://rerun-redap-datasets-pdx/larger-than-ram-demo/very-large.rrd`. (requires rerun login)
+        //
+        // This fixes it for Safari and Chrome on mac, while firefox still has issues.
+        //
+        // Another defense against this we could consider is if we aren't getting frames back from the
+        // decoder, continue trying to give it more.
+        //
         // (The same happens with FFmpeg-cli decoder for the affected videos)
-        if self.codec == VideoCodec::H264 && *IS_SAFARI {
-            16 // Safari needs more samples queued for h264
+        if self.codec == VideoCodec::H264 {
+            16 // enqueue more samples for h264
         } else {
             // No such workaround are needed anywhere else,
             // GOP boundaries as handled by the video player are enough.
@@ -413,14 +444,9 @@ fn init_video_decoder(
                 }
             }
 
-            let Some(web_timestamp_us_raw) = frame.timestamp() else {
-                // Spec says this should never happen.
-                re_log::warn_once!("WebCodec decoded video frame without any timestamp data.");
-                return;
-            };
             // WebCodec timestamps are internally represented as i64 according to the spec.
             // Any floating point part would be a violation of the spec.
-            let web_timestamp_us = web_timestamp_us_raw as u64;
+            let web_timestamp_us = frame.timestamp() as u64;
 
             match pending_frame_infos.entry(web_timestamp_us) {
                 Entry::Occupied(mut entry) => {
@@ -442,7 +468,7 @@ fn init_video_decoder(
 
                     output_sender
                         .send(Ok(Frame {
-                            content: frame,
+                            content: FrameContent::WebVideoFrame(frame),
                             info,
                         }))
                         .ok();
@@ -450,7 +476,7 @@ fn init_video_decoder(
 
                 Entry::Vacant(_) => {
                     re_log::warn!(
-                        "Decoder produced a frame at timestamp {web_timestamp_us_raw}us for which we don't have a valid frame info."
+                        "Decoder produced a frame at timestamp {web_timestamp_us}us for which we don't have a valid frame info."
                     );
                 }
             }
@@ -460,7 +486,7 @@ fn init_video_decoder(
     let on_error = Closure::wrap(Box::new(move |err: js_sys::Error| {
         output_sender
             .send(Err(super::DecodeError::WebDecoder(WebError::Decoding(
-                js_error_to_string(&err),
+                string_from_js_value(&err),
             ))))
             .ok();
     }) as Box<dyn FnMut(js_sys::Error)>);
@@ -473,7 +499,7 @@ fn init_video_decoder(
     };
 
     let decoder = web_sys::VideoDecoder::new(&VideoDecoderInit::new(&on_error, &on_output))
-        .map_err(|err| WebError::DecoderSetupFailure(js_error_to_string(&err)))?;
+        .map_err(|err| WebError::DecoderSetupFailure(string_from_js_value(&err)))?;
 
     Ok((decoder, output_callback_tx))
 }
@@ -534,7 +560,7 @@ fn js_video_decoder_config(
     js
 }
 
-fn js_error_to_string(v: &wasm_bindgen::JsValue) -> String {
+pub fn string_from_js_value(v: &wasm_bindgen::JsValue) -> String {
     if let Some(v) = v.as_string() {
         return v;
     }

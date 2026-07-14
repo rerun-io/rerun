@@ -18,6 +18,7 @@ mod column_descriptor;
 mod column_descriptor_ref;
 mod column_kind;
 mod component_column_descriptor;
+mod dataframe_to_chunks;
 mod error;
 mod index_column_descriptor;
 mod ipc;
@@ -40,8 +41,11 @@ pub use self::column_descriptor::{ColumnDescriptor, ColumnError};
 pub use self::column_descriptor_ref::ColumnDescriptorRef;
 pub use self::column_kind::{ColumnKind, UnknownColumnKind};
 pub use self::component_column_descriptor::ComponentColumnDescriptor;
+pub use self::dataframe_to_chunks::{
+    DataframeIndex, DataframeToChunksError, chunk_batches_from_dataframe_record_batch,
+};
 pub use self::error::SorbetError;
-pub use self::index_column_descriptor::{IndexColumnDescriptor, UnsupportedTimeType};
+pub use self::index_column_descriptor::{IndexColumnDescriptor, IndexColumnError};
 pub use self::ipc::{ipc_from_schema, migrated_schema_from_ipc, raw_schema_from_ipc};
 pub use self::metadata::{
     ArrowBatchMetadata, ArrowFieldMetadata, MetadataExt, MissingFieldMetadata, MissingMetadataKey,
@@ -80,7 +84,7 @@ pub fn chunk_id_of_schema(
 ) -> Result<re_types_core::ChunkId, SorbetError> {
     let metadata = schema.metadata();
     if let Some(chunk_id_str) = metadata
-        .get("rerun:id")
+        .get(crate::metadata::RERUN_CHUNK_ID)
         .or_else(|| metadata.get("rerun.id"))
     {
         chunk_id_str.parse().map_err(|err| {

@@ -9,7 +9,8 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use indicatif::ProgressBar;
-use parking_lot::Mutex;
+use re_mutex::Mutex;
+use re_video::player::VideoSliceSource;
 
 fn main() {
     re_log::setup_logging();
@@ -25,8 +26,7 @@ fn main() {
     println!("Decoding {video_path}");
 
     let video_blob = std::fs::read(video_path).expect("failed to read video");
-    let source_id = re_tuid::Tuid::new();
-    let video = re_video::VideoDataDescription::load_mp4(&video_blob, video_path, source_id)
+    let video = re_video::VideoDataDescription::load_mp4(&video_blob, video_path)
         .expect("failed to load video");
 
     println!(
@@ -84,7 +84,9 @@ fn main() {
             continue;
         };
 
-        let chunk = sample.get(&|_| &video_blob, sample_idx).unwrap();
+        let chunk = sample
+            .get(&VideoSliceSource(&video_blob), sample_idx)
+            .unwrap();
         decoder.submit_chunk(chunk).expect("Failed to submit chunk");
     }
     decoder.end_of_video().expect("Failed to end of video");
@@ -123,6 +125,11 @@ fn main() {
                 }
                 re_video::PixelFormat::Yuv { .. } => {
                     re_log::error_once!("YUV frame writing is not supported");
+                }
+                re_video::PixelFormat::L8
+                | re_video::PixelFormat::L16
+                | re_video::PixelFormat::R32Float => {
+                    re_log::error_once!("L8 & L16 & R32Float frame writing is not supported");
                 }
             }
         }

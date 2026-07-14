@@ -1,0 +1,8 @@
+---
+source: crates/viewer/re_viewer/tests/all_component_fallbacks.rs
+expression: arch_display
+---
+segment_preview_column: []
+flag_column: []
+grid_view_card_title: []
+url_column: []

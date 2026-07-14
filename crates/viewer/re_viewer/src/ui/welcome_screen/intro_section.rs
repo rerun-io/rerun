@@ -4,7 +4,7 @@ use re_ui::egui_ext::card_layout::{CardLayout, CardLayoutItem};
 use re_ui::{ReButtonExt as _, UICommand, UICommandSender as _, UiExt as _, design_tokens_of};
 use re_uri::Origin;
 use re_viewer_context::{
-    EditRedapServerModalCommand, GlobalContext, Item, SystemCommand, SystemCommandSender as _,
+    AppContext, EditRedapServerModalCommand, Item, SystemCommand, SystemCommandSender as _,
 };
 
 pub enum LoginState {
@@ -38,25 +38,28 @@ pub enum IntroItem {
 }
 
 impl IntroItem {
-    fn items() -> Vec<Self> {
-        vec![
+    fn items(login_enabled: bool) -> Vec<Self> {
+        let mut items = vec![
             Self::DocItem {
                 title: "Send data in",
                 url: "https://rerun.io/docs/getting-started/data-in",
-                body: "Send data to Rerun from your running applications or existing files.",
+                body: "Ingest multi-rate, multimodal data from robot logs, sensors, simulation, or video.",
             },
             Self::DocItem {
                 title: "Explore data",
                 url: "https://rerun.io/docs/getting-started/configure-the-viewer",
-                body: "Familiarize yourself with the basics of using the Rerun Viewer.",
+                body: "Visualize and explore multi-rate, multimodal data across every stage of the pipeline.",
             },
             Self::DocItem {
                 title: "Query data out",
                 url: "https://rerun.io/docs/getting-started/data-out",
-                body: "Perform analysis and send back the results to the original recording.",
+                body: "Query raw, intermediate, and derived data with dataframes or SQL, and stream to training.",
             },
-            Self::CloudLoginItem,
-        ]
+        ];
+        if login_enabled {
+            items.push(Self::CloudLoginItem);
+        }
+        items
     }
 
     fn frame(&self, ui: &Ui) -> Frame {
@@ -77,15 +80,17 @@ impl IntroItem {
     }
 
     fn card_item(&self, ui: &Ui) -> CardLayoutItem {
-        let frame = self.frame(ui);
         let min_width = match &self {
             Self::DocItem { .. } => 200.0,
             Self::CloudLoginItem => 400.0,
         };
-        CardLayoutItem { frame, min_width }
+        CardLayoutItem {
+            frame: Some(self.frame(ui)),
+            min_width,
+        }
     }
 
-    fn show(&self, ui: &mut Ui, ctx: &GlobalContext<'_>, cloud_state: &CloudState) {
+    fn show(&self, ui: &mut Ui, ctx: &AppContext<'_>, cloud_state: &CloudState) {
         let label_size = 13.0;
         ui.vertical(|ui| match self {
             Self::DocItem { title, url, body } => {
@@ -113,9 +118,9 @@ impl IntroItem {
                     Theme::Dark => Theme::Light,
                     Theme::Light => Theme::Dark,
                 };
-                ui.set_style(ui.ctx().style_of(opposite_theme));
+                ui.set_style(ui.style_of(opposite_theme));
 
-                ui.heading(RichText::new("Rerun Data Platform").strong());
+                ui.heading(RichText::new("Rerun Hub").strong());
 
                 ui.horizontal_wrapped(|ui| {
                     ui.spacing_mut().item_spacing.x = 0.0;
@@ -136,9 +141,9 @@ impl IntroItem {
 
                     ui.style_mut().text_styles.get_mut(&TextStyle::Body).expect("Should always have body text style").size = label_size;
                     ui.label(
-                        "Iterate faster on robotics learning with unified infrastructure. Interested? Read more "
+                        "The production backend for the Rerun data layer — turn your object stores into a queryable, streamable foundation. "
                     );
-                    link(ui, "here", "https://rerun.io/#rerun-data-platform");
+                    link(ui, "Learn more", "https://rerun.io/#rerun-data-platform");
                     ui.label(" or ");
                     link(ui, "book a demo", "https://calendly.com/d/ctht-4kp-qnt/rerun-demo-meeting");
                     ui.label(".");
@@ -183,7 +188,7 @@ impl IntroItem {
                             }
                             ui.spacing_mut().item_spacing.x = 0.0;
                             ui.weak("for address ");
-                            ui.strong(format!("{}", &origin.host));
+                            ui.strong(format!("{}", origin.host));
                         });
                     }
                     CloudState { has_server: Some(origin), login: LoginState::Auth { .. } } => {
@@ -198,13 +203,13 @@ impl IntroItem {
     }
 }
 
-pub fn intro_section(ui: &mut egui::Ui, ctx: &GlobalContext<'_>, cloud_state: &CloudState) {
-    let items = IntroItem::items();
+pub fn intro_section(ui: &mut egui::Ui, ctx: &AppContext<'_>, cloud_state: &CloudState) {
+    let items = IntroItem::items(ctx.login_enabled);
 
     ui.add_space(32.0);
 
     if let Some(auth) = ctx.auth_context {
-        ui.strong(RichText::new(format!("Hi, {}!", &auth.email)).size(15.0));
+        ui.strong(RichText::new(format!("Hi, {}!", auth.email)).size(15.0));
 
         if ui.add(Button::new("Log out").secondary().small()).clicked() {
             ctx.command_sender.send_system(SystemCommand::Logout);
@@ -213,7 +218,11 @@ pub fn intro_section(ui: &mut egui::Ui, ctx: &GlobalContext<'_>, cloud_state: &C
         ui.add_space(32.0);
     }
 
-    CardLayout::new(items.iter().map(|item| item.card_item(ui)).collect()).show(ui, |ui, index| {
+    CardLayout::new(
+        items.iter().map(|item| item.card_item(ui)).collect(),
+        Frame::NONE,
+    )
+    .show(ui, |ui, index, _card_hovered| {
         let item = &items[index];
         item.show(ui, ctx, cloud_state);
     });

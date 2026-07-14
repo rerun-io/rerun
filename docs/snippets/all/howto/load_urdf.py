@@ -6,7 +6,7 @@ from rerun import RecordingStream
 with RecordingStream("rerun_example_load_urdf") as rec:
     rec.spawn()
 
-    # `log_file_from_path` automatically uses the built-in URDF data-loader.
+    # `log_file_from_path` automatically uses the built-in URDF importer.
     urdf_path = Path(__file__).parent / "minimal.urdf"
     rec.log_file_from_path(urdf_path, static=True)
 
@@ -19,7 +19,8 @@ with RecordingStream("rerun_example_load_urdf") as rec:
     joint_axis = [0, 0, 1]  # comes from URDF
     joint_angle = 1.216  # radians
     origin_xyz = [0, 0, 0.1]  # comes from URDF
-    # Make sure that `parent_frame` and `child_frame` match the joint's frame IDs in the URDF file.
+    # Make sure that `parent_frame` and `child_frame` match the joint's
+    # frame IDs in the URDF file.
     rec.log(
         "transforms",
         rr.Transform3D(

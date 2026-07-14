@@ -5,12 +5,13 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from attrs import define, field
 
 from ..._baseclasses import (
     Archetype,
+    ComponentDescriptor,
 )
 from ...blueprint import components as blueprint_components
 from ...error_utils import catch_and_log_exceptions
@@ -65,6 +66,8 @@ class ViewContents(Archetype):
 
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
+
+    NAME: ClassVar[str] = "rerun.blueprint.archetypes.ViewContents"
 
     def __init__(self: Any, query: datatypes.Utf8ArrayLike) -> None:
         """
@@ -138,6 +141,14 @@ class ViewContents(Archetype):
     def cleared(cls) -> ViewContents:
         """Clear all the fields of a `ViewContents`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_query() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "ViewContents:query",
+            archetype=ViewContents.NAME,
+            component_type=blueprint_components.QueryExpressionBatch._COMPONENT_TYPE,
+        )
 
     query: blueprint_components.QueryExpressionBatch | None = field(
         metadata={"component": True},

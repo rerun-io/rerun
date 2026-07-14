@@ -5,7 +5,7 @@ use std::hash::Hash;
 use std::sync::Arc;
 use std::sync::atomic::AtomicU64;
 
-use parking_lot::RwLock;
+use re_mutex::RwLock;
 use slotmap::{Key, SlotMap};
 use smallvec::SmallVec;
 
@@ -166,8 +166,7 @@ where
             );
             for resource in resources {
                 let Some(removed_resource) = state.all_resources.remove(resource) else {
-                    debug_assert!(
-                        false,
+                    re_log::debug_panic!(
                         "a resource was marked as destroyed last frame that we no longer kept track of"
                     );
                     continue;

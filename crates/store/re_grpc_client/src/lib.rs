@@ -12,7 +12,7 @@ pub use write::Client;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod write_table;
 
-const MAX_DECODING_MESSAGE_SIZE: usize = u32::MAX as usize;
+pub const MAX_DECODING_MESSAGE_SIZE: usize = u32::MAX as usize;
 
 /// Wrapper with a nicer error message
 #[derive(Debug)]
@@ -39,26 +39,31 @@ impl TonicStatusError {
 
 impl std::fmt::Display for TonicStatusError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        // TODO(emilk): duplicated in `re_grpc_server`
-        let status = &self.0;
-
-        write!(f, "gRPC error")?;
-
-        if status.code() != tonic::Code::Unknown {
-            write!(f, ", code: '{}'", status.code())?;
-        }
-        if !status.message().is_empty() {
-            write!(f, ", message: {:?}", status.message())?;
-        }
-        // Binary data - not useful.
-        // if !status.details().is_empty() {
-        //     write!(f, ", details: {:?}", status.details())?;
-        // }
-        if !status.metadata().is_empty() {
-            write!(f, ", metadata: {:?}", status.metadata().as_ref())?;
-        }
-        Ok(())
+        // NOTE: duplicated in `re_grpc_server` and `re_redap_client`
+        fmt_tonic_status(f, &self.0)
     }
+}
+
+fn fmt_tonic_status(f: &mut std::fmt::Formatter<'_>, status: &tonic::Status) -> std::fmt::Result {
+    if status.message().is_empty() {
+        write!(f, "gRPC error")?;
+    } else {
+        write!(f, "{}", status.message())?;
+    }
+
+    if status.code() != tonic::Code::Unknown {
+        write!(f, " ({})", status.code())?;
+    }
+
+    if !status.metadata().is_empty() {
+        write!(
+            f,
+            "{} metadata: {:?}",
+            re_error::DETAILS_SEPARATOR,
+            status.metadata().as_ref()
+        )?;
+    }
+    Ok(())
 }
 
 impl From<tonic::Status> for TonicStatusError {
@@ -103,7 +108,7 @@ impl From<tonic::Status> for StreamError {
 // - `AsyncRuntimeHandle` to be moved lower in the crate hierarchy to be available here (unsure
 //   where).
 // - Make sure that all callers of `DataSource::stream` have access to an `AsyncRuntimeHandle`
-//   (maybe it should be in `GlobalContext`?).
+//   (maybe it should be in `AppContext`?).
 #[cfg(target_arch = "wasm32")]
 fn spawn_future<F>(future: F)
 where

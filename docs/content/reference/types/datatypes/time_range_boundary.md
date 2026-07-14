@@ -7,12 +7,12 @@ Left or right boundary of a time range.
 
 ## Variants
 #### `CursorRelative` = 1
-Type: [`TimeInt`](../datatypes/time_int.md)
+Type: non-null [`TimeInt`](../datatypes/time_int.md)
 
 Boundary is a value relative to the time cursor.
 
 #### `Absolute` = 2
-Type: [`TimeInt`](../datatypes/time_int.md)
+Type: non-null [`TimeInt`](../datatypes/time_int.md)
 
 Boundary is an absolute value.
 
@@ -24,12 +24,12 @@ The boundary extends to infinity.
 
 ## Arrow datatype
 ```
-DenseUnion {
-    0 = "_null_markers": nullable null
-    1 = "CursorRelative": int64
-    2 = "Absolute": int64
-    3 = "Infinite": nullable null
-}
+Union(Dense,
+    0: ("_null_markers": Null)
+    1: ("CursorRelative": non-null Int64)
+    2: ("Absolute": non-null Int64)
+    3: ("Infinite": Null)
+)
 ```
 
 ## API reference links

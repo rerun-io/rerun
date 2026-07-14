@@ -1,7 +1,7 @@
-use re_log_types::EntryId;
-use re_protos::common::v1alpha1::ext::SegmentId;
-
-use crate::store::ChunkKey;
+use re_log_types::{ComponentPath, EntryId};
+use re_protos::EntryName;
+use re_types_core::LayerName;
+use re_types_core::SegmentId;
 
 #[derive(thiserror::Error, Debug)]
 #[expect(clippy::enum_variant_names)]
@@ -12,32 +12,39 @@ pub enum Error {
     #[error(transparent)]
     StoreLoadError(#[from] re_entity_db::StoreLoadError),
 
+    #[error("Invalid entry name: {0}")]
+    InvalidEntryName(#[from] re_protos::InvalidEntryNameError),
+
     #[error("Entry name '{0}' already exists")]
-    DuplicateEntryNameError(String),
+    DuplicateEntryNameError(EntryName),
 
     #[error("Entry id '{0}' already exists")]
     DuplicateEntryIdError(EntryId),
 
     #[error("Entry name '{0}' not found")]
-    EntryNameNotFound(String),
+    EntryNameNotFound(EntryName),
 
     #[error("Entry id '{0}' not found")]
     EntryIdNotFound(EntryId),
 
-    #[error("Segment '{0}' not found in dataset '{1}'")]
-    SegmentIdNotFound(SegmentId, EntryId),
+    #[error("Segment '{segment_id}' not found in dataset '{entry_id}'")]
+    SegmentIdNotFound {
+        segment_id: SegmentId,
+        entry_id: EntryId,
+    },
 
-    #[error("Layer '{0}' not found in segment '{1}' of dataset '{2}'")]
-    LayerNameNotFound(String, SegmentId, EntryId),
+    #[error("Layer '{layer_name}' not found in segment '{segment_id}' of dataset '{entry_id}'")]
+    LayerNameNotFound {
+        layer_name: LayerName,
+        segment_id: SegmentId,
+        entry_id: EntryId,
+    },
 
     #[error("Layer '{0}' already exists")]
-    LayerAlreadyExists(String),
+    LayerAlreadyExists(LayerName),
 
-    #[error("Index '{0}' not found")]
-    IndexNotFound(String),
-
-    #[error("Index '{0}' already exists")]
-    IndexAlreadyExists(String),
+    #[error("Component path '{0}' not found")]
+    ComponentPathNotFound(ComponentPath),
 
     #[error(transparent)]
     DataFusionError(#[from] datafusion::error::DataFusionError),
@@ -45,12 +52,9 @@ pub enum Error {
     #[error(transparent)]
     ArrowError(#[from] arrow::error::ArrowError),
 
-    #[cfg(feature = "lance")]
+    #[cfg(all(feature = "lance", not(target_arch = "wasm32")))]
     #[error(transparent)]
     LanceError(#[from] lance::Error),
-
-    #[error("Indexing error: {0}")]
-    IndexingError(String),
 
     #[error("Error loading RRD: {0}")]
     RrdLoadingError(anyhow::Error),
@@ -61,11 +65,27 @@ pub enum Error {
     #[error("Failed to decode chunk key: {0}")]
     FailedToDecodeChunkKey(String),
 
-    #[error("Could not find chunk: {0:#?}")]
-    ChunkNotFound(ChunkKey),
+    #[error("Invalid chunk key: {0}")]
+    InvalidChunkKey(String),
 
     #[error("Failed to extract properties: {0:#?}")]
     FailedToExtractProperties(String),
+
+    #[error("{0}")]
+    SchemaConflict(String),
+
+    /// A segment exceeds a per-segment limit of its dataset kind, such as
+    /// too large byte size, or non-static chunks.
+    #[error("{0}")]
+    SegmentRejected(String),
+
+    /// Registration would push the dataset past its segment-count limit. Reported synchronously,
+    /// matching how the cloud server reports this.
+    #[error("{0}")]
+    SegmentLimitReached(String),
+
+    #[error("Table storage already exists at location: {0}")]
+    TableStorageAlreadyExists(String),
 }
 
 impl Error {
@@ -83,14 +103,14 @@ impl From<Error> for tonic::Status {
 
             Error::EntryIdNotFound(_)
             | Error::EntryNameNotFound(_)
-            | Error::SegmentIdNotFound(_, _)
-            | Error::LayerNameNotFound(_, _, _)
-            | Error::IndexNotFound(_)
-            | Error::ChunkNotFound(_) => Self::not_found(format!("{err:#}")),
+            | Error::SegmentIdNotFound { .. }
+            | Error::LayerNameNotFound { .. }
+            | Error::ComponentPathNotFound(_)
+            | Error::InvalidChunkKey(_) => Self::not_found(format!("{err:#}")),
 
             Error::DataFusionError(err) => Self::internal(format!("DataFusion error: {err:#}")),
             Error::ArrowError(err) => Self::internal(format!("Arrow error: {err:#}")),
-            #[cfg(feature = "lance")]
+            #[cfg(all(feature = "lance", not(target_arch = "wasm32")))]
             Error::LanceError(err) => Self::internal(format!("Lance error: {err:#}")),
             Error::RrdLoadingError(err) => Self::internal(format!("{err:#}")),
 
@@ -99,12 +119,18 @@ impl From<Error> for tonic::Status {
                 Self::internal(format!("{err:#}"))
             }
 
+            Error::InvalidEntryName(_) => Self::invalid_argument(format!("{err:#}")),
+
             Error::DuplicateEntryNameError(_)
             | Error::DuplicateEntryIdError(_)
             | Error::LayerAlreadyExists(_)
-            | Error::IndexAlreadyExists(_) => Self::already_exists(format!("{err:#}")),
+            | Error::TableStorageAlreadyExists(_) => Self::already_exists(format!("{err:#}")),
 
-            Error::IndexingError(_) => Self::internal(format!("Indexing error: {err:#}")),
+            Error::SchemaConflict(_) => Self::invalid_argument(format!("{err:#}")),
+
+            Error::SegmentRejected(_) | Error::SegmentLimitReached(_) => {
+                Self::failed_precondition(format!("{err:#}"))
+            }
         }
     }
 }

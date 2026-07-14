@@ -2,19 +2,23 @@ use egui::{NumExt as _, TextBuffer, WidgetInfo, WidgetType};
 use egui_tiles::ContainerKind;
 use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item};
 use re_data_ui::DataUi;
-use re_data_ui::item_ui::{
-    self, cursor_interact_with_selectable, guess_query_and_db_for_selected_entity,
-};
+use re_data_ui::item_ui::{self, cursor_interact_with_selectable};
 use re_entity_db::{EntityPath, InstancePath};
 use re_log_types::{ComponentPath, EntityPathFilter, EntityPathSubs, ResolvedEntityPathFilter};
+use re_sdk_types::blueprint::components::VisualizerInstructionId;
 use re_sdk_types::{ComponentDescriptor, components::TransformFrameId};
+use re_tracing::profile_function;
 use re_ui::list_item::{self, ListItemContentButtonsExt as _, PropertyContent};
 use re_ui::text_edit::autocomplete_text_edit;
-use re_ui::{SyntaxHighlighting as _, UiExt as _, icons};
+use re_ui::{
+    ComboItem, ComboItemHeader, OnResponseExt as _, SyntaxHighlighting as _, UiExt as _, icons,
+};
 use re_viewer_context::{
-    ContainerId, Contents, DataQueryResult, DataResult, HoverHighlight, Item, PerVisualizer,
-    SystemCommand, SystemCommandSender as _, TimeControlCommand, UiLayout, ViewContext, ViewId,
-    ViewStates, ViewerContext, contents_name_style, icon_for_container_kind,
+    BlueprintContext as _, ContainerId, Contents, DataQueryResult, DataResult,
+    DataResultInteractionAddress, HoverHighlight, Item, RecommendedVisualizers, StoreViewContext,
+    SystemCommand, SystemCommandSender as _, UiLayout, ViewContext, ViewId, ViewStates,
+    ViewSystemIdentifier, ViewerContext, VisualizerInstruction, VisualizerViewReport,
+    contents_name_style, icon_for_container_kind,
 };
 use re_viewport_blueprint::ViewportBlueprint;
 use re_viewport_blueprint::ui::show_add_view_or_container_modal;
@@ -29,6 +33,7 @@ use crate::visible_time_range_ui::{
 use crate::visualizer_ui::visualizer_ui;
 
 // ---
+
 fn default_selection_panel_width(screen_width: f32) -> f32 {
     (0.45 * screen_width).min(300.0).round()
 }
@@ -49,14 +54,14 @@ impl SelectionPanel {
         viewport: &ViewportBlueprint,
         view_states: &mut ViewStates,
         ui: &mut egui::Ui,
-        expanded: bool,
+        expanded: &mut bool,
     ) {
-        let screen_width = ui.ctx().content_rect().width();
+        let screen_width = ui.content_rect().width();
 
-        let panel = egui::SidePanel::right("selection_view")
-            .min_width(120.0)
-            .default_width(default_selection_panel_width(screen_width))
-            .max_width((0.65 * screen_width).round())
+        let panel = egui::Panel::right("selection_view")
+            .min_size(120.0)
+            .default_size(default_selection_panel_width(screen_width))
+            .max_size((0.65 * screen_width).round())
             .resizable(true)
             .frame(egui::Frame {
                 fill: ui.style().visuals.panel_fill,
@@ -69,12 +74,7 @@ impl SelectionPanel {
                 ..Default::default()
             });
 
-        if ctx.time_ctrl.highlighted_range.is_some() {
-            // Always reset the VH highlight, and let the UI re-set it if needed.
-            ctx.send_time_commands([TimeControlCommand::ClearHighlightedRange]);
-        }
-
-        panel.show_animated_inside(ui, expanded, |ui: &mut egui::Ui| {
+        panel.show_collapsible(ui, expanded, |ui: &mut egui::Ui| {
             ui.panel_content(|ui| {
                 let hover = "The selection view contains information and options about \
                     the currently selected object(s)";
@@ -173,6 +173,8 @@ impl SelectionPanel {
         item: &Item,
         ui_layout: UiLayout,
     ) {
+        re_tracing::profile_function!();
+
         match item {
             Item::ComponentPath(component_path) => {
                 let ComponentPath {
@@ -180,20 +182,19 @@ impl SelectionPanel {
                     component,
                 } = component_path;
 
-                let (query, db) = guess_query_and_db_for_selected_entity(ctx, entity_path);
-                let engine = db.storage_engine();
+                let store_view_ctx = ctx.guess_store_view_context_for_entity(entity_path);
+                let engine = store_view_ctx.db.storage_engine();
                 let component_descriptor = engine
-                    .store()
+                    .schema()
                     .entity_component_descriptor(entity_path, *component)
                     .unwrap_or_else(|| ComponentDescriptor::partial(*component));
 
                 let is_static = engine
                     .store()
                     .entity_has_static_component(entity_path, component_descriptor.component);
-
                 ui.list_item_flat_noninteractive(PropertyContent::new("Parent entity").value_fn(
                     |ui, _| {
-                        item_ui::entity_path_parts_buttons(ctx, &query, db, ui, None, entity_path);
+                        item_ui::entity_path_parts_buttons(&store_view_ctx, ui, None, entity_path);
                     },
                 ));
 
@@ -261,15 +262,13 @@ impl SelectionPanel {
             }
 
             Item::InstancePath(instance_path) => {
-                let (query, db) =
-                    guess_query_and_db_for_selected_entity(ctx, &instance_path.entity_path);
+                let store_view_ctx =
+                    ctx.guess_store_view_context_for_entity(&instance_path.entity_path);
 
                 ui.list_item_flat_noninteractive(PropertyContent::new("Entity path").value_fn(
                     |ui, _| {
                         item_ui::entity_path_parts_buttons(
-                            ctx,
-                            &query,
-                            db,
+                            &store_view_ctx,
                             ui,
                             None,
                             &instance_path.entity_path,
@@ -298,16 +297,17 @@ impl SelectionPanel {
                 }
             }
 
-            Item::DataResult(view_id, instance_path) => {
+            Item::DataResult(DataResultInteractionAddress {
+                view_id,
+                instance_path,
+                visualizer: _,
+            }) => {
+                let store_view_ctx =
+                    ctx.guess_store_view_context_for_entity(&instance_path.entity_path);
                 ui.list_item_flat_noninteractive(PropertyContent::new("Stream entity").value_fn(
                     |ui, _| {
-                        let (query, db) =
-                            guess_query_and_db_for_selected_entity(ctx, &instance_path.entity_path);
-
                         item_ui::entity_path_parts_buttons(
-                            ctx,
-                            &query,
-                            db,
+                            &store_view_ctx,
                             ui,
                             None,
                             &instance_path.entity_path,
@@ -320,7 +320,7 @@ impl SelectionPanel {
                         |ui, _| {
                             let response = ui.button(instance_path.instance.to_string());
                             cursor_interact_with_selectable(
-                                ctx,
+                                &ctx.app_ctx,
                                 response,
                                 Item::from(instance_path.clone()),
                             );
@@ -354,24 +354,24 @@ impl SelectionPanel {
             _ => {}
         }
 
-        let (query, db) = if let Some(entity_path) = item.entity_path() {
-            guess_query_and_db_for_selected_entity(ctx, entity_path)
+        let store_view_ctx = if let Some(entity_path) = item.entity_path() {
+            ctx.guess_store_view_context_for_entity(entity_path)
         } else {
-            (ctx.current_query(), ctx.recording())
+            ctx.active_recording_store_view_context()
         };
 
         if let Some(data_ui_item) = data_section_ui(item) {
             ui.section_collapsing_header("Data").show(ui, |ui| {
                 // TODO(#6075): Because `list_item_scope` changes it. Temporary until everything is `ListItem`.
-                ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
-                data_ui_item.data_ui(ctx, ui, ui_layout, &query, db);
+                ui.spacing_mut().item_spacing.y = ui.global_style().spacing.item_spacing.y;
+                data_ui_item.data_ui(&store_view_ctx, ui, ui_layout);
             });
         }
 
         match item {
             Item::StoreId(_) => {
                 ui.section_collapsing_header("Properties").show(ui, |ui| {
-                    show_recording_properties(ctx, db, &query, ui, ui_layout);
+                    show_recording_properties(&store_view_ctx, ui, ui_layout);
                 });
             }
 
@@ -379,20 +379,18 @@ impl SelectionPanel {
                 self.view_selection_ui(ctx, ui, viewport, view_id, view_states);
             }
 
-            Item::DataResult(view_id, instance_path) => {
-                if instance_path.is_all() {
-                    entity_selection_ui(
-                        ctx,
-                        ui,
-                        &instance_path.entity_path,
-                        viewport,
-                        view_id,
-                        view_states,
-                    );
-                } else {
-                    // NOTE: not implemented when a single instance is selected
-                }
+            Item::DataResult(data_result) if data_result.instance_path.is_all() => {
+                // NOTE: not implemented when a single instance is selected
+                entity_selection_ui(
+                    ctx,
+                    ui,
+                    &data_result.instance_path.entity_path,
+                    viewport,
+                    &data_result.view_id,
+                    view_states,
+                );
             }
+
             _ => {}
         }
     }
@@ -445,6 +443,14 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
         clone_view_button_ui(ctx, ui, viewport, *view_id);
 
         if let Some(view) = viewport.view(view_id) {
+            if view.class(ctx.view_class_registry()).is_experimental() {
+                ui.add_space(6.0);
+                ui.info_label(
+                    "This view is experimental: its API, behavior, and on-disk format may change without notice.",
+                );
+                ui.add_space(8.0);
+            }
+
             ui.section_collapsing_header("Entity path filter")
                 .with_action_button(
                     &re_ui::icons::EDIT,
@@ -456,7 +462,7 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
                 .with_help_markdown(markdown)
                 .show(ui, |ui| {
                     // TODO(#6075): Because `list_item_scope` changes it. Temporary until everything is `ListItem`.
-                    ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
+                    ui.spacing_mut().item_spacing.y = ui.global_style().spacing.item_spacing.y;
 
                     if let Some(new_entity_path_filter) = entity_path_filter_ui(
                         ctx,
@@ -479,12 +485,20 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
 
         if let Some(view) = viewport.view(view_id) {
             let view_class = view.class(ctx.view_class_registry());
-            let view_state = view_states.get_mut_or_create(view.id, view_class);
+            let view_state = view_states.get_mut_or_create(ctx.store_id(), view.id, view_class);
+
+            let view_ctx = view.bundle_context_with_state(ctx, view_state);
+            if let Some(section) = view_class.visualizers_section(&view_ctx) {
+                show_visualizers_section(ctx, ui, *view_id, section.add_options, &|ui| {
+                    let view_ctx = view.bundle_context_with_state(ctx, view_state);
+                    (section.ui)(ui, &view_ctx);
+                });
+            }
 
             ui.section_collapsing_header("View properties")
                 .show(ui, |ui| {
                     // TODO(#6075): Because `list_item_scope` changes it. Temporary until everything is `ListItem`.
-                    ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
+                    ui.spacing_mut().item_spacing.y = ui.global_style().spacing.item_spacing.y;
 
                     let cursor = ui.cursor();
 
@@ -504,11 +518,234 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
                 });
 
             let view_ctx = view.bundle_context_with_state(ctx, view_state);
+
             view_components_defaults_section_ui(&view_ctx, ui, view);
 
             visible_time_range_ui_for_view(ctx, ui, view, view_class, view_state);
         }
     }
+}
+
+const VISUALIZERS_SECTION_HELP: &str = "# Visualizers
+
+This section lists all active visualizers in this view.";
+
+fn show_visualizers_section(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    view_id: ViewId,
+    add_options: Vec<(EntityPath, RecommendedVisualizers)>,
+    body: &dyn Fn(&mut egui::Ui),
+) {
+    ui.section_collapsing_header("Visualizers")
+        .with_button(move |ui: &mut egui::Ui| {
+            visualizer_section_plus_button(ctx, view_id, add_options, ui)
+        })
+        .with_help_markdown(VISUALIZERS_SECTION_HELP)
+        .show(ui, |ui| {
+            // TODO(#6075): Because `list_item_scope` changes it. Temporary until everything is `ListItem`.
+            ui.spacing_mut().item_spacing.y = ui.global_style().spacing.item_spacing.y;
+
+            body(ui);
+        });
+}
+
+fn visualizer_section_plus_button(
+    viewer_ctx: &ViewerContext<'_>,
+    view_id: ViewId,
+    add_options: Vec<(EntityPath, RecommendedVisualizers)>,
+    ui: &mut egui::Ui,
+) -> egui::Response {
+    let query_result = viewer_ctx.lookup_query_result(view_id);
+    let options = build_add_visualizer_menu_options(query_result, add_options);
+
+    ui.spacing_mut().menu_margin = egui::Margin::same(0);
+    ui.add(
+        ui.small_icon_button_widget(&re_ui::icons::ADD, "Add new visualizer…")
+            .enabled(!options.is_empty())
+            .on_custom_menu(
+                move |popup| popup.style(re_ui::menu::menu_style()),
+                move |ui| {
+                    menu_add_new_visualizer_for_view(viewer_ctx, view_id, options, ui);
+                },
+            )
+            .on_hover_text("Add a new visualizer to the current view.")
+            .on_disabled_hover_text("There are no visualizers available to add to this view."),
+    )
+}
+
+/// Renders the popup menu listing entity+component options for adding new visualizers.
+fn menu_add_new_visualizer_for_view(
+    viewer_ctx: &ViewerContext<'_>,
+    view_id: ViewId,
+    options: Vec<AddVisualizerOption>,
+    ui: &mut egui::Ui,
+) {
+    profile_function!();
+    ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
+    ui.spacing_mut().item_spacing.y = 0.0;
+
+    let max_height = 0.85 * ui.content_rect().height();
+    egui::ScrollArea::vertical()
+        .max_height(max_height)
+        .show(ui, |ui| {
+            for option_per_entity in options {
+                let entity_path = &option_per_entity.entity_path;
+
+                ui.add(ComboItemHeader::new(
+                    egui::RichText::new(entity_path.ui_string())
+                        .color(ui.tokens().visualizer_list_path_text_color),
+                ));
+
+                for option in option_per_entity.options {
+                    if ui
+                        .add(
+                            ComboItem::new(&option.display_name)
+                                .selected(option.is_already_visualized),
+                        )
+                        .clicked()
+                    {
+                        add_new_visualizer(viewer_ctx, view_id, entity_path, option);
+                        ui.close();
+                    }
+                }
+            }
+        });
+}
+
+/// List of options for adding a new visualizer from the "+" button menu for a given entity path.
+struct AddVisualizerOption {
+    pub entity_path: EntityPath,
+    pub options: Vec<AddVisualizerOptionPerEntity>,
+}
+
+/// An option for adding a new visualizer.
+struct AddVisualizerOptionPerEntity {
+    pub view_system_id: ViewSystemIdentifier,
+    pub recommended_mappings: re_viewer_context::RecommendedMappings,
+    pub display_name: String,
+    pub is_already_visualized: bool,
+}
+
+/// Converts per-entity [`RecommendedVisualizers`] into the flat menu options used by the "+" button.
+fn build_add_visualizer_menu_options(
+    query_result: &DataQueryResult,
+    add_options: Vec<(EntityPath, RecommendedVisualizers)>,
+) -> Vec<AddVisualizerOption> {
+    profile_function!();
+
+    let mut result: Vec<AddVisualizerOption> = vec![];
+    for (entity_path, recommended_visualizers) in add_options {
+        let data_result = query_result.tree.lookup_result_by_path(entity_path.hash());
+        let Some(data_result) = data_result else {
+            continue;
+        };
+
+        let options =
+            collect_add_visualizer_options_for_entity(data_result, &recommended_visualizers);
+        if !options.is_empty() {
+            result.push(AddVisualizerOption {
+                entity_path,
+                options,
+            });
+        }
+    }
+
+    result
+}
+
+fn collect_add_visualizer_options_for_entity(
+    data_result: &DataResult,
+    recommended_visualizers: &RecommendedVisualizers,
+) -> Vec<AddVisualizerOptionPerEntity> {
+    let existing_visualizers = &data_result.visualizer_instructions;
+
+    let mut visualizer_options = vec![];
+    for (view_system_id, recommended_mappings_per_view_system) in
+        recommended_visualizers.all_recommendations()
+    {
+        for recommended_mappings in recommended_mappings_per_view_system {
+            let Some(display_name) = recommended_mappings.display_name() else {
+                continue;
+            };
+
+            // Check if there is already a visualizer that covers this recommendation.
+            let is_already_visualized = existing_visualizers.iter().any(|visualizer| {
+                visualizer.visualizer_type == *view_system_id
+                    && recommended_mappings.is_covered_by(&visualizer.component_mappings)
+            });
+
+            visualizer_options.push(AddVisualizerOptionPerEntity {
+                view_system_id: *view_system_id,
+                recommended_mappings: recommended_mappings.clone(),
+                display_name,
+                is_already_visualized,
+            });
+        }
+    }
+
+    visualizer_options
+}
+
+/// Adds the selected option as a new visualizer
+fn add_new_visualizer(
+    viewer_ctx: &ViewerContext<'_>,
+    view_id: ViewId,
+    entity_path: &EntityPath,
+    option: AddVisualizerOptionPerEntity,
+) {
+    use re_sdk_types::Archetype as _;
+    use re_sdk_types::blueprint::archetypes::{ActiveVisualizers, ViewContents};
+
+    // Compute override base path for this entity in the current view.
+    let override_base_path =
+        ViewContents::blueprint_base_visualizer_path_for_entity(view_id.uuid(), entity_path);
+
+    // Get existing active visualizer instructions for this entity (if any).
+    let query_result = viewer_ctx.lookup_query_result(view_id);
+    let existing_instructions: Vec<VisualizerInstruction> = query_result
+        .tree
+        .lookup_result_by_path(entity_path.hash())
+        .map(|data_result| data_result.visualizer_instructions.clone())
+        .unwrap_or_default();
+
+    // Create the new instruction.
+    let new_instruction = option.recommended_mappings.into_visualizer_instruction(
+        VisualizerInstructionId::new_random(),
+        option.view_system_id,
+        &override_base_path,
+    );
+
+    // Build the updated list of active visualizer IDs.
+    let active_visualizer_archetype = ActiveVisualizers::new(
+        std::iter::chain(
+            existing_instructions.iter().map(|v| &v.id),
+            std::iter::once(&new_instruction.id),
+        )
+        .map(|v| v.0),
+    );
+
+    // If this is the first time we persist ActiveVisualizers for this entity,
+    // we must also write out all previously-heuristic instructions.
+    let did_not_yet_persist = viewer_ctx
+        .blueprint_db()
+        .latest_at(
+            viewer_ctx.blueprint_query,
+            &override_base_path,
+            ActiveVisualizers::all_components()
+                .iter()
+                .map(|c| c.component),
+        )
+        .components
+        .is_empty();
+    if did_not_yet_persist {
+        for instruction in &existing_instructions {
+            instruction.write_instruction_to_blueprint(viewer_ctx);
+        }
+    }
+
+    viewer_ctx.save_blueprint_archetype(override_base_path, &active_visualizer_archetype);
+    new_instruction.write_instruction_to_blueprint(viewer_ctx);
 }
 
 /// Shows the active coordinate frame if it isn't the fallback frame.
@@ -520,70 +757,53 @@ fn coordinate_frame_ui(ui: &mut egui::Ui, ctx: &ViewContext<'_>, data_result: &D
 
     let component_descr = archetypes::CoordinateFrame::descriptor_frame();
     let component = component_descr.component;
-    let query_shadowed_components = true;
     let query_result = latest_at_with_blueprint_resolved_data(
         ctx,
         None,
         &ctx.current_query(),
         data_result,
         [component],
-        query_shadowed_components,
         None, // coordinate frames aren't associated with any particular visualizer
     );
-
-    let override_path = data_result.override_base_path();
-
-    let result_override = query_result.overrides.get(component);
-    let raw_override = result_override
-        .and_then(|c| c.non_empty_component_batch_raw(component))
-        .map(|(_, array)| array);
 
     let Some(frame_id_before) = query_result
         .get_mono::<TransformFrameId>(component)
         .map(|f| f.to_string())
-        .or_else(|| {
-            if raw_override.is_some() {
-                Some(String::new())
-            } else {
-                None
-            }
-        })
     else {
         return;
     };
 
-    let mut frame_id = if raw_override.is_some() {
-        frame_id_before.clone()
-    } else {
-        String::new()
-    };
-
+    let mut frame_id = frame_id_before.clone();
     let property_content = list_item::PropertyContent::new("Coordinate frame")
         .value_fn(|ui, _| {
             // Show matching, non-entity-path-derived frame IDs as suggestions when the user edits the frame name.
             let suggestions = {
                 let caches = ctx.viewer_ctx.store_context.caches;
-                let transform_cache =
-                    caches.entry(|c: &mut re_viewer_context::TransformDatabaseStoreCache| {
-                        c.read_lock_transform_cache(ctx.viewer_ctx.recording())
+                let frame_id_registry =
+                    caches.memoizer(|c: &mut re_viewer_context::TransformDatabaseStoreCache| {
+                        c.frame_id_registry(ctx.viewer_ctx.recording())
                     });
 
-                transform_cache
-                    .frame_id_registry()
+                frame_id_registry
                     .iter_frame_ids()
                     .filter(|(_, id)| !id.is_entity_path_derived())
                     .map(|(_, id)| id.to_string())
                     .collect::<Vec<String>>()
             };
-            autocomplete_text_edit(ui, &mut frame_id, &suggestions, Some(&frame_id_before));
+            autocomplete_text_edit(
+                ui,
+                &mut frame_id,
+                &suggestions,
+                Some(&frame_id_before),
+                None::<&str>,
+            );
         })
         .with_menu_button(&re_ui::icons::MORE, "More options", |ui: &mut egui::Ui| {
-            crate::visualizer_ui::remove_and_reset_override_buttons(
+            crate::visualizer_ui::reset_override_button(
                 ctx,
                 ui,
                 component_descr.clone(),
-                override_path,
-                &raw_override,
+                data_result.override_base_path(),
             );
         });
 
@@ -592,25 +812,20 @@ fn coordinate_frame_ui(ui: &mut egui::Ui, ctx: &ViewContext<'_>, data_result: &D
             ui.markdown_ui(
                 "The coordinate frame this entity is associated with.
 
-To learn more about coordinate frames, see the [Spaces & Transforms](https://rerun.io/docs/concepts/spaces-and-transforms) in the manual.",
+To learn more about coordinate frames, see the [Spaces & Transforms](https://rerun.io/docs/concepts/logging-and-ingestion/transforms) in the manual.",
             );
         });
 
-    if raw_override.is_some() {
-        if frame_id.is_empty() {
-            ctx.clear_blueprint_component(override_path.clone(), component_descr);
-        } else if frame_id_before != frame_id {
-            // Save as blueprint override.
-            ctx.save_blueprint_component(
-                override_path.clone(),
-                &component_descr,
-                &TransformFrameId::new(&frame_id),
-            );
-        }
-    } else if !frame_id.is_empty() {
+    if frame_id_before.is_empty() {
+        ui.warning_label(
+            "Transform relation can't be resolved due to empty coordinate frame name.",
+        );
+    }
+
+    if frame_id_before != frame_id {
         // Save as blueprint override.
         ctx.save_blueprint_component(
-            override_path.clone(),
+            data_result.override_base_path().clone(),
             &component_descr,
             &TransformFrameId::new(&frame_id),
         );
@@ -618,15 +833,15 @@ To learn more about coordinate frames, see the [Spaces & Transforms](https://rer
 }
 
 fn show_recording_properties(
-    ctx: &ViewerContext<'_>,
-    db: &re_entity_db::EntityDb,
-    query: &re_chunk::LatestAtQuery,
+    store_view_ctx: &StoreViewContext<'_>,
     ui: &mut egui::Ui,
     ui_layout: UiLayout,
 ) {
-    let mut property_entities = db
-        .entity_paths()
-        .into_iter()
+    re_tracing::profile_function!();
+
+    let mut property_entities = store_view_ctx
+        .db
+        .sorted_entity_paths()
         .filter_map(|entity_path| entity_path.strip_prefix(&EntityPath::properties()))
         .collect::<Vec<_>>();
     property_entities.sort();
@@ -653,7 +868,7 @@ fn show_recording_properties(
                         ui.label(entity_path.syntax_highlighted(ui.style()));
                     });
                 }
-                entity_path.data_ui(ctx, ui, ui_layout, query, db);
+                entity_path.data_ui(store_view_ctx, ui, ui_layout);
             }
         });
     }
@@ -675,15 +890,16 @@ fn entity_selection_ui(
 
     if let Some(view) = viewport.view(view_id) {
         let class = view.class(ctx.view_class_registry());
-        view_states.ensure_state_exists(*view_id, class);
+        let store_id = ctx.store_id();
+        view_states.ensure_state_exists(store_id, *view_id, class);
         let view_state = view_states
-            .get(*view_id)
+            .get(store_id, *view_id)
             .expect("State got created just now"); // Convince borrow checker we're not mutating `view_states` anymore.
         let view_ctx = view.bundle_context_with_state(ctx, view_state);
 
-        let empty_errors = PerVisualizer::default();
+        let empty_errors = VisualizerViewReport::default();
         let visualizer_errors = view_states
-            .visualizer_errors(*view_id)
+            .per_visualizer_type_reports(store_id, *view_id)
             .unwrap_or(&empty_errors);
 
         visualizer_ui(&view_ctx, view, visualizer_errors, entity_path, ui);
@@ -737,7 +953,7 @@ fn entity_path_filter_ui(
             let is_exclusion = line.trim_start().starts_with('-');
 
             let color = if is_exclusion {
-                style.visuals.error_fg_color
+                tokens.text_subdued
             } else {
                 tokens.info_log_text_color
             };
@@ -802,17 +1018,18 @@ fn entity_path_filter_ui(
     }
     if query.num_matching_entities != 0 && query.num_visualized_entities == 0 {
         // TODO(andreas): Talk about this root bit only if it's a spatial view.
+        // `NOLINT`: `EntityPath`'s debug impl doesn't quote the result.
         ui.warning_label(
-            format!("This view is not able to visualize any of the matched entities using the current root \"{origin:?}\"."),
+            format!("This view is not able to visualize any of the matched entities using the current root \"{origin:?}\"."), // NOLINT
         );
     }
 
     // Apply the edit.
     let new_filter = EntityPathFilter::parse_forgiving(&filter_string);
-    if new_filter == filter.unresolved() {
-        None // no change
-    } else {
+    if response.changed() && new_filter != filter.unresolved() {
         Some(new_filter)
+    } else {
+        None // no change
     }
 }
 
@@ -858,14 +1075,13 @@ fn data_section_ui(item: &Item) -> Option<Box<dyn DataUi>> {
         Item::DataSource(data_source) => Some(Box::new(data_source.clone())),
         Item::StoreId(store_id) => Some(Box::new(store_id.clone())),
         Item::ComponentPath(component_path) => Some(Box::new(component_path.clone())),
-        Item::InstancePath(instance_path) | Item::DataResult(_, instance_path) => {
-            Some(Box::new(instance_path.clone()))
-        }
+        Item::InstancePath(instance_path) => Some(Box::new(instance_path.clone())),
+        Item::DataResult(data_result) => Some(Box::new(data_result.instance_path.clone())),
         // Skip data ui since we don't know yet what to show for these.
         Item::TableId(_)
         | Item::View(_)
         | Item::Container(_)
-        | Item::RedapEntry(_)
+        | Item::RedapEntry { .. }
         | Item::RedapServer(_) => None,
     }
 }
@@ -888,7 +1104,7 @@ fn view_button(
             contents_name_style(&view_name),
         )
         .on_hover_text(format!("{} view", class.display_name()));
-    item_ui::cursor_interact_with_selectable(ctx, response, item)
+    item_ui::cursor_interact_with_selectable(&ctx.app_ctx, response, item)
 }
 
 /// Display a list of all the views an entity appears in.
@@ -901,7 +1117,7 @@ fn list_existing_data_blueprints(
     let views_with_path =
         viewport.views_containing_entity_path(ctx, instance_path.entity_path.hash());
 
-    let (query, db) = guess_query_and_db_for_selected_entity(ctx, &instance_path.entity_path);
+    let store_view_ctx = ctx.guess_store_view_context_for_entity(&instance_path.entity_path);
 
     if views_with_path.is_empty() {
         ui.weak("(Not shown in any view)");
@@ -915,14 +1131,16 @@ fn list_existing_data_blueprints(
                     }),
                 );
 
-                let item = Item::DataResult(view_id, instance_path.clone());
+                let item = Item::DataResult(DataResultInteractionAddress {
+                    view_id,
+                    instance_path: instance_path.clone(),
+                    visualizer: None,
+                });
                 let response = response.on_hover_ui(|ui| {
                     let include_subtree = false;
                     item_ui::instance_hover_card_ui(
                         ui,
-                        ctx,
-                        &query,
-                        db,
+                        &store_view_ctx,
                         instance_path,
                         include_subtree,
                     );
@@ -1007,7 +1225,7 @@ fn container_top_level_properties(
 
     if container.container_kind == ContainerKind::Grid {
         ui.list_item_flat_noninteractive(PropertyContent::new("Columns").value_fn(|ui, _| {
-            fn columns_to_string(columns: &Option<u32>) -> String {
+            fn columns_to_string(columns: Option<u32>) -> String {
                 match columns {
                     None => "Auto".to_owned(),
                     Some(cols) => cols.to_string(),
@@ -1017,9 +1235,9 @@ fn container_top_level_properties(
             let mut new_columns = container.grid_columns;
 
             egui::ComboBox::from_id_salt("container_grid_columns")
-                .selected_text(columns_to_string(&new_columns))
+                .selected_text(columns_to_string(new_columns))
                 .show_ui(ui, |ui| {
-                    ui.selectable_value(&mut new_columns, None, columns_to_string(&None));
+                    ui.selectable_value(&mut new_columns, None, columns_to_string(None));
 
                     ui.separator();
 
@@ -1027,7 +1245,7 @@ fn container_top_level_properties(
                         ui.selectable_value(
                             &mut new_columns,
                             Some(columns),
-                            columns_to_string(&Some(columns)),
+                            columns_to_string(Some(columns)),
                         );
                     }
                 });
@@ -1231,7 +1449,9 @@ mod tests {
     use re_test_context::TestContext;
     use re_test_context::external::egui_kittest::kittest::Queryable as _;
     use re_test_viewport::{TestContextExt as _, TestView};
-    use re_viewer_context::{RecommendedView, ViewClass as _, blueprint_timeline};
+    use re_viewer_context::{
+        RecommendedView, TimeControlCommand, ViewClass as _, blueprint_timeline,
+    };
     use re_viewport_blueprint::ViewBlueprint;
 
     use super::*;
@@ -1295,6 +1515,18 @@ mod tests {
             });
 
         harness.run();
+
+        {
+            // Redact size estimation, since small changes to our code can change it slightly:
+            let mut recording_size_label = harness
+                .get_all_by_label_contains(" KiB")
+                .next()
+                .unwrap()
+                .rect();
+            recording_size_label.set_width(80.0); // Compensate for different number of digits
+            harness.mask(recording_size_label);
+        }
+
         harness.snapshot("selection_panel_recording");
     }
 
@@ -1593,5 +1825,194 @@ mod tests {
         harness.run();
 
         harness.snapshot("selection_panel_view_entity_no_match");
+    }
+
+    /// Helper to set the active timeline on the time control.
+    fn set_active_timeline(test_context: &TestContext, timeline_name: &'static str) {
+        let store_id = test_context.active_store_id();
+        test_context.send_time_commands(
+            store_id,
+            [TimeControlCommand::SetActiveTimeline(timeline_name.into())],
+        );
+        test_context.handle_system_commands(&egui::Context::default());
+    }
+
+    /// Snapshot test for the selection panel when multiple things are logged to the
+    /// same temporal time point (the "latest-all" scenario).
+    ///
+    /// Each `log_entity` call creates a separate chunk, and `latest_all` returns all of them.
+    #[test]
+    fn selection_panel_component_temporal_latest_all_snapshot() {
+        let mut test_context = get_test_context();
+
+        let entity_path = EntityPath::from("temporal_latest_all");
+
+        // Log 3 separate chunks at the same time point, each with a single Position2D.
+        let timeline = Timeline::new("frame_nr", TimeType::Sequence);
+        for points in [[(1.0, 2.0)], [(3.0, 4.0)], [(5.0, 6.0)]] {
+            test_context.log_entity(entity_path.clone(), |builder| {
+                builder.with_archetype(
+                    RowId::new(),
+                    [(timeline, 42)],
+                    &archetypes::Points2D::new(points),
+                )
+            });
+        }
+
+        set_active_timeline(&test_context, "frame_nr");
+
+        test_context
+            .selection_state
+            .lock()
+            .set_selection(Item::ComponentPath(re_log_types::ComponentPath {
+                entity_path,
+                component: archetypes::Points2D::descriptor_positions().component,
+            }));
+
+        let viewport_blueprint = ViewportBlueprint::from_db(
+            test_context.active_blueprint(),
+            &LatestAtQuery::latest(blueprint_timeline()),
+        );
+
+        let mut harness = test_context
+            .setup_kittest_for_rendering_ui([400.0, 450.0])
+            .build_ui(|ui| {
+                selection_panel_ui(&test_context, &viewport_blueprint, ui);
+            });
+
+        harness.run();
+        harness.snapshot("selection_panel_component_temporal_latest_all");
+    }
+
+    /// Snapshot test for the selection panel when multiple chunks with multiple instances
+    /// are logged at the same temporal time point.
+    #[test]
+    fn selection_panel_component_temporal_latest_all_multi_instance_snapshot() {
+        let mut test_context = get_test_context();
+
+        let entity_path = EntityPath::from("multi_instance_latest_all");
+
+        let timeline = Timeline::new("frame_nr", TimeType::Sequence);
+
+        // First chunk: 3 positions
+        test_context.log_entity(entity_path.clone(), |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                [(timeline, 42)],
+                &archetypes::Points2D::new([(1.0, 2.0), (3.0, 4.0), (5.0, 6.0)]),
+            )
+        });
+
+        // Second chunk: 2 positions
+        test_context.log_entity(entity_path.clone(), |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                [(timeline, 42)],
+                &archetypes::Points2D::new([(10.0, 20.0), (30.0, 40.0)]),
+            )
+        });
+
+        set_active_timeline(&test_context, "frame_nr");
+
+        test_context
+            .selection_state
+            .lock()
+            .set_selection(Item::ComponentPath(re_log_types::ComponentPath {
+                entity_path,
+                component: archetypes::Points2D::descriptor_positions().component,
+            }));
+
+        let viewport_blueprint = ViewportBlueprint::from_db(
+            test_context.active_blueprint(),
+            &LatestAtQuery::latest(blueprint_timeline()),
+        );
+
+        let mut harness = test_context
+            .setup_kittest_for_rendering_ui([400.0, 550.0])
+            .build_ui(|ui| {
+                selection_panel_ui(&test_context, &viewport_blueprint, ui);
+            });
+
+        harness.run();
+        harness.snapshot("selection_panel_component_temporal_latest_all_multi_instance");
+    }
+
+    /// Snapshot test for the selection panel when an *entity* is selected and multiple
+    /// things are logged to the same temporal time point (the "latest-all" scenario).
+    #[test]
+    fn selection_panel_entity_temporal_latest_all_snapshot() {
+        let mut test_context = get_test_context();
+
+        let entity_path = EntityPath::from("temporal_latest_all");
+
+        let timeline = Timeline::new("frame_nr", TimeType::Sequence);
+        for points in [[(1.0, 2.0)], [(3.0, 4.0)], [(5.0, 6.0)]] {
+            test_context.log_entity(entity_path.clone(), |builder| {
+                builder.with_archetype(
+                    RowId::new(),
+                    [(timeline, 42)],
+                    &archetypes::Points2D::new(points),
+                )
+            });
+        }
+
+        set_active_timeline(&test_context, "frame_nr");
+
+        test_context
+            .selection_state
+            .lock()
+            .set_selection(Item::from(entity_path));
+
+        let viewport_blueprint = ViewportBlueprint::from_db(
+            test_context.active_blueprint(),
+            &LatestAtQuery::latest(blueprint_timeline()),
+        );
+
+        let mut harness = test_context
+            .setup_kittest_for_rendering_ui([400.0, 200.0])
+            .build_ui(|ui| {
+                selection_panel_ui(&test_context, &viewport_blueprint, ui);
+            });
+
+        harness.run();
+        harness.snapshot("selection_panel_entity_temporal_latest_all");
+    }
+
+    /// Snapshot test for the selection panel when an *entity* is selected and multiple
+    /// things are logged as static in separate chunks.
+    #[test]
+    fn selection_panel_entity_static_latest_all_snapshot() {
+        let mut test_context = get_test_context();
+
+        let entity_path = EntityPath::from("static_latest_all");
+
+        for points in [[(1.0, 2.0)], [(3.0, 4.0)], [(5.0, 6.0)]] {
+            test_context.log_entity(entity_path.clone(), |builder| {
+                builder.with_archetype(
+                    RowId::new(),
+                    TimePoint::STATIC,
+                    &archetypes::Points2D::new(points),
+                )
+            });
+        }
+
+        test_context
+            .selection_state
+            .lock()
+            .set_selection(Item::from(entity_path));
+
+        let viewport_blueprint = ViewportBlueprint::from_db(
+            test_context.active_blueprint(),
+            &LatestAtQuery::latest(blueprint_timeline()),
+        );
+
+        let mut harness = test_context
+            .setup_kittest_for_rendering_ui([400.0, 200.0])
+            .build_ui(|ui| {
+                selection_panel_ui(&test_context, &viewport_blueprint, ui);
+            });
+
+        harness.run();
+        harness.snapshot("selection_panel_entity_static_latest_all");
     }
 }

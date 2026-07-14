@@ -17,7 +17,7 @@
 #include <vector>
 
 namespace rerun::archetypes {
-    /// **Archetype**: Recording-level statistics about an MCAP file, logged as a part of `archetypes::RecordingInfo`.
+    /// **Archetype**: Recording-level statistics about an MCAP file.
     ///
     /// This archetype contains summary information about an entire MCAP recording, including
     /// counts of messages, schemas, channels, and other records, as well as timing information

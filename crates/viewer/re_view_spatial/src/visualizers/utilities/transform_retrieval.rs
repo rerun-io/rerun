@@ -1,9 +1,83 @@
 use re_log_types::EntityPath;
 use re_sdk_types::ViewClassIdentifier;
-use re_viewer_context::{ViewClass as _, VisualizerExecutionOutput};
+use re_sdk_types::blueprint::components::VisualizerInstructionId;
+use re_sdk_types::components::{RotationAxisAngle, RotationQuat, Translation3D};
+use re_sdk_types::datatypes::Quaternion;
+use re_viewer_context::{ViewClass as _, VisualizerExecutionOutput, VisualizerReportSeverity};
 
 use crate::contexts::{TransformInfo, TransformTreeContext};
 use crate::view_kind::SpatialViewKind;
+
+/// Resolves the optional translation and rotation components of a grid-like archetype into a
+/// `grid_from_entity` affine transform.
+///
+/// If both a quaternion and an axis-angle rotation are set, the quaternion takes precedence (and a
+/// warning is reported). Reports an error and returns `None` if a provided rotation is invalid.
+///
+/// `archetype_label` is used in the warning message, e.g. `"GridMap"` or `"VoxelGridMap"`.
+#[expect(clippy::too_many_arguments)]
+pub fn entity_from_grid_transform(
+    results: &re_view::VisualizerInstructionQueryResults<'_>,
+    entity_path: &EntityPath,
+    archetype_label: &str,
+    translation: Option<Translation3D>,
+    rotation_axis_angle: Option<RotationAxisAngle>,
+    quaternion: Option<RotationQuat>,
+    quaternion_component: re_sdk_types::ComponentIdentifier,
+    rotation_axis_angle_component: re_sdk_types::ComponentIdentifier,
+) -> Option<glam::Affine3A> {
+    let translation = translation.map_or(glam::Affine3A::IDENTITY, Into::into);
+
+    let rotation = match (quaternion, rotation_axis_angle) {
+        (Some(quaternion), Some(rotation_axis_angle))
+            if quaternion.0 != Quaternion::IDENTITY
+                && rotation_axis_angle != RotationAxisAngle::IDENTITY =>
+        {
+            results.report_for_component(
+                quaternion_component,
+                VisualizerReportSeverity::Warning,
+                format!(
+                    "{archetype_label} {entity_path} has both quaternion and rotation_axis_angle set; using quaternion."
+                ),
+            );
+
+            let Ok(rotation) = glam::Affine3A::try_from(quaternion) else {
+                results.report_for_component(
+                    quaternion_component,
+                    VisualizerReportSeverity::Error,
+                    "invalid rotation quaternion",
+                );
+                return None;
+            };
+            rotation
+        }
+        (Some(quaternion), _) => {
+            let Ok(rotation) = glam::Affine3A::try_from(quaternion) else {
+                results.report_for_component(
+                    quaternion_component,
+                    VisualizerReportSeverity::Error,
+                    "invalid rotation quaternion",
+                );
+                return None;
+            };
+            rotation
+        }
+        (_, Some(rotation_axis_angle)) => {
+            let Ok(rotation) = glam::Affine3A::try_from(rotation_axis_angle) else {
+                results.report_for_component(
+                    rotation_axis_angle_component,
+                    VisualizerReportSeverity::Error,
+                    "invalid rotation axis-angle",
+                );
+                return None;
+            };
+            rotation
+        }
+        (None, None) => glam::Affine3A::IDENTITY,
+    };
+
+    Some(translation * rotation)
+}
 
 /// Derive the spatial view kind from the view class identifier.
 pub fn spatial_view_kind_from_view_class(class: ViewClassIdentifier) -> SpatialViewKind {
@@ -12,8 +86,24 @@ pub fn spatial_view_kind_from_view_class(class: ViewClassIdentifier) -> SpatialV
     } else if class == crate::SpatialView2D::identifier() {
         SpatialViewKind::TwoD
     } else {
-        debug_assert!(false, "Not a spatial view class identifier {class:?}");
+        re_log::debug_panic!("Not a spatial view class identifier {class:?}");
         SpatialViewKind::TwoD
+    }
+}
+
+/// Derive the spatial view kind from an optional view class affinity.
+///
+/// Returns `None` if the affinity is `None` or not a spatial view class.
+pub fn spatial_view_kind_from_affinity(
+    affinity: Option<ViewClassIdentifier>,
+) -> Option<SpatialViewKind> {
+    let class = affinity?;
+    if class == crate::SpatialView3D::identifier() {
+        Some(SpatialViewKind::ThreeD)
+    } else if class == crate::SpatialView2D::identifier() {
+        Some(SpatialViewKind::TwoD)
+    } else {
+        None
     }
 }
 
@@ -23,19 +113,28 @@ pub fn transform_info_for_archetype_or_report_error<'a>(
     transform_context: &'a TransformTreeContext,
     archetype_kind: Option<SpatialViewKind>,
     view_kind: SpatialViewKind,
-    output: &mut VisualizerExecutionOutput,
+    instruction_id: &VisualizerInstructionId,
+    output: &VisualizerExecutionOutput,
 ) -> Option<&'a TransformInfo> {
+    re_tracing::profile_function!();
+
     let result = transform_context.target_from_entity_path(entity_path.hash());
-    let transform_info = match format_transform_info_result(transform_context, result) {
+    let transform_info = match format_transform_info_result(entity_path, transform_context, result)
+    {
         Ok(transform_info) => transform_info,
         Err(err_msg) => {
-            output.report_error_for(entity_path.clone(), err_msg);
+            output.report_unspecified_source(
+                *instruction_id,
+                VisualizerReportSeverity::Error,
+                err_msg,
+            );
             return None;
         }
     };
 
     is_valid_space_for_content(
         entity_path,
+        instruction_id,
         transform_context,
         transform_info,
         archetype_kind,
@@ -47,32 +146,83 @@ pub fn transform_info_for_archetype_or_report_error<'a>(
 
 /// Formats the result of a transform retrieval into a user-friendly message.
 pub fn format_transform_info_result<'a>(
+    entity_path: &EntityPath,
     transform_context: &TransformTreeContext,
     result: Option<&'a Result<TransformInfo, re_tf::TransformFromToError>>,
 ) -> Result<&'a TransformInfo, String> {
     match result {
-        None => Err("No transform relation known for this entity.".to_owned()),
+        None => {
+            if transform_context
+                .is_empty_frame_name(transform_context.transform_frame_id_for(entity_path.hash()))
+            {
+                Err(
+                    "Transform relation can't be resolved due to empty coordinate frame name."
+                        .to_owned(),
+                )
+            } else {
+                Err("No transform relation known for this entity.".to_owned())
+            }
+        }
 
         Some(Err(re_tf::TransformFromToError::NoPathBetweenFrames { src, target, .. })) => {
-            let src = transform_context.format_frame(*src);
-            let target = transform_context.format_frame(*target);
+            let src = if let Some(frame_id) =
+                transform_context.format_frame_or_debug_warn(*src, entity_path)
+            {
+                format!("{frame_id:?}")
+            } else {
+                format!("{entity_path}:?")
+            };
+            let target = if let Some(target) =
+                transform_context.format_frame_or_debug_warn(*target, entity_path)
+            {
+                format!(" ({target:?})")
+            } else {
+                String::new()
+            };
+
             Err(format!(
-                "No transform path from {src:?} to the view's origin frame ({target:?})."
+                "No transform path from {src} to the view's target frame{target}."
             ))
         }
 
         Some(Err(re_tf::TransformFromToError::UnknownTargetFrame(target))) => {
-            // The target frame is the view's origin.
-            // This means this could be hit if the view's origin frame doesn't show up in any data.
-            let target = transform_context.format_frame(*target);
-            Err(format!("The view's origin frame {target:?} is unknown."))
+            if transform_context
+                .lookup_frame_id(*target)
+                .is_some_and(|frame_id| frame_id.as_str().is_empty())
+            {
+                return Err(
+                    "View target frame can't be resolved due to empty coordinate frame name."
+                        .to_owned(),
+                );
+            }
+
+            let target = if let Some(target) =
+                transform_context.format_frame_or_debug_warn(*target, entity_path)
+            {
+                format!("target frame {target:?}")
+            } else {
+                "target frame".to_owned()
+            };
+
+            Err(format!("The view's {target} is unknown."))
         }
 
         Some(Err(re_tf::TransformFromToError::UnknownSourceFrame(src))) => {
-            // Unclear how we'd hit this. This means that when processing transforms we encountered a coordinate frame that the transform cache didn't know about.
-            // That would imply that the cache is lagging behind.
-            let src = transform_context.format_frame(*src);
-            Err(format!("The entity's coordinate frame {src:?} is unknown."))
+            if transform_context.is_empty_frame_name(*src) {
+                return Err(
+                    "Transform relation can't be resolved due to empty coordinate frame name."
+                        .to_owned(),
+                );
+            }
+
+            let src = if let Some(frame_id) =
+                transform_context.format_frame_or_debug_warn(*src, entity_path)
+            {
+                format!("{frame_id:?}")
+            } else {
+                format!("{entity_path:?}")
+            };
+            Err(format!("The entity's coordinate frame {src} is unknown."))
         }
 
         Some(Ok(transform_info)) => Ok(transform_info),
@@ -81,11 +231,12 @@ pub fn format_transform_info_result<'a>(
 
 pub fn is_valid_space_for_content(
     entity_path: &EntityPath,
+    instruction_id: &VisualizerInstructionId,
     transform_context: &TransformTreeContext,
     transform: &TransformInfo,
     content_kind: Option<SpatialViewKind>,
     view_kind: SpatialViewKind,
-    output: &mut VisualizerExecutionOutput,
+    output: &VisualizerExecutionOutput,
 ) -> bool {
     let Some(content_view_kind) = content_kind else {
         // This means the content doesn't have any particular view kind affinity, we expect it to be handled elsewhere if at all.
@@ -103,11 +254,16 @@ pub fn is_valid_space_for_content(
     if view_kind == SpatialViewKind::ThreeD
         && let Some(target_frame_pinhole_root) = target_frame_pinhole_root
     {
-        let origin = transform_context.format_frame(target_frame_pinhole_root);
-        output.report_error_for(
-            entity_path.clone(),
-            format!("The origin of the 3D view ({origin:?}) is under pinhole projection which is not supported by most 3D visualizations."),
-        );
+        let origin = if let Some(origin) =
+            transform_context.format_frame_or_debug_warn(target_frame_pinhole_root, entity_path)
+        {
+            format!("The origin of the 3D view ({origin:?})")
+        } else {
+            "The origin of the 3D view".to_owned()
+        };
+        output.report_unspecified_source(*instruction_id, VisualizerReportSeverity::Error, format!(
+                "{origin} is under pinhole projection which is not supported by most 3D visualizations."
+            ));
         return false;
     }
 
@@ -126,8 +282,9 @@ pub fn is_valid_space_for_content(
                             target_frame_pinhole_root != transform.tree_root()
                         })
                     {
-                        output.report_error_for(
-                            entity_path.clone(),
+                        output.report_unspecified_source(
+                            *instruction_id,
+                            VisualizerReportSeverity::Error,
                             "Can't visualize 2D content with a pinhole ancestor that's embedded within the 2D view. This applies a 3D → 2D projection to a space that's already regarded 2D.",
                         );
                         false
@@ -141,8 +298,9 @@ pub fn is_valid_space_for_content(
                     if transform_has_pinhole_ancestor {
                         true
                     } else {
-                        output.report_error_for(
-                            entity_path.clone(),
+                        output.report_unspecified_source(
+                            *instruction_id,
+                            VisualizerReportSeverity::Error,
                             "2D visualizers require a pinhole ancestor to be shown in a 3D view.",
                         );
                         false
@@ -154,8 +312,9 @@ pub fn is_valid_space_for_content(
         SpatialViewKind::ThreeD => {
             // View agnostic failure case for 3D content: if the 3D content is under a pinhole projection, we can't show it!
             if transform_has_pinhole_ancestor {
-                output.report_error_for(
-                    entity_path.clone(),
+                output.report_unspecified_source(
+                    *instruction_id,
+                    VisualizerReportSeverity::Error,
                     "Can't visualize 3D content that is under a pinhole projection.",
                 );
                 return false;
@@ -173,8 +332,9 @@ pub fn is_valid_space_for_content(
                     if target_frame_pinhole_root == Some(transform_context.target_frame()) {
                         true
                     } else {
-                        output.report_error_for(
-                            entity_path.clone(),
+                        output.report_unspecified_source(
+                            *instruction_id,
+                            VisualizerReportSeverity::Error,
                             "3D visualizers require a pinhole at the origin of the 2D view.",
                         );
                         false

@@ -4,7 +4,8 @@ order: 300
 description: Shows how to send tables as dataframes to the Rerun viewer.
 ---
 
-> **Note:** The `send_table` API is currently experimental and may change in future releases.
+> [!NOTE]
+> The `send_table` API is currently experimental and may change in future releases.
 
 Rerun now supports sending tabular data to the Rerun Viewer! This feature allows you to visualize and interact with dataframes (encoded as Arrow record batches) directly in the Rerun Viewer environment.
 
@@ -20,7 +21,7 @@ The `send_table` API provides a straightforward way to send tabular data to the 
 
 For complete examples of using `send_table`, please refer to:
 
-- [🐍 Jupyter Notebook](https://github.com/rerun-io/rerun/blob/main/examples/python/notebook/send_table.ipynb)
+- [🐍 Jupyter Notebook](https://github.com/rerun-io/rerun/blob/main/examples/notebook/notebook/send_table.ipynb)
 - [🐍 Python SDK](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/howto/send_table.py)
 
 ## Prerequisites
@@ -44,7 +45,7 @@ pip install rerun-sdk[notebook] pyarrow pandas numpy
 from rerun.experimental import ViewerClient
 
 # Connect to a running Rerun Viewer
-client = ViewerClient(addr="rerun+http://0.0.0.0:9876/proxy")
+client = ViewerClient.connect(url="rerun+http://127.0.0.1:9876/proxy")
 ```
 
 ### Sending a simple table
@@ -96,10 +97,10 @@ viewer = rr.notebook.Viewer(width="auto", height="auto")
 viewer.display()
 
 # Send table directly to the inline viewer
-viewer.send_table("My Table", pa.RecordBatch.from_pydict({
-    "Column A": [1, 2, 3],
-    "Column B": ["https://www.rerun.io", "Hello", "World"]
-}))
+viewer.send_table(
+    "My Table",
+    pa.RecordBatch.from_pydict({"Column A": [1, 2, 3], "Column B": ["https://www.rerun.io", "Hello", "World"]}),
+)
 ```
 
 You can also use the native viewer instead of the inline viewer:
@@ -108,7 +109,7 @@ You can also use the native viewer instead of the inline viewer:
 os.environ["RERUN_NOTEBOOK_ASSET"] = "serve-local"
 
 # Connect to a running Rerun Viewer
-client = ViewerClient(addr="rerun+http://0.0.0.0:9876/proxy")
+client = ViewerClient.connect(url="rerun+http://127.0.0.1:9876/proxy")
 ```
 
 ## Current limitations

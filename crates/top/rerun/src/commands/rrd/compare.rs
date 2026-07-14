@@ -1,3 +1,4 @@
+use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -28,6 +29,14 @@ pub struct CompareCommand {
     /// If specified, the comparison will ignore chunks without components.
     #[clap(long, default_value_t = false)]
     ignore_chunks_without_components: bool,
+
+    /// Timelines to ignore entirely during comparison (their presence, absence, and values).
+    ///
+    /// Useful when comparing recordings produced with different default-timeline settings,
+    /// e.g. `--ignore-timeline log_tick` (which is opt-in).
+    /// Can be specified multiple times.
+    #[clap(long = "ignore-timeline", value_name = "TIMELINE")]
+    ignore_timelines: Vec<String>,
 }
 
 impl CompareCommand {
@@ -42,7 +51,13 @@ impl CompareCommand {
             unordered,
             full_dump,
             ignore_chunks_without_components,
+            ignore_timelines,
         } = self;
+
+        let ignore_timelines: Vec<re_chunk::TimelineName> = ignore_timelines
+            .iter()
+            .map(re_chunk::TimelineName::try_new)
+            .collect::<Result<_, _>>()?;
 
         re_log::debug!("Comparing {path_to_rrd1:?} to {path_to_rrd2:?}…");
 
@@ -71,13 +86,6 @@ impl CompareCommand {
             "Application IDs do not match: '{app_id1}' vs. '{app_id2}'"
         );
 
-        anyhow::ensure!(
-            chunks1.len() == chunks2.len(),
-            "Number of Chunks does not match: '{}' vs. '{}'",
-            re_format::format_uint(chunks1.len()),
-            re_format::format_uint(chunks2.len()),
-        );
-
         fn format_chunk(chunk: &Chunk) -> String {
             re_arrow_util::format_record_batch_opts(
                 &chunk.to_record_batch().expect("Cannot fail in practice"),
@@ -98,10 +106,14 @@ impl CompareCommand {
             let mut unmatched_chunks1 = Vec::new();
 
             for chunk1 in &chunks1 {
-                if let Some(pos) = chunks2_remaining
-                    .iter()
-                    .position(|chunk2| re_chunk::Chunk::ensure_similar(chunk1, chunk2).is_ok())
-                {
+                if let Some(pos) = chunks2_remaining.iter().position(|chunk2| {
+                    re_chunk::Chunk::ensure_similar_ignoring_timelines(
+                        chunk1,
+                        chunk2,
+                        &ignore_timelines,
+                    )
+                    .is_ok()
+                }) {
                     chunks2_remaining.swap_remove(pos);
                 } else {
                     unmatched_chunks1.push(chunk1.clone());
@@ -112,30 +124,46 @@ impl CompareCommand {
                 let mut error_msg = String::from("Unordered comparison failed:\n");
 
                 if !unmatched_chunks1.is_empty() {
-                    error_msg.push_str(&format!(
-                        "\n{} chunk(s) from {path_to_rrd1:?} could not be matched:\n",
+                    writeln!(
+                        error_msg,
+                        "\n{} chunk(s) from {path_to_rrd1:?} could not be matched:",
                         unmatched_chunks1.len()
-                    ));
+                    )
+                    .ok();
                     for chunk in &unmatched_chunks1 {
-                        error_msg.push_str(&format!("{}\n", format_chunk(chunk)));
+                        writeln!(error_msg, "{}", format_chunk(chunk)).ok();
                     }
                 }
 
                 if !chunks2_remaining.is_empty() {
-                    error_msg.push_str(&format!(
-                        "\n{} chunk(s) from {path_to_rrd2:?} could not be matched:\n",
+                    writeln!(
+                        error_msg,
+                        "\n{} chunk(s) from {path_to_rrd2:?} could not be matched:",
                         chunks2_remaining.len()
-                    ));
+                    )
+                    .ok();
                     for chunk in &chunks2_remaining {
-                        error_msg.push_str(&format!("{}\n", format_chunk(chunk)));
+                        writeln!(error_msg, "{}", format_chunk(chunk)).ok();
                     }
                 }
 
                 anyhow::bail!(error_msg);
             }
         } else {
+            anyhow::ensure!(
+                chunks1.len() == chunks2.len(),
+                "Number of Chunks does not match: '{}' vs. '{}'",
+                re_format::format_uint(chunks1.len()),
+                re_format::format_uint(chunks2.len()),
+            );
+
             for (chunk1, chunk2) in izip!(chunks1, chunks2) {
-                re_chunk::Chunk::ensure_similar(&chunk1, &chunk2).with_context(|| {
+                re_chunk::Chunk::ensure_similar_ignoring_timelines(
+                    &chunk1,
+                    &chunk2,
+                    &ignore_timelines,
+                )
+                .with_context(|| {
                     format!(
                         "Chunks diff:\n{}",
                         similar_asserts::SimpleDiff::from_str(

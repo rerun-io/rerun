@@ -56,7 +56,7 @@ fn column_descriptor_ui(ui: &mut egui::Ui, column: &ColumnDescriptorRef<'_>, col
             } = desc;
 
             header_property_ui(ui, "Column type", "Component");
-            header_property_ui(ui, "Entity path", entity_path.to_string());
+            header_property_ui(ui, "Entity path", entity_path.ui_string());
             datatype_ui(ui, &column.display_name(), store_datatype);
             header_property_ui(
                 ui,
@@ -160,13 +160,13 @@ fn datatype_ui(ui: &mut egui::Ui, column_name: &str, datatype: &arrow::datatypes
                     egui::Button::image_and_text(
                         re_ui::icons::COPY.as_image(),
                         // TODO(#11071): use re_arrow_ui to format the datatype here
-                        egui::RichText::new(re_arrow_util::format_data_type(datatype)).monospace(),
+                        egui::RichText::new(datatype.to_string()).monospace(),
                     )
                     .image_tint_follows_text_color(true),
                 )
                 .clicked()
             {
-                ui.ctx().copy_text(format!("{datatype:#?}")); // TODO(apache/arrow-rs#8351): use Display once arrow 57 is released
+                ui.copy_text(format!("{datatype:#?}")); // TODO(apache/arrow-rs#8351): use Display once arrow 57 is released
                 re_log::info!("Copied full datatype of column `{column_name}` to clipboard");
             }
         },

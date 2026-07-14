@@ -1,7 +1,7 @@
 use itertools::Itertools as _;
 use smallvec::smallvec;
 
-use crate::{CpuModel, DebugLabel, RenderContext, mesh};
+use crate::{CpuModel, Label, RenderContext, mesh};
 
 #[derive(thiserror::Error, Debug)]
 pub enum StlImportError {
@@ -24,9 +24,9 @@ pub fn load_stl_from_buffer(
 
     // TODO(hmeyer/stl_io#26): use optional name from ascii stl files.
     // https://github.com/hmeyer/stl_io/pull/26
-    let name = DebugLabel::from("");
+    let name = Label::from("");
 
-    let (normals, triangles): (Vec<_>, Vec<_>) = reader
+    let triangles_and_normals: Vec<_> = reader
         .into_iter()
         .map(|triangle_res| {
             triangle_res.map(|triangle| {
@@ -40,10 +40,9 @@ pub fn load_stl_from_buffer(
                 )
             })
         })
-        .collect::<Result<Vec<_>, _>>()
-        .map_err(StlImportError::StlIoError)?
-        .into_iter()
-        .unzip();
+        .try_collect()
+        .map_err(StlImportError::StlIoError)?;
+    let (normals, triangles): (Vec<_>, Vec<_>) = triangles_and_normals.into_iter().unzip();
 
     let num_vertices = triangles.len() * 3;
 
@@ -55,7 +54,7 @@ pub fn load_stl_from_buffer(
     };
 
     let vertex_positions = bytemuck::cast_vec(triangles);
-    let bbox = macaw::BoundingBox::from_points(vertex_positions.iter().copied());
+    let bbox = crate::util::bounding_box_from_points(vertex_positions.iter().copied());
 
     let mesh = mesh::CpuMesh {
         label: name.clone(),

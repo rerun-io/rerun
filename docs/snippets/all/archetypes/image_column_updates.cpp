@@ -5,7 +5,7 @@
 #include <numeric>
 #include <rerun.hpp>
 
-int main() {
+int main(int argc, char* argv[]) {
     auto rec = rerun::RecordingStream("rerun_example_image_column_updates");
     rec.spawn().exit_on_failure();
 
@@ -38,9 +38,12 @@ int main() {
 
     // Split up the image data into several components referencing the underlying data.
     const size_t image_size_in_bytes = width * height * 3;
-    std::vector<rerun::components::ImageBuffer> image_data(times.size());
+    std::vector<rerun::ImageBuffer> image_data(times.size());
     for (size_t i = 0; i < times.size(); ++i) {
-        image_data[i] = rerun::borrow(images.data() + i * image_size_in_bytes, image_size_in_bytes);
+        image_data[i] = rerun::borrow(
+            images.data() + i * image_size_in_bytes,
+            image_size_in_bytes
+        );
     }
 
     // Send all images at once.

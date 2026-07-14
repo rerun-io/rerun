@@ -13,10 +13,8 @@ pub fn merge<'a>(
     edge_data: &'a ahash::HashMap<EntityPath, EdgeData>,
 ) -> impl Iterator<Item = (&'a EntityPath, Option<&'a NodeData>, Option<&'a EdgeData>)> + 'a {
     // We sort the entities to ensure that we always process them in the same order.
-    let unique_entities = node_data
-        .keys()
-        .chain(edge_data.keys())
-        .collect::<BTreeSet<_>>();
+    let unique_entities =
+        std::iter::chain(node_data.keys(), edge_data.keys()).collect::<BTreeSet<_>>();
 
     unique_entities.into_iter().map(|entity| {
         let nodes = node_data.get(entity);

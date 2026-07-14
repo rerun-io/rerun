@@ -11,7 +11,7 @@ A position in 2D space.
 
 ## Arrow datatype
 ```
-FixedSizeList<2, float32>
+FixedSizeList(2 x non-null Float32)
 ```
 
 ## API reference links
@@ -24,5 +24,6 @@ FixedSizeList<2, float32>
 
 * [`Arrows2D`](../archetypes/arrows2d.md)
 * [`Boxes2D`](../archetypes/boxes2d.md)
+* [`Ellipses2D`](../archetypes/ellipses2d.md)
 * [`GraphNodes`](../archetypes/graph_nodes.md)
 * [`Points2D`](../archetypes/points2d.md)

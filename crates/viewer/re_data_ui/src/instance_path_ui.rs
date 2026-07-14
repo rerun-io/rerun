@@ -1,0 +1,481 @@
+use egui::RichText;
+use itertools::Itertools as _;
+use re_capabilities::MainThreadToken;
+use re_chunk_store::{ChunkTrackingMode, UnitChunkShared};
+use re_entity_db::InstancePath;
+use re_format::format_plural_s;
+use re_log_types::ComponentPath;
+use re_query::{LatestAllComponentResults, LatestAllResults};
+use re_sdk_types::reflection::ComponentDescriptorExt as _;
+use re_sdk_types::{ArchetypeName, Component as _, ComponentDescriptor, components};
+use re_ui::list_item::{ListItemContentButtonsExt as _, PropertyContent};
+use re_ui::{UiExt as _, design_tokens_of_visuals, list_item};
+use re_viewer_context::{HoverHighlight, Item, StoreViewContext, UiLayout};
+
+use super::DataUi;
+use crate::{
+    ArchetypeComponentMap, extra_data_ui::ExtraDataUi,
+    latest_all_instance_ui::LatestAllInstanceResult,
+};
+
+// Showing more than this takes up too much space
+const MAX_COMPONENTS_IN_TOOLTIP: usize = 3;
+
+impl DataUi for InstancePath {
+    fn data_ui(&self, ctx: &StoreViewContext<'_>, ui: &mut egui::Ui, ui_layout: UiLayout) {
+        re_tracing::profile_function!();
+
+        let Self {
+            entity_path,
+            instance,
+        } = self;
+
+        let components = ctx
+            .db
+            .storage_engine()
+            .store()
+            .all_components_on_timeline(Some(&ctx.timeline_name()), entity_path);
+
+        let Some(unordered_components) = components else {
+            // This is fine - e.g. we're looking at `/world` and the user has only logged to `/world/car`.
+            ui_layout.label(
+                ui,
+                format!(
+                    "{self} has no own components on timeline {:?}, but its children do",
+                    ctx.timeline_name()
+                ),
+            );
+            return;
+        };
+
+        let component_descriptors: Vec<ComponentDescriptor> = {
+            let storage_engine = ctx.db.storage_engine();
+            let store = storage_engine.store();
+            unordered_components
+                .iter()
+                .filter_map(|c| store.schema().entity_component_descriptor(entity_path, *c))
+                .sorted()
+                .collect_vec()
+        };
+
+        let components_by_archetype = crate::sorted_component_list_by_archetype_for_ui(
+            ctx.app_ctx.reflection,
+            component_descriptors.iter().cloned(),
+        );
+
+        let query_results = ctx.db.storage_engine().cache().latest_all(
+            ChunkTrackingMode::ReportTransient,
+            &ctx.query(),
+            entity_path,
+            unordered_components.iter().copied(),
+        );
+
+        let any_missing_chunks = !query_results.missing_virtual.is_empty();
+
+        instance_path_ui(
+            ctx,
+            ui,
+            ui_layout,
+            self,
+            &components_by_archetype,
+            &query_results,
+        );
+
+        if instance.is_all() {
+            // For special things (videos etc) we show a preview.
+            // Let's ignore the complexity of latest-all here, and just show the latest data:
+            let query_results = query_results.into_latest_at();
+
+            // There are some examples where we need to combine several archetypes for a single preview.
+            // For instance `VideoFrameReference` and `VideoAsset` are used together for a single preview.
+            let all_components = component_descriptors
+                .iter()
+                .filter_map(|descr| {
+                    let chunk = query_results.components.get(&descr.component)?;
+                    Some((descr.clone(), chunk.clone()))
+                })
+                .collect_vec();
+
+            for (descr, shared) in &all_components {
+                if let Some(data) =
+                    ExtraDataUi::from_components(ctx, entity_path, descr, shared, &all_components)
+                {
+                    data.data_ui(ctx, ui, ui_layout, entity_path);
+                }
+            }
+        }
+
+        if any_missing_chunks && ctx.db.can_fetch_chunks_from_redap() {
+            // TODO(RR-3670): figure out how to handle missing chunks
+            ui.loading_indicator("Fetching chunks from redap");
+        }
+    }
+}
+
+fn instance_path_ui(
+    ctx: &StoreViewContext<'_>,
+    ui: &mut egui::Ui,
+    ui_layout: UiLayout,
+    instance_path: &InstancePath,
+    components_by_archetype: &ArchetypeComponentMap,
+    query_results: &LatestAllResults,
+) {
+    let num_components = components_by_archetype
+        .values()
+        .map(|v| v.len())
+        .sum::<usize>();
+
+    match ui_layout {
+        UiLayout::List | UiLayout::Inline => {
+            ui_layout.label(
+                ui,
+                format!(
+                    "{} with {}",
+                    format_plural_s(components_by_archetype.len(), "archetype"),
+                    format_plural_s(num_components, "total component")
+                ),
+            );
+        }
+        UiLayout::Tooltip => {
+            if query_results.num_rows_total() <= MAX_COMPONENTS_IN_TOOLTIP {
+                component_list_ui(
+                    ctx,
+                    ui,
+                    ui_layout,
+                    instance_path,
+                    components_by_archetype,
+                    query_results,
+                );
+            } else {
+                // Too many to show all in a tooltip.
+                let showed_short_summary = try_summary_ui_for_tooltip(
+                    ctx,
+                    ui,
+                    ui_layout,
+                    instance_path,
+                    components_by_archetype,
+                    query_results,
+                )
+                .is_ok();
+
+                if !showed_short_summary {
+                    // Show just a very short summary:
+                    ui.list_item_scope(instance_path, |ui| {
+                        ui.list_item_label(format_plural_s(num_components, "component"));
+
+                        let archetype_count = components_by_archetype.len();
+                        ui.list_item_label(format!(
+                            "{}: {}",
+                            format_plural_s(archetype_count, "archetype"),
+                            components_by_archetype
+                                .keys()
+                                .map(|archetype| {
+                                    if let Some(archetype) = archetype {
+                                        archetype.short_name()
+                                    } else {
+                                        "<Without archetype>"
+                                    }
+                                })
+                                .join(", ")
+                        ));
+                    });
+                }
+            }
+        }
+        UiLayout::SelectionPanel => {
+            component_list_ui(
+                ctx,
+                ui,
+                ui_layout,
+                instance_path,
+                components_by_archetype,
+                query_results,
+            );
+        }
+    }
+}
+
+/// Show the value of a single instance (e.g. a point in a point cloud),
+/// focusing only on the components that are different between different points.
+fn try_summary_ui_for_tooltip(
+    ctx: &StoreViewContext<'_>,
+    ui: &mut egui::Ui,
+    ui_layout: UiLayout,
+    instance_path: &InstancePath,
+    components_by_archetype: &ArchetypeComponentMap,
+    query_results: &LatestAllResults,
+) -> Result<(), ()> {
+    let num_components = components_by_archetype
+        .values()
+        .map(|v| v.len())
+        .sum::<usize>();
+
+    if instance_path.is_all() {
+        return Err(()); // not an instance
+    }
+
+    // Focus on the components that have different values per instance (non-splatted components):
+    let instanced_components_by_archetype: ArchetypeComponentMap = components_by_archetype
+        .iter()
+        .filter_map(|(archetype_name, archetype_components)| {
+            let instanced_archetype_components = archetype_components
+                .iter()
+                .filter(|descr| {
+                    query_results.components.get(&descr.component).is_some_and(
+                        |component_results| {
+                            component_results.max_num_instances(descr.component) > 1
+                        },
+                    )
+                })
+                .cloned()
+                .collect_vec();
+            if instanced_archetype_components.is_empty() {
+                None
+            } else {
+                Some((*archetype_name, instanced_archetype_components))
+            }
+        })
+        .collect();
+
+    let num_instanced_components = instanced_components_by_archetype
+        .values()
+        .map(|v| v.len())
+        .sum::<usize>();
+
+    if MAX_COMPONENTS_IN_TOOLTIP < num_instanced_components {
+        return Err(());
+    }
+
+    component_list_ui(
+        ctx,
+        ui,
+        ui_layout,
+        instance_path,
+        &instanced_components_by_archetype,
+        query_results,
+    );
+
+    let num_skipped = num_components - num_instanced_components;
+    ui.label(format!(
+        "…plus {num_skipped} more {}",
+        if num_skipped == 1 {
+            "component"
+        } else {
+            "components"
+        }
+    ));
+
+    Ok(())
+}
+
+fn component_list_ui(
+    ctx: &StoreViewContext<'_>,
+    ui: &mut egui::Ui,
+    ui_layout: UiLayout,
+    instance_path: &InstancePath,
+    components_by_archetype: &ArchetypeComponentMap,
+    query_results: &LatestAllResults,
+) {
+    let InstancePath {
+        entity_path,
+        instance,
+    } = instance_path;
+
+    // TODO(#7026): Instances today are too poorly defined:
+    // For many archetypes it makes sense to slice through all their component arrays with the same index.
+    // However, there are cases when there are multiple dimensions of slicing that make sense.
+    // This is most obvious for meshes & graph nodes where there are different dimensions for vertices/edges/etc.
+    //
+    // For graph nodes this is particularly glaring since our indicices imply nodes today and
+    // unlike with meshes it's very easy to hover & select individual nodes.
+    // In order to work around the GraphEdges showing up associated with random nodes, we just hide them here.
+    // (this is obviously a hack and these relationships should be formalized such that they are accessible to the UI, see ticket link above)
+    let mut components_by_archetype = components_by_archetype.clone();
+    if !instance.is_all() {
+        for components in components_by_archetype.values_mut() {
+            components.retain(|component| {
+                component.component_type != Some(components::GraphEdge::name())
+            });
+        }
+    }
+
+    re_ui::list_item::list_item_scope(
+        ui,
+        egui::Id::from("component list").with(entity_path),
+        |ui| {
+            for (archetype, archetype_components) in &components_by_archetype {
+                if archetype.is_none() && components_by_archetype.len() == 1 {
+                    // They are all without archetype, so we can skip the label.
+                } else {
+                    archetype_label_list_item_ui(ui, archetype.as_ref());
+                }
+
+                let mut missing_units = false;
+
+                for component_descr in archetype_components {
+                    if let Some(hits) = query_results.components.get(&component_descr.component) {
+                        component_ui(
+                            ctx,
+                            ui,
+                            ui_layout,
+                            instance_path,
+                            archetype_components,
+                            component_descr,
+                            hits,
+                            query_results,
+                        );
+                    } else {
+                        missing_units = true;
+                    }
+                }
+
+                if missing_units {
+                    // No data found at the moment.
+                    // Maybe there is no data this early on the timeline.
+                    // Maybe there _were_ data, but it has been GCed.
+                    // Maybe there _will be_ data, once we have loaded it.
+                    let any_missing_chunks = !query_results.missing_virtual.is_empty();
+                    if any_missing_chunks && ctx.db.can_fetch_chunks_from_redap() {
+                        ui.loading_indicator("Fetching chunks from redap");
+                    } else {
+                        ui.weak("-"); // TODO(RR-3670): figure out how to handle missing chunks
+                    }
+                }
+            }
+        },
+    );
+}
+
+fn component_ui(
+    ctx: &StoreViewContext<'_>,
+    ui: &mut egui::Ui,
+    ui_layout: UiLayout,
+    instance_path: &InstancePath,
+    archetype_components: &[ComponentDescriptor],
+    component_descr: &ComponentDescriptor,
+    hits: &LatestAllComponentResults,
+    query_results: &LatestAllResults,
+) {
+    let InstancePath {
+        entity_path,
+        instance,
+    } = instance_path;
+
+    let interactive = ui_layout != UiLayout::Tooltip;
+
+    let component_path = ComponentPath::new(entity_path.clone(), component_descr.component);
+
+    let item = Item::ComponentPath(component_path);
+
+    let mut list_item = ui.list_item().interactive(interactive);
+
+    if interactive {
+        let is_hovered = ctx
+            .app_ctx
+            .selection_state()
+            .highlight_for_ui_element(&item)
+            == HoverHighlight::Hovered;
+        list_item = list_item.force_hovered(is_hovered);
+    }
+
+    let extra_data_ui = hits.try_as_unit().and_then(|unit| {
+        // We show an extra
+
+        let archetype_component_units: Vec<(ComponentDescriptor, UnitChunkShared)> =
+            archetype_components
+                .iter()
+                .filter_map(|descr| {
+                    let unit = query_results
+                        .components
+                        .get(&descr.component)?
+                        .latest_row()?;
+                    Some((descr.clone(), unit.clone()))
+                })
+                .collect();
+
+        ExtraDataUi::from_components(
+            ctx,
+            entity_path,
+            component_descr,
+            &unit,
+            &archetype_component_units,
+        )
+    });
+
+    let is_static = hits.time().is_static();
+
+    let icon = if is_static {
+        &re_ui::icons::COMPONENT_STATIC
+    } else {
+        &re_ui::icons::COMPONENT_TEMPORAL
+    };
+
+    let mut content = PropertyContent::new(component_descr.archetype_field_name())
+        .with_icon(icon)
+        .value_fn(move |ui, _| {
+            LatestAllInstanceResult {
+                entity_path: entity_path.clone(),
+                component: component_descr.component,
+                instance: *instance,
+                hits,
+            }
+            .data_ui(ctx, ui, UiLayout::List);
+        });
+
+    if let Some(extra_data_ui) = &extra_data_ui
+        && ui_layout == UiLayout::SelectionPanel
+    {
+        content = extra_data_ui
+            .add_inline_buttons(
+                ctx.app_ctx,
+                MainThreadToken::from_egui_ui(ui),
+                entity_path,
+                content,
+            )
+            .with_always_show_buttons(true);
+    }
+
+    let response = list_item.show_flat(ui, content).on_hover_ui(|ui| {
+        if let Some(component_type) = component_descr.component_type {
+            component_type.data_ui(ctx, ui, UiLayout::Tooltip);
+        }
+
+        if let Some(column) = ctx.db.storage_engine().store().resolve_component_selector(
+            &re_sorbet::ComponentColumnSelector::from_descriptor(
+                entity_path.clone(),
+                component_descr,
+            ),
+        ) {
+            re_ui::list_item::list_item_scope(ui, component_descr, |ui| {
+                ui.list_item_flat_noninteractive(PropertyContent::new("Data type").value_text(
+                    // TODO(#11071): use re_arrow_ui to format the datatype here
+                    column.store_datatype.to_string(),
+                ));
+            });
+        }
+    });
+
+    if interactive {
+        ctx.app_ctx
+            .handle_select_hover_drag_interactions(&response, item, false);
+    }
+}
+
+pub fn archetype_label_list_item_ui(ui: &mut egui::Ui, archetype: Option<&ArchetypeName>) {
+    ui.list_item()
+        .with_y_offset(1.0)
+        .with_height(20.0)
+        .interactive(false)
+        .show_flat(
+            ui,
+            list_item::LabelContent::new(
+                RichText::new(
+                    archetype
+                        .map(|a| a.short_name())
+                        .unwrap_or("Without archetype"),
+                )
+                .size(10.0)
+                .color(design_tokens_of_visuals(ui.visuals()).list_item_strong_text),
+            ),
+        );
+}

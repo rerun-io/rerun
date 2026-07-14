@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -40,7 +41,8 @@ use crate::{DeserializationError, DeserializationResult};
 /// use rerun::external::glam;
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_clear").spawn()?;
+///     let rec =
+///         rerun::RecordingStreamBuilder::new("rerun_example_clear").spawn()?;
 ///
 ///     #[rustfmt::skip]
 ///     let (vectors, origins, colors) = (
@@ -50,12 +52,16 @@ use crate::{DeserializationError, DeserializationResult};
 ///     );
 ///
 ///     // Log a handful of arrows.
-///     for (i, ((vector, origin), color)) in vectors.into_iter().zip(origins).zip(colors).enumerate() {
+///     for (i, (vector, origin, color)) in
+///         itertools::izip!(vectors, origins, colors).enumerate()
+///     {
 ///         rec.log(
 ///             format!("arrows/{i}"),
 ///             &rerun::Arrows3D::from_vectors([vector])
 ///                 .with_origins([origin])
-///                 .with_colors([rerun::Color::from_rgb(color.0, color.1, color.2)]),
+///                 .with_colors([rerun::Color::from_rgb(
+///                     color.0, color.1, color.2,
+///                 )]),
 ///         )?;
 ///     }
 ///
@@ -76,7 +82,7 @@ use crate::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/clear_simple/2f5df95fcc53e9f0552f65670aef7f94830c5c1a/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug, PartialEq, Default)]
+#[derive(Clone, Debug, PartialEq, Default, ::re_byte_size::SizeBytes)]
 pub struct Clear {
     pub is_recursive: Option<SerializedComponentBatch>,
 }
@@ -87,11 +93,13 @@ impl Clear {
     /// The corresponding component is [`crate::components::ClearIsRecursive`].
     #[inline]
     pub fn descriptor_is_recursive() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.Clear".into()),
-            component: "Clear:is_recursive".into(),
-            component_type: Some("rerun.components.ClearIsRecursive".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.Clear".into()),
+                component: "Clear:is_recursive".into(),
+                component_type: Some("rerun.components.ClearIsRecursive".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -115,7 +123,10 @@ impl Clear {
 impl crate::Archetype for Clear {
     #[inline]
     fn name() -> crate::ArchetypeName {
-        "rerun.archetypes.Clear".into()
+        crate::external::re_string_interner::intern_static!(
+            crate::ArchetypeName,
+            "rerun.archetypes.Clear"
+        )
     }
 
     #[inline]
@@ -256,12 +267,5 @@ impl Clear {
     ) -> Self {
         self.is_recursive = try_serialize_field(Self::descriptor_is_recursive(), is_recursive);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for Clear {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.is_recursive.heap_size_bytes()
     }
 }

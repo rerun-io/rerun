@@ -22,9 +22,6 @@ all-features = true
 [features]
 default = []
 
-## Enable (de)serialization using serde.
-serde = ["re_log_types/serde", "re_tuid/serde", "re_types_core/serde"]
-
 
 [dependencies]
 
@@ -39,7 +36,6 @@ re_quota_channel.workspace = true
 re_sorbet.workspace = true
 re_span.workspace = true
 re_tracing.workspace = true
-re_tuid.workspace = true
 re_types_core.workspace = true
 
 # External
@@ -53,7 +49,6 @@ itertools.workspace = true
 nohash-hasher.workspace = true
 rand = { workspace = true, features = ["std_rng"] }
 thiserror.workspace = true
-tracing.workspace = true
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

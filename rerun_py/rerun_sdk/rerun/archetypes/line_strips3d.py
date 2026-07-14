@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 import numpy as np
 import pyarrow as pa
@@ -15,9 +15,13 @@ from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
+    ComponentDescriptor,
 )
 from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
+
+if TYPE_CHECKING:
+    from ..blueprint.datatypes import VisualizerComponentMappingLike
 
 __all__ = ["LineStrips3D"]
 
@@ -91,14 +95,16 @@ class LineStrips3D(Archetype, VisualizableArchetype):
     )
 
     # A red line with a ui point radii of 5.
-    # UI points are independent of zooming in Views, but are sensitive to the application UI scaling.
+    # UI points are independent of zooming in Views, but are sensitive to the
+    # application UI scaling.
     # For 100% ui scaling, UI points are equal to pixels.
     points = [[3, 0, 0], [3, 0, 1], [4, 0, 0], [4, 0, 1]]
     rr.log(
         "ui_points_line",
         rr.LineStrips3D(
             [points],
-            # rr.Radius.ui_points produces radii that the viewer interprets as given in ui points.
+            # rr.Radius.ui_points produces radii that the viewer interprets
+            # as given in ui points.
             radii=rr.Radius.ui_points(5.0),
             colors=[255, 0, 0],
         ),
@@ -114,7 +120,66 @@ class LineStrips3D(Archetype, VisualizableArchetype):
     </picture>
     </center>
 
+    ### Time-windowed trails (e.g. Trajectories):
+    ```python
+    import math
+
+    import rerun as rr
+    import rerun.blueprint as rrb
+
+
+    def point(t: float, phase: float) -> list[float]:
+        # Sample a point on a helix.
+        angle = 0.5 * t + phase
+        return [math.cos(angle), math.sin(angle), 0.1 * t]
+
+
+    rr.init("rerun_example_line_strips3d_time_window", spawn=True)
+
+    # Configure the visible time range in the blueprint.
+    # You can also override this per entity.
+    rr.send_blueprint(
+        rrb.Spatial3DView(
+            origin="/",
+            time_ranges=rrb.VisibleTimeRange(
+                "time",
+                start=rrb.TimeRangeBoundary.cursor_relative(seconds=-5.0),
+                end=rrb.TimeRangeBoundary.cursor_relative(),
+            ),
+        )
+    )
+
+    # Log the line strip increments with timestamps.
+    for i in range(600):
+        t0 = i / 30.0
+        t1 = (i + 1) / 30.0
+
+        rr.set_time("time", duration=t1)
+        rr.log(
+            "trails",
+            rr.LineStrips3D(
+                [
+                    [point(t0, 0.0), point(t1, 0.0)],
+                    [point(t0, math.pi), point(t1, math.pi)],
+                ],
+                colors=[[255, 120, 0], [0, 180, 255]],
+                radii=0.02,
+            ),
+        )
+    ```
+    <center>
+    <picture>
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/line_strips3d_time_window/999f92d8f7f09b77e8307e6bbcaad652cf2f2c44/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/line_strips3d_time_window/999f92d8f7f09b77e8307e6bbcaad652cf2f2c44/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/line_strips3d_time_window/999f92d8f7f09b77e8307e6bbcaad652cf2f2c44/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/line_strips3d_time_window/999f92d8f7f09b77e8307e6bbcaad652cf2f2c44/1200w.png">
+      <img src="https://static.rerun.io/line_strips3d_time_window/999f92d8f7f09b77e8307e6bbcaad652cf2f2c44/full.png" width="640">
+    </picture>
+    </center>
+
     """
+
+    NAME: ClassVar[str] = "rerun.archetypes.LineStrips3D"
 
     def __init__(
         self: Any,
@@ -247,6 +312,54 @@ class LineStrips3D(Archetype, VisualizableArchetype):
         """Clear all the fields of a `LineStrips3D`."""
         return cls.from_fields(clear_unset=True)
 
+    @staticmethod
+    def descriptor_strips() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "LineStrips3D:strips",
+            archetype=LineStrips3D.NAME,
+            component_type=components.LineStrip3DBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_radii() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "LineStrips3D:radii",
+            archetype=LineStrips3D.NAME,
+            component_type=components.RadiusBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_colors() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "LineStrips3D:colors",
+            archetype=LineStrips3D.NAME,
+            component_type=components.ColorBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_labels() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "LineStrips3D:labels",
+            archetype=LineStrips3D.NAME,
+            component_type=components.TextBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_show_labels() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "LineStrips3D:show_labels",
+            archetype=LineStrips3D.NAME,
+            component_type=components.ShowLabelsBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_class_ids() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "LineStrips3D:class_ids",
+            archetype=LineStrips3D.NAME,
+            component_type=components.ClassIdBatch._COMPONENT_TYPE,
+        )
+
     @classmethod
     def columns(
         cls,
@@ -323,17 +436,21 @@ class LineStrips3D(Archetype, VisualizableArchetype):
             if pa.types.is_primitive(arrow_array.type) or pa.types.is_fixed_size_list(arrow_array.type):
                 param = kwargs[batch.component_descriptor().component]  # type: ignore[index]
                 shape = np.shape(param)  # type: ignore[arg-type]
-                elem_flat_len = int(np.prod(shape[1:])) if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
-
-                if pa.types.is_fixed_size_list(arrow_array.type) and arrow_array.type.list_size == elem_flat_len:
-                    # If the product of the last dimensions of the shape are equal to the size of the fixed size list array,
-                    # we have `num_rows` single element batches (each element is a fixed sized list).
-                    # (This should have been already validated by conversion to the arrow_array)
-                    batch_length = 1
-                else:
-                    batch_length = shape[1] if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
-
                 num_rows = shape[0] if len(shape) >= 1 else 1  # type: ignore[redundant-expr,misc]
+
+                if pa.types.is_fixed_size_list(arrow_array.type):
+                    elem_flat_len = int(np.prod(shape[1:])) if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
+                    if arrow_array.type.list_size == elem_flat_len:
+                        # The product of the last dimensions of the shape are equal to the size of the fixed size list array,
+                        # so we have `num_rows` single element batches (each element is a fixed sized list).
+                        batch_length = 1
+                    else:
+                        batch_length = shape[1] if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
+                else:
+                    # For primitive types, derive batch_length from the actual arrow array length
+                    # since the input shape can be misleading (e.g. colors [R,G,B] -> single uint32).
+                    batch_length = len(arrow_array) // num_rows if num_rows > 0 else 1
+
                 sizes = batch_length * np.ones(num_rows)
             else:
                 # For non-primitive types, default to partitioning each element separately.
@@ -408,6 +525,17 @@ class LineStrips3D(Archetype, VisualizableArchetype):
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__  # type: ignore[assignment]
 
-    def visualizer(self) -> Visualizer:
-        """Creates a visualizer for this archetype, using all currently set values as overrides."""
-        return Visualizer("Lines3D", overrides=self.as_component_batches(), mappings=None)
+    def visualizer(self, *, mappings: list[VisualizerComponentMappingLike] | None = None) -> Visualizer:
+        """
+        Creates a visualizer for this archetype, using all currently set values as overrides.
+
+        Parameters
+        ----------
+        mappings:
+            Optional component mappings to control how the visualizer sources its data.
+
+            ⚠️ **Experimental**: Component mappings are an experimental feature and may change.
+            See https://github.com/rerun-io/rerun/issues/10631 for more information.
+
+        """
+        return Visualizer("Lines3D", overrides=self.as_component_batches(), mappings=mappings)

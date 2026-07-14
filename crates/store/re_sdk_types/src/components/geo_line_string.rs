@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -22,7 +23,7 @@ use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: A geospatial line string expressed in [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees).
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, ::re_byte_size::SizeBytes)]
 #[repr(transparent)]
 pub struct GeoLineString(pub Vec<crate::datatypes::DVec2D>);
 
@@ -152,9 +153,10 @@ impl ::re_types_core::Loggable for GeoLineString {
                         if arrow_data_inner.is_empty() {
                             Vec::new()
                         } else {
-                            let offsets = (0..)
-                                .step_by(2usize)
-                                .zip((2usize..).step_by(2usize).take(arrow_data_inner.len()));
+                            let offsets = ::std::iter::zip(
+                                (0..).step_by(2usize),
+                                (2usize..).step_by(2usize).take(arrow_data_inner.len()),
+                            );
                             let arrow_data_inner_inner = {
                                 let arrow_data_inner_inner = &**arrow_data_inner.values();
                                 arrow_data_inner_inner
@@ -172,7 +174,7 @@ impl ::re_types_core::Loggable for GeoLineString {
                             ZipValidity::new_with_validity(offsets, arrow_data_inner.nulls())
                                 .map(|elem| {
                                     elem.map(|(start, end): (usize, usize)| {
-                                        debug_assert!(end - start == 2usize);
+                                        re_log::debug_assert!(end - start == 2usize);
                                         if arrow_data_inner_inner.len() < end {
                                             return Err(DeserializationError::offset_slice_oob(
                                                 (start, end),
@@ -242,17 +244,5 @@ impl ::re_types_core::Loggable for GeoLineString {
 impl<I: Into<crate::datatypes::DVec2D>, T: IntoIterator<Item = I>> From<T> for GeoLineString {
     fn from(v: T) -> Self {
         Self(v.into_iter().map(|v| v.into()).collect())
-    }
-}
-
-impl ::re_byte_size::SizeBytes for GeoLineString {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <Vec<crate::datatypes::DVec2D>>::is_pod()
     }
 }

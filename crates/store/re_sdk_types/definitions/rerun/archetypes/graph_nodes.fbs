@@ -16,7 +16,7 @@ table GraphNodes (
   // --- Required ---
 
   /// A list of node IDs.
-  node_ids: [rerun.components.GraphNode] ("attr.rerun.component_required", order: 1000);
+  node_ids: [rerun.components.GraphNode] ("attr.rerun.component_required", "attr.rerun.component_no_ui_edit", order: 1000);
 
   // --- Optional ---
 

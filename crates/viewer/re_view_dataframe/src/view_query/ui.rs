@@ -9,10 +9,20 @@ use re_log_types::{
 use re_sdk_types::blueprint::components;
 use re_sorbet::ColumnSelector;
 use re_ui::list_item::ListItemContentButtonsExt as _;
-use re_ui::{TimeDragValue, UiExt as _, list_item};
-use re_viewer_context::{TimeControlCommand, ViewId, ViewSystemExecutionError, ViewerContext};
+use re_ui::{TimeDragValue, UiExt as _, icons, list_item};
+use re_viewer_context::{
+    TimeControlCommand, TimeRangeHighlight, TimeRangeHighlightKind, ViewId,
+    ViewSystemExecutionError, ViewerContext,
+};
 
 use crate::view_query::Query;
+
+/// A group of component columns belonging to the same entity path, used for drag-and-drop reordering.
+#[derive(Hash, Debug)]
+struct EntityGroup {
+    entity_path: EntityPath,
+    columns: Vec<ColumnDescriptor>,
+}
 
 // UI implementation
 impl Query {
@@ -48,8 +58,7 @@ impl Query {
                 if let Some(range) = ctx.recording().time_range_for(timeline.name()) {
                     TimeDragValue::from_abs_time_range(range)
                 } else {
-                    debug_assert!(
-                        false,
+                    re_log::debug_panic!(
                         "This should never happen because `timeline` should exist if not `None`"
                     );
                     TimeDragValue::from_time_range(0..=0)
@@ -155,9 +164,12 @@ impl Query {
         if should_display_time_range
             && timeline.is_some_and(|t| t.name() == ctx.time_ctrl.timeline_name())
         {
-            ctx.send_time_commands([TimeControlCommand::HighlightRange(AbsoluteTimeRange::new(
-                start, end,
-            ))]);
+            ctx.send_time_commands([TimeControlCommand::HighlightRange(TimeRangeHighlight {
+                range: AbsoluteTimeRange::new(start, end),
+                timeline: *ctx.time_ctrl.timeline_name(),
+                kind: TimeRangeHighlightKind::TimeRangeConfiguration,
+                color: None,
+            })]);
         }
 
         Ok(())
@@ -342,15 +354,36 @@ impl Query {
     ) -> Result<(), ViewSystemExecutionError> {
         // Gather our selected columns.
         let selected_columns: HashSet<_> = self
-            .apply_column_visibility_to_view_columns(ctx, view_columns)?
-            .map(|columns| columns.into_iter().collect())
-            .unwrap_or_else(|| view_columns.iter().cloned().map(Into::into).collect());
+            .visible_column_selectors(ctx, view_columns)?
+            .into_iter()
+            .collect();
 
         let visible_count = selected_columns.len();
         let hidden_count = view_columns.len() - visible_count;
         let visible_count_label = format!("{visible_count} visible, {hidden_count} hidden");
 
         let mut new_selected_columns = selected_columns.clone();
+
+        // Build entity groups for drag-and-drop ordering.
+        let mut entity_groups: Vec<EntityGroup> = Vec::new();
+        for column in view_columns {
+            if let ColumnDescriptor::Component(desc) = column {
+                if entity_groups
+                    .last()
+                    .is_none_or(|g| g.entity_path != desc.entity_path)
+                {
+                    entity_groups.push(EntityGroup {
+                        entity_path: desc.entity_path.clone(),
+                        columns: Vec::new(),
+                    });
+                }
+                entity_groups
+                    .last_mut()
+                    .expect("just pushed")
+                    .columns
+                    .push(column.clone());
+            }
+        }
 
         let modal_ui = |ui: &mut egui::Ui| {
             //
@@ -432,34 +465,45 @@ impl Query {
             }
 
             //
-            // Component columns
+            // Component columns (with drag-and-drop entity group reordering)
             //
 
-            let mut current_entity = None;
-            for column in view_columns {
-                let ColumnDescriptor::Component(component_column_descriptor) = column else {
-                    continue;
-                };
+            let response = egui_dnd::dnd(ui, "entity_group_dnd").show(
+                entity_groups.iter_mut(),
+                |ui, group, handle, _state| {
+                    ui.add_space(4.0);
+                    ui.horizontal(|ui| {
+                        handle.ui(ui, |ui| {
+                            ui.small_icon(&icons::DND_HANDLE, Some(ui.visuals().text_color()));
+                        });
+                        ui.label(group.entity_path.ui_string());
+                    });
 
-                if Some(&component_column_descriptor.entity_path) != current_entity.as_ref() {
-                    current_entity = Some(component_column_descriptor.entity_path.clone());
-                    ui.add_space(6.0);
-                    ui.label(component_column_descriptor.entity_path.to_string());
-                }
+                    for column in &group.columns {
+                        let column_selector: ColumnSelector = column.clone().into();
+                        let mut is_visible = selected_columns.contains(&column_selector);
 
-                let column_selector: ColumnSelector = column.clone().into();
-                let mut is_visible = selected_columns.contains(&column_selector);
-
-                if ui
-                    .re_checkbox(&mut is_visible, column.display_name())
-                    .changed()
-                {
-                    if is_visible {
-                        new_selected_columns.insert(column_selector);
-                    } else {
-                        new_selected_columns.remove(&column_selector);
+                        if ui
+                            .re_checkbox(&mut is_visible, column.display_name())
+                            .changed()
+                        {
+                            if is_visible {
+                                new_selected_columns.insert(column_selector);
+                            } else {
+                                new_selected_columns.remove(&column_selector);
+                            }
+                        }
                     }
-                }
+                },
+            );
+
+            if response.is_drag_finished() {
+                response.update_vec(&mut entity_groups);
+                let new_order: Vec<EntityPath> = entity_groups
+                    .iter()
+                    .map(|g| g.entity_path.clone())
+                    .collect();
+                self.save_entity_order(ctx, &new_order);
             }
         };
 
@@ -472,7 +516,7 @@ impl Query {
                     )
                     .ui(ui, |ui| {
                         egui::ScrollArea::vertical()
-                            .auto_shrink([false, false])
+                            .auto_shrink([true, false])
                             .show(ui, modal_ui)
                     });
             },
@@ -502,6 +546,33 @@ impl Query {
                 });
             },
         ));
+    }
+
+    pub(super) fn auto_scroll_ui(
+        &self,
+        ctx: &ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        timeline: Option<&Timeline>,
+    ) -> Result<(), ViewSystemExecutionError> {
+        let mut auto_scroll = self.auto_scroll_enabled()?;
+        if ui
+            .re_checkbox(&mut auto_scroll, "Auto-scroll with time cursor")
+            .changed()
+        {
+            self.save_auto_scroll_enabled(ctx, auto_scroll);
+        }
+
+        if auto_scroll {
+            let timelines_match =
+                timeline.is_some_and(|t| t.name() == ctx.time_ctrl.timeline_name());
+            if !timelines_match {
+                ui.warning_label(
+                    "Auto-scroll is only active when the view's timeline matches the time panel's active timeline.",
+                );
+            }
+        }
+
+        Ok(())
     }
 
     pub(super) fn latest_at_ui(
@@ -544,7 +615,7 @@ fn all_pov_entities_for_view(
             let comp_for_entity = ctx
                 .recording_engine()
                 .store()
-                .all_components_on_timeline(timeline, &node.data_result.entity_path);
+                .all_components_on_timeline(Some(timeline), &node.data_result.entity_path);
             if comp_for_entity.is_some_and(|components| !components.is_empty()) {
                 all_entities.insert(node.data_result.entity_path.clone());
             }

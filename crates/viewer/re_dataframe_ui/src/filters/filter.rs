@@ -14,14 +14,23 @@ use super::{
 #[derive(Debug, Clone, thiserror::Error)]
 #[expect(clippy::enum_variant_names)]
 pub enum FilterError {
-    #[error("invalid non-nullable boolean filter {0:?} for field {1}")]
-    InvalidNonNullableBooleanFilter(NonNullableBooleanFilter, Box<Field>),
+    #[error("invalid non-nullable boolean filter {filter:?} for field {field}")]
+    InvalidNonNullableBooleanFilter {
+        filter: NonNullableBooleanFilter,
+        field: Box<Field>,
+    },
 
-    #[error("invalid nullable boolean filter {0:?} for field {1}")]
-    InvalidNullableBooleanFilter(NullableBooleanFilter, Box<Field>),
+    #[error("invalid nullable boolean filter {filter:?} for field {field}")]
+    InvalidNullableBooleanFilter {
+        filter: NullableBooleanFilter,
+        field: Box<Field>,
+    },
 
-    #[error("invalid string filter {0:?} for field {1}")]
-    InvalidStringFilter(StringFilter, Box<Field>),
+    #[error("invalid string filter {filter:?} for field {field}")]
+    InvalidStringFilter {
+        filter: StringFilter,
+        field: Box<Field>,
+    },
 }
 
 /// Trait describing what a filter must do.

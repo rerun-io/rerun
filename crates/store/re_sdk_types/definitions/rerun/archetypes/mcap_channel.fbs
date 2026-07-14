@@ -26,14 +26,14 @@ table McapChannel (
   ///
   /// Channel IDs must be unique within a single MCAP file and are used to associate
   /// messages with their corresponding channel definition.
-  id: rerun.components.ChannelId ("attr.rerun.component_required", order: 1000);
+  id: rerun.components.ChannelId ("attr.rerun.component_required", "attr.rerun.component_no_ui_edit", order: 1000);
 
   /// The topic name that this channel publishes to.
   ///
   /// Topics are hierarchical paths from the original robotics system (e.g., "/sensors/camera/image")
   /// that categorize and organize different data streams.
   /// Topics are separate from Rerun's entity paths, but they often can be mapped to them.
-  topic: rerun.components.Text ("attr.rerun.component_required", order: 2000);
+  topic: rerun.components.Text ("attr.rerun.component_required", "attr.rerun.component_no_ui_edit", order: 2000);
 
   /// The encoding format used for messages in this channel.
   ///
@@ -42,7 +42,7 @@ table McapChannel (
   /// * `cdr` - Common Data Representation (CDR) message format, used by ROS2
   /// * `protobuf` - Protocol Buffers
   /// * `json` - JSON encoding
-  message_encoding: rerun.components.Text ("attr.rerun.component_required", order: 3000);
+  message_encoding: rerun.components.Text ("attr.rerun.component_required", "attr.rerun.component_no_ui_edit", order: 3000);
 
   // --- Optional ---
 

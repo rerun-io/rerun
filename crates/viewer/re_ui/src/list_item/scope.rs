@@ -231,7 +231,7 @@ impl LayoutInfoStack {
                     Wrap all calls to ListItem in a list_item_scope()."
                 );
             }
-            debug_assert!(
+            re_log::debug_assert!(
                 state.is_some(),
                 "ListItem was not wrapped in list_item_scope()"
             );
@@ -261,7 +261,7 @@ impl LayoutInfoStack {
 ///   list items.
 pub fn list_item_scope<R>(
     ui: &mut egui::Ui,
-    id_salt: impl std::hash::Hash,
+    id_salt: impl egui::AsId,
     content: impl FnOnce(&mut egui::Ui) -> R,
 ) -> InnerResponse<R> {
     ui.sanity_check();

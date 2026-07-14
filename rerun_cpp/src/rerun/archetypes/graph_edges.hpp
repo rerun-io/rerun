@@ -28,7 +28,7 @@ namespace rerun::archetypes {
     /// ```cpp
     /// #include <rerun.hpp>
     ///
-    /// int main() {
+    /// int main(int argc, char* argv[]) {
     ///     const auto rec = rerun::RecordingStream("rerun_example_graph_directed");
     ///     rec.spawn().exit_on_failure();
     ///
@@ -39,7 +39,7 @@ namespace rerun::archetypes {
     ///             .with_labels({"A", "B", "C"}),
     ///         rerun::GraphEdges({{"a", "b"}, {"b", "c"}, {"c", "a"}})
     ///             // Graphs are undirected by default.
-    ///             .with_graph_type(rerun::components::GraphType::Directed)
+    ///             .with_graph_type(rerun::GraphType::Directed)
     ///     );
     /// }
     /// ```

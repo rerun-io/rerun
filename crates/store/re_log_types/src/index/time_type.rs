@@ -2,7 +2,7 @@ use std::ops::RangeInclusive;
 use std::sync::Arc;
 
 use arrow::array::{DurationNanosecondArray, Int64Array, TimestampNanosecondArray};
-use arrow::buffer::ScalarBuffer;
+use arrow::buffer::{NullBuffer, ScalarBuffer};
 use arrow::datatypes::DataType as ArrowDataType;
 use arrow::error::ArrowError;
 use re_arrow_util::ArrowArrayDowncastRef as _;
@@ -11,8 +11,20 @@ use super::TimeInt;
 use crate::{AbsoluteTimeRange, TimestampFormat};
 
 /// The type of a [`TimeInt`] or [`crate::Timeline`].
-#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, num_derive::FromPrimitive)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    Hash,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    num_derive::FromPrimitive,
+    re_byte_size::SizeBytes,
+    serde::Deserialize,
+    serde::Serialize,
+)]
 pub enum TimeType {
     /// Used e.g. for frames in a film.
     Sequence,
@@ -22,18 +34,6 @@ pub enum TimeType {
 
     /// Nanoseconds since unix epoch (1970-01-01 00:00:00 UTC).
     TimestampNs,
-}
-
-impl re_byte_size::SizeBytes for TimeType {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
-    }
 }
 
 impl std::fmt::Display for TimeType {
@@ -205,12 +205,21 @@ impl TimeType {
         self,
         times: impl Into<arrow::buffer::ScalarBuffer<i64>>,
     ) -> arrow::array::ArrayRef {
+        self.make_arrow_array_with_nulls(times, None)
+    }
+
+    /// Returns an array with the appropriate datatype, attaching the supplied null buffer.
+    pub fn make_arrow_array_with_nulls(
+        self,
+        times: impl Into<arrow::buffer::ScalarBuffer<i64>>,
+        nulls: Option<NullBuffer>,
+    ) -> arrow::array::ArrayRef {
         let times = times.into();
         match self {
-            Self::Sequence => Arc::new(Int64Array::new(times, None)),
-            Self::DurationNs => Arc::new(DurationNanosecondArray::new(times, None)),
+            Self::Sequence => Arc::new(Int64Array::new(times, nulls)),
+            Self::DurationNs => Arc::new(DurationNanosecondArray::new(times, nulls)),
             // TODO(zehiko) add back timezone support (#9310)
-            Self::TimestampNs => Arc::new(TimestampNanosecondArray::new(times, None)),
+            Self::TimestampNs => Arc::new(TimestampNanosecondArray::new(times, nulls)),
         }
     }
 

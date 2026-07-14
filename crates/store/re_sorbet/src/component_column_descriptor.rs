@@ -5,7 +5,7 @@ use re_types_core::{ArchetypeName, ComponentDescriptor, ComponentIdentifier, Com
 use crate::{ArrowFieldMetadata, BatchType, ColumnKind, ComponentColumnSelector, MetadataExt as _};
 
 /// This is an [`ArrowField`] that contains specific meta-data.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, re_byte_size::SizeBytes)]
 pub struct ComponentColumnDescriptor {
     /// The Arrow datatype of the stored column.
     ///
@@ -28,7 +28,8 @@ pub struct ComponentColumnDescriptor {
     /// and will also be set in the schema for the whole chunk.
     ///
     /// If this is missing from the metadata, it will be set to `/`.
-    pub entity_path: EntityPath, // TODO(#8744): make optional for general sorbet batches
+    // TODO(emilk): Should be optional for general sorbet batches instead?
+    pub entity_path: EntityPath,
 
     /// Optional name of the `Archetype` associated with this data.
     ///
@@ -262,10 +263,9 @@ impl ComponentColumnDescriptor {
 
             dt => {
                 re_log::warn_once!(
-                    "Component '{}' on entity '{}' has unexpected non-list-array type: {}",
+                    "Component '{}' on entity '{}' has unexpected non-list-array type: {dt}",
                     self.component,
                     self.entity_path,
-                    re_arrow_util::format_data_type(&dt),
                 );
                 dt
             }
@@ -327,7 +327,7 @@ impl ComponentColumnDescriptor {
             } else if let Some(chunk_entity_path) = chunk_entity_path {
                 chunk_entity_path.clone()
             } else {
-                EntityPath::root() // TODO(#8744): make entity_path optional for general sorbet batches
+                EntityPath::root() // NOTE: should be optional for general sorbet batches
             };
 
         let component =

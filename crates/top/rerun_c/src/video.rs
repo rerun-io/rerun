@@ -43,7 +43,6 @@ pub extern "C" fn rr_video_asset_read_frame_timestamps_nanos(
         video_bytes,
         media_type_str,
         "AssetVideo",
-        re_sdk::external::re_tuid::Tuid::new(),
     ) {
         Ok(video) => video,
         Err(err) => {
@@ -70,9 +69,9 @@ pub extern "C" fn rr_video_asset_read_frame_timestamps_nanos(
         return std::ptr::null_mut();
     };
 
-    for (segment, timestamp_nanos) in video_timestamps_iter.zip(timestamps_nanos.iter_mut()) {
+    let ptr = timestamps_nanos.as_mut_ptr();
+    for (segment, timestamp_nanos) in std::iter::zip(video_timestamps_iter, timestamps_nanos) {
         *timestamp_nanos = segment;
     }
-
-    timestamps_nanos.as_mut_ptr()
+    ptr
 }

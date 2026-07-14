@@ -7,8 +7,8 @@ use re_sdk_types::components;
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
     IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewOutlineMasks, ViewQuery,
-    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
-    typed_fallback_for,
+    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo,
+    VisualizerReportSeverity, VisualizerSystem, typed_fallback_for,
 };
 
 use super::SpatialViewVisualizerData;
@@ -18,25 +18,20 @@ use crate::view_kind::SpatialViewKind;
 use crate::visualizers::process_radius;
 use crate::visualizers::utilities::spatial_view_kind_from_view_class;
 
-pub struct CamerasVisualizer {
-    pub data: SpatialViewVisualizerData,
+#[derive(Default, Clone)]
+pub struct CamerasVisualizerOutput {
     pub pinhole_cameras: Vec<PinholeWrapper>,
 }
 
-impl Default for CamerasVisualizer {
-    fn default() -> Self {
-        Self {
-            // Cameras themselves aren't inherently 2D or 3D since they represent intrinsics.
-            // (extrinsics, represented by [`transform3d_arrow::Transform3DArrowsPart`] are 3D though)
-            data: (SpatialViewVisualizerData::new(None)),
-            pinhole_cameras: Vec::new(),
-        }
-    }
-}
+#[derive(Default)]
+pub struct CamerasVisualizer;
 
 impl IdentifiedViewSystem for CamerasVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "Cameras".into()
+        re_viewer_context::external::re_string_interner::intern_static!(
+            re_viewer_context::ViewSystemIdentifier,
+            "Cameras"
+        )
     }
 }
 
@@ -51,7 +46,8 @@ struct CameraComponentDataWithFallbacks {
 
 impl CamerasVisualizer {
     fn visit_instance(
-        &mut self,
+        data: &mut SpatialViewVisualizerData,
+        pinhole_cameras: &mut Vec<PinholeWrapper>,
         ctx: &re_viewer_context::QueryContext<'_>,
         line_builder: &mut re_renderer::LineDrawableBuilder<'_>,
         transforms: &TransformTreeContext,
@@ -71,16 +67,30 @@ impl CamerasVisualizer {
         // Sticking with the semantics of `CoordinateFrame::frame_id`, we should give it precedence,
         // but this implies ignoring `CoordinateFrame::frame_id`'s fallback in all other cases, which is arguably
         // even more confusing. So instead, we rely _solely_ on `Pinhole::child_frame` for now.
-        let pinhole_frame_id = re_tf::TransformFrameIdHash::new(&pinhole_properties.child_frame);
+        let pinhole_child_frame_id =
+            re_tf::TransformFrameIdHash::new(&pinhole_properties.child_frame);
 
         // Query the pinhole from the transform tree since it uses atomic-latest-at.
-        let Some(pinhole_tree_root_info) = transforms.pinhole_tree_root_info(pinhole_frame_id)
+        let Some(pinhole_tree_root_info) =
+            transforms.pinhole_tree_root_info(pinhole_child_frame_id)
         else {
             // This implies that the transform context didn't see the pinhole transform.
             // This can happen with various frame id mismatches. TODO(andreas): When exactly does this happen? Can we add a unit test and improve the message?
+            if transforms.is_empty_frame_name(pinhole_child_frame_id) {
+                return Err(
+                    "Pinhole transform can't be resolved due to empty child frame ID.".to_owned(),
+                );
+            }
+
+            let frame = if let Some(frame_id) = transforms
+                .format_frame_or_debug_warn(pinhole_child_frame_id, ctx.target_entity_path)
+            {
+                format!("child frame {frame_id:?}")
+            } else {
+                "child frame".to_owned()
+            };
             return Err(format!(
-                "The pinhole's child frame {:?} does not form the root of a 2D subspace. Ensure you're transform tree is valid.",
-                transforms.format_frame(pinhole_frame_id)
+                "The pinhole's {frame} does not form the root of a 2D subspace. Ensure your transform tree is valid.",
             ));
         };
         let resolved_pinhole = &pinhole_tree_root_info.pinhole_projection;
@@ -102,8 +112,9 @@ impl CamerasVisualizer {
         };
 
         // If the camera is the target frame of a 2D view, there is nothing for us to display.
-        if transforms.target_frame() == pinhole_frame_id && view_kind == SpatialViewKind::TwoD {
-            self.pinhole_cameras.push(PinholeWrapper {
+        if transforms.target_frame() == pinhole_child_frame_id && view_kind == SpatialViewKind::TwoD
+        {
+            pinhole_cameras.push(PinholeWrapper {
                 ent_path: ent_path.clone(),
                 pinhole_view_coordinates: pinhole_properties.camera_xyz,
                 world_from_camera: macaw::IsoTransform::IDENTITY,
@@ -115,7 +126,8 @@ impl CamerasVisualizer {
 
         // If this transform is not representable as an `IsoTransform` we can't display it yet.
         // This would happen if the camera is under another camera or under a transform with non-uniform scale.
-        let Some(world_from_camera) = transforms.target_from_pinhole_root(pinhole_frame_id) else {
+        let Some(world_from_camera) = transforms.target_from_pinhole_root(pinhole_child_frame_id)
+        else {
             return Err("Pinhole is not connected to the view's target frame.".to_owned());
         };
         let world_from_camera = world_from_camera.as_affine3a();
@@ -124,9 +136,9 @@ impl CamerasVisualizer {
             return Err("Can only visualize pinhole under isometric transforms.".to_owned());
         };
 
-        debug_assert!(world_from_camera_iso.is_finite());
+        re_log::debug_assert!(world_from_camera_iso.is_finite());
 
-        self.pinhole_cameras.push(PinholeWrapper {
+        pinhole_cameras.push(PinholeWrapper {
             ent_path: ent_path.clone(),
             pinhole_view_coordinates: pinhole_properties.camera_xyz,
             world_from_camera: world_from_camera_iso,
@@ -162,12 +174,12 @@ impl CamerasVisualizer {
                     corners[3],
                     glam::Vec3::ZERO,
                 ],
-                LineStripFlags::FLAGS_OUTWARD_EXTENDING_ROUND_CAPS,
+                LineStripFlags::STRIP_FLAGS_OUTWARD_EXTENDING_ROUND_CAPS,
             ),
             // Missing piece of the rectangle at the far plane.
             (
                 vec![corners[1], corners[2]],
-                LineStripFlags::FLAGS_OUTWARD_EXTENDING_ROUND_CAPS,
+                LineStripFlags::STRIP_FLAGS_OUTWARD_EXTENDING_ROUND_CAPS,
             ),
             // Triangle indicating up direction.
             // Don't extend round caps here, this would reach into the frustum otherwise.
@@ -207,12 +219,8 @@ impl CamerasVisualizer {
             }
         }
 
-        // world_from_camera is the transform to the pinhole origin
-        self.data.add_bounding_box_from_points(
-            ent_path.hash(),
-            std::iter::once(glam::Vec3::ZERO),
-            world_from_camera,
-        );
+        // world_from_camera is the transform to the pinhole origin.
+        data.add_bounding_box(ent_path.hash(), macaw::BoundingBox::ZERO, world_from_camera);
 
         Ok(())
     }
@@ -223,18 +231,23 @@ impl VisualizerSystem for CamerasVisualizer {
         &self,
         _app_options: &re_viewer_context::AppOptions,
     ) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<Pinhole>()
+        VisualizerQueryInfo::single_required_component::<components::PinholeProjection>(
+            &Pinhole::descriptor_image_from_camera(),
+            &Pinhole::all_components(),
+        )
     }
 
     fn execute(
-        &mut self,
+        &self,
         ctx: &ViewContext<'_>,
         query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
-        let mut output = VisualizerExecutionOutput::default();
+        let output = VisualizerExecutionOutput::default();
+        let mut data = SpatialViewVisualizerData::default();
+        let mut pinhole_cameras = Vec::new();
 
-        let transforms = context_systems.get::<TransformTreeContext>()?;
+        let transforms = context_systems.get::<TransformTreeContext>(&output)?;
         let view_kind = spatial_view_kind_from_view_class(ctx.view_class_identifier);
 
         // Counting all cameras ahead of time is a bit wasteful, but we also don't expect a huge amount,
@@ -248,21 +261,19 @@ impl VisualizerSystem for CamerasVisualizer {
         {
             let time_query = re_chunk_store::LatestAtQuery::new(query.timeline, query.latest_at);
 
-            let query_shadowed_components = false;
             let query_results = latest_at_with_blueprint_resolved_data(
                 ctx,
                 None,
                 &time_query,
                 data_result,
                 Pinhole::all_component_identifiers(),
-                query_shadowed_components,
                 Some(instruction),
             );
 
             // `image_from_camera` _is_ the required component, but we don't process it further since we rely on the
             // pinhole information from the transform tree instead, which already has this and other properties queried.
             if query_results
-                .get_required_mono::<components::PinholeProjection>(
+                .get_mono::<components::PinholeProjection>(
                     Pinhole::descriptor_image_from_camera().component,
                 )
                 .is_none()
@@ -302,22 +313,27 @@ impl VisualizerSystem for CamerasVisualizer {
                 .highlights
                 .entity_outline_mask(data_result.entity_path.hash());
 
-            if let Err(err) = self.visit_instance(
-                &ctx.query_context(data_result, &query.latest_at_query()),
+            if let Err(err) = Self::visit_instance(
+                &mut data,
+                &mut pinhole_cameras,
+                &ctx.query_context(data_result, query.latest_at_query(), instruction.id),
                 &mut line_builder,
                 transforms,
                 &component_data,
                 entity_highlight,
                 view_kind,
             ) {
-                output.report_error_for(data_result.entity_path.clone(), err);
+                output.report_unspecified_source(
+                    instruction.id,
+                    VisualizerReportSeverity::Error,
+                    err,
+                );
             }
         }
 
-        Ok(output.with_draw_data([(line_builder.into_draw_data()?.into())]))
-    }
-
-    fn data(&self) -> Option<&dyn std::any::Any> {
-        Some(self.data.as_any())
+        Ok(output
+            .with_draw_data([(line_builder.into_draw_data()?.into())])
+            .with_visualizer_data(data)
+            .with_visualizer_data(CamerasVisualizerOutput { pinhole_cameras }))
     }
 }

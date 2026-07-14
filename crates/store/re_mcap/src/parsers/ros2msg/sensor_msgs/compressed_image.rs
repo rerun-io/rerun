@@ -40,8 +40,9 @@ impl MessageParser for CompressedImageMessageParser {
         } = cdr::try_decode_message::<sensor_msgs::CompressedImage<'_>>(&msg.data)?;
 
         // add the sensor timestamp to the context, `log_time` and `publish_time` are added automatically
-        ctx.add_timestamp_cell(TimestampCell::guess_from_nanos_ros2(
+        ctx.add_timestamp_cell(TimestampCell::from_nanos_ros2(
             header.stamp.as_nanos() as u64,
+            ctx.time_type(),
         ));
         self.frame_ids.push(header.frame_id);
 

@@ -1,12 +1,12 @@
 use egui::NumExt as _;
 use re_format::format_f32;
 use re_sdk_types::components::Radius;
-use re_viewer_context::{MaybeMutRef, ViewerContext};
+use re_viewer_context::{AppContext, MaybeMutRef};
 
 use crate::response_utils::response_with_changes_of_inner;
 
 pub fn edit_radius_ui(
-    _ctx: &ViewerContext<'_>,
+    _ctx: &AppContext<'_>,
     ui: &mut egui::Ui,
     value: &mut MaybeMutRef<'_, Radius>,
 ) -> egui::Response {

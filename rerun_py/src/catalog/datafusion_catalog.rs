@@ -1,52 +1,55 @@
 use std::sync::Arc;
 
-use datafusion::catalog::CatalogProvider;
-use datafusion_ffi::catalog_provider::FFI_CatalogProvider;
-use pyo3::types::PyCapsule;
-use pyo3::{Bound, PyResult, Python, pyclass, pymethods};
-use re_datafusion::RedapCatalogProvider;
-use re_redap_client::ConnectionClient;
-
+use crate::catalog::table_provider_adapter::ffi_logical_codec_from_pycapsule;
 use crate::utils::get_tokio_runtime;
+use datafusion::catalog::CatalogProviderList;
+use datafusion_ffi::catalog_provider_list::FFI_CatalogProviderList;
+use pyo3::types::PyCapsule;
+use pyo3::{Bound, PyAny, PyResult, pyclass, pymethods};
+use re_datafusion::RedapCatalogProviderList;
+use re_redap_client::{ConnectionAnalyticsExporter, ConnectionClient};
 
+/// PyO3 wrapper exposing a [`RedapCatalogProviderList`] to a Python `datafusion.SessionContext`
+/// via `register_catalog_provider_list(...)`.
 #[pyclass(
     frozen,
     eq,
-    name = "DataFusionCatalog",
+    name = "DataFusionCatalogList",
     module = "rerun_bindings.rerun_bindings"
 )]
-pub(crate) struct PyDataFusionCatalogProvider {
-    pub provider: Arc<RedapCatalogProvider>,
+pub(crate) struct PyDataFusionCatalogProviderList {
+    pub provider: Arc<RedapCatalogProviderList>,
 }
 
-impl PartialEq for PyDataFusionCatalogProvider {
+impl PartialEq for PyDataFusionCatalogProviderList {
     fn eq(&self, other: &Self) -> bool {
         Arc::ptr_eq(&self.provider, &other.provider)
     }
 }
 
-impl PyDataFusionCatalogProvider {
-    pub fn new(name: Option<String>, client: ConnectionClient) -> Self {
+impl PyDataFusionCatalogProviderList {
+    pub fn new(client: ConnectionClient, analytics: Option<ConnectionAnalyticsExporter>) -> Self {
         let runtime = get_tokio_runtime().handle().clone();
-        let provider = Arc::new(RedapCatalogProvider::new(name.as_deref(), client, runtime));
+        let provider = Arc::new(RedapCatalogProviderList::new(client, runtime, analytics));
         Self { provider }
     }
 }
 
 #[pymethods] // NOLINT: ignore[py-mthd-str]
-impl PyDataFusionCatalogProvider {
-    /// Returns a DataFusion catalog provider capsule.
-    fn __datafusion_catalog_provider__<'py>(
+impl PyDataFusionCatalogProviderList {
+    /// Returns a DataFusion catalog provider list capsule.
+    fn __datafusion_catalog_provider_list__<'py>(
         &self,
-        py: Python<'py>,
+        session: &Bound<'py, PyAny>,
     ) -> PyResult<Bound<'py, PyCapsule>> {
-        let capsule_name = cr"datafusion_catalog_provider".into();
+        let capsule_name = cr"datafusion_catalog_provider_list".into();
 
-        let provider = Arc::clone(&self.provider) as Arc<dyn CatalogProvider>;
+        let provider = Arc::clone(&self.provider) as Arc<dyn CatalogProviderList + Send>;
 
         let runtime = get_tokio_runtime().handle().clone();
-        let provider = FFI_CatalogProvider::new(provider, Some(runtime));
+        let codec = ffi_logical_codec_from_pycapsule(session)?;
+        let provider = FFI_CatalogProviderList::new_with_ffi_codec(provider, Some(runtime), codec);
 
-        PyCapsule::new(py, provider, Some(capsule_name))
+        PyCapsule::new(session.py(), provider, Some(capsule_name))
     }
 }

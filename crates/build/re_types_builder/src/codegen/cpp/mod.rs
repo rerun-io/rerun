@@ -4,6 +4,7 @@ mod includes;
 mod method;
 
 use std::collections::HashSet;
+use std::fmt::Write as _;
 use std::str::FromStr as _;
 
 use camino::{Utf8Path, Utf8PathBuf};
@@ -75,9 +76,9 @@ fn quote_hide_from_docs() -> TokenStream {
 
 fn string_from_token_stream(token_stream: &TokenStream, source_path: Option<&Utf8Path>) -> String {
     let mut code = String::new();
-    code.push_str(&format!("// {}\n", autogen_warning!()));
+    writeln!(code, "// {}", autogen_warning!()).ok();
     if let Some(source_path) = source_path {
-        code.push_str(&format!("// Based on {:?}.\n", format_path(source_path)));
+        writeln!(code, "// Based on {:?}.", format_path(source_path)).ok();
     }
 
     code.push('\n');
@@ -142,9 +143,9 @@ impl crate::CodeGenerator for CppCodeGenerator {
                 object_kind != ObjectKind::View
             })
             .flat_map(|object_kind| {
-                scopes
-                    .par_iter()
-                    .flat_map(|scope| self.generate_folder(reporter, objects, scope, *object_kind))
+                scopes.par_iter().flat_map(|scope| {
+                    self.generate_folder(reporter, objects, scope.as_ref(), *object_kind)
+                })
             })
             .collect()
     }
@@ -161,7 +162,7 @@ impl CppCodeGenerator {
         &self,
         reporter: &Reporter,
         objects: &Objects,
-        scope: &Option<String>,
+        scope: Option<&String>,
         object_kind: ObjectKind,
     ) -> GeneratedFiles {
         let folder_name = if let Some(scope) = scope {
@@ -177,7 +178,7 @@ impl CppCodeGenerator {
         // Generate folder contents:
         let objects_of_kind = objects
             .objects_of_kind(object_kind)
-            .filter(|obj| &obj.scope() == scope)
+            .filter(|obj| obj.scope().as_ref() == scope)
             .collect_vec();
 
         for &obj in &objects_of_kind {
@@ -1030,23 +1031,25 @@ impl QuotedObject {
         let tag_typename = format_ident!("{pascal_case_name}Tag");
         let data_typename = format_ident!("{pascal_case_name}Data");
 
-        let tag_fields = std::iter::once({
-            let comment = quote_doc_comment(
-                "Having a special empty state makes it possible to implement move-semantics. \
+        let tag_fields = std::iter::chain(
+            std::iter::once({
+                let comment = quote_doc_comment(
+                    "Having a special empty state makes it possible to implement move-semantics. \
                 We need to be able to leave the object in a state which we can run the destructor on.");
-            let tag_name = format_ident!("None");
-            quote! {
-                #NEWLINE_TOKEN
-                #comment
-                #tag_name = 0,
-            }
-        })
-        .chain(obj.fields.iter().map(|obj_field| {
-            let ident = field_name_ident(obj_field);
-            quote! {
-                #ident,
-            }
-        }))
+                let tag_name = format_ident!("None");
+                quote! {
+                    #NEWLINE_TOKEN
+                    #comment
+                    #tag_name = 0,
+                }
+            }),
+            obj.fields.iter().map(|obj_field| {
+                let ident = field_name_ident(obj_field);
+                quote! {
+                    #ident,
+                }
+            }),
+        )
         .collect_vec();
 
         hpp_includes.insert_system("utility"); // std::move
@@ -1163,38 +1166,40 @@ impl QuotedObject {
             // No destructor needed
             quote! {}
         } else {
-            let destructor_match_arms = std::iter::once({
-                let comment = quote_comment("Nothing to destroy");
-                quote! {
-                    case detail::#tag_typename::None: {
-                        #NEWLINE_TOKEN
-                        #comment
-                    } break;
-                }
-            })
-            .chain(obj.fields.iter().map(|obj_field| {
-                let tag_ident = field_name_ident(obj_field);
-                let field_ident = format_ident!("{}", obj_field.snake_case_name());
-
-                if obj_field.typ.has_default_destructor(objects) {
-                    let comment = quote_comment("has a trivial destructor");
+            let destructor_match_arms = std::iter::chain(
+                std::iter::once({
+                    let comment = quote_comment("Nothing to destroy");
                     quote! {
-                        case detail::#tag_typename::#tag_ident: {
+                        case detail::#tag_typename::None: {
                             #NEWLINE_TOKEN
                             #comment
                         } break;
                     }
-                } else {
-                    let typ = quote_field_type(&mut hpp_includes, obj_field);
-                    hpp_includes.insert_system("utility"); // std::move
-                    quote! {
-                        case detail::#tag_typename::#tag_ident: {
-                            using TypeAlias = #typ;
-                            _data.#field_ident.~TypeAlias();
-                        } break;
+                }),
+                obj.fields.iter().map(|obj_field| {
+                    let tag_ident = field_name_ident(obj_field);
+                    let field_ident = format_ident!("{}", obj_field.snake_case_name());
+
+                    if obj_field.typ.has_default_destructor(objects) {
+                        let comment = quote_comment("has a trivial destructor");
+                        quote! {
+                            case detail::#tag_typename::#tag_ident: {
+                                #NEWLINE_TOKEN
+                                #comment
+                            } break;
+                        }
+                    } else {
+                        let typ = quote_field_type(&mut hpp_includes, obj_field);
+                        hpp_includes.insert_system("utility"); // std::move
+                        quote! {
+                            case detail::#tag_typename::#tag_ident: {
+                                using TypeAlias = #typ;
+                                _data.#field_ident.~TypeAlias();
+                            } break;
+                        }
                     }
-                }
-            }))
+                }),
+            )
             .collect_vec();
 
             quote! {

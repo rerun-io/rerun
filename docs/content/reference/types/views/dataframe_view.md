@@ -8,7 +8,7 @@ A view to display any data in a tabular form.
 
 Any data from the store can be shown, using a flexible, user-configurable query.
 
-See [Dataframe queries](https://rerun.io/docs/concepts/query-and-transform/dataframe-queries?speculative-link) to learn more about the query model.
+See [Dataframe queries](https://rerun.io/docs/concepts/query-and-transform/dataframe-queries) to learn more about the query model.
 
 ## Properties
 
@@ -19,7 +19,9 @@ Query of the dataframe.
 * `filter_by_range`: If provided, only rows whose timestamp is within this range will be shown.
 * `filter_is_not_null`: If provided, only show rows which contains a logged event for the specified component.
 * `apply_latest_at`: Should empty cells be filled with latest-at queries?
-* `select`: Selected columns. If unset, all columns are selected.
+* `select`: Selected columns. If unset, only the active timeline and all component columns are selected.
+* `entity_order`: The order of entity path column groups. If unset, the default order is used.
+* `auto_scroll`: Whether to auto-scroll to track the time cursor.
 
 ## API reference links
  * 🐍 [Python API docs for `DataframeView`](https://ref.rerun.io/docs/python/stable/common/blueprint_views#rerun.blueprint.views.DataframeView)

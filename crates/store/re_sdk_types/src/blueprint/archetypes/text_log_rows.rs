@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -24,7 +25,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Archetype**: Configuration of the text log rows.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, ::re_byte_size::SizeBytes)]
 pub struct TextLogRows {
     /// Log levels to display.
     ///
@@ -38,11 +39,13 @@ impl TextLogRows {
     /// The corresponding component is [`crate::components::TextLogLevel`].
     #[inline]
     pub fn descriptor_filter_by_log_level() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.TextLogRows".into()),
-            component: "TextLogRows:filter_by_log_level".into(),
-            component_type: Some("rerun.components.TextLogLevel".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.TextLogRows".into()),
+                component: "TextLogRows:filter_by_log_level".into(),
+                component_type: Some("rerun.components.TextLogLevel".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -66,7 +69,10 @@ impl TextLogRows {
 impl ::re_types_core::Archetype for TextLogRows {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.blueprint.archetypes.TextLogRows".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.blueprint.archetypes.TextLogRows"
+        )
     }
 
     #[inline]
@@ -162,12 +168,5 @@ impl TextLogRows {
         self.filter_by_log_level =
             try_serialize_field(Self::descriptor_filter_by_log_level(), filter_by_log_level);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for TextLogRows {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.filter_by_log_level.heap_size_bytes()
     }
 }

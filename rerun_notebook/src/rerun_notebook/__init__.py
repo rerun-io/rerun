@@ -171,12 +171,8 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
         allow_none=True,
     ).tag(sync=True)
 
-    _ready = False
-    _event_queue: list[_Event] = []
-
     _fallback_token = traitlets.Unicode(allow_none=True).tag(sync=True)
-
-    _raw_event_callbacks: list[Callable[[str], None]] = []
+    _theme = traitlets.Unicode(allow_none=True).tag(sync=True)
 
     def __init__(
         self,
@@ -186,9 +182,14 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
         url: str | None = None,
         panel_states: Mapping[Panel, PanelState] | None = None,
         fallback_token: str | None = None,
+        theme: Literal["dark", "light", "system"] | None = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
+
+        self._ready = False
+        self._event_queue: list[_Event] = []
+        self._raw_event_callbacks: list[Callable[[str], None]] = []
 
         self._width = width
         self._height = height
@@ -200,7 +201,10 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
         if fallback_token:
             self._fallback_token = fallback_token
 
-        def handle_msg(widget: Any, content: Any, buffers: list[bytes]) -> None:  # noqa: ARG001
+        if theme:
+            self._theme = theme
+
+        def handle_msg(widget: Any, content: Any, buffers: list[bytes]) -> None:
             if isinstance(content, str):
                 if content == "ready":
                     self._on_ready()

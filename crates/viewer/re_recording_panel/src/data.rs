@@ -1,12 +1,11 @@
 //! Data structures describing the contents of the recording panel.
 
 use std::collections::BTreeMap;
-use std::iter;
 use std::sync::Arc;
 use std::task::Poll;
 
 use ahash::HashMap;
-use itertools::{Either, Itertools as _};
+use itertools::Itertools as _;
 use re_entity_db::EntityDb;
 use re_entity_db::entity_db::EntityDbClass;
 use re_log_channel::LogSource;
@@ -14,7 +13,8 @@ use re_log_types::{ApplicationId, EntryId, TableId, natural_ordering};
 use re_redap_browser::{Entries, EntryInner, RedapServers};
 use re_sdk_types::archetypes::RecordingInfo;
 use re_sdk_types::components::{Name, Timestamp};
-use re_viewer_context::{DisplayMode, Item, ViewerContext};
+use re_uri::{DATASET_HIERARCHY_SEPARATOR, split_dataset_hierarchy_path};
+use re_viewer_context::{AppContext, Item, Route};
 
 /// Short-lived structure containing all the data that will be displayed in the recording panel.
 #[derive(Debug)]
@@ -41,7 +41,7 @@ pub struct RecordingPanelData<'a> {
 }
 
 impl<'a> RecordingPanelData<'a> {
-    pub fn new(ctx: &'a ViewerContext<'a>, servers: &'a RedapServers, hide_examples: bool) -> Self {
+    pub fn new(ctx: &'a AppContext<'a>, servers: &'a RedapServers, hide_examples: bool) -> Self {
         re_tracing::profile_function!();
 
         //
@@ -53,8 +53,7 @@ impl<'a> RecordingPanelData<'a> {
             HashMap::default();
 
         let sources_with_stores: ahash::HashSet<LogSource> = ctx
-            .storage_context
-            .bundle
+            .store_bundle()
             .recordings()
             .filter_map(|store| store.data_source.clone())
             .collect();
@@ -65,17 +64,19 @@ impl<'a> RecordingPanelData<'a> {
             }
 
             match source.as_ref() {
-                LogSource::File(_) | LogSource::RrdHttpStream { .. } => {
+                LogSource::File { .. } | LogSource::HttpStream { .. } => {
                     loading_receivers.push(source);
                 }
 
                 LogSource::RedapGrpcStream { uri, .. } => {
-                    loading_segments
-                        .entry(uri.origin.clone())
-                        .or_default()
-                        .entry(EntryId::from(uri.dataset_id))
-                        .or_default()
-                        .push(source);
+                    if ctx.store_hub().is_opened(&uri.store_id()) {
+                        loading_segments
+                            .entry(uri.origin.clone())
+                            .or_default()
+                            .entry(EntryId::from(uri.dataset_id))
+                            .or_default()
+                            .push(source);
+                    }
                 }
 
                 // We only show things we know are very-soon-to-be recordings, which these are not.
@@ -99,7 +100,7 @@ impl<'a> RecordingPanelData<'a> {
         let mut local_apps: BTreeMap<ApplicationId, Vec<&EntityDb>> = Default::default();
         let mut examples_apps: BTreeMap<ApplicationId, Vec<&EntityDb>> = Default::default();
 
-        for entity_db in ctx.storage_context.bundle.entity_dbs() {
+        for entity_db in ctx.store_bundle().entity_dbs() {
             let app_id = entity_db.application_id();
             match entity_db.store_class() {
                 EntityDbClass::LocalRecording => local_apps
@@ -132,18 +133,12 @@ impl<'a> RecordingPanelData<'a> {
             .collect();
 
         let show_example_section = ctx
-            .app_options()
+            .app_options
             .include_rerun_examples_button_in_recordings_panel
             && !hide_examples
             || !example_apps.is_empty();
 
-        let local_tables = ctx
-            .storage_context
-            .tables
-            .keys()
-            .sorted()
-            .cloned()
-            .collect();
+        let local_tables = ctx.table_stores().keys().sorted().cloned().collect();
 
         Self {
             servers,
@@ -178,7 +173,7 @@ impl<'a> RecordingPanelData<'a> {
             }
         }
 
-        for local_app in self.local_apps.iter().chain(self.example_apps.iter()) {
+        for local_app in std::iter::chain(&self.local_apps, &self.example_apps) {
             let store_iter = local_app.iter_loaded_stores();
 
             if let Some(pos) = store_iter.clone().position(|db| db.store_id() == store_id) {
@@ -204,7 +199,7 @@ pub struct AppIdData<'a> {
 
 impl<'a> AppIdData<'a> {
     fn new(
-        ctx: &'a ViewerContext<'a>,
+        ctx: &'a AppContext<'a>,
         app_id: ApplicationId,
         mut entity_dbs: Vec<&'a EntityDb>,
     ) -> Self {
@@ -267,15 +262,24 @@ pub struct RecordingData<'a> {
 #[cfg_attr(feature = "testing", derive(serde::Serialize))]
 pub struct ServerData<'a> {
     pub origin: re_uri::Origin,
-    pub is_active: bool,
+
+    /// This is what is selected
     pub is_selected: bool,
+
+    /// What is selected is a subset of this thing
+    pub is_active: bool,
+
+    // TODO(RR-5031): Depending on how much customizations we need to do,
+    // we should consider moving this out of here and creating a dedicated
+    // `InternalCatalogData` struct that mirrors `ServerData`.
+    pub is_internal: bool,
 
     pub entries_data: ServerEntriesData<'a>,
 }
 
 impl<'a> ServerData<'a> {
     fn new(
-        ctx: &'a ViewerContext<'_>,
+        ctx: &'a AppContext<'_>,
         server: &re_redap_browser::Server,
         loading_segments: Option<&HashMap<EntryId, Vec<Arc<LogSource>>>>,
     ) -> Self {
@@ -284,8 +288,8 @@ impl<'a> ServerData<'a> {
 
         let is_selected = ctx.is_selected_or_loading(&item);
         let is_active = matches!(
-            ctx.display_mode(),
-            DisplayMode::RedapServer(current_origin)
+            ctx.route(),
+            Route::RedapServer(current_origin)
             if current_origin == origin
         );
 
@@ -295,6 +299,7 @@ impl<'a> ServerData<'a> {
             origin: origin.clone(),
             is_active,
             is_selected,
+            is_internal: server.is_internal(),
             entries_data,
         }
     }
@@ -311,48 +316,43 @@ impl<'a> ServerData<'a> {
 pub enum ServerEntriesData<'a> {
     Loading,
 
-    Error(String),
+    Error {
+        message: String,
+        is_auth_error: bool,
+    },
 
     Loaded {
-        dataset_entries: Vec<DatasetData<'a>>,
-        table_entries: Vec<RemoteTableData>,
-        failed_entries: Vec<FailedEntryData>,
+        entry_tree: Vec<EntryTreeNode<'a>>,
     },
 }
 
 impl<'a> ServerEntriesData<'a> {
     fn new(
-        ctx: &'a ViewerContext<'a>,
+        ctx: &'a AppContext<'a>,
         entries: &Entries,
         origin: &re_uri::Origin,
         loading_segments: Option<&HashMap<EntryId, Vec<Arc<LogSource>>>>,
     ) -> Self {
         match entries.state() {
             Poll::Ready(Ok(entries)) => {
-                let mut dataset_entries = vec![];
-                let mut table_entries = vec![];
-                let mut failed_entries = vec![];
+                let mut entry_tree_entries = vec![];
 
                 for entry in entries.values().sorted_by_key(|entry| entry.name()) {
                     let entry_data = EntryData {
                         origin: origin.clone(),
                         entry_id: entry.id(),
-                        name: entry.name().to_owned(),
+                        name: entry.name().clone(),
                         icon: entry.icon(),
-                        is_selected: ctx.is_selected_or_loading(&Item::RedapEntry(
-                            re_uri::EntryUri {
-                                origin: origin.clone(),
-                                entry_id: entry.id(),
-                            },
-                        )),
+                        is_selected: ctx.is_selected_or_loading(
+                            &re_uri::EntryUri::new(origin.clone(), entry.id()).into(),
+                        ),
                         is_active: ctx.active_redap_entry() == Some(entry.id()),
                     };
 
                     match entry.inner() {
                         Ok(EntryInner::Dataset(_dataset)) => {
                             let mut displayed_segments: Vec<SegmentData<'_>> = ctx
-                                .storage_context
-                                .bundle
+                                .store_bundle()
                                 .entity_dbs()
                                 .filter_map(|entity_db| {
                                     if let EntityDbClass::DatasetSegment(uri) =
@@ -360,6 +360,7 @@ impl<'a> ServerEntriesData<'a> {
                                     {
                                         if &uri.origin == origin
                                             && EntryId::from(uri.dataset_id) == entry.id()
+                                            && ctx.store_hub().is_opened(entity_db.store_id())
                                         {
                                             Some(SegmentData::Loaded { entity_db })
                                         } else {
@@ -383,54 +384,60 @@ impl<'a> ServerEntriesData<'a> {
 
                             displayed_segments.sort_by_key(|segment| match segment {
                                 SegmentData::Loading { receiver } => {
-                                    ctx.storage_context.hub.data_source_order(receiver)
+                                    ctx.store_hub().data_source_order(receiver)
                                 }
                                 SegmentData::Loaded { entity_db } => {
                                     if let Some(data_source) = &entity_db.data_source {
-                                        ctx.storage_context.hub.data_source_order(data_source)
+                                        ctx.store_hub().data_source_order(data_source)
                                     } else {
                                         u64::MAX
                                     }
                                 }
                             });
 
-                            dataset_entries.push(DatasetData {
+                            entry_tree_entries.push(ServerLeafEntry::Dataset(DatasetData {
                                 entry_data,
                                 displayed_segments,
-                            });
+                            }));
                         }
 
                         Ok(EntryInner::Table(_table)) => {
-                            table_entries.push(RemoteTableData { entry_data });
+                            entry_tree_entries
+                                .push(ServerLeafEntry::Table(RemoteTableData { entry_data }));
                         }
 
-                        Err(err) => failed_entries.push(FailedEntryData {
-                            entry_data,
-                            error: err.to_string(),
-                        }),
+                        Err(err) => {
+                            entry_tree_entries.push(ServerLeafEntry::Failed(FailedEntryData {
+                                entry_data,
+                                error: err.to_string(),
+                            }));
+                        }
                     }
                 }
 
-                Self::Loaded {
-                    dataset_entries,
-                    table_entries,
-                    failed_entries,
-                }
+                let entry_tree = build_entry_tree(entry_tree_entries);
+
+                Self::Loaded { entry_tree }
             }
 
-            Poll::Ready(Err(err)) => Self::Error(err.to_string()),
+            Poll::Ready(Err(err)) => Self::Error {
+                message: err.to_string(),
+                is_auth_error: err.is_client_credentials_error(),
+            },
 
             Poll::Pending => Self::Loading,
         }
     }
 
-    pub fn iter_datasets(&'a self) -> impl Iterator<Item = &'a DatasetData<'a>> {
+    pub fn iter_datasets(&'a self) -> Vec<&'a DatasetData<'a>> {
         match self {
-            Self::Loaded {
-                dataset_entries, ..
-            } => Either::Left(dataset_entries.iter()),
+            Self::Loaded { entry_tree } => {
+                let mut out = Vec::new();
+                collect_datasets_from_tree(entry_tree, &mut out);
+                out
+            }
 
-            Self::Error(..) | Self::Loading => Either::Right(iter::empty()),
+            Self::Error { .. } | Self::Loading => Vec::new(),
         }
     }
 }
@@ -452,6 +459,126 @@ impl<'a> DatasetData<'a> {
                 SegmentData::Loaded { entity_db } => Some(*entity_db),
                 SegmentData::Loading { .. } => None,
             })
+    }
+}
+
+// ---
+
+/// A leaf entry in the hierarchical server entry tree.
+#[derive(Debug)]
+#[cfg_attr(feature = "testing", derive(serde::Serialize))]
+pub enum ServerLeafEntry<'a> {
+    Dataset(DatasetData<'a>),
+    Table(RemoteTableData),
+    Failed(FailedEntryData),
+}
+
+impl ServerLeafEntry<'_> {
+    fn name(&self) -> &re_log_types::EntryName {
+        match self {
+            Self::Dataset(data) => &data.entry_data.name,
+            Self::Table(data) => &data.entry_data.name,
+            Self::Failed(data) => &data.entry_data.name,
+        }
+    }
+
+    pub fn entry_id(&self) -> re_log_types::EntryId {
+        match self {
+            Self::Dataset(data) => data.entry_data.entry_id,
+            Self::Table(data) => data.entry_data.entry_id,
+            Self::Failed(data) => data.entry_data.entry_id,
+        }
+    }
+}
+
+/// A node in the hierarchical server entry tree.
+///
+/// Built from flat entry names by splitting on [`DATASET_HIERARCHY_SEPARATOR`].
+#[derive(Debug)]
+#[cfg_attr(feature = "testing", derive(serde::Serialize))]
+pub enum EntryTreeNode<'a> {
+    /// An intermediate folder node.
+    Folder {
+        /// The segment name for this level (e.g., "subdir" in "project:subdir:dataset").
+        name: String,
+
+        /// Full path prefix (including `name`).
+        path_prefix: String,
+
+        children: Vec<Self>,
+    },
+
+    /// A leaf node representing an actual entry.
+    Entry(ServerLeafEntry<'a>),
+}
+
+/// Build a hierarchical tree from a flat, sorted list of entries.
+///
+/// Entries whose names contain [`DATASET_HIERARCHY_SEPARATOR`] are grouped under intermediate
+/// nodes. Entries without the separator remain at the root level.
+fn build_entry_tree<'a>(entries: Vec<ServerLeafEntry<'a>>) -> Vec<EntryTreeNode<'a>> {
+    let mut root: Vec<EntryTreeNode<'a>> = Vec::new();
+
+    for entry in entries {
+        let segments: Vec<String> = split_dataset_hierarchy_path(entry.name().as_str())
+            .map(str::to_owned)
+            .collect();
+        insert_into_tree(&mut root, &segments, "", entry);
+    }
+
+    root
+}
+
+fn insert_into_tree<'a>(
+    nodes: &mut Vec<EntryTreeNode<'a>>,
+    segments: &[String],
+    prefix: &str,
+    entry: ServerLeafEntry<'a>,
+) {
+    match segments {
+        [] => {
+            // Degenerate case (empty name after filtering) — just insert as leaf.
+            nodes.push(EntryTreeNode::Entry(entry));
+        }
+
+        [_leaf] => {
+            nodes.push(EntryTreeNode::Entry(entry));
+        }
+
+        [group_name, rest @ ..] => {
+            let new_prefix = if prefix.is_empty() {
+                group_name.clone()
+            } else {
+                format!("{prefix}{DATASET_HIERARCHY_SEPARATOR}{group_name}")
+            };
+
+            if let Some(EntryTreeNode::Folder { children, .. }) = nodes.iter_mut().find(
+                |node| matches!(node, EntryTreeNode::Folder { name, .. } if name == group_name),
+            ) {
+                insert_into_tree(children, rest, &new_prefix, entry);
+            } else {
+                let mut children = Vec::new();
+                insert_into_tree(&mut children, rest, &new_prefix, entry);
+                nodes.push(EntryTreeNode::Folder {
+                    name: group_name.clone(),
+                    path_prefix: new_prefix,
+                    children,
+                });
+            }
+        }
+    }
+}
+
+fn collect_datasets_from_tree<'a>(
+    nodes: &'a [EntryTreeNode<'a>],
+    out: &mut Vec<&'a DatasetData<'a>>,
+) {
+    for node in nodes {
+        match node {
+            EntryTreeNode::Entry(ServerLeafEntry::Dataset(data)) => out.push(data),
+            EntryTreeNode::Entry(ServerLeafEntry::Table(_) | ServerLeafEntry::Failed(_)) => {}
+            EntryTreeNode::Folder { children, .. } => collect_datasets_from_tree(children, out),
+        }
     }
 }
 
@@ -480,7 +607,7 @@ pub struct EntryData {
     pub origin: re_uri::Origin,
     pub entry_id: re_log_types::EntryId,
 
-    pub name: String,
+    pub name: re_log_types::EntryName,
 
     #[cfg_attr(feature = "testing", serde(serialize_with = "serialize_icon"))]
     pub icon: re_ui::icons::Icon,
@@ -491,20 +618,13 @@ pub struct EntryData {
 
 impl EntryData {
     pub fn item(&self) -> Item {
-        Item::RedapEntry(self.entry_uri())
+        re_uri::EntryUri::new(self.origin.clone(), self.entry_id).into()
     }
 
     pub fn id(&self) -> egui::Id {
         egui::Id::new(&self.origin)
             .with(self.entry_id)
             .with(&self.name)
-    }
-
-    pub fn entry_uri(&self) -> re_uri::EntryUri {
-        re_uri::EntryUri {
-            origin: self.origin.clone(),
-            entry_id: self.entry_id,
-        }
     }
 }
 

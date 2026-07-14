@@ -73,6 +73,11 @@ pub(crate) mod oauth {
         subscribers.push(Box::new(callback));
     }
 
+    /// Clear the credentials cache
+    pub(crate) fn clear_cache() {
+        *CACHE.blocking_write() = None;
+    }
+
     /// Provider which uses `OAuth` credentials stored on the user's machine.
     #[derive(Debug, Default)]
     pub struct CliCredentialsProvider {

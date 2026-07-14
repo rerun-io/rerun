@@ -2,6 +2,7 @@
 #import <./global_bindings.wgsl>
 #import <./mesh_vertex.wgsl>
 #import <./utils/srgb.wgsl>
+#import <./utils/lighting.wgsl>
 
 @group(1) @binding(0)
 var albedo_texture: texture_2d<f32>;
@@ -94,17 +95,8 @@ fn fs_main_shaded(in: VertexOut) -> @location(0) vec4f {
         return albedo;
     } else {
         let normal = normalize(in.normal_world_space);
-
-        var shading = 0.2;
-
-        // We use two lights so we get shading on all sides
-        shading += 1.0 * clamp(dot(normalize(vec3f(1.0, 2.0, 3.0)), normal), 0.0, 1.0);
-        shading += 0.5 * clamp(dot(normalize(vec3f(-1.0, -3.0, -5.0)), normal), 0.0, 1.0);
-
-        shading = clamp(shading, 0.0, 1.0);
-
+        let shading = simple_lighting(normal);
         let radiance = albedo.rgb * shading;
-
         return vec4f(radiance, albedo.a);
     }
 }

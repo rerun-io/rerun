@@ -7,6 +7,7 @@ use crossbeam::channel::{Receiver, Sender};
 use crate::TrackingStatistics;
 use crate::accounting_allocator::{self, is_tracking_callstacks};
 
+#[derive(Debug)]
 struct Shutdown;
 
 /// Collects [`TrackingStatistics`] at the point of peak memory pressure.
@@ -46,7 +47,7 @@ impl PeakMemoryStats {
             handle,
         } = self;
 
-        shutdown_tx.send(Shutdown).ok();
+        re_quota_channel::send_crossbeam(&shutdown_tx, Shutdown).ok();
 
         match handle.join() {
             Err(err) => {

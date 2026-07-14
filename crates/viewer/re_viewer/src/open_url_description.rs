@@ -1,4 +1,3 @@
-use re_ui::CommandPaletteUrl;
 use re_viewer_context::open_url::ViewerOpenUrl;
 
 /// A description of what happens when opening a [`ViewerOpenUrl`].
@@ -30,12 +29,12 @@ impl ViewerOpenUrlDescription {
                 target_short: item.entity_path().map(|p| p.to_string()),
             },
 
-            ViewerOpenUrl::RrdHttpUrl(url) => {
+            ViewerOpenUrl::HttpUrl(url) => {
                 let path = url.path();
                 let rrd_file_name = path.split('/').next_back().map(|s| s.to_owned());
 
                 Self {
-                    category: "RRD from link",
+                    category: "HTTP url",
                     target_short: rrd_file_name,
                 }
             }
@@ -48,7 +47,7 @@ impl ViewerOpenUrlDescription {
 
             ViewerOpenUrl::RedapDatasetSegment(uri) => Self {
                 category: "Segment",
-                target_short: Some(uri.segment_id.clone()),
+                target_short: Some(uri.segment_id.to_string()),
             },
 
             ViewerOpenUrl::RedapProxy(_) => Self {
@@ -62,8 +61,13 @@ impl ViewerOpenUrlDescription {
             },
 
             ViewerOpenUrl::RedapEntry(uri) => Self {
-                category: "Redap Entry",
+                category: "Redap entry",
                 target_short: Some(uri.entry_id.to_string()),
+            },
+
+            ViewerOpenUrl::RedapFolder(uri) => Self {
+                category: "Folder",
+                target_short: Some(uri.path.clone()),
             },
 
             ViewerOpenUrl::WebEventListener => Self {
@@ -87,21 +91,10 @@ impl ViewerOpenUrlDescription {
                 target_short: None,
             },
 
-            ViewerOpenUrl::ChunkStoreBrowser => Self {
+            ViewerOpenUrl::ChunkStoreBrowser { .. } => Self {
                 category: "Chunk store browser",
                 target_short: None,
             },
         }
     }
-}
-
-pub fn command_palette_parse_url(url: &str) -> Option<CommandPaletteUrl> {
-    let Ok(open_url) = url.parse::<ViewerOpenUrl>() else {
-        return None;
-    };
-
-    Some(CommandPaletteUrl {
-        url: url.to_owned(),
-        command_text: format!("Open {}", ViewerOpenUrlDescription::from_url(&open_url)),
-    })
 }

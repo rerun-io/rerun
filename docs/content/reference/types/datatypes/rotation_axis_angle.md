@@ -7,7 +7,7 @@ title: "RotationAxisAngle"
 
 ## Fields
 #### `axis`
-Type: [`Vec3D`](../datatypes/vec3d.md)
+Type: non-null [`Vec3D`](../datatypes/vec3d.md)
 
 Axis to rotate around.
 
@@ -17,17 +17,17 @@ the rotation is treated as an invalid transform, unless the angle is zero in whi
 it is treated as an identity.
 
 #### `angle`
-Type: [`Angle`](../datatypes/angle.md)
+Type: non-null [`Angle`](../datatypes/angle.md)
 
 How much to rotate around the axis.
 
 
 ## Arrow datatype
 ```
-Struct {
-    axis: FixedSizeList<3, float32>
-    angle: float32
-}
+Struct(
+    "axis": non-null FixedSizeList(3 x non-null Float32)
+    "angle": non-null Float32
+)
 ```
 
 ## API reference links

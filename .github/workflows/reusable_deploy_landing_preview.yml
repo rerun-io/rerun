@@ -40,85 +40,58 @@ jobs:
           full_commit="${{ (github.event_name == 'pull_request' && github.event.pull_request.head.sha) || github.sha }}"
           echo "sha=$full_commit" >> "$GITHUB_OUTPUT"
 
-      - name: Deploy rerun.io preview
-        id: vercel-initial-deploy
-        uses: ./.github/actions/vercel
+      - uses: prefix-dev/setup-pixi@v0.10.0
         with:
-          command: "deploy"
-          vercel_token: ${{ secrets.VERCEL_TOKEN }}
-          vercel_team_name: ${{ vars.VERCEL_TEAM_NAME }}
-          vercel_project_name: ${{ vars.VERCEL_PROJECT_NAME }}
-          release_commit: ${{ steps.get-sha.outputs.sha }}
-          target: "preview"
+          pixi-version: v0.71.3
 
-      - name: Create pending comment
-        # https://github.com/mshick/add-pr-comment
+      - id: "auth"
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+
+      - name: "Upload PR-preview markdown docs & examples to GCS"
+        env:
+          ISR_BYPASS_TOKEN: ${{ secrets.ISR_BYPASS_TOKEN }}
+          PR_NUMBER: ${{ inputs.PR_NUMBER }}
+          RERUN_COMMIT: ${{ steps.get-sha.outputs.sha }}
+        run: |
+          # PR previews live under `gs://rerun-docs/prose/pr-{N}/` and
+          # are not advertised in versions.json. The production website
+          # reads them directly via `/docs/pr-{N}/…`, so re-uploads
+          # must purge that subtree from the edge ISR cache.
+          pixi run uv run scripts/ci/upload_docs.py upload \
+            --version "pr-${PR_NUMBER}" \
+            --rerun-commit "$RERUN_COMMIT" \
+            --purge-token "$ISR_BYPASS_TOKEN"
+
+      - name: Create PR comment
         uses: mshick/add-pr-comment@v2.8.2
+        # GitHub API is very unreliable. We don't want to fail the entire workflow just because we couldn't post a comment.
+        continue-on-error: true
         if: success()
         with:
           message-id: "vercel-preview"
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           message: |
-            Latest documentation preview deployment is pending:
-            ${{ steps.vercel-initial-deploy.outputs.vercel_preview_inspector_url }}
+            Latest documentation preview uploaded successfully.
 
             | Result | Commit  | Link  |
             | ------ | ------- | ----- |
-            | ⏳ | ${{ steps.get-sha.outputs.sha }} | unavailable |
-
-      - name: Wait for deployment
-        id: vercel
-        uses: ./.github/actions/vercel
-        if: success()
-        with:
-          command: "wait-for-deployment"
-          vercel_token: ${{ secrets.VERCEL_TOKEN }}
-          vercel_team_name: ${{ vars.VERCEL_TEAM_NAME }}
-          vercel_project_name: ${{ vars.VERCEL_PROJECT_NAME }}
-          vercel_deployment_id: ${{ steps.vercel-initial-deploy.outputs.vercel_preview_deployment_id }}
-
-      - name: Create PR comment
-        # https://github.com/mshick/add-pr-comment
-        uses: mshick/add-pr-comment@v2.8.2
-        if: success() && steps.vercel.outputs.vercel_preview_result == 'success'
-        with:
-          message-id: "vercel-preview"
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          message: |
-            Latest documentation preview deployed successfully.
-
-            | Result | Commit  | Link  |
-            | ------ | ------- | ----- |
-            | ✅ | ${{ steps.get-sha.outputs.sha }} | https://${{ steps.vercel.outputs.vercel_preview_url }}/docs |
+            | ✅ | ${{ steps.get-sha.outputs.sha }} | https://rerun.io/docs/pr-${{ inputs.PR_NUMBER }} |
 
             <sup>Note: This comment is updated whenever you push a commit.</sup>
 
       - name: Create PR comment
-        # https://github.com/mshick/add-pr-comment
         uses: mshick/add-pr-comment@v2.8.2
-        if: success() && steps.vercel.outputs.vercel_preview_result == 'failure'
-        with:
-          message-id: "vercel-preview"
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          message: |
-            Latest documentation preview failed to deploy:
-            ${{ steps.vercel.outputs.vercel_preview_inspector_url }}
-
-            | Result | Commit  | Link  |
-            | ------ | ------- | ----- |
-            | ❌ | ${{ steps.get-sha.outputs.sha }} | unavailable |
-
-            <sup>Note: This comment is updated whenever you push a commit.</sup>
-
-      - name: Create PR comment
-        # https://github.com/mshick/add-pr-comment
-        uses: mshick/add-pr-comment@v2.8.2
+        # GitHub API is very unreliable. We don't want to fail the entire workflow just because we couldn't post a comment.
+        continue-on-error: true
         if: failure()
         with:
           message-id: "vercel-preview"
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           message: |
-            Latest documentation preview failed to deploy, check the CI for more details:
+            Latest documentation preview failed to upload, check the CI for more details:
             ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}?pr=${{ github.event.pull_request.number }}
 
             | Result | Commit  | Link  |

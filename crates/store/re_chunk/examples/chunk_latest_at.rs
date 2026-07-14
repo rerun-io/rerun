@@ -8,14 +8,17 @@ fn main() -> anyhow::Result<()> {
 
     eprintln!("Data:\n{chunk}");
 
-    let query = LatestAtQuery::new(TimelineName::new("frame"), 4);
+    let query = LatestAtQuery::new(TimelineName::from("frame"), 4);
 
     // Find all relevant data for a query:
-    let chunk = chunk.latest_at(&query, MyPoints::descriptor_points().component);
-    eprintln!("{:?} @ {query:?}:\n{chunk}", MyPoints::descriptor_points());
+    let Some(unit) = chunk.latest_at(&query, MyPoints::descriptor_points().component) else {
+        eprintln!("No data found for {query:?}");
+        return Ok(());
+    };
+    eprintln!("{:?} @ {query:?}:\n{unit}", MyPoints::descriptor_points());
 
     // And then slice it as appropriate:
-    let chunk = chunk
+    let chunk = unit
         .timeline_sliced(TimelineName::log_time())
         .component_sliced(MyPoints::descriptor_points().component);
     eprintln!("Sliced down to specific timeline and component:\n{chunk}");
@@ -74,7 +77,7 @@ fn create_chunk() -> anyhow::Result<Chunk> {
         )
         .build()?;
 
-    chunk.sort_if_unsorted();
+    chunk.sort_by_row_ids_if_needed();
 
     Ok(chunk)
 }

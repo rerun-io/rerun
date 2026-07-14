@@ -45,7 +45,7 @@ pub struct DebugOverlayRenderer {
     bind_group_layout: GpuBindGroupLayoutHandle,
 }
 
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, Clone, Debug)]
 pub enum DebugOverlayError {
     #[error("Can't display texture with format: {0:?}")]
     UnsupportedTextureFormat(wgpu::TextureFormat),
@@ -74,6 +74,7 @@ impl DrawData for DebugOverlayDrawData {
             DrawPhase::Compositing,
             DrawDataDrawable {
                 distance_sort_key: 100.0, // Should draw after compositing.
+                secondary_sort_key: 0.0,
                 draw_data_payload: 0,
             },
         );

@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 pub use crossbeam::channel::{RecvError, RecvTimeoutError, SendError, TryRecvError};
 use parking_lot::RwLock;
+use re_log_types::{StoreId, TableId};
 use re_uri::RedapUri;
 
 mod data_source_message;
@@ -11,12 +12,31 @@ mod receiver;
 mod receiver_set;
 mod sender;
 
-pub use self::data_source_message::{DataSourceMessage, DataSourceUiCommand};
+pub use self::data_source_message::{
+    DataSourceMessage, DataSourceUiCommand, InspectError, SaveScreenshotError,
+};
 pub use self::receiver::LogReceiver;
 pub use self::receiver_set::LogReceiverSet;
 pub use self::sender::LogSender;
 
 // --- Source ---
+
+/// Controls how a newly loaded recording is treated by the viewer.
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Deserialize, serde::Serialize,
+)]
+pub enum RecordingOpenBehavior {
+    /// Load without affecting the recording panel.
+    ///
+    /// Used for preview views.
+    Background,
+
+    /// Mark as opened in the recording panel, but don't navigate to it.
+    Open,
+
+    /// Mark as opened and make it the active recording.
+    OpenAndSelect,
+}
 
 /// An error that can occur when flushing.
 #[derive(Debug, thiserror::Error)]
@@ -30,14 +50,23 @@ pub enum FlushError {
 
 /// Identifies in what context this smart channel was created,
 /// and what is holding the [`LogSender`].
-#[derive(Clone, Debug, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Deserialize, serde::Serialize,
+)]
+#[cfg_attr(not(target_arch = "wasm32"), expect(clippy::large_enum_variant))]
 pub enum LogSource {
     /// The sender is a background thread reading data from a file on disk
     /// (could be `.rrd` files, or `.glb`, `.png`, …).
-    File(std::path::PathBuf),
+    File {
+        path: std::path::PathBuf,
+
+        /// If `true`, the viewer should start in `Following` mode.
+        follow: bool,
+    },
 
     /// The sender is a background thread fetching data from an HTTP file server.
-    RrdHttpStream {
+    #[serde(alias = "RrdHttpStream")]
+    HttpStream {
         /// Should include `http(s)://` prefix.
         url: String,
 
@@ -65,24 +94,36 @@ pub enum LogSource {
     /// The data is streaming in from standard input.
     Stdin,
 
-    /// The data is streaming in directly from a Rerun Data Platform server,
+    /// The data is streaming in directly from a catalog server,
     /// over `rerun://` gRPC interface.
     RedapGrpcStream {
         uri: re_uri::DatasetSegmentUri,
 
-        /// Switch to this recording once it has been loaded?
-        select_when_loaded: bool,
+        open_behavior: RecordingOpenBehavior,
+
+        /// If set, this source is streaming a blueprint that should be associated with a table
+        /// once the stream completes successfully.
+        #[serde(default)]
+        table_blueprint: Option<TableBlueprintSource>,
     },
 
     /// The data is streaming in via a message proxy.
     MessageProxy(re_uri::ProxyUri),
 }
 
+#[derive(
+    Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Deserialize, serde::Serialize,
+)]
+pub struct TableBlueprintSource {
+    pub table_id: TableId,
+    pub blueprint_id: StoreId,
+}
+
 impl std::fmt::Display for LogSource {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::File(path) => write!(f, "file://{}", path.to_string_lossy()),
-            Self::RrdHttpStream { url, follow: _ } => url.fmt(f),
+            Self::File { path, .. } => write!(f, "file://{}", path.to_string_lossy()),
+            Self::HttpStream { url, follow: _ } => url_display_name(url).fmt(f),
             Self::MessageProxy(uri) => uri.fmt(f),
             Self::RedapGrpcStream { uri, .. } => uri.fmt(f),
             Self::RrdWebEvent => "Web event listener".fmt(f),
@@ -94,29 +135,31 @@ impl std::fmt::Display for LogSource {
 }
 
 impl LogSource {
+    pub fn is_redap(&self) -> bool {
+        matches!(self, Self::RedapGrpcStream { .. })
+    }
+
     pub fn is_network(&self) -> bool {
         match self {
-            Self::File(_) | Self::Sdk | Self::RrdWebEvent | Self::Stdin => false,
-            Self::RrdHttpStream { .. }
+            Self::File { .. } | Self::Sdk | Self::RrdWebEvent | Self::Stdin => false,
+            Self::HttpStream { .. }
             | Self::JsChannel { .. }
             | Self::RedapGrpcStream { .. }
             | Self::MessageProxy { .. } => true,
         }
     }
 
-    pub fn select_when_loaded(&self) -> bool {
+    pub fn open_behavior(&self) -> RecordingOpenBehavior {
         match self {
-            Self::File(_)
+            Self::File { .. }
             | Self::Sdk
             | Self::RrdWebEvent
             | Self::Stdin
-            | Self::RrdHttpStream { .. }
+            | Self::HttpStream { .. }
             | Self::JsChannel { .. }
-            | Self::MessageProxy { .. } => true,
+            | Self::MessageProxy { .. } => RecordingOpenBehavior::OpenAndSelect,
 
-            Self::RedapGrpcStream {
-                select_when_loaded, ..
-            } => *select_when_loaded,
+            Self::RedapGrpcStream { open_behavior, .. } => *open_behavior,
         }
     }
 
@@ -125,11 +168,11 @@ impl LogSource {
             Self::RedapGrpcStream { uri, .. } => Some(RedapUri::DatasetData(uri.clone())),
             Self::MessageProxy(uri) => Some(RedapUri::Proxy(uri.clone())),
 
-            Self::File(_)
+            Self::File { .. }
             | Self::Sdk
             | Self::RrdWebEvent
             | Self::Stdin
-            | Self::RrdHttpStream { .. }
+            | Self::HttpStream { .. }
             | Self::JsChannel { .. } => None,
         }
     }
@@ -137,7 +180,10 @@ impl LogSource {
     /// Same as [`Self::redap_uri`], but strips any extra query or fragment from the uri.
     pub fn stripped_redap_uri(&self) -> Option<RedapUri> {
         self.redap_uri().map(|uri| match uri {
-            RedapUri::Catalog(_) | RedapUri::Entry(_) | RedapUri::Proxy(_) => uri,
+            RedapUri::Catalog(_)
+            | RedapUri::Entry(_)
+            | RedapUri::Folder(_)
+            | RedapUri::Proxy(_) => uri,
             RedapUri::DatasetData(uri) => RedapUri::DatasetData(uri.without_query_and_fragment()),
         })
     }
@@ -149,9 +195,9 @@ impl LogSource {
     pub fn loading_name(&self) -> Option<String> {
         match self {
             // We only show things we know are very-soon-to-be recordings:
-            Self::File(path) => Some(path.to_string_lossy().into_owned()),
-            Self::RrdHttpStream { url, .. } => Some(url.clone()),
-            Self::RedapGrpcStream { uri, .. } => Some(uri.segment_id.clone()),
+            Self::File { path, .. } => Some(path.to_string_lossy().into_owned()),
+            Self::HttpStream { url, .. } => Some(url_display_name(url)),
+            Self::RedapGrpcStream { uri, .. } => Some(uri.segment_id.to_string()),
 
             Self::RrdWebEvent
             | Self::JsChannel { .. }
@@ -168,12 +214,12 @@ impl LogSource {
     /// Status string describing waiting or loading status for a source.
     pub fn status_string(&self) -> String {
         match self {
-            Self::File(path) => {
+            Self::File { path, .. } => {
                 format!("Loading {}…", path.display())
             }
             Self::Stdin => "Loading stdin…".to_owned(),
-            Self::RrdHttpStream { url, .. } => {
-                format!("Waiting for data on {url}…")
+            Self::HttpStream { url, .. } => {
+                format!("Waiting for data on {}…", url_display_name(url))
             }
             Self::MessageProxy(uri) => {
                 format!("Waiting for data on {uri}…")
@@ -196,12 +242,27 @@ impl LogSource {
             (Self::RedapGrpcStream { uri: uri1, .. }, Self::RedapGrpcStream { uri: uri2, .. }) => {
                 uri1.clone().without_fragment() == uri2.clone().without_fragment()
             }
-            (Self::RrdHttpStream { url: url1, .. }, Self::RrdHttpStream { url: url2, .. }) => {
+            (Self::HttpStream { url: url1, .. }, Self::HttpStream { url: url2, .. }) => {
                 url1 == url2
             }
             _ => self == other,
         }
     }
+}
+
+/// A human-readable name for a source URL, safe to render as a label or log line.
+///
+/// `data:` URLs embed their payload inline and can be many megabytes long.
+pub fn url_display_name(url: &str) -> String {
+    // The part of a `data:` URL before the first comma is the media type
+    // (e.g. `data:application/octet-stream;base64`); the rest is the payload.
+    if url.starts_with("data:")
+        && let Some(comma) = url.find(',')
+    {
+        return format!("{}…", &url[..=comma]);
+    }
+
+    url.to_owned()
 }
 
 // -------------------------------------------------------------------------------------
@@ -232,19 +293,21 @@ pub fn log_channel(source: LogSource) -> (LogSender, LogReceiver) {
 /// The payload of a [`SmartMessage`].
 ///
 /// Either data or an end-of-stream marker.
+#[derive(re_byte_size::SizeBytes)]
 pub enum SmartMessagePayload {
     /// A message sent down the channel.
     Msg(DataSourceMessage),
 
     /// When received, flush anything already received and then call the given callback.
     Flush {
+        #[size_bytes(ignore)]
         on_flush_done: Box<dyn FnOnce() + Send>,
     },
 
     /// The [`LogSender`] has quit.
     ///
     /// `None` indicates the sender left gracefully, an error indicates otherwise.
-    Quit(Option<Box<dyn std::error::Error + Send>>),
+    Quit(#[size_bytes(ignore)] Option<Box<dyn std::error::Error + Send>>),
 }
 
 impl std::fmt::Debug for SmartMessagePayload {
@@ -257,8 +320,9 @@ impl std::fmt::Debug for SmartMessagePayload {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, re_byte_size::SizeBytes)]
 pub struct SmartMessage {
+    #[size_bytes(ignore)]
     pub source: Arc<LogSource>,
     pub payload: SmartMessagePayload,
 }
@@ -279,12 +343,32 @@ impl SmartMessage {
     }
 }
 
-impl re_byte_size::SizeBytes for SmartMessage {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self { source: _, payload } = self;
-        match payload {
-            SmartMessagePayload::Msg(msg) => msg.heap_size_bytes(),
-            SmartMessagePayload::Flush { .. } | SmartMessagePayload::Quit(..) => 0,
-        }
+#[cfg(test)]
+mod tests {
+    use super::url_display_name;
+
+    #[test]
+    fn url_display_name_keeps_short_urls() {
+        let url = "https://example.com/data.rrd";
+        assert_eq!(url_display_name(url), url);
+    }
+
+    #[test]
+    fn url_display_name_keeps_long_real_urls() {
+        // Presigned links and redap URIs are legitimately long — render them in full.
+        let url = format!("https://example.com/data.rrd?token={}", "x".repeat(1000));
+        assert_eq!(url_display_name(&url), url);
+    }
+
+    #[test]
+    fn url_display_name_truncates_long_data_url() {
+        // A multi-megabyte `data:` URL must not be rendered verbatim (it OOMs text layout).
+        let payload = "A".repeat(5_000_000);
+        let url = format!("data:application/octet-stream;base64,{payload}");
+
+        let name = url_display_name(&url);
+
+        assert_eq!(name, "data:application/octet-stream;base64,…");
+        assert!(name.len() < 100);
     }
 }

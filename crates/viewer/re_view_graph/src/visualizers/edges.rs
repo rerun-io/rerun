@@ -1,8 +1,9 @@
 use re_chunk::LatestAtQuery;
 use re_log_types::{EntityPath, Instance};
 use re_sdk_types::archetypes::{self, GraphEdges};
-use re_sdk_types::{self, components, datatypes};
-use re_view::{DataResultQuery as _, RangeResultsExt as _};
+use re_sdk_types::reflection::Enum as _;
+use re_sdk_types::{self, Archetype as _, components, datatypes};
+use re_view::{DataResultQuery as _, VisualizerInstructionQueryResults};
 use re_viewer_context::{
     self, IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery,
     ViewSystemExecutionError, ViewSystemIdentifier, VisualizerExecutionOutput, VisualizerQueryInfo,
@@ -12,10 +13,9 @@ use re_viewer_context::{
 use crate::graph::NodeId;
 
 #[derive(Default)]
-pub struct EdgesVisualizer {
-    pub data: ahash::HashMap<EntityPath, EdgeData>,
-}
+pub struct EdgesVisualizer;
 
+#[derive(Clone)]
 pub struct EdgeInstance {
     // We will need this in the future, when we want to select individual edges.
     pub instance: Instance,
@@ -25,6 +25,7 @@ pub struct EdgeInstance {
     pub target_index: NodeId,
 }
 
+#[derive(Clone)]
 pub struct EdgeData {
     pub graph_type: components::GraphType,
     pub edges: Vec<EdgeInstance>,
@@ -32,7 +33,10 @@ pub struct EdgeData {
 
 impl IdentifiedViewSystem for EdgesVisualizer {
     fn identifier() -> ViewSystemIdentifier {
-        "GraphEdges".into()
+        re_viewer_context::external::re_string_interner::intern_static!(
+            re_viewer_context::ViewSystemIdentifier,
+            "GraphEdges"
+        )
     }
 }
 
@@ -41,17 +45,23 @@ impl VisualizerSystem for EdgesVisualizer {
         &self,
         _app_options: &re_viewer_context::AppOptions,
     ) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<archetypes::GraphEdges>()
+        VisualizerQueryInfo::single_required_component::<components::GraphEdge>(
+            &archetypes::GraphEdges::descriptor_edges(),
+            &archetypes::GraphEdges::all_components(),
+        )
     }
 
     /// Populates the visualizer with data from the store.
     fn execute(
-        &mut self,
+        &self,
         ctx: &ViewContext<'_>,
         query: &ViewQuery<'_>,
         _context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
+
+        let output = VisualizerExecutionOutput::default();
+        let mut data: ahash::HashMap<EntityPath, EdgeData> = ahash::HashMap::default();
 
         // TODO(cmc): could we (improve and then) use reflection for this?
         re_sdk_types::static_assert_struct_has_fields!(
@@ -64,17 +74,25 @@ impl VisualizerSystem for EdgesVisualizer {
 
         for (data_result, instruction) in query.iter_visualizer_instruction_for(Self::identifier())
         {
-            let results = data_result
+            // TODO(andreas): why not data_result.query_archetype_with_history
+            let latest_at_results = data_result
                 .latest_at_with_blueprint_resolved_data::<archetypes::GraphEdges>(
                     ctx,
                     &timeline_query,
                     Some(instruction),
                 );
+            let results = re_view::BlueprintResolvedResults::from((
+                timeline_query.clone(),
+                latest_at_results,
+            ));
+            let results = VisualizerInstructionQueryResults::new(instruction, &results, &output);
 
-            let all_edges =
-                results.iter_as(query.timeline, GraphEdges::descriptor_edges().component);
+            let all_edges = results.iter_required(GraphEdges::descriptor_edges().component);
             let graph_type = results
-                .get_mono::<components::GraphType>(GraphEdges::descriptor_graph_type().component)
+                .iter_optional(GraphEdges::descriptor_graph_type().component)
+                .slice::<u8>()
+                .next()
+                .and_then(|(_, s)| components::GraphType::from_integer_slice(s).next()?)
                 .unwrap_or_default();
 
             let sources = all_edges
@@ -105,7 +123,7 @@ impl VisualizerSystem for EdgesVisualizer {
                     })
                     .collect();
 
-                self.data.insert(
+                data.insert(
                     data_result.entity_path.clone(),
                     EdgeData { graph_type, edges },
                 );
@@ -114,6 +132,6 @@ impl VisualizerSystem for EdgesVisualizer {
 
         // We're not using `re_renderer` here, so return an empty vector.
         // If you want to draw additional primitives here, you can emit re_renderer draw data here directly.
-        Ok(VisualizerExecutionOutput::default())
+        Ok(output.with_visualizer_data(data))
     }
 }

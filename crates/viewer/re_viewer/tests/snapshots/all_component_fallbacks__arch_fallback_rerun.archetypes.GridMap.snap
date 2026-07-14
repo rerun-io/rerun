@@ -1,0 +1,13 @@
+---
+source: crates/viewer/re_viewer/tests/all_component_fallbacks.rs
+expression: arch_display
+---
+data: [[0]]
+format: [{width: 0, height: 0, pixel_format: null, color_model: null, channel_datatype: null}]
+cell_size: [0.01]
+translation: [[0.0, 0.0, 0.0]]
+rotation_axis_angle: [{axis: [1.0, 0.0, 0.0], angle: 0.0}]
+quaternion: [[0.0, 0.0, 0.0, 1.0]]
+opacity: [1.0]
+draw_order: [-10.0]
+colormap: [5]

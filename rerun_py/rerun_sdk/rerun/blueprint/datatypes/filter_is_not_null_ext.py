@@ -26,7 +26,7 @@ class FilterIsNotNullExt:
             data = [_to_filter_by_event(input_data)]  # type: ignore[arg-type]
         except _NotAFilterByEventLike:
             try:
-                data = [_to_filter_by_event(d) for d in input_data]  # type: ignore[union-attr]
+                data = [_to_filter_by_event(d) for d in input_data]  # type: ignore[union-attr]  # ty: ignore[not-iterable]
             except _NotAFilterByEventLike:
                 raise ValueError(f"Unexpected input value: {input_data}") from None
 

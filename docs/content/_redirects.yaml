@@ -18,19 +18,28 @@
 # defined in this file. Remove one or the other to resolve conflicts.
 
 # Overview section
-overview/installing-viewer: overview/installing-rerun
+overview/installing-viewer: getting-started/install-rerun
+overview/installing-rerun: getting-started/install-rerun
+overview/installing-rerun/python: getting-started/install-rerun/python
+overview/installing-rerun/cpp: getting-started/install-rerun/cpp
+overview/installing-rerun/rust: getting-started/install-rerun/rust
+overview/installing-rerun/viewer: getting-started/install-rerun/viewer
+overview/installing-rerun/troubleshooting: getting-started/install-rerun/troubleshooting
 
 # Getting Started section
 getting-started/what-is-rerun: overview/what-is-rerun
 getting-started/navigating-the-viewer: getting-started/configure-the-viewer/navigating-the-viewer
-getting-started/troubleshooting: overview/installing-rerun/troubleshooting
-getting-started/installing-viewer: overview/installing-rerun/viewer
+getting-started/troubleshooting: getting-started/install-rerun/troubleshooting
+getting-started/installing-viewer: getting-started/install-rerun/viewer
 getting-started/data-out/analyze-and-log: getting-started/data-out/analyze-and-send
 getting-started/data-out/query-data: getting-started/data-out
 getting-started/quick-start: getting-started
-getting-started/quick-start/cpp: getting-started/data-in/cpp
-getting-started/quick-start/python: getting-started/data-in/python
-getting-started/quick-start/rust: getting-started/data-in/rust
+getting-started/quick-start/cpp: getting-started/data-in
+getting-started/quick-start/python: getting-started/data-in
+getting-started/quick-start/rust: getting-started/data-in
+getting-started/data-in/cpp: getting-started/data-in
+getting-started/data-in/python: getting-started/data-in
+getting-started/data-in/rust: getting-started/data-in
 
 # Concepts section (old paths moved to subfolders)
 concepts/app-model: concepts/how-does-rerun-work
@@ -49,33 +58,37 @@ concepts/spaces-and-transforms: concepts/logging-and-ingestion/transforms
 concepts/static: concepts/logging-and-ingestion/static
 concepts/timelines: concepts/logging-and-ingestion/timelines
 concepts/transforms: concepts/logging-and-ingestion/transforms
-concepts/visualizers-and-overrides: concepts/visualization/visualizers-and-overrides
+concepts/visualizers-and-overrides: concepts/visualization/customize-views
+concepts/visualization/visualizers-and-overrides: concepts/visualization/customize-views
 
 # Reference section
 reference/dataframes: concepts/query-and-transform/dataframe-queries
 concepts/query-and-transform/dataframes: concepts/query-and-transform/dataframe-queries
-reference/data-loaders: concepts/logging-and-ingestion/data-loaders/overview
-reference/data-loaders/cpp: concepts/logging-and-ingestion/data-loaders/cpp
-reference/data-loaders/overview: concepts/logging-and-ingestion/data-loaders/overview
-reference/data-loaders/python: concepts/logging-and-ingestion/data-loaders/python
-reference/data-loaders/rust: concepts/logging-and-ingestion/data-loaders/rust
+reference/data-loaders: concepts/logging-and-ingestion/importers/overview
+reference/data-loaders/cpp: concepts/logging-and-ingestion/importers/cpp
+reference/data-loaders/overview: concepts/logging-and-ingestion/importers/overview
+reference/data-loaders/python: concepts/logging-and-ingestion/importers/python
+reference/data-loaders/rust: concepts/logging-and-ingestion/importers/rust
+concepts/logging-and-ingestion/data-loaders: concepts/logging-and-ingestion/importers
+concepts/logging-and-ingestion/data-loaders/overview: concepts/logging-and-ingestion/importers/overview
+concepts/logging-and-ingestion/data-loaders/python: concepts/logging-and-ingestion/importers/python
+concepts/logging-and-ingestion/data-loaders/rust: concepts/logging-and-ingestion/importers/rust
+concepts/logging-and-ingestion/data-loaders/cpp: concepts/logging-and-ingestion/importers/cpp
 reference/entity-queries: concepts/visualization/entity-queries
 reference/mcap: concepts/logging-and-ingestion/mcap/message-formats
 reference/mcap/cli-reference: concepts/logging-and-ingestion/mcap/cli-reference
-reference/mcap/layers-explained: concepts/logging-and-ingestion/mcap/layers-explained
+reference/mcap/layers-explained: concepts/logging-and-ingestion/mcap/decoders-explained
+reference/mcap/decoders-explained: concepts/logging-and-ingestion/mcap/decoders-explained
 reference/mcap/message-formats: concepts/logging-and-ingestion/mcap/message-formats
-reference/migration: reference/migration/migration-0-29
 reference/migration-0-9: reference/migration/migration-0-9
-reference/sdk: reference/sdk/logging-controls
 reference/sdk-micro-batching: reference/sdk/micro-batching
 reference/sdk-operating-modes: reference/sdk/operating-modes
 reference/video: concepts/logging-and-ingestion/video
-reference/viewer: reference/viewer/overview
 
 # Howto section
 howto/build-a-blueprint-programmatically: howto/visualization/build-a-blueprint-programmatically
 howto/callbacks: howto/visualization/callbacks
-howto/configure-viewer-through-code: getting-started/configure-the-viewer#programmatic-blueprints
+howto/configure-viewer-through-code: getting-started/configure-the-viewer/navigating-the-viewer#programmatic-blueprints
 howto/dataframe-api: howto/query-and-transform/get-data-out
 howto/embed-rerun-viewer: howto/integrations/embed-web
 howto/fixed-window-plot: howto/visualization/fixed-window-plot
@@ -103,3 +116,7 @@ howto/logging/shared-recordings: howto/logging-and-ingestion/shared-recordings
 # Howto - extend subfolder
 howto/extend/custom-data: howto/logging-and-ingestion/custom-data
 howto/extend/extend-ui: howto/visualization/extend-ui
+
+# Howto - train section moves
+howto/integrations/dataloader: howto/train/dataloader
+howto/query-and-transform/lerobot_export: howto/train/lerobot_export

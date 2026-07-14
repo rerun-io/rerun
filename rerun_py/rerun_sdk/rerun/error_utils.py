@@ -8,6 +8,8 @@ import warnings
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any, TypeVar, cast
 
+from typing_extensions import Self
+
 if TYPE_CHECKING:
     from types import TracebackType
 
@@ -172,7 +174,7 @@ class catch_and_log_exceptions:
         self.exception_return_value = exception_return_value
         self.strict = strict
 
-    def __enter__(self) -> catch_and_log_exceptions:
+    def __enter__(self) -> Self:
         # Track the original strict_mode setting in case it's being
         # overridden locally in this stack
         self.original_strict = getattr(_rerun_exception_ctx, "strict_mode", None)

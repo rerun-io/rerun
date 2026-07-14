@@ -27,10 +27,15 @@ Examples of what this means:
 #### `Solid` = 3
 The surface of the shape is filled in with a solid color. No lines are drawn.
 
+#### `TransparentFillMajorWireframe` = 4
+The surface of the shape is filled in with a transparent color, with major wireframe lines on top.
+
+This gives a good default appearance that shows both the shape's surface and its structure.
+
 
 ## Arrow datatype
 ```
-uint8
+UInt8
 ```
 
 ## API reference links

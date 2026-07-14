@@ -3,12 +3,14 @@ use re_viewer_context::{
 };
 
 pub fn create_view_class_registry(
+    reflection: &re_types_core::reflection::Reflection,
     app_options: &AppOptions,
     fallback_registry: &mut FallbackProviderRegistry,
 ) -> Result<ViewClassRegistry, ViewClassRegistryError> {
     re_tracing::profile_function!();
     let mut view_class_registry = ViewClassRegistry::default();
     populate_view_class_registry_with_builtin(
+        reflection,
         app_options,
         &mut view_class_registry,
         fallback_registry,
@@ -18,28 +20,68 @@ pub fn create_view_class_registry(
 
 /// Add built-in views to the registry.
 fn populate_view_class_registry_with_builtin(
+    reflection: &re_types_core::reflection::Reflection,
     app_options: &AppOptions,
     view_class_registry: &mut ViewClassRegistry,
     fallback_registry: &mut FallbackProviderRegistry,
 ) -> Result<(), ViewClassRegistryError> {
     re_tracing::profile_function!();
-    view_class_registry
-        .add_class::<re_view_bar_chart::BarChartView>(app_options, fallback_registry)?;
-    view_class_registry
-        .add_class::<re_view_dataframe::DataframeView>(app_options, fallback_registry)?;
-    view_class_registry.add_class::<re_view_graph::GraphView>(app_options, fallback_registry)?;
+    view_class_registry.add_class::<re_view_bar_chart::BarChartView>(
+        reflection,
+        app_options,
+        fallback_registry,
+    )?;
+    view_class_registry.add_class::<re_view_dataframe::DataframeView>(
+        reflection,
+        app_options,
+        fallback_registry,
+    )?;
+    view_class_registry.add_class::<re_view_graph::GraphView>(
+        reflection,
+        app_options,
+        fallback_registry,
+    )?;
     #[cfg(feature = "map_view")]
-    view_class_registry.add_class::<re_view_map::MapView>(app_options, fallback_registry)?;
-    view_class_registry
-        .add_class::<re_view_spatial::SpatialView2D>(app_options, fallback_registry)?;
-    view_class_registry
-        .add_class::<re_view_spatial::SpatialView3D>(app_options, fallback_registry)?;
-    view_class_registry.add_class::<re_view_tensor::TensorView>(app_options, fallback_registry)?;
-    view_class_registry
-        .add_class::<re_view_text_document::TextDocumentView>(app_options, fallback_registry)?;
-    view_class_registry.add_class::<re_view_text_log::TextView>(app_options, fallback_registry)?;
-    view_class_registry
-        .add_class::<re_view_time_series::TimeSeriesView>(app_options, fallback_registry)?;
+    view_class_registry.add_class::<re_view_map::MapView>(
+        reflection,
+        app_options,
+        fallback_registry,
+    )?;
+    view_class_registry.add_class::<re_view_spatial::SpatialView2D>(
+        reflection,
+        app_options,
+        fallback_registry,
+    )?;
+    view_class_registry.add_class::<re_view_spatial::SpatialView3D>(
+        reflection,
+        app_options,
+        fallback_registry,
+    )?;
+    view_class_registry.add_class::<re_view_tensor::TensorView>(
+        reflection,
+        app_options,
+        fallback_registry,
+    )?;
+    view_class_registry.add_class::<re_view_text_document::TextDocumentView>(
+        reflection,
+        app_options,
+        fallback_registry,
+    )?;
+    view_class_registry.add_class::<re_view_text_log::TextView>(
+        reflection,
+        app_options,
+        fallback_registry,
+    )?;
+    view_class_registry.add_class::<re_view_time_series::TimeSeriesView>(
+        reflection,
+        app_options,
+        fallback_registry,
+    )?;
+    view_class_registry.add_class::<re_view_state_timeline::StateTimelineView>(
+        reflection,
+        app_options,
+        fallback_registry,
+    )?;
 
     Ok(())
 }
@@ -67,6 +109,7 @@ mod tests {
         re_data_ui::register_component_uis(&mut test_context.component_ui_registry);
 
         let view_class_registry = create_view_class_registry(
+            &test_context.reflection,
             &test_context.app_options,
             &mut test_context.component_fallback_registry,
         )
@@ -83,7 +126,7 @@ mod tests {
                 let mut harness = test_context
                     .setup_kittest_for_rendering_ui([400.0, 700.0])
                     .build_ui(|ui| {
-                        ui.ctx().set_theme(egui_theme);
+                        ui.set_theme(egui_theme);
 
                         test_context.run_ui(ui, |viewer_ctx, ui| {
                             ui.set_min_size(Vec2::new(400.0, 300.0));

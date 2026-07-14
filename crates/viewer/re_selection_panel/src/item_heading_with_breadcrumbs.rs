@@ -86,7 +86,7 @@ fn item_bread_crumbs_ui(
         Item::AppId(_)
         | Item::DataSource(_)
         | Item::StoreId(_)
-        | Item::RedapEntry(_)
+        | Item::RedapEntry { .. }
         | Item::RedapServer(_)
         | Item::TableId(_) => {
             // These have no bread crumbs, at least not currently.
@@ -137,16 +137,17 @@ fn item_bread_crumbs_ui(
                 viewport_breadcrumbs(ctx, viewport, ui, Contents::Container(parent));
             }
         }
-        Item::DataResult(view_id, instance_path) => {
-            viewport_breadcrumbs(ctx, viewport, ui, Contents::View(*view_id));
+        Item::DataResult(data_result) => {
+            viewport_breadcrumbs(ctx, viewport, ui, Contents::View(data_result.view_id));
 
             let InstancePath {
                 entity_path,
                 instance,
-            } = instance_path;
+            } = &data_result.instance_path;
 
-            if let Some(view) = viewport.view(view_id) {
-                let common_ancestor = instance_path
+            if let Some(view) = viewport.view(&data_result.view_id) {
+                let common_ancestor = data_result
+                    .instance_path
                     .entity_path
                     .common_ancestor(&view.space_origin);
 
@@ -165,7 +166,7 @@ fn item_bread_crumbs_ui(
                         entity_path_breadcrumbs(
                             ctx,
                             ui,
-                            Some(*view_id),
+                            Some(data_result.view_id),
                             &common_ancestor,
                             all_but_last,
                             !is_projection,
@@ -177,7 +178,7 @@ fn item_bread_crumbs_ui(
                     entity_path_breadcrumbs(
                         ctx,
                         ui,
-                        Some(*view_id),
+                        Some(data_result.view_id),
                         &common_ancestor,
                         relative,
                         !is_projection,
@@ -209,7 +210,7 @@ fn last_part_of_item_heading(
         | Item::View { .. }
         | Item::TableId { .. }
         | Item::StoreId { .. }
-        | Item::RedapEntry(_)
+        | Item::RedapEntry { .. }
         | Item::RedapServer(_) => true,
 
         Item::InstancePath { .. } | Item::DataResult { .. } | Item::ComponentPath { .. } => false,
@@ -228,7 +229,7 @@ fn last_part_of_item_heading(
     if let Some(tooltip) = tooltip {
         response = response.on_hover_text(tooltip);
     }
-    cursor_interact_with_selectable(ctx, response, item.clone());
+    cursor_interact_with_selectable(&ctx.app_ctx, response, item.clone());
 }
 
 /// The breadcrumbs of containers and views in the viewport.
@@ -256,7 +257,7 @@ fn viewport_breadcrumbs(
     if let Some(tooltip) = tooltip {
         response = response.on_hover_text(tooltip);
     }
-    cursor_interact_with_selectable(ctx, response, item);
+    cursor_interact_with_selectable(&ctx.app_ctx, response, item);
 
     separator_icon_ui(ui);
 }
@@ -315,11 +316,16 @@ fn entity_path_breadcrumbs(
     });
 
     let item = if let Some(view_id) = view_id {
-        Item::DataResult(view_id, full_entity_path.into())
+        Item::DataResult(
+            re_viewer_context::DataResultInteractionAddress::from_entity_path(
+                view_id,
+                full_entity_path,
+            ),
+        )
     } else {
         Item::from(full_entity_path)
     };
-    cursor_interact_with_selectable(ctx, response, item);
+    cursor_interact_with_selectable(&ctx.app_ctx, response, item);
 
     separator_icon_ui(ui);
 }

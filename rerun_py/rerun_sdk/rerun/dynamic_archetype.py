@@ -1,18 +1,16 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from rerun._baseclasses import ComponentDescriptor
 
 from ._baseclasses import ComponentColumn, ComponentColumnList, DescribedComponentBatch
 from ._log import AsComponents
-from .any_batch_value import AnyBatchValue
+from .any_batch_value import AnyBatchValue, ComponentValueLike
 from .error_utils import catch_and_log_exceptions
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
-
-ANY_VALUE_TYPE_REGISTRY: dict[ComponentDescriptor, Any]
 
 
 class DynamicArchetype(AsComponents):
@@ -26,11 +24,25 @@ class DynamicArchetype(AsComponents):
         "some_type", rr.DynamicArchetype(
             archetype="my_archetype",
             components = {
-                confidence=[1.2, 3.4, 5.6],
-                description="Bla bla bla…",
+                "confidence":[1.2, 3.4, 5.6],
+                "description":"Bla bla bla…",
                 # URIs will become clickable links
-                homepage="https://www.rerun.io",
-                repository="https://github.com/rerun-io/rerun",
+                "homepage":"https://www.rerun.io",
+                "repository":"https://github.com/rerun-io/rerun",
+            },
+        ),
+    )
+    ```
+
+    Component values can also be Rerun batch types, which is useful when you need
+    proper type handling (e.g. RGBA color packing):
+
+    ```python
+    rr.log(
+        "my_entity", rr.DynamicArchetype(
+            archetype="MyColors",
+            components={
+                "colors": rr.components.ColorBatch([[255, 0, 0], [0, 255, 0]]),
             },
         ),
     )
@@ -39,16 +51,20 @@ class DynamicArchetype(AsComponents):
     """
 
     def __init__(
-        self, archetype: str, drop_untyped_nones: bool = True, components: Mapping[str, Any] | None = None
+        self,
+        archetype: str,
+        drop_untyped_nones: bool = True,
+        components: Mapping[str, ComponentValueLike | None] | None = None,
     ) -> None:
         """
         Construct a new DynamicArchetype.
 
         Each of the provided components will be logged as a separate component batch with the same archetype using the provided data.
          - The key will be used as the name of the component
-         - The value must be able to be converted to an array of arrow types. In
-           general, if you can pass it to [pyarrow.array][] you can log it as a
-           extension component.
+         - The value can be any Rerun component batch type (e.g. `rr.components.ColorBatch(...)`,
+           `rr.components.ScalarBatch(...)`) or any data convertible to a pyarrow array.
+           Using Rerun batch types is recommended when the component needs specific type
+           handling (e.g. RGBA color packing from Nx3/Nx4 arrays).
 
         Note: rerun requires that a given component only take on a single type.
         The first type logged will be the type that is used for all future logs
@@ -87,8 +103,6 @@ class DynamicArchetype(AsComponents):
             The components to be logged.
 
         """
-        global ANY_VALUE_TYPE_REGISTRY
-
         self._component_batches: list[DescribedComponentBatch] = []
         self._archetype: str | None = None
         self._name = self.__class__.__name__
@@ -96,7 +110,10 @@ class DynamicArchetype(AsComponents):
         self._optional_archetype(archetype, drop_untyped_nones, components)
 
     def _optional_archetype(
-        self, archetype: str | None, drop_untyped_nones: bool = True, components: Mapping[str, Any] | None = None
+        self,
+        archetype: str | None,
+        drop_untyped_nones: bool = True,
+        components: Mapping[str, ComponentValueLike | None] | None = None,
     ) -> None:
         """Support more flexible initialization."""
         self._archetype = archetype
@@ -123,7 +140,9 @@ class DynamicArchetype(AsComponents):
                         self._component_batches.append(DescribedComponentBatch(batch, batch.descriptor))
 
     @classmethod
-    def _default_without_archetype(cls, drop_untyped_nones: bool = True, **kwargs: Any) -> DynamicArchetype:
+    def _default_without_archetype(
+        cls, drop_untyped_nones: bool = True, **kwargs: ComponentValueLike | None
+    ) -> DynamicArchetype:
         """Directly construct an DynamicArchetype without the Archetype."""
         # Create an empty archetype
         archetype = cls(archetype="placeholder", drop_untyped_nones=drop_untyped_nones, components={})
@@ -138,7 +157,7 @@ class DynamicArchetype(AsComponents):
         self._name = name
 
     def _with_descriptor_internal(
-        self, descriptor: ComponentDescriptor, value: Any, *, drop_untyped_nones: bool = True
+        self, descriptor: ComponentDescriptor, value: ComponentValueLike | None, *, drop_untyped_nones: bool = True
     ) -> DynamicArchetype:
         """Adds a `Batch` to this `DynamicArchetype` bundle."""
         batch = AnyBatchValue(descriptor, value, drop_untyped_nones=drop_untyped_nones)
@@ -146,7 +165,9 @@ class DynamicArchetype(AsComponents):
             self._component_batches.append(DescribedComponentBatch(batch, batch.descriptor))
         return self
 
-    def with_component_from_data(self, field: str, value: Any, *, drop_untyped_nones: bool = True) -> DynamicArchetype:
+    def with_component_from_data(
+        self, field: str, value: ComponentValueLike | None, *, drop_untyped_nones: bool = True
+    ) -> DynamicArchetype:
         """Adds a `Batch` to this `DynamicArchetype` bundle."""
         descriptor = ComponentDescriptor(component=field)
         if self._archetype is not None:
@@ -154,7 +175,7 @@ class DynamicArchetype(AsComponents):
         return self._with_descriptor_internal(descriptor, value, drop_untyped_nones=drop_untyped_nones)
 
     def with_component_override(
-        self, field: str, component_type: str, value: Any, *, drop_untyped_nones: bool = True
+        self, field: str, component_type: str, value: ComponentValueLike | None, *, drop_untyped_nones: bool = True
     ) -> DynamicArchetype:
         """Adds a `Batch` to this `DynamicArchetype` bundle with name and component type."""
         descriptor = ComponentDescriptor(component=field, component_type=component_type)
@@ -170,7 +191,10 @@ class DynamicArchetype(AsComponents):
 
     @classmethod
     def columns(
-        cls, archetype: str, drop_untyped_nones: bool = True, components: Mapping[str, Any] | None = None
+        cls,
+        archetype: str,
+        drop_untyped_nones: bool = True,
+        components: Mapping[str, ComponentValueLike | None] | None = None,
     ) -> ComponentColumnList:
         """
         Construct a new column-oriented DynamicArchetype bundle.
@@ -223,7 +247,12 @@ class DynamicArchetype(AsComponents):
             The components to be logged.
 
         """
-        inst = cls(archetype, drop_untyped_nones, components)
-        return ComponentColumnList([
-            ComponentColumn(batch.component_descriptor(), batch) for batch in inst._component_batches
-        ])
+        columns: list[ComponentColumn] = []
+        with catch_and_log_exceptions("DynamicArchetype.columns"):
+            if components is not None:
+                for name, value in components.items():
+                    descriptor = ComponentDescriptor(component=name).with_builtin_archetype(archetype)
+                    col = AnyBatchValue.column(descriptor, value, drop_untyped_nones=drop_untyped_nones)
+                    if col is not None:
+                        columns.append(col)
+        return ComponentColumnList(columns)

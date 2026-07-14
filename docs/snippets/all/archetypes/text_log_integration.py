@@ -7,7 +7,10 @@ import rerun as rr
 rr.init("rerun_example_text_log_integration", spawn=True)
 
 # Log a text entry directly
-rr.log("logs", rr.TextLog("this entry has loglevel TRACE", level=rr.TextLogLevel.TRACE))
+rr.log(
+    "logs",
+    rr.TextLog("this entry has loglevel TRACE", level=rr.TextLogLevel.TRACE),
+)
 
 # Or log via a logging handler
 logging.getLogger().addHandler(rr.LoggingHandler("logs/handler"))

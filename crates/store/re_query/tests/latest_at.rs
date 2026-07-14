@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use re_chunk::RowId;
 use re_chunk_store::external::re_chunk::Chunk;
-use re_chunk_store::{ChunkStore, ChunkStoreSubscriber as _, LatestAtQuery};
+use re_chunk_store::{ChunkStore, ChunkStoreSubscriber as _, ChunkTrackingMode, LatestAtQuery};
 use re_log_types::example_components::{MyColor, MyPoint, MyPoints};
 use re_log_types::{EntityPath, TimeInt, TimePoint, build_frame_nr};
 use re_query::QueryCache;
@@ -100,6 +100,7 @@ fn simple_query_with_differently_tagged_components() {
 
     // Check that we can also reach the other re-tagged component.
     let cached = caches.latest_at(
+        ChunkTrackingMode::PanicOnMissing,
         &query,
         &entity_path.into(),
         [points2_serialized.descriptor.component],
@@ -165,11 +166,11 @@ fn invalidation() {
                              past_data_timepoint: TimePoint,
                              future_data_timepoint: TimePoint| {
         let past_timestamp = past_data_timepoint
-            .get(&query.timeline())
+            .get(&query.timeline().unwrap())
             .map(TimeInt::from)
             .unwrap_or(TimeInt::STATIC);
         let present_timestamp = present_data_timepoint
-            .get(&query.timeline())
+            .get(&query.timeline().unwrap())
             .map(TimeInt::from)
             .unwrap_or(TimeInt::STATIC);
 
@@ -640,6 +641,51 @@ fn static_invalidation() {
     );
 }
 
+#[test]
+fn same_row_id_across_chunks() {
+    let store = ChunkStore::new_handle(
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
+        Default::default(),
+    );
+    let mut caches = QueryCache::new(store.clone());
+
+    let entity_path = "point";
+    let timepoint = [build_frame_nr(123)];
+
+    // Two separate chunks share a single RowId, each carrying a different component.
+    let row_id = RowId::new();
+    let points = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
+    let colors = vec![MyColor::from_rgb(255, 0, 0)];
+
+    let chunk_points = Chunk::builder(entity_path)
+        .with_archetype(row_id, timepoint, &MyPoints::new(points.clone()))
+        .build()
+        .unwrap();
+    insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk_points));
+
+    let chunk_colors = Chunk::builder(entity_path)
+        .with_archetype(
+            row_id,
+            timepoint,
+            &MyPoints::update_fields().with_colors(colors.clone()),
+        )
+        .build()
+        .unwrap();
+    insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk_colors));
+
+    let query = re_chunk_store::LatestAtQuery::new(*timepoint[0].0.name(), timepoint[0].1);
+    let expected_compound_index = (TimeInt::new_temporal(123), row_id);
+    query_and_compare(
+        &caches,
+        &store.read(),
+        &query,
+        &entity_path.into(),
+        expected_compound_index,
+        &points,
+        &colors,
+    );
+}
+
 // ---
 
 fn insert_and_react(store: &mut ChunkStore, caches: &mut QueryCache, chunk: &Arc<Chunk>) {
@@ -661,7 +707,12 @@ fn query_and_compare(
     let component_colors = MyPoints::descriptor_colors().component;
 
     for _ in 0..3 {
-        let cached = caches.latest_at(query, entity_path, [component_points, component_colors]);
+        let cached = caches.latest_at(
+            ChunkTrackingMode::PanicOnMissing,
+            query,
+            entity_path,
+            [component_points, component_colors],
+        );
 
         let cached_points = cached.component_batch::<MyPoint>(component_points).unwrap();
         let cached_colors = cached
@@ -673,7 +724,7 @@ fn query_and_compare(
         eprintln!("{query:?}");
         // eprintln!("{}", store.to_data_table().unwrap());
 
-        similar_asserts::assert_eq!(expected_compound_index, cached.compound_index);
+        similar_asserts::assert_eq!(expected_compound_index, cached.max_index);
         similar_asserts::assert_eq!(expected_points, cached_points);
         similar_asserts::assert_eq!(expected_colors, cached_colors);
     }

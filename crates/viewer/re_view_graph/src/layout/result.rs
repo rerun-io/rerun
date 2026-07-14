@@ -6,7 +6,7 @@ use re_chunk::EntityPath;
 use super::EdgeGeometry;
 use crate::graph::{EdgeId, NodeId};
 
-#[derive(Debug)]
+#[derive(Debug, re_byte_size::SizeBytes)]
 pub struct Layout {
     pub(super) nodes: ahash::HashMap<NodeId, Rect>,
     pub(super) edges: ahash::HashMap<EdgeId, Vec<EdgeGeometry>>,

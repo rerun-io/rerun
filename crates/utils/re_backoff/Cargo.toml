@@ -1,0 +1,41 @@
+[package]
+name = "re_backoff"
+authors.workspace = true
+description = "Utilities for retrying operations with backoff."
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+license.workspace = true
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+
+[package.metadata.cargo-shear]
+ignored = ["getrandom"]
+
+
+[dependencies]
+# External
+rand.workspace = true
+
+# Native dependencies:
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+tokio = { workspace = true, features = ["time"] }
+
+# Web dependencies:
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+# Needed to enable `rand` on wasm:
+getrandom = { workspace = true, features = ["wasm_js"] }
+# Used to bridge the `!Send` JS timer future into a `Send` one (oneshot channel).
+futures.workspace = true
+js-sys.workspace = true
+wasm-bindgen-futures.workspace = true
+web-sys = { workspace = true, features = ["Window"] }

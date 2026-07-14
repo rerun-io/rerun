@@ -5,7 +5,10 @@
 use ndarray::{Array, ShapeBuilder as _, s};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let rec = rerun::RecordingStreamBuilder::new("rerun_example_image_column_updates").spawn()?;
+    let rec = rerun::RecordingStreamBuilder::new(
+        "rerun_example_image_column_updates",
+    )
+    .spawn()?;
 
     // Timeline on which the images are distributed.
     let times = (0..20).collect::<Vec<i64>>();
@@ -25,12 +28,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Log the ImageFormat and indicator once, as static.
-    let format = rerun::components::ImageFormat::rgb8([width as _, height as _]);
-    rec.log_static("images", &rerun::Image::update_fields().with_format(format))?;
+    let format =
+        rerun::components::ImageFormat::rgb8([width as _, height as _]);
+    rec.log_static(
+        "images",
+        &rerun::Image::update_fields().with_format(format),
+    )?;
 
     // Split up the image data into several components referencing the underlying data.
     let image_size_in_bytes = width * height * 3;
-    let timeline_values = rerun::TimeColumn::new_sequence("step", times.clone());
+    let timeline_values =
+        rerun::TimeColumn::new_sequence("step", times.clone());
     let buffer = images.into_raw_vec_and_offset().0;
     rec.send_columns(
         "images",

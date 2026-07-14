@@ -1,14 +1,13 @@
 use std::collections::{BTreeMap, HashMap};
 
-use serde::de::{self, DeserializeSeed};
+use re_cdr::{CdrEndian, CdrReader, Error, Result};
 
-use crate::deserialize::primitive_array::PrimitiveArraySeed;
-use crate::message_spec::{ComplexType, MessageSpecification, Type};
+use crate::deserialize::primitive_array::PrimitiveArray;
+use crate::message_spec::{
+    ArraySize, BuiltInType, ComplexType, MessageSpecification, Type, message_package,
+};
 
-pub mod primitive;
 pub mod primitive_array;
-
-use primitive::{PrimitiveVisitor, StringVisitor};
 
 /// A single deserialized value of any type that can appear in a ROS message.
 #[derive(Clone, PartialEq)]
@@ -76,295 +75,182 @@ impl std::fmt::Debug for Value {
 
 /// How we resolve a [`ComplexType`] at runtime.
 pub trait TypeResolver {
-    fn resolve(&self, ty: &ComplexType) -> Option<&MessageSpecification>;
+    fn resolve(
+        &self,
+        scope: &MessageSpecification,
+        ty: &ComplexType,
+    ) -> Option<&MessageSpecification>;
 }
 
-/// Efficient type resolver with separate maps for absolute and relative lookups.
+/// Efficient type resolver for fully-qualified ROS message names.
 pub struct MapResolver<'a> {
     /// Maps "pkg/Type" -> [`MessageSpecification`]
     absolute: HashMap<String, &'a MessageSpecification>,
-
-    /// Maps "Type" -> [`MessageSpecification`]
-    relative: HashMap<String, &'a MessageSpecification>,
 }
 
 impl<'a> MapResolver<'a> {
     pub fn new(specs: impl IntoIterator<Item = (String, &'a MessageSpecification)>) -> Self {
         let mut absolute = HashMap::new();
-        let mut relative = HashMap::new();
 
         for (full_name, spec) in specs {
-            if let Some((_, name)) = full_name.rsplit_once('/') {
-                // This is an absolute type like "pkg/Type"
-                absolute.insert(full_name.clone(), spec);
-                relative.insert(name.to_owned(), spec);
-            } else {
-                // This is already a relative type like "Type"
-                relative.insert(full_name, spec);
-            }
+            absolute.insert(full_name, spec);
         }
 
-        Self { absolute, relative }
+        Self { absolute }
     }
 }
 
 impl TypeResolver for MapResolver<'_> {
-    fn resolve(&self, ty: &ComplexType) -> Option<&MessageSpecification> {
+    fn resolve(
+        &self,
+        scope: &MessageSpecification,
+        ty: &ComplexType,
+    ) -> Option<&MessageSpecification> {
         match ty {
             ComplexType::Absolute { package, name } => {
                 let full_name = format!("{package}/{name}");
                 self.absolute.get(&full_name).copied()
             }
-            ComplexType::Relative { name } => self.relative.get(name).copied(),
-        }
-    }
-}
-
-/// Whole message (struct) in field order.
-pub struct MessageSeed<'a, R: TypeResolver> {
-    specification: &'a MessageSpecification,
-    type_resolver: &'a R,
-}
-
-impl<'a, R: TypeResolver> MessageSeed<'a, R> {
-    pub fn new(spec: &'a MessageSpecification, type_resolver: &'a R) -> Self {
-        Self {
-            specification: spec,
-            type_resolver,
-        }
-    }
-}
-
-impl<'de, R: TypeResolver> DeserializeSeed<'de> for MessageSeed<'_, R> {
-    type Value = Value;
-
-    fn deserialize<D>(self, de: D) -> Result<Self::Value, D::Error>
-    where
-        D: de::Deserializer<'de>,
-    {
-        de.deserialize_tuple(
-            self.specification.fields.len(),
-            MessageVisitor {
-                spec: self.specification,
-                type_resolver: self.type_resolver,
-            },
-        )
-    }
-}
-
-struct MessageVisitor<'a, R: TypeResolver> {
-    spec: &'a MessageSpecification,
-    type_resolver: &'a R,
-}
-
-impl<'de, R: TypeResolver> serde::de::Visitor<'de> for MessageVisitor<'_, R> {
-    type Value = Value;
-
-    fn expecting(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "cdr struct as fixed-length tuple")
-    }
-
-    fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
-    where
-        A: serde::de::SeqAccess<'de>,
-    {
-        let mut out = std::collections::BTreeMap::new();
-        for field in &self.spec.fields {
-            let v = seq
-                .next_element_seed(SchemaSeed::new(&field.ty, self.type_resolver))?
-                .ok_or_else(|| serde::de::Error::custom("missing struct field"))?;
-            out.insert(field.name.clone(), v);
-        }
-        Ok(Value::Message(out))
-    }
-}
-
-/// One value, driven by a [`Type`] + resolver.
-pub(super) struct SchemaSeed<'a, R: TypeResolver> {
-    ty: &'a Type,
-    resolver: &'a R,
-}
-
-impl<'a, R: TypeResolver> SchemaSeed<'a, R> {
-    pub fn new(ty: &'a Type, resolver: &'a R) -> Self {
-        Self { ty, resolver }
-    }
-}
-
-impl<'de, R: TypeResolver> DeserializeSeed<'de> for SchemaSeed<'_, R> {
-    type Value = Value;
-
-    fn deserialize<D>(self, de: D) -> Result<Self::Value, D::Error>
-    where
-        D: de::Deserializer<'de>,
-    {
-        use crate::message_spec::ArraySize::{Bounded, Fixed, Unbounded};
-        use crate::message_spec::BuiltInType::{
-            Bool, Byte, Char, Float32, Float64, Int8, Int16, Int32, Int64, String, UInt8, UInt16,
-            UInt32, UInt64, WString,
-        };
-        use crate::message_spec::Type;
-
-        match self.ty {
-            Type::BuiltIn(primitive_type) => match primitive_type {
-                Bool => de
-                    .deserialize_bool(PrimitiveVisitor::<bool>::new())
-                    .map(Value::Bool),
-                Byte | UInt8 => de
-                    .deserialize_u8(PrimitiveVisitor::<u8>::new())
-                    .map(Value::U8), // ROS2: octet
-                Char | Int8 => de
-                    .deserialize_i8(PrimitiveVisitor::<i8>::new())
-                    .map(Value::I8), // ROS2: char (int8)
-                Float32 => de
-                    .deserialize_f32(PrimitiveVisitor::<f32>::new())
-                    .map(Value::F32),
-                Float64 => de
-                    .deserialize_f64(PrimitiveVisitor::<f64>::new())
-                    .map(Value::F64),
-                Int16 => de
-                    .deserialize_i16(PrimitiveVisitor::<i16>::new())
-                    .map(Value::I16),
-                Int32 => de
-                    .deserialize_i32(PrimitiveVisitor::<i32>::new())
-                    .map(Value::I32),
-                Int64 => de
-                    .deserialize_i64(PrimitiveVisitor::<i64>::new())
-                    .map(Value::I64),
-                UInt16 => de
-                    .deserialize_u16(PrimitiveVisitor::<u16>::new())
-                    .map(Value::U16),
-                UInt32 => de
-                    .deserialize_u32(PrimitiveVisitor::<u32>::new())
-                    .map(Value::U32),
-                UInt64 => de
-                    .deserialize_u64(PrimitiveVisitor::<u64>::new())
-                    .map(Value::U64),
-                String(_bound) | WString(_bound) => {
-                    de.deserialize_string(StringVisitor).map(Value::String)
-                }
-            },
-            Type::Array { ty, size } => match size {
-                Fixed(len) => {
-                    // Check if this is a primitive array and use optimized path
-                    if let Type::BuiltIn(prim_type) = ty.as_ref() {
-                        PrimitiveArraySeed {
-                            elem: prim_type,
-                            fixed_len: Some(*len),
-                        }
-                        .deserialize(de)
-                        .map(Value::PrimitiveArray)
-                    } else {
-                        SequenceSeed::new(ty, Some(*len), self.resolver)
-                            .deserialize(de)
-                            .map(Value::Array)
-                    }
-                }
-                Bounded(_) | Unbounded => {
-                    // Check if this is a primitive sequence and use optimized path
-                    if let Type::BuiltIn(prim_type) = ty.as_ref() {
-                        PrimitiveArraySeed {
-                            elem: prim_type,
-                            fixed_len: None,
-                        }
-                        .deserialize(de)
-                        .map(Value::PrimitiveSeq)
-                    } else {
-                        // CDR: length-prefixed sequence; serde side is a seq.
-                        SequenceSeed::new(ty, None, self.resolver)
-                            .deserialize(de)
-                            .map(Value::Sequence)
-                    }
-                }
-            },
-            Type::Complex(complex_ty) => {
-                let msg = self.resolver.resolve(complex_ty).ok_or_else(|| {
-                    de::Error::custom(format!("unknown ComplexType: {complex_ty:?}"))
-                })?;
-
-                MessageSeed::new(msg, self.resolver).deserialize(de)
+            ComplexType::Relative { name } => {
+                let full_name = if let Some(package) = message_package(&scope.name) {
+                    format!("{package}/{name}")
+                } else {
+                    name.clone()
+                };
+                self.absolute.get(&full_name).copied()
             }
         }
     }
 }
 
-// Sequence/array of elements.
-pub(super) struct SequenceSeed<'a, R: TypeResolver> {
-    elem: &'a Type,
-    fixed_len: Option<usize>,
-    resolver: &'a R,
-}
-
-impl<'a, R: TypeResolver> SequenceSeed<'a, R> {
-    pub fn new(elem: &'a Type, fixed_len: Option<usize>, resolver: &'a R) -> Self {
-        Self {
-            elem,
-            fixed_len,
-            resolver,
-        }
+/// Decode a CDR-encoded message into a [`Value`] by walking its [`MessageSpecification`].
+pub fn decode_message<BO: CdrEndian, R: TypeResolver>(
+    reader: &mut CdrReader<'_, BO>,
+    spec: &MessageSpecification,
+    resolver: &R,
+) -> Result<Value> {
+    let mut fields = BTreeMap::new();
+    for field in &spec.fields {
+        fields.insert(
+            field.name.clone(),
+            decode_value(reader, spec, &field.ty, resolver)?,
+        );
     }
+    Ok(Value::Message(fields))
 }
 
-impl<'de, R: TypeResolver> DeserializeSeed<'de> for SequenceSeed<'_, R> {
-    type Value = Vec<Value>;
+fn decode_value<BO: CdrEndian, R: TypeResolver>(
+    reader: &mut CdrReader<'_, BO>,
+    scope: &MessageSpecification,
+    ty: &Type,
+    resolver: &R,
+) -> Result<Value> {
+    match ty {
+        Type::BuiltIn(builtin) => decode_scalar(reader, builtin),
 
-    fn deserialize<D>(self, de: D) -> Result<Self::Value, D::Error>
-    where
-        D: de::Deserializer<'de>,
-    {
-        match self.fixed_len {
-            Some(len) => de.deserialize_tuple(
-                len,
-                SequenceVisitor {
-                    elem: self.elem,
-                    fixed_len: Some(len),
-                    type_resolver: self.resolver,
-                },
-            ),
-            None => de.deserialize_seq(SequenceVisitor {
-                elem: self.elem,
-                fixed_len: None,
-                type_resolver: self.resolver,
-            }),
-        }
-    }
-}
+        Type::Array { ty, size } => {
+            let count = match size {
+                ArraySize::Fixed(len) => *len,
+                ArraySize::Bounded(_) | ArraySize::Unbounded => reader.read_sequence_length()?,
+            };
+            let fixed = matches!(size, ArraySize::Fixed(_));
+            let elem = ty.as_ref();
 
-struct SequenceVisitor<'a, R: TypeResolver> {
-    elem: &'a Type,
-    fixed_len: Option<usize>,
-    type_resolver: &'a R,
-}
-
-impl<'de, R: TypeResolver> serde::de::Visitor<'de> for SequenceVisitor<'_, R> {
-    type Value = Vec<Value>;
-
-    fn expecting(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "cdr-encoded sequence/array")
-    }
-
-    fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
-    where
-        A: serde::de::SeqAccess<'de>,
-    {
-        let len = self.fixed_len.or_else(|| seq.size_hint());
-        let mut out = Vec::with_capacity(len.unwrap_or(0));
-
-        if let Some(len) = len {
-            for _ in 0..len {
-                let v = seq
-                    .next_element_seed(SchemaSeed::new(self.elem, self.type_resolver))?
-                    .ok_or_else(|| serde::de::Error::custom("short sequence"))?;
-                out.push(v);
+            if let Type::BuiltIn(builtin) = elem {
+                let array = decode_primitive_array(reader, builtin, count)?;
+                Ok(if fixed {
+                    Value::PrimitiveArray(array)
+                } else {
+                    Value::PrimitiveSeq(array)
+                })
+            } else {
+                let mut values = Vec::with_capacity(count);
+                for _ in 0..count {
+                    values.push(decode_value(reader, scope, elem, resolver)?);
+                }
+                Ok(if fixed {
+                    Value::Array(values)
+                } else {
+                    Value::Sequence(values)
+                })
             }
-        } else {
-            // Fallback for truly unbounded streams
-            while let Some(v) =
-                seq.next_element_seed(SchemaSeed::new(self.elem, self.type_resolver))?
+        }
+
+        Type::Complex(complex) => {
+            let msg = resolver
+                .resolve(scope, complex)
+                .ok_or_else(|| Error::Custom(format!("unknown ComplexType: {complex:?}")))?;
+
+            // Some ROS2 schemas model enums as separate messages containing only constants.
+            // On the wire, fields of those types are encoded as a single primitive value.
+            match msg
+                .underlying_type_if_enum_like()
+                .map_err(|err| Error::Custom(err.to_string()))?
             {
-                out.push(v);
+                Some(builtin) => decode_scalar(reader, builtin),
+                None => decode_message(reader, msg, resolver),
             }
         }
-        Ok(out)
     }
+}
+
+fn decode_scalar<BO: CdrEndian>(reader: &mut CdrReader<'_, BO>, ty: &BuiltInType) -> Result<Value> {
+    Ok(match ty {
+        BuiltInType::Bool => Value::Bool(reader.read_bool()?),
+        BuiltInType::Byte | BuiltInType::Char | BuiltInType::UInt8 => Value::U8(reader.read_u8()?),
+        BuiltInType::Int8 => Value::I8(reader.read_i8()?),
+        BuiltInType::Int16 => Value::I16(reader.read_i16()?),
+        BuiltInType::UInt16 => Value::U16(reader.read_u16()?),
+        BuiltInType::Int32 => Value::I32(reader.read_i32()?),
+        BuiltInType::UInt32 => Value::U32(reader.read_u32()?),
+        BuiltInType::Int64 => Value::I64(reader.read_i64()?),
+        BuiltInType::UInt64 => Value::U64(reader.read_u64()?),
+        BuiltInType::Float32 => Value::F32(reader.read_f32()?),
+        BuiltInType::Float64 => Value::F64(reader.read_f64()?),
+        BuiltInType::String(_) => Value::String(reader.read_string()?),
+        // `wstring` is UTF-16 on the wire, a different layout than `string`. Decoding it as UTF-8
+        // would corrupt the rest of the message, so reject it. Channels with `wstring` are normally
+        // kept as raw data before reaching here.
+        BuiltInType::WString(_) => {
+            return Err(Error::Custom(
+                "ROS 2 `wstring` decoding is not supported".to_owned(),
+            ));
+        }
+    })
+}
+
+fn decode_primitive_array<BO: CdrEndian>(
+    reader: &mut CdrReader<'_, BO>,
+    elem: &BuiltInType,
+    count: usize,
+) -> Result<PrimitiveArray> {
+    Ok(match elem {
+        BuiltInType::Bool => PrimitiveArray::Bool(
+            (0..count)
+                .map(|_| reader.read_bool())
+                .collect::<Result<_>>()?,
+        ),
+        BuiltInType::Byte | BuiltInType::Char | BuiltInType::UInt8 => {
+            PrimitiveArray::U8(reader.read_numeric_vec(count)?)
+        }
+        BuiltInType::Int8 => PrimitiveArray::I8(reader.read_numeric_vec(count)?),
+        BuiltInType::Int16 => PrimitiveArray::I16(reader.read_numeric_vec(count)?),
+        BuiltInType::UInt16 => PrimitiveArray::U16(reader.read_numeric_vec(count)?),
+        BuiltInType::Int32 => PrimitiveArray::I32(reader.read_numeric_vec(count)?),
+        BuiltInType::UInt32 => PrimitiveArray::U32(reader.read_numeric_vec(count)?),
+        BuiltInType::Int64 => PrimitiveArray::I64(reader.read_numeric_vec(count)?),
+        BuiltInType::UInt64 => PrimitiveArray::U64(reader.read_numeric_vec(count)?),
+        BuiltInType::Float32 => PrimitiveArray::F32(reader.read_numeric_vec(count)?),
+        BuiltInType::Float64 => PrimitiveArray::F64(reader.read_numeric_vec(count)?),
+        BuiltInType::String(_) => PrimitiveArray::String(
+            (0..count)
+                .map(|_| reader.read_string())
+                .collect::<Result<_>>()?,
+        ),
+        BuiltInType::WString(_) => {
+            return Err(Error::Custom(
+                "ROS 2 `wstring` decoding is not supported".to_owned(),
+            ));
+        }
+    })
 }

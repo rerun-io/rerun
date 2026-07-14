@@ -7,7 +7,9 @@ Rerun comes with the ability to get data out of Rerun from code. This page provi
 
 ## Starting a server with recordings
 
-The first step to query data is to start a server and load it with a dataset containing your recording.
+The first step to query data is to start a catalog server and load it with a dataset containing your recording.
+
+See the [catalog object model](../../concepts/query-and-transform/catalog-object-model.md) docs for more details on how datasets are organized in Rerun.
 
 ```python
 import rerun as rr
@@ -21,12 +23,14 @@ with rr.server.Server(datasets={"my_dataset": ["recording.rrd"]}) as server:
 The server can host multiple datasets. Each dataset maps to either a list of `.rrd` files or a directory (which will be scanned for `.rrd` files):
 
 ```python
-with rr.server.Server(datasets={
-    # Explicit list of RRD files
-    "dataset1": ["recording1.rrd", "recording2.rrd"],
-    # Directory containing RRD files
-    "dataset2": "/path/to/recordings_dir",
-}) as server:
+with rr.server.Server(
+    datasets={
+        # Explicit list of RRD files
+        "dataset1": ["recording1.rrd", "recording2.rrd"],
+        # Directory containing RRD files
+        "dataset2": "/path/to/recordings_dir",
+    }
+) as server:
     client = server.client()
     # Access each dataset by name
     ds1 = client.get_dataset("dataset1")
@@ -77,8 +81,8 @@ The content of a dataset can be inspected using the `schema()` method:
 
 ```python
 schema = dataset.schema()
-schema.index_columns()        # list of all index columns (timelines)
-schema.component_columns()    # list of all component columns
+schema.index_columns()  # list of all index columns (timelines)
+schema.component_columns()  # list of all component columns
 ```
 
 ## Querying a dataset using `reader`

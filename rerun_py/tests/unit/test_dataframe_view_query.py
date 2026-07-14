@@ -155,6 +155,23 @@ def test_dataframe_query_property() -> None:
     )
 
 
+def test_entity_order() -> None:
+    query = DataframeQuery(
+        timeline="frame",
+        entity_order=["/entity/b", "/entity/a"],
+    )
+    assert query.entity_order == blueprint_components.ColumnOrderBatch(
+        blueprint_components.ColumnOrder(["/entity/b", "/entity/a"])
+    )
+
+
+def test_entity_order_none() -> None:
+    query = DataframeQuery(
+        timeline="frame",
+    )
+    assert query.entity_order is None
+
+
 def test_dataframe_query_property_explicit() -> None:
     query = DataframeQuery(
         timeline=blueprint_components.TimelineName("frame"),

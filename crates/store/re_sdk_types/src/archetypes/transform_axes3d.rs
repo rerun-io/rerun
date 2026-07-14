@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -30,7 +31,9 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// use rerun::AsComponents;
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_transform3d_axes").spawn()?;
+///     let rec =
+///         rerun::RecordingStreamBuilder::new("rerun_example_transform3d_axes")
+///             .spawn()?;
 ///
 ///     rec.set_time_sequence("step", 0);
 ///
@@ -47,17 +50,20 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///         rec.log(
 ///             "base/rotated",
 ///             &[
-///                 &rerun::Transform3D::new().with_rotation(rerun::RotationAxisAngle::new(
-///                     [1.0, 1.0, 1.0],
-///                     rerun::Angle::from_degrees(deg as f32),
-///                 )) as &dyn AsComponents,
+///                 &rerun::Transform3D::new().with_rotation(
+///                     rerun::RotationAxisAngle::new(
+///                         [1.0, 1.0, 1.0],
+///                         rerun::Angle::from_degrees(deg as f32),
+///                     ),
+///                 ) as &dyn AsComponents,
 ///                 &rerun::TransformAxes3D::new(0.5),
 ///             ],
 ///         )?;
 ///         rec.log(
 ///             "base/rotated/translated",
 ///             &[
-///                 &rerun::Transform3D::new().with_translation([2.0, 0.0, 0.0]) as &dyn AsComponents,
+///                 &rerun::Transform3D::new().with_translation([2.0, 0.0, 0.0])
+///                     as &dyn AsComponents,
 ///                 &rerun::TransformAxes3D::new(0.5),
 ///             ],
 ///         )?;
@@ -75,7 +81,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/transform3d_axes/574c482088e9d317b19127fc8bef957dbfd3abe8/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug, PartialEq, Default)]
+#[derive(Clone, Debug, PartialEq, Default, ::re_byte_size::SizeBytes)]
 pub struct TransformAxes3D {
     /// Visual length of the 3 axes.
     ///
@@ -93,11 +99,13 @@ impl TransformAxes3D {
     /// The corresponding component is [`crate::components::AxisLength`].
     #[inline]
     pub fn descriptor_axis_length() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.TransformAxes3D".into()),
-            component: "TransformAxes3D:axis_length".into(),
-            component_type: Some("rerun.components.AxisLength".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.TransformAxes3D".into()),
+                component: "TransformAxes3D:axis_length".into(),
+                component_type: Some("rerun.components.AxisLength".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::show_frame`].
@@ -105,11 +113,13 @@ impl TransformAxes3D {
     /// The corresponding component is [`crate::components::ShowLabels`].
     #[inline]
     pub fn descriptor_show_frame() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.TransformAxes3D".into()),
-            component: "TransformAxes3D:show_frame".into(),
-            component_type: Some("rerun.components.ShowLabels".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.TransformAxes3D".into()),
+                component: "TransformAxes3D:show_frame".into(),
+                component_type: Some("rerun.components.ShowLabels".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -138,7 +148,10 @@ impl TransformAxes3D {
 impl ::re_types_core::Archetype for TransformAxes3D {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.archetypes.TransformAxes3D".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.archetypes.TransformAxes3D"
+        )
     }
 
     #[inline]
@@ -329,12 +342,5 @@ impl TransformAxes3D {
     ) -> Self {
         self.show_frame = try_serialize_field(Self::descriptor_show_frame(), show_frame);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for TransformAxes3D {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.axis_length.heap_size_bytes() + self.show_frame.heap_size_bytes()
     }
 }

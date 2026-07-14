@@ -98,9 +98,12 @@ impl RenderDepthClouds {
                 .multiunzip();
 
             let mut builder = PointCloudBuilder::new(re_ctx);
-            builder
-                .batch("backprojected point cloud")
-                .add_points(&points, &radii, &colors, &[]);
+            builder.batch("backprojected point cloud").add_points_slow(
+                &points,
+                &radii,
+                &colors,
+                &[],
+            );
             builder.into_draw_data()?
         };
 
@@ -417,6 +420,7 @@ impl DepthTexture {
                     data: bytemuck::cast_slice(&data).into(),
                     format: wgpu::TextureFormat::R32Float.into(),
                     width_height: dimensions.to_array(),
+                    alpha_channel_usage: re_renderer::AlphaChannelUsage::Opaque,
                 },
             )
             .expect("Failed to create depth texture.");
@@ -445,7 +449,7 @@ impl AlbedoTexture {
         let mut rgba8 = vec![0; size * 4];
         spiral(dimensions).for_each(|(texcoords, d)| {
             let idx = ((texcoords.x + texcoords.y * dimensions.x) * 4) as usize;
-            rgba8[idx..idx + 4].copy_from_slice(re_renderer::colormap_turbo_srgb(d).as_slice());
+            rgba8[idx..idx + 4].copy_from_slice(re_renderer::colormap_turbo_srgba(d).as_slice());
         });
 
         let label = format!("albedo texture spiral {dimensions}");
@@ -459,6 +463,7 @@ impl AlbedoTexture {
                     data: bytemuck::cast_slice(&rgba8).into(),
                     format: wgpu::TextureFormat::Rgba8UnormSrgb.into(),
                     width_height: dimensions.to_array(),
+                    alpha_channel_usage: re_renderer::AlphaChannelUsage::Opaque,
                 },
             )
             .expect("Failed to create albedo texture.");

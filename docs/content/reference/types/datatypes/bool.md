@@ -8,7 +8,7 @@ A single boolean.
 
 ## Arrow datatype
 ```
-boolean
+Boolean
 ```
 
 ## API reference links
@@ -21,6 +21,6 @@ boolean
 
 * [`ClearIsRecursive`](../components/clear_is_recursive.md)
 * [`Interactive`](../components/interactive.md)
-* [`SeriesVisible`](../components/series_visible.md)
+* [`IsKeyframe`](../components/is_keyframe.md)
 * [`ShowLabels`](../components/show_labels.md)
 * [`Visible`](../components/visible.md)

@@ -4,32 +4,138 @@ import type { WebHandle, wasm_bindgen } from "./re_viewer";
 let get_wasm_bindgen: (() => typeof wasm_bindgen) | null = null;
 let _wasm_module: WebAssembly.Module | null = null;
 
+/**
+ * Feature-detect WebAssembly SIMD (`simd128`).
+ *
+ * The viewer .wasm is compiled with `-Ctarget-feature=+simd128`, so a browser
+ * without SIMD support will fail to instantiate the module with a cryptic
+ * `CompileError`. We probe up-front and surface a clear error instead.
+ *
+ * The probe is a minimal module that uses the `v128.any_true` instruction.
+ * Supported in: Chrome 91+, Firefox 89+, Safari 16.4+.
+ */
+function has_wasm_simd(): boolean {
+  try {
+    return WebAssembly.validate(new Uint8Array([
+      0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 96, 0, 1, 123, 3, 2, 1, 0,
+      10, 10, 1, 8, 0, 65, 0, 253, 15, 253, 98, 11,
+    ]));
+  } catch {
+    return false;
+  }
+}
+
+const UNSUPPORTED_BROWSER_MESSAGE =
+  "Your browser is too old to run the Rerun Viewer. " +
+  "The Viewer requires WebAssembly SIMD support, available in " +
+  "Chrome 91+, Firefox 89+, Safari 16.4+, or any modern Chromium-based browser. " +
+  "Please update your browser and try again.";
+
 async function fetch_viewer_js(base_url?: string): Promise<(() => typeof wasm_bindgen)> {
   // @ts-ignore
   return (await import("./re_viewer")).default;
 }
 
-async function fetch_viewer_wasm(base_url?: string): Promise<Response> {
+async function fetch_viewer_wasm(
+  base_url?: string,
+  on_progress?: (received: number, total: number | null) => void,
+): Promise<Response> {
   //!<INLINE-MARKER-OPEN>
-  if (base_url) {
-    return fetch(new URL("./re_viewer_bg.wasm", base_url))
-  } else {
-    return fetch(new URL("./re_viewer_bg.wasm", import.meta.url));
+  const url = base_url
+    ? new URL("./re_viewer_bg.wasm", base_url)
+    : new URL("./re_viewer_bg.wasm", import.meta.url);
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(
+      `Failed to fetch viewer Wasm: ${response.status} ${response.statusText}`,
+    );
   }
+  return wrap_fetch_with_progress(response, on_progress);
   //!<INLINE-MARKER-CLOSE>
 }
 
-async function load(base_url?: string): Promise<typeof wasm_bindgen.WebHandle> {
+/**
+ * Estimates total uncompressed bytes for progress display.
+ * This is a rough estimate — do NOT use for truncation detection.
+ */
+function estimate_total_bytes(response: Response): number | null {
+  // When served with `rerun-final-length`, use that (set by `re_web_viewer_server`).
+  const final_length = response.headers.get("rerun-final-length");
+  if (final_length != null) return parseInt(final_length, 10);
+
+  // When gzip-compressed, try the GCS uncompressed-size header.
+  if (response.headers.get("content-encoding") === "gzip") {
+    const uncompressed = response.headers.get("x-goog-meta-uncompressed-size");
+    if (uncompressed != null) return parseInt(uncompressed, 10);
+
+    // Fall back to content-length * 3 (good empirical approximation for gzip'd wasm).
+    const cl = response.headers.get("content-length");
+    if (cl != null) return parseInt(cl, 10) * 3;
+  }
+
+  // Uncompressed: content-length is the exact size.
+  const cl = response.headers.get("content-length");
+  if (cl != null) return parseInt(cl, 10);
+
+  return null;
+}
+
+/**
+ * Wraps a fetch response to track download progress.
+ */
+function wrap_fetch_with_progress(
+  response: Response,
+  on_progress?: (received: number, total: number | null) => void,
+): Response {
+  const total_bytes = estimate_total_bytes(response);
+
+  if (!response.body) return response;
+
+  let received = 0;
+  const body = response.body;
+  const tracked = new ReadableStream({
+    async start(controller) {
+      const reader = body.getReader();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        received += value.byteLength;
+        on_progress?.(received, total_bytes);
+        controller.enqueue(value);
+      }
+      controller.close();
+    },
+  });
+
+  return new Response(tracked, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: response.headers,
+  });
+}
+
+function format_mib(bytes: number): string {
+  return (bytes / (1024 * 1024)).toFixed(1) + " MiB";
+}
+
+async function load(
+  base_url?: string,
+  on_progress?: (received: number, total: number | null) => void,
+): Promise<typeof wasm_bindgen.WebHandle> {
+  if (!has_wasm_simd()) {
+    throw new Error(UNSUPPORTED_BROWSER_MESSAGE);
+  }
+
   // instantiate wbg globals+module for every invocation of `load`,
   // but don't load the JS/Wasm source every time
   if (!get_wasm_bindgen || !_wasm_module) {
     [get_wasm_bindgen, _wasm_module] = await Promise.all([
       fetch_viewer_js(base_url),
-      WebAssembly.compileStreaming(fetch_viewer_wasm(base_url)),
+      WebAssembly.compileStreaming(fetch_viewer_wasm(base_url, on_progress)),
     ]);
   }
   let bindgen = get_wasm_bindgen();
-  await bindgen(_wasm_module);
+  await bindgen({ module_or_path: _wasm_module });
   return class extends bindgen.WebHandle {
     free() {
       super.free();
@@ -53,6 +159,13 @@ export type Panel = "top" | "blueprint" | "selection" | "time";
 export type PanelState = "hidden" | "collapsed" | "expanded";
 export type Backend = "webgpu" | "webgl";
 export type VideoDecoder = "auto" | "prefer_software" | "prefer_hardware";
+
+export interface LoginOptions {
+  /** URL to redirect to after successful OAuth login (e.g. "/signed-in" or "https://example.com/signed-in"). */
+  signed_in_url: string;
+  /** URL to redirect to after logout (e.g. "/signed-out" or "https://example.com/signed-out"). */
+  signed_out_url: string;
+}
 
 // NOTE: When changing these options, consider how it affects the `web-viewer-react` package:
 //       - Should this option be exposed?
@@ -101,6 +214,40 @@ export interface WebViewerOptions {
    * enclosing notebook environment, it should be used to set the fallback token.
    */
   fallback_token?: string;
+
+  /**
+   * The color theme to use.
+   *
+   * If not set, the viewer uses the previously persisted theme preference or defaults to "system".
+   */
+  theme?: "dark" | "light" | "system";
+
+  /**
+   * Enable OAuth login in the viewer.
+   *
+   * When set, the viewer shows login UI and uses the provided URLs for OAuth redirects.
+   *
+   * To use this:
+   * 1. Host the `signed-in.html` and `signed-out.html` pages alongside your viewer.
+   *    Templates can be found at:
+   *    - https://github.com/rerun-io/rerun/blob/main/crates/viewer/re_web_viewer_server/web_viewer/signed-in.html
+   *    - https://github.com/rerun-io/rerun/blob/main/crates/viewer/re_web_viewer_server/web_viewer/signed-out.html
+   * 2. Set the URLs to those pages here.
+   * 3. Contact your Rerun representative to have the redirect URLs
+   *    and origin whitelisted in the OAuth configuration.
+   *
+   * When not set (default), login UI is hidden. Token-based auth still works.
+   */
+  login?: LoginOptions;
+}
+
+export interface WebViewerOpenOptions {
+  /**
+   * Whether Rerun should open an HTTP resource in "Following" mode when streaming.
+   *
+   * Defaults to `false`. Ignored for non-HTTP URLs.
+   */
+  follow_if_http?: boolean;
 }
 
 // `AppOptions` and `WebViewerOptions` must be compatible
@@ -300,6 +447,11 @@ function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/** Resolve a potentially relative URL against the current origin. */
+function resolveAbsoluteUrl(url: string): string {
+  return new URL(url, window.location.href).toString();
+}
+
 /**
  * Rerun Web Viewer
  *
@@ -309,7 +461,7 @@ function delay(ms: number) {
  * ```
  *
  * Data may be provided to the Viewer as:
- * - An HTTP file URL, e.g. `viewer.start("https://app.rerun.io/version/0.28.0/examples/dna.rrd")`
+ * - An HTTP file URL, e.g. `viewer.start("https://app.rerun.io/version/0.34.0/examples/dna.rrd")`
  * - A Rerun gRPC URL, e.g. `viewer.start("rerun+http://127.0.0.1:9876/proxy")`
  * - A stream of log messages, via {@link WebViewer.open_channel}.
  *
@@ -327,6 +479,7 @@ export class WebViewer {
   //       On failure, call `this.stop` to prevent a memory leak, then re-throw the error.
   #handle: WebHandle | null = null;
   #canvas: HTMLCanvasElement | null = null;
+  #loader: HTMLDivElement | null = null;
   #state: "ready" | "starting" | "stopped" = "stopped";
   #fullscreen = false;
   #allow_fullscreen = false;
@@ -342,11 +495,13 @@ export class WebViewer {
    * @param rrd URLs to `.rrd` files or gRPC connections to our SDK.
    * @param parent The element to attach the canvas onto.
    * @param options Web Viewer configuration.
+   * @param open_options Open options forwarded to the initial {@link WebViewer.open} call.
    */
   async start(
     rrd: string | string[] | null,
     parent: HTMLElement | null,
     options: WebViewerOptions | null,
+    open_options: WebViewerOpenOptions | null = null,
   ): Promise<void> {
     parent ??= document.body;
     options ??= {};
@@ -356,11 +511,43 @@ export class WebViewer {
 
     if (this.#state !== "stopped") return;
     this.#state = "starting";
+    this.#clearLoader();
 
     this.#canvas = document.createElement("canvas");
     this.#canvas.style.width = options.width ?? "640px";
     this.#canvas.style.height = options.height ?? "360px";
     parent.append(this.#canvas);
+
+    // Show loading progress bar
+    this.#loader = document.createElement("div");
+    this.#loader.innerHTML = `
+      <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; background-color: #1c1c1c; font-family: sans-serif; color: white;">
+        <div style="margin-bottom: 16px;">Loading Rerun\u2026</div>
+        <div style="width: 200px;">
+          <div style="background: #333; border-radius: 4px; height: 6px; overflow: hidden;">
+            <div class="rerun-progress-bar" style="background: white; height: 100%; width: 0%; transition: width 0.2s;"></div>
+          </div>
+          <div class="rerun-progress-text" style="margin-top: 6px; font-size: 12px; color: #999;"></div>
+        </div>
+      </div>
+    `;
+    this.#loader.style.position = "absolute";
+    this.#loader.style.inset = "0";
+    parent.style.position = "relative";
+    parent.append(this.#loader);
+
+    const progress_bar = this.#loader.querySelector(".rerun-progress-bar") as HTMLElement;
+    const progress_text = this.#loader.querySelector(".rerun-progress-text") as HTMLElement;
+
+    const on_progress = (received: number, total: number | null) => {
+      if (total != null && total > 0) {
+        const pct = Math.min((received / total) * 100, 100);
+        progress_bar.style.width = pct.toFixed(1) + "%";
+        progress_text.textContent = `${Math.round(pct)}%`;
+      } else {
+        progress_text.textContent = format_mib(received);
+      }
+    };
 
     // This yield appears to be necessary to ensure that the canvas is attached to the DOM
     // and visible. Without it we get occasionally get a panic about a failure to find a canvas
@@ -372,8 +559,18 @@ export class WebViewer {
       delete (options as any).base_url;
     }
 
-    let WebHandle_class = await load(base_url);
-    if (this.#state !== "starting") return;
+    let WebHandle_class: typeof wasm_bindgen.WebHandle;
+    try {
+      WebHandle_class = await load(base_url, on_progress);
+    } catch (e) {
+      this.#clearLoader();
+      this.#fail("Failed to load rerun", String(e));
+      throw e;
+    }
+    if (this.#state !== "starting") {
+      this.#clearLoader();
+      return;
+    }
 
     const fullscreen = this.#allow_fullscreen
       ? {
@@ -396,25 +593,51 @@ export class WebViewer {
       );
     }
 
+    const login = options.login
+      ? {
+          signed_in_url: resolveAbsoluteUrl(options.login.signed_in_url),
+          signed_out_url: resolveAbsoluteUrl(options.login.signed_out_url),
+        }
+      : undefined;
+
     this.#handle = new WebHandle_class({
       ...options,
+      login,
       fullscreen,
       on_viewer_event,
     });
     try {
       await this.#handle.start(this.#canvas);
     } catch (e) {
-      this.stop();
+      this.#clearLoader();
+      this.#fail("Failed to start", String(e));
       throw e;
     }
-    if (this.#state !== "starting") return;
+    if (this.#state !== "starting") {
+      this.#clearLoader();
+      return;
+    }
 
+    this.#clearLoader();
     this.#state = "ready";
     this.#dispatch_event("ready");
 
     if (rrd) {
-      this.open(rrd);
+      this.open(rrd, open_options ?? undefined);
     }
+
+    let self = this;
+
+    function check_for_panic() {
+      if (self.#handle?.has_panicked()) {
+        self.#fail("Rerun has crashed.", self.#handle?.panic_message());
+      } else {
+        let delay_ms = 1000;
+        setTimeout(check_for_panic, delay_ms);
+      }
+    }
+
+    check_for_panic();
 
     return;
   }
@@ -552,11 +775,8 @@ export class WebViewer {
    * The viewer must have been started via {@link WebViewer.start}.
    *
    * @param rrd URLs to `.rrd` files or gRPC connections to our SDK.
-   * @param options
-   *        - follow_if_http: Whether Rerun should open the resource in "Following" mode when streaming
-   *        from an HTTP url. Defaults to `false`. Ignored for non-HTTP URLs.
    */
-  open(rrd: string | string[], options: { follow_if_http?: boolean } = {}) {
+  open(rrd: string | string[], options: WebViewerOpenOptions = {}) {
     if (!this.#handle) {
       throw new Error(`attempted to open \`${rrd}\` in a stopped viewer`);
     }
@@ -566,7 +786,7 @@ export class WebViewer {
       try {
         this.#handle.add_receiver(url, options.follow_if_http);
       } catch (e) {
-        this.stop();
+        this.#fail("Failed to open recording", String(e));
         throw e;
       }
     }
@@ -589,7 +809,7 @@ export class WebViewer {
       try {
         this.#handle.remove_receiver(url);
       } catch (e) {
-        this.stop();
+        this.#fail("Failed to close recording", String(e));
         throw e;
       }
     }
@@ -609,6 +829,7 @@ export class WebViewer {
     this.#state = "stopped";
 
     this.#canvas?.remove();
+    this.#clearLoader();
 
     try {
       this.#handle?.destroy();
@@ -620,8 +841,47 @@ export class WebViewer {
 
     this.#canvas = null;
     this.#handle = null;
+    this.#loader = null;
     this.#fullscreen = false;
     this.#allow_fullscreen = false;
+  }
+
+  #fail(message: string, error_message?: string) {
+    console.error("WebViewer failure:", message, error_message);
+    if (this.canvas?.parentElement) {
+      const parent = this.canvas.parentElement;
+      parent.innerHTML = `
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: white; font-family: sans-serif; background-color: #1c1c1c;">
+          <h1 class="rerun-fail-message"></h1>
+          <pre class="rerun-fail-error" style="text-align: left; white-space: pre-wrap; word-break: break-word; max-width: 90vw;"></pre>
+          <button class="rerun-fail-clear-cache">Clear caches and reload</button>
+        </div>
+      `;
+
+      parent.querySelector(".rerun-fail-message")!.textContent = message;
+
+      const errorEl = parent.querySelector(".rerun-fail-error")!;
+      if (error_message) {
+        errorEl.textContent = error_message;
+      } else {
+        errorEl.remove();
+      }
+
+      parent.querySelector(".rerun-fail-clear-cache")!.addEventListener("click", async () => {
+        if ("caches" in window) {
+          const keys = await caches.keys();
+          await Promise.all(keys.map((key) => caches.delete(key)));
+        }
+        window.location.reload();
+      });
+    }
+
+    this.stop();
+  }
+
+  #clearLoader() {
+    this.#loader?.remove();
+    this.#loader = null;
   }
 
   /**
@@ -643,7 +903,7 @@ export class WebViewer {
     try {
       this.#handle.open_channel(id, channel_name);
     } catch (e) {
-      this.stop();
+      this.#fail("Failed to open channel", String(e));
       throw e;
     }
 
@@ -657,7 +917,7 @@ export class WebViewer {
       try {
         this.#handle.send_rrd_to_channel(id, data);
       } catch (e) {
-        this.stop();
+        this.#fail("Failed to send data", String(e));
         throw e;
       }
     };
@@ -672,7 +932,7 @@ export class WebViewer {
       try {
         this.#handle.send_table_to_channel(id, data);
       } catch (e) {
-        this.stop();
+        this.#fail("Failed to send table", String(e));
         throw e;
       }
     }
@@ -687,7 +947,7 @@ export class WebViewer {
       try {
         this.#handle.close_channel(id);
       } catch (e) {
-        this.stop();
+        this.#fail("Failed to close channel", String(e));
         throw e;
       }
     };
@@ -713,7 +973,7 @@ export class WebViewer {
     try {
       this.#handle.override_panel_state(panel, state);
     } catch (e) {
-      this.stop();
+      this.#fail("Failed to override panel state", String(e));
       throw e;
     }
   }
@@ -733,7 +993,7 @@ export class WebViewer {
     try {
       this.#handle.toggle_panel_overrides(value as boolean | undefined);
     } catch (e) {
-      this.stop();
+      this.#fail("Failed to toggle panel overrides", String(e));
       throw e;
     }
   }

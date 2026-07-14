@@ -29,17 +29,6 @@ env:
   RUSTFLAGS: --deny warnings
   RUSTDOCFLAGS: --deny warnings
 
-  # Disable the GHA backend (Github's 10GB storage) since we use our own GCS backend.
-  # See: https://github.com/marketplace/actions/sccache-action
-  SCCACHE_GHA_ENABLED: "false"
-
-  # Wrap every `rustc` invocation in `sccache`.
-  RUSTC_WRAPPER: "sccache"
-
-  # Not only `sccache` cannot cache incremental builds, it's counter-productive to generate all
-  # these incremental artifacts when running on CI.
-  CARGO_INCREMENTAL: "0"
-
 defaults:
   run:
     shell: bash --noprofile --norc -euo pipefail {0}
@@ -73,9 +62,9 @@ jobs:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
-      - uses: prefix-dev/setup-pixi@v0.9.1
+      - uses: prefix-dev/setup-pixi@v0.10.0
         with:
-          pixi-version: v0.55.0
+          pixi-version: v0.71.3
 
       - name: Add SHORT_SHA env property with commit short sha
         run: echo "SHORT_SHA=`echo ${{github.sha}} | cut -c1-7`" >> $GITHUB_ENV
@@ -100,7 +89,7 @@ jobs:
 
       # TODO(jleibs) make this whole thing a python script
       - name: "Upload bench to GCS based on SHA"
-        uses: google-github-actions/upload-cloud-storage@v2
+        uses: google-github-actions/upload-cloud-storage@v3
         with:
           path: /tmp/${{ env.SHORT_SHA }}
           destination: "rerun-builds/benches/"
@@ -121,7 +110,7 @@ jobs:
 
       - name: "Upload bench-results to GCS"
         if: ${{ inputs.COMPARE_TO != '' }}
-        uses: google-github-actions/upload-cloud-storage@v2
+        uses: google-github-actions/upload-cloud-storage@v3
         with:
           path: /tmp/bench_results.txt
           destination: "rerun-builds/commit/${{env.SHORT_SHA}}/"
@@ -134,7 +123,7 @@ jobs:
       # Don't upload the new named bench until the end in case the names are the same
       - name: "Upload named bench to GCS"
         if: ${{ inputs.BENCH_NAME != '' }}
-        uses: google-github-actions/upload-cloud-storage@v2
+        uses: google-github-actions/upload-cloud-storage@v3
         with:
           path: /tmp/${{ inputs.BENCH_NAME }}
           destination: "rerun-builds/benches/"

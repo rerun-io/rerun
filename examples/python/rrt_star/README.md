@@ -68,7 +68,11 @@ rr.log("map/new/new_edge", rr.LineStrips2D([(closest_node.pos, new_point)], colo
 
 #### Vertices
 ```python
-rr.log("map/tree/vertices", rr.Points2D([node.pos for node in tree], radii=0.002), rr.AnyValues(cost=[float(node.cost) for node in tree]))
+rr.log(
+    "map/tree/vertices",
+    rr.Points2D([node.pos for node in tree], radii=0.002),
+    rr.AnyValues(cost=[float(node.cost) for node in tree]),
+)
 ```
 
 #### Close nodes

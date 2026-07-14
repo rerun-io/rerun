@@ -32,13 +32,6 @@ pub use self::rustfmt::rustfmt_str;
 
 // ------------------
 
-/// Should we export the build datetime for developers in the workspace?
-///
-/// It will be visible in analytics, in the viewer's about-menu, and with `rerun --version`.
-///
-/// To do so accurately may incur unnecessary recompiles, so only turn this on if you really need it.
-const EXPORT_BUILD_TIME_FOR_DEVELOPERS: bool = false;
-
 /// Should we export the current git hash/branch for developers in the workspace?
 ///
 /// It will be visible in analytics, in the viewer's about-menu, and with `rerun --version`.
@@ -131,11 +124,11 @@ pub fn export_build_info_vars_for_crate(crate_name: &str) {
     let export_datetime = match environment {
         Environment::PublishingCrates | Environment::RerunCI | Environment::CondaBuild => true,
 
-        Environment::DeveloperInWorkspace => EXPORT_BUILD_TIME_FOR_DEVELOPERS,
-
         // Datetime won't always be accurate unless we rebuild as soon as a dependency changes,
-        // and we don't want to add that burden to our users.
-        Environment::UsedAsDependency => false,
+        // and we don't want to add that burden to our users. Thus, it's off by default.
+        Environment::DeveloperInWorkspace | Environment::UsedAsDependency => {
+            is_tracked_env_var_set("RERUN_ADD_BUILD_TIME_TO_BUILD_INFO")
+        }
     };
 
     let export_git_info = match environment {

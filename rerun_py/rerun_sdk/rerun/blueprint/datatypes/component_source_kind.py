@@ -28,6 +28,9 @@ class ComponentSourceKind(Enum):
     Use an explicit selection defined by `source_component`.
 
     May or may not make use of a selector string.
+
+    If the source component is not found on the entity,
+    a heuristically determined value will be used instead.
     """
 
     Override = 2
@@ -36,13 +39,18 @@ class ComponentSourceKind(Enum):
 
     The override value is stored on the same entity as the visualizer instruction
     and uses the `target` as its component name.
+
+    If there is no override value with the target component name,
+    a heuristically determined value will be used instead.
     """
 
     Default = 3
-    """Default as specified on the view's blueprint."""
+    """
+    Default as specified on the view's blueprint.
 
-    Fallback = 4
-    """Make use of the viewer's fallback logic to produce a value."""
+    If the view doesn't specify a default for the target component name,
+    a heuristically determined value will be used instead.
+    """
 
     @classmethod
     def auto(cls, val: str | int | ComponentSourceKind) -> ComponentSourceKind:
@@ -67,18 +75,14 @@ class ComponentSourceKind(Enum):
 
 ComponentSourceKindLike = (
     ComponentSourceKind
-    | Literal[
-        "Default", "Fallback", "Override", "SourceComponent", "default", "fallback", "override", "sourcecomponent"
-    ]
+    | Literal["Default", "Override", "SourceComponent", "default", "override", "sourcecomponent"]
     | int
 )
 """A type alias for any ComponentSourceKind-like object."""
 
 ComponentSourceKindArrayLike = (
     ComponentSourceKind
-    | Literal[
-        "Default", "Fallback", "Override", "SourceComponent", "default", "fallback", "override", "sourcecomponent"
-    ]
+    | Literal["Default", "Override", "SourceComponent", "default", "override", "sourcecomponent"]
     | int
     | Sequence[ComponentSourceKindLike]
 )
@@ -93,6 +97,6 @@ class ComponentSourceKindBatch(BaseBatch[ComponentSourceKindArrayLike]):
         if isinstance(data, (ComponentSourceKind, int, str)):
             data = [data]
 
-        pa_data = [ComponentSourceKind.auto(v).value if v is not None else None for v in data]  # type: ignore[redundant-expr]
+        pa_data = [ComponentSourceKind.auto(v).value if v is not None else None for v in data]  # type: ignore[redundant-expr]  # ty: ignore[not-iterable]
 
         return pa.array(pa_data, type=data_type)

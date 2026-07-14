@@ -21,10 +21,15 @@
 
 /// All Rerun C++ types and functions are in the `rerun` namespace or one of its nested namespaces.
 namespace rerun {
-    /// When an external [`DataLoader`] is asked to load some data that it doesn't know how to load, it
+    /// When an external [`Importer`] is asked to import some data that it doesn't know how to handle, it
     /// should exit with this exit code.
     // NOTE: Always keep in sync with other languages.
-    const int EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE = 66;
+    constexpr int EXTERNAL_IMPORTER_INCOMPATIBLE_EXIT_CODE = 66;
+
+    /// \deprecated Deprecated since 0.32.0. Use `EXTERNAL_IMPORTER_INCOMPATIBLE_EXIT_CODE` instead.
+    [[deprecated("Deprecated since 0.32.0. Use EXTERNAL_IMPORTER_INCOMPATIBLE_EXIT_CODE instead."
+    )]] constexpr int EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE =
+        EXTERNAL_IMPORTER_INCOMPATIBLE_EXIT_CODE;
 
     // Archetypes are the quick-and-easy default way of logging data to Rerun.
     // Make them available in the rerun namespace.
@@ -33,17 +38,23 @@ namespace rerun {
     // Also import any component or datatype that has a unique name:
     using components::AlbedoFactor;
     using components::Color;
+    using components::Colormap;
     using components::FillMode;
     using components::GeoLineString;
+    using components::GraphType;
     using components::HalfSize2D;
     using components::HalfSize3D;
+    using components::ImageBuffer;
+    using components::KeyValuePairs;
     using components::LatLon;
     using components::LineStrip2D;
     using components::LineStrip3D;
+    using components::MarkerShape;
     using components::MediaType;
     using components::Position2D;
     using components::Position3D;
     using components::Radius;
+    using components::Scalar;
     using components::Text;
     using components::TextLogLevel;
     using components::TransformRelation;

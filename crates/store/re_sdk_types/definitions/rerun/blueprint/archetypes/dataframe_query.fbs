@@ -23,7 +23,20 @@ table DataframeQuery (
     /// Should empty cells be filled with latest-at queries?
     apply_latest_at: rerun.blueprint.components.ApplyLatestAt ("attr.rerun.component_optional", nullable, order: 400);
 
-    /// Selected columns. If unset, all columns are selected.
+    /// Selected columns. If unset, only the active timeline and all component columns are selected.
     select: rerun.blueprint.components.SelectedColumns ("attr.rerun.component_optional", nullable, order: 500);
-}
 
+    /// The order of entity path column groups. If unset, the default order is used.
+    ///
+    /// This affects the order of component columns, which are always grouped by entity path. Timeline columns always
+    /// come first. Entities not listed here are appended at the end in default order.
+    ///
+    /// If `entity_order` contains any entity path that is not included in the view, they are ignored.
+    entity_order: rerun.blueprint.components.ColumnOrder ("attr.rerun.component_optional", nullable, order: 600);
+
+    /// Whether to auto-scroll to track the time cursor.
+    ///
+    /// When enabled and the view's timeline matches the time panel's active timeline,
+    /// the view will scroll to keep the row at or before the current time cursor visible.
+    auto_scroll: rerun.blueprint.components.AutoScroll ("attr.rerun.component_optional", nullable, order: 700);
+}

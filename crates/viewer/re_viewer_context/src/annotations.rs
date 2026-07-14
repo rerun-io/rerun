@@ -13,7 +13,7 @@ use re_sdk_types::archetypes;
 use re_sdk_types::components::AnnotationContext;
 use re_sdk_types::datatypes::{AnnotationInfo, ClassDescription, ClassId, KeypointId, Utf8};
 
-use super::{ViewerContext, auto_color_egui};
+use super::auto_color_egui;
 
 const MISSING_ROW_ID: RowId = RowId::ZERO;
 
@@ -52,6 +52,9 @@ impl Annotations {
         }
     }
 
+    /// The [`RowId`] of the annotation context that was used to create this [`Annotations`].
+    ///
+    /// This can be used as a cache key to determine if the annotation context has changed.
     #[inline]
     pub fn row_id(&self) -> RowId {
         self.row_id
@@ -128,7 +131,7 @@ impl ResolvedClassDescription<'_> {
 
 // ----------------------------------------------------------------------------
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, re_byte_size::SizeBytes)]
 pub struct ResolvedAnnotationInfo {
     pub class_id: Option<ClassId>,
     pub annotation_info: Option<AnnotationInfo>,
@@ -180,6 +183,7 @@ impl ResolvedAnnotationInfo {
 
 /// Many [`ResolvedAnnotationInfo`], with optimization
 /// for a common case where they are all the same.
+#[derive(re_byte_size::SizeBytes)]
 pub enum ResolvedAnnotationInfos {
     /// All the same
     Same(usize, ResolvedAnnotationInfo),
@@ -224,26 +228,22 @@ impl AnnotationMap {
     /// For each passed [`EntityPath`], walk up the tree and find the nearest ancestor
     ///
     /// An entity is considered its own (nearest) ancestor.
-    pub fn load(&mut self, ctx: &ViewerContext<'_>, time_query: &LatestAtQuery) {
+    pub fn load(&mut self, db: &re_entity_db::EntityDb, time_query: &LatestAtQuery) {
         re_tracing::profile_function!();
 
         let entities_with_annotation_context =
-            AnnotationContextStoreSubscriber::access(ctx.recording().store_id(), |entities| {
-                entities.clone()
-            })
-            .unwrap_or_default();
+            AnnotationContextStoreSubscriber::access(db.store_id(), |entities| entities.clone())
+                .unwrap_or_default();
 
         // Load current annotations.
         // (order doesn't matter, we're feeding into another hashmap)
         #[expect(clippy::iter_over_hash_type)]
         for entity in entities_with_annotation_context {
-            if let Some(((_time, row_id), ann_ctx)) =
-                ctx.recording().latest_at_component::<AnnotationContext>(
-                    &entity,
-                    time_query,
-                    archetypes::AnnotationContext::descriptor_context().component,
-                )
-            {
+            if let Some(((_time, row_id), ann_ctx)) = db.latest_at_component::<AnnotationContext>(
+                &entity,
+                time_query,
+                archetypes::AnnotationContext::descriptor_context().component,
+            ) {
                 let annotations = Annotations {
                     row_id,
                     class_map: ann_ctx
@@ -301,6 +301,13 @@ impl AnnotationContextStoreSubscriber {
     pub fn subscription_handle() -> ChunkStoreSubscriberHandle {
         static SUBSCRIPTION: OnceLock<ChunkStoreSubscriberHandle> = OnceLock::new();
         *SUBSCRIPTION.get_or_init(ChunkStore::register_per_store_subscriber::<Self>)
+    }
+}
+
+impl re_byte_size::MemUsageTreeCapture for AnnotationContextStoreSubscriber {
+    fn capture_mem_usage_tree(&self) -> re_byte_size::MemUsageTree {
+        use re_byte_size::SizeBytes as _;
+        re_byte_size::MemUsageTree::Bytes(self.entities_with_annotation_context.total_size_bytes())
     }
 }
 

@@ -1,11 +1,23 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 
-use arrow::array::{ArrayRef, RecordBatch, RecordBatchOptions};
+use arrow::array::{ArrayRef, RecordBatch, RecordBatchOptions, UInt64Array};
 use arrow::datatypes::{Field, Schema, SchemaBuilder};
 use itertools::Itertools as _;
 
 use crate::MissingColumnError;
+
+/// Takes rows from a [`RecordBatch`] at the specified indices.
+///
+/// This is a convenience wrapper around [`arrow::compute::take_record_batch`]
+/// that accepts `usize` indices instead of requiring a specific Arrow array type.
+pub fn take_record_batch(
+    batch: &RecordBatch,
+    indices: &[usize],
+) -> Result<RecordBatch, arrow::error::ArrowError> {
+    let indices: UInt64Array = indices.iter().map(|&i| i as u64).collect();
+    arrow::compute::take_record_batch(batch, &indices)
+}
 
 // ---
 
@@ -19,6 +31,8 @@ pub fn concat_polymorphic_batches(batches: &[RecordBatch]) -> arrow::error::Resu
     if batches.is_empty() {
         return Ok(RecordBatch::new_empty(Arc::new(Schema::empty())));
     }
+
+    re_tracing::profile_function!();
 
     let schema_merged = {
         let mut schema_builder = SchemaBuilder::new();
@@ -199,14 +213,12 @@ impl RecordBatchExt for RecordBatch {
         let (schema_ref, columns, row_count) = self.into_parts();
         let Schema { fields, metadata } = Arc::unwrap_or_clone(schema_ref);
 
-        let (fields, columns): (Vec<_>, Vec<_>) = fields
-            .iter()
-            .map(Arc::clone)
-            .zip(columns)
-            .sorted_by(|(left_field, _), (right_field, _)| {
-                cmp_fn(left_field.as_ref(), right_field.as_ref())
-            })
-            .unzip();
+        let (fields, columns): (Vec<_>, Vec<_>) =
+            std::iter::zip(fields.iter().map(Arc::clone), columns)
+                .sorted_by(|(left_field, _), (right_field, _)| {
+                    cmp_fn(left_field.as_ref(), right_field.as_ref())
+                })
+                .unzip();
 
         Self::try_new_with_options(
             Arc::new(Schema::new_with_metadata(fields, metadata)),
@@ -222,12 +234,10 @@ impl RecordBatchExt for RecordBatch {
         let (schema_ref, columns, row_count) = self.into_parts();
         let Schema { fields, metadata } = Arc::unwrap_or_clone(schema_ref);
 
-        let (new_fields, new_columns): (Vec<_>, Vec<_>) = fields
-            .iter()
-            .map(Arc::clone)
-            .zip(columns)
-            .filter(|(field, _)| predicate(field))
-            .unzip();
+        let (new_fields, new_columns): (Vec<_>, Vec<_>) =
+            std::iter::zip(fields.iter().map(Arc::clone), columns)
+                .filter(|(field, _)| predicate(field))
+                .unzip();
 
         Self::try_new_with_options(
             Arc::new(Schema::new_with_metadata(new_fields, metadata)),
@@ -486,7 +496,7 @@ mod tests {
         );
         batch_concat.schema_metadata_mut().clear();
 
-        insta::assert_debug_snapshot!(batch_concat, @r###"
+        insta::assert_debug_snapshot!(batch_concat, @r#"
         RecordBatch {
             schema: Schema {
                 fields: [
@@ -494,33 +504,21 @@ mod tests {
                         name: "col1",
                         data_type: Int32,
                         nullable: true,
-                        dict_id: 0,
-                        dict_is_ordered: false,
-                        metadata: {},
                     },
                     Field {
                         name: "col2",
                         data_type: Utf8,
                         nullable: true,
-                        dict_id: 0,
-                        dict_is_ordered: false,
-                        metadata: {},
                     },
                     Field {
                         name: "col3",
                         data_type: Boolean,
                         nullable: true,
-                        dict_id: 0,
-                        dict_is_ordered: false,
-                        metadata: {},
                     },
                     Field {
                         name: "col4",
                         data_type: UInt64,
                         nullable: true,
-                        dict_id: 0,
-                        dict_is_ordered: false,
-                        metadata: {},
                     },
                 ],
                 metadata: {},
@@ -553,7 +551,7 @@ mod tests {
             ],
             row_count: 3,
         }
-        "###);
+        "#);
     }
 
     #[test]

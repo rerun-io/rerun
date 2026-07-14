@@ -1,0 +1,37 @@
+use re_lenses::{CastTo, Lens, LensBuilderError, op};
+use re_lenses_core::Selector;
+use re_log_types::TimeType;
+use re_sdk_types::archetypes::Transform3D;
+
+use super::FOXGLOVE_TIMESTAMP;
+
+/// Creates a lens for [`foxglove.FrameTransforms`] messages.
+///
+/// [`foxglove.FrameTransforms`]: https://docs.foxglove.dev/docs/sdk/schemas/frame-transforms
+pub fn frame_transforms(time_type: TimeType) -> Result<Lens, LensBuilderError> {
+    Lens::scatter("foxglove.FrameTransforms:message")
+        .to_timeline(
+            FOXGLOVE_TIMESTAMP,
+            time_type,
+            Selector::parse(".transforms[].timestamp")?.pipe(op::timespec_to_nanos()),
+        )
+        .to_component(
+            Transform3D::descriptor_parent_frame(),
+            Selector::parse(".transforms[].parent_frame_id")?,
+        )
+        .to_component(
+            Transform3D::descriptor_child_frame(),
+            Selector::parse(".transforms[].child_frame_id")?,
+        )
+        .to_component_with_cast(
+            Transform3D::descriptor_translation(),
+            Selector::parse(".transforms[].translation | pack(.x!, .y!, .z!)")?,
+            CastTo::Auto,
+        )
+        .to_component_with_cast(
+            Transform3D::descriptor_quaternion(),
+            Selector::parse(".transforms[].rotation | pack(.x!, .y!, .z!, .w!)")?,
+            CastTo::Auto,
+        )
+        .build()
+}

@@ -3,11 +3,12 @@ use re_chunk::LatestAtQuery;
 use re_log_types::{EntityPath, Instance};
 use re_query::{clamped_zip_2x4, range_zip_1x4};
 use re_sdk_types::archetypes::GraphNodes;
+use re_sdk_types::blueprint::components::VisualizerInstructionId;
 use re_sdk_types::components::{
     Color, {self},
 };
-use re_sdk_types::{self, ArrowString, archetypes};
-use re_view::{DataResultQuery as _, RangeResultsExt as _};
+use re_sdk_types::{self, Archetype as _, ArrowString, archetypes};
+use re_view::{DataResultQuery as _, VisualizerInstructionQueryResults};
 use re_viewer_context::{
     self, IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery,
     ViewSystemExecutionError, ViewSystemIdentifier, VisualizerExecutionOutput, VisualizerQueryInfo,
@@ -17,9 +18,7 @@ use re_viewer_context::{
 use crate::graph::NodeId;
 
 #[derive(Default)]
-pub struct NodeVisualizer {
-    pub data: ahash::HashMap<EntityPath, NodeData>,
-}
+pub struct NodeVisualizer;
 
 pub const FALLBACK_RADIUS: f32 = 4.0;
 
@@ -46,13 +45,18 @@ pub struct NodeInstance {
     pub label: Label,
 }
 
+#[derive(Clone)]
 pub struct NodeData {
+    pub visualizer_instruction_id: VisualizerInstructionId,
     pub nodes: Vec<NodeInstance>,
 }
 
 impl IdentifiedViewSystem for NodeVisualizer {
     fn identifier() -> ViewSystemIdentifier {
-        "GraphNodes".into()
+        re_viewer_context::external::re_string_interner::intern_static!(
+            re_viewer_context::ViewSystemIdentifier,
+            "GraphNodes"
+        )
     }
 }
 
@@ -61,40 +65,49 @@ impl VisualizerSystem for NodeVisualizer {
         &self,
         _app_options: &re_viewer_context::AppOptions,
     ) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<archetypes::GraphNodes>()
+        VisualizerQueryInfo::single_required_component::<components::GraphNode>(
+            &archetypes::GraphNodes::descriptor_node_ids(),
+            &archetypes::GraphNodes::all_components(),
+        )
     }
 
     /// Populates the visualizer with data from the store.
     fn execute(
-        &mut self,
+        &self,
         ctx: &ViewContext<'_>,
         query: &ViewQuery<'_>,
         _context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
 
+        let output = VisualizerExecutionOutput::default();
+        let mut node_data: ahash::HashMap<EntityPath, NodeData> = ahash::HashMap::default();
+
         for (data_result, instruction) in query.iter_visualizer_instruction_for(Self::identifier())
         {
-            let results = data_result
+            // TODO(andreas): why not data_result.query_archetype_with_history
+            let latest_at_results = data_result
                 .latest_at_with_blueprint_resolved_data::<archetypes::GraphNodes>(
                     ctx,
                     &timeline_query,
                     Some(instruction),
                 );
+            let results = re_view::BlueprintResolvedResults::from((
+                timeline_query.clone(),
+                latest_at_results,
+            ));
+            let results = VisualizerInstructionQueryResults::new(instruction, &results, &output);
 
-            let all_nodes =
-                results.iter_as(query.timeline, GraphNodes::descriptor_node_ids().component);
-            let all_colors =
-                results.iter_as(query.timeline, GraphNodes::descriptor_colors().component);
-            let all_positions =
-                results.iter_as(query.timeline, GraphNodes::descriptor_positions().component);
-            let all_labels =
-                results.iter_as(query.timeline, GraphNodes::descriptor_labels().component);
-            let all_radii =
-                results.iter_as(query.timeline, GraphNodes::descriptor_radii().component);
+            let all_nodes = results.iter_required(GraphNodes::descriptor_node_ids().component);
+            let all_colors = results.iter_optional(GraphNodes::descriptor_colors().component);
+            let all_positions = results.iter_optional(GraphNodes::descriptor_positions().component);
+            let all_labels = results.iter_optional(GraphNodes::descriptor_labels().component);
+            let all_radii = results.iter_optional(GraphNodes::descriptor_radii().component);
             let show_label = results
-                .get_mono::<components::ShowLabels>(GraphNodes::descriptor_show_labels().component)
-                .is_none_or(bool::from);
+                .iter_optional(GraphNodes::descriptor_show_labels().component)
+                .slice::<bool>()
+                .next()
+                .is_none_or(|(_index, b)| !b.is_empty() && b.value(0));
 
             let data = range_zip_1x4(
                 all_nodes.slice::<String>(),
@@ -149,11 +162,16 @@ impl VisualizerSystem for NodeVisualizer {
                 })
                 .collect::<Vec<_>>();
 
-                self.data
-                    .insert(data_result.entity_path.clone(), NodeData { nodes });
+                node_data.insert(
+                    data_result.entity_path.clone(),
+                    NodeData {
+                        visualizer_instruction_id: instruction.id,
+                        nodes,
+                    },
+                );
             }
         }
 
-        Ok(VisualizerExecutionOutput::default())
+        Ok(output.with_visualizer_data(node_data))
     }
 }

@@ -18,7 +18,7 @@ table GeoLineStrings (
   // --- Required ---
 
   /// The line strings, expressed in [EPSG:4326](https://epsg.io/4326) coordinates (North/East-positive degrees).
-  line_strings: [rerun.components.GeoLineString] ("attr.rerun.component_required", order: 1000);
+  line_strings: [rerun.components.GeoLineString] ("attr.rerun.component_required", "attr.rerun.component_no_ui_edit", order: 1000);
 
   // --- Recommended ---
 

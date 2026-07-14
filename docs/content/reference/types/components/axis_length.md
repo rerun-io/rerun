@@ -11,7 +11,7 @@ The length of an axis in local units of the space.
 
 ## Arrow datatype
 ```
-float32
+Float32
 ```
 
 ## API reference links

@@ -104,6 +104,10 @@ struct MeshBatch {
     /// This can only ever be true if [`Self::draw_phase`] is [`DrawPhase::Transparent`].
     has_transparent_tint: bool,
 
+    /// Controls face culling for this batch during opaque/transparent drawing.
+    /// `None` means no culling (show both faces), matching `wgpu::PrimitiveState::cull_mode`.
+    cull_mode: Option<wgpu::Face>,
+
     /// Position of the batch in world space, used for distance sorting.
     position: glam::Vec3A,
 }
@@ -151,6 +155,10 @@ pub struct GpuMeshInstance {
 
     /// Picking layer id.
     pub picking_layer_id: PickingLayerId,
+
+    /// Controls face culling for this instance.
+    /// `None` means no culling (show both faces), matching `wgpu::PrimitiveState::cull_mode`.
+    pub cull_mode: Option<wgpu::Face>,
 }
 
 impl GpuMeshInstance {
@@ -162,11 +170,54 @@ impl GpuMeshInstance {
             additive_tint: Color32::BLACK,
             outline_mask_ids: OutlineMaskPreference::NONE,
             picking_layer_id: PickingLayerId::default(),
+            cull_mode: None,
         }
     }
 }
 
+/// Batch key: all properties that interrupt instancing.
+/// Instances sharing the same batch key can be draw their individual meshes in a single instanced draw call.
+#[derive(Clone, Copy, PartialEq, Eq)]
+struct BatchKey {
+    mesh_ptr: *const GpuMesh,
+    cull_mode: Option<wgpu::Face>,
+}
+
+impl PartialOrd for BatchKey {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for BatchKey {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        let Self {
+            mesh_ptr,
+            cull_mode,
+        } = self;
+
+        fn face_to_u32(face: Option<wgpu::Face>) -> u32 {
+            match face {
+                // All things equal, draw back faces first, then no-culling and then front faces.
+                // (this is a _cull_ mode, so it specifies which faces to cull, not which to draw!)
+                Some(wgpu::Face::Front) => 0,
+                None => 1,
+                Some(wgpu::Face::Back) => 2,
+            }
+        }
+
+        mesh_ptr
+            .cmp(&other.mesh_ptr)
+            .then_with(|| face_to_u32(*cull_mode).cmp(&face_to_u32(other.cull_mode)))
+    }
+}
+
 impl MeshDrawData {
+    #[inline]
+    pub const fn gpu_instance_size_bytes() -> usize {
+        std::mem::size_of::<gpu_data::InstanceData>()
+    }
+
     /// Transforms and uploads mesh instance data to be consumed by gpu.
     ///
     /// Tries bundling all mesh instances into a single draw data instance whenever possible.
@@ -203,14 +254,15 @@ impl MeshDrawData {
         // NOTE: can't use HashMap here or we get undeterrministic rendering order.
         // See <https://github.com/rerun-io/rerun/issues/10116> for more.
         // Using a `BTreeMap` at least gives the same order every frame,
-        // but since it uses the pointer address as the key,
+        // but since it uses the pointer address as part of the key,
         // it will still change if we run the app multiple times.
-        let mut instances_by_mesh: BTreeMap<_, Vec<_>> = BTreeMap::new();
+        let mut instances_by_batch_key: BTreeMap<BatchKey, Vec<_>> = BTreeMap::new();
         for instance in instances {
-            instances_by_mesh
-                // Use pointer equality, this is enough to determine if two instances use the same mesh.
-                // (different mesh allocations have different gpu buffers internally, so they are by this definition not equal)
-                .entry(Arc::as_ptr(&instance.gpu_mesh))
+            instances_by_batch_key
+                .entry(BatchKey {
+                    mesh_ptr: Arc::as_ptr(&instance.gpu_mesh),
+                    cull_mode: instance.cull_mode,
+                })
                 .or_insert_with(|| Vec::with_capacity(instances.len()))
                 .push((instance, EnumSet::<DrawPhase>::new())); // Draw phase is filled out later.
         }
@@ -227,7 +279,7 @@ impl MeshDrawData {
             )?;
 
             let mut num_processed_instances = 0;
-            for (_mesh_ptr, mut instances) in instances_by_mesh {
+            for (batch_key, mut instances) in instances_by_batch_key {
                 let Some(first_instance) = instances.first() else {
                     continue;
                 };
@@ -263,10 +315,10 @@ impl MeshDrawData {
                     // However, at this point it's really hard to bail out!
                     // Also, by skipping drawing here, we'd make the result worse as there would be no mesh draw calls that could be debugged.
                     let world_from_mesh_normal =
-                        if instance.world_from_mesh.matrix3.determinant() != 0.0 {
-                            instance.world_from_mesh.matrix3.inverse().transpose()
-                        } else {
+                        if instance.world_from_mesh.matrix3.determinant() == 0.0 {
                             glam::Mat3A::ZERO
+                        } else {
+                            instance.world_from_mesh.matrix3.inverse().transpose()
                         };
                     instance_buffer_staging.push(gpu_data::InstanceData {
                         world_from_mesh_row_0: world_from_mesh_mat3
@@ -300,6 +352,7 @@ impl MeshDrawData {
                             instance_range: instance_idx..(instance_idx + 1),
                             draw_phase: DrawPhase::Transparent,
                             has_transparent_tint: !instance.additive_tint.is_opaque(),
+                            cull_mode: batch_key.cull_mode,
                             position: instance.world_from_mesh.transform_point3a(mesh_center),
                         });
                     }
@@ -321,6 +374,7 @@ impl MeshDrawData {
                                 instance_range: instance_start..(instance_start + num_instances),
                                 draw_phase: phase,
                                 has_transparent_tint: false,
+                                cull_mode: batch_key.cull_mode,
                                 // Ordering isn't super important, so for many instances just pick the first as representative.
                                 position: chunk[0].0.world_from_mesh.transform_point3a(mesh_center),
                             });
@@ -338,6 +392,7 @@ impl MeshDrawData {
                         ..(num_processed_instances + instances.len() as u32),
                     draw_phase: DrawPhase::PickingLayer,
                     has_transparent_tint: false,
+                    cull_mode: batch_key.cull_mode,
                     // Ordering isn't super important, so for many instances just pick the first as representative.
                     position: first_instance
                         .world_from_mesh
@@ -363,12 +418,20 @@ impl MeshDrawData {
 
 pub struct MeshRenderer {
     rp_shaded: GpuRenderPipelineHandle,
+    rp_shaded_cull_back: GpuRenderPipelineHandle,
+    rp_shaded_cull_front: GpuRenderPipelineHandle,
 
     rp_shaded_alpha_blended_cull_back: GpuRenderPipelineHandle,
     rp_shaded_alpha_blended_cull_front: GpuRenderPipelineHandle,
 
     rp_picking_layer: GpuRenderPipelineHandle,
+    rp_picking_layer_cull_back: GpuRenderPipelineHandle,
+    rp_picking_layer_cull_front: GpuRenderPipelineHandle,
+
     rp_outline_mask: GpuRenderPipelineHandle,
+    rp_outline_mask_cull_back: GpuRenderPipelineHandle,
+    rp_outline_mask_cull_front: GpuRenderPipelineHandle,
+
     pub bind_group_layout: GpuBindGroupLayoutHandle,
 }
 
@@ -423,21 +486,21 @@ impl Renderer for MeshRenderer {
             &include_shader_module!("../../shader/instanced_mesh.wgsl"),
         );
 
-        // TODO(#1741): Make this configurable.
-        // Use GLTF convention right now.
+        // We always assume counter-clockwise faces as front.
         let front_face = wgpu::FrontFace::Ccw;
 
         let primitive = wgpu::PrimitiveState {
             topology: wgpu::PrimitiveTopology::TriangleList,
-            cull_mode: None, //Some(wgpu::Face::Back), // TODO(#1741): Need to specify from outside if mesh is CW or CCW?
+            cull_mode: None,
             front_face,
             ..Default::default()
         };
         // Put instance vertex buffer on slot 0 since it doesn't change for several draws.
-        let vertex_buffers: smallvec::SmallVec<[_; 4]> =
-            std::iter::once(gpu_data::InstanceData::vertex_buffer_layout())
-                .chain(mesh_vertices::vertex_buffer_layouts())
-                .collect();
+        let vertex_buffers: smallvec::SmallVec<[_; 4]> = std::iter::chain(
+            std::iter::once(gpu_data::InstanceData::vertex_buffer_layout()),
+            mesh_vertices::vertex_buffer_layouts(),
+        )
+        .collect();
 
         let rp_shaded_desc = RenderPipelineDesc {
             label: "MeshRenderer::rp_shaded".into(),
@@ -453,6 +516,28 @@ impl Renderer for MeshRenderer {
             multisample: ViewBuilder::main_target_default_msaa_state(ctx.render_config(), false),
         };
         let rp_shaded = render_pipelines.get_or_create(ctx, &rp_shaded_desc);
+        let rp_shaded_cull_back = render_pipelines.get_or_create(
+            ctx,
+            &RenderPipelineDesc {
+                label: "MeshRenderer::rp_shaded_cull_back".into(),
+                primitive: wgpu::PrimitiveState {
+                    cull_mode: Some(wgpu::Face::Back),
+                    ..primitive
+                },
+                ..rp_shaded_desc.clone()
+            },
+        );
+        let rp_shaded_cull_front = render_pipelines.get_or_create(
+            ctx,
+            &RenderPipelineDesc {
+                label: "MeshRenderer::rp_shaded_cull_front".into(),
+                primitive: wgpu::PrimitiveState {
+                    cull_mode: Some(wgpu::Face::Front),
+                    ..primitive
+                },
+                ..rp_shaded_desc.clone()
+            },
+        );
 
         let rp_shaded_alpha_blended_cull_back_desc = RenderPipelineDesc {
             label: "MeshRenderer::rp_shaded_alpha_blended_front".into(),
@@ -464,7 +549,6 @@ impl Renderer for MeshRenderer {
             depth_stencil: Some(ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE_NO_WRITE),
             primitive: wgpu::PrimitiveState {
                 cull_mode: Some(wgpu::Face::Back),
-                front_face,
                 ..primitive
             },
             ..rp_shaded_desc.clone()
@@ -482,35 +566,82 @@ impl Renderer for MeshRenderer {
         let rp_shaded_alpha_blended_cull_front =
             render_pipelines.get_or_create(ctx, &rp_shaded_alpha_blended_cull_front_desc);
 
-        let rp_picking_layer = render_pipelines.get_or_create(
+        let rp_picking_layer_desc = RenderPipelineDesc {
+            label: "MeshRenderer::rp_picking_layer".into(),
+            fragment_entrypoint: "fs_main_picking_layer".into(),
+            render_targets: smallvec![Some(PickingLayerProcessor::PICKING_LAYER_FORMAT.into())],
+            depth_stencil: PickingLayerProcessor::PICKING_LAYER_DEPTH_STATE,
+            multisample: PickingLayerProcessor::PICKING_LAYER_MSAA_STATE,
+            ..rp_shaded_desc.clone()
+        };
+        let rp_picking_layer = render_pipelines.get_or_create(ctx, &rp_picking_layer_desc);
+        let rp_picking_layer_cull_back = render_pipelines.get_or_create(
             ctx,
             &RenderPipelineDesc {
-                label: "MeshRenderer::rp_picking_layer".into(),
-                fragment_entrypoint: "fs_main_picking_layer".into(),
-                render_targets: smallvec![Some(PickingLayerProcessor::PICKING_LAYER_FORMAT.into())],
-                depth_stencil: PickingLayerProcessor::PICKING_LAYER_DEPTH_STATE,
-                multisample: PickingLayerProcessor::PICKING_LAYER_MSAA_STATE,
-                ..rp_shaded_desc.clone()
+                label: "MeshRenderer::rp_picking_layer_cull_back".into(),
+                primitive: wgpu::PrimitiveState {
+                    cull_mode: Some(wgpu::Face::Back),
+                    ..primitive
+                },
+                ..rp_picking_layer_desc.clone()
             },
         );
-        let rp_outline_mask = render_pipelines.get_or_create(
+        let rp_picking_layer_cull_front = render_pipelines.get_or_create(
             ctx,
             &RenderPipelineDesc {
-                label: "MeshRenderer::rp_outline_mask".into(),
-                fragment_entrypoint: "fs_main_outline_mask".into(),
-                render_targets: smallvec![Some(OutlineMaskProcessor::MASK_FORMAT.into())],
-                depth_stencil: OutlineMaskProcessor::MASK_DEPTH_STATE,
-                multisample: OutlineMaskProcessor::mask_default_msaa_state(ctx.device_caps().tier),
-                ..rp_shaded_desc
+                label: "MeshRenderer::rp_picking_layer_cull_front".into(),
+                primitive: wgpu::PrimitiveState {
+                    cull_mode: Some(wgpu::Face::Front),
+                    ..primitive
+                },
+                ..rp_picking_layer_desc
+            },
+        );
+
+        let rp_outline_mask_desc = RenderPipelineDesc {
+            label: "MeshRenderer::rp_outline_mask".into(),
+            fragment_entrypoint: "fs_main_outline_mask".into(),
+            render_targets: smallvec![Some(OutlineMaskProcessor::MASK_FORMAT.into())],
+            depth_stencil: OutlineMaskProcessor::MASK_DEPTH_STATE,
+            multisample: OutlineMaskProcessor::mask_default_msaa_state(ctx.device_caps().tier),
+            ..rp_shaded_desc
+        };
+        let rp_outline_mask = render_pipelines.get_or_create(ctx, &rp_outline_mask_desc);
+        let rp_outline_mask_cull_back = render_pipelines.get_or_create(
+            ctx,
+            &RenderPipelineDesc {
+                label: "MeshRenderer::rp_outline_mask_cull_back".into(),
+                primitive: wgpu::PrimitiveState {
+                    cull_mode: Some(wgpu::Face::Back),
+                    ..primitive
+                },
+                ..rp_outline_mask_desc.clone()
+            },
+        );
+        let rp_outline_mask_cull_front = render_pipelines.get_or_create(
+            ctx,
+            &RenderPipelineDesc {
+                label: "MeshRenderer::rp_outline_mask_cull_front".into(),
+                primitive: wgpu::PrimitiveState {
+                    cull_mode: Some(wgpu::Face::Front),
+                    ..primitive
+                },
+                ..rp_outline_mask_desc
             },
         );
 
         Self {
             rp_shaded,
+            rp_shaded_cull_back,
+            rp_shaded_cull_front,
             rp_shaded_alpha_blended_cull_back,
             rp_shaded_alpha_blended_cull_front,
             rp_picking_layer,
+            rp_picking_layer_cull_back,
+            rp_picking_layer_cull_front,
             rp_outline_mask,
+            rp_outline_mask_cull_back,
+            rp_outline_mask_cull_front,
             bind_group_layout,
         }
     }
@@ -524,15 +655,12 @@ impl Renderer for MeshRenderer {
     ) -> Result<(), DrawError> {
         re_tracing::profile_function!();
 
-        let pipeline_handle = match phase {
-            DrawPhase::OutlineMask => Some(self.rp_outline_mask),
-            DrawPhase::Opaque => Some(self.rp_shaded),
-            DrawPhase::PickingLayer => Some(self.rp_picking_layer),
-            DrawPhase::Transparent => None, // Handled later since we have to switch back and forth between front & back face culling.
+        match phase {
+            DrawPhase::Opaque
+            | DrawPhase::Transparent
+            | DrawPhase::PickingLayer
+            | DrawPhase::OutlineMask => {}
             _ => unreachable!("We were called on a phase we weren't subscribed to: {phase:?}"),
-        };
-        if let Some(pipeline_handle) = pipeline_handle {
-            pass.set_pipeline(render_pipelines.get(pipeline_handle)?);
         }
 
         for DrawInstruction {
@@ -576,6 +704,32 @@ impl Renderer for MeshRenderer {
                     wgpu::IndexFormat::Uint32,
                 );
 
+                // Set per-batch pipeline based on cull mode.
+                // For the transparent phase this is done per-material below.
+                if phase != DrawPhase::Transparent {
+                    let pipeline = match (phase, mesh_batch.cull_mode) {
+                        (DrawPhase::Opaque, None) => self.rp_shaded,
+                        (DrawPhase::Opaque, Some(wgpu::Face::Back)) => self.rp_shaded_cull_back,
+                        (DrawPhase::Opaque, Some(wgpu::Face::Front)) => self.rp_shaded_cull_front,
+                        (DrawPhase::PickingLayer, None) => self.rp_picking_layer,
+                        (DrawPhase::PickingLayer, Some(wgpu::Face::Back)) => {
+                            self.rp_picking_layer_cull_back
+                        }
+                        (DrawPhase::PickingLayer, Some(wgpu::Face::Front)) => {
+                            self.rp_picking_layer_cull_front
+                        }
+                        (DrawPhase::OutlineMask, None) => self.rp_outline_mask,
+                        (DrawPhase::OutlineMask, Some(wgpu::Face::Back)) => {
+                            self.rp_outline_mask_cull_back
+                        }
+                        (DrawPhase::OutlineMask, Some(wgpu::Face::Front)) => {
+                            self.rp_outline_mask_cull_front
+                        }
+                        _ => unreachable!(),
+                    };
+                    pass.set_pipeline(render_pipelines.get(pipeline)?);
+                }
+
                 for material in &mesh_batch.mesh.materials {
                     if phase == DrawPhase::Transparent
                         && !material.has_transparency
@@ -591,33 +745,39 @@ impl Renderer for MeshRenderer {
 
                     pass.set_bind_group(1, &material.bind_group, &[]);
 
-                    #[expect(clippy::branches_sharing_code)]
+                    let indices = material.index_range.clone();
+                    let instances = mesh_batch.instance_range.clone();
                     if phase == DrawPhase::Transparent {
-                        // First draw without front faces.
-                        pass.set_pipeline(
-                            render_pipelines.get(self.rp_shaded_alpha_blended_cull_front)?,
-                        );
-                        pass.draw_indexed(
-                            material.index_range.clone(),
-                            0,
-                            mesh_batch.instance_range.clone(),
-                        );
+                        match mesh_batch.cull_mode {
+                            None => {
+                                // Default two-pass: first cull front faces, then cull back faces.
+                                pass.set_pipeline(
+                                    render_pipelines
+                                        .get(self.rp_shaded_alpha_blended_cull_front)?,
+                                );
+                                pass.draw_indexed(indices.clone(), 0, instances.clone());
 
-                        // And then without back faces.
-                        pass.set_pipeline(
-                            render_pipelines.get(self.rp_shaded_alpha_blended_cull_back)?,
-                        );
-                        pass.draw_indexed(
-                            material.index_range.clone(),
-                            0,
-                            mesh_batch.instance_range.clone(),
-                        );
+                                pass.set_pipeline(
+                                    render_pipelines.get(self.rp_shaded_alpha_blended_cull_back)?,
+                                );
+                                pass.draw_indexed(indices, 0, instances);
+                            }
+                            Some(wgpu::Face::Back) => {
+                                pass.set_pipeline(
+                                    render_pipelines.get(self.rp_shaded_alpha_blended_cull_back)?,
+                                );
+                                pass.draw_indexed(indices, 0, instances);
+                            }
+                            Some(wgpu::Face::Front) => {
+                                pass.set_pipeline(
+                                    render_pipelines
+                                        .get(self.rp_shaded_alpha_blended_cull_front)?,
+                                );
+                                pass.draw_indexed(indices, 0, instances);
+                            }
+                        }
                     } else {
-                        pass.draw_indexed(
-                            material.index_range.clone(),
-                            0,
-                            mesh_batch.instance_range.clone(),
-                        );
+                        pass.draw_indexed(indices, 0, instances);
                     }
                 }
             }
@@ -640,16 +800,16 @@ fn instance_draw_phases(
         phases.insert(DrawPhase::OutlineMask);
     }
 
-    if !instance.additive_tint.is_opaque() {
-        // Everything is transparently tinted.
-        phases.insert(DrawPhase::Transparent);
-    } else {
+    if instance.additive_tint.is_opaque() {
         if any_material_transparent {
             phases.insert(DrawPhase::Transparent);
         }
         if !all_materials_transparent {
             phases.insert(DrawPhase::Opaque);
         }
+    } else {
+        // Everything is transparently tinted.
+        phases.insert(DrawPhase::Transparent);
     }
 
     phases
@@ -675,7 +835,7 @@ mod tests {
             glam::Vec3::new(-1.0, -1.0, 0.0),
             glam::Vec3::new(1.0, -1.0, 0.0),
         ];
-        let bbox = macaw::BoundingBox::from_points(vertex_positions.iter().copied());
+        let bbox = crate::util::bounding_box_from_points(vertex_positions.iter().copied());
         let cpu_mesh = CpuMesh {
             label: "test_mesh".into(),
             triangle_indices: vec![glam::UVec3::new(0, 1, 2)],
@@ -729,6 +889,7 @@ mod tests {
             additive_tint: Color32::WHITE,
             outline_mask_ids: OutlineMaskPreference::NONE,
             picking_layer_id: PickingLayerId::default(),
+            cull_mode: None,
         }
     }
 

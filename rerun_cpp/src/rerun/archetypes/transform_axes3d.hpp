@@ -26,7 +26,7 @@ namespace rerun::archetypes {
     /// ```cpp
     /// #include <rerun.hpp>
     ///
-    /// int main() {
+    /// int main(int argc, char* argv[]) {
     ///     const auto rec = rerun::RecordingStream("rerun_example_transform3d_axes");
     ///     rec.spawn().exit_on_failure();
     ///
@@ -39,10 +39,12 @@ namespace rerun::archetypes {
     ///
     ///         rec.log(
     ///             "base/rotated",
-    ///             rerun::Transform3D().with_rotation_axis_angle(rerun::RotationAxisAngle(
-    ///                 {1.0f, 1.0f, 1.0f},
-    ///                 rerun::Angle::degrees(static_cast<float>(deg))
-    ///             )),
+    ///             rerun::Transform3D().with_rotation_axis_angle(
+    ///                 rerun::RotationAxisAngle(
+    ///                     {1.0f, 1.0f, 1.0f},
+    ///                     rerun::Angle::degrees(static_cast<float>(deg))
+    ///                 )
+    ///             ),
     ///             rerun::TransformAxes3D(0.5)
     ///         );
     ///

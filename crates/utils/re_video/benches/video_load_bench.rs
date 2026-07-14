@@ -19,7 +19,6 @@ fn video_load(c: &mut Criterion) {
                     &video,
                     "video/mp4",
                     "Big_Buck_Bunny_1080_10s_av1.mp4",
-                    re_tuid::Tuid::new(),
                 )
             },
             criterion::BatchSize::LargeInput,

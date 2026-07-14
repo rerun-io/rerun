@@ -5,13 +5,14 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, ClassVar
 
 from attrs import define, field
 
 from ... import components, datatypes
 from ..._baseclasses import (
     Archetype,
+    ComponentDescriptor,
 )
 from ...blueprint import components as blueprint_components
 from ...error_utils import catch_and_log_exceptions
@@ -26,6 +27,8 @@ class SpatialInformation(Archetype):
 
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
+
+    NAME: ClassVar[str] = "rerun.blueprint.archetypes.SpatialInformation"
 
     def __init__(
         self: Any,
@@ -119,6 +122,30 @@ class SpatialInformation(Archetype):
     def cleared(cls) -> SpatialInformation:
         """Clear all the fields of a `SpatialInformation`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_target_frame() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "SpatialInformation:target_frame",
+            archetype=SpatialInformation.NAME,
+            component_type=components.TransformFrameIdBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_show_axes() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "SpatialInformation:show_axes",
+            archetype=SpatialInformation.NAME,
+            component_type=blueprint_components.EnabledBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_show_bounding_box() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "SpatialInformation:show_bounding_box",
+            archetype=SpatialInformation.NAME,
+            component_type=blueprint_components.EnabledBatch._COMPONENT_TYPE,
+        )
 
     target_frame: components.TransformFrameIdBatch | None = field(
         metadata={"component": True},

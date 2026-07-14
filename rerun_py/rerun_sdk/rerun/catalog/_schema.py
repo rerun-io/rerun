@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from collections.abc import Iterator, Sequence
 
+    from rerun._baseclasses import Archetype
     from rerun_bindings import (
         ComponentColumnDescriptor,
         ComponentColumnSelector,
@@ -27,7 +28,7 @@ class Schema:
 
         Parameters
         ----------
-        inner : SchemaInternal
+        inner:
             The internal schema object from the bindings.
 
         """
@@ -56,15 +57,61 @@ class Schema:
         """
         return self._internal.component_columns()
 
+    def archetypes(self, *, include_properties: bool = False) -> list[str]:
+        """
+        Return a list of all the archetypes in the schema.
+
+        Parameters
+        ----------
+        include_properties:
+            If `True`, archetypes used in properties are included.
+
+        """
+
+        archetypes = {col.archetype for col in self.component_columns() if include_properties or not col.is_property}
+        return sorted(a for a in archetypes if a is not None)
+
+    def component_types(self, *, include_properties: bool = False) -> list[str]:
+        """
+        Return a list of all the component types in the schema.
+
+        Parameters
+        ----------
+        include_properties:
+            If `True`, component types used in properties are included.
+
+        """
+
+        component_types = {
+            col.component_type for col in self.component_columns() if include_properties or not col.is_property
+        }
+        return sorted(comp for comp in component_types if comp is not None)
+
+    def entity_paths(self, *, include_properties: bool = False) -> list[str]:
+        """
+        Return a sorted list of all unique entity paths in the schema. By default, the properties are not included.
+
+        Parameters
+        ----------
+        include_properties:
+            If `True`, include property entities (`/__properties/*`)
+
+        """
+
+        entity_paths = {
+            col.entity_path for col in self.component_columns() if include_properties or not col.is_property
+        }
+        return sorted(entity_paths)
+
     def column_for(self, entity_path: str, component: str) -> ComponentColumnDescriptor | None:
         """
         Look up the column descriptor for a specific entity path and component.
 
         Parameters
         ----------
-        entity_path : str
+        entity_path:
             The entity path to look up.
-        component : str
+        component:
             The component to look up. Example: `Points3D:positions`.
 
         Returns
@@ -83,7 +130,7 @@ class Schema:
 
         Parameters
         ----------
-        selector : str | ComponentColumnSelector | ComponentColumnDescriptor
+        selector:
             The selector to look up.
 
             String arguments are expected to follow the format: `"<entity_path>:<component_type>"`
@@ -105,6 +152,80 @@ class Schema:
 
         """
         return self._internal.column_for_selector(selector)
+
+    def columns_for(
+        self,
+        *,
+        entity_path: str | None = None,
+        archetype: str | type[Archetype] | None = None,
+        component_type: str | None = None,
+        include_properties: bool = False,
+    ) -> list[ComponentColumnDescriptor]:
+        """
+        Return a filtered list of component columns matching the given criteria.
+
+        Parameters
+        ----------
+        entity_path:
+            If set, only return columns with this entity path.
+        archetype:
+            If set, only return columns with this archetype. Accepts a fully-qualified
+            archetype name (e.g., `"rerun.archetypes.Points3D"`), a short name
+            (e.g., `"Points3D"`), or an Archetype class (e.g., `rr.Points3D`).
+        component_type:
+            If set, only return columns with this component type.
+        include_properties:
+            If `True`, include property columns (`/__properties/*`).
+
+        """
+        from rerun._baseclasses import Archetype
+
+        if isinstance(archetype, type) and issubclass(archetype, Archetype):
+            archetype = archetype.archetype()
+
+        return [
+            col
+            for col in self.component_columns()
+            if (include_properties or not col.is_property)
+            and (entity_path is None or col.entity_path == entity_path)
+            and (archetype is None or _match_archetype(col.archetype, archetype))
+            and (component_type is None or col.component_type == component_type)
+        ]
+
+    def column_names_for(
+        self,
+        *,
+        entity_path: str | None = None,
+        archetype: str | type[Archetype] | None = None,
+        component_type: str | None = None,
+        include_properties: bool = False,
+    ) -> list[str]:
+        """
+        Return a list of column names matching the given criteria.
+
+        Parameters
+        ----------
+        entity_path:
+            If set, only return columns with this entity path.
+        archetype:
+            If set, only return columns with this archetype. Accepts a fully-qualified
+            archetype name (e.g., `"rerun.archetypes.Points3D"`), a short name
+            (e.g., `"Points3D"`), or an Archetype class (e.g., `rr.Points3D`).
+        component_type:
+            If set, only return columns with this component type.
+        include_properties:
+            If `True`, include property columns (`/__properties/*`).
+
+        """
+        return [
+            col.name
+            for col in self.columns_for(
+                entity_path=entity_path,
+                archetype=archetype,
+                component_type=component_type,
+                include_properties=include_properties,
+            )
+        ]
 
     def column_names(self) -> list[str]:
         """
@@ -130,3 +251,13 @@ class Schema:
 
     def __arrow_c_schema__(self) -> Any:
         return self._internal.__arrow_c_schema__()
+
+
+def _match_archetype(col_archetype: str | None, archetype: str) -> bool:
+    if col_archetype is None:
+        return False
+
+    if "." in archetype:
+        return col_archetype == archetype
+
+    return col_archetype.rsplit(".", 1)[-1] == archetype

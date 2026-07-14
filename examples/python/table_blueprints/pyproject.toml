@@ -1,0 +1,12 @@
+[project]
+name = "table_blueprints"
+version = "0.1.0"
+readme = "README.md"
+dependencies = ["pyarrow", "rerun-sdk"]
+
+[project.scripts]
+table_blueprints = "table_blueprints:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

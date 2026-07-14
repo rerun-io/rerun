@@ -48,10 +48,24 @@ Key frames (IRAP) require inclusion of a SPS (Sequence Parameter Set)
 
 Enum value is the fourcc for 'hev1' (the WebCodec string assigned to this codec) in big endian.
 
+#### `VP8` = 0x76703038
+VP8
+
+See <https://en.wikipedia.org/wiki/VP8>
+
+Enum value is the fourcc for 'vp08' (the WebCodec string assigned to this codec) in big endian.
+
+#### `VP9` = 0x76703039
+VP9
+
+See <https://en.wikipedia.org/wiki/VP9>
+
+Enum value is the fourcc for 'vp09' (the WebCodec string assigned to this codec) in big endian.
+
 
 ## Arrow datatype
 ```
-uint32
+UInt32
 ```
 
 ## API reference links

@@ -5,12 +5,13 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from attrs import define, field
 
 from ..._baseclasses import (
     Archetype,
+    ComponentDescriptor,
 )
 from ...blueprint import components as blueprint_components
 from ...error_utils import catch_and_log_exceptions
@@ -28,6 +29,8 @@ class TimeAxis(Archetype):
 
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
+
+    NAME: ClassVar[str] = "rerun.blueprint.archetypes.TimeAxis"
 
     def __init__(
         self: Any,
@@ -121,6 +124,30 @@ class TimeAxis(Archetype):
     def cleared(cls) -> TimeAxis:
         """Clear all the fields of a `TimeAxis`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_link() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "TimeAxis:link",
+            archetype=TimeAxis.NAME,
+            component_type=blueprint_components.LinkAxisBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_view_range() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "TimeAxis:view_range",
+            archetype=TimeAxis.NAME,
+            component_type=blueprint_components.TimeRangeBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_zoom_lock() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "TimeAxis:zoom_lock",
+            archetype=TimeAxis.NAME,
+            component_type=blueprint_components.LockRangeDuringZoomBatch._COMPONENT_TYPE,
+        )
 
     link: blueprint_components.LinkAxisBatch | None = field(
         metadata={"component": True},

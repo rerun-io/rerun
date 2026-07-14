@@ -150,14 +150,11 @@ fn collect_snippets_recursively(
         let backwards_check_opted_out = is_opted_out_backwards_check;
 
         if meta.is_dir() {
-            snippets.extend(
-                collect_snippets_recursively(
-                    Utf8Path::from_path(&path).unwrap(),
-                    config,
-                    snippet_root_path,
-                )?
-                .into_iter(),
-            );
+            snippets.extend(collect_snippets_recursively(
+                Utf8Path::from_path(&path).unwrap(),
+                config,
+                snippet_root_path,
+            )?);
             continue;
         }
 
@@ -214,11 +211,15 @@ impl Snippet {
             ("RERUN_FLUSH_NUM_ROWS", "0"),
             ("RERUN_STRICT", "1"),
             ("RERUN_PANIC_ON_WARN", "1"),
-            (
+        ]);
+
+        // Only set _RERUN_TEST_FORCE_SAVE if we expect an RRD output
+        if !self.backwards_check_opted_out {
+            cmd.env(
                 "_RERUN_TEST_FORCE_SAVE",
                 rrd_path.to_string_lossy().as_ref(),
-            ),
-        ]);
+            );
+        }
 
         wait_for_output(cmd, &self.name, progress)?;
 

@@ -27,15 +27,17 @@ channels = ["conda-forge"]
 description = "Log images, point clouds, etc, and visualize them effortlessly"
 homepage = "https://rerun.io"
 license = "MIT OR Apache-2.0"
-platforms = ["linux-64", "linux-aarch64", "osx-arm64", "osx-64", "win-64"]
+platforms = [
+  { name = "linux-64-glibc-2-28", platform = "linux-64", glibc = "2.28" },
+  { name = "linux-aarch64-glibc-2-28", platform = "linux-aarch64", glibc = "2.28" },
+  { name = "osx-arm64-macos-11", platform = "osx-arm64", macos = "11.0" },
+  { name = "osx-64-macos-11", platform = "osx-64", macos = "11.0" },
+  "win-64",
+]
 readme = "README.md"
 repository = "https://github.com/rerun-io/rerun"
 version = "0.1.0" # TODO(emilk): sync version with `Cargo.toml` with help from `crates.py`
-requires-pixi = ">=0.55.0" # Make sure to keep this in sync with the version on our CI jobs!
-
-[system-requirements]
-macos = "11.0" # needed for some reason otherwise fails to resolve mediapipe package
-libc = "2.28"
+requires-pixi = ">=0.71.3" # Make sure to keep this in sync with the version on our CI jobs!
 
 
 # These should be kept empty as their content is pulled in every single environment. For the "standard" stuff,
@@ -63,6 +65,18 @@ EXECUTABLE_EXTENSION = ""
 # This ensures uv targets .venv instead of the pixi environment.
 PATH = "${PIXI_PROJECT_ROOT}/scripts/pixi:${PATH}"
 
+[target.linux-64.activation.env]
+# `gilrs` uses `pkg-config` to find libudev on Linux. Prefer Pixi's pkgconf and
+# make the Pixi pkg-config files visible before falling back to host paths.
+PKG_CONFIG = "pkgconf"
+PKG_CONFIG_PATH = "${CONDA_PREFIX}/lib/pkgconfig:${PKG_CONFIG_PATH}"
+
+[target.linux-aarch64.activation.env]
+# `gilrs` uses `pkg-config` to find libudev on Linux. Prefer Pixi's pkgconf and
+# make the Pixi pkg-config files visible before falling back to host paths.
+PKG_CONFIG = "pkgconf"
+PKG_CONFIG_PATH = "${CONDA_PREFIX}/lib/pkgconfig:${PKG_CONFIG_PATH}"
+
 [target.win-64.activation]
 # Run ensure-rerun-env to set up pyo3-build.cfg and uv shim.
 # This is a polyglot .bat that works in both cmd.exe and bash (Git Bash).
@@ -71,6 +85,9 @@ scripts = ["scripts/pixi/activate.bat"]
 [target.win-64.activation.env]
 # The executable extension for binaries on the current platform.
 EXECUTABLE_EXTENSION = ".exe"
+# cc-rs needs an archiver for wasm32 cross-compilation; MSVC's lib.exe isn't found
+# for non-MSVC targets, so point AR at llvm-ar from the llvm-tools conda package.
+AR = "llvm-ar"
 # Prepend scripts/pixi to PATH so our uv wrapper shadows the conda uv.
 # This ensures uv targets .venv instead of the pixi environment.
 PATH = "%PIXI_PROJECT_ROOT%\\scripts\\pixi;%PATH%"
@@ -131,6 +148,13 @@ man = "RERUN_DISABLE_WEB_VIEWER_SERVER=1 cargo run --package rerun-cli --all-fea
 # You can also give an argument for what to view (e.g. an .rrd file).
 rerun = "cargo run --package rerun-cli --no-default-features --features release_no_web_viewer --"
 
+# Compile and run the rerun cli tool, without any viewer.
+#
+# This avoid recompiling the viewer when you just want to run a quick command.
+#
+# You can also give an argument for what to view (e.g. an .rrd file).
+rerun-cli = "cargo run --package rerun-cli --no-default-features --"
+
 # Compile and run the rerun viewer, with performance telemetry including Tracy profiler.
 #
 # You can also give an argument for what to view (e.g. an .rrd file).
@@ -138,6 +162,7 @@ rerun-perf-debug = "cargo run --package rerun-cli --no-default-features --featur
 
 # Compile `rerun-cli` without the web-viewer.
 rerun-build = "cargo build --package rerun-cli --no-default-features --features release_no_web_viewer"
+
 
 # Compile `rerun-cli` without the web-viewer.
 rerun-build-release = "cargo build --package rerun-cli --release --no-default-features --features release_no_web_viewer"
@@ -161,6 +186,8 @@ rerun-build-native-and-web = { cmd = "cargo build --package rerun-cli --no-defau
 rerun-build-native-and-web-release = { cmd = "cargo build --package rerun-cli --no-default-features --features release_full --release --", depends-on = [
   "rerun-build-web-release",
 ] }
+
+rerun-build-native-and-pending-web-release = { cmd = "cargo build --package rerun-cli --no-default-features --features release_full --release --", env = { RERUN_TRAILING_WEB_VIEWER = "1" } }
 
 # Compile and run the web-viewer via rerun-cli.
 #
@@ -204,9 +231,19 @@ rs-check = "python scripts/ci/rust_checks.py"
 
 # Check that old .rrd files can still be read and understood.
 # See tests/assets/rrd/README.md for more.
-check-backwards-compatibility = { cmd = "find tests/assets/rrd -name '*.rrd' -type f -print0 | xargs -0 cargo run --package rerun-cli --no-default-features rrd verify" }
+# Note that we run with `--check-footers=false`: it is expected that these RRDs do not have proper footers (they predate them).
+check-backwards-compatibility = { cmd = "find tests/assets/rrd -name '*.rrd' -type f -print0 | xargs -0 cargo run --package rerun-cli --no-default-features rrd verify --check-footers=false" }
+web-test = { cmd = "wasm-pack test --headless --{{ browser }} crates/store/re_server", args = [
+  { arg = "browser", default = "firefox" },
+] }
 
-rs-fmt = "cargo fmt --all"
+# `cargo fmt --all` only sees files reachable from each crate's lib.rs/main.rs.
+# Snippets in `docs/snippets/all/*.rs` are copied into the crate by `build.rs`,
+# so the originals are never formatted by cargo fmt. Run rustfmt on them
+# directly so `docs/snippets/rustfmt.toml` (max_width=80) is applied.
+# We filter to files containing `fn main()` to skip partial fragments
+# (they don't parse standalone).
+rs-fmt = { cmd = "cargo fmt --all && grep -rl 'fn main()' --include='*.rs' docs/snippets/all | xargs rustfmt --edition 2024" }
 
 # Code formatting for all languages.
 format = { depends-on = ["cpp-fmt", "misc-fmt", "pb-fmt", "py-fmt", "rs-fmt", "toml-fmt"] }
@@ -216,7 +253,7 @@ fmt = { depends-on = ["format"] }
 link-check-pr = { cmd = "python scripts/ci/pr_link_checker.py --base-ref {{ ref }}", args = [
   { arg = "ref" },
 ] }
-link-check = 'lychee --verbose --cache --max-cache-age 1d . --root-dir "$PIXI_PROJECT_ROOT" "**/*.md" "**/*.rs" "**/*.toml" "**/*.hpp" "**/*.cpp" "**/CMakeLists.txt" "**/*.py" "**/*.yml"'
+link-check = 'lychee --cache --max-cache-age 1d . --root-dir "$PIXI_PROJECT_ROOT" "**/*.md" "**/*.rs" "**/*.toml" "**/*.hpp" "**/*.cpp" "**/CMakeLists.txt" "**/*.py" "**/*.yml"'
 
 # Assorted linting tasks
 fast-lint = "python scripts/fast_lint.py"
@@ -238,7 +275,10 @@ toml-fmt = "taplo fmt"
 # internally for this check is being set up by the pep517 environment and so
 # we might run it in an environment that doesn't otherwise have or expect
 # rust to be setup.
-uv-lock-check = "env -u RUSTC_WRAPPER uv lock --dry-run && uv lock --check"
+uv-lock-check-workspace = "env -u RUSTC_WRAPPER uv lock --dry-run && uv lock --check"
+# Same check for every isolated example project (discovered via `[tool.rerun-example] isolated = true`).
+uv-lock-check-isolated-examples = "python scripts/ci/isolated_examples.py check-lock"
+uv-lock-check = { depends-on = ["uv-lock-check-workspace", "uv-lock-check-isolated-examples"] }
 
 # ------------------------------------------------------------------------------------------
 # Protobuf stuff:
@@ -249,10 +289,10 @@ uv-lock-check = "env -u RUSTC_WRAPPER uv lock --dry-run && uv lock --check"
 # * <https://buf.build/docs/breaking/rules/>
 # * <https://buf.build/docs/lint/rules/>
 
-pb-fmt-check = "buf format --exit-code --diff"
-pb-fmt = "buf format --exit-code --write"
+pb-fmt-check = "buf format --config scripts/ci/buf.yaml --exit-code --diff"
+pb-fmt = "buf format --config scripts/ci/buf.yaml --exit-code --write"
 
-pb-lint = "buf lint --error-format=json"
+pb-lint = "buf lint --config scripts/ci/buf.yaml --error-format=json"
 
 # NOTE(cmc): I'm keeping all the snapshot machinery around if it turns out we need something more robust
 # than a pure git solution in the future. For now, convenience wins.
@@ -269,7 +309,7 @@ pb-lint = "buf lint --error-format=json"
 #   "pb-snapshot-main",
 # ]}
 
-pb-breaking = "echo 'ℹ️ If this CI step is failing even though you did not modify any Protobuf files, that means that somebody purposefully published breaking Protobuf changes onto the main branch in the meantime.\nℹ️ For that reason, the Protobuf definitions on your local branch are now incompatible with those on main.\nℹ️ When that happens, simply rebase your branch on latest main, and the errors will go away.' ; buf breaking --error-format=json --against '.git#branch=origin/main'"
+pb-breaking = "echo 'ℹ️ If this CI step is failing even though you did not modify any Protobuf files, that means that somebody purposefully published breaking Protobuf changes onto the main branch in the meantime.\nℹ️ For that reason, the Protobuf definitions on your local branch are now incompatible with those on main.\nℹ️ When that happens, simply rebase your branch on latest main, and the errors will go away.' ; buf breaking --config scripts/ci/buf.yaml --against-config scripts/ci/buf.yaml --error-format=json --against '.git#branch=origin/main'"
 
 pb-check = { depends-on = ["pb-fmt-check", "pb-lint", "pb-breaking"] }
 
@@ -290,19 +330,29 @@ py-fmt = { cmd = "uv run ruff check --fix {{ files }} && uv run ruff format {{ f
 ] }
 py-fmt-check = "uv run ruff check . && uv run ruff format --check ."
 # Get non-internal things that are ok to not check rerun on
-py-lint-non-sdk = { cmd = "uv run mypy --config-file rerun_py/.non_sdk_mypy.ini --no-warn-unused-ignore --cache-dir .mypy_cache_rerun_other" }
+py-lint-non-sdk = { depends-on = [
+  "py-sync-examples", # these ensure that the .venv is in the right state for type checking examples and snippets
+  "py-sync-snippets",
+], cmd = "uv run mypy --config-file rerun_py/.non_sdk_mypy.ini --no-warn-unused-ignore --cache-dir .mypy_cache_rerun_other" }
 # I couldn't get the config to work correctly, so placing relevant directories in command line
 # Until we resolve nbqa config issue keep aligned with nb-strip dirs below
 # MYPYPATH is set to allow mypy to find rerun and rerun_bindings without needing maturin develop.
-py-lint-nb-rerun = { cmd = "uv run nbqa mypy --no-warn-unused-ignore examples/notebook scripts/ tests/python/ docs/snippets/ --cache-dir .mypy_cache_rerun_nb ", env = { MYPYPATH = "rerun_py:rerun_py/rerun_sdk:rerun_notebook/src" } }
+py-lint-nb-rerun = { cmd = "uv run nbqa mypy --no-warn-unused-ignore examples/notebook --cache-dir .mypy_cache_rerun_nb ", env = { MYPYPATH = "rerun_py:rerun_py/rerun_sdk:rerun_notebook/src" } }
 # Need to run this in env with rerun installed
 py-lint-rerun = "uv run mypy --no-warn-unused-ignore --cache-dir .mypy_cache_rerun_sdk"
-py-lint-rerun-ty = "uv run ty check"
+py-lint-rerun-ty = "uv run ty check --error deprecated"
+# Isolated examples (their own uv project + .venv, excluded from the shared mypy run above).
+# The script auto-discovers any example whose pyproject.toml sets
+# `[tool.rerun-example] isolated = true` and lints it with the shared mypy config.
+# RERUN_ALLOW_MISSING_BIN matches `py-build` — lets maturin build the rerun-sdk extension
+# into each example's .venv without needing the `rerun` CLI binary on disk first.
+py-lint-isolated-examples = { cmd = "python scripts/ci/isolated_examples.py lint", env = { RERUN_ALLOW_MISSING_BIN = "1" } }
 py-lint = { depends-on = [
+  "py-lint-rerun-ty", # Fast first
   "py-lint-non-sdk",
   "py-lint-rerun",
   "py-lint-nb-rerun",
-  "py-lint-rerun-ty",
+  "py-lint-isolated-examples",
 ] }
 
 rs-plot-dashboard = { cmd = "cargo r -p plot_dashboard_stress --release --" }
@@ -318,8 +368,8 @@ meilisearch = "meilisearch --db-path=./meilisearch/data.ms --dump-dir=./meilisea
 # Update the results of `insta` and `kittest` snapshot regression tests
 rs-update-snapshot-tests = "INSTA_UPDATE=always UPDATE_SNAPSHOTS=1 cargo nextest run --all-targets --all-features --cargo-quiet --no-fail-fast"
 
-# Update the Python-based snapshot tests
-py-update-snapshot-tests = { cmd = "uv run pytest --inline-snapshot=fix", depends-on = [
+# Update the Python-based snapshot tests (inline-snapshot for inline snapshots, --snapshot-update for syrupy .ambr files)
+py-update-snapshot-tests = { cmd = "uv run pytest -vv rerun_py/tests --inline-snapshot=fix --snapshot-update", depends-on = [
   "py-build",
 ] }
 
@@ -384,10 +434,12 @@ js-docs-serve = { cmd = "yarn --cwd rerun_js run docs:serve", depends-on = ["js-
 # - RERUN_ALLOW_MISSING_BIN is needed to allow maturin to run without the `rerun` binary being part of the rerun-sdk
 #   package.
 
-py-build = { cmd = "uv run maturin develop --uv --manifest-path rerun_py/Cargo.toml --extras=tests,datafusion", env = { RERUN_ALLOW_MISSING_BIN = "1" } }
+py-build = { cmd = "uv run maturin develop --uv --manifest-path rerun_py/Cargo.toml --extras=tests,datafusion,dataloader,tracing", env = { RERUN_ALLOW_MISSING_BIN = "1" } }
 # Build the `rerun-notebook` package.
-py-build-notebook = { cmd = "uv sync --package rerun-notebook", depends-on = ["js-build-base"] }
-py-build-notebook-fast = { cmd = "uv sync --package rerun-notebook" }
+py-build-notebook = { cmd = "uv sync --package rerun-notebook --inexact --no-install-package rerun-sdk", depends-on = [
+  "js-build-base",
+] }
+py-build-notebook-fast = { cmd = "uv sync --package rerun-notebook --inexact --no-install-package rerun-sdk" }
 # Create a wheel for the `rerun-sdk` package.
 py-build-wheel = { cmd = "cp target/release/rerun$EXECUTABLE_EXTENSION rerun_py/rerun_sdk/rerun_cli/ && uv run maturin build --release --manifest-path rerun_py/Cargo.toml", depends-on = [
   "rerun-build-native-and-web-release",
@@ -401,27 +453,34 @@ py-sync-snippets = { cmd = "pixi run uv sync --group snippets --inexact --no-ins
 
 
 # Build the `rerun-sdk` package in release mode.
-py-build-release = { cmd = "uv run maturin develop --uv --release --manifest-path rerun_py/Cargo.toml --extras=tests,datafusion", env = { RERUN_ALLOW_MISSING_BIN = "1" } }
+py-build-release = { cmd = "uv run maturin develop --uv --release --manifest-path rerun_py/Cargo.toml --extras=tests,datafusion,dataloader", env = { RERUN_ALLOW_MISSING_BIN = "1" } }
 # Build and install the `rerun-sdk` package with the `web_viewer` & `server` feature.
-py-build-web-viewer = { cmd = "uv run maturin develop --uv --manifest-path rerun_py/Cargo.toml --features web_viewer --extras=tests,datafusion", depends-on = [
+py-build-web-viewer = { cmd = "uv run maturin develop --uv --manifest-path rerun_py/Cargo.toml --features web_viewer --extras=tests,datafusion,dataloader", depends-on = [
   "rerun-build-native-and-web",
 ], env = { RERUN_ALLOW_MISSING_BIN = "1" } }
 # Build and install the `rerun-sdk` package with the `web_viewer` & `server` feature in release mode.
-py-build-web-viewer-release = { cmd = "uv run maturin develop --uv --release --manifest-path rerun_py/Cargo.toml --features web_viewer --extras=tests,datafusion", depends-on = [
+py-build-web-viewer-release = { cmd = "uv run maturin develop --uv --release --manifest-path rerun_py/Cargo.toml --features web_viewer --extras=tests,datafusion,dataloader", depends-on = [
   "rerun-build-native-and-web-release",
 ], env = { RERUN_ALLOW_MISSING_BIN = "1" } }
 # Dedicated alias for building the python bindings for the `py` environment with performance telemetry including Tracy profiler.
-py-build-perf-debug = { cmd = "uv run maturin develop --uv --manifest-path rerun_py/Cargo.toml --features re_perf_telemetry/tracy --extras=tests,datafusion", env = { RERUN_ALLOW_MISSING_BIN = "1" } }
+py-build-perf-debug = { cmd = "uv run maturin develop --uv --manifest-path rerun_py/Cargo.toml --features re_perf_telemetry/tracy --extras=tests,datafusion,dataloader,tracing", env = { RERUN_ALLOW_MISSING_BIN = "1" } }
 # Dedicated alias for building the python bindings in release mode for the `py` environment with performance telemetry including Tracy profiler.
-py-build-perf-release = { cmd = "uv run maturin develop --uv --release --manifest-path rerun_py/Cargo.toml --features re_perf_telemetry/tracy --extras=tests,datafusion", env = { RERUN_ALLOW_MISSING_BIN = "1" } }
+py-build-perf-release = { cmd = "uv run maturin develop --uv --release --manifest-path rerun_py/Cargo.toml --features re_perf_telemetry/tracy --extras=tests,datafusion,dataloader,tracing", env = { RERUN_ALLOW_MISSING_BIN = "1" } }
 
 py-test = { cmd = "uvpy -m pytest -vv rerun_py/tests", depends-on = ["py-build"] }
 py-test-no-build = { cmd = "uvpy -m pytest -vv rerun_py/tests" }
-py-bench = { cmd = "uvpy -m pytest --benchmark-only", depends-on = ["py-build-release"] }
+py-test-notebook = { cmd = "uvpy -m pytest -vv rerun_notebook/tests", depends-on = [
+  "py-build-notebook-fast",
+] }
+py-bench = { cmd = "uvpy -m pytest --benchmark-only --benchmark-group-by=func --benchmark-sort=fullname", depends-on = [
+  "py-build-release",
+] }
 
 snapshots = "uvpy scripts/snapshots.py"
 
-py-check-signatures = "uvpy scripts/ci/python_check_signatures.py"
+py-check-signatures = { cmd = "uvpy scripts/ci/python_check_signatures.py", depends-on = [
+  "py-build",
+] }
 
 # Build the JS parts of `rerun-notebook` without rebuilding re_viewer Wasm in the process
 py-build-notebook-js = { cmd = "npm --prefix rerun_notebook run build", depends-on = [
@@ -448,6 +507,20 @@ py-docs-serve = "uv run --group docs mkdocs serve -f rerun_py/mkdocs.yml -w reru
 
 # Build python docs locally (uses mkdocs from uv docs dependency group)
 py-docs-build = "uv run --group docs mkdocs build -f rerun_py/mkdocs.yml"
+
+# Compile the rerun viewer using the Cranelift backend for fast compilation.
+# Codegen backend config is in .cargo/cranelift.toml (loaded via config-include on nightly).
+# Requires: rustup component add rustc-codegen-cranelift-preview --toolchain nightly
+[tasks.rerun-build-fast]
+cmd = """cargo +nightly build --package re_viewer --bin viewer --profile dev-fast \
+  --config 'include=[".cargo/cranelift.toml"]'"""
+[tasks.rerun-build-fast.env]
+RUSTFLAGS = "-Z threads=0"
+
+# Compile and run the rerun viewer using the Cranelift backend for fast compilation.
+[tasks.rerun-fast]
+cmd = "target/dev-fast/viewer"
+depends-on = ["rerun-build-fast"]
 
 [feature.cpp.tasks]
 # All the cpp-* tasks can be configured with environment variables, e.g.: RERUN_WERROR=ON CXX=clang++
@@ -490,6 +563,7 @@ cpp-plot-dashboard = { cmd = "export RERUN_STRICT=1 PYTHONWARNINGS=error && ./bu
 cpp-build-and-test-all = { depends-on = ["cpp-build-all", "cpp-test"] }
 cpp-docs = { cmd = "doxygen docs/Doxyfile && echo '***************\nSuccess!\nOpen ./rerun_cpp/docs/html/index.html in your browser.'", cwd = "rerun_cpp" }
 cpp-fmt = "fd --extension h --extension hpp --extension c  --extension cpp --exec clang-format -i"
+cpp-fmt-check = "fd --extension h --extension hpp --extension c  --extension cpp --exec clang-format --dry-run --Werror"
 
 [feature.cpp.target.win-64.tasks]
 cpp-prepare-msvc = "cmake -G 'Visual Studio 17 2022' -B build-msvc -S ."
@@ -527,7 +601,7 @@ flatbuffers = ">=23"
 gitignore-parser = ">=0.1.9"
 gitpython = ">=3.1.40"
 jinja2 = ">=3.1.3,<3.2" # For `build_screenshot_compare.py` and other utilities that build websites.
-lychee = "0.21.0.*"
+lychee = "0.23.0.*"
 mypy = "1.14.1.*"
 nasm = ">=2.16" # Required by https://github.com/memorysafety/rav1d for native video support
 pyyaml = ">=6.0" # For `check_doc_redirects.py`
@@ -537,16 +611,17 @@ libprotobuf = "6.*" # Provides `protoc` compiler needed by lance and prost-build
 protobuf = "6.*" # Python bindings for protobuf
 prettier = ">=3.6"
 python = "=3.11" # We use the latest Python version here, so we get the latest mypy etc, EXCEPT 3.12 is too new for some of our examples. We run our CI tests on ALL supported versions though.
-ruff = "0.12.10.*"
+ruff = "0.15.7.*"
 rich = "==14.2.0"
 semver = ">=3.0,<3.1"
 taplo = "=0.9.1"
 tomli = "=2.3.0"
 tomlkit = "0.12.3.*"
 tqdm = ">=4.66.2,<4.67" # For displaying progress in various utility scripts.
-ty = "==0.0.11"
+ty = "==0.0.31"
 typing_extensions = ">4.5"
-typos = ">=1.37.2"
+typos = ">=1.45.1"
+wasm-pack = "0.15.*"
 urllib3 = "<2.6.0" # TODO(googleapis/google-resumable-media-python#491)
 gh = ">=2.79.0,<3"
 binaryen = "117.*" # for `wasm-opt`
@@ -559,7 +634,7 @@ wheel = ">=0.38,<0.39"
 cryptography = "==38.0.4" # For `upload_image.py` -- note: version is constrained by hatch dependency
 google-cloud-storage = "==2.9.0" # For `upload_image.py`
 hatch = "*" # For `rerun_notebook`
-pillow = ">=12.1.0,<13" # For `upload_image.py`
+pillow = ">=12.2.0,<13" # For `upload_image.py`
 py-spy = ">=0.4" # For profiling Python benchmarks
 pygithub = "==2.6.1" # Among others for `sync_release_assets.py`.
 requests = ">=2.31,<3" # For `thumbnails.py` & `upload_image.py`
@@ -567,18 +642,25 @@ rerun-pixi-env = { path = "rerun_pixi_env", editable = true }
 uv = "==0.9.17"
 
 [target.linux-64.dependencies]
+libudev = "257.4.*" # for `gilrs` Linux backend
 patchelf = ">=0.17"
+pkgconf = ">=2" # Provides `pkg-config` for `gilrs` Linux backend.
 meilisearch = "1.5.1.*" # not available for linux-aarch64
 buf = "1.*" # not available for linux-aarch64
+
+[target.linux-aarch64.dependencies]
+libudev = "257.4.*" # for `gilrs` Linux backend
+pkgconf = ">=2" # Provides `pkg-config` for `gilrs` Linux backend.
 
 [target.osx-arm64.dependencies]
 buf = "1.*" # not available for linux-aarch64
 libgfortran5 = ">=14" # Fixes issues with OpenCV
 meilisearch = "1.5.1.*" # not available for linux-aarch64
-llvm-tools = "16.0.6.*" # TODO(rust-lang/stacker#127)
+llvm-tools = "16.0.6.*" # Various Wasm targets fail on mac without llvm-ar
 
 [target.win-64.dependencies]
 buf = "1.*" # not available for linux-aarch64
+llvm-tools = "16.0.6.*" # Wasm targets need llvm-ar for cc-rs (same as osx-arm64)
 
 [feature.cpp.target.linux-64.dependencies]
 sysroot_linux-64 = ">=2.17,<3" # rustc 1.64+ requires glibc 2.17+, see https://blog.rust-lang.org/2022/08/01/Increasing-glibc-kernel-requirements.html

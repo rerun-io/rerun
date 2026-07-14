@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -22,7 +23,9 @@ use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: A 16-byte UUID.
-#[derive(Clone, Debug, Default, Copy, PartialEq, Eq)]
+#[derive(
+    Clone, Debug, Default, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, ::re_byte_size::SizeBytes,
+)]
 #[repr(transparent)]
 pub struct Uuid {
     /// The raw bytes representing the UUID.
@@ -117,9 +120,10 @@ impl ::re_types_core::Loggable for Uuid {
             if arrow_data.is_empty() {
                 Vec::new()
             } else {
-                let offsets = (0..)
-                    .step_by(16usize)
-                    .zip((16usize..).step_by(16usize).take(arrow_data.len()));
+                let offsets = ::std::iter::zip(
+                    (0..).step_by(16usize),
+                    (16usize..).step_by(16usize).take(arrow_data.len()),
+                );
                 let arrow_data_inner = {
                     let arrow_data_inner = &**arrow_data.values();
                     arrow_data_inner
@@ -137,7 +141,7 @@ impl ::re_types_core::Loggable for Uuid {
                 ZipValidity::new_with_validity(offsets, arrow_data.nulls())
                     .map(|elem| {
                         elem.map(|(start, end): (usize, usize)| {
-                            debug_assert!(end - start == 16usize);
+                            re_log::debug_assert!(end - start == 16usize);
                             if arrow_data_inner.len() < end {
                                 return Err(DeserializationError::offset_slice_oob(
                                     (start, end),
@@ -229,17 +233,5 @@ impl From<Uuid> for [u8; 16usize] {
     #[inline]
     fn from(value: Uuid) -> Self {
         value.bytes
-    }
-}
-
-impl ::re_byte_size::SizeBytes for Uuid {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.bytes.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <[u8; 16usize]>::is_pod()
     }
 }

@@ -1,0 +1,30 @@
+/*
+ * Styling for the loading indicator shown above the notebook Viewer while
+ * send_table is collecting data. Injected into the notebook page via an
+ * ipywidgets.HTML widget; see rerun.notebook._LOADING_HTML_TEMPLATE.
+ */
+
+.rerun-notebook-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  font-family: sans-serif;
+  font-size: 13px;
+  color: #ccc;
+}
+
+.rerun-notebook-loading__spinner {
+  width: 16px;
+  height: 16px;
+  border: 3px solid #444;
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: rerun-notebook-spin 0.8s linear infinite;
+}
+
+@keyframes rerun-notebook-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

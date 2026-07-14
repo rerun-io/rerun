@@ -6,6 +6,7 @@ from fractions import Fraction
 from typing import cast
 
 import numpy as np
+import pytest
 import rerun as rr
 import torch
 from rerun.datatypes import (
@@ -219,7 +220,8 @@ MAT_3X3_CASES: list[tuple[Float64ArrayLike, Float64ArrayLike]] = [
 ]
 
 
-def test_transform3d_mat3x3_columns() -> None:
-    for input, expected in MAT_3X3_CASES:
-        data = [*rr.Transform3D.columns(mat3x3=input)]
-        assert np.allclose(data[0].as_arrow_array().to_pylist(), np.asarray(expected))
+@pytest.mark.parametrize("matrix_input, matrix_expected", MAT_3X3_CASES)
+def test_transform3d_mat3x3_columns(matrix_input: Float64ArrayLike, matrix_expected: Float64ArrayLike) -> None:
+    print(matrix_input)
+    data = [*rr.Transform3D.columns(mat3x3=matrix_input)]
+    assert np.allclose(data[0].as_arrow_array().to_pylist(), np.asarray(matrix_expected))

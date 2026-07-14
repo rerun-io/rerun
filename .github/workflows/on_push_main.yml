@@ -56,6 +56,7 @@ jobs:
       PY_DOCS_VERSION_NAME: "main"
       CPP_DOCS_VERSION_NAME: "main"
       JS_DOCS_VERSION_NAME: "main"
+      MARKDOWN_DOCS_VERSION_NAME: "dev"
       UPDATE_LATEST: false
     secrets: inherit
 
@@ -65,6 +66,13 @@ jobs:
     with:
       CONCURRENCY: push-${{ github.ref_name }}-${{ inputs.CONCURRENCY }}
       CHANNEL: main
+    secrets: inherit
+
+  web-test:
+    name: "Web tests"
+    uses: ./.github/workflows/reusable_web_test.yml
+    with:
+      CONCURRENCY: push-${{ github.ref_name }}-${{ inputs.CONCURRENCY }}
     secrets: inherit
 
   upload-web:

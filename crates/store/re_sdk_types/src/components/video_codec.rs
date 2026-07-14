@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -28,7 +29,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// For more details see check the [video reference](https://rerun.io/docs/reference/video).
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, ::re_byte_size::SizeBytes)]
 #[repr(u32)]
 pub enum VideoCodec {
     /// AOMedia Video 1 (AV1)
@@ -69,6 +70,22 @@ pub enum VideoCodec {
     ///
     /// Enum value is the fourcc for 'hev1' (the WebCodec string assigned to this codec) in big endian.
     H265 = 0x68657631,
+
+    /// VP8
+    ///
+    /// See <https://en.wikipedia.org/wiki/VP8>
+    ///
+    /// Enum value is the fourcc for 'vp08' (the WebCodec string assigned to this codec) in big endian.
+    #[allow(clippy::upper_case_acronyms)]
+    VP8 = 0x76703038,
+
+    /// VP9
+    ///
+    /// See <https://en.wikipedia.org/wiki/VP9>
+    ///
+    /// Enum value is the fourcc for 'vp09' (the WebCodec string assigned to this codec) in big endian.
+    #[allow(clippy::upper_case_acronyms)]
+    VP9 = 0x76703039,
 }
 
 impl ::re_types_core::Component for VideoCodec {
@@ -140,15 +157,16 @@ impl ::re_types_core::Loggable for VideoCodec {
             .with_context("rerun.components.VideoCodec#enum")?
             .into_iter()
             .map(|typ| match typ {
-                Some(1635135537) => Ok(Some(Self::AV1)),
-                Some(1635148593) => Ok(Some(Self::H264)),
-                Some(1751479857) => Ok(Some(Self::H265)),
+                Some(val) => <Self as ::re_types_core::reflection::Enum>::try_from_integer(val)
+                    .map(Some)
+                    .ok_or_else(|| {
+                        DeserializationError::missing_union_arm(
+                            Self::arrow_datatype(),
+                            "<invalid>",
+                            val as _,
+                        )
+                    }),
                 None => Ok(None),
-                Some(invalid) => Err(DeserializationError::missing_union_arm(
-                    Self::arrow_datatype(),
-                    "<invalid>",
-                    invalid as _,
-                )),
             })
             .collect::<DeserializationResult<Vec<Option<_>>>>()
             .with_context("rerun.components.VideoCodec")?)
@@ -161,14 +179,18 @@ impl std::fmt::Display for VideoCodec {
             Self::AV1 => write!(f, "AV1"),
             Self::H264 => write!(f, "H264"),
             Self::H265 => write!(f, "H265"),
+            Self::VP8 => write!(f, "VP8"),
+            Self::VP9 => write!(f, "VP9"),
         }
     }
 }
 
 impl ::re_types_core::reflection::Enum for VideoCodec {
+    type Repr = u32;
+
     #[inline]
     fn variants() -> &'static [Self] {
-        &[Self::AV1, Self::H264, Self::H265]
+        &[Self::AV1, Self::H264, Self::H265, Self::VP8, Self::VP9]
     }
 
     #[inline]
@@ -183,18 +205,24 @@ impl ::re_types_core::reflection::Enum for VideoCodec {
             Self::H265 => {
                 "High Efficiency Video Coding (HEVC/H.265)\n\nSee <https://en.wikipedia.org/wiki/High_Efficiency_Video_Coding>\n\n[`components.VideoSample`](https://rerun.io/docs/reference/types/components/video_sample)s using this codec should be formatted according to Annex B specification.\n(Note that this is different from AVCC format found in MP4 files.\nTo learn more about Annex B, check for instance <https://membrane.stream/learn/h264/3>)\nKey frames (IRAP) require inclusion of a SPS (Sequence Parameter Set)\n\nEnum value is the fourcc for 'hev1' (the WebCodec string assigned to this codec) in big endian."
             }
+            Self::VP8 => {
+                "VP8\n\nSee <https://en.wikipedia.org/wiki/VP8>\n\nEnum value is the fourcc for 'vp08' (the WebCodec string assigned to this codec) in big endian."
+            }
+            Self::VP9 => {
+                "VP9\n\nSee <https://en.wikipedia.org/wiki/VP9>\n\nEnum value is the fourcc for 'vp09' (the WebCodec string assigned to this codec) in big endian."
+            }
         }
     }
-}
-
-impl ::re_byte_size::SizeBytes for VideoCodec {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
 
     #[inline]
-    fn is_pod() -> bool {
-        true
+    fn try_from_integer(value: u32) -> Option<Self> {
+        match value {
+            0x61763031 => Some(Self::AV1),
+            0x61766331 => Some(Self::H264),
+            0x68657631 => Some(Self::H265),
+            0x76703038 => Some(Self::VP8),
+            0x76703039 => Some(Self::VP9),
+            _ => None,
+        }
     }
 }

@@ -1,19 +1,27 @@
 //! A Rerun server implementation backed by an in-memory store.
 
-#[cfg(feature = "lance")]
-mod chunk_index;
-
+#[cfg(not(target_arch = "wasm32"))]
 mod entrypoint;
-mod latency_layer;
+#[cfg(not(target_arch = "wasm32"))]
+mod layers;
+mod named_path;
+#[cfg(target_arch = "wasm32")]
+mod opfs;
 mod rerun_cloud;
+#[cfg(not(target_arch = "wasm32"))]
 mod server;
 mod store;
 
-pub use self::entrypoint::{Args, NamedPath, NamedPathCollection};
+pub use self::named_path::{NamedPath, NamedPathCollection};
 pub use self::rerun_cloud::{
     RerunCloudHandler, RerunCloudHandlerBuilder, RerunCloudHandlerSettings,
 };
-pub use self::server::{Server, ServerBuilder, ServerError, ServerHandle};
+#[cfg(not(target_arch = "wasm32"))]
+pub use self::{
+    entrypoint::Args,
+    layers::InjectedErrors,
+    server::{Server, ServerBuilder, ServerError, ServerHandle},
+};
 
 /// What should we do on error?
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]

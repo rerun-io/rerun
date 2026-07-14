@@ -24,6 +24,7 @@ mod v0_0_1__to__v0_0_2;
 mod v0_0_2__to__v0_1_0;
 mod v0_1_0__to__v0_1_1;
 mod v0_1_1__to__v0_1_2;
+mod v0_1_2__to__v0_1_3;
 
 /// This trait needs to be implemented by any new migrations. It ensures that
 /// all migrations adhere to the same contract.
@@ -57,6 +58,11 @@ fn get_or_guess_version(batch: &RecordBatch) -> Result<semver::Version, Error> {
             err,
         })
     } else {
+        // The record batch does not have a sorbet version metadata.
+        // Rerun Hub schemas currently come without metadata,
+        // so we need to run the full migration just in case.
+        // TODO(RR-2175): Always include version metadata in redap
+
         // This means earlier than Rerun `v0.24`.
         re_log::debug_once!("Encountered batch without 'sorbet:version' metadata.");
 
@@ -77,9 +83,6 @@ fn get_or_guess_version(batch: &RecordBatch) -> Result<semver::Version, Error> {
             // The migration code from `v0.0.2` to `v0.1.0` should be able handle this.
             Ok(semver::Version::new(0, 0, 2))
         } else {
-            // Rerun cloud schemas currently come without metadata,
-            // so we need to run the full migration just in case.
-            // TODO(rerun-io/dataplatform#1605): Always include version
             Ok(semver::Version::new(0, 0, 1))
         }
     }
@@ -103,7 +106,7 @@ fn maybe_apply<M: Migration>(
 }
 
 /// Migrate a sorbet record batch of unknown version to the latest version.
-#[tracing::instrument(level = "debug", skip_all)]
+#[tracing::instrument(level = "trace", skip_all)]
 pub fn migrate_record_batch(mut batch: RecordBatch, batch_type: BatchType) -> RecordBatch {
     batch = migrate_record_batch_impl(batch);
 
@@ -135,6 +138,7 @@ fn migrate_record_batch_impl(mut batch: RecordBatch) -> RecordBatch {
                     batch = maybe_apply::<v0_0_2__to__v0_1_0::Migration>(&batch_version, batch);
                     batch = maybe_apply::<v0_1_0__to__v0_1_1::Migration>(&batch_version, batch);
                     batch = maybe_apply::<v0_1_1__to__v0_1_2::Migration>(&batch_version, batch);
+                    batch = maybe_apply::<v0_1_2__to__v0_1_3::Migration>(&batch_version, batch);
                 }
                 batch
             }

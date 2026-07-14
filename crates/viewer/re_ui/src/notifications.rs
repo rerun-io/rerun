@@ -4,7 +4,7 @@
 //! they're first created and in the notification panel.
 //!
 //! ## Special cased text
-//! - If a notifications text contains `"\nDetails:"` the section after that
+//! - If a notifications text contains [`re_error::DETAILS_SEPARATOR`] the section after that
 //!   will be displayed inside a collapsible details header.
 
 use std::time::Duration;
@@ -53,9 +53,9 @@ impl NotificationLevel {
 impl From<re_log::Level> for NotificationLevel {
     fn from(value: re_log::Level) -> Self {
         match value {
-            re_log::Level::Trace | re_log::Level::Debug | re_log::Level::Info => Self::Info,
-            re_log::Level::Warn => Self::Warning,
-            re_log::Level::Error => Self::Error,
+            re_log::Level::TRACE | re_log::Level::DEBUG | re_log::Level::INFO => Self::Info,
+            re_log::Level::WARN => Self::Warning,
+            re_log::Level::ERROR => Self::Error,
         }
     }
 }
@@ -68,7 +68,7 @@ fn is_relevant(target: &str, level: re_log::Level) -> bool {
 
     matches!(
         level,
-        re_log::Level::Warn | re_log::Level::Error | re_log::Level::Info
+        re_log::Level::WARN | re_log::Level::ERROR | re_log::Level::INFO
     )
 }
 
@@ -103,6 +103,10 @@ pub struct Notification {
 
     /// if set this notifications will have a collapsible details section.
     details: Option<String>,
+
+    /// Structured key-value fields, shown one `key: value` per line.
+    fields: Vec<(&'static str, re_log::FieldValue)>,
+
     link: Option<Link>,
 
     /// If set, the notification will NEVER be shown again
@@ -117,6 +121,9 @@ pub struct Notification {
 
     /// Whether this notification has been read.
     is_unread: bool,
+
+    /// A unique id that just this notification has.
+    unique_id: u64,
 }
 
 impl Notification {
@@ -125,16 +132,42 @@ impl Notification {
             level,
             text: text.into(),
             details: None,
+            fields: Vec::new(),
             link: None,
             permanent_dismiss_id: None,
             created_at: Timestamp::now(),
             toast_ttl: base_ttl(),
             is_unread: true,
+            // Filled in later when added to the notification ui.
+            unique_id: 0,
         }
+    }
+
+    pub fn level(&self) -> NotificationLevel {
+        self.level
+    }
+
+    pub fn text(&self) -> &str {
+        &self.text
+    }
+
+    /// The full text contents, including any structured fields, one `key: value` per line.
+    fn copy_text(&self) -> String {
+        use std::fmt::Write as _;
+        let mut text = self.text.clone();
+        for (key, value) in &self.fields {
+            write!(text, "\n{key}: {value}").ok();
+        }
+        text
     }
 
     pub fn with_details(mut self, details: impl Into<String>) -> Self {
         self.details = Some(details.into());
+        self
+    }
+
+    pub fn with_fields(mut self, fields: Vec<(&'static str, re_log::FieldValue)>) -> Self {
+        self.fields = fields;
         self
     }
 
@@ -193,6 +226,8 @@ pub struct NotificationUi {
 
     /// Toasts that show up for a short time.
     toasts: Toasts,
+
+    next_id: u64,
 }
 
 impl NotificationUi {
@@ -203,6 +238,7 @@ impl NotificationUi {
             unread_notification_level: None,
             was_open_last_frame: false,
             toasts: Toasts::new(),
+            next_id: 0,
         }
     }
 
@@ -210,25 +246,34 @@ impl NotificationUi {
         self.unread_notification_level
     }
 
+    pub fn notifications(&self) -> &[Notification] {
+        &self.notifications
+    }
+
     /// Given that the log is relevant this creates a notification
     /// based on that log.
     ///
     /// ## Special cased text
-    /// - If a notifications text contains `"\nDetails:"` the section after that
+    /// - If a notifications text contains [`re_error::DETAILS_SEPARATOR`] the section after that
     ///   will be displayed inside a collapsible details header.
-    pub fn add_log(&mut self, message: re_log::LogMsg) {
-        let re_log::LogMsg { level, target, msg } = message;
+    pub fn add_log(&mut self, log_msg: re_log::LogMsg) {
+        let re_log::LogMsg {
+            level,
+            target,
+            message,
+            fields,
+        } = log_msg;
 
         if is_relevant(&target, level) {
-            let (split_msg, msg_details) = msg.split_once("\nDetails:").unzip();
+            let (summary, details) = re_error::split_details(&message);
 
-            let msg = split_msg.unwrap_or(&msg);
+            let mut notification = Notification::new(level.into(), summary);
 
-            let mut notification = Notification::new(level.into(), msg);
-
-            if let Some(msg_details) = msg_details {
-                notification = notification.with_details(msg_details);
+            if let Some(details) = details {
+                notification = notification.with_details(details);
             }
+
+            notification = notification.with_fields(fields);
 
             self.add(notification);
         }
@@ -238,7 +283,7 @@ impl NotificationUi {
         self.add(Notification::new(NotificationLevel::Success, text.into()));
     }
 
-    pub fn add(&mut self, notification: Notification) {
+    pub fn add(&mut self, mut notification: Notification) {
         if notification.is_perma_dismissed(&self.ctx) {
             return;
         }
@@ -246,6 +291,10 @@ impl NotificationUi {
         if Some(notification.level) > self.unread_notification_level {
             self.unread_notification_level = Some(notification.level);
         }
+
+        notification.unique_id = self.next_id;
+        self.next_id += 1;
+
         self.notifications.push(notification);
     }
 
@@ -277,7 +326,7 @@ impl NotificationUi {
             .frame(ui.tokens().popup_frame(ui.style()))
             // Put the popup below the button, but all the way to the right of the screen:
             .anchor(egui::PopupAnchor::Position(egui::pos2(
-                ui.ctx().content_rect().right() - gap,
+                ui.content_rect().right() - gap,
                 ui.max_rect().bottom() + gap,
             )))
             .align(egui::RectAlign::BOTTOM_END)
@@ -308,7 +357,7 @@ impl NotificationUi {
         let notifications = &mut self.notifications;
 
         let panel_width = 356.0;
-        let panel_max_height = (ui.ctx().content_rect().height() - 100.0)
+        let panel_max_height = (ui.content_rect().height() - 100.0)
             .at_least(0.0)
             .at_most(640.0);
 
@@ -432,7 +481,7 @@ impl Toasts {
                 if let Some(link) = &notification.link {
                     egui_ctx.open_url(egui::OpenUrl::new_tab(link.url.clone()));
                 } else {
-                    egui_ctx.copy_text(notification.text.clone());
+                    egui_ctx.copy_text(notification.copy_text());
                 }
                 notification.toast_ttl = Duration::ZERO;
             }
@@ -461,79 +510,92 @@ fn show_notification(
         level,
         text,
         details,
+        fields,
         link,
         permanent_dismiss_id,
         created_at,
         toast_ttl: _,
         is_unread,
+        unique_id,
     } = notification;
 
-    let background_color = if mode == DisplayMode::Toast || *is_unread {
-        ui.tokens().notification_background_color
-    } else {
-        ui.tokens().notification_panel_background_color
-    };
+    ui.push_id(unique_id, |ui| {
+        let background_color = if mode == DisplayMode::Toast || *is_unread {
+            ui.tokens().notification_background_color
+        } else {
+            ui.tokens().notification_panel_background_color
+        };
 
-    let mut reaction = None;
+        let mut reaction = None;
 
-    let response = egui::Frame::window(ui.style())
-        .corner_radius(4)
-        .inner_margin(10.0)
-        .fill(background_color)
-        .shadow(egui::Shadow::NONE)
-        .show(ui, |ui| {
-            ui.vertical_centered(|ui| {
-                ui.horizontal_top(|ui| {
-                    ui.add(level.image(ui));
+        let response = egui::Frame::window(ui.style())
+            .corner_radius(4)
+            .inner_margin(10.0)
+            .fill(background_color)
+            .shadow(egui::Shadow::NONE)
+            .show(ui, |ui| {
+                ui.vertical_centered(|ui| {
+                    ui.horizontal_top(|ui| {
+                        ui.add(level.image(ui));
 
-                    ui.vertical(|ui| {
-                        ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
-                        ui.set_width(270.0);
-                        ui.label(text);
+                        ui.vertical(|ui| {
+                            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
+                            ui.set_width(270.0);
+                            ui.label(text);
 
-                        if let Some(details) = details {
-                            ui.collapsing_header("Details", false, |ui| ui.label(details));
+                            for (key, value) in fields {
+                                ui.label(
+                                    egui::RichText::new(format!("{key}: {value}"))
+                                        .monospace()
+                                        .weak(),
+                                );
+                            }
+
+                            if let Some(details) = details {
+                                ui.collapsing_header("Details", false, |ui| ui.label(details));
+                            }
+                        });
+
+                        ui.add_space(4.0);
+                        if mode == DisplayMode::Panel {
+                            notification_age_label(ui, *created_at);
                         }
                     });
 
-                    ui.add_space(4.0);
-                    if mode == DisplayMode::Panel {
-                        notification_age_label(ui, *created_at);
-                    }
-                });
+                    let show_dismiss = mode == DisplayMode::Panel;
+                    let show_bottom_bar = show_dismiss || link.is_some();
 
-                let show_dismiss = mode == DisplayMode::Panel;
-                let show_bottom_bar = show_dismiss || link.is_some();
-
-                if show_bottom_bar {
-                    egui::Sides::new().show(
-                        ui,
-                        |ui| {
-                            if let Some(link) = link {
-                                link.ui(ui);
-                            }
-                        },
-                        |ui| {
-                            if show_dismiss {
-                                if permanent_dismiss_id.is_some() {
-                                    if ui.button("Don't show again").clicked() {
-                                        reaction = Some(NotificationReaction::NeverShowAgain);
-                                    }
-                                } else {
-                                    //
-                                    if ui.button("Dismiss").clicked() {
-                                        reaction = Some(NotificationReaction::Dismissed);
+                    if show_bottom_bar {
+                        egui::Sides::new().show(
+                            ui,
+                            |ui| {
+                                if let Some(link) = link {
+                                    link.ui(ui);
+                                }
+                            },
+                            |ui| {
+                                if show_dismiss {
+                                    if permanent_dismiss_id.is_some() {
+                                        if ui.button("Don't show again").clicked() {
+                                            reaction = Some(NotificationReaction::NeverShowAgain);
+                                        }
+                                    } else {
+                                        //
+                                        if ui.button("Dismiss").clicked() {
+                                            reaction = Some(NotificationReaction::Dismissed);
+                                        }
                                     }
                                 }
-                            }
-                        },
-                    );
-                }
+                            },
+                        );
+                    }
+                })
             })
-        })
-        .response;
+            .response;
 
-    (reaction, response)
+        (reaction, response)
+    })
+    .inner
 }
 
 fn notification_age_label(ui: &mut egui::Ui, created_at: Timestamp) {
@@ -542,15 +604,15 @@ fn notification_age_label(ui: &mut egui::Ui, created_at: Timestamp) {
     let age = Timestamp::now().duration_since(created_at).as_secs_f64();
 
     let formatted = if age < 10.0 {
-        ui.ctx().request_repaint_after(Duration::from_secs(1));
+        ui.request_repaint_after(Duration::from_secs(1));
 
         "now".to_owned()
     } else if age < 60.0 {
-        ui.ctx().request_repaint_after(Duration::from_secs(1));
+        ui.request_repaint_after(Duration::from_secs(1));
 
         format!("{age:.0}s")
     } else {
-        ui.ctx().request_repaint_after(Duration::from_secs(60));
+        ui.request_repaint_after(Duration::from_mins(1));
 
         created_at.strftime("%H:%M").to_string()
     };

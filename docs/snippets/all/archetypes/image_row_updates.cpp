@@ -4,7 +4,7 @@
 
 #include <rerun.hpp>
 
-int main() {
+int main(int argc, char* argv[]) {
     auto rec = rerun::RecordingStream("rerun_example_image_row_updates");
     rec.spawn().exit_on_failure();
 

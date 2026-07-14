@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use re_entity_db::InstancePathHash;
 use re_log_types::Instance;
 use re_renderer::renderer::{GpuMeshInstance, LineStripFlags};
@@ -8,13 +10,24 @@ use re_tf::convert;
 use re_view::{clamped_or_nothing, process_annotation_slices, process_color_slice};
 #[cfg(doc)]
 use re_viewer_context::VisualizerSystem;
-use re_viewer_context::{QueryContext, ViewQuery, ViewSystemExecutionError, typed_fallback_for};
+use re_viewer_context::{
+    QueryContext, ViewQuery, ViewSystemExecutionError, VisualizerExecutionOutput,
+    VisualizerReportSeverity, typed_fallback_for,
+};
 use vec1::smallvec_v1::SmallVec1;
 
-use crate::contexts::SpatialSceneEntityContext;
+use crate::contexts::SpatialSceneVisualizerInstructionContext;
 use crate::proc_mesh::{self, ProcMeshKey};
 use crate::visualizers::utilities::LabeledBatch;
 use crate::visualizers::{SpatialViewVisualizerData, process_labels_3d, process_radius_slice};
+
+/// Maximum number of instances a single batch will draw before being capped.
+///
+/// This limit exists to prevent the viewer from becoming unresponsive when a
+/// single entity contains a very large number of 3D shape instances (boxes,
+/// capsules, cylinders, ellipsoids). It can be lifted in the viewer settings
+/// via [`AppOptions::visualizer_limits_enabled`](re_viewer_context::AppOptions::visualizer_limits_enabled).
+const NUM_INSTANCE_LIMIT_PER_BATCH: usize = 60_000;
 
 /// To be used within the scope of a single [`VisualizerSystem::execute()`] call
 /// when the visualizer wishes to draw batches of [`ProcMeshKey`] meshes.
@@ -26,13 +39,14 @@ pub struct ProcMeshDrawableBuilder<'ctx> {
     /// TODO(kpreid): Should be using instanced meshes kept in GPU buffers
     /// instead of this immediate-mode strategy that copies every vertex every frame.
     pub line_builder: re_renderer::LineDrawableBuilder<'ctx>,
-    pub line_batch_debug_label: re_renderer::DebugLabel,
+    pub line_batch_debug_label: re_renderer::Label,
 
     /// Accumulates triangle mesh instances to render.
     pub solid_instances: Vec<GpuMeshInstance>,
 
     pub query: &'ctx ViewQuery<'ctx>,
     pub render_ctx: &'ctx RenderContext,
+    pub output: &'ctx VisualizerExecutionOutput,
 }
 
 /// A [batch] of instances to draw. This struct is just arguments to
@@ -83,10 +97,11 @@ fn combine_instance_poses_with_archetype_transforms(
     let mut iter_rotation_quat = clamped_or_nothing(quaternions, num_instances);
 
     let last_target_from_instances = target_from_poses.last();
-    let clamped_target_from_instances = target_from_poses
-        .iter()
-        .chain(std::iter::repeat(last_target_from_instances))
-        .copied();
+    let clamped_target_from_instances = std::iter::chain(
+        target_from_poses,
+        std::iter::repeat(last_target_from_instances),
+    )
+    .copied();
 
     let target_from_instances = clamped_target_from_instances
         .take(num_instances)
@@ -125,7 +140,8 @@ impl<'ctx> ProcMeshDrawableBuilder<'ctx> {
         data: &'ctx mut SpatialViewVisualizerData,
         render_ctx: &'ctx re_renderer::RenderContext,
         view_query: &'ctx ViewQuery<'ctx>,
-        line_batch_debug_label: impl Into<re_renderer::DebugLabel>,
+        output: &'ctx VisualizerExecutionOutput,
+        line_batch_debug_label: impl Into<re_renderer::Label>,
     ) -> Self {
         let mut line_builder = re_renderer::LineDrawableBuilder::new(render_ctx);
         line_builder.radius_boost_in_ui_points_for_outlines(
@@ -139,6 +155,7 @@ impl<'ctx> ProcMeshDrawableBuilder<'ctx> {
             solid_instances: Vec::new(),
             query: view_query,
             render_ctx,
+            output,
         }
     }
 
@@ -146,8 +163,9 @@ impl<'ctx> ProcMeshDrawableBuilder<'ctx> {
     pub fn add_batch(
         &mut self,
         query_context: &QueryContext<'_>,
-        ent_context: &SpatialSceneEntityContext<'_>,
+        ent_context: &SpatialSceneVisualizerInstructionContext<'_>,
         color_component: ComponentIdentifier,
+        line_radii_component: ComponentIdentifier,
         show_labels_component: ComponentIdentifier,
         constant_instance_transform: glam::Affine3A,
         batch: ProcMeshBatch<'_, impl Iterator<Item = ProcMeshKey>, impl Iterator<Item = FillMode>>,
@@ -168,6 +186,29 @@ impl<'ctx> ProcMeshDrawableBuilder<'ctx> {
         );
         let num_instances = target_from_instances.len();
 
+        let num_instances = if query_context
+            .app_ctx()
+            .app_options
+            .visualizer_limits_enabled
+            && num_instances > NUM_INSTANCE_LIMIT_PER_BATCH
+        {
+            if let Some(instruction_id) = query_context.instruction_id {
+                self.output.report_unspecified_source(
+                    instruction_id,
+                    VisualizerReportSeverity::Warning,
+                    format!(
+                        "Too many instances ({}), capping to {}. \
+                             This limit can be lifted in Settings.",
+                        re_format::format_uint(num_instances),
+                        re_format::format_uint(NUM_INSTANCE_LIMIT_PER_BATCH),
+                    ),
+                );
+            }
+            NUM_INSTANCE_LIMIT_PER_BATCH
+        } else {
+            num_instances
+        };
+
         re_tracing::profile_function_if!(10_000 < num_instances);
 
         let half_sizes = clamped_or_nothing(batch.half_sizes, num_instances);
@@ -179,13 +220,12 @@ impl<'ctx> ProcMeshDrawableBuilder<'ctx> {
             &ent_context.annotations,
         );
 
-        // Has not custom fallback for radius, so we use the default.
-        // TODO(andreas): It would be nice to have this handle this fallback as part of the query.
         let line_radii = process_radius_slice(
+            query_context,
             entity_path,
             num_instances,
             batch.line_radii,
-            components::Radius::default(),
+            line_radii_component,
         );
         let colors = process_color_slice(
             query_context,
@@ -204,12 +244,11 @@ impl<'ctx> ProcMeshDrawableBuilder<'ctx> {
 
         let mut world_space_bounding_box = macaw::BoundingBox::nothing();
 
-        let world_from_instances = target_from_instances
-            .iter()
-            .map(|transform| transform.as_affine3a())
-            .chain(std::iter::repeat(
-                target_from_instances.last().as_affine3a(),
-            ));
+        let world_from_instances = std::iter::chain(
+            &target_from_instances,
+            std::iter::repeat(target_from_instances.last()),
+        )
+        .map(|transform| transform.as_affine3a());
 
         let mut num_instances = 0;
         for (
@@ -219,7 +258,7 @@ impl<'ctx> ProcMeshDrawableBuilder<'ctx> {
             half_sizes,
             world_from_instances,
             line_radii,
-            colors.iter(),
+            &colors,
             batch.meshes,
             batch.fill_modes
         )
@@ -237,78 +276,104 @@ impl<'ctx> ProcMeshDrawableBuilder<'ctx> {
                     .transform_affine3(&world_from_instance),
             );
 
-            match fill_mode {
-                FillMode::MajorWireframe | FillMode::DenseWireframe => {
-                    let Some(wireframe_mesh) = query_context.store_ctx().caches.entry(
-                        |c: &mut proc_mesh::WireframeCache| c.entry(proc_mesh_key, self.render_ctx),
-                    ) else {
-                        return Err(ViewSystemExecutionError::DrawDataCreationError(
-                            "Failed to allocate wireframe mesh".into(),
-                        ));
-                    };
+            let draw_wireframe = fill_mode.has_wireframe();
+            let draw_solid = fill_mode.has_solid();
 
-                    for strip in &wireframe_mesh.line_strips {
-                        let strip_builder = line_batch
-                            .add_strip(
-                                strip
-                                    .iter()
-                                    .map(|&point| world_from_instance.transform_point3(point)),
-                            )
-                            .color(color)
-                            .radius(radius)
-                            .picking_instance_id(PickingLayerInstanceId(instance_index as _))
-                            // Looped lines should be connected with rounded corners.
-                            .flags(LineStripFlags::FLAGS_OUTWARD_EXTENDING_ROUND_CAPS);
-
-                        if let Some(outline_mask_ids) = ent_context
-                            .highlight
-                            .instances
-                            .get(&Instance::from(instance_index as u64))
-                        {
-                            // Not using ent_context.highlight.index_outline_mask() because
-                            // that's already handled when the builder was created.
-                            strip_builder.outline_mask_ids(*outline_mask_ids);
-                        }
-                    }
-                }
-                FillMode::Solid => {
-                    let store_ctx = query_context.store_ctx();
-                    let Some(solid_mesh) =
-                        store_ctx.caches.entry(|c: &mut proc_mesh::SolidCache| {
+            if draw_wireframe {
+                let Some(wireframe_mesh) =
+                    query_context
+                        .store_ctx()
+                        .memoizer(|c: &mut proc_mesh::WireframeCache| {
                             c.entry(proc_mesh_key, self.render_ctx)
                         })
-                    else {
-                        return Err(ViewSystemExecutionError::DrawDataCreationError(
-                            "Failed to allocate solid mesh".into(),
-                        ));
-                    };
+                else {
+                    return Err(ViewSystemExecutionError::DrawDataCreationError(Arc::new(
+                        std::io::Error::other("Failed to allocate wireframe mesh"),
+                    )));
+                };
 
-                    self.solid_instances.push(GpuMeshInstance {
-                        gpu_mesh: solid_mesh.gpu_mesh,
-                        world_from_mesh: world_from_instance,
-                        outline_mask_ids: ent_context.highlight.index_outline_mask(instance),
-                        picking_layer_id: re_view::picking_layer_id_from_instance_path_hash(
-                            InstancePathHash::instance(entity_path, instance),
-                        ),
-                        additive_tint: color,
-                    });
+                for strip in &wireframe_mesh.line_strips {
+                    let strip_builder = line_batch
+                        .add_strip(
+                            strip
+                                .iter()
+                                .map(|&point| world_from_instance.transform_point3(point)),
+                        )
+                        .color(color)
+                        .radius(radius)
+                        .picking_instance_id(PickingLayerInstanceId(instance_index as _))
+                        // Looped lines should be connected with rounded corners.
+                        .flags(LineStripFlags::STRIP_FLAGS_OUTWARD_EXTENDING_ROUND_CAPS);
+
+                    if let Some(outline_mask_ids) = ent_context
+                        .highlight
+                        .instances
+                        .get(&Instance::from(instance_index as u64))
+                    {
+                        // Not using ent_context.highlight.index_outline_mask() because
+                        // that's already handled when the builder was created.
+                        strip_builder.outline_mask_ids(*outline_mask_ids);
+                    }
                 }
+            }
+
+            if draw_solid {
+                let store_ctx = query_context.store_ctx();
+                let Some(solid_mesh) = store_ctx.memoizer(|c: &mut proc_mesh::SolidCache| {
+                    c.entry(proc_mesh_key, self.render_ctx)
+                }) else {
+                    return Err(ViewSystemExecutionError::DrawDataCreationError(Arc::new(
+                        std::io::Error::other("Failed to allocate solid mesh"),
+                    )));
+                };
+
+                let tint = if fill_mode == FillMode::TransparentFillMajorWireframe {
+                    // Make the solid fill transparent so the wireframe shows through.
+                    #[expect(clippy::disallowed_methods)]
+                    re_renderer::Color32::from_rgba_unmultiplied(
+                        color.r(),
+                        color.g(),
+                        color.b(),
+                        color.a() / 4, // TODO(emilk): make configurabe?
+                    )
+                } else {
+                    color
+                };
+
+                self.solid_instances.push(GpuMeshInstance {
+                    gpu_mesh: solid_mesh.gpu_mesh,
+                    world_from_mesh: world_from_instance,
+                    outline_mask_ids: ent_context.highlight.index_outline_mask(instance),
+                    picking_layer_id: re_view::picking_layer_id_from_instance_path_hash(
+                        InstancePathHash::instance(entity_path, instance),
+                    ),
+                    additive_tint: tint,
+                    cull_mode: if tint.is_opaque() {
+                        Some(re_renderer::external::wgpu::Face::Back)
+                    } else {
+                        None
+                    },
+                });
             }
         }
 
-        self.data
-            .bounding_boxes
-            .push((entity_path.hash(), world_space_bounding_box));
+        self.data.add_bounding_box(
+            entity_path.hash(),
+            world_space_bounding_box,
+            glam::Affine3A::IDENTITY,
+        );
 
         self.data.ui_labels.extend(process_labels_3d(
             LabeledBatch {
                 entity_path,
+                visualizer_instruction: ent_context.visualizer_instruction,
                 num_instances,
                 overall_position: world_space_bounding_box.center(),
-                instance_positions: target_from_instances
-                    .iter()
-                    .chain(std::iter::repeat(target_from_instances.last()))
-                    .map(|t| t.translation.as_vec3()),
+                instance_positions: std::iter::chain(
+                    &target_from_instances,
+                    std::iter::repeat(target_from_instances.last()),
+                )
+                .map(|t| t.translation.as_vec3()),
                 labels: batch.labels,
                 colors: &colors,
                 show_labels: batch
@@ -333,6 +398,7 @@ impl<'ctx> ProcMeshDrawableBuilder<'ctx> {
             solid_instances,
             query: _,
             render_ctx,
+            output: _,
         } = self;
         let wireframe_draw_data: re_renderer::QueueableDrawData =
             line_builder.into_draw_data()?.into();

@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -35,7 +36,9 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// ### Point series
 /// ```ignore
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_series_point_style").spawn()?;
+///     let rec =
+///         rerun::RecordingStreamBuilder::new("rerun_example_series_point_style")
+///             .spawn()?;
 ///
 ///     // Set up plot styling:
 ///     // They are logged static as they don't change over time and apply to all timelines.
@@ -77,7 +80,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/series_point_style/82207a705da6c086b28ce161db1db9e8b12258b7/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, ::re_byte_size::SizeBytes)]
 pub struct SeriesPoints {
     /// Color for the corresponding series.
     ///
@@ -115,11 +118,13 @@ impl SeriesPoints {
     /// The corresponding component is [`crate::components::Color`].
     #[inline]
     pub fn descriptor_colors() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.SeriesPoints".into()),
-            component: "SeriesPoints:colors".into(),
-            component_type: Some("rerun.components.Color".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.SeriesPoints".into()),
+                component: "SeriesPoints:colors".into(),
+                component_type: Some("rerun.components.Color".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::markers`].
@@ -127,11 +132,13 @@ impl SeriesPoints {
     /// The corresponding component is [`crate::components::MarkerShape`].
     #[inline]
     pub fn descriptor_markers() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.SeriesPoints".into()),
-            component: "SeriesPoints:markers".into(),
-            component_type: Some("rerun.components.MarkerShape".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.SeriesPoints".into()),
+                component: "SeriesPoints:markers".into(),
+                component_type: Some("rerun.components.MarkerShape".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::names`].
@@ -139,23 +146,27 @@ impl SeriesPoints {
     /// The corresponding component is [`crate::components::Name`].
     #[inline]
     pub fn descriptor_names() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.SeriesPoints".into()),
-            component: "SeriesPoints:names".into(),
-            component_type: Some("rerun.components.Name".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.SeriesPoints".into()),
+                component: "SeriesPoints:names".into(),
+                component_type: Some("rerun.components.Name".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::visible_series`].
     ///
-    /// The corresponding component is [`crate::components::SeriesVisible`].
+    /// The corresponding component is [`crate::components::Visible`].
     #[inline]
     pub fn descriptor_visible_series() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.SeriesPoints".into()),
-            component: "SeriesPoints:visible_series".into(),
-            component_type: Some("rerun.components.SeriesVisible".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.SeriesPoints".into()),
+                component: "SeriesPoints:visible_series".into(),
+                component_type: Some("rerun.components.Visible".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::marker_sizes`].
@@ -163,11 +174,13 @@ impl SeriesPoints {
     /// The corresponding component is [`crate::components::MarkerSize`].
     #[inline]
     pub fn descriptor_marker_sizes() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.SeriesPoints".into()),
-            component: "SeriesPoints:marker_sizes".into(),
-            component_type: Some("rerun.components.MarkerSize".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.SeriesPoints".into()),
+                component: "SeriesPoints:marker_sizes".into(),
+                component_type: Some("rerun.components.MarkerSize".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -206,7 +219,10 @@ impl SeriesPoints {
 impl ::re_types_core::Archetype for SeriesPoints {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.archetypes.SeriesPoints".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.archetypes.SeriesPoints"
+        )
     }
 
     #[inline]
@@ -333,7 +349,7 @@ impl SeriesPoints {
                 Self::descriptor_names(),
             )),
             visible_series: Some(SerializedComponentBatch::new(
-                crate::components::SeriesVisible::arrow_empty(),
+                crate::components::Visible::arrow_empty(),
                 Self::descriptor_visible_series(),
             )),
             marker_sizes: Some(SerializedComponentBatch::new(
@@ -450,7 +466,7 @@ impl SeriesPoints {
     #[inline]
     pub fn with_visible_series(
         mut self,
-        visible_series: impl IntoIterator<Item = impl Into<crate::components::SeriesVisible>>,
+        visible_series: impl IntoIterator<Item = impl Into<crate::components::Visible>>,
     ) -> Self {
         self.visible_series =
             try_serialize_field(Self::descriptor_visible_series(), visible_series);
@@ -467,16 +483,5 @@ impl SeriesPoints {
     ) -> Self {
         self.marker_sizes = try_serialize_field(Self::descriptor_marker_sizes(), marker_sizes);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for SeriesPoints {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.colors.heap_size_bytes()
-            + self.markers.heap_size_bytes()
-            + self.names.heap_size_bytes()
-            + self.visible_series.heap_size_bytes()
-            + self.marker_sizes.heap_size_bytes()
     }
 }

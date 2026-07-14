@@ -41,17 +41,6 @@ message SetStoreInfo {
   StoreInfo info = 2;
 }
 
-// The type of compression used on the payload.
-enum Compression {
-  COMPRESSION_UNSPECIFIED = 0;
-
-  // No compression.
-  COMPRESSION_NONE = 1;
-
-  // LZ4 block compression.
-  COMPRESSION_LZ4 = 2;
-}
-
 // The encoding of the message payload.
 enum Encoding {
   // We don't know what encoding the payload is in.
@@ -70,7 +59,7 @@ message ArrowMsg {
   optional rerun.common.v1alpha1.Tuid chunk_id = 6;
 
   // Compression algorithm used.
-  Compression compression = 2;
+  rerun.common.v1alpha1.Compression compression = 2;
 
   uint64 uncompressed_size = 3;
 

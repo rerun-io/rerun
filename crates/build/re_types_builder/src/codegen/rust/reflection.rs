@@ -1,4 +1,5 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::fmt::Write as _;
 
 use camino::Utf8PathBuf;
 use itertools::Itertools as _;
@@ -8,8 +9,8 @@ use quote::{format_ident, quote};
 use super::util::{append_tokens, doc_as_lines};
 use crate::codegen::{Target, autogen_warning};
 use crate::{
-    ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RUST_DERIVE, ATTR_RUST_DERIVE_ONLY, ObjectKind, Objects,
-    Reporter,
+    ATTR_RERUN_COMPONENT_NO_UI_EDIT, ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RUST_DERIVE,
+    ATTR_RUST_DERIVE_ONLY, ObjectKind, Objects, Reporter,
 };
 
 /// Generate reflection about components and archetypes.
@@ -41,7 +42,7 @@ pub fn generate_reflection(
     code.push_str("#![allow(unused_imports)]\n");
     code.push('\n');
     for namespace in imports {
-        code.push_str(&format!("use {namespace};\n"));
+        writeln!(code, "use {namespace};").ok();
     }
 
     let quoted_reflection = quote! {
@@ -53,6 +54,7 @@ pub fn generate_reflection(
             ComponentBatch as _,
             reflection::{
                 generate_component_identifier_reflection,
+                ArchetypeFieldFlags,
                 ArchetypeFieldReflection,
                 ArchetypeReflection,
                 ArchetypeReflectionMap,
@@ -144,8 +146,8 @@ fn generate_component_reflection(
             extension_contents_for_fqname
                 .get(&obj.fqname)
                 .is_some_and(|contents| {
-                    contents.contains(&format!("impl Default for {}", &obj.name))
-                        || contents.contains(&format!("impl Default for super::{}", &obj.name))
+                    contents.contains(&format!("impl Default for {}", obj.name))
+                        || contents.contains(&format!("impl Default for super::{}", obj.name))
                 });
         let custom_placeholder = if auto_derive_default || has_custom_default_impl {
             quote! { Some(#type_name::default().to_arrow()?) }
@@ -159,12 +161,14 @@ fn generate_component_reflection(
             quote! { None }
         };
 
+        let is_enum = obj.is_enum();
         let quoted_reflection = quote! {
             ComponentReflection {
                 docstring_md: #docstring_md,
                 deprecation_summary: #deprecation_summary,
                 custom_placeholder: #custom_placeholder,
                 datatype: #type_name::arrow_datatype(),
+                is_enum: #is_enum,
                 verify_arrow_array: #type_name::verify_arrow_array,
             }
         };
@@ -215,6 +219,23 @@ fn generate_archetype_reflection(reporter: &Reporter, objects: &Objects) -> Toke
             )
             .join("\n");
             let required = field.attrs.has(ATTR_RERUN_COMPONENT_REQUIRED);
+            let ui_editable = !field.attrs.has(ATTR_RERUN_COMPONENT_NO_UI_EDIT);
+
+            let mut flag_tokens: Vec<TokenStream> = Vec::new();
+            if required {
+                flag_tokens.push(quote! { ArchetypeFieldFlags::REQUIRED });
+            }
+            if ui_editable {
+                flag_tokens.push(quote! { ArchetypeFieldFlags::UI_EDITABLE });
+            }
+            let flags = if flag_tokens.is_empty() {
+                quote! { ArchetypeFieldFlags::empty() }
+            } else {
+                flag_tokens
+                    .into_iter()
+                    .reduce(|a, b| quote! { #a | #b })
+                    .unwrap()
+            };
 
             quote! {
                 ArchetypeFieldReflection {
@@ -222,7 +243,7 @@ fn generate_archetype_reflection(reporter: &Reporter, objects: &Objects) -> Toke
                     display_name: #display_name,
                     component_type: #component_type.into(),
                     docstring_md: #docstring_md,
-                    is_required: #required,
+                    flags: #flags,
                 }
             }
         });

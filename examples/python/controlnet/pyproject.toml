@@ -7,9 +7,9 @@ dependencies = [
   "accelerate",
   "opencv-python",
   "pillow",
-  "diffusers==0.27.2",
+  "diffusers<0.39",
   "numpy",
-  "torch==2.8.0", # This must match the version captured in pixi.toml
+  "torch", # this will use the version defined in the uv workspace
   "transformers",
   "rerun-sdk",
 ]

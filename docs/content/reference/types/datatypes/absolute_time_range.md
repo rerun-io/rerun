@@ -7,22 +7,22 @@ Two [`datatypes.TimeInt`](https://rerun.io/docs/reference/types/datatypes/time_i
 
 ## Fields
 #### `min`
-Type: [`TimeInt`](../datatypes/time_int.md)
+Type: non-null [`TimeInt`](../datatypes/time_int.md)
 
 Start of the range.
 
 #### `max`
-Type: [`TimeInt`](../datatypes/time_int.md)
+Type: non-null [`TimeInt`](../datatypes/time_int.md)
 
 End of the range (inclusive).
 
 
 ## Arrow datatype
 ```
-Struct {
-    min: int64
-    max: int64
-}
+Struct(
+    "min": non-null Int64
+    "max": non-null Int64
+)
 ```
 
 ## API reference links

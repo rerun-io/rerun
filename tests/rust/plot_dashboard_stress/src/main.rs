@@ -138,7 +138,7 @@ fn run(rec: &rerun::RecordingStream, args: &Args) -> anyhow::Result<()> {
 
     let mut tick_start_time = std::time::Instant::now();
 
-    #[expect(clippy::unchecked_duration_subtraction)]
+    #[expect(clippy::unchecked_time_subtraction)]
     for offset in offsets {
         if args.temporal_batch_size.is_none() {
             rec.set_duration_secs("sim_time", sim_times[offset]);

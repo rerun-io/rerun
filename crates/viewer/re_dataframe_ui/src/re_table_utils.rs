@@ -1,7 +1,7 @@
 use ahash::HashSet;
 use egui::containers::menu::{MenuButton, MenuConfig};
 use egui::emath::GuiRounding as _;
-use egui::{Button, Color32, Context, Frame, Id, PopupCloseBehavior, RichText, Stroke, Style};
+use egui::{Color32, Frame, Id, PopupCloseBehavior, RichText, Stroke, Style};
 use re_ui::{UiExt as _, design_tokens_of, icons};
 
 pub const CELL_SEPARATOR_STROKE_OFFSET: f32 = 0.5;
@@ -171,8 +171,8 @@ impl TableConfig {
     }
 
     /// Remove the table config from the cache.
-    pub fn clear_state(ctx: &Context, persisted_id: Id) {
-        ctx.data_mut(|data| {
+    pub fn clear_state(egui_ctx: &egui::Context, persisted_id: Id) {
+        egui_ctx.data_mut(|data| {
             data.remove::<Self>(persisted_id);
         });
     }
@@ -185,11 +185,11 @@ impl TableConfig {
     ///
     /// Don't forget to call [`Self::store`] to persist the changes.
     pub fn get_with_columns(
-        ctx: &Context,
+        egui_ctx: &egui::Context,
         persisted_id: Id,
         columns: impl Iterator<Item = ColumnConfig>,
     ) -> Self {
-        ctx.data_mut(|data| {
+        egui_ctx.data_mut(|data| {
             let config: &mut Self =
                 data.get_persisted_mut_or_insert_with(persisted_id, || Self::new(persisted_id));
 
@@ -221,8 +221,8 @@ impl TableConfig {
         })
     }
 
-    pub fn store(self, ctx: &Context) {
-        ctx.data_mut(|data| {
+    pub fn store(self, egui_ctx: &egui::Context) {
+        egui_ctx.data_mut(|data| {
             data.insert_persisted(self.id, self);
         });
     }
@@ -244,50 +244,49 @@ impl TableConfig {
     }
 
     pub fn ui(&mut self, ui: &mut egui::Ui) {
-        let response = egui_dnd::dnd(ui, "Columns").show(
-            self.columns.iter_mut(),
-            |ui, column, handle, _state| {
-                let visible = column.visible;
-                egui::Sides::new().show(
-                    ui,
-                    |ui| {
-                        handle.ui(ui, |ui| {
-                            ui.small_icon(&icons::DND_HANDLE, Some(ui.visuals().text_color()));
-                        });
-                        let mut label = RichText::new(&column.name);
-                        if visible {
-                            label = label.strong();
-                        } else {
-                            label = label.weak();
-                        }
-                        ui.label(label);
-                    },
-                    |ui| {
-                        let (icon, alt_text) = if column.visible {
-                            (&icons::VISIBLE, "Hide column")
-                        } else {
-                            (&icons::INVISIBLE, "Show column")
-                        };
-                        if ui.small_icon_button(icon, alt_text).clicked() {
-                            column.visible = !column.visible;
-                        }
-                    },
-                );
-            },
-        );
-        if response.is_drag_finished() {
-            response.update_vec(self.columns.as_mut_slice());
-        }
+        egui::ScrollArea::vertical().show(ui, |ui| {
+            let response = egui_dnd::dnd(ui, "Columns").show(
+                self.columns.iter_mut(),
+                |ui, column, handle, _state| {
+                    let visible = column.visible;
+                    egui::Sides::new().show(
+                        ui,
+                        |ui| {
+                            handle.ui(ui, |ui| {
+                                ui.small_icon(&icons::DND_HANDLE, Some(ui.visuals().text_color()));
+                            });
+                            let mut label = RichText::new(&column.name);
+                            if visible {
+                                label = label.strong();
+                            } else {
+                                label = label.weak();
+                            }
+                            ui.label(label);
+                        },
+                        |ui| {
+                            let (icon, alt_text) = if column.visible {
+                                (&icons::VISIBLE, "Hide column")
+                            } else {
+                                (&icons::INVISIBLE, "Show column")
+                            };
+                            if ui.small_icon_button(icon, alt_text).clicked() {
+                                column.visible = !column.visible;
+                            }
+                        },
+                    );
+                },
+            );
+            if response.is_drag_finished() {
+                response.update_vec(self.columns.as_mut_slice());
+            }
+        });
     }
 
     pub fn button_ui(&mut self, ui: &mut egui::Ui) {
-        MenuButton::from_button(Button::image_and_text(
-            icons::SETTINGS.as_image(),
-            "Columns",
-        ))
-        .config(MenuConfig::new().close_behavior(PopupCloseBehavior::CloseOnClickOutside))
-        .ui(ui, |ui| {
-            self.ui(ui);
-        });
+        MenuButton::from_button(icons::TABLE_COLUMNS.as_button_with_label(ui.tokens(), "Columns"))
+            .config(MenuConfig::new().close_behavior(PopupCloseBehavior::CloseOnClickOutside))
+            .ui(ui, |ui| {
+                self.ui(ui);
+            });
     }
 }

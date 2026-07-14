@@ -15,10 +15,14 @@ namespace rerun::archetypes {
         archetype.names =
             ComponentBatch::empty<rerun::components::Name>(Descriptor_names).value_or_throw();
         archetype.visible_series =
-            ComponentBatch::empty<rerun::components::SeriesVisible>(Descriptor_visible_series)
+            ComponentBatch::empty<rerun::components::Visible>(Descriptor_visible_series)
                 .value_or_throw();
         archetype.aggregation_policy = ComponentBatch::empty<rerun::components::AggregationPolicy>(
                                            Descriptor_aggregation_policy
+        )
+                                           .value_or_throw();
+        archetype.interpolation_mode = ComponentBatch::empty<rerun::components::InterpolationMode>(
+                                           Descriptor_interpolation_mode
         )
                                            .value_or_throw();
         return archetype;
@@ -26,7 +30,7 @@ namespace rerun::archetypes {
 
     Collection<ComponentColumn> SeriesLines::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(5);
+        columns.reserve(6);
         if (colors.has_value()) {
             columns.push_back(colors.value().partitioned(lengths_).value_or_throw());
         }
@@ -41,6 +45,9 @@ namespace rerun::archetypes {
         }
         if (aggregation_policy.has_value()) {
             columns.push_back(aggregation_policy.value().partitioned(lengths_).value_or_throw());
+        }
+        if (interpolation_mode.has_value()) {
+            columns.push_back(interpolation_mode.value().partitioned(lengths_).value_or_throw());
         }
         return columns;
     }
@@ -61,6 +68,9 @@ namespace rerun::archetypes {
         if (aggregation_policy.has_value()) {
             return columns(std::vector<uint32_t>(aggregation_policy.value().length(), 1));
         }
+        if (interpolation_mode.has_value()) {
+            return columns(std::vector<uint32_t>(interpolation_mode.value().length(), 1));
+        }
         return Collection<ComponentColumn>();
     }
 } // namespace rerun::archetypes
@@ -72,7 +82,7 @@ namespace rerun {
     ) {
         using namespace archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(5);
+        cells.reserve(6);
 
         if (archetype.colors.has_value()) {
             cells.push_back(archetype.colors.value());
@@ -88,6 +98,9 @@ namespace rerun {
         }
         if (archetype.aggregation_policy.has_value()) {
             cells.push_back(archetype.aggregation_policy.value());
+        }
+        if (archetype.interpolation_mode.has_value()) {
+            cells.push_back(archetype.interpolation_mode.value());
         }
 
         return rerun::take_ownership(std::move(cells));

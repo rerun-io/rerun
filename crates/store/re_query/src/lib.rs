@@ -2,6 +2,7 @@
 
 mod cache;
 mod cache_stats;
+mod latest_all;
 mod latest_at;
 mod range;
 mod storage_engine;
@@ -14,6 +15,7 @@ use re_chunk::ComponentIdentifier;
 pub use self::cache::{QueryCache, QueryCacheHandle, QueryCacheKey};
 pub use self::cache_stats::{QueryCacheStats, QueryCachesStats};
 pub use self::clamped_zip::*;
+pub use self::latest_all::{LatestAllComponentResults, LatestAllResults};
 pub(crate) use self::latest_at::LatestAtCache;
 pub use self::latest_at::LatestAtResults;
 pub(crate) use self::range::RangeCache;

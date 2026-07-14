@@ -10,9 +10,14 @@ This document describes the current release and versioning strategy. This strate
 -   [`CODE_STYLE.md`](CODE_STYLE.md)
 -   [`CONTRIBUTING.md`](CONTRIBUTING.md)
 
+## Repository
+
+:warning: The steps & workflows in this document are targeting the open-source Rerun repository (https://github.com/rerun-io/rerun), not our internal monorepo.
+
 ## Release cadence
 
-New Rerun versions are released approximately once every month. Sometimes we do out-of-schedule patch releases.
+New Rerun versions are released every two weeks. Sometimes we do out-of-schedule patch releases.
+We do not block a release on a PR. Incomplete work should be hidden behind a feature flag.
 
 ## Library versioning and release cadence
 
@@ -71,7 +76,7 @@ Note that `prepare-release-0.x` is _invalid_. Always specify the `y`, even if it
 The _base_ of the branch should depends on what kind of release it is:
 
 - For a _minor_ release, the branch is created from `main`.
-- For a _patch_ release, the branch is created from the previous release tag.
+- For a _patch_ release, the branch is created from `docs-latest` ( :warning: branching off `docs-latest` instead of the latest release tag ensures that documentation patches will be included)
 - For an _alpha_ release, the branch is created from `main`.
 
 You can do this either using `git` on your command line, or through the UI:
@@ -80,30 +85,24 @@ You can do this either using `git` on your command line, or through the UI:
 
 Once the branch has been created, push it to the remote repository.
 
-**NOTE (for patch releases)**: upon creation of the branch, the version is set to the final version of the previous release. This can create issues when testing the patch release, since it has a non-"+dev" version identical to/conflicting with an existing release. Because of that, an RC should preferably be created before testing.
+**NOTE (for patch releases)**: upon creation of the branch, the version is set to the final version of the previous release. This can create issues when testing the patch release, since it has a non-"+dev" version identical to/conflicting with an existing release. Because of that, an RC (release candidate) should preferably be created before testing.
+The release workflow section below explains how you can create an RC.
+Do this once you have prepared your patch-release branch and it's ready for testing.
 
 ### 3. If this is a patch release, cherry-pick commits for inclusion in the release into the branch
 
 In GitHub we have a `consider-patch` label that we put on PRs that we might want to include in the release.
-
-When done, run [`cargo semver-checks`](https://github.com/obi1kenobi/cargo-semver-checks) to check that we haven't introduced any semver breaking changes.
-
-:warning: Any commits between the last release's tag and the `docs-latest` branch should also be cherry-picked,
-otherwise these changes will be lost when `docs-latest` is updated.
+The fastest way to get an overview of all the patch candidate PRs from both repositories and their corresponding commit hashes is to run this script:
 
 ```
-# On branch `prepare-release-0.x.y`
-git fetch origin docs-latest:docs-latest
-git cherry-pick 0.x.z..docs-latest
+uv run scripts/fetch_patch_candidates.py
 ```
-
-Where `z` is the previous patch number.
-
-Note that the `cherry-pick` will fail if there are no additional `docs-latest` commits to include, which is fine.
 
 After cherry-picking a commit into the patch, please make sure to remove the `consider-patch` label.
 
 ### 4. Update [`CHANGELOG.md`](./CHANGELOG.md)
+
+⚠️ Skip this step when preparing an alpha release.
 
 Update the change log. It should include:
 
@@ -120,6 +119,8 @@ Update the change log. It should include:
 -   Make sure the changelog includes instructions for handling any breaking changes
 
 ### 5. Clean up documentation links
+
+⚠️ Skip this step when preparing an alpha release.
 
 Remove all the `attr.docs.unreleased` attributes in all `.fbs` files, followed by `pixi run codegen`.
 
@@ -139,22 +140,25 @@ In the UI:
         This will create a one-off alpha release.
 
     - `rc` if the branch name is `prepare-release-x.y.z`.
-      This will create a pull request for the release, and publish a release candidate.
+      This will publish a release candidate.
 
-    - `final` for the final public release
+    - `final` for the final public release.
+
+In all three cases, the workflow opens (or updates) a release pull request against `main`.
 
 ![Image showing the Run workflow UI. It can be found at https://github.com/rerun-io/rerun/actions/workflows/release.yml](https://github.com/rerun-io/rerun/assets/1665677/6cdc8e7e-c0fc-4cf1-99cb-0749957b8328)
 
-### 7. Wait for both workflows to finish
+### 7. Wait for the release workflow to finish
 
 Once the release workflow is started, it will create a pull request for the release.
 The pull request description will tell you what to do next.
 
-[The `Release` workflow](https://github.com/rerun-io/rerun/actions/workflows/release.yml) will build artifacts and run PR checks.
-Additionally, if the release type is set to `final` or `rc`, it will spawn a second workflow (when the release artifacts have been published to PyPI, crates.io etc.) called [`GitHub Release`](https://github.com/rerun-io/rerun/actions/workflows/on_gh_release.yml).
-This workflow is responsible for creating [the GitHub release draft](https://github.com/rerun-io/rerun/releases) and to publish the artifacts to it.
-**Make sure this workflow also finishes!**.
-Only after it finishes successfully should you un-draft [the GitHub release](https://github.com/rerun-io/rerun/releases).
+[The `Release` workflow](https://github.com/rerun-io/rerun/actions/workflows/release.yml) will build artifacts, run PR checks, and publish them to PyPI, crates.io, npm, etc.
+For `rc` and `final` releases it also creates a **draft** [GitHub release](https://github.com/rerun-io/rerun/releases) (in the `tag-release` job) and attaches a comment to the release PR pointing at it.
+
+Once the `Release` workflow has finished successfully and you've sanity-checked the artifacts, edit the GitHub release draft (changelog, header media) and click `Publish release`.
+Publishing the release triggers the [`GitHub Release` workflow](https://github.com/rerun-io/rerun/actions/workflows/on_gh_release.yml), which syncs the binary assets from `build.rerun.io` onto the published GitHub release.
+**Make sure that workflow also finishes successfully** so the release ends up with all of its assets attached.
 
 ### 8. Merge changes to `main`
 
@@ -179,3 +183,8 @@ Make sure the `consider-patch` label on GitHub is up-to-date. For a full release
 Summarize your experience with the release process to our [Release Postmortems](https://www.notion.so/rerunio/Release-Postmortems-271b24554b1980589770df810d2e4ed5) Notion page.
 
 Create tickets if you think we can improve the process, put them into the `Actionable items` section.
+
+### 10. Clean up PR labels
+
+`uv run scripts/fetch_patch_candidates.py` will show a warning for `consider-patch`-labeled PRs that have been merged before a release.
+Make sure to remove the label from PRs that are already part of a release.

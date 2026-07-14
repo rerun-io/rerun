@@ -1,5 +1,7 @@
 use std::sync::mpsc;
 
+use re_log::debug_assert;
+
 use crate::texture_info::Texture2DBufferInfo;
 use crate::wgpu_resources::{BufferDesc, GpuBuffer, GpuBufferPool, GpuTexture};
 
@@ -68,7 +70,7 @@ impl<T> CpuWriteGpuReadBuffer<T>
 where
     T: bytemuck::Pod + Send + Sync,
 {
-    /// Memory as slice.
+    /// Write-only view into the unwritten portion of the buffer.
     ///
     /// Note that we can't rely on any alignment guarantees here!
     /// We could offset the mapped CPU-sided memory, but then the GPU offset won't be aligned anymore.
@@ -77,13 +79,14 @@ where
     ///
     /// Once wgpu has some alignment guarantees, we might be able to use this here to allow faster copies!
     /// (copies of larger blocks are likely less affected as `memcpy` typically does dynamic check/dispatching for SIMD based copies)
-    ///
-    /// Do *not* make this public as we need to guarantee that the memory is *never* read from!
     #[inline(always)]
-    fn as_mut_byte_slice(&mut self) -> &mut [u8] {
-        // TODO(andreas): Is this access slow given that it internally goes through a trait interface? Should we keep the pointer around?
-        &mut self.write_view[self.unwritten_element_range.start * std::mem::size_of::<T>()
-            ..self.unwritten_element_range.end * std::mem::size_of::<T>()]
+    fn write_only_slice(
+        &mut self,
+        range: impl std::ops::RangeBounds<usize>,
+    ) -> wgpu::WriteOnly<'_, [u8]> {
+        let start = self.unwritten_element_range.start * std::mem::size_of::<T>();
+        let end = self.unwritten_element_range.end * std::mem::size_of::<T>();
+        self.write_view.slice(start..end).into_slice(range)
     }
 
     /// Pushes a slice of elements into the buffer.
@@ -112,7 +115,7 @@ where
         };
 
         let bytes = bytemuck::cast_slice(elements);
-        self.as_mut_byte_slice()[..bytes.len()].copy_from_slice(bytes);
+        self.write_only_slice(..bytes.len()).copy_from_slice(bytes);
         self.unwritten_element_range.start += elements.len();
 
         result
@@ -134,7 +137,7 @@ where
         if true {
             let vec: Vec<T> = elements.collect();
 
-            debug_assert_eq!(
+            re_log::debug_assert_eq!(
                 vec.as_ptr() as usize % std::mem::align_of::<T>(),
                 0,
                 "Vec::collect collects into unaligned memory! Is this a bug in the allocator?"
@@ -158,7 +161,7 @@ where
                     });
                 }
 
-                self.as_mut_byte_slice()[..std::mem::size_of::<T>()]
+                self.write_only_slice(..std::mem::size_of::<T>())
                     .copy_from_slice(bytemuck::bytes_of(&element));
                 self.unwritten_element_range.start += 1;
             }
@@ -192,12 +195,14 @@ where
         };
 
         let mut offset = 0;
-        let buffer_bytes = self.as_mut_byte_slice();
         let element_bytes = bytemuck::bytes_of(&element);
+        let mut write_slice = self.write_only_slice(..num_elements * std::mem::size_of::<T>());
 
         for _ in 0..num_elements {
             let end = offset + std::mem::size_of::<T>();
-            buffer_bytes[offset..end].copy_from_slice(element_bytes);
+            write_slice
+                .slice(offset..end)
+                .copy_from_slice(element_bytes);
             offset = end;
         }
         self.unwritten_element_range.start += num_elements;
@@ -218,7 +223,7 @@ where
             });
         }
 
-        self.as_mut_byte_slice()[..std::mem::size_of::<T>()]
+        self.write_only_slice(..std::mem::size_of::<T>())
             .copy_from_slice(bytemuck::bytes_of(&element));
         self.unwritten_element_range.start += 1;
 
@@ -422,6 +427,16 @@ pub struct CpuWriteGpuReadBelt {
 
     /// Free chunks are received here to be put on `self.free_chunks`.
     receiver: mpsc::Receiver<Chunk>,
+
+    /// Total bytes allocated during the current frame, reset at each frame boundary.
+    current_frame_allocated_bytes: u64,
+
+    /// Exponentially smoothed estimate of peak allocation per frame.
+    ///
+    /// Updated each frame via `max(smoothed * PEAK_DECAY, last_frame_usage)`.
+    /// This tracks the "typical" high-water mark while allowing it to decay
+    /// after usage spikes so that excess buffers can be released.
+    smoothed_peak_bytes: f64,
 }
 
 impl CpuWriteGpuReadBelt {
@@ -438,7 +453,20 @@ impl CpuWriteGpuReadBelt {
     ///
     /// Note that this does NOT mean that the CPU memory has *any* alignment.
     /// See this issue about [lack of CPU memory alignment](https://github.com/gfx-rs/wgpu/issues/3508) in wgpu/WebGPU.
-    const MIN_OFFSET_ALIGNMENT: u64 = 16;
+    pub const MIN_OFFSET_ALIGNMENT: u64 = 16;
+
+    /// Per-frame decay factor for the smoothed peak allocation estimate.
+    ///
+    /// At 60 fps, a spike's influence halves in ~14 frames (~0.23 s).
+    /// Slower decay (closer to 1.0) means the belt holds onto memory longer after spikes;
+    /// faster decay (closer to 0.0) reclaims sooner but risks re-allocating if usage fluctuates.
+    const PEAK_DECAY: f64 = 0.95;
+
+    /// How much free capacity to retain relative to the smoothed peak usage.
+    ///
+    /// A factor of 1.5 provides headroom for frame-to-frame variance without
+    /// immediately re-allocating after a moderate spike.
+    const HEADROOM_FACTOR: f64 = 1.5;
 
     /// Create a cpu-write & gpu-read staging belt.
     ///
@@ -452,7 +480,6 @@ impl CpuWriteGpuReadBelt {
     /// * bigger is better, within these bounds.
     ///
     /// TODO(andreas): Adaptive chunk sizes
-    /// TODO(andreas): Shrinking after usage spikes?
     pub fn new(chunk_size: wgpu::BufferSize) -> Self {
         static_assertions::const_assert!(
             wgpu::MAP_ALIGNMENT <= CpuWriteGpuReadBelt::MIN_OFFSET_ALIGNMENT
@@ -468,6 +495,8 @@ impl CpuWriteGpuReadBelt {
                 <= Self::MIN_OFFSET_ALIGNMENT
         );
 
+        // we must use an unbounded channel to avoid blocking on web
+        #[expect(clippy::disallowed_methods)]
         let (sender, receiver) = mpsc::channel();
         Self {
             chunk_size: wgpu::util::align_to(chunk_size.get(), Self::MIN_OFFSET_ALIGNMENT),
@@ -476,6 +505,8 @@ impl CpuWriteGpuReadBelt {
             free_chunks: Vec::new(),
             sender,
             receiver,
+            current_frame_allocated_bytes: 0,
+            smoothed_peak_bytes: 0.0,
         }
     }
 
@@ -544,6 +575,8 @@ impl CpuWriteGpuReadBelt {
             }
         };
 
+        self.current_frame_allocated_bytes += size;
+
         let cpu_buffer_view = chunk.allocate(num_elements, size);
         self.active_chunks.push(chunk);
         Ok(cpu_buffer_view)
@@ -589,7 +622,16 @@ impl CpuWriteGpuReadBelt {
     /// once we know a chunk has all its cpu->gpu copy operations scheduled on that very encoder.
     pub fn after_queue_submit(&mut self) {
         re_tracing::profile_function!();
+
+        // Update the smoothed peak estimate from last frame's usage, then reset the counter.
+        self.smoothed_peak_bytes = f64::max(
+            self.smoothed_peak_bytes * Self::PEAK_DECAY,
+            self.current_frame_allocated_bytes as f64,
+        );
+        self.current_frame_allocated_bytes = 0;
+
         self.receive_chunks();
+        self.shrink_free_chunks();
 
         let sender = &self.sender;
         for chunk in self.closed_chunks.drain(..) {
@@ -612,6 +654,58 @@ impl CpuWriteGpuReadBelt {
             self.free_chunks.push(chunk);
         }
     }
+
+    /// Drop free chunks that exceed our estimated needs.
+    ///
+    /// If total free capacity exceeds `HEADROOM_FACTOR × smoothed_peak`, drops the
+    /// smallest chunks first (keeping the larger, more flexible ones).
+    /// Always retains at least one `chunk_size` worth of free capacity.
+    fn shrink_free_chunks(&mut self) {
+        let budget =
+            ((self.smoothed_peak_bytes * Self::HEADROOM_FACTOR) as u64).max(self.chunk_size);
+
+        let total_bytes_in_free_chunks: u64 =
+            self.free_chunks.iter().map(|c| c.buffer.size()).sum();
+        if total_bytes_in_free_chunks <= budget {
+            return;
+        }
+
+        re_tracing::profile_function!();
+
+        // Sort ascending by size so we drop the smallest first (keep the more flexible large ones).
+        self.free_chunks.sort_by_key(|c| c.buffer.size());
+
+        // Find how many chunks from the front (smallest) we need to drop
+        // to bring total free capacity within budget.
+        let excess = total_bytes_in_free_chunks - budget;
+        let num_to_drop = self
+            .free_chunks
+            .iter()
+            .scan(0u64, |cumulative, chunk| {
+                *cumulative += chunk.buffer.size();
+                Some(*cumulative)
+            })
+            .take_while(|cumulative| *cumulative <= excess)
+            .count()
+            + 1; // +1: we also need the chunk that crosses the threshold
+        let num_to_drop = num_to_drop.min(self.free_chunks.len());
+
+        if num_to_drop != 0 {
+            re_log::trace!(
+                "CpuWriteGpuReadBelt: dropping {num_to_drop} free chunk(s), \
+             keeping {}, budget {:.1} MiB",
+                self.free_chunks.len() - num_to_drop,
+                budget as f64 / (1024.0 * 1024.0),
+            );
+            self.free_chunks.drain(..num_to_drop);
+        }
+    }
+
+    /// Total capacity (in bytes) currently held across all chunk categories.
+    pub fn total_buffer_size_in_bytes(&self) -> u64 {
+        let sum = |chunks: &[Chunk]| -> u64 { chunks.iter().map(|c| c.buffer.size()).sum() };
+        sum(&self.active_chunks) + sum(&self.closed_chunks) + sum(&self.free_chunks)
+    }
 }
 
 impl std::fmt::Debug for CpuWriteGpuReadBelt {
@@ -622,5 +716,63 @@ impl std::fmt::Debug for CpuWriteGpuReadBelt {
             .field("closed_chunks", &self.closed_chunks.len())
             .field("free_chunks", &self.free_chunks.len())
             .finish_non_exhaustive()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::RenderContext;
+
+    const CHUNK_SIZE: u64 = RenderContext::CPU_WRITE_GPU_READ_BELT_DEFAULT_CHUNK_SIZE.get();
+
+    #[test]
+    fn belt_shrinks_after_usage_spike() {
+        let mut ctx = RenderContext::new_test();
+
+        // Spike: allocate several chunk-sized buffers to force multiple chunks.
+        ctx.execute_test_frame(|ctx| {
+            let mut belt = ctx.cpu_write_gpu_read_belt.lock();
+            for _ in 0..4 {
+                let _buf = belt
+                    .allocate::<u8>(&ctx.device, &ctx.gpu_resources.buffers, CHUNK_SIZE as usize)
+                    .unwrap();
+            }
+            []
+        });
+
+        // One settling frame so the spike chunks complete map_async and land in free_chunks.
+        ctx.execute_test_frame(|_| []);
+
+        let size_after_spike = ctx
+            .cpu_write_gpu_read_belt
+            .lock()
+            .total_buffer_size_in_bytes();
+        assert!(
+            size_after_spike >= 4 * CHUNK_SIZE,
+            "Expected at least {} bytes after spike, got {size_after_spike}",
+            4 * CHUNK_SIZE,
+        );
+
+        // Run many frames with small allocations so the smoothed peak decays.
+        for _ in 0..100 {
+            ctx.execute_test_frame(|ctx| {
+                let _buf = ctx
+                    .cpu_write_gpu_read_belt
+                    .lock()
+                    .allocate::<u8>(&ctx.device, &ctx.gpu_resources.buffers, 256)
+                    .unwrap();
+                []
+            });
+        }
+
+        let size_after_decay = ctx
+            .cpu_write_gpu_read_belt
+            .lock()
+            .total_buffer_size_in_bytes();
+        assert!(
+            size_after_decay < size_after_spike,
+            "Expected belt to shrink after many small frames: \
+             before={size_after_spike}, after={size_after_decay}"
+        );
     }
 }

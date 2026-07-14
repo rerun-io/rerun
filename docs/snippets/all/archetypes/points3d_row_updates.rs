@@ -3,7 +3,10 @@
 //! See also the `points3d_column_updates` example, which achieves the same thing in a single operation.
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let rec = rerun::RecordingStreamBuilder::new("rerun_example_points3d_row_updates").spawn()?;
+    let rec = rerun::RecordingStreamBuilder::new(
+        "rerun_example_points3d_row_updates",
+    )
+    .spawn()?;
 
     // Prepare a point cloud that evolves over 5 timesteps, changing the number of points in the process.
     #[rustfmt::skip]
@@ -19,7 +22,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let colors = [0xFF0000FF, 0x00FF00FF, 0x0000FFFF, 0xFFFF00FF, 0x00FFFFFF];
     let radii = [0.05, 0.01, 0.2, 0.1, 0.3];
 
-    for (time, positions, color, radius) in itertools::izip!(10..15, positions, colors, radii) {
+    for (time, positions, color, radius) in
+        itertools::izip!(10..15, positions, colors, radii)
+    {
         rec.set_duration_secs("time", time);
 
         let point_cloud = rerun::Points3D::new(positions)

@@ -9,10 +9,11 @@ from datafusion import col
 
 import rerun as rr
 
-
 # should be a cross-platform way to generate a rrd path.
 RRD_PATH = tempfile.mktemp(suffix=".rrd")
-atexit.register(lambda: os.unlink(RRD_PATH) if os.path.exists(RRD_PATH) else None)
+atexit.register(
+    lambda: os.unlink(RRD_PATH) if os.path.exists(RRD_PATH) else None
+)
 
 # region: setup
 # create some data

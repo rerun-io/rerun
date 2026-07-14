@@ -6,7 +6,7 @@ Logs many large recordings that contain a single large row.
 Usage:
 - Start a Rerun Viewer in release mode with 2GiB of memory limit:
   `cargo r -p rerun-cli --release --no-default-features --features native_viewer -- --memory-limit 2GiB`
-- Open the memory panel to see what's going on.
+- Open the dev panel to see what's going on.
 - Run this script.
 - You should see recordings coming in and going out in a ringbuffer-like rolling fashion.
 """
@@ -15,8 +15,9 @@ from __future__ import annotations
 
 import time
 
-import rerun as rr
 from numpy.random import default_rng
+
+import rerun as rr
 
 rng = default_rng(12345)
 

@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 import numpy as np
 import pyarrow as pa
@@ -15,9 +15,13 @@ from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
+    ComponentDescriptor,
 )
 from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
+
+if TYPE_CHECKING:
+    from ..blueprint.datatypes import VisualizerComponentMappingLike
 
 __all__ = ["VideoStream"]
 
@@ -44,6 +48,7 @@ class VideoStream(Archetype, VisualizableArchetype):
     import av
     import numpy as np
     import numpy.typing as npt
+
     import rerun as rr
 
     fps = 30
@@ -60,7 +65,11 @@ class VideoStream(Archetype, VisualizableArchetype):
     def create_example_video_frame(frame_i: int) -> npt.NDArray[np.uint8]:
         img = np.zeros((height, width, 3), dtype=np.uint8)
         for h in range(height):
-            img[h, :] = [0, int(100 * h / height), int(200 * h / height)]  # Blue to purple gradient.
+            img[h, :] = [
+                0,
+                int(100 * h / height),
+                int(200 * h / height),
+            ]  # Blue to purple gradient.
 
         x_pos = width // 2  # Center horizontally.
         y_pos = height // 2 + 80 * np.sin(2 * np.pi * frame_i / fps)
@@ -71,21 +80,25 @@ class VideoStream(Archetype, VisualizableArchetype):
         return img
 
 
-    rr.init("rerun_example_video_stream_synthetic", spawn=True)
+    rr.init("rerun_example_video_stream_synthetic")
 
     # Setup encoding pipeline.
     av.logging.set_level(av.logging.VERBOSE)
-    container = av.open("/dev/null", "w", format=formats[codec])  # Use AnnexB H.265 stream.
+    container = av.open(
+        "/dev/null", "w", format=formats[codec]
+    )  # Use AnnexB H.265 stream.
     stream = container.add_stream(encoders[codec], rate=fps)
     # Type narrowing
     assert isinstance(stream, av.video.stream.VideoStream)
     stream.width = width
     stream.height = height
     # TODO(#10090): Rerun Video Streams don't support b-frames yet.
-    # Note that b-frames are generally not recommended for low-latency streaming and may make logging more complex.
+    # Note that b-frames are generally not recommended for low-latency streaming
+    # and may make logging more complex.
     stream.max_b_frames = 0
 
-    # Log codec only once as static data (it naturally never changes). This isn't strictly necessary, but good practice.
+    # Log codec only once as static data (it naturally never changes).
+    # This isn't strictly necessary, but good practice.
     rr.log("video_stream", rr.VideoStream(codec=codec), static=True)
 
     # Generate frames and stream them directly to Rerun.
@@ -117,11 +130,14 @@ class VideoStream(Archetype, VisualizableArchetype):
 
     """
 
+    NAME: ClassVar[str] = "rerun.archetypes.VideoStream"
+
     def __init__(
         self: Any,
         codec: components.VideoCodecLike,
         *,
         sample: datatypes.BlobLike | None = None,
+        is_keyframe: datatypes.BoolLike | None = None,
         opacity: datatypes.Float32Like | None = None,
         draw_order: datatypes.Float32Like | None = None,
     ) -> None:
@@ -158,6 +174,16 @@ class VideoStream(Archetype, VisualizableArchetype):
             previous samples which may be required to decode an image.
 
             See [`components.VideoCodec`][rerun.components.VideoCodec] for codec specific requirements.
+        is_keyframe:
+            Whether the corresponding [`components.VideoSample`][rerun.components.VideoSample] contains a keyframe.
+
+            A keyframe (also known as a sync sample or IDR) is a frame from which a decoder can
+            start decoding the stream with no prior decoder state. See [`components.IsKeyframe`][rerun.components.IsKeyframe]
+            and [`components.VideoCodec`][rerun.components.VideoCodec] for the codec-specific definition.
+
+            This field is optional. It does not change how the stream itself is decoded: it is
+            metadata that travels with the sample and can be inspected when querying the data
+            back, for example to locate sync points or build a frame index.
         opacity:
             Opacity of the video stream, useful for layering several media.
 
@@ -172,7 +198,9 @@ class VideoStream(Archetype, VisualizableArchetype):
 
         # You can define your own __init__ function as a member of VideoStreamExt in video_stream_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(codec=codec, sample=sample, opacity=opacity, draw_order=draw_order)
+            self.__attrs_init__(
+                codec=codec, sample=sample, is_keyframe=is_keyframe, opacity=opacity, draw_order=draw_order
+            )
             return
         self.__attrs_clear__()
 
@@ -181,6 +209,7 @@ class VideoStream(Archetype, VisualizableArchetype):
         self.__attrs_init__(
             codec=None,
             sample=None,
+            is_keyframe=None,
             opacity=None,
             draw_order=None,
         )
@@ -199,6 +228,7 @@ class VideoStream(Archetype, VisualizableArchetype):
         clear_unset: bool = False,
         codec: components.VideoCodecLike | None = None,
         sample: datatypes.BlobLike | None = None,
+        is_keyframe: datatypes.BoolLike | None = None,
         opacity: datatypes.Float32Like | None = None,
         draw_order: datatypes.Float32Like | None = None,
     ) -> VideoStream:
@@ -237,6 +267,16 @@ class VideoStream(Archetype, VisualizableArchetype):
             previous samples which may be required to decode an image.
 
             See [`components.VideoCodec`][rerun.components.VideoCodec] for codec specific requirements.
+        is_keyframe:
+            Whether the corresponding [`components.VideoSample`][rerun.components.VideoSample] contains a keyframe.
+
+            A keyframe (also known as a sync sample or IDR) is a frame from which a decoder can
+            start decoding the stream with no prior decoder state. See [`components.IsKeyframe`][rerun.components.IsKeyframe]
+            and [`components.VideoCodec`][rerun.components.VideoCodec] for the codec-specific definition.
+
+            This field is optional. It does not change how the stream itself is decoded: it is
+            metadata that travels with the sample and can be inspected when querying the data
+            back, for example to locate sync points or build a frame index.
         opacity:
             Opacity of the video stream, useful for layering several media.
 
@@ -254,6 +294,7 @@ class VideoStream(Archetype, VisualizableArchetype):
             kwargs = {
                 "codec": codec,
                 "sample": sample,
+                "is_keyframe": is_keyframe,
                 "opacity": opacity,
                 "draw_order": draw_order,
             }
@@ -272,12 +313,53 @@ class VideoStream(Archetype, VisualizableArchetype):
         """Clear all the fields of a `VideoStream`."""
         return cls.from_fields(clear_unset=True)
 
+    @staticmethod
+    def descriptor_codec() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "VideoStream:codec",
+            archetype=VideoStream.NAME,
+            component_type=components.VideoCodecBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_sample() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "VideoStream:sample",
+            archetype=VideoStream.NAME,
+            component_type=components.VideoSampleBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_is_keyframe() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "VideoStream:is_keyframe",
+            archetype=VideoStream.NAME,
+            component_type=components.IsKeyframeBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_opacity() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "VideoStream:opacity",
+            archetype=VideoStream.NAME,
+            component_type=components.OpacityBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_draw_order() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "VideoStream:draw_order",
+            archetype=VideoStream.NAME,
+            component_type=components.DrawOrderBatch._COMPONENT_TYPE,
+        )
+
     @classmethod
     def columns(
         cls,
         *,
         codec: components.VideoCodecArrayLike | None = None,
         sample: datatypes.BlobArrayLike | None = None,
+        is_keyframe: datatypes.BoolArrayLike | None = None,
         opacity: datatypes.Float32ArrayLike | None = None,
         draw_order: datatypes.Float32ArrayLike | None = None,
     ) -> ComponentColumnList:
@@ -319,6 +401,16 @@ class VideoStream(Archetype, VisualizableArchetype):
             previous samples which may be required to decode an image.
 
             See [`components.VideoCodec`][rerun.components.VideoCodec] for codec specific requirements.
+        is_keyframe:
+            Whether the corresponding [`components.VideoSample`][rerun.components.VideoSample] contains a keyframe.
+
+            A keyframe (also known as a sync sample or IDR) is a frame from which a decoder can
+            start decoding the stream with no prior decoder state. See [`components.IsKeyframe`][rerun.components.IsKeyframe]
+            and [`components.VideoCodec`][rerun.components.VideoCodec] for the codec-specific definition.
+
+            This field is optional. It does not change how the stream itself is decoded: it is
+            metadata that travels with the sample and can be inspected when querying the data
+            back, for example to locate sync points or build a frame index.
         opacity:
             Opacity of the video stream, useful for layering several media.
 
@@ -336,6 +428,7 @@ class VideoStream(Archetype, VisualizableArchetype):
             inst.__attrs_init__(
                 codec=codec,
                 sample=sample,
+                is_keyframe=is_keyframe,
                 opacity=opacity,
                 draw_order=draw_order,
             )
@@ -347,6 +440,7 @@ class VideoStream(Archetype, VisualizableArchetype):
         kwargs = {
             "VideoStream:codec": codec,
             "VideoStream:sample": sample,
+            "VideoStream:is_keyframe": is_keyframe,
             "VideoStream:opacity": opacity,
             "VideoStream:draw_order": draw_order,
         }
@@ -359,17 +453,21 @@ class VideoStream(Archetype, VisualizableArchetype):
             if pa.types.is_primitive(arrow_array.type) or pa.types.is_fixed_size_list(arrow_array.type):
                 param = kwargs[batch.component_descriptor().component]  # type: ignore[index]
                 shape = np.shape(param)  # type: ignore[arg-type]
-                elem_flat_len = int(np.prod(shape[1:])) if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
-
-                if pa.types.is_fixed_size_list(arrow_array.type) and arrow_array.type.list_size == elem_flat_len:
-                    # If the product of the last dimensions of the shape are equal to the size of the fixed size list array,
-                    # we have `num_rows` single element batches (each element is a fixed sized list).
-                    # (This should have been already validated by conversion to the arrow_array)
-                    batch_length = 1
-                else:
-                    batch_length = shape[1] if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
-
                 num_rows = shape[0] if len(shape) >= 1 else 1  # type: ignore[redundant-expr,misc]
+
+                if pa.types.is_fixed_size_list(arrow_array.type):
+                    elem_flat_len = int(np.prod(shape[1:])) if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
+                    if arrow_array.type.list_size == elem_flat_len:
+                        # The product of the last dimensions of the shape are equal to the size of the fixed size list array,
+                        # so we have `num_rows` single element batches (each element is a fixed sized list).
+                        batch_length = 1
+                    else:
+                        batch_length = shape[1] if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
+                else:
+                    # For primitive types, derive batch_length from the actual arrow array length
+                    # since the input shape can be misleading (e.g. colors [R,G,B] -> single uint32).
+                    batch_length = len(arrow_array) // num_rows if num_rows > 0 else 1
+
                 sizes = batch_length * np.ones(num_rows)
             else:
                 # For non-primitive types, default to partitioning each element separately.
@@ -421,6 +519,23 @@ class VideoStream(Archetype, VisualizableArchetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
+    is_keyframe: components.IsKeyframeBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.IsKeyframeBatch._converter,  # type: ignore[misc]
+    )
+    # Whether the corresponding [`components.VideoSample`][rerun.components.VideoSample] contains a keyframe.
+    #
+    # A keyframe (also known as a sync sample or IDR) is a frame from which a decoder can
+    # start decoding the stream with no prior decoder state. See [`components.IsKeyframe`][rerun.components.IsKeyframe]
+    # and [`components.VideoCodec`][rerun.components.VideoCodec] for the codec-specific definition.
+    #
+    # This field is optional. It does not change how the stream itself is decoded: it is
+    # metadata that travels with the sample and can be inspected when querying the data
+    # back, for example to locate sync points or build a frame index.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
     opacity: components.OpacityBatch | None = field(
         metadata={"component": True},
         default=None,
@@ -447,6 +562,17 @@ class VideoStream(Archetype, VisualizableArchetype):
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__  # type: ignore[assignment]
 
-    def visualizer(self) -> Visualizer:
-        """Creates a visualizer for this archetype, using all currently set values as overrides."""
-        return Visualizer("VideoStream", overrides=self.as_component_batches(), mappings=None)
+    def visualizer(self, *, mappings: list[VisualizerComponentMappingLike] | None = None) -> Visualizer:
+        """
+        Creates a visualizer for this archetype, using all currently set values as overrides.
+
+        Parameters
+        ----------
+        mappings:
+            Optional component mappings to control how the visualizer sources its data.
+
+            ⚠️ **Experimental**: Component mappings are an experimental feature and may change.
+            See https://github.com/rerun-io/rerun/issues/10631 for more information.
+
+        """
+        return Visualizer("VideoStream", overrides=self.as_component_batches(), mappings=mappings)

@@ -1,7 +1,9 @@
 //! Log some points with ui points & scene unit radii.
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let rec = rerun::RecordingStreamBuilder::new("rerun_example_points2d_ui_radius").spawn()?;
+    let rec =
+        rerun::RecordingStreamBuilder::new("rerun_example_points2d_ui_radius")
+            .spawn()?;
 
     // Two blue points with scene unit radii of 0.1 and 0.3.
     rec.log(

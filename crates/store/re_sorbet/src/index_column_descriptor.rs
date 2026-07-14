@@ -4,13 +4,16 @@ use re_log_types::{Timeline, TimelineName};
 use crate::MetadataExt as _;
 
 #[derive(thiserror::Error, Debug)]
-#[error("Unsupported time type: {datatype}")]
-pub struct UnsupportedTimeType {
-    pub datatype: ArrowDatatype,
+pub enum IndexColumnError {
+    #[error("Unsupported time type: {datatype}")]
+    UnsupportedTimeType { datatype: ArrowDatatype },
+
+    #[error(transparent)]
+    InvalidTimelineName(#[from] re_types_core::InvalidTimelineNameError),
 }
 
 /// Describes a time column, such as `log_time`.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, re_byte_size::SizeBytes)]
 pub struct IndexColumnDescriptor {
     /// The timeline this column is associated with.
     pub timeline: Timeline,
@@ -117,8 +120,7 @@ impl IndexColumnDescriptor {
             metadata.insert("rerun:is_sorted".to_owned(), "true".to_owned());
         }
 
-        ArrowField::new(timeline.name().to_string(), datatype.clone(), nullable)
-            .with_metadata(metadata)
+        ArrowField::new(self.column_name(), datatype.clone(), nullable).with_metadata(metadata)
     }
 }
 
@@ -133,7 +135,7 @@ impl From<Timeline> for IndexColumnDescriptor {
 }
 
 impl TryFrom<&ArrowField> for IndexColumnDescriptor {
-    type Error = UnsupportedTimeType;
+    type Error = IndexColumnError;
 
     fn try_from(field: &ArrowField) -> Result<Self, Self::Error> {
         let name = if let Some(name) = field.metadata().get(crate::metadata::SORBET_INDEX_NAME) {
@@ -149,10 +151,10 @@ impl TryFrom<&ArrowField> for IndexColumnDescriptor {
         let datatype = field.data_type().clone();
 
         let Some(time_type) = re_log_types::TimeType::from_arrow_datatype(&datatype) else {
-            return Err(UnsupportedTimeType { datatype });
+            return Err(IndexColumnError::UnsupportedTimeType { datatype });
         };
 
-        let timeline = Timeline::new(name, time_type);
+        let timeline = Timeline::new(TimelineName::try_new(name)?, time_type);
 
         Ok(Self {
             timeline,

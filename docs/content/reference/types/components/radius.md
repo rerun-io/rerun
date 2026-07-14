@@ -18,7 +18,7 @@ The Viewer's UI scaling defaults to the OS scaling which typically is 100% for f
 
 ## Arrow datatype
 ```
-float32
+Float32
 ```
 
 ## API reference links
@@ -35,6 +35,7 @@ float32
 * [`Boxes3D`](../archetypes/boxes3d.md)
 * [`Capsules3D`](../archetypes/capsules3d.md)
 * [`Cylinders3D`](../archetypes/cylinders3d.md)
+* [`Ellipses2D`](../archetypes/ellipses2d.md)
 * [`Ellipsoids3D`](../archetypes/ellipsoids3d.md)
 * [`GeoLineStrings`](../archetypes/geo_line_strings.md)
 * [`GeoPoints`](../archetypes/geo_points.md)

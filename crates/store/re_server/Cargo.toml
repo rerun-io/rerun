@@ -20,12 +20,19 @@ workspace = true
 all-features = true
 
 
+[package.metadata.cargo-shear]
+ignored = [
+  "chrono", # enables wasm support for transitive chrono users
+  "getrandom", # enables the wasm backend selected by CI RUSTFLAGS
+]
+
+
 [features]
 default = []
 
 # TODO(lancedb/lance#3073): lance depends on system protoc, so lance must be an opt-in dependency
-## Enable reading in LanceDB files.
-lance = ["dep:lance", "dep:lance-index", "dep:lance-linalg"]
+## Enable reading in LanceDB files. Required for tables.
+lance = ["dep:lance"]
 
 [dependencies]
 
@@ -35,9 +42,8 @@ re_build_info.workspace = true
 re_byte_size.workspace = true
 re_chunk_store.workspace = true
 re_entity_db.workspace = true
-re_grpc_server.workspace = true
 re_log = { workspace = true, features = ["setup"] }
-re_log_encoding.workspace = true
+re_log_encoding = { workspace = true, features = ["decoder"] }
 re_log_types.workspace = true
 re_protos.workspace = true
 re_sorbet.workspace = true
@@ -49,45 +55,82 @@ re_types_core.workspace = true
 ahash.workspace = true
 anyhow.workspace = true
 arrow.workspace = true
-axum.workspace = true
 bincode.workspace = true
-cfg-if.workspace = true
-chrono = { workspace = true, features = ["serde"] }
-clap = { workspace = true, features = ["derive", "env"] }
 datafusion.workspace = true
 futures.workspace = true
-http.workspace = true
 itertools.workspace = true
 jiff.workspace = true
 nohash-hasher.workspace = true
 parking_lot.workspace = true
 serde.workspace = true
-tempfile.workspace = true
 thiserror.workspace = true
-tokio = { workspace = true, features = ["rt-multi-thread", "macros", "signal"] }
-tokio-stream.workspace = true
-tokio-util.workspace = true
-tonic-web.workspace = true
+tokio = { workspace = true, features = ["sync"] }
 tonic.workspace = true
-tower.workspace = true
-tower-http.workspace = true
-tower-service.workspace = true
-tracing.workspace = true
 url.workspace = true
 
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+re_format.workspace = true
+re_grpc_server.workspace = true
 
-# Optional dependencies:
-# TODO(lancedb/lance#3073): lance depends on system protoc, so lance must be an opt-in dependency
+axum.workspace = true
+bytes.workspace = true
+clap = { workspace = true, features = ["derive", "env"] }
+http.workspace = true
+http-body.workspace = true
 lance = { workspace = true, optional = true }
-lance-index = { workspace = true, optional = true }
-lance-linalg = { workspace = true, optional = true }
+opentelemetry.workspace = true
+tempfile.workspace = true
+tokio = { workspace = true, features = [
+  "fs",
+  "macros",
+  "net",
+  "rt-multi-thread",
+  "signal",
+  "sync",
+  "time",
+] }
+tokio-stream = { workspace = true, features = ["net"] }
+tonic-web.workspace = true
+tower.workspace = true
+tower-service.workspace = true
+tracing.workspace = true
 
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+chrono = { workspace = true, features = ["wasmbind"] }
+getrandom = { workspace = true, features = ["wasm_js"] }
+js-sys.workspace = true
+percent-encoding.workspace = true
+wasm-bindgen.workspace = true
+wasm-bindgen-futures.workspace = true
+web-sys = { workspace = true, features = [
+  "Blob",
+  "DomException",
+  "File",
+  "FileSystemDirectoryHandle",
+  "FileSystemFileHandle",
+  "FileSystemGetFileOptions",
+  "FileSystemWritableFileStream",
+  "Navigator",
+  "StorageManager",
+  "Window",
+  "WritableStream",
+] }
 
 [dev-dependencies]
+re_chunk.workspace = true
 re_chunk_store.workspace = true
-re_redap_tests.workspace = true
+# `encoder` (decoder comes transitively via re_chunk_store) lets tests author RRDs
+# with and without footers to cross-check store enumeration vs lazy loading.
+re_log_encoding = { workspace = true, features = ["encoder"] }
+re_tuid.workspace = true
 ehttp = { workspace = true, features = ["native-async"] }
 
+[target.'cfg(target_arch = "wasm32")'.dev-dependencies]
+wasm-bindgen-test.workspace = true
+
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+re_redap_tests.workspace = true
+tempfile.workspace = true
 
 [build-dependencies]
 re_build_tools.workspace = true

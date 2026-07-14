@@ -33,7 +33,7 @@ use crate::wgpu_resources::{
     GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, PipelineLayoutDesc, RenderPipelineDesc,
 };
 use crate::{
-    DebugLabel, DepthOffset, DrawableCollector, OutlineMaskPreference, PointCloudBuilder,
+    DepthOffset, DrawableCollector, Label, OutlineMaskPreference, PointCloudBuilder,
     include_shader_module,
 };
 
@@ -68,6 +68,35 @@ pub mod gpu_data {
         pub radius: Size, // Might use a f16 here to free memory for more data!
     }
     static_assertions::assert_eq_size!(PositionRadius, glam::Vec4);
+
+    impl PositionRadius {
+        /// If there are fewer radii than positions,
+        /// the last radius will be repeated for the remaining positions
+        /// (clamp to edge).
+        pub fn from_many(positions: &[glam::Vec3], radii: &[Size]) -> Vec<Self> {
+            use itertools::izip;
+
+            re_tracing::profile_function_if!(10_0000 < positions.len());
+            if positions.len() == radii.len() {
+                // Optimize common-case with simpler iterators.
+                re_tracing::profile_scope_if!(10_000 < positions.len(), "zipped");
+                izip!(positions.iter().copied(), radii.iter().copied())
+                    .map(|(pos, radius)| Self { pos, radius })
+                    .collect()
+            } else {
+                re_tracing::profile_scope_if!(10_000 < positions.len(), "extended-radius");
+                izip!(
+                    positions.iter().copied(),
+                    std::iter::chain(
+                        radii.iter().copied(),
+                        std::iter::repeat(*radii.last().unwrap_or(&Size::ONE_UI_POINT))
+                    )
+                )
+                .map(|(pos, radius)| Self { pos, radius })
+                .collect()
+            }
+        }
+    }
 
     /// Uniform buffer that changes once per draw data rendering.
     #[repr(C)]
@@ -119,7 +148,7 @@ impl DrawData for PointCloudDrawData {
         _view_info: &DrawableCollectionViewInfo,
         collector: &mut DrawableCollector<'_>,
     ) {
-        // TODO(#1611): transparency, split drawables for some semblence of transparency ordering.
+        // TODO(#1611): transparency, split drawables for some semblance of transparency ordering.
         // TODO(#1025, #4787): Better handling of 2D objects, use per-2D layer sorting instead of depth offsets.
 
         for (batch_idx, batch) in self.batches.iter().enumerate() {
@@ -128,6 +157,7 @@ impl DrawData for PointCloudDrawData {
                 DrawDataDrawable {
                     // TODO(andreas): Don't have distance information yet. For now just always draw points last since they're quite expensive.
                     distance_sort_key: f32::MAX,
+                    secondary_sort_key: 0.0,
                     draw_data_payload: batch_idx as _,
                 },
             );
@@ -137,7 +167,7 @@ impl DrawData for PointCloudDrawData {
 
 /// Data that is valid for a batch of point cloud points.
 pub struct PointCloudBatchInfo {
-    pub label: DebugLabel,
+    pub label: Label,
 
     /// Transformation applies to point positions
     ///
@@ -176,7 +206,7 @@ impl Default for PointCloudBatchInfo {
     #[inline]
     fn default() -> Self {
         Self {
-            label: DebugLabel::default(),
+            label: Label::default(),
             world_from_obj: glam::Affine3A::IDENTITY,
             flags: PointCloudBatchFlags::FLAG_ENABLE_SHADING,
             point_count: 0,
@@ -356,7 +386,7 @@ impl PointCloudDrawData {
 
             let mut start_point_for_next_batch = 0;
             for (batch_info, uniform_buffer_binding) in
-                batches.iter().zip(uniform_buffer_bindings.into_iter())
+                std::iter::zip(batches, uniform_buffer_bindings)
             {
                 let point_vertex_range_end = start_point_for_next_batch + batch_info.point_count;
                 let mut active_phases = enum_set![DrawPhase::Opaque | DrawPhase::PickingLayer];
@@ -414,7 +444,7 @@ impl PointCloudRenderer {
     fn create_point_cloud_batch(
         &self,
         ctx: &RenderContext,
-        label: DebugLabel,
+        label: Label,
         uniform_buffer_binding: BindGroupEntry,
         vertex_range: Range<u32>,
         active_phases: EnumSet<DrawPhase>,
@@ -535,20 +565,11 @@ impl Renderer for PointCloudRenderer {
             .shader_modules
             .get_or_create(ctx, &shader_module_desc);
 
-        // WORKAROUND for https://github.com/gfx-rs/naga/issues/1743
-        let mut shader_module_desc_vertex = shader_module_desc.clone();
-        shader_module_desc_vertex.extra_workaround_replacements =
-            vec![("fwidth(".to_owned(), "f32(".to_owned())];
-        let shader_module_vertex = ctx
-            .gpu_resources
-            .shader_modules
-            .get_or_create(ctx, &shader_module_desc_vertex);
-
         let render_pipeline_desc_color = RenderPipelineDesc {
             label: "PointCloudRenderer::render_pipeline_color".into(),
             pipeline_layout,
             vertex_entrypoint: "vs_main".into(),
-            vertex_handle: shader_module_vertex,
+            vertex_handle: shader_module,
             fragment_entrypoint: "fs_main".into(),
             fragment_handle: shader_module,
             vertex_buffers: smallvec![],
@@ -624,8 +645,7 @@ impl Renderer for PointCloudRenderer {
                 _ => unreachable!("We were called on a phase we weren't subscribed to: {phase:?}"),
             };
             let Some(bind_group_all_points) = bind_group_all_points else {
-                debug_assert!(
-                    false,
+                re_log::debug_panic!(
                     "Point data bind group for draw phase {phase:?} was not set despite being submitted for drawing."
                 );
                 continue;

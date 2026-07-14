@@ -8,7 +8,7 @@ A vector in 3D space.
 
 ## Arrow datatype
 ```
-FixedSizeList<3, float32>
+FixedSizeList(3 x non-null Float32)
 ```
 
 ## API reference links
@@ -26,3 +26,4 @@ FixedSizeList<3, float32>
 * [`Scale3D`](../components/scale3d.md)
 * [`Translation3D`](../components/translation3d.md)
 * [`Vector3D`](../components/vector3d.md)
+* [`VoxelSize`](../components/voxel_size.md)

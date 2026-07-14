@@ -97,7 +97,7 @@ pub type ComponentSet = std::collections::BTreeSet<ComponentIdentifier>;
 
 re_string_interner::declare_new_type!(
     /// The fully-qualified name of a [`Component`], e.g. `rerun.components.Position2D`.
-    #[cfg_attr(feature = "serde", derive(::serde::Deserialize, ::serde::Serialize))]
+    #[derive(::serde::Deserialize, ::serde::Serialize)]
     pub struct ComponentType;
 );
 
@@ -107,9 +107,9 @@ impl ComponentType {
     #[track_caller]
     pub fn sanity_check(&self) {
         let full_type = self.0.as_str();
-        debug_assert!(
+        re_log::debug_assert!(
             !full_type.starts_with("rerun.components.rerun.components."),
-            "DEBUG ASSERT: Found component with full type {full_type:?}. Maybe some bad round-tripping?"
+            "Found component with full type {full_type:?}. Maybe some bad round-tripping?"
         );
     }
 
@@ -170,42 +170,21 @@ impl ComponentType {
             || self.full_name().to_lowercase() == other.to_lowercase()
             || self.short_name().to_lowercase() == other.to_lowercase()
     }
-}
 
-// ---
-
-re_string_interner::declare_new_type!(
-    /// The fully-qualified name of a [`Datatype`], e.g. `rerun.datatypes.Vec2D`.
-    #[cfg_attr(feature = "serde", derive(::serde::Deserialize, ::serde::Serialize))]
-    pub struct DatatypeName;
-);
-
-impl DatatypeName {
-    /// Returns the fully-qualified name, e.g. `rerun.datatypes.Vec2D`.
+    /// Returns `true` if this is a known Rerun component type (e.g., `rerun.components.*`, `rerun.blueprint.components.*`).
     ///
-    /// This is the default `Display` implementation for [`DatatypeName`].
-    #[inline]
-    pub fn full_name(&self) -> &'static str {
-        self.0.as_str()
-    }
-
-    /// Returns the unqualified name, e.g. `Vec2D`.
+    /// Returns `false` for custom user-defined components.
     ///
-    /// Used for most UI elements.
+    /// # Examples
     ///
     /// ```
-    /// # use re_types_core::DatatypeName;
-    /// assert_eq!(DatatypeName::from("rerun.datatypes.Vec2D").short_name(), "Vec2D");
+    /// # use re_types_core::ComponentType;
+    /// assert!(ComponentType::from("rerun.components.Position2D").is_rerun_type());
+    /// assert!(ComponentType::from("rerun.blueprint.components.Active").is_rerun_type());
+    /// assert!(!ComponentType::from("my_custom.MyComponent").is_rerun_type());
     /// ```
     #[inline]
-    pub fn short_name(&self) -> &'static str {
-        let full_name = self.0.as_str();
-        if let Some(short_name) = full_name.strip_prefix("rerun.datatypes.") {
-            short_name
-        } else if let Some(short_name) = full_name.strip_prefix("rerun.") {
-            short_name
-        } else {
-            full_name
-        }
+    pub fn is_rerun_type(&self) -> bool {
+        self.0.as_str().starts_with("rerun.")
     }
 }

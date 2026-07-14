@@ -71,7 +71,6 @@ impl ChunkSchema {
                 segment_id: None, // TODO(#9977): This should be required in the future.
                 chunk_id: Some(chunk_id),
                 entity_path: Some(entity_path.clone()),
-                heap_size_bytes: None,
                 timestamps,
             },
             chunk_columns: ChunkColumnDescriptors {
@@ -82,12 +81,6 @@ impl ChunkSchema {
             chunk_id,
             entity_path,
         }
-    }
-
-    #[inline]
-    pub fn with_heap_size_bytes(mut self, heap_size_bytes: u64) -> Self {
-        self.sorbet.heap_size_bytes = Some(heap_size_bytes);
-        self
     }
 }
 
@@ -109,12 +102,6 @@ impl ChunkSchema {
     #[inline]
     pub fn is_static(&self) -> bool {
         self.chunk_columns.indices.is_empty()
-    }
-
-    /// The heap size of this chunk in bytes, if known.
-    #[inline]
-    pub fn heap_size_bytes(&self) -> Option<u64> {
-        self.sorbet.heap_size_bytes
     }
 
     /// Total number of columns in this chunk,

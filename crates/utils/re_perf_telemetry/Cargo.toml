@@ -20,9 +20,6 @@ default = []
 ## If set, `TELEMETRY_ENABLED` will be `true` by default.
 enabled = []
 
-## If set, `OTEL_SDK_ENABLED` will be `true` by default.
-otel_enabled = []
-
 ## If set, `TRACY_ENABLED` will be `true` by default.
 tracy_enabled = []
 
@@ -42,11 +39,22 @@ tracy_enabled = []
 ## E.g. an async function that yields 50 times will be counted as 51 (the first call + 50 yields).
 tracy = ["dep:tracing-tracy"]
 
-## PyO3 integration for cross-boundary tracing
-pyo3 = ["dep:pyo3"]
+## Enable [`Telemetry::init_with_session_id_reader`].
+##
+## SDK bindings (today: `rerun_py`) register a host-language-specific reader at
+## init time so the per-RPC tracestate enricher can resolve the active session
+## id without this crate ever needing to know about Python/JS/etc.
+##
+## Default-off — end customers of `re_perf_telemetry` never see the extra
+## public API.
+session_id_reader = []
 
 
 [dependencies]
+
+# Rerun
+re_auth = { workspace = true, features = ["oauth"] }
+re_grpc_headers.workspace = true
 
 # External
 ahash.workspace = true
@@ -57,19 +65,20 @@ clap = { workspace = true, features = ["derive", "env"] }
 http.workspace = true
 memory-stats = { workspace = true, features = ["always_use_statm"] }
 opentelemetry = { workspace = true, features = ["metrics"] }
-opentelemetry-appender-tracing = { workspace = true, features = [
-  "experimental_use_tracing_span_context",
-] }
+opentelemetry-appender-tracing.workspace = true
 opentelemetry-http.workspace = true
-opentelemetry-otlp = { workspace = true, features = ["grpc-tonic"] }
+opentelemetry-otlp = { workspace = true, features = ["grpc-tonic", "gzip-tonic"] }
+rand.workspace = true
 opentelemetry_sdk = { workspace = true, features = [
   "rt-tokio",
   "experimental_metrics_custom_reader",
+  "experimental_metrics_periodicreader_with_async_runtime",
+  "spec_unstable_metrics_views",
 ] }
 parking_lot.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-tonic.workspace = true
+tonic = { workspace = true, features = ["transport", "tls-native-roots"] }
 tower-http = { workspace = true, features = ["propagate-header", "trace"] }
 tower.workspace = true
 tracing.workspace = true
@@ -81,7 +90,10 @@ tokio.workspace = true
 
 # External (optional)
 tracing-tracy = { workspace = true, optional = true }
-pyo3 = { workspace = true, optional = true }
+
+[dev-dependencies]
+opentelemetry_sdk = { workspace = true, features = ["testing"] }
+re_test_mocks.workspace = true
 
 [lints]
 workspace = true

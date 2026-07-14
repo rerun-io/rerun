@@ -10,9 +10,52 @@ use crate::TimelineName;
 /// If a [`TimePoint`] is empty ([`TimePoint::default`]), the data will be considered _static_.
 /// Static data has no time associated with it, exists on all timelines, and unconditionally shadows
 /// any temporal data of the same type.
-#[derive(Clone, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[derive(
+    Clone,
+    Debug,
+    Default,
+    Hash,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    re_byte_size::SizeBytes,
+    serde::Deserialize,
+    serde::Serialize,
+)]
 pub struct TimePoint(BTreeMap<TimelineName, TimeCell>);
+
+impl std::fmt::Display for TimePoint {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use itertools::Itertools as _;
+
+        f.write_str("[")?;
+        f.write_str(
+            &self
+                .iter()
+                .map(|(timeline, time)| {
+                    let time_str = match time.typ() {
+                        crate::TimeType::Sequence => time.as_i64().to_string(),
+                        crate::TimeType::DurationNs => {
+                            format!("{:?}", std::time::Duration::from_nanos(time.as_i64() as _))
+                        }
+                        crate::TimeType::TimestampNs => {
+                            if let Ok(ts) = jiff::Timestamp::from_nanosecond(time.as_i64() as _) {
+                                ts.to_string()
+                            } else {
+                                time.as_i64().to_string()
+                            }
+                        }
+                    };
+                    format!("({timeline}, {time_str})")
+                })
+                .join(", "),
+        )?;
+        f.write_str("]")?;
+
+        Ok(())
+    }
+}
 
 impl From<BTreeMap<TimelineName, TimeCell>> for TimePoint {
     fn from(map: BTreeMap<TimelineName, TimeCell>) -> Self {
@@ -103,13 +146,6 @@ impl TimePoint {
     #[inline]
     pub fn iter(&self) -> impl ExactSizeIterator<Item = (&TimelineName, &TimeCell)> {
         self.0.iter()
-    }
-}
-
-impl re_byte_size::SizeBytes for TimePoint {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
     }
 }
 

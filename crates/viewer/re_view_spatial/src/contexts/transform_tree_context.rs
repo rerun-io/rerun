@@ -2,13 +2,13 @@ use std::sync::Arc;
 
 use itertools::Either;
 use nohash_hasher::{IntMap, IntSet};
-use re_chunk_store::LatestAtQuery;
+use re_chunk_store::{LatestAtQuery, MissingChunkReporter};
 use re_log_types::{EntityPath, EntityPathHash};
 use re_sdk_types::components::ImagePlaneDistance;
 use re_sdk_types::{ArchetypeName, archetypes, blueprint};
 use re_tf::{TransformFrameId, TransformFrameIdHash, TreeTransform};
 use re_view::{
-    DataResultQuery as _, HybridLatestAtResults, latest_at_with_blueprint_resolved_data,
+    BlueprintResolvedLatestAtResults, DataResultQuery as _, latest_at_with_blueprint_resolved_data,
 };
 use re_viewer_context::{
     IdentifiedViewSystem, TransformDatabaseStoreCache, ViewContext, ViewContextSystem,
@@ -113,7 +113,12 @@ pub struct TransformTreeContext {
     target_frame_pinhole_root: Option<TransformFrameIdHash>,
     entity_frame_id_mapping: IntMap<EntityPathHash, IntMap<TransformFrameIdHash, TreeTransform>>,
     entity_transform_id_mapping: EntityTransformIdMapping,
-    frame_id_hash_mapping: Arc<FrameIdHashMapping>,
+
+    /// A mapping from transform frame id hashes to their full frame ids for all frames encountered in the transform cache.
+    cache_frame_id_hash_mapping: Arc<FrameIdHashMapping>,
+
+    /// Additional mapping from transform frame id hashes to their full frame ids for frames that are not in the transform cache, but are still encountered during processing (e.g. from overrides).
+    additional_frame_id_hash_mapping: FrameIdHashMapping,
 }
 
 impl Default for TransformTreeContext {
@@ -125,7 +130,9 @@ impl Default for TransformTreeContext {
             target_frame: TransformFrameIdHash::entity_path_hierarchy_root(),
             target_frame_pinhole_root: None,
             entity_transform_id_mapping: EntityTransformIdMapping::default(),
-            frame_id_hash_mapping: Arc::new(FrameIdHashMapping::default()),
+
+            cache_frame_id_hash_mapping: Arc::new(FrameIdHashMapping::default()),
+            additional_frame_id_hash_mapping: FrameIdHashMapping::default(),
         }
     }
 }
@@ -146,7 +153,10 @@ struct EntityTransformIdMapping {
 
 impl IdentifiedViewSystem for TransformTreeContext {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "TransformContext".into()
+        re_viewer_context::external::re_string_interner::intern_static!(
+            re_viewer_context::ViewSystemIdentifier,
+            "TransformContext"
+        )
     }
 }
 
@@ -163,25 +173,18 @@ impl ViewContextSystem for TransformTreeContext {
         re_tracing::profile_function!();
 
         let caches = ctx.store_context.caches;
-        let (transform_forest, transform_cache) =
-            caches.entry(|c: &mut TransformDatabaseStoreCache| {
-                c.update_transform_forest(ctx.recording(), &ctx.current_query());
-                (
-                    c.get_transform_forest(),
-                    c.read_lock_transform_cache(ctx.recording()),
-                )
-            });
+        let transform_forest = caches.memoizer(|c: &mut TransformDatabaseStoreCache| {
+            c.update_transform_forest(ctx.recording(), &ctx.current_query())
+        });
 
-        // We update this here so it should exist.
-        let transform_forest = transform_forest.unwrap_or_default();
+        let frame_id_registry = caches
+            .memoizer(|c: &mut TransformDatabaseStoreCache| c.frame_id_registry(ctx.recording()));
 
-        let frame_ids = transform_cache
-            .frame_id_registry()
+        let frame_ids = frame_id_registry
             .iter_frame_ids()
             .map(|(k, v)| (*k, v.clone()));
 
-        let child_frames_per_entity = transform_cache
-            .frame_id_registry()
+        let child_frames_per_entity = frame_id_registry
             .iter_entities_with_child_frames()
             .map(|(k, v)| (*k, v.clone()));
 
@@ -195,44 +198,57 @@ impl ViewContextSystem for TransformTreeContext {
     fn execute(
         &mut self,
         ctx: &re_viewer_context::ViewContext<'_>,
+        missing_chunk_reporter: &re_viewer_context::MissingChunkReporter,
         query: &re_viewer_context::ViewQuery<'_>,
         static_execution_result: &ViewContextSystemOncePerFrameResult,
     ) {
+        re_tracing::profile_function!();
+
         let static_execution_result = static_execution_result
             .downcast_ref::<TransformTreeContextOncePerFrameResult>()
             .expect("Unexpected static execution result type");
 
         self.transform_forest = static_execution_result.transform_forest.clone();
-        self.frame_id_hash_mapping = static_execution_result.frame_id_hash_mapping.clone();
+        if self.transform_forest.any_missing_chunks() {
+            missing_chunk_reporter.report_missing_chunk();
+        }
+        self.cache_frame_id_hash_mapping = static_execution_result.frame_id_hash_mapping.clone();
 
-        let results = query
-            .iter_all_data_results()
-            .map(|data_result| {
-                let latest_at_query = ctx.current_query();
+        let frame_id_results = {
+            re_tracing::profile_scope!("frame id queries");
+            let latest_at_query = ctx.current_query();
+            let transform_frame_id_component =
+                archetypes::CoordinateFrame::descriptor_frame().component;
 
-                let transform_frame_id_component =
-                    archetypes::CoordinateFrame::descriptor_frame().component;
-
-                let query_shadowed_components = false;
-                latest_at_with_blueprint_resolved_data(
-                    ctx,
-                    None,
-                    &latest_at_query,
-                    data_result,
-                    [transform_frame_id_component],
-                    query_shadowed_components,
-                    None, // Coordinate frame is not visualizer-specific.
-                )
-            })
-            .collect::<Vec<_>>();
+            ctx.query_result
+                .tree
+                .iter_data_results()
+                .filter(|data_result| {
+                    // We're only interested in supplying visualizers.
+                    data_result.visible && !data_result.visualizer_instructions.is_empty()
+                })
+                .map(|data_result| {
+                    latest_at_with_blueprint_resolved_data(
+                        ctx,
+                        None,
+                        &latest_at_query,
+                        data_result,
+                        [transform_frame_id_component],
+                        None, // Coordinate frame is not visualizer-specific.
+                    )
+                })
+                .collect::<Vec<_>>()
+        };
 
         // Build a lookup table from entity paths to their transform frame id hashes.
         // Currently, we don't keep it around during the frame, but we may do so in the future.
         self.entity_transform_id_mapping =
-            EntityTransformIdMapping::new(ctx, &results, query.space_origin);
+            EntityTransformIdMapping::new(ctx, &frame_id_results, query.space_origin);
 
         // Target frame - check for blueprint override first, otherwise use space origin's coordinate frame.
         self.target_frame = {
+            re_tracing::profile_scope!("target_frame");
+
             let spatial_info_prop = ViewProperty::from_archetype::<
                 blueprint::archetypes::SpatialInformation,
             >(
@@ -246,7 +262,20 @@ impl ViewContextSystem for TransformTreeContext {
                 );
 
             match target_frame_component {
-                Ok(target_frame) => TransformFrameIdHash::from_str(target_frame.as_str()),
+                Ok(target_frame) => {
+                    let frame_id_hash = TransformFrameIdHash::from_str(target_frame.as_str());
+
+                    // This may be a frame id we've never heard of, so make add them to our internal lookup.
+                    if !self
+                        .cache_frame_id_hash_mapping
+                        .contains_key(&frame_id_hash)
+                    {
+                        self.additional_frame_id_hash_mapping
+                            .insert(frame_id_hash, TransformFrameId::new(target_frame.as_str()));
+                    }
+
+                    frame_id_hash
+                }
                 Err(err) => {
                     re_log::error_once!("Failed to query target frame: {err}");
                     self.transform_frame_id_for(query.space_origin.hash())
@@ -256,37 +285,41 @@ impl ViewContextSystem for TransformTreeContext {
 
         let latest_at_query = query.latest_at_query();
 
-        // Add overrides to the transform frame id map so we can get back the id for errors.
-        for results in results {
-            let Some(frame) =
-                results.get_mono(archetypes::CoordinateFrame::descriptor_frame().component)
-            else {
-                continue;
-            };
+        {
+            re_tracing::profile_scope!("add-overrides");
+            // Add overrides to the additional frame id hash map so we can get back the id for errors.
+            for results in frame_id_results {
+                let Some(frame) =
+                    results.get_mono(archetypes::CoordinateFrame::descriptor_frame().component)
+                else {
+                    continue;
+                };
 
-            let frame_hash = TransformFrameIdHash::new(&frame);
-            if !self.frame_id_hash_mapping.contains_key(&frame_hash) {
-                // As overrides are local to this view we need to clone the whole map to add new hashes.
-                Arc::make_mut(&mut self.frame_id_hash_mapping).insert(frame_hash, frame);
+                let frame_hash = TransformFrameIdHash::new(&frame);
+
+                // This may be a frame id we've never heard of, so make add them to our internal lookup.
+                if !self.cache_frame_id_hash_mapping.contains_key(&frame_hash) {
+                    self.additional_frame_id_hash_mapping
+                        .insert(frame_hash, frame);
+                }
             }
         }
 
         let caches = ctx.viewer_ctx.store_context.caches;
-        let transform_cache = caches.entry(|c: &mut TransformDatabaseStoreCache| {
-            c.read_lock_transform_cache(ctx.recording())
+        let transforms_for_timeline = caches.memoizer(|c: &mut TransformDatabaseStoreCache| {
+            c.transforms_for_timeline(ctx.recording(), query.timeline)
         });
 
         let lookup_image_plane_distance = |transform_frame_id_hash: TransformFrameIdHash| -> f64 {
+            re_tracing::profile_scope!("image-plane-distance");
             // We're looking for an entity whose child frame is the given frame id hash.
             // From that entity we'd like to know what image frame distance we should be using.
             // (note that we do **not** care about that entity's `CoordinateFrame` here, rationale see `CamerasVisualizer`)
 
-            let Some(frame_transforms) = transform_cache
-                .transforms_for_timeline(query.timeline)
-                .frame_transforms(transform_frame_id_hash)
+            let Some(frame_transforms) =
+                transforms_for_timeline.frame_transforms(transform_frame_id_hash)
             else {
-                debug_assert!(
-                    false,
+                re_log::debug_panic!(
                     "No tree transforms found for frame id hash {transform_frame_id_hash:?} for which we're trying to lookup a pinhole image plane distance."
                 );
                 return 1.0;
@@ -296,18 +329,20 @@ impl ViewContextSystem for TransformTreeContext {
             lookup_image_plane_distance(ctx, entity_path.hash(), &latest_at_query)
         };
 
-        let tree_transforms_per_frame = self
-            .transform_forest
-            .transform_from_to(
-                self.target_frame,
-                self.entity_transform_id_mapping
-                    .transform_frame_id_to_entity_path
-                    .keys()
-                    .copied(),
-                &lookup_image_plane_distance,
-                // Collect into Vec for simplicity, also bulk operating on the transform loop seems like a good idea (perf citation needed!)
-            )
-            .collect::<Vec<_>>();
+        let tree_transforms_per_frame = {
+            re_tracing::profile_scope!("transform_from_to");
+            self.transform_forest
+                .transform_from_to(
+                    self.target_frame,
+                    self.entity_transform_id_mapping
+                        .transform_frame_id_to_entity_path
+                        .keys()
+                        .copied(),
+                    &lookup_image_plane_distance,
+                    // Collect into Vec for simplicity, also bulk operating on the transform loop seems like a good idea (perf citation needed!)
+                )
+                .collect::<Vec<_>>()
+        };
 
         // TODO(andreas, grtlr): We should not re-query all those transforms. We still have them around in `tree_transforms_per_frame` (and a bit below in later `self.transform_infos`).
         // Can we instead just do another lookup indirection to `self.transform_infos`?
@@ -331,7 +366,7 @@ impl ViewContextSystem for TransformTreeContext {
         self.transform_infos = {
             re_tracing::profile_scope!("transform info lookup");
 
-            let transforms = transform_cache.transforms_for_timeline(query.timeline);
+            let transforms = &*transforms_for_timeline;
 
             let latest_at_query = &query.latest_at_query();
 
@@ -342,10 +377,12 @@ impl ViewContextSystem for TransformTreeContext {
                         .entity_transform_id_mapping
                         .transform_frame_id_to_entity_path
                         .get(&transform_frame_id_hash)?;
+                    let missing_chunk_reporter_ref = &missing_chunk_reporter;
                     let transform_infos =
                         entity_paths_for_frame.iter().map(move |entity_path_hash| {
                             let transform_info = map_tree_transform_to_transform_info(
                                 ctx,
+                                missing_chunk_reporter_ref,
                                 &tree_transform,
                                 transforms,
                                 latest_at_query,
@@ -373,6 +410,7 @@ impl ViewContextSystem for TransformTreeContext {
 
 fn map_tree_transform_to_transform_info(
     ctx: &ViewContext<'_>,
+    missing_chunk_reporter: &MissingChunkReporter,
     tree_transform: &Result<TreeTransform, re_tf::TransformFromToError>,
     transforms: &re_tf::CachedTransformsForTimeline,
     latest_at_query: &LatestAtQuery,
@@ -382,7 +420,11 @@ fn map_tree_transform_to_transform_info(
     let poses = transforms
         .pose_transforms(*entity_path_hash)
         .map(|pose_transforms| {
-            pose_transforms.latest_at_instance_poses(ctx.recording(), latest_at_query)
+            pose_transforms.latest_at_instance_poses(
+                ctx.recording(),
+                missing_chunk_reporter,
+                latest_at_query,
+            )
         })
         .unwrap_or_default();
 
@@ -440,6 +482,12 @@ impl TransformTreeContext {
         Some(target_from_root * pinhole_root_info.parent_root_from_pinhole_root)
     }
 
+    /// The full transform forest
+    #[inline]
+    pub fn transform_forest(&self) -> &re_tf::TransformForest {
+        &self.transform_forest
+    }
+
     /// Returns the target frame, also known as the space origin.
     #[inline]
     pub fn target_frame(&self) -> TransformFrameIdHash {
@@ -485,16 +533,33 @@ impl TransformTreeContext {
         &self,
         frame_id_hash: TransformFrameIdHash,
     ) -> Option<&TransformFrameId> {
-        self.frame_id_hash_mapping.get(&frame_id_hash)
+        self.cache_frame_id_hash_mapping
+            .get(&frame_id_hash)
+            .or_else(|| self.additional_frame_id_hash_mapping.get(&frame_id_hash))
+    }
+
+    #[inline]
+    pub fn is_empty_frame_name(&self, frame_id_hash: TransformFrameIdHash) -> bool {
+        self.lookup_frame_id(frame_id_hash)
+            .is_some_and(|frame_id| frame_id.as_str().is_empty())
     }
 
     /// Formats a frame ID hash as a human-readable string.
     ///
-    /// Returns the frame name if known, otherwise returns a debug representation of the hash.
-    #[inline]
-    pub fn format_frame(&self, frame_id_hash: TransformFrameIdHash) -> String {
-        self.lookup_frame_id(frame_id_hash)
-            .map_or_else(|| format!("{frame_id_hash:?}"), ToString::to_string)
+    /// Returns the frame name if known, otherwise logs a warning in debug builds and returns `None`.
+    pub fn format_frame_or_debug_warn(
+        &self,
+        frame_id_hash: TransformFrameIdHash,
+        debug_location: &EntityPath,
+    ) -> Option<String> {
+        if let Some(frame_id) = self.lookup_frame_id(frame_id_hash) {
+            Some(frame_id.to_string())
+        } else {
+            re_log::debug_warn!(
+                "Failed to resolve frame id hash {frame_id_hash:?} which was referenced at {debug_location:?}"
+            );
+            None
+        }
     }
 }
 
@@ -529,6 +594,7 @@ fn lookup_image_plane_distance(
                     .recording_engine()
                     .cache()
                     .latest_at(
+                        re_chunk_store::ChunkTrackingMode::Report,
                         latest_at_query,
                         &data_result.entity_path,
                         [plane_dist_component],
@@ -536,7 +602,10 @@ fn lookup_image_plane_distance(
                     .component_mono_quiet::<ImagePlaneDistance>(plane_dist_component)
                     .unwrap_or_else(|| {
                         typed_fallback_for(
-                            &ctx.query_context(data_result, latest_at_query),
+                            &ctx.query_context_without_visualizer(
+                                data_result,
+                                latest_at_query.clone(),
+                            ),
                             plane_dist_component,
                         )
                     })
@@ -549,7 +618,7 @@ impl EntityTransformIdMapping {
     /// Build a lookup table from entity paths to their transform frame id hashes.
     fn new(
         ctx: &ViewContext<'_>,
-        results: &[HybridLatestAtResults<'_>],
+        results: &[BlueprintResolvedLatestAtResults<'_>],
         space_origin: &EntityPath,
     ) -> Self {
         // This is blueprint-dependent data and may also change over recording time,
@@ -578,14 +647,12 @@ impl EntityTransformIdMapping {
             let transform_frame_id_component =
                 archetypes::CoordinateFrame::descriptor_frame().component;
 
-            let query_shadowed_components = false;
             let results = latest_at_with_blueprint_resolved_data(
                 ctx,
                 None,
                 &latest_at_query,
                 origin_data_result,
                 [transform_frame_id_component],
-                query_shadowed_components,
                 None,
             );
 
@@ -597,8 +664,8 @@ impl EntityTransformIdMapping {
 
     fn determine_frame_id_mapping_for(
         &mut self,
-        ctx: &ViewContext<'_>,
-        results: &HybridLatestAtResults<'_>,
+        _ctx: &ViewContext<'_>,
+        results: &BlueprintResolvedLatestAtResults<'_>,
     ) {
         let transform_frame_id_component =
             archetypes::CoordinateFrame::descriptor_frame().component;
@@ -608,11 +675,11 @@ impl EntityTransformIdMapping {
             .map_or_else(
                 || {
                     let fallback =
-                        TransformFrameIdHash::from_entity_path(&results.data_result.entity_path);
+                        TransformFrameIdHash::from_entity_path(results.entity_path());
                     // Make sure this is the same as the fallback provider (which is a lot slower to run)
-                    debug_assert_eq!(
+                    re_log::debug_assert_eq!(
                         TransformFrameIdHash::new(&typed_fallback_for::<TransformFrameId>(
-                            &ctx.query_context(results.data_result, &results.query),
+                            results.query_context(),
                             transform_frame_id_component
                         )),
                         fallback
@@ -620,17 +687,17 @@ impl EntityTransformIdMapping {
                     fallback
                 },
                 |frame_id| {
-                    let is_mono = results.results.component_mono_raw_quiet(transform_frame_id_component).is_some();
+                    let is_mono = results.get_raw_cell(transform_frame_id_component).is_some_and(|array| array.len() == 1);
                     if !is_mono {
                         re_log::warn_once!(
                             "Entity {:?} has multiple coordinate frame instances, which is not supported. Using the first one.",
-                            results.data_result.entity_path,
+                            results.entity_path(),
                         );
                     }
                     TransformFrameIdHash::new(&frame_id)},
             );
 
-        let entity_path_hash = results.data_result.entity_path.hash();
+        let entity_path_hash = results.entity_path().hash();
 
         match self.transform_frame_id_to_entity_path.entry(frame_id) {
             std::collections::hash_map::Entry::Vacant(entry) => {
@@ -647,6 +714,7 @@ impl EntityTransformIdMapping {
 
 #[cfg(test)]
 mod tests {
+    use re_chunk_store::MissingChunkReporter;
     use re_log_types::{EntityPath, TimePoint};
     use re_sdk_types::archetypes::CoordinateFrame;
     use re_test_context::TestContext;
@@ -660,6 +728,112 @@ mod tests {
 
     use crate::SpatialView3D;
     use crate::contexts::TransformTreeContext;
+
+    /// Helper to execute a [`TransformTreeContext`] for a given view.
+    fn execute_transform_tree_context(
+        test_context: &TestContext,
+        ctx: &re_viewer_context::ViewerContext<'_>,
+        view_id: re_viewer_context::ViewId,
+    ) -> TransformTreeContext {
+        let view_blueprint =
+            ViewBlueprint::try_from_db(view_id, ctx.store_context.blueprint, ctx.blueprint_query)
+                .expect("expected the view id to be known to the blueprint store");
+
+        let view_class = SpatialView3D;
+        let mut view_states = test_context.view_states.lock();
+        let view_state = view_states.get_mut_or_create(ctx.store_id(), view_id, &view_class);
+
+        let view_ctx =
+            view_class.view_context(ctx, view_id, view_state, &view_blueprint.space_origin);
+        let view_query = re_viewport::new_view_query(ctx, &view_blueprint);
+
+        let mut tree_context = TransformTreeContext::default();
+        let once_per_frame = TransformTreeContext::execute_once_per_frame(ctx);
+        let missing_chunk_reporter = MissingChunkReporter::default();
+        tree_context.execute(
+            &view_ctx,
+            &missing_chunk_reporter,
+            &view_query,
+            &once_per_frame,
+        );
+
+        tree_context
+    }
+
+    /// Frame IDs that are only known through overrides or through the directly set target frame
+    /// should be resolvable via [`TransformTreeContext::lookup_frame_id`].
+    /// (Regression test for RR-3327)
+    #[test]
+    fn test_frame_id_lookup_for_overrides_and_target() {
+        let mut test_context = TestContext::new_with_view_class::<SpatialView3D>();
+        let class_id = SpatialView3D::identifier();
+
+        // Log an entity so the data result is created.
+        test_context.log_entity("my_entity", |builder| {
+            builder
+                .with_archetype_auto_row(TimePoint::STATIC, &CoordinateFrame::new("original_frame"))
+        });
+
+        // View where an entity's coordinate frame is overridden to a novel frame id.
+        let view_with_override = test_context.setup_viewport_blueprint(|ctx, blueprint| {
+            let view_id = blueprint.add_view_at_root(ViewBlueprint::new(
+                class_id,
+                RecommendedView::new_single_entity("my_entity"),
+            ));
+            ctx.save_blueprint_archetype(
+                ViewContents::base_override_path_for_entity(view_id, &"my_entity".into()),
+                &CoordinateFrame::new("novel_override_frame"),
+            );
+            view_id
+        });
+
+        // View where the target frame is directly set to a frame id that doesn't exist in the store.
+        let view_with_target = test_context.setup_viewport_blueprint(|ctx, blueprint| {
+            let view_id =
+                blueprint.add_view_at_root(ViewBlueprint::new(class_id, RecommendedView::root()));
+
+            let property = ViewProperty::from_archetype::<
+                re_sdk_types::blueprint::archetypes::SpatialInformation,
+            >(ctx.blueprint_db(), ctx.blueprint_query(), view_id);
+            property.save_blueprint_component(
+                ctx,
+                &re_sdk_types::blueprint::archetypes::SpatialInformation::descriptor_target_frame(),
+                &TransformFrameId::from("novel_target_frame"),
+            );
+
+            view_id
+        });
+
+        test_context.run_in_egui_central_panel(|ctx, _ui| {
+            // Override case: the novel frame id from the override must be resolvable.
+            {
+                let tree_context =
+                    execute_transform_tree_context(&test_context, ctx, view_with_override);
+
+                let novel_hash = TransformFrameIdHash::from_str("novel_override_frame");
+                let resolved = tree_context.lookup_frame_id(novel_hash);
+                assert_eq!(
+                    resolved.map(|id| id.as_str()),
+                    Some("novel_override_frame"),
+                    "Override frame id should be resolvable via lookup_frame_id"
+                );
+            }
+
+            // Target frame case: the novel frame id from the target must be resolvable.
+            {
+                let tree_context =
+                    execute_transform_tree_context(&test_context, ctx, view_with_target);
+
+                let novel_hash = TransformFrameIdHash::from_str("novel_target_frame");
+                let resolved = tree_context.lookup_frame_id(novel_hash);
+                assert_eq!(
+                    resolved.map(|id| id.as_str()),
+                    Some("novel_target_frame"),
+                    "Directly set target frame id should be resolvable via lookup_frame_id"
+                );
+            }
+        });
+    }
 
     #[test]
     fn test_expected_target_frames() {
@@ -762,30 +936,13 @@ mod tests {
                     TransformFrameId::from("directly_set_frame"),
                 ),
             ] {
-                let view_blueprint = ViewBlueprint::try_from_db(
-                    view_id,
-                    ctx.store_context.blueprint,
-                    ctx.blueprint_query,
-                )
-                .expect("expected the view id to be known to the blueprint store");
-
-                let view_class = SpatialView3D;
-                let mut view_states = test_context.view_states.lock();
-                let view_state = view_states.get_mut_or_create(view_id, &view_class);
-
-                let view_ctx =
-                    view_class.view_context(ctx, view_id, view_state, &view_blueprint.space_origin);
-                let view_query = re_viewport::new_view_query(ctx, &view_blueprint);
-
-                let mut tree_context = TransformTreeContext::default();
-                let once_per_frame = TransformTreeContext::execute_once_per_frame(ctx);
-                tree_context.execute(&view_ctx, &view_query, &once_per_frame);
+                let tree_context = execute_transform_tree_context(&test_context, ctx, view_id);
 
                 assert_eq!(
                     tree_context.target_frame(),
                     TransformFrameIdHash::new(&expected_target),
                     "View expected target frame {expected_target:?}, got {:?}",
-                    tree_context.format_frame(tree_context.target_frame())
+                    tree_context.lookup_frame_id(tree_context.target_frame())
                 );
             }
         });

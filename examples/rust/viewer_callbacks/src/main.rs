@@ -27,7 +27,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Listen for gRPC connections from Rerun's logging SDKs.
     // There are other ways of "feeding" the viewer though - all you need is a `re_log_channel::LogReceiver`.
-    let rx = re_grpc_server::spawn_with_recv(
+    let (rx, _grpc_server_handle) = re_grpc_server::spawn_with_recv(
         "0.0.0.0:9876".parse()?,
         Default::default(),
         re_grpc_server::shutdown::never(),
@@ -116,16 +116,16 @@ impl eframe::App for MyApp {
     }
 
     /// Called whenever we need repainting, which could be 60 Hz.
-    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+    fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
         // First add our panel(s):
-        egui::SidePanel::right("my_side_panel")
-            .default_width(200.0)
-            .show(ctx, |ui| {
+        egui::Panel::right("my_side_panel")
+            .default_size(200.0)
+            .show(ui, |ui| {
                 self.ui(ui);
             });
 
         // Now show the Rerun Viewer in the remaining space:
-        self.rerun_app.update(ctx, frame);
+        self.rerun_app.ui(ui, frame);
     }
 }
 

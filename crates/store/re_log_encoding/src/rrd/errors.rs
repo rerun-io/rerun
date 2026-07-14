@@ -1,5 +1,6 @@
 use re_build_info::CrateVersion;
 use re_chunk::ChunkError;
+use re_protos::common::v1alpha1::ext;
 
 pub type CodecResult<T> = Result<T, CodecError>;
 
@@ -81,6 +82,15 @@ pub enum CodecError {
 
     #[error("Integer overflow: {0}")]
     Overflow(#[from] std::num::TryFromIntError),
+
+    #[error("I/O error: {0}")]
+    Io(#[from] std::io::Error),
+
+    #[error("Chunk {chunk_id} not found in manifest")]
+    ChunkNotInManifest { chunk_id: re_chunk::ChunkId },
+
+    #[error("Invalid timeline name: {0}")]
+    InvalidTimelineName(#[from] re_log_types::InvalidTimelineNameError),
 }
 
 const _: () = assert!(
@@ -100,8 +110,8 @@ impl From<ChunkError> for CodecError {
     }
 }
 
-impl From<re_protos::common::v1alpha1::ext::StoreIdMissingApplicationIdError> for CodecError {
-    fn from(value: re_protos::common::v1alpha1::ext::StoreIdMissingApplicationIdError) -> Self {
+impl From<ext::StoreIdMissingApplicationIdError> for CodecError {
+    fn from(value: ext::StoreIdMissingApplicationIdError) -> Self {
         Self::StoreIdMissingApplicationId {
             store_kind: value.store_kind,
             recording_id: value.recording_id,

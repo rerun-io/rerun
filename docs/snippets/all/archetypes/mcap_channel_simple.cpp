@@ -2,7 +2,7 @@
 
 #include <rerun.hpp>
 
-int main() {
+int main(int argc, char* argv[]) {
     const auto rec = rerun::RecordingStream("rerun_example_mcap_channel");
     rec.spawn().exit_on_failure();
 
@@ -14,6 +14,6 @@ int main() {
     rec.log(
         "mcap/channels/camera",
         rerun::archetypes::McapChannel(1, "/camera/image", "cdr")
-            .with_metadata(rerun::components::KeyValuePairs(metadata))
+            .with_metadata(rerun::KeyValuePairs(metadata))
     );
 }

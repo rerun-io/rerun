@@ -3,34 +3,32 @@
 use arrow::array::RecordBatch;
 use pyo3::prelude::*;
 use pyo3::{Bound, PyResult};
-use re_grpc_client::write_table::viewer_client;
+use re_grpc_client::write_table::channel;
 use re_protos::sdk_comms::v1alpha1::message_proxy_service_client::MessageProxyServiceClient;
+use re_protos::sdk_comms::v1alpha1::viewer_control_service_client::ViewerControlServiceClient;
 
 use crate::catalog::to_py_err;
 use crate::utils::wait_for_future;
 
 /// Register the `rerun.catalog` module.
 pub(crate) fn register(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_class::<PyViewerClient>()?;
+    m.add_class::<PyViewerClientInternal>()?;
 
     Ok(())
 }
 
 /// A connection to an instance of a Rerun viewer.
-#[pyclass(name = "ViewerClient", module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
-pub struct PyViewerClient {
+#[pyclass(
+    name = "ViewerClientInternal",
+    module = "rerun_bindings.rerun_bindings"
+)]
+pub struct PyViewerClientInternal {
     conn: ViewerConnectionHandle,
 }
-#[pymethods] // NOLINT: ignore[py-mthd-str]
-impl PyViewerClient {
-    /// Create a new viewer client object.
-    ///
-    /// Parameters
-    /// ----------
-    /// addr:
-    ///     The address of the viewer.
+#[pymethods]
+impl PyViewerClientInternal {
     #[new]
-    #[pyo3(text_signature = "(self, addr=\"127.0.0.1:9876\")")]
+    #[pyo3(text_signature = "(self, addr)")]
     fn new(py: Python<'_>, addr: &str) -> PyResult<Self> {
         let origin = addr.parse::<re_uri::Origin>().map_err(to_py_err)?;
 
@@ -39,9 +37,6 @@ impl PyViewerClient {
         Ok(Self { conn })
     }
 
-    /// Sends a table to the viewer.
-    ///
-    /// A table is represented as a dataframe defined by an Arrow record batch.
     fn send_table(
         self_: Py<Self>,
         id: String,
@@ -53,21 +48,6 @@ impl PyViewerClient {
         conn.send_table(py, id, table)
     }
 
-    /// Saves a screenshot to a file.
-    ///
-    /// .. warning::
-    ///     ⚠️ This API is experimental and may change or be removed in future versions! ⚠️
-    ///
-    /// Parameters
-    /// ----------
-    /// file_path : str
-    ///     The path where the screenshot will be saved.
-    ///     ⚠️ This path is relative to the viewer's filesystem, not the client's! ⚠️
-    ///     If your viewer runs on a different machine, the screenshot will be saved there.
-    /// view_id : str | UUID | None
-    ///     Optional view ID to screenshot.
-    ///     If None, screenshots the entire viewer.
-    #[pyo3(signature = (file_path, view_id = None))]
     fn save_screenshot(
         self_: Py<Self>,
         file_path: String,
@@ -95,13 +75,22 @@ impl PyViewerClient {
 #[derive(Clone)]
 pub struct ViewerConnectionHandle {
     client: MessageProxyServiceClient<tonic::transport::Channel>,
+    control_client: ViewerControlServiceClient<tonic::transport::Channel>,
 }
 
 impl ViewerConnectionHandle {
     pub fn new(py: Python<'_>, origin: re_uri::Origin) -> PyResult<Self> {
-        let client = wait_for_future(py, viewer_client(origin.clone())).map_err(to_py_err)?;
+        let channel = wait_for_future(py, channel(origin.clone())).map_err(to_py_err)?;
 
-        Ok(Self { client })
+        let client = MessageProxyServiceClient::new(channel.clone())
+            .max_decoding_message_size(re_grpc_client::MAX_DECODING_MESSAGE_SIZE);
+        let control_client = ViewerControlServiceClient::new(channel)
+            .max_decoding_message_size(re_grpc_client::MAX_DECODING_MESSAGE_SIZE);
+
+        Ok(Self {
+            client,
+            control_client,
+        })
     }
 }
 
@@ -133,11 +122,9 @@ impl ViewerConnectionHandle {
     ) -> PyResult<()> {
         wait_for_future(
             py,
-            self.client
-                .save_screenshot(re_protos::sdk_comms::v1alpha1::SaveScreenshotRequest {
-                    view_id,
-                    file_path,
-                }),
+            self.control_client.save_screenshot(
+                re_protos::sdk_comms::v1alpha1::SaveScreenshotRequest { view_id, file_path },
+            ),
         )
         .map_err(to_py_err)?;
 

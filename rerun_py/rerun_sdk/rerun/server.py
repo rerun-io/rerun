@@ -5,7 +5,7 @@ from os import PathLike
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from typing_extensions import deprecated
+from typing_extensions import Self, deprecated
 
 from rerun.error_utils import _send_warning_or_raise
 from rerun_bindings import _ServerInternal
@@ -15,6 +15,8 @@ from .catalog import CatalogClient
 if TYPE_CHECKING:
     from collections.abc import Sequence
     from types import TracebackType
+
+__all__ = ["Server"]
 
 
 class Server:
@@ -187,7 +189,15 @@ class Server:
         """
         self._internal.shutdown()
 
-    def __enter__(self) -> Server:
+    def _inject_error(self, method: str) -> None:
+        """Testing utility: make the given gRPC method fail with a ``NotFound`` error."""
+        self._internal.inject_error(method)
+
+    def _clear_injected_error(self, method: str) -> None:
+        """Testing utility: stop failing a previously injected endpoint."""
+        self._internal.clear_injected_error(method)
+
+    def __enter__(self) -> Self:
         """Enter the context manager, returning the server instance."""
         return self
 

@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -35,7 +36,9 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// ### Line series
 /// ```ignore
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_series_line_style").spawn()?;
+///     let rec =
+///         rerun::RecordingStreamBuilder::new("rerun_example_series_line_style")
+///             .spawn()?;
 ///
 ///     // Set up plot styling:
 ///     // They are logged static as they don't change over time and apply to all timelines.
@@ -81,7 +84,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/series_line_style/d2616d98b1e46bdb85849b8669154fdf058e3453/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, ::re_byte_size::SizeBytes)]
 pub struct SeriesLines {
     /// Color for the corresponding series.
     ///
@@ -115,6 +118,13 @@ pub struct SeriesLines {
     ///
     /// Expected to be unchanging over time.
     pub aggregation_policy: Option<SerializedComponentBatch>,
+
+    /// Specifies how values between data points are interpolated.
+    ///
+    /// Defaults to linear interpolation. Use one of the `Step*` variants for a stepped (staircase) line.
+    ///
+    /// Expected to be unchanging over time.
+    pub interpolation_mode: Option<SerializedComponentBatch>,
 }
 
 impl SeriesLines {
@@ -123,11 +133,13 @@ impl SeriesLines {
     /// The corresponding component is [`crate::components::Color`].
     #[inline]
     pub fn descriptor_colors() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.SeriesLines".into()),
-            component: "SeriesLines:colors".into(),
-            component_type: Some("rerun.components.Color".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.SeriesLines".into()),
+                component: "SeriesLines:colors".into(),
+                component_type: Some("rerun.components.Color".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::widths`].
@@ -135,11 +147,13 @@ impl SeriesLines {
     /// The corresponding component is [`crate::components::StrokeWidth`].
     #[inline]
     pub fn descriptor_widths() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.SeriesLines".into()),
-            component: "SeriesLines:widths".into(),
-            component_type: Some("rerun.components.StrokeWidth".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.SeriesLines".into()),
+                component: "SeriesLines:widths".into(),
+                component_type: Some("rerun.components.StrokeWidth".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::names`].
@@ -147,23 +161,27 @@ impl SeriesLines {
     /// The corresponding component is [`crate::components::Name`].
     #[inline]
     pub fn descriptor_names() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.SeriesLines".into()),
-            component: "SeriesLines:names".into(),
-            component_type: Some("rerun.components.Name".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.SeriesLines".into()),
+                component: "SeriesLines:names".into(),
+                component_type: Some("rerun.components.Name".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::visible_series`].
     ///
-    /// The corresponding component is [`crate::components::SeriesVisible`].
+    /// The corresponding component is [`crate::components::Visible`].
     #[inline]
     pub fn descriptor_visible_series() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.SeriesLines".into()),
-            component: "SeriesLines:visible_series".into(),
-            component_type: Some("rerun.components.SeriesVisible".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.SeriesLines".into()),
+                component: "SeriesLines:visible_series".into(),
+                component_type: Some("rerun.components.Visible".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::aggregation_policy`].
@@ -171,11 +189,27 @@ impl SeriesLines {
     /// The corresponding component is [`crate::components::AggregationPolicy`].
     #[inline]
     pub fn descriptor_aggregation_policy() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.SeriesLines".into()),
-            component: "SeriesLines:aggregation_policy".into(),
-            component_type: Some("rerun.components.AggregationPolicy".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.SeriesLines".into()),
+                component: "SeriesLines:aggregation_policy".into(),
+                component_type: Some("rerun.components.AggregationPolicy".into()),
+            });
+        (*DESCRIPTOR).clone()
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::interpolation_mode`].
+    ///
+    /// The corresponding component is [`crate::components::InterpolationMode`].
+    #[inline]
+    pub fn descriptor_interpolation_mode() -> ComponentDescriptor {
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.SeriesLines".into()),
+                component: "SeriesLines:interpolation_mode".into(),
+                component_type: Some("rerun.components.InterpolationMode".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -185,7 +219,7 @@ static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
 static RECOMMENDED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
     std::sync::LazyLock::new(|| []);
 
-static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 5usize]> =
+static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 6usize]> =
     std::sync::LazyLock::new(|| {
         [
             SeriesLines::descriptor_colors(),
@@ -193,10 +227,11 @@ static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 5usize]> =
             SeriesLines::descriptor_names(),
             SeriesLines::descriptor_visible_series(),
             SeriesLines::descriptor_aggregation_policy(),
+            SeriesLines::descriptor_interpolation_mode(),
         ]
     });
 
-static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 5usize]> =
+static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 6usize]> =
     std::sync::LazyLock::new(|| {
         [
             SeriesLines::descriptor_colors(),
@@ -204,18 +239,22 @@ static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 5usize]> =
             SeriesLines::descriptor_names(),
             SeriesLines::descriptor_visible_series(),
             SeriesLines::descriptor_aggregation_policy(),
+            SeriesLines::descriptor_interpolation_mode(),
         ]
     });
 
 impl SeriesLines {
-    /// The total number of components in the archetype: 0 required, 0 recommended, 5 optional
-    pub const NUM_COMPONENTS: usize = 5usize;
+    /// The total number of components in the archetype: 0 required, 0 recommended, 6 optional
+    pub const NUM_COMPONENTS: usize = 6usize;
 }
 
 impl ::re_types_core::Archetype for SeriesLines {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.archetypes.SeriesLines".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.archetypes.SeriesLines"
+        )
     }
 
     #[inline]
@@ -269,12 +308,18 @@ impl ::re_types_core::Archetype for SeriesLines {
             .map(|array| {
                 SerializedComponentBatch::new(array.clone(), Self::descriptor_aggregation_policy())
             });
+        let interpolation_mode = arrays_by_descr
+            .get(&Self::descriptor_interpolation_mode())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_interpolation_mode())
+            });
         Ok(Self {
             colors,
             widths,
             names,
             visible_series,
             aggregation_policy,
+            interpolation_mode,
         })
     }
 }
@@ -289,6 +334,7 @@ impl ::re_types_core::AsComponents for SeriesLines {
             self.names.clone(),
             self.visible_series.clone(),
             self.aggregation_policy.clone(),
+            self.interpolation_mode.clone(),
         ]
         .into_iter()
         .flatten()
@@ -315,6 +361,7 @@ impl SeriesLines {
             names: None,
             visible_series: None,
             aggregation_policy: None,
+            interpolation_mode: None,
         }
     }
 
@@ -342,12 +389,16 @@ impl SeriesLines {
                 Self::descriptor_names(),
             )),
             visible_series: Some(SerializedComponentBatch::new(
-                crate::components::SeriesVisible::arrow_empty(),
+                crate::components::Visible::arrow_empty(),
                 Self::descriptor_visible_series(),
             )),
             aggregation_policy: Some(SerializedComponentBatch::new(
                 crate::components::AggregationPolicy::arrow_empty(),
                 Self::descriptor_aggregation_policy(),
+            )),
+            interpolation_mode: Some(SerializedComponentBatch::new(
+                crate::components::InterpolationMode::arrow_empty(),
+                Self::descriptor_interpolation_mode(),
             )),
         }
     }
@@ -386,6 +437,9 @@ impl SeriesLines {
             self.aggregation_policy
                 .map(|aggregation_policy| aggregation_policy.partitioned(_lengths.clone()))
                 .transpose()?,
+            self.interpolation_mode
+                .map(|interpolation_mode| interpolation_mode.partitioned(_lengths.clone()))
+                .transpose()?,
         ];
         Ok(columns.into_iter().flatten())
     }
@@ -403,12 +457,14 @@ impl SeriesLines {
         let len_names = self.names.as_ref().map(|b| b.array.len());
         let len_visible_series = self.visible_series.as_ref().map(|b| b.array.len());
         let len_aggregation_policy = self.aggregation_policy.as_ref().map(|b| b.array.len());
+        let len_interpolation_mode = self.interpolation_mode.as_ref().map(|b| b.array.len());
         let len = None
             .or(len_colors)
             .or(len_widths)
             .or(len_names)
             .or(len_visible_series)
             .or(len_aggregation_policy)
+            .or(len_interpolation_mode)
             .unwrap_or(0);
         self.columns(std::iter::repeat_n(1, len))
     }
@@ -459,7 +515,7 @@ impl SeriesLines {
     #[inline]
     pub fn with_visible_series(
         mut self,
-        visible_series: impl IntoIterator<Item = impl Into<crate::components::SeriesVisible>>,
+        visible_series: impl IntoIterator<Item = impl Into<crate::components::Visible>>,
     ) -> Self {
         self.visible_series =
             try_serialize_field(Self::descriptor_visible_series(), visible_series);
@@ -496,15 +552,33 @@ impl SeriesLines {
             try_serialize_field(Self::descriptor_aggregation_policy(), aggregation_policy);
         self
     }
-}
 
-impl ::re_byte_size::SizeBytes for SeriesLines {
+    /// Specifies how values between data points are interpolated.
+    ///
+    /// Defaults to linear interpolation. Use one of the `Step*` variants for a stepped (staircase) line.
+    ///
+    /// Expected to be unchanging over time.
     #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.colors.heap_size_bytes()
-            + self.widths.heap_size_bytes()
-            + self.names.heap_size_bytes()
-            + self.visible_series.heap_size_bytes()
-            + self.aggregation_policy.heap_size_bytes()
+    pub fn with_interpolation_mode(
+        mut self,
+        interpolation_mode: impl Into<crate::components::InterpolationMode>,
+    ) -> Self {
+        self.interpolation_mode =
+            try_serialize_field(Self::descriptor_interpolation_mode(), [interpolation_mode]);
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::InterpolationMode`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_interpolation_mode`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_interpolation_mode(
+        mut self,
+        interpolation_mode: impl IntoIterator<Item = impl Into<crate::components::InterpolationMode>>,
+    ) -> Self {
+        self.interpolation_mode =
+            try_serialize_field(Self::descriptor_interpolation_mode(), interpolation_mode);
+        self
     }
 }

@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -24,7 +25,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Archetype**: The top-level description of the viewport.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, ::re_byte_size::SizeBytes)]
 pub struct ViewportBlueprint {
     /// The layout of the views
     pub root_container: Option<SerializedComponentBatch>,
@@ -60,11 +61,13 @@ impl ViewportBlueprint {
     /// The corresponding component is [`crate::blueprint::components::RootContainer`].
     #[inline]
     pub fn descriptor_root_container() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
-            component: "ViewportBlueprint:root_container".into(),
-            component_type: Some("rerun.blueprint.components.RootContainer".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
+                component: "ViewportBlueprint:root_container".into(),
+                component_type: Some("rerun.blueprint.components.RootContainer".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::maximized`].
@@ -72,11 +75,13 @@ impl ViewportBlueprint {
     /// The corresponding component is [`crate::blueprint::components::ViewMaximized`].
     #[inline]
     pub fn descriptor_maximized() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
-            component: "ViewportBlueprint:maximized".into(),
-            component_type: Some("rerun.blueprint.components.ViewMaximized".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
+                component: "ViewportBlueprint:maximized".into(),
+                component_type: Some("rerun.blueprint.components.ViewMaximized".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::auto_layout`].
@@ -84,11 +89,13 @@ impl ViewportBlueprint {
     /// The corresponding component is [`crate::blueprint::components::AutoLayout`].
     #[inline]
     pub fn descriptor_auto_layout() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
-            component: "ViewportBlueprint:auto_layout".into(),
-            component_type: Some("rerun.blueprint.components.AutoLayout".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
+                component: "ViewportBlueprint:auto_layout".into(),
+                component_type: Some("rerun.blueprint.components.AutoLayout".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::auto_views`].
@@ -96,11 +103,13 @@ impl ViewportBlueprint {
     /// The corresponding component is [`crate::blueprint::components::AutoViews`].
     #[inline]
     pub fn descriptor_auto_views() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
-            component: "ViewportBlueprint:auto_views".into(),
-            component_type: Some("rerun.blueprint.components.AutoViews".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
+                component: "ViewportBlueprint:auto_views".into(),
+                component_type: Some("rerun.blueprint.components.AutoViews".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::past_viewer_recommendations`].
@@ -108,11 +117,13 @@ impl ViewportBlueprint {
     /// The corresponding component is [`crate::blueprint::components::ViewerRecommendationHash`].
     #[inline]
     pub fn descriptor_past_viewer_recommendations() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
-            component: "ViewportBlueprint:past_viewer_recommendations".into(),
-            component_type: Some("rerun.blueprint.components.ViewerRecommendationHash".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ViewportBlueprint".into()),
+                component: "ViewportBlueprint:past_viewer_recommendations".into(),
+                component_type: Some("rerun.blueprint.components.ViewerRecommendationHash".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -152,7 +163,10 @@ impl ViewportBlueprint {
 impl ::re_types_core::Archetype for ViewportBlueprint {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.blueprint.archetypes.ViewportBlueprint".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.blueprint.archetypes.ViewportBlueprint"
+        )
     }
 
     #[inline]
@@ -357,16 +371,5 @@ impl ViewportBlueprint {
             past_viewer_recommendations,
         );
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for ViewportBlueprint {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.root_container.heap_size_bytes()
-            + self.maximized.heap_size_bytes()
-            + self.auto_layout.heap_size_bytes()
-            + self.auto_views.heap_size_bytes()
-            + self.past_viewer_recommendations.heap_size_bytes()
     }
 }

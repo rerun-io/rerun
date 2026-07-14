@@ -2,8 +2,8 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::task::Poll;
 
-use parking_lot::Mutex;
 use poll_promise::Promise;
+use re_mutex::Mutex;
 
 // FFmpeg 5.1 "Riemann" is from 2022-07-22.
 // It's simply the oldest I tested manually as of writing. We might be able to go lower.
@@ -105,6 +105,8 @@ impl FFmpegVersion {
         re_tracing::profile_function!();
 
         let modification_time = file_modification_time(path)?;
+
+        re_tracing::profile_wait!("ffmpeg-version");
         VersionCache::global(|cache| {
             cache
                 .version(path, modification_time)
@@ -178,7 +180,7 @@ impl VersionCache {
 fn ffmpeg_version(
     path: Option<&std::path::PathBuf>,
 ) -> Result<FFmpegVersion, FFmpegVersionParseError> {
-    re_tracing::profile_function!("ffmpeg_version_with_path");
+    re_tracing::profile_function!();
 
     // Don't use sidecar's ffmpeg_version_with_path/ffmpeg_version directly since the error message for
     // file not found isn't great and we want this for display in the UI.

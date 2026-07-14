@@ -1,25 +1,54 @@
 use saturating_cast::SaturatingCast as _;
 
-/// Represents a limit in how much RAM to use for the entire process.
+/// Represents a limit in how much RAM to use.
 ///
 /// Different systems can chose to heed the memory limit in different ways,
 /// e.g. by dropping old data when it is exceeded.
 ///
 /// It is recommended that they log using [`re_log::info_once`] when they
 /// drop data because a memory limit is reached.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+#[serde(transparent)]
 pub struct MemoryLimit {
     /// Limit in bytes.
     ///
     /// This is primarily compared to what is reported by [`crate::AccountingAllocator`] ('counted').
     /// We limit based on this instead of `resident` (RSS) because `counted` is what we have immediate
     /// control over, while RSS depends on what our allocator (MiMalloc) decides to do.
-    pub max_bytes: Option<u64>,
+    ///
+    /// None means "unlimited".
+    max_bytes: Option<u64>,
+}
+
+impl std::fmt::Display for MemoryLimit {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.max_bytes {
+            Some(max_bytes) => write!(f, "{}", re_format::format_bytes(max_bytes as _)),
+            None => write!(f, "unlimited"),
+        }
+    }
 }
 
 impl MemoryLimit {
+    /// Lowest possible limit: use as little memory as possible.
+    pub const ZERO: Self = Self { max_bytes: Some(0) };
+
     /// No limit.
     pub const UNLIMITED: Self = Self { max_bytes: None };
+
+    /// The default memory limit for native; 75% of reported
+    /// system memory.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn default_for_current_platform() -> Self {
+        Self::from_fraction_of_total(0.75)
+    }
+
+    /// The default memory for web, where we try to be extra careful
+    /// to not oom.
+    #[cfg(target_arch = "wasm32")]
+    pub fn default_for_current_platform() -> Self {
+        Self::from_bytes(2_500_000_000)
+    }
 
     /// Set the limit to some number of bytes.
     pub fn from_bytes(max_bytes: u64) -> Self {
@@ -34,7 +63,7 @@ impl MemoryLimit {
         if let Some(total_memory) = total_memory {
             let max_bytes = (fraction as f64 * total_memory as f64).round();
 
-            re_log::debug!(
+            re_log::debug_once!(
                 "Setting memory limit to {}, which is {}% of total available memory ({}).",
                 re_format::format_bytes(max_bytes),
                 100.0 * fraction,
@@ -45,7 +74,9 @@ impl MemoryLimit {
                 max_bytes: Some(max_bytes as _),
             }
         } else {
-            re_log::info!("Couldn't determine total available memory. Setting no memory limit.");
+            re_log::info_once!(
+                "Couldn't determine total available memory. Setting no memory limit."
+            );
             Self { max_bytes: None }
         }
     }
@@ -87,6 +118,11 @@ impl MemoryLimit {
         }
     }
 
+    /// Returns [`u64::MAX`] if unlimited.
+    pub fn as_bytes(&self) -> u64 {
+        self.max_bytes.unwrap_or(u64::MAX)
+    }
+
     #[inline]
     pub fn is_limited(&self) -> bool {
         self.max_bytes.is_some()
@@ -95,6 +131,69 @@ impl MemoryLimit {
     #[inline]
     pub fn is_unlimited(&self) -> bool {
         self.max_bytes.is_none()
+    }
+
+    /// Take the max of self and the given argument.
+    #[must_use]
+    pub fn at_least(self, min_bytes: u64) -> Self {
+        if let Some(max_bytes) = self.max_bytes {
+            Self::from_bytes(max_bytes.max(min_bytes))
+        } else {
+            Self::UNLIMITED
+        }
+    }
+
+    #[must_use]
+    pub fn saturating_sub(self, rhs: u64) -> Self {
+        if let Some(max_bytes) = self.max_bytes {
+            let new_max = max_bytes.saturating_sub(rhs);
+            Self::from_bytes(new_max)
+        } else {
+            Self::UNLIMITED
+        }
+    }
+
+    #[must_use]
+    pub fn saturating_add(self, rhs: u64) -> Self {
+        if let Some(max_bytes) = self.max_bytes {
+            let new_max = max_bytes.saturating_add(rhs);
+            Self::from_bytes(new_max)
+        } else {
+            Self::UNLIMITED
+        }
+    }
+
+    #[must_use]
+    pub fn checked_sub(self, rhs: u64) -> Option<Self> {
+        if let Some(max_bytes) = self.max_bytes {
+            let new_max = max_bytes.checked_sub(rhs)?;
+            Some(Self::from_bytes(new_max))
+        } else {
+            Some(Self::UNLIMITED)
+        }
+    }
+
+    /// Split the memory limit into two limits according to the given fraction.
+    ///
+    /// The first returned limit will have `fraction` of the bytes,
+    /// and the second will have the rest.
+    ///
+    /// `fraction` should be between 0.0 and 1.0.
+    pub fn split(self, fraction: f32) -> (Self, Self) {
+        re_log::debug_assert!(
+            (0.0..=1.0).contains(&fraction),
+            "fraction must be between 0.0 and 1.0, got {fraction}"
+        );
+        if let Some(max_bytes) = self.max_bytes {
+            let first_bytes = (fraction as f64 * max_bytes as f64).round() as u64;
+            let second_bytes = max_bytes - first_bytes;
+            (
+                Self::from_bytes(first_bytes),
+                Self::from_bytes(second_bytes),
+            )
+        } else {
+            (Self::UNLIMITED, Self::UNLIMITED)
+        }
     }
 
     /// Returns how large fraction of memory we should free to go down to the exact limit.

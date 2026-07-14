@@ -3,7 +3,8 @@
 use ndarray::{Array, ShapeBuilder as _, s};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let rec = rerun::RecordingStreamBuilder::new("rerun_example_image").spawn()?;
+    let rec =
+        rerun::RecordingStreamBuilder::new("rerun_example_image").spawn()?;
 
     let mut image = Array::<u8, _>::zeros((200, 300, 3).f());
     image.slice_mut(s![.., .., 0]).fill(255);
@@ -12,7 +13,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     rec.log(
         "image",
-        &rerun::Image::from_color_model_and_tensor(rerun::ColorModel::RGB, image)?,
+        &rerun::Image::from_color_model_and_tensor(
+            rerun::ColorModel::RGB,
+            image,
+        )?,
     )?;
 
     Ok(())

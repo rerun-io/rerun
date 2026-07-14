@@ -14,9 +14,9 @@
 //!
 //! ## Links
 //! - [Examples](https://github.com/rerun-io/rerun/tree/latest/examples/rust)
-//! - [High-level docs](http://rerun.io/docs)
+//! - [High-level docs](https://rerun.io/docs)
 //! - [Rust API docs](https://docs.rs/rerun/)
-//! - [Troubleshooting](https://www.rerun.io/docs/getting-started/troubleshooting)
+//! - [Troubleshooting](https://www.rerun.io/docs/overview/installing-rerun/troubleshooting)
 //!
 //! There are many different ways of sending data to the Rerun Viewer depending on what you're
 //! trying to achieve and whether the viewer is running in the same process as your code, in
@@ -148,16 +148,28 @@ pub use re_entity_db::external::re_chunk_store::{
 };
 pub use re_log_types::StoreKind;
 
-/// To register a new external data loader, simply add an executable in your $PATH whose name
+/// To register a new external importer, simply add an executable in your $PATH whose name
 /// starts with this prefix.
 // NOTE: this constant is duplicated in `re_data_source` to avoid an extra dependency here.
-pub const EXTERNAL_DATA_LOADER_PREFIX: &str = "rerun-loader-";
+pub const EXTERNAL_IMPORTER_PREFIX: &str = "rerun-importer-";
 
-/// When an external `DataLoader` is asked to load some data that it doesn't know
+/// When an external importer is asked to load some data that it doesn't know
 /// how to load, it should exit with this exit code.
 // NOTE: Always keep in sync with other languages.
 // NOTE: this constant is duplicated in `re_data_source` to avoid an extra dependency here.
-pub const EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE: i32 = 66;
+pub const EXTERNAL_IMPORTER_INCOMPATIBLE_EXIT_CODE: i32 = 66;
+
+/// Deprecated alias for [`EXTERNAL_IMPORTER_PREFIX`].
+#[deprecated(since = "0.32.0", note = "Use `EXTERNAL_IMPORTER_PREFIX` instead.")]
+pub const EXTERNAL_DATA_LOADER_PREFIX: &str = EXTERNAL_IMPORTER_PREFIX;
+
+/// Deprecated alias for [`EXTERNAL_IMPORTER_INCOMPATIBLE_EXIT_CODE`].
+#[deprecated(
+    since = "0.32.0",
+    note = "Use `EXTERNAL_IMPORTER_INCOMPATIBLE_EXIT_CODE` instead."
+)]
+pub const EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE: i32 =
+    EXTERNAL_IMPORTER_INCOMPATIBLE_EXIT_CODE;
 
 /// Re-exports of other crates.
 pub mod external {
@@ -180,6 +192,9 @@ pub mod external {
     #[cfg(feature = "native_viewer")]
     pub use re_viewer;
     #[cfg(feature = "native_viewer")]
+    // Work around for a nightly rust ICE
+    // TODO(isse): Remove once https://github.com/rust-lang/rust/issues/158686 is fixed.
+    #[doc(no_inline)]
     pub use re_viewer::external::*;
     pub use {
         ::re_arrow_util, ::re_build_info, ::re_entity_db, ::re_error, ::re_format, anyhow, arrow,

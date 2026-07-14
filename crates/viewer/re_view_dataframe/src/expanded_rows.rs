@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 ///
 /// Note: each view should store its own cache. Using a [`re_viewer_context::ViewState`] is a
 /// good way to do this.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, re_byte_size::SizeBytes)]
 pub(crate) struct ExpandedRowsCache {
     /// Maps "table row number" to "additional lines".
     ///
@@ -94,7 +94,7 @@ impl<'a> ExpandedRows<'a> {
                 self.egui_ctx.animate_value_with_time(
                     self.row_id(*expanded_row_nr),
                     *additional_lines as f32 * self.row_height,
-                    self.egui_ctx.style().animation_time,
+                    self.egui_ctx.global_style().animation_time,
                 )
             })
             .sum::<f32>()
@@ -133,7 +133,7 @@ impl<'a> ExpandedRows<'a> {
             self.egui_ctx.animate_value_with_time(
                 self.row_id(row_nr),
                 0.0,
-                self.egui_ctx.style().animation_time,
+                self.egui_ctx.global_style().animation_time,
             );
         }
 

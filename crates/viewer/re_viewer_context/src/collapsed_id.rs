@@ -40,8 +40,8 @@ impl CollapseScope {
             Item::InstancePath(instance_path) => Some(self.entity(instance_path.entity_path)),
             Item::Container(container_id) => Some(self.container(container_id)),
             Item::View(view_id) => Some(self.view(view_id)),
-            Item::DataResult(view_id, instance_path) => {
-                Some(self.data_result(view_id, instance_path.entity_path))
+            Item::DataResult(data_result) => {
+                Some(self.data_result(data_result.view_id, data_result.instance_path.entity_path))
             }
 
             Item::AppId(_)
@@ -49,7 +49,7 @@ impl CollapseScope {
             | Item::StoreId(_)
             | Item::ComponentPath(_)
             | Item::RedapServer(_)
-            | Item::RedapEntry(_)
+            | Item::RedapEntry { .. }
             | Item::TableId(_) => None,
         }
     }
@@ -107,13 +107,13 @@ pub enum CollapseItem {
 
 impl CollapseItem {
     /// Set the collapsed state for the given item in every available scopes.
-    pub fn set_open_all(&self, ctx: &egui::Context, open: bool) {
+    pub fn set_open_all(&self, egui_ctx: &egui::Context, open: bool) {
         for scope in CollapseScope::ALL {
             let id = CollapsedId {
                 item: self.clone(),
                 scope,
             };
-            id.set_open(ctx, open);
+            id.set_open(egui_ctx, open);
         }
     }
 }
@@ -140,19 +140,19 @@ impl CollapsedId {
     }
 
     /// Check the collapsed state for the given [`CollapsedId`].
-    pub fn is_open(&self, ctx: &egui::Context) -> Option<bool> {
-        egui::collapsing_header::CollapsingState::load(ctx, self.egui_id())
+    pub fn is_open(&self, egui_ctx: &egui::Context) -> Option<bool> {
+        egui::collapsing_header::CollapsingState::load(egui_ctx, self.egui_id())
             .map(|state| state.is_open())
     }
 
     /// Set the collapsed state for the given [`CollapsedId`].
-    pub fn set_open(&self, ctx: &egui::Context, open: bool) {
+    pub fn set_open(&self, egui_ctx: &egui::Context, open: bool) {
         let mut collapsing_state = egui::collapsing_header::CollapsingState::load_with_default_open(
-            ctx,
+            egui_ctx,
             self.egui_id(),
             false,
         );
         collapsing_state.set_open(open);
-        collapsing_state.store(ctx);
+        collapsing_state.store(egui_ctx);
     }
 }

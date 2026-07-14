@@ -120,7 +120,7 @@ mod file_server_impl {
 
             let watcher = notify::recommended_watcher(move |res| match res {
                 Ok(event) => {
-                    if let Err(err) = events_tx.send(event) {
+                    if let Err(err) = re_quota_channel::send_crossbeam(&events_tx, event) {
                         re_log::error!(%err, "filesystem watcher disconnected, discarding event");
                     }
                 }

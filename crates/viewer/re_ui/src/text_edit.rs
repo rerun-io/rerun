@@ -6,60 +6,136 @@ use crate::UiExt as _;
 /// as selectable options in a popup below the text edit.
 ///
 /// `hint_text` is an optional placeholder text shown when the buffer is empty.
+///
+/// `invalid_hint_text` can be used to highlight invalid input and show an info
+/// label with the text on top of the suggestion list. Input validation itself
+/// has to be done outside of this function.
+///
+/// Leading whitespace in a suggestion is treated as display-only indentation:
+/// it's kept as indentation in the popup, but stripped for filtering and when
+/// the suggestion is written back into the buffer.
 pub fn autocomplete_text_edit(
     ui: &mut egui::Ui,
     text_buffer: &mut dyn egui::TextBuffer,
     suggestions: &[String],
-    hint_text: Option<impl Into<egui::WidgetText>>,
+    empty_hint_text: Option<impl Into<egui::WidgetText>>,
+    invalid_hint_text: Option<impl Into<String>>,
 ) -> egui::Response {
-    let mut text_edit = egui::TextEdit::singleline(text_buffer);
-    if let Some(hint) = hint_text {
+    // Grow with the available width instead of egui's default fixed `text_edit_width` cap.
+    let mut text_edit = egui::TextEdit::singleline(text_buffer).desired_width(ui.available_width());
+    if let Some(hint) = empty_hint_text {
         text_edit = text_edit.hint_text(hint);
     }
-    let mut response = ui.add(text_edit);
 
-    // Filter suggestions based on current input.
+    let mut response = ui
+        .scope(|ui| {
+            if invalid_hint_text.is_some() {
+                ui.style_invalid_field();
+                text_edit = text_edit.text_color(ui.visuals().error_fg_color);
+            }
+
+            ui.add(text_edit)
+        })
+        .inner;
+
+    // Filter suggestions based on current text input.
     let filtered_suggestions: Vec<_> = suggestions
         .iter()
         .filter(|suggestion| {
-            suggestion.starts_with(text_buffer.as_str()) && *suggestion != text_buffer.as_str()
+            // Trim leading whitespace for input matching,
+            // but keep it for visually indenting the suggestions.
+            let value = suggestion.trim_start();
+            value.starts_with(text_buffer.as_str()) && value != text_buffer.as_str()
         })
         .collect();
 
-    let suggestions_open =
-        (response.has_focus() || response.lost_focus()) && !filtered_suggestions.is_empty();
+    let num_suggestions = filtered_suggestions.len();
+
+    // In addition to mouse, allow also to select suggestions with up/down arrow keys and Enter.
+    let (index_delta, enter_pressed) = ui.input(|i| {
+        let delta =
+            i.key_pressed(egui::Key::ArrowDown) as i32 - i.key_pressed(egui::Key::ArrowUp) as i32;
+        (delta, i.key_pressed(egui::Key::Enter))
+    });
+
+    let suggestions_open = (response.has_focus() || response.lost_focus() || index_delta != 0)
+        && (num_suggestions > 0 || invalid_hint_text.is_some());
+
+    // Persist the selected index using egui's temporary data storage if the suggestions popup is open.
+    let selected_index: Option<usize> = if suggestions_open {
+        let previous_index = ui.data(|d| d.get_temp::<usize>(response.id));
+        let index = if index_delta == 0 {
+            previous_index
+        } else {
+            // (prev + n + delta) % n handles both directions correctly.
+            let base = previous_index.unwrap_or(if index_delta > 0 { usize::MAX } else { 0 });
+            Some(
+                (base
+                    .wrapping_add(num_suggestions)
+                    .wrapping_add_signed(index_delta as isize))
+                    % num_suggestions,
+            )
+        };
+        if let Some(i) = index {
+            ui.data_mut(|d| d.insert_temp(response.id, i));
+        }
+        index
+    } else {
+        ui.data_mut(|d| d.remove::<usize>(response.id));
+        None
+    };
+
+    // If enter was pressed, confirm the selection and don't show the suggestion popup.
+    if enter_pressed
+        && let Some(idx) = selected_index
+        && let Some(suggestion) = filtered_suggestions.get(idx)
+    {
+        text_buffer.replace_with(suggestion.trim_start());
+        response.mark_changed();
+        return response;
+    }
 
     let width = response.rect.width();
 
     let mut changed = false;
     let suggestions_ui = |ui: &mut egui::Ui| {
-        for suggestion in &filtered_suggestions {
-            let completion = suggestion.strip_prefix(text_buffer.as_str()).unwrap_or("");
+        for (idx, suggestion) in filtered_suggestions.iter().enumerate() {
+            let is_selected = selected_index == Some(idx);
 
+            // Keep any leading indentation, then highlight the matched prefix against the completion.
+            let value = suggestion.trim_start();
+            let indent = &suggestion[..suggestion.len() - value.len()];
+            let completion = value.strip_prefix(text_buffer.as_str()).unwrap_or("");
+
+            let body = ui.style().text_styles[&egui::TextStyle::Body].clone();
             let mut layout_job = egui::text::LayoutJob::default();
+
+            // Already typed part of the suggestion: "highlighted" as normal text.
             layout_job.append(
-                text_buffer.as_str(),
+                &format!("{indent}{}", text_buffer.as_str()),
                 0.0,
-                egui::TextFormat::simple(
-                    ui.style().text_styles[&egui::TextStyle::Body].clone(),
-                    ui.tokens().text_default,
-                ),
+                egui::TextFormat::simple(body.clone(), ui.tokens().text_default),
             );
+            // Completion remainder of the suggestion: subdued.
             layout_job.append(
                 completion,
                 0.0,
-                egui::TextFormat::simple(
-                    ui.style().text_styles[&egui::TextStyle::Body].clone(),
-                    ui.tokens().text_subdued,
-                ),
+                egui::TextFormat::simple(body, ui.tokens().text_subdued),
             );
 
-            if ui
-                .add(egui::Button::new(layout_job).min_size(egui::vec2(width, 0.0)))
-                .clicked()
-            {
+            let button = egui::Button::new(layout_job)
+                .min_size(egui::vec2(width, 0.0))
+                .selected(is_selected);
+            let button_response = ui.add(button);
+
+            if is_selected {
+                // Make sure the selected item is visible also when using up/down keys.
+                button_response.scroll_to_me(Some(egui::Align::Center));
+            }
+
+            if button_response.clicked() {
                 changed = true;
-                text_buffer.replace_with(suggestion);
+                text_buffer.replace_with(value);
             }
         }
     };
@@ -69,6 +145,14 @@ pub fn autocomplete_text_edit(
         .open(suggestions_open)
         .show(|ui: &mut egui::Ui| {
             ui.set_width(width);
+
+            // Show hint for invalid input always on top of the suggestions.
+            if let Some(invalid_hint_text) = invalid_hint_text.map(Into::into) {
+                ui.info_label(invalid_hint_text);
+                if num_suggestions > 0 {
+                    ui.add_space(ui.spacing().item_spacing.y);
+                }
+            }
 
             egui::ScrollArea::vertical()
                 .min_scrolled_height(350.0)

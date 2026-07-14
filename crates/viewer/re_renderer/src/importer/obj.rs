@@ -41,7 +41,7 @@ pub fn load_obj_from_buffer(
             .chunks_exact(3)
             .map(|p| glam::vec3(p[0], p[1], p[2]))
             .collect();
-        let bbox = macaw::BoundingBox::from_points(vertex_positions.iter().copied());
+        let bbox = crate::util::bounding_box_from_points(vertex_positions.iter().copied());
 
         let triangle_indices = mesh
             .indices
@@ -98,7 +98,8 @@ pub fn load_obj_from_buffer(
         };
 
         mesh.sanity_check()?;
-        model.add_single_instance_mesh(mesh);
+        let key = model.add_mesh(mesh);
+        model.add_instance(key, glam::Affine3A::IDENTITY);
     }
 
     Ok(model)

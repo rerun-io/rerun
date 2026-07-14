@@ -8,20 +8,31 @@ pub mod controls;
 
 mod annotation_context_utils;
 mod annotation_scene_context;
+mod blueprint_resolved_results;
 mod chunks_with_component;
+mod clears;
+mod component_drop;
 mod instance_hash_conversions;
 mod outlines;
 mod query;
-mod results_ext;
 mod view_property_ui;
+mod visualizer_query;
 
-use std::borrow::Cow;
+use std::{borrow::Cow, sync::Arc};
 
 pub use annotation_context_utils::{
     process_annotation_and_keypoint_slices, process_annotation_slices, process_color_slice,
 };
 pub use annotation_scene_context::AnnotationSceneContext;
-pub use chunks_with_component::{ChunkWithComponent, ChunksWithComponent};
+pub use blueprint_resolved_results::{
+    BlueprintResolvedLatestAtResults, BlueprintResolvedRangeResults, BlueprintResolvedResults,
+    BlueprintResolvedResultsExt, HybridResultsChunkIter,
+};
+pub use chunks_with_component::{
+    ChunkWithComponent, ChunksWithComponent, MaybeChunksWithComponent,
+};
+pub use clears::collect_recursive_clears;
+pub use component_drop::{ComponentDropResult, handle_component_drop};
 pub use instance_hash_conversions::{
     instance_path_hash_from_picking_layer_id, picking_layer_id_from_instance_path_hash,
 };
@@ -29,19 +40,80 @@ pub use outlines::{
     SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES, SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES, outline_config,
 };
 pub use query::{
-    DataResultQuery, latest_at_with_blueprint_resolved_data, range_with_blueprint_resolved_data,
+    ComponentCastRule, DataResultQuery, latest_at_with_blueprint_resolved_data,
+    latest_at_with_blueprint_resolved_data_polymorphic, range_with_blueprint_resolved_data,
+    range_with_blueprint_resolved_data_polymorphic,
 };
-pub use results_ext::{
-    HybridLatestAtResults, HybridRangeResults, HybridResults, HybridResultsChunkIter,
-    RangeResultsExt,
-};
+use re_log_types::external::arrow;
 pub use view_property_ui::{
     view_property_component_ui, view_property_component_ui_custom, view_property_ui,
     view_property_ui_with_redirect,
 };
+pub use visualizer_query::VisualizerInstructionQueryResults;
 
 pub mod external {
     pub use re_entity_db::external::*;
+}
+
+/// Error that can occur when mapping components.
+#[derive(thiserror::Error, Debug, Clone)]
+pub enum ComponentMappingError {
+    /// Failed to parse a selector.
+    #[error("Failed to parse selector: {0}")]
+    SelectorParseFailed(re_lenses_core::SelectorError),
+
+    /// Failed to execute a selector.
+    #[error("Failed to select data: {0}")]
+    SelectorExecutionFailed(re_lenses_core::SelectorError),
+
+    /// Failed to cast component data to target datatype.
+    #[error("Failed to cast from {source_datatype} to {target_datatype}: {err}")]
+    CastFailed {
+        source_datatype: arrow::datatypes::DataType,
+        target_datatype: arrow::datatypes::DataType,
+        err: Arc<arrow::error::ArrowError>,
+    },
+
+    #[error("Component '{0}' does not exist on the entity.")]
+    ComponentNotPresentOnEntity(re_types_core::ComponentIdentifier),
+
+    #[error("Component '{0}' exists on the entity but no data is available at the given time.")]
+    NoComponentDataForQuery(re_types_core::ComponentIdentifier),
+
+    // Note that we don't know whether we're actively fetching data for it.
+    #[error("Component '{0}' exists on the entity but data for it hasn't been loaded yet.")]
+    NoComponentDataForQueryButIsFetchable(re_types_core::ComponentIdentifier),
+}
+
+impl ComponentMappingError {
+    pub fn summary(&self) -> String {
+        match self {
+            Self::SelectorParseFailed(_) => "Failed to parse selector.".to_owned(),
+            Self::SelectorExecutionFailed(_) => "Failed to select data.".to_owned(),
+            Self::CastFailed {
+                source_datatype,
+                target_datatype,
+                ..
+            } => {
+                format!("Failed to cast from {source_datatype} to {target_datatype}.")
+            }
+            Self::ComponentNotPresentOnEntity(_)
+            | Self::NoComponentDataForQuery(_)
+            | Self::NoComponentDataForQueryButIsFetchable(_) => self.to_string(),
+        }
+    }
+
+    pub fn details(&self) -> Option<String> {
+        match self {
+            Self::SelectorParseFailed(err) | Self::SelectorExecutionFailed(err) => {
+                Some(err.to_string())
+            }
+            Self::CastFailed { err, .. } => Some(err.to_string()),
+            Self::ComponentNotPresentOnEntity(_)
+            | Self::NoComponentDataForQuery(_)
+            | Self::NoComponentDataForQueryButIsFetchable(_) => None,
+        }
+    }
 }
 
 /// Clamp the last value in `values` in order to reach a length of `clamped_len`.
@@ -53,12 +125,7 @@ pub fn clamped_or_nothing<T>(values: &[T], clamped_len: usize) -> impl Iterator<
         return itertools::Either::Left(std::iter::empty());
     };
 
-    itertools::Either::Right(
-        values
-            .iter()
-            .chain(std::iter::repeat(last))
-            .take(clamped_len),
-    )
+    itertools::Either::Right(std::iter::chain(values, std::iter::repeat(last)).take(clamped_len))
 }
 
 /// Iterate over all the values in the slice, then repeat the last value forever.
@@ -67,7 +134,19 @@ pub fn clamped_or_nothing<T>(values: &[T], clamped_len: usize) -> impl Iterator<
 #[inline]
 pub fn clamped_or<'a, T>(values: &'a [T], if_empty: &'a T) -> impl Iterator<Item = &'a T> + Clone {
     let repeated = values.last().unwrap_or(if_empty);
-    values.iter().chain(std::iter::repeat(repeated))
+    std::iter::chain(values, std::iter::repeat(repeated))
+}
+
+/// Iterate over all the values in the slice, then repeat the last value forever.
+///
+/// If the input slice is empty, the second argument is returned forever.
+#[inline]
+pub fn clamped_or_else<T: Clone>(
+    values: &[T],
+    if_empty: impl Fn() -> T,
+) -> impl Iterator<Item = T> {
+    let repeated = values.last().cloned().unwrap_or_else(if_empty);
+    std::iter::chain(values.iter().cloned(), std::iter::repeat(repeated))
 }
 
 /// Clamp the last value in `values` in order to reach a length of `clamped_len`.

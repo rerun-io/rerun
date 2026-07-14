@@ -1,17 +1,52 @@
 from __future__ import annotations
 
-import math
 import warnings
 from typing import TYPE_CHECKING
 
-from rerun_bindings import _UrdfJointInternal, _UrdfLinkInternal, _UrdfTreeInternal
+from rerun_bindings import _UrdfJointInternal, _UrdfLinkInternal, _UrdfMimicInternal, _UrdfTreeInternal
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
     from pathlib import Path
 
-    from . import Transform3D
+    import pyarrow as pa
 
-__all__ = ["UrdfJoint", "UrdfLink", "UrdfTree"]
+    from . import Transform3D
+    from ._baseclasses import ComponentColumnList
+    from .experimental import LazyChunkStream
+    from .recording_stream import RecordingStream
+
+__all__ = ["UrdfJoint", "UrdfLink", "UrdfMimic", "UrdfTree"]
+
+
+class UrdfMimic:
+    """
+    A URDF `<mimic>` tag specification.
+
+    A mimic joint's value is derived from a driver joint as
+    `value = multiplier * driver_value + offset`.
+    """
+
+    def __init__(self, inner: _UrdfMimicInternal) -> None:
+        self._inner = inner
+
+    @property
+    def joint(self) -> str:
+        """Name of the driver joint."""
+        return self._inner.joint
+
+    @property
+    def multiplier(self) -> float:
+        """Multiplier applied to the driver joint's value (defaults to `1.0`)."""
+        return self._inner.multiplier
+
+    @property
+    def offset(self) -> float:
+        """Offset added after multiplying the driver joint's value (defaults to `0.0`)."""
+        return self._inner.offset
+
+    def __repr__(self) -> str:
+        return self._inner.__repr__()
 
 
 class UrdfJoint:
@@ -75,15 +110,23 @@ class UrdfJoint:
         """Velocity limit of the joint."""
         return self._inner.limit_velocity
 
-    def compute_transform(self, angle: float) -> Transform3D:
+    @property
+    def mimic(self) -> UrdfMimic | None:
+        """Mimic-tag specification, or `None` if this joint is not a mimic joint."""
+        inner = self._inner.mimic
+        return UrdfMimic(inner) if inner is not None else None
+
+    def compute_transform(self, value: float, clamp: bool = True) -> Transform3D:
         """
-        Compute a Transform3D for this joint at the given angle.
+        Compute a Transform3D for this joint at the given value.
 
         Parameters
         ----------
-        angle:
+        value:
             Joint angle in radians (revolute/continuous) or distance in meters (prismatic).
-            Ignored for fixed joints. Values outside limits are clamped with a warning.
+            Ignored for fixed joints. Values outside limits are clamped with a warning if `clamp` is True.
+        clamp:
+            Whether to clamp & warn about values outside joint limits.
 
         Returns
         -------
@@ -94,99 +137,49 @@ class UrdfJoint:
         from . import Transform3D
         from .datatypes import Quaternion
 
-        joint_type = self.joint_type
+        result = self._inner.compute_transform(value, clamp=clamp)
 
-        if joint_type in ("revolute", "continuous"):
-            # Revolute and continuous joints rotate around their axis
-            # Check limits only for revolute (continuous has no limits)
-            if joint_type == "revolute" and not (self.limit_lower <= angle <= self.limit_upper):
-                warnings.warn(
-                    f"Joint '{self.name}' angle {angle:.4f} rad is outside limits "
-                    f"[{self.limit_lower:.4f}, {self.limit_upper:.4f}] rad. Clamping.",
-                    UserWarning,
-                    stacklevel=2,
-                )
-                angle = max(self.limit_lower, min(self.limit_upper, angle))
+        if result["warning"] is not None:
+            warnings.warn(result["warning"], UserWarning, stacklevel=2)
 
-            # Combine origin rotation (RPY) with dynamic rotation (axis-angle)
-            # First convert origin RPY to quaternion
-            roll, pitch, yaw = self.origin_rpy
-            quat_origin = _euler_to_quat(roll, pitch, yaw)
+        return Transform3D(
+            quaternion=Quaternion(xyzw=result["quaternion_xyzw"]),
+            translation=result["translation"],
+            parent_frame=result["parent_frame"],
+            child_frame=result["child_frame"],
+        )
 
-            # Convert axis-angle to quaternion
-            axis_x, axis_y, axis_z = self.axis
-            half_angle = angle / 2.0
-            sin_half = math.sin(half_angle)
-            cos_half = math.cos(half_angle)
-            quat_dynamic = [
-                axis_x * sin_half,  # x
-                axis_y * sin_half,  # y
-                axis_z * sin_half,  # z
-                cos_half,  # w
-            ]
+    def compute_transform_columns(self, values: Sequence[float], *, clamp: bool = True) -> ComponentColumnList:
+        """
+        Compute transforms for this joint at multiple values, returning columnar data for use with `send_columns`.
 
-            # Multiply quaternions: quat_origin * quat_dynamic
-            combined_quat = _quat_multiply(quat_origin, quat_dynamic)
+        Parameters
+        ----------
+        values:
+            Joint values: angles in radians (revolute/continuous) or distances in meters (prismatic).
+            Values outside limits are clamped with a warning if `clamp` is True.
+        clamp:
+            Whether to clamp & warn about values outside joint limits.
 
-            return Transform3D(
-                quaternion=Quaternion(xyzw=combined_quat),
-                translation=self.origin_xyz,
-                parent_frame=self.parent_link,
-                child_frame=self.child_link,
-            )
+        Returns
+        -------
+        ComponentColumnList
+            Columnar transform data ready for use with [`rerun.send_columns`][].
 
-        elif joint_type == "prismatic":
-            # Prismatic joints translate along their axis
-            if not (self.limit_lower <= angle <= self.limit_upper):
-                warnings.warn(
-                    f"Joint '{self.name}' distance {angle:.4f} m is outside limits "
-                    f"[{self.limit_lower:.4f}, {self.limit_upper:.4f}] m. Clamping.",
-                    UserWarning,
-                    stacklevel=2,
-                )
-                angle = max(self.limit_lower, min(self.limit_upper, angle))
+        """
+        from . import Transform3D
 
-            # Compute translation: origin + dynamic offset along axis
-            axis_x, axis_y, axis_z = self.axis
-            origin_x, origin_y, origin_z = self.origin_xyz
-            translation = (
-                origin_x + axis_x * angle,
-                origin_y + axis_y * angle,
-                origin_z + axis_z * angle,
-            )
+        result = self._inner.compute_transform_columns(list(values), clamp=clamp)
 
-            # For prismatic joints, rotation is just the origin rotation
-            roll, pitch, yaw = self.origin_rpy
-            quat = None
-            if roll != 0.0 or pitch != 0.0 or yaw != 0.0:
-                quat = Quaternion(xyzw=_euler_to_quat(roll, pitch, yaw))
-            return Transform3D(
-                translation=translation,
-                quaternion=quat,
-                parent_frame=self.parent_link,
-                child_frame=self.child_link,
-            )
+        for warning in result["warnings"]:
+            warnings.warn(warning, UserWarning, stacklevel=2)
 
-        elif joint_type == "fixed":
-            # Fixed joints only have the origin transform
-            roll, pitch, yaw = self.origin_rpy
-            quat = None
-            if roll != 0.0 or pitch != 0.0 or yaw != 0.0:
-                quat = Quaternion(xyzw=_euler_to_quat(roll, pitch, yaw))
-            return Transform3D(
-                translation=self.origin_xyz,
-                quaternion=quat,
-                parent_frame=self.parent_link,
-                child_frame=self.child_link,
-            )
-
-        else:
-            # Unsupported joint types
-            raise NotImplementedError(
-                f"Joint type '{joint_type}' is not supported by compute_transform(). "
-                f"Supported types are: revolute, continuous, prismatic, fixed. "
-                f"Unsupported types (floating, planar, spherical) require advanced kinematics."
-            )
+        return Transform3D.columns(
+            translation=result["translations"],
+            quaternion=result["quaternions_xyzw"],
+            parent_frame=[result["parent_frame"]] * len(values),
+            child_frame=[result["child_frame"]] * len(values),
+        )
 
     def __repr__(self) -> str:
         return self._inner.__repr__()
@@ -211,16 +204,22 @@ class UrdfTree:
     """
     A URDF robot model with joints and links.
 
-    Not directly loggable. Use this to access the structure of a URDF file
-    and compute transforms for individual joints, which can then be logged
-    using [`archetypes.Transform3D`][rerun.archetypes.Transform3D].
+    Use [`log_urdf_to_recording`][rerun.urdf.UrdfTree.log_urdf_to_recording] to log the full model (geometry + static transforms), then animate
+    individual joints by logging [`archetypes.Transform3D`][rerun.archetypes.Transform3D] computed via
+    [`UrdfJoint.compute_transform`][rerun.urdf.UrdfJoint.compute_transform].
     """
 
     def __init__(self, inner: _UrdfTreeInternal) -> None:
         self._inner = inner
 
     @staticmethod
-    def from_file_path(path: str | Path, entity_path_prefix: str | None = None) -> UrdfTree:
+    def from_file_path(
+        path: str | Path,
+        entity_path_prefix: str | None = None,
+        *,
+        frame_prefix: str | None = None,
+        static_transform_entity_path: str | None = None,
+    ) -> UrdfTree:
         """
         Load a URDF file from the given path.
 
@@ -230,14 +229,33 @@ class UrdfTree:
             Path to the URDF file.
         entity_path_prefix:
             Optional entity path prefix.
+        frame_prefix:
+            Optional prefix for all frame IDs.
+            Use to load the same URDF multiple times with unique frames.
+        static_transform_entity_path:
+            Optional entity path to use when logging static transforms.
+            If omitted, defaults to `/tf_static`.
+            This path is not affected by `entity_path_prefix`.
 
         """
-        return UrdfTree(_UrdfTreeInternal.from_file_path(path, entity_path_prefix))
+        return UrdfTree(
+            _UrdfTreeInternal.from_file_path(
+                path,
+                entity_path_prefix,
+                frame_prefix=frame_prefix,
+                static_transform_entity_path=static_transform_entity_path,
+            )
+        )
 
     @property
     def name(self) -> str:
         """Name of the robot defined in this URDF."""
         return self._inner.name
+
+    @property
+    def frame_prefix(self) -> str | None:
+        """The frame prefix, if set."""
+        return self._inner.frame_prefix
 
     def root_link(self) -> UrdfLink:
         """Get the root link of the URDF."""
@@ -323,35 +341,75 @@ class UrdfTree:
             inner = link._inner
         return self._inner.get_collision_geometry_paths(inner)
 
+    def log_urdf_to_recording(self, recording: RecordingStream | None = None) -> None:
+        """
+        Log the full robot model (geometry + static transforms) to a recording stream.
+
+        This can be used as alternative to [`rerun.log_file_from_path`][] for URDF files,
+        especially in cases where you need the extra configuration options of `UrdfTree`
+        (e.g. `frame_prefix` for multi-robot setups).
+
+        Parameters
+        ----------
+        recording:
+            The recording stream to log to. If `None`, the current active recording is used.
+
+        """
+        self._inner.log(recording.to_native() if recording is not None else None)
+
+    def stream(self, *, include_joint_transforms: bool = True) -> LazyChunkStream:
+        """
+        Return a lazy stream over chunks emitted from this URDF tree.
+
+        !!! warning
+            This method is experimental and returns the experimental
+            `rerun.experimental.LazyChunkStream` API.
+
+        Parameters
+        ----------
+        include_joint_transforms:
+            Whether to include the static joint transforms from the URDF.
+
+        """
+        from .experimental import LazyChunkStream
+
+        return LazyChunkStream(self._inner.stream(include_joint_transforms=include_joint_transforms))
+
+    def compute_joint_transform_batches(
+        self,
+        names: pa.Array,
+        values: pa.Array,
+        *,
+        clamp: bool = False,
+    ) -> pa.Array:
+        """
+        Compute batches of 3D transform components from Arrow list arrays containing joint names and values.
+
+        `names` must be a `ListArray` with `Utf8` values.
+        `values` must be a `ListArray` with values castable to `Float64`.
+
+        The output is a `ListArray` with `translation`, `quaternion`, `parent_frame`, and
+        `child_frame` fields and the same outer row count as the inputs.
+
+        Note: this is intended as a helper for lens pipelines, where you would usually pipe this output
+        through an additional lens that scatters each batch into final `Transform3D` component rows.
+
+        Parameters
+        ----------
+        names:
+            Joint names for each row.
+        values:
+            Joint values for each row.
+        clamp:
+            Whether to clamp & warn about values outside joint limits.
+
+        Returns
+        -------
+        pa.Array
+            Transform batches with one outer row for each input row.
+
+        """
+        return self._inner.compute_joint_transform_batches(names, values, clamp=clamp)
+
     def __repr__(self) -> str:
         return self._inner.__repr__()
-
-
-def _euler_to_quat(roll: float, pitch: float, yaw: float) -> list[float]:
-    """Convert Euler angles (RPY) to quaternion (XYZW)."""
-    cr = math.cos(roll * 0.5)
-    sr = math.sin(roll * 0.5)
-    cp = math.cos(pitch * 0.5)
-    sp = math.sin(pitch * 0.5)
-    cy = math.cos(yaw * 0.5)
-    sy = math.sin(yaw * 0.5)
-
-    w = cr * cp * cy + sr * sp * sy
-    x = sr * cp * cy - cr * sp * sy
-    y = cr * sp * cy + sr * cp * sy
-    z = cr * cp * sy - sr * sp * cy
-
-    return [x, y, z, w]
-
-
-def _quat_multiply(q1: list[float], q2: list[float]) -> list[float]:
-    """Multiply two quaternions in XYZW format."""
-    x1, y1, z1, w1 = q1
-    x2, y2, z2, w2 = q2
-
-    w = w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2
-    x = w1 * x2 + x1 * w2 + y1 * z2 - z1 * y2
-    y = w1 * y2 - x1 * z2 + y1 * w2 + z1 * x2
-    z = w1 * z2 + x1 * y2 - y1 * x2 + z1 * w2
-
-    return [x, y, z, w]

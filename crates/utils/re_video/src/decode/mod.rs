@@ -4,7 +4,7 @@
 //! Whirlwind tour of how to interpret picture data (from a Video perspective)
 //! ---------------------------------------------------------------------------------
 //!
-//! Extracted from the [av1 codec wiki](https://wiki.x266.mov/docs/colorimetry/intro) and other sources.
+//! Extracted from the [av1 codec wiki](https://web.archive.org/web/20260318141718/https://wiki.x266.mov/docs/colorimetry/intro) and other sources.
 //! Follows the trail of information we get from our AV1 decoder.
 //!
 //! ### How to get from YUV to RGB?
@@ -29,14 +29,14 @@
 //!
 //! ### Given a normalized YUV triplet, how do we get color?
 //!
-//! * `picture.matrix_coefficients()` (see <https://wiki.x266.mov/docs/colorimetry/matrix>)
+//! * `picture.matrix_coefficients()` (see <https://web.archive.org/web/20260318141742/https://wiki.x266.mov/docs/colorimetry/matrix>)
 //!   * this tells us what to multiply the incoming YUV data with to get SOME RGB data
 //!   * there's various standards of how to do this, but the most common is BT.709
 //!   * here's a fun special one: `identity` means it's not actually YUV, but GBR!
 //! * `picture.primaries()`
 //!   * now we have RGB but we kinda have no idea what that means!
 //!   * the color primaries tell us which space we're in
-//!   * ...meaning that if the primaries are anything else we'd have to do some conversion BUT
+//!   * …meaning that if the primaries are anything else we'd have to do some conversion BUT
 //!     it also means that we have no chance of displaying the picture perfectly on a screen taking in sRGB (or any other not-matching color space)
 //!   * [Wikipedia says](https://en.wikipedia.org/wiki/Rec._709#Relationship_to_sRGB) sRGB uses the same primaries as BT.709
 //!       * but I also found other sources (e.g. [this forum post](https://forum.doom9.org/showthread.php?p=1640342#post1640342))
@@ -77,8 +77,14 @@
 //! supporting HDR content at which point more properties will be important!
 //!
 
-#[cfg(with_dav1d)]
-mod async_decoder_wrapper;
+mod sync_decoder;
+
+#[cfg_attr(target_arch = "wasm32", path = "sync_decoder_wrapper_wasm.rs")]
+#[cfg_attr(not(target_arch = "wasm32"), path = "sync_decoder_wrapper_native.rs")]
+mod sync_decoder_wrapper;
+
+mod image_decoder;
+
 #[cfg(with_dav1d)]
 mod av1;
 
@@ -89,22 +95,37 @@ mod ffmpeg_cli;
 pub use ffmpeg_cli::FFmpegCliDecoder;
 #[cfg(with_ffmpeg)]
 pub use ffmpeg_cli::{
-    Error as FFmpegError, FFmpegVersion, FFmpegVersionParseError, ffmpeg_download_url,
+    Error as FFmpegError, FFmpegVersion, FFmpegVersionParseError, TranscodedMp4,
+    ffmpeg_download_url, transcode_mp4_drop_b_frames,
 };
 
 #[cfg(target_arch = "wasm32")]
+mod web_image_decoder;
+#[cfg(target_arch = "wasm32")]
 mod webcodecs;
 
-use crate::{SampleIndex, Time, VideoDataDescription};
+#[cfg(target_arch = "wasm32")]
+pub use webcodecs::WebVideoFrame;
 
-#[derive(thiserror::Error, Debug, Clone)]
+mod rvl_decoder;
+
+use crate::{SampleIndex, Time, VideoDataDescription, player::VideoPlaybackIssueSeverity};
+
+#[derive(thiserror::Error, Debug, Clone, re_byte_size::SizeBytes)]
 pub enum DecodeError {
+    #[error("Waiting for encoding details")]
+    WaitingForCodecDetails,
+
     #[error("Unsupported codec: {0}")]
-    UnsupportedCodec(String),
+    UnsupportedCodec(#[size_bytes(ignore)] String),
 
     #[cfg(with_dav1d)]
     #[error("dav1d: {0}")]
-    Dav1d(#[from] dav1d::Error),
+    Dav1d(
+        #[from]
+        #[size_bytes(ignore)]
+        dav1d::Error,
+    ),
 
     #[error("To enabled native AV1 decoding, compile Rerun with the `nasm` feature enabled.")]
     Dav1dWithoutNasm,
@@ -114,22 +135,26 @@ pub enum DecodeError {
     )]
     NoDav1dOnLinuxArm64,
 
+    #[error("Image decode error: {0}")]
+    ImageDecoder(#[size_bytes(ignore)] String),
+
+    #[error(transparent)]
+    RvlDecoder(#[size_bytes(ignore)] re_rvl::RvlDecodeError),
+
     #[cfg(target_arch = "wasm32")]
     #[error(transparent)]
-    WebDecoder(#[from] webcodecs::WebError),
+    WebDecoder(
+        #[from]
+        #[size_bytes(ignore)]
+        webcodecs::WebError,
+    ),
 
     #[cfg(with_ffmpeg)]
     #[error(transparent)]
-    Ffmpeg(std::sync::Arc<FFmpegError>),
+    Ffmpeg(#[size_bytes(ignore)] std::sync::Arc<FFmpegError>),
 
     #[error("Unsupported bits per component: {0}")]
-    BadBitsPerComponent(usize),
-}
-
-impl re_byte_size::SizeBytes for DecodeError {
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
+    BadBitsPerComponent(#[size_bytes(ignore)] usize),
 }
 
 impl DecodeError {
@@ -138,11 +163,17 @@ impl DecodeError {
         // Gotta keep trying!
         match self {
             // Unsupported codec / decoder not available:
-            Self::UnsupportedCodec(_) | Self::Dav1dWithoutNasm | Self::NoDav1dOnLinuxArm64 => false,
+            Self::WaitingForCodecDetails
+            | Self::UnsupportedCodec(_)
+            | Self::Dav1dWithoutNasm
+            | Self::NoDav1dOnLinuxArm64
+            | Self::RvlDecoder(_) => false,
 
             // Issue with AV1 decoding.
             #[cfg(with_dav1d)]
             Self::Dav1d(_) => true,
+
+            Self::ImageDecoder(_) => false,
 
             // Issue with WebCodecs decoding.
             #[cfg(target_arch = "wasm32")]
@@ -154,6 +185,28 @@ impl DecodeError {
 
             // Unsupported format.
             Self::BadBitsPerComponent(_) => false,
+        }
+    }
+
+    pub fn severity(&self) -> VideoPlaybackIssueSeverity {
+        match self {
+            Self::WaitingForCodecDetails => VideoPlaybackIssueSeverity::Informational,
+            #[cfg(with_dav1d)]
+            Self::Dav1d(err) => match err {
+                dav1d::Error::Again => VideoPlaybackIssueSeverity::Loading,
+                _ => VideoPlaybackIssueSeverity::Error,
+            },
+            Self::ImageDecoder(_) => VideoPlaybackIssueSeverity::Error,
+            #[cfg(target_arch = "wasm32")]
+            Self::WebDecoder(err) => err.severity(),
+            #[cfg(with_ffmpeg)]
+            Self::Ffmpeg(_) => VideoPlaybackIssueSeverity::Error,
+
+            Self::UnsupportedCodec(_)
+            | Self::Dav1dWithoutNasm
+            | Self::NoDav1dOnLinuxArm64
+            | Self::BadBitsPerComponent(_)
+            | Self::RvlDecoder(_) => VideoPlaybackIssueSeverity::Error,
         }
     }
 }
@@ -224,14 +277,33 @@ pub fn new_decoder(
     );
 
     #[cfg(target_arch = "wasm32")]
-    return Ok(Box::new(webcodecs::WebVideoDecoder::new(
-        video,
-        decode_settings.hw_acceleration,
-        output_sender,
-    )?));
+    {
+        return match &video.codec {
+            crate::VideoCodec::ImageSequence(codec) => {
+                if codec.as_deref() == Some("application/rvl") {
+                    Ok(Box::new(sync_decoder_wrapper::SyncDecoderWrapper::new(
+                        "rvl decoder".to_owned(),
+                        Box::new(rvl_decoder::RvlDecoder),
+                        output_sender,
+                    )))
+                } else if let Some(decoder) =
+                    web_image_decoder::WebImageDecoder::try_new(video, output_sender.clone())
+                {
+                    Ok(Box::new(decoder))
+                } else {
+                    Err(DecodeError::WaitingForCodecDetails)
+                }
+            }
+            _ => Ok(Box::new(webcodecs::WebVideoDecoder::new(
+                video,
+                decode_settings.hw_acceleration,
+                output_sender,
+            )?)),
+        };
+    }
 
     #[cfg(not(target_arch = "wasm32"))]
-    match video.codec {
+    match &video.codec {
         #[cfg(feature = "av1")]
         crate::VideoCodec::AV1 => {
             #[cfg(linux_arm64)]
@@ -242,7 +314,7 @@ pub fn new_decoder(
             #[cfg(with_dav1d)]
             {
                 re_log::trace!("Decoding AV1…");
-                return Ok(Box::new(async_decoder_wrapper::AsyncDecoderWrapper::new(
+                return Ok(Box::new(sync_decoder_wrapper::SyncDecoderWrapper::new(
                     debug_name.to_owned(),
                     Box::new(av1::SyncDav1dDecoder::new(debug_name.to_owned())?),
                     output_sender,
@@ -251,14 +323,36 @@ pub fn new_decoder(
         }
 
         #[cfg(with_ffmpeg)]
-        crate::VideoCodec::H264 | crate::VideoCodec::H265 => Ok(Box::new(FFmpegCliDecoder::new(
+        crate::VideoCodec::H264
+        | crate::VideoCodec::H265
+        | crate::VideoCodec::VP8
+        | crate::VideoCodec::VP9 => Ok(Box::new(FFmpegCliDecoder::new(
             debug_name.to_owned(),
-            &video.encoding_details,
+            video.encoding_details.as_ref(),
             output_sender,
             decode_settings.ffmpeg_path.clone(),
             &video.codec,
         )?)),
 
+        crate::VideoCodec::ImageSequence(codec) => {
+            if codec.as_deref() == Some("application/rvl") {
+                Ok(Box::new(sync_decoder_wrapper::SyncDecoderWrapper::new(
+                    "rvl decoder".to_owned(),
+                    Box::new(rvl_decoder::RvlDecoder),
+                    output_sender,
+                )))
+            } else if let Some(decoder) = image_decoder::SyncImageDecoder::try_new(video) {
+                Ok(Box::new(sync_decoder_wrapper::SyncDecoderWrapper::new(
+                    format!("image decoder ({})", decoder.mime_type()),
+                    Box::new(decoder),
+                    output_sender,
+                )))
+            } else {
+                Err(DecodeError::WaitingForCodecDetails)
+            }
+        }
+
+        #[cfg(not(all(feature = "av1", with_ffmpeg)))]
         _ => Err(DecodeError::UnsupportedCodec(
             video.human_readable_codec_string(),
         )),
@@ -270,6 +364,7 @@ pub fn new_decoder(
 /// For details on how to interpret the data, see [`crate::SampleMetadata`].
 ///
 /// In MP4, one sample is one frame.
+#[derive(re_byte_size::SizeBytes)]
 pub struct Chunk {
     /// The start of a new group of pictures?
     ///
@@ -317,45 +412,17 @@ pub struct Chunk {
     pub duration: Option<Time>,
 }
 
-impl re_byte_size::SizeBytes for Chunk {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            is_sync: _,
-            data,
-            sample_idx: _,
-            frame_nr: _,
-            decode_timestamp: _,
-            presentation_timestamp: _,
-            duration: _,
-        } = self;
-        data.heap_size_bytes()
-    }
-}
-
-/// Data for a decoded frame on native targets.
-#[cfg(not(target_arch = "wasm32"))]
-pub struct FrameContent {
+/// CPU-side data for a decoded frame.
+#[derive(re_byte_size::SizeBytes)]
+pub struct DecodedFrameContent {
     pub data: Vec<u8>,
     pub width: u32,
     pub height: u32,
+    #[size_bytes(ignore)]
     pub format: PixelFormat,
 }
 
-#[cfg(not(target_arch = "wasm32"))]
-impl re_byte_size::SizeBytes for FrameContent {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            data,
-            width: _,
-            height: _,
-            format: _,
-        } = self;
-        data.heap_size_bytes()
-    }
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-impl FrameContent {
+impl DecodedFrameContent {
     pub fn width(&self) -> u32 {
         self.width
     }
@@ -365,23 +432,47 @@ impl FrameContent {
     }
 }
 
+/// Data for a decoded frame on native targets.
+#[cfg(not(target_arch = "wasm32"))]
+pub type FrameContent = DecodedFrameContent;
+
 /// Data for a decoded frame on the web.
+///
+/// Frames either come from the browser's `WebCodecs` API (color/luma video) or
+/// from a CPU-side decoder (e.g. RVL depth). The two are kept in one type so
+/// downstream code can treat them uniformly.
 #[cfg(target_arch = "wasm32")]
-pub type FrameContent = webcodecs::WebVideoFrame;
+#[derive(re_byte_size::SizeBytes)]
+pub enum FrameContent {
+    /// Browser-owned frame produced by WebCodecs/browser image decoding.
+    ///
+    /// Prefer that whenever possible.
+    WebVideoFrame(webcodecs::WebVideoFrame),
+
+    /// CPU-side decoded data, used when browser decoding would lose information,
+    /// for instance when decoding 16bit images (for which as of writing there's no way to get out the raw data)
+    Decoded(DecodedFrameContent),
+}
 
 #[cfg(target_arch = "wasm32")]
 impl FrameContent {
     pub fn width(&self) -> u32 {
-        self.display_width()
+        match self {
+            Self::WebVideoFrame(frame) => frame.display_width(),
+            Self::Decoded(frame) => frame.width(),
+        }
     }
 
     pub fn height(&self) -> u32 {
-        self.display_height()
+        match self {
+            Self::WebVideoFrame(frame) => frame.display_height(),
+            Self::Decoded(frame) => frame.height(),
+        }
     }
 }
 
 /// Meta information about a decoded video frame, as reported by the decoder.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, re_byte_size::SizeBytes)]
 pub struct FrameInfo {
     /// The start of a new group of pictures?
     ///
@@ -449,21 +540,19 @@ impl FrameInfo {
 }
 
 /// One decoded video frame.
+#[derive(re_byte_size::SizeBytes)]
 pub struct Frame {
     pub content: FrameContent,
+    #[size_bytes(ignore)]
     pub info: FrameInfo,
-}
-
-impl re_byte_size::SizeBytes for Frame {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self { content, info: _ } = self;
-        content.heap_size_bytes()
-    }
 }
 
 /// Pixel format/layout used by [`FrameContent::data`].
 #[derive(Debug, Clone)]
 pub enum PixelFormat {
+    L8,
+    L16,
+    R32Float,
     Rgb8Unorm,
     Rgba8Unorm,
 
@@ -480,8 +569,10 @@ pub enum PixelFormat {
 impl PixelFormat {
     pub fn bits_per_pixel(&self) -> u32 {
         match self {
+            Self::L8 => 8,
+            Self::L16 => 16,
             Self::Rgb8Unorm { .. } => 24,
-            Self::Rgba8Unorm { .. } => 32,
+            Self::R32Float | Self::Rgba8Unorm { .. } => 32,
             Self::Yuv { layout, .. } => match layout {
                 YuvPixelLayout::Y_U_V444 => 24,
                 YuvPixelLayout::Y_U_V422 => 16,
@@ -533,8 +624,9 @@ pub enum YuvMatrixCoefficients {
 ///
 /// On the web this directly corresponds to
 /// <https://www.w3.org/TR/webcodecs/#hardware-acceleration>
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Default, Hash, serde::Deserialize, serde::Serialize,
+)]
 pub enum DecodeHardwareAcceleration {
     /// May use hardware acceleration if available and compatible with the codec.
     #[default]
@@ -552,8 +644,7 @@ pub enum DecodeHardwareAcceleration {
 }
 
 /// Settings for video decoding.
-#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash, serde::Deserialize, serde::Serialize)]
 pub struct DecodeSettings {
     /// How the video should be decoded.
     pub hw_acceleration: DecodeHardwareAcceleration,

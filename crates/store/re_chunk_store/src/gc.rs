@@ -1,9 +1,10 @@
-use std::collections::BTreeSet;
+use std::collections::btree_map::Entry as BTreeMapEntry;
 use std::sync::Arc;
 use std::time::Duration;
 
-use itertools::Itertools as _;
+use ahash::HashSet;
 use nohash_hasher::IntMap;
+use re_format::format_bytes;
 use web_time::Instant;
 
 use re_byte_size::SizeBytes;
@@ -11,8 +12,12 @@ use re_chunk::{Chunk, ChunkId, TimelineName};
 use re_log_types::{AbsoluteTimeRange, TimeInt};
 
 use crate::{
-    ChunkStore, ChunkStoreChunkStats, ChunkStoreDiff, ChunkStoreDiffDeletion, ChunkStoreEvent,
-    ChunkStoreStats,
+    ChunkDeletionReason, ChunkStore, ChunkStoreChunkStats, ChunkStoreDiff, ChunkStoreDiffDeletion,
+    ChunkStoreEvent, ChunkStoreStats,
+    store::{
+        ChunkIdSetPerTimePerComponentPerTimelinePerEntity, ChunkIdSetPerTimePerTimelinePerEntity,
+    },
+    writes::LineageDroppingCtx,
 };
 
 // Used all over in docstrings.
@@ -23,6 +28,9 @@ use crate::RowId;
 
 #[derive(Debug, Clone, Copy)]
 pub enum GarbageCollectionTarget {
+    /// Try to drop _at least_ the given number of bytes.
+    DropAtLeastBytes(u64),
+
     /// Try to drop _at least_ the given fraction.
     ///
     /// The fraction must be a float in the range [0.0 : 1.0].
@@ -30,6 +38,35 @@ pub enum GarbageCollectionTarget {
 
     /// GC Everything that isn't [protected](GarbageCollectionOptions::protect_latest).
     Everything,
+}
+
+impl GarbageCollectionTarget {
+    /// How many bytes should be dropped, given the total number of bytes.
+    pub fn target_bytes_from_size(self, total_size_before: u64) -> u64 {
+        match self {
+            Self::DropAtLeastBytes(n) => n,
+            Self::DropAtLeastFraction(p) => {
+                re_log::debug_assert!((0.0..=1.0).contains(&p));
+                (total_size_before as f64 * p).round() as u64
+            }
+            Self::Everything => u64::MAX,
+        }
+    }
+
+    /// What fraction of the total bytes should be dropped.
+    pub fn target_fraction_from_size(self, total_size_before: u64) -> f32 {
+        match self {
+            Self::DropAtLeastFraction(f) => f as f32,
+            Self::DropAtLeastBytes(n) => {
+                if total_size_before == 0 {
+                    0.0
+                } else {
+                    n as f32 / total_size_before as f32
+                }
+            }
+            Self::Everything => 1.0,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -60,6 +97,9 @@ pub struct GarbageCollectionOptions {
     /// back to row ID based collection.
     pub protected_time_ranges: IntMap<TimelineName, AbsoluteTimeRange>,
 
+    /// Do not remove chunks with this id.
+    pub protected_chunks: ahash::HashSet<ChunkId>,
+
     /// Remove chunks giving priority to those that are the furthest away from this timestamp.
     ///
     /// This ignores [`protect_latest`] as well as [`protected_time_ranges`], unless the GC falls
@@ -83,13 +123,18 @@ impl GarbageCollectionOptions {
             time_budget: std::time::Duration::MAX,
             protect_latest: 0,
             protected_time_ranges: Default::default(),
+            protected_chunks: Default::default(),
             furthest_from: None,
             perform_deep_deletions: false,
         }
     }
 
     /// If true, we cannot remove this chunk.
-    pub fn is_chunk_temporally_protected(&self, chunk: &Chunk) -> bool {
+    pub fn is_chunk_protected(&self, chunk: &Chunk) -> bool {
+        if self.protected_chunks.contains(&chunk.id()) {
+            return true;
+        }
+
         for (timeline, protected_time_range) in &self.protected_time_ranges {
             if let Some(time_column) = chunk.timelines().get(timeline)
                 && time_column.time_range().intersects(*protected_time_range)
@@ -104,6 +149,9 @@ impl GarbageCollectionOptions {
 impl std::fmt::Display for GarbageCollectionTarget {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Self::DropAtLeastBytes(bytes) => {
+                write!(f, "DropAtLeast({})", re_format::format_bytes(*bytes as _))
+            }
             Self::DropAtLeastFraction(p) => {
                 write!(f, "DropAtLeast({:.3}%)", *p * 100.0)
             }
@@ -151,48 +199,31 @@ impl ChunkStore {
 
         let stats_before = self.stats();
 
-        let total_size_bytes_before = stats_before.total().total_size_bytes as f64;
+        let total_size_bytes_before = stats_before.total().total_size_bytes;
         let total_num_chunks_before = stats_before.total().num_chunks;
         let total_num_rows_before = stats_before.total().num_rows;
 
-        let diffs = match options.target {
-            GarbageCollectionTarget::DropAtLeastFraction(p) => {
-                assert!((0.0..=1.0).contains(&p));
+        let target_bytes_to_drop = options
+            .target
+            .target_bytes_from_size(total_size_bytes_before);
+        let target_size_bytes = total_size_bytes_before.saturating_sub(target_bytes_to_drop);
 
-                let num_bytes_to_drop = total_size_bytes_before * p;
-                let target_size_bytes = total_size_bytes_before - num_bytes_to_drop;
+        re_log::trace!(
+            kind = "gc",
+            id = self.gc_id,
+            %options.target,
+            total_num_chunks_before = re_format::format_uint(total_num_chunks_before),
+            total_num_rows_before = re_format::format_uint(total_num_rows_before),
+            total_size_bytes_before = re_format::format_bytes(total_size_bytes_before as _),
+            target_size_bytes = re_format::format_bytes(target_size_bytes as _),
+            drop_at_least_num_bytes = re_format::format_bytes(target_bytes_to_drop as _),
+            "starting GC"
+        );
 
-                re_log::trace!(
-                    kind = "gc",
-                    id = self.gc_id,
-                    %options.target,
-                    total_num_chunks_before = re_format::format_uint(total_num_chunks_before),
-                    total_num_rows_before = re_format::format_uint(total_num_rows_before),
-                    total_size_bytes_before = re_format::format_bytes(total_size_bytes_before),
-                    target_size_bytes = re_format::format_bytes(target_size_bytes),
-                    drop_at_least_num_bytes = re_format::format_bytes(num_bytes_to_drop),
-                    "starting GC"
-                );
-
-                self.gc_drop_at_least_num_bytes(options, num_bytes_to_drop)
-            }
-
-            GarbageCollectionTarget::Everything => {
-                re_log::trace!(
-                    kind = "gc",
-                    id = self.gc_id,
-                    %options.target,
-                    total_num_rows_before = re_format::format_uint(total_num_rows_before),
-                    total_size_bytes_before = re_format::format_bytes(total_size_bytes_before),
-                    "starting GC"
-                );
-
-                self.gc_drop_at_least_num_bytes(options, f64::INFINITY)
-            }
-        };
+        let diffs = self.gc_drop_at_least_num_bytes(options, target_bytes_to_drop);
 
         let stats_after = self.stats();
-        let total_size_bytes_after = stats_after.total().total_size_bytes as f64;
+        let total_size_bytes_after = stats_after.total().total_size_bytes;
         let total_num_chunks_after = stats_after.total().num_chunks;
         let total_num_rows_after = stats_after.total().num_rows;
 
@@ -202,32 +233,16 @@ impl ChunkStore {
             %options.target,
             total_num_chunks_before = re_format::format_uint(total_num_chunks_before),
             total_num_rows_before = re_format::format_uint(total_num_rows_before),
-            total_size_bytes_before = re_format::format_bytes(total_size_bytes_before),
+            total_size_bytes_before = re_format::format_bytes(total_size_bytes_before as _),
             total_num_chunks_after = re_format::format_uint(total_num_chunks_after),
             total_num_rows_after = re_format::format_uint(total_num_rows_after),
-            total_size_bytes_after = re_format::format_bytes(total_size_bytes_after),
+            total_size_bytes_after = re_format::format_bytes(total_size_bytes_after as _),
             "GC done"
         );
 
-        let events: Vec<_> = diffs
-            .into_iter()
-            .map(|diff| ChunkStoreEvent {
-                store_id: self.id.clone(),
-                store_generation: self.generation(),
-                event_id: self
-                    .event_id
-                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed),
-                diff,
-            })
-            .collect();
-        if cfg!(debug_assertions) {
-            let any_event_other_than_deletion = events.iter().any(|e| !e.is_deletion());
-            assert!(!any_event_other_than_deletion);
-        }
+        re_log::debug_assert!(diffs.iter().all(|d| d.is_deletion()));
 
-        if self.config.enable_changelog {
-            Self::on_events(&events);
-        }
+        let events = self.finalize_events(diffs);
 
         (events, stats_before - stats_after)
     }
@@ -239,7 +254,7 @@ impl ChunkStore {
     //
     // TODO(jleibs): More complex functionality might required expanding this to also
     // *ignore* specific entities, components, timelines, etc. for this protection.
-    fn find_all_protected_physical_chunk_ids(&self, target_count: usize) -> BTreeSet<ChunkId> {
+    fn find_all_protected_physical_chunk_ids(&self, target_count: usize) -> HashSet<ChunkId> {
         re_tracing::profile_function!();
 
         if target_count == 0 {
@@ -249,36 +264,36 @@ impl ChunkStore {
         self.temporal_chunk_ids_per_entity_per_component
             .values()
             .flat_map(|temporal_chunk_ids_per_timeline| {
-                temporal_chunk_ids_per_timeline.iter().flat_map(
-                    |(_timeline, temporal_chunk_ids_per_component)| {
-                        temporal_chunk_ids_per_component.iter().flat_map(
-                            |(_, temporal_chunk_ids_per_time)| {
-                                temporal_chunk_ids_per_time
-                                    .per_start_time
-                                    .values()
-                                    .rev()
-                                    .flatten()
-                                    .copied()
-                                    .chain(
-                                        temporal_chunk_ids_per_time
-                                            .per_end_time
-                                            .values()
-                                            .rev()
-                                            .flatten()
-                                            .copied(),
-                                    )
-                                    .filter(|chunk_id| {
-                                        self.chunks_per_chunk_id.contains_key(chunk_id) // make sure it's physical
-                                    })
-                                    // We might get unlucky and not hit the target count because `per_end_time`
-                                    // ended up yielding the same chunks as `per_start_time`, which will get
-                                    // deduplicated afterwards.
-                                    // This is fine for now, for two reasons:
-                                    // 1. In practice, we never use anything other than a `target_count` of 1, which
-                                    //    makes this whole thing irrelevant.
-                                    // 2. The whole concept of "protecting latest" only makes sense in the context
-                                    //    of the legacy data paths, which are on their way out anyhow.
-                                    .take(target_count)
+                temporal_chunk_ids_per_timeline.values().flat_map(
+                    |temporal_chunk_ids_per_component| {
+                        temporal_chunk_ids_per_component.values().flat_map(
+                            |temporal_chunk_ids_per_time| {
+                                itertools::chain!(
+                                    temporal_chunk_ids_per_time
+                                        .per_start_time
+                                        .values()
+                                        .rev()
+                                        .flatten()
+                                        .copied(),
+                                    temporal_chunk_ids_per_time
+                                        .per_end_time
+                                        .values()
+                                        .rev()
+                                        .flatten()
+                                        .copied(),
+                                )
+                                .filter(|chunk_id| {
+                                    self.physical_chunks_per_chunk_id.contains_key(chunk_id) // make sure it's physical
+                                })
+                                // We might get unlucky and not hit the target count because `per_end_time`
+                                // ended up yielding the same chunks as `per_start_time`, which will get
+                                // deduplicated afterwards.
+                                // This is fine for now, for two reasons:
+                                // 1. In practice, we never use anything other than a `target_count` of 1, which
+                                //    makes this whole thing irrelevant.
+                                // 2. The whole concept of "protecting latest" only makes sense in the context
+                                //    of the legacy data paths, which are on their way out anyhow.
+                                .take(target_count)
                             },
                         )
                     },
@@ -290,9 +305,9 @@ impl ChunkStore {
     fn gc_drop_at_least_num_bytes(
         &mut self,
         options: &GarbageCollectionOptions,
-        num_bytes_to_drop: f64,
+        target_bytes_to_drop: u64,
     ) -> Vec<ChunkStoreDiff> {
-        re_tracing::profile_function!(re_format::format_bytes(num_bytes_to_drop));
+        re_tracing::profile_function!(re_format::format_bytes(target_bytes_to_drop as _));
 
         let mark_start_time = Instant::now();
 
@@ -301,7 +316,7 @@ impl ChunkStore {
 
         let chunks_to_be_removed = {
             re_tracing::profile_scope!("mark");
-            self.gc_find_candidates(options, num_bytes_to_drop, mark_time_budget)
+            self.gc_find_candidates(options, target_bytes_to_drop, mark_time_budget)
         };
 
         // Make sure we don't remove more than half of the total time budget.
@@ -310,7 +325,7 @@ impl ChunkStore {
             .time_budget
             .saturating_sub(mark_start_time.elapsed().min(mark_time_budget));
 
-        {
+        let dels = {
             re_tracing::profile_scope!("sweep");
 
             // There is never a good reason not to deeply GC non-root level chunks: they cannot be
@@ -335,25 +350,47 @@ impl ChunkStore {
                 };
 
             let now = Instant::now();
-            let dels1 =
-                self.remove_chunks_shallow(chunks_to_be_shallow_removed, Some(sweep_time_budget));
+            let dels1 = self.remove_chunks_shallow(
+                chunks_to_be_shallow_removed,
+                Some(sweep_time_budget),
+                ChunkDeletionReason::GarbageCollection,
+            );
 
             let remaining_budget = sweep_time_budget.saturating_sub(now.elapsed());
-            let dels2 =
-                self.remove_chunks_deep(chunks_to_be_deeply_removed, Some(remaining_budget));
+            let dels2 = self.remove_chunks_deep(
+                chunks_to_be_deeply_removed,
+                Some(remaining_budget),
+                ChunkDeletionReason::GarbageCollection,
+            );
 
-            dels1.into_iter().chain(dels2).map(Into::into).collect()
-        }
+            std::iter::chain(dels1, dels2).map(Into::into).collect()
+        };
+
+        self.chunks_lineage.shrink_to_fit();
+        self.leaky_compactions.shrink_to_fit();
+        self.split_on_ingest.shrink_to_fit();
+        self.dangling_splits.shrink_to_fit();
+
+        let mut queried_chunk_id_tracker = self.queried_chunk_id_tracker.write();
+        queried_chunk_id_tracker.shrink_to_fit();
+
+        dels
     }
 
     #[must_use]
     fn gc_find_candidates(
         &self,
         options: &GarbageCollectionOptions,
-        mut num_bytes_to_drop: f64,
+        target_bytes_to_drop: u64,
         time_budget: Duration,
     ) -> Vec<Arc<Chunk>> {
         let mut chunks_to_be_removed = Vec::new();
+
+        if target_bytes_to_drop == 0 {
+            return chunks_to_be_removed;
+        }
+
+        let mut num_bytes_dropped = 0;
 
         // These are all physical/loaded chunks by definition, since we need to access their data in
         // order to sort them in the first place.
@@ -376,20 +413,22 @@ impl ChunkStore {
 
             for chunk in chunks
                 .into_iter()
-                .filter(|chunk| !options.is_chunk_temporally_protected(chunk))
+                .filter(|chunk| !options.is_chunk_protected(chunk))
             {
                 // NOTE: Do _NOT_ use `chunk.total_size_bytes` as it is sitting behind an Arc
                 // and would count as amortized (i.e. 0 bytes).
-                num_bytes_to_drop -= <Chunk as SizeBytes>::total_size_bytes(&*chunk) as f64;
+                num_bytes_dropped += <Chunk as SizeBytes>::total_size_bytes(&*chunk);
 
                 chunks_to_be_removed.push(chunk);
 
-                if num_bytes_to_drop <= 0.0 {
-                    break; // byte target reached
+                if target_bytes_to_drop <= num_bytes_dropped {
+                    return chunks_to_be_removed; // byte target reached
                 }
                 // NOTE: ignores the time budget, since we've already done the expensive thing.
             }
         }
+
+        let bytes_dropped_by_furthest_from = num_bytes_dropped;
 
         // The code above (mark-furthest-from) cannot respect the time budget,
         // so if it blows past it we could end up in a situation where the entire budget
@@ -397,8 +436,8 @@ impl ChunkStore {
         // So we do NOT count the `mark-furthest-from` phase towards the time budget.
         // See the TODO(cmc) above for more.
 
-        if 0.0 < num_bytes_to_drop {
-            re_tracing::profile_scope!("mark-other");
+        if num_bytes_dropped < target_bytes_to_drop {
+            re_tracing::profile_scope!("mark-by-row-id");
 
             // `find_all_protected_physical_chunk_ids` is rather expensive so make sure we only
             // compute it if we couldn't find enough chunks to remove already.
@@ -414,31 +453,153 @@ impl ChunkStore {
             let start_time = Instant::now();
 
             let chunks_in_priority_order = self
-                .chunk_ids_per_min_row_id
-                .values()
+                .physical_chunk_ids_per_min_row_id
+                .iter()
+                .map(|(_, chunk_id)| chunk_id)
                 .filter(move |chunk_id| !protected_chunk_ids.contains(chunk_id))
-                .filter_map(|chunk_id| self.chunks_per_chunk_id.get(chunk_id).cloned()) // physical only
+                .filter_map(|chunk_id| self.physical_chunks_per_chunk_id.get(chunk_id).cloned()) // physical only
                 .filter(|chunk| !chunk.is_static()) // cannot gc static data
-                .filter(|chunk| !options.is_chunk_temporally_protected(chunk));
+                .filter(|chunk| !options.is_chunk_protected(chunk));
 
             for chunk in chunks_in_priority_order {
                 // NOTE: Do _NOT_ use `chunk.total_size_bytes` as it is sitting behind an Arc
                 // and would count as amortized (i.e. 0 bytes).
-                num_bytes_to_drop -= <Chunk as SizeBytes>::total_size_bytes(&*chunk) as f64;
+                num_bytes_dropped += <Chunk as SizeBytes>::total_size_bytes(&*chunk);
 
                 chunks_to_be_removed.push(chunk);
 
                 // Only check time budget once we have removed at least one chunk.
                 if time_budget <= start_time.elapsed() {
-                    break; // time budget exhausted
+                    return chunks_to_be_removed; // time budget exhausted
                 }
-                if num_bytes_to_drop <= 0.0 {
-                    break; // byte target reached
+                if target_bytes_to_drop <= num_bytes_dropped {
+                    return chunks_to_be_removed; // byte target reached
                 }
+            }
+
+            if options.furthest_from.is_some() {
+                re_log::debug!(
+                    "GC: Furthest-from strategy found {} bytes to drop, and RowId-based strategy found an additional {} bytes to drop ({} total of {} target)",
+                    format_bytes(bytes_dropped_by_furthest_from as _),
+                    format_bytes((num_bytes_dropped - bytes_dropped_by_furthest_from) as _),
+                    format_bytes(num_bytes_dropped as _),
+                    format_bytes(target_bytes_to_drop as _),
+                );
             }
         }
 
         chunks_to_be_removed
+    }
+
+    /// Removes a single temporal chunk from the virtual indices, both the per-component ones and
+    /// the component-less ones.
+    ///
+    /// Returns `true` if the chunk was present in (and removed from) any of those indices.
+    fn remove_chunk_from_virtual_indices(
+        temporal_chunk_ids_per_entity_per_component: &mut ChunkIdSetPerTimePerComponentPerTimelinePerEntity,
+        temporal_chunk_ids_per_entity: &mut ChunkIdSetPerTimePerTimelinePerEntity,
+        chunk: &Arc<Chunk>,
+    ) -> bool {
+        let chunk_id = chunk.id();
+        let mut was_removed = false;
+
+        {
+            re_tracing::profile_scope!("removal (w/ component)");
+
+            if let Some(temporal_chunk_ids_per_timeline) =
+                temporal_chunk_ids_per_entity_per_component.get_mut(chunk.entity_path())
+            {
+                for (timeline, time_range_per_component) in chunk.time_range_per_component() {
+                    let Some(temporal_chunk_ids_per_component) =
+                        temporal_chunk_ids_per_timeline.get_mut(&timeline)
+                    else {
+                        continue;
+                    };
+
+                    for (component, time_range) in time_range_per_component {
+                        let Some(temporal_chunk_ids_per_time) =
+                            temporal_chunk_ids_per_component.get_mut(&component)
+                        else {
+                            continue;
+                        };
+
+                        // TODO(cmc): Technically, the optimal thing to do would be to recompute
+                        // `max_interval_length` per time here.
+                        // In practice, this adds a lot of complexity for likely very little
+                        // performance benefit, since we expect the chunks to have similar interval
+                        // lengths on the happy path.
+
+                        if let BTreeMapEntry::Occupied(mut entry) = temporal_chunk_ids_per_time
+                            .per_start_time
+                            .entry(time_range.min())
+                        {
+                            entry.get_mut().remove(&chunk_id);
+                            if entry.get().is_empty() {
+                                entry.remove();
+                            }
+                            was_removed = true;
+                        }
+                        if let BTreeMapEntry::Occupied(mut entry) = temporal_chunk_ids_per_time
+                            .per_end_time
+                            .entry(time_range.max())
+                        {
+                            entry.get_mut().remove(&chunk_id);
+                            if entry.get().is_empty() {
+                                entry.remove();
+                            }
+                            was_removed = true;
+                        }
+                    }
+                }
+            }
+        }
+
+        {
+            re_tracing::profile_scope!("removal (w/o component)");
+
+            if let Some(temporal_chunk_ids_per_timeline) =
+                temporal_chunk_ids_per_entity.get_mut(chunk.entity_path())
+            {
+                for (timeline, time_column) in chunk.timelines() {
+                    let Some(temporal_chunk_ids_per_time) =
+                        temporal_chunk_ids_per_timeline.get_mut(timeline)
+                    else {
+                        continue;
+                    };
+
+                    let time_range = time_column.time_range();
+
+                    // TODO(cmc): Technically, the optimal thing to do would be to recompute
+                    // `max_interval_length` per time here.
+                    // In practice, this adds a lot of complexity for likely very little
+                    // performance benefit, since we expect the chunks to have similar interval
+                    // lengths on the happy path.
+
+                    if let BTreeMapEntry::Occupied(mut entry) = temporal_chunk_ids_per_time
+                        .per_start_time
+                        .entry(time_range.min())
+                    {
+                        entry.get_mut().remove(&chunk_id);
+                        if entry.get().is_empty() {
+                            entry.remove();
+                        }
+                        was_removed = true;
+                    }
+                    if let BTreeMapEntry::Occupied(mut entry) = temporal_chunk_ids_per_time
+                        .per_end_time
+                        .entry(time_range.max())
+                    {
+                        entry.get_mut().remove(&chunk_id);
+                        if entry.get().is_empty() {
+                            entry.remove();
+                        }
+                        was_removed = true;
+                    }
+                }
+            }
+        }
+
+        was_removed
     }
 
     /// Surgically removes a set of _temporal_ [`ChunkId`]s from all *physical & virtual* indices.
@@ -457,6 +618,7 @@ impl ChunkStore {
         &mut self,
         chunks_to_be_removed: Vec<Arc<Chunk>>,
         time_budget: Option<Duration>,
+        reason: ChunkDeletionReason,
     ) -> Vec<ChunkStoreDiffDeletion> {
         re_tracing::profile_function!();
 
@@ -464,26 +626,31 @@ impl ChunkStore {
         // nothing, doesn't mean that a deep one won't.
         // The deep diff is always a superset of the shallow one (because you can remove physical
         // chunks while keeping virtual ones, but not vice-versa).
+        //
+        // We pass `None` instead of `time_budget` on purpose. The deep loop below clears the
+        // virtual indexes regardless of the budget, so the shallow pass has to clear the physical
+        // ones to completion as well. If shallow bailed early on the budget, every chunk past the
+        // cutoff would keep its physical data but lose its virtual entry, drifting the two indexes
+        // apart (a physical chunk without a virtual entry) on a later GC pass.
         let deletions_shallow =
-            self.remove_chunks_shallow(chunks_to_be_removed.clone(), time_budget);
+            self.remove_chunks_shallow(chunks_to_be_removed.clone(), None, reason);
 
         let Self {
             id: _,
             config: _,
-            time_type_registry: _,       // purely additive
-            type_registry: _,            // purely additive
-            per_column_metadata: _,      // purely additive
-            chunks_per_chunk_id: _,      // handled by shallow impl
-            chunk_ids_per_min_row_id: _, // handled by shallow impl
-            chunks_lineage,              // purely additive
-            dangling_splits: _,          // purely additive
-            leaky_compactions: _,        // purely additive
+            schema: _,                            // purely additive
+            physical_chunks_per_chunk_id: _,      // handled by shallow impl
+            physical_chunk_ids_per_min_row_id: _, // handled by shallow impl
+            chunks_lineage,                       // purely additive
+            dangling_splits: _,                   // not GCed
+            split_on_ingest: _,                   // purely additive
+            leaky_compactions: _,                 // purely additive
             temporal_chunk_ids_per_entity_per_component,
             temporal_chunk_ids_per_entity,
             temporal_physical_chunks_stats: _, // handled by shallow impl
             static_chunk_ids_per_entity: _,    // we don't GC static data
             static_chunks_stats: _,            // we don't GC static data
-            missing_chunk_ids: _,
+            queried_chunk_id_tracker: _,
             insert_id: _,
             gc_id: _,
             event_id: _,
@@ -500,115 +667,27 @@ impl ChunkStore {
         let mut deletions = Vec::new();
 
         for chunk in chunks_to_be_removed {
-            let mut was_removed = false;
-            let chunk_id = chunk.id();
-
-            {
-                re_tracing::profile_scope!("removal (w/ component)");
-
-                if let Some(temporal_chunk_ids_per_timeline) =
-                    temporal_chunk_ids_per_entity_per_component.get_mut(chunk.entity_path())
-                {
-                    for (timeline, time_range_per_component) in chunk.time_range_per_component() {
-                        let Some(temporal_chunk_ids_per_component) =
-                            temporal_chunk_ids_per_timeline.get_mut(&timeline)
-                        else {
-                            continue;
-                        };
-
-                        for (component, time_range) in time_range_per_component {
-                            let Some(temporal_chunk_ids_per_time) =
-                                temporal_chunk_ids_per_component.get_mut(&component)
-                            else {
-                                continue;
-                            };
-
-                            // TODO(cmc): Technically, the optimal thing to do would be to recompute
-                            // `max_interval_length` per time here.
-                            // In practice, this adds a lot of complexity for likely very little
-                            // performance benefit, since we expect the chunks to have similar interval
-                            // lengths on the happy path.
-
-                            if let Some(set) = temporal_chunk_ids_per_time
-                                .per_start_time
-                                .get_mut(&time_range.min())
-                            {
-                                set.remove(&chunk_id);
-                                was_removed = true;
-                            }
-                            if let Some(set) = temporal_chunk_ids_per_time
-                                .per_end_time
-                                .get_mut(&time_range.max())
-                            {
-                                set.remove(&chunk_id);
-                                was_removed = true;
-                            }
-                        }
-                    }
-                }
-            }
-
-            {
-                re_tracing::profile_scope!("insertion (w/o component)");
-
-                if let Some(temporal_chunk_ids_per_timeline) =
-                    temporal_chunk_ids_per_entity.get_mut(chunk.entity_path())
-                {
-                    for (timeline, time_column) in chunk.timelines() {
-                        let Some(temporal_chunk_ids_per_time) =
-                            temporal_chunk_ids_per_timeline.get_mut(timeline)
-                        else {
-                            continue;
-                        };
-
-                        let time_range = time_column.time_range();
-
-                        // TODO(cmc): Technically, the optimal thing to do would be to recompute
-                        // `max_interval_length` per time here.
-                        // In practice, this adds a lot of complexity for likely very little
-                        // performance benefit, since we expect the chunks to have similar interval
-                        // lengths on the happy path.
-
-                        if let Some(set) = temporal_chunk_ids_per_time
-                            .per_start_time
-                            .get_mut(&time_range.min())
-                        {
-                            set.remove(&chunk_id);
-                            was_removed = true;
-                        }
-                        if let Some(set) = temporal_chunk_ids_per_time
-                            .per_end_time
-                            .get_mut(&time_range.max())
-                        {
-                            set.remove(&chunk_id);
-                            was_removed = true;
-                        }
-                    }
-                }
-            }
-
-            if was_removed {
-                deletions.push(ChunkStoreDiffDeletion { chunk });
+            if Self::remove_chunk_from_virtual_indices(
+                temporal_chunk_ids_per_entity_per_component,
+                temporal_chunk_ids_per_entity,
+                &chunk,
+            ) {
+                deletions.push(ChunkStoreDiffDeletion { chunk, reason });
             }
         }
 
-        debug_assert!(
-            deletions.len() >= deletions_shallow.len() && {
-                let del_ids: ahash::HashSet<_> =
-                    deletions.iter().map(|del| del.chunk.id()).collect();
-                deletions_shallow
-                    .iter()
-                    .all(|del| del_ids.contains(&del.chunk.id()))
-            },
-            "deep del should always be a superset of the shallow del:\ndeep: [{}]\nshallow: [{}]",
-            deletions
-                .iter()
-                .map(|del| del.chunk.id().to_string())
-                .join(", "),
+        // Volatile (unrecoverable) chunks are fully reclaimed by the shallow pass above: it drops
+        // their physical data, reclaims their lineage, and -- since an unrecoverable chunk must
+        // never linger as a ghost virtual entry that a query would wrongly report as missing --
+        // purges them from the virtual indices as well. The loop above therefore no longer finds
+        // those, so fold the shallow deletions back in to keep the deep deletion set a superset of
+        // the shallow one.
+        let deep_ids: ahash::HashSet<ChunkId> =
+            deletions.iter().map(|del| del.chunk.id()).collect();
+        deletions.extend(
             deletions_shallow
-                .iter()
-                .map(|del| del.chunk.id().to_string())
-                .join(", "),
+                .into_iter()
+                .filter(|del| !deep_ids.contains(&del.chunk.id())),
         );
 
         deletions
@@ -628,26 +707,26 @@ impl ChunkStore {
         &mut self,
         chunks_to_be_removed: Vec<Arc<Chunk>>,
         time_budget: Option<Duration>,
+        reason: ChunkDeletionReason,
     ) -> Vec<ChunkStoreDiffDeletion> {
         re_tracing::profile_function!();
 
         let Self {
             id: _,
             config: _,
-            time_type_registry: _,  // purely additive
-            type_registry: _,       // purely additive
-            per_column_metadata: _, // purely additive
-            chunks_per_chunk_id,
-            chunk_ids_per_min_row_id,
+            schema: _, // purely additive
+            physical_chunks_per_chunk_id,
+            physical_chunk_ids_per_min_row_id,
             chunks_lineage: _,                              // virtual
             dangling_splits: _,                             // virtual
+            split_on_ingest: _,                             // only additive, used for debug-asserts
             leaky_compactions: _,                           // virtual
             temporal_chunk_ids_per_entity_per_component: _, // virtual
             temporal_chunk_ids_per_entity: _,               // virtual
             temporal_physical_chunks_stats,
             static_chunk_ids_per_entity: _, // we don't GC static data
             static_chunks_stats: _,         // we don't GC static data
-            missing_chunk_ids: _,
+            queried_chunk_id_tracker: _,
             insert_id: _,
             gc_id: _,
             event_id: _,
@@ -659,11 +738,32 @@ impl ChunkStore {
         let mut deletions = Vec::with_capacity(chunks_to_be_removed.len());
         for chunk in chunks_to_be_removed {
             if let Some(row_id_min) = chunk.row_id_range().map(|(min, _)| min) {
-                chunk_ids_per_min_row_id.remove(&row_id_min);
+                physical_chunk_ids_per_min_row_id.remove(&(row_id_min, chunk.id()));
             }
-            let Some(chunk) = chunks_per_chunk_id.remove(&chunk.id()) else {
+            let Some(chunk) = physical_chunks_per_chunk_id.remove(&chunk.id()) else {
                 continue;
             };
+
+            Self::drop_lineage_reference(
+                &mut LineageDroppingCtx {
+                    chunks_lineage: &mut self.chunks_lineage,
+                    leaky_compactions: &mut self.leaky_compactions,
+                    split_on_ingest: &mut self.split_on_ingest,
+                    dangling_splits: &mut self.dangling_splits,
+                },
+                &chunk.id(),
+            );
+
+            // If dropping the physical reference reclaimed the lineage entirely, this chunk is
+            // unrecoverable: it must not linger as a ghost entry in the virtual indices, or queries
+            // would keep reporting it as a (re-fetchable) missing chunk forever.
+            if !self.chunks_lineage.contains_key(&chunk.id()) {
+                Self::remove_chunk_from_virtual_indices(
+                    &mut self.temporal_chunk_ids_per_entity_per_component,
+                    &mut self.temporal_chunk_ids_per_entity,
+                    &chunk,
+                );
+            }
 
             // TODO(cmc): Technically, the optimal thing to do would be to recompute
             // `max_interval_length` per time here.
@@ -673,7 +773,7 @@ impl ChunkStore {
 
             *temporal_physical_chunks_stats -= ChunkStoreChunkStats::from_chunk(&chunk);
 
-            deletions.push(ChunkStoreDiffDeletion { chunk });
+            deletions.push(ChunkStoreDiffDeletion { chunk, reason });
 
             // Only check time budget once we have removed at least one chunk.
             if time_budget <= start_time.elapsed() {

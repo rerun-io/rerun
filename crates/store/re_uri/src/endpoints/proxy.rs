@@ -1,6 +1,6 @@
 use crate::{Origin, RedapUri};
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ProxyUri {
     pub origin: Origin,
 }

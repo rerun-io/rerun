@@ -2,7 +2,7 @@
 
 #![expect(clippy::tuple_array_conversions)] // false positive
 
-use itertools::{Itertools as _, izip};
+use itertools::{Itertools as _, chain, izip};
 
 struct Params {
     num_required: usize,
@@ -151,31 +151,31 @@ fn generate_helper_func(params: &Params) -> String {
     let required_params = params.to_required_params().join(", ");
     let optional_params = params.to_optional_params().join(", ");
 
-    let ret_clause = params
-        .to_required_types()
-        .into_iter()
-        .map(|r| format!("I{r}::IntoIter, {r}"))
-        .chain(
-            params
-                .to_optional_types()
-                .into_iter()
-                .map(|o| format!("I{o}::IntoIter, {o}")),
-        )
-        .collect_vec()
-        .join(", ");
+    let ret_clause = chain!(
+        params
+            .to_required_types()
+            .into_iter()
+            .map(|r| format!("I{r}::IntoIter, {r}")),
+        params
+            .to_optional_types()
+            .into_iter()
+            .map(|o| format!("I{o}::IntoIter, {o}")),
+    )
+    .collect_vec()
+    .join(", ");
 
-    let ret = params
-        .to_required_names()
-        .into_iter()
-        .map(|r| format!("{r}: {r}.into_iter()"))
-        .chain(
-            params
-                .to_optional_names()
-                .into_iter()
-                .map(|o| format!("{o}: {o}.into_iter().peekable()")),
-        )
-        .collect_vec()
-        .join(",\n");
+    let ret = chain!(
+        params
+            .to_required_names()
+            .into_iter()
+            .map(|r| format!("{r}: {r}.into_iter()")),
+        params
+            .to_optional_names()
+            .into_iter()
+            .map(|o| format!("{o}: {o}.into_iter().peekable()")),
+    )
+    .collect_vec()
+    .join(",\n");
 
     let latest = params
         .to_optional_names()
@@ -320,14 +320,14 @@ fn generate_struct(params: &Params) -> String {
 ///         while let Some((_, data)) = o0.next_if(|(index, _)| index <= &max_index) {
 ///             o0_data = Some(data);
 ///         }
-///         let o0_data = o0_data.or(o0_data_latest.take());
+///         let o0_data = o0_data.or_else(|| o0_data_latest.take());
 ///         o0_data_latest.clone_from(&o0_data);
 ///
 ///         let mut o1_data = None;
 ///         while let Some((_, data)) = o1.next_if(|(index, _)| index <= &max_index) {
 ///             o1_data = Some(data);
 ///         }
-///         let o1_data = o1_data.or(o1_data_latest.take());
+///         let o1_data = o1_data.or_else(|| o1_data_latest.take());
 ///         o1_data_latest.clone_from(&o1_data);
 ///
 ///         Some((max_index, r0_data, r1_data, o0_data, o1_data))
@@ -390,17 +390,15 @@ fn generate_impl(params: &Params) -> String {
         .collect_vec()
         .join(", ");
 
-    let items = params
-        .to_required_types()
-        .into_iter()
-        .chain(
-            params
-                .to_optional_types()
-                .into_iter()
-                .map(|o| format!("Option<{o}>")),
-        )
-        .collect_vec()
-        .join(", ");
+    let items = chain!(
+        params.to_required_types().into_iter(),
+        params
+            .to_optional_types()
+            .into_iter()
+            .map(|o| format!("Option<{o}>")),
+    )
+    .collect_vec()
+    .join(", ");
 
     let next_required = params
         .to_required_names()
@@ -419,7 +417,7 @@ fn generate_impl(params: &Params) -> String {
                 while let Some((_, data)) = {o}.next_if(|(index, _)| index <= &max_index) {{
                     {o}_data = Some(data);
                 }}
-                let {o}_data = {o}_data.or({o}_data_latest.take());
+                let {o}_data = {o}_data.or_else(|| {o}_data_latest.take());
                 {o}_data_latest.clone_from(&{o}_data);
                 "
             )
@@ -456,8 +454,8 @@ fn generate_impl(params: &Params) -> String {
 }
 
 fn main() {
-    let num_required = 1..3;
-    let num_optional = 1..10;
+    let num_required = 1..=2;
+    let num_optional = 1..=10;
 
     let output = num_required
         .flat_map(|num_required| {
@@ -482,13 +480,12 @@ fn main() {
 
     println!(
         "
-        // This file was generated using `cargo r -p re_query --all-features --bin range_zip`.
+        // This file was generated using `cargo r -p re_query --all-features --bin range_zip > crates/store/re_query/src/range_zip/generated.rs && cargo fmt`.
         // DO NOT EDIT.
 
         // ---
 
         #![expect(clippy::iter_on_single_items)]
-        #![expect(clippy::too_many_arguments)]
         #![expect(clippy::type_complexity)]
 
         use std::iter::Peekable;

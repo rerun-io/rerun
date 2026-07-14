@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Example of using Rerun to log and visualize the output of [Segment Anything](https://segment-anything.com/).
+Example of using Rerun to log and visualize the output of [Segment Anything](https://github.com/facebookresearch/segment-anything).
 
 Can be used to test mask-generation on one or more images. Images can be local file-paths
 or remote urls.
@@ -18,18 +18,19 @@ from urllib.parse import urlparse
 import cv2
 import numpy as np
 import requests
-import rerun as rr  # pip install rerun-sdk
-import rerun.blueprint as rrb
 import torch
 import torchvision
 from segment_anything import SamAutomaticMaskGenerator, sam_model_registry
 from tqdm import tqdm
 
+import rerun as rr  # pip install rerun-sdk
+import rerun.blueprint as rrb
+
 if TYPE_CHECKING:
     from segment_anything.modeling import Sam
 
 DESCRIPTION = """
-Example of using Rerun to log and visualize the output of [Segment Anything](https://segment-anything.com/).
+Example of using Rerun to log and visualize the output of [Segment Anything](https://github.com/facebookresearch/segment-anything).
 
 The full source code for this example is available [on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/segment_anything_model).
 """.strip()
@@ -47,17 +48,19 @@ def download_with_progress(url: str, dest: Path) -> None:
     chunk_size = 1024 * 1024
     resp = requests.get(url, stream=True)
     total_size = int(resp.headers.get("content-length", 0))
-    with open(dest, "wb") as dest_file:
-        with tqdm(
+    with (
+        open(dest, "wb") as dest_file,
+        tqdm(
             desc="Downloading model",
             total=total_size,
             unit="iB",
             unit_scale=True,
             unit_divisor=1024,
-        ) as progress:
-            for data in resp.iter_content(chunk_size):
-                dest_file.write(data)
-                progress.update(len(data))
+        ) as progress,
+    ):
+        for data in resp.iter_content(chunk_size):
+            dest_file.write(data)
+            progress.update(len(data))
 
 
 def get_downloaded_model_path(model_name: str) -> Path:

@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -24,24 +25,49 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **View**: A view of a single text document, for use with [`archetypes::TextDocument`][crate::archetypes::TextDocument].
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug)]
-pub struct TextDocumentView {}
+#[derive(Clone, Debug, ::re_byte_size::SizeBytes)]
+pub struct TextDocumentView {
+    /// Formatting options for the text document view.
+    pub format_options: crate::blueprint::archetypes::TextDocumentFormat,
+}
 
 impl ::re_types_core::View for TextDocumentView {
     #[inline]
     fn identifier() -> ::re_types_core::ViewClassIdentifier {
-        "TextDocument".into()
+        ::re_types_core::external::re_string_interner::intern_static_nonempty!(
+            ::re_types_core::ViewClassIdentifier,
+            "TextDocument"
+        )
     }
 }
 
-impl ::re_byte_size::SizeBytes for TextDocumentView {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
+impl<T: Into<crate::blueprint::archetypes::TextDocumentFormat>> From<T> for TextDocumentView {
+    fn from(v: T) -> Self {
+        Self {
+            format_options: v.into(),
+        }
     }
+}
+
+impl std::borrow::Borrow<crate::blueprint::archetypes::TextDocumentFormat> for TextDocumentView {
+    #[inline]
+    fn borrow(&self) -> &crate::blueprint::archetypes::TextDocumentFormat {
+        &self.format_options
+    }
+}
+
+impl std::ops::Deref for TextDocumentView {
+    type Target = crate::blueprint::archetypes::TextDocumentFormat;
 
     #[inline]
-    fn is_pod() -> bool {
-        true
+    fn deref(&self) -> &crate::blueprint::archetypes::TextDocumentFormat {
+        &self.format_options
+    }
+}
+
+impl std::ops::DerefMut for TextDocumentView {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::blueprint::archetypes::TextDocumentFormat {
+        &mut self.format_options
     }
 }

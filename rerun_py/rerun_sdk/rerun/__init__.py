@@ -9,8 +9,8 @@ from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 import numpy as np
 
-__version__ = "0.29.0-alpha.1+dev"
-__version_info__ = (0, 29, 0, "alpha.1")
+__version__ = "0.35.0-alpha.1+dev"
+__version_info__ = (0, 35, 0, "alpha.1")
 
 if sys.version_info < (3, 10):  # noqa: UP036
     raise RuntimeError("Rerun SDK requires Python 3.10 or later.")
@@ -27,7 +27,6 @@ from . import (
     blueprint as blueprint,
     catalog as catalog,
     experimental as experimental,
-    recording as recording,
     server as server,
     urdf as urdf,
 )
@@ -75,6 +74,8 @@ from ._send_columns import (
     send_columns as send_columns,
 )
 from ._send_dataframe import (
+    AUTO_INDEX as AUTO_INDEX,
+    RECORDING_PROPERTIES_PATH as RECORDING_PROPERTIES_PATH,
     RERUN_KIND as RERUN_KIND,
     RERUN_KIND_CONTROL as RERUN_KIND_CONTROL,
     RERUN_KIND_INDEX as RERUN_KIND_INDEX,
@@ -87,8 +88,12 @@ from ._send_dataframe import (
     send_dataframe as send_dataframe,
     send_record_batch as send_record_batch,
 )
+from ._tracing_session import (
+    tracing_session as tracing_session,
+)
 from .any_batch_value import (
     AnyBatchValue as AnyBatchValue,
+    ComponentValueLike as ComponentValueLike,
 )
 from .any_value import (
     AnyValues as AnyValues,
@@ -107,6 +112,7 @@ from .archetypes import (
     CoordinateFrame as CoordinateFrame,
     Cylinders3D as Cylinders3D,
     DepthImage as DepthImage,
+    Ellipses2D as Ellipses2D,
     Ellipsoids3D as Ellipsoids3D,
     EncodedDepthImage as EncodedDepthImage,
     EncodedImage as EncodedImage,
@@ -114,6 +120,7 @@ from .archetypes import (
     GeoPoints as GeoPoints,
     GraphEdges as GraphEdges,
     GraphNodes as GraphNodes,
+    GridMap as GridMap,
     Image as Image,
     InstancePoses3D as InstancePoses3D,
     LineStrips2D as LineStrips2D,
@@ -130,6 +137,8 @@ from .archetypes import (
     SegmentationImage as SegmentationImage,
     SeriesLines as SeriesLines,
     SeriesPoints as SeriesPoints,
+    StateChange as StateChange,
+    StateConfiguration as StateConfiguration,
     Tensor as Tensor,
     TextDocument as TextDocument,
     TextLog as TextLog,
@@ -138,12 +147,14 @@ from .archetypes import (
     VideoFrameReference as VideoFrameReference,
     VideoStream as VideoStream,
     ViewCoordinates as ViewCoordinates,
+    VoxelGridMap as VoxelGridMap,
 )
 from .archetypes.boxes2d_ext import (
     Box2DFormat as Box2DFormat,
 )
 from .auth import (
     login as login,
+    logout as logout,
 )
 from .components import (
     AlbedoFactor as AlbedoFactor,
@@ -203,7 +214,6 @@ from .sinks import (
     disconnect as disconnect,
     save as save,
     send_blueprint as send_blueprint,
-    send_recording as send_recording,
     serve_grpc as serve_grpc,
     set_sinks as set_sinks,
     spawn as spawn,
@@ -212,6 +222,8 @@ from .sinks import (
 from .time import (
     disable_timeline as disable_timeline,
     reset_time as reset_time,
+    set_log_tick_enabled as set_log_tick_enabled,
+    set_log_time_enabled as set_log_time_enabled,
     set_time as set_time,
 )
 from .web import serve_web_viewer as serve_web_viewer
@@ -228,11 +240,26 @@ if TYPE_CHECKING:
 
 
 # NOTE: Always keep in sync with other languages.
-EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE = 66
+EXTERNAL_IMPORTER_INCOMPATIBLE_EXIT_CODE = 66
 """
-When an external `DataLoader` is asked to load some data that it doesn't know how to load, it
+When an external `Importer` is asked to import some data that it doesn't know how to handle, it
 should exit with this exit code.
 """
+
+
+def __getattr__(name: str) -> Any:
+    """Lazy module-level attribute lookup for deprecated aliases (see PEP 562)."""
+    if name == "EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE":
+        import warnings
+
+        warnings.warn(
+            "EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE is deprecated since 0.32.0. "
+            "Use EXTERNAL_IMPORTER_INCOMPATIBLE_EXIT_CODE instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return EXTERNAL_IMPORTER_INCOMPATIBLE_EXIT_CODE
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 # TODO(#3793): defaulting recording_id to authkey should be opt-in
@@ -240,7 +267,7 @@ def init(
     application_id: str,
     *,
     recording_id: str | UUID | None = None,
-    spawn: bool = False,  # noqa: F811
+    spawn: bool = False,
     init_logging: bool = True,
     default_enabled: bool = True,
     strict: bool | None = None,
@@ -281,7 +308,7 @@ def init(
 
     Parameters
     ----------
-    application_id : str
+    application_id:
         Your Rerun recordings will be categorized by this application id, so
         try to pick a unique one for each application that uses the Rerun SDK.
 
@@ -293,7 +320,7 @@ def init(
         and will be treated specially by the Rerun Viewer.
         In particular, it will opt-in to more analytics, and will also
         seed the global random number generator deterministically.
-    recording_id : Optional[str]
+    recording_id:
         Set the recording ID that this process is logging to, as a UUIDv4.
 
         The default recording_id is based on `multiprocessing.current_process().authkey`
@@ -304,7 +331,7 @@ def init(
         processes to log to the same Rerun instance (and be part of the same recording),
         you will need to manually assign them all the same recording_id.
         Any random UUIDv4 will work, or copy the recording id for the parent process.
-    spawn : bool
+    spawn:
         Spawn a Rerun Viewer and stream logging data to it.
         Short for calling `spawn` separately.
         If you don't call this, log events will be buffered indefinitely until
@@ -465,8 +492,8 @@ def notebook_show(
     *,
     width: int | None = None,
     height: int | None = None,
-    blueprint: BlueprintLike | None = None,  # noqa: F811
-    recording: RecordingStream | None = None,  # noqa: F811
+    blueprint: BlueprintLike | None = None,
+    recording: RecordingStream | None = None,
 ) -> None:
     """
     Output the Rerun viewer in a notebook using IPython [IPython.core.display.HTML][].
@@ -479,11 +506,11 @@ def notebook_show(
 
     Parameters
     ----------
-    width : int
+    width:
         The width of the viewer in pixels.
-    height : int
+    height:
         The height of the viewer in pixels.
-    blueprint : BlueprintLike
+    blueprint:
         A blueprint object to send to the viewer.
         It will be made active and set as the default blueprint in the recording.
 

@@ -15,6 +15,7 @@ use crate::catalog::{AnyComponentColumn, to_py_err};
 
 #[pyclass(
     frozen,
+    from_py_object,
     eq,
     name = "SchemaInternal",
     module = "rerun_bindings.rerun_bindings"
@@ -39,7 +40,7 @@ impl PySchemaInternal {
 }
 
 /// The schema representing a set of available columns.
-#[pymethods] // NOLINT: ignore[py-mthd-str]
+#[pymethods]
 impl PySchemaInternal {
     /// Return a list of all the index columns in the schema.
     fn index_columns(&self) -> Vec<PyIndexColumnDescriptor> {

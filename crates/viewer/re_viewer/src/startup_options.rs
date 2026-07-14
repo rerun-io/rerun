@@ -1,12 +1,25 @@
 use crate::app_blueprint::PanelStateOverrides;
 use crate::event::ViewerEventCallback;
 
+/// `OAuth` login configuration for the web viewer.
+///
+/// On native, login is always available via the callback server
+/// and this struct is unused.
+///
+/// Both URLs must be absolute (e.g. `https://example.com/signed-in`).
+/// The JS layer resolves relative URLs before passing them here.
+#[derive(Clone, Default, serde::Deserialize)]
+pub struct LoginOptions {
+    /// Absolute URL to redirect to after successful `OAuth` login.
+    pub signed_in_url: String,
+
+    /// Absolute URL to redirect to after logout.
+    pub signed_out_url: String,
+}
+
 /// Settings set once at startup (e.g. via command-line options) and not serialized.
 #[derive(Clone)]
 pub struct StartupOptions {
-    /// When the total process RAM reaches this limit, we GC old data.
-    pub memory_limit: re_memory::MemoryLimit,
-
     pub persist_state: bool,
 
     /// Whether or not the app is running in the context of a Jupyter Notebook.
@@ -79,6 +92,14 @@ pub struct StartupOptions {
     #[cfg(target_arch = "wasm32")]
     pub enable_history: bool,
 
+    /// `OAuth` login configuration for the web viewer.
+    ///
+    /// When set, the viewer shows login UI and uses the provided URLs for `OAuth` redirects.
+    /// When `None`, login UI is hidden but token-based auth still works.
+    ///
+    /// On native, this is always `None` (native uses the callback server instead).
+    pub login: Option<LoginOptions>,
+
     /// The base viewer url that's used when sharing a link in this viewer.
     ///
     /// If not set:
@@ -88,6 +109,18 @@ pub struct StartupOptions {
 }
 
 impl StartupOptions {
+    /// Whether `OAuth` login is enabled.
+    ///
+    /// On web, this is `true` when the `login` option is set.
+    /// On native, login is always enabled (uses callback server).
+    pub fn login_enabled(&self) -> bool {
+        if cfg!(target_arch = "wasm32") {
+            self.login.is_some()
+        } else {
+            true
+        }
+    }
+
     /// Returns `StartupOptions::enable_history` on web, and `false` on native.
     #[allow(clippy::allow_attributes, clippy::unused_self)] // Only used on web.
     pub fn web_history_enabled(&self) -> bool {
@@ -105,7 +138,7 @@ impl StartupOptions {
     /// The url to use for the web viewer when sharing links.
     #[allow(clippy::allow_attributes, clippy::unused_self)] // Only used on web.
     pub fn web_viewer_base_url(&self) -> Option<url::Url> {
-        // TODO(RR-1878): Would be great to grab this from the dataplatform when available.
+        // TODO(RR-1878): Would be great to grab this from the catalog server when available.
 
         if let Some(url) = &self.viewer_base_url
             && let Ok(url) = url.parse::<url::Url>()
@@ -134,7 +167,6 @@ impl StartupOptions {
 impl Default for StartupOptions {
     fn default() -> Self {
         Self {
-            memory_limit: re_memory::MemoryLimit::from_fraction_of_total(0.75),
             persist_state: true,
             is_in_notebook: false,
 
@@ -165,6 +197,8 @@ impl Default for StartupOptions {
 
             #[cfg(target_arch = "wasm32")]
             enable_history: false,
+
+            login: None,
 
             viewer_base_url: None,
         }

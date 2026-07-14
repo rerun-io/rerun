@@ -74,7 +74,7 @@ fn temporal_sorted() -> anyhow::Result<()> {
         .build()?;
 
     {
-        let query = LatestAtQuery::new(TimelineName::new("frame"), 2);
+        let query = LatestAtQuery::new(TimelineName::from("frame"), 2);
 
         let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH)
             .with_sparse_component_batches(
@@ -96,7 +96,7 @@ fn temporal_sorted() -> anyhow::Result<()> {
         query_and_compare((MyPoints::descriptor_labels(), &query), &chunk, &expected);
     }
     {
-        let query = LatestAtQuery::new(TimelineName::new("frame"), 4);
+        let query = LatestAtQuery::new(TimelineName::from("frame"), 4);
 
         let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH)
             .with_sparse_component_batches(
@@ -138,7 +138,7 @@ fn temporal_sorted() -> anyhow::Result<()> {
         query_and_compare((MyPoints::descriptor_labels(), &query), &chunk, &expected);
     }
     {
-        let query = LatestAtQuery::new(TimelineName::new("frame"), 6);
+        let query = LatestAtQuery::new(TimelineName::from("frame"), 6);
 
         let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH)
             .with_sparse_component_batches(
@@ -393,7 +393,7 @@ fn static_sorted() -> anyhow::Result<()> {
         .build()?;
 
     for frame_nr in [2, 4, 6] {
-        let query = LatestAtQuery::new(TimelineName::new("frame"), frame_nr);
+        let query = LatestAtQuery::new(TimelineName::from("frame"), frame_nr);
 
         let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH)
             .with_sparse_component_batches(
@@ -542,20 +542,24 @@ fn query_and_compare(
 
     eprintln!("Query: {component_desc} @ {query:?}");
     eprintln!("Data:\n{chunk}");
-    eprintln!("Expected:\n{expected}");
-    eprintln!("Results:\n{results}");
 
-    assert_eq!(
-        *expected,
-        results,
-        "{}",
-        similar_asserts::SimpleDiff::from_str(
-            &format!("{results}"),
-            &format!("{expected}"),
-            // &format!("{results:#?}"),
-            // &format!("{expected:#?}"),
-            "got",
-            "expected",
-        ),
-    );
+    if expected.is_empty() {
+        assert!(results.is_none(), "Expected no results, but got some");
+    } else {
+        let results = results.expect("Expected latest_at to return a result");
+        eprintln!("Expected:\n{expected}");
+        eprintln!("Results:\n{results}");
+
+        assert_eq!(
+            expected,
+            &*results,
+            "{}",
+            similar_asserts::SimpleDiff::from_str(
+                &format!("{results}"),
+                &format!("{expected}"),
+                "got",
+                "expected",
+            ),
+        );
+    }
 }

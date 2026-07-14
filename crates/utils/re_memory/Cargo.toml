@@ -22,6 +22,7 @@ all-features = true
 [dependencies]
 re_format.workspace = true
 re_log.workspace = true
+re_quota_channel.workspace = true
 re_tracing.workspace = true
 
 ahash.workspace = true
@@ -30,6 +31,7 @@ itertools.workspace = true
 nohash-hasher.workspace = true
 parking_lot.workspace = true
 saturating_cast.workspace = true
+serde.workspace = true
 smallvec.workspace = true
 web-time.workspace = true
 
@@ -37,7 +39,7 @@ web-time.workspace = true
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 backtrace.workspace = true
 memory-stats = { workspace = true, features = ["always_use_statm"] }
-sysinfo = { workspace = true, default-features = false }
+sysinfo = { workspace = true, features = ["system"] }
 
 # web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]

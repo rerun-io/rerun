@@ -1,6 +1,4 @@
-use std::hash::Hash;
-
-use egui::emath::{GuiRounding as _, Rot2};
+use egui::emath::GuiRounding as _;
 use egui::{
     CollapsingResponse, Color32, IntoAtoms, NumExt as _, Rangef, Rect, StrokeKind, Widget as _,
     WidgetInfo, WidgetText, pos2,
@@ -9,7 +7,7 @@ use egui::{
 use crate::alert::Alert;
 use crate::button::ReButton;
 use crate::list_item::{self, LabelContent};
-use crate::{ContextExt as _, DesignTokens, Icon, LabelStyle, icons};
+use crate::{ContextExt as _, DesignTokens, Icon, LabelStyle, Size, Variant, icons};
 
 static FULL_SPAN_TAG: &str = "rerun_full_span";
 
@@ -22,16 +20,8 @@ pub trait UiExt {
     fn ui(&self) -> &egui::Ui;
     fn ui_mut(&mut self) -> &mut egui::Ui;
 
-    fn theme(&self) -> egui::Theme {
-        if self.ui().visuals().dark_mode {
-            egui::Theme::Dark
-        } else {
-            egui::Theme::Light
-        }
-    }
-
     fn tokens(&self) -> &'static DesignTokens {
-        crate::design_tokens_of(self.theme())
+        crate::design_tokens_of(self.ui().theme())
     }
 
     /// Current time in seconds
@@ -53,28 +43,49 @@ pub trait UiExt {
         }
     }
 
-    #[inline]
-    fn is_tooltip(&self) -> bool {
-        self.ui().layer_id().order == egui::Order::Tooltip
+    /// Show an animated loading indicator.
+    ///
+    /// `reason` describes why we are loading. In debug builds, it is shown on hover.
+    ///
+    /// This will also cause the UI to re-render every frame,
+    /// so only use this when you actually have something loading and expect it to finish!
+    #[doc(alias = "spinner")]
+    fn loading_indicator(&mut self, reason: &str) -> egui::Response {
+        crate::loading_indicator::loading_indicator_ui(self.ui_mut(), reason)
     }
 
     /// Shows a success label with a large border.
     ///
+    /// If the text contains [`re_error::DETAILS_SEPARATOR`], the details are
+    /// shown on hover instead of inline.
+    ///
     /// If you don't want a border, use [`crate::ContextExt::success_text`].
     fn success_label(&mut self, success_text: impl Into<String>) -> egui::Response {
-        Alert::success().show_text(self.ui_mut(), success_text.into(), None)
+        let success_text = success_text.into();
+        let (summary, details) = re_error::split_details(&success_text);
+        Alert::success().show_text(self.ui_mut(), summary, details.map(str::to_owned))
     }
 
-    /// Shows a info label with a large border.
+    /// Shows an info label with a large border.
+    ///
+    /// If the text contains [`re_error::DETAILS_SEPARATOR`], the details are
+    /// shown on hover instead of inline.
     fn info_label(&mut self, info_text: impl Into<String>) -> egui::Response {
-        Alert::info().show_text(self.ui_mut(), info_text.into(), None)
+        let info_text = info_text.into();
+        let (summary, details) = re_error::split_details(&info_text);
+        Alert::info().show_text(self.ui_mut(), summary, details.map(str::to_owned))
     }
 
     /// Shows a warning label with a large border.
     ///
+    /// If the text contains [`re_error::DETAILS_SEPARATOR`], the details are
+    /// shown on hover instead of inline.
+    ///
     /// If you don't want a border, use [`crate::ContextExt::warning_text`].
     fn warning_label(&mut self, warning_text: impl Into<String>) -> egui::Response {
-        Alert::warning().show_text(self.ui_mut(), warning_text.into(), None)
+        let warning_text = warning_text.into();
+        let (summary, details) = re_error::split_details(&warning_text);
+        Alert::warning().show_text(self.ui_mut(), summary, details.map(str::to_owned))
     }
 
     /// Shows a small error label with the given text on hover and copies the text to the clipboard on click with a large border.
@@ -90,12 +101,17 @@ pub trait UiExt {
 
     /// Shows an error label with the entire error text and copies the text to the clipboard on click.
     ///
+    /// If the text contains [`re_error::DETAILS_SEPARATOR`], the details are
+    /// shown on hover instead of inline.
+    ///
     /// Use this only if the error message is short, or you have a lot of room.
     /// Otherwise, use [`Self::error_with_details_on_hover`].
     ///
     /// This has a large border! If you don't want a border, use [`crate::ContextExt::error_text`].
     fn error_label(&mut self, error_text: impl Into<String>) -> egui::Response {
-        Alert::error().show_text(self.ui_mut(), error_text.into(), None)
+        let error_text = error_text.into();
+        let (summary, details) = re_error::split_details(&error_text);
+        Alert::error().show_text(self.ui_mut(), summary, details.map(str::to_owned))
     }
 
     /// The `alt_text` will be used for accessibility (e.g. read by screen readers),
@@ -163,6 +179,32 @@ pub trait UiExt {
         response.widget_info(|| {
             WidgetInfo::selected(egui::WidgetType::Button, true, *selected, alt_text.clone())
         });
+        response
+    }
+
+    /// An icon-only selectable value button, like [`egui::Ui::selectable_value`] but with an icon.
+    ///
+    /// The `alt_text` is used for accessibility and hover tooltip.
+    fn icon_selectable_value<V: PartialEq>(
+        &mut self,
+        icon: &Icon,
+        alt_text: impl Into<String>,
+        current_value: &mut V,
+        selected_value: V,
+    ) -> egui::Response {
+        let ui = self.ui_mut();
+        let selected = *current_value == selected_value;
+        let alt_text = alt_text.into();
+        let response = ui
+            .add(
+                egui::Button::image(icon.as_image().alt_text(alt_text.clone()))
+                    .image_tint_follows_text_color(true)
+                    .selected(selected),
+            )
+            .on_hover_text(&alt_text);
+        if response.clicked() {
+            *current_value = selected_value;
+        }
         response
     }
 
@@ -320,7 +362,7 @@ pub trait UiExt {
         response
     }
 
-    /// Popup similar to [`egui::popup_below_widget`] but suitable for use with
+    /// Popup similar to [`egui::Popup::from_response`] but suitable for use with
     /// [`crate::list_item::ListItem`].
     ///
     /// Note that `add_contents` is called within a [`crate::list_item::list_item_scope`].
@@ -542,36 +584,22 @@ pub trait UiExt {
         }
     }
 
-    /// Paint a collapsing triangle in the Rerun's style.
+    /// Paint a collapsing chevron icon.
     ///
-    /// Alternative to [`egui::collapsing_header::paint_default_icon`]. Note that the triangle is
-    /// painted with a fixed size.
+    /// Alternative to [`egui::collapsing_header::paint_default_icon`]. The chevron points right
+    /// when closed and rotates 90° clockwise when open, with smooth animation.
     fn paint_collapsing_triangle(&self, openness: f32, center: egui::Pos2, color: Color32) {
-        // This value is hard coded because, from a UI perspective, the size of the triangle is
-        // given and fixed, and shouldn't vary based on the area it's in.
-        static TRIANGLE_SIZE: f32 = 8.0;
-
-        // Normalized in [0, 1]^2 space.
-        //
-        // Note on how these coords were originally computed: https://github.com/rerun-io/rerun/pull/2920
-        // Since then, the coordinates have been manually updated to Look Good(tm).
-        //
-        // Discussion on the future of icons: https://github.com/rerun-io/rerun/issues/2960
-        let mut points = vec![
-            pos2(0.306248, -0.017085), // top left end
-            pos2(0.79387, 0.470537),   // ┐
-            pos2(0.806074, 0.5),       // ├ "rounded" corner
-            pos2(0.79387, 0.529463),   // ┘
-            pos2(0.306248, 1.017085),  // bottom left end
-        ];
-
         use std::f32::consts::TAU;
-        let rotation = Rot2::from_angle(egui::remap(openness, 0.0..=1.0, 0.0..=TAU / 4.0));
-        for p in &mut points {
-            *p = center + rotation * (*p - pos2(0.5, 0.5)) * TRIANGLE_SIZE;
-        }
 
-        self.ui().painter().line(points, (1.0, color));
+        let angle = egui::remap(openness, 0.0..=1.0, 0.0..=TAU / 4.0);
+        let size = egui::vec2(8.0, 8.0);
+        let rect = egui::Rect::from_center_size(center, size);
+
+        crate::icons::CHEVRON
+            .as_image()
+            .tint(color)
+            .rotate(angle, egui::vec2(0.5, 0.5))
+            .paint_at(self.ui(), rect);
     }
 
     /// Workaround for putting a label into a grid at the top left of its row.
@@ -594,46 +622,10 @@ pub trait UiExt {
         egui::Grid::new(id).num_columns(2).spacing(spacing)
     }
 
-    /// Draws a shadow into the given rect with the shadow direction given from dark to light
+    /// Draws a shadow into the given rect with the shadow direction given from dark to light.
     fn draw_shadow_line(&self, rect: Rect, direction: egui::Direction) {
         let color_dark = self.tokens().shadow_gradient_dark_start;
-        let color_bright = Color32::TRANSPARENT;
-
-        let (left_top, right_top, left_bottom, right_bottom) = match direction {
-            egui::Direction::RightToLeft => (color_bright, color_dark, color_bright, color_dark),
-            egui::Direction::LeftToRight => (color_dark, color_bright, color_dark, color_bright),
-            egui::Direction::BottomUp => (color_bright, color_bright, color_dark, color_dark),
-            egui::Direction::TopDown => (color_dark, color_dark, color_bright, color_bright),
-        };
-
-        use egui::epaint::Vertex;
-        let shadow = egui::Mesh {
-            indices: vec![0, 1, 2, 2, 1, 3],
-            vertices: vec![
-                Vertex {
-                    pos: rect.left_top(),
-                    uv: egui::epaint::WHITE_UV,
-                    color: left_top,
-                },
-                Vertex {
-                    pos: rect.right_top(),
-                    uv: egui::epaint::WHITE_UV,
-                    color: right_top,
-                },
-                Vertex {
-                    pos: rect.left_bottom(),
-                    uv: egui::epaint::WHITE_UV,
-                    color: left_bottom,
-                },
-                Vertex {
-                    pos: rect.right_bottom(),
-                    uv: egui::epaint::WHITE_UV,
-                    color: right_bottom,
-                },
-            ],
-            texture_id: Default::default(),
-        };
-        self.ui().painter().add(shadow);
+        paint_gradient_rect(self.ui(), rect, direction, color_dark, Color32::TRANSPARENT);
     }
 
     fn draw_focus_outline(&self, rect: Rect) {
@@ -655,7 +647,7 @@ pub trait UiExt {
     #[inline]
     fn list_item_scope<R>(
         &mut self,
-        id_salt: impl std::hash::Hash,
+        id_salt: impl egui::AsId,
         content: impl FnOnce(&mut egui::Ui) -> R,
     ) -> egui::InnerResponse<R> {
         list_item::list_item_scope(self.ui_mut(), id_salt, content)
@@ -720,194 +712,52 @@ pub trait UiExt {
         selected: bool,
         style: LabelStyle,
     ) -> egui::Response {
+        let mut text = text.into();
         let ui = self.ui_mut();
-        let tokens = ui.tokens();
-        let button_padding = ui.spacing().button_padding;
-        let total_extra = button_padding + button_padding;
-
-        let available_rect = ui.available_rect_before_wrap();
-
-        let view_rect = egui::Rect::from_min_max(
-            available_rect.min,
-            egui::pos2(
-                available_rect
-                    .max
-                    .x
-                    .min(ui.clip_rect().max.x - ui.spacing().window_margin.rightf()),
-                available_rect.max.y,
-            ),
-        )
-        .round_to_pixels(ui.pixels_per_point());
-
-        let icon_width_plus_padding = tokens.small_icon_size.x + tokens.text_to_icon_padding();
-
-        let wrap_width = view_rect.width() - icon_width_plus_padding - total_extra.x;
-
-        let mut text: egui::WidgetText = text.into();
-        let raw_text = text.text().to_owned();
+        let text_color = ui.visuals().text_color();
         match style {
             LabelStyle::Normal => {}
             LabelStyle::Unnamed => {
                 // TODO(ab): use design tokens
-                text = text.italics();
+                let text_color = text_color.gamma_multiply(0.5);
+                text = text.italics().color(text_color);
             }
         }
+        let raw_text = text.text().to_owned();
 
-        let galley = text.into_galley(
-            ui,
-            Some(egui::TextWrapMode::Truncate),
-            wrap_width,
-            egui::TextStyle::Button,
-        );
-
-        // 1 icons + padding.
-        let mut desired_size =
-            total_extra + galley.size() + egui::vec2(icon_width_plus_padding, 0.0);
-
-        desired_size.y = desired_size
-            .y
-            .at_least(ui.spacing().interact_size.y)
-            .at_least(tokens.small_icon_size.y);
-
-        let show_copy_button = {
-            /// The text character length at which the copy button will
-            /// always be there. (unless the ui is disabled)
-            const MIN_COPY_LEN: usize = 5;
-            let enough_space = view_rect.width() > desired_size.x + icon_width_plus_padding;
-
-            let long_enough_text = raw_text.chars().count() >= MIN_COPY_LEN;
-
-            let id = ui.next_auto_id();
-            let contains_pointer = ui.ctx().read_response(id).is_some_and(|last_response| {
-                ui.rect_contains_pointer(
-                    last_response
-                        .interact_rect
-                        .expand2(ui.spacing().item_spacing),
-                )
-            });
-
-            ui.is_enabled() && (enough_space || long_enough_text) && contains_pointer
+        let button = || {
+            ReButton::from_button(egui::Button::new((icon, text.clone())).selected(selected))
+                .size(Size::Tiny)
+                .variant(Variant::Ghost)
         };
 
-        if show_copy_button {
-            desired_size.x = (desired_size.x + icon_width_plus_padding).at_most(view_rect.width());
+        /// The text character length below which we don't bother showing the copy button.
+        const MIN_COPY_LEN: usize = 5;
+
+        if raw_text.chars().count() < MIN_COPY_LEN {
+            return button().atom_ui(ui).response;
         }
 
-        let (rect, response) = ui.allocate_at_least(desired_size, egui::Sense::click());
-        response.widget_info(|| {
-            egui::WidgetInfo::selected(
-                egui::WidgetType::SelectableLabel,
-                ui.is_enabled(),
-                selected,
-                galley.text(),
-            )
-        });
-
-        if ui.is_rect_visible(rect) {
-            let visuals = ui.style().interact_selectable(&response, selected);
-
-            // Draw background on interaction.
-            if selected || (response.hovered() || response.highlighted() || response.has_focus()) {
-                let rect = rect.expand(visuals.expansion);
-
-                ui.painter().rect(
-                    rect,
-                    visuals.corner_radius,
-                    visuals.weak_bg_fill,
-                    visuals.bg_stroke,
-                    egui::StrokeKind::Inside,
-                );
-            }
-
-            // Draw icon
-            let image_size = tokens.small_icon_size;
-            let image_rect = egui::Rect::from_min_size(
-                egui::pos2(
-                    rect.min.x.ceil(),
-                    (rect.center().y - 0.5 * tokens.small_icon_size.y).ceil(),
-                )
-                .round_to_pixels(ui.pixels_per_point()),
-                image_size,
-            );
-
-            // TODO(emilk, andreas): change color and size on hover
-            let icon_tint = if selected {
-                if response.hovered() {
-                    ui.tokens().icon_color_on_primary_hovered
-                } else {
-                    ui.tokens().icon_color_on_primary
-                }
-            } else {
-                visuals.fg_stroke.color
-            };
-            icon.as_image().tint(icon_tint).paint_at(ui, image_rect);
-
-            // Draw text next to the icon.
-            let mut text_rect = rect;
-            text_rect.min.x = image_rect.max.x + tokens.text_to_icon_padding();
-            let text_pos = egui::Align2([egui::Align::Min, ui.layout().vertical_align()])
-                .align_size_within_rect(galley.size(), text_rect)
-                .min;
-
-            let mut text_color = visuals.text_color();
-            match style {
-                LabelStyle::Normal => {}
-                LabelStyle::Unnamed => {
-                    // TODO(ab): use design tokens
-                    text_color = text_color.gamma_multiply(0.5);
-                }
-            }
-
-            ui.painter()
-                .galley_with_override_text_color(text_pos, galley, text_color);
-
-            if show_copy_button {
-                let copy_rect = egui::Rect::from_min_size(
-                    egui::pos2(rect.max.x - tokens.small_icon_size.x, image_rect.min.y)
-                        .round_to_pixels(ui.pixels_per_point()),
-                    tokens.small_icon_size,
-                );
-
-                let shape_idx = ui.painter().add(egui::Shape::Noop);
-                let copy_response = ui.place(
-                    copy_rect,
-                    ui.small_icon_button_widget(&icons::COPY, "Copy")
-                        .frame(false),
-                );
-
-                let copy_visuals = ui.style().interact(&copy_response);
-
-                let color = if !copy_response.contains_pointer() {
-                    visuals.weak_bg_fill
-                } else {
-                    copy_visuals.weak_bg_fill
-                };
-
-                ui.painter().set(
-                    shape_idx,
-                    egui::Shape::rect_filled(
-                        copy_response.rect.expand(copy_visuals.expansion),
-                        visuals.corner_radius,
-                        color,
-                    ),
-                );
-
-                if copy_response.clicked() {
-                    re_log::info!("Copied {raw_text:?}");
-                    ui.ctx().copy_text(raw_text);
-                }
-            }
+        let (response, copy_response) =
+            ReButton::with_hover_icon_button(ui, ReButton::icon(icons::COPY), button);
+        if copy_response.is_some_and(|resp| resp.clicked()) {
+            re_log::info!("Copied {raw_text:?}");
+            ui.copy_text(raw_text);
         }
-
-        response
+        response.response
     }
 
-    fn loading_screen_ui<R>(&mut self, add_contents: impl FnOnce(&mut egui::Ui) -> R) -> R {
+    fn loading_screen_ui<R>(
+        &mut self,
+        reason: &str,
+        add_contents: impl FnOnce(&mut egui::Ui) -> R,
+    ) -> R {
         let ui = self.ui_mut();
         ui.set_min_height(ui.available_height());
-        ui.center("loading spinner", |ui| {
+        let reason = reason.to_owned();
+        ui.center("loading indicator", |ui| {
             ui.vertical_centered(|ui| {
-                ui.spinner();
+                ui.loading_indicator(&reason);
                 add_contents(ui)
             })
             .inner
@@ -919,13 +769,11 @@ pub trait UiExt {
         header: impl Into<egui::RichText>,
         source: impl Into<egui::RichText>,
     ) {
-        self.loading_screen_ui(|ui| {
-            ui.label(
-                header
-                    .into()
-                    .heading()
-                    .color(ui.style().visuals.weak_text_color()),
-            );
+        let header = header.into();
+        // Reuse the header text as the loading reason shown on hover in debug builds.
+        let reason = header.text().to_owned();
+        self.loading_screen_ui(&reason, |ui| {
+            ui.label(header.heading().color(ui.style().visuals.weak_text_color()));
             ui.strong(source);
         });
     }
@@ -938,21 +786,30 @@ pub trait UiExt {
         x: f32,
         y: Rangef,
     ) {
-        let ui = self.ui();
-        let stroke = if let Some(response) = response {
-            ui.visuals().widgets.style(response).fg_stroke
+        let style = if let Some(response) = response {
+            self.ui().visuals().widgets.style(response)
         } else {
-            ui.visuals().widgets.inactive.fg_stroke
+            &self.ui().visuals().widgets.inactive
         };
+        self.paint_time_cursor_with_style(painter, style, x, y);
+    }
 
+    /// Like [`Self::paint_time_cursor`], but with an explicit widget style.
+    fn paint_time_cursor_with_style(
+        &self,
+        painter: &egui::Painter,
+        style: &egui::style::WidgetVisuals,
+        x: f32,
+        y: Rangef,
+    ) {
         let Rangef {
             min: y_min,
             max: y_max,
         } = y;
 
         let stroke = egui::Stroke {
-            width: 1.5 * stroke.width,
-            color: stroke.color,
+            width: 1.5 * style.fg_stroke.width,
+            color: style.fg_stroke.color,
         };
 
         let w = 10.0;
@@ -989,7 +846,7 @@ pub trait UiExt {
     /// The `add_contents` closure is executed in the context of a vertical layout.
     fn center<R>(
         &mut self,
-        id_salt: impl Hash,
+        id_salt: impl egui::AsIdSalt,
         add_contents: impl FnOnce(&mut egui::Ui) -> R,
     ) -> R {
         // Strategy:
@@ -1055,7 +912,7 @@ pub trait UiExt {
         });
 
         if ui.is_rect_visible(visual_rect) {
-            let how_on = ui.ctx().animate_bool(response.id, *on);
+            let how_on = ui.animate_bool(response.id, *on);
             let visuals = ui.style().interact(&response);
             let expanded_rect = visual_rect.expand(visuals.expansion);
             let fg_fill_off = visuals.bg_fill;
@@ -1106,14 +963,16 @@ pub trait UiExt {
             let style = ui.style_mut();
             style.visuals.button_frame = false;
 
+            // At the top of [`Ui::data_label_impl`] we make assumptions on the spacing and
+            // icon size of re_hyperlink, if we adjust this we need to check if the workaround still works
             let response = ui
                 .add(crate::icons::EXTERNAL_LINK.as_button_with_label(tokens, text))
                 .on_hover_cursor(egui::CursorIcon::PointingHand);
 
             if response.clicked_with_open_in_background() {
-                ui.ctx().open_url(egui::OpenUrl::new_tab(url.into()));
+                ui.open_url(egui::OpenUrl::new_tab(url.into()));
             } else if response.clicked() {
-                ui.ctx().open_url(egui::OpenUrl {
+                ui.open_url(egui::OpenUrl {
                     url: url.into(),
                     new_tab: always_new_tab || ui.input(|i| i.modifiers.any()),
                 });
@@ -1128,46 +987,109 @@ pub trait UiExt {
     ///
     /// Assumes it is in a right-to-left layout.
     ///
-    /// Use when [`crate::CUSTOM_WINDOW_DECORATIONS`] is set.
+    /// Use with the custom drawn compact title bar.
     #[cfg(not(target_arch = "wasm32"))]
     fn native_window_buttons_ui(&mut self) {
-        use egui::{Button, RichText, ViewportCommand};
-
-        let button_height = 12.0;
+        use egui::{ViewportCommand, vec2};
 
         let ui = self.ui_mut();
+        let old_item_spacing_x = ui.spacing().item_spacing.x;
+        ui.spacing_mut().item_spacing.x = 0.0;
 
-        let close_response = ui
-            .add(Button::new(RichText::new("❌").size(button_height)))
-            .on_hover_text("Close the window");
-        if close_response.clicked() {
-            ui.ctx().send_viewport_cmd(ViewportCommand::Close);
+        #[derive(Clone, Copy)]
+        enum WindowButtonKind {
+            Close,
+            Restore,
+            Maximize,
+            Minimize,
+        }
+
+        fn window_button(
+            ui: &mut egui::Ui,
+            kind: WindowButtonKind,
+            tooltip: &'static str,
+            close_button: bool,
+        ) -> egui::Response {
+            let is_windows = ui.os() == egui::os::OperatingSystem::Windows;
+            let width = if close_button { 48.0 } else { 42.0 };
+            let (rect, response) =
+                ui.allocate_exact_size(vec2(width, ui.available_height()), egui::Sense::click());
+
+            // Keep the hover background from covering the divider below the top bar.
+            let rect = {
+                let mut paint_rect = rect;
+                paint_rect.max.y -= ui.tokens().bottom_bar_stroke.width;
+                paint_rect
+            };
+
+            let mut icon_color = if response.hovered() && close_button {
+                egui::Color32::WHITE
+            } else {
+                ui.visuals().strong_text_color()
+            };
+
+            // Disable icons if the window is not in focus.
+            if !ui.input(|i| i.viewport().focused.unwrap_or(i.focused)) {
+                icon_color = ui.visuals().disable(icon_color);
+            }
+
+            if response.hovered() {
+                let fill = if close_button && is_windows {
+                    ui.tokens().windows_close_button_hover_color
+                } else {
+                    ui.visuals().widgets.hovered.weak_bg_fill
+                };
+
+                // On non-Windows platforms, we do the rounding ourselves, so we have to adhere to it.
+                // (On Windows enabling this rounding would be ever so slightly off)
+                let corner_radius = if close_button && !is_windows {
+                    let is_window_maximized =
+                        ui.ctx().input(|i| i.viewport().maximized == Some(true));
+                    egui::CornerRadius {
+                        ne: ui.tokens().native_window_corner_radius(is_window_maximized),
+                        ..Default::default()
+                    }
+                } else {
+                    egui::CornerRadius::ZERO
+                };
+
+                ui.painter().rect_filled(rect, corner_radius, fill);
+            }
+
+            let chrome_icon = match kind {
+                WindowButtonKind::Close => &icons::CHROME_CLOSE,
+                WindowButtonKind::Restore => &icons::CHROME_RESTORE,
+                WindowButtonKind::Maximize => &icons::CHROME_MAXIMIZE,
+                WindowButtonKind::Minimize => &icons::CHROME_MINIMIZE,
+            };
+            let icon_rect = egui::Rect::from_center_size(rect.center(), vec2(10.0, 10.0));
+            chrome_icon
+                .as_image()
+                .tint(icon_color)
+                .paint_at(ui, icon_rect);
+
+            response.on_hover_text_at_pointer(tooltip)
+        }
+
+        if window_button(ui, WindowButtonKind::Close, "Close the window", true).clicked() {
+            ui.send_viewport_cmd(ViewportCommand::Close);
         }
 
         let maximized = ui.input(|i| i.viewport().maximized.unwrap_or(false));
         if maximized {
-            let maximized_response = ui
-                .add(Button::new(RichText::new("🗗").size(button_height)))
-                .on_hover_text("Restore window");
-            if maximized_response.clicked() {
-                ui.ctx()
-                    .send_viewport_cmd(ViewportCommand::Maximized(false));
+            if window_button(ui, WindowButtonKind::Restore, "Restore window", false).clicked() {
+                ui.send_viewport_cmd(ViewportCommand::Maximized(false));
             }
-        } else {
-            let maximized_response = ui
-                .add(Button::new(RichText::new("🗗").size(button_height)))
-                .on_hover_text("Maximize window");
-            if maximized_response.clicked() {
-                ui.ctx().send_viewport_cmd(ViewportCommand::Maximized(true));
-            }
+        } else if window_button(ui, WindowButtonKind::Maximize, "Maximize window", false).clicked()
+        {
+            ui.send_viewport_cmd(ViewportCommand::Maximized(true));
         }
 
-        let minimized_response = ui
-            .add(Button::new(RichText::new("🗕").size(button_height)))
-            .on_hover_text("Minimize the window");
-        if minimized_response.clicked() {
-            ui.ctx().send_viewport_cmd(ViewportCommand::Minimized(true));
+        if window_button(ui, WindowButtonKind::Minimize, "Minimize the window", false).clicked() {
+            ui.send_viewport_cmd(ViewportCommand::Minimized(true));
         }
+
+        ui.spacing_mut().item_spacing.x = old_item_spacing_x;
     }
 
     /// Shows a `?` help button that will show a help UI when clicked.
@@ -1249,7 +1171,7 @@ pub trait UiExt {
     fn markdown_ui(&mut self, markdown: &str) {
         use std::sync::Arc;
 
-        use parking_lot::Mutex;
+        use re_mutex::Mutex;
 
         let ui = self.ui_mut();
         let commonmark_cache = ui.data_mut(|data| {
@@ -1269,7 +1191,7 @@ pub trait UiExt {
     /// Use this instead of using [`egui::ComboBox`] directly.
     fn drop_down_menu(
         &mut self,
-        id_salt: impl std::hash::Hash,
+        id_salt: impl egui::AsIdSalt,
         selected_text: String,
         content: impl FnOnce(&mut egui::Ui),
     ) -> egui::Response {
@@ -1396,23 +1318,23 @@ pub trait UiExt {
     fn with_optional_extras<R>(&mut self, content: impl FnOnce(&mut egui::Ui, bool) -> R) -> R {
         let ui = self.ui_mut();
 
-        let show_extras = ui.ctx().show_extras();
+        let show_extras = ui.show_extras();
 
         let content_changed = ui.data_mut(|data| {
             let stored_show_extras = data
                 .get_temp_mut_or_insert_with(ui.id().with("__stored_show_extra__"), || show_extras);
-            if *stored_show_extras != show_extras {
+            if *stored_show_extras == show_extras {
+                false
+            } else {
                 *stored_show_extras = show_extras;
                 true
-            } else {
-                false
             }
         });
 
         let mut builder = egui::UiBuilder::new();
         if content_changed {
             builder = builder.sizing_pass();
-            ui.ctx().request_repaint();
+            ui.request_repaint();
         }
 
         ui.scope_builder(builder, |ui| content(ui, show_extras))
@@ -1446,6 +1368,56 @@ pub trait UiExt {
         ui.visuals_mut().widgets.inactive.bg_stroke =
             egui::Stroke::new(1.0, ui.visuals().error_fg_color);
     }
+}
+
+/// Paints a gradient rectangle that transitions from `color_from` to `color_to`
+/// along the given `direction`.
+///
+/// For example, `Direction::TopDown` paints `color_from` at the top edge fading
+/// to `color_to` at the bottom edge.
+fn paint_gradient_rect(
+    ui: &egui::Ui,
+    rect: Rect,
+    direction: egui::Direction,
+    color_from: Color32,
+    color_to: Color32,
+) {
+    use egui::epaint::Vertex;
+
+    let (left_top, right_top, left_bottom, right_bottom) = match direction {
+        egui::Direction::TopDown => (color_from, color_from, color_to, color_to),
+        egui::Direction::BottomUp => (color_to, color_to, color_from, color_from),
+        egui::Direction::LeftToRight => (color_from, color_to, color_from, color_to),
+        egui::Direction::RightToLeft => (color_to, color_from, color_to, color_from),
+    };
+
+    let mesh = egui::Mesh {
+        indices: vec![0, 1, 2, 2, 1, 3],
+        vertices: vec![
+            Vertex {
+                pos: rect.left_top(),
+                uv: egui::epaint::WHITE_UV,
+                color: left_top,
+            },
+            Vertex {
+                pos: rect.right_top(),
+                uv: egui::epaint::WHITE_UV,
+                color: right_top,
+            },
+            Vertex {
+                pos: rect.left_bottom(),
+                uv: egui::epaint::WHITE_UV,
+                color: left_bottom,
+            },
+            Vertex {
+                pos: rect.right_bottom(),
+                uv: egui::epaint::WHITE_UV,
+                color: right_bottom,
+            },
+        ],
+        texture_id: Default::default(),
+    };
+    ui.painter().add(mesh);
 }
 
 impl UiExt for egui::Ui {

@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -22,7 +23,7 @@ use crate::{ComponentDescriptor, ComponentType};
 use crate::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: Two [`datatypes::TimeInt`][crate::datatypes::TimeInt] describing a range of time.
-#[derive(Clone, Debug, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, Copy, PartialEq, Eq, PartialOrd, Ord, ::re_byte_size::SizeBytes)]
 pub struct AbsoluteTimeRange {
     /// Start of the range.
     pub min: crate::datatypes::TimeInt,
@@ -142,11 +143,11 @@ impl crate::Loggable for AbsoluteTimeRange {
             } else {
                 let (arrow_data_fields, arrow_data_arrays) =
                     (arrow_data.fields(), arrow_data.columns());
-                let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data_fields
-                    .iter()
-                    .map(|field| field.name().as_str())
-                    .zip(arrow_data_arrays)
-                    .collect();
+                let arrays_by_name: ::std::collections::HashMap<_, _> = ::std::iter::zip(
+                    arrow_data_fields.iter().map(|field| field.name().as_str()),
+                    arrow_data_arrays,
+                )
+                .collect();
                 let min = {
                     if !arrays_by_name.contains_key("min") {
                         return Err(DeserializationError::missing_struct_field(
@@ -207,17 +208,5 @@ impl crate::Loggable for AbsoluteTimeRange {
                     .with_context("rerun.datatypes.AbsoluteTimeRange")?
             }
         })
-    }
-}
-
-impl ::re_byte_size::SizeBytes for AbsoluteTimeRange {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.min.heap_size_bytes() + self.max.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::TimeInt>::is_pod() && <crate::datatypes::TimeInt>::is_pod()
     }
 }

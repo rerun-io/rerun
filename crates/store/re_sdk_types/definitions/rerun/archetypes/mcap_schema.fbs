@@ -27,13 +27,13 @@ table McapSchema (
   ///
   /// Schema IDs must be unique within an MCAP file and are referenced by channels
   /// to specify their message structure. A single schema can be shared across multiple channels.
-  id: rerun.components.SchemaId ("attr.rerun.component_required", order: 1000);
+  id: rerun.components.SchemaId ("attr.rerun.component_required", "attr.rerun.component_no_ui_edit", order: 1000);
 
   /// Human-readable name identifying this schema.
   ///
   /// Schema names typically describe the message type or data structure
   /// (e.g., `"geometry_msgs/msg/Twist"`, `"sensor_msgs/msg/Image"`, `"MyCustomMessage"`).
-  name: rerun.components.Text ("attr.rerun.component_required", order: 2000);
+  name: rerun.components.Text ("attr.rerun.component_required", "attr.rerun.component_no_ui_edit", order: 2000);
 
   /// The schema definition format used to describe the message structure.
   ///
@@ -43,7 +43,7 @@ table McapSchema (
   /// * `ros2msg` - [ROS2](https://mcap.dev/spec/registry#ros2msg) message definition format
   /// * `jsonschema` - [JSON Schema](https://mcap.dev/spec/registry#jsonschema) specification
   /// * `flatbuffer` - [FlatBuffers](https://mcap.dev/spec/registry#flatbuffer) schema definition
-  encoding: rerun.components.Text ("attr.rerun.component_required", order: 3000);
+  encoding: rerun.components.Text ("attr.rerun.component_required", "attr.rerun.component_no_ui_edit", order: 3000);
 
   /// The schema definition content as binary data.
   ///
@@ -51,5 +51,5 @@ table McapSchema (
   /// `encoding` field. For text-based schemas (like ROS message definitions or JSON Schema),
   /// this is typically UTF-8 encoded text. For binary schema formats, this contains
   /// the serialized schema data.
-  data: rerun.components.Blob ("attr.rerun.component_required", order: 4000);
+  data: rerun.components.Blob ("attr.rerun.component_required", "attr.rerun.component_no_ui_edit", order: 4000);
 }

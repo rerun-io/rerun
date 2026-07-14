@@ -29,12 +29,19 @@ namespace rerun::blueprint::archetypes {
         archetype.select =
             ComponentBatch::empty<rerun::blueprint::components::SelectedColumns>(Descriptor_select)
                 .value_or_throw();
+        archetype.entity_order =
+            ComponentBatch::empty<rerun::blueprint::components::ColumnOrder>(Descriptor_entity_order
+            )
+                .value_or_throw();
+        archetype.auto_scroll =
+            ComponentBatch::empty<rerun::blueprint::components::AutoScroll>(Descriptor_auto_scroll)
+                .value_or_throw();
         return archetype;
     }
 
     Collection<ComponentColumn> DataframeQuery::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(5);
+        columns.reserve(7);
         if (timeline.has_value()) {
             columns.push_back(timeline.value().partitioned(lengths_).value_or_throw());
         }
@@ -49,6 +56,12 @@ namespace rerun::blueprint::archetypes {
         }
         if (select.has_value()) {
             columns.push_back(select.value().partitioned(lengths_).value_or_throw());
+        }
+        if (entity_order.has_value()) {
+            columns.push_back(entity_order.value().partitioned(lengths_).value_or_throw());
+        }
+        if (auto_scroll.has_value()) {
+            columns.push_back(auto_scroll.value().partitioned(lengths_).value_or_throw());
         }
         return columns;
     }
@@ -69,6 +82,12 @@ namespace rerun::blueprint::archetypes {
         if (select.has_value()) {
             return columns(std::vector<uint32_t>(select.value().length(), 1));
         }
+        if (entity_order.has_value()) {
+            return columns(std::vector<uint32_t>(entity_order.value().length(), 1));
+        }
+        if (auto_scroll.has_value()) {
+            return columns(std::vector<uint32_t>(auto_scroll.value().length(), 1));
+        }
         return Collection<ComponentColumn>();
     }
 } // namespace rerun::blueprint::archetypes
@@ -81,7 +100,7 @@ namespace rerun {
         ) {
         using namespace blueprint::archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(5);
+        cells.reserve(7);
 
         if (archetype.timeline.has_value()) {
             cells.push_back(archetype.timeline.value());
@@ -97,6 +116,12 @@ namespace rerun {
         }
         if (archetype.select.has_value()) {
             cells.push_back(archetype.select.value());
+        }
+        if (archetype.entity_order.has_value()) {
+            cells.push_back(archetype.entity_order.value());
+        }
+        if (archetype.auto_scroll.has_value()) {
+            cells.push_back(archetype.auto_scroll.value());
         }
 
         return rerun::take_ownership(std::move(cells));

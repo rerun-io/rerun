@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -39,7 +40,9 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///         anyhow::bail!("Usage: {} <path_to_depth_image.[png|rvl]>", args[0]);
 ///     };
 ///
-///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_encoded_depth_image").spawn()?;
+///     let rec =
+///         rerun::RecordingStreamBuilder::new("rerun_example_encoded_depth_image")
+///             .spawn()?;
 ///
 ///     let depth_blob = std::fs::read(path)?;
 ///     let encoded_depth = rerun::EncodedDepthImage::new(depth_blob)
@@ -64,7 +67,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/encoded_depth_image/d8180f8167278f9601808c360ba52eafaab52839/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug, PartialEq, Default)]
+#[derive(Clone, Debug, PartialEq, Default, ::re_byte_size::SizeBytes)]
 pub struct EncodedDepthImage {
     /// The encoded depth payload.
     ///
@@ -95,6 +98,13 @@ pub struct EncodedDepthImage {
 
     /// Optional 2D draw order.
     pub draw_order: Option<SerializedComponentBatch>,
+
+    /// Optional filter used when a texel is magnified (displayed larger than a screen pixel) in 2D views.
+    ///
+    /// The filter is applied to the scalar values *before* they are mapped to color via the colormap.
+    ///
+    /// Has no effect in 3D views.
+    pub magnification_filter: Option<SerializedComponentBatch>,
 }
 
 impl EncodedDepthImage {
@@ -103,11 +113,13 @@ impl EncodedDepthImage {
     /// The corresponding component is [`crate::components::Blob`].
     #[inline]
     pub fn descriptor_blob() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.EncodedDepthImage".into()),
-            component: "EncodedDepthImage:blob".into(),
-            component_type: Some("rerun.components.Blob".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.EncodedDepthImage".into()),
+                component: "EncodedDepthImage:blob".into(),
+                component_type: Some("rerun.components.Blob".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::media_type`].
@@ -115,11 +127,13 @@ impl EncodedDepthImage {
     /// The corresponding component is [`crate::components::MediaType`].
     #[inline]
     pub fn descriptor_media_type() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.EncodedDepthImage".into()),
-            component: "EncodedDepthImage:media_type".into(),
-            component_type: Some("rerun.components.MediaType".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.EncodedDepthImage".into()),
+                component: "EncodedDepthImage:media_type".into(),
+                component_type: Some("rerun.components.MediaType".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::meter`].
@@ -127,11 +141,13 @@ impl EncodedDepthImage {
     /// The corresponding component is [`crate::components::DepthMeter`].
     #[inline]
     pub fn descriptor_meter() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.EncodedDepthImage".into()),
-            component: "EncodedDepthImage:meter".into(),
-            component_type: Some("rerun.components.DepthMeter".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.EncodedDepthImage".into()),
+                component: "EncodedDepthImage:meter".into(),
+                component_type: Some("rerun.components.DepthMeter".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::colormap`].
@@ -139,11 +155,13 @@ impl EncodedDepthImage {
     /// The corresponding component is [`crate::components::Colormap`].
     #[inline]
     pub fn descriptor_colormap() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.EncodedDepthImage".into()),
-            component: "EncodedDepthImage:colormap".into(),
-            component_type: Some("rerun.components.Colormap".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.EncodedDepthImage".into()),
+                component: "EncodedDepthImage:colormap".into(),
+                component_type: Some("rerun.components.Colormap".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::depth_range`].
@@ -151,11 +169,13 @@ impl EncodedDepthImage {
     /// The corresponding component is [`crate::components::ValueRange`].
     #[inline]
     pub fn descriptor_depth_range() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.EncodedDepthImage".into()),
-            component: "EncodedDepthImage:depth_range".into(),
-            component_type: Some("rerun.components.ValueRange".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.EncodedDepthImage".into()),
+                component: "EncodedDepthImage:depth_range".into(),
+                component_type: Some("rerun.components.ValueRange".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::point_fill_ratio`].
@@ -163,11 +183,13 @@ impl EncodedDepthImage {
     /// The corresponding component is [`crate::components::FillRatio`].
     #[inline]
     pub fn descriptor_point_fill_ratio() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.EncodedDepthImage".into()),
-            component: "EncodedDepthImage:point_fill_ratio".into(),
-            component_type: Some("rerun.components.FillRatio".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.EncodedDepthImage".into()),
+                component: "EncodedDepthImage:point_fill_ratio".into(),
+                component_type: Some("rerun.components.FillRatio".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::draw_order`].
@@ -175,11 +197,27 @@ impl EncodedDepthImage {
     /// The corresponding component is [`crate::components::DrawOrder`].
     #[inline]
     pub fn descriptor_draw_order() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.EncodedDepthImage".into()),
-            component: "EncodedDepthImage:draw_order".into(),
-            component_type: Some("rerun.components.DrawOrder".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.EncodedDepthImage".into()),
+                component: "EncodedDepthImage:draw_order".into(),
+                component_type: Some("rerun.components.DrawOrder".into()),
+            });
+        (*DESCRIPTOR).clone()
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::magnification_filter`].
+    ///
+    /// The corresponding component is [`crate::components::MagnificationFilter`].
+    #[inline]
+    pub fn descriptor_magnification_filter() -> ComponentDescriptor {
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.EncodedDepthImage".into()),
+                component: "EncodedDepthImage:magnification_filter".into(),
+                component_type: Some("rerun.components.MagnificationFilter".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -194,17 +232,18 @@ static RECOMMENDED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 2usize]
         ]
     });
 
-static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 4usize]> =
+static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 5usize]> =
     std::sync::LazyLock::new(|| {
         [
             EncodedDepthImage::descriptor_colormap(),
             EncodedDepthImage::descriptor_depth_range(),
             EncodedDepthImage::descriptor_point_fill_ratio(),
             EncodedDepthImage::descriptor_draw_order(),
+            EncodedDepthImage::descriptor_magnification_filter(),
         ]
     });
 
-static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 7usize]> =
+static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 8usize]> =
     std::sync::LazyLock::new(|| {
         [
             EncodedDepthImage::descriptor_blob(),
@@ -214,18 +253,22 @@ static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 7usize]> =
             EncodedDepthImage::descriptor_depth_range(),
             EncodedDepthImage::descriptor_point_fill_ratio(),
             EncodedDepthImage::descriptor_draw_order(),
+            EncodedDepthImage::descriptor_magnification_filter(),
         ]
     });
 
 impl EncodedDepthImage {
-    /// The total number of components in the archetype: 1 required, 2 recommended, 4 optional
-    pub const NUM_COMPONENTS: usize = 7usize;
+    /// The total number of components in the archetype: 1 required, 2 recommended, 5 optional
+    pub const NUM_COMPONENTS: usize = 8usize;
 }
 
 impl ::re_types_core::Archetype for EncodedDepthImage {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.archetypes.EncodedDepthImage".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.archetypes.EncodedDepthImage"
+        )
     }
 
     #[inline]
@@ -289,6 +332,14 @@ impl ::re_types_core::Archetype for EncodedDepthImage {
             .map(|array| {
                 SerializedComponentBatch::new(array.clone(), Self::descriptor_draw_order())
             });
+        let magnification_filter = arrays_by_descr
+            .get(&Self::descriptor_magnification_filter())
+            .map(|array| {
+                SerializedComponentBatch::new(
+                    array.clone(),
+                    Self::descriptor_magnification_filter(),
+                )
+            });
         Ok(Self {
             blob,
             media_type,
@@ -297,6 +348,7 @@ impl ::re_types_core::Archetype for EncodedDepthImage {
             depth_range,
             point_fill_ratio,
             draw_order,
+            magnification_filter,
         })
     }
 }
@@ -313,6 +365,7 @@ impl ::re_types_core::AsComponents for EncodedDepthImage {
             self.depth_range.clone(),
             self.point_fill_ratio.clone(),
             self.draw_order.clone(),
+            self.magnification_filter.clone(),
         ]
         .into_iter()
         .flatten()
@@ -341,6 +394,7 @@ impl EncodedDepthImage {
             depth_range: None,
             point_fill_ratio: None,
             draw_order: None,
+            magnification_filter: None,
         }
     }
 
@@ -382,6 +436,10 @@ impl EncodedDepthImage {
             draw_order: Some(SerializedComponentBatch::new(
                 crate::components::DrawOrder::arrow_empty(),
                 Self::descriptor_draw_order(),
+            )),
+            magnification_filter: Some(SerializedComponentBatch::new(
+                crate::components::MagnificationFilter::arrow_empty(),
+                Self::descriptor_magnification_filter(),
             )),
         }
     }
@@ -426,6 +484,9 @@ impl EncodedDepthImage {
             self.draw_order
                 .map(|draw_order| draw_order.partitioned(_lengths.clone()))
                 .transpose()?,
+            self.magnification_filter
+                .map(|magnification_filter| magnification_filter.partitioned(_lengths.clone()))
+                .transpose()?,
         ];
         Ok(columns.into_iter().flatten())
     }
@@ -445,6 +506,7 @@ impl EncodedDepthImage {
         let len_depth_range = self.depth_range.as_ref().map(|b| b.array.len());
         let len_point_fill_ratio = self.point_fill_ratio.as_ref().map(|b| b.array.len());
         let len_draw_order = self.draw_order.as_ref().map(|b| b.array.len());
+        let len_magnification_filter = self.magnification_filter.as_ref().map(|b| b.array.len());
         let len = None
             .or(len_blob)
             .or(len_media_type)
@@ -453,6 +515,7 @@ impl EncodedDepthImage {
             .or(len_depth_range)
             .or(len_point_fill_ratio)
             .or(len_draw_order)
+            .or(len_magnification_filter)
             .unwrap_or(0);
         self.columns(std::iter::repeat_n(1, len))
     }
@@ -613,17 +676,39 @@ impl EncodedDepthImage {
         self.draw_order = try_serialize_field(Self::descriptor_draw_order(), draw_order);
         self
     }
-}
 
-impl ::re_byte_size::SizeBytes for EncodedDepthImage {
+    /// Optional filter used when a texel is magnified (displayed larger than a screen pixel) in 2D views.
+    ///
+    /// The filter is applied to the scalar values *before* they are mapped to color via the colormap.
+    ///
+    /// Has no effect in 3D views.
     #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.blob.heap_size_bytes()
-            + self.media_type.heap_size_bytes()
-            + self.meter.heap_size_bytes()
-            + self.colormap.heap_size_bytes()
-            + self.depth_range.heap_size_bytes()
-            + self.point_fill_ratio.heap_size_bytes()
-            + self.draw_order.heap_size_bytes()
+    pub fn with_magnification_filter(
+        mut self,
+        magnification_filter: impl Into<crate::components::MagnificationFilter>,
+    ) -> Self {
+        self.magnification_filter = try_serialize_field(
+            Self::descriptor_magnification_filter(),
+            [magnification_filter],
+        );
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::MagnificationFilter`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_magnification_filter`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_magnification_filter(
+        mut self,
+        magnification_filter: impl IntoIterator<
+            Item = impl Into<crate::components::MagnificationFilter>,
+        >,
+    ) -> Self {
+        self.magnification_filter = try_serialize_field(
+            Self::descriptor_magnification_filter(),
+            magnification_filter,
+        );
+        self
     }
 }

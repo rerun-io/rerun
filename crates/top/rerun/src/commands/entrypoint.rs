@@ -1,9 +1,10 @@
+use std::fmt::Write as _;
 use std::net::IpAddr;
 use std::time::Duration;
 
 use clap::{CommandFactory as _, Subcommand};
 use itertools::Itertools as _;
-use re_data_source::{AuthErrorHandler, LogDataSource, StreamMode};
+use re_data_source::{AuthErrorHandler, LogDataSource};
 use re_log_channel::{DataSourceMessage, LogReceiver, LogReceiverSet, SmartMessagePayload};
 #[cfg(feature = "web_viewer")]
 use re_sdk::web_viewer::WebViewerConfig;
@@ -14,7 +15,8 @@ use super::auth::AuthCommands;
 use crate::CallSource;
 #[cfg(feature = "analytics")]
 use crate::commands::AnalyticsCommands;
-#[cfg(feature = "data_loaders")]
+use crate::commands::DownloadCommand;
+#[cfg(feature = "importers")]
 use crate::commands::McapCommands;
 use crate::commands::RrdCommands;
 
@@ -75,6 +77,51 @@ Examples:
         rerun --save new_recording.rrd
 "#;
 
+/// Port argument that accepts either a port number or `auto`.
+///
+/// `auto` will use the default port, but find a free one if it's already in use.
+#[derive(Debug, Clone)]
+enum PortArg {
+    Port(u16),
+    Auto,
+}
+
+impl PortArg {
+    fn port(&self) -> u16 {
+        match self {
+            Self::Port(port) => *port,
+            Self::Auto => 9876,
+        }
+    }
+
+    fn is_auto(&self) -> bool {
+        matches!(self, Self::Auto)
+    }
+}
+
+impl std::fmt::Display for PortArg {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Port(port) => write!(f, "{port}"),
+            Self::Auto => write!(f, "auto"),
+        }
+    }
+}
+
+impl std::str::FromStr for PortArg {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s.eq_ignore_ascii_case("auto") {
+            Ok(Self::Auto)
+        } else {
+            s.parse::<u16>()
+                .map(Self::Port)
+                .map_err(|err| format!("invalid port: {err}"))
+        }
+    }
+}
+
 #[derive(Debug, clap::Parser)]
 #[clap(
     long_about = LONG_ABOUT,
@@ -97,27 +144,40 @@ struct Args {
 
     #[clap(
         long,
-        default_value = "75%",
         long_help = r"An upper limit on how much memory the Rerun Viewer should use.
 When this limit is reached, Rerun will drop the oldest data.
-Example: `16GB` or `50%` (of system total)."
+Example: `16GB` or `50%` (of system total).
+You can also set this in the settings panel."
     )]
-    memory_limit: String,
+    memory_limit: Option<String>,
 
     #[clap(
         long,
-        default_value = None,
+        default_value = "1GiB",
         long_help = r"An upper limit on how much memory the gRPC server (`--serve-web`) should use.
 The server buffers log messages for the benefit of late-arriving viewers.
 When this limit is reached, Rerun will drop the oldest data.
-Example: `16GB` or `50%` (of system total).
-Default is `0B`, or `25%` if any of the `--serve-*` flags are set."
+Example: `16GB` or `50%` (of system total)."
     )]
-    server_memory_limit: Option<String>,
+    server_memory_limit: String,
 
     /// If true, play back the most recent data first when new clients connect.
     #[clap(long)]
     newest_first: bool,
+
+    /// Additional origin patterns allowed to make CORS requests to the gRPC server.
+    ///
+    /// Use this when hosting a custom viewer on a different domain.
+    /// Patterns are matched against the full Origin header (e.g. `https://example.com:8080`),
+    /// using glob-style matching where `*` matches any sequence of characters.
+    /// Can be specified multiple times.
+    ///
+    /// Examples:
+    ///   `--cors-allow-origin "https://*.example.com"`
+    ///   `--cors-allow-origin "https://example.com:8080"`
+    ///   `--cors-allow-origin "https://example.com:*"`
+    #[clap(long)]
+    cors_allow_origin: Vec<String>,
 
     #[clap(
         long,
@@ -131,9 +191,17 @@ When persisted, the state will be stored at the following locations:
     persist_state: bool,
 
     /// What port do we listen to for SDKs to connect to over gRPC.
+    ///
+    /// Use `auto` to always start a new viewer with a free port if the default is taken.
     // Default is `re_grpc_server::DEFAULT_SERVER_PORT`, can't use symbollically if `server` feature is disabled
-    #[clap(long, default_value_t = 9876)]
-    port: u16,
+    #[clap(long, default_value_t = PortArg::Port(9876))]
+    port: PortArg,
+
+    /// Alias for `--port auto`. Always start a new viewer.
+    ///
+    /// If the port is already in use, a free port will be picked automatically.
+    #[clap(long, conflicts_with = "port")]
+    new: bool,
 
     /// Start with the puffin profiler running.
     #[clap(long)]
@@ -154,8 +222,6 @@ When persisted, the state will be stored at the following locations:
     ///
     /// If started, the web server will act like a proxy, listening for incoming connections from
     /// logging SDKs, and forwarding it to Rerun viewers.
-    ///
-    /// Using this sets the default `--server-memory-limit` to 25% of available system memory.
     //
     // TODO(andreas): The Rust/Python APIs deprecated `serve_web` and instead encourage separate usage of `rec.serve_grpc()` + `rerun::serve_web_viewer()` instead.
     // It's worth considering doing the same here.
@@ -166,8 +232,6 @@ When persisted, the state will be stored at the following locations:
     ///
     /// The server will act like a proxy, listening for incoming connections from
     /// logging SDKs, and forwarding it to Rerun viewers.
-    ///
-    /// Using this sets the default `--server-memory-limit` to 25% of available system memory.
     #[clap(long)]
     serve_grpc: bool,
 
@@ -193,6 +257,14 @@ When persisted, the state will be stored at the following locations:
     #[clap(long)]
     expect_data_soon: bool,
 
+    /// Tail .rrd files, waiting for new data to be appended after reaching EOF.
+    ///
+    /// Without this flag, .rrd files are read once and the viewer stops loading when EOF is reached.
+    /// With this flag, the viewer will keep watching for new data, which is useful for live streaming
+    /// from a writer process.
+    #[clap(long)]
+    follow: bool,
+
     /// The number of compute threads to use.
     ///
     /// If zero, the same number of threads as the number of cores will be used.
@@ -211,7 +283,7 @@ When persisted, the state will be stored at the following locations:
 - A path to a Rerun .rrd recording
 - A path to a Rerun .rbl blueprint
 - An HTTP(S) URL to an .rrd or .rbl file to load
-- A path to an image or mesh, or any other file that Rerun can load (see https://www.rerun.io/docs/reference/data-loaders/overview)
+- A path to an image or mesh, or any other file that Rerun can load (see https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview)
 
 If no arguments are given, a server will be hosted which a Rerun SDK can connect to.")]
     url_or_paths: Vec<String>,
@@ -241,6 +313,14 @@ If no arguments are given, a server will be hosted which a Rerun SDK can connect
     /// Detach Rerun Viewer process from the application process.
     #[clap(long)]
     detach_process: bool,
+
+    /// Run the viewer in headless mode (no OS window).
+    ///
+    /// The viewer is driven by an offscreen `egui_kittest` harness, while the
+    /// gRPC server keeps running so SDK clients can still log data and request
+    /// screenshots via `save_screenshot`.
+    #[clap(long)]
+    headless: bool,
 
     /// Set the screen resolution (in logical points), e.g. "1920x1080".
     /// Useful together with `--screenshot-to`.
@@ -380,16 +460,16 @@ impl Args {
                 return;
             }
 
-            let any_subcommands = cmd.get_subcommands().any(|cmd| cmd.get_name() != "help");
+            let any_subcommands = cmd
+                .get_subcommands()
+                .any(|cmd| cmd.get_name() != "help" && !cmd.is_hide_set());
             let any_positional_args = cmd.get_arguments().any(|arg| arg.is_positional());
-            let any_floating_args = cmd
-                .get_arguments()
-                .any(|arg| !arg.is_positional() && arg.get_long() != Some("help"));
+            let any_floating_args = cmd.get_arguments().any(|arg| {
+                !arg.is_positional() && !arg.is_hide_set() && arg.get_long() != Some("help")
+            });
 
-            let full_name = full_name
-                .into_iter()
-                .chain(std::iter::once(name.to_owned()))
-                .collect_vec();
+            let full_name =
+                std::iter::chain(full_name, std::iter::once(name.to_owned())).collect_vec();
 
             if !any_positional_args && !any_floating_args && !any_subcommands {
                 return;
@@ -412,9 +492,9 @@ impl Args {
 
                 let mut rendered = String::new();
                 if let Some(about) = cmd.get_long_about() {
-                    rendered += &format!("{about}\n\n");
+                    write!(rendered, "{about}\n\n").ok();
                 } else if let Some(about) = cmd.get_about() {
-                    rendered += &format!("{about}.\n\n");
+                    write!(rendered, "{about}.\n\n").ok();
                 }
                 rendered += format!("**Usage**: `{} {usage}`", full_name.join(" ")).trim();
 
@@ -432,7 +512,7 @@ impl Args {
             let commands = any_subcommands.then(|| {
                 let commands = cmd
                     .get_subcommands_mut()
-                    .filter(|cmd| cmd.get_name() != "help")
+                    .filter(|cmd| cmd.get_name() != "help" && !cmd.is_hide_set())
                     .map(|cmd| {
                         let name = cmd.get_name().to_owned();
                         let help = cmd.render_help().to_string();
@@ -456,7 +536,7 @@ impl Args {
             // > - A path to a Rerun .rrd recording
             // > - A path to a Rerun .rbl blueprint
             // > - An HTTP(S) URL to an .rrd or .rbl file to load
-            // > - A path to an image or mesh, or any other file that Rerun can load (see https://www.rerun.io/docs/reference/data-loaders/overview)
+            // > - A path to an image or mesh, or any other file that Rerun can load (see https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview)
             // >
             // > If no arguments are given, a server will be hosted which a Rerun SDK can connect to.
             // """
@@ -483,7 +563,9 @@ impl Args {
             let floatings = any_floating_args.then(|| {
                 let options = cmd
                     .get_arguments()
-                    .filter(|arg| !arg.is_positional() && arg.get_long() != Some("help"))
+                    .filter(|arg| {
+                        !arg.is_positional() && !arg.is_hide_set() && arg.get_long() != Some("help")
+                    })
                     .map(generate_arg_doc)
                     .collect_vec()
                     .join("\n\n");
@@ -500,6 +582,9 @@ impl Args {
             *out += "\n\n";
 
             for cmd in cmd.get_subcommands_mut() {
+                if cmd.is_hide_set() {
+                    continue;
+                }
                 generate_markdown_manual(full_name.clone(), out, cmd);
             }
         }
@@ -523,15 +608,44 @@ enum Command {
     #[command(subcommand)]
     Auth(AuthCommands),
 
+    /// Download recordings and save them as .rrd files.
+    ///
+    /// Supports downloading from Rerun Hub as well as any other supported URI.
+    Download(DownloadCommand),
+
     /// Generates the Rerun CLI manual (markdown).
     ///
     /// Example: `rerun man > docs/content/reference/cli.md`
     #[command(name = "man")]
     Manual,
 
-    #[cfg(feature = "data_loaders")]
+    #[cfg(feature = "importers")]
     #[command(subcommand)]
     Mcap(McapCommands),
+
+    /// Run an MCP server that controls a running Rerun Viewer.
+    ///
+    /// See the [mcp docs](https://rerun.io/docs/reference/viewer/mcp) for more info about using
+    /// `rerun viewer-mcp`.
+    ///
+    /// Use the following to commands to register the mcp with your agent:
+    /// - `claude mcp add rerun -- rerun viewer-mcp`
+    /// - `codex mcp add rerun -- rerun viewer-mcp`
+    ///
+    /// Or add a mcp.json with the following content:
+    /// ```json
+    /// {
+    ///   "mcpServers": {
+    ///     "rerun": {
+    ///       "command": "rerun",
+    ///       "args": ["viewer-mcp"],
+    ///     }
+    ///   }
+    /// }
+    /// ```
+    #[cfg(feature = "native_viewer")]
+    #[command(name = "viewer-mcp")]
+    ViewerMcp,
 
     /// Reset the memory of the Rerun Viewer.
     ///
@@ -600,7 +714,6 @@ where
 
     use clap::Parser as _;
     let mut args = Args::parse_from(args);
-
     #[cfg(feature = "analytics")]
     record_cli_command_analytics(&args);
 
@@ -625,7 +738,7 @@ where
     // We don't want the runtime to run on the main thread, as we need that one for our UI.
     // So we can't call `block_on` anywhere in the entrypoint - we must call `tokio::spawn`
     // and synchronize the result using some other means instead.
-    let tokio_runtime = Runtime::new()?;
+    let tokio_runtime = initialize_tokio_runtime(args.threads)?;
     let _tokio_guard = tokio_runtime.enter();
 
     let res = if let Some(command) = args.command {
@@ -636,6 +749,8 @@ where
             #[cfg(feature = "analytics")]
             Command::Analytics(analytics) => analytics.run().map_err(Into::into),
 
+            Command::Download(cmd) => cmd.run(tokio_runtime.handle()),
+
             Command::Manual => {
                 let man = Args::generate_markdown_manual();
                 let web_header = unindent::unindent(
@@ -643,15 +758,20 @@ where
                     ---
                     title: ⌨️ CLI manual
                     order: 1150
-                    ---\
+                    ---
+
+                    <!-- DO NOT EDIT! This file was auto-generated by `pixi run man`. -->\
                     ",
                 );
                 println!("{web_header}\n\n{man}");
                 Ok(())
             }
 
-            #[cfg(feature = "data_loaders")]
+            #[cfg(feature = "importers")]
             Command::Mcap(mcap) => mcap.run(),
+
+            #[cfg(feature = "native_viewer")]
+            Command::ViewerMcp => tokio_runtime.block_on(re_viewer_mcp::serve()),
 
             #[cfg(feature = "native_viewer")]
             Command::Reset => re_viewer::reset_viewer_persistence(),
@@ -707,7 +827,7 @@ where
 
     match res {
         // Clean success
-        Ok(_) => Ok(0),
+        Ok(()) => Ok(0),
 
         // Clean failure -- known error AddrInUse
         Err(err)
@@ -735,7 +855,21 @@ fn run_impl(
     //TODO(#10068): populate token passed with `--token`
     let connection_registry = re_redap_client::ConnectionRegistry::new_with_stored_credentials();
 
-    let server_addr = std::net::SocketAddr::new(args.bind, args.port);
+    let wants_new = args.new || args.port.is_auto();
+    let port = args.port.port();
+
+    let server_addr = if wants_new
+        && is_another_server_already_running(std::net::SocketAddr::new(args.bind, port))
+    {
+        let default_port = port;
+        let free_port = find_free_port(args.bind)?;
+        re_log::info!(
+            "Default port {default_port} is already in use, using port {free_port} instead."
+        );
+        std::net::SocketAddr::new(args.bind, free_port)
+    } else {
+        std::net::SocketAddr::new(args.bind, port)
+    };
 
     #[cfg(feature = "server")]
     let server_options = re_sdk::ServerOptions {
@@ -743,21 +877,13 @@ fn run_impl(
 
         memory_limit: {
             re_log::debug!("Parsing --server-memory-limit (for gRPC server)");
-            let value = match &args.server_memory_limit {
-                Some(v) => v.as_str(),
-                None => {
-                    // When spawning just a server, we don't want the memory limit to be 0.
-                    if args.serve_web || args.serve_grpc {
-                        "25%"
-                    } else {
-                        "0B"
-                    }
-                }
-            };
-            re_log::debug!("Server memory limit: {value}");
-            re_memory::MemoryLimit::parse(value)
+            let limit = args.server_memory_limit.as_str();
+            re_log::debug!("Server memory limit: {limit}");
+            re_memory::MemoryLimit::parse(limit)
                 .map_err(|err| anyhow::format_err!("Bad --server-memory-limit: {err}"))?
         },
+
+        cors_allowed_origins: args.cors_allow_origin.clone(),
     };
 
     // All URLs that we want to process.
@@ -776,50 +902,65 @@ fn run_impl(
 
     // Now what do we do with the data?
     if args.test_receive || args.save.is_some() {
+        let receivers = ReceiversFromUrlParams::new(
+            url_or_paths,
+            &UrlParamProcessingConfig::convert_everything_to_data_sources(),
+            &connection_registry,
+            None,
+            args.follow,
+        )?;
         save_or_test_receive(
             args.save,
-            url_or_paths,
-            &connection_registry,
+            receivers,
             #[cfg(feature = "server")]
             server_addr,
             #[cfg(feature = "server")]
             server_options,
         )
     } else if args.serve_grpc {
-        cfg_if::cfg_if! {
-            if #[cfg(feature = "server")] {
-                serve_grpc(
+        cfg_select! {
+            feature = "server" => {
+                let receivers = ReceiversFromUrlParams::new(
                     url_or_paths,
-                    tokio_runtime_handle,
+                    &UrlParamProcessingConfig::convert_everything_to_data_sources(),
                     &connection_registry,
+                    None,
+                    args.follow,
+                )?;
+                serve_grpc(
+                    receivers,
+                    tokio_runtime_handle,
                     server_addr,
                     server_options,
                 )
-            } else {
-                Err(anyhow::anyhow!(
-                    "rerun-cli must be compiled with the 'server' feature enabled"
-                ))
             }
+            _ => Err(anyhow::anyhow!(
+                "rerun-cli must be compiled with the 'server' feature enabled"
+            )),
         }
     } else if args.serve_web {
-        cfg_if::cfg_if! {
-            if #[cfg(not(feature = "server"))] {
-                Err(anyhow::anyhow!(
-                    "Can't host server - rerun was not compiled with the 'server' feature"
-                ))
-            } else if #[cfg(not(feature = "web_viewer"))] {
-                Err(anyhow::anyhow!(
-                    "Can't host web-viewer - rerun was not compiled with the 'web_viewer' feature"
-                ))
-            } else {
+        cfg_select! {
+            not(feature = "server") => Err(anyhow::anyhow!(
+                "Can't host server - rerun was not compiled with the 'server' feature"
+            )),
+            not(feature = "web_viewer") => Err(anyhow::anyhow!(
+                "Can't host web-viewer - rerun was not compiled with the 'web_viewer' feature"
+            )),
+            _ => {
                 // We always host the web-viewer in case the users wants it,
                 // but we only open a browser automatically with the `--web-viewer` flag.
                 let open_browser = args.web_viewer;
 
+                let receivers = ReceiversFromUrlParams::new(
+                    url_or_paths,
+                    &UrlParamProcessingConfig::grpc_server_and_web_viewer(),
+                    &connection_registry,
+                    None,
+                    args.follow,
+                )?;
                 #[cfg(all(feature = "server", feature = "web_viewer"))]
                 serve_web(
-                    url_or_paths,
-                    &connection_registry,
+                    receivers,
                     args.web_viewer_port,
                     args.renderer,
                     args.video_decoder,
@@ -829,36 +970,40 @@ fn run_impl(
                 )
             }
         }
-    } else if args.connect.is_none() && is_another_server_already_running(server_addr) {
-        connect_to_existing_server(url_or_paths, &connection_registry, server_addr)
+    } else if !wants_new && args.connect.is_none() && is_another_server_already_running(server_addr)
+    {
+        let receivers = ReceiversFromUrlParams::new(
+            url_or_paths,
+            &UrlParamProcessingConfig::convert_everything_to_data_sources(),
+            &connection_registry,
+            None,
+            args.follow,
+        )?;
+        connect_to_existing_server(receivers, server_addr)
     } else {
-        cfg_if::cfg_if! {
-            if #[cfg(feature = "native_viewer")] {
-                start_native_viewer(
-                    &args,
-                    url_or_paths,
-                    _main_thread_token,
-                    _build_info,
-                    _call_source,
-                    tokio_runtime_handle,
-                    profiler,
-                    connection_registry,
-                    #[cfg(feature = "server")]
-                    server_addr,
-                    #[cfg(feature = "server")]
-                    server_options,
-                )
-            } else {
-                Err(anyhow::anyhow!(
-                    "Can't start viewer - rerun was compiled without the 'native_viewer' feature"
-                ))
-            }
+        cfg_select! {
+            feature = "native_viewer" => start_native_viewer(
+                &args,
+                url_or_paths,
+                _main_thread_token,
+                _build_info,
+                _call_source,
+                tokio_runtime_handle,
+                profiler,
+                connection_registry,
+                #[cfg(feature = "server")]
+                server_addr,
+                #[cfg(feature = "server")]
+                server_options,
+            ),
+            _ => Err(anyhow::anyhow!(
+                "Can't start viewer - rerun was compiled without the 'native_viewer' feature"
+            )),
         }
     }
 }
 
 #[cfg(feature = "native_viewer")]
-#[expect(clippy::too_many_arguments)]
 #[allow(clippy::allow_attributes, unused_variables)]
 fn start_native_viewer(
     args: &Args,
@@ -872,14 +1017,24 @@ fn start_native_viewer(
     #[cfg(feature = "server")] server_addr: std::net::SocketAddr,
     #[cfg(feature = "server")] server_options: re_sdk::ServerOptions,
 ) -> anyhow::Result<()> {
-    use re_viewer::external::re_viewer_context;
+    use re_viewer::external::{eframe, re_viewer_context};
 
     use crate::external::re_ui::{UICommand, UICommandSender as _};
 
     let startup_options = native_startup_options_from_args(args)?;
 
     let connect = args.connect.is_some();
+    let follow = args.follow;
     let renderer = args.renderer.as_deref();
+    let memory_limit = args
+        .memory_limit
+        .as_ref()
+        .map(|memory_limit| {
+            re_log::debug!("Parsing --memory-limit (for Viewer)");
+            re_memory::MemoryLimit::parse(memory_limit)
+        })
+        .transpose()
+        .map_err(|err| anyhow::format_err!("Bad --memory-limit: {err}"))?;
 
     let (command_tx, command_rx) = re_viewer_context::command_channel();
 
@@ -893,79 +1048,147 @@ fn start_native_viewer(
     // so we catch any warnings produced during startup.
     let text_log_rx = re_viewer::register_text_log_receiver();
 
-    re_viewer::run_native_app(
-        _main_thread_token,
-        Box::new(move |cc| {
-            {
-                let tx = command_tx.clone();
-                let egui_ctx = cc.egui_ctx.clone();
-                tokio::spawn(async move {
-                    // We catch ctrl-c commands so we can properly quit.
-                    // Without this, recent state changes might not be persisted.
-                    match tokio::signal::ctrl_c().await {
-                        Ok(()) => {
-                            re_log::info!("Caught Ctrl-C, quitting Rerun Viewer…");
-                            tx.send_ui(UICommand::Quit);
-                            egui_ctx.request_repaint();
-                        }
-                        Err(err) => {
-                            re_log::error!("Failed to listen for ctrl-c signal: {err}");
-                        }
+    #[allow(clippy::allow_attributes, unused_mut)]
+    let ReceiversFromUrlParams {
+        mut log_receivers,
+        urls_to_pass_on_to_viewer,
+    } = ReceiversFromUrlParams::new(
+        url_or_paths,
+        &UrlParamProcessingConfig::native_viewer(),
+        &connection_registry,
+        Some(auth_error_handler),
+        follow,
+    )?;
+
+    let create_app = move |cc: &eframe::CreationContext<'_>| -> re_viewer::App {
+        {
+            let tx = command_tx.clone();
+            let egui_ctx = cc.egui_ctx.clone();
+            tokio::spawn(async move {
+                // We catch ctrl-c commands so we can properly quit.
+                // Without this, recent state changes might not be persisted.
+                match tokio::signal::ctrl_c().await {
+                    Ok(()) => {
+                        re_log::info!("Caught Ctrl-C, quitting Rerun Viewer…");
+                        tx.send_ui(UICommand::Quit);
+                        egui_ctx.request_repaint();
                     }
-                });
+                    Err(err) => {
+                        re_log::error!("Failed to listen for ctrl-c signal: {err}");
+                    }
+                }
+            });
+        }
+        let mut app = re_viewer::App::with_commands(
+            _main_thread_token,
+            _build_info,
+            call_source.app_env(),
+            startup_options,
+            cc,
+            Some(connection_registry.clone()),
+            re_viewer::AsyncRuntimeHandle::new_native(tokio_runtime_handle),
+            text_log_rx,
+            (command_tx, command_rx),
+        );
+
+        // The internal catalog is served (loopback-only) on the proxy server's port below, and
+        // also reached in-process by the viewer.
+        #[cfg(all(
+            feature = "server",
+            feature = "oss_server",
+            not(target_arch = "wasm32")
+        ))]
+        let internal_catalog = (!connect && app.app_options().experimental.use_internal_catalog)
+            .then(|| re_viewer::internal_catalog::build(server_addr));
+
+        #[cfg(all(
+            feature = "server",
+            feature = "oss_server",
+            not(target_arch = "wasm32")
+        ))]
+        if let Some(catalog) = &internal_catalog {
+            connection_registry.set_internal((catalog.origin.clone(), catalog.connection.clone()));
+        }
+
+        if let Some(memory_limit) = memory_limit {
+            app.app_options_mut().memory_limit = memory_limit;
+        }
+
+        // If we're **not** connecting to an existing server, we spawn a new one and add it to the list of receivers.
+        #[cfg(feature = "server")]
+        if !connect {
+            #[cfg_attr(
+                not(all(feature = "oss_server", not(target_arch = "wasm32"))),
+                expect(unused_mut)
+            )]
+            let mut extra_services = re_grpc_server::LoopbackServices::default();
+
+            #[cfg(all(feature = "oss_server", not(target_arch = "wasm32")))]
+            if let Some(catalog) = &internal_catalog {
+                extra_services.add_service(catalog.grpc_service());
             }
-            let mut app = re_viewer::App::with_commands(
-                _main_thread_token,
-                _build_info,
-                call_source.app_env(),
-                startup_options,
-                cc,
-                Some(connection_registry.clone()),
-                re_viewer::AsyncRuntimeHandle::new_native(tokio_runtime_handle),
-                text_log_rx,
-                (command_tx, command_rx),
+
+            let (log_receiver, grpc_server_handle) = re_grpc_server::spawn_with_recv_and_services(
+                server_addr,
+                server_options,
+                re_grpc_server::shutdown::never(),
+                extra_services,
             );
 
-            #[allow(clippy::allow_attributes, unused_mut)]
-            let ReceiversFromUrlParams {
-                mut log_receivers,
-                urls_to_pass_on_to_viewer,
-            } = ReceiversFromUrlParams::new(
-                url_or_paths,
-                &UrlParamProcessingConfig::native_viewer(),
-                &connection_registry,
-                Some(auth_error_handler),
-                app.app_options().experimental.stream_mode,
-            )?;
+            log_receivers.push(log_receiver);
 
-            // If we're **not** connecting to an existing server, we spawn a new one and add it to the list of receivers.
-            #[cfg(feature = "server")]
-            if !connect {
-                let log_receiver = re_grpc_server::spawn_with_recv(
-                    server_addr,
-                    server_options,
-                    re_grpc_server::shutdown::never(),
-                );
-
-                log_receivers.push(log_receiver);
+            struct ProxyHandleWrapper {
+                handle: re_grpc_server::MessageProxyHandle,
             }
 
-            app.set_profiler(profiler);
-            for rx in log_receivers {
-                app.add_log_receiver(rx);
-            }
-            for url in urls_to_pass_on_to_viewer {
-                app.open_url_or_file(&url);
-            }
-            if let Ok(url) = std::env::var("EXAMPLES_MANIFEST_URL") {
-                app.set_examples_manifest_url(url);
+            impl re_viewer::ExternalMemoryUser for ProxyHandleWrapper {
+                fn capture(&mut self) -> Option<re_byte_size::NamedMemUsageTree> {
+                    self.handle
+                        .capture_memory()
+                        .map(|tree| re_byte_size::NamedMemUsageTree {
+                            name: "GRPC Server".to_owned(),
+                            value: tree,
+                        })
+                }
             }
 
-            Ok(Box::new(app))
-        }),
-        renderer,
-    )
-    .map_err(|err| err.into())
+            app.add_external_memory_user(Box::new(ProxyHandleWrapper {
+                handle: grpc_server_handle,
+            }));
+        }
+
+        app.set_profiler(profiler);
+        for rx in log_receivers {
+            app.add_log_receiver(rx);
+        }
+        for url in urls_to_pass_on_to_viewer {
+            app.open_url_or_file(&url);
+        }
+        if let Ok(url) = std::env::var("EXAMPLES_MANIFEST_URL") {
+            app.set_examples_manifest_url(url);
+        }
+
+        app
+    };
+
+    if args.headless {
+        let window_size = args
+            .window_size
+            .as_deref()
+            .map(parse_size)
+            .transpose()?
+            .map(|[w, h]| re_viewer::external::egui::Vec2::new(w, h));
+
+        re_viewer::run_headless_app(Box::new(create_app), renderer, window_size)
+            .map_err(|err| err.into())
+    } else {
+        re_viewer::run_native_app(
+            _main_thread_token,
+            Box::new(move |cc| Ok(Box::new(create_app(cc)))),
+            renderer,
+        )
+        .map_err(|err| err.into())
+    }
 }
 
 #[cfg(feature = "native_viewer")]
@@ -983,11 +1206,6 @@ fn native_startup_options_from_args(args: &Args) -> anyhow::Result<re_viewer::St
     Ok(re_viewer::StartupOptions {
         hide_welcome_screen: args.hide_welcome_screen,
         detach_process: args.detach_process,
-        memory_limit: {
-            re_log::debug!("Parsing --memory-limit (for Viewer)");
-            re_memory::MemoryLimit::parse(&args.memory_limit)
-                .map_err(|err| anyhow::format_err!("Bad --memory-limit: {err}"))?
-        },
         persist_state: args.persist_state,
         is_in_notebook: false,
         screenshot_to_path_then_quit: args.screenshot_to.clone(),
@@ -1012,22 +1230,14 @@ fn native_startup_options_from_args(args: &Args) -> anyhow::Result<re_viewer::St
 }
 
 fn connect_to_existing_server(
-    url_or_paths: Vec<String>,
-    connection_registry: &re_redap_client::ConnectionRegistryHandle,
+    receivers: ReceiversFromUrlParams,
     server_addr: std::net::SocketAddr,
 ) -> anyhow::Result<()> {
     use re_sdk::sink::LogSink as _;
 
     let uri: re_uri::ProxyUri = format!("rerun+http://{server_addr}/proxy").parse()?;
-    re_log::info!(%uri, "Another viewer is already running, streaming data to it.");
+    re_log::info!(%uri, "Another viewer is already running, streaming data to it. Use --port auto to force a new viewer.");
     let sink = re_sdk::sink::GrpcSink::new(uri);
-    let receivers = ReceiversFromUrlParams::new(
-        url_or_paths,
-        &UrlParamProcessingConfig::convert_everything_to_data_sources(),
-        connection_registry,
-        None,
-        Default::default(),
-    )?;
     if !receivers.urls_to_pass_on_to_viewer.is_empty() {
         re_log::warn!(
             "The following URLs can't be passed to already open viewers yet: {:?}",
@@ -1058,11 +1268,9 @@ fn connect_to_existing_server(
     Ok(())
 }
 
-#[expect(clippy::too_many_arguments)]
 #[cfg(all(feature = "server", feature = "web_viewer"))]
 fn serve_web(
-    url_or_paths: Vec<String>,
-    connection_registry: &re_redap_client::ConnectionRegistryHandle,
+    receivers: ReceiversFromUrlParams,
     web_viewer_port: u16,
     force_wgpu_backend: Option<String>,
     video_decoder: Option<String>,
@@ -1073,13 +1281,7 @@ fn serve_web(
     let ReceiversFromUrlParams {
         log_receivers,
         mut urls_to_pass_on_to_viewer,
-    } = ReceiversFromUrlParams::new(
-        url_or_paths,
-        &UrlParamProcessingConfig::grpc_server_and_web_viewer(),
-        connection_registry,
-        None,
-        Default::default(),
-    )?;
+    } = receivers;
 
     // Don't spawn a server if there's only a bunch of URIs that we want to view directly.
     let spawn_server = !log_receivers.is_empty() || urls_to_pass_on_to_viewer.is_empty();
@@ -1094,7 +1296,8 @@ fn serve_web(
 
         // Spawn a server which the Web Viewer can connect to.
         // All `rxs` are consumed by the server.
-        re_grpc_server::spawn_from_rx_set(
+        // We don't render a dev panel here so we don't need to keep the handle.
+        let _ = re_grpc_server::spawn_from_rx_set(
             server_addr,
             server_options,
             re_grpc_server::shutdown::never(),
@@ -1108,7 +1311,7 @@ fn serve_web(
             format!("rerun+http://{server_addr}/proxy")
         };
 
-        debug_assert!(
+        re_log::debug_assert!(
             proxy_url.parse::<re_uri::RedapUri>().is_ok(),
             "Expected a proper proxy URI, but got {proxy_url:?}"
         );
@@ -1133,9 +1336,8 @@ fn serve_web(
 
 #[cfg(feature = "server")]
 fn serve_grpc(
-    url_or_paths: Vec<String>,
+    receivers: ReceiversFromUrlParams,
     tokio_runtime_handle: &tokio::runtime::Handle,
-    connection_registry: &re_redap_client::ConnectionRegistryHandle,
     server_addr: std::net::SocketAddr,
     server_options: re_sdk::ServerOptions,
 ) -> anyhow::Result<()> {
@@ -1143,18 +1345,12 @@ fn serve_grpc(
         anyhow::bail!("Can't host server - rerun was not compiled with the 'server' feature");
     }
 
-    let receivers = ReceiversFromUrlParams::new(
-        url_or_paths,
-        &UrlParamProcessingConfig::convert_everything_to_data_sources(),
-        connection_registry,
-        None,
-        Default::default(),
-    )?;
     receivers.error_on_unhandled_urls("--serve-grpc")?;
 
     let (signal, shutdown) = re_grpc_server::shutdown::shutdown();
     // Spawn a server which the Web Viewer can connect to.
-    re_grpc_server::spawn_from_rx_set(
+    // No dev panel in this mode, so we drop the handle.
+    let _ = re_grpc_server::spawn_from_rx_set(
         server_addr,
         server_options,
         shutdown,
@@ -1171,18 +1367,10 @@ fn serve_grpc(
 
 fn save_or_test_receive(
     save: Option<String>,
-    url_or_paths: Vec<String>,
-    connection_registry: &re_redap_client::ConnectionRegistryHandle,
+    receivers: ReceiversFromUrlParams,
     #[cfg(feature = "server")] server_addr: std::net::SocketAddr,
     #[cfg(feature = "server")] server_options: re_sdk::ServerOptions,
 ) -> anyhow::Result<()> {
-    let receivers = ReceiversFromUrlParams::new(
-        url_or_paths,
-        &UrlParamProcessingConfig::convert_everything_to_data_sources(),
-        connection_registry,
-        None,
-        Default::default(),
-    )?;
     receivers.error_on_unhandled_urls(if save.is_none() {
         "--test-receive"
     } else {
@@ -1194,7 +1382,7 @@ fn save_or_test_receive(
 
     #[cfg(feature = "server")]
     {
-        let log_rx = re_grpc_server::spawn_with_recv(
+        let (log_rx, _handle) = re_grpc_server::spawn_with_recv(
             server_addr,
             server_options,
             re_grpc_server::shutdown::never(),
@@ -1210,6 +1398,11 @@ fn save_or_test_receive(
     } else {
         assert_receive_into_entity_db(&receive_set).map(|_db| ())
     }
+}
+
+fn find_free_port(bind: std::net::IpAddr) -> anyhow::Result<u16> {
+    let listener = std::net::TcpListener::bind(std::net::SocketAddr::new(bind, 0))?;
+    Ok(listener.local_addr()?.port())
 }
 
 fn is_another_server_already_running(server_addr: std::net::SocketAddr) -> bool {
@@ -1242,84 +1435,101 @@ fn assert_receive_into_entity_db(rx: &LogReceiverSet) -> anyhow::Result<re_entit
             anyhow::bail!("Channel disconnected without a Goodbye message.");
         }
 
-        match rx.recv_timeout(timeout) {
-            Some((_, msg)) => {
-                re_log::info_once!("Received first message.");
+        if let Some((_, msg)) = rx.recv_timeout(timeout) {
+            re_log::info_once!("Received first message.");
 
-                match msg.payload {
-                    SmartMessagePayload::Msg(msg) => {
-                        match msg {
-                            DataSourceMessage::RrdManifest(store_id, rrd_manifest) => {
-                                let mut_db =
-                                    match store_id.kind() {
-                                        re_log_types::StoreKind::Recording => rec
-                                            .get_or_insert_with(|| {
-                                                re_entity_db::EntityDb::new(store_id.clone())
-                                            }),
-                                        re_log_types::StoreKind::Blueprint => bp
-                                            .get_or_insert_with(|| {
-                                                re_entity_db::EntityDb::new(store_id.clone())
-                                            }),
-                                    };
+            match msg.payload {
+                SmartMessagePayload::Msg(msg) => {
+                    match msg {
+                        DataSourceMessage::RrdManifest(store_id, manifest) => {
+                            let mut_db = match store_id.kind() {
+                                re_log_types::StoreKind::Recording => {
+                                    rec.get_or_insert_with(|| {
+                                        re_entity_db::EntityDb::new(store_id.clone())
+                                    })
+                                }
+                                re_log_types::StoreKind::Blueprint => bp.get_or_insert_with(|| {
+                                    re_entity_db::EntityDb::new(store_id.clone())
+                                }),
+                            };
 
-                                mut_db.add_rrd_manifest_message(*rrd_manifest);
-                            }
-
-                            DataSourceMessage::LogMsg(msg) => {
-                                let mut_db =
-                                    match msg.store_id().kind() {
-                                        re_log_types::StoreKind::Recording => rec
-                                            .get_or_insert_with(|| {
-                                                re_entity_db::EntityDb::new(msg.store_id().clone())
-                                            }),
-                                        re_log_types::StoreKind::Blueprint => bp
-                                            .get_or_insert_with(|| {
-                                                re_entity_db::EntityDb::new(msg.store_id().clone())
-                                            }),
-                                    };
-
-                                mut_db.add_log_msg(&msg)?;
-                            }
-
-                            DataSourceMessage::TableMsg(_) => {
-                                anyhow::bail!(
-                                    "Received a TableMsg which can't be stored in an EntityDb"
-                                );
-                            }
-
-                            DataSourceMessage::UiCommand(ui_command) => {
-                                anyhow::bail!(
-                                    "Received a UI command which can't be stored in an EntityDb: {ui_command:?}"
-                                );
-                            }
+                            mut_db.add_rrd_manifest_message(manifest);
                         }
 
-                        num_messages += 1;
-                    }
+                        DataSourceMessage::RrdManifestComplete(store_id) => {
+                            let mut_db = match store_id.kind() {
+                                re_log_types::StoreKind::Recording => {
+                                    rec.get_or_insert_with(|| {
+                                        re_entity_db::EntityDb::new(store_id.clone())
+                                    })
+                                }
+                                re_log_types::StoreKind::Blueprint => bp.get_or_insert_with(|| {
+                                    re_entity_db::EntityDb::new(store_id.clone())
+                                }),
+                            };
 
-                    re_log_channel::SmartMessagePayload::Flush { on_flush_done } => {
-                        on_flush_done();
-                    }
-
-                    SmartMessagePayload::Quit(err) => {
-                        if let Some(err) = err {
-                            anyhow::bail!("data source has disconnected unexpectedly: {err}")
-                        } else if let Some(db) = rec {
-                            anyhow::ensure!(0 < num_messages, "No messages received");
-                            re_log::info!("Successfully ingested {num_messages} messages.");
-                            return Ok(db);
-                        } else {
-                            anyhow::bail!("EntityDb never initialized");
+                            mut_db.mark_rrd_manifest_complete();
                         }
+
+                        DataSourceMessage::LogMsg(msg) => {
+                            let mut_db = match msg.store_id().kind() {
+                                re_log_types::StoreKind::Recording => {
+                                    rec.get_or_insert_with(|| {
+                                        re_entity_db::EntityDb::new(msg.store_id().clone())
+                                    })
+                                }
+                                re_log_types::StoreKind::Blueprint => bp.get_or_insert_with(|| {
+                                    re_entity_db::EntityDb::new(msg.store_id().clone())
+                                }),
+                            };
+
+                            mut_db.add_log_msg(&msg)?;
+                        }
+
+                        DataSourceMessage::TableMsg(_) => {
+                            anyhow::bail!(
+                                "Received a TableMsg which can't be stored in an EntityDb"
+                            );
+                        }
+
+                        DataSourceMessage::UiCommand(ui_command) => {
+                            anyhow::bail!(
+                                "Received a UI command which can't be stored in an EntityDb: {ui_command:?}"
+                            );
+                        }
+                    }
+
+                    num_messages += 1;
+                }
+
+                re_log_channel::SmartMessagePayload::Flush { on_flush_done } => {
+                    on_flush_done();
+                }
+
+                SmartMessagePayload::Quit(err) => {
+                    if let Some(err) = err {
+                        anyhow::bail!("data source has disconnected unexpectedly: {err}")
+                    } else if let Some(db) = rec {
+                        anyhow::ensure!(0 < num_messages, "No messages received");
+                        re_log::info!("Successfully ingested {num_messages} messages.");
+                        return Ok(db);
+                    } else {
+                        anyhow::bail!("EntityDb never initialized");
                     }
                 }
             }
-            None => {
-                anyhow::bail!(
-                    "Didn't receive any messages within {} seconds. Giving up.",
-                    timeout.as_secs()
+        } else {
+            if let Some(db) = rec {
+                // TODO(RR-3373): find a proper way to detect client disconnect without timing out.
+                re_log::info!(
+                    "Timed out after successfully receiving {num_messages} messages. Assuming the client disconnected cleanly.",
                 );
+                return Ok(db);
             }
+            anyhow::bail!(
+                "Didn't receive any messages within {} seconds. Giving up.",
+                timeout.as_secs()
+            );
         }
     }
 }
@@ -1344,6 +1554,13 @@ fn initialize_thread_pool(threads_args: i32) {
                 // (if rayon manages to figure out how many cores we have).
             }
         }
+    } else if threads_args == 1 {
+        // 1 means "single-threaded".
+        // NOTE: we intentionally do NOT use `.use_current_thread()` here,
+        // because that causes deadlocks when code does `rayon::spawn()`
+        // followed by blocking on the result (e.g. in `load_file.rs`).
+        builder = builder.num_threads(1);
+        re_log::info!("Running in single-threaded mode.");
     } else {
         // 0 means "use all cores", and rayon understands that
         builder = builder.num_threads(threads_args as usize);
@@ -1352,6 +1569,32 @@ fn initialize_thread_pool(threads_args: i32) {
     if let Err(err) = builder.build_global() {
         re_log::warn!("Failed to initialize rayon thread pool: {err}");
     }
+}
+
+fn initialize_tokio_runtime(threads_args: i32) -> std::io::Result<Runtime> {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    // Name the tokio threads for the benefit of debuggers and profilers:
+    let mut builder = tokio::runtime::Builder::new_multi_thread();
+    builder.thread_name_fn(|| {
+        static ATOMIC_ID: AtomicUsize = AtomicUsize::new(0);
+        let nr = ATOMIC_ID.fetch_add(1, Ordering::Relaxed);
+        format!("tokio-#{nr}")
+    });
+    builder.enable_all();
+
+    if threads_args < 0 {
+        if let Ok(cores) = std::thread::available_parallelism() {
+            let threads = cores.get().saturating_sub((-threads_args) as _).max(1);
+            builder.worker_threads(threads);
+        }
+    } else if 0 < threads_args {
+        builder.worker_threads(threads_args as usize);
+    } else {
+        // 0 means "use default" (typically num CPUs)
+    }
+
+    builder.build()
 }
 
 #[cfg(feature = "native_viewer")]
@@ -1387,14 +1630,16 @@ fn stream_to_rrd_on_disk(
     use re_log_encoding::FileSinkError;
 
     if path.exists() {
-        re_log::warn!("Overwriting existing file at {path:?}");
+        re_log::warn!(?path, "Overwriting existing file");
     }
 
     re_log::info!("Saving incoming log stream to {path:?}. Abort with Ctrl-C.");
 
     let encoding_options = re_log_encoding::rrd::EncodingOptions::PROTOBUF_COMPRESSED;
-    let file =
-        std::fs::File::create(path).map_err(|err| FileSinkError::CreateFile(path.clone(), err))?;
+    let file = std::fs::File::create(path).map_err(|err| FileSinkError::CreateFile {
+        path: path.clone(),
+        source: err,
+    })?;
     let mut encoder = re_log_encoding::Encoder::new_eager(
         re_build_info::CrateVersion::LOCAL,
         encoding_options,
@@ -1486,16 +1731,22 @@ impl ReceiversFromUrlParams {
         config: &UrlParamProcessingConfig,
         connection_registry: &re_redap_client::ConnectionRegistryHandle,
         auth_error_handler: Option<AuthErrorHandler>,
-        steam_mode: StreamMode,
+        follow: bool,
     ) -> anyhow::Result<Self> {
         let mut data_sources = Vec::new();
         let mut urls_to_pass_on_to_viewer = Vec::new();
 
         for url in input_urls {
-            if let Some(data_source) = LogDataSource::from_uri(re_log_types::FileSource::Cli, &url)
-            {
+            if let Some(data_source) = LogDataSource::from_uri(
+                re_log_types::FileSource::Cli,
+                &url,
+                &re_data_source::FromUriOptions {
+                    follow,
+                    accept_extensionless_http: true,
+                },
+            ) {
                 match &data_source {
-                    LogDataSource::RrdHttpUrl { .. } => {
+                    LogDataSource::HttpUrl { .. } => {
                         if config.data_sources_from_http_urls {
                             data_sources.push(data_source);
                         } else {
@@ -1511,7 +1762,7 @@ impl ReceiversFromUrlParams {
                         }
                     }
 
-                    LogDataSource::FilePath(..) => {
+                    LogDataSource::FilePath { .. } => {
                         if config.data_source_from_filepaths {
                             data_sources.push(data_source);
                         } else {
@@ -1531,15 +1782,13 @@ impl ReceiversFromUrlParams {
 
         let auth_error_handler = auth_error_handler.unwrap_or_else(|| {
             std::sync::Arc::new(|uri, err| {
-                re_log::error!("Authentication error for data source {uri}: {err}");
+                re_log::error!(?uri, "Authentication error for data source: {err}");
             })
         });
 
         let log_receivers = data_sources
             .into_iter()
-            .map(|data_source| {
-                data_source.stream(auth_error_handler.clone(), connection_registry, steam_mode)
-            })
+            .map(|data_source| data_source.stream(auth_error_handler.clone(), connection_registry))
             .collect::<anyhow::Result<Vec<_>>>()?;
 
         Ok(Self {
@@ -1584,6 +1833,7 @@ fn record_cli_command_analytics(args: &Args) {
         detach_process,
 
         // Not logged
+        follow: _,
         threads: _,
         url_or_paths: _,
         version: _,
@@ -1595,7 +1845,10 @@ fn record_cli_command_analytics(args: &Args) {
         bind: _,
         memory_limit: _,
         server_memory_limit: _,
+        cors_allow_origin: _,
         port: _,
+        new: _,
+        headless: _,
     } = args;
 
     let (command, subcommand) = match command {
@@ -1616,6 +1869,7 @@ fn record_cli_command_analytics(args: &Args) {
         Some(Command::Auth(cmd)) => {
             let subcommand = match cmd {
                 AuthCommands::Login(_) => "login",
+                AuthCommands::Logout(_) => "logout",
                 AuthCommands::Token(_) => "token",
                 AuthCommands::GenerateToken(_) => "generate-token",
             };
@@ -1624,30 +1878,23 @@ fn record_cli_command_analytics(args: &Args) {
 
         Some(Command::Manual) => ("man", None),
 
-        #[cfg(feature = "data_loaders")]
-        Some(Command::Mcap(cmd)) => {
-            let subcommand = match cmd {
-                McapCommands::Convert(_) => "convert",
-            };
-            ("mcap", Some(subcommand))
+        #[cfg(feature = "importers")]
+        Some(Command::Mcap(_cmd)) => {
+            // TODO(RR-4073): Re-enable analytics for MCAP commands.
+            return;
         }
+
+        #[cfg(feature = "native_viewer")]
+        Some(Command::ViewerMcp) => ("viewer-mcp", None),
+
+        Some(Command::Download(_)) => ("download", None),
 
         #[cfg(feature = "native_viewer")]
         Some(Command::Reset) => ("reset", None),
 
-        Some(Command::Rrd(cmd)) => {
-            let subcommand = match cmd {
-                RrdCommands::Compact(_) => "compact",
-                RrdCommands::Compare(_) => "compare",
-                RrdCommands::Filter(_) => "filter",
-                RrdCommands::Merge(_) => "merge",
-                RrdCommands::Migrate(_) => "migrate",
-                RrdCommands::Print(_) => "print",
-                RrdCommands::Route(_) => "route",
-                RrdCommands::Stats(_) => "stats",
-                RrdCommands::Verify(_) => "verify",
-            };
-            ("rrd", Some(subcommand))
+        Some(Command::Rrd(_cmd)) => {
+            // TODO(RR-4073): Re-enable analytics for RRD commands.
+            return;
         }
 
         #[cfg(feature = "oss_server")]

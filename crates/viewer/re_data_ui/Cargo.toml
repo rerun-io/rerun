@@ -21,20 +21,20 @@ all-features = true
 
 [dependencies]
 re_arrow_ui.workspace = true
-re_arrow_util.workspace = true
-re_byte_size.workspace = true
 re_capabilities = { workspace = true, features = ["egui"] }
 re_chunk_store.workspace = true
 re_entity_db.workspace = true
 re_format.workspace = true
 re_log.workspace = true
-re_log_types.workspace = true
-re_renderer.workspace = true
 re_log_channel.workspace = true
-re_tracing.workspace = true
+re_log_types.workspace = true
+re_query.workspace = true
+re_renderer.workspace = true
 re_sdk_types = { workspace = true, features = [
   "egui_plot", # Needed to draw marker shapes.
 ] }
+re_sorbet.workspace = true
+re_tracing.workspace = true
 re_types_core.workspace = true
 re_ui.workspace = true
 re_uri.workspace = true
@@ -48,6 +48,6 @@ egui_extras.workspace = true
 egui_plot.workspace = true
 egui.workspace = true
 itertools.workspace = true
+jiff.workspace = true
 rexif.workspace = true
 unindent.workspace = true
-jiff.workspace = true

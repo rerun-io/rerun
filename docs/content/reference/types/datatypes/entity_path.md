@@ -8,7 +8,7 @@ A path to an entity in the `ChunkStore`.
 
 ## Arrow datatype
 ```
-utf8
+Utf8
 ```
 
 ## API reference links

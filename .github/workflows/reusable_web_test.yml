@@ -1,0 +1,62 @@
+name: Reusable Web tests
+
+on:
+  workflow_call:
+    inputs:
+      CONCURRENCY:
+        required: true
+        type: string
+      REF:
+        required: false
+        type: string
+        default: ""
+
+concurrency:
+  group: ${{ inputs.CONCURRENCY }}-web-test
+  cancel-in-progress: true
+
+env:
+  RUSTFLAGS: --deny warnings
+  RUSTDOCFLAGS: --deny warnings
+  RUST_BACKTRACE: full
+  CARGO_TERM_COLOR: always
+
+defaults:
+  run:
+    shell: bash --noprofile --norc -euo pipefail {0}
+
+permissions:
+  contents: "read"
+  id-token: "write"
+
+jobs:
+  web-test:
+    name: Browser tests
+    timeout-minutes: 60
+    runs-on: ubuntu-latest-16-cores
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.REF || (github.event_name == 'pull_request' && github.event.pull_request.head.ref) || '' }}
+
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          cache_key: "web-test"
+          save_cache: false
+          targets: wasm32-unknown-unknown
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+
+      - uses: prefix-dev/setup-pixi@v0.10.0
+        with:
+          pixi-version: v0.71.3
+
+      - name: Set up Firefox
+        uses: browser-actions/setup-firefox@v1
+
+      - name: Set up geckodriver
+        uses: browser-actions/setup-geckodriver@latest
+
+      - name: Run Wasm browser tests
+        run: pixi run web-test

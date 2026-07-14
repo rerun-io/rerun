@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import html
 import os
+from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
 import pyarrow
@@ -14,6 +16,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from datetime import datetime, timedelta
 
+    import datafusion
     import numpy as np
 
     from .blueprint import BlueprintLike
@@ -23,16 +26,68 @@ from rerun import bindings
 from rerun.error_utils import RerunMissingDependencyError
 
 from ._event import (
-    ViewerEvent,
+    ContainerSelectionItem as ContainerSelectionItem,
+    EntitySelectionItem as EntitySelectionItem,
+    PauseEvent as PauseEvent,
+    PlayEvent as PlayEvent,
+    RecordingOpenEvent as RecordingOpenEvent,
+    SelectionChangeEvent as SelectionChangeEvent,
+    SelectionItem as SelectionItem,
+    TimelineChangeEvent as TimelineChangeEvent,
+    TimeUpdateEvent as TimeUpdateEvent,
+    ViewerEvent as ViewerEvent,
+    ViewSelectionItem as ViewSelectionItem,
     _viewer_event_from_json_str,
 )
 from .recording_stream import RecordingStream, get_data_recording
 
+__all__ = [
+    "ContainerSelectionItem",
+    "EntitySelectionItem",
+    "PauseEvent",
+    "PlayEvent",
+    "RecordingOpenEvent",
+    "SelectionChangeEvent",
+    "SelectionItem",
+    "TimeUpdateEvent",
+    "TimelineChangeEvent",
+    "ViewSelectionItem",
+    "Viewer",
+    "ViewerEvent",
+    "set_default_size",
+]
+
 HAS_NOTEBOOK = True
 try:
+    from ipywidgets import HTML as _HTML, VBox as _VBox
     from rerun_notebook import ErrorWidget as _ErrorWidget, Viewer as _Viewer
 except ModuleNotFoundError:
     HAS_NOTEBOOK = False
+
+
+def _flush_ui_events() -> None:
+    """Pump the Jupyter event loop so pending widget updates are delivered to the frontend."""
+    import jupyter_ui_poll
+
+    with jupyter_ui_poll.ui_events() as poll:
+        poll(1)
+
+
+# CSS for the loading indicator is co-located in `_loading_widget.css` and embedded
+# inline so the stylesheet travels with each widget value update.
+_LOADING_CSS = (Path(__file__).parent / "_loading_widget.css").read_text()
+
+
+def _render_loading_html(table_id: str) -> str:
+    """Build the HTML fragment shown in the loading widget for the given table id."""
+    return (
+        f"<style>{_LOADING_CSS}</style>"
+        '<div class="rerun-notebook-loading">'
+        '<div class="rerun-notebook-loading__spinner"></div>'
+        f"<div>Loading table &ldquo;{html.escape(table_id)}&rdquo;&hellip;</div>"
+        "</div>"
+    )
+
 
 _default_width = 640
 _default_height = 480
@@ -49,9 +104,9 @@ def set_default_size(*, width: int | None, height: int | None) -> None:
 
     Parameters
     ----------
-    width : int
+    width:
         The width of the viewer in pixels.
-    height : int
+    height:
         The height of the viewer in pixels.
 
     """
@@ -79,6 +134,7 @@ class Viewer:
         blueprint: BlueprintLike | None = None,
         recording: RecordingStream | None = None,
         use_global_recording: bool | None = None,
+        theme: Literal["dark", "light", "system"] | None = None,
     ) -> None:
         """
         Create a new Rerun viewer widget for use in a notebook.
@@ -116,11 +172,16 @@ class Viewer:
             Settings this to `False` causes the Viewer to not pick up the global recording.
 
             Defaults to `False` if `url` is provided, and `True` otherwise.
+        theme:
+            The color theme to use. Either "dark", "light", or "system".
+
+            If not set, the viewer uses the previously persisted theme preference or defaults to "system".
 
         """
         if not HAS_NOTEBOOK:
             raise RerunMissingDependencyError("rerun-notebook", "notebook")
         self._error_widget = _ErrorWidget()
+        self._loading_widget = _HTML(value="")
 
         # Get access token from env variable
         credentials = None
@@ -137,6 +198,7 @@ class Viewer:
             height=height if height is not None else _default_height,
             url=url,
             fallback_token=fallback_token,
+            theme=theme,
         )
 
         # Set full credentials if we have them so the UI can show who's logged in
@@ -190,11 +252,11 @@ class Viewer:
 
         Parameters
         ----------
-        recording : RecordingStream
+        recording:
             Specifies the [`rerun.RecordingStream`][] to use.
             If left unspecified, defaults to the current active data recording, if there is one.
             See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
-        blueprint : BlueprintLike
+        blueprint:
             A blueprint object to send to the viewer.
             It will be made active and set as the default blueprint in the recording.
 
@@ -266,7 +328,7 @@ class Viewer:
     def send_table(
         self,
         id: str,
-        table: RecordBatch,
+        table: RecordBatch | list[RecordBatch] | datafusion.DataFrame,
     ) -> None:
         """
         Sends a table in the form of a dataframe to the viewer.
@@ -277,16 +339,27 @@ class Viewer:
             The name that uniquely identifies the table in the viewer.
             This name will also be shown in the recording panel.
         table:
-            The table as a single Arrow record batch.
+            The table data as an Arrow RecordBatch, list of RecordBatches, or a datafusion DataFrame.
 
         """
-        new_table = self._add_table_id(table, id)
-        sink = pyarrow.BufferOutputStream()
-        writer = ipc.new_stream(sink, new_table.schema)
-        writer.write_batch(new_table)
-        writer.close()
-        table_as_bytes = sink.getvalue().to_pybytes()
-        self._viewer.send_table(table_as_bytes)
+        from rerun._arrow import to_record_batch
+
+        self._loading_widget.value = _render_loading_html(id)
+        # Pump the UI event loop so the value change reaches the frontend before
+        # to_record_batch() blocks Python (e.g. a slow datafusion collect).
+        _flush_ui_events()
+
+        try:
+            record_batch = to_record_batch(table)
+            new_table = self._add_table_id(record_batch, id)
+            sink = pyarrow.BufferOutputStream()
+            writer = ipc.new_stream(sink, new_table.schema)
+            writer.write_batch(new_table)
+            writer.close()
+            table_as_bytes = sink.getvalue().to_pybytes()
+            self._viewer.send_table(table_as_bytes)
+        finally:
+            self._loading_widget.value = ""
 
     def display(self, block_until_ready: bool = False) -> None:
         """
@@ -294,7 +367,7 @@ class Viewer:
 
         Parameters
         ----------
-        block_until_ready : bool
+        block_until_ready:
             Whether to block until the viewer is ready to receive data. If this is `False`, the viewer
             will still be displayed, but logged data will likely be queued until the viewer becomes ready
             at the end of cell execution.
@@ -304,7 +377,10 @@ class Viewer:
         from IPython.display import display
 
         display(self._error_widget)
-        display(self._viewer)
+        # Wrap loading + viewer in a VBox so the spinner's rendered height and
+        # positioning are tied to the viewer's own layout box instead of occupying
+        # a separate notebook output cell.
+        display(_VBox([self._loading_widget, self._viewer]))
 
         if block_until_ready:
             self._viewer.block_until_ready()
@@ -344,7 +420,7 @@ class Viewer:
         Parameters
         ----------
         top: str
-            State of the panel, positioned on the top of the viewer.
+            State of the top panel of the viewer.
         blueprint: str
             State of the blueprint panel, positioned on the left side of the viewer.
         selection: str
@@ -473,6 +549,20 @@ class Viewer:
         self._viewer.set_time_ctrl(timeline, time, play)
 
     def on_event(self, callback: Callable[[ViewerEvent], None]) -> None:
+        """
+        Register a callback to be called when a viewer event occurs.
+
+        The callback will receive a [`ViewerEvent`][rerun.notebook.ViewerEvent], which is one of:
+        [`PlayEvent`][rerun.notebook.PlayEvent], [`PauseEvent`][rerun.notebook.PauseEvent],
+        [`TimeUpdateEvent`][rerun.notebook.TimeUpdateEvent], [`TimelineChangeEvent`][rerun.notebook.TimelineChangeEvent],
+        [`SelectionChangeEvent`][rerun.notebook.SelectionChangeEvent], or [`RecordingOpenEvent`][rerun.notebook.RecordingOpenEvent].
+
+        Parameters
+        ----------
+        callback:
+            A function that takes a [`ViewerEvent`][rerun.notebook.ViewerEvent] as its only argument.
+
+        """
         self._event_callbacks.append(callback)
 
     def set_credentials(self, access_token: str, email: str) -> None:

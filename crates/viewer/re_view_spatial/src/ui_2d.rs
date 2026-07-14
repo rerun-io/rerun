@@ -1,6 +1,7 @@
 use egui::emath::RectTransform;
 use egui::{Align2, Pos2, Rect, Shape, Vec2, pos2, vec2};
 use macaw::IsoTransform;
+use re_chunk_store::MissingChunkReporter;
 use re_entity_db::EntityPath;
 use re_log::ResultExt as _;
 use re_renderer::ViewPickingConfiguration;
@@ -86,11 +87,18 @@ fn ui_from_scene(
                 .inverse()
                 .transform_pos(zoom_center_in_ui)
                 .to_vec2();
-            bounds_rect = scale_rect(
+            let candidate = scale_rect(
                 bounds_rect.translate(-zoom_center_in_scene),
                 Vec2::splat(1.0) / zoom_delta,
             )
             .translate(zoom_center_in_scene);
+
+            bounds_rect = clamp_zoom_out(
+                bounds_rect,
+                candidate,
+                zoom_center_in_scene,
+                &view_state.bounding_boxes.current,
+            );
         }
     }
 
@@ -119,6 +127,55 @@ fn scale_rect(rect: Rect, factor: Vec2) -> Rect {
     )
 }
 
+/// Cap on how large the 2D visible area is allowed to grow, measured per-axis as a multiple
+/// of the matching scene bounding box extent.
+///
+/// Applied to zoom-out only: width is clamped against `scene_size.x * factor` and height
+/// against `scene_size.y * factor`. An axis that is already past the limit is pinned at its
+/// current size, never pulled back in; zoom-in is never restricted.
+const MAX_ZOOM_OUT_FACTOR: f32 = 5.0;
+
+/// Cap zoom-out against the scene bounding box.
+///
+/// If we're already past the cap (e.g. right after loading) use the current size instead — no
+/// snap-back. Zooming in is never restricted.
+fn clamp_zoom_out(
+    current: Rect,
+    candidate: Rect,
+    zoom_center: Vec2,
+    scene_bbox: &macaw::BoundingBox,
+) -> Rect {
+    // `1.0e17` fallback is chosen with generous margin of an observed crash due to infinity.
+    let fallback = Vec2::splat(1.0e17);
+
+    let max_size = if scene_bbox.is_finite() && !scene_bbox.is_nothing() {
+        let scene_size = scene_bbox.size();
+        let max_size = vec2(scene_size.x, scene_size.y) * MAX_ZOOM_OUT_FACTOR;
+        if max_size.x.is_finite() && max_size.x > 0.0 && max_size.y.is_finite() && max_size.y > 0.0
+        {
+            max_size
+        } else {
+            fallback
+        }
+    } else {
+        fallback
+    }
+    .max(current.size());
+
+    let candidate_size = candidate.size();
+    let clamped_size = candidate_size.min(max_size);
+
+    if clamped_size == candidate_size {
+        candidate
+    } else {
+        scale_rect(
+            current.translate(-zoom_center),
+            clamped_size / current.size(),
+        )
+        .translate(zoom_center)
+    }
+}
+
 pub fn help(os: egui::os::OperatingSystem) -> Help {
     let egui::InputOptions { zoom_modifier, .. } = egui::InputOptions::default(); // This is OK, since we don't allow the user to change this modifier.
 
@@ -137,6 +194,7 @@ impl SpatialView2D {
     pub fn view_2d(
         &self,
         ctx: &ViewerContext<'_>,
+        missing_chunk_reporter: &MissingChunkReporter,
         ui: &mut egui::Ui,
         state: &mut SpatialViewState,
         query: &ViewQuery<'_>,
@@ -161,7 +219,7 @@ impl SpatialView2D {
         // TODO(emilk): some way to visualize the resolution rectangle of the pinhole camera (in case there is no image logged).
         let transforms = system_output
             .context_systems
-            .get::<TransformTreeContext>()?;
+            .get_and_report_missing::<TransformTreeContext>(missing_chunk_reporter)?;
         state.pinhole_at_origin = transforms
             .pinhole_tree_root_info(transforms.target_frame())
             .map(|pinhole_at_root| {
@@ -170,8 +228,9 @@ impl SpatialView2D {
                 let query_ctx = QueryContext {
                     view_ctx: &view_ctx,
                     target_entity_path: query.space_origin,
+                    instruction_id: None,
                     archetype_name: Some(archetypes::Pinhole::name()),
-                    query: &query.latest_at_query(),
+                    query: query.latest_at_query(),
                 };
                 Pinhole {
                     image_from_camera: pinhole.image_from_camera.0.into(),
@@ -189,6 +248,7 @@ impl SpatialView2D {
 
         let (response, painter) =
             ui.allocate_painter(ui.available_size(), egui::Sense::click_and_drag());
+        let ui_rect = response.rect;
 
         let bounds_property = ViewProperty::from_archetype::<VisualBounds2D>(
             ctx.blueprint_db(),
@@ -232,8 +292,8 @@ impl SpatialView2D {
         let near_clip_plane = f32::max(f32::MIN_POSITIVE, *near_clip_plane.0);
 
         // Create labels now since their shapes participate are added to scene.ui for picking.
-        let (label_shapes, ui_rects) = create_labels(
-            collect_ui_labels(&system_output.view_systems),
+        let (label_shapes, label_ui_rects) = create_labels(
+            &collect_ui_labels(&system_output),
             ui_from_scene,
             &eye,
             ui,
@@ -245,17 +305,18 @@ impl SpatialView2D {
             let picking_context = crate::picking::PickingContext::new(
                 pointer_pos_ui,
                 scene_from_ui,
-                ui.ctx().pixels_per_point(),
+                ui.pixels_per_point(),
                 &eye,
             );
             let (_response, picking_config) = crate::picking_ui::picking(
                 ctx,
+                missing_chunk_reporter,
                 &picking_context,
                 ui,
                 response,
                 state,
                 &system_output,
-                &ui_rects,
+                &label_ui_rects,
                 query,
                 SpatialViewKind::TwoD,
             )?;
@@ -269,11 +330,12 @@ impl SpatialView2D {
         let Ok(target_config) = setup_target_config(
             ctx.render_mode(),
             &painter,
+            ui_rect,
             scene_bounds,
             near_clip_plane,
             &query.space_origin.to_string(),
             query.highlights.any_outlines(),
-            &state.pinhole_at_origin,
+            state.pinhole_at_origin.as_ref(),
             picking_config,
         ) else {
             return Ok(());
@@ -303,7 +365,7 @@ impl SpatialView2D {
         // Camera & projection are configured to ingest space coordinates directly.
         painter.add(gpu_bridge::new_renderer_callback(
             view_builder,
-            painter.clip_rect(),
+            ui_rect,
             clear_color,
         ));
 
@@ -314,7 +376,7 @@ impl SpatialView2D {
                 query.space_origin,
                 &ui_from_scene,
                 selected_context,
-                ui.ctx().selection_stroke().color,
+                ui.selection_stroke().color,
             ));
         }
         if let Some(hovered_context) = ctx.selection_state().hovered_item_context() {
@@ -323,12 +385,12 @@ impl SpatialView2D {
                 query.space_origin,
                 &ui_from_scene,
                 hovered_context,
-                ui.ctx().hover_stroke().color,
+                ui.hover_stroke().color,
             ));
         }
 
-        // Add egui-rendered spinners/loaders on top of re_renderer content:
-        crate::ui::paint_loading_spinners(ui, ui_from_scene, &eye, &system_output.view_systems);
+        // Add egui-rendered loading indicators on top of re_renderer content:
+        crate::ui::paint_loading_indicators(ui, ui_from_scene, &eye, &system_output);
 
         // Add egui-rendered labels on top of everything else:
         painter.extend(label_shapes);
@@ -337,15 +399,15 @@ impl SpatialView2D {
     }
 }
 
-#[expect(clippy::too_many_arguments)]
 fn setup_target_config(
     render_mode: re_renderer::RenderMode,
     egui_painter: &egui::Painter,
+    ui_rect: Rect,
     scene_bounds: Rect,
     near_clip_plane: f32,
     space_name: &str,
     any_outlines: bool,
-    scene_pinhole: &Option<Pinhole>,
+    scene_pinhole: Option<&Pinhole>,
     picking_config: Option<ViewPickingConfiguration>,
 ) -> anyhow::Result<TargetConfiguration> {
     // ⚠️ When changing this code, make sure to run `tests/rust/test_pinhole_projection`.
@@ -423,8 +485,7 @@ fn setup_target_config(
     // ----------------------
 
     let pixels_per_point = egui_painter.ctx().pixels_per_point();
-    let resolution_in_pixel =
-        gpu_bridge::viewport_resolution_in_pixels(egui_painter.clip_rect(), pixels_per_point);
+    let resolution_in_pixel = gpu_bridge::viewport_resolution_in_pixels(ui_rect, pixels_per_point);
     anyhow::ensure!(0 < resolution_in_pixel[0] && 0 < resolution_in_pixel[1]);
 
     Ok({
@@ -438,7 +499,7 @@ fn setup_target_config(
             viewport_transformation,
             pixels_per_point,
             outline_config: any_outlines.then(|| re_view::outline_config(egui_painter.ctx())),
-            blend_with_background: false,
+            blend_with_background: re_renderer::BlendWithBackground::No,
             picking_config,
         }
     })

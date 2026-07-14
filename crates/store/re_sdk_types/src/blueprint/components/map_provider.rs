@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -23,7 +24,7 @@ use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: Name of the map provider to be used in Map views.
-#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Default)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Default, ::re_byte_size::SizeBytes)]
 #[repr(u8)]
 pub enum MapProvider {
     /// `OpenStreetMap` is the default map provider.
@@ -112,17 +113,16 @@ impl ::re_types_core::Loggable for MapProvider {
             .with_context("rerun.blueprint.components.MapProvider#enum")?
             .into_iter()
             .map(|typ| match typ {
-                Some(1) => Ok(Some(Self::OpenStreetMap)),
-                Some(2) => Ok(Some(Self::MapboxStreets)),
-                Some(3) => Ok(Some(Self::MapboxDark)),
-                Some(4) => Ok(Some(Self::MapboxSatellite)),
-                Some(5) => Ok(Some(Self::MapboxLight)),
+                Some(val) => <Self as ::re_types_core::reflection::Enum>::try_from_integer(val)
+                    .map(Some)
+                    .ok_or_else(|| {
+                        DeserializationError::missing_union_arm(
+                            Self::arrow_datatype(),
+                            "<invalid>",
+                            val as _,
+                        )
+                    }),
                 None => Ok(None),
-                Some(invalid) => Err(DeserializationError::missing_union_arm(
-                    Self::arrow_datatype(),
-                    "<invalid>",
-                    invalid as _,
-                )),
             })
             .collect::<DeserializationResult<Vec<Option<_>>>>()
             .with_context("rerun.blueprint.components.MapProvider")?)
@@ -142,6 +142,8 @@ impl std::fmt::Display for MapProvider {
 }
 
 impl ::re_types_core::reflection::Enum for MapProvider {
+    type Repr = u8;
+
     #[inline]
     fn variants() -> &'static [Self] {
         &[
@@ -163,16 +165,11 @@ impl ::re_types_core::reflection::Enum for MapProvider {
             Self::MapboxLight => "Mapbox Light is a light-themed map designed by Mapbox.",
         }
     }
-}
-
-impl ::re_byte_size::SizeBytes for MapProvider {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
 
     #[inline]
-    fn is_pod() -> bool {
-        true
+    fn try_from_integer(value: u8) -> Option<Self> {
+        Self::variants()
+            .get((value as usize).wrapping_sub(1))
+            .copied()
     }
 }

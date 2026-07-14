@@ -24,7 +24,7 @@ cd rerun
 
 Now install the `pixi` package manager: <https://github.com/prefix-dev/pixi?tab=readme-ov-file#installation>
 
-Make sure `cargo --version` prints `1.90.0` once you are done.
+Make sure `cargo --version` prints `1.95.0` once you are done.
 
 ### Python/PyO3 configuration (important!)
 
@@ -53,7 +53,7 @@ For more details, see [Python build configuration](#python-build-configuration-a
 If you are using an Apple-silicon Mac (M1, M2), make sure `rustc -vV` outputs `host: aarch64-apple-darwin`. If not, this should fix it:
 
 ```sh
-rustup set default-host aarch64-apple-darwin && rustup install 1.90.0
+rustup set default-host aarch64-apple-darwin && rustup install 1.95.0
 ```
 
 ## Git-lfs
@@ -199,7 +199,7 @@ This can be useful for developer tools, e.g. for [setting up IntelliSense in VSC
 
 ## Building the docs
 
-High-level documentation for Rerun can be found at [http://rerun.io/docs](http://rerun.io/docs). It is built from the separate repository [rerun-docs](https://github.com/rerun-io/rerun-docs).
+High-level documentation for Rerun can be found at [https://rerun.io/docs](https://rerun.io/docs). It is built from the separate repository [rerun-docs](https://github.com/rerun-io/rerun-docs).
 
 - 🌊 [C++ API docs](https://ref.rerun.io/docs/cpp) are built with `doxygen` and hosted on GitHub. Use `pixi run -e cpp cpp-docs` to build them locally. For details on the C++ doc-system, see [Writing Docs](rerun_cpp/docs/writing_docs.md).
 - 🐍 [Python API docs](https://ref.rerun.io/docs/python) are built via `mkdocs` and hosted on GitHub. For details on the Python doc-system, see [Writing Docs](rerun_py/docs/writing_docs.md).

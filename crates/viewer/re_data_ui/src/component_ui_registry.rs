@@ -1,6 +1,6 @@
 use re_arrow_ui::arrow_ui;
 use re_ui::UiExt as _;
-use re_viewer_context::ComponentUiRegistry;
+use re_viewer_context::{ComponentUiRegistry, StoreViewContext};
 
 use super::EntityDataUi;
 
@@ -26,38 +26,44 @@ pub fn add_to_registry<C: EntityDataUi + re_sdk_types::Component>(
     registry.add_legacy_display_ui(
         C::name(),
         Box::new(
-            |ctx,
-             ui,
-             ui_layout,
-             query,
-             db,
-             entity_path,
-             component_descriptor,
-             row_id,
-             component_raw| match C::from_arrow(component_raw) {
-                Ok(components) => match components.len() {
-                    1 => {
-                        components[0].entity_data_ui(
-                            ctx,
+            |ctx, ui, ui_layout, entity_path, component_descriptor, row_id, component_raw| {
+                match C::from_arrow(component_raw) {
+                    Ok(components) => match components.len() {
+                        1 => {
+                            // Legacy display UIs need an active store (entity db + per-store caches) to resolve annotations,
+                            // decode images, etc.
+                            // TODO(andreas): Some of these only depend on it for caches.
+                            if let Some(store_view_ctx) =
+                                StoreViewContext::for_active_recording(ctx)
+                            {
+                                components[0].entity_data_ui(
+                                    &store_view_ctx,
+                                    ui,
+                                    ui_layout,
+                                    entity_path,
+                                    component_descriptor,
+                                    row_id,
+                                );
+                            } else {
+                                arrow_ui(
+                                    ui,
+                                    ui_layout,
+                                    ctx.app_options.timestamp_format,
+                                    component_raw,
+                                );
+                            }
+                        }
+                        _ => arrow_ui(
                             ui,
                             ui_layout,
-                            entity_path,
-                            component_descriptor,
-                            row_id,
-                            query,
-                            db,
-                        );
+                            ctx.app_options.timestamp_format,
+                            component_raw,
+                        ),
+                    },
+                    Err(err) => {
+                        ui.error_with_details_on_hover("(failed to deserialize)")
+                            .on_hover_text(err.to_string());
                     }
-                    _ => arrow_ui(
-                        ui,
-                        ui_layout,
-                        ctx.app_options().timestamp_format,
-                        component_raw,
-                    ),
-                },
-                Err(err) => {
-                    ui.error_with_details_on_hover("(failed to deserialize)")
-                        .on_hover_text(err.to_string());
                 }
             },
         ),

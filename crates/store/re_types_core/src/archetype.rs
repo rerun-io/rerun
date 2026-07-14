@@ -28,7 +28,6 @@ pub trait Archetype {
     /// Returns all component descriptors that _should_ be provided by the user when constructing this archetype.
     #[inline]
     fn recommended_components() -> std::borrow::Cow<'static, [ComponentDescriptor]> {
-        // TODO(#10512): Maybe add the "marker" component back here?
         std::borrow::Cow::Owned(vec![])
     }
 
@@ -120,7 +119,7 @@ pub trait ArchetypeReflectionMarker {}
 
 re_string_interner::declare_new_type!(
     /// The fully-qualified name of an [`Archetype`], e.g. `rerun.archetypes.Points3D`.
-    #[cfg_attr(feature = "serde", derive(::serde::Deserialize, ::serde::Serialize))]
+    #[derive(::serde::Deserialize, ::serde::Serialize)]
     pub struct ArchetypeName;
 );
 
@@ -130,9 +129,9 @@ impl ArchetypeName {
     #[track_caller]
     pub fn sanity_check(&self) {
         let full_name = self.0.as_str();
-        debug_assert!(
+        re_log::debug_assert!(
             !full_name.starts_with("rerun.archetypes.rerun.archetypes."),
-            "DEBUG ASSERT: Found archetype with full name {full_name:?}. Maybe some bad round-tripping?"
+            "Found archetype with full name {full_name:?}. Maybe some bad round-tripping?"
         );
     }
 
@@ -183,6 +182,6 @@ impl ArchetypeName {
 
 re_string_interner::declare_new_type!(
     /// An identifier for a component, i.e. a field in an [`Archetype`].
-    #[cfg_attr(feature = "serde", derive(::serde::Deserialize, ::serde::Serialize))]
+    #[derive(::serde::Deserialize, ::serde::Serialize)]
     pub struct ComponentIdentifier;
 );

@@ -25,6 +25,7 @@ RecommendedViews {
                     ],
                 },
             ],
+            max_views_spawned: 8,
         },
     ),
     views_3d: Some(
@@ -37,6 +38,7 @@ RecommendedViews {
                     ],
                 },
             ],
+            max_views_spawned: 8,
         },
     ),
 }

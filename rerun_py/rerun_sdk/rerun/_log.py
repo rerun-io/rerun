@@ -32,7 +32,7 @@ def log(
     that implements the [`rerun.AsComponents`][] interface, or a collection of `ComponentBatchLike`
     objects.
 
-    When logging data, you must always provide an [entity_path](https://www.rerun.io/docs/concepts/entity-path)
+    When logging data, you must always provide an [entity_path](https://www.rerun.io/docs/concepts/logging-and-ingestion/entity-path)
     for identifying the data. Note that paths prefixed with "__" are considered reserved for use by the Rerun SDK
     itself and should not be used for logging user data. This is where Rerun will log additional information
     such as properties and warnings.
@@ -69,7 +69,7 @@ def log(
         This means that logging to `"world/my\ image\!"` is the same as logging
         to ["world", "my image!"].
 
-        See <https://www.rerun.io/docs/concepts/entity-path> for more on entity paths.
+        See <https://www.rerun.io/docs/concepts/logging-and-ingestion/entity-path> for more on entity paths.
 
     entity:
         Anything that implements the [`rerun.AsComponents`][] interface, usually an archetype,
@@ -85,7 +85,7 @@ def log(
         Static data has no time associated with it, exists on all timelines, and unconditionally shadows
         any temporal data of the same type.
 
-        Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
+        Otherwise, the data will be timestamped automatically with `log_time` (and `log_tick`, if enabled).
         Additional timelines set by [`rerun.set_time`][] will also be included.
 
     recording:
@@ -125,7 +125,7 @@ def log(
         else:
             raise TypeError(
                 f"Expected an object implementing rerun.AsComponents or an iterable of rerun.DescribedComponentBatch, "
-                f"but got {type(entity)} instead.",
+                f"but got {type(ext)} instead.",
             )
 
     _log_components(
@@ -159,7 +159,7 @@ def _log_components(
         This means that logging to `"world/my\ image\!"` is the same as logging
         to ["world", "my image!"].
 
-        See <https://www.rerun.io/docs/concepts/entity-path> for more on entity paths.
+        See <https://www.rerun.io/docs/concepts/logging-and-ingestion/entity-path> for more on entity paths.
 
     components:
         A collection of `ComponentBatchLike` objects.
@@ -170,7 +170,7 @@ def _log_components(
         Static data has no time associated with it, exists on all timelines, and unconditionally shadows
         any temporal data of the same type.
 
-        Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
+        Otherwise, the data will be timestamped automatically with `log_time` (and `log_tick`, if enabled).
         Additional timelines set by [`rerun.set_time`][] will also be included.
 
     recording:
@@ -227,11 +227,11 @@ def log_file_from_path(
     recording: RecordingStream | None = None,
 ) -> None:
     r"""
-    Logs the file at the given `path` using all `DataLoader`s available.
+    Logs the file at the given `path` using all `Importer`s available.
 
-    A single `path` might be handled by more than one loader.
+    A single `path` might be handled by more than one importer.
 
-    This method blocks until either at least one `DataLoader` starts
+    This method blocks until either at least one `Importer` starts
     streaming data in or all of them fail.
 
     See <https://www.rerun.io/docs/getting-started/data-in/open-any-file> for more information.
@@ -250,7 +250,7 @@ def log_file_from_path(
         Static data has no time associated with it, exists on all timelines, and unconditionally shadows
         any temporal data of the same type.
 
-        Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
+        Otherwise, the data will be timestamped automatically with `log_time` (and `log_tick`, if enabled).
         Additional timelines set by [`rerun.set_time`][] will also be included.
 
     recording:
@@ -278,11 +278,11 @@ def log_file_from_contents(
     recording: RecordingStream | None = None,
 ) -> None:
     r"""
-    Logs the given `file_contents` using all `DataLoader`s available.
+    Logs the given `file_contents` using all `Importer`s available.
 
-    A single `path` might be handled by more than one loader.
+    A single `path` might be handled by more than one importer.
 
-    This method blocks until either at least one `DataLoader` starts
+    This method blocks until either at least one `Importer` starts
     streaming data in or all of them fail.
 
     See <https://www.rerun.io/docs/getting-started/data-in/open-any-file> for more information.
@@ -304,7 +304,7 @@ def log_file_from_contents(
         Static data has no time associated with it, exists on all timelines, and unconditionally shadows
         any temporal data of the same type.
 
-        Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
+        Otherwise, the data will be timestamped automatically with `log_time` (and `log_tick`, if enabled).
         Additional timelines set by [`rerun.set_time`][] will also be included.
 
     recording:
@@ -329,7 +329,7 @@ def escape_entity_path_part(part: str) -> str:
 
     For instance, `escape_entity_path_path("my image!")` will return `"my\ image\!"`.
 
-    See <https://www.rerun.io/docs/concepts/entity-path> for more on entity paths.
+    See <https://www.rerun.io/docs/concepts/logging-and-ingestion/entity-path> for more on entity paths.
 
     Parameters
     ----------
@@ -353,7 +353,7 @@ def new_entity_path(entity_path: list[Any]) -> str:
 
     For instance, `new_entity_path(["world", 42, "my image!"])` will return `"world/42/my\ image\!"`.
 
-    See <https://www.rerun.io/docs/concepts/entity-path> for more on entity paths.
+    See <https://www.rerun.io/docs/concepts/logging-and-ingestion/entity-path> for more on entity paths.
 
     Parameters
     ----------

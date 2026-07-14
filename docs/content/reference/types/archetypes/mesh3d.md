@@ -10,8 +10,9 @@ See also [`archetypes.Asset3D`](https://rerun.io/docs/reference/types/archetypes
 If there are multiple [`archetypes.InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d) instances logged to the same entity as a mesh,
 an instance of the mesh will be drawn for each transform.
 
-The viewer draws meshes always two-sided. However, for transparency ordering
-front faces are assumed to those with counter clockwise triangle winding order (this is the same as in the GLTF specification).
+For transparency ordering, as well as back face culling (disabled by default),
+front faces are assumed to be those with counter clockwise triangle winding order
+(this is the same as in the GLTF specification).
 
 ## Fields
 ### Required
@@ -25,6 +26,7 @@ front faces are assumed to those with counter clockwise triangle winding order (
 * `vertex_colors`: [`Color`](../components/color.md)
 * `vertex_texcoords`: [`Texcoord2D`](../components/texcoord2d.md)
 * `albedo_factor`: [`AlbedoFactor`](../components/albedo_factor.md)
+* `face_rendering`: [`MeshFaceRendering`](../components/mesh_face_rendering.md)
 * `albedo_texture_buffer`: [`ImageBuffer`](../components/image_buffer.md)
 * `albedo_texture_format`: [`ImageFormat`](../components/image_format.md)
 * `class_ids`: [`ClassId`](../components/class_id.md)

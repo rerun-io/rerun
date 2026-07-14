@@ -7,38 +7,39 @@
 use re_log_types::EntityPath;
 use re_sdk_types::reflection::ComponentDescriptorExt as _;
 use re_sdk_types::{ComponentDescriptor, RowId};
-use re_ui::UiExt as _;
-use re_viewer_context::{UiLayout, ViewerContext};
+use re_viewer_context::{AppContext, StoreViewContext, UiLayout};
 
-mod annotation_context;
-mod app_id;
-mod blob;
-mod component;
-mod component_path;
-mod component_type;
+mod annotation_context_ui;
+mod app_id_ui;
+mod blob_ui;
+mod component_path_ui;
+mod component_type_ui;
 mod component_ui_registry;
-mod data_source;
-mod entity_db;
-mod entity_path;
-mod image;
-mod instance_path;
-mod store_id;
-mod tensor;
-mod transform_frames;
-mod video;
+mod data_source_ui;
+mod entity_db_ui;
+mod entity_path_ui;
+mod image_ui;
+mod instance_path_ui;
+mod latest_all_instance_ui;
+mod latest_at_instance_ui;
+mod store_id_ui;
+mod tensor_ui;
+mod transform_frames_ui;
+mod video_ui;
 
 mod extra_data_ui;
 pub mod item_ui;
 
-pub use component::ComponentPathLatestAtResults;
-pub use component_ui_registry::{add_to_registry, register_component_uis};
-pub use image::image_preview_ui;
-pub use instance_path::archetype_label_list_item_ui;
+pub use self::component_ui_registry::{add_to_registry, register_component_uis};
+pub use self::image_ui::image_preview_ui;
+pub use self::instance_path_ui::archetype_label_list_item_ui;
+pub use self::latest_all_instance_ui::LatestAllInstanceResult;
+pub use self::latest_at_instance_ui::LatestAtInstanceResult;
+pub use self::tensor_ui::tensor_summary_ui_grid_contents;
+
 use re_chunk_store::UnitChunkShared;
 use re_types_core::reflection::Reflection;
 use re_types_core::{ArchetypeName, Component};
-
-pub use crate::tensor::tensor_summary_ui_grid_contents;
 
 pub type ArchetypeComponentMap =
     std::collections::BTreeMap<Option<ArchetypeName>, Vec<ComponentDescriptor>>;
@@ -79,23 +80,26 @@ pub fn sorted_component_list_by_archetype_for_ui(
     map
 }
 
-/// Types implementing [`DataUi`] can display themselves in an [`egui::Ui`].
-pub trait DataUi {
+/// Types implementing [`AppUi`] can display themselves in an [`egui::Ui`] using only an [`AppContext`].
+pub trait AppUi {
     /// If you need to lookup something in the chunk store, use the given query to do so.
-    fn data_ui(
-        &self,
-        ctx: &ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        ui_layout: UiLayout,
-        query: &re_chunk_store::LatestAtQuery,
-        db: &re_entity_db::EntityDb,
-    );
+    fn app_ui(&self, ctx: &AppContext<'_>, ui: &mut egui::Ui, ui_layout: UiLayout);
+}
 
-    /// Called [`Self::data_ui`] using the default query and recording.
-    fn data_ui_recording(&self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui, ui_layout: UiLayout) {
-        ui.sanity_check();
-        self.data_ui(ctx, ui, ui_layout, &ctx.current_query(), ctx.recording());
-        ui.sanity_check();
+/// Types implementing [`DataUi`] can display themselves in an [`egui::Ui`].
+///
+/// Use this for things that live inside of a recording.
+pub trait DataUi {
+    fn data_ui(&self, ctx: &StoreViewContext<'_>, ui: &mut egui::Ui, ui_layout: UiLayout);
+}
+
+// Blanket implementation of DataUi for everything that already implements AppUi:
+impl<T> DataUi for T
+where
+    T: AppUi,
+{
+    fn data_ui(&self, ctx: &StoreViewContext<'_>, ui: &mut egui::Ui, ui_layout: UiLayout) {
+        self.app_ui(ctx.app_ctx, ui, ui_layout);
     }
 }
 
@@ -104,17 +108,14 @@ pub trait DataUi {
 /// This is given the context of the entity it is part of so it can do queries.
 pub trait EntityDataUi {
     /// If you need to lookup something in the chunk store, use the given query to do so.
-    #[expect(clippy::too_many_arguments)]
     fn entity_data_ui(
         &self,
-        ctx: &ViewerContext<'_>,
+        ctx: &StoreViewContext<'_>,
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
         entity_path: &EntityPath,
         component_descriptor: &ComponentDescriptor,
         row_id: Option<RowId>,
-        query: &re_chunk_store::LatestAtQuery,
-        db: &re_entity_db::EntityDb,
     );
 }
 
@@ -124,19 +125,17 @@ where
 {
     fn entity_data_ui(
         &self,
-        ctx: &ViewerContext<'_>,
+        ctx: &StoreViewContext<'_>,
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
         entity_path: &EntityPath,
         _component_descriptor: &ComponentDescriptor,
         _row_id: Option<RowId>,
-        query: &re_chunk_store::LatestAtQuery,
-        db: &re_entity_db::EntityDb,
     ) {
         // This ensures that UI state is maintained per entity. For example, the collapsed state for
         // `AnnotationContext` component is not saved by all instances of the component.
         ui.push_id(entity_path.hash(), |ui| {
-            self.data_ui(ctx, ui, ui_layout, query, db);
+            self.data_ui(ctx, ui, ui_layout);
         });
     }
 }
@@ -144,13 +143,12 @@ where
 // ---------------------------------------------------------------------------
 
 pub fn annotations(
-    ctx: &ViewerContext<'_>,
-    query: &re_chunk_store::LatestAtQuery,
+    ctx: &StoreViewContext<'_>,
     entity_path: &re_entity_db::EntityPath,
 ) -> std::sync::Arc<re_viewer_context::Annotations> {
     re_tracing::profile_function!();
     let mut annotation_map = re_viewer_context::AnnotationMap::default();
-    annotation_map.load(ctx, query);
+    annotation_map.load(ctx.db, &ctx.query());
     annotation_map.find(entity_path)
 }
 

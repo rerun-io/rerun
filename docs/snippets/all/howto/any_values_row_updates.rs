@@ -7,7 +7,10 @@ use std::sync::Arc;
 use rerun::external::arrow;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let rec = rerun::RecordingStreamBuilder::new("rerun_example_any_values_row_updates").spawn()?;
+    let rec = rerun::RecordingStreamBuilder::new(
+        "rerun_example_any_values_row_updates",
+    )
+    .spawn()?;
 
     for step in 0..64 {
         let sin_cos = rerun::AnyValues::default()

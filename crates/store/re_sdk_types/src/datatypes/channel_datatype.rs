@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -25,7 +26,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Datatype**: The innermost datatype of an image.
 ///
 /// How individual color channel components are encoded.
-#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Default)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Default, ::re_byte_size::SizeBytes)]
 #[repr(u8)]
 pub enum ChannelDatatype {
     /// 8-bit unsigned integer.
@@ -125,23 +126,16 @@ impl ::re_types_core::Loggable for ChannelDatatype {
             .with_context("rerun.datatypes.ChannelDatatype#enum")?
             .into_iter()
             .map(|typ| match typ {
-                Some(6) => Ok(Some(Self::U8)),
-                Some(7) => Ok(Some(Self::I8)),
-                Some(8) => Ok(Some(Self::U16)),
-                Some(9) => Ok(Some(Self::I16)),
-                Some(10) => Ok(Some(Self::U32)),
-                Some(11) => Ok(Some(Self::I32)),
-                Some(12) => Ok(Some(Self::U64)),
-                Some(13) => Ok(Some(Self::I64)),
-                Some(33) => Ok(Some(Self::F16)),
-                Some(34) => Ok(Some(Self::F32)),
-                Some(35) => Ok(Some(Self::F64)),
+                Some(val) => <Self as ::re_types_core::reflection::Enum>::try_from_integer(val)
+                    .map(Some)
+                    .ok_or_else(|| {
+                        DeserializationError::missing_union_arm(
+                            Self::arrow_datatype(),
+                            "<invalid>",
+                            val as _,
+                        )
+                    }),
                 None => Ok(None),
-                Some(invalid) => Err(DeserializationError::missing_union_arm(
-                    Self::arrow_datatype(),
-                    "<invalid>",
-                    invalid as _,
-                )),
             })
             .collect::<DeserializationResult<Vec<Option<_>>>>()
             .with_context("rerun.datatypes.ChannelDatatype")?)
@@ -167,6 +161,8 @@ impl std::fmt::Display for ChannelDatatype {
 }
 
 impl ::re_types_core::reflection::Enum for ChannelDatatype {
+    type Repr = u8;
+
     #[inline]
     fn variants() -> &'static [Self] {
         &[
@@ -200,16 +196,22 @@ impl ::re_types_core::reflection::Enum for ChannelDatatype {
             Self::F64 => "64-bit IEEE-754 floating point, also known as `double`.",
         }
     }
-}
-
-impl ::re_byte_size::SizeBytes for ChannelDatatype {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
 
     #[inline]
-    fn is_pod() -> bool {
-        true
+    fn try_from_integer(value: u8) -> Option<Self> {
+        match value {
+            6 => Some(Self::U8),
+            7 => Some(Self::I8),
+            8 => Some(Self::U16),
+            9 => Some(Self::I16),
+            10 => Some(Self::U32),
+            11 => Some(Self::I32),
+            12 => Some(Self::U64),
+            13 => Some(Self::I64),
+            33 => Some(Self::F16),
+            34 => Some(Self::F32),
+            35 => Some(Self::F64),
+            _ => None,
+        }
     }
 }

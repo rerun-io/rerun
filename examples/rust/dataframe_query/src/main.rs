@@ -57,10 +57,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             ..Default::default()
         };
 
-        let query_handle = engine.query(query.clone());
+        let mut query_handle = engine.query(query.clone());
+        let schema = query_handle.schema().clone();
         let record_batches = query_handle.batch_iter().take(10).collect_vec();
 
-        let batch = arrow::compute::concat_batches(query_handle.schema(), &record_batches)?;
+        let batch = arrow::compute::concat_batches(&schema, &record_batches)?;
         println!("{}", format_record_batch(&batch));
     }
 

@@ -1,8 +1,8 @@
 <!--[metadata]
 title = "ROS node"
 tags = ["2D", "3D", "Pinhole camera", "ROS", "Time series", "URDF"]
-thumbnail = "https://static.rerun.io/ros_node_example/ddc3387995cda1b283a5c58ffbc6021d91abde7d/480w.png"
-thumbnail_dimensions = [480, 284]
+thumbnail = "https://static.rerun.io/ros_node_example_new/e15b81b183ccafd8ee2994a6abf0b06cbdf22741/480w.png"
+thumbnail_dimensions = [480, 318]
 -->
 
 A minimal example of creating a ROS node that subscribes to topics and converts the messages to Rerun log calls.
@@ -10,15 +10,15 @@ A minimal example of creating a ROS node that subscribes to topics and converts 
 The solution here is mostly a toy example to show how ROS concepts can be mapped to Rerun.
 
 <picture>
-  <img src="https://static.rerun.io/ros_node_example/ddc3387995cda1b283a5c58ffbc6021d91abde7d/full.png" alt="Rerun viewer showing data streamed from the example ROS node">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/ros_node_example/ddc3387995cda1b283a5c58ffbc6021d91abde7d/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/ros_node_example/ddc3387995cda1b283a5c58ffbc6021d91abde7d/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/ros_node_example/ddc3387995cda1b283a5c58ffbc6021d91abde7d/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/ros_node_example/ddc3387995cda1b283a5c58ffbc6021d91abde7d/1200w.png">
+  <img src="https://static.rerun.io/ros_node_example_new/e15b81b183ccafd8ee2994a6abf0b06cbdf22741/full.png" alt="Rerun viewer showing data streamed from the example ROS node">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/ros_node_example_new/e15b81b183ccafd8ee2994a6abf0b06cbdf22741/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/ros_node_example_new/e15b81b183ccafd8ee2994a6abf0b06cbdf22741/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/ros_node_example_new/e15b81b183ccafd8ee2994a6abf0b06cbdf22741/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/ros_node_example_new/e15b81b183ccafd8ee2994a6abf0b06cbdf22741/1200w.png">
 </picture>
 
 ## Used Rerun types
-[`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`DepthImage`](https://rerun.io/docs/reference/types/archetypes/depth_image), [`Pinhole`](https://www.rerun.io/docs/reference/types/archetypes/pinhole), [`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d), [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d), [`LineStrips3D`](https://www.rerun.io/docs/reference/types/archetypes/line_strips3d), [`Scalars`](https://www.rerun.io/docs/reference/types/archetypes/scalars)
+[`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`DepthImage`](https://rerun.io/docs/reference/types/archetypes/depth_image), [`Pinhole`](https://www.rerun.io/docs/reference/types/archetypes/pinhole), [`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d), [`GridMap`](https://www.rerun.io/docs/reference/types/archetypes/grid_map), [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d), [`LineStrips3D`](https://www.rerun.io/docs/reference/types/archetypes/line_strips3d), [`Scalars`](https://www.rerun.io/docs/reference/types/archetypes/scalars)
 
 ## Background
 The [Robot Operating System (ROS)](https://www.ros.org) helps build robot applications through software libraries and tools.
@@ -27,7 +27,7 @@ In this example, Rerun visualizes simulation data, including robot pose, images,
 
 ## Logging and visualizing with Rerun
 
-Find the detailed code walkthrough and explanation for visualizing this example here: [Using Rerun with ROS 2](https://www.rerun.io/docs/howto/ros2-nav-turtlebot).
+Find the detailed code walkthrough and explanation for visualizing this example here: [Using Rerun with ROS 2](https://www.rerun.io/docs/howto/integrations/ros2-nav-turtlebot).
 
 For more information on future improved ROS support, see tracking issue: [#1527](https://github.com/rerun-io/rerun/issues/1537)
 

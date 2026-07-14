@@ -1,389 +1,460 @@
 use itertools::Itertools as _;
-use re_chunk_store::LatestAtQuery;
-use re_sdk_types::components::{self, Color, MarkerShape, MarkerSize};
-use re_sdk_types::{Archetype as _, Component as _, archetypes};
-use re_view::{
-    clamped_or_nothing, latest_at_with_blueprint_resolved_data, range_with_blueprint_resolved_data,
-};
+use rayon::prelude::*;
+use re_sdk_types::archetypes::SeriesPoints;
+use re_sdk_types::components::{self, MarkerShape, MarkerSize};
+use re_sdk_types::{Archetype as _, Loggable as _, archetypes};
+use re_view::{ChunksWithComponent, clamped_or_nothing, range_with_blueprint_resolved_data};
 use re_viewer_context::external::re_entity_db::InstancePath;
 use re_viewer_context::{
-    IdentifiedViewSystem, ViewContext, ViewQuery, ViewSystemExecutionError,
-    VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
+    IdentifiedViewSystem, SingleRequiredComponentConstraint, ViewContext, ViewQuery,
+    ViewStateExt as _, ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo,
+    VisualizerReportSeverity, VisualizerSystem, typed_fallback_for,
 };
-use re_viewport_blueprint::ViewPropertyQueryError;
 
 use crate::series_query::{
     all_scalars_indices, allocate_plot_points, collect_colors, collect_radius_ui, collect_scalars,
     collect_series_name, collect_series_visibility, determine_num_series,
 };
-use crate::{
-    LoadSeriesError, PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind, ScatterAttrs, util,
-};
+use crate::{PlotPoint, PlotPointAttrs, PlotSeries, PlotSeriesKind, ScatterAttrs, util};
 
-/// The system for rendering [`archetypes::SeriesPoints`] archetypes.
-#[derive(Default, Debug)]
-pub struct SeriesPointsSystem {
+/// Output data from [`SeriesPointsSystem`].
+#[derive(Default, Clone)]
+pub struct SeriesPointsOutput {
     pub all_series: Vec<PlotSeries>,
 }
 
+/// The system for rendering [`archetypes::SeriesPoints`] archetypes.
+#[derive(Default, Debug)]
+pub struct SeriesPointsSystem;
+
 impl IdentifiedViewSystem for SeriesPointsSystem {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "SeriesPoints".into()
+        re_viewer_context::external::re_string_interner::intern_static!(
+            re_viewer_context::ViewSystemIdentifier,
+            "SeriesPoints"
+        )
     }
 }
 
 impl VisualizerSystem for SeriesPointsSystem {
     fn visualizer_query_info(
         &self,
-        app_options: &re_viewer_context::AppOptions,
+        _app_options: &re_viewer_context::AppOptions,
     ) -> VisualizerQueryInfo {
-        if app_options.experimental.component_mapping {
-            VisualizerQueryInfo {
-                relevant_archetype: archetypes::SeriesPoints::name().into(),
-                required: re_viewer_context::RequiredComponents::AnyPhysicalDatatype {
-                    semantic_type: components::Scalar::name(),
-                    physical_types: util::series_supported_datatypes().into_iter().collect(),
-                },
-                queried: archetypes::Scalars::all_components()
-                    .iter()
-                    .chain(archetypes::SeriesPoints::all_components().iter())
-                    .cloned()
-                    .collect(),
-            }
-        } else {
-            let mut query_info = VisualizerQueryInfo::from_archetype::<archetypes::Scalars>();
-            query_info
-                .queried
-                .extend(archetypes::SeriesPoints::all_components().iter().cloned());
-
-            query_info.relevant_archetype = archetypes::SeriesPoints::name().into();
-
-            query_info
+        VisualizerQueryInfo {
+            relevant_archetype: archetypes::SeriesPoints::name().into(),
+            constraints: SingleRequiredComponentConstraint::new::<components::Scalar>(
+                &archetypes::Scalars::descriptor_scalars(),
+            )
+            .with_additional_physical_types(util::series_supported_datatypes())
+            .with_allow_static_data(false)
+            .into(),
+            queried: std::iter::chain(
+                archetypes::Scalars::all_components().iter(),
+                archetypes::SeriesPoints::all_components().iter(),
+            )
+            .cloned()
+            .collect(),
         }
     }
 
     fn execute(
-        &mut self,
+        &self,
         ctx: &ViewContext<'_>,
         query: &ViewQuery<'_>,
         _context: &re_viewer_context::ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        self.load_scalars(ctx, query)?;
-        Ok(VisualizerExecutionOutput::default())
+        let output = VisualizerExecutionOutput::default();
+
+        let time_per_pixel = ctx
+            .view_state
+            .downcast_ref::<crate::view_class::TimeSeriesViewState>()
+            .map_or(1.0, |state| state.time_per_pixel);
+
+        let data_results: Vec<_> = query
+            .iter_visualizer_instruction_for(Self::identifier())
+            .collect();
+
+        let all_series: Vec<_> = data_results
+            .par_iter()
+            .map(|(data_result, instruction)| {
+                Self::load_series(
+                    ctx,
+                    query,
+                    time_per_pixel,
+                    data_result,
+                    instruction,
+                    &output,
+                )
+            })
+            .collect();
+
+        let mut all_series_flat = Vec::new();
+        all_series_flat.extend(all_series.into_iter().flatten());
+
+        // Build instanced-mesh draw data for the scatter markers (one mesh per `MarkerShape`).
+        let draw_data = Self::build_draw_data(ctx, query, &all_series_flat);
+
+        Ok(output
+            .with_draw_data(draw_data)
+            .with_visualizer_data(SeriesPointsOutput {
+                all_series: all_series_flat,
+            }))
     }
 }
 
 impl SeriesPointsSystem {
-    fn load_scalars(
-        &mut self,
+    fn build_draw_data(
         ctx: &ViewContext<'_>,
         query: &ViewQuery<'_>,
-    ) -> Result<(), ViewPropertyQueryError> {
+        all_series: &[PlotSeries],
+    ) -> Vec<re_renderer::QueueableDrawData> {
         re_tracing::profile_function!();
 
-        use rayon::prelude::*;
+        let render_ctx = ctx.viewer_ctx.render_ctx();
 
-        let mut output = VisualizerExecutionOutput::default();
+        let view_state = ctx
+            .view_state
+            .as_any()
+            .downcast_ref::<crate::view_class::TimeSeriesViewState>();
 
-        let plot_mem =
-            egui_plot::PlotMemory::load(ctx.viewer_ctx.egui_ctx(), crate::plot_id(query.view_id));
-        let time_per_pixel = util::determine_time_per_pixel(ctx.viewer_ctx, plot_mem.as_ref());
+        let time_offset = view_state.map_or(0, |state| state.time_offset);
+        let Some(plot_transform) = view_state.and_then(|state| state.plot_transform) else {
+            // First frame: no transform available yet.
+            return Vec::new();
+        };
 
-        let data_results = query.iter_visualizer_instruction_for(Self::identifier());
+        let Some(marker_meshes) = ctx
+            .viewer_ctx
+            .store_context
+            .memoizer(|cache: &mut crate::markers::MarkerMeshCache| cache.get_or_build(render_ctx))
+        else {
+            return Vec::new();
+        };
 
-        for result in data_results
-            .collect_vec()
-            .par_iter()
-            .map(|(data_result, instruction)| {
-                Self::load_series(ctx, query, time_per_pixel, data_result, instruction)
-            })
-            .collect::<Vec<_>>()
-        {
-            match result {
-                Err(LoadSeriesError::ViewPropertyQuery(err)) => {
-                    return Err(err);
+        let mut instances = Vec::new();
+        for series in all_series {
+            if !series.visible || series.points.is_empty() {
+                continue;
+            }
+            let crate::PlotSeriesKind::Scatter(scatter_attrs) = series.kind else {
+                continue;
+            };
+
+            let mut radius = series.radius_ui;
+            if crate::series_query::is_series_highlighted(query, series) {
+                radius += crate::markers::HIGHLIGHT_RADIUS_EXPANSION;
+            }
+
+            let mesh = marker_meshes.for_shape(scatter_attrs.marker);
+
+            for &(time, value) in &series.points {
+                if !value.is_finite() {
+                    continue;
                 }
-                Err(LoadSeriesError::EntitySpecificVisualizerError { entity_path, err }) => {
-                    output.report_error_for(entity_path, err);
-                }
-                Ok(one_series) => {
-                    self.all_series.extend(one_series);
-                }
+
+                // We don't do gpu transforms since that would transform the shape of things, and we
+                // only want to transform the center position.
+                let center = plot_transform.position_from_point(&egui_plot::PlotPoint::new(
+                    (time.saturating_sub(time_offset)) as f64,
+                    value,
+                ));
+                instances.push(crate::markers::marker_instance(
+                    mesh.clone(),
+                    glam::vec2(center.x, center.y),
+                    radius,
+                    series.color,
+                ));
             }
         }
 
-        Ok(())
-    }
+        if instances.is_empty() {
+            return Vec::new();
+        }
 
+        match re_renderer::renderer::MeshDrawData::new(render_ctx, &instances) {
+            Ok(draw_data) => vec![draw_data.into()],
+            Err(err) => {
+                re_log::error_once!("Failed to build scatter marker MeshDrawData: {err}");
+                Vec::new()
+            }
+        }
+    }
+}
+
+impl SeriesPointsSystem {
     fn load_series(
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         time_per_pixel: f64,
         data_result: &re_viewer_context::DataResult,
         instruction: &re_viewer_context::VisualizerInstruction,
-    ) -> Result<Vec<PlotSeries>, LoadSeriesError> {
-        re_tracing::profile_function!();
+        output: &VisualizerExecutionOutput,
+    ) -> Vec<PlotSeries> {
+        re_tracing::profile_function!(data_result.entity_path.to_string());
 
         let current_query = ctx.current_query();
-        let query_ctx = ctx.query_context(data_result, &current_query);
+        let query_ctx = ctx.query_context(data_result, current_query.clone(), instruction.id);
 
-        let fallback_shape = MarkerShape::default();
+        let data_time_range =
+            util::data_result_time_range(ctx.viewer_ctx, data_result, view_query.timeline);
+        let query_range = match util::determine_query_range(ctx, data_time_range) {
+            Ok(range) => range,
+            Err(err) => {
+                output.report_unspecified_source(
+                    instruction.id,
+                    VisualizerReportSeverity::Error,
+                    format!("Failed to determine query range: {err}"),
+                );
+                return Vec::new();
+            }
+        };
+        let query = re_chunk_store::RangeQuery::new(view_query.timeline, query_range);
 
-        let time_range = util::determine_time_range(ctx, data_result)?;
-
-        {
-            use re_view::RangeResultsExt as _;
-
-            re_tracing::profile_scope!("primary", &data_result.entity_path.to_string());
-
-            let entity_path = &data_result.entity_path;
-            let query = re_chunk_store::RangeQuery::new(view_query.timeline, time_range);
-
-            let results = range_with_blueprint_resolved_data(
-                ctx,
-                None,
-                &query,
-                data_result,
-                archetypes::Scalars::all_component_identifiers()
-                    .chain(archetypes::SeriesPoints::all_component_identifiers()),
-                instruction,
-            );
-
-            // If we have no scalars, we can't do anything.
-            let Some(all_scalar_chunks) =
-                results.get_required_chunks(archetypes::Scalars::descriptor_scalars().component)
-            else {
-                return Err(LoadSeriesError::EntitySpecificVisualizerError {
-                    entity_path: data_result.entity_path.clone(),
-                    err: "No valid scalar data found".to_owned(),
-                });
-            };
-
-            // All the default values for a `PlotPoint`, accounting for both overrides and default values.
-            let fallback_color: Color = typed_fallback_for(
-                &query_ctx,
-                archetypes::SeriesPoints::descriptor_colors().component,
-            );
-            let fallback_size: MarkerSize = typed_fallback_for(
-                &query_ctx,
-                archetypes::SeriesPoints::descriptor_marker_sizes().component,
-            );
-            let default_point = PlotPoint {
-                time: 0,
-                value: 0.0,
-                attrs: PlotPointAttrs {
-                    color: fallback_color.into(),
-                    // NOTE: arguably, the `MarkerSize` value should be twice the `radius_ui`. We do
-                    // stick to the semantics of `MarkerSize` == radius for backward compatibility and
-                    // because markers need a decent radius value to be at all legible.
-                    radius_ui: **fallback_size,
-                    kind: PlotSeriesKind::Scatter(ScatterAttrs {
-                        marker: fallback_shape,
-                    }),
-                },
-            };
-
-            let num_series = determine_num_series(&all_scalar_chunks);
-            let mut points_per_series =
-                allocate_plot_points(&query, &default_point, &all_scalar_chunks, num_series);
-
-            collect_scalars(&all_scalar_chunks, &mut points_per_series);
-
-            // The plot view visualizes scalar data within a specific time range, without any kind
-            // of time-alignment / bootstrapping behavior:
-            // * For the scalar themselves, this is what you want: if you're trying to plot some
-            //   data between t=100 and t=200, you don't want to display a point from t=20 (and
-            //   _extended bounds_ will take care of lines crossing the limit).
-            // * For the secondary components (colors, radii, names, etc), this is a problem
-            //   though: you don't want your plot to change color depending on what the currently
-            //   visible time range is! Secondary components have to be bootstrapped.
-            let query_shadowed_components = false;
-            let bootstrapped_results = latest_at_with_blueprint_resolved_data(
-                ctx,
-                None,
-                &LatestAtQuery::new(query.timeline, query.range.min()),
-                data_result,
+        let mut results = range_with_blueprint_resolved_data(
+            ctx,
+            None,
+            &query,
+            data_result,
+            std::iter::chain(
+                archetypes::Scalars::all_component_identifiers(),
                 archetypes::SeriesPoints::all_component_identifiers(),
-                query_shadowed_components,
-                Some(instruction),
-            );
+            ),
+            instruction,
+        );
 
-            collect_colors(
-                entity_path,
-                &query,
-                &bootstrapped_results,
-                &results,
-                &all_scalar_chunks,
-                &mut points_per_series,
-                &archetypes::SeriesPoints::descriptor_colors(),
-            );
-            collect_radius_ui(
-                &query,
-                &bootstrapped_results,
-                &results,
-                &all_scalar_chunks,
-                &mut points_per_series,
-                &archetypes::SeriesPoints::descriptor_marker_sizes(),
-                // `marker_size` is a radius, see NOTE above
-                1.0,
-            );
+        // The plot view visualizes scalar data within a specific time range, without any kind
+        // of time-alignment / bootstrapping behavior:
+        // * For the scalar themselves, this is what you want: if you're trying to plot some
+        //   data between t=100 and t=200, you don't want to display a point from t=20 (and
+        //   _extended bounds_ will take care of lines crossing the limit).
+        // * For the secondary components (colors, radii, names, etc), this is a problem
+        //   though: you don't want your plot to change color depending on what the currently
+        //   visible time range is! Secondary components have to be bootstrapped.
+        //
+        // Bootstrapping is now handled automatically by the query system for the components
+        // we specified when calling range_with_blueprint_resolved_data.
+        results.merge_bootstrapped_data(re_view::latest_at_with_blueprint_resolved_data(
+            ctx,
+            None,
+            &re_chunk_store::LatestAtQuery::new(query.timeline, query.range.min()),
+            data_result,
+            archetypes::SeriesPoints::optional_components()
+                .iter()
+                .map(|c| c.component),
+            Some(instruction),
+        ));
 
-            // Fill in marker shapes
+        // Wrap results for convenient error-reporting iteration
+        let results = re_view::BlueprintResolvedResults::Range(query.clone(), results);
+        let results =
+            re_view::VisualizerInstructionQueryResults::new(instruction, &results, output);
+
+        // If we have no scalars, we can't do anything.
+        let scalar_component = archetypes::Scalars::descriptor_scalars().component;
+        let scalar_iter = results.iter_required(scalar_component);
+        let all_scalar_chunks = scalar_iter.chunks();
+
+        // Filter out static times if any slipped in.
+        // It's enough to check the first one chunk since an entire column has to be either temporal or static.
+        let empty_chunks;
+        let all_scalar_chunks = if let Some(chunk) = all_scalar_chunks.chunks.first()
+            && chunk.is_static()
+        {
+            results.report_for_component(scalar_component, VisualizerReportSeverity::Error, "Can't plot data that was logged statically in a time series since there's no temporal dimension");
+            empty_chunks = ChunksWithComponent::empty(scalar_component);
+            &empty_chunks // Proceed with empty data so we catch other errors as well.
+        } else {
+            all_scalar_chunks
+        };
+
+        // All the default values for a `PlotPoint`, accounting for both overrides and default values.
+        // We know there's only a single value fallback for stroke width, so this is fine, albeit a bit hacky in case we add an array fallback later.
+        let fallback_size: MarkerSize = typed_fallback_for(
+            &query_ctx,
+            archetypes::SeriesPoints::descriptor_marker_sizes().component,
+        );
+        let default_point = PlotPoint {
+            time: 0,
+            value: 0.0,
+            attrs: PlotPointAttrs {
+                // Filled out later.
+                color: egui::Color32::DEBUG_COLOR,
+                // NOTE: arguably, the `MarkerSize` value should be twice the `radius_ui`. We do
+                // stick to the semantics of `MarkerSize` == radius for backward compatibility and
+                // because markers need a decent radius value to be at all legible.
+                radius_ui: **fallback_size,
+                kind: PlotSeriesKind::Scatter(ScatterAttrs {
+                    marker: MarkerShape::default(),
+                }),
+            },
+        };
+
+        let num_series = determine_num_series(all_scalar_chunks, &results);
+        let mut points_per_series =
+            allocate_plot_points(&query, &default_point, all_scalar_chunks, num_series);
+
+        collect_scalars(all_scalar_chunks, &mut points_per_series);
+        collect_colors(
+            &query,
+            &results,
+            all_scalar_chunks,
+            &mut points_per_series,
+            &archetypes::SeriesPoints::descriptor_colors(),
+        );
+        collect_radius_ui(
+            &query,
+            &results,
+            all_scalar_chunks,
+            &mut points_per_series,
+            &archetypes::SeriesPoints::descriptor_marker_sizes(),
+            // `marker_size` is a radius, see NOTE above
+            1.0,
+        );
+
+        // Fill in marker shapes
+        {
+            re_tracing::profile_scope!("fill marker shapes");
+
             {
-                re_tracing::profile_scope!("fill marker shapes");
+                let marker_iter =
+                    results.iter_optional(archetypes::SeriesPoints::descriptor_markers().component);
+                let all_marker_shapes_chunks = marker_iter.chunks().iter().collect_vec();
 
+                if all_marker_shapes_chunks.len() == 1
+                    && all_marker_shapes_chunks[0].chunk.num_rows() == 1
                 {
-                    let all_marker_shapes_chunks = bootstrapped_results
-                        .get_optional_chunks(
-                            archetypes::SeriesPoints::descriptor_markers().component,
-                        )
-                        .iter()
-                        .cloned()
-                        .chain(
-                            results
-                                .get_optional_chunks(
-                                    archetypes::SeriesPoints::descriptor_markers().component,
-                                )
-                                .iter()
-                                .cloned(),
-                        )
-                        .collect_vec();
+                    re_tracing::profile_scope!("override/default fast path");
 
-                    if all_marker_shapes_chunks.len() == 1
-                        && all_marker_shapes_chunks[0].is_static()
+                    if let Some(marker_shapes) = all_marker_shapes_chunks[0]
+                        .iter_component::<MarkerShape>()
+                        .next()
                     {
-                        re_tracing::profile_scope!("override/default fast path");
-
-                        if let Some(marker_shapes) = all_marker_shapes_chunks[0]
-                            .iter_component::<MarkerShape>(
-                                archetypes::SeriesPoints::descriptor_markers().component,
-                            )
-                            .next()
-                        {
-                            for (points, marker_shape) in points_per_series
-                                .iter_mut()
-                                .zip(clamped_or_nothing(marker_shapes.as_slice(), num_series))
-                            {
-                                for point in points {
-                                    point.attrs.kind = PlotSeriesKind::Scatter(ScatterAttrs {
-                                        marker: *marker_shape,
-                                    });
-                                }
+                        for (points, marker_shape) in std::iter::zip(
+                            points_per_series.iter_mut(),
+                            clamped_or_nothing(marker_shapes.as_slice(), num_series),
+                        ) {
+                            for point in points {
+                                point.attrs.kind = PlotSeriesKind::Scatter(ScatterAttrs {
+                                    marker: *marker_shape,
+                                });
                             }
                         }
-                    } else {
-                        re_tracing::profile_scope!("standard path");
+                    }
+                } else if all_marker_shapes_chunks.is_empty() {
+                    re_tracing::profile_scope!("fallback markers");
 
-                        let mut all_marker_shapes_iters = all_marker_shapes_chunks
-                            .iter()
-                            .map(|chunk| {
-                                chunk.iter_component::<MarkerShape>(
-                                    archetypes::SeriesPoints::descriptor_markers().component,
-                                )
-                            })
-                            .collect_vec();
-                        let all_marker_shapes_indexed = {
-                            let all_marker_shapes = all_marker_shapes_iters
-                                .iter_mut()
-                                .flat_map(|it| it.into_iter());
-                            let all_marker_shapes_indices =
-                                all_marker_shapes_chunks.iter().flat_map(|chunk| {
-                                    chunk.iter_component_indices(
-                                        *query.timeline(),
-                                        archetypes::SeriesPoints::descriptor_markers().component,
-                                    )
-                                });
-                            itertools::izip!(all_marker_shapes_indices, all_marker_shapes)
-                        };
-
-                        let all_frames = re_query::range_zip_1x1(
-                            all_scalars_indices(&query, &all_scalar_chunks),
-                            all_marker_shapes_indexed,
-                        )
-                        .enumerate();
-
-                        // Simplified path for single series.
-                        if num_series == 1 {
-                            let points = &mut *points_per_series[0];
-                            all_frames.for_each(|(i, (_index, _scalars, marker_shapes))| {
-                                if let Some(marker) = marker_shapes
-                                    .and_then(|marker_shapes| marker_shapes.first().copied())
-                                {
-                                    points[i].attrs.kind =
-                                        PlotSeriesKind::Scatter(ScatterAttrs { marker });
-                                }
-                            });
-                        } else {
-                            all_frames.for_each(|(i, (_index, _scalars, marker_shapes))| {
-                                if let Some(marker_shapes) = marker_shapes {
-                                    for (points, marker) in points_per_series
-                                        .iter_mut()
-                                        .zip(clamped_or_nothing(&marker_shapes, num_series))
-                                    {
-                                        points[i].attrs.kind =
-                                            PlotSeriesKind::Scatter(ScatterAttrs {
-                                                marker: *marker,
-                                            });
-                                    }
-                                }
-                            });
+                    let fallback_array = query_ctx
+                        .viewer_ctx()
+                        .component_fallback_registry()
+                        .fallback_for(&SeriesPoints::descriptor_markers(), &query_ctx);
+                    if let Ok(marker_array) = MarkerShape::from_arrow(&fallback_array) {
+                        for (points, marker) in std::iter::zip(
+                            points_per_series.iter_mut(),
+                            clamped_or_nothing(&marker_array, num_series),
+                        ) {
+                            for p in points {
+                                p.attrs.kind =
+                                    PlotSeriesKind::Scatter(ScatterAttrs { marker: *marker });
+                            }
                         }
+                    }
+                } else {
+                    re_tracing::profile_scope!("standard path");
+
+                    let mut all_marker_shapes_iters = all_marker_shapes_chunks
+                        .iter()
+                        .map(|chunk| chunk.iter_component::<MarkerShape>())
+                        .collect_vec();
+                    let all_marker_shapes_indexed = {
+                        let all_marker_shapes = all_marker_shapes_iters
+                            .iter_mut()
+                            .flat_map(|it| it.into_iter());
+                        let all_marker_shapes_indices = all_marker_shapes_chunks
+                            .iter()
+                            .flat_map(|chunk| chunk.iter_component_indices(*query.timeline()));
+                        itertools::izip!(all_marker_shapes_indices, all_marker_shapes)
+                    };
+
+                    let all_frames = re_query::range_zip_1x1(
+                        all_scalars_indices(&query, all_scalar_chunks),
+                        all_marker_shapes_indexed,
+                    )
+                    .enumerate();
+
+                    // Simplified path for single series.
+                    if num_series == 1 {
+                        let points = &mut *points_per_series[0];
+                        all_frames.for_each(|(i, (_index, _scalars, marker_shapes))| {
+                            if let Some(marker) = marker_shapes
+                                .and_then(|marker_shapes| marker_shapes.first().copied())
+                            {
+                                points[i].attrs.kind =
+                                    PlotSeriesKind::Scatter(ScatterAttrs { marker });
+                            }
+                        });
+                    } else {
+                        all_frames.for_each(|(i, (_index, _scalars, marker_shapes))| {
+                            if let Some(marker_shapes) = marker_shapes {
+                                for (points, marker) in std::iter::zip(
+                                    points_per_series.iter_mut(),
+                                    clamped_or_nothing(&marker_shapes, num_series),
+                                ) {
+                                    points[i].attrs.kind =
+                                        PlotSeriesKind::Scatter(ScatterAttrs { marker: *marker });
+                                }
+                            }
+                        });
                     }
                 }
             }
-
-            let series_visibility = collect_series_visibility(
-                &query,
-                &bootstrapped_results,
-                &results,
-                num_series,
-                archetypes::SeriesPoints::descriptor_visible_series().component,
-            );
-            let series_names = collect_series_name(
-                &query_ctx,
-                &bootstrapped_results,
-                &results,
-                num_series,
-                &archetypes::SeriesPoints::descriptor_names(),
-            );
-
-            let mut series = Vec::with_capacity(num_series);
-
-            debug_assert_eq!(points_per_series.len(), series_names.len());
-            for (instance, (points, label, visible)) in itertools::izip!(
-                points_per_series.into_iter(),
-                series_names.into_iter(),
-                series_visibility.into_iter()
-            )
-            .enumerate()
-            {
-                let instance_path = if num_series == 1 {
-                    InstancePath::entity_all(data_result.entity_path.clone())
-                } else {
-                    InstancePath::instance(data_result.entity_path.clone(), instance as u64)
-                };
-
-                util::points_to_series(
-                    instance_path,
-                    time_per_pixel,
-                    visible,
-                    points,
-                    ctx.recording_engine().store(),
-                    view_query,
-                    label,
-                    // Aggregation for points is not supported.
-                    re_sdk_types::components::AggregationPolicy::Off,
-                    &mut series,
-                )
-                .map_err(|err| LoadSeriesError::EntitySpecificVisualizerError {
-                    entity_path: data_result.entity_path.clone(),
-                    err,
-                })?;
-            }
-
-            Ok(series)
         }
+
+        let series_visibility = collect_series_visibility(
+            &results,
+            num_series,
+            &archetypes::SeriesPoints::descriptor_visible_series(),
+        );
+        let series_names = collect_series_name(
+            &results,
+            num_series,
+            &archetypes::SeriesPoints::descriptor_names(),
+        );
+
+        let mut series = Vec::with_capacity(num_series);
+
+        re_log::debug_assert!(
+            points_per_series.len() <= series_names.len(),
+            "Number of series names {} after processing should be at least the number of series allocated {}",
+            series_names.len(),
+            points_per_series.len()
+        );
+        for (instance, (points, label, visible)) in
+            itertools::izip!(points_per_series, series_names, series_visibility).enumerate()
+        {
+            let instance_path = if num_series == 1 {
+                InstancePath::entity_all(data_result.entity_path.clone())
+            } else {
+                InstancePath::instance(data_result.entity_path.clone(), instance as u64)
+            };
+
+            util::points_to_series(
+                instance_path,
+                time_per_pixel,
+                visible,
+                points,
+                ctx.recording_engine().store(),
+                view_query,
+                label,
+                // Aggregation for points is not supported.
+                re_sdk_types::components::AggregationPolicy::Off,
+                &mut series,
+                instruction.id,
+            );
+        }
+
+        series
     }
 }

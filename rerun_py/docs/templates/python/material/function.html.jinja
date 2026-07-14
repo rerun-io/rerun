@@ -1,0 +1,142 @@
+{#- Minimally patched from upstream mkdocstrings-python:
+material/_base/function.html.jinja
+
+Our deviations from upstream are marked with `CHANGE relative to upstream`
+comments below:
+  - prefix each signature (and overload) with a `def ` keyword
+  - drop the `first` CSS class (better formatting for the common API index)
+Re-derive from the installed upstream template when bumping mkdocstrings,
+re-applying those changes.
+-#}
+
+{% block logs scoped %}
+  {{ log.debug("Rendering " + function.path) }}
+{% endblock logs %}
+
+{% import "language"|get_template as lang with context %}
+
+<div class="doc doc-object doc-function">
+  {% with obj = function, html_id = function.path %}
+
+    {% if root %}
+      {% set show_full_path = config.show_root_full_path %}
+      {% set root_members = True %}
+    {% elif root_members %}
+      {% set show_full_path = config.show_root_members_full_path or config.show_object_full_path %}
+      {% set root_members = False %}
+    {% else %}
+      {% set show_full_path = config.show_object_full_path %}
+    {% endif %}
+
+    {% set function_name = function.path if show_full_path else function.name %}
+    {% set symbol_type = "method" if function.parent.is_class else "function" %}
+
+    {% if not root or config.show_root_heading %}
+      {% filter heading(
+          heading_level,
+          role="function",
+          id=html_id,
+          class="doc doc-heading",
+          toc_label=(('<code class="doc-symbol doc-symbol-toc doc-symbol-' + symbol_type + '"></code>&nbsp;')|safe if config.show_symbol_type_toc else '') + (config.toc_label if config.toc_label and root else function.name),
+        ) %}
+
+        {% block heading scoped %}
+          {% if config.show_symbol_type_heading %}<code class="doc-symbol doc-symbol-heading doc-symbol-{{ symbol_type }}"></code>{% endif %}
+          {% if config.heading and root %}
+            {{ config.heading }}
+          {% elif config.separate_signature %}
+            <span class="doc doc-object-name doc-function-name">{{ function_name }}</span>
+          {% else %}
+            {%+ filter highlight(language="python", inline=True) -%}
+              {{ function_name }}{% include "signature"|get_template with context %}
+            {%- endfilter %}
+          {% endif %}
+        {% endblock heading %}
+
+        {% block labels scoped %}
+          {% with labels = function.labels %}
+            {% include "labels"|get_template with context %}
+          {% endwith %}
+        {% endblock labels %}
+
+      {% endfilter %}
+
+      {% block signature scoped %}
+        {% if function.overloads and config.show_overloads %}
+          {# CHANGE relative to upstream: prefix each signature with a `def ` keyword. #}
+          {# `format_signature` deliberately omits it, but we prefer the fuller form. #}
+          {# It always emits the function name as the first `nf` span, so inject before that. #}
+          <div class="doc-overloads">
+            {% for overload in function.overloads %}
+              {% set rendered_overload %}
+                {% filter format_signature(overload, config.line_length, annotations=True, crossrefs=config.signature_crossrefs) %}
+                  {{ overload.name }}
+                {% endfilter %}
+              {% endset %}
+              {% autoescape false %}
+                {{ rendered_overload | replace('<span class="nf">', '<span class="k">def </span><span class="nf">', 1) }}
+              {% endautoescape %}
+            {% endfor %}
+          </div>
+        {% endif %}
+        {% if config.separate_signature %}
+          {% set rendered_signature %}
+            {% filter format_signature(function, config.line_length, crossrefs=config.signature_crossrefs) %}
+              {{ function_name }}
+            {% endfilter %}
+          {% endset %}
+          {% autoescape false %}
+            {{ rendered_signature | replace('<span class="nf">', '<span class="k">def </span><span class="nf">', 1) }}
+          {% endautoescape %}
+        {% endif %}
+      {% endblock signature %}
+
+    {% else %}
+
+      {% if config.show_root_toc_entry %}
+        {% filter heading(
+            heading_level,
+            role="function",
+            id=html_id,
+            toc_label=(('<code class="doc-symbol doc-symbol-toc doc-symbol-' + symbol_type + '"></code>&nbsp;')|safe if config.show_symbol_type_toc else '') + (config.toc_label if config.toc_label and root else function.name),
+            hidden=True,
+          ) %}
+        {% endfilter %}
+      {% endif %}
+      {% set heading_level = heading_level - 1 %}
+    {% endif %}
+
+    {# CHANGE relative to upstream: don't apply the 'first' class. It causes worse CSS #}
+    {# formatting for our generated common API index, since we inline bare functions #}
+    {# that become root-level rather than modules. #}
+    <div class="doc doc-contents">
+      {% block contents scoped %}
+        {% block docstring scoped %}
+          {% with docstring_sections = function.docstring.parsed %}
+            {% include "docstring"|get_template with context %}
+          {% endwith %}
+        {% endblock docstring %}
+
+        {% if config.backlinks %}
+          <backlinks identifier="{{ html_id }}" handler="python" />
+        {% endif %}
+
+        {% block source scoped %}
+          {% if config.show_source and function.source %}
+            <details class="quote">
+              <summary>{{ lang.t("Source code in") }} <code>
+                {%- if function.relative_filepath.is_absolute() -%}
+                  {{ function.relative_package_filepath }}
+                {%- else -%}
+                  {{ function.relative_filepath }}
+                {%- endif -%}
+              </code></summary>
+              {{ function.source|highlight(language="python", linestart=function.lineno or 0, linenums=True) }}
+            </details>
+          {% endif %}
+        {% endblock source %}
+      {% endblock contents %}
+    </div>
+
+  {% endwith %}
+</div>

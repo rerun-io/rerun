@@ -1,11 +1,12 @@
 use re_log_types::EntityPath;
 use re_renderer::PickingLayerInstanceId;
 use re_renderer::renderer::PointCloudDrawDataError;
+use re_sdk_types::Archetype as _;
 use re_sdk_types::archetypes::GeoPoints;
-use re_sdk_types::components::Radius;
+use re_sdk_types::components::{LatLon, Radius};
 use re_view::{
-    AnnotationSceneContext, DataResultQuery as _, RangeResultsExt as _, process_annotation_slices,
-    process_color_slice,
+    AnnotationSceneContext, DataResultQuery as _, VisualizerInstructionQueryResults,
+    process_annotation_slices, process_color_slice,
 };
 use re_viewer_context::{
     IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewHighlights, ViewQuery,
@@ -13,7 +14,7 @@ use re_viewer_context::{
     typed_fallback_for,
 };
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct GeoPointBatch {
     pub positions: Vec<walkers::Position>,
     pub radii: Vec<Radius>,
@@ -21,15 +22,22 @@ pub struct GeoPointBatch {
     pub instance_id: Vec<PickingLayerInstanceId>,
 }
 
+/// Output data from [`GeoPointsVisualizer`].
+#[derive(Default, Clone)]
+pub struct GeoPointsOutput {
+    pub batches: Vec<(EntityPath, GeoPointBatch)>,
+}
+
 /// Visualizer for [`GeoPoints`].
 #[derive(Default)]
-pub struct GeoPointsVisualizer {
-    batches: Vec<(EntityPath, GeoPointBatch)>,
-}
+pub struct GeoPointsVisualizer;
 
 impl IdentifiedViewSystem for GeoPointsVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "GeoPoints".into()
+        re_viewer_context::external::re_string_interner::intern_static!(
+            re_viewer_context::ViewSystemIdentifier,
+            "GeoPoints"
+        )
     }
 }
 
@@ -38,42 +46,45 @@ impl VisualizerSystem for GeoPointsVisualizer {
         &self,
         _app_options: &re_viewer_context::AppOptions,
     ) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<GeoPoints>()
+        VisualizerQueryInfo::single_required_component::<LatLon>(
+            &GeoPoints::descriptor_positions(),
+            &GeoPoints::all_components(),
+        )
     }
 
     fn execute(
-        &mut self,
+        &self,
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
-        let annotation_scene_context = context_systems.get::<AnnotationSceneContext>()?;
+        let output = VisualizerExecutionOutput::default();
+        let annotation_scene_context = context_systems.get::<AnnotationSceneContext>(&output)?;
         let latest_at_query = view_query.latest_at_query();
+        let mut batches = Vec::new();
 
         for (data_result, instruction) in
             view_query.iter_visualizer_instruction_for(Self::identifier())
         {
             let results =
                 data_result.query_archetype_with_history::<GeoPoints>(ctx, view_query, instruction);
+            let results = VisualizerInstructionQueryResults::new(instruction, &results, &output);
+
             let annotation_context = annotation_scene_context.0.find(&data_result.entity_path);
 
             let mut batch_data = GeoPointBatch::default();
 
             // gather all relevant chunks
-            let timeline = view_query.timeline;
-            let all_positions =
-                results.iter_as(timeline, GeoPoints::descriptor_positions().component);
-            let all_colors = results.iter_as(timeline, GeoPoints::descriptor_colors().component);
-            let all_radii = results.iter_as(timeline, GeoPoints::descriptor_radii().component);
-            let all_class_ids =
-                results.iter_as(timeline, GeoPoints::descriptor_class_ids().component);
+            let all_positions = results.iter_required(GeoPoints::descriptor_positions().component);
+            let all_colors = results.iter_optional(GeoPoints::descriptor_colors().component);
+            let all_radii = results.iter_optional(GeoPoints::descriptor_radii().component);
+            let all_class_ids = results.iter_optional(GeoPoints::descriptor_class_ids().component);
 
             // fallback component values
-            let query_context = ctx.query_context(data_result, &latest_at_query);
-            let fallback_radius: Radius = typed_fallback_for(
-                &ctx.query_context(data_result, &latest_at_query),
-                GeoPoints::descriptor_radii().component,
-            );
+            let query_context =
+                ctx.query_context(data_result, latest_at_query.clone(), instruction.id);
+            let fallback_radius: Radius =
+                typed_fallback_for(&query_context, GeoPoints::descriptor_radii().component);
 
             // iterate over each chunk and find all relevant component slices
             for (_index, positions, colors, radii, class_ids) in re_query::range_zip_1x3(
@@ -109,8 +120,8 @@ impl VisualizerSystem for GeoPointsVisualizer {
                 // iterate over all instances
                 for (instance_index, (position, color, radius)) in itertools::izip!(
                     positions,
-                    colors.iter(),
-                    radii.iter().chain(std::iter::repeat(&last_radii)),
+                    &colors,
+                    std::iter::chain(radii, std::iter::repeat(&last_radii)),
                 )
                 .enumerate()
                 {
@@ -125,15 +136,14 @@ impl VisualizerSystem for GeoPointsVisualizer {
                 }
             }
 
-            self.batches
-                .push((data_result.entity_path.clone(), batch_data));
+            batches.push((data_result.entity_path.clone(), batch_data));
         }
 
-        Ok(VisualizerExecutionOutput::default())
+        Ok(output.with_visualizer_data(GeoPointsOutput { batches }))
     }
 }
 
-impl GeoPointsVisualizer {
+impl GeoPointsOutput {
     /// Compute the [`super::GeoSpan`] of all the points in the visualizer.
     pub fn span(&self) -> Option<super::GeoSpan> {
         super::GeoSpan::from_lat_long(
@@ -156,16 +166,14 @@ impl GeoPointsVisualizer {
         // so boosting the outline radius would make it erreously large.
 
         for (entity_path, batch) in &self.batches {
-            let (positions, radii): (Vec<_>, Vec<_>) = batch
-                .positions
-                .iter()
-                .zip(&batch.radii)
-                .map(|(pos, radius)| {
-                    let size = super::radius_to_size(*radius, projector, *pos);
-                    let ui_position = projector.project(*pos);
-                    (glam::vec3(ui_position.x, ui_position.y, 0.0), size)
-                })
-                .unzip();
+            let (positions, radii): (Vec<_>, Vec<_>) =
+                std::iter::zip(&batch.positions, &batch.radii)
+                    .map(|(pos, radius)| {
+                        let size = super::radius_to_size(*radius, projector, *pos);
+                        let ui_position = projector.project(*pos);
+                        (glam::vec3(ui_position.x, ui_position.y, 0.0), size)
+                    })
+                    .unzip();
 
             let outline = highlight.entity_outline_mask(entity_path.hash());
 

@@ -1,21 +1,23 @@
 use std::mem;
 use std::sync::Arc;
-use std::sync::mpsc::TryRecvError;
 
 use arrow::datatypes::{DataType, SchemaRef};
+use crossbeam::channel::{Receiver, TryRecvError};
 use datafusion::common::{DataFusionError, TableReference};
 use datafusion::execution::SendableRecordBatchStream;
 use datafusion::functions::expr_fn::concat;
 use datafusion::logical_expr::{binary_expr, col as datafusion_col, lit};
 use datafusion::prelude::{SessionContext, cast, encode};
 use futures::{StreamExt as _, TryStreamExt as _};
-use parking_lot::Mutex;
 use re_log::{error, warn};
 use re_log_types::Timestamp;
+use re_mutex::Mutex;
+use re_quota_channel::send_crossbeam;
 use re_sorbet::{BatchType, SorbetBatch, SorbetSchema};
 use re_viewer_context::AsyncRuntimeHandle;
 
 use crate::ColumnFilter;
+use crate::grid_view::FlagChangeEvent;
 use crate::table_blueprint::{EntryLinksSpec, SegmentLinksSpec, SortBy, TableBlueprint};
 use crate::table_selection::TableSelectionState;
 
@@ -53,6 +55,10 @@ impl From<&TableBlueprint> for DataFusionQueryData {
             entry_links,
             prefilter,
             column_filters,
+            segment_preview_column: _,
+            grid_view_card_title: _,
+            flag_column: _,
+            url_column: _,
         } = value;
 
         Self {
@@ -78,6 +84,33 @@ pub struct DataFusionQueryResult {
     pub sorbet_schema: re_sorbet::SorbetSchema,
 
     pub finished: bool,
+}
+
+impl DataFusionQueryResult {
+    /// Resolve a global row index to `(batch_index, row_offset_within_batch)`.
+    fn find_row_indices(&self, global_row: u64) -> Option<(usize, usize)> {
+        let mut remaining = global_row as usize;
+        for (batch_idx, batch) in self.sorbet_batches.iter().enumerate() {
+            let num_rows = batch.num_rows();
+            if remaining < num_rows {
+                return Some((batch_idx, remaining));
+            }
+            remaining -= num_rows;
+        }
+        None
+    }
+
+    /// Resolve a global row index to a batch reference and the row offset within that batch.
+    pub fn find_row_batch(&self, global_row: u64) -> Option<(&SorbetBatch, usize)> {
+        let (idx, offset) = self.find_row_indices(global_row)?;
+        Some((&self.sorbet_batches[idx], offset))
+    }
+
+    /// Mutable variant of [`Self::find_row_batch`].
+    pub fn find_row_batch_mut(&mut self, global_row: u64) -> Option<(&mut SorbetBatch, usize)> {
+        let (idx, offset) = self.find_row_indices(global_row)?;
+        Some((&mut self.sorbet_batches[idx], offset))
+    }
 }
 
 /// A table blueprint along with the context required to execute the corresponding datafusion query.
@@ -185,8 +218,9 @@ impl DataFusionQuery {
         //
 
         if let Some(sort_by) = sort_by {
+            let ascending = sort_by.direction.is_ascending();
             dataframe = dataframe.sort(vec![
-                col(&sort_by.column_physical_name).sort(sort_by.direction.is_ascending(), true),
+                col(&sort_by.column_physical_name).sort(ascending, ascending),
             ])?;
         }
 
@@ -203,11 +237,8 @@ impl DataFusionQuery {
     ///
     /// Note: the future returned by this function must be `'static`, so it takes `self`. Use
     /// `clone()` as required.
-    fn execute_streaming(
-        self,
-        runtime: &AsyncRuntimeHandle,
-    ) -> std::sync::mpsc::Receiver<QueryEvent> {
-        let (tx, rx) = std::sync::mpsc::sync_channel(1000);
+    fn execute_streaming(self, runtime: &AsyncRuntimeHandle) -> Receiver<QueryEvent> {
+        let (tx, rx) = crate::create_channel(1000);
         runtime.spawn_future(async move {
             if let Ok(stream) = self.batch_stream().await {
                 let schema = stream.schema();
@@ -228,24 +259,26 @@ impl DataFusionQuery {
                             if !sent_schemas {
                                 let sorbet_schema = batch.sorbet_schema().clone();
                                 let original_schema = Arc::clone(&schema);
-                                if tx
-                                    .send(QueryEvent::Schema {
+                                if send_crossbeam(
+                                    &tx,
+                                    QueryEvent::Schema {
                                         original_schema,
                                         sorbet_schema,
-                                    })
-                                    .is_err()
+                                    },
+                                )
+                                .is_err()
                                 {
                                     return; // Receiver dropped, stop streaming
                                 }
                                 sent_schemas = true;
                             }
-                            if tx.send(QueryEvent::Batch(batch)).is_err() {
+                            if send_crossbeam(&tx, QueryEvent::Batch(batch)).is_err() {
                                 return; // Receiver dropped, stop streaming
                             }
                         }
                         Err(err) => {
                             sent_error = true;
-                            tx.send(QueryEvent::Error(err)).ok();
+                            send_crossbeam(&tx, QueryEvent::Error(err)).ok();
                         }
                     }
                 }
@@ -255,15 +288,21 @@ impl DataFusionQuery {
                     let sorbet_schema = SorbetSchema::try_from_raw_arrow_schema(schema.clone());
                     match sorbet_schema {
                         Ok(sorbet_schema) => {
-                            tx.send(QueryEvent::Schema {
-                                original_schema: schema,
-                                sorbet_schema,
-                            })
+                            send_crossbeam(
+                                &tx,
+                                QueryEvent::Schema {
+                                    original_schema: schema,
+                                    sorbet_schema,
+                                },
+                            )
                             .ok();
                         }
                         Err(err) => {
-                            tx.send(QueryEvent::Error(DataFusionError::External(err.into())))
-                                .ok();
+                            send_crossbeam(
+                                &tx,
+                                QueryEvent::Error(DataFusionError::External(err.into())),
+                            )
+                            .ok();
                         }
                     }
                 }
@@ -316,7 +355,7 @@ pub struct DataFusionAdapter {
 
     // TODO(ab, lucasmerlin): this `Mutex` is only needed because of the `Clone` bound in egui
     // so we should clean that up if the bound is lifted.
-    pub rx: Arc<Mutex<std::sync::mpsc::Receiver<QueryEvent>>>,
+    pub rx: Arc<Mutex<Receiver<QueryEvent>>>,
 
     pub results: Option<Result<DataFusionQueryResult, Arc<DataFusionError>>>,
 
@@ -461,6 +500,78 @@ impl DataFusionAdapter {
         ui.data_mut(|data| {
             data.insert_temp(self.id, self);
         });
+    }
+
+    /// Apply flag toggle changes to the in-memory query results.
+    ///
+    /// Note that this only manipulates in-memory state.
+    /// Sending this to wherever we got the data from has to happen separately.
+    ///
+    /// The flag column must already exist as a boolean column in the sorbet schema.
+    /// Does nothing otherwise.
+    pub fn apply_flag_changes(
+        &mut self,
+        ui: &egui::Ui,
+        flag_column_name: &str,
+        changes: &[FlagChangeEvent],
+    ) {
+        let Some(Ok(results)) = &mut self.results else {
+            return;
+        };
+
+        let Some(col_idx) = results.sorbet_schema.columns.iter().position(|desc| {
+            matches!(desc, re_sorbet::ColumnDescriptor::Component(c) if c.component.as_str() == flag_column_name)
+        }) else {
+            return;
+        };
+
+        update_existing_flag_column(results, col_idx, changes);
+
+        ui.data_mut(|data| {
+            data.insert_temp(self.id, self.clone());
+        });
+    }
+}
+
+/// Update an existing boolean flag column with the given changes.
+///
+/// Since Arrow arrays are immutable, we must rebuild the entire column even for single-cell changes.
+fn update_existing_flag_column(
+    results: &mut DataFusionQueryResult,
+    col_idx: usize,
+    changes: &[FlagChangeEvent],
+) {
+    use arrow::array::{Array as _, BooleanArray};
+
+    for change in changes {
+        let Some((batch, row_offset)) = results.find_row_batch_mut(change.row) else {
+            continue;
+        };
+
+        let Some(old_col) = batch
+            .column(col_idx)
+            .as_any()
+            .downcast_ref::<BooleanArray>()
+        else {
+            re_log::warn_once!("Flag column at index {col_idx} is not a boolean column");
+            break;
+        };
+
+        let new_col: BooleanArray = (0..batch.num_rows())
+            .map(|i| {
+                if i == row_offset {
+                    Some(change.new_value)
+                } else if old_col.is_null(i) {
+                    None
+                } else {
+                    Some(old_col.value(i))
+                }
+            })
+            .collect();
+
+        if let Some(new_batch) = batch.with_replaced_column(col_idx, std::sync::Arc::new(new_col)) {
+            *batch = new_batch;
+        }
     }
 }
 

@@ -12,7 +12,7 @@ fn empty_context_test() {
     let servers = re_redap_browser::RedapServers::default();
 
     test_context.run_once_in_egui_central_panel(|ctx, _| {
-        let data = RecordingPanelData::new(ctx, &servers, false);
+        let data = RecordingPanelData::new(&ctx.app_ctx, &servers, false);
 
         insta::assert_yaml_snapshot!(data);
     });
@@ -32,7 +32,7 @@ fn fake_local_and_example_recordings_test() {
         "rerun_example_dna",
         "dna_rec_id",
     ));
-    example_entity_db.data_source = Some(re_log_channel::LogSource::RrdHttpStream {
+    example_entity_db.data_source = Some(re_log_channel::LogSource::HttpStream {
         url: "https://app.rerun.io/version/nightly/examples/dna.rrd".to_owned(),
         follow: false,
     });
@@ -59,7 +59,7 @@ fn fake_local_and_example_recordings_test() {
     drop(store_hub);
 
     test_context.run_once_in_egui_central_panel(|ctx, _| {
-        let data = RecordingPanelData::new(ctx, &servers, false);
+        let data = RecordingPanelData::new(&ctx.app_ctx, &servers, false);
 
         insta::assert_yaml_snapshot!(data);
     });

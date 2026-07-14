@@ -3,16 +3,15 @@ use re_chunk::{ComponentIdentifier, LatestAtQuery, RowId, TimelineName};
 use re_chunk_store::external::re_chunk::Chunk;
 use re_entity_db::EntityDb;
 use re_log_types::{EntityPath, StoreId, TimeInt, TimePoint, Timeline};
-use re_sdk_types::blueprint::archetypes as bp_archetypes;
 use re_sdk_types::{AsComponents, ComponentBatch, ComponentDescriptor, SerializedComponentBatch};
 
 use crate::{
-    CommandSender, StoreContext, SystemCommand, SystemCommandSender as _, ViewId, ViewerContext,
+    ActiveStoreContext, CommandSender, SystemCommand, SystemCommandSender as _, ViewerContext,
 };
 
 #[inline]
 pub fn blueprint_timeline() -> TimelineName {
-    TimelineName::new("blueprint")
+    re_string_interner::intern_static!(TimelineName, "blueprint")
 }
 
 /// The timepoint to use when writing an update to the blueprint.
@@ -28,7 +27,7 @@ pub fn blueprint_timepoint_for_writes(blueprint: &re_entity_db::EntityDb) -> Tim
     TimePoint::from([(timeline, TimeInt::new_temporal(max_time))])
 }
 
-impl StoreContext<'_> {
+impl ActiveStoreContext<'_> {
     /// The timepoint to use when writing an update to the blueprint.
     #[inline]
     pub fn blueprint_timepoint_for_writes(&self) -> TimePoint {
@@ -45,50 +44,6 @@ pub trait BlueprintContext {
     fn default_blueprint(&self) -> Option<&EntityDb>;
 
     fn blueprint_query(&self) -> &LatestAtQuery;
-
-    fn save_visualizers(
-        &self,
-        entity_path: &EntityPath,
-        view_id: ViewId,
-        visualizers: impl IntoIterator<Item = impl Into<re_sdk_types::Visualizer>>,
-    ) {
-        let base_override_path =
-            bp_archetypes::ViewContents::blueprint_base_visualizer_path_for_entity(
-                view_id.uuid(),
-                entity_path,
-            );
-
-        let mut ids = Vec::new();
-        for visualizer in visualizers {
-            let visualizer = visualizer.into();
-            ids.push(visualizer.id.clone());
-
-            let visualizer_path = base_override_path
-                .clone()
-                .join(&EntityPath::from_single_string(visualizer.id.to_string()));
-
-            let mut instruction =
-                bp_archetypes::VisualizerInstruction::new(visualizer.visualizer_type.clone());
-            if !visualizer.mappings.is_empty() {
-                instruction = instruction.with_component_map(visualizer.mappings.clone());
-            }
-
-            self.save_blueprint_archetypes(
-                visualizer_path,
-                std::iter::once(&instruction as &dyn AsComponents).chain(
-                    visualizer
-                        .overrides
-                        .iter()
-                        .map(|batch| batch as &dyn AsComponents),
-                ),
-            );
-        }
-
-        self.save_blueprint_archetype(
-            base_override_path,
-            &bp_archetypes::ActiveVisualizers::new(ids),
-        );
-    }
 
     fn save_blueprint_archetype(&self, entity_path: EntityPath, components: &dyn AsComponents) {
         self.save_blueprint_archetypes(entity_path, std::iter::once(components));
@@ -180,25 +135,11 @@ pub trait BlueprintContext {
         entity_path: EntityPath,
         component_batch: SerializedComponentBatch,
     ) {
-        let blueprint = self.current_blueprint();
-        let timepoint = blueprint_timepoint_for_writes(blueprint);
-
-        let chunk = match Chunk::builder(entity_path)
-            .with_serialized_batch(RowId::new(), timepoint.clone(), component_batch)
-            .build()
-        {
-            Ok(chunk) => chunk,
-            Err(err) => {
-                re_log::error_once!("Failed to create Chunk for blueprint components: {err}");
-                return;
-            }
-        };
-
-        self.command_sender()
-            .send_system(SystemCommand::AppendToStore(
-                blueprint.store_id().clone(),
-                vec![chunk],
-            ));
+        self.save_blueprint_array(
+            entity_path,
+            component_batch.descriptor,
+            component_batch.array,
+        );
     }
 
     fn save_blueprint_array(
@@ -212,22 +153,6 @@ pub trait BlueprintContext {
         self.append_array_to_store(
             blueprint.store_id().clone(),
             timepoint,
-            entity_path,
-            component_descr,
-            array,
-        );
-    }
-
-    fn save_static_blueprint_array(
-        &self,
-        entity_path: EntityPath,
-        component_descr: ComponentDescriptor,
-        array: ArrayRef,
-    ) {
-        let blueprint = self.current_blueprint();
-        self.append_array_to_store(
-            blueprint.store_id().clone(),
-            TimePoint::STATIC,
             entity_path,
             component_descr,
             array,
@@ -258,7 +183,52 @@ pub trait BlueprintContext {
             .send_system(SystemCommand::AppendToStore(store_id, vec![chunk]));
     }
 
+    fn save_static_blueprint_array(
+        &self,
+        entity_path: EntityPath,
+        component_descr: ComponentDescriptor,
+        array: ArrayRef,
+    ) {
+        let blueprint = self.current_blueprint();
+
+        let chunk = match Chunk::builder(entity_path)
+            .with_row(RowId::new(), TimePoint::STATIC, [(component_descr, array)])
+            .build()
+        {
+            Ok(chunk) => chunk,
+            Err(err) => {
+                re_log::error_once!("Failed to create Chunk: {err}");
+                return;
+            }
+        };
+
+        self.command_sender()
+            .send_system(SystemCommand::AppendToStore(
+                blueprint.store_id().clone(),
+                vec![chunk],
+            ));
+    }
+
+    /// Queries a raw component from the currently active blueprint.
+    ///
+    /// Returns `None` for empty arrays, which are written by
+    /// [`Self::clear_blueprint_component`] to represent an unset value.
+    fn raw_latest_at_in_current_blueprint(
+        &self,
+        entity_path: &EntityPath,
+        component: ComponentIdentifier,
+    ) -> Option<ArrayRef> {
+        self.current_blueprint()
+            .latest_at(self.blueprint_query(), entity_path, [component])
+            .get(component)?
+            .component_batch_raw(component)
+            .filter(|a| !a.is_empty())
+    }
+
     /// Queries a raw component from the default blueprint.
+    ///
+    /// Returns `None` for empty arrays, which are written by
+    /// [`Self::clear_blueprint_component`] to represent an unset value.
     fn raw_latest_at_in_default_blueprint(
         &self,
         entity_path: &EntityPath,
@@ -268,6 +238,7 @@ pub trait BlueprintContext {
             .latest_at(self.blueprint_query(), entity_path, [component])
             .get(component)?
             .component_batch_raw(component)
+            .filter(|a| !a.is_empty())
     }
 
     /// Resets a blueprint component to the value it had in the default blueprint.
@@ -282,21 +253,6 @@ pub trait BlueprintContext {
             self.save_blueprint_array(entity_path, component_descr, default_value);
         } else {
             self.clear_blueprint_component(entity_path, component_descr);
-        }
-    }
-
-    /// Resets a static blueprint component to the value it had in the default blueprint.
-    fn reset_static_blueprint_component(
-        &self,
-        entity_path: EntityPath,
-        component_descr: ComponentDescriptor,
-    ) {
-        if let Some(default_value) =
-            self.raw_latest_at_in_default_blueprint(&entity_path, component_descr.component)
-        {
-            self.save_static_blueprint_array(entity_path, component_descr, default_value);
-        } else {
-            self.clear_static_blueprint_component(entity_path, component_descr);
         }
     }
 
@@ -406,5 +362,33 @@ impl BlueprintContext for ViewerContext<'_> {
 
     fn blueprint_query(&self) -> &LatestAtQuery {
         self.blueprint_query
+    }
+}
+
+/// Lightweight [`BlueprintContext`] that can be constructed from individual references.
+///
+/// Useful when you need a [`BlueprintContext`] but don't have a full [`ViewerContext`].
+pub struct AppBlueprintCtx<'a> {
+    pub command_sender: &'a CommandSender,
+    pub current_blueprint: &'a EntityDb,
+    pub default_blueprint: Option<&'a EntityDb>,
+    pub blueprint_query: LatestAtQuery,
+}
+
+impl BlueprintContext for AppBlueprintCtx<'_> {
+    fn command_sender(&self) -> &CommandSender {
+        self.command_sender
+    }
+
+    fn current_blueprint(&self) -> &EntityDb {
+        self.current_blueprint
+    }
+
+    fn default_blueprint(&self) -> Option<&EntityDb> {
+        self.default_blueprint
+    }
+
+    fn blueprint_query(&self) -> &LatestAtQuery {
+        &self.blueprint_query
     }
 }

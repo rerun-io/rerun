@@ -3,7 +3,9 @@ use re_log_types::EntryId;
 use crate::{Error, Origin, RedapUri};
 
 /// URI for a remote entry.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Deserialize, serde::Serialize,
+)]
 pub struct EntryUri {
     pub origin: Origin,
     pub entry_id: EntryId,

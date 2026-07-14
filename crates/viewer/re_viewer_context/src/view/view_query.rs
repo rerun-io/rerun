@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
-use itertools::Itertools as _;
 use nohash_hasher::IntSet;
+
 use re_chunk::{ComponentIdentifier, TimelineName};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityPath, TimeInt};
@@ -15,7 +15,7 @@ use crate::{
 };
 
 /// [`VisualizerComponentMapping`] but without the target.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum VisualizerComponentSource {
     /// See [`ComponentSourceKind::SourceComponent`].
     SourceComponent {
@@ -28,9 +28,6 @@ pub enum VisualizerComponentSource {
 
     /// See [`ComponentSourceKind::Default`].
     Default,
-
-    /// See [`ComponentSourceKind::Fallback`].
-    Fallback,
 }
 
 impl VisualizerComponentSource {
@@ -42,20 +39,51 @@ impl VisualizerComponentSource {
             selector,
         } = mapping;
 
-        let source_component = source_component.as_ref().unwrap_or(target);
-
         match source_kind {
             ComponentSourceKind::SourceComponent => Self::SourceComponent {
-                source_component: source_component.as_str().into(),
+                source_component: source_component
+                    .as_ref()
+                    .map(|c| c.as_str())
+                    .unwrap_or_else(|| target.as_str())
+                    .into(),
                 selector: selector.as_ref().map_or(String::new(), |s| s.to_string()),
             },
 
             ComponentSourceKind::Override => Self::Override,
 
             ComponentSourceKind::Default => Self::Default,
-
-            ComponentSourceKind::Fallback => Self::Fallback,
         }
+    }
+
+    pub fn source_kind(&self) -> ComponentSourceKind {
+        match self {
+            Self::SourceComponent { .. } => ComponentSourceKind::SourceComponent,
+            Self::Override => ComponentSourceKind::Override,
+            Self::Default => ComponentSourceKind::Default,
+        }
+    }
+
+    pub fn component_source_kind(&self) -> ComponentSourceKind {
+        match self {
+            Self::SourceComponent { .. } => ComponentSourceKind::SourceComponent,
+            Self::Override => ComponentSourceKind::Override,
+            Self::Default => ComponentSourceKind::Default,
+        }
+    }
+
+    /// The identity mapping for the given target component.
+    pub fn identity(target: ComponentIdentifier) -> Self {
+        Self::SourceComponent {
+            source_component: target,
+            selector: String::new(),
+        }
+    }
+
+    /// True if the mapping have no effect on the target.
+    ///
+    /// I.e. it maps directly from the target back to the target.
+    pub fn is_identity_mapping(&self, target: ComponentIdentifier) -> bool {
+        self == &Self::identity(target)
     }
 }
 
@@ -63,6 +91,105 @@ impl VisualizerComponentSource {
 ///
 /// Maps from target component to source component (selector).
 pub type VisualizerComponentMappings = BTreeMap<ComponentIdentifier, VisualizerComponentSource>;
+
+/// A set of mandatory component mappings that form a single recommendation.
+///
+/// The invariant is that the identity mapping is always a valid state (i.e. `Default` produces
+/// an empty/identity mapping that any visualizer satisfies).
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+pub struct RecommendedMappings {
+    mandatory_mappings: VisualizerComponentMappings,
+}
+
+impl RecommendedMappings {
+    /// Creates a recommendation with a single mandatory mapping.
+    pub fn new(target: ComponentIdentifier, source: VisualizerComponentSource) -> Self {
+        Self {
+            mandatory_mappings: BTreeMap::from([(target, source)]),
+        }
+    }
+
+    /// Creates a recommendation from a set of mandatory mappings.
+    pub fn from_mappings(mandatory_mappings: VisualizerComponentMappings) -> Self {
+        Self { mandatory_mappings }
+    }
+
+    /// Returns `true` if all mandatory mappings in this recommendation are already
+    /// satisfied by the given existing component mappings.
+    pub fn is_covered_by(&self, existing_mappings: &VisualizerComponentMappings) -> bool {
+        self.mandatory_mappings
+            .iter()
+            .all(|(component, recommended_source)| {
+                let current_source = existing_mappings.get(component);
+                let recommendation_is_identity = recommended_source.is_identity_mapping(*component);
+                let current_mapping_is_identity =
+                    current_source.is_none_or(|m| m.is_identity_mapping(*component));
+
+                // Two mappings are considered equivalent when both are identity mappings for the
+                // same target, or when they are exactly equal.
+                (recommendation_is_identity && current_mapping_is_identity)
+                    || current_source == Some(recommended_source)
+            })
+    }
+
+    /// Returns a [`VisualizerInstruction`] with the recommended mappings.
+    pub fn into_visualizer_instruction(
+        self,
+        id: VisualizerInstructionId,
+        visualizer_type: ViewSystemIdentifier,
+        override_base_path: &EntityPath,
+    ) -> VisualizerInstruction {
+        VisualizerInstruction::new(
+            id,
+            visualizer_type,
+            override_base_path,
+            self.mandatory_mappings,
+        )
+    }
+
+    /// True if there is a mapping targeting the given component.
+    pub fn contains_mapping_for_component(&self, component: &ComponentIdentifier) -> bool {
+        self.mandatory_mappings.contains_key(component)
+    }
+
+    /// Returns the underlying component mappings.
+    pub fn into_mappings(self) -> VisualizerComponentMappings {
+        self.mandatory_mappings
+    }
+
+    /// Returns the underlying component mappings.
+    pub fn mappings(&self) -> &VisualizerComponentMappings {
+        &self.mandatory_mappings
+    }
+
+    /// Human-readable display name derived from the first component source.
+    pub fn display_name(&self) -> Option<String> {
+        self.mandatory_mappings
+            .iter()
+            .find_map(|(_target, source)| match source {
+                VisualizerComponentSource::SourceComponent {
+                    source_component,
+                    selector,
+                } => {
+                    let name = source_component.as_str();
+                    let short_name = name
+                        .strip_prefix("rerun.components.")
+                        .or_else(|| name.strip_prefix("rerun."))
+                        .unwrap_or(name);
+                    Some(format!("{short_name}{selector}"))
+                }
+                _ => None,
+            })
+    }
+
+    /// Returns the source for the given component mapping.
+    pub fn get_source_for_component(
+        &self,
+        target: &ComponentIdentifier,
+    ) -> Option<&VisualizerComponentSource> {
+        self.mandatory_mappings.get(target)
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct VisualizerInstruction {
@@ -82,6 +209,7 @@ pub struct VisualizerInstruction {
     /// Component mappings from target to source (selector).
     ///
     /// Keys are target components, values describe where to source components (selectors).
+    /// Any target component not present here uses an auto-mapping strategy.
     pub component_mappings: VisualizerComponentMappings,
 }
 
@@ -114,7 +242,7 @@ impl VisualizerInstruction {
             re_sdk_types::blueprint::archetypes::VisualizerInstruction::new(
                 self.visualizer_type.as_str(),
             )
-            // We always have ti write the component map because it we may need to clear out old mappings.
+            // We always have to write the component map because it we may need to clear out old mappings.
             // TODO(andreas): can we avoid writing out needless data here? Often there are no mappings, so we keep writing empty arrays.
             .with_component_map(self.component_mappings.iter().map(|(target, mapping)| {
                 let target = target.as_str().into();
@@ -144,17 +272,30 @@ impl VisualizerInstruction {
                         source_component: None,
                         selector: None,
                     },
-
-                    VisualizerComponentSource::Fallback => VisualizerComponentMapping {
-                        target,
-                        source_kind: ComponentSourceKind::Fallback,
-                        source_component: None,
-                        selector: None,
-                    },
                 }
             }));
 
         ctx.save_blueprint_archetype(self.override_path.clone(), &new_visualizer_instruction);
+    }
+
+    /// Saves an override for the given component and value, and updates the blueprint instruction if necessary.
+    pub fn save_override(
+        &self,
+        ctx: &ViewerContext<'_>,
+        descriptor: &re_sdk_types::ComponentDescriptor,
+        new_value: &dyn re_sdk_types::ComponentBatch,
+    ) {
+        if self.component_mappings.get(&descriptor.component)
+            != Some(&VisualizerComponentSource::Override)
+        {
+            let mut new_instruction = self.clone();
+            new_instruction
+                .component_mappings
+                .insert(descriptor.component, VisualizerComponentSource::Override);
+            new_instruction.write_instruction_to_blueprint(ctx);
+        }
+
+        ctx.save_blueprint_component(self.override_path.clone(), descriptor, new_value);
     }
 }
 
@@ -167,10 +308,15 @@ pub struct DataResult {
     /// Where to retrieve the data from.
     pub entity_path: EntityPath,
 
-    /// There are any visualizers that can run on this data result.
+    /// There are any visualizers that *can* run on this data result.
     pub any_visualizers_available: bool,
 
-    /// Which `ViewSystems`s to pass the `DataResult` to.
+    /// Describes which visualizers should run for this data result.
+    ///
+    /// Invisible data results may still have visualizer instructions here,
+    /// but they aren't considered active.
+    ///
+    /// [`Self::any_visualizers_available`] may be true even if this is empty.
     pub visualizer_instructions: Vec<VisualizerInstruction>,
 
     /// If true, this path is not actually included in the query results and is just here
@@ -314,12 +460,15 @@ impl DataResult {
     }
 
     /// Returns the query range for this data result.
+    ///
+    /// This is where "visible time range" is appled, if at all.
     pub fn query_range(&self) -> &QueryRange {
         &self.query_range
     }
 }
 
-pub type PerSystemDataResults<'a> = BTreeMap<ViewSystemIdentifier, Vec<&'a DataResult>>;
+pub type VisualizerInstructionsPerType<'a> =
+    BTreeMap<ViewSystemIdentifier, Vec<(&'a DataResult, &'a VisualizerInstruction)>>;
 
 #[derive(Debug)]
 pub struct ViewQuery<'s> {
@@ -329,10 +478,10 @@ pub struct ViewQuery<'s> {
     /// The root of the space in which context the query happens.
     pub space_origin: &'s EntityPath,
 
-    /// All [`DataResult`]s that are queried by active visualizers.
+    /// All active visualizer instructions for each visualizer type.
     ///
-    /// Contains also invisible objects, use `iter_visible_data_results` to iterate over visible ones.
-    pub per_visualizer_data_results: PerSystemDataResults<'s>,
+    /// These are only from visible data results.
+    pub active_visualizer_instructions_per_type: VisualizerInstructionsPerType<'s>,
 
     /// The timeline we're on.
     pub timeline: TimelineName,
@@ -347,49 +496,16 @@ pub struct ViewQuery<'s> {
 }
 
 impl<'s> ViewQuery<'s> {
-    /// Iter over all of the currently visible [`DataResult`]s for a given `ViewSystem`
-    pub fn iter_visualizer_instruction_for<'a>(
-        &'a self,
+    /// Iter over all visible data results and their visualizer instructions for the given visualizer type.
+    pub fn iter_visualizer_instruction_for(
+        &self,
         visualizer: ViewSystemIdentifier,
-    ) -> impl Iterator<Item = (&'a DataResult, &'a VisualizerInstruction)> + 'a
-    where
-        's: 'a,
-    {
-        self.per_visualizer_data_results.get(&visualizer).map_or(
-            itertools::Either::Left(std::iter::empty()),
-            |results| {
-                itertools::Either::Right(
-                    results
-                        .iter()
-                        .filter(|result| result.is_visible())
-                        .flat_map(move |result| {
-                            result
-                                .visualizer_instructions
-                                .iter()
-                                .filter_map(move |instruction| {
-                                    (instruction.visualizer_type == visualizer)
-                                        .then_some((*result, instruction))
-                                })
-                        }),
-                )
-            },
-        )
-    }
-
-    /// Iterates over all currently visible (i.e. at least one visualizer is active) [`DataResult`]s of the [`ViewQuery`].
-    #[inline]
-    pub fn iter_all_data_results(&self) -> impl Iterator<Item = &DataResult> + '_ {
-        self.per_visualizer_data_results
-            .values()
-            .flat_map(|data_results| data_results.iter().copied())
-            .unique_by(|data_result| data_result.entity_path.hash())
-    }
-
-    /// Iterates over all currently visible (i.e. at least one visualizer is active) entities of the [`ViewQuery`].
-    #[inline]
-    pub fn iter_all_entities(&self) -> impl Iterator<Item = &EntityPath> + '_ {
-        self.iter_all_data_results()
-            .map(|data_result| &data_result.entity_path)
+    ) -> impl Iterator<Item = (&'s DataResult, &'s VisualizerInstruction)> {
+        self.active_visualizer_instructions_per_type
+            .get(&visualizer)
+            .into_iter()
+            .flatten()
+            .copied()
     }
 
     #[inline]

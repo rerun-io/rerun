@@ -3,5 +3,5 @@ source: crates/store/re_redap_tests/src/tests/dataset_schema.rs
 expression: schema.format_snapshot()
 ---
 top-level metadata: [
-    sorbet:version: "0.1.2"
+    sorbet:version: "0.1.3"
 ]

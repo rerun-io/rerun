@@ -32,9 +32,6 @@ rr.send_blueprint(rrb.TimeSeriesView(overrides={"trig/sin": [rr.SeriesLines(), r
 In general, you can now pass any archetype that has a corresponding visualizer.
 Internally, passing such a `VisualizableArchetype` is a shorthand for calling `.visualizer()` on the object.
 
-<!-- TODO(RR-3153): While we're here, illustrate the other motivation a bit. Something like:
-Note that this now allows to specify overrides for multiple instances of the same visualizer: EXAMPLE HERE. -->
-
 ### `Entry.update()` is deprecated in favor of `Entry.set_name()`
 
 The `Entry.update()` method has been deprecated. Use `Entry.set_name()` instead for renaming entries.
@@ -87,6 +84,6 @@ Rerun 0.29 cannot currently load component overrides from `.rbl` files created i
 
 ## Dataset re-registration required to fix missing `name` and `start_time` in segment table
 
-This release fixes a bug where the built-in properties ([`RecordingInfo`](../types/archetypes/recording_info.md), including `name` and `start_time`) would not be displayed in the segment table. On Rerun Data Platform deployments, property extraction happens at registration time. This means that datasets will need to be re-registered for these columns to be populated.
+This release fixes a bug where the built-in properties ([`RecordingInfo`](../types/archetypes/recording_info.md), including `name` and `start_time`) would not be displayed in the segment table. On catalog server deployments, property extraction happens at registration time. This means that datasets will need to be re-registered for these columns to be populated.
 
 The OSS server is not affected because it generates the segment table on the fly.

@@ -7,21 +7,28 @@ mod gop_detection;
 mod h264;
 mod h265;
 mod nalu;
+pub mod player;
 mod stable_index_deque;
 mod time;
+mod vp8;
+mod vp9;
 
 pub use av1::{AV1_TEST_INTER_FRAME, AV1_TEST_KEYFRAME};
+#[cfg(target_arch = "wasm32")]
+pub use decode::WebVideoFrame;
 pub use decode::{
-    AsyncDecoder, Chunk, DecodeError, DecodeHardwareAcceleration, DecodeSettings, Frame,
-    FrameContent, FrameInfo, FrameResult, PixelFormat, Result as DecodeResult,
-    YuvMatrixCoefficients, YuvPixelLayout, YuvRange, new_decoder,
+    AsyncDecoder, Chunk, DecodeError, DecodeHardwareAcceleration, DecodeSettings,
+    DecodedFrameContent, Frame, FrameContent, FrameInfo, FrameResult, PixelFormat,
+    Result as DecodeResult, YuvMatrixCoefficients, YuvPixelLayout, YuvRange, new_decoder,
 };
 pub use demux::{
     ChromaSubsamplingModes, KeyframeIndex, SampleIndex, SampleMetadata, SampleMetadataState,
     SamplesStatistics, VideoCodec, VideoDataDescription, VideoDeliveryMethod, VideoEncodingDetails,
-    VideoLoadError,
+    VideoLoadError, VideoSource,
 };
-pub use gop_detection::{DetectGopStartError, GopStartDetection, detect_gop_start};
+pub use gop_detection::{
+    DetectGopStartError, GopStartDetection, detect_gop_start, is_start_of_gop,
+};
 // AnnexB conversions are useful for testing.
 pub use h264::{write_avc_chunk_to_annexb, write_avc_chunk_to_nalu_stream};
 pub use h265::{write_hevc_chunk_to_annexb, write_hevc_chunk_to_nalu_stream};
@@ -37,7 +44,10 @@ pub use {
 };
 
 #[cfg(with_ffmpeg)]
-pub use self::decode::{FFmpegError, FFmpegVersion, FFmpegVersionParseError, ffmpeg_download_url};
+pub use self::decode::{
+    FFmpegError, FFmpegVersion, FFmpegVersionParseError, TranscodedMp4, ffmpeg_download_url,
+    transcode_mp4_drop_b_frames,
+};
 
 pub fn enabled_features() -> &'static [&'static str] {
     &[

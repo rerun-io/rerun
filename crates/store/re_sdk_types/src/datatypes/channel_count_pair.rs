@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -22,7 +23,7 @@ use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: A pair representing a channel ID and its associated message count.
-#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, ::re_byte_size::SizeBytes)]
 pub struct ChannelCountPair {
     /// The channel ID.
     pub channel_id: crate::datatypes::UInt16,
@@ -160,11 +161,11 @@ impl ::re_types_core::Loggable for ChannelCountPair {
             } else {
                 let (arrow_data_fields, arrow_data_arrays) =
                     (arrow_data.fields(), arrow_data.columns());
-                let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data_fields
-                    .iter()
-                    .map(|field| field.name().as_str())
-                    .zip(arrow_data_arrays)
-                    .collect();
+                let arrays_by_name: ::std::collections::HashMap<_, _> = ::std::iter::zip(
+                    arrow_data_fields.iter().map(|field| field.name().as_str()),
+                    arrow_data_arrays,
+                )
+                .collect();
                 let channel_id = {
                     if !arrays_by_name.contains_key("channel_id") {
                         return Err(DeserializationError::missing_struct_field(
@@ -230,17 +231,5 @@ impl ::re_types_core::Loggable for ChannelCountPair {
                 .with_context("rerun.datatypes.ChannelCountPair")?
             }
         })
-    }
-}
-
-impl ::re_byte_size::SizeBytes for ChannelCountPair {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.channel_id.heap_size_bytes() + self.message_count.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::UInt16>::is_pod() && <crate::datatypes::UInt64>::is_pod()
     }
 }

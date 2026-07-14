@@ -100,25 +100,6 @@ pub struct TelemetryArgs {
     )]
     pub tracy_enabled: bool,
 
-    /// Enable `OpenTelemetry`?
-    ///
-    /// This will initialize all the different `OpenTelemetry` subscribers, so that the data gets
-    /// uploaded to OTLP-compatible external services.
-    ///
-    /// The base telemetry in and of itself will keep working even if this is disabled. E.g. logs
-    /// will be forwarded to standard IO regardless.
-    ///
-    /// This has no effect if `TELEMETRY_ENABLED` is false.
-    #[cfg_attr(
-        feature = "otel_enabled",
-        clap(long, env = "OTEL_SDK_ENABLED", default_value_t = true)
-    )]
-    #[cfg_attr(
-        not(feature = "otel_enabled"),
-        clap(long, env = "OTEL_SDK_ENABLED", default_value_t = false)
-    )]
-    pub otel_enabled: bool,
-
     /// The service name used for all things telemetry.
     ///
     /// This is mandatory, but we leave it as optional to give users a chance to set it at initialization
@@ -169,14 +150,11 @@ pub struct TelemetryArgs {
 
     /// The gRPC OTLP endpoint to send the logs to.
     ///
-    /// It's fine for the target endpoint to be down.
+    /// When unset (or empty), no log exporter is created. As a fallback, the umbrella
+    /// `OTEL_EXPORTER_OTLP_ENDPOINT` env var is consulted at telemetry init.
     ///
     /// Part of the `OpenTelemetry` spec.
-    #[clap(
-        long,
-        env = "OTEL_EXPORTER_OTLP_LOGS_ENDPOINT",
-        default_value = "http://localhost:4317"
-    )]
+    #[clap(long, env = "OTEL_EXPORTER_OTLP_LOGS_ENDPOINT", default_value = "")]
     pub log_endpoint: String,
 
     /// Same as `RUST_LOG`, but for traces.
@@ -187,14 +165,13 @@ pub struct TelemetryArgs {
 
     /// The gRPC OTLP endpoint to send the traces to.
     ///
-    /// It's fine for the target endpoint to be down.
+    /// When unset (or empty), no trace exporter is created — spans still flow through
+    /// the in-process tracing pipeline (so propagators / `current_trace_id()` keep
+    /// working) but nothing is shipped to a collector. As a fallback, the umbrella
+    /// `OTEL_EXPORTER_OTLP_ENDPOINT` env var is consulted at telemetry init.
     ///
     /// Part of the `OpenTelemetry` spec.
-    #[clap(
-        long,
-        env = "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT",
-        default_value = "http://localhost:4317"
-    )]
+    #[clap(long, env = "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", default_value = "")]
     pub trace_endpoint: String,
 
     /// How are spans sampled?
@@ -235,19 +212,6 @@ pub struct TelemetryArgs {
     #[clap(long, env = "OTEL_METRIC_EXPORT_INTERVAL", default_value = "10000")]
     pub metric_interval: String,
 
-    /// Additional key-value pairs to include in the `tracestate` for trace context propagation.
-    ///
-    /// Expects a comma-separated string of key=value pairs, e.g. `bench_id=my_bench,env=prod`.
-    /// These will be added to the W3C tracestate header for distributed tracing.
-    ///
-    /// This is useful for passing application-specific context that should propagate
-    /// across service boundaries.
-    ///
-    /// Keys must conform to the W3C tracestate spec: lowercase letters, digits,
-    /// underscores, dashes, asterisks, and forward slashes only.
-    #[clap(long, env = "OTEL_PROPAGATORS_TRACESTATE", default_value = "")]
-    pub tracestate: String,
-
     /// Listening address for dedicated HTTP /metrics endpoint for scraping.
     ///
     /// Setting this has no immediate effect. The actual listener has to be
@@ -258,7 +222,7 @@ pub struct TelemetryArgs {
     /// Format: ":9091", "0.0.0.0:9091", or "127.0.0.1:9091"
     /// Empty value means the listener is disabled.
     ///
-    /// This has no effect if `TELEMETRY_ENABLED` or `OTEL_SDK_ENABLED` is false.
+    /// This has no effect if `TELEMETRY_ENABLED` is false.
     #[clap(long, env = "METRICS_LISTEN_ADDRESS", default_value = "")]
     pub metrics_listen_address: String,
 }

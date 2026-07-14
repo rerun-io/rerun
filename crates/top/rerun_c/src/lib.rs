@@ -19,6 +19,7 @@ use arrow::array::{ArrayRef as ArrowArrayRef, ListArray as ArrowListArray};
 use arrow::ffi::{FFI_ArrowArray, FFI_ArrowSchema};
 use arrow_utils::arrow_array_from_c_ffi;
 use component_type_registry::COMPONENT_TYPES;
+use itertools::Itertools as _;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_sdk::external::nohash_hasher::IntMap;
 use re_sdk::external::re_log_types::TimelineName;
@@ -52,9 +53,9 @@ impl CStringView {
         if self.is_empty() {
             Ok("")
         } else {
-            debug_assert!(
+            re_log::debug_assert!(
                 1000 < self.string.addr() && self.length < 1_000_000,
-                "DEBUG ASSERT: Suspected memory corruption when reading argument {argument_name:?}: {self:#?}"
+                "Suspected memory corruption when reading argument {argument_name:?}: {self:#?}"
             );
             ptr::try_char_ptr_as_str(self.string, self.length, argument_name)
         }
@@ -307,7 +308,8 @@ impl TryFrom<CTimeline> for Timeline {
     type Error = CError;
 
     fn try_from(timeline: CTimeline) -> Result<Self, CError> {
-        let name = timeline.name.as_nonempty_str("timeline.name")?;
+        let name = TimelineName::try_new(timeline.name.as_nonempty_str("timeline.name")?)
+            .map_err(|err| CError::new(CErrorCode::InvalidStringArgument, &err.to_string()))?;
         let typ = match timeline.typ {
             CTimeType::Sequence => TimeType::Sequence,
             CTimeType::Duration => TimeType::DurationNs,
@@ -456,7 +458,10 @@ fn rr_spawn_impl(spawn_opts: *const CSpawnOptions) -> Result<(), CError> {
         spawn_opts.as_rust()?
     };
 
+    // Port is unused here — this function only spawns the viewer process.
+    // The C SDK connects separately via `rr_recording_stream_spawn`.
     re_sdk::spawn(&spawn_opts)
+        .map(drop)
         .map_err(|err| CError::new(CErrorCode::RecordingStreamSpawnFailure, &err.to_string()))?;
 
     Ok(())
@@ -643,8 +648,8 @@ pub extern "C" fn rr_recording_stream_free(id: CRecordingStream) {
             drop(stream);
         }
     } else {
-        // Yes, at least as of writing we can still log things in this state!
-        re_log::debug!(
+        // ⚠️ Don't use `re_log` here since it goes through `tracing` which _also_ may have shut down thread locals at this point, causing a panic when accessing them.
+        eprintln!(
             "rr_recording_stream_free called on a thread that is shutting down and can no longer access thread locals. We can't handle this and have to ignore this call."
         );
     }
@@ -813,10 +818,15 @@ fn rr_recording_stream_serve_grpc_impl(
     port: u16,
     server_memory_limit: CStringView,
     newest_first: bool,
+    cors_allow_origins: &[CStringView],
 ) -> Result<(), CError> {
     let stream = recording_stream(stream)?;
 
     let bind_ip = bind_ip.as_nonempty_str("bind_ip")?;
+    let cors_allowed_origins: Vec<String> = cors_allow_origins
+        .iter()
+        .map(|s| Ok(s.as_nonempty_str("cors_allow_origin")?.to_owned()))
+        .try_collect()?;
     let server_options = re_sdk::ServerOptions {
         playback_behavior: re_sdk::PlaybackBehavior::from_newest_first(newest_first),
 
@@ -824,6 +834,8 @@ fn rr_recording_stream_serve_grpc_impl(
             .as_maybe_empty_str("server_memory_limit")?
             .parse::<re_sdk::MemoryLimit>()
             .map_err(|err| CError::new(CErrorCode::InvalidMemoryLimit, &err))?,
+
+        cors_allowed_origins,
     };
 
     stream
@@ -840,17 +852,31 @@ fn rr_recording_stream_serve_grpc_impl(
 
 #[expect(unsafe_code)]
 #[unsafe(no_mangle)]
-pub extern "C" fn rr_recording_stream_serve_grpc(
+pub unsafe extern "C" fn rr_recording_stream_serve_grpc(
     id: CRecordingStream,
     bind_ip: CStringView,
     port: u16,
     server_memory_limit: CStringView,
     newest_first: bool,
+    cors_allow_origins: *const CStringView,
+    num_cors_allow_origins: u32,
     error: *mut CError,
 ) {
-    if let Err(err) =
-        rr_recording_stream_serve_grpc_impl(id, bind_ip, port, server_memory_limit, newest_first)
-    {
+    // SAFETY: the caller must ensure `cors_allow_origins` points to at least
+    // `num_cors_allow_origins` valid `CStringView` elements (or is null / count is 0).
+    let cors_allow_origins = if cors_allow_origins.is_null() || num_cors_allow_origins == 0 {
+        &[]
+    } else {
+        unsafe { std::slice::from_raw_parts(cors_allow_origins, num_cors_allow_origins as usize) }
+    };
+    if let Err(err) = rr_recording_stream_serve_grpc_impl(
+        id,
+        bind_ip,
+        port,
+        server_memory_limit,
+        newest_first,
+        cors_allow_origins,
+    ) {
         err.write_error(error);
     }
 }
@@ -939,7 +965,8 @@ fn rr_recording_stream_set_time_impl(
     time_type: CTimeType,
     value: i64,
 ) -> Result<(), CError> {
-    let timeline = timeline_name.as_nonempty_str("timeline_name")?;
+    let timeline = TimelineName::try_new(timeline_name.as_nonempty_str("timeline_name")?)
+        .map_err(|err| CError::new(CErrorCode::InvalidStringArgument, &err.to_string()))?;
     let stream = recording_stream(stream)?;
     let time_type = match time_type {
         CTimeType::Sequence => TimeType::Sequence,
@@ -969,7 +996,8 @@ fn rr_recording_stream_disable_timeline_impl(
     stream: CRecordingStream,
     timeline_name: CStringView,
 ) -> Result<(), CError> {
-    let timeline = timeline_name.as_nonempty_str("timeline_name")?;
+    let timeline = TimelineName::try_new(timeline_name.as_nonempty_str("timeline_name")?)
+        .map_err(|err| CError::new(CErrorCode::InvalidStringArgument, &err.to_string()))?;
     recording_stream(stream)?.disable_timeline(timeline);
     Ok(())
 }
@@ -991,6 +1019,28 @@ pub extern "C" fn rr_recording_stream_disable_timeline(
 pub extern "C" fn rr_recording_stream_reset_time(stream: CRecordingStream) {
     if let Some(stream) = RECORDING_STREAMS.lock().get(stream) {
         stream.reset_time();
+    }
+}
+
+#[expect(unsafe_code)]
+#[unsafe(no_mangle)]
+pub extern "C" fn rr_recording_stream_set_log_tick_enabled(
+    stream: CRecordingStream,
+    enabled: bool,
+) {
+    if let Some(stream) = RECORDING_STREAMS.lock().get(stream) {
+        stream.set_log_tick_enabled(enabled);
+    }
+}
+
+#[expect(unsafe_code)]
+#[unsafe(no_mangle)]
+pub extern "C" fn rr_recording_stream_set_log_time_enabled(
+    stream: CRecordingStream,
+    enabled: bool,
+) {
+    if let Some(stream) = RECORDING_STREAMS.lock().get(stream) {
+        stream.set_log_time_enabled(enabled);
     }
 }
 
@@ -1193,7 +1243,7 @@ fn rr_recording_stream_send_columns_impl(
                 ),
             ))
         })
-        .collect::<Result<_, CError>>()?;
+        .try_collect()?;
 
     let components: IntMap<ComponentDescriptor, ArrowListArray> = {
         let component_type_registry = COMPONENT_TYPES.read();
@@ -1222,7 +1272,7 @@ fn rr_recording_stream_send_columns_impl(
 
                 Ok((component_type.descriptor.clone(), component_values.clone()))
             })
-            .collect::<Result<_, CError>>()?
+            .try_collect()?
     };
 
     let chunk = Chunk::from_auto_row_ids(

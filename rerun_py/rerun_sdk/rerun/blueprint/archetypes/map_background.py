@@ -5,12 +5,13 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, ClassVar
 
 from attrs import define, field
 
 from ..._baseclasses import (
     Archetype,
+    ComponentDescriptor,
 )
 from ...blueprint import components as blueprint_components
 from ...error_utils import catch_and_log_exceptions
@@ -25,6 +26,8 @@ class MapBackground(Archetype):
 
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
+
+    NAME: ClassVar[str] = "rerun.blueprint.archetypes.MapBackground"
 
     def __init__(self: Any, provider: blueprint_components.MapProviderLike) -> None:
         """
@@ -98,6 +101,14 @@ class MapBackground(Archetype):
     def cleared(cls) -> MapBackground:
         """Clear all the fields of a `MapBackground`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_provider() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "MapBackground:provider",
+            archetype=MapBackground.NAME,
+            component_type=blueprint_components.MapProviderBatch._COMPONENT_TYPE,
+        )
 
     provider: blueprint_components.MapProviderBatch | None = field(
         metadata={"component": True},

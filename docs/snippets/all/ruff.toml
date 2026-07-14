@@ -1,0 +1,9 @@
+extend = "../../../pyproject.toml"
+
+# Keep snippets tight so they look nice on our web page:
+line-length = 80
+
+[lint]
+# Flag any line — including comments — over `line-length`. Ruff's formatter
+# rewraps code but leaves comments alone, so we need the lint rule to catch them.
+extend-select = ["E501"]

@@ -59,7 +59,9 @@ pub fn collapse_expand_data_result(
 ) {
     //TODO(ab): here we should in principle walk the DataResult tree instead of the entity tree
     // but the current API isn't super ergonomic.
-    let Some(subtree) = ctx.recording().tree().subtree(&instance_path.entity_path) else {
+    let recording_engine = ctx.recording_engine();
+    let tree = recording_engine.store().entity_tree();
+    let Some(subtree) = tree.subtree(&instance_path.entity_path) else {
         return;
     };
 
@@ -77,7 +79,9 @@ pub fn collapse_expand_instance_path(
     scope: CollapseScope,
     expand: bool,
 ) {
-    let Some(subtree) = db.tree().subtree(&instance_path.entity_path) else {
+    let db_engine = db.storage_engine();
+    let tree = db_engine.store().entity_tree();
+    let Some(subtree) = tree.subtree(&instance_path.entity_path) else {
         return;
     };
 

@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+from datetime import timedelta
 from typing import TYPE_CHECKING, overload
 
+from rerun._tracing import with_tracing
 from rerun.error_utils import _send_warning_or_raise
 from rerun_bindings import (
     CatalogClientInternal,
@@ -16,10 +19,9 @@ if TYPE_CHECKING:
 
     from . import DatasetEntry, TableEntry
 
-
 # Known FFI compatible releases of Datafusion.
 DATAFUSION_MAJOR_VERSION_COMPATIBILITY_SETS = [
-    {49, 50},
+    {52},
 ]
 
 
@@ -27,7 +29,7 @@ def _are_datafusion_versions_compatible(v1: int, v2: int) -> bool:
     """
     Determine compatibility between two DataFusion versions.
 
-    In some rare cases, we may need to have a mismatch, e.g. in some deployed Rerun Cloud docker images. So we have a
+    In some rare cases, we may need to have a mismatch, e.g. in some deployed Rerun Hub docker images. So we have a
     carefully crafted compatibility allowlist for known-to-be-ffi-compatible DataFusion releases.
     """
 
@@ -48,6 +50,60 @@ def _compatible_datafusion_version(version: int) -> list[int]:
         if version in compat_set:
             return sorted(compat_set)
     return [version]
+
+
+@dataclass(frozen=True)
+class VersionInfo:
+    """Version and deployment information from a Rerun server."""
+
+    version: str
+    """The version string of the server."""
+
+    cloud_provider: str | None
+    """The cloud provider name (e.g. "aws", "azure"). None if not deployed on cloud."""
+
+    cloud_region: str | None
+    """The cloud region (e.g. "us-west-2", "eastus"). None if not deployed on cloud."""
+
+
+@dataclass(frozen=True)
+class BenchmarkResult:
+    """Result of [`CatalogClient.benchmark`][]."""
+
+    rtt: timedelta
+    """Round-trip time to the server."""
+
+    bandwidth: float | None
+    """
+    Estimated download bandwidth from the server, in bytes per second.
+
+    `None` if the bandwidth probe was too small to be measured (e.g. a tiny payload on a fast
+    loopback connection — the elapsed time is dominated by RTT).
+    """
+
+    def __repr__(self) -> str:
+        return f"BenchmarkResult(rtt={_format_duration(self.rtt)}, bandwidth={_format_bandwidth(self.bandwidth)})"
+
+
+def _format_duration(d: timedelta) -> str:
+    seconds = d.total_seconds()
+    if seconds < 1e-3:
+        return f"{seconds * 1e6:.1f} μs"
+    if seconds < 1.0:
+        return f"{seconds * 1e3:.1f} ms"
+    return f"{seconds:.2f} s"
+
+
+def _format_bandwidth(bps: float | None) -> str:
+    if bps is None:
+        return "(too fast to measure)"
+    units = ("B/s", "KiB/s", "MiB/s", "GiB/s", "TiB/s")
+    value = bps
+    idx = 0
+    while value >= 1024.0 and idx + 1 < len(units):
+        value /= 1024.0
+        idx += 1
+    return f"{value:.1f} {units[idx]}"
 
 
 class CatalogClient:
@@ -122,6 +178,46 @@ class CatalogClient:
     def url(self) -> str:
         """Returns the catalog URL."""
         return self._internal.url
+
+    def version_info(self) -> VersionInfo:
+        """
+        Returns version and deployment information from the server.
+
+        Returns a `VersionInfo` object with `version`, `cloud_provider`, and `cloud_region` fields.
+        Cloud fields are `None` if the server is not deployed on a cloud provider.
+        """
+        version, cloud_provider, cloud_region = self._internal.version_info()
+        return VersionInfo(version=version, cloud_provider=cloud_provider, cloud_region=cloud_region)
+
+    @with_tracing("CatalogClient.benchmark")
+    def benchmark(self, *, num_bytes: int = 16 * 1024 * 1024, num_pings: int = 5) -> BenchmarkResult:
+        """
+        Measure round-trip time and download bandwidth to the server.
+
+        The RTT is estimated as the minimum elapsed time across `num_pings` 1-byte requests
+        (using the minimum rejects latency spikes from scheduling jitter or transient network
+        congestion). Bandwidth is measured by downloading `num_bytes` of pseudo-random
+        (incompressible) bytes, subtracting the RTT from the elapsed time, and dividing by the
+        payload size.
+
+        Parameters
+        ----------
+        num_bytes
+            Total payload size to download from the server when measuring bandwidth.
+        num_pings
+            How many 1-byte requests to send when estimating RTT.
+
+        Examples
+        --------
+        ```python
+        client = rr.catalog.CatalogClient("…")
+        print(client.benchmark())  # BenchmarkResult(rtt=12.0 ms, bandwidth=112.0 MiB/s)
+        ```
+
+        """
+        rtt_seconds = self._internal.rtt_seconds(num_pings)
+        bandwidth = self._internal.bandwidth_bytes_per_sec(num_bytes, rtt_seconds)
+        return BenchmarkResult(rtt=timedelta(seconds=rtt_seconds), bandwidth=bandwidth)
 
     def entries(self, *, include_hidden: bool = False) -> list[DatasetEntry | TableEntry]:
         """
@@ -225,7 +321,7 @@ class CatalogClient:
         """
         from . import DatasetEntry
 
-        return DatasetEntry(self._internal.get_dataset(self._resolve_name_or_id(id, name)))
+        return DatasetEntry(self._internal.get_dataset(self._resolve_name_or_id(id, name, entry_kind="dataset")))
 
     @overload
     def get_table(self, *, id: EntryId | str) -> TableEntry: ...
@@ -249,16 +345,41 @@ class CatalogClient:
         """
         from . import TableEntry
 
-        return TableEntry(self._internal.get_table(self._resolve_name_or_id(id, name)))
+        return TableEntry(self._internal.get_table(self._resolve_name_or_id(id, name, entry_kind="table")))
 
     # ---
 
-    def create_dataset(self, name: str) -> DatasetEntry:
-        """Creates a new dataset with the given name."""
+    def create_dataset(self, name: str, *, exist_ok: bool = False) -> DatasetEntry:
+        """
+        Creates a new dataset with the given name.
+
+        Entry names may only contain ASCII alphanumeric characters, underscores, hyphens, dots, colons and spaces,
+        and must be at most 180 characters long.
+
+        Parameters
+        ----------
+        name
+            The name of the dataset to create.
+        exist_ok
+            If True, return the existing dataset if it already exists; otherwise, raise an error.
+
+        Raises
+        ------
+        AlreadyExistsError
+            If a dataset with the given name already exists and `exist_ok` is False.
+
+        """
+
+        from rerun_bindings import AlreadyExistsError
 
         from . import DatasetEntry
 
-        return DatasetEntry(self._internal.create_dataset(name))
+        try:
+            return DatasetEntry(self._internal.create_dataset(name))
+        except AlreadyExistsError:
+            if not exist_ok:
+                raise
+            return self.get_dataset(name)
 
     def register_table(self, name: str, url: str) -> TableEntry:
         """
@@ -269,6 +390,9 @@ class CatalogClient:
         name
             The name of the table entry to create. It must be unique within all entries in the catalog. An exception
             will be raised if an entry with the same name already exists.
+
+            Entry names may only contain ASCII alphanumeric characters, underscores, hyphens, dots, colons and spaces,
+            and must be at most 180 characters long.
 
         url
             The URL of the Lance table to register.
@@ -288,11 +412,17 @@ class CatalogClient:
             The name of the table entry to create. It must be unique within all entries in the catalog. An exception
             will be raised if an entry with the same name already exists.
 
+            Entry names may only contain ASCII alphanumeric characters, underscores, hyphens, dots, colons and spaces,
+            and must be at most 180 characters long.
+
         schema
             The schema of the table to create.
 
         url
-            The URL of the directory for where to store the Lance table.
+            The URL of the directory for where to store the Lance table. If provided, the table will be stored in a
+            globally unique subdirectory. If not provided, the server will use an automatically generated URL based on
+            its configured writable storage. On Rerun Hub, custom table URLs are currently not supported: the request
+            will be rejected unless this parameter is None.
 
         """
         from . import TableEntry
@@ -311,7 +441,13 @@ class CatalogClient:
 
     # ---
 
-    def _resolve_name_or_id(self, id: EntryId | str | None = None, name: str | None = None) -> EntryId:
+    def _resolve_name_or_id(
+        self,
+        id: EntryId | str | None = None,
+        name: str | None = None,
+        *,
+        entry_kind: str = "entry",
+    ) -> EntryId:
         """Helper method to resolve either ID or name. Returns the id or throw an error."""
 
         match id, name:
@@ -319,13 +455,17 @@ class CatalogClient:
                 raise ValueError("Either 'id' or 'name' must be provided.")
 
             case (EntryId(), None):
-                return id
+                # TODO(astral-sh/ty/#2538)
+                return id  # ty: ignore[invalid-return-type]
 
             case (str(id), None):
                 return EntryId(id)
 
             case (None, str(name)):
-                return self._internal._entry_id_from_entry_name(name)
+                try:
+                    return self._internal._entry_id_from_entry_name(name)
+                except LookupError:
+                    raise LookupError(f"No {entry_kind} found with name {name!r}") from None
 
             case _:
                 raise ValueError("Only one of 'id' or 'name' must be provided.")

@@ -3,7 +3,10 @@
 use rerun::external::glam;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let rec = rerun::RecordingStreamBuilder::new("rerun_example_mesh3d_partial_updates").spawn()?;
+    let rec = rerun::RecordingStreamBuilder::new(
+        "rerun_example_mesh3d_partial_updates",
+    )
+    .spawn()?;
 
     let vertex_positions = [[-1.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]];
 
@@ -28,7 +31,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ];
         rec.log(
             "triangle",
-            &rerun::Mesh3D::update_fields().with_vertex_positions(vertex_positions),
+            &rerun::Mesh3D::update_fields()
+                .with_vertex_positions(vertex_positions),
         )?;
     }
 

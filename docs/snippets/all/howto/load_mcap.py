@@ -11,3 +11,6 @@ rr.init("rerun_example_load_mcap", spawn=True)
 
 # Load the MCAP file
 rr.log_file_from_path(path_to_mcap)
+recording = rr.get_data_recording()
+assert recording is not None
+recording.flush()

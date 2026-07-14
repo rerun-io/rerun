@@ -9,6 +9,7 @@
 //! To go from a freshly decoded transport-level type to its application-level equivalent, use [`ToApplication`].
 //! To prepare an application-level type for encoding, use [`ToTransport`].
 
+use itertools::Itertools as _;
 use re_build_info::CrateVersion;
 use re_log_types::{BlueprintActivationCommand, SetStoreInfo};
 
@@ -55,20 +56,18 @@ impl ToTransport for crate::RrdFooter {
     type Output = re_protos::log_msg::v1alpha1::RrdFooter;
     type Context<'a> = ();
 
-    fn to_transport(&self, _: Self::Context<'_>) -> Result<Self::Output, CodecError> {
-        let manifests: Result<Vec<_>, _> = self
+    fn to_transport(&self, (): Self::Context<'_>) -> Result<Self::Output, CodecError> {
+        let manifests: Vec<_> = self
             .manifests
             .values()
             .map(|manifest| manifest.to_transport(()))
-            .collect();
+            .try_collect()?;
 
-        Ok(Self::Output {
-            manifests: manifests?,
-        })
+        Ok(Self::Output { manifests })
     }
 }
 
-impl ToTransport for crate::RrdManifest {
+impl ToTransport for crate::RawRrdManifest {
     type Output = re_protos::log_msg::v1alpha1::RrdManifest;
     type Context<'a> = ();
 
@@ -171,7 +170,7 @@ impl ToApplication for re_protos::log_msg::v1alpha1::RrdFooter {
 }
 
 impl ToApplication for re_protos::log_msg::v1alpha1::RrdManifest {
-    type Output = crate::RrdManifest;
+    type Output = crate::RawRrdManifest;
     type Context<'a> = ();
 
     fn to_application(&self, _context: Self::Context<'_>) -> Result<Self::Output, CodecError> {
@@ -228,7 +227,7 @@ impl ToApplication for re_protos::log_msg::v1alpha1::RrdManifest {
 /// `SetStoreInfo` message.
 ///
 /// The provided [`ApplicationIdInjector`] must be shared across all calls for the same stream.
-#[tracing::instrument(level = "trace", skip_all)]
+#[tracing::instrument(level = "debug", skip_all)]
 fn log_msg_transport_to_app<I: ApplicationIdInjector + ?Sized>(
     app_id_injector: &mut I,
     message: &re_protos::log_msg::v1alpha1::log_msg::Msg,
@@ -305,7 +304,7 @@ fn log_msg_transport_to_app<I: ApplicationIdInjector + ?Sized>(
 }
 
 /// Converts a transport-level `ArrowMsg` to its application-level counterpart.
-#[tracing::instrument(level = "trace", skip_all)]
+#[tracing::instrument(level = "debug", skip_all)]
 fn arrow_msg_transport_to_app(
     arrow_msg: &re_protos::log_msg::v1alpha1::ArrowMsg,
 ) -> Result<re_log_types::ArrowMsg, CodecError> {
@@ -397,7 +396,7 @@ fn arrow_msg_app_to_transport(
     Ok(re_protos::log_msg::v1alpha1::ArrowMsg {
         store_id: Some(store_id.into()),
         chunk_id: Some((*chunk_id).into()),
-        compression: re_protos::log_msg::v1alpha1::Compression::from(compression) as i32,
+        compression: re_protos::common::v1alpha1::Compression::from(compression) as i32,
         uncompressed_size: payload.uncompressed_size,
         encoding: re_protos::log_msg::v1alpha1::Encoding::ArrowIpc as i32,
         payload: payload.data.into(),

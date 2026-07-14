@@ -1,9 +1,9 @@
 use re_sdk_types::components::ViewCoordinates;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
-use re_viewer_context::{MaybeMutRef, UiLayout, ViewerContext};
+use re_viewer_context::{AppContext, MaybeMutRef, UiLayout};
 
 pub fn edit_or_view_view_coordinates(
-    _ctx: &ViewerContext<'_>,
+    _ctx: &AppContext<'_>,
     ui: &mut egui::Ui,
     value: &mut MaybeMutRef<'_, ViewCoordinates>,
 ) -> egui::Response {

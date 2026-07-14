@@ -4,7 +4,7 @@ use arrow::array::ArrayRef;
 use itertools::Itertools as _;
 use re_chunk::{Chunk, ChunkId, RowId, TimePoint, TimelineName};
 use re_chunk_store::{
-    AbsoluteTimeRange, ChunkStore, ChunkStoreConfig, LatestAtQuery, OnMissingChunk, RangeQuery,
+    AbsoluteTimeRange, ChunkStore, ChunkStoreConfig, ChunkTrackingMode, LatestAtQuery, RangeQuery,
     TimeInt,
 };
 use re_log_types::example_components::{MyColor, MyIndex, MyPoint, MyPoints};
@@ -25,7 +25,7 @@ fn query_latest_array(
 
     let ((data_time, row_id), unit) = store
         .latest_at_relevant_chunks(
-            OnMissingChunk::Panic,
+            ChunkTrackingMode::PanicOnMissing,
             query,
             entity_path,
             component_descr.component,
@@ -33,10 +33,10 @@ fn query_latest_array(
         .to_iter()
         .unwrap()
         .filter_map(|chunk| {
-            let chunk = chunk
-                .latest_at(query, component_descr.component)
-                .into_unit()?;
-            chunk.index(&query.timeline()).map(|index| (index, chunk))
+            let chunk = chunk.latest_at(query, component_descr.component)?;
+            chunk
+                .index(query.timeline().as_ref())
+                .map(|index| (index, chunk))
         })
         .max_by_key(|(index, _chunk)| *index)?;
 
@@ -57,7 +57,7 @@ fn all_components() -> anyhow::Result<()> {
 
     let assert_latest_components_at =
         |store: &ChunkStore, entity_path: &EntityPath, expected: Option<&[ComponentDescriptor]>| {
-            let timeline = TimelineName::new("frame_nr");
+            let timeline = TimelineName::from("frame_nr");
 
             let components = store.all_components_on_timeline_sorted(&timeline, entity_path);
 
@@ -166,13 +166,13 @@ fn test_all_components_on_timeline() -> anyhow::Result<()> {
     // entity1 is on both timelines
     assert!(
         !store
-            .all_components_on_timeline(timeline1.name(), &entity_path1)
+            .all_components_on_timeline(Some(timeline1.name()), &entity_path1)
             .unwrap()
             .is_empty()
     );
     assert!(
         !store
-            .all_components_on_timeline(timeline2.name(), &entity_path1)
+            .all_components_on_timeline(Some(timeline2.name()), &entity_path1)
             .unwrap()
             .is_empty()
     );
@@ -180,14 +180,14 @@ fn test_all_components_on_timeline() -> anyhow::Result<()> {
     // entity2 is only on timeline1
     assert!(
         !store
-            .all_components_on_timeline(timeline1.name(), &entity_path2)
+            .all_components_on_timeline(Some(timeline1.name()), &entity_path2)
             .unwrap()
             .is_empty()
     );
 
     assert!(
         store
-            .all_components_on_timeline(timeline2.name(), &entity_path2)
+            .all_components_on_timeline(Some(timeline2.name()), &entity_path2)
             .is_none()
     );
 
@@ -285,7 +285,7 @@ fn latest_at() -> anyhow::Result<()> {
 
     let assert_latest_components =
         |frame_nr: TimeInt, rows: &[(ComponentDescriptor, Option<RowId>)]| {
-            let timeline_frame_nr = TimelineName::new("frame_nr");
+            let timeline_frame_nr = TimelineName::from("frame_nr");
 
             for (component_desc, expected_row_id) in rows {
                 let row_id = query_latest_array(
@@ -345,11 +345,11 @@ fn latest_at() -> anyhow::Result<()> {
     {
         let assert_latest_chunk =
             |store: &ChunkStore, frame_nr: TimeInt, mut expected_chunk_ids: Vec<ChunkId>| {
-                let timeline_frame_nr = TimelineName::new("frame_nr");
+                let timeline_frame_nr = TimelineName::from("frame_nr");
 
                 let mut chunk_ids = store
                     .latest_at_relevant_chunks_for_all_components(
-                        OnMissingChunk::Panic,
+                        ChunkTrackingMode::PanicOnMissing,
                         &LatestAtQuery::new(timeline_frame_nr, frame_nr),
                         &entity_path,
                         false, /* don't include static data */
@@ -476,7 +476,7 @@ fn latest_at_sparse_component_edge_case() -> anyhow::Result<()> {
         &store,
         &entity_path,
         &MyIndex::partial_descriptor(),
-        &LatestAtQuery::new(TimelineName::new("frame_nr"), TimeInt::MAX),
+        &LatestAtQuery::new(TimelineName::from("frame_nr"), TimeInt::MAX),
     )
     .map(|(_data_time, row_id, _array)| row_id);
 
@@ -485,12 +485,12 @@ fn latest_at_sparse_component_edge_case() -> anyhow::Result<()> {
     // Component-less APIs
     {
         let assert_latest_chunk = |frame_nr: TimeInt, mut expected_chunk_ids: Vec<ChunkId>| {
-            let timeline_frame_nr = TimelineName::new("frame_nr");
+            let timeline_frame_nr = TimelineName::from("frame_nr");
 
             eprintln!("--- {frame_nr:?} ---");
             let mut chunk_ids = store
                 .latest_at_relevant_chunks_for_all_components(
-                    OnMissingChunk::Panic,
+                    ChunkTrackingMode::PanicOnMissing,
                     &LatestAtQuery::new(timeline_frame_nr, frame_nr),
                     &entity_path,
                     false, /* don't include static data */
@@ -638,7 +638,7 @@ fn latest_at_overlapped_chunks() -> anyhow::Result<()> {
         (frame7, row_id1_7),       //
         (TimeInt::MAX, row_id1_7), //
     ] {
-        let query = LatestAtQuery::new(TimelineName::new("frame_nr"), at);
+        let query = LatestAtQuery::new(TimelineName::from("frame_nr"), at);
         eprintln!("{} @ {query:?}", MyPoints::descriptor_points());
         let row_id =
             query_latest_array(&store, &entity_path, &MyPoints::descriptor_points(), &query)
@@ -649,12 +649,12 @@ fn latest_at_overlapped_chunks() -> anyhow::Result<()> {
     // Component-less APIs
     {
         let assert_latest_chunk = |frame_nr: TimeInt, mut expected_chunk_ids: Vec<ChunkId>| {
-            let timeline_frame_nr = TimelineName::new("frame_nr");
+            let timeline_frame_nr = TimelineName::from("frame_nr");
 
             eprintln!("--- {frame_nr:?} ---");
             let mut chunk_ids = store
                 .latest_at_relevant_chunks_for_all_components(
-                    OnMissingChunk::Panic,
+                    ChunkTrackingMode::PanicOnMissing,
                     &LatestAtQuery::new(timeline_frame_nr, frame_nr),
                     &entity_path,
                     false, /* don't include static data */
@@ -860,11 +860,11 @@ fn range() -> anyhow::Result<()> {
         |time_range: AbsoluteTimeRange,
          component_descr: ComponentDescriptor,
          row_ids_at_times: &[(TimeInt, RowId)]| {
-            let timeline_frame_nr = TimelineName::new("frame_nr");
+            let timeline_frame_nr = TimelineName::from("frame_nr");
 
             let query = RangeQuery::new(timeline_frame_nr, time_range);
             let results = store.range_relevant_chunks(
-                OnMissingChunk::Panic,
+                ChunkTrackingMode::PanicOnMissing,
                 &query,
                 &entity_path,
                 component_descr.component,
@@ -981,12 +981,12 @@ fn range() -> anyhow::Result<()> {
     {
         let assert_range_chunk =
             |time_range: AbsoluteTimeRange, mut expected_chunk_ids: Vec<ChunkId>| {
-                let timeline_frame_nr = TimelineName::new("frame_nr");
+                let timeline_frame_nr = TimelineName::from("frame_nr");
 
                 eprintln!("--- {time_range:?} ---");
                 let mut chunk_ids = store
                     .range_relevant_chunks_for_all_components(
-                        OnMissingChunk::Panic,
+                        ChunkTrackingMode::PanicOnMissing,
                         &RangeQuery::new(timeline_frame_nr, time_range),
                         &entity_path,
                         false, /* don't include static data */
@@ -1159,12 +1159,12 @@ fn range_overlapped_chunks() -> anyhow::Result<()> {
 
     let assert_range_chunk = |time_range: AbsoluteTimeRange,
                               mut expected_chunk_ids: Vec<ChunkId>| {
-        let timeline_frame_nr = TimelineName::new("frame_nr");
+        let timeline_frame_nr = TimelineName::from("frame_nr");
 
         eprintln!("--- {time_range:?} ---");
         let mut chunk_ids = store
             .range_relevant_chunks_for_all_components(
-                OnMissingChunk::Panic,
+                ChunkTrackingMode::PanicOnMissing,
                 &RangeQuery::new(timeline_frame_nr, time_range),
                 &entity_path,
                 false, /* don't include static data */

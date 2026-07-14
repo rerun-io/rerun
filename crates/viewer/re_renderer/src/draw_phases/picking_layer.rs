@@ -9,7 +9,8 @@
 //!
 //! In order to accomplish small render targets, the projection matrix is cropped to only render the area of interest.
 
-use parking_lot::Mutex;
+use re_log::debug_assert_eq;
+use re_mutex::Mutex;
 use smallvec::smallvec;
 
 use crate::allocator::create_and_fill_uniform_buffer;
@@ -24,8 +25,7 @@ use crate::wgpu_resources::{
     RenderPipelineDesc, TextureDesc,
 };
 use crate::{
-    DebugLabel, GpuReadbackBuffer, GpuReadbackIdentifier, RectInt, RenderContext,
-    include_shader_module,
+    GpuReadbackBuffer, GpuReadbackIdentifier, Label, RectInt, RenderContext, include_shader_module,
 };
 
 /// GPU retrieved & processed picking data result.
@@ -99,7 +99,17 @@ pub struct PickingLayerObjectId(pub u64);
 /// Typically used to identify instances.
 /// Some renderers might allow to change only this part of the picking identifier at a fine grained level.
 #[repr(C)]
-#[derive(Clone, Copy, bytemuck::Zeroable, bytemuck::Pod, Default, Debug, PartialEq, Eq)]
+#[derive(
+    Clone,
+    Copy,
+    bytemuck::Zeroable,
+    bytemuck::Pod,
+    Default,
+    Debug,
+    PartialEq,
+    Eq,
+    re_byte_size::SizeBytes,
+)]
 pub struct PickingLayerInstanceId(pub u64);
 
 /// Combination of `PickingLayerObjectId` and `PickingLayerInstanceId`.
@@ -171,7 +181,7 @@ impl PickingLayerProcessor {
     /// It allows to sample the picking layer texture in a shader.
     pub fn new(
         ctx: &RenderContext,
-        view_name: &DebugLabel,
+        view_name: &Label,
         screen_resolution: glam::UVec2,
         picking_rect: RectInt,
         frame_uniform_buffer_content: &FrameUniformBuffer,
@@ -268,7 +278,7 @@ impl PickingLayerProcessor {
 
         // Offset of the depth buffer in the readback buffer needs to be aligned to size of a depth pixel.
         // This is "trivially true" if the size of the depth format is a multiple of the size of the id format.
-        debug_assert!(
+        re_log::debug_assert!(
             Self::PICKING_LAYER_FORMAT.block_copy_size(None).unwrap()
                 % Self::PICKING_LAYER_DEPTH_FORMAT
                     .block_copy_size(Some(wgpu::TextureAspect::DepthOnly))
@@ -300,13 +310,13 @@ impl PickingLayerProcessor {
 
     pub fn begin_render_pass<'a>(
         &'a self,
-        view_name: &DebugLabel,
+        view_name: &Label,
         encoder: &'a mut wgpu::CommandEncoder,
     ) -> wgpu::RenderPass<'a> {
         re_tracing::profile_function!();
 
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: DebugLabel::from(format!("{view_name} - picking_layer pass")).get(),
+            label: Label::from(format!("{view_name} - picking_layer pass")).wgpu_label(),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view: &self.picking_target.default_view,
                 depth_slice: None,
@@ -326,6 +336,7 @@ impl PickingLayerProcessor {
             }),
             timestamp_writes: None,
             occlusion_query_set: None,
+            multiview_mask: None,
         });
 
         pass.set_bind_group(0, &self.bind_group_0, &[]);
@@ -565,7 +576,7 @@ impl DepthReadbackWorkaround {
     ) -> Result<&GpuTexture, PoolError> {
         // Copy depth texture to a readable (color) texture with a screen filling triangle.
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: DebugLabel::from("Depth copy workaround").get(),
+            label: Label::from("Depth copy workaround").wgpu_label(),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view: &self.readable_texture.default_view,
                 depth_slice: None,
@@ -578,6 +589,7 @@ impl DepthReadbackWorkaround {
             depth_stencil_attachment: None,
             timestamp_writes: None,
             occlusion_query_set: None,
+            multiview_mask: None,
         });
 
         let pipeline = render_pipelines.get(self.render_pipeline)?;

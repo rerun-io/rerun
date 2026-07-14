@@ -20,7 +20,7 @@ table SeriesLines (
 
   // --- Optional ---
 
-  // TODO(#8368, #9334): Once it's trivial to override how scalars for a plot are sourced,
+  // TODO(#8368): Once it's trivial to override how scalars for a plot are sourced,
   // we should make it explicit that the `SeriesLines`/`SeriesPoints` visualizers require
   // scalars as an input.
   // Doing so right now would break the model of how time series logging works too much:
@@ -50,7 +50,7 @@ table SeriesLines (
   /// via this property will still be visible in the legend.
   ///
   /// May change over time, but can cause discontinuities in the line.
-  visible_series: [rerun.components.SeriesVisible] ("attr.rerun.component_optional", nullable, order: 3100);
+  visible_series: [rerun.components.Visible] ("attr.rerun.component_optional", nullable, order: 3100);
 
   /// Configures the zoom-dependent scalar aggregation.
   ///
@@ -60,4 +60,11 @@ table SeriesLines (
   ///
   /// Expected to be unchanging over time.
   aggregation_policy: rerun.components.AggregationPolicy ("attr.rerun.component_optional", nullable, order: 4000);
+
+  /// Specifies how values between data points are interpolated.
+  ///
+  /// Defaults to linear interpolation. Use one of the `Step*` variants for a stepped (staircase) line.
+  ///
+  /// Expected to be unchanging over time.
+  interpolation_mode: rerun.components.InterpolationMode ("attr.rerun.component_optional", nullable, order: 5000);
 }

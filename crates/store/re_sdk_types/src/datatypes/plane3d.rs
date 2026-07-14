@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -30,7 +31,16 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// Note: although the normal will be passed through to the
 /// datastore as provided, when used in the Viewer, planes will always be normalized.
 /// I.e. the plane with xyz = (2, 0, 0), d = 1 is equivalent to xyz = (1, 0, 0), d = 0.5
-#[derive(Clone, Debug, Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(
+    Clone,
+    Debug,
+    Copy,
+    PartialEq,
+    PartialOrd,
+    bytemuck::Pod,
+    bytemuck::Zeroable,
+    ::re_byte_size::SizeBytes,
+)]
 #[repr(C)]
 pub struct Plane3D(pub [f32; 4usize]);
 
@@ -122,9 +132,10 @@ impl ::re_types_core::Loggable for Plane3D {
             if arrow_data.is_empty() {
                 Vec::new()
             } else {
-                let offsets = (0..)
-                    .step_by(4usize)
-                    .zip((4usize..).step_by(4usize).take(arrow_data.len()));
+                let offsets = ::std::iter::zip(
+                    (0..).step_by(4usize),
+                    (4usize..).step_by(4usize).take(arrow_data.len()),
+                );
                 let arrow_data_inner = {
                     let arrow_data_inner = &**arrow_data.values();
                     arrow_data_inner
@@ -142,7 +153,7 @@ impl ::re_types_core::Loggable for Plane3D {
                 ZipValidity::new_with_validity(offsets, arrow_data.nulls())
                     .map(|elem| {
                         elem.map(|(start, end): (usize, usize)| {
-                            debug_assert!(end - start == 4usize);
+                            re_log::debug_assert!(end - start == 4usize);
                             if arrow_data_inner.len() < end {
                                 return Err(DeserializationError::offset_slice_oob(
                                     (start, end),
@@ -228,17 +239,5 @@ impl From<Plane3D> for [f32; 4usize] {
     #[inline]
     fn from(value: Plane3D) -> Self {
         value.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for Plane3D {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <[f32; 4usize]>::is_pod()
     }
 }

@@ -16,11 +16,13 @@ var picking_instance_id_texture: texture_2d<u32>;
 
 struct DrawDataUniformBuffer {
     radius_boost_in_ui_points: f32,
+    // Bitmask of DRAW_FLAG_* draw-data flags below.
+    flags: u32,
     // In actuality there is way more padding than this since we align all our uniform buffers to
     // 256bytes in order to allow them to be buffer-suballocations.
     // However, wgpu doesn't know this at this point and therefore requires `DownlevelFlags::BUFFER_BINDINGS_NOT_16_BYTE_ALIGNED`
     // if we wouldn't add padding here, which isn't available on WebGL.
-    _padding: vec4f,
+    _padding: vec3f,
 };
 @group(1) @binding(3)
 var<uniform> draw_data: DrawDataUniformBuffer;
@@ -36,19 +38,21 @@ struct BatchUniformBuffer {
 @group(2) @binding(0)
 var<uniform> batch: BatchUniformBuffer;
 
-// Flags
-// See lines.rs#LineStripFlags
-const FLAG_CAP_END_TRIANGLE: u32 = 1u;
-const FLAG_CAP_END_ROUND: u32 = 2u;
-const FLAG_CAP_END_EXTEND_OUTWARDS: u32 = 4u;
-const FLAG_CAP_START_TRIANGLE: u32 = 8u;
-const FLAG_CAP_START_ROUND: u32 = 16u;
-const FLAG_CAP_START_EXTEND_OUTWARDS: u32 = 32u;
-const FLAG_COLOR_GRADIENT: u32 = 64u;
-const FLAG_FORCE_ORTHO_SPANNING: u32 = 128u;
+// Per-line-strip flags. See lines.rs#LineStripFlags
+const STRIP_FLAG_CAP_END_TRIANGLE: u32 = 1u;
+const STRIP_FLAG_CAP_END_ROUND: u32 = 2u;
+const STRIP_FLAG_CAP_END_EXTEND_OUTWARDS: u32 = 4u;
+const STRIP_FLAG_CAP_START_TRIANGLE: u32 = 8u;
+const STRIP_FLAG_CAP_START_ROUND: u32 = 16u;
+const STRIP_FLAG_CAP_START_EXTEND_OUTWARDS: u32 = 32u;
+const STRIP_FLAG_COLOR_GRADIENT: u32 = 64u;
+const STRIP_FLAG_FORCE_ORTHO_SPANNING: u32 = 128u;
 
-// Special flags used in the fragment shader.
-const FLAG_CAP_TRIANGLE: u32 = FLAG_CAP_START_TRIANGLE | FLAG_CAP_END_TRIANGLE;
+// Per-draw-data flags. See lines.rs#LineDrawDataFlags
+const DRAW_FLAG_PREMULTIPLIED_ALPHA: u32 = 1u;
+
+// Special strip-flag combination used in the fragment shader.
+const STRIP_FLAG_CAP_TRIANGLE: u32 = STRIP_FLAG_CAP_START_TRIANGLE | STRIP_FLAG_CAP_END_TRIANGLE;
 
 // A lot of the attributes don't need to be interpolated across triangles.
 // To document that and safe some time we mark them up with @interpolate(flat)
@@ -98,7 +102,7 @@ fn read_strip_data(idx: u32) -> LineStripData {
          vec2u(idx % picking_instance_id_texture_size.x, idx / picking_instance_id_texture_size.x), 0).xy;
 
     var data: LineStripData;
-    data.color = linear_from_srgba(unpack4x8unorm_workaround(raw_data.x));
+    data.color = linear_from_srgba_premultiplied(unpack4x8unorm_workaround(raw_data.x));
     // raw_data.y packs { radius: float16, flags: u8, stippling: u8 }
     // See `gpu_data::LineStripInfo` in `lines.rs`
     data.unresolved_radius = unpack2x16float(raw_data.y).y;
@@ -195,8 +199,8 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     // Compute quad_dir & correct center_position for triangle caps.
     var quad_dir: vec3f;
     var is_at_pointy_arrow_end = false;
-    let is_end_cap_triangle = is_cap_triangle && is_right_triangle && has_any_flag(strip_data.flags, FLAG_CAP_END_TRIANGLE);
-    let is_start_cap_triangle = is_cap_triangle && !is_right_triangle && has_any_flag(strip_data.flags, FLAG_CAP_START_TRIANGLE);
+    let is_end_cap_triangle = is_cap_triangle && is_right_triangle && has_any_flag(strip_data.flags, STRIP_FLAG_CAP_END_TRIANGLE);
+    let is_start_cap_triangle = is_cap_triangle && !is_right_triangle && has_any_flag(strip_data.flags, STRIP_FLAG_CAP_START_TRIANGLE);
     if is_end_cap_triangle {
         is_at_pointy_arrow_end = is_at_quad_end;
         quad_dir = pos_data_quad_begin.pos - pos_data_quad_before.pos; // Go one pos data back.
@@ -215,27 +219,30 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     // Resolve radius.
     // (slight inaccuracy: End caps are going to adjust their center_position)
     var camera_ray: Ray;
-    if has_any_flag(strip_data.flags, FLAG_FORCE_ORTHO_SPANNING) || is_camera_orthographic() {
+    if has_any_flag(strip_data.flags, STRIP_FLAG_FORCE_ORTHO_SPANNING) || is_camera_orthographic() {
         camera_ray = camera_ray_to_world_pos_orthographic(center_position);
     } else {
         camera_ray = camera_ray_to_world_pos_perspective(center_position);
     }
-    let camera_distance = distance(camera_ray.origin, center_position);
+    // `approx_pixel_world_size_at` expects depth, see its doc comment.
+    // For orthographic cameras the argument is ignored, so this is always safe.
+    // Limited to 0.0, so we don't accidentally blow up the cap.
+    let camera_distance = max(dot(center_position - frame.camera_position, frame.camera_forward), 0.0);
     let world_scale_factor = average_scale_from_transform(batch.world_from_obj); // TODO(andreas): somewhat costly, should precompute this
     var strip_radius = unresolved_size_to_world(strip_data.unresolved_radius, camera_distance, world_scale_factor);
 
     // If the triangle cap is longer than the quad would be otherwise, we need to stunt it, otherwise we'd get artifacts.
     var triangle_cap_length = batch.triangle_cap_length_factor * strip_radius;
     let max_triangle_cap_length = quad_length * 0.75; // Having the entire arrow be just triangle head already looks pretty bad, so we're stopping at 75% of the quad length.
-    let triangle_cap_size_factor = min(1.0, max_triangle_cap_length / triangle_cap_length);
+    let triangle_cap_size_factor = clamp(max_triangle_cap_length / max(triangle_cap_length, 1e-20), 0.0, 1.0);
     triangle_cap_length *= triangle_cap_size_factor;
 
     // Make space for the end cap if this is either the cap itself or the cap follows right after/before this quad.
     var rounded_inner_line_begin = pos_data_quad_begin.pos;
-    if !has_any_flag(strip_data.flags, FLAG_CAP_START_EXTEND_OUTWARDS) && (is_start_cap_triangle || is_first_quad_after_cap) {
+    if !has_any_flag(strip_data.flags, STRIP_FLAG_CAP_START_EXTEND_OUTWARDS) && (is_start_cap_triangle || is_first_quad_after_cap) {
         var cap_length =
-            f32(has_any_flag(strip_data.flags, FLAG_CAP_START_ROUND)) * strip_radius +
-            f32(has_any_flag(strip_data.flags, FLAG_CAP_START_TRIANGLE)) * triangle_cap_length;
+            f32(has_any_flag(strip_data.flags, STRIP_FLAG_CAP_START_ROUND)) * strip_radius +
+            f32(has_any_flag(strip_data.flags, STRIP_FLAG_CAP_START_TRIANGLE)) * triangle_cap_length;
         let offset = quad_dir * cap_length;
         rounded_inner_line_begin += offset;
         if !is_at_quad_end || is_start_cap_triangle {
@@ -243,10 +250,10 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
         }
     }
     var rounded_inner_line_end = pos_data_quad_end.pos;
-    if !has_any_flag(strip_data.flags, FLAG_CAP_END_EXTEND_OUTWARDS) && (is_end_cap_triangle || is_last_quad_before_cap) {
+    if !has_any_flag(strip_data.flags, STRIP_FLAG_CAP_END_EXTEND_OUTWARDS) && (is_end_cap_triangle || is_last_quad_before_cap) {
         var cap_length =
-            f32(has_any_flag(strip_data.flags, FLAG_CAP_END_ROUND)) * strip_radius +
-            f32(has_any_flag(strip_data.flags, FLAG_CAP_END_TRIANGLE)) * triangle_cap_length;
+            f32(has_any_flag(strip_data.flags, STRIP_FLAG_CAP_END_ROUND)) * strip_radius +
+            f32(has_any_flag(strip_data.flags, STRIP_FLAG_CAP_END_TRIANGLE)) * triangle_cap_length;
         let offset = quad_dir * cap_length;
         rounded_inner_line_end -= offset;
         if is_at_quad_end || is_end_cap_triangle {
@@ -266,13 +273,13 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     }
 
     // Filtered list of flags that the fragment shader is interested in.
-    var fragment_flags = strip_data.flags & FLAG_COLOR_GRADIENT;
+    var fragment_flags = strip_data.flags & STRIP_FLAG_COLOR_GRADIENT;
 
     // If this is a triangle cap, we blow up our ("virtual") quad by a given factor.
-    if (is_end_cap_triangle && has_any_flag(strip_data.flags, FLAG_CAP_END_TRIANGLE)) ||
-       (is_start_cap_triangle && has_any_flag(strip_data.flags, FLAG_CAP_START_TRIANGLE)) {
+    if (is_end_cap_triangle && has_any_flag(strip_data.flags, STRIP_FLAG_CAP_END_TRIANGLE)) ||
+       (is_start_cap_triangle && has_any_flag(strip_data.flags, STRIP_FLAG_CAP_START_TRIANGLE)) {
         strip_radius *= batch.triangle_cap_width_factor * triangle_cap_size_factor;
-        fragment_flags |= FLAG_CAP_TRIANGLE;
+        fragment_flags |= STRIP_FLAG_CAP_TRIANGLE;
     }
 
     // Span up the vertex away from the line's axis, orthogonal to the direction to the camera
@@ -288,8 +295,8 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
 
     // Extend the line for rendering smooth joints, as well as round start/end caps.
     let is_at_inner_joint = !is_cap_triangle && !is_first_quad_after_cap && !is_last_quad_before_cap;
-    let is_at_quad_with_round_capped_start = !is_at_quad_end && is_first_quad_after_cap && has_any_flag(strip_data.flags, FLAG_CAP_START_ROUND);
-    let is_at_quad_with_round_capped_end = is_at_quad_end && is_last_quad_before_cap && has_any_flag(strip_data.flags, FLAG_CAP_END_ROUND);
+    let is_at_quad_with_round_capped_start = !is_at_quad_end && is_first_quad_after_cap && has_any_flag(strip_data.flags, STRIP_FLAG_CAP_START_ROUND);
+    let is_at_quad_with_round_capped_end = is_at_quad_end && is_last_quad_before_cap && has_any_flag(strip_data.flags, STRIP_FLAG_CAP_END_ROUND);
     if is_at_inner_joint || is_at_quad_with_round_capped_start || is_at_quad_with_round_capped_end {
         let left_right_offset = quad_dir * strip_radius * select(-1.0, 1.0, is_at_quad_end);
         pos += left_right_offset;
@@ -324,7 +331,7 @@ fn distance_to_line(pos: vec3f, line_a: vec3f, line_b: vec3f) -> f32 {
 fn compute_coverage(in: VertexOut) -> f32 {
     var coverage = 1.0;
 
-    if !has_any_flag(in.fragment_flags, FLAG_CAP_TRIANGLE) {
+    if !has_any_flag(in.fragment_flags, STRIP_FLAG_CAP_TRIANGLE) {
         let distance_to_skeleton = distance_to_line(in.position_world, in.rounded_inner_line_begin, in.rounded_inner_line_end);
         let pixel_world_size = approx_pixel_world_size_at(length(in.position_world - frame.camera_position));
 
@@ -348,18 +355,25 @@ fn fs_main(in: VertexOut) -> @location(0) vec4f {
         coverage = step(0.5, coverage);
     }
 
-    if coverage < 0.001 {
-        discard;
-    }
+    // As per benchmarking performed on point_cloud.wgsl, this is likely a pessimization on tile based GPUs.
+    // (this has not been independently confirmed for the line rendering, but it's almost certainly the same here)
+    // if coverage < 0.001 {
+    //     discard;
+    // }
 
     // TODO(andreas): lighting setup
     var shading = 1.0;
-    if has_any_flag(in.fragment_flags, FLAG_COLOR_GRADIENT) {
+    if has_any_flag(in.fragment_flags, STRIP_FLAG_COLOR_GRADIENT) {
         let distance_to_inner = distance_to_line_sq(in.position_world, in.rounded_inner_line_begin, in.rounded_inner_line_end);
         shading = max(0.2, 1.0 - distance_to_inner / (in.rounded_inner_line_radius * in.rounded_inner_line_radius)) * 0.9;
     }
-
-    return vec4f(in.color.rgb * shading, coverage);
+    if has_any_flag(draw_data.flags, DRAW_FLAG_PREMULTIPLIED_ALPHA) {
+        // Premultiplied alpha output for the no-alpha-to-coverage pipeline.
+        return vec4f(in.color.rgb * shading * coverage, in.color.a * coverage);
+    } else {
+        // Default alpha-to-coverage output: alpha encodes per-fragment coverage.
+        return vec4f(in.color.rgb * shading, coverage);
+    }
 }
 
 @fragment

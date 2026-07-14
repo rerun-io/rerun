@@ -22,7 +22,7 @@ def test_table_api() -> None:
 rerun_segment_id: string
 operator: string
 -- schema metadata --
-sorbet:version: '0.1.2'\
+sorbet:version: '0.1.3'\
 """)
         reader = table.reader()
 
@@ -35,16 +35,26 @@ sorbet:version: '0.1.2'\
             operator=["alice", "bob"],
         )
 
-        assert str(reader.sort("rerun_segment_id")) == inline_snapshot("""\
-┌─────────────────────┬─────────────────────┐
-│ rerun_segment_id    ┆ operator            │
-│ ---                 ┆ ---                 │
-│ type: nullable Utf8 ┆ type: nullable Utf8 │
-╞═════════════════════╪═════════════════════╡
-│ segment_001         ┆ alice               │
-├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│ segment_002         ┆ bob                 │
-└─────────────────────┴─────────────────────┘\
+        df = reader.sort("rerun_segment_id")
+        df_schema = df.schema()
+        for batch in df.collect():
+            assert batch.schema.equals(df_schema, check_metadata=True)
+
+        assert str(df) == inline_snapshot("""\
+┌───────────────────────────────────┐
+│ METADATA:                         │
+│ * version: 0.1.3                  │
+├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│ ┌──────────────────┬────────────┐ │
+│ │ rerun_segment_id ┆ operator   │ │
+│ │ ---              ┆ ---        │ │
+│ │ type: Utf8       ┆ type: Utf8 │ │
+│ ╞══════════════════╪════════════╡ │
+│ │ segment_001      ┆ alice      │ │
+│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌┤ │
+│ │ segment_002      ┆ bob        │ │
+│ └──────────────────┴────────────┘ │
+└───────────────────────────────────┘\
 """)
 
         table.append(
@@ -53,22 +63,22 @@ sorbet:version: '0.1.2'\
         )
 
         assert str(reader.sort("rerun_segment_id")) == inline_snapshot("""\
-┌───────────────────────────────────────────────┐
-│ METADATA:                                     │
-│ * version: 0.1.2                              │
-├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│ ┌─────────────────────┬─────────────────────┐ │
-│ │ rerun_segment_id    ┆ operator            │ │
-│ │ ---                 ┆ ---                 │ │
-│ │ type: nullable Utf8 ┆ type: nullable Utf8 │ │
-│ ╞═════════════════════╪═════════════════════╡ │
-│ │ segment_001         ┆ alice               │ │
-│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
-│ │ segment_002         ┆ bob                 │ │
-│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
-│ │ segment_003         ┆ carol               │ │
-│ └─────────────────────┴─────────────────────┘ │
-└───────────────────────────────────────────────┘\
+┌───────────────────────────────────┐
+│ METADATA:                         │
+│ * version: 0.1.3                  │
+├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│ ┌──────────────────┬────────────┐ │
+│ │ rerun_segment_id ┆ operator   │ │
+│ │ ---              ┆ ---        │ │
+│ │ type: Utf8       ┆ type: Utf8 │ │
+│ ╞══════════════════╪════════════╡ │
+│ │ segment_001      ┆ alice      │ │
+│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌┤ │
+│ │ segment_002      ┆ bob        │ │
+│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌┤ │
+│ │ segment_003      ┆ carol      │ │
+│ └──────────────────┴────────────┘ │
+└───────────────────────────────────┘\
 """)
 
         assert str(reader) == str(client.ctx.table("my_table"))

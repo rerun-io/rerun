@@ -20,7 +20,7 @@ use datafusion::physical_plan::{
 use datafusion::prelude::Expr;
 use datafusion::{catalog::TableProvider, datasource::MemTable};
 use futures::{Stream, StreamExt as _};
-use parking_lot::Mutex;
+use re_mutex::Mutex;
 use re_viewer_context::AsyncRuntimeHandle;
 
 /// State of the streaming cache.
@@ -284,7 +284,7 @@ impl TableProvider for StreamingCacheTableProvider {
 /// Execution plan that streams from the cache.
 struct CachedStreamingExec {
     cache: Arc<Mutex<StreamingCacheInner>>,
-    properties: PlanProperties,
+    properties: Arc<PlanProperties>,
 }
 
 impl CachedStreamingExec {
@@ -295,7 +295,8 @@ impl CachedStreamingExec {
             Partitioning::UnknownPartitioning(1),
             EmissionType::Incremental,
             Boundedness::Bounded,
-        );
+        )
+        .into();
         Self { cache, properties }
     }
 }
@@ -327,7 +328,7 @@ impl ExecutionPlan for CachedStreamingExec {
         Arc::clone(&self.cache.lock().schema)
     }
 
-    fn properties(&self) -> &PlanProperties {
+    fn properties(&self) -> &Arc<PlanProperties> {
         &self.properties
     }
 
@@ -370,11 +371,20 @@ pub struct CachedRecordBatchStream {
 
     /// Current read position in the cache.
     read_pos: usize,
+
+    /// Whether this stream has already yielded the cached failure. Once set,
+    /// the next poll ends the stream — without this, a `Failed` cache would
+    /// cause the consumer to spin yielding the same error indefinitely.
+    error_yielded: bool,
 }
 
 impl CachedRecordBatchStream {
     fn new(cache: Arc<Mutex<StreamingCacheInner>>) -> Self {
-        Self { cache, read_pos: 0 }
+        Self {
+            cache,
+            read_pos: 0,
+            error_yielded: false,
+        }
     }
 }
 
@@ -382,6 +392,10 @@ impl Stream for CachedRecordBatchStream {
     type Item = DataFusionResult<RecordBatch>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        if self.error_yielded {
+            return Poll::Ready(None);
+        }
+
         let mut cache = self.cache.lock();
 
         // If there's a batch available at our read position, return it
@@ -396,7 +410,10 @@ impl Stream for CachedRecordBatchStream {
         match &cache.state {
             CacheState::Complete(_) => Poll::Ready(None),
             CacheState::Failed(err) => {
-                Poll::Ready(Some(Err(DataFusionError::Shared(Arc::clone(err)))))
+                let err = Arc::clone(err);
+                drop(cache);
+                self.error_yielded = true;
+                Poll::Ready(Some(Err(DataFusionError::Shared(err))))
             }
             CacheState::NotStarted | CacheState::Streaming => {
                 cache.register_waker(cx.waker());

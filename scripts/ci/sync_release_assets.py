@@ -14,6 +14,7 @@ You can also run it manually if you want to update a specific release's assets:
 from __future__ import annotations
 
 import argparse
+import sys
 import time
 from typing import TYPE_CHECKING, cast
 
@@ -25,6 +26,7 @@ if TYPE_CHECKING:
     from github.Repository import Repository
 
 Assets = dict[str, storage.Blob]
+MissingAssets = list[tuple[str, str]]
 
 
 def get_any_release(repo: Repository, tag_name: str) -> GitRelease | None:
@@ -62,7 +64,11 @@ def fetch_binary_assets(
     if do_rerun_js:
         print("  - JS package")
 
-    all_found = True
+    missing_assets: MissingAssets = []
+
+    def report_missing_blob(asset_name: str, blob_url: str) -> None:
+        print(f"Missing {asset_name}: gs://{bucket.name}/{blob_url}")
+        missing_assets.append((asset_name, blob_url))
 
     # Python wheels
     if do_wheels:
@@ -91,8 +97,7 @@ def fetch_binary_assets(
                 assets[name] = blob
 
         if not found:
-            all_found = False
-            print("Python wheels not found")
+            report_missing_blob("Python wheels", f"commit/{commit_short}/wheels/*.whl")
 
     # rerun_c
     if do_rerun_c:
@@ -120,8 +125,7 @@ def fetch_binary_assets(
                 print(f"Found Rerun C library: {name}")
                 assets[name] = blob
             else:
-                all_found = False
-                print(f"Failed to fetch blob {blob_url} ({name})")
+                report_missing_blob(name, blob_url)
 
     # rerun_cpp_sdk
     if do_rerun_cpp_sdk:
@@ -141,8 +145,10 @@ def fetch_binary_assets(
                 # -> The name should *not* contain the version number.
                 assets["rerun_cpp_sdk.zip"] = blob
             else:
-                all_found = False
-                print("Rerun cross-platform bundle not found")
+                report_missing_blob(
+                    f"rerun_cpp_sdk-{tag}-multiplatform.zip",
+                    f"commit/{commit_short}/rerun_cpp_sdk.zip",
+                )
 
     # rerun-cli
     if do_rerun_cli:
@@ -163,6 +169,10 @@ def fetch_binary_assets(
                 f"rerun-cli-{tag}-aarch64-apple-darwin",
                 f"commit/{commit_short}/rerun-cli/macos-arm64/rerun",
             ),
+            (
+                f"Rerun-{tag}-aarch64-apple-darwin.app.tar.gz",
+                f"commit/{commit_short}/rerun-cli/macos-arm64/rerun",
+            ),
         ]
         for name, blob_url in rerun_cli_blobs:
             blob = bucket.get_blob(blob_url)
@@ -170,8 +180,7 @@ def fetch_binary_assets(
                 print(f"Found Rerun CLI binary: {name}")
                 assets[name] = blob
             else:
-                all_found = False
-                print(f"Failed to fetch blob {blob_url} ({name})")
+                report_missing_blob(name, blob_url)
 
     # rerun-js
     if do_rerun_js:
@@ -193,11 +202,18 @@ def fetch_binary_assets(
                 print(f"Found Rerun JS package: {name}")
                 assets[name] = blob
             else:
-                all_found = False
-                print(f"Failed to fetch blob {blob_url} ({name})")
+                report_missing_blob(name, blob_url)
 
-    if not all_found:
-        raise Exception("Some requested assets were not found")
+    if missing_assets:
+        missing_blob_paths = "\n".join(
+            f"  - {asset_name}: gs://{bucket.name}/{blob_url}" for asset_name, blob_url in missing_assets
+        )
+        raise RuntimeError(
+            f"Failed to fetch {len(missing_assets)} requested release asset(s) from GCS for "
+            f"tag {tag!r} at commit {commit_short}.\n"
+            f"Missing blobs:\n{missing_blob_paths}\n"
+            "Check that the release build workflow completed successfully and uploaded these artifacts."
+        )
 
     return assets
 
@@ -267,6 +283,15 @@ def main() -> None:
     repo = gh.get_repo(args.github_repository)
     release = cast("GitRelease", get_any_release(repo, args.github_release))
     commit = {tag.name: tag.commit for tag in repo.get_tags()}[args.github_release]
+
+    if release.body is None:
+        print(
+            "Release has no body - make sure to add release notes! "
+            "You might also run into this if you created the release manually "
+            "and not from the draft created by the release job, please check.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
     print(
         f'Syncing binary assets for release `{release.tag_name}` ("{release.title}" @{release.published_at} draft={release.draft}) #{commit.sha[:7]}…',

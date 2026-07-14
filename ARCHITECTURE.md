@@ -99,11 +99,11 @@ Of course, this will only take us so far. In the future we plan on caching queri
 Here is an overview of the crates included in the project:
 
 <picture>
-  <img src="https://static.rerun.io/crates/9ff35e6610b4636dcb4a20c856f12e9b2161cb6d/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/9ff35e6610b4636dcb4a20c856f12e9b2161cb6d/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/9ff35e6610b4636dcb4a20c856f12e9b2161cb6d/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/9ff35e6610b4636dcb4a20c856f12e9b2161cb6d/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/9ff35e6610b4636dcb4a20c856f12e9b2161cb6d/1200w.png">
+  <img src="https://static.rerun.io/architecture_diagram/ab6062b1b48f8edcd64922547aad6b493616d3f4/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/architecture_diagram/ab6062b1b48f8edcd64922547aad6b493616d3f4/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/architecture_diagram/ab6062b1b48f8edcd64922547aad6b493616d3f4/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/architecture_diagram/ab6062b1b48f8edcd64922547aad6b493616d3f4/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/architecture_diagram/ab6062b1b48f8edcd64922547aad6b493616d3f4/1200w.png">
 </picture>
 
 <!-- !!! IMPORTANT!!!
@@ -115,7 +115,7 @@ FigJam document: https://www.figma.com/file/Umob8ztK1HmYKLUMSq8aPb/Crates-org
 Update instructions:
 1) Update the FigJam document
 2) Select all -> right-click -> Copy as PNG
-3) `pixi run upload-image --name crates`
+3) `pixi run upload-image --name architecture_diagram`
 4) Copy/paste the resulting HTML
 -->
 
@@ -134,29 +134,34 @@ Update instructions:
 ##### UI crates
 
 | Crate                  | Description                                                                                                |
-| ---------------------- | ---------------------------------------------------------------------------------------------------------- |
+| ---------------------- |------------------------------------------------------------------------------------------------------------|
 | re_arrow_ui            | Show arrow data in a tree of rerun list_items and format arrow with syntax highlighting.                   |
 | re_blueprint_tree      | The UI for the blueprint tree in the left panel.                                                           |
 | re_chunk_store_ui      | A chunk store browser UI.                                                                                  |
 | re_component_fallbacks | Provides default fallbacks for Rerun components in the fallback provider registry.                         |
 | re_component_ui        | Provides UI editors for Rerun component data for registration with the Rerun Viewer component UI registry. |
 | re_dataframe_ui        | Rich table widget over DataFusion.                                                                         |
+| re_gamepad             | Gamepad input handling for the Rerun viewer.                                                               |
 | re_memory_view         | Flamegraph visualization for memory usage trees                                                            |
+| re_plot                | Plot ui components shared between time series and bar chart view.                                          |
 | re_recording_panel     | The UI for the recording panel.                                                                            |
 | re_redap_browser       | The UI and communication to implement the in-viewer redap server browser.                                  |
 | re_selection_panel     | The UI for the selection panel.                                                                            |
 | re_time_panel          | The time panel of the Rerun Viewer, allowing to control the displayed timeline & time.                     |
+| re_time_ruler          | Time ruler widget shared by the time panel and time-aware views.                                           |
 | re_view                | Types & utilities for defining View classes and communicating with the Viewport.                           |
 | re_view_bar_chart      | A View that shows a single bar chart.                                                                      |
 | re_view_dataframe      | A View that shows the data contained in entities in a table.                                               |
 | re_view_graph          | A View that shows a graph (node-link diagram).                                                             |
 | re_view_map            | A View that shows geospatial data on a map.                                                                |
 | re_view_spatial        | Views that show entities in a 2D or 3D spatial relationship.                                               |
+| re_view_state_timeline | A view that shows state transitions as horizontal lanes over time.                                         |
 | re_view_tensor         | A View dedicated to visualizing tensors with arbitrary dimensionality.                                     |
 | re_view_text_document  | A simple View that shows a single text box.                                                                |
 | re_view_text_log       | A View that shows text entries in a table and scrolls with the active time.                                |
 | re_view_time_series    | A View that shows plots over Rerun timelines.                                                              |
 | re_viewer              | The Rerun Viewer                                                                                           |
+| re_viewer_mcp          | MCP server that allows agents to interact with the viewer.                                                 |
 | re_viewport            | The central viewport panel of the Rerun viewer.                                                            |
 
 ##### UI support crates
@@ -201,7 +206,9 @@ Update instructions:
 | -------------------- | ----------------------------------------------------------------- |
 | re_redap_client      | Official client for the Rerun Data Protocol                       |
 | re_redap_tests       | Official test suite for the Rerun Data Protocol                   |
-| re_data_loader       | Handles loading of Rerun data from file using data loader plugins |
+| re_importer          | Handles importing of Rerun data from file using importer plugins  |
+| re_parquet           | Parquet file loading with configurable column grouping            |
+| re_mp4_reader        | Mp4 video file loading into Rerun chunks                          |
 | re_data_source       | Handles loading of Rerun data from different sources              |
 | re_grpc_client       | Client for the legacy StoreHub API                                |
 | re_grpc_server       | Server for the legacy StoreHub API                                |
@@ -219,33 +226,38 @@ Update instructions:
 
 ### Utilities
 
-| Crate                | Description                                                                          |
-| -------------------- | ------------------------------------------------------------------------------------ |
-| re_analytics         | Rerun's analytics SDK                                                                |
-| re_arrow_combinators | Type-safe, composable transformations for Arrow arrays                               |
-| re_arrow_util        | Helpers for working with arrow                                                       |
-| re_auth              | Authentication and authorization helpers                                             |
-| re_byte_size         | Calculate the heap-allocated size of values at runtime                               |
-| re_capabilities      | Capability tokens                                                                    |
-| re_case              | Case conversions, the way Rerun likes them                                           |
-| re_crash_handler     | Detect panics and signals, logging them and optionally sending them to analytics.    |
-| re_error             | Helpers for handling errors.                                                         |
-| re_format            | Miscellaneous tools to format and parse numbers, durations, etc.                     |
-| re_int_histogram     | A histogram with `i64` keys and `u32` counts, supporting both sparse and dense uses. |
-| re_log               | Helpers for setting up and doing text logging in the Rerun crates.                   |
-| re_log_channel       | An in-memory channel of Rerun data messages                                          |
-| re_mcap              | Convert MCAP into Rerun-compatible data.                                             |
-| re_memory            | Run-time memory tracking and profiling.                                              |
-| re_perf_telemetry    | In and out of process performance profiling utilities for Rerun & Redap              |
-| re_quota_channel     | A mpsc channel that applies backpressure based on byte size                          |
-| re_ros_msg           | Parsing and deserializing ROS   messages                                             |
-| re_rvl               | Codecs for depth compression including RVL and PNG.                                  |
-| re_span              | An integer range that always has a non-negative length                               |
-| re_string_interner   | Yet another string interning library                                                 |
-| re_tracing           | Helpers for tracing/spans/flamegraphs and such.                                      |
-| re_tuid              | 128-bit Time-based Unique Identifier                                                 |
-| re_uri               | Parsing and constructing of Rerun URIs                                               |
-| re_video             | Video decoding library                                                               |
+| Crate                | Description                                                                                   |
+| -------------------- | --------------------------------------------------------------------------------------------- |
+| re_analytics         | Rerun's analytics SDK                                                                         |
+| re_arrow_util        | Helpers for working with arrow                                                                |
+| re_auth              | Authentication and authorization helpers                                                      |
+| re_backoff           | Simple backoff logic used for retries.                                                        |
+| re_byte_size         | Calculate the heap-allocated size of values at runtime                                        |
+| re_byte_size_derive  | Derive macro for `re_byte_size::SizeBytes`                                                    |
+| re_capabilities      | Capability tokens                                                                             |
+| re_case              | Case conversions, the way Rerun likes them                                                    |
+| re_crash_handler     | Detect panics and signals, logging them and optionally sending them to analytics.             |
+| re_error             | Helpers for handling errors.                                                                  |
+| re_format            | Miscellaneous tools to format and parse numbers, durations, etc.                              |
+| re_grpc_headers      | Rerun gRPC header conventions (`x-rerun-*` consts, version interceptor, tower layers).        |
+| re_lenses            | A collection of lenses for mapping component data to Rerun semantic types.                    |
+| re_lenses_core       | Core lens types and composable Arrow array transformations                                    |
+| re_log               | Helpers for setting up and doing text logging in the Rerun crates.                            |
+| re_log_channel       | An in-memory channel of Rerun data messages                                                   |
+| re_mcap              | Convert MCAP into Rerun-compatible data.                                                      |
+| re_memory            | Run-time memory tracking and profiling.                                                       |
+| re_mutex             | A wrapper around `parking_lot::Mutex` useful for debugging deadlocks.                         |
+| re_perf_telemetry    | In and out of process performance profiling utilities for Rerun & Redap                       |
+| re_quota_channel     | A mpsc channel that applies backpressure based on byte size                                   |
+| re_ros_msg           | Parsing and deserializing ROS   messages                                                      |
+| re_rvl               | Codecs for depth compression including RVL and PNG.                                           |
+| re_span              | An integer range that always has a non-negative length                                        |
+| re_string_interner   | Yet another string interning library                                                          |
+| re_test_mocks        | In-process server doubles (`MockOtlpCollector`, `MockPostHog`) for OTel/PostHog test capture. |
+| re_tracing           | Helpers for tracing/spans/flamegraphs and such.                                               |
+| re_tuid              | 128-bit Time-based Unique Identifier                                                          |
+| re_uri               | Parsing and constructing of Rerun URIs                                                        |
+| re_video             | Video decoding library                                                                        |
 
 ### Test crates
 

@@ -7,7 +7,7 @@ channel = "release"
 include_in_manifest = true
 -->
 
-Example of using Rerun to log and visualize the output of [Meta AI's Segment Anything model](https://segment-anything.com/).
+Example of using Rerun to log and visualize the output of [Meta AI's Segment Anything model](https://github.com/facebookresearch/segment-anything).
 
 <picture data-inline-viewer="examples/segment_anything_model">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/segment_anything_model/6aa2651907efbcf81be55b343caa76b9de5f2138/480w.png">
@@ -21,7 +21,7 @@ Example of using Rerun to log and visualize the output of [Meta AI's Segment Any
 [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`Tensor`](https://www.rerun.io/docs/reference/types/archetypes/tensor), [`SegmentationImage`](https://www.rerun.io/docs/reference/types/archetypes/segmentation_image), [`Boxes2D`](https://www.rerun.io/docs/reference/types/archetypes/boxes2d)
 
 ## Background
-This example showcases the visualization capabilities of [Meta AI's Segment Anything model](https://segment-anything.com/).
+This example showcases the visualization capabilities of [Meta AI's Segment Anything model](https://github.com/facebookresearch/segment-anything).
 The visualization provided in this example demonstrates the precise and accurate segmentation capabilities of the model, effectively distinguishing each object from the background and creating a transparent mask around them.
 
 ## Logging and visualizing with Rerun
@@ -31,7 +31,7 @@ The visualizations in this example were created with the following Rerun code:
 ### Timelines
 
 All data logged using Rerun in the following sections is connected to a specific frame.
-Rerun assigns a frame to each piece of logged data, and these timestamps are associated with a [`timeline`](https://www.rerun.io/docs/concepts/timelines).
+Rerun assigns a frame to each piece of logged data, and these timestamps are associated with a [`timeline`](https://www.rerun.io/docs/concepts/logging-and-ingestion/timelines).
 
  ```python
 for n, image_uri in enumerate(args.images):

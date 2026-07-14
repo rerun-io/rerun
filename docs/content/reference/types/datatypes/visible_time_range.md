@@ -7,40 +7,54 @@ Visible time range bounds for a specific timeline.
 
 ## Fields
 #### `timeline`
-Type: [`Utf8`](../datatypes/utf8.md)
+Type: non-null [`Utf8`](../datatypes/utf8.md)
 
 Name of the timeline this applies to.
 
 #### `range`
-Type: [`TimeRange`](../datatypes/time_range.md)
+Type: non-null [`TimeRange`](../datatypes/time_range.md)
 
 Time range to use for this timeline.
 
 
 ## Arrow datatype
 ```
-Struct {
-    timeline: utf8
-    range: Struct {
-        start: DenseUnion {
-            0 = "_null_markers": nullable null
-            1 = "CursorRelative": int64
-            2 = "Absolute": int64
-            3 = "Infinite": nullable null
-        }
-        end: DenseUnion {
-            0 = "_null_markers": nullable null
-            1 = "CursorRelative": int64
-            2 = "Absolute": int64
-            3 = "Infinite": nullable null
-        }
-    }
-}
+Struct(
+    "timeline": non-null Utf8
+    "range": non-null Struct(
+        "start": non-null Union(Dense,
+            0: ("_null_markers": Null)
+            1: ("CursorRelative": non-null Int64)
+            2: ("Absolute": non-null Int64)
+            3: ("Infinite": Null)
+        )
+        "end": non-null Union(Dense,
+            0: ("_null_markers": Null)
+            1: ("CursorRelative": non-null Int64)
+            2: ("Absolute": non-null Int64)
+            3: ("Infinite": Null)
+        )
+    )
+)
 ```
 
 ## API reference links
  * 🌊 [C++ API docs for `VisibleTimeRange`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1VisibleTimeRange.html)
  * 🐍 [Python API docs for `VisibleTimeRange`](https://ref.rerun.io/docs/python/stable/common/datatypes#rerun.datatypes.VisibleTimeRange)
  * 🦀 [Rust API docs for `VisibleTimeRange`](https://docs.rs/rerun/latest/rerun/datatypes/struct.VisibleTimeRange.html)
+
+## Example
+
+### Time-windowed trails (e.g. Trajectories)
+
+snippet: archetypes/line_strips3d_time_window
+
+<picture data-inline-viewer="snippets/archetypes/line_strips3d_time_window">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/line_strips3d_time_window/999f92d8f7f09b77e8307e6bbcaad652cf2f2c44/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/line_strips3d_time_window/999f92d8f7f09b77e8307e6bbcaad652cf2f2c44/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/line_strips3d_time_window/999f92d8f7f09b77e8307e6bbcaad652cf2f2c44/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/line_strips3d_time_window/999f92d8f7f09b77e8307e6bbcaad652cf2f2c44/1200w.png">
+  <img src="https://static.rerun.io/line_strips3d_time_window/999f92d8f7f09b77e8307e6bbcaad652cf2f2c44/full.png">
+</picture>
 
 

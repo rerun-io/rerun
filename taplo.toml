@@ -1,6 +1,12 @@
 # https://github.com/tamasfe/taplo
 
-exclude = ["**/.pixi/**/*.toml"]
+exclude = [
+  "**/.pixi/**/*.toml",
+  # Isolated examples have their own uv `.venv` next to their `pyproject.toml`;
+  # don't walk into third-party site-packages pyproject files.
+  "**/.venv/**/*.toml",
+  "**/venv/**/*.toml",
+]
 
 [formatting]
 align_comments = false # causes unnecessary churn

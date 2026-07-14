@@ -13,6 +13,7 @@ use std::rc::Rc;
 use re_entity_db::EntityDb;
 use re_log_channel::LogSource;
 use re_log_types::{ApplicationId, RecordingId, TimeReal, Timeline, TimelineName};
+use re_sdk_types::SegmentId;
 use re_viewer_context::{ContainerId, Item, ItemCollection, ItemContext, ViewId};
 use re_viewport_blueprint::ViewportBlueprint;
 
@@ -26,7 +27,7 @@ pub struct ViewerEvent {
     #[serde(with = "serde::recording_id")]
     pub recording_id: RecordingId,
 
-    pub segment_id: Option<String>,
+    pub segment_id: Option<SegmentId>,
 
     #[serde(flatten)]
     pub kind: ViewerEventKind,
@@ -152,7 +153,7 @@ pub enum SelectionChangeItem {
     },
 }
 
-fn get_position(context: &Option<ItemContext>) -> Option<glam::Vec3> {
+fn get_position(context: Option<&ItemContext>) -> Option<glam::Vec3> {
     match context {
         Some(ItemContext::TwoD { pos, .. }) => Some(*pos),
         Some(ItemContext::ThreeD { pos, .. }) => *pos,
@@ -175,7 +176,7 @@ fn get_container_name(blueprint: &ViewportBlueprint, container_id: &ContainerId)
 impl SelectionChangeItem {
     pub fn new(
         item: &Item,
-        context: &Option<ItemContext>,
+        context: Option<&ItemContext>,
         blueprint: &ViewportBlueprint,
     ) -> Option<Self> {
         match item {
@@ -183,7 +184,7 @@ impl SelectionChangeItem {
             | Item::AppId(_)
             | Item::ComponentPath(_)
             | Item::DataSource(_)
-            | Item::RedapEntry(_)
+            | Item::RedapEntry { .. }
             | Item::RedapServer(_)
             | Item::TableId(_) => None,
             Item::View(view_id) => Some(Self::View {
@@ -205,10 +206,10 @@ impl SelectionChangeItem {
                 },
             }),
 
-            Item::DataResult(view_id, instance_path) => Some(Self::Entity {
-                entity_path: instance_path.entity_path.clone(),
-                instance_id: instance_path.instance,
-                view_name: get_view_name(blueprint, view_id),
+            Item::DataResult(data_result) => Some(Self::Entity {
+                entity_path: data_result.instance_path.entity_path.clone(),
+                instance_id: data_result.instance_path.instance,
+                view_name: get_view_name(blueprint, &data_result.view_id),
                 position: get_position(context),
             }),
             Item::InstancePath(instance_path) => Some(Self::Entity {
@@ -278,7 +279,7 @@ impl ViewerEventDispatcher {
                 items: items
                     .iter()
                     .filter_map(|(item, ctx)| {
-                        SelectionChangeItem::new(item, ctx, viewport_blueprint)
+                        SelectionChangeItem::new(item, ctx.as_ref(), viewport_blueprint)
                     })
                     .collect(),
             },

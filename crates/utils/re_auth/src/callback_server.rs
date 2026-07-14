@@ -2,8 +2,9 @@ use std::borrow::Cow;
 
 use uuid::Uuid;
 
+use crate::oauth::CredentialsStoreError;
 use crate::oauth::api::{Pkce, authorization_url};
-use crate::oauth::{CredentialsStoreError, MalformedTokenError};
+use crate::token::JwtDecodeError;
 
 pub struct OauthCallbackServer {
     server: tiny_http::Server,
@@ -14,6 +15,55 @@ pub struct OauthCallbackServer {
 
 /// This is a range of ports that's allowlisted on the authentication provider side.
 const PORT_RANGE: std::ops::RangeInclusive<u16> = 17340..=17349;
+
+/// Start a short-lived HTTP server that serves a "logged out" page, then
+/// construct and return the `WorkOS` logout URL with `return_to` pointing at it.
+///
+/// The server is moved into a background thread that serves exactly one request
+/// and then shuts down.
+pub fn start_logout_server(
+    session_id: &str,
+) -> Result<(String, std::thread::JoinHandle<()>), Error> {
+    let server = PORT_RANGE
+        .map(|port| tiny_http::Server::http(format!("127.0.0.1:{port}")))
+        .find_map(Result::ok)
+        .ok_or_else(|| {
+            Error::Bind(std::io::Error::new(
+                std::io::ErrorKind::AddrInUse,
+                format!("no free port found in range {PORT_RANGE:?}"),
+            ))
+        })?;
+
+    let return_to = format!(
+        "http://{server_addr}/logged-out",
+        server_addr = server.server_addr()
+    );
+    let logout_url = crate::oauth::api::logout_url(session_id, Some(&return_to));
+
+    // Serve a single request in a background thread, then drop the server.
+    let handle = std::thread::Builder::new()
+        .name("logout-callback".into())
+        .spawn(move || {
+            // Wait up to 30 seconds for the redirect from WorkOS.
+            let timeout = std::time::Duration::from_secs(30);
+            if let Ok(Some(req)) = server.recv_timeout(timeout) {
+                eprintln!("{req:?}");
+                let data = include_str!("./status_page.html").replace(
+                    "$MESSAGE$",
+                    "Successfully logged out. You can close this page now.",
+                );
+                req.respond(
+                    tiny_http::Response::from_data(data)
+                        .with_header(header(b"Content-Type", b"text/html; charset=utf-8"))
+                        .cors(),
+                )
+                .ok();
+            }
+        })
+        .map_err(|err| Error::Bind(std::io::Error::other(err)))?;
+
+    Ok((logout_url, handle))
+}
 
 impl OauthCallbackServer {
     pub fn new(pkce: &Pkce) -> Result<Self, Error> {
@@ -94,7 +144,7 @@ pub enum Error {
     Generic(#[from] Box<dyn std::error::Error + Send + Sync + 'static>),
 
     #[error("{0}")]
-    MalformedToken(#[from] MalformedTokenError),
+    MalformedToken(#[from] JwtDecodeError),
 
     #[error("{0}")]
     Store(#[from] CredentialsStoreError),

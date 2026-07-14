@@ -1,7 +1,10 @@
 //! Log a scalar over time.
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let rec = rerun::RecordingStreamBuilder::new("rerun_example_scalar_multiple_plots").spawn()?;
+    let rec = rerun::RecordingStreamBuilder::new(
+        "rerun_example_scalar_multiple_plots",
+    )
+    .spawn()?;
     let mut lcg_state = 0_i64;
 
     // Set up plot styling:
@@ -28,7 +31,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Log scattered points under a different root so that they show in a different plot by default.
     rec.log_static(
         "scatter/lcg",
-        &rerun::SeriesPoints::new().with_markers([rerun::components::MarkerShape::Circle]),
+        &rerun::SeriesPoints::new()
+            .with_markers([rerun::components::MarkerShape::Circle]),
     )?;
 
     for t in 0..((std::f32::consts::TAU * 2.0 * 100.0) as i64) {

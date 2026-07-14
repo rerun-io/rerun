@@ -2,7 +2,7 @@ use std::any::Any;
 
 use re_chunk_store::{ColumnDescriptor, SparseFillStrategy};
 use re_dataframe::QueryEngine;
-use re_log_types::EntityPath;
+use re_log_types::{EntityPath, TimeInt};
 use re_types_core::ViewClassIdentifier;
 use re_ui::{Help, UiExt as _};
 use re_viewer_context::{
@@ -16,13 +16,16 @@ use crate::expanded_rows::ExpandedRowsCache;
 use crate::view_query;
 use crate::visualizer_system::EmptySystem;
 
-#[derive(Default)]
+#[derive(Default, re_byte_size::SizeBytes)]
 struct DataframeViewState {
     /// Cache for the expanded rows.
     expanded_rows_cache: ExpandedRowsCache,
 
     /// List of view columns for the current query, cached here for the column visibility UI.
     view_columns: Option<Vec<ColumnDescriptor>>,
+
+    /// Last time cursor value, used to detect time cursor movement for auto-scroll.
+    latest_time: Option<i64>,
 }
 
 impl ViewState for DataframeViewState {
@@ -33,6 +36,10 @@ impl ViewState for DataframeViewState {
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
     }
+
+    fn heap_size_bytes(&self) -> u64 {
+        re_byte_size::SizeBytes::heap_size_bytes(self)
+    }
 }
 
 #[derive(Default)]
@@ -40,7 +47,15 @@ pub struct DataframeView;
 
 impl ViewClass for DataframeView {
     fn identifier() -> ViewClassIdentifier {
-        "Dataframe".into()
+        re_viewer_context::external::re_string_interner::intern_static_nonempty!(
+            ViewClassIdentifier,
+            "Dataframe"
+        )
+    }
+
+    fn recommendation_order(&self) -> i32 {
+        // Put the dataframe view last in recommendations since it is a bit of a catch-all view!
+        i32::MAX
     }
 
     fn display_name(&self) -> &'static str {
@@ -108,6 +123,7 @@ Configure in the selection panel:
     fn ui(
         &self,
         ctx: &ViewerContext<'_>,
+        _missing_chunk_reporter: &re_viewer_context::MissingChunkReporter,
         ui: &mut egui::Ui,
         state: &mut dyn ViewState,
         query: &ViewQuery<'_>,
@@ -130,9 +146,12 @@ Configure in the selection panel:
             engine: ctx.recording().storage_engine_arc(),
         };
 
-        let view_contents = query
-            .iter_all_entities()
-            .map(|entity| (entity.clone(), None))
+        // TODO(andreas): why are we dealing with a ViewerContext and not a ViewContext here? The later would have the query results readily available.
+        let query_results = ctx.lookup_query_result(query.view_id);
+        let view_contents = query_results
+            .tree
+            .iter_data_results()
+            .map(|data_result| (data_result.entity_path.clone(), None))
             .collect();
 
         let sparse_fill_strategy = if view_query.latest_at_enabled()? {
@@ -160,17 +179,43 @@ Configure in the selection panel:
         let view_columns = query_engine
             .schema_for_query(&dataframe_query)
             .indices_and_components();
-        dataframe_query.selection =
-            view_query.apply_column_visibility_to_view_columns(ctx, &view_columns)?;
+        let (view_columns, selection) = view_query.apply_column_selection(ctx, &view_columns)?;
+        dataframe_query.selection = Some(selection);
 
-        let query_handle = query_engine.query(dataframe_query);
+        let mut query_handle = query_engine.query(dataframe_query);
+
+        // Time cursor row — always computed when timelines match (for the visual indicator)
+        let timelines_match = timeline.name() == ctx.time_ctrl.timeline_name();
+        let time_cursor_row = if timelines_match {
+            ctx.time_ctrl.time_i64().and_then(|time| {
+                query_handle.row_index_at_or_before_time(TimeInt::new_temporal(time))
+            })
+        } else {
+            None
+        };
+
+        let scroll_to_time_cursor_row = if view_query.auto_scroll_enabled()? && timelines_match {
+            if let Some(time) = ctx.time_ctrl.time_i64() {
+                // We only scroll when the time cursor moves. Otherwise, the user won't have a
+                // chance to manually scroll.
+                state.latest_time != Some(time)
+            } else {
+                false
+            }
+        } else {
+            false
+        };
+
+        state.latest_time = timelines_match.then(|| ctx.time_ctrl.time_i64()).flatten();
 
         let hide_column_actions = dataframe_ui(
-            ctx,
+            &ctx.active_recording_store_view_context(),
             ui,
-            &query_handle,
+            &mut query_handle,
             &mut state.expanded_rows_cache,
             &query.view_id,
+            time_cursor_row,
+            scroll_to_time_cursor_row,
         );
 
         view_query.handle_hide_column_actions(ctx, &view_columns, hide_column_actions)?;

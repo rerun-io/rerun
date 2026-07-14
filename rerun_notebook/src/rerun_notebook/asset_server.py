@@ -74,14 +74,14 @@ class AssetHandler(http.server.SimpleHTTPRequestHandler):
             self.send_header(key, value)
         self.end_headers()
 
-    def log_message(self, format: str, *args: Any) -> None:  # noqa: ARG002 (intentionally unused args)
+    def log_message(self, format: str, *args: Any) -> None:
         # Disable logging
         return
 
 
 def serve_assets(
     bind_address: str = "localhost", port: int = 0, background: bool = False
-) -> socketserver._AfInetAddress:
+) -> socketserver._AfInetAddress | socketserver._AfInet6Address:
     print("Starting asset server due to RERUN_NOTEBOOK_ASSET=serve-local")
     global assets
     if assets is None:

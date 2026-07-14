@@ -8,15 +8,14 @@ use re_ui::modal::{ModalHandler, ModalWrapper};
 use re_ui::{ReButton, UiExt as _};
 use re_uri::Scheme;
 use re_viewer_context::{
-    DisplayMode, EditRedapServerModalCommand, GlobalContext, SystemCommand,
-    SystemCommandSender as _,
+    AppContext, EditRedapServerModalCommand, Route, SystemCommand, SystemCommandSender as _,
 };
 
 use crate::context::Context;
 use crate::servers::Command;
 
 mod login_flow;
-use login_flow::{LoginFlow, LoginFlowResult};
+pub use login_flow::{LoginFlow, LoginFlowResult};
 
 /// Should the modal edit an existing server or add a new one?
 pub enum ServerModalMode {
@@ -31,7 +30,7 @@ pub enum ServerModalMode {
 }
 
 impl ServerModalMode {
-    /// Should we show a warning about dataplatform being experimental?
+    /// Should we show a warning about the catalog server being experimental?
     pub fn should_show_experimental_warning(&self) -> bool {
         matches!(self, Self::Add)
     }
@@ -70,8 +69,10 @@ impl Authentication {
         }
     }
 
-    fn start_login_flow(&mut self, ui: &mut egui::Ui) {
-        match LoginFlow::open(ui) {
+    /// `signed_in_url` is only used on web as the `OAuth` redirect URI.
+    fn start_login_flow(&mut self, ui: &egui::Ui, signed_in_url: Option<&str>) {
+        let result = LoginFlow::open(ui.ctx(), signed_in_url);
+        match result {
             Ok(flow) => {
                 self.kind = AuthKind::RerunAccount(Some(Box::new(flow)));
                 self.error = None;
@@ -98,7 +99,7 @@ impl Default for ServerModal {
         Self {
             modal: Default::default(),
             mode: ServerModalMode::Add,
-            scheme: Scheme::Rerun,
+            scheme: Scheme::RerunHttps,
             host: String::new(),
             auth: Authentication::new(AuthKind::RerunAccount(None)),
             port: 443,
@@ -107,10 +108,21 @@ impl Default for ServerModal {
 }
 
 impl ServerModal {
-    pub fn open(&mut self, mode: ServerModalMode, connection_registry: &ConnectionRegistryHandle) {
+    pub fn open(
+        &mut self,
+        mode: ServerModalMode,
+        connection_registry: &ConnectionRegistryHandle,
+        login_enabled: bool,
+    ) {
+        let default_auth_kind = if login_enabled {
+            AuthKind::RerunAccount(None)
+        } else {
+            AuthKind::None
+        };
+
         *self = match mode {
             ServerModalMode::Add => {
-                let auth = Authentication::new(AuthKind::RerunAccount(None));
+                let auth = Authentication::new(default_auth_kind);
 
                 Self {
                     mode: ServerModalMode::Add,
@@ -150,7 +162,7 @@ impl ServerModal {
         self.auth.reset_login_flow();
     }
 
-    pub fn ui(&mut self, global_ctx: &GlobalContext<'_>, ctx: &Context<'_>, ui: &egui::Ui) {
+    pub fn ui(&mut self, app_ctx: &AppContext<'_>, ctx: &Context<'_>, ui: &egui::Ui) {
         let was_open = self.modal.is_open();
 
         self.modal.ui(
@@ -173,7 +185,7 @@ impl ServerModal {
             |ui| {
                 if self.mode.should_show_experimental_warning() {
                     ui.warning_label(
-                        "The dataplatform is very experimental and not generally \
+                        "Rerun Hub is experimental and not generally \
                 available yet. Proceed with caution!",
                     );
                 }
@@ -256,22 +268,26 @@ impl ServerModal {
 
                 ui.label("Authentication:");
 
+                let login_enabled = app_ctx.login_enabled;
                 ui.selectable_toggle(|ui| {
+                    let num_options = if login_enabled { 3 } else { 2 };
                     StripBuilder::new(ui)
-                        .sizes(Size::relative(1.0 / 3.0), 3)
+                        .sizes(Size::relative(1.0 / num_options as f32), num_options)
                         .cell_layout(Layout::centered_and_justified(Direction::TopDown))
                         .horizontal(|mut strip| {
-                            strip.cell(|ui| {
-                                if ui
-                                    .selectable_label(
-                                        matches!(self.auth.kind, AuthKind::RerunAccount(_)),
-                                        "Account login",
-                                    )
-                                    .clicked()
-                                {
-                                    self.auth.kind = AuthKind::RerunAccount(None);
-                                }
-                            });
+                            if login_enabled {
+                                strip.cell(|ui| {
+                                    if ui
+                                        .selectable_label(
+                                            matches!(self.auth.kind, AuthKind::RerunAccount(_)),
+                                            "Account login",
+                                        )
+                                        .clicked()
+                                    {
+                                        self.auth.kind = AuthKind::RerunAccount(None);
+                                    }
+                                });
+                            }
 
                             strip.cell(|ui| {
                                 if ui
@@ -299,7 +315,7 @@ impl ServerModal {
                         });
                 });
 
-                auth_ui(ui, global_ctx, &mut self.auth);
+                auth_ui(ui, app_ctx, &mut self.auth);
 
                 ui.add_space(24.0);
 
@@ -320,7 +336,7 @@ impl ServerModal {
                         .map(Some)
                         .map_err(|_err| ()),
                     AuthKind::RerunAccount(_) => {
-                        if global_ctx.logged_in() {
+                        if app_ctx.logged_in() {
                             Ok(Some(re_redap_client::Credentials::Stored))
                         } else {
                             Err(())
@@ -329,7 +345,7 @@ impl ServerModal {
                     AuthKind::None => Ok(None),
                 };
 
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Max), |ui| {
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     let enabled = origin.is_ok() && credentials.is_ok();
                     let save_button_response =
                         ui.add_enabled(enabled, ReButton::new(save_text).primary().small());
@@ -343,9 +359,9 @@ impl ServerModal {
                         ui.close();
 
                         if let ServerModalMode::Edit(edit) = &self.mode {
-                            ctx.command_sender
-                                .send(Command::RemoveServer(edit.origin.clone()))
-                                .ok();
+                            app_ctx
+                                .command_sender
+                                .send_system(SystemCommand::RemoveRedapServer(edit.origin.clone()));
                         }
 
                         let on_add: Box<dyn FnOnce() + Send> =
@@ -360,22 +376,24 @@ impl ServerModal {
                                     egui_ctx.open_url(OpenUrl::same_tab(url));
                                 })
                             } else {
-                                let command_sender = global_ctx.command_sender.clone();
+                                let command_sender = app_ctx.command_sender.clone();
                                 let origin = origin.clone();
                                 Box::new(move || {
-                                    command_sender.send_system(SystemCommand::ChangeDisplayMode(
-                                        DisplayMode::RedapServer(origin),
+                                    command_sender.send_system(SystemCommand::SetRoute(
+                                        Route::RedapServer(origin),
                                     ));
                                 })
                             };
 
-                        ctx.command_sender
-                            .send(Command::AddServer {
+                        re_quota_channel::send_crossbeam(
+                            ctx.command_sender,
+                            Command::AddServer {
                                 origin: origin.clone(),
                                 credentials,
                                 on_add: Some(on_add),
-                            })
-                            .ok();
+                            },
+                        )
+                        .ok();
                     }
 
                     let cancel_button_response = ui.add(ReButton::new("Cancel").small());
@@ -396,13 +414,13 @@ impl ServerModal {
     }
 }
 
-fn auth_ui(ui: &mut egui::Ui, ctx: &GlobalContext<'_>, auth: &mut Authentication) {
+fn auth_ui(ui: &mut egui::Ui, ctx: &AppContext<'_>, auth: &mut Authentication) {
     match &mut auth.kind {
         AuthKind::RerunAccount(login_flow) => {
             ui.label("Account login:");
 
             if let Some(flow) = login_flow {
-                // Login flow is in progress - show login buttons or spinner
+                // Login flow is in progress - show login buttons or loading indicator
                 if let Some(result) = flow.ui(ui, ctx.command_sender) {
                     match result {
                         LoginFlowResult::Success => {
@@ -420,10 +438,19 @@ fn auth_ui(ui: &mut egui::Ui, ctx: &GlobalContext<'_>, auth: &mut Authentication
                 ui.horizontal(|ui| {
                     ui.label("Continue as");
                     ui.label(RichText::new(&logged_in.email).strong());
+
+                    ui.weak("or");
+
+                    if ui
+                        .link(RichText::new("log out").color(ui.tokens().text_subdued))
+                        .clicked()
+                    {
+                        ctx.command_sender.send_system(SystemCommand::Logout);
+                    }
                 });
             } else {
                 // User is not logged in - start the login flow to show buttons
-                auth.start_login_flow(ui);
+                auth.start_login_flow(ui, ctx.login_signed_in_url);
             }
 
             if let Some(error) = &auth.error {

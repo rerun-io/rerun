@@ -13,10 +13,7 @@ pub fn test_transform_hierarchy() {
 
     let timeline_step = Timeline::new_sequence("step");
 
-    test_context.send_time_commands(
-        test_context.active_store_id(),
-        [TimeControlCommand::SetActiveTimeline(*timeline_step.name())],
-    );
+    test_context.set_active_timeline(*timeline_step.name());
 
     // The Rerun logo obj's convention is y up.
     test_context.log_entity("/", |builder| {

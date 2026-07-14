@@ -37,7 +37,6 @@ use crate::Loggable as _;
 /// think carefully about your `RowId`s in these cases.
 #[repr(C, align(1))]
 #[derive(
-    Debug,
     Clone,
     Copy,
     PartialEq,
@@ -47,9 +46,17 @@ use crate::Loggable as _;
     Hash,
     bytemuck::AnyBitPattern,
     bytemuck::NoUninit,
+    re_byte_size::SizeBytes,
+    serde::Deserialize,
+    serde::Serialize,
 )]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct ChunkId(pub(crate) re_tuid::Tuid);
+
+impl std::fmt::Debug for ChunkId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "chunk_{}", self.0)
+    }
+}
 
 impl std::fmt::Display for ChunkId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -108,23 +115,13 @@ impl ChunkId {
     ///
     /// Beware: wrong usage can easily lead to conflicts.
     /// Prefer [`ChunkId::new`] when unsure.
+    ///
+    /// Only available in debug builds (tests). Use [`ChunkId::new`] in production.
+    #[cfg(debug_assertions)]
     #[must_use]
     #[inline]
     pub fn next(&self) -> Self {
         Self(self.0.next())
-    }
-
-    /// Returns the `n`-next logical [`ChunkId`].
-    ///
-    /// This is equivalent to calling [`ChunkId::next`] `n` times.
-    /// Wraps the monotonically increasing back to zero on overflow.
-    ///
-    /// Beware: wrong usage can easily lead to conflicts.
-    /// Prefer [`ChunkId::new`] when unsure.
-    #[must_use]
-    #[inline]
-    pub fn incremented_by(&self, n: u64) -> Self {
-        Self(self.0.incremented_by(n))
     }
 
     #[inline]
@@ -152,17 +149,22 @@ impl ChunkId {
     }
 }
 
-impl re_byte_size::SizeBytes for ChunkId {
+impl From<[u8; 16]> for ChunkId {
     #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
+    fn from(bytes: [u8; 16]) -> Self {
+        Self(re_tuid::Tuid::from_bytes(bytes))
     }
 }
+
+impl From<ChunkId> for [u8; 16] {
+    #[inline]
+    fn from(id: ChunkId) -> Self {
+        id.0.as_bytes()
+    }
+}
+
+// Make `quiver::Column<ChunkId>` work (backed by a big-endian `FixedSizeBinary(16)` column):
+quiver::newtype_datatype!(ChunkId, quiver::FixedSizeBinary<16>);
 
 impl std::ops::Deref for ChunkId {
     type Target = re_tuid::Tuid;
@@ -180,4 +182,4 @@ impl std::ops::DerefMut for ChunkId {
     }
 }
 
-crate::delegate_arrow_tuid!(ChunkId as "rerun.controls.ChunkId"); // Used in the dataplatform
+crate::delegate_arrow_tuid!(ChunkId as "rerun.controls.ChunkId"); // Used in the catalog server

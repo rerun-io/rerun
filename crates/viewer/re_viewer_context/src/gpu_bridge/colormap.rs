@@ -1,5 +1,5 @@
-use re_sdk_types::ColormapCategory;
 use re_sdk_types::reflection::Enum as _;
+use re_sdk_types::{ColormapCategory, ColormapSelection};
 use re_ui::list_item;
 
 use crate::MaybeMutRef;
@@ -38,6 +38,7 @@ fn colormap_preview_ui(
             data: data.into(),
             format: wgpu::TextureFormat::R16Float.into(),
             width_height: [width, height],
+            alpha_channel_usage: re_renderer::AlphaChannelUsage::Opaque,
         }
     })
     .map_err(|err| anyhow::anyhow!("Failed to create horizontal gradient texture: {err}"))?;
@@ -97,7 +98,7 @@ fn colormap_variant_ui(
 }
 
 fn colormap_category_ui(
-    ctx: &crate::ViewerContext<'_>,
+    ctx: &crate::AppContext<'_>,
     ui: &mut egui::Ui,
     category: ColormapCategory,
     selected: &mut re_sdk_types::components::Colormap,
@@ -106,6 +107,7 @@ fn colormap_category_ui(
         ColormapCategory::Sequential => "Sequential",
         ColormapCategory::Diverging => "Diverging",
         ColormapCategory::Cyclic => "Cyclic",
+        ColormapCategory::GridMap => "Grid Map",
     };
 
     let mut response = list_item::ListItem::new()
@@ -122,25 +124,30 @@ fn colormap_category_ui(
         .iter()
         .filter(|&&colormap| colormap.category() == category)
     {
-        response |= colormap_variant_ui(ctx.render_ctx(), ui, option, selected);
+        response |= colormap_variant_ui(ctx.render_ctx, ui, option, selected);
     }
 
     response
 }
 
-pub fn colormap_edit_or_view_ui(
-    ctx: &crate::ViewerContext<'_>,
+/// Show the colormap editor/viewer with the given selection of colormap categories.
+pub fn colormap_edit_or_view_ui_with_selection(
+    ctx: &crate::AppContext<'_>,
     ui: &mut egui::Ui,
     map: &mut MaybeMutRef<'_, re_sdk_types::components::Colormap>,
+    selection: ColormapSelection,
 ) -> egui::Response {
     if let Some(map) = map.as_mut() {
         let selected_text = map.to_string();
         let content_ui = |ui: &mut egui::Ui| {
             let mut response = ui.allocate_response(egui::Vec2::ZERO, egui::Sense::hover());
 
-            response |= colormap_category_ui(ctx, ui, ColormapCategory::Sequential, map);
-            response |= colormap_category_ui(ctx, ui, ColormapCategory::Diverging, map);
-            response |= colormap_category_ui(ctx, ui, ColormapCategory::Cyclic, map);
+            for &category in ColormapCategory::variants()
+                .iter()
+                .filter(|category| selection.includes(**category))
+            {
+                response |= colormap_category_ui(ctx, ui, category, map);
+            }
 
             response
         };
@@ -160,7 +167,7 @@ pub fn colormap_edit_or_view_ui(
     } else {
         let map: re_sdk_types::components::Colormap = **map;
         let colormap_response = {
-            let result = colormap_preview_ui(ctx.render_ctx(), ui, map);
+            let result = colormap_preview_ui(ctx.render_ctx, ui, map);
             if let Err(err) = &result {
                 re_log::error_once!("Failed to paint colormap preview: {err}");
             }
@@ -176,6 +183,15 @@ pub fn colormap_edit_or_view_ui(
     }
 }
 
+/// Show the colormap editor/viewer with the standard set of colormap categories.
+pub fn colormap_edit_or_view_ui(
+    ctx: &crate::AppContext<'_>,
+    ui: &mut egui::Ui,
+    map: &mut MaybeMutRef<'_, re_sdk_types::components::Colormap>,
+) -> egui::Response {
+    colormap_edit_or_view_ui_with_selection(ctx, ui, map, ColormapSelection::Standard)
+}
+
 pub fn colormap_to_re_renderer(
     colormap: re_sdk_types::components::Colormap,
 ) -> re_renderer::Colormap {
@@ -189,5 +205,7 @@ pub fn colormap_to_re_renderer(
         re_sdk_types::components::Colormap::CyanToYellow => re_renderer::Colormap::CyanToYellow,
         re_sdk_types::components::Colormap::Spectral => re_renderer::Colormap::Spectral,
         re_sdk_types::components::Colormap::Twilight => re_renderer::Colormap::Twilight,
+        re_sdk_types::components::Colormap::RvizMap => re_renderer::Colormap::RvizMap,
+        re_sdk_types::components::Colormap::RvizCostmap => re_renderer::Colormap::RvizCostmap,
     }
 }

@@ -43,13 +43,13 @@ pub struct SizedCoalesceBatchesExec {
     /// Execution metrics
     metrics: ExecutionPlanMetricsSet,
 
-    cache: PlanProperties,
+    cache: Arc<PlanProperties>,
 }
 
 impl SizedCoalesceBatchesExec {
     /// Create a new `SizedCoalesceBatchesExec`
     pub fn new(input: Arc<dyn ExecutionPlan>, coalescer_options: CoalescerOptions) -> Self {
-        let cache = Self::compute_properties(&input);
+        let cache = Self::compute_properties(&input).into();
         Self {
             input,
             coalescer_options,
@@ -119,7 +119,7 @@ impl ExecutionPlan for SizedCoalesceBatchesExec {
         self
     }
 
-    fn properties(&self) -> &PlanProperties {
+    fn properties(&self) -> &Arc<PlanProperties> {
         &self.cache
     }
 
@@ -166,13 +166,8 @@ impl ExecutionPlan for SizedCoalesceBatchesExec {
         Some(self.metrics.clone_inner())
     }
 
-    fn statistics(&self) -> Result<Statistics> {
-        self.partition_statistics(None)
-    }
-
     fn partition_statistics(&self, partition: Option<usize>) -> Result<Statistics> {
         self.input.partition_statistics(partition)?.with_fetch(
-            self.schema(),
             self.coalescer_options.max_rows,
             0,
             1,

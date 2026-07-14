@@ -1,52 +1,82 @@
 use arrow::array::RecordBatch;
 use arrow::datatypes::{Schema as ArrowSchema, SchemaRef};
 use itertools::Itertools as _;
-use re_arrow_util::ArrowArrayDowncastRef as _;
-use re_log_encoding::{RrdManifest, ToApplication as _};
+
+use re_log_encoding::{RawRrdManifest, ToApplication as _};
 use re_log_types::EntryId;
+use re_protos::EntryName;
+use re_protos::cloud::v1alpha1::ext::ScanSegmentTableDataframe;
+use re_protos::cloud::v1alpha1::ext::{self as cloud_ext, WatchEventsResponse};
 use re_protos::cloud::v1alpha1::ext::{
     CreateDatasetEntryResponse, CreateTableEntryRequest, DataSource, DataSourceKind,
     DatasetDetails, DatasetEntry, EntryDetails, EntryDetailsUpdate, LanceTable, ProviderDetails,
     QueryDatasetRequest, QueryTasksOnCompletionRequest, QueryTasksRequest,
     ReadDatasetEntryResponse, ReadTableEntryResponse, RegisterTableResponse,
-    RegisterWithDatasetRequest, RegisterWithDatasetTaskDescriptor, TableEntry, TableInsertMode,
+    RegisterWithDatasetDataframe, RegisterWithDatasetRequest, RegisterWithDatasetTaskDescriptor,
+    TableDetails, TableEntry, TableInsertMode, UnregisterFromDatasetRequest,
     UpdateDatasetEntryRequest, UpdateDatasetEntryResponse, UpdateEntryRequest, UpdateEntryResponse,
+    UpdateTableEntryRequest, UpdateTableEntryResponse, VersionResponse,
 };
 use re_protos::cloud::v1alpha1::rerun_cloud_service_client::RerunCloudServiceClient;
+use re_protos::cloud::v1alpha1::rerun_cloud_service_server::{
+    RerunCloudService, RerunCloudServiceServer,
+};
 use re_protos::cloud::v1alpha1::{
-    CreateDatasetEntryRequest, DeleteEntryRequest, EntryFilter, EntryKind, FetchChunksRequest,
-    FindEntriesRequest, GetDatasetManifestSchemaRequest, GetDatasetManifestSchemaResponse,
-    GetDatasetSchemaRequest, GetRrdManifestResponse, GetSegmentTableSchemaRequest,
-    GetSegmentTableSchemaResponse, QueryDatasetResponse, QueryTasksOnCompletionResponse,
-    QueryTasksResponse, ReadDatasetEntryRequest, ReadTableEntryRequest,
-    RegisterWithDatasetResponse, ScanSegmentTableRequest, ScanSegmentTableResponse, VersionRequest,
+    CancelTasksRequest, CreateDatasetEntryRequest, DeleteEntryRequest, EntryFilter, EntryKind,
+    FetchChunksRequest, FindEntriesRequest, GetDatasetManifestSchemaRequest,
+    GetDatasetManifestSchemaResponse, GetDatasetSchemaRequest, GetRrdManifestResponse,
+    GetSegmentTableSchemaRequest, GetSegmentTableSchemaResponse, QueryDatasetResponse,
+    QueryTasksOnCompletionResponse, QueryTasksResponse, ReadDatasetEntryRequest,
+    ReadTableEntryRequest, RegisterWithDatasetResponse, ScanSegmentTableRequest, VersionRequest,
     WriteTableRequest,
 };
 use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, ScanParameters, SegmentId};
 use re_protos::common::v1alpha1::{DataframePart, TaskId};
 use re_protos::external::prost::bytes::Bytes;
 use re_protos::headers::RerunHeadersInjectorExt as _;
-use re_protos::{TypeConversionError, invalid_schema, missing_column, missing_field};
+use re_protos::{TypeConversionError, missing_field};
+use re_types_core::LayerName;
+use std::sync::Arc;
+use tokio::sync::OnceCell;
 use tokio_stream::{Stream, StreamExt as _};
+use tonic::IntoStreamingRequest as _;
 use tonic::codegen::{Body, StdError};
-use tonic::{IntoStreamingRequest as _, Status};
 use url::Url;
 
-use crate::{ApiError, ApiResult};
+use crate::{ApiError, ApiErrorKind, ApiResponseStream, ApiResult, TraceId, extract_trace_id};
 
-pub type ResponseStream<T> = std::pin::Pin<Box<dyn Stream<Item = tonic::Result<T>> + Send>>;
+/// Extension trait for [`tonic::Response`] that extracts both the inner value
+/// and the server's trace-id in one step.
+trait TonicResponseExt<T> {
+    fn into_inner_and_trace_id(self) -> (T, Option<opentelemetry::TraceId>);
+}
+
+impl<T> TonicResponseExt<T> for tonic::Response<T> {
+    fn into_inner_and_trace_id(self) -> (T, Option<opentelemetry::TraceId>) {
+        let trace_id = extract_trace_id(self.metadata());
+        (self.into_inner(), trace_id)
+    }
+}
 
 pub type FetchChunksResponseStream =
-    ResponseStream<re_protos::cloud::v1alpha1::FetchChunksResponse>;
+    ApiResponseStream<re_protos::cloud::v1alpha1::FetchChunksResponse>;
 
 pub type QueryDatasetResponseStream =
-    ResponseStream<re_protos::cloud::v1alpha1::QueryDatasetResponse>;
+    ApiResponseStream<re_protos::cloud::v1alpha1::QueryDatasetResponse>;
 
+type RedapHttpRequest = tonic::codegen::http::Request<tonic::body::Body>;
+type RedapHttpResponse = tonic::codegen::http::Response<tonic::body::Body>;
+
+pub type BoxedRedapClientStack =
+    tower::util::BoxCloneSyncService<RedapHttpRequest, RedapHttpResponse, tonic::Status>;
+
+#[derive(Clone)]
 pub struct SegmentQueryParams {
     pub dataset_id: EntryId,
     pub segment_id: SegmentId,
     pub include_static_data: bool,
     pub include_temporal_data: bool,
+    pub generate_direct_urls: bool,
     pub query: Option<re_protos::cloud::v1alpha1::Query>,
 }
 
@@ -57,29 +87,88 @@ pub struct SegmentQueryParams {
 /// For the viewer, use [`crate::ConnectionClient`].
 //TODO(ab): this should NOT be `Clone`, to discourage callsites from holding on to a client for too
 //long. However we have a bunch of places that needs to be fixed before we can do that.
-#[derive(Debug, Clone)]
-pub struct GenericConnectionClient<T>(RerunCloudServiceClient<T>);
+#[derive(Clone)]
+pub struct RedapClient<T> {
+    inner: RerunCloudServiceClient<T>,
 
-impl<T> GenericConnectionClient<T> {
+    /// Cached `VersionResponse.features` list. Populated lazily on the first
+    /// `supports_feature` call and reused for the lifetime of this client
+    /// (and any clones — `Arc` ensures clones share the same cache).
+    ///
+    /// Server features are stable per connection; if the server restarts
+    /// with a different feature set, callers reconnect and get a fresh
+    /// client (and a fresh cache).
+    features: Arc<OnceCell<Vec<String>>>,
+}
+
+impl<T> RedapClient<T> {
     /// Create a new [`Self`].
     ///
     /// This should not be used in the viewer, use [`crate::ConnectionRegistryHandle::client`]
     /// instead.
     pub fn new(client: RerunCloudServiceClient<T>) -> Self {
-        Self(client)
+        Self {
+            inner: client,
+            features: Arc::new(OnceCell::new()),
+        }
     }
 
-    /// Get a mutable reference to the underlying `RedapClient`.
+    /// Get a mutable reference to the underlying generated gRPC client.
     //TODO(#10188): this should disappear once we have wrapper for all endpoints and the client code
     //is using them.
     pub fn inner(&mut self) -> &mut RerunCloudServiceClient<T> {
-        &mut self.0
+        &mut self.inner
+    }
+}
+
+// `RerunCloudServiceClient<T>`'s derived `Debug` requires `T: Debug`, which doesn't hold for the
+// type-erased `BoxedRedapClientStack`. Print only the cached features instead.
+impl<T> std::fmt::Debug for RedapClient<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("RedapClient")
+            .field("features", &self.features)
+            .finish_non_exhaustive()
     }
 }
 
 // ---
 
-impl<T> GenericConnectionClient<T>
+/// Type alias for the boxed-transport [`RedapClient`] used in the viewer.
+///
+/// Use [`crate::ConnectionRegistryHandle::connection`] to construct.
+pub type ConnectionClient = RedapClient<BoxedRedapClientStack>;
+
+/// Connection capabilities for a redap origin.
+#[derive(Clone, Debug)]
+pub struct Connection {
+    pub client: ConnectionClient,
+    pub analytics: Option<crate::ConnectionAnalyticsExporter>,
+}
+
+impl Connection {
+    /// Create a connection backed by an in-process Rerun catalog implementation.
+    pub fn from_service<T>(handler: Arc<T>) -> Self
+    where
+        T: RerunCloudService,
+    {
+        let service = <RerunCloudServiceServer<T> as tower::ServiceExt<RedapHttpRequest>>::map_err(
+            RerunCloudServiceServer::from_arc(handler)
+                .max_decoding_message_size(crate::MAX_DECODING_MESSAGE_SIZE),
+            |err: std::convert::Infallible| match err {},
+        );
+        let client = RerunCloudServiceClient::new(tower::util::BoxCloneSyncService::new(service))
+            .max_decoding_message_size(crate::MAX_DECODING_MESSAGE_SIZE);
+
+        Self {
+            client: RedapClient::new(client),
+            analytics: None,
+        }
+    }
+}
+
+// ---
+
+impl<T> RedapClient<T>
 where
     T: tonic::client::GrpcService<tonic::body::Body>,
     T::Error: Into<StdError>,
@@ -87,6 +176,7 @@ where
     <T::ResponseBody as Body>::Error: Into<StdError> + std::marker::Send,
 {
     /// Uses the `/Version` endpoint for testing roundtrip time.
+    #[tracing::instrument(level = "info", skip_all)]
     pub async fn ping(&mut self) -> ApiResult<()> {
         self.inner()
             .version(VersionRequest {})
@@ -95,33 +185,205 @@ where
             .map(|_| ())
     }
 
-    /// Find all entries matching the given filter.
-    pub async fn find_entries(&mut self, filter: EntryFilter) -> ApiResult<Vec<EntryDetails>> {
-        let result = self
+    /// Returns version and deployment information from the server.
+    #[tracing::instrument(level = "info", skip_all)]
+    pub async fn version_info(&mut self) -> ApiResult<VersionResponse> {
+        let response = self
             .inner()
-            .find_entries(FindEntriesRequest {
-                filter: Some(filter),
+            .version(VersionRequest {})
+            .await
+            .map_err(|err| ApiError::tonic(err, "/Version failed"))?
+            .into_inner();
+        Ok(response.into())
+    }
+
+    /// Checks whether the server advertises a given feature flag in its
+    /// `VersionResponse.features` list.
+    ///
+    /// Returns `Ok(false)` for both "feature genuinely not supported" and
+    /// "old server returned an empty `features` list" — callers should
+    /// treat these the same and fall back to the pre-feature path. That
+    /// invariant is what lets the empty-list-from-old-server case be
+    /// indistinguishable from a feature opt-out without breaking callers.
+    ///
+    /// The `features` list is fetched once via `/Version` on the first
+    /// invocation and cached on the client (shared across clones via
+    /// `Arc<OnceCell<_>>`). Subsequent calls do not hit the wire.
+    pub async fn supports_feature(&mut self, feature: &str) -> ApiResult<bool> {
+        // `OnceCell::get_or_try_init` single-flights the fetch: concurrent
+        // first calls produce a single Version RPC; later calls return the
+        // cached list directly.
+        let features_cache;
+        let features = if let Some(features) = self.features.get() {
+            features
+        } else {
+            // We can't pass `&mut self` into the async closure (the `OnceCell`
+            // borrow on `self.features` is immutable, but `version_info` needs
+            // `&mut self`), so we clone the `Arc<OnceCell<_>>` and call
+            // `version_info` outside the closure when the cell is empty.
+            features_cache = self.features.clone();
+            features_cache
+                .get_or_try_init(|| async {
+                    let info = self.version_info().await?;
+                    Ok(info.features)
+                })
+                .await?
+        };
+        Ok(features.iter().any(|f| f == feature))
+    }
+
+    /// Calls the `/WhoAmI` endpoint to verify authentication and retrieve the user's identity
+    /// and permissions.
+    #[tracing::instrument(level = "info", skip_all)]
+    pub async fn who_am_i(&mut self) -> ApiResult<re_protos::cloud::v1alpha1::WhoAmIResponse> {
+        self.inner()
+            .who_am_i(re_protos::cloud::v1alpha1::WhoAmIRequest {})
+            .await
+            .map(|resp| resp.into_inner())
+            .map_err(|err| ApiError::tonic(err, "/WhoAmI failed"))
+    }
+
+    /// Estimate the round-trip time to the server.
+    ///
+    /// Performs `num_pings` calls to `/DoBandwidthTest` with `num_bytes = 1` and returns the
+    /// minimum elapsed time. Using the minimum (rather than the mean) helps reject latency spikes
+    /// from scheduling jitter, or transient network congestion.
+    pub async fn rtt(&mut self, num_pings: usize) -> ApiResult<std::time::Duration> {
+        if num_pings == 0 {
+            return Err(ApiError::invalid_arguments(
+                "rtt requires at least one ping",
+            ));
+        }
+
+        let mut best = std::time::Duration::MAX;
+        for _ in 0..num_pings {
+            let start = web_time::Instant::now();
+            let mut stream = self
+                .inner()
+                .do_bandwidth_test(re_protos::cloud::v1alpha1::DoBandwidthTestRequest {
+                    num_bytes: 1,
+                })
+                .await
+                .map_err(|err| ApiError::tonic(err, "/DoBandwidthTest failed"))?
+                .into_inner();
+            // Drain the stream so we measure the full round-trip including the response.
+            while stream
+                .next()
+                .await
+                .transpose()
+                .map_err(|err| ApiError::tonic(err, "/DoBandwidthTest stream error"))?
+                .is_some()
+            {}
+            best = best.min(start.elapsed());
+        }
+        Ok(best)
+    }
+
+    /// Estimate the download bandwidth (bytes/second) from the server.
+    ///
+    /// Requests `num_bytes` of pseudo-random bytes via `/DoBandwidthTest`, subtracts `rtt` from
+    /// the elapsed time, and divides by `num_bytes`.
+    ///
+    /// Returns `None` if the elapsed time is not greater than `rtt` (e.g. very small payloads on
+    /// a fast loopback connection).
+    pub async fn bandwidth_bytes_per_sec(
+        &mut self,
+        num_bytes: u64,
+        rtt: std::time::Duration,
+    ) -> ApiResult<Option<f64>> {
+        let max = cloud_ext::MAX_BANDWIDTH_TEST_BYTES;
+        if num_bytes > max {
+            return Err(ApiError::invalid_arguments(format!(
+                "num_bytes ({num_bytes}) exceeds the maximum of {max}"
+            )));
+        }
+
+        let start = web_time::Instant::now();
+        let mut stream = self
+            .inner()
+            .do_bandwidth_test(re_protos::cloud::v1alpha1::DoBandwidthTestRequest { num_bytes })
+            .await
+            .map_err(|err| ApiError::tonic(err, "/DoBandwidthTest failed"))?
+            .into_inner();
+
+        let mut received: u64 = 0;
+        while let Some(item) = stream
+            .next()
+            .await
+            .transpose()
+            .map_err(|err| ApiError::tonic(err, "/DoBandwidthTest stream error"))?
+        {
+            received += item.payload.len() as u64;
+        }
+        let elapsed = start.elapsed();
+
+        let Some(transfer) = elapsed.checked_sub(rtt).filter(|t| !t.is_zero()) else {
+            return Ok(None);
+        };
+        Ok(Some(received as f64 / transfer.as_secs_f64()))
+    }
+
+    /// Stream catalog lifecycle events as they happen on the server.
+    #[tracing::instrument(level = "info", skip_all)]
+    pub async fn watch_events(&mut self) -> ApiResult<ApiResponseStream<WatchEventsResponse>> {
+        let response = self
+            .inner()
+            .watch_events(re_protos::cloud::v1alpha1::WatchEventsRequest {
+                kinds: vec![re_protos::cloud::v1alpha1::EventKind::entry()],
             })
             .await
-            .map_err(|err| ApiError::tonic(err, "/FindEntries failed"))?
-            .into_inner()
-            .entries;
+            .map_err(|err| ApiError::tonic(err, "/WatchEvents failed"))?;
 
-        result
+        let stream = ApiResponseStream::from_tonic_response(response, "/WatchEvents");
+        let trace_id = stream.trace_id();
+        let stream = stream.map(move |resp| {
+            resp?.try_into().map_err(|err| {
+                ApiError::deserialization_with_source(
+                    trace_id,
+                    err,
+                    "failed parsing /WatchEvents response",
+                )
+            })
+        });
+        Ok(ApiResponseStream::new(stream, trace_id))
+    }
+
+    /// Find all entries matching the given filter.
+    #[tracing::instrument(level = "info", skip_all)]
+    pub async fn find_entries(&mut self, filter: EntryFilter) -> ApiResult<Vec<EntryDetails>> {
+        let (response, trace_id) = TonicResponseExt::into_inner_and_trace_id(
+            self.inner()
+                .find_entries(FindEntriesRequest {
+                    filter: Some(filter),
+                })
+                .await
+                .map_err(|err| ApiError::tonic(err, "/FindEntries failed"))?,
+        );
+
+        response
+            .entries
             .into_iter()
             .map(TryInto::try_into)
-            .collect::<Result<Vec<EntryDetails>, _>>()
+            .try_collect()
             .map_err(|err| {
-                ApiError::serialization_with_source(err, "failed parsing /FindEntries response")
+                ApiError::deserialization_with_source(
+                    trace_id,
+                    err,
+                    "failed parsing /FindEntries response",
+                )
             })
     }
 
     /// Delete the provided entry.
+    #[tracing::instrument(level = "info", skip_all)]
     pub async fn delete_entry(&mut self, entry_id: EntryId) -> ApiResult {
         self.inner()
-            .delete_entry(DeleteEntryRequest {
-                id: Some(entry_id.into()),
-            })
+            .delete_entry(
+                tonic::Request::new(DeleteEntryRequest {
+                    id: Some(entry_id.into()),
+                })
+                .with_entry_id(entry_id),
+            )
             .await
             .map_err(|err| ApiError::tonic(err, "/DeleteEntry failed"))?;
 
@@ -129,175 +391,220 @@ where
     }
 
     /// Update the provided entry.
+    #[tracing::instrument(level = "info", skip_all)]
     pub async fn update_entry(
         &mut self,
         entry_id: EntryId,
         entry_details_update: EntryDetailsUpdate,
     ) -> ApiResult<EntryDetails> {
-        let response: UpdateEntryResponse = self
-            .inner()
-            .update_entry(tonic::Request::new(
-                UpdateEntryRequest {
-                    id: entry_id,
-                    entry_details_update,
-                }
-                .into(),
-            ))
-            .await
-            .map_err(|err| ApiError::tonic(err, "/UpdateEntry failed"))?
-            .into_inner()
-            .try_into()
-            .map_err(|err| {
-                ApiError::serialization_with_source(err, "failed parsing /UpdateEntry response")
-            })?;
+        let (inner, trace_id) = TonicResponseExt::into_inner_and_trace_id(
+            self.inner()
+                .update_entry(
+                    tonic::Request::new(
+                        UpdateEntryRequest {
+                            id: entry_id,
+                            entry_details_update,
+                        }
+                        .into(),
+                    )
+                    .with_entry_id(entry_id),
+                )
+                .await
+                .map_err(|err| ApiError::tonic(err, "/UpdateEntry failed"))?,
+        );
+        let response: UpdateEntryResponse = inner.try_into().map_err(|err| {
+            ApiError::deserialization_with_source(
+                trace_id,
+                err,
+                "failed parsing /UpdateEntry response",
+            )
+        })?;
 
         Ok(response.entry_details)
     }
 
     /// Get the Arrow schema for a dataset entry.
+    #[tracing::instrument(level = "info", skip_all)]
     pub async fn get_dataset_schema(&mut self, entry_id: EntryId) -> ApiResult<ArrowSchema> {
-        self.inner()
-            .get_dataset_schema(
-                tonic::Request::new(GetDatasetSchemaRequest {})
-                    .with_entry_id(entry_id)
-                    .map_err(|err| {
-                        ApiError::tonic(err, "failed building /GetDatasetSchema request")
-                    })?,
-            )
-            .await
-            .map_err(|err| ApiError::tonic(err, "/GetDatasetSchema failed"))?
-            .into_inner()
-            .schema()
-            .map_err(|err| {
-                ApiError::serialization_with_source(
-                    err,
-                    "failed parsing /GetDatasetSchema response",
+        let (inner, trace_id) = TonicResponseExt::into_inner_and_trace_id(
+            self.inner()
+                .get_dataset_schema(
+                    tonic::Request::new(GetDatasetSchemaRequest {}).with_entry_id(entry_id),
                 )
-            })
+                .await
+                .map_err(|err| ApiError::tonic(err, "/GetDatasetSchema failed"))?,
+        );
+        inner.schema().map_err(|err| {
+            ApiError::deserialization_with_source(
+                trace_id,
+                err,
+                "failed parsing /GetDatasetSchema response",
+            )
+        })
     }
 
     /// Create a new dataset entry.
+    #[tracing::instrument(level = "info", skip_all)]
     pub async fn create_dataset_entry(
         &mut self,
         name: String,
         entry_id: Option<EntryId>,
     ) -> ApiResult<DatasetEntry> {
-        let response: CreateDatasetEntryResponse = self
-            .inner()
-            .create_dataset_entry(CreateDatasetEntryRequest {
-                name: Some(name),
-                id: entry_id.map(Into::into),
-            })
-            .await
-            .map_err(|err| ApiError::tonic(err, "/CreateDatasetEntry failed"))?
-            .into_inner()
-            .try_into()
-            .map_err(|err| {
-                ApiError::serialization_with_source(
-                    err,
-                    "failed parsing /CreateDatasetEntry response",
-                )
-            })?;
+        let (inner, trace_id) = TonicResponseExt::into_inner_and_trace_id(
+            self.inner()
+                .create_dataset_entry(CreateDatasetEntryRequest {
+                    name: Some(name),
+                    id: entry_id.map(Into::into),
+                })
+                .await
+                .map_err(|err| ApiError::tonic(err, "/CreateDatasetEntry failed"))?,
+        );
+        let response: CreateDatasetEntryResponse = inner.try_into().map_err(|err| {
+            ApiError::deserialization_with_source(
+                trace_id,
+                err,
+                "failed parsing /CreateDatasetEntry response",
+            )
+        })?;
 
         Ok(response.dataset)
     }
 
     /// Get information on a dataset entry.
+    #[tracing::instrument(level = "info", skip_all)]
     pub async fn read_dataset_entry(&mut self, entry_id: EntryId) -> ApiResult<DatasetEntry> {
-        let response: ReadDatasetEntryResponse = self
-            .inner()
-            .read_dataset_entry(
-                tonic::Request::new(ReadDatasetEntryRequest {})
-                    .with_entry_id(entry_id)
-                    .map_err(|err| {
-                        ApiError::tonic(err, "failed building /ReadDatasetEntry request")
-                    })?,
-            )
-            .await
-            .map_err(|err| ApiError::tonic(err, "/ReadDatasetEntry failed"))?
-            .into_inner()
-            .try_into()
-            .map_err(|err| {
-                ApiError::serialization_with_source(
-                    err,
-                    "failed parsing /ReadDatasetEntry response",
+        let (inner, trace_id) = TonicResponseExt::into_inner_and_trace_id(
+            self.inner()
+                .read_dataset_entry(
+                    tonic::Request::new(ReadDatasetEntryRequest {}).with_entry_id(entry_id),
                 )
-            })?;
+                .await
+                .map_err(|err| ApiError::tonic(err, "/ReadDatasetEntry failed"))?,
+        );
+        let response: ReadDatasetEntryResponse = inner.try_into().map_err(|err| {
+            ApiError::deserialization_with_source(
+                trace_id,
+                err,
+                "failed parsing /ReadDatasetEntry response",
+            )
+        })?;
 
         Ok(response.dataset_entry)
     }
 
     /// Update the details of a dataset entry.
+    #[tracing::instrument(level = "info", skip_all)]
     pub async fn update_dataset_entry(
         &mut self,
         entry_id: EntryId,
         dataset_details: DatasetDetails,
     ) -> ApiResult<DatasetEntry> {
-        let response: UpdateDatasetEntryResponse = self
-            .inner()
-            .update_dataset_entry(tonic::Request::new(
-                UpdateDatasetEntryRequest {
-                    id: entry_id,
-                    dataset_details,
-                }
-                .into(),
-            ))
-            .await
-            .map_err(|err| ApiError::tonic(err, "/UpdateDatasetEntry failed"))?
-            .into_inner()
-            .try_into()
-            .map_err(|err| {
-                ApiError::serialization_with_source(
-                    err,
-                    "failed parsing /UpdateDatasetEntry response",
+        let (inner, trace_id) = TonicResponseExt::into_inner_and_trace_id(
+            self.inner()
+                .update_dataset_entry(
+                    tonic::Request::new(
+                        UpdateDatasetEntryRequest {
+                            id: entry_id,
+                            dataset_details,
+                        }
+                        .into(),
+                    )
+                    .with_entry_id(entry_id),
                 )
-            })?;
+                .await
+                .map_err(|err| ApiError::tonic(err, "/UpdateDatasetEntry failed"))?,
+        );
+        let response: UpdateDatasetEntryResponse = inner.try_into().map_err(|err| {
+            ApiError::deserialization_with_source(
+                trace_id,
+                err,
+                "failed parsing /UpdateDatasetEntry response",
+            )
+        })?;
 
         Ok(response.dataset_entry)
     }
 
     /// Get information on a table entry.
+    #[tracing::instrument(level = "info", skip_all)]
     pub async fn read_table_entry(&mut self, entry_id: EntryId) -> ApiResult<TableEntry> {
-        let response: ReadTableEntryResponse = self
-            .inner()
-            .read_table_entry(ReadTableEntryRequest {
-                id: Some(entry_id.into()),
-            })
-            .await
-            .map_err(|err| ApiError::tonic(err, "/ReadTableEntry failed"))?
-            .into_inner()
-            .try_into()
-            .map_err(|err| {
-                ApiError::serialization_with_source(err, "failed parsing /ReadTableEntry response")
-            })?;
+        let (inner, trace_id) = TonicResponseExt::into_inner_and_trace_id(
+            self.inner()
+                .read_table_entry(
+                    tonic::Request::new(ReadTableEntryRequest {
+                        id: Some(entry_id.into()),
+                    })
+                    .with_entry_id(entry_id),
+                )
+                .await
+                .map_err(|err| ApiError::tonic(err, "/ReadTableEntry failed"))?,
+        );
+        let response: ReadTableEntryResponse = inner.try_into().map_err(|err| {
+            ApiError::deserialization_with_source(
+                trace_id,
+                err,
+                "failed parsing /ReadTableEntry response",
+            )
+        })?;
+
+        Ok(response.table_entry)
+    }
+
+    /// Update the details of a table entry.
+    #[tracing::instrument(level = "info", skip_all)]
+    pub async fn update_table_entry(
+        &mut self,
+        entry_id: EntryId,
+        table_details: TableDetails,
+    ) -> ApiResult<TableEntry> {
+        let (inner, trace_id) = TonicResponseExt::into_inner_and_trace_id(
+            self.inner()
+                .update_table_entry(tonic::Request::new(
+                    UpdateTableEntryRequest {
+                        id: entry_id,
+                        table_details,
+                    }
+                    .into(),
+                ))
+                .await
+                .map_err(|err| ApiError::tonic(err, "/UpdateTableEntry failed"))?,
+        );
+        let response: UpdateTableEntryResponse = inner.try_into().map_err(|err| {
+            ApiError::deserialization_with_source(
+                trace_id,
+                err,
+                "failed parsing /UpdateTableEntry response",
+            )
+        })?;
 
         Ok(response.table_entry)
     }
 
     //TODO(ab): accept entry name
+    #[tracing::instrument(level = "info", skip_all)]
     pub async fn get_segment_table_schema(&mut self, entry_id: EntryId) -> ApiResult<ArrowSchema> {
-        self.inner()
-            .get_segment_table_schema(
-                tonic::Request::new(GetSegmentTableSchemaRequest {})
-                    .with_entry_id(entry_id)
-                    .map_err(|err| {
-                        ApiError::tonic(err, "failed building /GetSegmentTableSchema request")
-                    })?,
-            )
-            .await
-            .map_err(|err| ApiError::tonic(err, "GetSegmentTableSchema failed"))?
-            .into_inner()
+        let (inner, trace_id) = TonicResponseExt::into_inner_and_trace_id(
+            self.inner()
+                .get_segment_table_schema(
+                    tonic::Request::new(GetSegmentTableSchemaRequest {}).with_entry_id(entry_id),
+                )
+                .await
+                .map_err(|err| ApiError::tonic(err, "GetSegmentTableSchema failed"))?,
+        );
+        inner
             .schema
             .ok_or_else(|| {
                 let err = missing_field!(GetSegmentTableSchemaResponse, "schema");
-                ApiError::serialization_with_source(
+                ApiError::deserialization_with_source(
+                    trace_id,
                     err,
                     "missing field in /GetSegmentTableSchema response",
                 )
             })?
             .try_into()
             .map_err(|err| {
-                ApiError::serialization_with_source(
+                ApiError::deserialization_with_source(
+                    trace_id,
                     err,
                     "failed parsing /GetSegmentTableSchema response",
                 )
@@ -305,161 +612,169 @@ where
     }
 
     /// Get a list of segment IDs for the given dataset entry ID.
-    //TODO(ab): is there a way—and a reason—to not collect and instead return a stream?
-    pub async fn get_dataset_segment_ids(
-        &mut self,
-        entry_id: EntryId,
-    ) -> ApiResult<Vec<SegmentId>> {
-        const COLUMN_NAME: &str = ScanSegmentTableResponse::FIELD_SEGMENT_ID;
+    //TODO(ab): is there a way — and a reason — to not collect and instead return a stream?
+    #[tracing::instrument(level = "info", skip_all)]
+    pub async fn get_dataset_segment_ids(&self, entry_id: EntryId) -> ApiResult<Vec<SegmentId>>
+    where
+        T: Clone,
+    {
+        const COLUMN_NAME: &str = ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME;
 
-        let mut stream = self
-            .inner()
-            .scan_segment_table(
-                tonic::Request::new(ScanSegmentTableRequest {
-                    columns: vec![COLUMN_NAME.to_owned()],
-                })
-                .with_entry_id(entry_id)
-                .map_err(|err| ApiError::tonic(err, "failed building /ScanSegmentTable request"))?,
-            )
-            .await
-            .map_err(|err| ApiError::tonic(err, "/ScanSegmentTable failed"))?
-            .into_inner();
+        // Retry only the *open*: the server rejects `ScanSegmentTable` with `ResourceExhausted`
+        // fail-fast at admission control, before the stream exists, so re-opening is idempotent.
+        // Stream consumption below is intentionally outside the retry (consistent with
+        // `query_dataset_raw`); once the stream is open it can't yield `ResourceExhausted`.
+        let response = crate::with_retry_resource_exhausted("/ScanSegmentTable", || {
+            let mut client = self.clone();
+            async move {
+                client
+                    .inner()
+                    .scan_segment_table(
+                        tonic::Request::new(ScanSegmentTableRequest::with_columns([COLUMN_NAME]))
+                            .with_entry_id(entry_id),
+                    )
+                    .await
+                    .map_err(|err| ApiError::tonic(err, "/ScanSegmentTable failed"))
+            }
+        })
+        .await?;
+
+        let mut stream = ApiResponseStream::from_tonic_response(response, "/ScanSegmentTable");
+        let trace_id = stream.trace_id();
 
         let mut segment_ids = Vec::new();
 
         while let Some(resp) = stream.next().await {
-            let record_batch: RecordBatch = resp
-                .map_err(|err| {
-                    ApiError::tonic(err, "failed receiving item from /ScanSegmentTable stream")
-                })?
+            let record_batch: RecordBatch = resp?
                 .data()
                 .map_err(|err| {
-                    ApiError::serialization_with_source(
+                    ApiError::deserialization_with_source(
+                        trace_id,
                         err,
                         "failed parsing item from /ScanSegmentTable stream",
                     )
                 })?
                 .try_into()
                 .map_err(|err| {
-                    ApiError::serialization_with_source(
+                    ApiError::deserialization_with_source(
+                        trace_id,
                         err,
                         "failed decoding item from /ScanSegmentTable stream",
                     )
                 })?;
 
-            let segment_id_col = record_batch.column_by_name(COLUMN_NAME).ok_or_else(|| {
-                let err = missing_column!(ScanSegmentTableResponse, COLUMN_NAME);
-                ApiError::serialization_with_source(
-                    err,
-                    "missing column from item in /ScanSegmentTable stream",
-                )
-            })?;
-
-            let segment_id_array = segment_id_col
-                .try_downcast_array_ref::<arrow::array::StringArray>()
+            let segment_id_column = ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID
+                .extract(&record_batch)
                 .map_err(|err| {
-                    ApiError::serialization_with_source(
-                        err,
-                        "unexpected types in item in /ScanSegmentTable stream",
-                    )
+                    ApiError::deserialization_quiver_from(trace_id, err, "/ScanSegmentTable stream")
                 })?;
 
-            segment_ids.extend(
-                segment_id_array
-                    .iter()
-                    .filter_map(|opt| opt.map(|s| SegmentId::new(s.to_owned()))),
-            );
+            segment_ids.extend(segment_id_column.into_iter_owned());
         }
 
         Ok(segment_ids)
     }
 
     //TODO(ab): accept entry name
+    #[tracing::instrument(level = "info", skip_all)]
     pub async fn get_dataset_manifest_schema(
         &mut self,
         entry_id: EntryId,
     ) -> ApiResult<ArrowSchema> {
-        self.inner()
-            .get_dataset_manifest_schema(
-                tonic::Request::new(GetDatasetManifestSchemaRequest {})
-                    .with_entry_id(entry_id)
-                    .map_err(|err| {
-                        ApiError::tonic(err, "failed building /GetDatasetManifestSchema request")
-                    })?,
-            )
-            .await
-            .map_err(|err| ApiError::tonic(err, "/GetDatasetManifestSchema failed"))?
-            .into_inner()
+        let (inner, trace_id) = TonicResponseExt::into_inner_and_trace_id(
+            self.inner()
+                .get_dataset_manifest_schema(
+                    tonic::Request::new(GetDatasetManifestSchemaRequest {}).with_entry_id(entry_id),
+                )
+                .await
+                .map_err(|err| ApiError::tonic(err, "/GetDatasetManifestSchema failed"))?,
+        );
+        inner
             .schema
             .ok_or_else(|| {
                 let err = missing_field!(GetDatasetManifestSchemaResponse, "schema");
-                ApiError::serialization_with_source(
+                ApiError::deserialization_with_source(
+                    trace_id,
                     err,
                     "missing field in /GetDatasetManifestSchema response",
                 )
             })?
             .try_into()
             .map_err(|err| {
-                ApiError::serialization_with_source(
+                ApiError::deserialization_with_source(
+                    trace_id,
                     err,
                     "failed parsing /GetDatasetManifestSchema response",
                 )
             })
     }
 
-    /// Get the full [`RrdManifest`] of a recording.
-    pub async fn get_rrd_manifest(
+    /// Stream the [`RawRrdManifest`] parts of a recording as they arrive from the server.
+    ///
+    /// Each item in the returned stream is a manifest part (a slice of the full manifest).
+    /// Use [`RawRrdManifest::concat`] to combine parts if needed.
+    #[tracing::instrument(level = "info", skip_all)]
+    pub async fn get_rrd_manifest_stream(
         &mut self,
         dataset_id: EntryId,
         segment_id: SegmentId,
-    ) -> ApiResult<RrdManifest> {
-        // TODO(cmc): at some point we should probably continue the stream all the way down, but
-        // for now we simplify downstream's life by concatenating everything in here.
-        let mut rrd_manifest_parts = Vec::new();
-
-        let responses = self
+    ) -> ApiResult<ApiResponseStream<RawRrdManifest>> {
+        let response = self
             .inner()
             .get_rrd_manifest(
                 tonic::Request::new(re_protos::cloud::v1alpha1::GetRrdManifestRequest {
                     segment_id: Some(segment_id.clone().into()),
                 })
-                .with_entry_id(dataset_id)
-                .map_err(|err| ApiError::tonic(err, "failed building /GetRrdManifest request"))?,
+                .with_entry_id(dataset_id),
             )
             .await
-            .map_err(|err| ApiError::tonic(err, "/GetRrdManifest failed"))?
-            .into_inner();
+            .map_err(|err| ApiError::tonic(err, "/GetRrdManifest failed"))?;
 
-        futures::pin_mut!(responses);
-        while let Some(resp) = responses.next().await {
-            let rrd_manifest_part = resp
-                .map_err(|err| {
-                    ApiError::connection_with_source(
-                        err,
-                        "failed fetching /GetRrdManifest response part",
-                    )
-                })?
+        let stream = ApiResponseStream::from_tonic_response(response, "/GetRrdManifest");
+        let trace_id = stream.trace_id();
+        let stream = stream.map(move |resp| {
+            resp?
                 .rrd_manifest
                 .ok_or_else(|| {
                     let err = missing_field!(GetRrdManifestResponse, "rrd_manifest");
-                    ApiError::serialization_with_source(
+                    ApiError::deserialization_with_source(
+                        trace_id,
                         err,
                         "missing field in /GetRrdManifest response",
                     )
                 })?
                 .to_application(())
                 .map_err(|err| {
-                    ApiError::serialization_with_source(
+                    ApiError::deserialization_with_source(
+                        trace_id,
                         err,
                         "failed parsing /GetRrdManifest response",
                     )
-                })?;
+                })
+        });
+        Ok(ApiResponseStream::new(stream, trace_id))
+    }
 
-            rrd_manifest_parts.push(rrd_manifest_part);
+    /// Get the full [`RawRrdManifest`] of a recording, concatenated from all stream parts.
+    #[tracing::instrument(level = "info", skip_all)]
+    pub async fn get_rrd_manifest(
+        &mut self,
+        dataset_id: EntryId,
+        segment_id: SegmentId,
+    ) -> ApiResult<RawRrdManifest> {
+        let stream = self.get_rrd_manifest_stream(dataset_id, segment_id).await?;
+        let trace_id = stream.trace_id();
+
+        futures::pin_mut!(stream);
+
+        let mut rrd_manifest_parts = Vec::new();
+        while let Some(part) = stream.next().await {
+            rrd_manifest_parts.push(part?);
         }
 
         let Some(mut rrd_manifest) = rrd_manifest_parts.first().cloned() else {
-            return Err(ApiError::serialization(
+            return Err(ApiError::deserialization(
+                trace_id,
                 "failed to parse the response for /GetRrdManifest (no data)",
             ));
         };
@@ -467,7 +782,8 @@ where
         let data_parts = rrd_manifest_parts.into_iter().map(|p| p.data).collect_vec();
         rrd_manifest.data =
             re_arrow_util::concat_polymorphic_batches(&data_parts).map_err(|err| {
-                ApiError::serialization_with_source(
+                ApiError::deserialization_with_source(
+                    trace_id,
                     err,
                     "failed concatenating /GetRrdManifest response parts",
                 )
@@ -480,49 +796,63 @@ where
     ///
     /// You can include/exclude static/temporal chunks,
     /// and limit the query to a time range.
+    #[tracing::instrument(level = "info", skip_all)]
     pub async fn query_dataset_raw(
-        &mut self,
+        &self,
         params: SegmentQueryParams,
-    ) -> ApiResult<QueryDatasetResponseStream> {
-        let SegmentQueryParams {
-            dataset_id,
-            segment_id,
-            include_static_data,
-            include_temporal_data,
-            query,
-        } = params;
+    ) -> ApiResult<QueryDatasetResponseStream>
+    where
+        T: Clone,
+    {
+        // The server rejects `QueryDataset` with `ResourceExhausted` (fail-fast, before any work)
+        // when its stream-concurrency limiter is saturated. Retry the *open* only; the returned
+        // stream is consumed by the caller. `params` is cloned per attempt so we rebuild the
+        // request fresh.
+        crate::with_retry_resource_exhausted("/QueryDataset", || {
+            let mut client = self.clone();
+            let SegmentQueryParams {
+                dataset_id,
+                segment_id,
+                include_static_data,
+                include_temporal_data,
+                query,
+                generate_direct_urls,
+            } = params.clone();
 
-        let query_request = QueryDatasetRequest {
-            segment_ids: vec![segment_id],
-            chunk_ids: vec![],
-            entity_paths: vec![],
-            select_all_entity_paths: true,
-            fuzzy_descriptors: vec![],
-            exclude_static_data: !include_static_data,
-            exclude_temporal_data: !include_temporal_data,
-            query: query
-                .map(|q| q.try_into())
-                .transpose()
-                .map_err(|err| ApiError::tonic(err, "failed building /QueryDataset request"))?,
-            scan_parameters: Some(ScanParameters {
-                columns: FetchChunksRequest::required_column_names(),
-                ..Default::default()
-            }),
-        };
+            async move {
+                let query_request = QueryDatasetRequest {
+                    segment_ids: vec![segment_id],
+                    chunk_ids: vec![],
+                    entity_paths: vec![],
+                    select_all_entity_paths: true,
+                    fuzzy_descriptors: vec![],
+                    exclude_static_data: !include_static_data,
+                    exclude_temporal_data: !include_temporal_data,
+                    query: query.map(|q| q.try_into()).transpose().map_err(|err| {
+                        ApiError::tonic(err, "failed building /QueryDataset request")
+                    })?,
+                    scan_parameters: Some(ScanParameters {
+                        columns: FetchChunksRequest::required_column_names(),
+                        ..Default::default()
+                    }),
+                    generate_direct_urls,
+                };
 
-        Ok(Box::pin(
-            self.inner()
-                .query_dataset(
-                    tonic::Request::new(query_request.into())
-                        .with_entry_id(dataset_id)
-                        .map_err(|err| {
-                            ApiError::tonic(err, "failed building /QueryDataset request")
-                        })?,
-                )
-                .await
-                .map_err(|err| ApiError::tonic(err, "/QueryDataset failed"))?
-                .into_inner(),
-        ))
+                let response = client
+                    .inner()
+                    .query_dataset(
+                        tonic::Request::new(query_request.into()).with_entry_id(dataset_id),
+                    )
+                    .await
+                    .map_err(|err| ApiError::tonic(err, "/QueryDataset failed"))?;
+
+                Ok(ApiResponseStream::from_tonic_response(
+                    response,
+                    "/QueryDataset",
+                ))
+            }
+        })
+        .await
     }
 
     /// Fetches all chunks ids for a specified segment.
@@ -531,27 +861,24 @@ where
     /// and limit the query to a time range.
     ///
     /// You can pass on the results to [`Self::query_dataset_chunk_index`].
+    #[tracing::instrument(level = "info", skip_all)]
     pub async fn query_dataset_chunk_index(
-        &mut self,
+        &self,
         params: SegmentQueryParams,
-    ) -> ApiResult<Vec<RecordBatch>> {
-        self.query_dataset_raw(params)
-            .await?
-            .collect::<Vec<_>>()
-            .await
-            .into_iter()
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(|err| {
-                ApiError::tonic(
-                    err,
-                    "failed receiving items in /QueryDataset response stream",
-                )
-            })?
+    ) -> ApiResult<Vec<RecordBatch>>
+    where
+        T: Clone,
+    {
+        let stream = self.query_dataset_raw(params).await?;
+        let trace_id = stream.trace_id();
+        let responses: Vec<_> = stream.collect::<Vec<_>>().await.into_iter().try_collect()?;
+        responses
             .into_iter()
             .map(|resp| {
                 resp.data.ok_or_else(|| {
                     let err = missing_field!(QueryDatasetResponse, "data");
-                    ApiError::serialization_with_source(
+                    ApiError::deserialization_with_source(
+                        trace_id,
                         err,
                         "missing field in item in /QueryDataset response stream",
                     )
@@ -559,13 +886,18 @@ where
             })
             .map(|batch| {
                 arrow::array::RecordBatch::try_from(batch?).map_err(|err| {
-                    ApiError::serialization_with_source(err, "failed converting to RecordBatch")
+                    ApiError::deserialization_with_source(
+                        trace_id,
+                        err,
+                        "failed converting to RecordBatch",
+                    )
                 })
             })
             .collect()
     }
 
     /// Input should be same schema as what [`Self::query_dataset_chunk_index`] returns.
+    #[tracing::instrument(level = "info", skip_all)]
     pub async fn fetch_segment_chunks_by_id(
         &mut self,
         record_batch: &RecordBatch,
@@ -574,65 +906,72 @@ where
             chunk_infos: vec![DataframePart::from(record_batch)],
         };
 
-        let fetch_chunks_response_stream = self
+        let mut req = tonic::Request::new(fetch_chunks_request);
+        req.set_timeout(crate::FETCH_CHUNKS_DEADLINE);
+        let response = self
             .inner()
-            .fetch_chunks(fetch_chunks_request)
+            .fetch_chunks(req)
             .await
-            .map_err(|err| ApiError::tonic(err, "/FetchChunks failed"))?
-            .into_inner();
+            // NOTE: `ApiError::tonic` already extracts the trace-id from the error metadata.
+            .map_err(|err| ApiError::tonic(err, "/FetchChunks failed"))?;
 
-        Ok(Box::pin(fetch_chunks_response_stream))
+        Ok(ApiResponseStream::from_tonic_response(
+            response,
+            "/FetchChunks",
+        ))
     }
 
     /// Fetches chunks for a specified partition and query.
     ///
     /// Convenience for [`Self::query_dataset_chunk_index`] + [`Self::fetch_segment_chunks_by_id`].
+    #[tracing::instrument(level = "info", skip_all)]
     pub async fn fetch_segment_chunks_by_query(
         &mut self,
         params: SegmentQueryParams,
-    ) -> ApiResult<FetchChunksResponseStream> {
-        let chunk_info_batches = self
-            .query_dataset_raw(params)
-            .await?
-            .collect::<Vec<_>>()
-            .await
-            .into_iter()
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(|err| {
-                ApiError::tonic(
-                    err,
-                    "failed receiving items in /QueryDataset response stream",
-                )
-            })?
+    ) -> ApiResult<FetchChunksResponseStream>
+    where
+        T: Clone,
+    {
+        let stream = self.query_dataset_raw(params).await?;
+        let query_trace_id = stream.trace_id();
+        let responses: Vec<_> = stream.collect::<Vec<_>>().await.into_iter().try_collect()?;
+        let chunk_info_batches: Vec<_> = responses
             .into_iter()
             .map(|resp| {
                 resp.data.ok_or_else(|| {
                     let err = missing_field!(QueryDatasetResponse, "data");
-                    ApiError::serialization_with_source(
+                    ApiError::deserialization_with_source(
+                        query_trace_id,
                         err,
                         "missing field in item in /QueryDataset response stream",
                     )
                 })
             })
-            .collect::<Result<Vec<_>, _>>()?;
+            .try_collect()?;
 
         if chunk_info_batches.is_empty() {
-            let empty_stream = tokio_stream::empty();
-            return Ok(Box::pin(empty_stream));
+            return Ok(ApiResponseStream::new(
+                tokio_stream::empty::<ApiResult<re_protos::cloud::v1alpha1::FetchChunksResponse>>(),
+                None,
+            ));
         }
 
         let fetch_chunks_request = FetchChunksRequest {
             chunk_infos: chunk_info_batches,
         };
 
-        let fetch_chunks_response_stream = self
+        let mut req = tonic::Request::new(fetch_chunks_request);
+        req.set_timeout(crate::FETCH_CHUNKS_DEADLINE);
+        let response = self
             .inner()
-            .fetch_chunks(fetch_chunks_request)
+            .fetch_chunks(req)
             .await
-            .map_err(|err| ApiError::tonic(err, "/FetchChunks failed"))?
-            .into_inner();
+            .map_err(|err| ApiError::tonic(err, "/FetchChunks failed"))?;
 
-        Ok(Box::pin(fetch_chunks_response_stream))
+        Ok(ApiResponseStream::from_tonic_response(
+            response,
+            "/FetchChunks",
+        ))
     }
 
     /// Initiate registration of the provided recording URIs with a dataset and return the
@@ -640,167 +979,182 @@ where
     ///
     /// NOTE: The server may pool multiple registrations into a single task. The result always has
     /// the same length as the output, so task ids may be duplicated.
+    #[tracing::instrument(level = "info", skip_all)]
     pub async fn register_with_dataset(
         &mut self,
         dataset_id: EntryId,
         data_sources: Vec<DataSource>,
         on_duplicate: IfDuplicateBehavior,
-    ) -> ApiResult<Vec<RegisterWithDatasetTaskDescriptor>> {
+    ) -> ApiResult<(Option<TraceId>, Vec<RegisterWithDatasetTaskDescriptor>)> {
         let req = tonic::Request::new(RegisterWithDatasetRequest {
             data_sources,
             on_duplicate,
         })
-        .with_entry_id(dataset_id)
-        .map_err(|err| ApiError::tonic(err, "failed building /RegisterWithDataset request"))?;
+        .with_entry_id(dataset_id);
 
-        let response: RecordBatch = self
-            .inner()
-            .register_with_dataset(req.map(Into::into))
-            .await
-            .map_err(|err| ApiError::tonic(err, "/RegisterWithDataset failed"))?
-            .into_inner()
+        let (inner, trace_id) = TonicResponseExt::into_inner_and_trace_id(
+            self.inner()
+                .register_with_dataset(req.map(Into::into))
+                .await
+                .map_err(|err| ApiError::tonic(err, "/RegisterWithDataset failed"))?,
+        );
+        let response: RecordBatch = inner
             .data
             .ok_or_else(|| {
                 let err = missing_field!(RegisterWithDatasetResponse, "data");
-                ApiError::serialization_with_source(
+                ApiError::deserialization_with_source(
+                    trace_id,
                     err,
                     "missing field in /RegisterWithDataset response",
                 )
             })?
             .try_into()
             .map_err(|err| {
-                ApiError::serialization_with_source(
+                ApiError::deserialization_with_source(
+                    trace_id,
                     err,
                     "failed decoding /RegisterWithDataset response",
                 )
             })?;
 
-        // TODO(andrea): why is the schema completely off?
-        #[expect(clippy::overly_complex_bool_expr)]
-        if false
-            && !response
-                .schema()
-                .contains(&RegisterWithDatasetResponse::schema())
-        {
-            let err = invalid_schema!(RegisterWithDatasetResponse);
-            return Err(ApiError::serialization_with_source(
-                err,
-                "invalid schema in /RegisterWithDataset response",
-            ));
-        }
-
-        let get_string_array = |column_name: &'static str| {
-            response
-                .column_by_name(column_name)
-                .and_then(|column| {
-                    column
-                        .try_downcast_array_ref::<arrow::array::StringArray>()
-                        .ok()
-                })
-                .ok_or_else(|| {
-                    let err = missing_column!(RegisterWithDatasetResponse, column_name);
-                    ApiError::serialization_with_source(
-                        err,
-                        "missing column in /RegisterWithDataset response",
-                    )
-                })
-        };
-
-        let segment_id_column = get_string_array(RegisterWithDatasetResponse::FIELD_SEGMENT_ID)?;
-        let segment_type_column = DataSourceKind::many_from_arrow(
-            response
-                .column_by_name(RegisterWithDatasetResponse::FIELD_SEGMENT_TYPE)
-                .ok_or_else(|| {
-                    let err = missing_column!(
-                        RegisterWithDatasetResponse,
-                        RegisterWithDatasetResponse::FIELD_SEGMENT_TYPE
-                    );
-                    ApiError::serialization_with_source(
-                        err,
-                        "missing column in /RegisterWithDataset response",
-                    )
-                })?,
-        )
-        .map_err(|err| {
-            ApiError::serialization_with_source(err, "failed parsing /RegisterWithDataset response")
+        // Validates the columns (existence, datatype, no nulls):
+        let RegisterWithDatasetDataframe {
+            rerun_segment_id,
+            rerun_segment_layer,
+            rerun_segment_type,
+            rerun_storage_url,
+            rerun_task_id,
+        } = RegisterWithDatasetDataframe::try_from(response).map_err(|err| {
+            ApiError::deserialization_quiver_from(trace_id, err, "/RegisterWithDataset response")
         })?;
-        let storage_url_column = get_string_array(RegisterWithDatasetResponse::FIELD_STORAGE_URL)?;
-        let task_id_column = get_string_array(RegisterWithDatasetResponse::FIELD_TASK_ID)?;
 
-        itertools::izip!(
-            segment_id_column,
-            segment_type_column,
-            storage_url_column,
-            task_id_column,
+        let segment_types = DataSourceKind::many_from_arrow(rerun_segment_type.as_arrow().as_ref())
+            .map_err(|err| {
+                ApiError::deserialization_with_source(
+                    trace_id,
+                    err,
+                    "failed parsing /RegisterWithDataset response",
+                )
+            })?;
+
+        let descriptors = itertools::izip!(
+            rerun_segment_layer.into_iter_owned(),
+            rerun_segment_id.into_iter_owned(),
+            segment_types,
+            rerun_storage_url.into_iter_owned(),
+            rerun_task_id.into_iter_owned()
         )
-        .map(|(segment_id, segment_type, storage_url, task_id)| {
-            Ok(RegisterWithDatasetTaskDescriptor {
-                segment_id: SegmentId::new(
-                    segment_id
-                        .ok_or_else(|| {
-                            let err = missing_field!(RegisterWithDatasetResponse, "segment_id");
-                            ApiError::serialization_with_source(
-                                err,
-                                "missing field in /RegisterWithDataset response",
-                            )
-                        })?
-                        .to_owned(),
-                ),
-                segment_type,
-                storage_url: url::Url::parse(storage_url.ok_or_else(|| {
-                    let err = missing_field!(RegisterWithDatasetResponse, "storage_url");
-                    ApiError::serialization_with_source(
-                        err,
-                        "missing field in /RegisterWithDataset response",
-                    )
-                })?)
-                .map_err(|err| {
-                    ApiError::serialization_with_source(
-                        TypeConversionError::UrlParseError(err),
-                        "failed to parse /RegisterWithDataset response",
-                    )
-                })?,
-                task_id: TaskId {
-                    id: task_id
-                        .ok_or_else(|| {
-                            let err = missing_field!(RegisterWithDatasetResponse, "task_id");
-                            ApiError::serialization_with_source(
-                                err,
-                                "missing field in /RegisterWithDataset response",
-                            )
-                        })?
-                        .to_owned(),
-                },
-            })
-        })
-        .collect()
+        .map(
+            |(layer_name, segment_id, segment_type, storage_url, task_id)| {
+                Ok(RegisterWithDatasetTaskDescriptor {
+                    layer_name,
+                    segment_id,
+                    segment_type,
+                    storage_url: url::Url::parse(&storage_url).map_err(|err| {
+                        ApiError::deserialization_with_source(
+                            trace_id,
+                            TypeConversionError::UrlParseError(err),
+                            "failed to parse /RegisterWithDataset response",
+                        )
+                    })?,
+                    task_id,
+                })
+            },
+        )
+        .try_collect()?;
+
+        Ok((trace_id, descriptors))
+    }
+
+    /// Unregisters segments and layers from the dataset.
+    ///
+    /// This is an asynchronous operation, and returns a list of task ids.
+    ///
+    /// This method acts as a *product* filter:
+    /// * empty `segments_to_drop` + empty `layers_to_drop`: invalid argument error
+    /// * empty `segments_to_drop` + non-empty `layers_to_drop`: remove specified layers for *all* segments
+    /// * non-empty `segments_to_drop` + empty `layers_to_drop`: remove *all* layers for specified segments
+    /// * non-empty `segments_to_drop` + non-empty `layers_to_drop`: delete *all* specified layers for *all* specified segments
+    ///
+    /// If `force`, deletion will go through regardless of the segments/layers' current statuses.
+    /// This is only useful in the very specific, catatrophic scenario where the contents of the
+    /// task queue were lost and some tasks are now stuck in `status=pending` forever.
+    /// Do not use this unless you know exactly what you're doing.
+    #[tracing::instrument(level = "info", skip_all)]
+    pub async fn unregister_from_dataset(
+        &mut self,
+        dataset_id: EntryId,
+        segments_to_drop: Vec<SegmentId>,
+        layers_to_drop: Vec<LayerName>,
+        force: bool,
+    ) -> ApiResult<(Option<TraceId>, Vec<TaskId>)> {
+        let req = tonic::Request::new(
+            UnregisterFromDatasetRequest {
+                segments_to_drop,
+                layers_to_drop,
+                force,
+            }
+            .into(),
+        )
+        .with_entry_id(dataset_id);
+
+        use futures::TryStreamExt as _;
+        let response = self
+            .inner()
+            .unregister_from_dataset(req)
+            .await
+            .map_err(|err| ApiError::tonic(err, "/UnregisterFromDataset failed"))?;
+
+        let trace_id = extract_trace_id(response.metadata());
+
+        let stream = ApiResponseStream::from_tonic_response(response, "/UnregisterFromDataset");
+        let responses: Vec<_> = stream.try_collect().await?;
+
+        let tasks = responses
+            .into_iter()
+            .filter_map(|resp| resp.task_id)
+            .collect();
+
+        Ok((trace_id, tasks))
     }
 
     /// Register a foreign Lance table to a new table entry in the catalog.
     //TODO(ab): in the future, we will probably support my types of tables (parquet on S3, etc.)
-    pub async fn register_table(&mut self, name: String, url: url::Url) -> ApiResult<TableEntry> {
-        let request = re_protos::cloud::v1alpha1::ext::RegisterTableRequest {
+    #[tracing::instrument(level = "info", skip_all)]
+    pub async fn register_table(
+        &mut self,
+        name: EntryName,
+        url: url::Url,
+    ) -> ApiResult<TableEntry> {
+        let request = cloud_ext::RegisterTableRequest {
             name,
             provider_details: ProviderDetails::LanceTable(LanceTable { table_url: url }),
         };
 
-        let response: RegisterTableResponse = self
-            .inner()
-            .register_table(tonic::Request::new(request.try_into().map_err(|err| {
-                ApiError::serialization_with_source(err, "failed building /RegisterTable request")
-            })?))
-            .await
-            .map_err(|err| ApiError::tonic(err, "/RegisterTable failed"))?
-            .into_inner()
-            .try_into()
-            .map_err(|err| {
-                ApiError::serialization_with_source(err, "failed parsing /RegisterTable response")
-            })?;
+        let (inner, trace_id) = TonicResponseExt::into_inner_and_trace_id(
+            self.inner()
+                .register_table(tonic::Request::new(request.try_into().map_err(|err| {
+                    ApiError::serialization_with_source(
+                        err,
+                        "failed building /RegisterTable request",
+                    )
+                })?))
+                .await
+                .map_err(|err| ApiError::tonic(err, "/RegisterTable failed"))?,
+        );
+        let response: RegisterTableResponse = inner.try_into().map_err(|err| {
+            ApiError::deserialization_with_source(
+                trace_id,
+                err,
+                "failed parsing /RegisterTable response",
+            )
+        })?;
 
         Ok(response.table_entry)
     }
 
     #[expect(clippy::fn_params_excessive_bools)] // TODO(emilk): remove bool parameters
+    #[tracing::instrument(level = "info", skip_all)]
     pub async fn do_maintenance(
         &mut self,
         dataset_id: EntryId,
@@ -813,7 +1167,7 @@ where
         self.inner()
             .do_maintenance(
                 tonic::Request::new(
-                    re_protos::cloud::v1alpha1::ext::DoMaintenanceRequest {
+                    cloud_ext::DoMaintenanceRequest {
                         optimize_indexes,
                         retrain_indexes,
                         compact_fragments,
@@ -822,8 +1176,7 @@ where
                     }
                     .into(),
                 )
-                .with_entry_id(dataset_id)
-                .map_err(|err| ApiError::tonic(err, "failed building /DoMaintenance request"))?,
+                .with_entry_id(dataset_id),
             )
             .await
             .map_err(|err| ApiError::tonic(err, "/DoMaintenance failed"))?;
@@ -831,6 +1184,7 @@ where
         Ok(())
     }
 
+    #[tracing::instrument(level = "info", skip_all)]
     pub async fn do_global_maintenance(&mut self) -> ApiResult {
         self.inner()
             .do_global_maintenance(tonic::Request::new(
@@ -842,7 +1196,8 @@ where
         Ok(())
     }
 
-    pub async fn get_table_names(&mut self) -> ApiResult<Vec<String>> {
+    #[tracing::instrument(level = "info", skip_all)]
+    pub async fn get_table_names(&mut self) -> ApiResult<Vec<EntryName>> {
         Ok(self
             .find_entries(re_protos::cloud::v1alpha1::EntryFilter {
                 entry_kind: Some(EntryKind::Table.into()),
@@ -855,11 +1210,12 @@ where
     }
 
     // -- Tasks API --
+    #[tracing::instrument(level = "info", skip_all)]
     pub async fn query_tasks_on_completion(
         &mut self,
         task_ids: Vec<TaskId>,
         timeout: std::time::Duration,
-    ) -> ApiResult<tonic::Streaming<QueryTasksOnCompletionResponse>> {
+    ) -> ApiResult<ApiResponseStream<QueryTasksOnCompletionResponse>> {
         let q = QueryTasksOnCompletionRequest { task_ids, timeout };
         let response = self
             .inner()
@@ -870,11 +1226,24 @@ where
                 )
             })?))
             .await
-            .map_err(|err| ApiError::tonic(err, "/QueryTasksOnCompletion failed"))?
-            .into_inner();
-        Ok(response)
+            .map_err(|err| ApiError::tonic(err, "/QueryTasksOnCompletion failed"))?;
+        Ok(ApiResponseStream::from_tonic_response(
+            response,
+            "/QueryTasksOnCompletion",
+        ))
     }
 
+    #[tracing::instrument(level = "info", skip_all)]
+    pub async fn cancel_tasks(&mut self, task_ids: Vec<TaskId>) -> ApiResult {
+        self.inner()
+            .cancel_tasks(CancelTasksRequest { ids: task_ids })
+            .await
+            .map_err(|err| ApiError::tonic(err, "/CancelTasks failed"))?;
+
+        Ok(())
+    }
+
+    #[tracing::instrument(level = "info", skip_all)]
     pub async fn query_tasks(&mut self, task_ids: Vec<TaskId>) -> ApiResult<QueryTasksResponse> {
         let q = QueryTasksRequest { task_ids };
         let response = self
@@ -888,32 +1257,37 @@ where
         Ok(response)
     }
 
+    #[tracing::instrument(level = "info", skip_all)]
     pub async fn get_entry_id(
         &mut self,
-        entry_name: &str,
+        entry_name: &EntryName,
         entry_kind: Option<EntryKind>,
     ) -> ApiResult<Option<EntryId>> {
-        self.inner()
-            .find_entries(FindEntriesRequest {
-                filter: Some(EntryFilter {
-                    id: None,
-                    name: Some(entry_name.to_owned()),
-                    entry_kind: entry_kind.map(|kind| kind.into()),
-                }),
-            })
-            .await
-            .map_err(|err| ApiError::tonic(err, "/FindEntries failed"))?
-            .into_inner()
+        let (inner, trace_id) = TonicResponseExt::into_inner_and_trace_id(
+            self.inner()
+                .find_entries(FindEntriesRequest {
+                    filter: Some(EntryFilter {
+                        id: None,
+                        name: Some(entry_name.to_string()),
+                        entry_kind: entry_kind.map(|kind| kind.into()),
+                    }),
+                })
+                .await
+                .map_err(|err| ApiError::tonic(err, "/FindEntries failed"))?,
+        );
+        inner
             .entries
             .first()
             .and_then(|entry| entry.id)
             .map(|id| {
-                EntryId::try_from(id)
-                    .map_err(|err| ApiError::serialization_with_source(err, "/FindEntries failed"))
+                EntryId::try_from(id).map_err(|err| {
+                    ApiError::deserialization_with_source(trace_id, err, "/FindEntries failed")
+                })
             })
             .transpose()
     }
 
+    #[tracing::instrument(level = "info", skip_all)]
     pub async fn write_table(
         &mut self,
         stream: impl Stream<Item = RecordBatch> + Send + 'static,
@@ -927,8 +1301,7 @@ where
                 insert_mode,
             })
             .into_streaming_request()
-            .with_entry_id(table_id)
-            .map_err(|err| ApiError::tonic(err, "/WriteTable failed"))?;
+            .with_entry_id(table_id);
 
         self.inner()
             .write_table(stream)
@@ -937,37 +1310,194 @@ where
             .map_err(|err| ApiError::tonic(err, "/WriteTable failed"))
     }
 
+    /// Create a table entry.
+    ///
+    /// NOTE: if `url` is provided, the caller must ensure that it is writable and yet unused.
+    #[tracing::instrument(level = "info", skip_all)]
     pub async fn create_table_entry(
         &mut self,
-        name: &str,
+        name: EntryName,
         url: Option<Url>,
         schema: SchemaRef,
     ) -> ApiResult<TableEntry> {
         let provider_details =
             url.map(|url| ProviderDetails::LanceTable(LanceTable { table_url: url }));
         let request = CreateTableEntryRequest {
-            name: name.to_owned(),
+            name,
             schema: schema.as_ref().clone(),
             provider_details,
         };
 
-        let resp = self
+        let (resp, trace_id) = self
             .inner()
             .create_table_entry(tonic::Request::new(request.try_into().map_err(|err| {
-                ApiError::internal_with_source(err, "/CreateTableEntry failed")
+                ApiError::internal_with_source(None, err, "/CreateTableEntry failed")
             })?))
             .await
             .map_err(|err| ApiError::tonic(err, "failed to create table"))?
-            .into_inner();
+            .into_inner_and_trace_id();
 
         resp.table
             .ok_or_else(|| {
-                ApiError::tonic(
-                    Status::invalid_argument("entry ID not set in response"),
-                    "/CreateTable failed",
+                ApiError::deserialization(
+                    trace_id,
+                    "/CreateTable failed: entry ID not set in response",
                 )
             })?
             .try_into()
-            .map_err(|err| ApiError::internal_with_source(err, "/CreateTable failed"))
+            .map_err(|err| ApiError::internal_with_source(trace_id, err, "/CreateTable failed"))
+    }
+
+    /// Look up a dataset entry by name, returning its id if it exists.
+    #[tracing::instrument(level = "info", skip_all)]
+    pub async fn find_dataset_by_name(&mut self, name: &str) -> ApiResult<Option<EntryId>> {
+        let entries = match self
+            .find_entries(EntryFilter {
+                name: Some(name.to_owned()),
+                entry_kind: Some(EntryKind::Dataset.into()),
+                ..Default::default()
+            })
+            .await
+        {
+            Ok(entries) => entries,
+            Err(err) if err.kind == ApiErrorKind::NotFound => return Ok(None),
+            Err(err) => return Err(err),
+        };
+        Ok(entries.into_iter().next().map(|entry| entry.id))
+    }
+
+    /// Find the dataset named `name`, creating it if it doesn't exist yet.
+    #[tracing::instrument(level = "info", skip_all)]
+    pub async fn find_or_create_dataset(&mut self, name: &str) -> ApiResult<EntryId> {
+        if let Some(id) = self.find_dataset_by_name(name).await? {
+            return Ok(id);
+        }
+
+        match self.create_dataset_entry(name.to_owned(), None).await {
+            Ok(dataset) => Ok(dataset.details.id),
+
+            // Created concurrently between our lookup and our create.
+            Err(err) if err.kind == ApiErrorKind::AlreadyExists => {
+                self.find_dataset_by_name(name).await?.ok_or_else(|| {
+                    ApiError::invalid_arguments(format!(
+                        "dataset {name:?} disappeared while registering"
+                    ))
+                })
+            }
+
+            Err(err) => Err(err),
+        }
+    }
+
+    /// Ensure a dataset exists, register `data_sources` with it
+    #[tracing::instrument(level = "info", skip_all)]
+    pub async fn ensure_dataset_and_register(
+        &mut self,
+        dataset_name: &str,
+        data_sources: Vec<DataSource>,
+        on_duplicate: IfDuplicateBehavior,
+    ) -> ApiResult<(EntryId, SegmentId)> {
+        let dataset_id = self.find_or_create_dataset(dataset_name).await?;
+
+        let (_trace_id, tasks) = self
+            .register_with_dataset(dataset_id, data_sources, on_duplicate)
+            .await?;
+
+        let segment_id = tasks
+            .into_iter()
+            .next()
+            .map(|task| task.segment_id)
+            .ok_or_else(|| {
+                ApiError::invalid_arguments("server registered the file but returned no segments")
+            })?;
+
+        Ok((dataset_id, segment_id))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// When the `features` cell is already populated, `supports_feature`
+    /// must answer from the cache without going through the gRPC transport.
+    ///
+    /// We construct a `RedapClient` against a lazy channel
+    /// pointing at an unrouteable address: any RPC against it would error
+    /// (or hang past our test timeout). The test pre-populates the cell
+    /// and then issues three `supports_feature` calls. If the cache is
+    /// honored, all three return immediately; if it's bypassed, the
+    /// transport call fails the test.
+    #[tokio::test]
+    async fn supports_feature_short_circuits_when_cache_is_populated() {
+        // `connect_lazy` succeeds without doing any I/O; the failure
+        // would only surface when an RPC actually flows through.
+        let channel = tonic::transport::Channel::from_static("http://127.0.0.1:1").connect_lazy();
+        let mut client = RedapClient::new(RerunCloudServiceClient::new(channel));
+
+        // Prime the cache exactly as a successful first-call would.
+        client
+            .features
+            .set(vec![
+                "per_segment_index_values".to_owned(),
+                "future_X".to_owned(),
+            ])
+            .expect("freshly-constructed cell is empty");
+
+        // Each of these must hit only the cache. If any of them attempts
+        // an RPC, the unrouteable transport will error and fail the test.
+        assert!(
+            client
+                .supports_feature("per_segment_index_values")
+                .await
+                .unwrap()
+        );
+        assert!(client.supports_feature("future_X").await.unwrap());
+        assert!(!client.supports_feature("nonexistent").await.unwrap());
+    }
+
+    /// The cache is shared across clones via `Arc<OnceCell<_>>` — populating
+    /// the cell on one clone makes it observable on the other.
+    #[tokio::test]
+    async fn features_cache_is_shared_across_clones() {
+        let channel = tonic::transport::Channel::from_static("http://127.0.0.1:1").connect_lazy();
+        let client_a = RedapClient::new(RerunCloudServiceClient::new(channel));
+        let mut client_b = client_a.clone();
+
+        client_a
+            .features
+            .set(vec!["per_segment_index_values".to_owned()])
+            .expect("freshly-constructed cell is empty");
+
+        // The clone observes the same cached features and answers without
+        // the transport.
+        assert!(
+            client_b
+                .supports_feature("per_segment_index_values")
+                .await
+                .unwrap()
+        );
+        assert!(!client_b.supports_feature("nonexistent").await.unwrap());
+    }
+
+    /// Old server returns an empty `features` list. `supports_feature`
+    /// must answer `Ok(false)` — never error — so callers can fall back
+    /// to the pre-feature path.
+    #[tokio::test]
+    async fn supports_feature_returns_false_for_empty_features_list() {
+        let channel = tonic::transport::Channel::from_static("http://127.0.0.1:1").connect_lazy();
+        let mut client = RedapClient::new(RerunCloudServiceClient::new(channel));
+
+        client
+            .features
+            .set(vec![])
+            .expect("freshly-constructed cell is empty");
+
+        assert!(
+            !client
+                .supports_feature("per_segment_index_values")
+                .await
+                .unwrap()
+        );
     }
 }

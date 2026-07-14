@@ -4,20 +4,8 @@
 /// 10^-9  collision risk with 190k values.
 /// 10^-6  collision risk with   6M values.
 /// 10^-3  collision risk with 200M values.
-#[derive(Copy, Clone, Eq, PartialOrd, Ord)]
+#[derive(Copy, Clone, Eq, PartialOrd, Ord, re_byte_size::SizeBytes)]
 pub struct Hash64(u64);
-
-impl re_byte_size::SizeBytes for Hash64 {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
-    }
-}
 
 impl Hash64 {
     pub const ZERO: Self = Self(0);

@@ -2,7 +2,7 @@
 # - The correct version of Rust based on the `rust-toolchain` file
 # - All components + targets specified in `rust-toolchain`
 # - Caching of individual compilation requests via `sccache` and GCS
-#   - Uses our own `rerun-io/sccache-action` which supports GCS
+#   - Downloads sccache from the mirror at build.rerun.io
 # - `cargo nextest`
 #
 # Note that due to the use of GCS as an sccache storage backend,
@@ -62,10 +62,8 @@ runs:
     - name: Ensure correct version of Rust is installed
       shell: bash --noprofile --norc -euo pipefail {0}
       run: |
-        # This is the only way to force rustup to install the version of Rust
-        # and the components/targets specified in our `rust-toolchain` file.
-        # It might break at some point: https://github.com/rust-lang/rustup/issues/1397
-        rustup show
+        rustup --version
+        rustup install
 
     - name: Install additional targets
       if: ${{ inputs.targets != '' }}
@@ -81,17 +79,9 @@ runs:
         done
 
     - name: Set up sccache
-      uses: rerun-io/sccache-action@v0.8.0
-      with:
-        version: "v0.10.0"
-        use_gcs: true
-        gcs_bucket: rerun-sccache
-        gcs_read_only: false
-
-    - name: Verify sccache
       shell: bash --noprofile --norc -euo pipefail {0}
       run: |
-        sccache --show-stats
+        "$GITHUB_ACTION_PATH/../../scripts/setup_sccache.sh" --version v0.14.0 --backend gcs
 
     # Recommended way to install nextest on CI.
     - name: Install latest nextest release

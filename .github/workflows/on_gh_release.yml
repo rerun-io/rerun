@@ -34,3 +34,23 @@ jobs:
       CONCURRENCY: "${{ github.event.release.tag_name || inputs.tag_name }}"
       RELEASE_VERSION: "${{ github.event.release.tag_name || inputs.tag_name }}"
     secrets: inherit
+
+  dispatch-gradio-rerun-viewer:
+    name: "Trigger gradio-rerun-viewer release"
+    # Only on real GH release events (not workflow_dispatch), and only for finals.
+    if: github.event_name == 'release' && !github.event.release.prerelease
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send repository_dispatch
+        env:
+          GH_TOKEN: ${{ secrets.RERUN_BOT_TOKEN }}
+        run: |
+          version="${{ github.event.release.tag_name }}"
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Tag $version is not a final X.Y.Z release; skipping."
+            exit 0
+          fi
+          gh api repos/rerun-io/gradio-rerun-viewer/dispatches \
+            -f event_type=rerun-released \
+            -F client_payload[version]="$version" \
+            -F client_payload[source_release_url]="${{ github.event.release.html_url }}"

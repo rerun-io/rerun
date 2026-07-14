@@ -11,7 +11,7 @@ Whether the container, view, entity or instance is currently visible.
 
 ## Arrow datatype
 ```
-boolean
+Boolean
 ```
 
 ## API reference links
@@ -20,3 +20,8 @@ boolean
  * 🦀 [Rust API docs for `Visible`](https://docs.rs/rerun/latest/rerun/components/struct.Visible.html)
 
 
+## Used by
+
+* [`SeriesLines`](../archetypes/series_lines.md)
+* [`SeriesPoints`](../archetypes/series_points.md)
+* [`StateConfiguration`](../archetypes/state_configuration.md)

@@ -8,6 +8,7 @@
 #include "../component_column.hpp"
 #include "../components/blob.hpp"
 #include "../components/draw_order.hpp"
+#include "../components/magnification_filter.hpp"
 #include "../components/media_type.hpp"
 #include "../components/opacity.hpp"
 #include "../result.hpp"
@@ -39,13 +40,16 @@ namespace rerun::archetypes {
     ///
     /// namespace fs = std::filesystem;
     ///
-    /// int main() {
+    /// int main(int argc, char* argv[]) {
     ///     const auto rec = rerun::RecordingStream("rerun_example_encoded_image");
     ///     rec.spawn().exit_on_failure();
     ///
     ///     fs::path image_filepath = fs::path(__FILE__).parent_path() / "ferris.png";
     ///
-    ///     rec.log("image", rerun::EncodedImage::from_file(image_filepath).value_or_throw());
+    ///     rec.log(
+    ///         "image",
+    ///         rerun::EncodedImage::from_file(image_filepath).value_or_throw()
+    ///     );
     /// }
     /// ```
     struct EncodedImage {
@@ -72,6 +76,9 @@ namespace rerun::archetypes {
         /// Objects with higher values are drawn on top of those with lower values.
         std::optional<ComponentBatch> draw_order;
 
+        /// Optional filter used when a texel is magnified (displayed larger than a screen pixel).
+        std::optional<ComponentBatch> magnification_filter;
+
       public:
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.EncodedImage";
@@ -94,6 +101,11 @@ namespace rerun::archetypes {
         static constexpr auto Descriptor_draw_order = ComponentDescriptor(
             ArchetypeName, "EncodedImage:draw_order",
             Loggable<rerun::components::DrawOrder>::ComponentType
+        );
+        /// `ComponentDescriptor` for the `magnification_filter` field.
+        static constexpr auto Descriptor_magnification_filter = ComponentDescriptor(
+            ArchetypeName, "EncodedImage:magnification_filter",
+            Loggable<rerun::components::MagnificationFilter>::ComponentType
         );
 
       public: // START of extensions from encoded_image_ext.cpp:
@@ -208,6 +220,33 @@ namespace rerun::archetypes {
         ) && {
             draw_order =
                 ComponentBatch::from_loggable(_draw_order, Descriptor_draw_order).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// Optional filter used when a texel is magnified (displayed larger than a screen pixel).
+        EncodedImage with_magnification_filter(
+            const rerun::components::MagnificationFilter& _magnification_filter
+        ) && {
+            magnification_filter = ComponentBatch::from_loggable(
+                                       _magnification_filter,
+                                       Descriptor_magnification_filter
+            )
+                                       .value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `magnification_filter` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_magnification_filter` should
+        /// be used when logging a single row's worth of data.
+        EncodedImage with_many_magnification_filter(
+            const Collection<rerun::components::MagnificationFilter>& _magnification_filter
+        ) && {
+            magnification_filter = ComponentBatch::from_loggable(
+                                       _magnification_filter,
+                                       Descriptor_magnification_filter
+            )
+                                       .value_or_throw();
             return std::move(*this);
         }
 

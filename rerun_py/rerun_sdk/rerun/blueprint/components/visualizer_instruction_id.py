@@ -16,8 +16,9 @@ __all__ = ["VisualizerInstructionId", "VisualizerInstructionIdBatch"]
 
 class VisualizerInstructionId(datatypes.Uuid, ComponentMixin):
     """
-    **Component**: Single visualizer override the visualizers for an entity.
+    **Component**: ID for a visualizer instruction.
 
+    IDs are only guaranteed to be unique in the scope of a view.
     For details see [`archetypes.ActiveVisualizers`][rerun.blueprint.archetypes.ActiveVisualizers].
 
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**

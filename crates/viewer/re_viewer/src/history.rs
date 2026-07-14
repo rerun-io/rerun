@@ -33,6 +33,13 @@ impl History {
         }
     }
 
+    /// The closest earlier entry satisfying `predicate`.
+    pub fn find_back(&self, predicate: impl Fn(&ViewerOpenUrl) -> bool) -> Option<&ViewerOpenUrl> {
+        self.entries[..self.current_entry]
+            .iter()
+            .rfind(|url| predicate(url))
+    }
+
     /// Goes back in history, returning the new url to open.
     pub fn go_back(&mut self) -> Option<&ViewerOpenUrl> {
         self.current_entry = self.current_entry.checked_sub(1)?;

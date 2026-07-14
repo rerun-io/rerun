@@ -2,28 +2,22 @@ use re_chunk_store::RowId;
 use re_log_types::hash::Hash64;
 use re_log_types::{Instance, TimeInt};
 use re_renderer::renderer::GpuMeshInstance;
+use re_sdk_types::Archetype as _;
 use re_sdk_types::ArrowString;
 use re_sdk_types::archetypes::Asset3D;
-use re_sdk_types::components::AlbedoFactor;
+use re_sdk_types::components::{AlbedoFactor, Blob};
 use re_viewer_context::{
-    IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
-    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
+    IdentifiedViewSystem, QueryContext, ViewClass as _, ViewContext, ViewContextCollection,
+    ViewQuery, ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo,
+    VisualizerSystem,
 };
 
 use super::SpatialViewVisualizerData;
 use crate::caches::{AnyMesh, MeshCache, MeshCacheKey};
-use crate::contexts::SpatialSceneEntityContext;
-use crate::view_kind::SpatialViewKind;
+use crate::contexts::SpatialSceneVisualizerInstructionContext;
 
-pub struct Asset3DVisualizer(SpatialViewVisualizerData);
-
-impl Default for Asset3DVisualizer {
-    fn default() -> Self {
-        Self(SpatialViewVisualizerData::new(Some(
-            SpatialViewKind::ThreeD,
-        )))
-    }
-}
+#[derive(Default)]
+pub struct Asset3DVisualizer;
 
 struct Asset3DComponentData<'a> {
     index: (TimeInt, RowId),
@@ -38,36 +32,36 @@ struct Asset3DComponentData<'a> {
 // timestamps within a time range -- it's _a lot_.
 impl Asset3DVisualizer {
     fn process_data<'a>(
-        &mut self,
+        data: &mut SpatialViewVisualizerData,
         ctx: &QueryContext<'_>,
         instances: &mut Vec<GpuMeshInstance>,
-        ent_context: &SpatialSceneEntityContext<'_>,
-        data: impl Iterator<Item = Asset3DComponentData<'a>>,
+        ent_context: &SpatialSceneVisualizerInstructionContext<'_>,
+        asset_data: impl Iterator<Item = Asset3DComponentData<'a>>,
     ) {
         let entity_path = ctx.target_entity_path;
 
-        for data in data {
-            let primary_row_id = data.index.1;
+        for asset in asset_data {
+            let primary_row_id = asset.index.1;
             let picking_instance_hash = re_entity_db::InstancePathHash::entity_all(entity_path);
             let outline_mask_ids = ent_context.highlight.index_outline_mask(Instance::ALL);
 
             // TODO(#5974): this is subtly wrong, the key should actually be a hash of everything that got
             // cached, which includes the media type…
-            let mesh = ctx.store_ctx().caches.entry(|c: &mut MeshCache| {
+            let mesh = ctx.store_ctx().memoizer(|c: &mut MeshCache| {
                 let key = MeshCacheKey {
                     versioned_instance_path_hash: picking_instance_hash.versioned(primary_row_id),
-                    query_result_hash: data.query_result_hash,
-                    media_type: data.media_type.clone().map(Into::into),
+                    query_result_hash: asset.query_result_hash,
+                    media_type: asset.media_type.clone().map(Into::into),
                 };
 
                 c.entry(
-                    &entity_path.to_string(),
+                    entity_path,
                     key.clone(),
                     AnyMesh::Asset {
                         asset: crate::mesh_loader::NativeAsset3D {
-                            bytes: &data.blob,
-                            media_type: data.media_type.clone().map(Into::into),
-                            albedo_factor: data.albedo_factor.map(|a| a.0.into()),
+                            bytes: &asset.blob,
+                            media_type: asset.media_type.clone().map(Into::into),
+                            albedo_factor: asset.albedo_factor.map(|a| a.0.into()),
                         },
                     },
                     ctx.render_ctx(),
@@ -93,11 +87,12 @@ impl Asset3DVisualizer {
                                 picking_instance_hash,
                             ),
                             additive_tint: re_renderer::Color32::BLACK,
+                            // TODO(andreas): honor the culling settings from the mesh file if any.
+                            cull_mode: Default::default(),
                         }
                     }));
 
-                    self.0
-                        .add_bounding_box(entity_path.hash(), mesh.bbox(), world_from_pose);
+                    data.add_bounding_box(entity_path.hash(), mesh.bbox(), world_from_pose);
                 }
             }
         }
@@ -106,7 +101,10 @@ impl Asset3DVisualizer {
 
 impl IdentifiedViewSystem for Asset3DVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "Asset3D".into()
+        re_viewer_context::external::re_string_interner::intern_static!(
+            re_viewer_context::ViewSystemIdentifier,
+            "Asset3D"
+        )
     }
 }
 
@@ -115,46 +113,48 @@ impl VisualizerSystem for Asset3DVisualizer {
         &self,
         _app_options: &re_viewer_context::AppOptions,
     ) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<Asset3D>()
+        VisualizerQueryInfo::single_required_component::<Blob>(
+            &Asset3D::descriptor_blob(),
+            &Asset3D::all_components(),
+        )
+    }
+
+    fn affinity(&self) -> Option<re_sdk_types::ViewClassIdentifier> {
+        Some(crate::SpatialView3D::identifier())
     }
 
     fn execute(
-        &mut self,
+        &self,
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
-        let mut output = VisualizerExecutionOutput::default();
-        let preferred_view_kind = self.0.preferred_view_kind;
+        let mut data = SpatialViewVisualizerData::default();
+        let output = VisualizerExecutionOutput::default();
         let mut instances = Vec::new();
 
-        use super::entity_iterator::{iter_slices, process_archetype};
-        process_archetype::<Self, Asset3D, _>(
+        use super::entity_iterator::process_archetype;
+        process_archetype::<Asset3D, _, _>(
             ctx,
             view_query,
             context_systems,
-            &mut output,
-            preferred_view_kind,
+            &output,
+            self,
             |ctx, spatial_ctx, results| {
-                use re_view::RangeResultsExt as _;
-
-                let Some(all_blob_chunks) =
-                    results.get_required_chunks(Asset3D::descriptor_blob().component)
-                else {
+                let all_blobs = results.iter_required(Asset3D::descriptor_blob().component);
+                if all_blobs.is_empty() {
                     return Ok(());
-                };
+                }
 
-                let timeline = ctx.query.timeline();
-                let all_blobs_indexed = iter_slices::<&[u8]>(&all_blob_chunks, timeline);
                 let all_media_types =
-                    results.iter_as(timeline, Asset3D::descriptor_media_type().component);
+                    results.iter_optional(Asset3D::descriptor_media_type().component);
                 let all_albedo_factors =
-                    results.iter_as(timeline, Asset3D::descriptor_albedo_factor().component);
+                    results.iter_optional(Asset3D::descriptor_albedo_factor().component);
 
                 let query_result_hash = results.query_result_hash();
 
-                let data = re_query::range_zip_1x2(
-                    all_blobs_indexed,
+                let asset_data = re_query::range_zip_1x2(
+                    all_blobs.slice::<&[u8]>(),
                     all_media_types.slice::<String>(),
                     all_albedo_factors.slice::<u32>(),
                 )
@@ -173,22 +173,18 @@ impl VisualizerSystem for Asset3DVisualizer {
                     })
                 });
 
-                self.process_data(ctx, &mut instances, spatial_ctx, data);
+                Self::process_data(&mut data, ctx, &mut instances, spatial_ctx, asset_data);
 
                 Ok(())
             },
         )?;
 
-        Ok(
-            output.with_draw_data([re_renderer::renderer::MeshDrawData::new(
+        Ok(output
+            .with_draw_data([re_renderer::renderer::MeshDrawData::new(
                 ctx.viewer_ctx.render_ctx(),
                 &instances,
             )?
-            .into()]),
-        )
-    }
-
-    fn data(&self) -> Option<&dyn std::any::Any> {
-        Some(self.0.as_any())
+            .into()])
+            .with_visualizer_data(data))
     }
 }

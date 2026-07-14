@@ -4,7 +4,7 @@ order: 300
 ---
 
 Rerun 0.20 introduced a new [map view](../../reference/types/views/map_view.md).
-This guide provides a short overview on how to use it to visualise geospatial data.
+This guide provides a short overview on how to use it to visualize geospatial data.
 
 ## Coordinate system
 
@@ -35,7 +35,8 @@ Rerun currently supports two types of geometries:
 - [`GeoPoints`](../../reference/types/archetypes/geo_points.md): batch of individual points, with optional [radius](../../reference/types/components/radius.md) and [color](../../reference/types/components/color.md)
 - [`GeoLineStrings`](../../reference/types/archetypes/geo_line_strings.md): batch of line strings, with optional [radius](../../reference/types/components/radius.md) and [color](../../reference/types/components/color.md)
 
-*Note*: polygons are planned but are not supported yet (see [this issue](https://github.com/rerun-io/rerun/issues/8066)).
+> [!NOTE]
+> Polygons are planned but are not supported yet (see [this issue](https://github.com/rerun-io/rerun/issues/8066)).
 
 As in other views, radii may be expressed either as UI points (negative values) or scene units (positive values).
 For the latter case, the map view uses meters are scene units.
@@ -53,7 +54,7 @@ An access token may be freely obtained by creating a Mapbox account.
 
 ## Creating a map view from code
 
-Like other views, the map view can be configured using the [blueprint API](../../getting-started/configure-the-viewer.md#programmatic-blueprints):
+Like other views, the map view can be configured using the [blueprint API](../../getting-started/configure-the-viewer/navigating-the-viewer.md#programmatic-blueprints):
 
 ```python
 import rerun.blueprint as rrb

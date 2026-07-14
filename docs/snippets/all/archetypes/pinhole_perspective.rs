@@ -1,7 +1,9 @@
 //! Logs a point cloud and a perspective camera looking at it.
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let rec = rerun::RecordingStreamBuilder::new("rerun_example_pinhole_perspective").spawn()?;
+    let rec =
+        rerun::RecordingStreamBuilder::new("rerun_example_pinhole_perspective")
+            .spawn()?;
 
     let fov_y = std::f32::consts::FRAC_PI_4;
     let aspect_ratio = 1.7777778;
@@ -16,8 +18,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     rec.log(
         "world/points",
-        &rerun::Points3D::new([(0.0, 0.0, -0.5), (0.1, 0.1, -0.5), (-0.1, -0.1, -0.5)])
-            .with_radii([0.025]),
+        &rerun::Points3D::new([
+            (0.0, 0.0, -0.5),
+            (0.1, 0.1, -0.5),
+            (-0.1, -0.1, -0.5),
+        ])
+        .with_radii([0.025]),
     )?;
 
     Ok(())

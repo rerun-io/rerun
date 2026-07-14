@@ -12,4 +12,4 @@ pub mod stl;
 #[cfg(feature = "import-dae")]
 pub mod dae;
 
-pub use cpu_model::{CpuMeshInstance, CpuModel, CpuModelMeshKey};
+pub use cpu_model::{CpuModel, CpuModelMeshKey};

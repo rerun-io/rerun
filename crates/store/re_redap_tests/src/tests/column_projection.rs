@@ -1,14 +1,13 @@
 use arrow::array::RecordBatch;
 use futures::TryStreamExt as _;
 use itertools::Itertools as _;
+use re_protos::cloud::v1alpha1::ext::ScanSegmentTableDataframe;
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
-use re_protos::cloud::v1alpha1::{
-    ScanDatasetManifestRequest, ScanSegmentTableRequest, ScanSegmentTableResponse,
-};
+use re_protos::cloud::v1alpha1::{ScanDatasetManifestRequest, ScanSegmentTableRequest};
 use re_protos::headers::RerunHeadersInjectorExt as _;
 
 use crate::tests::common::{
-    DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _, prop,
+    DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _, entry_name, prop,
 };
 
 pub async fn test_segment_table_column_projections(service: impl RerunCloudService) {
@@ -67,14 +66,14 @@ async fn test_column_projections<T>(
 
     let partition_id_columns = project_fn(
         &service,
-        vec![ScanSegmentTableResponse::FIELD_SEGMENT_ID.to_owned()],
+        vec![ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME.to_owned()],
         dataset_name,
     )
     .await;
 
     assert_eq!(
         partition_id_columns,
-        vec![ScanSegmentTableResponse::FIELD_SEGMENT_ID.to_owned()],
+        vec![ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME.to_owned()],
         "the projection should have been applied"
     );
 
@@ -100,7 +99,7 @@ async fn test_column_projections<T>(
         &service,
         vec![
             prop_col.clone(),
-            ScanSegmentTableResponse::FIELD_SEGMENT_ID.to_owned(),
+            ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME.to_owned(),
         ],
         dataset_name,
     )
@@ -110,7 +109,7 @@ async fn test_column_projections<T>(
         ordered_columns,
         vec![
             prop_col,
-            ScanSegmentTableResponse::FIELD_SEGMENT_ID.to_owned(),
+            ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME.to_owned(),
         ],
         "the column order should be preserved"
     );
@@ -121,19 +120,16 @@ async fn test_column_projections<T>(
 
     let result = service
         .scan_segment_table(
-            tonic::Request::new(ScanSegmentTableRequest {
-                columns: vec!["unknown_column".to_owned()],
-            })
-            .with_entry_name(dataset_name)
-            .unwrap(),
+            tonic::Request::new(ScanSegmentTableRequest::with_columns(["unknown_column"]))
+                .with_entry_name(entry_name(dataset_name)),
         )
         .await;
 
     match result {
-        Err(status) => {
-            assert_eq!(status.code(), tonic::Code::InvalidArgument);
-            assert!(status.message().contains("unknown_column"));
-            assert!(status.message().contains("not found"));
+        Err(err) => {
+            assert_eq!(err.code(), tonic::Code::InvalidArgument);
+            assert!(err.message().contains("unknown_column"));
+            assert!(err.message().contains("not found"));
         }
         Ok(_) => panic!("expected InvalidArgument error for unknown column"),
     }
@@ -144,26 +140,22 @@ async fn test_column_projections<T>(
 
     let result = service
         .scan_segment_table(
-            tonic::Request::new(ScanSegmentTableRequest {
-                columns: vec![
-                    ScanSegmentTableResponse::FIELD_SEGMENT_ID.to_owned(),
-                    ScanSegmentTableResponse::FIELD_SEGMENT_ID.to_owned(),
-                ],
-            })
-            .with_entry_name(dataset_name)
-            .unwrap(),
+            tonic::Request::new(ScanSegmentTableRequest::with_columns([
+                ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME,
+                ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME,
+            ]))
+            .with_entry_name(entry_name(dataset_name)),
         )
         .await;
 
     match result {
-        Err(status) => {
-            assert_eq!(status.code(), tonic::Code::InvalidArgument);
+        Err(err) => {
+            assert_eq!(err.code(), tonic::Code::InvalidArgument);
             assert!(
-                status
-                    .message()
-                    .contains(ScanSegmentTableResponse::FIELD_SEGMENT_ID)
+                err.message()
+                    .contains(ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME)
             );
-            assert!(status.message().contains("twice") || status.message().contains("duplicate"));
+            assert!(err.message().contains("twice") || err.message().contains("duplicate"));
         }
         Ok(_) => panic!("expected InvalidArgument error for duplicate column"),
     }
@@ -176,11 +168,8 @@ async fn projected_segment_table_batch(
 ) -> Vec<String> {
     let responses: Vec<_> = service
         .scan_segment_table(
-            tonic::Request::new(ScanSegmentTableRequest {
-                columns: column_projection,
-            })
-            .with_entry_name(dataset_name)
-            .unwrap(),
+            tonic::Request::new(ScanSegmentTableRequest::with_columns(column_projection))
+                .with_entry_name(entry_name(dataset_name)),
         )
         .await
         .unwrap()
@@ -218,11 +207,8 @@ async fn projected_dataset_manifest_batch(
 ) -> Vec<String> {
     let responses: Vec<_> = service
         .scan_dataset_manifest(
-            tonic::Request::new(ScanDatasetManifestRequest {
-                columns: column_projection,
-            })
-            .with_entry_name(dataset_name)
-            .unwrap(),
+            tonic::Request::new(ScanDatasetManifestRequest::with_columns(column_projection))
+                .with_entry_name(entry_name(dataset_name)),
         )
         .await
         .unwrap()

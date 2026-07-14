@@ -125,7 +125,7 @@ impl std::fmt::Debug for BatcherHooks {
 /// Defines the different thresholds of the associated [`ChunkBatcher`].
 ///
 /// See [`Self::default`] and [`Self::from_env`].
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, re_byte_size::SizeBytes)]
 pub struct ChunkBatcherConfig {
     /// Duration of the periodic tick.
     //
@@ -166,9 +166,9 @@ impl ChunkBatcherConfig {
     /// Default configuration, applicable to most use cases.
     pub const DEFAULT: Self = Self {
         flush_tick: Duration::from_millis(200),
-        flush_num_bytes: 1024 * 1024, // 1 MiB
+        flush_num_bytes: 2 * 1024 * 1024, // 2 MiB
         flush_num_rows: u64::MAX,
-        chunk_max_rows_if_unsorted: 256,
+        chunk_max_rows_if_unsorted: 8192,
         max_bytes_in_flight: 100 * 1024 * 1024, // Apply backpressure
     };
 
@@ -179,7 +179,16 @@ impl ChunkBatcherConfig {
     };
 
     /// Always flushes ASAP.
-    pub const ALWAYS: Self = Self {
+    ///
+    /// # WARNING: test-only configuration.
+    ///
+    /// This produces an unrealistically large number of chunks and is **not** suitable for
+    /// production workloads. In particular, with a file sink it can drive memory usage through
+    /// the roof: per-chunk metadata has to be accumulated in memory until the SDK process ends
+    /// and the file footer can be written.
+    ///
+    /// Use [`Self::LOW_LATENCY`] if you actually want fast flushing in real applications.
+    pub const ALWAYS_TEST_ONLY: Self = Self {
         flush_tick: Duration::MAX,
         flush_num_bytes: 0,
         flush_num_rows: 0,
@@ -195,6 +204,16 @@ impl ChunkBatcherConfig {
         chunk_max_rows_if_unsorted: 256,
         ..Self::DEFAULT
     };
+
+    /// Returns true if this config flushes after every single row (one chunk per row).
+    ///
+    /// This is the case for [`Self::ALWAYS_TEST_ONLY`] and any config where either the row or
+    /// byte threshold is zero — the batcher flushes whenever pending rows/bytes meet *or exceed*
+    /// the threshold, so a zero threshold triggers on the first row.
+    #[inline]
+    pub fn always_flushes(&self) -> bool {
+        self.flush_num_rows == 0 || self.flush_num_bytes == 0
+    }
 
     /// Environment variable to configure [`Self::flush_tick`].
     pub const ENV_FLUSH_TICK: &'static str = "RERUN_FLUSH_TICK_SECS";
@@ -405,24 +424,16 @@ impl Drop for ChunkBatcherInner {
     }
 }
 
+#[derive(re_byte_size::SizeBytes)]
 enum Command {
     AppendChunk(Chunk),
     AppendRow(EntityPath, PendingRow),
     Flush {
+        #[size_bytes(ignore)]
         on_done: crossbeam::channel::Sender<()>,
     },
     UpdateConfig(ChunkBatcherConfig),
     Shutdown,
-}
-
-impl re_byte_size::SizeBytes for Command {
-    fn heap_size_bytes(&self) -> u64 {
-        match self {
-            Self::AppendChunk(chunk) => chunk.heap_size_bytes(),
-            Self::AppendRow(_, row) => row.heap_size_bytes(),
-            Self::Flush { .. } | Self::UpdateConfig(_) | Self::Shutdown => 0,
-        }
-    }
 }
 
 impl Command {
@@ -709,7 +720,7 @@ fn batching_thread(
                         for acc in accs.values_mut() {
                             do_flush_all(acc, &tx_chunk, "manual", config.chunk_max_rows_if_unsorted);
                         }
-                        on_done.send(()).ok();
+                        re_quota_channel::send_crossbeam(&on_done, ()).ok();
                     },
 
                     Command::UpdateConfig(new_config) => {
@@ -767,7 +778,7 @@ fn batching_thread(
 /// A single row's worth of data (i.e. a single log call).
 ///
 /// Send those to the batcher to build up a [`Chunk`].
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, re_byte_size::SizeBytes)]
 pub struct PendingRow {
     /// Auto-generated `TUID`, uniquely identifying this event and keeping track of the client's
     /// wall-clock.
@@ -807,19 +818,6 @@ impl PendingRow {
                 .map(|component| (component.descriptor.component, component))
                 .collect(),
         )
-    }
-}
-
-impl re_byte_size::SizeBytes for PendingRow {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            row_id,
-            timepoint,
-            components,
-        } = self;
-
-        row_id.heap_size_bytes() + timepoint.heap_size_bytes() + components.heap_size_bytes()
     }
 }
 

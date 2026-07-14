@@ -1,14 +1,13 @@
 use std::collections::BTreeMap;
-use std::sync::Arc;
 
 use ahash::HashMap;
 use nohash_hasher::IntMap;
 use rayon::prelude::*;
 use re_viewer_context::{
-    PerSystemDataResults, PerVisualizerInViewClass, SystemExecutionOutput, ViewContextCollection,
-    ViewContextSystemOncePerFrameResult, ViewId, ViewQuery, ViewState, ViewStates,
-    ViewSystemExecutionError, ViewSystemIdentifier, ViewerContext, VisualizerCollection,
-    VisualizerExecutionOutput,
+    MissingChunkReporter, PerVisualizerTypeInViewClass, SystemExecutionOutput,
+    ViewContextCollection, ViewContextSystemOncePerFrameResult, ViewId, ViewQuery, ViewState,
+    ViewStates, ViewSystemExecutionError, ViewSystemIdentifier, ViewSystemState, ViewerContext,
+    VisualizerCollection, VisualizerExecutionOutput, VisualizerInstructionsPerType,
 };
 use re_viewport_blueprint::ViewBlueprint;
 
@@ -24,8 +23,8 @@ fn run_view_systems(
         ViewContextSystemOncePerFrameResult,
     >,
     context_systems: &mut ViewContextCollection,
-    view_systems: &mut VisualizerCollection,
-) -> PerVisualizerInViewClass<Result<VisualizerExecutionOutput, Arc<ViewSystemExecutionError>>> {
+    view_systems: &VisualizerCollection,
+) -> PerVisualizerTypeInViewClass<Result<VisualizerExecutionOutput, ViewSystemExecutionError>> {
     re_tracing::profile_function!(view.class_identifier().as_str());
 
     let view_ctx = view.bundle_context_with_state(ctx, view_state);
@@ -35,29 +34,55 @@ fn run_view_systems(
         context_systems
             .systems
             .par_iter_mut()
-            .for_each(|(name, system)| {
+            .for_each(|(name, (view_ctx_system, state))| {
                 re_tracing::profile_scope!("ViewContextSystem::execute", name.as_str());
+                let missing_chunk_reporter = MissingChunkReporter::default();
                 let once_per_frame_result = context_system_once_per_frame_results
                     .get(name)
                     .expect("Context system execution result didn't occur");
-                system.execute(&view_ctx, query, once_per_frame_result);
+                view_ctx_system.execute(
+                    &view_ctx,
+                    &missing_chunk_reporter,
+                    query,
+                    once_per_frame_result,
+                );
+                *state = ViewSystemState {
+                    any_missing_chunks: missing_chunk_reporter.any_missing(),
+                };
             });
     };
 
     re_tracing::profile_wait!("VisualizerSystem::execute");
-    let per_visualizer_results = view_systems
+    let per_visualizer_type_results = view_systems
         .systems
-        .par_iter_mut()
-        .map(|(name, part)| {
+        .par_iter()
+        .map(|(name, vis_system)| {
+            // Skip execution when no entities in the view have instructions for this
+            // visualizer.
+            if !query
+                .active_visualizer_instructions_per_type
+                .contains_key(name)
+            {
+                let mut output = VisualizerExecutionOutput::default();
+                output.affinity = vis_system.affinity();
+                return (*name, Ok(output));
+            }
+
             re_tracing::profile_scope!("VisualizerSystem::execute", name.as_str());
-            let result = part.execute(&view_ctx, query, context_systems);
-            (*name, result.map_err(Arc::new))
+            let affinity = vis_system.affinity();
+            let result = vis_system
+                .execute(&view_ctx, query, context_systems)
+                .map(|mut output| {
+                    output.affinity = affinity;
+                    output
+                });
+            (*name, result)
         })
         .collect();
 
-    PerVisualizerInViewClass {
+    PerVisualizerTypeInViewClass {
         view_class_identifier: view.class_identifier(),
-        per_visualizer: per_visualizer_results,
+        per_visualizer: per_visualizer_type_results,
     }
 }
 
@@ -67,27 +92,30 @@ pub fn new_view_query<'a>(ctx: &'a ViewerContext<'a>, view: &'a ViewBlueprint) -
 
     let query_result = ctx.lookup_query_result(view.id);
 
-    let mut per_visualizer_data_results = PerSystemDataResults::default();
+    let mut active_visualizer_instructions_per_type = VisualizerInstructionsPerType::default();
     {
-        re_tracing::profile_scope!("per_system_data_results");
+        re_tracing::profile_scope!("active_visualizer_instructions_per_type");
 
-        query_result.tree.visit(&mut |node| {
-            for instruction in &node.data_result.visualizer_instructions {
-                per_visualizer_data_results
+        for data_result in query_result.tree.iter_data_results() {
+            if !data_result.visible {
+                continue;
+            }
+
+            for instruction in &data_result.visualizer_instructions {
+                active_visualizer_instructions_per_type
                     .entry(instruction.visualizer_type)
                     .or_default()
-                    .push(&node.data_result);
+                    .push((data_result, instruction));
             }
-            true
-        });
+        }
     }
 
     let current_query = ctx.time_ctrl.current_query();
     re_viewer_context::ViewQuery {
         view_id: view.id,
         space_origin: &view.space_origin,
-        per_visualizer_data_results,
-        timeline: current_query.timeline(),
+        active_visualizer_instructions_per_type,
+        timeline: *ctx.time_ctrl.timeline_name(),
         latest_at: current_query.at(),
         highlights,
     }
@@ -109,7 +137,7 @@ pub fn execute_systems_for_view<'a>(
     let mut context_systems = ctx
         .view_class_registry()
         .new_context_collection(view.class_identifier());
-    let mut view_systems = ctx
+    let view_systems = ctx
         .view_class_registry()
         .new_visualizer_collection(view.class_identifier());
 
@@ -120,13 +148,12 @@ pub fn execute_systems_for_view<'a>(
         view_state,
         context_system_once_per_frame_results,
         &mut context_systems,
-        &mut view_systems,
+        &view_systems,
     );
 
     (
         query,
         SystemExecutionOutput {
-            view_systems,
             context_systems,
             visualizer_execution_output,
         },
@@ -141,9 +168,11 @@ pub fn execute_systems_for_all_views<'a>(
 ) -> HashMap<ViewId, (ViewQuery<'a>, SystemExecutionOutput)> {
     re_tracing::profile_wait!("execute_systems");
 
+    let store_id = ctx.store_id();
+
     // During system execution we only have read access to the view states, so we need to ensure they exist ahead of time.
     for (view_id, view) in views {
-        view_states.ensure_state_exists(*view_id, view.class(ctx.view_class_registry()));
+        view_states.ensure_state_exists(store_id, *view_id, view.class(ctx.view_class_registry()));
     }
 
     // Once-per-frame context system execution.
@@ -163,8 +192,8 @@ pub fn execute_systems_for_all_views<'a>(
             match tile {
                 egui_tiles::Tile::Pane(view_id) => {
                     let view = views.get(view_id)?;
-                    let Some(view_state) = view_states.get(*view_id) else {
-                        debug_assert!(false, "View state for view {view_id:?} not found. That shouldn't be possible since we just ensured they exist above.");
+                    let Some(view_state) = view_states.get(store_id, *view_id) else {
+                        re_log::debug_panic!("View state for view {view_id:?} not found. That shouldn't be possible since we just ensured they exist above.");
                         return None;
                     };
 

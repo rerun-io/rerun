@@ -8,9 +8,10 @@
 #include "../component_column.hpp"
 #include "../components/aggregation_policy.hpp"
 #include "../components/color.hpp"
+#include "../components/interpolation_mode.hpp"
 #include "../components/name.hpp"
-#include "../components/series_visible.hpp"
 #include "../components/stroke_width.hpp"
+#include "../components/visible.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
@@ -40,7 +41,7 @@ namespace rerun::archetypes {
     ///
     /// constexpr float TAU = 6.28318530717958647692528676655900577f;
     ///
-    /// int main() {
+    /// int main(int argc, char* argv[]) {
     ///     const auto rec = rerun::RecordingStream("rerun_example_series_line_style");
     ///     rec.spawn().exit_on_failure();
     ///
@@ -66,8 +67,14 @@ namespace rerun::archetypes {
     ///     for (int t = 0; t <static_cast<int>(TAU * 2.0 * 100.0); ++t) {
     ///         rec.set_time_sequence("step", t);
     ///
-    ///         rec.log("trig/sin", rerun::Scalars(sin(static_cast<double>(t) / 100.0)));
-    ///         rec.log("trig/cos", rerun::Scalars(cos(static_cast<double>(t) / 100.0)));
+    ///         rec.log(
+    ///             "trig/sin",
+    ///             rerun::Scalars(sin(static_cast<double>(t) / 100.0))
+    ///         );
+    ///         rec.log(
+    ///             "trig/cos",
+    ///             rerun::Scalars(cos(static_cast<double>(t) / 100.0))
+    ///         );
     ///     }
     /// }
     /// ```
@@ -105,6 +112,13 @@ namespace rerun::archetypes {
         /// Expected to be unchanging over time.
         std::optional<ComponentBatch> aggregation_policy;
 
+        /// Specifies how values between data points are interpolated.
+        ///
+        /// Defaults to linear interpolation. Use one of the `Step*` variants for a stepped (staircase) line.
+        ///
+        /// Expected to be unchanging over time.
+        std::optional<ComponentBatch> interpolation_mode;
+
       public:
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.SeriesLines";
@@ -125,12 +139,17 @@ namespace rerun::archetypes {
         /// `ComponentDescriptor` for the `visible_series` field.
         static constexpr auto Descriptor_visible_series = ComponentDescriptor(
             ArchetypeName, "SeriesLines:visible_series",
-            Loggable<rerun::components::SeriesVisible>::ComponentType
+            Loggable<rerun::components::Visible>::ComponentType
         );
         /// `ComponentDescriptor` for the `aggregation_policy` field.
         static constexpr auto Descriptor_aggregation_policy = ComponentDescriptor(
             ArchetypeName, "SeriesLines:aggregation_policy",
             Loggable<rerun::components::AggregationPolicy>::ComponentType
+        );
+        /// `ComponentDescriptor` for the `interpolation_mode` field.
+        static constexpr auto Descriptor_interpolation_mode = ComponentDescriptor(
+            ArchetypeName, "SeriesLines:interpolation_mode",
+            Loggable<rerun::components::InterpolationMode>::ComponentType
         );
 
       public: // START of extensions from series_lines_ext.cpp:
@@ -193,7 +212,7 @@ namespace rerun::archetypes {
         ///
         /// May change over time, but can cause discontinuities in the line.
         SeriesLines with_visible_series(
-            const Collection<rerun::components::SeriesVisible>& _visible_series
+            const Collection<rerun::components::Visible>& _visible_series
         ) && {
             visible_series =
                 ComponentBatch::from_loggable(_visible_series, Descriptor_visible_series)
@@ -226,6 +245,33 @@ namespace rerun::archetypes {
         ) && {
             aggregation_policy =
                 ComponentBatch::from_loggable(_aggregation_policy, Descriptor_aggregation_policy)
+                    .value_or_throw();
+            return std::move(*this);
+        }
+
+        /// Specifies how values between data points are interpolated.
+        ///
+        /// Defaults to linear interpolation. Use one of the `Step*` variants for a stepped (staircase) line.
+        ///
+        /// Expected to be unchanging over time.
+        SeriesLines with_interpolation_mode(
+            const rerun::components::InterpolationMode& _interpolation_mode
+        ) && {
+            interpolation_mode =
+                ComponentBatch::from_loggable(_interpolation_mode, Descriptor_interpolation_mode)
+                    .value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `interpolation_mode` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_interpolation_mode` should
+        /// be used when logging a single row's worth of data.
+        SeriesLines with_many_interpolation_mode(
+            const Collection<rerun::components::InterpolationMode>& _interpolation_mode
+        ) && {
+            interpolation_mode =
+                ComponentBatch::from_loggable(_interpolation_mode, Descriptor_interpolation_mode)
                     .value_or_throw();
             return std::move(*this);
         }

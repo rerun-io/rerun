@@ -48,7 +48,7 @@ impl ViewEntityPicker {
             },
             |ui| {
                 // 80%, never more than 500px
-                ui.set_max_height(f32::min(ui.ctx().content_rect().height() * 0.8, 500.0));
+                ui.set_max_height(f32::min(ui.content_rect().height() * 0.8, 500.0));
                 let Some(view_id) = &self.view_id else {
                     ui.close();
                     return;
@@ -61,7 +61,7 @@ impl ViewEntityPicker {
 
                 ui.add_space(5.0);
                 ui.panel_content(|ui| {
-                    self.filter_state.search_field_ui(ui);
+                    self.filter_state.search_field_ui(ui, "Search for entity…");
                 });
                 ui.add_space(5.0);
 
@@ -85,7 +85,8 @@ fn add_entities_ui(
 ) {
     re_tracing::profile_function!();
 
-    let tree = &ctx.recording().tree();
+    let recording_engine = ctx.recording_engine();
+    let tree = recording_engine.store().entity_tree();
     let query_result = ctx.lookup_query_result(view.id);
     let entity_path_filter = view.contents.entity_path_filter();
     let entities_add_info = create_entity_add_info(ctx, tree, view, query_result);
@@ -118,7 +119,6 @@ fn add_entities_ui(
     }
 }
 
-#[expect(clippy::too_many_arguments)]
 fn add_entities_tree_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
@@ -187,13 +187,12 @@ fn add_entities_line_ui(
 ) {
     re_tracing::profile_function!();
 
-    let query = ctx.current_query();
     let entity_path = &entity_data.entity_path;
     let name = &entity_data.label;
 
     let Some(add_info) = entities_add_info.get(entity_path) else {
         // No add info implies that there can't be an add line ui, shouldn't get here.
-        debug_assert!(false, "No add info for entity path: {entity_path:?}");
+        re_log::debug_panic!("No add info for entity path: {entity_path:?}");
         return;
     };
 
@@ -216,10 +215,9 @@ fn add_entities_line_ui(
             widget_text = widget_text.strong();
         }
 
+        let store_view_ctx = ctx.active_recording_store_view_context();
         let response = item_ui::instance_path_button_to(
-            ctx,
-            &query,
-            ctx.recording(),
+            &store_view_ctx,
             ui,
             Some(view.id),
             &InstancePath::entity_all(entity_path.clone()),

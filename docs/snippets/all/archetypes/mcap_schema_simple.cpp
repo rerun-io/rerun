@@ -3,7 +3,7 @@
 #include <rerun.hpp>
 #include <string>
 
-int main() {
+int main(int argc, char* argv[]) {
     const auto rec = rerun::RecordingStream("rerun_example_mcap_schema");
     rec.spawn().exit_on_failure();
 

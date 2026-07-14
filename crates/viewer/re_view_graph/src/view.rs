@@ -9,10 +9,10 @@ use re_ui::{self, Help, IconText, MouseButtonText, UiExt as _, icons};
 use re_view::controls::DRAG_PAN2D_BUTTON;
 use re_view::view_property_ui;
 use re_viewer_context::{
-    Item, SystemCommand, SystemCommandSender as _, SystemExecutionOutput, ViewClass,
-    ViewClassExt as _, ViewClassLayoutPriority, ViewClassRegistryError, ViewId, ViewQuery,
-    ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
-    ViewSystemRegistrator, ViewerContext, suggest_view_for_each_entity,
+    IdentifiedViewSystem as _, Item, SystemCommand, SystemCommandSender as _,
+    SystemExecutionOutput, ViewClass, ViewClassExt as _, ViewClassLayoutPriority,
+    ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _,
+    ViewSystemExecutionError, ViewSystemRegistrator, ViewerContext, suggest_view_for_each_entity,
 };
 use re_viewport_blueprint::ViewProperty;
 
@@ -28,7 +28,10 @@ impl ViewClass for GraphView {
     // State type as described above.
 
     fn identifier() -> ViewClassIdentifier {
-        "Graph".into()
+        re_viewer_context::external::re_string_interner::intern_static_nonempty!(
+            ViewClassIdentifier,
+            "Graph"
+        )
     }
 
     fn display_name(&self) -> &'static str {
@@ -186,6 +189,7 @@ impl ViewClass for GraphView {
     fn ui(
         &self,
         ctx: &ViewerContext<'_>,
+        _missing_chunk_reporter: &re_viewer_context::MissingChunkReporter,
         ui: &mut egui::Ui,
         state: &mut dyn ViewState,
         query: &ViewQuery<'_>,
@@ -193,10 +197,16 @@ impl ViewClass for GraphView {
     ) -> Result<(), ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        let node_data = &system_output.view_systems.get::<NodeVisualizer>()?.data;
-        let edge_data = &system_output.view_systems.get::<EdgesVisualizer>()?.data;
+        let node_data = system_output
+            .visualizer_data_or_default::<ahash::HashMap<EntityPath, crate::visualizers::NodeData>>(
+                NodeVisualizer::identifier(),
+            )?;
+        let edge_data = system_output
+            .visualizer_data_or_default::<ahash::HashMap<EntityPath, crate::visualizers::EdgeData>>(
+                EdgesVisualizer::identifier(),
+            )?;
 
-        let graphs = merge(node_data, edge_data)
+        let graphs = merge(&node_data, &edge_data)
             .map(|(ent, nodes, edges)| Graph::new(ui, ent.clone(), nodes, edges))
             .collect::<Vec<_>>();
 
@@ -246,7 +256,7 @@ impl ViewClass for GraphView {
                 for graph in &graphs {
                     draw_graph(
                         ui,
-                        ctx,
+                        &ctx.active_recording_store_view_context(),
                         graph,
                         layout,
                         query,
@@ -287,7 +297,7 @@ impl ViewClass for GraphView {
         state.visual_bounds = Some(updated_bounds);
 
         if state.layout_state.is_in_progress() {
-            ui.ctx().request_repaint();
+            ui.request_repaint();
         }
 
         Ok(())

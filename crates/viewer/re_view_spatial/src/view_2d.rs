@@ -1,4 +1,5 @@
 use nohash_hasher::{IntMap, IntSet};
+use re_chunk_store::MissingChunkReporter;
 use re_entity_db::{EntityDb, EntityTree};
 use re_log_types::EntityPath;
 use re_sdk_types::blueprint::archetypes::{Background, NearClipPlane, VisualBounds2D};
@@ -68,7 +69,8 @@ impl ViewClass for SpatialView2D {
                     .map(|pinhole| pinhole.resolution_rect())
                     .unwrap_or_else(|| {
                         // TODO(emilk): if there is a single image in this view, use that as the default bounds
-                        let scene_rect_smoothed = view_state.bounding_boxes.smoothed;
+                        let scene_rect_smoothed =
+                            view_state.bounding_boxes.region_of_interest_smoothed;
                         egui::Rect::from_min_max(
                             scene_rect_smoothed.min.truncate().to_array().into(),
                             scene_rect_smoothed.max.truncate().to_array().into(),
@@ -104,7 +106,7 @@ impl ViewClass for SpatialView2D {
         state.downcast_ref::<SpatialViewState>().ok().map(|state| {
             let (width, height) = state.visual_bounds_2d.map_or_else(
                 || {
-                    let bbox = &state.bounding_boxes.smoothed;
+                    let bbox = &state.bounding_boxes.region_of_interest_smoothed;
                     (
                         (bbox.max.x - bbox.min.x).abs(),
                         (bbox.max.y - bbox.min.y).abs(),
@@ -154,13 +156,7 @@ impl ViewClass for SpatialView2D {
         let IndicatedVisualizableEntities {
             indicated_entities,
             excluded_entities,
-        } = IndicatedVisualizableEntities::new(
-            ctx,
-            Self::identifier(),
-            SpatialViewKind::TwoD,
-            include_entity,
-            |_| {},
-        );
+        } = IndicatedVisualizableEntities::new(ctx, Self::identifier(), include_entity, |_| {});
 
         let image_dimensions =
             crate::max_image_dimension_subscriber::MaxImageDimensionsStoreSubscriber::access(
@@ -257,9 +253,9 @@ impl ViewClass for SpatialView2D {
     fn ui(
         &self,
         ctx: &ViewerContext<'_>,
+        missing_chunk_reporter: &MissingChunkReporter,
         ui: &mut egui::Ui,
         state: &mut dyn ViewState,
-
         query: &ViewQuery<'_>,
         system_output: re_viewer_context::SystemExecutionOutput,
     ) -> Result<(), ViewSystemExecutionError> {
@@ -268,7 +264,7 @@ impl ViewClass for SpatialView2D {
         let state = state.downcast_mut::<SpatialViewState>()?;
         state.update_frame_statistics(ui, &system_output, SpatialViewKind::TwoD);
 
-        self.view_2d(ctx, ui, state, query, system_output)
+        self.view_2d(ctx, missing_chunk_reporter, ui, state, query, system_output)
     }
 }
 
@@ -345,12 +341,11 @@ fn recommended_views_with_image_splits(
 ) {
     re_tracing::profile_function!();
 
-    let tree = ctx.recording().tree();
+    let engine = ctx.recording_engine();
+    let tree = engine.store().entity_tree();
 
     let Some(subtree) = tree.subtree(recommended_origin) else {
-        if cfg!(debug_assertions) {
-            re_log::warn_once!("Ancestor of entity not found in entity tree.");
-        }
+        re_log::debug_warn_once!("Ancestor of entity not found in entity tree.");
         return;
     };
 

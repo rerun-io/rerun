@@ -1,12 +1,39 @@
-use re_log_types::{AbsoluteTimeRange, AbsoluteTimeRangeF, TimeCell, Timeline};
+use re_log_types::{AbsoluteTimeRange, AbsoluteTimeRangeF, TimeCell, Timeline, TimelineName};
 
 use crate::Error;
 
 /// A time range selection as used in URIs, qualified with a timeline.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    serde::Serialize,
+    serde::Deserialize,
+    re_byte_size::SizeBytes,
+)]
 pub struct TimeSelection {
     pub timeline: Timeline,
     pub range: AbsoluteTimeRange,
+}
+
+impl std::cmp::PartialOrd for TimeSelection {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl std::cmp::Ord for TimeSelection {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        let Self { timeline, range } = self;
+
+        timeline
+            .cmp(&other.timeline)
+            .then_with(|| range.min().cmp(&other.range.min()))
+            .then_with(|| range.max().cmp(&other.range.max()))
+    }
 }
 
 // We shouldn't implement display for this as it's too ambiguous, instead create specific functions.
@@ -76,6 +103,8 @@ impl std::str::FromStr for TimeSelection {
             )));
         }
 
+        let timeline = TimelineName::try_new(timeline)
+            .map_err(|err| Error::InvalidTimeRange(format!("Bad timeline name: {err}")))?;
         let timeline = Timeline::new(timeline, min.typ());
         let range = AbsoluteTimeRange::new(min, max);
 

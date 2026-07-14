@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, ClassVar
+
 import numpy as np
 import pyarrow as pa
 from attrs import define, field
@@ -13,10 +15,14 @@ from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
+    ComponentDescriptor,
 )
 from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
 from .boxes3d_ext import Boxes3DExt
+
+if TYPE_CHECKING:
+    from ..blueprint.datatypes import VisualizerComponentMappingLike
 
 __all__ = ["Boxes3D"]
 
@@ -44,7 +50,9 @@ class Boxes3D(Boxes3DExt, Archetype, VisualizableArchetype):
             half_sizes=[[2.0, 2.0, 1.0], [1.0, 1.0, 0.5], [2.0, 0.5, 1.0]],
             quaternions=[
                 rr.Quaternion.identity(),
-                rr.Quaternion(xyzw=[0.0, 0.0, 0.382683, 0.923880]),  # 45 degrees around Z
+                rr.Quaternion(
+                    xyzw=[0.0, 0.0, 0.382683, 0.923880]
+                ),  # 45 degrees around Z
             ],
             radii=0.025,
             colors=[(255, 0, 0), (0, 255, 0), (0, 0, 255)],
@@ -64,6 +72,8 @@ class Boxes3D(Boxes3DExt, Archetype, VisualizableArchetype):
     </center>
 
     """
+
+    NAME: ClassVar[str] = "rerun.archetypes.Boxes3D"
 
     # __init__ can be found in boxes3d_ext.py
 
@@ -180,6 +190,86 @@ class Boxes3D(Boxes3DExt, Archetype, VisualizableArchetype):
         """Clear all the fields of a `Boxes3D`."""
         return cls.from_fields(clear_unset=True)
 
+    @staticmethod
+    def descriptor_half_sizes() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Boxes3D:half_sizes",
+            archetype=Boxes3D.NAME,
+            component_type=components.HalfSize3DBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_centers() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Boxes3D:centers",
+            archetype=Boxes3D.NAME,
+            component_type=components.Translation3DBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_rotation_axis_angles() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Boxes3D:rotation_axis_angles",
+            archetype=Boxes3D.NAME,
+            component_type=components.RotationAxisAngleBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_quaternions() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Boxes3D:quaternions",
+            archetype=Boxes3D.NAME,
+            component_type=components.RotationQuatBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_colors() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Boxes3D:colors",
+            archetype=Boxes3D.NAME,
+            component_type=components.ColorBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_radii() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Boxes3D:radii",
+            archetype=Boxes3D.NAME,
+            component_type=components.RadiusBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_fill_mode() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Boxes3D:fill_mode",
+            archetype=Boxes3D.NAME,
+            component_type=components.FillModeBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_labels() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Boxes3D:labels",
+            archetype=Boxes3D.NAME,
+            component_type=components.TextBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_show_labels() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Boxes3D:show_labels",
+            archetype=Boxes3D.NAME,
+            component_type=components.ShowLabelsBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_class_ids() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Boxes3D:class_ids",
+            archetype=Boxes3D.NAME,
+            component_type=components.ClassIdBatch._COMPONENT_TYPE,
+        )
+
     @classmethod
     def columns(
         cls,
@@ -284,17 +374,21 @@ class Boxes3D(Boxes3DExt, Archetype, VisualizableArchetype):
             if pa.types.is_primitive(arrow_array.type) or pa.types.is_fixed_size_list(arrow_array.type):
                 param = kwargs[batch.component_descriptor().component]  # type: ignore[index]
                 shape = np.shape(param)  # type: ignore[arg-type]
-                elem_flat_len = int(np.prod(shape[1:])) if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
-
-                if pa.types.is_fixed_size_list(arrow_array.type) and arrow_array.type.list_size == elem_flat_len:
-                    # If the product of the last dimensions of the shape are equal to the size of the fixed size list array,
-                    # we have `num_rows` single element batches (each element is a fixed sized list).
-                    # (This should have been already validated by conversion to the arrow_array)
-                    batch_length = 1
-                else:
-                    batch_length = shape[1] if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
-
                 num_rows = shape[0] if len(shape) >= 1 else 1  # type: ignore[redundant-expr,misc]
+
+                if pa.types.is_fixed_size_list(arrow_array.type):
+                    elem_flat_len = int(np.prod(shape[1:])) if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
+                    if arrow_array.type.list_size == elem_flat_len:
+                        # The product of the last dimensions of the shape are equal to the size of the fixed size list array,
+                        # so we have `num_rows` single element batches (each element is a fixed sized list).
+                        batch_length = 1
+                    else:
+                        batch_length = shape[1] if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
+                else:
+                    # For primitive types, derive batch_length from the actual arrow array length
+                    # since the input shape can be misleading (e.g. colors [R,G,B] -> single uint32).
+                    batch_length = len(arrow_array) // num_rows if num_rows > 0 else 1
+
                 sizes = batch_length * np.ones(num_rows)
             else:
                 # For non-primitive types, default to partitioning each element separately.
@@ -413,6 +507,17 @@ class Boxes3D(Boxes3DExt, Archetype, VisualizableArchetype):
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__  # type: ignore[assignment]
 
-    def visualizer(self) -> Visualizer:
-        """Creates a visualizer for this archetype, using all currently set values as overrides."""
-        return Visualizer("Boxes3D", overrides=self.as_component_batches(), mappings=None)
+    def visualizer(self, *, mappings: list[VisualizerComponentMappingLike] | None = None) -> Visualizer:
+        """
+        Creates a visualizer for this archetype, using all currently set values as overrides.
+
+        Parameters
+        ----------
+        mappings:
+            Optional component mappings to control how the visualizer sources its data.
+
+            ⚠️ **Experimental**: Component mappings are an experimental feature and may change.
+            See https://github.com/rerun-io/rerun/issues/10631 for more information.
+
+        """
+        return Visualizer("Boxes3D", overrides=self.as_component_batches(), mappings=mappings)

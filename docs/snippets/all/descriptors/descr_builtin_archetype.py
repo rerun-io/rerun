@@ -9,4 +9,5 @@ rr.spawn()
 
 rr.log("data", rr.Points3D([[1, 2, 3]], radii=[0.3, 0.2, 0.1]), static=True)
 
-# The tags are indirectly checked by the Rust version (have a look over there for more info).
+# The tags are indirectly checked by the Rust version (have a look over there
+# for more info).

@@ -9,8 +9,9 @@ use crate::{EntityDb, VersionedInstancePath, VersionedInstancePathHash};
 // ----------------------------------------------------------------------------
 
 /// The path to either a specific instance of an entity, or the whole entity.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[derive(
+    Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Deserialize, serde::Serialize,
+)]
 pub struct InstancePath {
     pub entity_path: EntityPath,
 
@@ -133,7 +134,7 @@ fn test_parse_instance_path() {
 /// Hashes of the components of an [`InstancePath`].
 ///
 /// This is unique to either a specific instance of an entity, or the whole entity.
-#[derive(Clone, Copy, Eq)]
+#[derive(Clone, Copy, Eq, re_byte_size::SizeBytes)]
 pub struct InstancePathHash {
     pub entity_path_hash: EntityPathHash,
 

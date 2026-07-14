@@ -6,69 +6,24 @@ use rerun::external::re_entity_db::InstancePath;
 use rerun::external::re_log_types::EntityPath;
 use rerun::external::re_sdk_types::ViewClassIdentifier;
 use rerun::external::re_ui::{self, Help};
+use rerun::external::re_view;
 use rerun::external::re_viewer_context::{
-    HoverHighlight, IdentifiedViewSystem as _, IndicatedEntities, Item, PerVisualizer,
-    PerVisualizerInViewClass, RecommendedVisualizers, SelectionHighlight, SystemExecutionOutput,
-    UiLayout, ViewClass, ViewClassLayoutPriority, ViewClassRegistryError, ViewId, ViewQuery,
-    ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
-    ViewSystemRegistrator, ViewerContext, VisualizableEntities,
+    DataResultInteractionAddress, HoverHighlight, IdentifiedViewSystem as _, IndicatedEntities,
+    Item, MissingChunkReporter, PerVisualizerType, RecommendedVisualizers, SelectionHighlight,
+    SystemExecutionOutput, UiLayout, ViewClass, ViewClassExt as _, ViewClassLayoutPriority,
+    ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState,
+    ViewSystemExecutionError, ViewSystemIdentifier, ViewSystemRegistrator, ViewerContext,
+    VisualizableReason,
 };
+use rerun::external::re_viewport_blueprint::ViewProperty;
 
+use crate::color_coordinate_config::{ColorCoordinatesConfiguration, ColorCoordinatesMode};
 use crate::points3d_color_visualizer::{ColorWithInstance, Points3DColorVisualizer};
-
-/// The different modes for displaying color coordinates in the custom view.
-#[derive(Default, Debug, PartialEq, Clone, Copy)]
-enum ColorCoordinatesMode {
-    #[default]
-    Hs,
-    Hv,
-    Rg,
-}
-
-impl ColorCoordinatesMode {
-    pub const ALL: [ColorCoordinatesMode; 3] = [
-        ColorCoordinatesMode::Hs,
-        ColorCoordinatesMode::Hv,
-        ColorCoordinatesMode::Rg,
-    ];
-}
-
-impl std::fmt::Display for ColorCoordinatesMode {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ColorCoordinatesMode::Hs => "Hue/Saturation".fmt(f),
-            ColorCoordinatesMode::Hv => "Hue/Value".fmt(f),
-            ColorCoordinatesMode::Rg => "Red/Green".fmt(f),
-        }
-    }
-}
-
-/// View state for the custom view.
-///
-/// This state is preserved between frames, but not across Viewer sessions.
-#[derive(Default)]
-pub struct ColorCoordinatesViewState {
-    // TODO(wumpf, jleibs): This should be part of the Blueprint so that it is serialized out.
-    //                      but right now there is no way of doing that.
-    mode: ColorCoordinatesMode,
-}
-
-impl ViewState for ColorCoordinatesViewState {
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-        self
-    }
-}
 
 #[derive(Default)]
 pub struct ColorCoordinatesView;
 
 impl ViewClass for ColorCoordinatesView {
-    // State type as described above.
-
     fn identifier() -> ViewClassIdentifier {
         "ColorCoordinates".into()
     }
@@ -86,16 +41,21 @@ impl ViewClass for ColorCoordinatesView {
             .markdown("A demo view that shows colors as coordinates on a 2D plane.")
     }
 
-    /// Register all systems (contexts & parts) that the view needs.
+    /// Register systems and a blueprint fallback for the mode property.
     fn on_register(
         &self,
         system_registry: &mut ViewSystemRegistrator<'_>,
     ) -> Result<(), ViewClassRegistryError> {
+        system_registry.register_fallback_provider(
+            ColorCoordinatesConfiguration::descriptor_mode().component,
+            |_ctx| ColorCoordinatesMode::default(),
+        );
+
         system_registry.register_visualizer::<Points3DColorVisualizer>()
     }
 
     fn new_state(&self) -> Box<dyn ViewState> {
-        Box::<ColorCoordinatesViewState>::default()
+        Box::new(())
     }
 
     fn preferred_tile_aspect_ratio(&self, _state: &dyn ViewState) -> Option<f32> {
@@ -129,15 +89,15 @@ impl ViewClass for ColorCoordinatesView {
     /// The default implementation of `choose_default_visualizers` activates visualizers only
     /// if the respective indicator is present.
     /// We want to enable the visualizer here though for any visualizable entity instead!
-    fn choose_default_visualizers(
+    fn recommended_visualizers_for_entity(
         &self,
-        entity_path: &EntityPath,
-        visualizable_entities_per_visualizer: &PerVisualizerInViewClass<VisualizableEntities>,
-        _indicated_entities_per_visualizer: &PerVisualizer<IndicatedEntities>,
+        _entity_path: &EntityPath,
+        visualizers: &[(ViewSystemIdentifier, &VisualizableReason)],
+        _indicated_entities_per_visualizer: &PerVisualizerType<&IndicatedEntities>,
     ) -> RecommendedVisualizers {
-        if visualizable_entities_per_visualizer
-            .get(&Points3DColorVisualizer::identifier())
-            .is_some_and(|entities| entities.contains_key(entity_path))
+        if visualizers
+            .iter()
+            .any(|(viz, _)| *viz == Points3DColorVisualizer::identifier())
         {
             RecommendedVisualizers::default(Points3DColorVisualizer::identifier())
         } else {
@@ -147,27 +107,18 @@ impl ViewClass for ColorCoordinatesView {
 
     /// Additional UI displayed when the view is selected.
     ///
-    /// In this sample we show a combo box to select the color coordinates mode.
+    /// Uses the same generic blueprint-property UI as built-in views. The custom archetype
+    /// reflection and component editor are registered in `main`.
     fn selection_ui(
         &self,
-        _ctx: &ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn ViewState,
-        _space_origin: &EntityPath,
-        _view_id: ViewId,
+        space_origin: &EntityPath,
+        view_id: ViewId,
     ) -> Result<(), ViewSystemExecutionError> {
-        let state = state.downcast_mut::<ColorCoordinatesViewState>()?;
-
-        ui.horizontal(|ui| {
-            ui.label("Coordinates mode");
-            egui::ComboBox::from_id_salt("color_coordinates_mode")
-                .selected_text(state.mode.to_string())
-                .show_ui(ui, |ui| {
-                    for mode in &ColorCoordinatesMode::ALL {
-                        ui.selectable_value(&mut state.mode, *mode, mode.to_string());
-                    }
-                });
-        });
+        let view_ctx = self.view_context(ctx, view_id, state, space_origin);
+        re_view::view_property_ui::<ColorCoordinatesConfiguration>(&view_ctx, ui);
 
         Ok(())
     }
@@ -178,24 +129,35 @@ impl ViewClass for ColorCoordinatesView {
     fn ui(
         &self,
         ctx: &ViewerContext<'_>,
+        _missing_chunk_reporter: &MissingChunkReporter,
         ui: &mut egui::Ui,
         state: &mut dyn ViewState,
-
         query: &ViewQuery<'_>,
         system_output: SystemExecutionOutput,
     ) -> Result<(), ViewSystemExecutionError> {
         let colors = system_output
-            .view_systems
-            .get::<Points3DColorVisualizer>()?;
-        let state = state.downcast_mut::<ColorCoordinatesViewState>()?;
+            .visualizer_data_or_default::<crate::points3d_color_visualizer::Points3DColorVisualizerOutput>(
+                Points3DColorVisualizer::identifier(),
+            )?;
+        // Read the same blueprint property that the selection UI edits.
+        let view_ctx = self.view_context(ctx, query.view_id, state, query.space_origin);
+        let color_coordinates = ViewProperty::from_archetype::<ColorCoordinatesConfiguration>(
+            ctx.blueprint_db(),
+            ctx.blueprint_query,
+            query.view_id,
+        );
+        let mode = color_coordinates.component_or_fallback::<ColorCoordinatesMode>(
+            &view_ctx,
+            ColorCoordinatesConfiguration::descriptor_mode().component,
+        )?;
 
         egui::Frame::default().show(ui, |ui| {
-            let color_at = match state.mode {
+            let color_at = match mode {
                 ColorCoordinatesMode::Hs => |x, y| egui::ecolor::Hsva::new(x, y, 1.0, 1.0).into(),
                 ColorCoordinatesMode::Hv => |x, y| egui::ecolor::Hsva::new(x, 1.0, y, 1.0).into(),
                 ColorCoordinatesMode::Rg => |x, y| egui::ecolor::Rgba::from_rgb(x, y, 0.0).into(),
             };
-            let position_at = match state.mode {
+            let position_at = match mode {
                 ColorCoordinatesMode::Hs => |c: egui::Color32| {
                     let hsva = egui::ecolor::Hsva::from(c);
                     (hsva.h, hsva.s)
@@ -209,7 +171,7 @@ impl ViewClass for ColorCoordinatesView {
                     (rgba.r(), rgba.g())
                 },
             };
-            color_space_ui(ui, ctx, colors, query, color_at, position_at);
+            color_space_ui(ui, ctx, colors.as_ref(), query, color_at, position_at);
         });
         Ok(())
     }
@@ -220,7 +182,7 @@ impl ViewClass for ColorCoordinatesView {
 fn color_space_ui(
     ui: &mut egui::Ui,
     ctx: &ViewerContext<'_>,
-    colors: &Points3DColorVisualizer,
+    colors: &crate::points3d_color_visualizer::Points3DColorVisualizerOutput,
     query: &ViewQuery<'_>,
     color_at: impl Fn(f32, f32) -> egui::Color32,
     position_at: impl Fn(egui::Color32) -> (f32, f32),
@@ -259,10 +221,10 @@ fn color_space_ui(
 
     // Circles for the colors in the scene.
     let mut hovering_any_point = false;
-    for (ent_path, colors) in &colors.colors {
+    for (ent_path, visualizer_instruction_id, colors) in colors {
         let ent_highlight = query.highlights.entity_highlight(ent_path.hash());
         for ColorWithInstance { instance, color } in colors {
-            let highlight = ent_highlight.index_highlight(*instance);
+            let highlight = ent_highlight.index_highlight(*instance, *visualizer_instruction_id);
 
             let (x, y) = position_at(*color);
             let center = egui::pos2(
@@ -292,27 +254,19 @@ fn color_space_ui(
             // Update the global selection state if the user interacts with a point and show hover ui for the entire keypoint.
             let instance = InstancePath::instance(ent_path.clone(), *instance);
             let interact = interact.on_hover_ui_at_pointer(|ui| {
-                item_ui::instance_path_button(
-                    ctx,
-                    &ctx.current_query(),
-                    ctx.recording(),
-                    ui,
-                    Some(query.view_id),
-                    &instance,
-                );
-                instance.data_ui(
-                    ctx,
-                    ui,
-                    UiLayout::Tooltip,
-                    &ctx.current_query(),
-                    ctx.recording(),
-                );
+                let store_view_ctx = ctx.active_recording_store_view_context();
+                item_ui::instance_path_button(&store_view_ctx, ui, Some(query.view_id), &instance);
+                instance.data_ui(&store_view_ctx, ui, UiLayout::Tooltip);
 
                 hovering_any_point = true;
             });
             ctx.handle_select_hover_drag_interactions(
                 &interact,
-                Item::DataResult(query.view_id, instance),
+                Item::DataResult(DataResultInteractionAddress {
+                    view_id: query.view_id,
+                    instance_path: instance,
+                    visualizer: Some(*visualizer_instruction_id),
+                }),
                 false,
             );
         }

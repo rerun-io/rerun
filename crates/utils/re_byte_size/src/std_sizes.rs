@@ -2,8 +2,7 @@
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet, VecDeque};
 use std::mem::size_of;
-use std::ops::RangeInclusive;
-use std::sync::Arc;
+use std::sync::{Arc, Weak};
 
 use crate::SizeBytes;
 
@@ -72,13 +71,13 @@ impl<K: SizeBytes, V: SizeBytes> SizeBytes for BTreeMap<K, V> {
         // so there's no tuple padding like in HashMap.
         let base_size = btree_heap_size(self.len(), size_of::<K>() + size_of::<V>());
 
-        let heap_in_keys = if K::is_pod() {
+        let heap_in_keys = if K::IS_POD {
             0
         } else {
             self.keys().map(SizeBytes::heap_size_bytes).sum::<u64>()
         };
 
-        let heap_in_values = if V::is_pod() {
+        let heap_in_values = if V::IS_POD {
             0
         } else {
             self.values().map(SizeBytes::heap_size_bytes).sum::<u64>()
@@ -94,7 +93,7 @@ impl<K: SizeBytes> SizeBytes for BTreeSet<K> {
         // NOTE: It's all on the heap at this point.
         let base_size = btree_heap_size(self.len(), size_of::<K>());
 
-        let heap_in_keys = if K::is_pod() {
+        let heap_in_keys = if K::IS_POD {
             0
         } else {
             self.iter().map(SizeBytes::heap_size_bytes).sum::<u64>()
@@ -139,13 +138,13 @@ impl<K: SizeBytes, V: SizeBytes, S> SizeBytes for HashMap<K, V, S> {
         // For example, (u32, u8) takes 8 bytes, not 5.
         let entry_size = (num_slots * size_of::<(K, V)>()) as u64;
 
-        let heap_in_keys = if K::is_pod() {
+        let heap_in_keys = if K::IS_POD {
             0
         } else {
             self.keys().map(SizeBytes::heap_size_bytes).sum::<u64>()
         };
 
-        let heap_in_values = if V::is_pod() {
+        let heap_in_values = if V::IS_POD {
             0
         } else {
             self.values().map(SizeBytes::heap_size_bytes).sum::<u64>()
@@ -166,7 +165,7 @@ impl<K: SizeBytes, S> SizeBytes for HashSet<K, S> {
 
         let entry_size = (num_slots * size_of::<K>()) as u64;
 
-        let heap_in_keys = if K::is_pod() {
+        let heap_in_keys = if K::IS_POD {
             0
         } else {
             self.iter().map(SizeBytes::heap_size_bytes).sum::<u64>()
@@ -184,7 +183,7 @@ impl<K: SizeBytes, S> SizeBytes for HashSet<K, S> {
 impl<T: SizeBytes, const N: usize> SizeBytes for [T; N] {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        if T::is_pod() {
+        if T::IS_POD {
             0 // it's a const-sized array
         } else {
             self.iter().map(SizeBytes::heap_size_bytes).sum::<u64>()
@@ -196,7 +195,7 @@ impl<T: SizeBytes> SizeBytes for Vec<T> {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         // NOTE: It's all on the heap at this point.
-        if T::is_pod() {
+        if T::IS_POD {
             (self.capacity() * size_of::<T>()) as _
         } else {
             (self.capacity() * size_of::<T>()) as u64
@@ -205,16 +204,46 @@ impl<T: SizeBytes> SizeBytes for Vec<T> {
     }
 }
 
+impl<T: SizeBytes> SizeBytes for Box<[T]> {
+    fn heap_size_bytes(&self) -> u64 {
+        let slice_size = (self.len() * size_of::<T>()) as u64;
+
+        if T::IS_POD {
+            slice_size
+        } else {
+            slice_size + self.iter().map(SizeBytes::heap_size_bytes).sum::<u64>()
+        }
+    }
+}
+
+impl<T: SizeBytes + Clone> SizeBytes for std::borrow::Cow<'_, [T]> {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        match self {
+            std::borrow::Cow::Borrowed(_) => 0,
+            std::borrow::Cow::Owned(v) => v.heap_size_bytes(),
+        }
+    }
+}
+
 impl<T: SizeBytes> SizeBytes for VecDeque<T> {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         // NOTE: It's all on the heap at this point.
-        if T::is_pod() {
+        if T::IS_POD {
             (self.capacity() * size_of::<T>()) as _
         } else {
             (self.capacity() * size_of::<T>()) as u64
                 + self.iter().map(SizeBytes::heap_size_bytes).sum::<u64>()
         }
+    }
+}
+
+impl<T: SizeBytes> SizeBytes for vec1::Vec1<T> {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        // Vec1 is a wrapper around Vec, so delegate to the Vec implementation
+        self.as_vec().heap_size_bytes()
     }
 }
 
@@ -235,7 +264,7 @@ impl<T: SizeBytes, E: SizeBytes> SizeBytes for Result<T, E> {
     }
 }
 
-impl<T: SizeBytes> SizeBytes for Arc<T> {
+impl<T: SizeBytes + ?Sized> SizeBytes for Arc<T> {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         // Overhead for strong and weak counts:
@@ -246,16 +275,33 @@ impl<T: SizeBytes> SizeBytes for Arc<T> {
     }
 }
 
-impl<T: SizeBytes> SizeBytes for Box<T> {
+impl<T: ?Sized> SizeBytes for Weak<T> {
+    const IS_POD: bool = true;
+
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        // Not owned, so don't count the size.
+        0
+    }
+}
+
+impl<T: SizeBytes + ?Sized> SizeBytes for Box<T> {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         T::total_size_bytes(&**self)
     }
 }
 
-impl<T: SizeBytes> SizeBytes for RangeInclusive<T> {
+impl<T: SizeBytes> SizeBytes for std::ops::RangeInclusive<T> {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.start().heap_size_bytes() + self.end().heap_size_bytes()
+    }
+}
+
+impl<T: SizeBytes> SizeBytes for core::range::RangeInclusive<T> {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.start.heap_size_bytes() + self.last.heap_size_bytes()
     }
 }

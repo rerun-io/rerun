@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -21,7 +22,7 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, ::re_byte_size::SizeBytes)]
 pub enum AffixFuzzer3 {
     Degrees(f32),
     Craziness(Vec<crate::testing::datatypes::AffixFuzzer1>),
@@ -36,7 +37,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
     fn arrow_datatype() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
         DataType::Union(
-            UnionFields::new(
+            UnionFields::try_new(
                 vec![0, 1, 2, 3, 4],
                 vec![
                     Field::new("_null_markers", DataType::Null, true),
@@ -60,7 +61,8 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                     ),
                     Field::new("empty_variant", DataType::Null, true),
                 ],
-            ),
+            )
+            .expect("UnionFields::try_new should be infallible"),
             UnionMode::Dense,
         )
     }
@@ -237,10 +239,10 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                         .count(),
                 )),
             ];
-            debug_assert_eq!(field_type_ids.len(), fields.len());
-            debug_assert_eq!(fields.len(), children.len());
+            re_log::debug_assert_eq!(field_type_ids.len(), fields.len());
+            re_log::debug_assert_eq!(fields.len(), children.len());
             as_array_ref(UnionArray::try_new(
-                UnionFields::new(field_type_ids, fields),
+                UnionFields::try_new(field_type_ids, fields)?,
                 ScalarBuffer::from(type_ids),
                 Some(offsets),
                 children,
@@ -380,9 +382,10 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                         if arrow_data.is_empty() {
                             Vec::new()
                         } else {
-                            let offsets = (0..)
-                                .step_by(3usize)
-                                .zip((3usize..).step_by(3usize).take(arrow_data.len()));
+                            let offsets = ::std::iter::zip(
+                                (0..).step_by(3usize),
+                                (3usize..).step_by(3usize).take(arrow_data.len()),
+                            );
                             let arrow_data_inner = {
                                 let arrow_data_inner = &**arrow_data.values();
                                 arrow_data_inner
@@ -403,7 +406,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                                 .map(|elem| {
                                     elem
                                         .map(|(start, end): (usize, usize)| {
-                                            debug_assert!(end - start == 3usize);
+                                            re_log::debug_assert!(end - start == 3usize);
                                             if arrow_data_inner.len() < end {
                                                 return Err(
                                                     DeserializationError::offset_slice_oob(
@@ -532,25 +535,5 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                     .with_context("rerun.testing.datatypes.AffixFuzzer3")?
             }
         })
-    }
-}
-
-impl ::re_byte_size::SizeBytes for AffixFuzzer3 {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        #![allow(clippy::match_same_arms)]
-        match self {
-            Self::Degrees(v) => v.heap_size_bytes(),
-            Self::Craziness(v) => v.heap_size_bytes(),
-            Self::FixedSizeShenanigans(v) => v.heap_size_bytes(),
-            Self::EmptyVariant => 0,
-        }
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <f32>::is_pod()
-            && <Vec<crate::testing::datatypes::AffixFuzzer1>>::is_pod()
-            && <[f32; 3usize]>::is_pod()
     }
 }

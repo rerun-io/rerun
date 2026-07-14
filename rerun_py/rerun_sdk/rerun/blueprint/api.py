@@ -209,8 +209,9 @@ class View:
         if isinstance(visualizer, Visualizer):
             visualizer_path = f"{base_visualizer_path}/{visualizer.id}"
 
-            # TODO(RR-3254): Include mappings.
-            stream.log(visualizer_path, VisualizerInstruction(visualizer.visualizer_type))
+            stream.log(
+                visualizer_path, VisualizerInstruction(visualizer.visualizer_type, component_map=visualizer.mappings)
+            )
             if visualizer.overrides is not None and len(visualizer.overrides) > 0:
                 stream.log(visualizer_path, visualizer.overrides)
 

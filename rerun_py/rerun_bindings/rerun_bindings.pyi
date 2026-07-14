@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import os
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from datetime import datetime, timedelta
-from enum import Enum
-from typing import TYPE_CHECKING, Any
-from uuid import UUID
+from pathlib import Path
+from typing import Any, Literal
 
 import datafusion as dfn
 import numpy as np
@@ -14,15 +13,13 @@ import pyarrow as pa
 
 from .types import (
     IndexValuesLike as IndexValuesLike,
-    VectorDistanceMetricLike as VectorDistanceMetricLike,
 )
-
-if TYPE_CHECKING:
-    from rerun.catalog import Schema
 
 # NOTE
 #
 # The pure Python wrapper/internal pyo3 object is documented in `rerun_py/ARCHITECTURE.md`.
+#
+# Refrain from adding doc strings for APIs that is wrapped on the Python side as they are unchecked and just add duplication.
 
 class IndexColumnDescriptor:
     """
@@ -95,6 +92,10 @@ class ComponentColumnDescriptor:
         """
 
     @property
+    def is_property(self) -> bool:
+        """Is this column a property?"""  # noqa: D400
+
+    @property
     def component_type(self) -> str | None:
         """
         The component type, if any.
@@ -103,7 +104,7 @@ class ComponentColumnDescriptor:
         """
 
     @property
-    def archetype(self) -> str:
+    def archetype(self) -> str | None:
         """
         The archetype name, if any.
 
@@ -153,6 +154,7 @@ class ComponentColumnSelector:
             The component to select. Example: `Points3D:positions`.
 
         """
+
     @property
     def entity_path(self) -> str:
         """
@@ -169,14 +171,6 @@ class ComponentColumnSelector:
         This property is read-only.
         """
 
-class VectorDistanceMetric(Enum):  # type: ignore[misc]
-    """Which distance metric for use for vector index."""
-
-    L2: VectorDistanceMetric
-    COSINE: VectorDistanceMetric
-    DOT: VectorDistanceMetric
-    HAMMING: VectorDistanceMetric
-
 class SchemaInternal:
     def index_columns(self) -> list[IndexColumnDescriptor]: ...
     def component_columns(self) -> list[ComponentColumnDescriptor]: ...
@@ -186,72 +180,52 @@ class SchemaInternal:
     ) -> ComponentColumnDescriptor: ...
     def __arrow_c_schema__(self) -> Any: ...
 
-class Recording:
+class ChunkInternal:
+    @property
+    def id(self) -> str: ...
+    @property
+    def entity_path(self) -> str: ...
+    @property
+    def num_rows(self) -> int: ...
+    @property
+    def num_columns(self) -> int: ...
+    @property
+    def is_static(self) -> bool: ...
+    @property
+    def is_empty(self) -> bool: ...
+    @property
+    def timeline_names(self) -> list[str]: ...
+    def to_record_batch(self) -> pa.RecordBatch: ...
+    def with_entity_path(self, entity_path: str) -> ChunkInternal: ...
+    @staticmethod
+    def from_record_batch(
+        record_batch: pa.RecordBatch,
+        index_mode: str,
+        index_columns: list[str],
+        entity_path: str | None,
+    ) -> list[ChunkInternal]: ...
+    @staticmethod
+    def from_columns(
+        entity_path: str,
+        timelines: dict[str, Any],
+        components: dict[ComponentDescriptor, Any],
+    ) -> ChunkInternal: ...
+    def format(self, *, width: int, redact: bool, trim_metadata_keys: bool) -> str: ...
+    def apply_lenses(self, lenses: list[LensInternal]) -> list[ChunkInternal]: ...
+    def apply_selector(self, source: str, selector: SelectorInternal) -> ChunkInternal: ...
+    def __repr__(self) -> str: ...
+    def __len__(self) -> int: ...
+
+def _optimization_profile_values(name: str) -> dict[str, object]:
     """
-    A single Rerun recording.
+    Test-only: return a dict of the Rust `OptimizationProfile::<NAME>` field values.
 
-    This can be loaded from an RRD file using [`load_recording()`][rerun.recording.load_recording].
+    Used by the Python parity test to confirm that
+    `OptimizationProfile.{LIVE,OBJECT_STORE}` on the Python side stays in sync
+    with the Rust constants this module forwards into `ChunkStoreConfig` /
+    `CompactionOptions` above.
 
-    A recording is a collection of data that was logged to Rerun. This data is organized
-    as a column for each index (timeline) and each entity/component pair that was logged.
-
-    You can examine the [`.schema()`][rerun.recording.Recording.schema] of the recording to see
-    what data is available.
-    """
-
-    def schema(self) -> Schema:
-        """The schema describing all the columns available in the recording."""
-
-    def recording_id(self) -> str:
-        """The recording ID of the recording."""
-
-    def application_id(self) -> str:
-        """The application ID of the recording."""
-
-class RRDArchive:
-    """
-    An archive loaded from an RRD.
-
-    RRD archives may include 1 or more recordings or blueprints.
-    """
-
-    def num_recordings(self) -> int:
-        """The number of recordings in the archive."""
-    def all_recordings(self) -> list[Recording]:
-        """All the recordings in the archive."""
-
-def load_recording(path_to_rrd: str | os.PathLike[str]) -> Recording:
-    """
-    Load a single recording from an RRD file.
-
-    Will raise a `ValueError` if the file does not contain exactly one recording.
-
-    Parameters
-    ----------
-    path_to_rrd:
-        The path to the file to load.
-
-    Returns
-    -------
-    Recording
-        The loaded recording.
-
-    """
-
-def load_archive(path_to_rrd: str | os.PathLike[str]) -> RRDArchive:
-    """
-    Load a rerun archive from an RRD file.
-
-    Parameters
-    ----------
-    path_to_rrd:
-        The path to the file to load.
-
-    Returns
-    -------
-    RRDArchive
-        The loaded archive.
-
+    Names: `"LIVE"`, `"OBJECT_STORE"`.
     """
 
 # AI generated stubs for `PyRecordingStream` related class and functions
@@ -283,19 +257,19 @@ class ChunkBatcherConfig:
 
         Parameters
         ----------
-        flush_tick : int | float | timedelta | None
+        flush_tick:
             Duration of the periodic tick, by default `None`.
             Equivalent to setting: `RERUN_FLUSH_TICK_SECS` environment variable.
 
-        flush_num_bytes : int | None
+        flush_num_bytes:
             Flush if the accumulated payload has a size in bytes equal or greater than this, by default `None`.
             Equivalent to setting: `RERUN_FLUSH_NUM_BYTES` environment variable.
 
-        flush_num_rows : int | None
+        flush_num_rows:
             Flush if the accumulated payload has a number of rows equal or greater than this, by default `None`.
             Equivalent to setting: `RERUN_FLUSH_NUM_ROWS` environment variable.
 
-        chunk_max_rows_if_unsorted : int | None
+        chunk_max_rows_if_unsorted:
             Split a chunk if it contains >= rows than this threshold and one or more of its timelines are unsorted,
             by default `None`.
             Equivalent to setting: `RERUN_CHUNK_MAX_ROWS_IF_UNSORTED` environment variable.
@@ -375,8 +349,18 @@ class ChunkBatcherConfig:
         """Low-latency configuration, preferred when streaming directly to a viewer."""
 
     @staticmethod
-    def ALWAYS() -> ChunkBatcherConfig:
-        """Always flushes ASAP."""
+    def ALWAYS_TEST_ONLY() -> ChunkBatcherConfig:
+        """
+        Always flushes ASAP.
+
+        !!! warning
+            Test-only configuration. Produces an unrealistically large number of chunks and is
+            not suitable for production workloads. With a file sink in particular, per-chunk
+            metadata is accumulated in memory until the SDK process ends and the file footer
+            can be written, which can drive memory usage through the roof. Use
+            [`LOW_LATENCY`][rerun_bindings.ChunkBatcherConfig.LOW_LATENCY] instead for fast
+            flushing in real applications.
+        """
 
     @staticmethod
     def NEVER() -> ChunkBatcherConfig:
@@ -389,12 +373,14 @@ class PyMemorySinkStorage:
 
         Note: This will do a blocking flush before returning!
         """
+
     def num_msgs(self) -> int:
         """
         Count the number of pending messages in the [`MemorySinkStorage`].
 
         This will do a blocking flush before returning!
         """
+
     def drain_as_bytes(self) -> bytes:
         """
         Drain all messages logged to the [`MemorySinkStorage`] and return as bytes.
@@ -420,6 +406,7 @@ class PyBinarySinkStorage:
             If the timeout is reached, an error is raised.
 
         """
+
     def flush(self, *, timeout_sec: float = 1e38) -> None:
         """
         Flushes the binary sink and ensures that all logged messages have been encoded into the stream.
@@ -479,7 +466,8 @@ def spawn(
     executable_path: str | None = None,
     extra_args: list[str] = ...,
     extra_env: list[tuple[str, str]] = ...,
-) -> None:
+    headless: bool = False,
+) -> int | None:
     """Spawn a new viewer."""
 
 #
@@ -649,7 +637,7 @@ class FileSink:
     Save the recording stream to a file.
     """
 
-    def __init__(self, path: str | os.PathLike[str]) -> None:
+    def __init__(self, path: str | os.PathLike[str], *, write_footer: bool = True) -> None:
         """
         Initialize a file sink.
 
@@ -657,6 +645,17 @@ class FileSink:
         ----------
         path:
             Path to write to. The file will be overwritten.
+        write_footer:
+            Whether to emit a complete RRD footer (including a manifest of every chunk) at the
+            end of the stream. Defaults to `True`.
+
+            Producing a footer keeps per-chunk metadata in memory for the lifetime of the sink,
+            which grows linearly with the number of chunks logged. Pass `write_footer=False` for
+            long-running streaming sessions; the resulting file is still a valid RRD and a
+            footer can be added after the fact via `rerun rrd optimize`.
+
+            *Warning*: lack of footer will significantly hurt random-access performance and some
+            tools (e.g. LazyStore) may not work properly.
 
         """
 
@@ -686,6 +685,8 @@ def save(
     path: str,
     default_blueprint: PyMemorySinkStorage | None = None,
     recording: PyRecordingStream | None = None,
+    *,
+    write_footer: bool = True,
 ) -> None:
     """Save the recording stream to a file."""
 
@@ -695,6 +696,8 @@ def save_blueprint(path: str, blueprint_stream: PyRecordingStream) -> None:
 def stdout(
     default_blueprint: PyMemorySinkStorage | None = None,
     recording: PyRecordingStream | None = None,
+    *,
+    write_footer: bool = True,
 ) -> None:
     """Save to stdout."""
 
@@ -721,6 +724,7 @@ def serve_grpc(
     newest_first: bool = False,
     default_blueprint: PyMemorySinkStorage | None = None,
     recording: PyRecordingStream | None = None,
+    cors_allow_origin: list[str] = ...,  # type: ignore[assignment]
 ) -> str:
     """
     Spawn a gRPC server which an SDK or Viewer can connect to.
@@ -742,6 +746,7 @@ def serve_web(
     server_memory_limit: str,
     default_blueprint: PyMemorySinkStorage | None = None,
     recording: PyRecordingStream | None = None,
+    cors_allow_origin: list[str] = ...,  # type: ignore[assignment]
 ) -> None:
     """Serve a web-viewer AND host a gRPC server."""
 
@@ -750,6 +755,18 @@ def disconnect(recording: PyRecordingStream | None = None) -> None:
     Disconnect from remote server (if any).
 
     Subsequent log messages will be buffered and either sent on the next call to `connect_grpc` or `spawn`.
+    """
+
+def finalize_deferred_sinks(recording: PyRecordingStream | None = None) -> None:
+    """
+    Finalize any deferred-finalization sinks (i.e. file-like sinks that write a footer at the end).
+
+    For a bare `FileSink` this is equivalent to `disconnect()`. For a `MultiSink` containing both
+    streaming and file-like children, only the file-like children are dropped — the streaming
+    children stay live. For all other sinks this is a no-op.
+
+    Used by `RecordingStream.__exit__` so that file-backed recordings are consumable as soon as
+    the `with`-block exits, without waiting for `__del__` / GC.
     """
 
 def flush(*, timeout_sec: float = 1e38, recording: PyRecordingStream | None = None) -> None:
@@ -801,6 +818,12 @@ def disable_timeline(
 def reset_time(recording: PyRecordingStream | None = None) -> None:
     """Clear all timeline information on this thread."""
 
+def set_log_tick_enabled(enabled: bool, recording: PyRecordingStream | None = None) -> None:
+    """Enable or disable automatic injection of the `log_tick` timeline (disabled by default)."""
+
+def set_log_time_enabled(enabled: bool, recording: PyRecordingStream | None = None) -> None:
+    """Enable or disable automatic injection of the `log_time` timeline (enabled by default)."""
+
 #
 # log any
 #
@@ -832,6 +855,17 @@ def send_arrow_chunk(
         A dictionary mapping component types to their values.
     """
 
+def send_chunks(
+    chunks: ChunkInternal | Iterable[ChunkInternal],
+    recording: PyRecordingStream | None = None,
+) -> None:
+    """
+    Send chunks to the recording stream.
+
+    Accepts a single chunk or any iterable of chunks. Blocks until every chunk
+    has been pushed to the recording's batcher.
+    """
+
 def log_file_from_path(
     file_path: str | os.PathLike[str],
     entity_path_prefix: str | None = None,
@@ -856,14 +890,6 @@ def send_blueprint(
     recording: PyRecordingStream | None = None,
 ) -> None:
     """Send a blueprint to the given recording stream."""
-
-def send_recording(rrd: Recording, recording: PyRecordingStream | None = None) -> None:
-    """
-    Send all chunks from a [`PyRecording`] to the given recording stream.
-
-    .. warning::
-        ⚠️ This API is experimental and may change or be removed in future versions! ⚠️
-    """
 
 #
 # misc
@@ -918,6 +944,9 @@ class EntryId:
     def __str__(self) -> str:
         """Return str(self)."""
 
+    def as_bytes(self) -> bytes:
+        """Return the raw 16-byte representation."""
+
 class EntryKind:
     """The kinds of entries that can be stored in the catalog."""
 
@@ -926,6 +955,7 @@ class EntryKind:
     TABLE: EntryKind
     TABLE_VIEW: EntryKind
     BLUEPRINT_DATASET: EntryKind
+    ASSET_DATASET: EntryKind
 
     def __str__(self, /) -> str:
         """Return str(self)."""
@@ -961,8 +991,12 @@ class DatasetEntryInternal:
     # ---
 
     def blueprint_dataset(self) -> DatasetEntryInternal | None: ...
+    def asset_dataset(self) -> DatasetEntryInternal | None: ...
+    def _ensure_asset_dataset(self) -> None: ...
     def default_blueprint_segment_id(self) -> str | None: ...
     def set_default_blueprint_segment_id(self, segment_id: str | None) -> None: ...
+    def default_segment_table_blueprint_segment_id(self) -> str | None: ...
+    def set_default_segment_table_blueprint_segment_id(self, segment_id: str | None) -> None: ...
 
     # ---
 
@@ -973,8 +1007,8 @@ class DatasetEntryInternal:
         self,
         segment_id: str,
         timeline: str | None = None,
-        start: datetime | int | None = None,
-        end: datetime | int | None = None,
+        start: datetime | timedelta | int | None = None,
+        end: datetime | timedelta | int | None = None,
     ) -> str: ...
 
     # ---
@@ -984,48 +1018,23 @@ class DatasetEntryInternal:
 
     # ---
 
-    def register(self, recording_uris: list[str], *, recording_layers: list[str]) -> RegistrationHandleInternal: ...
-    def register_prefix(self, recordings_prefix: str, layer_name: str | None = None) -> RegistrationHandleInternal: ...
+    def register(
+        self, recording_uris: list[str], recording_layers: list[str], on_duplicate: str
+    ) -> RegistrationHandleInternal: ...
+    def register_prefix(
+        self, recordings_prefix: str, layer_name: str, on_duplicate: str
+    ) -> RegistrationHandleInternal: ...
+    def unregister(
+        self,
+        *,
+        segments_to_drop: list[str],
+        layers_to_drop: list[str],
+        force: bool = False,
+    ) -> UnregistrationHandleInternal: ...
 
     # ---
 
-    def download_segment(self, segment_id: str) -> Recording: ...
-
-    # ---
-
-    def create_fts_search_index(
-        self,
-        *,
-        column: str | ComponentColumnSelector | ComponentColumnDescriptor,
-        time_index: IndexColumnSelector,
-        store_position: bool = False,
-        base_tokenizer: str = "simple",
-    ) -> None: ...
-    def create_vector_search_index(
-        self,
-        *,
-        column: str | ComponentColumnSelector | ComponentColumnDescriptor,
-        time_index: IndexColumnSelector,
-        target_partition_num_rows: int | None = None,
-        num_sub_vectors: int = 16,
-        distance_metric: VectorDistanceMetric | str = ...,
-    ) -> IndexingResult: ...
-    def list_search_indexes(self) -> list[IndexingResult]: ...
-    def delete_search_indexes(
-        self,
-        column: str | ComponentColumnSelector | ComponentColumnDescriptor,
-    ) -> list[IndexConfig]: ...
-    def search_fts(
-        self,
-        query: str,
-        column: str | ComponentColumnSelector | ComponentColumnDescriptor,
-    ) -> dfn.DataFrame: ...
-    def search_vector(
-        self,
-        query: Any,  # VectorLike
-        column: str | ComponentColumnSelector | ComponentColumnDescriptor,
-        top_k: int,
-    ) -> dfn.DataFrame: ...
+    def segment_store(self, segment_id: str) -> LazyStoreInternal: ...
 
     # ---
 
@@ -1037,6 +1046,12 @@ class DatasetEntryInternal:
         cleanup_before: datetime | None = None,
         unsafe_allow_recent_cleanup: bool = False,
     ) -> None: ...
+
+class SegmentUrlUdfInternal:
+    """Rust-backed ScalarUDF for building segment URLs."""
+
+    def __datafusion_scalar_udf__(self) -> Any:
+        """Scalar UDF pycapsule."""
 
 class DatasetViewInternal:
     """Internal Rust implementation of DatasetView."""
@@ -1073,7 +1088,13 @@ class TableEntryInternal:
 
     # ---
 
-    def __datafusion_table_provider__(self) -> Any: ...
+    def blueprint_dataset(self) -> DatasetEntryInternal: ...
+    def default_blueprint_segment_id(self) -> str | None: ...
+    def set_default_blueprint_segment_id(self, segment_id: str | None) -> None: ...
+
+    # ---
+
+    def __datafusion_table_provider__(self, session: Any) -> Any: ...
     def reader(self) -> dfn.DataFrame: ...
     def to_arrow_reader(self) -> pa.RecordBatchReader: ...
 
@@ -1098,9 +1119,17 @@ class _UrdfTreeInternal:
     """Internal Rust implementation of a parsed URDF tree."""
 
     @staticmethod
-    def from_file_path(path: str | os.PathLike[str], entity_path_prefix: str | None = None) -> _UrdfTreeInternal: ...
+    def from_file_path(
+        path: str | os.PathLike[str],
+        entity_path_prefix: str | None = None,
+        *,
+        frame_prefix: str | None = None,
+        static_transform_entity_path: str | None = None,
+    ) -> _UrdfTreeInternal: ...
     @property
     def name(self) -> str: ...
+    @property
+    def frame_prefix(self) -> str | None: ...
     def root_link(self) -> _UrdfLinkInternal: ...
     def joints(self) -> list[_UrdfJointInternal]: ...
     def get_joint_by_name(self, joint_name: str) -> _UrdfJointInternal | None: ...
@@ -1108,6 +1137,15 @@ class _UrdfTreeInternal:
     def get_link_by_name(self, link_name: str) -> _UrdfLinkInternal | None: ...
     def get_collision_geometry_paths(self, link: str | _UrdfLinkInternal) -> list[str]: ...
     def get_visual_geometry_paths(self, link: str | _UrdfLinkInternal) -> list[str]: ...
+    def log(self, recording: PyRecordingStream | None = None) -> None: ...
+    def stream(self, *, include_joint_transforms: bool = True) -> LazyChunkStreamInternal: ...
+    def compute_joint_transform_batches(
+        self,
+        names: pa.Array,
+        values: pa.Array,
+        *,
+        clamp: bool = False,
+    ) -> pa.Array: ...
 
 class _UrdfJointInternal:
     """Internal Rust representation of a URDF joint."""
@@ -1134,6 +1172,40 @@ class _UrdfJointInternal:
     def limit_effort(self) -> float: ...
     @property
     def limit_velocity(self) -> float: ...
+    @property
+    def mimic(self) -> _UrdfMimicInternal | None:
+        """The ``<mimic>`` tag for this joint, or ``None`` if this is not a mimic joint."""
+
+    def compute_transform(self, value: float, clamp: bool = False) -> dict[str, Any]:
+        """
+        Compute the transform components for this joint at the given value.
+
+        The result is wrapped in a dictionary for easy conversion to the final types in Python.
+
+        If `clamp` is True, values outside joint limits will be clamped and a warning is generated.
+        If `clamp` is False (default), values outside limits are used as-is without warnings.
+        """
+
+    def compute_transform_columns(self, values: list[float], *, clamp: bool = False) -> dict[str, Any]:
+        """
+        Compute transforms for this joint at multiple values in a single call.
+
+        Returns a dictionary with translations, quaternions, frame names, and warnings
+        for use with columnar APIs like `send_columns`.
+
+        If `clamp` is True, values outside joint limits will be clamped and a warning is generated.
+        If `clamp` is False (default), values outside limits are used as-is without warnings.
+        """
+
+class _UrdfMimicInternal:
+    """Internal Rust representation of a URDF ``<mimic>`` tag."""
+
+    @property
+    def joint(self) -> str: ...
+    @property
+    def multiplier(self) -> float: ...
+    @property
+    def offset(self) -> float: ...
 
 class _UrdfLinkInternal:
     """Internal Rust representation of a URDF link."""
@@ -1143,62 +1215,21 @@ class _UrdfLinkInternal:
 
 class _IndexValuesLikeInternal:
     """
-    A Python wrapper for testing [`IndexValuesLike`] extraction functionality.
+    A Python wrapper for [`IndexValuesLike`] extraction and conversion.
 
-    This wrapper allows testing the `extract_bound` functionality by providing
-    a Python-accessible interface to create and convert index values.
+    Provides a Python-accessible interface to normalize various index value
+    representations (PyArrow arrays, NumPy arrays, ChunkedArrays) into sorted
+    int64 index values.
     """
 
     def __init__(self, values: IndexValuesLike) -> None: ...
     def to_index_values(self) -> npt.NDArray[np.int64]: ...
     def len(self) -> int: ...
 
-class IndexProperties:
-    """The properties and configuration of a user-defined index."""
+class TableProviderAdapterInternal:
+    """Internal opaque adapter exposing a Rust DataFusion `TableProvider` to Python via the FFI capsule protocol."""
 
-class IndexConfig:
-    """The complete description of a user-defined index."""
-
-    @property
-    def time_column(self) -> IndexColumnSelector:
-        """Returns the time column that this index applies to."""
-
-    @property
-    def component_column(self) -> ComponentColumnSelector:
-        """Returns the component column that this index applies to."""
-
-    @property
-    def properties(self) -> IndexProperties:
-        """Returns the properties/configuration of the index."""
-
-class IndexingResult:
-    """Indexing operation status result."""
-
-    @property
-    def properties(self) -> IndexConfig:
-        """Returns configuration information and properties about the newly created index."""
-
-    @property
-    def column(self) -> ComponentColumnSelector:
-        """Returns the component column that this index was created on."""
-
-    @property
-    def statistics(self) -> str:
-        """Returns best-effort backend-specific statistics about the newly created index."""
-
-    def debug_info(self) -> dict[str, Any] | None:
-        """
-        Get debug information about the indexing operation.
-
-        The exact contents of debug information may vary depending on the indexing operation performed
-        and the server implementation.
-
-        Returns
-        -------
-        Optional[dict]
-            A dictionary containing debug information, or `None` if no debug information is available
-
-        """
+    def __datafusion_table_provider__(self, session: Any) -> Any: ...
 
 class CatalogClientInternal:
     def __init__(self, url: str, token: str | None = None) -> None: ...
@@ -1215,6 +1246,9 @@ class CatalogClientInternal:
 
     # ---
 
+    def version_info(self) -> tuple[str, str | None, str | None]: ...
+    def rtt_seconds(self, num_pings: int) -> float: ...
+    def bandwidth_bytes_per_sec(self, num_bytes: int, rtt_seconds: float) -> float | None: ...
     def datasets(self, include_hidden: bool) -> list[DatasetEntryInternal]: ...
     def tables(self, include_hidden: bool) -> list[TableEntryInternal]: ...
 
@@ -1239,58 +1273,66 @@ class CatalogClientInternal:
     def _entry_id_from_entry_name(self, name: str) -> EntryId: ...
 
 class RegistrationHandleInternal:
-    def iter_results(self, timeout_secs: int | None = None) -> Iterator[tuple[str, str | None, str | None]]: ...
+    def iter_results(self, timeout_secs: int | None = None) -> Iterator[tuple[str, str, str | None]]: ...
     def wait(self, timeout_secs: int | None = None) -> list[str]: ...
+    def cancel(self) -> None: ...
+
+class UnregistrationHandleInternal:
+    def wait(self, timeout_secs: int | None = None) -> None: ...
+    def cancel(self) -> None: ...
 
 #####################################################################################################################
 ## VIEWER_CLIENT                                                                                                   ##
 #####################################################################################################################
 
-class ViewerClient:
-    """A connection to an instance of a Rerun viewer."""
+class ViewerClientInternal:
+    """Internal implementation. Use ViewerClient from rerun.experimental instead."""
 
-    def __init__(self, addr: str = "127.0.0.1:9876") -> None:
-        """
-        Create a new viewer client object.
-
-        Parameters
-        ----------
-        addr:
-            The address of the viewer.
-
-        """
-
-    def send_table(self, id: str, table: pa.RecordBatch) -> None:
-        """
-        Sends a table to the viewer.
-
-        A table is represented as a dataframe defined by an Arrow record batch.
-        """
-
-    def save_screenshot(self, /, file_path: str, view_id: str | UUID | None = None) -> None:
-        """
-        Saves a screenshot to a file.
-
-        .. warning::
-            ⚠️ This API is experimental and may change or be removed in future versions! ⚠️
-
-        Parameters
-        ----------
-        file_path : str
-            The path where the screenshot will be saved.
-            ⚠️ This path is relative to the viewer's filesystem, not the client's! ⚠️
-            If your viewer runs on a different machine, the screenshot will be saved there.
-        view_id : str | UUID | None
-            Optional view ID to screenshot.
-            If None, screenshots the entire viewer.
-
-        """
+    def __init__(self, addr: str) -> None: ...
+    def send_table(self, id: str, table: pa.RecordBatch) -> None: ...
+    def save_screenshot(self, file_path: str, view_id: str | None) -> None: ...
 
 class NotFoundError(Exception):
     """Raised when the requested resource is not found."""
 
 class AlreadyExistsError(Exception):
     """Raised when trying to create a resource that already exists."""
+
+class SelectorInternal:
+    def __init__(self, query: str) -> None: ...
+    def execute(self, source: pa.Array) -> pa.Array | None: ...
+    def execute_per_row(self, source: pa.Array) -> pa.Array | None: ...
+    def pipe(self, func: Any) -> SelectorInternal: ...
+    def try_to_string(self) -> str | None: ...
+    def __repr__(self) -> str: ...
+    def __str__(self) -> str: ...
+
+class DeriveLensInternal:
+    def __init__(
+        self,
+        input_component: str,
+        *,
+        output_entity: str | None = None,
+        scatter: bool = False,
+    ) -> None: ...
+    def to_component(
+        self,
+        component: ComponentDescriptor,
+        selector: SelectorInternal,
+        cast_to: pa.DataType | Literal["auto"] | None = None,
+    ) -> DeriveLensInternal: ...
+    def to_timeline(self, timeline_name: str, timeline_type: str, selector: SelectorInternal) -> DeriveLensInternal: ...
+
+class MutateLensInternal:
+    def __init__(
+        self,
+        input_component: str,
+        selector: SelectorInternal,
+        *,
+        keep_row_ids: bool = False,
+    ) -> None: ...
+
+LensInternal = DeriveLensInternal | MutateLensInternal
 
 class _ServerInternal:
     def __init__(
@@ -1325,6 +1367,8 @@ class _ServerInternal:
     def host(self) -> str: ...
     def shutdown(self) -> None: ...
     def is_running(self) -> bool: ...
+    def inject_error(self, method: str) -> None: ...
+    def clear_injected_error(self, method: str) -> None: ...
 
 #####################################################################################################################
 ## AUTH                                                                                                            ##
@@ -1379,5 +1423,384 @@ class Credentials:
 def get_credentials() -> Credentials | None:
     """Returns the credentials for the current user."""
 
-def rerun_trace_context() -> Any:
-    """Get the trace context ContextVar for distributed tracing propagation."""
+def logout() -> str | None:
+    """
+    Log out by clearing stored credentials.
+
+    Returns
+    -------
+    str | None
+        The logout URL to end the session, or `None` if already logged out.
+
+    """
+
+def _get_trace_context_var() -> Any:
+    """
+    Return the `ContextVar` that Python uses to pass trace headers to Rust.
+
+    This is the **write side** of the bridge — Python's `with_tracing` decorator
+    calls this to get the `ContextVar`, then writes W3C trace headers into it.
+    Rust later reads them back via [`read_trace_context_from_python`].
+
+    Returns `None` when `perf_telemetry` is disabled.
+    """
+
+def _get_tracing_session_var() -> Any:
+    """
+    Return the `ContextVar` carrying the active rerun session id.
+
+    Set by the `tracing_session()` context manager and read on every outbound
+    gRPC call to merge `rerun_session_id=<id>` into the W3C `tracestate` header.
+
+    Returns `None` when `perf_telemetry` is disabled.
+    """
+
+def _is_telemetry_active() -> bool:
+    """
+    Return `True` if the rerun telemetry stack initialized successfully.
+
+    `tracing_session()` requires this to be true; otherwise the W3C propagator
+    is not registered and the session id has no transport.
+    """
+
+def _inc_active_tracing_sessions() -> None:
+    """Increment the process-wide active-tracing-session gate. Called by `tracing_session().__enter__`."""
+
+def _dec_active_tracing_sessions() -> None:
+    """Decrement the process-wide active-tracing-session gate. Called by `tracing_session().__exit__`."""
+
+def _log_tracing_session_started(rerun_session_id: str) -> None:
+    """Emit `rerun tracing session started: <rerun_session_id>` through the Rust `tracing` stack at INFO level."""
+
+def _log_tracing_session_finished(
+    rerun_session_id: str,
+    elapsed_s: float,
+    cpu_user_s: float | None,
+    cpu_system_s: float | None,
+    cpu_iowait_s: float | None,
+    net_rx_mb: float | None,
+) -> None:
+    """
+    Emit a single structured INFO event summarizing the tracing session at scope exit.
+
+    `Option<f64>` fields are `None` when the host platform or runtime can't supply
+    the metric (psutil missing, or `iowait` unavailable on macOS/Windows). Routed
+    through the Rust `tracing` stack so it follows `RUST_LOG` and the fmt-layer
+    pipeline like `_log_tracing_session_started`.
+    """
+
+#####################################################################################################################
+## PIPELINE APIS                                                                                                   ##
+#####################################################################################################################
+
+class ChunkStoreInternal:
+    """Internal implementation. Use ChunkStore from rerun.experimental instead."""
+
+    @staticmethod
+    def from_chunks(chunks: list[ChunkInternal]) -> ChunkStoreInternal: ...
+    def schema(self) -> SchemaInternal: ...
+    def num_chunks(self) -> int: ...
+    def summary(self) -> str: ...
+    def stream(self) -> LazyChunkStreamInternal: ...
+    def reader(
+        self,
+        *,
+        index: str | None,
+        contents: list[str] | None,
+        include_semantically_empty_columns: bool,
+        include_tombstone_columns: bool,
+        fill_latest_at: bool,
+        using_index_values: IndexValuesLike | None,
+    ) -> TableProviderAdapterInternal: ...
+
+class LazyStoreInternal:
+    """Internal implementation. Use LazyStore from rerun.experimental instead."""
+
+    def schema(self) -> SchemaInternal: ...
+    def num_chunks(self) -> int: ...
+    def summary(self) -> str: ...
+    def stream(self) -> LazyChunkStreamInternal: ...
+    @property
+    def _chunks_loaded(self) -> int: ...
+
+class StoreEntryInternal:
+    """Internal implementation. Use StoreEntry from rerun.experimental instead."""
+
+    @property
+    def kind(self) -> Literal["recording", "blueprint"]: ...
+    @property
+    def application_id(self) -> str: ...
+    @property
+    def recording_id(self) -> str: ...
+
+class RrdReaderInternal:
+    """Internal implementation. Use RrdReader from rerun.experimental instead."""
+
+    def __init__(self, path: str) -> None: ...
+    def store_entries(self) -> list[StoreEntryInternal]: ...
+    def stream(self, store: StoreEntryInternal | None = None) -> LazyChunkStreamInternal: ...
+    def store(self, store: StoreEntryInternal | None = None) -> LazyStoreInternal: ...
+    @property
+    def path(self) -> Path: ...
+
+class McapReaderInternal:
+    """Internal implementation. Use McapReader from rerun.experimental instead."""
+
+    def __init__(
+        self,
+        path: str,
+        timeline_type: str,
+        timestamp_offset_ns: int | None,
+        decoders: list[str] | None,
+        include_topic_regex: list[str] | None,
+        exclude_topic_regex: list[str] | None,
+    ) -> None: ...
+    def stream(self) -> LazyChunkStreamInternal: ...
+    @property
+    def path(self) -> Path: ...
+    @staticmethod
+    def available_decoders() -> list[str]: ...
+
+class Mp4ReaderInternal:
+    """Internal implementation. Use Mp4Reader from rerun.experimental instead."""
+
+    def __init__(
+        self,
+        path: Path,
+        mode: Literal["asset", "stream"] = "stream",
+        chunk_by_gop: bool = True,
+        timeline_name: str = "video",
+        timeline_type: Literal["duration", "timestamp"] = "duration",
+        ffmpeg_override: Path | None = None,
+        entity_path: str | None = None,
+    ) -> None: ...
+    def stream(self) -> LazyChunkStreamInternal: ...
+    @property
+    def path(self) -> Path: ...
+    @property
+    def entity_path(self) -> str: ...
+
+class ParquetReaderInternal:
+    """Internal implementation. Use ParquetReader from rerun.experimental instead."""
+
+    def __init__(
+        self,
+        path: str,
+        entity_path_prefix: str | None = None,
+        column_grouping: str = "prefix",
+        delimiter: str = "_",
+        prefixes: list[str] | None = None,
+        use_structs: bool = True,
+        static_columns: list[str] | None = None,
+        index_columns: list[tuple[str, str, str | None]] | None = None,
+    ) -> None: ...
+    def stream(self) -> LazyChunkStreamInternal: ...
+    @property
+    def path(self) -> Path: ...
+
+class LazyChunkStreamInternal:
+    """Internal implementation. Use LazyChunkStream from rerun.experimental instead."""
+
+    def filter(
+        self,
+        *,
+        content: list[str] | None = None,
+        has_timeline: str | None = None,
+        is_static: bool | None = None,
+        components: list[str] | None = None,
+    ) -> LazyChunkStreamInternal: ...
+    def drop_matching(
+        self,
+        *,
+        content: list[str] | None = None,
+        has_timeline: str | None = None,
+        is_static: bool | None = None,
+        components: list[str] | None = None,
+    ) -> LazyChunkStreamInternal: ...
+    def split(
+        self,
+        *,
+        content: list[str] | None = None,
+        has_timeline: str | None = None,
+        is_static: bool | None = None,
+        components: list[str] | None = None,
+    ) -> tuple[LazyChunkStreamInternal, LazyChunkStreamInternal]: ...
+    def lenses(
+        self,
+        lenses: list[LensInternal],
+        output_mode: str,
+        content: list[str] | None,
+    ) -> LazyChunkStreamInternal: ...
+    def map(self, callable: Callable[[ChunkInternal], ChunkInternal]) -> LazyChunkStreamInternal: ...
+    def flat_map(self, callable: Callable[[ChunkInternal], list[ChunkInternal]]) -> LazyChunkStreamInternal: ...
+    @staticmethod
+    def merge(streams: list[LazyChunkStreamInternal]) -> LazyChunkStreamInternal: ...
+    def write_rrd(self, path: str, application_id: str, recording_id: str) -> None: ...
+    def collect(
+        self,
+        *,
+        max_bytes: int | None = None,
+        max_rows: int | None = None,
+        max_rows_if_unsorted: int | None = None,
+        extra_passes: int = 0,
+        gop_batching: bool = False,
+        split_size_ratio: float | None = None,
+        fix_keyframe: bool = False,
+    ) -> ChunkStoreInternal:
+        """
+        Run the pipeline and materialize all chunks into a ChunkStore.
+
+        The defaults (`extra_passes=0`, `gop_batching=False`) produce a store that
+        has only received the single-pass compaction that happens naturally during
+        chunk insertion. The Python wrapper `LazyChunkStream.collect(optimize=...)`
+        is the intended entry point.
+        """
+
+    def to_chunks(self) -> list[ChunkInternal]: ...
+    def __iter__(self) -> LazyChunkStreamIterator: ...
+    @staticmethod
+    def from_iter(iterable: Any) -> LazyChunkStreamInternal: ...
+    def send_to_recording(self, recording: PyRecordingStream | None = None) -> None:
+        """
+        Drain this stream into a recording stream.
+
+        If `recording` is `None`, the active recording is used. Blocks until every
+        chunk has been pushed to the recording's batcher. A silent no-op when
+        there is no active recording.
+        """
+
+class LazyChunkStreamIterator:
+    """Iterator over chunks from a compiled stream."""
+
+    def __iter__(self) -> LazyChunkStreamIterator:
+        """Implement iter(self)."""
+
+    def __next__(self) -> ChunkInternal:
+        """Implement next(self)."""
+
+#####################################################################################################################
+## METRICS APIS                                                                                                   ##
+#####################################################################################################################
+
+class _QueryMetrics:
+    """Frozen mirror of `re_datafusion::QuerySnapshot`. One per query."""
+
+    # Plan-time
+    dataset_id: str
+    """The dataset being queried."""
+
+    query_chunks: int
+    """Number of unique chunks returned by `query_dataset` (subset of the dataset)."""
+
+    query_segments: int
+    """Number of distinct segments involved in the query."""
+
+    query_layers: int
+    """Number of distinct layers touched by the query."""
+
+    query_columns: int
+    """Number of columns in the query output schema."""
+
+    query_entities: int
+    """Number of entity paths in the query request."""
+
+    query_bytes: int
+    """Total size of all queried chunks in bytes (from chunk metadata)."""
+
+    query_chunks_per_segment_min: int
+    """Min number of chunks touched within any single segment in this query."""
+
+    query_chunks_per_segment_max: int
+    """Max number of chunks touched within any single segment in this query."""
+
+    query_chunks_per_segment_mean: float
+    """Mean number of chunks touched per segment in this query."""
+
+    query_type: str
+    """Query shape: one of `"static"`, `"latest_at"`, `"range"`, `"dataframe"`, or `"full_scan"`."""
+
+    primary_index_name: str | None
+    """Name of the sort/filter index (timeline) for this query, if any."""
+
+    time_to_first_chunk_info: timedelta | None
+    """Time from sending `query_dataset` until the first response message arrives (the chunk metadata, not actual chunk data)."""
+
+    filters_pushed_down: int
+    """Number of filter expressions the table provider was able to push down to the server (`Exact` or `Inexact` from `supports_filters_pushdown`)."""
+
+    filters_applied_client_side: int
+    """Number of filter expressions that could not be pushed down — applied client-side by DataFusion via a downstream `FilterExec`."""
+
+    entity_path_narrowing_applied: bool
+    """True when projection-based entity-path narrowing actually trimmed the set of entity paths sent to `query_dataset`."""
+
+    # Execution-time
+    total_duration: timedelta
+    """Wall-clock time from the start of `scan()` until the query finished (cleanly or via error). Always populated."""
+
+    time_to_first_chunk: timedelta | None
+    """Time from scan start until the first chunk reached the consumer. `None` when no chunk was ever delivered (e.g. early error, empty result)."""
+
+    error_kind: str | None
+    """`None` on success. On failure, one of the stable string labels `"grpc_fetch"`, `"direct_fetch"`, `"decode"`, or `"other"`."""
+
+    direct_terminal_reason: str | None
+    """Reason a direct (HTTP Range) fetch hit a terminal failure — i.e. a non-retryable error or retries exhausted. `None` when no direct fetch terminally failed (can be `None` even when `error_kind` is set, if the failure was on the gRPC or decode path)."""
+
+    # Fetch counters
+    fetch_grpc_requests: int
+    """Number of gRPC fetch calls the scanner issued."""
+
+    fetch_grpc_bytes: int
+    """Sum of `chunk_byte_length` (catalog metadata, compressed on-disk size) over chunks fetched via gRPC. Excludes framing overhead and bytes consumed by failed retries — a lower bound on wire traffic."""
+
+    fetch_direct_requests: int
+    """Number of direct (HTTP Range) fetches the scanner issued. Counts each merged request once, regardless of byte ranges or retry attempts."""
+
+    fetch_direct_bytes: int
+    """Sum of `chunk_byte_length` (catalog metadata, compressed on-disk size) over chunks fetched via direct HTTP. Does **not** count filler bytes that range-merging pulls between adjacent chunks, so actual wire traffic can exceed this value."""
+
+    fetch_direct_retries: int
+    """Total number of direct-fetch retry *attempts* across all requests. A request retried 3 times contributes 3 here."""
+
+    fetch_direct_requests_retried: int
+    """Number of distinct direct-fetch requests that needed at least one retry. Always `≤ fetch_direct_retries`; the ratio between them is the average retries per retried request."""
+
+    fetch_direct_retry_sleep: timedelta
+    """Total backoff time slept across all direct-fetch retries."""
+
+    fetch_direct_max_attempt: int
+    """Sum of per-partition max attempts. For a single-partition query this is the true max; for multi-partition queries it is an upper bound on the true max — `MetricsSet::Count` has no `fetch_max` operation, so cross-partition aggregation sums."""
+
+    fetch_direct_original_ranges: int
+    """Number of byte ranges the planner *wanted* to fetch directly, before adjacent ranges were coalesced. With `fetch_direct_merged_ranges`, gives the range-merging ratio."""
+
+    fetch_direct_merged_ranges: int
+    """Number of byte ranges actually issued after merging adjacent ranges into combined HTTP Range requests. Equals `fetch_direct_requests` for a single-range-per-request scanner."""
+
+class _MetricsCollectorHandle:
+    """Opaque handle held by the `query_metrics()` context manager."""
+
+    def snapshot(self) -> list[_QueryMetrics]:
+        """
+        Non-destructive copy of all snapshots received so far.
+
+        Suitable for use mid-scope (`collector.queries` in the Python wrapper).
+        """
+
+    def drain(self) -> list[_QueryMetrics]:
+        """
+        Take and clear all snapshots.
+
+        Used by the context manager on `__exit__` to drain any remaining
+        snapshots into the user-visible Python `MetricsCollector` wrapper.
+        """
+
+def _new_metrics_collector() -> _MetricsCollectorHandle:
+    """
+    Allocate a fresh [`MetricsCollector`] and wrap it in a Python handle.
+
+    The Python `query_metrics()` context manager pushes the returned handle
+    onto the `_active_collectors` `ContextVar` for the duration of the
+    `with` block; nothing is registered globally.
+    """

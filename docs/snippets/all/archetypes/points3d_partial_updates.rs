@@ -1,8 +1,10 @@
 //! Update specific properties of a point cloud over time.
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let rec =
-        rerun::RecordingStreamBuilder::new("rerun_example_points3d_partial_updates").spawn()?;
+    let rec = rerun::RecordingStreamBuilder::new(
+        "rerun_example_points3d_partial_updates",
+    )
+    .spawn()?;
 
     let positions = || (0..10).map(|i| (i as f32, 0.0, 0.0));
 

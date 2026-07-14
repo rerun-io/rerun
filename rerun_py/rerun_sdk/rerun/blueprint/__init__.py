@@ -12,6 +12,7 @@ from ..datatypes import (  # Re-export time range types for better discoverabili
 from . import (
     archetypes as archetypes,
     components as components,
+    experimental as experimental,
 )
 from .api import (
     Blueprint as Blueprint,
@@ -65,6 +66,7 @@ from .views import (
     MapView as MapView,
     Spatial2DView as Spatial2DView,
     Spatial3DView as Spatial3DView,
+    StateTimelineView as StateTimelineView,
     TensorView as TensorView,
     TextDocumentView as TextDocumentView,
     TextLogView as TextLogView,

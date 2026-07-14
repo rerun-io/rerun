@@ -4,28 +4,31 @@ mod drag_and_drop;
 mod hierarchical_drag_and_drop;
 mod right_panel;
 
-use egui::{Modifiers, os};
+use crossbeam::channel::Receiver;
+use egui::{ComboBox, Modifiers, Rect, ScrollArea, Widget as _, os};
 use re_ui::filter_widget::{FilterState, format_matching_text};
 use re_ui::list_item::ListItemContentButtonsExt as _;
+use re_ui::menu::menu_style;
 use re_ui::notifications::NotificationUi;
+use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_ui::{
-    CommandPalette, CommandPaletteAction, CommandPaletteUrl, ContextExt as _, DesignTokens, Help,
-    IconText, OnResponseExt as _, UICommand, UICommandSender, UiExt as _, icons, list_item,
+    ComboItem, ComboItemHeader, ContextExt as _, DesignTokens, Help, IconText, OnResponseExt as _,
+    UICommand, UICommandSender, UiExt as _, WindowFrameConfig, icons, list_item,
 };
 
 /// Sender that queues up the execution of a command.
-pub struct CommandSender(std::sync::mpsc::Sender<UICommand>);
+pub struct CommandSender(crossbeam::channel::Sender<UICommand>);
 
 impl UICommandSender for CommandSender {
     /// Send a command to be executed.
     fn send_ui(&self, command: UICommand) {
         // The only way this can fail is if the receiver has been dropped.
-        self.0.send(command).ok();
+        re_quota_channel::send_crossbeam(&self.0, command).ok();
     }
 }
 
 /// Receiver for the [`CommandSender`]
-pub struct CommandReceiver(std::sync::mpsc::Receiver<UICommand>);
+pub struct CommandReceiver(crossbeam::channel::Receiver<UICommand>);
 
 impl CommandReceiver {
     /// Receive a command to be executed if any is queued.
@@ -38,7 +41,7 @@ impl CommandReceiver {
 
 /// Creates a new command channel.
 fn command_channel() -> (CommandSender, CommandReceiver) {
-    let (sender, receiver) = std::sync::mpsc::channel();
+    let (sender, receiver) = crossbeam::channel::bounded(256);
     (CommandSender(sender), CommandReceiver(receiver))
 }
 
@@ -46,16 +49,17 @@ fn main() -> eframe::Result {
     re_log::setup_logging();
 
     let fullsize_content = re_ui::fullsize_content(os::OperatingSystem::default());
+    let custom_decorations = re_ui::supports_custom_decorations(os::OperatingSystem::default());
     let native_options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_app_id("re_ui_example")
-            .with_decorations(!re_ui::CUSTOM_WINDOW_DECORATIONS) // Maybe hide the OS-specific "chrome" around the window
+            .with_decorations(!custom_decorations) // Maybe hide the OS-specific "chrome" around the window
             .with_fullsize_content_view(fullsize_content)
             .with_inner_size([1200.0, 800.0])
             .with_title_shown(!fullsize_content)
-            .with_titlebar_buttons_shown(!re_ui::CUSTOM_WINDOW_DECORATIONS)
+            .with_titlebar_buttons_shown(!custom_decorations)
             .with_titlebar_shown(!fullsize_content)
-            .with_transparent(re_ui::CUSTOM_WINDOW_DECORATIONS), // To have rounded corners without decorations we need transparency
+            .with_transparent(custom_decorations), // To have rounded corners without decorations we need transparency
 
         ..Default::default()
     };
@@ -74,7 +78,7 @@ pub struct ExampleApp {
     notifications: NotificationUi,
 
     /// Listens to the local text log stream
-    text_log_rx: std::sync::mpsc::Receiver<re_log::LogMsg>,
+    text_log_rx: Receiver<re_log::LogMsg>,
 
     tree: egui_tiles::Tree<Tab>,
 
@@ -94,18 +98,17 @@ pub struct ExampleApp {
 
     filter_state: FilterState,
 
-    cmd_palette: CommandPalette,
-
     /// Commands to run at the end of the frame.
     pub command_sender: CommandSender,
     command_receiver: CommandReceiver,
     latest_cmd: String,
+
+    use_custom_decorations: bool,
 }
 
 impl ExampleApp {
     fn new(ctx: egui::Context) -> Self {
-        let (logger, text_log_rx) = re_log::ChannelLogger::new(re_log::LevelFilter::Info);
-        re_log::add_boxed_logger(Box::new(logger)).expect("Failed to add logger");
+        let text_log_rx = re_log::add_log_msg_receiver(re_log::LevelFilter::INFO);
 
         let tree = egui_tiles::Tree::new_tabs("my_tree", vec![1, 2, 3]);
 
@@ -129,10 +132,13 @@ impl ExampleApp {
 
             filter_state: FilterState::default(),
 
-            cmd_palette: CommandPalette::default(),
             command_sender,
             command_receiver,
             latest_cmd: Default::default(),
+
+            use_custom_decorations: re_ui::supports_custom_decorations(
+                os::OperatingSystem::default(),
+            ),
         }
     }
 
@@ -146,25 +152,30 @@ impl ExampleApp {
 
 impl eframe::App for ExampleApp {
     fn clear_color(&self, _visuals: &egui::Visuals) -> [f32; 4] {
-        if re_ui::CUSTOM_WINDOW_DECORATIONS {
+        if self.custom_window_frame() {
             [0.0; 4] // transparent
         } else {
             [1.0, 0.0, 1.0, 1.0] // Find any background color peaking through that shouldn't
         }
     }
 
-    fn update(&mut self, egui_ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        let tokens = egui_ctx.tokens();
+    fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
+        let tokens = ui.tokens();
 
         self.show_text_logs_as_notifications();
 
-        self.top_bar(_frame, egui_ctx);
+        self.top_bar(frame, ui);
 
-        egui::TopBottomPanel::bottom("bottom_panel")
-            .frame(egui_ctx.tokens().bottom_panel_frame())
-            .show_animated(egui_ctx, self.show_bottom_panel, |ui| {
+        let window_frame = self.window_frame_config(ui.ctx());
+
+        let mut show_bottom_panel = self.show_bottom_panel;
+        egui::Panel::bottom("bottom_panel")
+            .frame(ui.tokens().bottom_panel_frame(window_frame))
+            .show_collapsible(ui, &mut show_bottom_panel, |ui| {
                 ui.strong("Bottom panel");
             });
+        // `show_collapsible` flips the bool when the user drags the panel closed/open:
+        self.show_bottom_panel = show_bottom_panel;
 
         // LEFT PANEL
 
@@ -194,6 +205,8 @@ impl eframe::App for ExampleApp {
                             Lorem ipsum sit dolor amet."
                     );
                 }
+
+                ui.loading_indicator("Example loading indicator");
             });
         };
 
@@ -302,25 +315,26 @@ impl eframe::App for ExampleApp {
         };
 
         // UI code
-        egui::SidePanel::left("left_panel")
-            .default_width(500.0)
+        let mut show_left_panel = self.show_left_panel;
+        egui::Panel::left("left_panel")
+            .default_size(500.0)
             .frame(egui::Frame {
-                fill: egui_ctx.style().visuals.panel_fill,
+                fill: ui.global_style().visuals.panel_fill,
                 ..Default::default()
             })
-            .show_animated(egui_ctx, self.show_left_panel, |ui| {
+            .show_collapsible(ui, &mut show_left_panel, |ui| {
                 let y_spacing = ui.spacing().item_spacing.y;
 
                 list_item::list_item_scope(ui, "left_panel", |ui| {
                     // revert change by `list_item_scope`
                     ui.spacing_mut().item_spacing.y = y_spacing;
-                    egui::TopBottomPanel::top("left_panel_top_bar")
-                        .exact_height(tokens.title_bar_height())
+                    egui::Panel::top("left_panel_top_bar")
+                        .exact_size(tokens.title_bar_height())
                         .frame(egui::Frame {
                             inner_margin: egui::Margin::symmetric(tokens.view_padding(), 0),
                             ..Default::default()
                         })
-                        .show_inside(ui, left_panel_top_section_ui);
+                        .show(ui, left_panel_top_section_ui);
                     ui.selectable_label_with_icon(
                         &icons::ADD,
                         "foo/bar/baz",
@@ -339,6 +353,8 @@ impl eframe::App for ExampleApp {
                         });
                 });
             });
+        // `show_collapsible` flips the bool when the user drags the panel closed/open:
+        self.show_left_panel = show_left_panel;
 
         // RIGHT PANEL
         //
@@ -353,36 +369,33 @@ impl eframe::App for ExampleApp {
         // full-span scope, without interference from the scroll areas.
 
         let panel_frame = egui::Frame {
-            fill: egui_ctx.style().visuals.panel_fill,
+            fill: ui.global_style().visuals.panel_fill,
             ..Default::default()
         };
 
-        egui::SidePanel::right("right_panel")
+        let mut show_right_panel = self.show_right_panel;
+        egui::Panel::right("right_panel")
             .frame(panel_frame)
-            .min_width(0.0)
-            .show_animated(egui_ctx, self.show_right_panel, |ui| {
+            .min_size(0.0)
+            .show_collapsible(ui, &mut show_right_panel, |ui| {
                 ui.spacing_mut().item_spacing.y = 0.0;
-                self.right_panel.ui(ui);
+                ScrollArea::vertical().show(ui, |ui| {
+                    self.right_panel.ui(ui);
+                });
             });
+        // `show_collapsible` flips the bool when the user drags the panel closed/open:
+        self.show_right_panel = show_right_panel;
 
         egui::CentralPanel::default()
             .frame(egui::Frame {
-                fill: egui_ctx.style().visuals.panel_fill,
+                fill: ui.global_style().visuals.panel_fill,
                 ..Default::default()
             })
-            .show(egui_ctx, |ui| {
+            .show(ui, |ui| {
                 tabs_ui(ui, &mut self.tree);
             });
 
-        if let Some(cmd) = self.cmd_palette.show(egui_ctx, &parse_url) {
-            match cmd {
-                CommandPaletteAction::UiCommand(cmd) => self.command_sender.send_ui(cmd),
-                CommandPaletteAction::OpenUrl(url) => {
-                    egui_ctx.open_url(egui::OpenUrl::new_tab(url.url));
-                }
-            }
-        }
-        if let Some(cmd) = re_ui::UICommand::listen_for_kb_shortcut(egui_ctx) {
+        if let Some(cmd) = re_ui::UICommand::listen_for_kb_shortcut(ui) {
             self.command_sender.send_ui(cmd);
         }
 
@@ -390,19 +403,18 @@ impl eframe::App for ExampleApp {
             self.latest_cmd = cmd.text().to_owned();
 
             match cmd {
-                UICommand::ToggleCommandPalette => self.cmd_palette.toggle(),
                 UICommand::ZoomIn => {
-                    let mut zoom_factor = egui_ctx.zoom_factor();
+                    let mut zoom_factor = ui.zoom_factor();
                     zoom_factor += 0.1;
-                    egui_ctx.set_zoom_factor(zoom_factor);
+                    ui.set_zoom_factor(zoom_factor);
                 }
                 UICommand::ZoomOut => {
-                    let mut zoom_factor = egui_ctx.zoom_factor();
+                    let mut zoom_factor = ui.zoom_factor();
                     zoom_factor -= 0.1;
-                    egui_ctx.set_zoom_factor(zoom_factor);
+                    ui.set_zoom_factor(zoom_factor);
                 }
                 UICommand::ZoomReset => {
-                    egui_ctx.set_zoom_factor(1.0);
+                    ui.set_zoom_factor(1.0);
                 }
                 _ => {}
             }
@@ -410,23 +422,30 @@ impl eframe::App for ExampleApp {
     }
 }
 
-fn parse_url(url: &str) -> Option<CommandPaletteUrl> {
-    url.starts_with("http").then(|| CommandPaletteUrl {
-        url: url.to_owned(),
-        command_text: "Open http(s) URL".to_owned(),
-    })
-}
-
 impl ExampleApp {
-    fn top_bar(&mut self, frame: &eframe::Frame, egui_ctx: &egui::Context) {
-        let top_bar_style = egui_ctx.top_bar_style(frame, false);
+    fn custom_window_frame(&self) -> bool {
+        self.use_custom_decorations && !cfg!(target_os = "windows")
+    }
 
-        egui::TopBottomPanel::top("top_bar")
-            .frame(egui_ctx.tokens().top_panel_frame())
-            .exact_height(top_bar_style.height)
-            .show(egui_ctx, |ui| {
+    fn window_frame_config(&self, ctx: &egui::Context) -> WindowFrameConfig {
+        if self.custom_window_frame() {
+            WindowFrameConfig::custom(ctx)
+        } else {
+            WindowFrameConfig::Native
+        }
+    }
+
+    fn top_bar(&mut self, frame: &eframe::Frame, ui: &mut egui::Ui) {
+        let top_bar_style = ui.top_bar_style(frame, false);
+
+        let window_frame = self.window_frame_config(ui.ctx());
+
+        egui::Panel::top("top_bar")
+            .frame(ui.tokens().top_panel_frame(window_frame))
+            .exact_size(top_bar_style.height)
+            .show(ui, |ui| {
                 #[cfg(not(target_arch = "wasm32"))]
-                if !re_ui::native_window_bar(egui_ctx.os()) {
+                if !self.use_custom_decorations {
                     // Interact with background first, so that buttons in the top bar gets input priority
                     // (last added widget has priority for input).
                     let title_bar_response = ui.interact(
@@ -436,12 +455,11 @@ impl ExampleApp {
                     );
                     if title_bar_response.double_clicked() {
                         let maximized = ui.input(|i| i.viewport().maximized.unwrap_or(false));
-                        ui.ctx()
-                            .send_viewport_cmd(egui::ViewportCommand::Maximized(!maximized));
+                        ui.send_viewport_cmd(egui::ViewportCommand::Maximized(!maximized));
                     } else if title_bar_response.is_pointer_button_down_on() {
                         // TODO(emilk): This should probably only run on `title_bar_response.drag_started_by(PointerButton::Primary)`,
                         // see https://github.com/emilk/egui/pull/4656
-                        ui.ctx().send_viewport_cmd(egui::ViewportCommand::StartDrag);
+                        ui.send_viewport_cmd(egui::ViewportCommand::StartDrag);
                     }
                 }
 
@@ -460,7 +478,7 @@ impl ExampleApp {
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             // From right-to-left:
 
-            if re_ui::CUSTOM_WINDOW_DECORATIONS {
+            if self.use_custom_decorations {
                 ui.add_space(8.0);
                 ui.native_window_buttons_ui();
                 ui.separator();
@@ -490,8 +508,6 @@ impl ExampleApp {
 }
 
 fn file_menu(ui: &mut egui::Ui, command_sender: &CommandSender) {
-    UICommand::SaveRecording.menu_button_ui(ui, command_sender);
-    UICommand::SaveRecordingSelection.menu_button_ui(ui, command_sender);
     UICommand::Open.menu_button_ui(ui, command_sender);
     UICommand::Quit.menu_button_ui(ui, command_sender);
 }
@@ -526,11 +542,7 @@ impl egui_tiles::Behavior<Tab> for MyTileTreeBehavior {
                     .control("Pan", (icons::LEFT_MOUSE_CLICK, "+", "drag"))
                     .control(
                         "Zoom",
-                        IconText::from_modifiers_and(
-                            ui.ctx().os(),
-                            Modifiers::COMMAND,
-                            icons::SCROLL,
-                        ),
+                        IconText::from_modifiers_and(ui.os(), Modifiers::COMMAND, icons::SCROLL),
                     )
                     .control("Reset view", ("double", icons::LEFT_MOUSE_CLICK))
                     .ui(ui);
@@ -545,6 +557,40 @@ impl egui_tiles::Behavior<Tab> for MyTileTreeBehavior {
             ui.warning_label("This is an example of a long warning label.");
             ui.success_label("This is an example of a long success label.");
             ui.info_label("This is an example of a long info label.");
+
+            ComboBox::from_id_salt("combo_item_example")
+                // TODO(RR-3863): Allow globally customizing combobox icon
+                .icon(|ui, rect, visuals, _open| {
+                    let rect = Rect::from_center_size(rect.center(), ui.tokens().small_icon_size);
+                    icons::COMBO_ARROW
+                        .as_image()
+                        .tint(visuals.text_color())
+                        .paint_at(ui, rect);
+                })
+                .selected_text("ComboItem Example")
+                .popup_style(menu_style())
+                .height(300.0)
+                .show_ui(ui, |ui| {
+                    ui.add(ComboItemHeader::new("Recommended:"));
+
+                    ComboItem::new("vertex_normals")
+                        .error(Some("Invalid selector".to_owned()))
+                        .selected(true)
+                        .ui(ui);
+
+                    let mut code = SyntaxHighlightedBuilder::new();
+                    code.append_syntax("[")
+                        .append_primitive("0.000")
+                        .append_syntax(",")
+                        .append_primitive("0.000")
+                        .append_syntax("]");
+
+                    ui.add(ComboItemHeader::new("Other values:"));
+                    ComboItem::new("vertex_positions").ui(ui);
+                    ComboItem::new("Rerun default")
+                        .value(code.into_widget_text(ui.style()))
+                        .ui(ui);
+                });
         });
 
         ui.help_button(|ui| {

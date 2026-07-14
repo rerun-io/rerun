@@ -1,12 +1,15 @@
 use std::sync::LazyLock;
 
 use ahash::HashMap;
+use nohash_hasher::IntMap;
 use re_log_types::{EntityPath, EntityPathHash};
+use re_sdk_types::blueprint::components::VisualizerInstructionId;
 use slotmap::SlotMap;
 use smallvec::SmallVec;
 
 use crate::{
-    DataResult, StoreContext, ViewContext, ViewId, ViewState, ViewerContext, blueprint_timeline,
+    ActiveStoreContext, AppContext, DataResult, ViewContext, ViewId, ViewState, ViewerContext,
+    blueprint_timeline,
 };
 
 slotmap::new_key_type! {
@@ -15,6 +18,8 @@ slotmap::new_key_type! {
 }
 
 /// Context for a latest-at query in a specific view.
+///
+/// Never use [`QueryContext`] where [`ViewContext`] would suffice.
 // TODO(andreas) this is centered around latest-at queries. Does it have to be? Makes sense for UI, but that means it won't scale much into Visualizer queriers.
 // This is currently used only for fallback providers, but the expectation is that we're using this more widely as the primary context object
 // in all places where we query a specific entity in a specific view.
@@ -27,34 +32,42 @@ pub struct QueryContext<'a> {
     /// For view properties this is the path that stores the respective view property archetype.
     pub target_entity_path: &'a re_log_types::EntityPath,
 
+    /// If the query is made from a visualizer, this contains that visualizer's id.
+    pub instruction_id: Option<VisualizerInstructionId>,
+
     /// Archetype name in which context the component is needed.
     ///
     /// View properties always have an archetype context, but overrides/defaults may not.
     pub archetype_name: Option<re_sdk_types::ArchetypeName>,
 
     /// Query which didn't yield a result for the component at the target entity path.
-    pub query: &'a re_chunk_store::LatestAtQuery,
+    pub query: re_chunk_store::LatestAtQuery,
 }
 
 impl QueryContext<'_> {
+    #[inline]
+    pub fn app_ctx(&self) -> &AppContext<'_> {
+        &self.view_ctx.viewer_ctx.app_ctx
+    }
+
     #[inline]
     pub fn viewer_ctx(&self) -> &ViewerContext<'_> {
         self.view_ctx.viewer_ctx
     }
 
     #[inline]
-    pub fn store_ctx(&self) -> &StoreContext<'_> {
+    pub fn store_ctx(&self) -> &ActiveStoreContext<'_> {
         self.view_ctx.viewer_ctx.store_context
     }
 
     #[inline]
     pub fn render_ctx(&self) -> &re_renderer::RenderContext {
-        self.view_ctx.viewer_ctx.global_context.render_ctx
+        self.view_ctx.viewer_ctx.app_ctx.render_ctx
     }
 
     #[inline]
     pub fn egui_ctx(&self) -> &egui::Context {
-        self.view_ctx.viewer_ctx.global_context.egui_ctx
+        self.view_ctx.viewer_ctx.app_ctx.egui_ctx
     }
 
     #[inline]
@@ -84,7 +97,7 @@ pub struct DataQueryResult {
     pub num_visualized_entities: usize,
 
     /// Latest-at results for all component defaults in this view.
-    pub component_defaults: re_query::LatestAtResults,
+    pub view_defaults: re_query::LatestAtResults,
 }
 
 impl Default for DataQueryResult {
@@ -93,13 +106,10 @@ impl Default for DataQueryResult {
             tree: Default::default(),
             num_matching_entities: 0,
             num_visualized_entities: 0,
-            component_defaults: re_query::LatestAtResults {
-                entity_path: "<defaults>".into(),
-                query: re_chunk_store::LatestAtQuery::latest(blueprint_timeline()),
-                missing: Default::default(),
-                compound_index: (re_chunk::TimeInt::STATIC, re_chunk::RowId::ZERO),
-                components: Default::default(),
-            },
+            view_defaults: re_query::LatestAtResults::empty(
+                "<defaults>".into(),
+                re_chunk_store::LatestAtQuery::latest(blueprint_timeline()),
+            ),
         }
     }
 }
@@ -125,7 +135,7 @@ impl Clone for DataQueryResult {
             tree: self.tree.clone(),
             num_matching_entities: self.num_matching_entities,
             num_visualized_entities: self.num_visualized_entities,
-            component_defaults: self.component_defaults.clone(),
+            view_defaults: self.view_defaults.clone(),
         }
     }
 }
@@ -133,12 +143,10 @@ impl Clone for DataQueryResult {
 /// A hierarchical tree of [`DataResult`]s
 #[derive(Clone, Default, Debug)]
 pub struct DataResultTree {
-    data_results: SlotMap<DataResultHandle, DataResultNode>,
-    // TODO(jleibs): Decide if we really want to compute this per-query.
-    // at the moment we only look up a single path per frame for the selection panel. It's probably
-    // less over-head to just walk the tree once instead of pre-computing an entire map we use for
-    // a single lookup.
-    data_results_by_path: HashMap<EntityPathHash, DataResultHandle>,
+    pub data_results: SlotMap<DataResultHandle, DataResultNode>,
+    pub data_results_by_path: IntMap<EntityPathHash, DataResultHandle>,
+    pub data_results_by_visualizer_instruction: HashMap<VisualizerInstructionId, DataResultHandle>,
+
     root_handle: Option<DataResultHandle>,
 }
 
@@ -164,6 +172,13 @@ impl DataResultTree {
             data_results,
             data_results_by_path,
             root_handle,
+            // Filled in later.
+            // TODO(andreas): This is super messy: we rely on this being filled out by `DataQueryPropertyResolver::update_overrides`.
+            // At the time `DataResultTree::new` is called we don't have any information about visualizer instructions yet.
+            // Really the underlying problem is that we for no apparent reason separate creation of data results from
+            // creation of visualizer instructions & determination of available overrides.
+            // Merging those two tree walks should make things also a lot more efficient and even parallelizable if we want.
+            data_results_by_visualizer_instruction: Default::default(),
         }
     }
 
@@ -236,12 +251,6 @@ impl DataResultTree {
         self.data_results.get(handle)
     }
 
-    /// Look up a [`DataResultNode`] in the tree based on its handle.
-    #[inline]
-    pub fn lookup_node_mut(&mut self, handle: DataResultHandle) -> Option<&mut DataResultNode> {
-        self.data_results.get_mut(handle)
-    }
-
     /// Look up a [`DataResultNode`] in the tree based on an [`EntityPathHash`].
     #[inline]
     pub fn lookup_node_by_path(&self, path: EntityPathHash) -> Option<&DataResultNode> {
@@ -252,6 +261,19 @@ impl DataResultTree {
     #[inline]
     pub fn lookup_result_by_path(&self, path: EntityPathHash) -> Option<&DataResult> {
         self.lookup_result(*self.data_results_by_path.get(&path)?)
+    }
+
+    /// Look up a [`DataResultNode`] in the tree based on a visualizer instruction ID.
+    #[inline]
+    pub fn lookup_result_by_visualizer_instruction(
+        &self,
+        visualizer_instruction: VisualizerInstructionId,
+    ) -> Option<&DataResult> {
+        self.lookup_result(
+            *self
+                .data_results_by_visualizer_instruction
+                .get(&visualizer_instruction)?,
+        )
     }
 
     #[inline]
@@ -272,6 +294,12 @@ impl DataResultTree {
             }
         }
     }
+
+    /// Iterates over all [`DataResult`]s.
+    #[inline]
+    pub fn iter_data_results(&self) -> impl Iterator<Item = &DataResult> {
+        self.data_results.values().map(|node| &node.data_result)
+    }
 }
 
 static EMPTY_QUERY: LazyLock<DataQueryResult> = LazyLock::new(Default::default);
@@ -279,11 +307,7 @@ static EMPTY_QUERY: LazyLock<DataQueryResult> = LazyLock::new(Default::default);
 impl ViewerContext<'_> {
     pub fn lookup_query_result(&self, id: ViewId) -> &DataQueryResult {
         self.query_results.get(&id).unwrap_or_else(|| {
-            if cfg!(debug_assertions) {
-                re_log::warn!("Tried looking up a query that doesn't exist: {:?}", id);
-            } else {
-                re_log::debug!("Tried looking up a query that doesn't exist: {:?}", id);
-            }
+            re_log::debug_warn!("Tried looking up a query that doesn't exist: {id:?}");
             &EMPTY_QUERY
         })
     }

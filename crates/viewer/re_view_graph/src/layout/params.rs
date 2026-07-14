@@ -8,7 +8,7 @@ use re_sdk_types::{Archetype, Component};
 use re_viewer_context::ViewContext;
 use re_viewport_blueprint::{ViewProperty, ViewPropertyQueryError};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, re_byte_size::SizeBytes)]
 pub struct ForceLayoutParams {
     // Link
     pub(super) force_link_enabled: Enabled,

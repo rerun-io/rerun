@@ -5,10 +5,13 @@
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 from attrs import define, field
 
 from ..._baseclasses import (
     Archetype,
+    ComponentDescriptor,
 )
 from ...blueprint import components as blueprint_components
 from ...error_utils import catch_and_log_exceptions
@@ -24,6 +27,8 @@ class TensorViewFit(TensorViewFitExt, Archetype):
 
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
+
+    NAME: ClassVar[str] = "rerun.blueprint.archetypes.TensorViewFit"
 
     # __init__ can be found in tensor_view_fit_ext.py
 
@@ -78,6 +83,14 @@ class TensorViewFit(TensorViewFitExt, Archetype):
     def cleared(cls) -> TensorViewFit:
         """Clear all the fields of a `TensorViewFit`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_scaling() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "TensorViewFit:scaling",
+            archetype=TensorViewFit.NAME,
+            component_type=blueprint_components.ViewFitBatch._COMPONENT_TYPE,
+        )
 
     scaling: blueprint_components.ViewFitBatch | None = field(
         metadata={"component": True},

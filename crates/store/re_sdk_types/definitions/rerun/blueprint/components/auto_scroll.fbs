@@ -1,0 +1,15 @@
+namespace rerun.blueprint.components;
+
+// ---
+
+/// Whether the view should auto-scroll to follow the time cursor.
+struct AutoScroll (
+  "attr.arrow.transparent",
+  "attr.rerun.scope": "blueprint",
+  "attr.python.aliases": "bool",
+  "attr.rust.derive": "Copy, Default, PartialEq, Eq, PartialOrd, Ord",
+  "attr.rust.repr": "transparent",
+  "attr.rust.tuple_struct"
+) {
+  auto_scroll: rerun.datatypes.Bool (order: 100);
+}

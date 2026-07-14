@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 import numpy as np
 import pyarrow as pa
@@ -15,9 +15,13 @@ from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
+    ComponentDescriptor,
 )
 from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
+
+if TYPE_CHECKING:
+    from ..blueprint.datatypes import VisualizerComponentMappingLike
 
 __all__ = ["SeriesLines"]
 
@@ -45,10 +49,20 @@ class SeriesLines(Archetype, VisualizableArchetype):
     rr.init("rerun_example_series_line_style", spawn=True)
 
     # Set up plot styling:
-    # They are logged as static as they don't change over time and apply to all timelines.
-    # Log two lines series under a shared root so that they show in the same plot by default.
-    rr.log("trig/sin", rr.SeriesLines(colors=[255, 0, 0], names="sin(0.01t)", widths=2), static=True)
-    rr.log("trig/cos", rr.SeriesLines(colors=[0, 255, 0], names="cos(0.01t)", widths=4), static=True)
+    # They are logged as static as they don't change over time and apply to
+    # all timelines.
+    # Log two lines series under a shared root so that they show in the same
+    # plot by default.
+    rr.log(
+        "trig/sin",
+        rr.SeriesLines(colors=[255, 0, 0], names="sin(0.01t)", widths=2),
+        static=True,
+    )
+    rr.log(
+        "trig/cos",
+        rr.SeriesLines(colors=[0, 255, 0], names="cos(0.01t)", widths=4),
+        static=True,
+    )
 
     # Log the data on a timeline called "step".
     for t in range(int(tau * 2 * 100.0)):
@@ -69,6 +83,8 @@ class SeriesLines(Archetype, VisualizableArchetype):
 
     """
 
+    NAME: ClassVar[str] = "rerun.archetypes.SeriesLines"
+
     def __init__(
         self: Any,
         *,
@@ -77,6 +93,7 @@ class SeriesLines(Archetype, VisualizableArchetype):
         names: datatypes.Utf8ArrayLike | None = None,
         visible_series: datatypes.BoolArrayLike | None = None,
         aggregation_policy: components.AggregationPolicyLike | None = None,
+        interpolation_mode: components.InterpolationModeLike | None = None,
     ) -> None:
         """
         Create a new instance of the SeriesLines archetype.
@@ -111,6 +128,12 @@ class SeriesLines(Archetype, VisualizableArchetype):
             (and readability) in such situations as it prevents overdraw.
 
             Expected to be unchanging over time.
+        interpolation_mode:
+            Specifies how values between data points are interpolated.
+
+            Defaults to linear interpolation. Use one of the `Step*` variants for a stepped (staircase) line.
+
+            Expected to be unchanging over time.
 
         """
 
@@ -122,6 +145,7 @@ class SeriesLines(Archetype, VisualizableArchetype):
                 names=names,
                 visible_series=visible_series,
                 aggregation_policy=aggregation_policy,
+                interpolation_mode=interpolation_mode,
             )
             return
         self.__attrs_clear__()
@@ -134,6 +158,7 @@ class SeriesLines(Archetype, VisualizableArchetype):
             names=None,
             visible_series=None,
             aggregation_policy=None,
+            interpolation_mode=None,
         )
 
     @classmethod
@@ -153,6 +178,7 @@ class SeriesLines(Archetype, VisualizableArchetype):
         names: datatypes.Utf8ArrayLike | None = None,
         visible_series: datatypes.BoolArrayLike | None = None,
         aggregation_policy: components.AggregationPolicyLike | None = None,
+        interpolation_mode: components.InterpolationModeLike | None = None,
     ) -> SeriesLines:
         """
         Update only some specific fields of a `SeriesLines`.
@@ -189,6 +215,12 @@ class SeriesLines(Archetype, VisualizableArchetype):
             (and readability) in such situations as it prevents overdraw.
 
             Expected to be unchanging over time.
+        interpolation_mode:
+            Specifies how values between data points are interpolated.
+
+            Defaults to linear interpolation. Use one of the `Step*` variants for a stepped (staircase) line.
+
+            Expected to be unchanging over time.
 
         """
 
@@ -200,6 +232,7 @@ class SeriesLines(Archetype, VisualizableArchetype):
                 "names": names,
                 "visible_series": visible_series,
                 "aggregation_policy": aggregation_policy,
+                "interpolation_mode": interpolation_mode,
             }
 
             if clear_unset:
@@ -216,6 +249,54 @@ class SeriesLines(Archetype, VisualizableArchetype):
         """Clear all the fields of a `SeriesLines`."""
         return cls.from_fields(clear_unset=True)
 
+    @staticmethod
+    def descriptor_colors() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "SeriesLines:colors",
+            archetype=SeriesLines.NAME,
+            component_type=components.ColorBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_widths() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "SeriesLines:widths",
+            archetype=SeriesLines.NAME,
+            component_type=components.StrokeWidthBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_names() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "SeriesLines:names",
+            archetype=SeriesLines.NAME,
+            component_type=components.NameBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_visible_series() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "SeriesLines:visible_series",
+            archetype=SeriesLines.NAME,
+            component_type=components.VisibleBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_aggregation_policy() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "SeriesLines:aggregation_policy",
+            archetype=SeriesLines.NAME,
+            component_type=components.AggregationPolicyBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_interpolation_mode() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "SeriesLines:interpolation_mode",
+            archetype=SeriesLines.NAME,
+            component_type=components.InterpolationModeBatch._COMPONENT_TYPE,
+        )
+
     @classmethod
     def columns(
         cls,
@@ -225,6 +306,7 @@ class SeriesLines(Archetype, VisualizableArchetype):
         names: datatypes.Utf8ArrayLike | None = None,
         visible_series: datatypes.BoolArrayLike | None = None,
         aggregation_policy: components.AggregationPolicyArrayLike | None = None,
+        interpolation_mode: components.InterpolationModeArrayLike | None = None,
     ) -> ComponentColumnList:
         """
         Construct a new column-oriented component bundle.
@@ -264,6 +346,12 @@ class SeriesLines(Archetype, VisualizableArchetype):
             (and readability) in such situations as it prevents overdraw.
 
             Expected to be unchanging over time.
+        interpolation_mode:
+            Specifies how values between data points are interpolated.
+
+            Defaults to linear interpolation. Use one of the `Step*` variants for a stepped (staircase) line.
+
+            Expected to be unchanging over time.
 
         """
 
@@ -275,6 +363,7 @@ class SeriesLines(Archetype, VisualizableArchetype):
                 names=names,
                 visible_series=visible_series,
                 aggregation_policy=aggregation_policy,
+                interpolation_mode=interpolation_mode,
             )
 
         batches = inst.as_component_batches()
@@ -287,6 +376,7 @@ class SeriesLines(Archetype, VisualizableArchetype):
             "SeriesLines:names": names,
             "SeriesLines:visible_series": visible_series,
             "SeriesLines:aggregation_policy": aggregation_policy,
+            "SeriesLines:interpolation_mode": interpolation_mode,
         }
         columns = []
 
@@ -297,17 +387,21 @@ class SeriesLines(Archetype, VisualizableArchetype):
             if pa.types.is_primitive(arrow_array.type) or pa.types.is_fixed_size_list(arrow_array.type):
                 param = kwargs[batch.component_descriptor().component]  # type: ignore[index]
                 shape = np.shape(param)  # type: ignore[arg-type]
-                elem_flat_len = int(np.prod(shape[1:])) if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
-
-                if pa.types.is_fixed_size_list(arrow_array.type) and arrow_array.type.list_size == elem_flat_len:
-                    # If the product of the last dimensions of the shape are equal to the size of the fixed size list array,
-                    # we have `num_rows` single element batches (each element is a fixed sized list).
-                    # (This should have been already validated by conversion to the arrow_array)
-                    batch_length = 1
-                else:
-                    batch_length = shape[1] if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
-
                 num_rows = shape[0] if len(shape) >= 1 else 1  # type: ignore[redundant-expr,misc]
+
+                if pa.types.is_fixed_size_list(arrow_array.type):
+                    elem_flat_len = int(np.prod(shape[1:])) if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
+                    if arrow_array.type.list_size == elem_flat_len:
+                        # The product of the last dimensions of the shape are equal to the size of the fixed size list array,
+                        # so we have `num_rows` single element batches (each element is a fixed sized list).
+                        batch_length = 1
+                    else:
+                        batch_length = shape[1] if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
+                else:
+                    # For primitive types, derive batch_length from the actual arrow array length
+                    # since the input shape can be misleading (e.g. colors [R,G,B] -> single uint32).
+                    batch_length = len(arrow_array) // num_rows if num_rows > 0 else 1
+
                 sizes = batch_length * np.ones(num_rows)
             else:
                 # For non-primitive types, default to partitioning each element separately.
@@ -350,10 +444,10 @@ class SeriesLines(Archetype, VisualizableArchetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    visible_series: components.SeriesVisibleBatch | None = field(
+    visible_series: components.VisibleBatch | None = field(
         metadata={"component": True},
         default=None,
-        converter=components.SeriesVisibleBatch._converter,  # type: ignore[misc]
+        converter=components.VisibleBatch._converter,  # type: ignore[misc]
     )
     # Which lines are visible.
     #
@@ -380,9 +474,33 @@ class SeriesLines(Archetype, VisualizableArchetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
+    interpolation_mode: components.InterpolationModeBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.InterpolationModeBatch._converter,  # type: ignore[misc]
+    )
+    # Specifies how values between data points are interpolated.
+    #
+    # Defaults to linear interpolation. Use one of the `Step*` variants for a stepped (staircase) line.
+    #
+    # Expected to be unchanging over time.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__  # type: ignore[assignment]
 
-    def visualizer(self) -> Visualizer:
-        """Creates a visualizer for this archetype, using all currently set values as overrides."""
-        return Visualizer("SeriesLines", overrides=self.as_component_batches(), mappings=None)
+    def visualizer(self, *, mappings: list[VisualizerComponentMappingLike] | None = None) -> Visualizer:
+        """
+        Creates a visualizer for this archetype, using all currently set values as overrides.
+
+        Parameters
+        ----------
+        mappings:
+            Optional component mappings to control how the visualizer sources its data.
+
+            ⚠️ **Experimental**: Component mappings are an experimental feature and may change.
+            See https://github.com/rerun-io/rerun/issues/10631 for more information.
+
+        """
+        return Visualizer("SeriesLines", overrides=self.as_component_batches(), mappings=mappings)

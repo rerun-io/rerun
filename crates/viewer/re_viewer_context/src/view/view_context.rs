@@ -1,21 +1,24 @@
 use re_chunk_store::LatestAtQuery;
 use re_log_types::{EntityPath, TimePoint};
 use re_query::StorageEngineReadGuard;
+use re_sdk_types::blueprint::components::VisualizerInstructionId;
 use re_sdk_types::{AsComponents, ComponentBatch, ComponentDescriptor, ViewClassIdentifier};
 
 use super::VisualizerCollection;
-use crate::blueprint_helpers::BlueprintContext as _;
 use crate::{DataQueryResult, DataResult, QueryContext, ViewId};
+use crate::{ViewerContext, blueprint_helpers::BlueprintContext as _};
 
 /// The context associated with a view.
 ///
-/// This combines our [`crate::ViewerContext`] with [`crate::ViewState`]
+/// This combines our [`ViewerContext`] with [`crate::ViewState`]
 /// and other view-specific information. This is used as the interface for
 /// execution of view systems and selection panel UI elements that happen
 /// within the context of a view to simplify plumbing of the necessary
 /// information to resolve a query with possible overrides and fallback values.
+///
+/// Never use [`ViewContext`] where [`ViewerContext`] would suffice.
 pub struct ViewContext<'a> {
-    pub viewer_ctx: &'a crate::ViewerContext<'a>,
+    pub viewer_ctx: &'a ViewerContext<'a>,
     pub view_id: ViewId,
     pub view_class_identifier: ViewClassIdentifier,
     // TODO(RR-3076): Eventually we want to get rid of the _general_ concept of `space_origin`.
@@ -30,11 +33,28 @@ impl<'a> ViewContext<'a> {
     pub fn query_context(
         &'a self,
         data_result: &'a DataResult,
-        query: &'a LatestAtQuery,
+        query: LatestAtQuery,
+        instruction_id: VisualizerInstructionId,
     ) -> QueryContext<'a> {
         QueryContext {
             view_ctx: self,
             target_entity_path: &data_result.entity_path,
+            instruction_id: instruction_id.into(),
+            archetype_name: None,
+            query,
+        }
+    }
+
+    #[inline]
+    pub fn query_context_without_visualizer(
+        &'a self,
+        data_result: &'a DataResult,
+        query: LatestAtQuery,
+    ) -> QueryContext<'a> {
+        QueryContext {
+            view_ctx: self,
+            target_entity_path: &data_result.entity_path,
+            instruction_id: None,
             archetype_name: None,
             query,
         }
@@ -42,12 +62,12 @@ impl<'a> ViewContext<'a> {
 
     #[inline]
     pub fn render_ctx(&self) -> &re_renderer::RenderContext {
-        self.viewer_ctx.global_context.render_ctx
+        self.viewer_ctx.app_ctx.render_ctx
     }
 
     #[inline]
     pub fn egui_ctx(&self) -> &egui::Context {
-        self.viewer_ctx.global_context.egui_ctx
+        self.viewer_ctx.app_ctx.egui_ctx
     }
 
     pub fn tokens(&self) -> &'static re_ui::DesignTokens {

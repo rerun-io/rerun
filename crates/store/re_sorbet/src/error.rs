@@ -12,7 +12,7 @@ pub enum SorbetError {
     MissingFieldMetadata(#[from] crate::MissingFieldMetadata),
 
     #[error(transparent)]
-    UnsupportedTimeType(#[from] crate::UnsupportedTimeType),
+    IndexColumn(#[from] crate::IndexColumnError),
 
     #[error(transparent)]
     WrongDatatypeError(#[from] re_arrow_util::WrongDatatypeError),

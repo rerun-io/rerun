@@ -64,10 +64,10 @@ pub struct HierarchicalDragAndDrop {
     target_container: Option<ItemId>,
 
     /// Channel to receive commands from the UI
-    command_receiver: std::sync::mpsc::Receiver<Command>,
+    command_receiver: crossbeam::channel::Receiver<Command>,
 
     /// Channel to send commands from the UI
-    command_sender: std::sync::mpsc::Sender<Command>,
+    command_sender: crossbeam::channel::Sender<Command>,
 }
 
 impl Default for HierarchicalDragAndDrop {
@@ -75,7 +75,7 @@ impl Default for HierarchicalDragAndDrop {
         let root_item = Item::Container(Vec::new());
         let root_id = ItemId::new();
 
-        let (command_sender, command_receiver) = std::sync::mpsc::channel();
+        let (command_sender, command_receiver) = crossbeam::channel::bounded(64);
 
         let mut res = Self {
             items: std::iter::once((root_id, root_item)).collect(),
@@ -226,7 +226,7 @@ impl HierarchicalDragAndDrop {
 
     fn send_command(&self, command: Command) {
         // The only way this can fail is if the receiver has been dropped.
-        self.command_sender.send(command).ok();
+        re_quota_channel::send_crossbeam(&self.command_sender, command).ok();
     }
 }
 
@@ -364,7 +364,7 @@ impl HierarchicalDragAndDrop {
             return;
         };
 
-        ui.ctx().set_cursor_icon(egui::CursorIcon::Grabbing);
+        ui.set_cursor_icon(egui::CursorIcon::Grabbing);
 
         let Some((parent_id, position_index_in_parent)) = self.parent_and_pos(item_id) else {
             // this shouldn't happen

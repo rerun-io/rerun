@@ -11,6 +11,72 @@ use crate::{ChunkId, ChunkStore, ChunkStoreSubscriber, RowId};
 
 // ---
 
+/// Per-component information for chunks.
+///
+/// Created from either a physical chunk or virtual manifest metadata.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ChunkComponentMeta {
+    pub descriptor: re_sdk_types::ComponentDescriptor,
+
+    /// The component list's inner data type.
+    ///
+    /// `None` if unknown.
+    pub inner_arrow_datatype: Option<arrow::datatypes::DataType>,
+
+    /// True if there's actually any data logged for this component.
+    ///
+    /// For virtual this means `row_count > 0`.
+    pub has_data: bool,
+
+    /// Whether this component has ever been written as static data.
+    ///
+    /// Once a component is static, it stays static. This flag is monotonic
+    /// and never transitions back to `false`.
+    pub is_static: bool,
+}
+
+/// Chunk meta originating from either a virtual or physical chunk.
+///
+/// Useful for chunk store subscribers that do the same logic
+/// for physical and virtual additions.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ChunkMeta {
+    pub entity_path: re_chunk::EntityPath,
+    pub components: Vec<ChunkComponentMeta>,
+}
+
+impl ChunkMeta {
+    /// Build a [`ChunkMeta`] from an existing physical [`Chunk`].
+    pub fn from_chunk(chunk: &Chunk) -> Self {
+        let components: Vec<ChunkComponentMeta> = chunk
+            .components()
+            .values()
+            .map(|column| ChunkComponentMeta {
+                descriptor: column.descriptor.clone(),
+                inner_arrow_datatype: Some(column.list_array.value_type()),
+                has_data: !column.list_array.values().is_empty(),
+                is_static: chunk.is_static(),
+            })
+            .collect();
+
+        Self {
+            entity_path: chunk.entity_path().clone(),
+            components,
+        }
+    }
+
+    /// Build [`ChunkMeta`]s from an [`RrdManifest`], one per entity path.
+    pub fn from_manifest(manifest: &RrdManifest) -> Vec<Self> {
+        re_tracing::profile_function!();
+        // Reuse the same logic as ChunkStoreDiffVirtualAddition::chunk_metas.
+        ChunkStoreDiffVirtualAddition {
+            rrd_manifest: Arc::new(manifest.clone()),
+        }
+        .chunk_metas()
+        .collect()
+    }
+}
+
 /// The atomic unit of change in the Rerun [`ChunkStore`].
 ///
 /// A [`ChunkStoreEvent`] describes the changes caused by the addition or deletion of a
@@ -67,9 +133,30 @@ impl std::ops::Deref for ChunkStoreEvent {
 /// Refer to field-level documentation for more information.
 #[derive(Debug, Clone, PartialEq)]
 pub enum ChunkStoreDiff {
+    /// When a new physical chunk has been appended.
     Addition(ChunkStoreDiffAddition),
+
+    /// When a new rrd manifest has been appended.
     VirtualAddition(ChunkStoreDiffVirtualAddition),
+
+    /// When a physical chunk has been evicted.
     Deletion(ChunkStoreDiffDeletion),
+
+    /// Newly discovered entity/component columns in the schema.
+    ///
+    /// Also emitted when a component's `is_static` flag transitions from `false` to `true`.
+    /// Note: `has_data` does not influence the emission of `SchemaAddition` events.
+    SchemaAddition(ChunkStoreDiffSchemaAddition),
+}
+
+/// Describes newly added columns to the store schema.
+///
+/// This event is emitted when previously unseen entity/component pairs are
+/// discovered, either from a physical chunk addition or from an RRD manifest.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ChunkStoreDiffSchemaAddition {
+    /// Newly discovered entity/component pairs, grouped by entity.
+    pub new_columns: Vec<ChunkMeta>,
 }
 
 impl From<ChunkStoreDiffAddition> for ChunkStoreDiff {
@@ -90,6 +177,12 @@ impl From<ChunkStoreDiffDeletion> for ChunkStoreDiff {
     }
 }
 
+impl From<ChunkStoreDiffSchemaAddition> for ChunkStoreDiff {
+    fn from(value: ChunkStoreDiffSchemaAddition) -> Self {
+        Self::SchemaAddition(value)
+    }
+}
+
 impl ChunkStoreDiff {
     pub fn addition(
         chunk_before_processing: Arc<Chunk>,
@@ -107,8 +200,8 @@ impl ChunkStoreDiff {
         Self::VirtualAddition(ChunkStoreDiffVirtualAddition { rrd_manifest })
     }
 
-    pub fn deletion(chunk: Arc<Chunk>) -> Self {
-        Self::Deletion(ChunkStoreDiffDeletion { chunk })
+    pub fn deletion(chunk: Arc<Chunk>, reason: ChunkDeletionReason) -> Self {
+        Self::Deletion(ChunkStoreDiffDeletion { chunk, reason })
     }
 
     pub fn is_addition(&self) -> bool {
@@ -121,6 +214,10 @@ impl ChunkStoreDiff {
 
     pub fn is_deletion(&self) -> bool {
         matches!(self, Self::Deletion(_))
+    }
+
+    pub fn is_schema_addition(&self) -> bool {
+        matches!(self, Self::SchemaAddition(_))
     }
 
     pub fn into_addition(self) -> Option<ChunkStoreDiffAddition> {
@@ -170,7 +267,7 @@ impl ChunkStoreDiff {
     pub fn delta(&self) -> i64 {
         match self {
             Self::Addition(_) => 1,
-            Self::VirtualAddition(_) => 0,
+            Self::VirtualAddition(_) | Self::SchemaAddition(_) => 0,
             Self::Deletion(_) => -1,
         }
     }
@@ -188,13 +285,13 @@ impl ChunkStoreDiff {
     pub fn delta_chunk(&self) -> Option<&Arc<Chunk>> {
         match self {
             Self::Addition(addition) => Some(addition.delta_chunk()),
-            Self::VirtualAddition(_) => None,
+            Self::VirtualAddition(_) | Self::SchemaAddition(_) => None,
             Self::Deletion(deletion) => Some(&deletion.chunk),
         }
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct ChunkStoreDiffAddition {
     /// The chunk that was added, *unaltered*.
     ///
@@ -247,6 +344,21 @@ pub struct ChunkStoreDiffAddition {
     pub direct_lineage: ChunkDirectLineageReport,
 }
 
+impl std::fmt::Debug for ChunkStoreDiffAddition {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self {
+            chunk_before_processing,
+            chunk_after_processing,
+            direct_lineage,
+        } = self;
+        f.debug_struct("ChunkStoreDiffAddition")
+            .field("chunk_before_processing", &chunk_before_processing.id())
+            .field("chunk_after_processing", &chunk_after_processing.id())
+            .field("direct_lineage", direct_lineage)
+            .finish()
+    }
+}
+
 impl PartialEq for ChunkStoreDiffAddition {
     fn eq(&self, other: &Self) -> bool {
         let Self {
@@ -280,6 +392,28 @@ impl ChunkStoreDiffAddition {
     pub fn is_static(&self) -> bool {
         self.chunk_before_processing.is_static()
     }
+
+    /// [`ChunkMeta`] for the `delta_chunk`.
+    pub fn chunk_meta(&self) -> ChunkMeta {
+        let delta_chunk = self.delta_chunk();
+        let entity_path = delta_chunk.entity_path();
+
+        let components: Vec<ChunkComponentMeta> = delta_chunk
+            .components()
+            .values()
+            .map(|column| ChunkComponentMeta {
+                descriptor: column.descriptor.clone(),
+                inner_arrow_datatype: Some(column.list_array.value_type()),
+                has_data: !column.list_array.values().is_empty(),
+                is_static: delta_chunk.is_static(),
+            })
+            .collect();
+
+        ChunkMeta {
+            entity_path: entity_path.clone(),
+            components,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -295,6 +429,146 @@ pub struct ChunkStoreDiffVirtualAddition {
     pub rrd_manifest: Arc<RrdManifest>,
 }
 
+impl ChunkStoreDiffVirtualAddition {
+    /// Iterator over [`ChunkMeta`]s in the new rrd manifest.
+    ///
+    /// In no particular order.
+    pub fn chunk_metas(&self) -> impl Iterator<Item = ChunkMeta> {
+        re_tracing::profile_function!();
+
+        // Build per-component metadata from the recording's sorbet schema.
+        let component_schema_info: ahash::HashMap<
+            re_chunk::ComponentIdentifier,
+            ChunkComponentMeta,
+        > = self
+            .rrd_manifest
+            .sorbet_schema()
+            .fields()
+            .iter()
+            .filter(|f| {
+                re_sorbet::ColumnKind::try_from(f.as_ref()).ok()
+                    == Some(re_sorbet::ColumnKind::Component)
+            })
+            .map(|field| {
+                let inner_arrow_datatype = match field.data_type() {
+                    arrow::datatypes::DataType::List(inner)
+                    | arrow::datatypes::DataType::LargeList(inner) => inner.data_type().clone(),
+                    other => other.clone(),
+                };
+
+                let descriptor = re_sdk_types::ComponentDescriptor::from((**field).clone());
+                (
+                    descriptor.component,
+                    ChunkComponentMeta {
+                        descriptor,
+                        inner_arrow_datatype: Some(inner_arrow_datatype),
+                        // These fields are filled in later in this function
+                        has_data: false,
+                        is_static: false,
+                    },
+                )
+            })
+            .collect();
+
+        /// Helper to track what's known about a component from the manifest's static/temporal maps.
+        #[derive(Default)]
+        struct VirtualComponentInfo {
+            is_static: bool,
+
+            has_rows: bool,
+        }
+
+        let mut entity_components = ahash::HashMap::<_, nohash_hasher::IntMap<_, _>>::default();
+
+        #[expect(
+            clippy::iter_over_hash_type,
+            reason = "This collects information into hashmaps"
+        )]
+        for (entity_path, per_component) in self.rrd_manifest.static_map() {
+            let entry = entity_components.entry(entity_path).or_default();
+            for &component in per_component.keys() {
+                // Static entries always have data (they wouldn't be in the map otherwise).
+                entry.insert(
+                    component,
+                    VirtualComponentInfo {
+                        is_static: true,
+                        has_rows: true,
+                    },
+                );
+            }
+        }
+
+        #[expect(
+            clippy::iter_over_hash_type,
+            reason = "This collects information into hashmaps"
+        )]
+        for (entity_path, per_timeline) in self.rrd_manifest.temporal_map() {
+            let entry = entity_components.entry(entity_path).or_default();
+            for per_component in per_timeline.values() {
+                for (&component, per_chunk) in per_component {
+                    let has_rows = per_chunk.values().any(|e| e.num_rows > 0);
+
+                    let existing = entry.entry(component).or_default();
+                    existing.has_rows |= has_rows;
+                }
+            }
+        }
+
+        entity_components
+            .into_iter()
+            .map(move |(entity_path, components)| ChunkMeta {
+                entity_path: entity_path.clone(),
+                components: components
+                    .into_iter()
+                    .map(|(component, info)| {
+                        let has_data = info.has_rows;
+                        let is_static = info.is_static;
+                        if let Some(meta) = component_schema_info.get(&component) {
+                            ChunkComponentMeta {
+                                has_data,
+                                is_static,
+                                ..meta.clone()
+                            }
+                        } else {
+                            ChunkComponentMeta {
+                                has_data,
+                                is_static,
+                                descriptor: re_sdk_types::ComponentDescriptor::partial(component),
+                                inner_arrow_datatype: None,
+                            }
+                        }
+                    })
+                    .collect(),
+            })
+    }
+}
+
+/// Why a chunk was removed from the store.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ChunkDeletionReason {
+    /// Garbage collection due to memory pressure.
+    GarbageCollection,
+
+    /// A virtual chunk was replaced by its physical data.
+    VirtualToPhysicalReplacement,
+
+    /// Old split chunks cleaned up when their root chunk is re-inserted.
+    ///
+    /// When a root chunk is inserted, the store may split it into smaller physical chunks.
+    /// If the same root chunk is later re-downloaded (e.g. after GC eviction),
+    /// the old splits are stale duplicates and must be removed before the new insertion.
+    DanglingSplitCleanup,
+
+    /// A chunk was replaced by a compacted version.
+    Compaction,
+
+    /// A static chunk was overwritten by a newer value.
+    Overwrite,
+
+    /// Explicitly dropped by user action (e.g. undo/redo stack operations).
+    ExplicitDrop,
+}
+
 /// An atomic deletion event.
 ///
 /// Reminder: ⚠ Do not confuse _a deletion_ and _a clear_ ⚠.
@@ -305,7 +579,7 @@ pub struct ChunkStoreDiffVirtualAddition {
 /// A clear, on the other hand, is the act of logging an empty [`re_types_core::ComponentBatch`],
 /// either directly using the logging APIs, or indirectly through the use of a
 /// [`re_types_core::archetypes::Clear`] archetype.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct ChunkStoreDiffDeletion {
     /// The chunk that was removed.
     //
@@ -313,12 +587,25 @@ pub struct ChunkStoreDiffDeletion {
     // downstream subscribers get a chance to inspect the data in the chunk before it gets permanently
     // deallocated.
     pub chunk: Arc<Chunk>,
+
+    /// Why this chunk was removed.
+    pub reason: ChunkDeletionReason,
+}
+
+impl std::fmt::Debug for ChunkStoreDiffDeletion {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self { chunk, reason } = self;
+        f.debug_tuple("ChunkStoreDiffDeletion")
+            .field(&chunk.id())
+            .field(reason)
+            .finish()
+    }
 }
 
 impl PartialEq for ChunkStoreDiffDeletion {
     fn eq(&self, other: &Self) -> bool {
-        let Self { chunk } = self;
-        chunk.id() == other.chunk.id()
+        let Self { chunk, reason } = self;
+        chunk.id() == other.chunk.id() && *reason == other.reason
     }
 }
 
@@ -333,7 +620,7 @@ impl ChunkStoreDiffDeletion {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeMap;
+    use std::collections::{BTreeMap, BTreeSet};
 
     use re_chunk::{RowId, TimelineName};
     use re_log_types::example_components::{MyColor, MyIndex, MyPoint, MyPoints};
@@ -383,7 +670,9 @@ mod tests {
 
             for event in events {
                 let delta = event.delta();
-                let delta_chunk = event.delta_chunk().unwrap();
+                let Some(delta_chunk) = event.delta_chunk() else {
+                    continue;
+                };
                 let delta_rows = delta * delta_chunk.num_rows() as i64;
 
                 for row_id in delta_chunk.row_ids() {
@@ -416,6 +705,18 @@ mod tests {
         }
     }
 
+    /// Helper to extract the set of new component descriptors from a [`ChunkStoreDiff::SchemaAddition`].
+    fn schema_addition_descriptors(event: &ChunkStoreEvent) -> BTreeSet<ComponentDescriptor> {
+        match &event.diff {
+            ChunkStoreDiff::SchemaAddition(sa) => sa
+                .new_columns
+                .iter()
+                .flat_map(|m| m.components.iter().map(|c| c.descriptor.clone()))
+                .collect(),
+            other => panic!("expected SchemaAddition, got {other:?}"),
+        }
+    }
+
     #[test]
     fn store_events() -> anyhow::Result<()> {
         let mut store = ChunkStore::new(
@@ -444,7 +745,18 @@ mod tests {
             )
             .build()?;
 
-        view.on_events(&store.insert_chunk(&Arc::new(chunk1))?);
+        let events = store.insert_chunk(&Arc::new(chunk1))?;
+
+        // chunk1 introduces entity_a with MyIndex — expect Addition + SchemaAddition.
+        assert_eq!(events.len(), 2);
+        assert!(events[0].is_addition());
+        assert!(events[1].is_schema_addition());
+        assert_eq!(
+            schema_addition_descriptors(&events[1]),
+            BTreeSet::from([MyIndex::partial_descriptor()]),
+        );
+
+        view.on_events(&events);
 
         similar_asserts::assert_eq!(
             GlobalCounts::new(
@@ -496,7 +808,18 @@ mod tests {
                 .build()?
         };
 
-        view.on_events(&store.insert_chunk(&Arc::new(chunk2))?);
+        let events = store.insert_chunk(&Arc::new(chunk2))?;
+
+        // chunk2 introduces entity_b with Points + Colors — expect Addition + SchemaAddition.
+        assert_eq!(events.len(), 2);
+        assert!(events[0].is_addition());
+        assert!(events[1].is_schema_addition());
+        assert_eq!(
+            schema_addition_descriptors(&events[1]),
+            BTreeSet::from([MyPoints::descriptor_points(), MyPoints::descriptor_colors(),]),
+        );
+
+        view.on_events(&events);
 
         similar_asserts::assert_eq!(
             GlobalCounts::new(
@@ -548,7 +871,21 @@ mod tests {
                 .build()?
         };
 
-        view.on_events(&store.insert_chunk(&Arc::new(chunk3))?);
+        let events = store.insert_chunk(&Arc::new(chunk3))?;
+
+        // chunk3 adds MyIndex to entity_b (new!) and re-uses Colors (not new, but transitions to static).
+        // Colors already existed on entity_b, but this is a static chunk so Colors gets an
+        // is_static transition (false → true). MyIndex is new on entity_b.
+        assert_eq!(events.len(), 2);
+        assert!(events[0].is_addition());
+        assert!(events[1].is_schema_addition());
+        assert_eq!(
+            schema_addition_descriptors(&events[1]),
+            BTreeSet::from([MyIndex::partial_descriptor(), MyPoints::descriptor_colors(),]),
+            "MyIndex is new on entity_b; Colors gets is_static transition"
+        );
+
+        view.on_events(&events);
 
         similar_asserts::assert_eq!(
             GlobalCounts::new(
@@ -582,6 +919,16 @@ mod tests {
         );
 
         let events = store.gc(&GarbageCollectionOptions::gc_everything()).0;
+
+        // GC should only produce Deletion events, never SchemaAddition.
+        for event in &events {
+            assert!(
+                event.is_deletion(),
+                "GC should only produce deletions, got: {:?}",
+                event.diff
+            );
+        }
+
         view.on_events(&events);
 
         similar_asserts::assert_eq!(

@@ -164,7 +164,7 @@ impl Pipeline {
 
 fn try_send_event(event_tx: &channel::Sender<PipelineEvent>, event: PipelineEvent) {
     match event_tx.try_send(event) {
-        Ok(_) => {}
+        Ok(()) => {}
         Err(channel::TrySendError::Full(_)) => {
             re_log::trace!("dropped event, analytics channel is full");
         }
@@ -222,10 +222,10 @@ fn flush_pending_events(
                 sink,
                 abort_signal,
             ) {
-                Ok(_) => {
+                Ok(()) => {
                     re_log::trace!(%analytics_id, %session_id, ?path, "flushed pending events");
                     match std::fs::remove_file(&path) {
-                        Ok(_) => {
+                        Ok(()) => {
                             re_log::trace!(%analytics_id, %session_id, ?path, "removed session file");
                         }
                         Err(err) => {
@@ -245,7 +245,7 @@ fn flush_pending_events(
     Ok(())
 }
 
-#[expect(clippy::needless_return, clippy::too_many_arguments)]
+#[expect(clippy::needless_return)]
 fn realtime_pipeline(
     config: &Config,
     sink: &PostHogSink,
@@ -315,7 +315,7 @@ fn realtime_pipeline(
                     PipelineEvent::Analytics(event) => on_event(&mut session_file, event),
                     PipelineEvent::Flush => {
                         on_flush(&mut session_file);
-                        flush_done_tx.send(()).ok();
+                        re_quota_channel::send_crossbeam(flush_done_tx, ()).ok();
                     },
                 }
 

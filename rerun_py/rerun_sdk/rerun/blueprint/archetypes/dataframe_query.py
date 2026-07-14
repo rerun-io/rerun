@@ -5,12 +5,13 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from attrs import define, field
 
 from ..._baseclasses import (
     Archetype,
+    ComponentDescriptor,
 )
 from ...blueprint import components as blueprint_components, datatypes as blueprint_datatypes
 from ...error_utils import catch_and_log_exceptions
@@ -30,6 +31,8 @@ class DataframeQuery(DataframeQueryExt, Archetype):
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
 
+    NAME: ClassVar[str] = "rerun.blueprint.archetypes.DataframeQuery"
+
     # __init__ can be found in dataframe_query_ext.py
 
     def __attrs_clear__(self) -> None:
@@ -40,6 +43,8 @@ class DataframeQuery(DataframeQueryExt, Archetype):
             filter_is_not_null=None,
             apply_latest_at=None,
             select=None,
+            entity_order=None,
+            auto_scroll=None,
         )
 
     @classmethod
@@ -59,6 +64,8 @@ class DataframeQuery(DataframeQueryExt, Archetype):
         filter_is_not_null: blueprint_datatypes.FilterIsNotNullLike | None = None,
         apply_latest_at: datatypes.BoolLike | None = None,
         select: blueprint_datatypes.SelectedColumnsLike | None = None,
+        entity_order: blueprint_components.ColumnOrderLike | None = None,
+        auto_scroll: datatypes.BoolLike | None = None,
     ) -> DataframeQuery:
         """
         Update only some specific fields of a `DataframeQuery`.
@@ -80,7 +87,19 @@ class DataframeQuery(DataframeQueryExt, Archetype):
         apply_latest_at:
             Should empty cells be filled with latest-at queries?
         select:
-            Selected columns. If unset, all columns are selected.
+            Selected columns. If unset, only the active timeline and all component columns are selected.
+        entity_order:
+            The order of entity path column groups. If unset, the default order is used.
+
+            This affects the order of component columns, which are always grouped by entity path. Timeline columns always
+            come first. Entities not listed here are appended at the end in default order.
+
+            If `entity_order` contains any entity path that is not included in the view, they are ignored.
+        auto_scroll:
+            Whether to auto-scroll to track the time cursor.
+
+            When enabled and the view's timeline matches the time panel's active timeline,
+            the view will scroll to keep the row at or before the current time cursor visible.
 
         """
 
@@ -92,6 +111,8 @@ class DataframeQuery(DataframeQueryExt, Archetype):
                 "filter_is_not_null": filter_is_not_null,
                 "apply_latest_at": apply_latest_at,
                 "select": select,
+                "entity_order": entity_order,
+                "auto_scroll": auto_scroll,
             }
 
             if clear_unset:
@@ -107,6 +128,62 @@ class DataframeQuery(DataframeQueryExt, Archetype):
     def cleared(cls) -> DataframeQuery:
         """Clear all the fields of a `DataframeQuery`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_timeline() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "DataframeQuery:timeline",
+            archetype=DataframeQuery.NAME,
+            component_type=blueprint_components.TimelineNameBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_filter_by_range() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "DataframeQuery:filter_by_range",
+            archetype=DataframeQuery.NAME,
+            component_type=blueprint_components.FilterByRangeBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_filter_is_not_null() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "DataframeQuery:filter_is_not_null",
+            archetype=DataframeQuery.NAME,
+            component_type=blueprint_components.FilterIsNotNullBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_apply_latest_at() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "DataframeQuery:apply_latest_at",
+            archetype=DataframeQuery.NAME,
+            component_type=blueprint_components.ApplyLatestAtBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_select() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "DataframeQuery:select",
+            archetype=DataframeQuery.NAME,
+            component_type=blueprint_components.SelectedColumnsBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_entity_order() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "DataframeQuery:entity_order",
+            archetype=DataframeQuery.NAME,
+            component_type=blueprint_components.ColumnOrderBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_auto_scroll() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "DataframeQuery:auto_scroll",
+            archetype=DataframeQuery.NAME,
+            component_type=blueprint_components.AutoScrollBatch._COMPONENT_TYPE,
+        )
 
     timeline: blueprint_components.TimelineNameBatch | None = field(
         metadata={"component": True},
@@ -153,7 +230,33 @@ class DataframeQuery(DataframeQueryExt, Archetype):
         default=None,
         converter=blueprint_components.SelectedColumnsBatch._converter,  # type: ignore[misc]
     )
-    # Selected columns. If unset, all columns are selected.
+    # Selected columns. If unset, only the active timeline and all component columns are selected.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    entity_order: blueprint_components.ColumnOrderBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=blueprint_components.ColumnOrderBatch._converter,  # type: ignore[misc]
+    )
+    # The order of entity path column groups. If unset, the default order is used.
+    #
+    # This affects the order of component columns, which are always grouped by entity path. Timeline columns always
+    # come first. Entities not listed here are appended at the end in default order.
+    #
+    # If `entity_order` contains any entity path that is not included in the view, they are ignored.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    auto_scroll: blueprint_components.AutoScrollBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=blueprint_components.AutoScrollBatch._converter,  # type: ignore[misc]
+    )
+    # Whether to auto-scroll to track the time cursor.
+    #
+    # When enabled and the view's timeline matches the time panel's active timeline,
+    # the view will scroll to keep the row at or before the current time cursor visible.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

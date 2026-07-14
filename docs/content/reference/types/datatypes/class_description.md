@@ -20,39 +20,39 @@ colored as described by the class's [`datatypes.AnnotationInfo`](https://rerun.i
 
 ## Fields
 #### `info`
-Type: [`AnnotationInfo`](../datatypes/annotation_info.md)
+Type: non-null [`AnnotationInfo`](../datatypes/annotation_info.md)
 
 The [`datatypes.AnnotationInfo`](https://rerun.io/docs/reference/types/datatypes/annotation_info) for the class.
 
 #### `keypoint_annotations`
-Type: List of [`AnnotationInfo`](../datatypes/annotation_info.md)
+Type: non-null List of [`AnnotationInfo`](../datatypes/annotation_info.md)
 
 The [`datatypes.AnnotationInfo`](https://rerun.io/docs/reference/types/datatypes/annotation_info) for all of the keypoints.
 
 #### `keypoint_connections`
-Type: List of [`KeypointPair`](../datatypes/keypoint_pair.md)
+Type: non-null List of [`KeypointPair`](../datatypes/keypoint_pair.md)
 
 The connections between keypoints.
 
 
 ## Arrow datatype
 ```
-Struct {
-    info: Struct {
-        id: uint16
-        label: nullable utf8
-        color: nullable uint32
-    }
-    keypoint_annotations: List<Struct {
-            id: uint16
-            label: nullable utf8
-            color: nullable uint32
-        }>
-    keypoint_connections: List<Struct {
-            keypoint0: uint16
-            keypoint1: uint16
-        }>
-}
+Struct(
+    "info": non-null Struct(
+        "id": non-null UInt16
+        "label": Utf8
+        "color": UInt32
+    )
+    "keypoint_annotations": non-null List(non-null Struct(
+            "id": non-null UInt16
+            "label": Utf8
+            "color": UInt32
+        ))
+    "keypoint_connections": non-null List(non-null Struct(
+            "keypoint0": non-null UInt16
+            "keypoint1": non-null UInt16
+        ))
+)
 ```
 
 ## API reference links

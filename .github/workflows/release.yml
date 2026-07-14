@@ -12,6 +12,11 @@ on:
           - rc
           - final
         required: true
+      publish-crates:
+        description: "Publish crates (ignored for non-alpha release)"
+        type: boolean
+        required: false
+        default: true
 
 concurrency:
   group: ${{ github.ref_name }}
@@ -92,9 +97,9 @@ jobs:
         with:
           node-version: "22.x"
 
-      - uses: prefix-dev/setup-pixi@v0.9.1
+      - uses: prefix-dev/setup-pixi@v0.10.0
         with:
-          pixi-version: v0.55.0
+          pixi-version: v0.71.3
 
       - name: Update crate versions
         id: versioning
@@ -103,7 +108,7 @@ jobs:
           pixi run python scripts/ci/crates.py check-git-branch-name
 
           echo Parse the release version from the branch name…
-          #   `prepare-release-0.8.1-meta.N` -> `0.8.1`
+          #   `prepare-release-0.8.1-alpha.N` -> `0.8.1`
           release_version=$(pixi run python scripts/ci/crates.py get-version --from git --finalize)
 
           echo "release_version: $release_version"
@@ -202,7 +207,7 @@ jobs:
           ### Next steps
           - Test the release
           - For alpha releases:
-            - [ ] If a GH release should be published for this alpha (give extra love to alphas deployed to Rerun Cloud or when external testing is required):
+            - [ ] If a GH release should be published for this alpha (give extra love to alphas deployed to Rerun Hub or when external testing is required):
                 - [ ] Create the GitHub release manually from the UI
                 - [ ] Stretch goal: generate a raw changelog and add it to the GH release with this disclaimer:
                       **DISCLAIMER**: This is an unreviewed, automatically generated changelog. We only provide fully reviewed changelogs for final releases.
@@ -211,12 +216,13 @@ jobs:
               - Otherwise, close the PR without merging. Cherrypick any interesting commit to `main`, but *not* the version bump one (it would introduce bad links).
           - For non-alpha releases:
             - For any added commits, run the release workflow in 'rc' mode again
-            - After testing, _ensure that this PR is mergeable to `main`_, then run the release workflow in 'release' mode
+            - After testing, _ensure that this PR is mergeable to `main`_, then run the release workflow in 'final' mode
             - Once the final release workflow finishes it will create a GitHub release for you. Then:
               - [ ] Sanity check the build artifacts:
                 - [ ] pip install: does it install and run?
                 - [ ] cargo install of cli tool: does it install and run?
                 - [ ] C++ SDK zip: does it contain rerun_c for all platforms?
+                - [ ] Web Viewer: does it run and connect to Rerun Hub servers?
               - [ ] Edit and publish the GitHub release:
                 - Do NOT create a GitHub release draft yourself! Let the release job do it.
                 - Populate the release with the changelog and a nice header video/picture
@@ -224,9 +230,9 @@ jobs:
                 - Click `Publish release`
                 - Once published, the release assets will sync to it automatically.
               - [ ] Update the [google colab notebooks](https://colab.research.google.com/drive/1R9I7s4o6wydQC_zkybqaSRFTtlEaked_) to install this version and re-execute the notebook.
-              - [ ] Release a new version of gradio (@oxkitsune, @jprochazk)
-              - [ ] Merge the Release PR
-              - [ ] (A few hours later) Check on the [conda feedstock PR](https://github.com/conda-forge/rerun-sdk-feedstock/pulls) (ping Antoine, Nick and/or Jeremy in necessary)
+              - [ ] Verify the auto-triggered [gradio-rerun-viewer release workflow](https://github.com/rerun-io/gradio-rerun-viewer/actions/workflows/auto_release_on_rerun.yml) succeeded (dispatched from `on_gh_release.yml` for final releases)
+              - [ ] Create a new branch from the prepare-release branch, rebase that one on main and sync it to reality so it can be merged.
+              - [ ] (A few hours later) Check on the [conda feedstock PR](https://github.com/conda-forge/rerun-sdk-feedstock/pulls) (ping Antoine and/or Nick if necessary)
 
           - [ ] Tests
             - [ ] Windows
@@ -253,9 +259,9 @@ jobs:
         with:
           ref: ${{ needs.version.outputs.release-commit }}
 
-      - uses: prefix-dev/setup-pixi@v0.9.1
+      - uses: prefix-dev/setup-pixi@v0.10.0
         with:
-          pixi-version: v0.55.0
+          pixi-version: v0.71.3
 
       - name: Check uv.lock is up-to-date
         run: pixi run uv-lock-check
@@ -269,6 +275,7 @@ jobs:
       PY_DOCS_VERSION_NAME: ${{ inputs.release-type == 'final' && needs.version.outputs.final || 'dev' }}
       CPP_DOCS_VERSION_NAME: ${{ inputs.release-type == 'final' && 'stable' || 'dev' }}
       JS_DOCS_VERSION_NAME: ${{ inputs.release-type == 'final' && needs.version.outputs.final || 'dev' }}
+      MARKDOWN_DOCS_VERSION_NAME: ${{ inputs.release-type == 'final' && needs.version.outputs.final || 'dev' }}
       RELEASE_COMMIT: ${{ needs.version.outputs.release-commit }}
       RELEASE_VERSION: ${{ needs.version.outputs.final }}
       UPDATE_LATEST: ${{ inputs.release-type == 'final' }}
@@ -276,6 +283,7 @@ jobs:
 
   publish-crates:
     name: "Publish Crates"
+    if: inputs.release-type != 'alpha' || inputs.publish-crates
     needs: [version, uv-lock-check]
     uses: ./.github/workflows/reusable_release_crates.yml
     with:
@@ -313,9 +321,18 @@ jobs:
       release-commit: ${{ needs.version.outputs.release-commit }}
     secrets: inherit
 
+  web-test:
+    name: "Web tests"
+    needs: [version]
+    uses: ./.github/workflows/reusable_web_test.yml
+    with:
+      CONCURRENCY: ${{ github.ref_name }}
+      REF: ${{ needs.version.outputs.release-commit }}
+    secrets: inherit
+
   publish-web:
     name: "Build and Publish Web"
-    needs: [version, publish-wheels]
+    needs: [version, publish-wheels, web-test]
     uses: ./.github/workflows/reusable_publish_web.yml
     with:
       release-version: ${{ needs.version.outputs.current }}
@@ -339,7 +356,7 @@ jobs:
   # The push to `docs-latest` also triggers a re-deploy of `rerun.io`.
   update-latest-branch:
     name: "Update Latest Branch"
-    if: inputs.release-type == 'final'
+    if: inputs.release-type == 'final' && !cancelled() && !failure()
     needs:
       [
         version,
@@ -371,6 +388,7 @@ jobs:
 
   tag-release:
     name: "Tag Release"
+    if: ${{ !cancelled() && !failure() }}
     needs:
       [
         version,
@@ -418,6 +436,8 @@ jobs:
 
       - name: Create comment
         if: inputs.release-type == 'rc' || inputs.release-type == 'final'
+        # GitHub API is very unreliable. We don't want to fail the entire workflow just because we couldn't post a comment.
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.RERUN_BOT_TOKEN }}
         run: |
@@ -425,7 +445,7 @@ jobs:
           version="${{ needs.version.outputs.final }}"
 
           cat <<EOF > comment-body.txt
-          GitHub release draft: [$version](https://github.com/rerun-io/rerun/releases/tag/$version)
+          The GitHub release draft for $version can be found in the [release list](https://github.com/rerun-io/rerun/releases).
 
           Add a description, changelog, and a nice header video/picture, then click 'Publish release'.
           EOF
@@ -437,7 +457,7 @@ jobs:
   post-release-version-bump:
     name: "Post-Release Version Bump"
     # We don't need to bump versions for `rc` releases, because we don't merge those.
-    if: inputs.release-type == 'alpha' || inputs.release-type == 'final'
+    if: (inputs.release-type == 'alpha' || inputs.release-type == 'final') && !cancelled() && !failure()
     needs:
       [
         version,
@@ -461,9 +481,9 @@ jobs:
         with:
           node-version: "22.x"
 
-      - uses: prefix-dev/setup-pixi@v0.9.1
+      - uses: prefix-dev/setup-pixi@v0.10.0
         with:
-          pixi-version: v0.55.0
+          pixi-version: v0.71.3
 
       - name: git config
         run: |
@@ -503,6 +523,7 @@ jobs:
 
   comment-artifact-links:
     name: "Link to artifacts"
+    if: ${{ !cancelled() && !failure() }}
     needs:
       [
         version,
@@ -523,6 +544,8 @@ jobs:
           token: ${{ secrets.RERUN_BOT_TOKEN }}
 
       - name: Create comment
+        # GitHub API is very unreliable. We don't want to fail the entire workflow just because we couldn't post a comment.
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.RERUN_BOT_TOKEN }}
         run: |

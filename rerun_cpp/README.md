@@ -11,7 +11,7 @@ Read the [getting started guide](https://www.rerun.io/docs/getting-started/data-
 
 ### Logging
 
-After you've [installed the viewer](https://www.rerun.io/docs/getting-started/installing-viewer) and added the SDK to your project, you can jump right in and try logging some data.
+After you've [installed the viewer](https://www.rerun.io/docs/overview/installing-rerun/viewer) and added the SDK to your project, you can jump right in and try logging some data.
 
 You first create a `rerun::RecordingStream` stream and spawn a viewer. You then use it to log some archetypes to a given entity path using `rerun::RecordingStream::log`:
 
@@ -138,6 +138,22 @@ find_package(rerun_sdk REQUIRED)
 target_link_libraries(<yourtarget> PRIVATE rerun_sdk)
 ```
 
+### Install with vcpkg
+
+The Rerun C++ SDK is also available as the community-maintained [`rerun-sdk` vcpkg port](https://vcpkg.io/en/package/rerun-sdk).
+You can install it with:
+
+```bash
+vcpkg install rerun-sdk
+```
+
+Once installed, consume it from CMake like any other vcpkg-provided package:
+
+```cmake
+find_package(rerun_sdk CONFIG REQUIRED)
+
+target_link_libraries(<yourtarget> PRIVATE rerun_sdk)
+```
 
 ## Development in the Rerun repository
 

@@ -53,6 +53,22 @@ impl ::prost::Name for Timeline {
         "/rerun.common.v1alpha1.Timeline".into()
     }
 }
+/// A point in time on a timeline: a sequence index for sequence timelines, or nanoseconds for temporal timelines.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct TimelineTime {
+    #[prost(int64, tag = "1")]
+    pub time: i64,
+}
+impl ::prost::Name for TimelineTime {
+    const NAME: &'static str = "TimelineTime";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v1alpha1.TimelineTime".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v1alpha1.TimelineTime".into()
+    }
+}
 /// A time range between start and end time points. Each 64 bit number can represent different time point data
 /// depending on the timeline it is associated with. Time range is inclusive for both start and end time points.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
@@ -121,7 +137,7 @@ impl ::prost::Name for IndexRange {
     }
 }
 /// The unique identifier of an entity, e.g. `camera/3/points`
-/// See <<https://www.rerun.io/docs/concepts/entity-path>> for more on entity paths.
+/// See <<https://www.rerun.io/docs/concepts/logging-and-ingestion/entity-path>> for more on entity paths.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct EntityPath {
     #[prost(string, tag = "1")]
@@ -210,15 +226,21 @@ impl ::prost::Name for EntryId {
         "/rerun.common.v1alpha1.EntryId".into()
     }
 }
-/// Entry point for all ManifestRegistryService APIs
+/// Entry point for all ManifestWriterService APIs
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct DatasetHandle {
     /// Unique entry identifier (for debug purposes)
     #[prost(message, optional, tag = "1")]
     pub entry_id: ::core::option::Option<EntryId>,
     /// The kind of dataset this handle refers to.
+    ///
+    /// Deprecated: use `dataset_kind` instead.
+    #[deprecated]
     #[prost(enumeration = "StoreKind", tag = "3")]
     pub store_kind: i32,
+    /// The kind of dataset this handle refers to.
+    #[prost(enumeration = "DatasetKind", tag = "4")]
+    pub dataset_kind: i32,
     /// Path to Dataset backing storage (e.g. s3://bucket/file or file:///path/to/file)
     #[prost(string, optional, tag = "2")]
     pub dataset_url: ::core::option::Option<::prost::alloc::string::String>,
@@ -242,6 +264,22 @@ pub struct DataframePart {
     /// Data payload is Arrow IPC encoded RecordBatch
     #[prost(bytes = "bytes", optional, tag = "2")]
     pub payload: ::core::option::Option<::prost::bytes::Bytes>,
+    /// Compression used.
+    ///
+    /// This was introduced late in `DataframePart`'s lifetime, and therefore might be unspecified
+    /// in many real world recordings out there.
+    /// Unspecified is synonymous with uncompressed in this case.
+    #[prost(enumeration = "Compression", tag = "3")]
+    pub compression: i32,
+    /// How large is the uncompressed data?
+    ///
+    /// The value is undefined if `self.compression == Off`.
+    ///
+    /// This was introduced late in `DataframePart`'s lifetime, and therefore might be unspecified
+    /// in many real world recordings out there (which is fine, because they are all implicitly
+    /// using `Compression::Off`).
+    #[prost(uint64, tag = "4")]
+    pub uncompressed_size: u64,
 }
 impl ::prost::Name for DataframePart {
     const NAME: &'static str = "DataframePart";
@@ -421,7 +459,7 @@ pub struct BuildInfo {
     /// Empty if unknown.
     #[prost(string, optional, tag = "9")]
     pub build_time: ::core::option::Option<::prost::alloc::string::String>,
-    /// / True if this is a debug build.
+    /// True if this is a debug build.
     #[prost(bool, optional, tag = "10")]
     pub is_debug_build: ::core::option::Option<bool>,
 }
@@ -487,6 +525,38 @@ impl ::prost::Name for DevAlpha {
         "/rerun.common.v1alpha1.DevAlpha".into()
     }
 }
+/// The type of compression used on the payload.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum Compression {
+    Unspecified = 0,
+    /// No compression.
+    None = 1,
+    /// LZ4 block compression.
+    Lz4 = 2,
+}
+impl Compression {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "COMPRESSION_UNSPECIFIED",
+            Self::None => "COMPRESSION_NONE",
+            Self::Lz4 => "COMPRESSION_LZ4",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "COMPRESSION_UNSPECIFIED" => Some(Self::Unspecified),
+            "COMPRESSION_NONE" => Some(Self::None),
+            "COMPRESSION_LZ4" => Some(Self::Lz4),
+            _ => None,
+        }
+    }
+}
 /// supported encoder versions for encoding data
 /// See `RerunData` and `RerunChunkData` for its usage
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
@@ -511,6 +581,42 @@ impl EncoderVersion {
         match value {
             "ENCODER_VERSION_UNSPECIFIED" => Some(Self::Unspecified),
             "ENCODER_VERSION_V0" => Some(Self::V0),
+            _ => None,
+        }
+    }
+}
+/// The type of a timeline's time values. Mirrors `re_log_types::TimeType`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum TimeType {
+    Unspecified = 0,
+    /// Used e.g. for frames in a film.
+    Sequence = 1,
+    /// Duration measured in nanoseconds.
+    DurationNs = 2,
+    /// Nanoseconds since unix epoch (1970-01-01 00:00:00 UTC).
+    TimestampNs = 3,
+}
+impl TimeType {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "TIME_TYPE_UNSPECIFIED",
+            Self::Sequence => "TIME_TYPE_SEQUENCE",
+            Self::DurationNs => "TIME_TYPE_DURATION_NS",
+            Self::TimestampNs => "TIME_TYPE_TIMESTAMP_NS",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "TIME_TYPE_UNSPECIFIED" => Some(Self::Unspecified),
+            "TIME_TYPE_SEQUENCE" => Some(Self::Sequence),
+            "TIME_TYPE_DURATION_NS" => Some(Self::DurationNs),
+            "TIME_TYPE_TIMESTAMP_NS" => Some(Self::TimestampNs),
             _ => None,
         }
     }
@@ -540,6 +646,42 @@ impl StoreKind {
             "STORE_KIND_UNSPECIFIED" => Some(Self::Unspecified),
             "STORE_KIND_RECORDING" => Some(Self::Recording),
             "STORE_KIND_BLUEPRINT" => Some(Self::Blueprint),
+            _ => None,
+        }
+    }
+}
+/// What type of dataset.
+///
+/// This affects limits on what can be registered to the dataset.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum DatasetKind {
+    /// Always reserve unspecified as default value
+    Unspecified = 0,
+    Recording = 1,
+    Blueprint = 2,
+    Asset = 3,
+}
+impl DatasetKind {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "DATASET_KIND_UNSPECIFIED",
+            Self::Recording => "DATASET_KIND_RECORDING",
+            Self::Blueprint => "DATASET_KIND_BLUEPRINT",
+            Self::Asset => "DATASET_KIND_ASSET",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "DATASET_KIND_UNSPECIFIED" => Some(Self::Unspecified),
+            "DATASET_KIND_RECORDING" => Some(Self::Recording),
+            "DATASET_KIND_BLUEPRINT" => Some(Self::Blueprint),
+            "DATASET_KIND_ASSET" => Some(Self::Asset),
             _ => None,
         }
     }

@@ -1,11 +1,10 @@
 use egui::{AtomExt as _, IntoAtoms, NumExt as _};
-use re_redap_browser::EXAMPLES_ORIGIN;
 use re_ui::list_item::PropertyContent;
 use re_ui::modal::{ModalHandler, ModalWrapper};
 use re_ui::{UiExt as _, icons};
 use re_uri::Fragment;
 use re_viewer_context::open_url::ViewerOpenUrl;
-use re_viewer_context::{DisplayMode, ItemCollection, StoreHub, TimeControl, ViewerContext};
+use re_viewer_context::{ItemCollection, Route, StoreHub, TimeControl, ViewerContext};
 
 pub struct ShareModal {
     modal: ModalHandler,
@@ -39,22 +38,22 @@ impl ShareModal {
     /// URL for the current screen, used as a starting point for the modal.
     fn current_url(
         store_hub: &StoreHub,
-        display_mode: &DisplayMode,
+        route: &Route,
         time_ctrl: Option<&TimeControl>,
         selection: &ItemCollection,
     ) -> anyhow::Result<ViewerOpenUrl> {
-        ViewerOpenUrl::from_context_expanded(store_hub, display_mode, time_ctrl, selection)
+        ViewerOpenUrl::from_context_expanded(store_hub, route, time_ctrl, selection)
     }
 
     /// Opens the share modal with the current URL.
     pub fn open(
         &mut self,
         store_hub: &StoreHub,
-        display_mode: &DisplayMode,
+        route: &Route,
         time_ctrl: Option<&TimeControl>,
         selection: &ItemCollection,
     ) -> anyhow::Result<()> {
-        let url = Self::current_url(store_hub, display_mode, time_ctrl, selection)?;
+        let url = Self::current_url(store_hub, route, time_ctrl, selection)?;
         self.open_with_url(url);
         Ok(())
     }
@@ -70,16 +69,14 @@ impl ShareModal {
         &mut self,
         ui: &mut egui::Ui,
         store_hub: &StoreHub,
-        display_mode: &DisplayMode,
+        route: &Route,
         time_ctrl: Option<&TimeControl>,
         selection: &ItemCollection,
     ) {
         re_tracing::profile_function!();
 
-        let url_for_current_screen =
-            Self::current_url(store_hub, display_mode, time_ctrl, selection);
-        let enable_share_button = url_for_current_screen.is_ok()
-            && display_mode != &DisplayMode::RedapServer(EXAMPLES_ORIGIN.clone());
+        let url_for_current_screen = Self::current_url(store_hub, route, time_ctrl, selection);
+        let enable_share_button = url_for_current_screen.is_ok() && route != &Route::welcome_page();
 
         let share_button_resp = ui
             .add_enabled_ui(enable_share_button, |ui| ui.button("Share"))
@@ -100,13 +97,13 @@ impl ShareModal {
     /// Draws the share modal dialog if its open.
     pub fn ui(
         &mut self,
-        ctx: &ViewerContext<'_>,
+        viewer_ctx: Option<&ViewerContext<'_>>,
         ui: &egui::Ui,
         web_viewer_base_url: Option<&url::Url>,
     ) {
         let Some(url) = &mut self.url else {
             // Happens only if the modal is closed anyways.
-            debug_assert!(!self.modal.is_open());
+            re_log::debug_assert!(!self.modal.is_open());
             return;
         };
 
@@ -114,7 +111,7 @@ impl ShareModal {
             ui.ctx(),
             || ModalWrapper::new("Share"),
             |ui| {
-                let panel_max_height = (ui.ctx().content_rect().height() - 100.0)
+                let panel_max_height = (ui.content_rect().height() - 100.0)
                     .at_least(0.0)
                     .at_most(640.0);
                 ui.set_max_height(panel_max_height);
@@ -163,7 +160,7 @@ impl ShareModal {
                         let visuals = &mut ui.style_mut().visuals;
                         visuals.override_text_color = Some(tokens.text_inverse);
 
-                        let response = ui.ctx().read_response(ui.next_auto_id());
+                        let response = ui.read_response(ui.next_auto_id());
                         let fill_color = if response.is_some_and(|r| r.hovered()) {
                             tokens.bg_fill_inverse_hover
                         } else {
@@ -178,14 +175,14 @@ impl ShareModal {
                     })
                     .inner;
                 if copy_link_response.clicked() {
-                    ui.ctx().copy_text(url_string.clone());
+                    ui.copy_text(url_string.clone());
                     self.show_copied_feedback = true;
                 } else if !copy_link_response.hovered() {
                     self.show_copied_feedback = false;
                 }
 
                 ui.list_item_scope("share_dialog_url_settings", |ui| {
-                    url_settings_ui(ctx, ui, url, &mut self.create_web_viewer_url);
+                    url_settings_ui(viewer_ctx, ui, url, &mut self.create_web_viewer_url);
                 });
             },
         );
@@ -233,7 +230,7 @@ fn selectable_value_with_available_width<'a, Value: PartialEq>(
 const MIN_TOGGLE_WIDTH_RH: f32 = 120.0;
 
 fn url_settings_ui(
-    ctx: &ViewerContext<'_>,
+    ctx: Option<&ViewerContext<'_>>,
     ui: &mut egui::Ui,
     url: &mut ViewerOpenUrl,
     create_web_viewer_url: &mut bool,
@@ -247,11 +244,17 @@ fn url_settings_ui(
         });
     }));
 
-    if let Some(fragments) = url.fragment_mut() {
+    if let Some(fragments) = url.fragment_mut()
+        && let Some(ctx) = ctx
+    {
         ui.add_space(8.0);
 
-        let timestamp_format = ctx.app_options().timestamp_format;
-        fragment_ui(ui, fragments, timestamp_format, ctx.time_ctrl);
+        fragment_ui(
+            ui,
+            fragments,
+            ctx.app_options().timestamp_format,
+            ctx.time_ctrl,
+        );
     }
 }
 
@@ -361,7 +364,7 @@ mod tests {
     use re_log_types::{AbsoluteTimeRangeF, TimeCell};
     use re_test_context::TestContext;
     use re_viewer_context::open_url::ViewerOpenUrl;
-    use re_viewer_context::{DisplayMode, Item, ItemCollection, TimeControlCommand};
+    use re_viewer_context::{Item, ItemCollection, Route, TimeControlCommand};
 
     use crate::ui::ShareModal;
 
@@ -392,7 +395,7 @@ mod tests {
                 .lock()
                 .open(
                     &store_hub,
-                    &DisplayMode::RedapServer(origin.clone()),
+                    &Route::RedapServer(origin.clone()),
                     Some(&test_ctx.time_ctrl.read()),
                     &ItemCollection::default(),
                 )
@@ -405,7 +408,7 @@ mod tests {
                 re_ui::apply_style_and_install_loaders(ui.ctx());
 
                 test_ctx.run(ui.ctx(), |ctx| {
-                    modal.lock().ui(ctx, ui, None);
+                    modal.lock().ui(Some(ctx), ui, None);
                 });
 
                 test_ctx.handle_system_commands(ui.ctx());
@@ -416,7 +419,7 @@ mod tests {
             re_uri::DatasetSegmentUri {
                 origin: origin.clone(),
                 dataset_id,
-                segment_id: "segment_id".to_owned(),
+                segment_id: "segment_id".into(),
                 fragment: re_uri::Fragment::default(),
             },
         ));
@@ -429,7 +432,9 @@ mod tests {
             [
                 TimeControlCommand::SetActiveTimeline(*timeline.name()),
                 TimeControlCommand::SetTime(re_chunk::TimeInt::ZERO.into()),
-                TimeControlCommand::SetTimeSelection(AbsoluteTimeRangeF::new(0.0, 1000.0).to_int()),
+                TimeControlCommand::SetTimeSelectionClamped(
+                    AbsoluteTimeRangeF::new(0.0, 1000.0).to_int(),
+                ),
             ],
         );
 
@@ -439,7 +444,7 @@ mod tests {
             re_uri::DatasetSegmentUri {
                 origin: origin.clone(),
                 dataset_id,
-                segment_id: "segment_id".to_owned(),
+                segment_id: "segment_id".into(),
                 fragment: re_uri::Fragment {
                     selection: selection.to_data_path(),
                     when: Some((*timeline.name(), TimeCell::new(timeline.typ(), 234))),

@@ -2,8 +2,9 @@
 
 #include <rerun.hpp>
 
-int main() {
-    const auto rec = rerun::RecordingStream("rerun_example_transform3d_hierarchy");
+int main(int argc, char* argv[]) {
+    const auto rec =
+        rerun::RecordingStream("rerun_example_transform3d_hierarchy");
     rec.spawn().exit_on_failure();
 
     rec.set_time_sequence("time", 0);

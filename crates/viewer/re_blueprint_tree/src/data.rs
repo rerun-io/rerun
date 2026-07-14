@@ -12,12 +12,14 @@ use std::ops::{ControlFlow, Range};
 
 use itertools::Itertools as _;
 use re_entity_db::InstancePath;
+use re_log::debug_assert;
 use re_log_types::EntityPath;
 use re_log_types::external::re_types_core::ViewClassIdentifier;
+use re_sdk_types::blueprint::components::VisualizerInstructionId;
 use re_ui::filter_widget::{FilterMatcher, PathRanges};
 use re_viewer_context::{
-    CollapseScope, ContainerId, Contents, ContentsName, DataQueryResult, DataResultNode, Item,
-    ViewId, ViewerContext, VisitorControlFlow,
+    CollapseScope, ContainerId, Contents, ContentsName, DataQueryResult,
+    DataResultInteractionAddress, DataResultNode, Item, ViewId, ViewerContext, VisitorControlFlow,
 };
 use re_viewport_blueprint::{ContainerBlueprint, ViewBlueprint, ViewportBlueprint};
 use smallvec::SmallVec;
@@ -260,6 +262,7 @@ impl ViewData {
         let projection_trees = projections
             .into_iter()
             .filter_map(|node| {
+                re_tracing::profile_scope!("from_data_result_and_filter");
                 let projection_tree = DataResultData::from_data_result_and_filter(
                     view_blueprint,
                     query_result,
@@ -345,6 +348,10 @@ pub struct DataResultData {
     pub entity_path: EntityPath,
     pub visible: bool,
 
+    // Exclude the id from serialization for snapshot tests. We could also do the redaction later, but `VisualizerInstructionId` doesn't implement `serde::Serialize` to begin with.
+    #[cfg_attr(feature = "testing", serde(skip))]
+    pub visualizer_instruction_ids: Vec<VisualizerInstructionId>,
+
     #[cfg_attr(feature = "testing", serde(skip))]
     pub view_id: ViewId,
 
@@ -371,7 +378,7 @@ impl DataResultData {
         hierarchy_highlights: &mut PathRanges,
         filter_matcher: &FilterMatcher,
     ) -> Option<Self> {
-        re_tracing::profile_function!();
+        // No profile scope on this recursive function
 
         let entity_path = data_result_or_path.path().clone();
         let data_result_node = data_result_or_path.data_result_node();
@@ -527,10 +534,21 @@ impl DataResultData {
                             .unwrap_or_default()
                     };
 
+                let visualizer_instruction_ids = data_result_node
+                    .map(|node| {
+                        node.data_result
+                            .visualizer_instructions
+                            .iter()
+                            .map(|instr| instr.id)
+                            .collect()
+                    })
+                    .unwrap_or_default();
+
                 Self {
                     kind: node_info.kind,
                     entity_path,
                     visible,
+                    visualizer_instruction_ids,
                     view_id: view_blueprint.id,
                     label,
                     highlight_sections,
@@ -562,7 +580,10 @@ impl DataResultData {
     }
 
     pub fn item(&self) -> Item {
-        Item::DataResult(self.view_id, self.instance_path())
+        Item::DataResult(DataResultInteractionAddress::from_entity_path(
+            self.view_id,
+            self.entity_path.clone(),
+        ))
     }
 
     pub fn instance_path(&self) -> InstancePath {
@@ -625,10 +646,10 @@ impl BlueprintTreeItem<'_> {
         }
     }
 
-    pub fn is_open(&self, ctx: &egui::Context, collapse_scope: CollapseScope) -> bool {
+    pub fn is_open(&self, egui_ctx: &egui::Context, collapse_scope: CollapseScope) -> bool {
         collapse_scope.item(self.item()).is_some_and(|collapse_id| {
             collapse_id
-                .is_open(ctx)
+                .is_open(egui_ctx)
                 .unwrap_or_else(|| self.default_open())
         })
     }

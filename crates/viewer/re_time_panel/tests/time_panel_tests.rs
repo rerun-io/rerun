@@ -2,7 +2,7 @@
 #![expect(clippy::unwrap_used)] // Fine for tests
 
 use re_chunk::Chunk;
-use re_chunk_store::{LatestAtQuery, RowId};
+use re_chunk_store::{ChunkStoreConfig, LatestAtQuery, RowId};
 use re_entity_db::InstancePath;
 use re_log_types::example_components::{MyPoint, MyPoints};
 use re_log_types::{EntityPath, TimeInt, TimePoint, TimeReal, TimeType, Timeline, build_frame_nr};
@@ -13,43 +13,61 @@ use re_time_panel::TimePanel;
 use re_viewer_context::{CollapseScope, TimeControlCommand, TimeView, blueprint_timeline};
 use re_viewport_blueprint::ViewportBlueprint;
 
-fn add_sparse_data(test_context: &mut TestContext) {
+/// Creates chunks with two groups of frames separated by a gap:
+/// entity/0 at frames [10, 11, 12, 15, 18, 100, 102, 104]
+/// entity/1 at frames [11, 12, 13, 16, 19, 101, 103, 105]
+fn create_sparse_chunks() -> Vec<Chunk> {
     let points1 = MyPoint::from_iter(0..1);
-    for i in 0..2 {
-        test_context.log_entity(format!("/entity/{i}"), |mut builder| {
-            for frame in [10, 11, 12, 15, 18, 100, 102, 104].map(|frame| frame + i) {
-                builder = builder.with_sparse_component_batches(
+    let mut chunks = Vec::new();
+    for i in 0..2i64 {
+        let entity_path: EntityPath = format!("/entity/{i}").into();
+        for frame in [10, 11, 12, 15, 18, 100, 102, 104].map(|f| f + i) {
+            let chunk = Chunk::builder(entity_path.clone())
+                .with_sparse_component_batches(
                     RowId::new(),
                     [build_frame_nr(frame)],
                     [(MyPoints::descriptor_points(), Some(&points1 as _))],
-                );
-            }
-
-            builder
-        });
+                )
+                .build()
+                .unwrap();
+            chunks.push(chunk);
+        }
     }
+    chunks
 }
 
 #[test]
 pub fn time_panel_two_sections() {
     TimePanel::ensure_registered_subscribers();
-    let mut test_context = TestContext::new();
 
-    test_context.send_time_commands(
-        test_context.active_store_id(),
-        [TimeControlCommand::SetActiveTimeline("frame_nr".into())],
+    let mut test_context = TestContext::new_with_store_info_and_config(
+        re_log_types::StoreInfo::testing(),
+        ChunkStoreConfig::COMPACTION_DISABLED,
     );
 
-    add_sparse_data(&mut test_context);
+    let chunks = create_sparse_chunks();
+
+    let rrd_manifest = re_log_encoding::RrdManifest::build_in_memory_from_chunks(
+        test_context.active_store_id(),
+        chunks.iter(),
+    )
+    .unwrap();
+
+    test_context.add_rrd_manifest(rrd_manifest);
+    test_context.add_chunks(chunks.into_iter());
+    test_context.set_active_timeline("frame_nr");
 
     let mut snapshot_results = SnapshotResults::new();
     run_time_panel_and_save_snapshot(
         &test_context,
         TimePanel::default(),
-        300.0,
-        false,
         "time_panel_two_sections",
         &mut snapshot_results,
+        &RunOptions {
+            height: 300.0,
+            expand_all: false,
+            mark_chunks_used_or_missing: vec![],
+        },
     );
 }
 
@@ -57,11 +75,6 @@ pub fn time_panel_two_sections() {
 pub fn time_panel_dense_data() {
     TimePanel::ensure_registered_subscribers();
     let mut test_context = TestContext::new();
-
-    test_context.send_time_commands(
-        test_context.active_store_id(),
-        [TimeControlCommand::SetActiveTimeline("frame_nr".into())],
-    );
 
     let points1 = MyPoint::from_iter(0..1);
 
@@ -89,14 +102,19 @@ pub fn time_panel_dense_data() {
         builder
     });
 
+    test_context.set_active_timeline("frame_nr");
+
     let mut snapshot_results = SnapshotResults::new();
     run_time_panel_and_save_snapshot(
         &test_context,
         TimePanel::default(),
-        300.0,
-        false,
         "time_panel_dense_data",
         &mut snapshot_results,
+        &RunOptions {
+            height: 300.0,
+            expand_all: false,
+            mark_chunks_used_or_missing: vec![],
+        },
     );
 }
 
@@ -120,11 +138,6 @@ pub fn time_panel_filter_test_active_query() {
 pub fn run_time_panel_filter_tests(filter_active: bool, query: &str, snapshot_name: &str) {
     TimePanel::ensure_registered_subscribers();
     let mut test_context = TestContext::new();
-
-    test_context.send_time_commands(
-        test_context.active_store_id(),
-        [TimeControlCommand::SetActiveTimeline("frame_nr".into())],
-    );
 
     let points1 = MyPoint::from_iter(0..1);
     for i in 0..2 {
@@ -151,6 +164,8 @@ pub fn run_time_panel_filter_tests(filter_active: bool, query: &str, snapshot_na
         });
     }
 
+    test_context.set_active_timeline("frame_nr");
+
     let mut time_panel = TimePanel::default();
     if filter_active {
         time_panel.activate_filter(query);
@@ -160,10 +175,13 @@ pub fn run_time_panel_filter_tests(filter_active: bool, query: &str, snapshot_na
     run_time_panel_and_save_snapshot(
         &test_context,
         time_panel,
-        300.0,
-        false,
         snapshot_name,
         &mut snapshot_results,
+        &RunOptions {
+            height: 300.0,
+            expand_all: false,
+            mark_chunks_used_or_missing: vec![],
+        },
     );
 }
 
@@ -187,7 +205,7 @@ pub fn test_various_entity_kinds_in_time_panel() {
                 test_context.active_store_id(),
                 [
                     TimeControlCommand::SetActiveTimeline(timeline.into()),
-                    TimeControlCommand::SetTime(time.into()),
+                    TimeControlCommand::SetTimeClamped(time.into()),
                     TimeControlCommand::SetTimeView(TimeView {
                         min: 0.into(),
                         time_spanned: 10.0,
@@ -200,10 +218,13 @@ pub fn test_various_entity_kinds_in_time_panel() {
             run_time_panel_and_save_snapshot(
                 &test_context,
                 time_panel,
-                1200.0,
-                true,
                 &format!("various_entity_kinds_{timeline}_{time}"),
                 &mut snapshot_results,
+                &RunOptions {
+                    height: 1200.0,
+                    expand_all: true,
+                    mark_chunks_used_or_missing: vec![],
+                },
             );
         }
     }
@@ -215,12 +236,9 @@ pub fn test_focused_item_is_focused() {
 
     let mut test_context = TestContext::new();
 
-    test_context.send_time_commands(
-        test_context.active_store_id(),
-        [TimeControlCommand::SetActiveTimeline("timeline_a".into())],
-    );
-
     log_data_for_various_entity_kinds_tests(&mut test_context);
+
+    test_context.set_active_timeline("timeline_a");
 
     *test_context.focused_item.lock() =
         Some(EntityPath::from("/parent_with_data/of/entity").into());
@@ -231,10 +249,13 @@ pub fn test_focused_item_is_focused() {
     run_time_panel_and_save_snapshot(
         &test_context,
         time_panel,
-        200.0,
-        false,
         "focused_item_is_focused",
         &mut snapshot_results,
+        &RunOptions {
+            height: 200.0,
+            expand_all: false,
+            mark_chunks_used_or_missing: vec![],
+        },
     );
 }
 
@@ -242,11 +263,10 @@ pub fn test_focused_item_is_focused() {
 fn with_unloaded_chunks() {
     TimePanel::ensure_registered_subscribers();
 
-    let mut test_context = TestContext::new();
-
-    test_context.send_time_commands(
-        test_context.active_store_id(),
-        [TimeControlCommand::SetActiveTimeline("timeline_a".into())],
+    // Disable compaction so chunk IDs remain stable after insertion.
+    let mut test_context = TestContext::new_with_store_info_and_config(
+        re_log_types::StoreInfo::testing(),
+        re_chunk_store::ChunkStoreConfig::COMPACTION_DISABLED,
     );
 
     let mut chunks = create_chunks();
@@ -257,17 +277,24 @@ fn with_unloaded_chunks() {
     )
     .unwrap();
 
-    test_context.add_rrd_manifest((*rrd_manifest).clone());
+    test_context.add_rrd_manifest(rrd_manifest);
 
-    let height = 250.0;
+    test_context.set_active_timeline("timeline_a");
+
     let mut snapshot_results = SnapshotResults::new();
+
+    let mut used_ids = chunks[..6].iter().map(|c| c.id()).collect::<Vec<_>>();
+
     run_time_panel_and_save_snapshot(
         &test_context,
         TimePanel::default(),
-        height,
-        false,
         "time_panel_only_unloaded_chunks",
         &mut snapshot_results,
+        &RunOptions {
+            height: 250.0,
+            expand_all: false,
+            mark_chunks_used_or_missing: used_ids.clone(),
+        },
     );
 
     // Load some chunks in the list.
@@ -276,10 +303,14 @@ fn with_unloaded_chunks() {
     run_time_panel_and_save_snapshot(
         &test_context,
         TimePanel::default(),
-        height,
-        false,
         "time_panel_partially_unloaded_chunks",
         &mut snapshot_results,
+        &RunOptions {
+            height: 250.0,
+            expand_all: false,
+            // Should now be loaded.
+            mark_chunks_used_or_missing: used_ids.clone(),
+        },
     );
 
     test_context.send_time_commands(
@@ -287,13 +318,18 @@ fn with_unloaded_chunks() {
         [TimeControlCommand::SetTime(TimeReal::from(5))],
     );
 
+    used_ids.push(chunks[0].id());
+
     run_time_panel_and_save_snapshot(
         &test_context,
         TimePanel::default(),
-        height,
-        false,
         "time_panel_loading_unloaded_chunks",
         &mut snapshot_results,
+        &RunOptions {
+            height: 250.0,
+            expand_all: false,
+            mark_chunks_used_or_missing: used_ids,
+        },
     );
 }
 
@@ -327,12 +363,12 @@ fn create_chunks() -> Vec<Chunk> {
         create_chunk("/parent_with_data/of/unloaded0", timeline_a, [0]),
         create_chunk("/some_entity", timeline_a, [1, 2]),
         create_chunk("/parent_with_data/of/unloaded1", timeline_a, 2..=10),
-        create_chunk("/parent_with_data/of/unloaded3", timeline_a, [5]),
+        create_chunk("/parent_with_data/of/unloaded2", timeline_a, [5]),
         create_chunk("/timeline_a_only", timeline_a, [5, 8]),
         create_chunk("/some_entity", timeline_a, [5, 6]),
         // will stay unloaded
-        create_chunk("/parent_with_data/of/unloaded2", timeline_a, 4..=6),
-        create_chunk("/parent_with_data/of/unloaded4", timeline_a, [10]),
+        create_chunk("/parent_with_data/of/unloaded1", timeline_a, 4..=6),
+        create_chunk("/parent_with_data/of/unloaded2", timeline_a, [10]),
         create_chunk("/timeline_b_only", timeline_b, [5, 8]),
         create_chunk("/some_entity", timeline_a, [9, 10]),
     ]
@@ -377,7 +413,7 @@ pub fn log_data_for_various_entity_kinds_tests(test_context: &mut TestContext) {
 pub fn log_data(
     test_context: &mut TestContext,
     entity_path: impl Into<EntityPath>,
-    timeline: &str,
+    timeline: &'static str,
     time: i64,
 ) {
     let entity_path = entity_path.into();
@@ -403,19 +439,37 @@ pub fn log_static_data(test_context: &mut TestContext, entity_path: impl Into<En
     });
 }
 
+#[derive(Clone)]
+struct RunOptions {
+    height: f32,
+    expand_all: bool,
+
+    /// Marks the given chunks as missing, to cause the time-panel to
+    /// indicate that something is loading. This has to be a chunk coming
+    /// with a root in the rrd manifest.
+    mark_chunks_used_or_missing: Vec<re_chunk::ChunkId>,
+}
+
 fn run_time_panel_and_save_snapshot(
     test_context: &TestContext,
     mut time_panel: TimePanel,
-    height: f32,
-    expand_all: bool,
     snapshot_name: &str,
     snapshot_results: &mut SnapshotResults,
+    options: &RunOptions,
 ) {
     let mut harness = test_context
-        .setup_kittest_for_rendering_ui([700.0, height])
+        .setup_kittest_for_rendering_ui([700.0, options.height])
         .build_ui(|ui| {
             test_context.run(&ui.ctx().clone(), |viewer_ctx| {
-                if expand_all {
+                for chunk_id in &options.mark_chunks_used_or_missing {
+                    viewer_ctx
+                        .recording()
+                        .storage_engine()
+                        .store()
+                        .use_chunk_or_report_missing(chunk_id);
+                }
+
+                if options.expand_all {
                     re_context_menu::collapse_expand::collapse_expand_instance_path(
                         viewer_ctx,
                         viewer_ctx.recording(),
@@ -432,11 +486,11 @@ fn run_time_panel_and_save_snapshot(
 
                 let mut time_commands = Vec::new();
 
+                let store_ctx = viewer_ctx.active_recording_store_view_context();
                 time_panel.show_expanded_with_header(
                     viewer_ctx,
-                    viewer_ctx.time_ctrl,
+                    &store_ctx,
                     &blueprint,
-                    viewer_ctx.recording(),
                     ui,
                     &mut time_commands,
                 );

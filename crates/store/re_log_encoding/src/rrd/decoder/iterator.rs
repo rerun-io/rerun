@@ -1,4 +1,4 @@
-use crate::RrdManifest;
+use crate::RawRrdManifest;
 use crate::rrd::decoder::state_machine::DecoderState;
 use crate::rrd::{DecodeError, Decoder, DecoderEntrypoint};
 
@@ -117,7 +117,7 @@ impl<T: DecoderEntrypoint, R: std::io::BufRead> DecoderIterator<T, R> {
     /// case of concatenated streams.
     ///
     /// This is not cheap: it automatically performs the transport to app level conversion.
-    pub fn rrd_manifests(&self) -> Result<Vec<RrdManifest>, DecodeError> {
+    pub fn rrd_manifests(&self) -> Result<Vec<RawRrdManifest>, DecodeError> {
         self.decoder.rrd_manifests()
     }
 }
@@ -295,10 +295,7 @@ mod tests {
         ) -> Result<u64, crate::EncodeError> {
             re_tracing::profile_function!();
             let mut encoder = Encoder::new_eager(version, options, write)?;
-            let mut size_bytes = 0;
-            for message in messages {
-                size_bytes += encoder.append(message?.borrow())?;
-            }
+            let size_bytes = encoder.extend(messages)?;
 
             {
                 encoder.flush_blocking()?;
@@ -387,7 +384,7 @@ mod tests {
         for message in messages.clone() {
             unsafe {
                 encoder
-                    .append_transport(&message)
+                    .append_transport_without_footer(&message)
                     .expect("encoding should succeed");
             }
         }
@@ -428,7 +425,7 @@ mod tests {
         for message in out_of_order_messages.clone() {
             unsafe {
                 encoder
-                    .append_transport(&message)
+                    .append_transport_without_footer(&message)
                     .expect("encoding should succeed");
             }
         }

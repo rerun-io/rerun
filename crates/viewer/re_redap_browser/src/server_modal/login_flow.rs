@@ -23,12 +23,53 @@ pub enum LoginFlowResult {
 }
 
 impl LoginFlow {
-    pub fn open(ui: &mut egui::Ui) -> Result<Self, String> {
-        State::open(ui).map(|state| Self {
+    /// Open a new login flow.
+    ///
+    /// `signed_in_url` is only used on web as the `OAuth` redirect URI.
+    /// On native, it is ignored (the callback server handles redirects).
+    pub fn open(egui_ctx: &egui::Context, signed_in_url: Option<&str>) -> Result<Self, String> {
+        let _ = &signed_in_url; // only used on web
+
+        #[cfg(target_arch = "wasm32")]
+        let state = State::open(
+            egui_ctx,
+            signed_in_url
+                .ok_or("signed_in_url is required for web login")?
+                .to_owned(),
+        )?;
+        #[cfg(not(target_arch = "wasm32"))]
+        let state = State::open(egui_ctx)?;
+        Ok(Self {
             state,
             #[cfg(target_arch = "wasm32")]
             started: false,
         })
+    }
+
+    /// Create and immediately start the login flow (opens popup on web, opens browser on native).
+    ///
+    /// `signed_in_url` is only used on web as the `OAuth` redirect URI.
+    /// On native, it is ignored (the callback server handles redirects).
+    pub fn open_and_start(
+        egui_ctx: &egui::Context,
+        signed_in_url: Option<&str>,
+    ) -> Result<Self, String> {
+        let mut flow = Self::open(egui_ctx, signed_in_url)?;
+        flow.state.start()?;
+        #[cfg(target_arch = "wasm32")]
+        {
+            flow.started = true;
+        }
+        Ok(flow)
+    }
+
+    /// Poll for completion without rendering any UI.
+    pub fn poll(&mut self) -> Option<LoginFlowResult> {
+        match self.state.done() {
+            Ok(Some(_credentials)) => Some(LoginFlowResult::Success),
+            Ok(None) => None,
+            Err(err) => Some(LoginFlowResult::Failure(err)),
+        }
     }
 
     pub fn ui(&mut self, ui: &mut egui::Ui, cmd: &CommandSender) -> Option<LoginFlowResult> {
@@ -48,7 +89,7 @@ impl LoginFlow {
                 }
                 None
             } else {
-                // Show spinner while waiting
+                // Show loading indicator while waiting
                 self.state.ui(ui);
                 self.done(ui, cmd)
             }
@@ -64,7 +105,7 @@ impl LoginFlow {
     fn done(&mut self, ui: &egui::Ui, cmd: &CommandSender) -> Option<LoginFlowResult> {
         match self.state.done() {
             Ok(Some(credentials)) => {
-                ui.ctx().request_repaint();
+                ui.request_repaint();
 
                 cmd.send_system(SystemCommand::ShowNotification(Notification::new(
                     NotificationLevel::Success,

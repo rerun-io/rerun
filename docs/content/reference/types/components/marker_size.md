@@ -11,7 +11,7 @@ Radius of a marker of a point in e.g. a 2D plot, measured in UI points.
 
 ## Arrow datatype
 ```
-float32
+Float32
 ```
 
 ## API reference links

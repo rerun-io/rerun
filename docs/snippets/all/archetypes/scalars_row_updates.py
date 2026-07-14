@@ -1,7 +1,8 @@
 """
 Update a scalar over time.
 
-See also the `scalar_column_updates` example, which achieves the same thing in a single operation.
+See also the `scalar_column_updates` example, which achieves the same
+thing in a single operation.
 """
 
 from __future__ import annotations

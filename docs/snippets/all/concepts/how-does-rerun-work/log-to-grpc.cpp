@@ -1,6 +1,6 @@
 #include <rerun.hpp>
 
-int main() {
+int main(int argc, char* argv[]) {
     // Connect to the Rerun gRPC server using the default address and
     // port: localhost:9876
     const auto rec = rerun::RecordingStream("rerun_example_log_to_grpc");

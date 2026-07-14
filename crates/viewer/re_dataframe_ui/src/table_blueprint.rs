@@ -1,9 +1,21 @@
-use re_log_types::{EntityPath, EntryId};
-use re_sorbet::{BatchType, ColumnDescriptorRef};
-use re_ui::UiExt as _;
-use re_viewer_context::VariantName;
+use std::str::FromStr as _;
 
+use re_chunk_store::{ChunkTrackingMode, LatestAtQuery};
+use re_entity_db::EntityDb;
+use re_log_types::{EntityPath, EntryId};
+use re_sdk_types::blueprint::{
+    archetypes::TableBlueprint as TableBlueprintArchetype, components::ColumnName,
+};
+use re_sorbet::{BatchType, ColumnDescriptorRef};
+use re_types_core::Archetype as _;
+use re_ui::UiExt as _;
+use re_viewer_context::{VariantName, blueprint_timeline};
+
+use crate::DisplayRecordBatch;
+use crate::datafusion_table_widget::Columns;
+use crate::display_record_batch::DisplayColumn;
 use crate::filters::ColumnFilter;
+use crate::re_table_utils::TableConfig;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SortDirection {
@@ -90,6 +102,9 @@ pub struct EntryLinksSpec {
 }
 
 /// The "blueprint" for a table, a.k.a the specification of how it should look.
+///
+/// This is the single source of truth for table configuration. Fields can be populated
+/// from the registered `.fbs` `TableBlueprint` archetype or set programmatically.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct TableBlueprint {
     pub sort_by: Option<SortBy>,
@@ -103,6 +118,159 @@ pub struct TableBlueprint {
 
     /// Filters specified by the user in the UI.
     pub column_filters: Vec<ColumnFilter>,
+
+    /// The name of the column containing recording URIs for segment previews.
+    pub segment_preview_column: Option<String>,
+
+    /// The name of the boolean column used for flag annotations.
+    ///
+    /// The column must exist in the table and be of boolean type.
+    /// Populated from schema metadata ([`crate::experimental_field_metadata::IS_FLAG_COLUMN`])
+    /// or the registered `.fbs` `TableBlueprint` archetype.
+    pub flag_column: Option<String>,
+
+    /// The name of the column to use as the card title in grid view.
+    ///
+    /// If unset, the first visible string column is used.
+    /// Populated from schema metadata ([`crate::experimental_field_metadata::IS_GRID_VIEW_CARD_TITLE`])
+    /// or the registered `.fbs` `TableBlueprint` archetype.
+    pub grid_view_card_title: Option<String>,
+
+    /// The name of the column containing URLs to open when a card is clicked in grid view.
+    ///
+    /// If unset, the first column whose values parse as a Rerun URI pointing to the same
+    /// Rerun server is used (resolved ad-hoc in the grid view). If no such column exists,
+    /// clicking a card does not navigate anywhere.
+    /// Populated from the registered `.fbs` `TableBlueprint` archetype.
+    pub url_column: Option<String>,
+}
+
+impl TableBlueprint {
+    /// Populate fields from a registered `.fbs` `TableBlueprint` archetype stored in a blueprint
+    /// [`EntityDb`].
+    pub fn populate_from_registered_blueprint(&mut self, blueprint_db: &EntityDb) {
+        let blueprint_query = LatestAtQuery::latest(blueprint_timeline());
+        let engine = blueprint_db.storage_engine();
+        let results = engine.cache().latest_at(
+            ChunkTrackingMode::Report,
+            &blueprint_query,
+            &"/table".into(),
+            TableBlueprintArchetype::all_component_identifiers(),
+        );
+
+        self.segment_preview_column = results
+            .component_mono::<ColumnName>(
+                TableBlueprintArchetype::descriptor_segment_preview_column().component,
+            )
+            .map(|name| name.0.to_string());
+
+        self.flag_column = results
+            .component_mono::<ColumnName>(
+                TableBlueprintArchetype::descriptor_flag_column().component,
+            )
+            .map(|name| name.0.to_string());
+
+        self.grid_view_card_title = results
+            .component_mono::<ColumnName>(
+                TableBlueprintArchetype::descriptor_grid_view_card_title().component,
+            )
+            .map(|name| name.0.to_string());
+
+        self.url_column = results
+            .component_mono::<ColumnName>(
+                TableBlueprintArchetype::descriptor_url_column().component,
+            )
+            .map(|name| name.0.to_string());
+    }
+
+    /// Fill in unset fields with defaults inferred from the table's runtime state.
+    ///
+    /// Call after [`Self::populate_from_registered_blueprint`]. Fields already set by the user
+    /// or the registered blueprint are left untouched.
+    ///
+    /// Sources applied (in order, first match wins per field):
+    /// 1. Per-field Arrow schema metadata (see [`crate::experimental_field_metadata`]).
+    /// 2. Structural heuristics over the loaded columns/data.
+    pub fn apply_heuristics(
+        mut self,
+        schema: &arrow::datatypes::Schema,
+        columns: &Columns<'_>,
+        display_record_batches: &[DisplayRecordBatch],
+        table_config: &TableConfig,
+        current_server_origin: Option<&re_uri::Origin>,
+    ) -> Self {
+        if self.flag_column.is_none() {
+            self.flag_column =
+                find_field_with_flag(schema, crate::experimental_field_metadata::IS_FLAG_COLUMN)
+                    .map(str::to_owned);
+        }
+
+        if self.grid_view_card_title.is_none() {
+            self.grid_view_card_title = find_field_with_flag(
+                schema,
+                crate::experimental_field_metadata::IS_GRID_VIEW_CARD_TITLE,
+            )
+            .map(str::to_owned)
+            .or_else(|| {
+                table_config.visible_column_indexes().find_map(|col_idx| {
+                    let col = columns.columns.get(col_idx)?;
+                    matches!(
+                        &col.desc,
+                        ColumnDescriptorRef::Component(c)
+                            if c.store_datatype == arrow::datatypes::DataType::Utf8
+                    )
+                    .then(|| col.display_name())
+                })
+            });
+        }
+
+        if self.url_column.is_none() && self.segment_preview_column.is_none() {
+            let first_url = columns.columns.iter().enumerate().find_map(|(idx, col)| {
+                if !matches!(
+                    &col.desc,
+                    ColumnDescriptorRef::Component(c)
+                        if c.store_datatype == arrow::datatypes::DataType::Utf8
+                ) {
+                    return None;
+                }
+
+                let sample = display_record_batches.iter().find_map(|batch| {
+                    let DisplayColumn::Component(comp) = batch.columns().get(idx)? else {
+                        return None;
+                    };
+                    (0..batch.num_rows()).find_map(|row| comp.string_value_at(row))
+                })?;
+                let uri = re_uri::RedapUri::from_str(&sample).ok()?;
+
+                current_server_origin
+                    .is_none_or(|origin| uri.origin() == origin)
+                    .then(|| col.display_name())
+            });
+            self.url_column = first_url.clone();
+            self.segment_preview_column = first_url;
+        } else if self.url_column.is_none() && self.segment_preview_column.is_some() {
+            self.url_column = self.segment_preview_column.clone();
+        }
+
+        self
+    }
+}
+
+/// Return the name of the single field with `metadata[key] == "true"`, warning if multiple match.
+fn find_field_with_flag<'a>(schema: &'a arrow::datatypes::Schema, key: &str) -> Option<&'a str> {
+    let mut found = None;
+    for field in schema.fields() {
+        if field.metadata().get(key).map(String::as_str) == Some("true") {
+            if found.is_some() {
+                re_log::warn_once!(
+                    "Multiple fields have {key:?} metadata set; using the first one"
+                );
+                break;
+            }
+            found = Some(field.name().as_str());
+        }
+    }
+    found
 }
 
 /// The blueprint for a specific column.
@@ -155,6 +323,9 @@ impl ColumnBlueprint {
     }
 
     /// Set the alternate UI to use for this column
+    ///
+    /// `variant_ui` must be a valid [`VariantName`] (i.e. non-empty); passing an empty
+    /// string literal/const will panic.
     pub fn variant_ui(self, variant_ui: impl Into<VariantName>) -> Self {
         Self {
             variant_ui: Some(variant_ui.into()),

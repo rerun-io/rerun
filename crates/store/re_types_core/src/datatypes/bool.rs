@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -22,7 +23,9 @@ use crate::{ComponentDescriptor, ComponentType};
 use crate::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: A single boolean.
-#[derive(Clone, Debug, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(
+    Clone, Debug, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, ::re_byte_size::SizeBytes,
+)]
 #[repr(transparent)]
 pub struct Bool(pub bool);
 
@@ -106,17 +109,5 @@ impl From<Bool> for bool {
     #[inline]
     fn from(value: Bool) -> Self {
         value.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for Bool {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <bool>::is_pod()
     }
 }

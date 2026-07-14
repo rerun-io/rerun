@@ -1,6 +1,6 @@
 ---
 title: Visualize fixed-window plots
-order: 200
+order: 225
 ---
 
 As of Rerun 0.16, the [TimeSeriesView](../../reference/types/views/time_series_view.md) now supports direct
@@ -32,10 +32,10 @@ To create a trailing 5 second window plot, you can specify your `TimeSeriesView`
 rrb.TimeSeriesView(
     origin="plot_path",
     time_ranges=rrb.VisibleTimeRange(
-            timeline="time",
-            start=rrb.TimeRangeBoundary.cursor_relative(seconds=-5.0),
-            end=rrb.TimeRangeBoundary.cursor_relative(),
-        )
+        timeline="time",
+        start=rrb.TimeRangeBoundary.cursor_relative(seconds=-5.0),
+        end=rrb.TimeRangeBoundary.cursor_relative(),
+    ),
 )
 ```
 

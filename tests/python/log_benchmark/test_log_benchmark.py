@@ -1,38 +1,4 @@
-"""
-Python logging benchmarks.
-
-Running benchmarks with pytest-benchmark
-----------------------------------------
-From the `rerun/` directory:
-
-    # Run all benchmarks:
-    pixi run py-bench
-
-    # Run a specific benchmark:
-    pixi run py-bench -- -k transform3d_translation_mat3x3
-
-Running standalone (for profiling)
-----------------------------------
-From the `rerun/` directory, first enter the pixi shell:
-
-    pixi shell
-
-Then run the benchmark:
-
-    # Run directly:
-    uvpy -m tests.python.log_benchmark.test_log_benchmark transform3d
-
-    # With options:
-    uvpy -m tests.python.log_benchmark.test_log_benchmark transform3d --num-entities 10 --num-time-steps 10000 --static
-
-    # Connect to a running Rerun viewer (start `rerun` first):
-    uvpy -m tests.python.log_benchmark.test_log_benchmark transform3d --connect
-
-    # With py-spy flamegraph (on Linux, add --native for native stack traces):
-    sudo PYTHONPATH=rerun_py/rerun_sdk:rerun_py py-spy record -o flamegraph.svg -- .venv/bin/python -m tests.python.log_benchmark.test_log_benchmark transform3d
-
-    # Then open flamegraph.svg in a browser
-"""
+"""Python SDK logging throughput benchmarks. See README.md for usage."""
 
 from __future__ import annotations
 
@@ -43,6 +9,7 @@ from typing import Any
 import numpy as np
 import numpy.typing as npt
 import pytest
+
 import rerun as rr
 
 from . import Point3DInput, Transform3DInput
@@ -203,6 +170,31 @@ def log_transform3d_translation_mat3x3(data: Transform3DInput, static: bool) -> 
     print(f"Logged {total_log_calls} transforms in {elapsed:.2f}s ({transforms_per_second:.0f} transforms/second)")
 
 
+def test_bench_create_transform3d_translation_mat3x3(benchmark: Any) -> None:
+    data = Transform3DInput.prepare(42, 1000, 100)
+    benchmark(create_transform3d_translation_mat3x3, data, False)
+
+
+def create_transform3d_translation_mat3x3(data: Transform3DInput, static: bool) -> None:
+    """Just create Transform3D with translation and mat3x3 for each entity at each time step."""
+    start = time.perf_counter()
+
+    transforms = []
+    for time_index in range(data.num_time_steps):
+        for entity_index in range(data.num_entities):
+            transforms.append(
+                rr.Transform3D(
+                    translation=data.translations[time_index, entity_index],
+                    mat3x3=np.array(data.mat3x3s[time_index, entity_index], dtype=np.float32),
+                )
+            )
+
+    elapsed = time.perf_counter() - start
+    total_log_calls = data.num_entities * data.num_time_steps
+    transforms_per_second = total_log_calls / elapsed
+    print(f"Logged {total_log_calls} transforms in {elapsed:.2f}s ({transforms_per_second:.0f} transforms/second)")
+
+
 @pytest.mark.parametrize(
     ["num_entities", "num_time_steps", "static"],
     [
@@ -237,6 +229,9 @@ if __name__ == "__main__":
         action="store_true",
         help="Connect to a running Rerun viewer via gRPC instead of using memory recording",
     )
+    parser.add_argument(
+        "--create-only", action="store_true", help="Only create Transform3D instances without logging them"
+    )
     args = parser.parse_args()
 
     if args.benchmark == "transform3d":
@@ -252,4 +247,7 @@ if __name__ == "__main__":
             rr.memory_recording()
         data = Transform3DInput.prepare(42, args.num_entities, args.num_time_steps)
         print("Logging…")
-        log_transform3d_translation_mat3x3(data, static=args.static)
+        if args.create_only:
+            create_transform3d_translation_mat3x3(data, args.static)
+        else:
+            log_transform3d_translation_mat3x3(data, args.static)

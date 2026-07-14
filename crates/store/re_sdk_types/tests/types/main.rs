@@ -9,6 +9,8 @@ mod box2d;
 mod box3d;
 mod clear;
 mod depth_image;
+mod dynamic_archetype;
+mod image;
 mod line_strips2d;
 mod line_strips3d;
 mod mesh3d;
@@ -19,6 +21,7 @@ mod tensor;
 mod text_document;
 mod transform3d;
 mod view_coordinates;
+mod voxel_grid_map;
 
 // Tests of other things
 

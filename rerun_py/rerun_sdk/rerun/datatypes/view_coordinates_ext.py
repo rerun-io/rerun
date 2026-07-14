@@ -19,9 +19,9 @@ class ViewCoordinatesExt:
         if isinstance(data, ViewCoordinates):
             # ViewCoordinates
             data = [data.coordinates]
-        elif hasattr(data, "__len__") and len(data) > 0 and isinstance(data[0], ViewCoordinates):  # type: ignore[arg-type, index]
+        elif hasattr(data, "__len__") and len(data) > 0 and isinstance(data[0], ViewCoordinates):  # type: ignore[arg-type, index]  # ty: ignore[not-subscriptable]
             # [ViewCoordinates]
-            data = [d.coordinates for d in data]  # type: ignore[union-attr]
+            data = [d.coordinates for d in data]  # type: ignore[union-attr]  # ty: ignore[not-iterable]
         else:
             data = cast("ViewCoordinatesLike", data)
             try:
@@ -29,7 +29,7 @@ class ViewCoordinatesExt:
                 data = [ViewCoordinates(data).coordinates]
             except ValueError:
                 # [[x, y, z], ...]
-                data = [ViewCoordinates(d).coordinates for d in data]  # type: ignore[union-attr]
+                data = [ViewCoordinates(d).coordinates for d in data]  # type: ignore[union-attr]  # ty: ignore[not-iterable]
 
         data = np.asarray(data, dtype=np.uint8)
 

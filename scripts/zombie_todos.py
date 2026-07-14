@@ -1,4 +1,24 @@
 #!/usr/bin/env python
+"""
+Hunt down zombie TODOs: TODO comments referencing closed GitHub/Linear issues.
+
+Run with: `pixi run python scripts/zombie_todos.py`
+
+Requires GITHUB_TOKEN (env or --github-token) and LINEAR_TOKEN (env or --linear-token).
+
+What this script does:
+- Scans all text files in the repo for TODO comments referencing GitHub issues
+  (e.g. `TODO(#1234)`, `TODO(owner/repo#1234)`) or Linear issues (e.g. `TODO(RR-1234)`).
+- Checks the status of each referenced issue via the GitHub/Linear APIs.
+- Reports any TODOs that reference closed issues — these are "zombie TODOs".
+
+What to do with zombie TODOs (in rough order of likelihood):
+- The TODO is stale and should be removed (the work was done, the comment is outdated).
+- The TODO is a workaround for an issue that no longer exists and the workaround should be removed.
+- The TODO describes remaining work that needs a new ticket — update the reference.
+- The TODO is still valid and the issue needs to be re-opened.
+"""
+
 from __future__ import annotations
 
 import argparse

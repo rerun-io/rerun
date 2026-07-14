@@ -132,7 +132,6 @@ fn parse_time(time_part: &str) -> Result<jiff::civil::Time, jiff::Error> {
 mod tests {
     use super::*;
 
-    #[expect(clippy::too_many_arguments)]
     fn timestamp_from_parts(
         year: i16,
         month: i8,

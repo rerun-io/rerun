@@ -8,19 +8,21 @@ use std::sync::atomic::AtomicBool;
 use ahash::HashMap;
 use egui::os::OperatingSystem;
 use parking_lot::{Mutex, RwLock};
-use re_chunk::{Chunk, ChunkBuilder};
+use re_chunk::{Chunk, ChunkBuilder, TimelineName};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, InstancePath};
 use re_log_types::external::re_tuid::Tuid;
-use re_log_types::{EntityPath, EntityPathPart, SetStoreInfo, StoreId, StoreInfo, StoreKind};
+use re_log_types::{
+    ApplicationId, EntityPath, EntityPathPart, SetStoreInfo, StoreId, StoreInfo, StoreKind,
+};
 use re_sdk_types::archetypes::RecordingInfo;
 use re_sdk_types::{Component as _, ComponentDescriptor};
 use re_types_core::reflection::Reflection;
 use re_ui::Help;
 use re_viewer_context::{
-    AppOptions, ApplicationSelectionState, BlueprintContext, CommandReceiver, CommandSender,
-    ComponentUiRegistry, DataQueryResult, DisplayMode, FallbackProviderRegistry, GlobalContext,
-    Item, ItemCollection, NeedsRepaint, StoreHub, SystemCommand, SystemCommandSender as _,
+    AppContext, AppOptions, ApplicationSelectionState, BlueprintContext, CommandReceiver,
+    CommandSender, ComponentUiRegistry, DataQueryResult, FallbackProviderRegistry, ItemCollection,
+    NeedsRepaint, Route, StoreHub, StoreViewContext, SystemCommand, SystemCommandSender as _,
     TimeControl, TimeControlCommand, ViewClass, ViewClassRegistry, ViewId, ViewStates,
     ViewerContext, blueprint_timeline, command_channel,
 };
@@ -48,13 +50,24 @@ pub mod external {
 pub struct TestContext {
     pub app_options: AppOptions,
 
-    /// Store hub prepopulated with a single active recording & a blueprint recording.
+    /// The recording store id that this test context was created with.
+    pub recording_store_id: StoreId,
+
+    /// The application id that this test context was created with.
+    pub application_id: ApplicationId,
+
+    /// Store hub prepopulated with a single recording & a blueprint recording.
     pub store_hub: Mutex<StoreHub>,
     pub view_class_registry: ViewClassRegistry,
 
+    /// App-level caches for data that is not tied to any particular store.
+    ///
+    /// See [`AppContext::app_caches`].
+    pub app_caches: re_viewer_context::AppCaches,
+
     // Mutex is needed, so we can update these from the `run` method
     pub selection_state: Mutex<ApplicationSelectionState>,
-    pub focused_item: Mutex<Option<re_viewer_context::Item>>,
+    pub focused_item: Mutex<Option<re_viewer_context::FocusTarget>>,
 
     // RwLock so we can have `handle_system_commands` take an immutable reference to self.
     pub time_ctrl: RwLock<TimeControl>,
@@ -73,7 +86,7 @@ pub struct TestContext {
     command_sender: CommandSender,
     command_receiver: CommandReceiver,
 
-    egui_render_state: Mutex<Option<egui_wgpu::RenderState>>,
+    pub egui_render_state: Mutex<Option<egui_wgpu::RenderState>>,
     called_setup_kittest_for_rendering: AtomicBool,
 }
 
@@ -102,6 +115,71 @@ impl BlueprintContext for TestBlueprintCtx<'_> {
     }
 }
 
+// TODO(grtlr): Could we consolidate this with `TestBlueprintCtx`?
+/// Extension trait for test-specific blueprint operations.
+///
+/// This trait provides `save_visualizers` for any type that implements `BlueprintContext`,
+/// allowing tests to save visualizers with deterministic IDs via `ViewerContext`.
+pub trait VisualizerBlueprintContext: BlueprintContext {
+    /// Saves visualizers to blueprint with deterministic IDs.
+    ///
+    /// This assigns deterministic visualizer IDs based on the entity path
+    /// and index of the visualizer, making the output reproducible for tests.
+    fn save_visualizers(
+        &self,
+        entity_path: &EntityPath,
+        view_id: ViewId,
+        visualizers: impl IntoIterator<Item = impl Into<re_sdk_types::Visualizer>>,
+    ) {
+        use re_sdk_types::AsComponents;
+        use re_sdk_types::blueprint::archetypes as bp_archetypes;
+        use re_sdk_types::blueprint::components::VisualizerInstructionId;
+
+        let base_override_path =
+            bp_archetypes::ViewContents::blueprint_base_visualizer_path_for_entity(
+                view_id.uuid(),
+                entity_path,
+            );
+
+        let mut ids = Vec::new();
+        for (i, visualizer) in visualizers.into_iter().enumerate() {
+            let mut visualizer = visualizer.into();
+
+            // Generate a deterministic ID based on entity path hash and visualizer index
+            visualizer.id = VisualizerInstructionId::new_deterministic(entity_path, i);
+
+            ids.push(visualizer.id);
+            let visualizer_path = base_override_path
+                .clone()
+                .join(&EntityPath::from_single_string(visualizer.id.to_string()));
+
+            let mut instruction =
+                bp_archetypes::VisualizerInstruction::new(visualizer.visualizer_type.clone());
+            if !visualizer.mappings.is_empty() {
+                instruction = instruction.with_component_map(visualizer.mappings.clone());
+            }
+
+            self.save_blueprint_archetypes(
+                visualizer_path,
+                std::iter::chain(
+                    std::iter::once(&instruction as &dyn AsComponents),
+                    visualizer
+                        .overrides
+                        .iter()
+                        .map(|batch| batch as &dyn AsComponents),
+                ),
+            );
+        }
+
+        self.save_blueprint_archetype(
+            base_override_path,
+            &bp_archetypes::ActiveVisualizers::new(ids),
+        );
+    }
+}
+
+impl<T: BlueprintContext + ?Sized> VisualizerBlueprintContext for T {}
+
 impl Default for TestContext {
     fn default() -> Self {
         Self::new()
@@ -114,11 +192,22 @@ impl TestContext {
     }
 
     pub fn new_with_store_info(store_info: StoreInfo) -> Self {
+        Self::new_with_store_info_and_config(
+            store_info,
+            re_chunk_store::ChunkStoreConfig::from_env().unwrap_or_default(),
+        )
+    }
+
+    pub fn new_with_store_info_and_config(
+        store_info: StoreInfo,
+        store_config: re_chunk_store::ChunkStoreConfig,
+    ) -> Self {
         re_log::setup_logging();
 
         let application_id = store_info.application_id().clone();
         let recording_store_id = store_info.store_id.clone();
-        let mut recording_store = EntityDb::new(recording_store_id.clone());
+        let mut recording_store =
+            EntityDb::with_store_config(recording_store_id.clone(), true, store_config);
 
         recording_store.set_store_info(SetStoreInfo {
             row_id: Tuid::new(),
@@ -172,13 +261,12 @@ impl TestContext {
                 .unwrap();
         }
 
-        let blueprint_id = StoreId::random(StoreKind::Blueprint, application_id);
+        let blueprint_id = StoreId::random(StoreKind::Blueprint, application_id.clone());
         let blueprint_store = EntityDb::new(blueprint_id.clone());
 
         let mut store_hub = StoreHub::test_hub();
         store_hub.insert_entity_db(recording_store);
         store_hub.insert_entity_db(blueprint_store);
-        store_hub.set_active_recording_id(recording_store_id);
         store_hub
             .set_cloned_blueprint_active_for_app(&blueprint_id)
             .expect("Failed to set blueprint as active");
@@ -191,13 +279,9 @@ impl TestContext {
             let ctx = TestBlueprintCtx {
                 command_sender: &command_sender,
                 current_blueprint: store_hub
-                    .active_blueprint()
+                    .active_blueprint_for_app(&application_id)
                     .expect("We should have an active blueprint now"),
-                default_blueprint: store_hub.default_blueprint_for_app(
-                    store_hub
-                        .active_app()
-                        .expect("We should have an active app now"),
-                ),
+                default_blueprint: store_hub.default_blueprint_for_app(&application_id),
                 blueprint_query: &blueprint_query,
             };
 
@@ -213,7 +297,9 @@ impl TestContext {
             re_sdk_types::reflection::generate_reflection().expect("Failed to generate reflection");
 
         Self {
-            app_options: Default::default(),
+            app_options: AppOptions::test(),
+            recording_store_id,
+            application_id,
 
             view_class_registry: Default::default(),
             selection_state: Default::default(),
@@ -236,6 +322,7 @@ impl TestContext {
             called_setup_kittest_for_rendering: AtomicBool::new(false),
 
             store_hub: Mutex::new(store_hub),
+            app_caches: Default::default(),
         }
     }
 
@@ -269,9 +356,11 @@ fn create_egui_renderstate() -> egui_wgpu::RenderState {
         .into(),
 
         // None of these matter for tests as we're not going to draw to a surfaces.
-        present_mode: wgpu::PresentMode::Immediate,
-        desired_maximum_frame_latency: None,
-        on_surface_error: Arc::new(|_| {
+        surface: egui_wgpu::SurfaceConfig {
+            present_mode: wgpu::PresentMode::Immediate,
+            desired_maximum_frame_latency: None,
+        },
+        on_surface_status: Arc::new(|_| {
             unreachable!("tests aren't expected to draw to surfaces");
         }),
     };
@@ -316,8 +405,8 @@ static SHARED_WGPU_RENDERER_SETUP: std::sync::LazyLock<SharedWgpuResources> =
     std::sync::LazyLock::new(init_shared_renderer_setup);
 
 fn init_shared_renderer_setup() -> SharedWgpuResources {
-    let instance = wgpu::Instance::new(&re_renderer::device_caps::testing_instance_descriptor());
-    let adapter = re_renderer::device_caps::select_testing_adapter(&instance);
+    let instance = wgpu::Instance::new(re_renderer::device_caps::testing_instance_descriptor());
+    let adapter = pollster::block_on(re_renderer::device_caps::select_testing_adapter(&instance));
 
     let is_ci = std::env::var("CI").is_ok();
     if is_ci {
@@ -353,13 +442,9 @@ impl TestContext {
             TestBlueprintCtx {
                 command_sender: &self.command_sender,
                 current_blueprint: store_hub
-                    .active_blueprint()
+                    .active_blueprint_for_app(&self.application_id)
                     .expect("The test context should always have an active blueprint"),
-                default_blueprint: store_hub.default_blueprint_for_app(
-                    store_hub
-                        .active_app()
-                        .expect("The test context should always have an active app"),
-                ),
+                default_blueprint: store_hub.default_blueprint_for_app(&self.application_id),
                 blueprint_query: &self.blueprint_query,
             },
             &store_hub,
@@ -382,6 +467,15 @@ impl TestContext {
                     time_commands: commands,
                 });
         }
+    }
+
+    pub fn set_active_timeline(&self, timeline_name: impl Into<TimelineName>) {
+        let store_id = self.active_store_id();
+        self.send_time_commands(
+            store_id,
+            [TimeControlCommand::SetActiveTimeline(timeline_name.into())],
+        );
+        self.handle_system_commands(&egui::Context::default());
     }
 
     /// Set up for rendering UI, with not 3D/2D in it.
@@ -430,19 +524,14 @@ impl TestContext {
     pub fn active_blueprint(&mut self) -> &mut EntityDb {
         let store_hub = self.store_hub.get_mut();
         let blueprint_id = store_hub
-            .active_blueprint_id()
+            .active_blueprint_id_for_app(&self.application_id)
             .expect("expected an active blueprint")
             .clone();
-        store_hub.entity_db_mut(&blueprint_id)
+        store_hub.entity_db_mut(&blueprint_id).unwrap()
     }
 
     pub fn active_store_id(&self) -> StoreId {
-        self.store_hub
-            .lock()
-            .active_recording()
-            .expect("expected an active recording")
-            .store_id()
-            .clone()
+        self.recording_store_id.clone()
     }
 
     pub fn edit_selection(&self, edit_fn: impl FnOnce(&mut ApplicationSelectionState)) {
@@ -450,7 +539,7 @@ impl TestContext {
         edit_fn(&mut selection_state);
 
         // the selection state is double-buffered, so let's ensure it's updated
-        selection_state.on_frame_start(|_| true, None);
+        selection_state.on_frame_start(|item| Some(item.clone()), None);
     }
 
     /// Log an entity to the recording store.
@@ -462,34 +551,59 @@ impl TestContext {
         build_chunk: impl FnOnce(ChunkBuilder) -> ChunkBuilder,
     ) {
         let builder = build_chunk(Chunk::builder(entity_path));
+        let chunk = Arc::new(builder.build().expect("chunk should be successfully built"));
         let store_hub = self.store_hub.get_mut();
-        let active_recording = store_hub.active_recording_mut().unwrap();
-        active_recording
-            .add_chunk(&Arc::new(
-                builder.build().expect("chunk should be successfully built"),
-            ))
+        store_hub
+            .add_chunk_for_tests(&self.recording_store_id, &chunk)
             .expect("chunk should be successfully added");
     }
 
     pub fn add_chunks(&mut self, chunks: impl Iterator<Item = Chunk>) {
         let store_hub = self.store_hub.get_mut();
-        let active_recording = store_hub.active_recording_mut().unwrap();
         for chunk in chunks {
-            active_recording.add_chunk(&Arc::new(chunk)).unwrap();
+            store_hub
+                .add_chunk_for_tests(&self.recording_store_id, &Arc::new(chunk))
+                .unwrap();
         }
     }
 
-    pub fn add_rrd_manifest(&mut self, rrd_manifest: re_log_encoding::RrdManifest) {
+    pub fn add_rrd_manifest(&mut self, rrd_manifest: Arc<re_log_encoding::RrdManifest>) {
         let store_hub = self.store_hub.get_mut();
-        let active_recording = store_hub.active_recording_mut().unwrap();
+        let active_recording = store_hub.entity_db_mut(&self.recording_store_id).unwrap();
         active_recording.add_rrd_manifest_message(rrd_manifest);
+        active_recording.mark_rrd_manifest_complete();
+
+        // Pretend like we are connected to a real redap server:
+        active_recording.data_source = Some(re_log_channel::LogSource::RedapGrpcStream {
+            uri: "rerun+http://localhost:51234/dataset/187A3200CAE4DD795748a7ad187e21a3?segment_id=6977dcfd524a45b3b786c9a5a0bde4e1".parse().unwrap(),
+            open_behavior: re_log_channel::RecordingOpenBehavior::OpenAndSelect,
+            table_blueprint: None,
+        });
     }
 
     /// Register a view class.
     pub fn register_view_class<T: ViewClass + Default + 'static>(&mut self) {
         self.view_class_registry
-            .add_class::<T>(&self.app_options, &mut self.component_fallback_registry)
+            .add_class::<T>(
+                &self.reflection,
+                &self.app_options,
+                &mut self.component_fallback_registry,
+            )
             .expect("registering a class should succeed");
+    }
+
+    /// Run the provided closure with a [`StoreViewContext`] produced by the [`Self`].
+    ///
+    /// IMPORTANT: call [`Self::handle_system_commands`] after calling this function if your test
+    /// relies on system commands.
+    pub fn run_recording(
+        &self,
+        egui_ctx: &egui::Context,
+        func: impl FnOnce(&StoreViewContext<'_>),
+    ) {
+        self.run(egui_ctx, |viewer_ctx| {
+            func(&viewer_ctx.active_recording_store_view_context());
+        });
     }
 
     /// Run the provided closure with a [`ViewerContext`] produced by the [`Self`].
@@ -501,17 +615,41 @@ impl TestContext {
         re_ui::apply_style_and_install_loaders(egui_ctx);
 
         let mut store_hub = self.store_hub.lock();
-        store_hub.begin_frame_caches();
-        let (storage_context, store_context) = store_hub.read_context();
-        let store_context = store_context
-            .expect("TestContext should always have enough information to provide a store context");
+        store_hub.begin_frame_caches(Some(&self.recording_store_id));
+        self.app_caches.begin_frame();
 
-        let indicated_entities_per_visualizer = self
-            .view_class_registry
-            .indicated_entities_per_visualizer(store_context.recording.store_id());
-        let visualizable_entities_per_visualizer = self
-            .view_class_registry
-            .visualizable_entities_for_visualizer_systems(store_context.recording.store_id());
+        let db = store_hub.entity_db_mut(&self.recording_store_id).unwrap();
+        if db.can_fetch_chunks_from_redap() {
+            let (rrd_manifest, storage_engine) = db.rrd_manifest_index_mut_and_storage_engine();
+            let options = re_entity_db::ChunkPrefetchOptions::default();
+            // Budget of 0 bytes so that we don't try to load anything.
+            let mut budget =
+                re_entity_db::RemainingByteBudget::new(0, options.max_bytes_on_wire_at_once);
+            let _err = rrd_manifest.prefetch_chunks(
+                storage_engine.store(),
+                &options,
+                self.time_ctrl.read().time_cursor(),
+                &mut budget,
+                &|_| panic!("We have 0 bytes allowed memory"),
+            );
+        }
+
+        // Ensure the per-store cache exists with up-to-date visualizer subscribers.
+        store_hub.entity_db_and_cache(&self.recording_store_id, &self.view_class_registry);
+
+        let route = Route::LocalRecording {
+            recording_id: self.recording_store_id.clone(),
+        };
+        let active_time_ctrl = self.time_ctrl.read();
+        let (storage_context, store_context) = store_hub.read_context(&route, &active_time_ctrl);
+        let store_context = store_context
+            .expect("a `Route::LocalRecording` must always have an active store context");
+
+        let visualizable_entities_per_visualizer = store_context
+            .caches
+            .visualizable_entities_for_visualizer_systems();
+        let indicated_entities_per_visualizer =
+            store_context.caches.indicated_entities_per_visualizer();
 
         let drag_and_drop_manager =
             re_viewer_context::DragAndDropManager::new(ItemCollection::default());
@@ -530,10 +668,8 @@ impl TestContext {
         let mut focused_item = self.focused_item.lock();
 
         let ctx = ViewerContext {
-            global_context: GlobalContext {
+            app_ctx: AppContext {
                 is_test: true,
-
-                memory_limit: re_memory::MemoryLimit::UNLIMITED,
 
                 app_options: &self.app_options,
                 reflection: &self.reflection,
@@ -543,27 +679,34 @@ impl TestContext {
                 render_ctx,
 
                 connection_registry: &self.connection_registry,
-                display_mode: &DisplayMode::LocalRecordings(
-                    store_context.recording_store_id().clone(),
-                ),
 
+                storage_context: &storage_context,
+                active_store_context: Some(&store_context),
+                app_caches: &self.app_caches,
+
+                component_ui_registry: &self.component_ui_registry,
+                view_class_registry: &self.view_class_registry,
+                component_fallback_registry: &self.component_fallback_registry,
+
+                route: &Route::LocalRecording {
+                    recording_id: self.recording_store_id.clone(),
+                },
+
+                selection_state: &selection_state,
+                focused_item: &focused_item,
+                drag_and_drop_manager: &drag_and_drop_manager,
+                connected_receivers: &Default::default(),
                 auth_context: None,
+                login_enabled: false,
+                login_signed_in_url: None,
             },
-            component_ui_registry: &self.component_ui_registry,
-            component_fallback_registry: &self.component_fallback_registry,
-            view_class_registry: &self.view_class_registry,
-            connected_receivers: &Default::default(),
             store_context: &store_context,
-            storage_context: &storage_context,
             visualizable_entities_per_visualizer: &visualizable_entities_per_visualizer,
             indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
             query_results: &self.query_results,
             time_ctrl: &self.time_ctrl.read(),
             blueprint_time_ctrl: &Default::default(),
-            selection_state: &selection_state,
             blueprint_query: &self.blueprint_query,
-            focused_item: &focused_item,
-            drag_and_drop_manager: &drag_and_drop_manager,
         };
 
         func(&ctx);
@@ -579,7 +722,7 @@ impl TestContext {
 
         render_ctx.before_submit();
 
-        selection_state.on_frame_start(|_| true, None);
+        selection_state.on_frame_start(|item| Some(item.clone()), None);
         *focused_item = None;
     }
 
@@ -595,15 +738,15 @@ impl TestContext {
     /// Notes:
     /// - Uses [`egui::__run_test_ctx`].
     /// - There is a possibility that the closure will be called more than once, see
-    ///   [`egui::Context::run`]. Use [`Self::run_once_in_egui_central_panel`] if you want to ensure
+    ///   [`egui::Context::run_ui`]. Use [`Self::run_once_in_egui_central_panel`] if you want to ensure
     ///   that the closure is called exactly once.
     //TODO(ab): should this be removed entirely in favor of `run_once_in_egui_central_panel`?
     pub fn run_in_egui_central_panel(
         &self,
         mut func: impl FnMut(&ViewerContext<'_>, &mut egui::Ui),
     ) {
-        egui::__run_test_ctx(|ctx| {
-            egui::CentralPanel::default().show(ctx, |ui| {
+        egui::__run_test_ui(|ui| {
+            egui::CentralPanel::default().show(ui, |ui| {
                 let egui_ctx = ui.ctx().clone();
 
                 self.run(&egui_ctx, |ctx| {
@@ -630,7 +773,7 @@ impl TestContext {
     /// relies on system commands.
     ///
     /// Notes:
-    /// - Uses [`egui::__run_test_ctx`].
+    /// - Uses [`egui::__run_test_ui`].
     pub fn run_once_in_egui_central_panel<R>(
         &self,
         func: impl FnOnce(&ViewerContext<'_>, &mut egui::Ui) -> R,
@@ -638,8 +781,8 @@ impl TestContext {
         let mut func = Some(func);
         let mut result = None;
 
-        egui::__run_test_ctx(|ctx| {
-            egui::CentralPanel::default().show(ctx, |ui| {
+        egui::__run_test_ui(|ui| {
+            egui::CentralPanel::default().show(ui, |ui| {
                 let egui_ctx = ui.ctx().clone();
 
                 self.run(&egui_ctx, |ctx| {
@@ -657,13 +800,9 @@ impl TestContext {
     ///
     /// Does *not* switch the active recording.
     fn go_to_dataset_data(&self, store_id: StoreId, fragment: re_uri::Fragment) {
-        let re_uri::Fragment {
-            selection,
-            when,
-            time_selection,
-        } = fragment;
+        let time_commands = TimeControlCommand::from_url_fragment(&fragment);
 
-        if let Some(selection) = selection {
+        if let Some(selection) = fragment.selection {
             let re_log_types::DataPath {
                 entity_path,
                 instance,
@@ -671,28 +810,18 @@ impl TestContext {
             } = selection;
 
             let item = if let Some(component) = component {
-                Item::from(re_log_types::ComponentPath::new(entity_path, component))
+                re_viewer_context::Item::from(re_log_types::ComponentPath::new(
+                    entity_path,
+                    component,
+                ))
             } else if let Some(instance) = instance {
-                Item::from(InstancePath::instance(entity_path, instance))
+                re_viewer_context::Item::from(InstancePath::instance(entity_path, instance))
             } else {
-                Item::from(entity_path)
+                re_viewer_context::Item::from(entity_path)
             };
 
             self.command_sender
-                .send_system(SystemCommand::set_selection(item.clone()));
-        }
-
-        let mut time_commands = Vec::new();
-        if let Some(time_selection) = time_selection {
-            time_commands.push(TimeControlCommand::SetActiveTimeline(
-                *time_selection.timeline.name(),
-            ));
-            time_commands.push(TimeControlCommand::SetTimeSelection(time_selection.range));
-        }
-
-        if let Some((timeline, timecell)) = when {
-            time_commands.push(TimeControlCommand::SetActiveTimeline(timeline));
-            time_commands.push(TimeControlCommand::SetTime(timecell.value.into()));
+                .send_system(SystemCommand::set_selection(item));
         }
 
         if !time_commands.is_empty() {
@@ -717,15 +846,25 @@ impl TestContext {
                 SystemCommand::CopyViewerUrl(_) => {
                     // Ignore this trying to copy to the clipboard.
                 }
+                SystemCommand::LoadDataSource(data_source) => {
+                    if let Some(re_uri::RedapUri::DatasetData(uri)) = data_source
+                        .as_uri()
+                        .and_then(|uri| uri.parse::<re_uri::RedapUri>().ok())
+                    {
+                        self.go_to_dataset_data(uri.store_id(), uri.fragment);
+                    } else {
+                        handled = false;
+                    }
+                }
                 SystemCommand::AppendToStore(store_id, chunks) => {
                     let mut store_hub = self
                         .store_hub
                         .try_lock()
                         .expect("Failed to lock store hub mutex");
-                    let db = store_hub.entity_db_mut(&store_id);
 
                     for chunk in chunks {
-                        db.add_chunk(&Arc::new(chunk))
+                        store_hub
+                            .add_chunk_for_tests(&store_id, &Arc::new(chunk))
                             .expect("Updating the chunk store failed");
                     }
                 }
@@ -735,10 +874,14 @@ impl TestContext {
                         .store_hub
                         .try_lock()
                         .expect("Failed to lock store hub mutex");
-                    assert_eq!(Some(&store_id), store_hub.active_blueprint_id());
+                    assert_eq!(
+                        Some(&store_id),
+                        store_hub.active_blueprint_id_for_app(&self.application_id)
+                    );
 
                     store_hub
                         .entity_db_mut(&store_id)
+                        .unwrap()
                         .drop_entity_path_recursive(&entity_path);
                 }
 
@@ -756,11 +899,10 @@ impl TestContext {
                 } => {
                     self.with_blueprint_ctx(|blueprint_ctx, hub| {
                         let mut time_ctrl = self.time_ctrl.write();
-                        let timeline_histograms = hub
+                        let entity_db = hub
                             .store_bundle()
                             .get(&store_id)
-                            .expect("Invalid store id in `SystemCommand::TimeControlCommands`")
-                            .timeline_histograms();
+                            .expect("Invalid store id in `SystemCommand::TimeControlCommands`");
 
                         let blueprint_ctx =
                             Some(&blueprint_ctx).filter(|_| store_id.is_recording());
@@ -768,7 +910,7 @@ impl TestContext {
                         // We can ignore the response in the test context.
                         let res = time_ctrl.handle_time_commands(
                             blueprint_ctx,
-                            timeline_histograms,
+                            entity_db,
                             &time_commands,
                         );
 
@@ -780,20 +922,23 @@ impl TestContext {
 
                 // not implemented
                 SystemCommand::ActivateApp(_)
-                | SystemCommand::ActivateRecordingOrTable(_)
                 | SystemCommand::CloseApp(_)
                 | SystemCommand::CloseRecordingOrTable(_)
-                | SystemCommand::LoadDataSource(_)
                 | SystemCommand::AddReceiver { .. }
                 | SystemCommand::ResetViewer
-                | SystemCommand::ChangeDisplayMode(_)
+                | SystemCommand::SetRoute(_)
                 | SystemCommand::OpenSettings
-                | SystemCommand::OpenChunkStoreBrowser
-                | SystemCommand::ResetDisplayMode
+                | SystemCommand::OpenChunkStoreBrowser { .. }
+                | SystemCommand::ResetRoute
                 | SystemCommand::ClearActiveBlueprint
                 | SystemCommand::ClearActiveBlueprintAndEnableHeuristics
                 | SystemCommand::AddRedapServer { .. }
+                | SystemCommand::RefreshRedapServer(_)
+                | SystemCommand::RefreshRedapEntry { .. }
+                | SystemCommand::RemoveRedapServer(_)
                 | SystemCommand::EditRedapServerModal { .. }
+                | SystemCommand::RedapServer(_)
+                | SystemCommand::Table(_)
                 | SystemCommand::UndoBlueprint { .. }
                 | SystemCommand::RedoBlueprint { .. }
                 | SystemCommand::CloseAllEntries
@@ -801,7 +946,8 @@ impl TestContext {
                 | SystemCommand::OnAuthChanged(_)
                 | SystemCommand::Logout
                 | SystemCommand::SaveScreenshot { .. }
-                | SystemCommand::ShowNotification { .. } => handled = false,
+                | SystemCommand::ShowNotification { .. }
+                | SystemCommand::ReadbackAndSaveTexture { .. } => handled = false,
 
                 #[cfg(debug_assertions)]
                 SystemCommand::EnableInspectBlueprintTimeline(_) => handled = false,
@@ -811,7 +957,7 @@ impl TestContext {
             }
 
             if !handled {
-                eprintln!("Ignored system command: {command_name:?}",);
+                eprintln!("Ignored system command: {command_name:?}");
             }
         }
     }
@@ -821,7 +967,7 @@ impl TestContext {
         let mut snapshot_results = egui_kittest::SnapshotResults::new();
         for os in [OperatingSystem::Mac, OperatingSystem::Windows] {
             let mut harness = egui_kittest::Harness::builder().build_ui(|ui| {
-                ui.ctx().set_os(os);
+                ui.set_os(os);
                 re_ui::apply_style_and_install_loaders(ui.ctx());
                 help(os).ui(ui);
             });
@@ -848,7 +994,7 @@ impl TestContext {
         let mut file = std::fs::File::create(path)?;
 
         let store_hub = self.store_hub.lock();
-        let Some(recording_entity_db) = store_hub.active_recording() else {
+        let Some(recording_entity_db) = store_hub.entity_db(&self.recording_store_id) else {
             anyhow::bail!("no active recording");
         };
         let messages = recording_entity_db.to_messages(None);
@@ -869,7 +1015,8 @@ impl TestContext {
         let mut file = std::fs::File::create(path)?;
 
         let store_hub = self.store_hub.lock();
-        let Some(blueprint_entity_db) = store_hub.active_blueprint() else {
+        let Some(blueprint_entity_db) = store_hub.active_blueprint_for_app(&self.application_id)
+        else {
             anyhow::bail!("no active blueprint");
         };
         let messages = blueprint_entity_db.to_messages(None);
@@ -907,7 +1054,7 @@ mod test {
 
         test_context.run_in_egui_central_panel(|ctx, _| {
             assert_eq!(
-                ctx.selection_state.selected_items().single_item(),
+                ctx.selection_state().selected_items().single_item(),
                 Some(&item)
             );
         });

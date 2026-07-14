@@ -21,4 +21,5 @@ rr.log(
     static=True,
 )
 
-# The tags are indirectly checked by the Rust version (have a look over there for more info).
+# The tags are indirectly checked by the Rust version (have a look over there
+# for more info).

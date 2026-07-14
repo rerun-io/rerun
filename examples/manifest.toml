@@ -33,7 +33,10 @@ Examples related to robotics, autonomous systems, and interfacing with sensor ha
 examples = [
   # display order, most interesting first
   "droid_dataset",
+  "droid_semantic_search",
   "animated_urdf",
+  "robot_data_preprocessing",
+  "rerun_export",
   "ros_node",
   "chess_robby_fischer",
   "nuscenes_dataset",
@@ -48,6 +51,8 @@ examples = [
   "imu_signals",
   "mcap",
   "eye_control",
+  "ros_tf",
+  "any_scalar",
 ]
 
 [categories.generative-vision]
@@ -135,6 +140,7 @@ examples = [
   "arflow",
   "air_traffic_data",
   "mcap",
+  "ros_tf",
 ]
 
 [categories.feature-showcase]
@@ -164,6 +170,8 @@ examples = [
   "air_traffic_data",
   "imu_signals",
   "eye_control",
+  "webpage",
+  "any_scalar",
 ]
 
 # These are examples that we explicitly exclude from our website. You can check that all examples are either included
@@ -175,25 +183,29 @@ examples = [
   "blueprint", # Not very pretty
   "custom_callback",
   "custom_collection_adapter",
-  "custom_data_loader",
+  "custom_importer",
   "custom_store_subscriber",
   "custom_view",
+  "custom_visualizer",
   "dataframe_query",
+  "dataloader", # Isolated uv project (conflicts with workspace deps via LeRobot), not built by rerun.io
   "drone_lidar",
   "extend_viewer_ui",
-  "external_data_loader",
+  "external_importer",
   "graph_lattice",
+  "table_grid_with_flags",
   "incremental_logging",
   "lenses",
-  "mcap_protobuf",
   "minimal_serve",
   "server_tables",
   "shared_recording",
   "spawn_viewer",
   "stdio",
+  "table_blueprints",
   "table_zoo",
   "template",
   "viewer_callbacks",
+  "using_index_values",
 
   # TODO(jleibs): We want to bring them back once opentelemtry is fixed
   "human_pose_tracking",

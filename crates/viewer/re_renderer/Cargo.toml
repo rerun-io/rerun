@@ -50,15 +50,13 @@ import-obj = ["dep:tobj"]
 ## Support importing binary & ascii .stl files
 import-stl = ["dep:stl_io"]
 
-## Enable (de)serialization using serde.
-serde = ["dep:serde"]
-
 [dependencies]
 re_byte_size.workspace = true
 re_error.workspace = true
 re_log.workspace = true
+re_mutex.workspace = true
+re_quota_channel.workspace = true
 re_tracing.workspace = true
-re_tuid.workspace = true
 re_video = { workspace = true, default-features = true }
 
 ahash.workspace = true
@@ -81,18 +79,18 @@ parking_lot.workspace = true
 # wgpu uses the `profiling` crate for its profiling scopes.
 # This will hook them up to the puffin profiler as backend:
 profiling = { workspace = true, features = ["profile-with-puffin"] }
+regex-lite.workspace = true
+serde = { workspace = true, features = ["derive"] }
 slotmap.workspace = true
 smallvec.workspace = true
 static_assertions.workspace = true
 thiserror.workspace = true
 type-map.workspace = true
-web-time.workspace = true
 wgpu.workspace = true
 
 # optional
 gltf = { workspace = true, optional = true }
 stl_io = { workspace = true, optional = true }
-serde = { workspace = true, features = ["derive"], optional = true }
 tobj = { workspace = true, optional = true }
 
 # native
@@ -105,15 +103,27 @@ getrandom = { workspace = true, features = [
   "wasm_js",
 ] } # getrandom needs the `js` feature to be enabled. It is dragged in indirectly.
 js-sys.workspace = true
-wasm-bindgen-futures.workspace = true
 web-sys.workspace = true
 wasm-bindgen.workspace = true
 
 
 [dev-dependencies]
 re_log = { workspace = true, features = ["setup"] }
+
+criterion.workspace = true
 pollster.workspace = true
 unindent.workspace = true
+
+[lib]
+bench = false
+
+[[bench]]
+name = "bench_bounding_box"
+harness = false
+
+[[bench]]
+name = "bench_voxel_grid_draw_data"
+harness = false
 
 # For build.rs:
 [build-dependencies]

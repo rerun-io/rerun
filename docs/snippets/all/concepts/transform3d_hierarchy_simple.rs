@@ -1,8 +1,10 @@
 //! Logs a simple transform hierarchy.
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let rec =
-        rerun::RecordingStreamBuilder::new("rerun_example_transform3d_hierarchy_simple").spawn()?;
+    let rec = rerun::RecordingStreamBuilder::new(
+        "rerun_example_transform3d_hierarchy_simple",
+    )
+    .spawn()?;
 
     // Log entities at their hierarchy positions.
     rec.log(

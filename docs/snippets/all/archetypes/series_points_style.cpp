@@ -6,7 +6,7 @@
 
 constexpr float TAU = 6.28318530717958647692528676655900577f;
 
-int main() {
+int main(int argc, char* argv[]) {
     const auto rec = rerun::RecordingStream("rerun_example_series_point_style");
     rec.spawn().exit_on_failure();
 
@@ -18,7 +18,7 @@ int main() {
         rerun::SeriesPoints()
             .with_colors(rerun::Rgba32{255, 0, 0})
             .with_names("sin(0.01t)")
-            .with_markers(rerun::components::MarkerShape::Circle)
+            .with_markers(rerun::MarkerShape::Circle)
             .with_marker_sizes(4.0f)
     );
     rec.log_static(
@@ -26,7 +26,7 @@ int main() {
         rerun::SeriesPoints()
             .with_colors(rerun::Rgba32{0, 255, 0})
             .with_names("cos(0.01t)")
-            .with_markers(rerun::components::MarkerShape::Cross)
+            .with_markers(rerun::MarkerShape::Cross)
             .with_marker_sizes(2.0f)
     );
 

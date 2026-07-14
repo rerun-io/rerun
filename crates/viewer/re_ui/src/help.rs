@@ -157,7 +157,7 @@ impl Help {
                         );
 
                         if response.clicked() {
-                            ui.ctx().open_url(OpenUrl::new_tab(docs_link));
+                            ui.open_url(OpenUrl::new_tab(docs_link));
                         }
                     }
                 },

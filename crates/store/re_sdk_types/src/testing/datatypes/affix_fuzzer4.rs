@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -21,7 +22,7 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, ::re_byte_size::SizeBytes)]
 pub enum AffixFuzzer4 {
     SingleRequired(crate::testing::datatypes::AffixFuzzer3),
     ManyRequired(Vec<crate::testing::datatypes::AffixFuzzer3>),
@@ -34,7 +35,7 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
     fn arrow_datatype() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
         DataType::Union(
-            UnionFields::new(
+            UnionFields::try_new(
                 vec![0, 1, 2],
                 vec![
                     Field::new("_null_markers", DataType::Null, true),
@@ -53,7 +54,8 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                         false,
                     ),
                 ],
-            ),
+            )
+            .expect("UnionFields::try_new should be infallible"),
             UnionMode::Dense,
         )
     }
@@ -178,10 +180,10 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                     }
                 },
             ];
-            debug_assert_eq!(field_type_ids.len(), fields.len());
-            debug_assert_eq!(fields.len(), children.len());
+            re_log::debug_assert_eq!(field_type_ids.len(), fields.len());
+            re_log::debug_assert_eq!(fields.len(), children.len());
             as_array_ref(UnionArray::try_new(
-                UnionFields::new(field_type_ids, fields),
+                UnionFields::try_new(field_type_ids, fields)?,
                 ScalarBuffer::from(type_ids),
                 Some(offsets),
                 children,
@@ -353,22 +355,5 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                     .with_context("rerun.testing.datatypes.AffixFuzzer4")?
             }
         })
-    }
-}
-
-impl ::re_byte_size::SizeBytes for AffixFuzzer4 {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        #![allow(clippy::match_same_arms)]
-        match self {
-            Self::SingleRequired(v) => v.heap_size_bytes(),
-            Self::ManyRequired(v) => v.heap_size_bytes(),
-        }
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::testing::datatypes::AffixFuzzer3>::is_pod()
-            && <Vec<crate::testing::datatypes::AffixFuzzer3>>::is_pod()
     }
 }

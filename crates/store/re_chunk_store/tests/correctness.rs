@@ -4,7 +4,7 @@
 use std::sync::Arc;
 
 use re_chunk::{Chunk, ChunkId, RowId, TimelineName};
-use re_chunk_store::{ChunkStore, ChunkStoreError, LatestAtQuery, OnMissingChunk};
+use re_chunk_store::{ChunkStore, ChunkStoreError, ChunkTrackingMode, LatestAtQuery};
 use re_log_types::example_components::{MyIndex, MyPoint, MyPoints};
 use re_log_types::{
     Duration, EntityPath, TimeInt, TimePoint, TimeType, Timeline, Timestamp, build_frame_nr,
@@ -24,12 +24,18 @@ fn query_latest_component<C: re_types_core::Component>(
 
     // NOTE: Purposefully ignoring virtual chunks -- these tests predate that.
     let ((data_time, row_id), unit) = store
-        .latest_at_relevant_chunks(OnMissingChunk::Panic, query, entity_path, component)
+        .latest_at_relevant_chunks(
+            ChunkTrackingMode::PanicOnMissing,
+            query,
+            entity_path,
+            component,
+        )
         .to_iter()
         .unwrap()
         .filter_map(|chunk| {
-            let unit = chunk.latest_at(query, component).into_unit()?;
-            unit.index(&query.timeline()).map(|index| (index, unit))
+            let unit = chunk.latest_at(query, component)?;
+            unit.index(query.timeline().as_ref())
+                .map(|index| (index, unit))
         })
         .max_by_key(|(index, _unit)| *index)?;
 
@@ -198,7 +204,7 @@ fn row_id_ordering_semantics() -> anyhow::Result<()> {
         store.insert_chunk(&Arc::new(chunk))?;
 
         {
-            let query = LatestAtQuery::new(TimelineName::new("doesnt_matter"), TimeInt::MAX);
+            let query = LatestAtQuery::new(TimelineName::from("doesnt_matter"), TimeInt::MAX);
             let (_, _, got_point) = query_latest_component::<MyPoint>(
                 &store,
                 &entity_path,
@@ -325,14 +331,14 @@ fn latest_at_emptiness_edge_cases() -> anyhow::Result<()> {
         .build()?;
     store.insert_chunk(&Arc::new(chunk))?;
 
-    let timeline_wrong_name = TimelineName::new("lag_time");
-    let timeline_frame_nr = TimelineName::new("frame_nr");
+    let timeline_wrong_name = TimelineName::from("lag_time");
+    let timeline_frame_nr = TimelineName::from("frame_nr");
     let timeline_log_time = TimelineName::log_time();
 
     // empty frame_nr
     {
         let chunks = store.latest_at_relevant_chunks(
-            OnMissingChunk::Panic,
+            ChunkTrackingMode::PanicOnMissing,
             &LatestAtQuery::new(timeline_frame_nr, frame39),
             &entity_path,
             MyIndex::partial_descriptor().component,
@@ -343,7 +349,7 @@ fn latest_at_emptiness_edge_cases() -> anyhow::Result<()> {
     // empty log_time
     {
         let chunks = store.latest_at_relevant_chunks(
-            OnMissingChunk::Panic,
+            ChunkTrackingMode::PanicOnMissing,
             &LatestAtQuery::new(timeline_log_time, now_minus_1s_nanos),
             &entity_path,
             MyIndex::partial_descriptor().component,
@@ -354,7 +360,7 @@ fn latest_at_emptiness_edge_cases() -> anyhow::Result<()> {
     // wrong entity path
     {
         let chunks = store.latest_at_relevant_chunks(
-            OnMissingChunk::Panic,
+            ChunkTrackingMode::PanicOnMissing,
             &LatestAtQuery::new(timeline_frame_nr, frame40),
             &EntityPath::from("does/not/exist"),
             MyIndex::partial_descriptor().component,
@@ -365,7 +371,7 @@ fn latest_at_emptiness_edge_cases() -> anyhow::Result<()> {
     // wrong timeline name
     {
         let chunks = store.latest_at_relevant_chunks(
-            OnMissingChunk::Panic,
+            ChunkTrackingMode::PanicOnMissing,
             &LatestAtQuery::new(timeline_wrong_name, frame40),
             &EntityPath::from("does/not/exist"),
             MyIndex::partial_descriptor().component,

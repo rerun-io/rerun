@@ -6,7 +6,7 @@
 #include <random>
 #include <vector>
 
-int main() {
+int main(int argc, char* argv[]) {
     const auto rec = rerun::RecordingStream("rerun_example_points3d_random");
     rec.spawn().exit_on_failure();
 
@@ -31,5 +31,8 @@ int main() {
     std::vector<rerun::Radius> radii(10);
     std::generate(radii.begin(), radii.end(), [&] { return dist_radius(gen); });
 
-    rec.log("random", rerun::Points3D(points3d).with_colors(colors).with_radii(radii));
+    rec.log(
+        "random",
+        rerun::Points3D(points3d).with_colors(colors).with_radii(radii)
+    );
 }

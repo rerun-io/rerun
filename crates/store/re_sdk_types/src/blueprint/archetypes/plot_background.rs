@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -24,7 +25,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Archetype**: Configuration of a background in a plot view.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, ::re_byte_size::SizeBytes)]
 pub struct PlotBackground {
     /// Color used for the background.
     pub color: Option<SerializedComponentBatch>,
@@ -39,11 +40,13 @@ impl PlotBackground {
     /// The corresponding component is [`crate::components::Color`].
     #[inline]
     pub fn descriptor_color() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.PlotBackground".into()),
-            component: "PlotBackground:color".into(),
-            component_type: Some("rerun.components.Color".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.PlotBackground".into()),
+                component: "PlotBackground:color".into(),
+                component_type: Some("rerun.components.Color".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::show_grid`].
@@ -51,11 +54,13 @@ impl PlotBackground {
     /// The corresponding component is [`crate::blueprint::components::Enabled`].
     #[inline]
     pub fn descriptor_show_grid() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.PlotBackground".into()),
-            component: "PlotBackground:show_grid".into(),
-            component_type: Some("rerun.blueprint.components.Enabled".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.PlotBackground".into()),
+                component: "PlotBackground:show_grid".into(),
+                component_type: Some("rerun.blueprint.components.Enabled".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -89,7 +94,10 @@ impl PlotBackground {
 impl ::re_types_core::Archetype for PlotBackground {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.blueprint.archetypes.PlotBackground".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.blueprint.archetypes.PlotBackground"
+        )
     }
 
     #[inline]
@@ -196,12 +204,5 @@ impl PlotBackground {
     ) -> Self {
         self.show_grid = try_serialize_field(Self::descriptor_show_grid(), [show_grid]);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for PlotBackground {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.color.heap_size_bytes() + self.show_grid.heap_size_bytes()
     }
 }

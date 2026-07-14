@@ -9,24 +9,46 @@ use datafusion::catalog::MemTable;
 use datafusion::common::DataFusionError;
 use itertools::Itertools as _;
 use re_chunk_store::{Chunk, ChunkStoreConfig};
-use re_log_types::{EntryId, StoreId, StoreKind};
+#[cfg(not(target_arch = "wasm32"))]
+use re_log_types::StoreKind;
+use re_log_types::{EntryId, StoreId};
+use re_protos::EntryName;
 use re_protos::cloud::v1alpha1::EntryKind;
-use re_protos::cloud::v1alpha1::ext::{DatasetDetails, EntryDetails, ProviderDetails, TableEntry};
-use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, SegmentId};
+#[cfg(all(feature = "lance", not(target_arch = "wasm32")))] // only used by the `lance` feature
+use re_protos::cloud::v1alpha1::ext as cloud_ext;
+use re_protos::cloud::v1alpha1::ext::{
+    DatasetDetails, EntryDetails, ProviderDetails, TableDetails, TableEntry,
+};
+use re_protos::common::v1alpha1::ext::DatasetKind;
+#[cfg(not(target_arch = "wasm32"))]
+use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
 use re_tuid::Tuid;
+#[cfg(not(target_arch = "wasm32"))]
+use re_types_core::LayerName;
 use re_types_core::{ComponentBatch as _, Loggable as _};
 
+#[cfg(not(target_arch = "wasm32"))]
+use crate::NamedPath;
+#[cfg(not(target_arch = "wasm32"))]
 use crate::OnError;
-use crate::entrypoint::NamedPath;
+use crate::store::store_pool::StorePool;
 use crate::store::table::TableType;
-use crate::store::{ChunkKey, Dataset, Error, Table};
-
-const ENTRIES_TABLE_NAME: &str = "__entries";
+use crate::store::task_registry::TaskRegistry;
+use crate::store::{ChunkKey, Dataset, Error, StoreSlotId, Table};
 
 pub struct InMemoryStore {
     datasets: HashMap<EntryId, Dataset>,
     tables: HashMap<EntryId, Table>,
-    id_by_name: HashMap<String, EntryId>,
+    id_by_name: HashMap<EntryName, EntryId>,
+    task_registry: TaskRegistry,
+    store_pool: StorePool,
+
+    /// Config applied to eager (in-memory) chunk stores created by this server.
+    ///
+    /// Lazy stores load their config from their RRD manifest and ignore this
+    /// value. Exposed via the builder as a testing hook so integration tests can
+    /// tune eager chunk-store knobs without relying on global env vars.
+    eager_chunk_store_config: ChunkStoreConfig,
 }
 
 impl Default for InMemoryStore {
@@ -35,6 +57,9 @@ impl Default for InMemoryStore {
             tables: HashMap::default(),
             datasets: HashMap::default(),
             id_by_name: HashMap::default(),
+            task_registry: TaskRegistry::default(),
+            store_pool: StorePool::default(),
+            eager_chunk_store_config: Self::default_eager_chunk_store_config(),
         };
         ret.update_entries_table()
             .expect("update_entries_table should never fail on initialization.");
@@ -43,86 +68,169 @@ impl Default for InMemoryStore {
 }
 
 impl InMemoryStore {
-    pub fn chunk_store_config() -> re_chunk_store::ChunkStoreConfig {
+    pub fn eager_chunk_store_config(&self) -> ChunkStoreConfig {
+        self.eager_chunk_store_config.clone()
+    }
+
+    pub fn set_eager_chunk_store_config(&mut self, config: ChunkStoreConfig) {
+        self.eager_chunk_store_config = config;
+    }
+
+    /// Default eager `ChunkStoreConfig` for callsites that can't take a `&self`
+    /// (e.g. the static `ResolvedStore::load_rrd_file` eager-load fallback).
+    pub fn default_eager_chunk_store_config() -> ChunkStoreConfig {
         ChunkStoreConfig::CHANGELOG_DISABLED
             .apply_env()
             .unwrap_or(ChunkStoreConfig::CHANGELOG_DISABLED)
     }
 
+    /// Look up a store by its [`StoreSlotId`], upgrading the weak reference.
+    pub fn resolve_store(&self, slot_id: &StoreSlotId) -> Option<crate::store::ResolvedStore> {
+        self.store_pool.get(slot_id)
+    }
+
+    /// Register a store in the pool, returning its new [`StoreSlotId`].
+    pub fn register_store(&mut self, resolved: &crate::store::ResolvedStore) -> StoreSlotId {
+        self.store_pool.register(resolved)
+    }
+
+    /// Register a store under an existing [`StoreSlotId`] (e.g. for `memory://` re-registration).
+    pub fn register_store_with_id(
+        &mut self,
+        id: StoreSlotId,
+        resolved: &crate::store::ResolvedStore,
+    ) {
+        self.store_pool.register_with_id(id, resolved);
+    }
+
+    /// Drop expired weak entries from the store pool.
+    pub fn cleanup_store_pool(&mut self) {
+        self.store_pool.cleanup();
+    }
+
     /// Returns the chunks corresponding to the provided chunk keys.
     ///
     /// Important: there is no guarantee on the order of the returned chunks.
+    ///
+    /// For Lazy stores, chunks are loaded in a single batched call per distinct store,
+    /// amortizing the provider and IPC-parse overhead that per-key loading would pay N times.
+    /// The returned chunks are owned by the caller — no caching happens in the Lazy store.
     pub fn chunks_from_chunk_keys(
         &self,
         chunk_keys: &[ChunkKey],
     ) -> Result<Vec<(StoreId, Arc<Chunk>)>, Error> {
-        // sort keys per dataset, segment, layer
-        let mut chunk_key_index: HashMap<
-            &EntryId,
-            HashMap<&SegmentId, HashMap<&str, Vec<&ChunkKey>>>,
-        > = Default::default();
+        use crate::store::ResolvedStore;
+
+        // Step 1: resolve every key's store once and group Lazy-store chunk IDs for batched I/O.
+        let mut resolved_per_key: Vec<(ResolvedStore, &ChunkKey)> =
+            Vec::with_capacity(chunk_keys.len());
+        let mut ids_per_lazy: HashMap<StoreSlotId, Vec<re_chunk_store::ChunkId>> =
+            HashMap::default();
 
         for chunk_key in chunk_keys {
-            chunk_key_index
-                .entry(&chunk_key.dataset_id)
-                .or_default()
-                .entry(&chunk_key.segment_id)
-                .or_default()
-                .entry(&chunk_key.layer_name)
-                .or_default()
-                .push(chunk_key);
+            let resolved = self
+                .resolve_store(&chunk_key.store_slot_id)
+                .ok_or_else(|| {
+                    Error::InvalidChunkKey(format!(
+                        "store id {} not found",
+                        chunk_key.store_slot_id
+                    ))
+                })?;
+
+            if matches!(resolved, ResolvedStore::Lazy(_)) {
+                ids_per_lazy
+                    .entry(chunk_key.store_slot_id)
+                    .or_default()
+                    .push(chunk_key.chunk_id);
+            }
+
+            resolved_per_key.push((resolved, chunk_key));
         }
 
-        let mut result = Vec::with_capacity(chunk_keys.len());
-
-        for (dataset_id, segment_index) in chunk_key_index {
-            let dataset = self.dataset(*dataset_id)?;
-
-            for (segment_id, layer_index) in segment_index {
-                let segment = dataset.segment(segment_id)?;
-
-                let store_id = StoreId::new(
-                    StoreKind::Recording,
-                    dataset_id.to_string(),
-                    segment_id.id.as_str(),
-                );
-
-                for (layer_name, chunk_keys) in layer_index {
-                    let store_handle = segment
-                        .layer(layer_name)
-                        .ok_or_else(|| {
-                            Error::LayerNameNotFound(
-                                layer_name.to_owned(),
-                                segment_id.clone(),
-                                *dataset_id,
-                            )
-                        })?
-                        .store_handle()
-                        .read();
-
-                    for chunk_key in chunk_keys {
-                        let chunk = store_handle
-                            .physical_chunk(&chunk_key.chunk_id)
-                            .ok_or_else(|| Error::ChunkNotFound(chunk_key.clone()))?;
-
-                        result.push((store_id.clone(), Arc::clone(chunk)));
-                    }
-                }
+        // Step 2: one batched load per Lazy store. Preserves the existing provider and IPC-parse
+        // amortization. The Lazy store does not cache returned chunks.
+        let mut loaded: HashMap<(StoreSlotId, re_chunk_store::ChunkId), Arc<Chunk>> =
+            HashMap::default();
+        for (slot_id, mut ids) in ids_per_lazy {
+            let Some(ResolvedStore::Lazy(lazy)) = self.resolve_store(&slot_id) else {
+                continue;
+            };
+            // Duplicate `ChunkKey`s in the input would otherwise have us decode the same chunk
+            // multiple times.
+            ids.sort_unstable();
+            ids.dedup();
+            let chunks = lazy
+                .load_chunks(&ids)
+                .map_err(|err| Error::InvalidChunkKey(format!("lazy load failed: {err:#}")))?;
+            for chunk in chunks {
+                loaded.insert((slot_id, chunk.id()), chunk);
             }
+        }
+
+        // Step 3: assemble output.
+        let mut result = Vec::with_capacity(chunk_keys.len());
+        for (resolved, chunk_key) in resolved_per_key {
+            let chunk = match &resolved {
+                // Duplicate `ChunkKey`s in the input clone the `Arc` — same as the previous
+                // `physical_chunk()`-based implementation.
+                ResolvedStore::Lazy(_) => loaded
+                    .get(&(chunk_key.store_slot_id, chunk_key.chunk_id))
+                    .cloned()
+                    .ok_or_else(|| {
+                        Error::InvalidChunkKey(format!(
+                            "chunk id {} not found in manifest",
+                            chunk_key.chunk_id
+                        ))
+                    })?,
+                ResolvedStore::Eager(h) => h
+                    .read()
+                    .physical_chunk(&chunk_key.chunk_id)
+                    .cloned()
+                    .ok_or_else(|| {
+                        Error::InvalidChunkKey(format!("chunk id {} not found", chunk_key.chunk_id))
+                    })?,
+            };
+            result.push((resolved.store_id(), chunk));
         }
 
         Ok(result)
     }
 
+    /// Load a single RRD into an existing dataset, registering stores in the pool.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub async fn register_rrd_to_dataset(
+        &mut self,
+        dataset_id: EntryId,
+        path: &std::path::Path,
+        layer_name: Option<LayerName>,
+        on_duplicate: IfDuplicateBehavior,
+        store_kind: StoreKind,
+    ) -> Result<std::collections::BTreeSet<re_types_core::SegmentId>, Error> {
+        let dataset = self
+            .datasets
+            .get_mut(&dataset_id)
+            .ok_or(Error::EntryIdNotFound(dataset_id))?;
+        dataset
+            .register_rrd(
+                &mut self.store_pool,
+                path,
+                layer_name,
+                on_duplicate,
+                store_kind,
+            )
+            .await
+    }
+
     /// Load a directory of RRDs.
     //TODO(ab): maybe we could be smart with .rbl and auto-setup a blueprint dataset?
+    #[cfg(not(target_arch = "wasm32"))]
     pub async fn load_directory_as_dataset(
         &mut self,
         named_path: &NamedPath,
         on_duplicate: IfDuplicateBehavior,
         on_error: OnError,
     ) -> Result<(), Error> {
-        let directory = named_path.path.canonicalize()?;
+        let directory = tokio::fs::canonicalize(&named_path.path).await?;
         if !directory.is_dir() {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidInput,
@@ -132,37 +240,50 @@ impl InMemoryStore {
         }
 
         let entry_name = match &named_path.name {
-            Some(name) => name.into(),
+            Some(name) => name.clone(),
             None => directory
                 .file_name()
                 .expect("the directory should have a name and the path was canonicalized")
-                .to_string_lossy(),
+                .to_string_lossy()
+                .into_owned(),
         };
+        let entry_name = EntryName::new(entry_name).map_err(Error::InvalidEntryName)?;
 
-        let dataset = self
-            .create_dataset(entry_name.into(), None)
+        let dataset_id = self
+            .create_dataset(entry_name, None)
             .expect("Name cannot yet exist");
 
-        for entry in std::fs::read_dir(&directory)? {
-            let entry = entry?;
-            if entry.file_type()?.is_file() {
+        let mut entries = tokio::fs::read_dir(&directory).await?;
+        while let Some(entry) = entries.next_entry().await? {
+            if entry.file_type().await?.is_file() {
                 let is_rrd = entry
                     .file_name()
                     .to_str()
                     .is_some_and(|s| s.to_lowercase().ends_with(".rrd"));
 
-                if is_rrd
-                    && let Err(err) = dataset
-                        .load_rrd(&entry.path(), None, on_duplicate, StoreKind::Recording)
-                        .await
-                {
-                    match on_error {
-                        OnError::Continue => {
-                            re_log::warn!("Failed loading file in {}: {err}", directory.display());
-                        }
-                        OnError::Abort => {
-                            return Err(err);
-                        }
+                if is_rrd {
+                    let load_result = self
+                        .register_rrd_to_dataset(
+                            dataset_id,
+                            &entry.path(),
+                            None,
+                            on_duplicate,
+                            StoreKind::Recording,
+                        )
+                        .await;
+                    match load_result {
+                        Ok(_segment_ids) => {}
+                        Err(err) => match on_error {
+                            OnError::Continue => {
+                                re_log::warn!(
+                                    "Failed loading file in {}: {err}",
+                                    directory.display()
+                                );
+                            }
+                            OnError::Abort => {
+                                return Err(err);
+                            }
+                        },
                     }
                 }
             }
@@ -175,7 +296,7 @@ impl InMemoryStore {
         Ok(())
     }
 
-    #[cfg(feature = "lance")]
+    #[cfg(all(feature = "lance", not(target_arch = "wasm32")))]
     pub async fn load_directory_as_table(
         &mut self,
         named_path: &NamedPath,
@@ -185,7 +306,7 @@ impl InMemoryStore {
 
         use re_protos::cloud::v1alpha1::ext::LanceTable;
 
-        let directory = named_path.path.canonicalize()?;
+        let directory = tokio::fs::canonicalize(&named_path.path).await?;
         if !directory.is_dir() {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidInput,
@@ -195,12 +316,14 @@ impl InMemoryStore {
         }
 
         let entry_name = match &named_path.name {
-            Some(name) => name.into(),
+            Some(name) => name.clone(),
             None => directory
                 .file_name()
                 .expect("the directory should have a name and the path was canonicalized")
-                .to_string_lossy(),
+                .to_string_lossy()
+                .into_owned(),
         };
+        let entry_name = EntryName::new(entry_name).map_err(Error::InvalidEntryName)?;
 
         // Verify it is a valid lance table
         let path = directory.to_str().ok_or_else(|| {
@@ -225,20 +348,20 @@ impl InMemoryStore {
         let entry_id = EntryId::new();
         let provider_details = LanceTable { table_url };
 
-        match self.table_by_name(entry_name.as_ref()) {
+        match self.table_by_name(&entry_name) {
             None => {
-                self.add_table_entry(entry_name.as_ref(), entry_id, table, provider_details)?;
+                self.add_table_entry(entry_name, entry_id, table, provider_details)?;
             }
             Some(_) => match on_duplicate {
                 IfDuplicateBehavior::Overwrite => {
                     re_log::info!("Overwriting {entry_name}");
-                    self.add_table_entry(entry_name.as_ref(), entry_id, table, provider_details)?;
+                    self.add_table_entry(entry_name, entry_id, table, provider_details)?;
                 }
                 IfDuplicateBehavior::Skip => {
                     re_log::info!("Ignoring {entry_name}: it already exists");
                 }
                 IfDuplicateBehavior::Error => {
-                    return Err(Error::DuplicateEntryNameError(entry_name.to_string()));
+                    return Err(Error::DuplicateEntryNameError(entry_name));
                 }
             },
         }
@@ -246,7 +369,7 @@ impl InMemoryStore {
         Ok(entry_id)
     }
 
-    pub fn rename_entry(&mut self, entry_id: EntryId, entry_name: String) -> Result<(), Error> {
+    pub fn rename_entry(&mut self, entry_id: EntryId, entry_name: EntryName) -> Result<(), Error> {
         if let Some(existing_entry_id) = self.id_by_name.get(&entry_name) {
             return if existing_entry_id == &entry_id {
                 // nothing to do, the rename is a no-op
@@ -279,71 +402,127 @@ impl InMemoryStore {
         }
     }
 
-    #[cfg(feature = "lance")] // only used by the `lance` feature
+    #[cfg(all(feature = "lance", not(target_arch = "wasm32")))] // only used by the `lance` feature
     fn add_table_entry(
         &mut self,
-        entry_name: &str,
+        entry_name: EntryName,
         entry_id: EntryId,
         table: TableType,
-        provider_details: re_protos::cloud::v1alpha1::ext::LanceTable,
+        provider_details: cloud_ext::LanceTable,
     ) -> Result<(), Error> {
-        self.id_by_name.insert(entry_name.to_owned(), entry_id);
+        let blueprint_dataset_id = self.create_blueprint_dataset_for_entry(entry_id)?;
+
+        self.id_by_name.insert(entry_name.clone(), entry_id);
         self.tables.insert(
             entry_id,
             Table::new(
                 entry_id,
-                entry_name.to_owned(),
+                entry_name,
                 table,
                 None,
                 ProviderDetails::LanceTable(provider_details),
+                TableDetails {
+                    blueprint_dataset: Some(blueprint_dataset_id),
+                    default_blueprint_segment: None,
+                },
             ),
         );
 
         self.update_entries_table()
     }
 
-    /// Create a (regular) dataset with a matching blueprint dataset.
+    /// Create a recording dataset with a matching hidden blueprint dataset.
     ///
     /// The server is typically responsible for setting the dataset id, so use `Some` at your own
     /// risk for `dataset_id`.
     pub fn create_dataset(
         &mut self,
-        dataset_name: String,
+        dataset_name: EntryName,
         dataset_id: Option<EntryId>,
-    ) -> Result<&mut Dataset, Error> {
-        let dataset_id = dataset_id.unwrap_or_else(EntryId::new);
+    ) -> Result<EntryId, Error> {
+        self.create_dataset_with_kind(dataset_name, dataset_id, DatasetKind::Recording)
+    }
+
+    pub(crate) fn create_blueprint_dataset_for_entry(
+        &mut self,
+        entry_id: EntryId,
+    ) -> Result<EntryId, Error> {
         let blueprint_dataset_id = EntryId::new();
-        let blueprint_dataset_name = format!("__bp_{dataset_id}");
+        let blueprint_dataset_name = EntryName::blueprint_for(entry_id);
 
         self.create_dataset_impl(
             blueprint_dataset_name,
             blueprint_dataset_id,
-            StoreKind::Blueprint,
+            DatasetKind::Blueprint,
             None,
         )?;
 
-        let dataset_details = DatasetDetails {
-            blueprint_dataset: Some(blueprint_dataset_id),
-            default_blueprint_segment: None,
-        };
+        Ok(blueprint_dataset_id)
+    }
+
+    pub(crate) fn create_asset_dataset_for_entry(
+        &mut self,
+        entry_id: EntryId,
+    ) -> Result<EntryId, Error> {
+        let asset_dataset_id = EntryId::new();
+        let asset_dataset_name = EntryName::asset_for(entry_id);
 
         self.create_dataset_impl(
-            dataset_name,
-            dataset_id,
-            StoreKind::Recording,
-            Some(dataset_details),
-        )
+            asset_dataset_name,
+            asset_dataset_id,
+            DatasetKind::Asset,
+            None,
+        )?;
+
+        Ok(asset_dataset_id)
+    }
+
+    /// Create a dataset of the given kind.
+    ///
+    /// Recording datasets automatically get a matching hidden blueprint dataset.
+    /// Blueprint datasets are created standalone and do not get their own blueprint dataset.
+    pub fn create_dataset_with_kind(
+        &mut self,
+        dataset_name: EntryName,
+        dataset_id: Option<EntryId>,
+        dataset_kind: DatasetKind,
+    ) -> Result<EntryId, Error> {
+        let dataset_id = dataset_id.unwrap_or_else(EntryId::new);
+
+        match dataset_kind {
+            DatasetKind::Recording => {
+                let blueprint_dataset_id = self.create_blueprint_dataset_for_entry(dataset_id)?;
+                let asset_dataset_id = self.create_asset_dataset_for_entry(dataset_id)?;
+
+                let dataset_details = DatasetDetails {
+                    blueprint_dataset: Some(blueprint_dataset_id),
+                    asset_dataset: Some(asset_dataset_id),
+                    default_blueprint_segment: None,
+                    default_segment_table_blueprint_segment: None,
+                };
+
+                self.create_dataset_impl(
+                    dataset_name,
+                    dataset_id,
+                    DatasetKind::Recording,
+                    Some(dataset_details),
+                )
+            }
+            DatasetKind::Blueprint | DatasetKind::Asset => {
+                self.create_dataset_impl(dataset_name, dataset_id, dataset_kind, None)
+            }
+        }
     }
 
     /// Create a dataset of the given kind with the given details.
-    fn create_dataset_impl(
+    pub(crate) fn create_dataset_impl(
         &mut self,
-        name: String,
+        name: EntryName,
         entry_id: EntryId,
-        store_kind: StoreKind,
+        dataset_kind: DatasetKind,
         details: Option<DatasetDetails>,
-    ) -> Result<&mut Dataset, Error> {
-        re_log::debug!(name, "create_dataset");
+    ) -> Result<EntryId, Error> {
+        re_log::debug!(%name, "create_dataset");
         if self.id_by_name.contains_key(&name) {
             return Err(Error::DuplicateEntryNameError(name));
         }
@@ -356,32 +535,51 @@ impl InMemoryStore {
 
         self.datasets.insert(
             entry_id,
-            Dataset::new(entry_id, name, store_kind, details.unwrap_or_default()),
+            Dataset::new(entry_id, name, dataset_kind, details.unwrap_or_default()),
         );
 
         self.update_entries_table()?;
-        self.dataset_mut(entry_id)
+        Ok(entry_id)
     }
 
     /// Delete the provided entry.
     ///
-    /// For dataset, the corresponding blueprint dataset will be deleted as well.
+    /// For dataset and table entries, the corresponding blueprint dataset will be deleted as well.
     pub fn delete_entry(&mut self, entry_id: EntryId) -> Result<(), Error> {
         re_log::debug!(?entry_id, "delete_entry");
 
         if let Some(table) = self.tables.remove(&entry_id) {
+            let blueprint_dataset = table.table_details().blueprint_dataset;
             self.id_by_name.remove(table.name());
             self.update_entries_table()?;
-            Ok(())
-        } else if let Some(dataset) = self.datasets.remove(&entry_id) {
-            self.id_by_name.remove(dataset.name());
-            self.update_entries_table()?;
 
-            if let Some(blueprint_entry_id) = dataset.dataset_details().blueprint_dataset {
+            if let Some(blueprint_entry_id) = blueprint_dataset {
                 self.delete_entry(blueprint_entry_id)
             } else {
                 Ok(())
             }
+        } else if let Some(dataset) = self.datasets.remove(&entry_id) {
+            self.id_by_name.remove(dataset.name());
+            self.update_entries_table()?;
+
+            // Blueprint and asset datasets are owned by this dataset, so deleting it deletes them too.
+            let owned_datasets = [
+                dataset.dataset_details().blueprint_dataset,
+                dataset.dataset_details().asset_dataset,
+            ];
+
+            // Attempt all deletions even if one fails, so we don't leave the others orphaned.
+            let mut result = Ok(());
+            for owned_entry_id in owned_datasets.into_iter().flatten() {
+                let owned_result = self.delete_entry(owned_entry_id);
+                if result.is_ok() {
+                    result = owned_result;
+                }
+            }
+
+            self.cleanup_store_pool();
+
+            result
         } else {
             Err(Error::EntryIdNotFound(entry_id))
         }
@@ -400,7 +598,7 @@ impl InMemoryStore {
 
         let entries_table_id = *self
             .id_by_name
-            .entry(ENTRIES_TABLE_NAME.to_owned())
+            .entry(EntryName::entries_table())
             .or_insert_with(EntryId::new);
         let prior_entries_table = self.tables.remove(&entries_table_id);
 
@@ -409,12 +607,13 @@ impl InMemoryStore {
             entries_table_id,
             Table::new(
                 entries_table_id,
-                ENTRIES_TABLE_NAME.to_owned(),
+                EntryName::entries_table(),
                 TableType::DataFusionTable(entries_table),
                 prior_entries_table.map(|t| t.created_at()),
                 ProviderDetails::SystemTable(SystemTable {
                     kind: SystemTableKind::Entries,
                 }),
+                TableDetails::default(),
             ),
         );
 
@@ -433,12 +632,12 @@ impl InMemoryStore {
             .ok_or(Error::EntryIdNotFound(entry_id))
     }
 
-    pub fn dataset_by_name(&self, name: &str) -> Result<&Dataset, Error> {
+    pub fn dataset_by_name(&self, name: &EntryName) -> Result<&Dataset, Error> {
         let entry_id = self
             .id_by_name
             .get(name)
             .copied()
-            .ok_or(Error::EntryNameNotFound(name.to_owned()))?;
+            .ok_or_else(|| Error::EntryNameNotFound(name.clone()))?;
         self.dataset(entry_id)
     }
 
@@ -454,7 +653,7 @@ impl InMemoryStore {
         self.tables.get_mut(&entry_id)
     }
 
-    pub fn table_by_name(&self, name: &str) -> Option<&Table> {
+    pub fn table_by_name(&self, name: &EntryName) -> Option<&Table> {
         let entry_id = self.id_by_name.get(name).copied()?;
         self.table(entry_id)
     }
@@ -463,7 +662,7 @@ impl InMemoryStore {
         self.tables.values()
     }
 
-    pub fn id_by_name(&self, name: &str) -> Option<&EntryId> {
+    pub fn id_by_name(&self, name: &EntryName) -> Option<&EntryId> {
         self.id_by_name.get(name)
     }
 
@@ -471,23 +670,38 @@ impl InMemoryStore {
         self.tables.contains_key(id) || self.datasets.contains_key(id)
     }
 
+    pub fn task_registry(&self) -> &TaskRegistry {
+        &self.task_registry
+    }
+
     pub async fn create_table_entry(
         &mut self,
-        name: &str,
+        name: EntryName,
         url: &url::Url,
         schema: SchemaRef,
     ) -> Result<TableEntry, Error> {
-        re_log::debug!(name, "create_table");
-        if self.id_by_name.contains_key(name) {
-            return Err(Error::DuplicateEntryNameError(name.to_owned()));
+        re_log::debug!(%name, "create_table");
+        if self.id_by_name.contains_key(&name) {
+            return Err(Error::DuplicateEntryNameError(name));
         }
 
         let entry_id = EntryId::new();
-        self.id_by_name.insert(name.to_owned(), entry_id);
+        let blueprint_dataset_id = self.create_blueprint_dataset_for_entry(entry_id)?;
 
-        let table = Table::create_table_entry(entry_id, name, url, schema).await?;
+        let table = Table::create_table_entry(
+            entry_id,
+            name.clone(),
+            url,
+            schema,
+            TableDetails {
+                blueprint_dataset: Some(blueprint_dataset_id),
+                default_blueprint_segment: None,
+            },
+        )
+        .await?;
         let table_entry = table.as_table_entry();
 
+        self.id_by_name.insert(name, entry_id);
         self.tables.insert(entry_id, table);
         self.update_entries_table()?;
 
@@ -499,7 +713,7 @@ fn generate_entries_table(entries: &[EntryDetails]) -> Result<RecordBatch, Error
     #[expect(clippy::type_complexity)]
     let (id, name, entry_kind, created_at, updated_at): (
         Vec<Tuid>,
-        Vec<String>,
+        Vec<EntryName>,
         Vec<i32>,
         Vec<i64>,
         Vec<i64>,
@@ -519,7 +733,9 @@ fn generate_entries_table(entries: &[EntryDetails]) -> Result<RecordBatch, Error
     let id_arr = id
         .to_arrow()
         .map_err(|err| DataFusionError::External(Box::new(err)))?;
-    let name_arr = Arc::new(StringArray::from(name)) as ArrayRef;
+    let name_arr = Arc::new(StringArray::from(
+        name.iter().map(|n| n.as_str()).collect::<Vec<_>>(),
+    )) as ArrayRef;
     let kind_arr = Arc::new(Int32Array::from(entry_kind)) as ArrayRef;
     let created_at_arr = Arc::new(TimestampNanosecondArray::from(created_at)) as ArrayRef;
     let updated_at_arr = Arc::new(TimestampNanosecondArray::from(updated_at)) as ArrayRef;
@@ -583,7 +799,7 @@ impl InMemoryStore {
         // store upon initialization.
         let entry_table_rb = generate_entries_table(&[EntryDetails {
             id: EntryId::from(Tuid::from_bytes([0; 16])),
-            name: ENTRIES_TABLE_NAME.to_owned(),
+            name: EntryName::entries_table(),
             kind: EntryKind::Table,
             created_at: Default::default(),
             updated_at: Default::default(),

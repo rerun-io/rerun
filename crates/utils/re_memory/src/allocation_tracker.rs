@@ -82,6 +82,16 @@ pub struct CallstackStatistics {
     pub extant: CountAndSize,
 }
 
+impl CallstackStatistics {
+    pub fn estimated(&self) -> CountAndSize {
+        let CountAndSize { count, size } = self.extant;
+        CountAndSize {
+            count: count.saturating_mul(self.stochastic_rate),
+            size: size.saturating_mul(self.stochastic_rate),
+        }
+    }
+}
+
 // ----------------------------------------------------------------------------
 
 /// Track the callstacks of allocations.
@@ -111,6 +121,7 @@ impl AllocationTracker {
         }
     }
 
+    #[inline(always)]
     fn should_sample(&self, ptr: PtrHash) -> bool {
         ptr.0 & (self.stochastic_rate as u64 - 1) == 0
     }
@@ -170,7 +181,7 @@ impl AllocationTracker {
 
         // TODO(emilk): this could be faster with `select_nth_unstable`
         #[expect(clippy::cast_possible_wrap)]
-        vec.sort_by_key(|stats| -(stats.extant.size as i64));
+        vec.sort_by_key(|stats| -(stats.estimated().size as i64));
         vec.truncate(n);
         vec.shrink_to_fit();
         vec

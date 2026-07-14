@@ -9,6 +9,7 @@ use arrow::buffer::{Buffer, NullBuffer, OffsetBuffer};
 use arrow::datatypes::{DataType, Field, UInt8Type};
 use arrow::error::ArrowError;
 use itertools::Itertools as _;
+use re_log::debug_assert;
 
 // ---------------------------------------------------------------------------------
 
@@ -182,12 +183,12 @@ pub fn pad_list_array_back(list_array: &ListArray, target_len: usize) -> ListArr
     let fields = list_array_fields(list_array);
 
     let offsets = {
-        OffsetBuffer::from_lengths(
+        OffsetBuffer::from_lengths(std::iter::chain(
             list_array
                 .iter()
-                .map(|array| array.map_or(0, |array| array.len()))
-                .chain(repeat_n(0, missing_len)),
-        )
+                .map(|array| array.map_or(0, |array| array.len())),
+            repeat_n(0, missing_len),
+        ))
     };
 
     let values = list_array.values().clone();
@@ -195,12 +196,13 @@ pub fn pad_list_array_back(list_array: &ListArray, target_len: usize) -> ListArr
     let nulls = {
         if let Some(nulls) = list_array.nulls() {
             #[expect(clippy::from_iter_instead_of_collect)]
-            NullBuffer::from_iter(nulls.iter().chain(repeat_n(false, missing_len)))
+            NullBuffer::from_iter(std::iter::chain(nulls.iter(), repeat_n(false, missing_len)))
         } else {
             #[expect(clippy::from_iter_instead_of_collect)]
-            NullBuffer::from_iter(
-                repeat_n(true, list_array.len()).chain(repeat_n(false, missing_len)),
-            )
+            NullBuffer::from_iter(std::iter::chain(
+                repeat_n(true, list_array.len()),
+                repeat_n(false, missing_len),
+            ))
         }
     };
 
@@ -219,13 +221,12 @@ pub fn pad_list_array_front(list_array: &ListArray, target_len: usize) -> ListAr
     let fields = list_array_fields(list_array);
 
     let offsets = {
-        OffsetBuffer::from_lengths(
-            repeat_n(0, missing_len).chain(
-                list_array
-                    .iter()
-                    .map(|array| array.map_or(0, |array| array.len())),
-            ),
-        )
+        OffsetBuffer::from_lengths(std::iter::chain(
+            repeat_n(0, missing_len),
+            list_array
+                .iter()
+                .map(|array| array.map_or(0, |array| array.len())),
+        ))
     };
 
     let values = list_array.values().clone();
@@ -233,12 +234,13 @@ pub fn pad_list_array_front(list_array: &ListArray, target_len: usize) -> ListAr
     let nulls = {
         if let Some(nulls) = list_array.nulls() {
             #[expect(clippy::from_iter_instead_of_collect)]
-            NullBuffer::from_iter(repeat_n(false, missing_len).chain(nulls.iter()))
+            NullBuffer::from_iter(std::iter::chain(repeat_n(false, missing_len), nulls.iter()))
         } else {
             #[expect(clippy::from_iter_instead_of_collect)]
-            NullBuffer::from_iter(
-                repeat_n(false, missing_len).chain(repeat_n(true, list_array.len())),
-            )
+            NullBuffer::from_iter(std::iter::chain(
+                repeat_n(false, missing_len),
+                repeat_n(true, list_array.len()),
+            ))
         }
     };
 
@@ -268,6 +270,7 @@ pub fn new_list_array_of_empties(child_datatype: &DataType, len: usize) -> ListA
 ///
 /// Returns an error if the arrays don't share the exact same datatype.
 pub fn concat_arrays(arrays: &[&dyn Array]) -> arrow::error::Result<ArrayRef> {
+    re_tracing::profile_function!();
     #[expect(clippy::disallowed_methods)] // that's the whole point
     let mut array = arrow::compute::concat(arrays)?;
     array.shrink_to_fit(); // VERY IMPORTANT! https://github.com/rerun-io/rerun/issues/7222
@@ -413,7 +416,7 @@ pub fn wrap_in_list_array(field: &Field, array: ArrayRef) -> (Field, ListArray) 
     // reallocate the inner array so that it is dense (non-nullable),
     // and use an offset-buffer with zero-length lists for the nulls.
 
-    debug_assert_eq!(field.data_type(), array.data_type());
+    re_log::debug_assert_eq!(field.data_type(), array.data_type());
 
     let item_field = Arc::new(Field::new(
         "item",
@@ -557,6 +560,7 @@ mod tests {
     use arrow::buffer::{OffsetBuffer, ScalarBuffer};
     use arrow::datatypes::{Field, UnionFields};
     use arrow::ipc::writer::StreamWriter;
+    use std::fmt::Write as _;
     use std::sync::Arc;
 
     use super::*;
@@ -657,7 +661,8 @@ mod tests {
                 Arc::new(Field::new("f32", f32s.data_type().clone(), true)),
                 Arc::new(Field::new("i64", i64s.data_type().clone(), true)),
             ];
-            let union_fields = UnionFields::new(type_ids, fields);
+            let union_fields =
+                UnionFields::try_new(type_ids, fields).expect("UnionFields should be infallible");
 
             let type_id_buffer = ScalarBuffer::from(
                 (0..NUM_TOTAL as i32)
@@ -699,7 +704,8 @@ mod tests {
                 Arc::new(Field::new("f32", f32s.data_type().clone(), true)),
                 Arc::new(Field::new("i64", i64s.data_type().clone(), true)),
             ];
-            let union_fields = UnionFields::new(type_ids, fields);
+            let union_fields =
+                UnionFields::try_new(type_ids, fields).expect("UnionFields should be infallible");
 
             let type_id_buffer = ScalarBuffer::from(
                 (0..NUM_TOTAL as i32)
@@ -779,7 +785,8 @@ mod tests {
                 Arc::new(Field::new("f32_list", list_f32s.data_type().clone(), true)),
                 Arc::new(Field::new("i64_list", list_i64s.data_type().clone(), true)),
             ];
-            let union_fields = UnionFields::new(type_ids, fields);
+            let union_fields =
+                UnionFields::try_new(type_ids, fields).expect("UnionFields should be infallible");
 
             let type_id_buffer = ScalarBuffer::from(
                 (0..(NUM_TOTAL / NUM_PER_BATCH) as i32)
@@ -868,7 +875,8 @@ mod tests {
                 Arc::new(Field::new("f32_list", list_f32s.data_type().clone(), true)),
                 Arc::new(Field::new("i64_list", list_i64s.data_type().clone(), true)),
             ];
-            let union_fields = UnionFields::new(type_ids, fields);
+            let union_fields = UnionFields::try_new(type_ids, fields)
+                .expect("UnionFields::try_new should be infallible");
 
             let type_id_buffer = ScalarBuffer::from(
                 (0..(NUM_TOTAL / NUM_PER_BATCH) as i32)
@@ -940,22 +948,28 @@ mod tests {
         let deep_sliced = deep_slice_array_erased(&array, offset, len);
         assert_eq!(&deep_sliced, &sliced);
 
-        output += &format!("{descr}:\n");
-        output += &format!(
-            "array[0..]:          {} / IPC={:6}\n",
+        writeln!(output, "{descr}:").ok();
+        writeln!(
+            output,
+            "array[0..]:          {} / IPC={:6}",
             dump_array_stats(&array),
             dump_array_to_ipc(array.clone()),
-        );
-        output += &format!(
-            "slice[{from:5}..{to:5}]: {} / IPC={:6}\n",
+        )
+        .ok();
+        writeln!(
+            output,
+            "slice[{from:5}..{to:5}]: {} / IPC={:6}",
             dump_array_stats(&sliced),
             dump_array_to_ipc(sliced.clone())
-        );
-        output += &format!(
-            " deep[{from:5}..{to:5}]: {} / IPC={:6}\n",
+        )
+        .ok();
+        writeln!(
+            output,
+            " deep[{from:5}..{to:5}]: {} / IPC={:6}",
             dump_array_stats(&deep_sliced),
             dump_array_to_ipc(deep_sliced.clone())
-        );
+        )
+        .ok();
         output += "\n";
 
         output

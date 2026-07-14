@@ -44,14 +44,16 @@ with `child_frame` and `parent_frame` parameters set to their respective names.
 snippet: concepts/transform3d_hierarchy_named_frames
 
 Note that unlike in ROS, you can log your transform relationship on _any_ entity.
-**Note:** A current limitation to this is that once a `Transform3D` (or `Pinhole`) relating two frames has been logged to an entity, this particular relation may no longer be logged on any other entity.
-An exception to this rule is [static data](static.md): if you log a frame to frame relationship on an entity with static time, you can later on use a different entity for temporal information.
-This is useful to specify "default" transforms without yet knowing what timeline and paths are going to be used for temporal transforms.
+
+> [!NOTE]
+> A current limitation to this is that once a `Transform3D` (or `Pinhole`) relating two frames has been logged to an entity, this particular relation may no longer be logged on any other entity.
+> An exception to this rule is [static data](static.md): if you log a frame to frame relationship on an entity with static time, you can later on use a different entity for temporal information.
+> This is useful to specify "default" transforms without yet knowing what timeline and paths are going to be used for temporal transforms.
 
 
 Named transform frames have several advantages over entity path based hierarchies:
 * topology may change over time
-* association of entities with coordinate frames is explicit and may changed over time (it can also be [overridden via blueprint](../visualization/visualizers-and-overrides.md))
+* association of entities with coordinate frames is explicit and may changed over time (it can also be [overridden via blueprint](../visualization/customize-views.md))
 * several entities may be associated with the same frame
 * frees up entity paths for semantic rather than geometric organization
 
@@ -82,26 +84,17 @@ rr.log("robot/arm/gripper", rr.Points3D([0, 0, 0]))
 Rerun will interpret this _as-if_ it was logged with the named transform frames like so:
 
 ```python
-rr.log("robot",
+rr.log(
+    "robot",
     rr.CoordinateFrame("tf#/robot"),
-    rr.Transform3D(
-        translation=[1, 0, 0],
-        child_frame="tf#/robot",
-        parent_frame="tf#/"
-    )
+    rr.Transform3D(translation=[1, 0, 0], child_frame="tf#/robot", parent_frame="tf#/"),
 )
-rr.log("robot/arm",
+rr.log(
+    "robot/arm",
     rr.CoordinateFrame("tf#/robot/arm"),
-    rr.Transform3D(
-        translation=[0, 1, 0],
-        child_frame="tf#/robot/arm",
-        parent_frame="tf#/robot"
-    )
+    rr.Transform3D(translation=[0, 1, 0], child_frame="tf#/robot/arm", parent_frame="tf#/robot"),
 )
-rr.log("robot/arm/gripper",
-    rr.CoordinateFrame("tf#/robot/arm/gripper"),
-    rr.Points3D([0, 0, 0])
-)
+rr.log("robot/arm/gripper", rr.CoordinateFrame("tf#/robot/arm/gripper"), rr.Points3D([0, 0, 0]))
 ```
 
 <picture>
@@ -116,9 +109,10 @@ but doing so works seamlessly and can be useful if necessary.
 Example:
 ```python
 rr.log("robot", rr.Transform3D(translation=[1, 0, 0]))
-rr.log("arm",
+rr.log(
+    "arm",
     rr.Transform3D(translation=[0, 1, 0], parent_frame="tf#/robot", child_frame="arm_frame"),
-    rr.CoordinateFrame("arm_frame")
+    rr.CoordinateFrame("arm_frame"),
 )
 rr.log("gripper", rr.Points3D([0, 0, 0]), rr.CoordinateFrame("arm_frame"))
 ```
@@ -176,7 +170,8 @@ Note that in this example the archetype is logged at the root path, this will ma
 [Pinholes](https://rerun.io/docs/reference/types/archetypes/view_coordinates) have a view coordinates field integrated as a shortcut.
 The default coordinate system for pinhole entities is `RDF` (X=Right, Y=Down, Z=Forward).
 
->  ⚠️ Unlike in 3D views where `rr.ViewCoordinates` only impacts how the rendered scene is oriented, applying `rr.ViewCoordinates` to a pinhole-camera will actually influence the projection transform chain. Under the hood this value inserts a hidden transform that re-orients the axis of projection. Different world-content will be projected into your camera with different orientations depending on how you choose this value. See for instance the [`open_photogrammetry_format`](https://rerun.io/examples/3d-reconstruction/open_photogrammetry_format) example.
+> [!WARNING]
+> Unlike in 3D views where `rr.ViewCoordinates` only impacts how the rendered scene is oriented, applying `rr.ViewCoordinates` to a pinhole-camera will actually influence the projection transform chain. Under the hood this value inserts a hidden transform that re-orients the axis of projection. Different world-content will be projected into your camera with different orientations depending on how you choose this value. See for instance the [`open_photogrammetry_format`](https://rerun.io/examples/3d-reconstruction/open_photogrammetry_format) example.
 
 For 2D spaces and other entities, view coordinates currently have currently no effect ([#1387](https://github.com/rerun-io/rerun/issues/1387)).
 
@@ -206,7 +201,6 @@ snippet: archetypes/mesh3d_instancing
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/mesh3d_leaf_transforms3d/c2d0ee033129da53168f5705625a9b033f3a3d61/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/mesh3d_leaf_transforms3d/c2d0ee033129da53168f5705625a9b033f3a3d61/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/mesh3d_leaf_transforms3d/c2d0ee033129da53168f5705625a9b033f3a3d61/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/mesh3d_leaf_transforms3d/c2d0ee033129da53168f5705625a9b033f3a3d61/full.png">
   <img src="https://static.rerun.io/mesh3d_leaf_transforms3d/c2d0ee033129da53168f5705625a9b033f3a3d61/full.png">
 </picture>
 

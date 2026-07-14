@@ -7,7 +7,7 @@ use base64::prelude::BASE64_URL_SAFE_NO_PAD;
 use sha2::{Digest as _, Sha256};
 
 use super::RefreshToken;
-use crate::oauth::OAUTH_CLIENT_ID;
+use crate::{Permission, oauth::OAUTH_CLIENT_ID};
 
 static WORKOS_API: LazyLock<String> = LazyLock::new(|| {
     std::env::var("RERUN_OAUTH_SERVER_URL")
@@ -125,13 +125,16 @@ pub struct AuthenticateWithRefresh<'a> {
     grant_type: &'a str,
     client_id: &'a str,
     refresh_token: &'a str,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    organization_id: Option<&'a str>,
 }
 
 impl IntoRequest for AuthenticateWithRefresh<'_> {
     type Res = RefreshResponse;
 
     fn into_request(self) -> Result<ehttp::Request, Error> {
-        ehttp::Request::json(
+        ehttp::Request::post_json(
             format_args!("{base}/user_management/authenticate", base = *WORKOS_API),
             &self,
         )
@@ -147,11 +150,15 @@ pub struct RefreshResponse {
     pub refresh_token: String,
 }
 
-pub(crate) async fn refresh(refresh_token: &RefreshToken) -> Result<RefreshResponse, Error> {
+pub(crate) async fn refresh(
+    refresh_token: &RefreshToken,
+    organization_id: Option<&str>,
+) -> Result<RefreshResponse, Error> {
     send_async(AuthenticateWithRefresh {
         grant_type: "refresh_token",
         client_id: &OAUTH_CLIENT_ID,
         refresh_token: &refresh_token.0,
+        organization_id,
     })
     .await
 }
@@ -228,6 +235,22 @@ impl Default for Pkce {
     }
 }
 
+/// Construct the `WorkOS` logout URL for a given session ID.
+///
+/// Redirecting the user's browser to this URL will end their `WorkOS` session.
+/// If `return_to` is provided, the user will be redirected there after logout.
+pub fn logout_url(session_id: &str, return_to: Option<&str>) -> String {
+    let mut url = format!(
+        "{base}/user_management/sessions/logout?session_id={session_id}",
+        base = *WORKOS_API,
+    );
+    if let Some(return_to) = return_to {
+        url.push_str("&return_to=");
+        url.push_str(return_to);
+    }
+    url
+}
+
 pub fn authorization_url(redirect_uri: &str, state: &str, pkce: &Pkce) -> String {
     let url = format!(
         "\
@@ -271,7 +294,7 @@ impl IntoRequest for AuthenticateWithCode<'_> {
     type Res = AuthenticateWithCodeResponse;
 
     fn into_request(self) -> Result<ehttp::Request, Error> {
-        ehttp::Request::json(
+        ehttp::Request::post_json(
             format_args!("{base}/user_management/authenticate", base = *WORKOS_API),
             &self,
         )
@@ -318,6 +341,7 @@ impl From<User> for crate::oauth::User {
         Self {
             id: value.id,
             email: value.email,
+            org_name: None,
         }
     }
 }
@@ -342,7 +366,7 @@ impl IntoRequest for GetDeviceAuthUrl<'_> {
     type Res = GetDeviceAuthUrlResponse;
 
     fn into_request(self) -> Result<ehttp::Request, Error> {
-        ehttp::Request::json(
+        ehttp::Request::post_json(
             format_args!(
                 "{base}/user_management/authorize/device",
                 base = *WORKOS_API,
@@ -404,8 +428,8 @@ impl IntoRequest for AuthenticateWithDeviceCode<'_> {
     const ALLOW_4XX: bool = true;
 
     fn into_request(self) -> Result<ehttp::Request, Error> {
-        ehttp::Request::json(
-            format_args!("{base}/user_management/authenticate", base = *WORKOS_API,),
+        ehttp::Request::post_json(
+            format_args!("{base}/user_management/authenticate", base = *WORKOS_API),
             &self,
         )
         .map_err(Error::Serialize)
@@ -416,6 +440,7 @@ pub struct GenerateToken<'a> {
     pub server: url::Origin,
     pub token: &'a str,
     pub expiration: jiff::Span,
+    pub permission: Permission,
 }
 
 #[derive(serde::Deserialize)]
@@ -430,15 +455,17 @@ impl IntoRequest for GenerateToken<'_> {
         #[derive(serde::Serialize)]
         struct Body {
             expiration: jiff::Span,
+            permission: Permission,
         }
 
-        let mut req = ehttp::Request::json(
+        let mut req = ehttp::Request::post_json(
             format_args!(
                 "{origin}/generate-token",
                 origin = self.server.ascii_serialization()
             ),
             &Body {
                 expiration: self.expiration,
+                permission: self.permission,
             },
         )
         .map_err(Error::Serialize)?;

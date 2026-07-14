@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -24,7 +25,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Archetype**: The description of a single view.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, ::re_byte_size::SizeBytes)]
 pub struct ViewBlueprint {
     /// The class of the view.
     pub class_identifier: Option<SerializedComponentBatch>,
@@ -55,11 +56,13 @@ impl ViewBlueprint {
     /// The corresponding component is [`crate::blueprint::components::ViewClass`].
     #[inline]
     pub fn descriptor_class_identifier() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.ViewBlueprint".into()),
-            component: "ViewBlueprint:class_identifier".into(),
-            component_type: Some("rerun.blueprint.components.ViewClass".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ViewBlueprint".into()),
+                component: "ViewBlueprint:class_identifier".into(),
+                component_type: Some("rerun.blueprint.components.ViewClass".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::display_name`].
@@ -67,11 +70,13 @@ impl ViewBlueprint {
     /// The corresponding component is [`crate::components::Name`].
     #[inline]
     pub fn descriptor_display_name() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.ViewBlueprint".into()),
-            component: "ViewBlueprint:display_name".into(),
-            component_type: Some("rerun.components.Name".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ViewBlueprint".into()),
+                component: "ViewBlueprint:display_name".into(),
+                component_type: Some("rerun.components.Name".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::space_origin`].
@@ -79,11 +84,13 @@ impl ViewBlueprint {
     /// The corresponding component is [`crate::blueprint::components::ViewOrigin`].
     #[inline]
     pub fn descriptor_space_origin() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.ViewBlueprint".into()),
-            component: "ViewBlueprint:space_origin".into(),
-            component_type: Some("rerun.blueprint.components.ViewOrigin".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ViewBlueprint".into()),
+                component: "ViewBlueprint:space_origin".into(),
+                component_type: Some("rerun.blueprint.components.ViewOrigin".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::visible`].
@@ -91,11 +98,13 @@ impl ViewBlueprint {
     /// The corresponding component is [`crate::components::Visible`].
     #[inline]
     pub fn descriptor_visible() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.blueprint.archetypes.ViewBlueprint".into()),
-            component: "ViewBlueprint:visible".into(),
-            component_type: Some("rerun.components.Visible".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.ViewBlueprint".into()),
+                component: "ViewBlueprint:visible".into(),
+                component_type: Some("rerun.components.Visible".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -132,7 +141,10 @@ impl ViewBlueprint {
 impl ::re_types_core::Archetype for ViewBlueprint {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.blueprint.archetypes.ViewBlueprint".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.blueprint.archetypes.ViewBlueprint"
+        )
     }
 
     #[inline]
@@ -300,15 +312,5 @@ impl ViewBlueprint {
     pub fn with_visible(mut self, visible: impl Into<crate::components::Visible>) -> Self {
         self.visible = try_serialize_field(Self::descriptor_visible(), [visible]);
         self
-    }
-}
-
-impl ::re_byte_size::SizeBytes for ViewBlueprint {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.class_identifier.heap_size_bytes()
-            + self.display_name.heap_size_bytes()
-            + self.space_origin.heap_size_bytes()
-            + self.visible.heap_size_bytes()
     }
 }

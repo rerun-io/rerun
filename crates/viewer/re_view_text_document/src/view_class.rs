@@ -1,30 +1,32 @@
 use egui::{Label, Sense};
+use re_sdk_types::blueprint::archetypes::TextDocumentFormat;
+use re_sdk_types::blueprint::components::Enabled;
 use re_sdk_types::{View as _, ViewClassIdentifier};
 use re_ui::{Help, UiExt as _};
 use re_viewer_context::external::re_log_types::EntityPath;
 use re_viewer_context::{
-    Item, SystemCommand, SystemCommandSender as _, ViewClass, ViewClassRegistryError, ViewId,
-    ViewQuery, ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewerContext,
-    suggest_view_for_each_entity,
+    IdentifiedViewSystem as _, Item, SystemCommand, SystemCommandSender as _, ViewClass,
+    ViewClassExt as _, ViewClassRegistryError, ViewId, ViewQuery, ViewState, ViewStateExt as _,
+    ViewSystemExecutionError, ViewerContext, suggest_view_for_each_entity,
 };
+use re_viewport_blueprint::ViewProperty;
 
 use crate::visualizer_system::{TextDocumentEntry, TextDocumentSystem};
 
-// TODO(andreas): This should be a blueprint component.
-
+#[derive(Default)]
 pub struct TextDocumentViewState {
-    monospace: bool,
-    word_wrap: bool,
     commonmark_cache: egui_commonmark::CommonMarkCache,
+    only_showing_markdown: bool,
 }
 
-impl Default for TextDocumentViewState {
-    fn default() -> Self {
-        Self {
-            monospace: false,
-            word_wrap: true,
-            commonmark_cache: Default::default(),
-        }
+impl re_byte_size::SizeBytes for TextDocumentViewState {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            commonmark_cache,
+            only_showing_markdown: _,
+        } = self;
+        // Most of the memory not tracked unfortunately.
+        commonmark_cache.link_hooks().heap_size_bytes()
     }
 }
 
@@ -35,6 +37,10 @@ impl ViewState for TextDocumentViewState {
 
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
+    }
+
+    fn heap_size_bytes(&self) -> u64 {
+        re_byte_size::SizeBytes::heap_size_bytes(self)
     }
 }
 
@@ -66,6 +72,11 @@ impl ViewClass for TextDocumentView {
         &self,
         system_registry: &mut re_viewer_context::ViewSystemRegistrator<'_>,
     ) -> Result<(), ViewClassRegistryError> {
+        system_registry.register_fallback_provider(
+            TextDocumentFormat::descriptor_word_wrap().component,
+            |_ctx| Enabled::from(true),
+        );
+
         system_registry.register_visualizer::<TextDocumentSystem>()
     }
 
@@ -79,23 +90,20 @@ impl ViewClass for TextDocumentView {
 
     fn selection_ui(
         &self,
-        _ctx: &ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn ViewState,
-        _space_origin: &EntityPath,
-        _view_id: ViewId,
+        space_origin: &EntityPath,
+        view_id: ViewId,
     ) -> Result<(), ViewSystemExecutionError> {
-        let state = state.downcast_mut::<TextDocumentViewState>()?;
+        let state = state.downcast_ref::<TextDocumentViewState>()?;
 
-        ui.selection_grid("text_config").show(ui, |ui| {
-            ui.grid_left_hand_label("Text style");
-            ui.vertical(|ui| {
-                ui.re_radio_value(&mut state.monospace, false, "Proportional");
-                ui.re_radio_value(&mut state.monospace, true, "Monospace");
-                ui.re_checkbox(&mut state.word_wrap, "Word Wrap");
+        if !state.only_showing_markdown {
+            ui.list_item_scope("text_document_selection_ui", |ui| {
+                let ctx = self.view_context(ctx, view_id, state, space_origin);
+                re_view::view_property_ui::<TextDocumentFormat>(&ctx, ui);
             });
-            ui.end_row();
-        });
+        }
 
         Ok(())
     }
@@ -113,6 +121,7 @@ impl ViewClass for TextDocumentView {
     fn ui(
         &self,
         ctx: &ViewerContext<'_>,
+        _missing_chunk_reporter: &re_viewer_context::MissingChunkReporter,
         ui: &mut egui::Ui,
         state: &mut dyn ViewState,
         query: &ViewQuery<'_>,
@@ -120,31 +129,41 @@ impl ViewClass for TextDocumentView {
     ) -> Result<(), ViewSystemExecutionError> {
         let tokens = ui.tokens();
         let state = state.downcast_mut::<TextDocumentViewState>()?;
-        let text_document = system_output.view_systems.get::<TextDocumentSystem>()?;
+        let text_entries = system_output.visualizer_data_or_default::<Vec<TextDocumentEntry>>(
+            TextDocumentSystem::identifier(),
+        )?;
+        state.only_showing_markdown = !text_entries.is_empty()
+            && text_entries
+                .iter()
+                .all(|entry| entry.media_type == re_sdk_types::components::MediaType::markdown());
 
         let frame = egui::Frame::new().inner_margin(tokens.view_padding());
-        let response = frame
+        let (response, text_document_result) = frame
             .show(ui, |ui| {
                 let inner_ui_builder = egui::UiBuilder::new()
                     .layout(egui::Layout::top_down(egui::Align::LEFT))
                     .sense(Sense::click());
                 ui.scope_builder(inner_ui_builder, |ui| {
-                    egui::ScrollArea::both()
+                    let text_document_result = egui::ScrollArea::both()
                         .auto_shrink([false, false])
-                        .show(ui, |ui| text_document_ui(ui, state, text_document));
+                        .show(ui, |ui| {
+                            text_document_ui(ctx, query, ui, state, &text_entries)
+                        })
+                        .inner;
 
-                    ui.response()
+                    (ui.response(), text_document_result)
                 })
                 .inner
             })
             .inner;
+        text_document_result?;
 
         // Since we want the view to be hoverable / clickable when the pointer is over a label
         // (and we want selectable labels), we need to work around egui's interactions here.
         // Since `rect_contains_pointer` checks for the layer id, this shouldn't cause any problems
         // with popups / modals.
         let hovered = ui.ctx().rect_contains_pointer(ui.layer_id(), response.rect);
-        let clicked = hovered && ui.ctx().input(|i| i.pointer.primary_pressed());
+        let clicked = hovered && ui.input(|i| i.pointer.primary_pressed());
 
         if hovered {
             ctx.selection_state().set_hovered(Item::View(query.view_id));
@@ -160,15 +179,32 @@ impl ViewClass for TextDocumentView {
 }
 
 fn text_document_ui(
+    ctx: &ViewerContext<'_>,
+    query: &ViewQuery<'_>,
     ui: &mut egui::Ui,
     state: &mut TextDocumentViewState,
-    text_document: &TextDocumentSystem,
-) {
-    if text_document.text_entries.is_empty() {
+    text_entries: &[TextDocumentEntry],
+) -> Result<(), ViewSystemExecutionError> {
+    let view_ctx = TextDocumentView.view_context(ctx, query.view_id, state, query.space_origin);
+    let format_property = ViewProperty::from_archetype::<TextDocumentFormat>(
+        ctx.blueprint_db(),
+        ctx.blueprint_query,
+        query.view_id,
+    );
+    let monospace = format_property.component_or_fallback::<Enabled>(
+        &view_ctx,
+        TextDocumentFormat::descriptor_monospace().component,
+    )?;
+    let word_wrap = format_property.component_or_fallback::<Enabled>(
+        &view_ctx,
+        TextDocumentFormat::descriptor_word_wrap().component,
+    )?;
+
+    if text_entries.is_empty() {
         // We get here if we scroll back time to before the first text document was logged.
         ui.weak("(empty)");
-    } else if text_document.text_entries.len() == 1 {
-        let TextDocumentEntry { body, media_type } = &text_document.text_entries[0];
+    } else if text_entries.len() == 1 {
+        let TextDocumentEntry { body, media_type } = &text_entries[0];
 
         if media_type == &re_sdk_types::components::MediaType::markdown() {
             re_tracing::profile_scope!("egui_commonmark");
@@ -186,11 +222,11 @@ fn text_document_ui(
         } else {
             let mut text = egui::RichText::new(body.as_str());
 
-            if state.monospace {
+            if **monospace {
                 text = text.monospace();
             }
 
-            ui.add(Label::new(text).wrap_mode(if state.word_wrap {
+            ui.add(Label::new(text).wrap_mode(if **word_wrap {
                 egui::TextWrapMode::Wrap
             } else {
                 egui::TextWrapMode::Extend
@@ -202,9 +238,11 @@ fn text_document_ui(
             "Can only show one text document at a time; was given {}. Update \
                                     the query so that it returns a single text document and create \
                                     additional views for the others.",
-            text_document.text_entries.len()
+            text_entries.len()
         ));
     }
+
+    Ok(())
 }
 
 #[test]

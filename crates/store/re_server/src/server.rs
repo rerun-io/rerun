@@ -1,7 +1,7 @@
 #![expect(clippy::let_underscore_untyped)]
 #![expect(clippy::let_underscore_must_use)]
 
-use std::net::{SocketAddr, ToSocketAddrs as _};
+use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs as _};
 
 use tokio::net::TcpListener;
 use tokio::sync::oneshot::Sender;
@@ -10,16 +10,12 @@ use tokio_stream::StreamExt as _;
 use tonic::service::{Routes, RoutesBuilder};
 use tracing::{error, info};
 
+use crate::layers::{BandwidthLayer, ErrorInjectionLayer, InjectedErrors, LatencyLayer};
+
 // ---
 
 #[derive(thiserror::Error, Debug)]
 pub enum ServerError {
-    #[error("Ready channel closed unexpectedly")]
-    ReadyChannelClosedUnexpectedly,
-
-    #[error("Failed channel closed unexpectedly")]
-    FailedChannelClosedUnexpectedly,
-
     #[error("Server failed to start: {reason}")]
     ServerFailedToStart { reason: String },
 }
@@ -31,38 +27,35 @@ pub struct Server {
     addr: SocketAddr,
     routes: Routes,
     artificial_latency: std::time::Duration,
+    bandwidth_limit: Option<u64>,
+    cors_allowed_origins: Vec<String>,
 }
 
 /// `ServerHandle` is a tiny helper abstraction that enables us to
 /// deal with the gRPC server lifecycle more easily.
 pub struct ServerHandle {
     shutdown: Option<Sender<()>>,
-    ready: mpsc::Receiver<SocketAddr>,
     failed: mpsc::Receiver<String>,
+    _task: tokio::task::JoinHandle<()>,
+
+    /// The address clients should connect to.
+    connect_addr: SocketAddr,
+
+    /// Test hook: endpoints registered here will return an error.
+    injected_errors: InjectedErrors,
 }
 
 impl ServerHandle {
-    /// Wait until the server is ready to accept connections (or failure occurs)
-    pub async fn wait_for_ready(&mut self) -> Result<SocketAddr, ServerError> {
-        tokio::select! {
-            ready = self.ready.recv() => {
-                match ready {
-                    Some(local_addr) => {
-                        info!("Ready for connections.");
-                        Ok(local_addr)
-                    },
-                    None => Err(ServerError::ReadyChannelClosedUnexpectedly)
+    /// The address clients should use to connect.
+    ///
+    /// This is a connectable address, e.g. `127.0.0.1:9876` instead of `0.0.0.0:9876`.
+    pub fn connect_addr(&self) -> SocketAddr {
+        self.connect_addr
+    }
 
-                }
-            }
-            failed = self.failed.recv() => {
-                match failed {
-                    Some(reason) => Err(ServerError::ServerFailedToStart { reason }),
-                    None => Err(ServerError::FailedChannelClosedUnexpectedly)
-
-                }
-            }
-        }
+    /// For testing: get a reference to the injected errors, which can be used to make specific gRPC endpoints fail.
+    pub fn injected_errors(&self) -> &InjectedErrors {
+        &self.injected_errors
     }
 
     /// Wait until the server is shutdown.
@@ -80,29 +73,45 @@ impl ServerHandle {
 }
 
 impl Server {
-    /// Starts the server and return `ServerHandle` so that caller can manage
-    /// the server lifecycle.
-    pub fn start(self) -> ServerHandle {
+    /// Starts the server, waits for it to be ready, and returns a [`ServerHandle`].
+    pub async fn start(self) -> Result<ServerHandle, ServerError> {
         let Self {
             addr,
             routes,
             artificial_latency,
+            bandwidth_limit,
+            cors_allowed_origins,
         } = self;
 
-        let (ready_tx, ready_rx) = mpsc::channel(1);
+        let (ready_tx, mut ready_rx) = mpsc::channel(1);
         let (failed_tx, failed_rx) = mpsc::channel(1);
         let (shutdown_tx, shutdown_rx) = oneshot::channel::<()>();
 
-        tokio::spawn(async move {
+        let injected_errors = InjectedErrors::new();
+
+        let injected_errors_for_handle = injected_errors.clone();
+        let task = tokio::spawn(async move {
             let listener = if let Ok(listener) = TcpListener::bind(addr).await {
                 #[expect(clippy::unwrap_used)]
-                let local_addr = listener.local_addr().unwrap();
+                let bind_addr = listener.local_addr().unwrap();
+
+                let mut connect_addr = bind_addr;
+
+                if connect_addr.ip().is_unspecified() {
+                    // We usually cannot connect to "0.0.0.0" so we swap it for 127.0.0.1:
+                    if connect_addr.is_ipv4() {
+                        connect_addr.set_ip(Ipv4Addr::LOCALHOST.into());
+                    } else {
+                        connect_addr.set_ip(Ipv6Addr::LOCALHOST.into());
+                    }
+                }
+
                 info!(
-                    "Listening on {local_addr}. To connect the Rerun Viewer, use the following address: rerun+http://{local_addr}"
+                    "Listening on {bind_addr}. To connect the Rerun Viewer, use the following address: rerun+http://{connect_addr}"
                 );
 
                 #[expect(clippy::unwrap_used)]
-                ready_tx.send(local_addr).await.unwrap();
+                ready_tx.send(connect_addr).await.unwrap();
                 listener
             } else {
                 error!("Failed to bind to address {addr}");
@@ -131,8 +140,19 @@ impl Server {
                     let is_client = false;
                     re_protos::headers::new_rerun_headers_layer(name, version, is_client)
                 })
-                .layer(tower_http::cors::CorsLayer::permissive()) // Allow CORS for all origins (to support web clients)
-                .layer(crate::latency_layer::LatencyLayer::new(artificial_latency))
+                .layer(re_grpc_server::cors_layer(&cors_allowed_origins))
+                .layer(LatencyLayer::new(artificial_latency))
+                .layer(BandwidthLayer::new(bandwidth_limit))
+                .layer(re_protos::trace_id_layer::TraceIdLayer::new(
+                    std::sync::Arc::new(|| {
+                        // We inject a dummy trace-id here so that our e2e integration tests
+                        // can verify that the trace-id shows up in error messages.
+                        // We sometimes run these tests on release builds, so we always inject these trace-ids.
+                        const DUMMY_TRACE_ID: u128 = 0xabba000000000000000000000000abba_u128;
+                        Some(opentelemetry::TraceId::from(DUMMY_TRACE_ID))
+                    }),
+                ))
+                .layer(ErrorInjectionLayer::new(injected_errors.clone()))
                 // NOTE: GrpcWebLayer is applied directly to gRPC routes in ServerBuilder::build()
                 // to avoid rejecting regular HTTP requests
                 .into_inner();
@@ -160,11 +180,37 @@ impl Server {
             let _ = failed_tx.send("gRPC server stopped".to_owned()).await;
         });
 
-        ServerHandle {
+        // Wait for the server to signal readiness.
+        let mut failed_rx_for_select = failed_rx;
+        let connect_addr = tokio::select! {
+            ready = ready_rx.recv() => {
+                match ready {
+                    Some(addr) => {
+                        info!("Ready for connections.");
+                        Ok(addr)
+                    },
+                    None => Err(ServerError::ServerFailedToStart {
+                        reason: "ready channel closed unexpectedly".into(),
+                    }),
+                }
+            }
+            failed = failed_rx_for_select.recv() => {
+                match failed {
+                    Some(reason) => Err(ServerError::ServerFailedToStart { reason }),
+                    None => Err(ServerError::ServerFailedToStart {
+                        reason: "failed channel closed unexpectedly".into(),
+                    }),
+                }
+            }
+        }?;
+
+        Ok(ServerHandle {
             shutdown: Some(shutdown_tx),
-            ready: ready_rx,
-            failed: failed_rx,
-        }
+            failed: failed_rx_for_select,
+            _task: task,
+            connect_addr,
+            injected_errors: injected_errors_for_handle,
+        })
     }
 }
 
@@ -177,6 +223,8 @@ pub struct ServerBuilder {
     routes_builder: RoutesBuilder,
     axum_routes: axum::Router,
     artificial_latency: std::time::Duration,
+    bandwidth_limit: Option<u64>,
+    cors_allowed_origins: Vec<String>,
 }
 
 impl ServerBuilder {
@@ -215,12 +263,28 @@ impl ServerBuilder {
         self
     }
 
+    /// Limit response bandwidth in bytes per second.
+    pub fn with_bandwidth_limit(mut self, bytes_per_second: Option<u64>) -> Self {
+        self.bandwidth_limit = bytes_per_second;
+        self
+    }
+
+    /// Set additional origin patterns allowed to make cross-origin requests.
+    ///
+    /// By default, only `localhost`, `127.0.0.1`, and `rerun.io` are allowed.
+    pub fn with_cors_allowed_origins(mut self, origins: Vec<String>) -> Self {
+        self.cors_allowed_origins = origins;
+        self
+    }
+
     pub fn build(self) -> Server {
         let Self {
             addr,
             routes_builder,
             axum_routes,
             artificial_latency,
+            bandwidth_limit,
+            cors_allowed_origins,
         } = self;
 
         let grpc_routes = routes_builder.routes();
@@ -243,6 +307,8 @@ impl ServerBuilder {
                 .unwrap_or_else(|| DEFAULT_ADDRESS.to_socket_addrs().unwrap().next().unwrap()),
             routes: routes.into(),
             artificial_latency,
+            bandwidth_limit,
+            cors_allowed_origins,
         }
     }
 }

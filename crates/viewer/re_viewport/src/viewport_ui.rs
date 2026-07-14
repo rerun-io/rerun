@@ -2,21 +2,21 @@
 //!
 //! Contains all views.
 
+use std::collections::BTreeMap;
+
 use ahash::HashMap;
-use egui::remap_clamp;
+use egui::{Key, KeyboardShortcut, Modifiers, remap_clamp};
 use egui_tiles::{Behavior as _, EditAction};
-use itertools::Either;
 use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item};
 use re_log_types::{EntityPath, ResolvedEntityPathRule, RuleEffect};
 use re_ui::{
     ContextExt as _, Help, Icon, IconText, UICommandSender as _, UiExt as _,
     design_tokens_of_visuals, icons,
 };
-use re_view::controls::TOGGLE_MAXIMIZE_VIEW;
 use re_viewer_context::{
-    Contents, DragAndDropFeedback, DragAndDropPayload, Item, PublishedViewInfo, SystemCommand,
-    SystemCommandSender as _, SystemExecutionOutput, ViewId, ViewQuery, ViewStates, ViewerContext,
-    icon_for_container_kind,
+    Contents, DataResultInteractionAddress, DragAndDropFeedback, DragAndDropPayload, Item,
+    MissingChunkReporter, PublishedViewInfo, SystemCommand, SystemCommandSender as _,
+    SystemExecutionOutput, ViewId, ViewQuery, ViewStates, ViewerContext, icon_for_container_kind,
 };
 use re_viewport_blueprint::{
     ViewBlueprint, ViewportBlueprint, ViewportCommand, create_entity_add_info,
@@ -24,7 +24,9 @@ use re_viewport_blueprint::{
 
 use crate::system_execution::{execute_systems_for_all_views, execute_systems_for_view};
 
-// ----------------------------------------------------------------------------
+/// Toggle the currently selected view to be maximized or not.
+// NOTE: we use CTRL and not COMMAND, because ⌘+M minimizes the whole window on macOS.
+const TOGGLE_MAXIMIZE_VIEW: KeyboardShortcut = KeyboardShortcut::new(Modifiers::CTRL, Key::M);
 
 /// Defines the UI and layout of the Viewport.
 pub struct ViewportUi {
@@ -84,7 +86,7 @@ impl ViewportUi {
         };
 
         // Reset all error states.
-        view_states.reset_visualizer_errors();
+        view_states.reset_visualizer_reports();
 
         let executed_systems_per_view =
             execute_systems_for_all_views(ctx, &tree, &blueprint.views, view_states);
@@ -92,7 +94,7 @@ impl ViewportUi {
         // Memorize new error states.
         #[expect(clippy::iter_over_hash_type)] // It's building up another hash map so that's fine.
         for (view_id, (_, system_output)) in &executed_systems_per_view {
-            view_states.report_visualizer_errors(*view_id, system_output);
+            view_states.add_visualizer_reports_from_output(ctx.store_id(), *view_id, system_output);
         }
 
         let contents_per_tile_id = blueprint
@@ -121,13 +123,7 @@ impl ViewportUi {
             tree.ui(&mut egui_tiles_delegate, ui);
 
             let dragged_payload = egui::DragAndDrop::payload::<DragAndDropPayload>(ui.ctx());
-            let dragged_payload = dragged_payload.as_ref().and_then(|payload| {
-                if let DragAndDropPayload::Entities { entities } = payload.as_ref() {
-                    Some(entities)
-                } else {
-                    None
-                }
-            });
+            let released = ui.input(|i| i.pointer.any_released());
 
             let mut hover_rects = Vec::new();
             let mut selection_rects = Vec::new();
@@ -155,9 +151,30 @@ impl ViewportUi {
                     let should_display_drop_destination_frame = if pointer_in_rect
                         && let Some(view_id) = contents.as_view_id()
                         && let Some(view_blueprint) = self.blueprint.view(&view_id)
-                        && let Some(dragged_payload) = dragged_payload
+                        && let Some(payload) = dragged_payload.as_ref()
                     {
-                        Self::handle_drop_entities_to_view(ctx, view_blueprint, dragged_payload)
+                        let feedback = match payload.as_ref() {
+                            DragAndDropPayload::Entities { entities } => {
+                                Self::handle_drop_entities_to_view(
+                                    ctx,
+                                    view_blueprint,
+                                    entities,
+                                    released,
+                                )
+                            }
+                            DragAndDropPayload::Components { component_paths } => view_blueprint
+                                .class(ctx.view_class_registry())
+                                .handle_component_drop(ctx, view_id, component_paths, released),
+                            DragAndDropPayload::Contents { .. } | DragAndDropPayload::Invalid => {
+                                DragAndDropFeedback::Ignore
+                            }
+                        };
+
+                        if feedback != DragAndDropFeedback::Ignore {
+                            ctx.drag_and_drop_manager().set_feedback(feedback);
+                        }
+
+                        feedback == DragAndDropFeedback::Accept
                     } else {
                         false
                     };
@@ -182,17 +199,17 @@ impl ViewportUi {
             // We want the rectangle to be on top of everything in the viewport,
             // including stuff in "zoom-pan areas", like we use in the graph view.
             let top_layer_id = egui::LayerId::new(ui.layer_id().order, ui.id().with("child_id"));
-            ui.ctx().set_sublayer(ui.layer_id(), top_layer_id); // Make sure it is directly on top of the ui layer
+            ui.set_sublayer(ui.layer_id(), top_layer_id); // Make sure it is directly on top of the ui layer
             let painter = ui.painter().clone().with_layer_id(top_layer_id);
 
             // Draw selection outlines
-            let selection_stroke = ui.ctx().selection_stroke();
+            let selection_stroke = ui.selection_stroke();
             for rect in selection_rects {
                 painter.rect_stroke(rect, 0.0, selection_stroke, egui::StrokeKind::Inside);
             }
 
             // Draw hover outlines
-            let hover_stroke = ui.ctx().hover_stroke();
+            let hover_stroke = ui.hover_stroke();
             for rect in hover_rects {
                 painter.rect_stroke(rect, 0.0, hover_stroke, egui::StrokeKind::Inside);
             }
@@ -248,8 +265,6 @@ impl ViewportUi {
 
     /// Handle the entities being dragged over a view.
     ///
-    /// Returns whether a "drop zone candidate" frame should be displayed to the user.
-    ///
     /// Design decisions:
     /// - We accept the drop only if at least one of the entities is visualizable and not already
     ///   included.
@@ -259,10 +274,12 @@ impl ViewportUi {
         ctx: &ViewerContext<'_>,
         view_blueprint: &ViewBlueprint,
         entities: &[EntityPath],
-    ) -> bool {
+        released: bool,
+    ) -> DragAndDropFeedback {
+        let recording_engine = ctx.recording_engine();
         let add_info = create_entity_add_info(
             ctx,
-            ctx.recording().tree(),
+            recording_engine.store().entity_tree(),
             view_blueprint,
             ctx.lookup_query_result(view_blueprint.id),
         );
@@ -276,19 +293,12 @@ impl ViewportUi {
 
         let any_is_visualizable = entities.iter().any(can_entity_be_added);
 
-        ctx.drag_and_drop_manager
-            .set_feedback(if any_is_visualizable {
-                DragAndDropFeedback::Accept
-            } else {
-                DragAndDropFeedback::Reject
-            });
-
         if !any_is_visualizable {
-            return false;
+            return DragAndDropFeedback::Reject(None);
         }
 
         // drop incoming!
-        if ctx.egui_ctx().input(|i| i.pointer.any_released()) {
+        if released {
             egui::DragAndDrop::clear_payload(ctx.egui_ctx());
 
             view_blueprint
@@ -306,12 +316,9 @@ impl ViewportUi {
 
             ctx.command_sender()
                 .send_system(SystemCommand::set_selection(Item::View(view_blueprint.id)));
-
-            // drop is completed, no need for highlighting anymore
-            false
-        } else {
-            any_is_visualizable
         }
+
+        DragAndDropFeedback::Accept
     }
 
     pub fn on_frame_start(&self, ctx: &ViewerContext<'_>) {
@@ -375,34 +382,14 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
             // This shouldn't happen, but better safe than sorry:
             // TODO(#4433): This should go to analytics
 
-            if cfg!(debug_assertions) {
-                re_log::warn_once!(
-                    "Visualizers for view {:?} haven't been executed prior to display. This should never happen, please report a bug.",
-                    view_blueprint.display_name_or_default()
-                );
-            }
+            re_log::debug_warn_once!(
+                "Visualizers for view {:?} haven't been executed prior to display. This should never happen, please report a bug.",
+                view_blueprint.display_name_or_default()
+            );
 
             let ctx: &'a ViewerContext<'_> = self.ctx;
             let view = view_blueprint;
             re_tracing::profile_scope!("late-system-execute", view.class_identifier().as_str());
-
-            let query_result = ctx.lookup_query_result(view.id);
-
-            let mut per_visualizer_data_results = re_viewer_context::PerSystemDataResults::default();
-
-            {
-                re_tracing::profile_scope!("per_system_data_results");
-
-                query_result.tree.visit(&mut |node| {
-                    for instruction in &node.data_result.visualizer_instructions {
-                        per_visualizer_data_results
-                            .entry(instruction.visualizer_type)
-                            .or_default()
-                            .push(&node.data_result);
-                    }
-                    true
-                });
-            }
 
             let class_registry = self.ctx.view_class_registry();
             let class = view_blueprint.class(class_registry);
@@ -410,15 +397,26 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
                 ctx,
                 std::iter::once(view.class_identifier())
             );
-            execute_systems_for_view(ctx, view, self.view_states.get_mut_or_create(*view_id, class), &context_system_once_per_frame_results)
+            execute_systems_for_view(ctx, view, self.view_states.get_mut_or_create(ctx.store_id(), *view_id, class), &context_system_once_per_frame_results)
         });
 
         let class = view_blueprint.class(self.ctx.view_class_registry());
-        let view_state = self.view_states.get_mut_or_create(*view_id, class);
+        let view_state = self
+            .view_states
+            .get_mut_or_create(self.ctx.store_id(), *view_id, class);
+
+        let missing_chunk_reporter = MissingChunkReporter::new(system_output.any_missing_chunks());
 
         let response = ui.scope(|ui| {
             class
-                .ui(self.ctx, ui, view_state, &query, system_output)
+                .ui(
+                    self.ctx,
+                    &missing_chunk_reporter,
+                    ui,
+                    view_state,
+                    &query,
+                    system_output,
+                )
                 .unwrap_or_else(|err| {
                     re_log::error!(
                         "Error in view UI (class: {}, display name: {}): {err}",
@@ -427,7 +425,7 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
                     );
                 });
 
-            ui.ctx().memory_mut(|mem| {
+            ui.memory_mut(|mem| {
                 mem.caches
                     .cache::<re_viewer_context::ViewRectPublisher>()
                     .set(
@@ -439,6 +437,15 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
                     );
             });
         });
+
+        crate::paint_view_loading_indicator(
+            ui,
+            *view_id,
+            response.response.rect,
+            missing_chunk_reporter.any_missing(),
+            self.ctx.recording(),
+        );
+
         response.response.widget_info(|| {
             let mut info = egui::WidgetInfo::new(egui::WidgetType::Panel);
             info.label = Some(view_blueprint.display_name_or_default().as_ref().to_owned());
@@ -474,10 +481,14 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
             .on_hover_cursor(egui::CursorIcon::Grab);
 
         let label = tab_widget.label.take();
+        let active = tab_state.active;
         response.widget_info(|| {
-            let mut info = egui::WidgetInfo::new(egui::WidgetType::Label);
-            info.label = label.clone();
-            info
+            egui::WidgetInfo::selected(
+                egui::WidgetType::SelectableLabel,
+                true,
+                active,
+                label.clone().unwrap_or_default(),
+            )
         });
 
         // Show a gap when dragged
@@ -575,7 +586,7 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
                     Help::new_without_title()
                         .control(
                             "Restore - show all spaces",
-                            IconText::from_keyboard_shortcut(ui.ctx().os(), TOGGLE_MAXIMIZE_VIEW),
+                            IconText::from_keyboard_shortcut(ui.os(), TOGGLE_MAXIMIZE_VIEW),
                         )
                         .ui(ui);
                 })
@@ -598,10 +609,7 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
                         Help::new_without_title()
                             .control(
                                 "Maximize view",
-                                IconText::from_keyboard_shortcut(
-                                    ui.ctx().os(),
-                                    TOGGLE_MAXIMIZE_VIEW,
-                                ),
+                                IconText::from_keyboard_shortcut(ui.os(), TOGGLE_MAXIMIZE_VIEW),
                             )
                             .ui(ui);
                     } else {
@@ -637,7 +645,9 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
         let view_class = view_blueprint.class(self.ctx.view_class_registry());
 
         // give the view a chance to display some extra UI in the top bar.
-        let view_state = self.view_states.get_mut_or_create(view_id, view_class);
+        let view_state =
+            self.view_states
+                .get_mut_or_create(self.ctx.store_id(), view_id, view_class);
         view_class
             .extra_title_bar_ui(
                 self.ctx,
@@ -655,7 +665,7 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
             });
 
         ui.help_button(|ui| {
-            view_class.help(ui.ctx().os()).ui(ui);
+            view_class.help(ui.os()).ui(ui);
         });
 
         self.visualizer_errors_button(ui, view_id);
@@ -721,45 +731,84 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
 
 impl TilesDelegate<'_, '_> {
     fn visualizer_errors_button(&self, ui: &mut egui::Ui, view_id: ViewId) {
-        let Some(visualizer_errors) = self.view_states.visualizer_errors(view_id) else {
+        let Some(per_visualizer_type_reports) = self
+            .view_states
+            .per_visualizer_type_reports(self.ctx.store_id(), view_id)
+        else {
             return;
         };
 
-        let errors = visualizer_errors
-            .values()
-            .flat_map(|err| match err {
-                re_viewer_context::VisualizerExecutionErrorState::Overall(error) => {
-                    Either::Left(std::iter::once((Item::View(view_id), error.to_string())))
-                }
-                re_viewer_context::VisualizerExecutionErrorState::PerEntity(errors) => {
-                    Either::Right(errors.iter().map(|(entity, err)| {
-                        (
-                            Item::DataResult(view_id, entity.clone().into()),
-                            err.clone(),
-                        )
-                    }))
-                }
-            })
-            .collect::<Vec<_>>();
+        let data_result_tree = &self.ctx.lookup_query_result(view_id).tree;
 
-        if visualizer_errors.is_empty() {
+        let mut grouped_reports: BTreeMap<Item, Vec<_>> = BTreeMap::new();
+
+        for report in per_visualizer_type_reports.values() {
+            match report {
+                re_viewer_context::VisualizerTypeReport::OverallError(error) => {
+                    grouped_reports
+                        .entry(Item::View(view_id))
+                        .or_default()
+                        .push(error.clone());
+                }
+                re_viewer_context::VisualizerTypeReport::PerInstructionReport(reports_map) => {
+                    for instruction_id in reports_map.keys() {
+                        if let Some(data_result) = data_result_tree
+                            .lookup_result_by_visualizer_instruction(*instruction_id)
+                        {
+                            let item = Item::DataResult(DataResultInteractionAddress {
+                                view_id,
+                                instance_path: data_result.entity_path.clone().into(),
+                                visualizer: Some(*instruction_id),
+                            });
+                            for instruction_report in report.reports_for(instruction_id) {
+                                // Only show a button for errors and warnings.
+                                if instruction_report.severity
+                                    != re_viewer_context::VisualizerReportSeverity::Info
+                                {
+                                    grouped_reports
+                                        .entry(item.clone())
+                                        .or_default()
+                                        .push(instruction_report.clone());
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if grouped_reports.is_empty() {
             return;
         }
 
-        let error_count = visualizer_errors.len();
+        let max_severity = grouped_reports
+            .values()
+            .flatten()
+            .map(|report| report.severity)
+            .max();
+        let report_count: usize = grouped_reports.values().map(|reports| reports.len()).sum();
 
         ui.scope(|ui| {
-            let response = ui
-                .add(egui::Button::image(
+            let report_image =
+                if max_severity == Some(re_viewer_context::VisualizerReportSeverity::Warning) {
+                    icons::WARNING
+                        .as_image()
+                        .fit_to_exact_size(ui.tokens().small_icon_size)
+                        .alt_text("View warnings")
+                        .tint(ui.tokens().alert_warning.icon)
+                } else {
                     icons::ERROR
                         .as_image()
                         .fit_to_exact_size(ui.tokens().small_icon_size)
                         .alt_text("View errors")
-                        .tint(ui.visuals().error_fg_color),
-                ))
+                        .tint(ui.tokens().alert_error.icon)
+                };
+
+            let response = ui
+                .add(egui::Button::image(report_image))
                 .on_hover_text(format!(
-                    "Show {error_count} visualizer error{}",
-                    re_format::format_plural_s(error_count)
+                    "Show {}",
+                    re_format::format_plural_s(report_count, "visualizer report")
                 ));
 
             egui::Popup::menu(&response)
@@ -769,15 +818,20 @@ impl TilesDelegate<'_, '_> {
                         .min_scrolled_height(600.0)
                         .max_height(600.0)
                         .show(ui, |ui| {
-                            for (item, err) in errors {
-                                self.show_item_error(ui, item, &err);
+                            for (item, item_reports) in &grouped_reports {
+                                self.show_item_reports(ui, item.clone(), item_reports);
                             }
                         });
                 });
         });
     }
 
-    fn show_item_error(&self, ui: &mut egui::Ui, item: Item, err: &str) {
+    fn show_item_reports(
+        &self,
+        ui: &mut egui::Ui,
+        item: Item,
+        reports: &[re_viewer_context::VisualizerInstructionReport],
+    ) {
         let item_entity = match &item {
             Item::View(blueprint_id) => blueprint_id.as_entity_path().to_string(),
             _ => item
@@ -785,34 +839,56 @@ impl TilesDelegate<'_, '_> {
                 .map(|item| item.to_string())
                 .unwrap_or_default(),
         };
+
         egui::Frame::window(ui.style())
             .corner_radius(4)
             .inner_margin(10.0)
             .fill(ui.tokens().notification_panel_background_color)
             .shadow(egui::Shadow::NONE)
             .show(ui, |ui| {
-                ui.horizontal_top(|ui| {
-                    ui.add(icons::ERROR.as_image().tint(ui.visuals().error_fg_color));
+                ui.vertical(|ui| {
+                    // Show item name once at the top
+                    if ui
+                        .selectable_label(self.ctx.selection().contains_item(&item), item_entity)
+                        .clicked()
+                    {
+                        self.ctx
+                            .command_sender()
+                            .send_system(SystemCommand::set_selection(item));
+                        self.ctx
+                            .command_sender()
+                            .send_ui(re_ui::UICommand::ExpandSelectionPanel);
+                    }
+                    ui.separator();
 
-                    ui.vertical(|ui| {
-                        if ui
-                            .selectable_label(
-                                self.ctx.selection().contains_item(&item),
-                                item_entity,
-                            )
-                            .clicked()
-                        {
-                            self.ctx
-                                .command_sender()
-                                .send_system(SystemCommand::set_selection(item));
-                            self.ctx
-                                .command_sender()
-                                .send_ui(re_ui::UICommand::ExpandSelectionPanel);
-                        }
-                        ui.separator();
-                        ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
-                        ui.label(err);
-                    })
+                    // Show all reports for this item
+                    for report in reports {
+                        let (icon, color) = match report.severity {
+                            re_viewer_context::VisualizerReportSeverity::Error
+                            | re_viewer_context::VisualizerReportSeverity::OverallVisualizerError => {
+                                (&icons::ERROR, ui.tokens().alert_error.icon)
+                            }
+                            re_viewer_context::VisualizerReportSeverity::Warning => {
+                                (&icons::WARNING, ui.tokens().alert_warning.icon)
+                            }
+                            re_viewer_context::VisualizerReportSeverity::Info => continue,
+                        };
+
+                        ui.horizontal_top(|ui| {
+                            ui.add(icon.as_image().tint(color));
+
+                            ui.vertical(|ui| {
+                                ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
+                                ui.label(&report.summary);
+
+                                if let Some(details) = &report.details {
+                                    ui.collapsing("Details", |ui| {
+                                        ui.label(details);
+                                    });
+                                }
+                            });
+                        });
+                    }
                 })
             });
     }
@@ -1137,7 +1213,7 @@ impl MaximizeAnimationState {
         egui_ctx: &egui::Context,
         viewport_rect: egui::Rect,
     ) -> (Option<ViewId>, egui::Rect) {
-        let animation_time = egui_ctx.style().animation_time;
+        let animation_time = egui_ctx.global_style().animation_time;
 
         let mut animating_view_id = None;
         let mut animated_rect = viewport_rect;

@@ -2,27 +2,30 @@ use re_chunk_store::{LatestAtQuery, RowId};
 use re_sdk_types::Archetype as _;
 use re_sdk_types::archetypes::Tensor;
 use re_sdk_types::components::{TensorData, ValueRange};
-use re_view::{RangeResultsExt as _, latest_at_with_blueprint_resolved_data};
+use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
     IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError,
     VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
 };
 
-#[derive(Clone)]
+#[derive(Clone, re_byte_size::SizeBytes)]
 pub struct TensorVisualization {
     pub tensor_row_id: RowId,
+    // Tensor is already counted as part of the store.
+    #[size_bytes(ignore)]
     pub tensor: TensorData,
     pub data_range: ValueRange,
 }
 
 #[derive(Default)]
-pub struct TensorSystem {
-    pub tensors: Vec<TensorVisualization>,
-}
+pub struct TensorSystem;
 
 impl IdentifiedViewSystem for TensorSystem {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "Tensor".into()
+        re_viewer_context::external::re_string_interner::intern_static!(
+            re_viewer_context::ViewSystemIdentifier,
+            "Tensor"
+        )
     }
 }
 
@@ -31,51 +34,58 @@ impl VisualizerSystem for TensorSystem {
         &self,
         _app_options: &re_viewer_context::AppOptions,
     ) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<Tensor>()
+        VisualizerQueryInfo::single_required_component::<TensorData>(
+            &Tensor::descriptor_data(),
+            &Tensor::all_components(),
+        )
     }
 
     fn execute(
-        &mut self,
+        &self,
         ctx: &ViewContext<'_>,
         query: &ViewQuery<'_>,
         _context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
+        let output = VisualizerExecutionOutput::default();
+        let mut tensors = Vec::new();
+
         for (data_result, instruction) in query.iter_visualizer_instruction_for(Self::identifier())
         {
             let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
 
             let annotations = None;
-            let query_shadowed_defaults = false;
-            let results = latest_at_with_blueprint_resolved_data(
+            let latest_at_results = latest_at_with_blueprint_resolved_data(
                 ctx,
                 annotations,
                 &timeline_query,
                 data_result,
                 Tensor::all_component_identifiers(),
-                query_shadowed_defaults,
                 Some(instruction),
             );
+            let results =
+                re_view::BlueprintResolvedResults::from((timeline_query, latest_at_results));
+            let results =
+                re_view::VisualizerInstructionQueryResults::new(instruction, &results, &output);
 
-            let Some(all_tensor_chunks) =
-                results.get_required_chunks(Tensor::descriptor_data().component)
-            else {
+            let all_tensor_chunks = results.iter_required(Tensor::descriptor_data().component);
+            if all_tensor_chunks.is_empty() {
                 continue;
-            };
+            }
 
-            let timeline = query.timeline;
-            let all_tensors_indexed = all_tensor_chunks.iter().flat_map(move |chunk| {
-                chunk
-                    .iter_component_indices(timeline)
-                    .zip(chunk.iter_component::<TensorData>())
+            let all_tensors_indexed = all_tensor_chunks.chunks().iter().flat_map(move |chunk| {
+                std::iter::zip(
+                    chunk.iter_component_indices(query.timeline),
+                    chunk.iter_component::<TensorData>(),
+                )
             });
-            let all_ranges = results.iter_as(timeline, Tensor::descriptor_value_range().component);
+            let all_ranges = results.iter_optional(Tensor::descriptor_value_range().component);
 
-            for ((_, tensor_row_id), tensors, data_ranges) in
+            for ((_, tensor_row_id), tensor_values, data_ranges) in
                 re_query::range_zip_1x1(all_tensors_indexed, all_ranges.slice::<[f64; 2]>())
             {
-                let Some(tensor) = tensors.first() else {
+                let Some(tensor) = tensor_values.first() else {
                     continue;
                 };
                 let data_range = data_ranges
@@ -87,12 +97,16 @@ impl VisualizerSystem for TensorSystem {
                     })
                     .unwrap_or_else(|| {
                         typed_fallback_for(
-                            &ctx.query_context(data_result, &query.latest_at_query()),
+                            &ctx.query_context(
+                                data_result,
+                                query.latest_at_query(),
+                                instruction.id,
+                            ),
                             Tensor::descriptor_value_range().component,
                         )
                     });
 
-                self.tensors.push(TensorVisualization {
+                tensors.push(TensorVisualization {
                     tensor_row_id,
                     tensor: tensor.clone(),
                     data_range,
@@ -100,6 +114,6 @@ impl VisualizerSystem for TensorSystem {
             }
         }
 
-        Ok(VisualizerExecutionOutput::default())
+        Ok(output.with_visualizer_data(tensors))
     }
 }

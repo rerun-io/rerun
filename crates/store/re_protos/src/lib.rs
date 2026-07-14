@@ -10,6 +10,9 @@ pub mod external {
 }
 
 pub mod headers;
+pub mod trace_id_layer;
+
+pub use re_log_types::{EntryName, InvalidEntryNameError};
 
 // This extra module is needed, because of how imports from different packages are resolved.
 // For example, `rerun.remote_store.v1alpha1.EncoderVersion` is resolved to `super::super::remote_store::v1alpha1::EncoderVersion`.
@@ -47,6 +50,12 @@ mod v1alpha1 {
 
     #[path = "./rerun.cloud.v1alpha1.ext.rs"]
     pub mod rerun_cloud_v1alpha1_ext;
+
+    #[path = "./rerun.cloud.v1alpha1.ext.chunk_key.rs"]
+    pub mod rerun_cloud_v1alpha1_ext_chunk_key;
+
+    #[path = "./rerun.cloud.v1alpha1.ext.schemas.rs"]
+    pub mod rerun_cloud_v1alpha1_ext_schemas;
 }
 
 pub mod common {
@@ -61,18 +70,36 @@ pub mod common {
 pub mod log_msg {
     pub mod v1alpha1 {
         pub use crate::v1alpha1::rerun_log_msg_v1alpha1::*;
-        pub mod ext {
-            pub use crate::v1alpha1::rerun_log_msg_v1alpha1_ext::*;
-        }
     }
 }
 
 pub mod cloud {
-    #[rustfmt::skip] // keep these constants single line for easy sorting
     pub mod v1alpha1 {
         pub use crate::v1alpha1::rerun_cloud_v1alpha1::*;
         pub mod ext {
             pub use crate::v1alpha1::rerun_cloud_v1alpha1_ext::*;
+            pub use crate::v1alpha1::rerun_cloud_v1alpha1_ext_chunk_key::*;
+            pub use crate::v1alpha1::rerun_cloud_v1alpha1_ext_schemas::*;
+        }
+
+        /// Server-supported feature flags advertised via `VersionResponse.features`.
+        ///
+        /// Constants here are the single source of truth — both client (gating)
+        /// and server (advertising) reference the same string. See `cloud.proto`
+        /// `VersionResponse.features` for protocol details.
+        pub mod features {
+            /// Server consumes `QueryLatestAt.per_segment_values` for chunk
+            /// pruning (RR-4355). New clients must check this before sending
+            /// `per_segment_values` — old servers will silently return only
+            /// static data.
+            pub const PER_SEGMENT_INDEX_VALUES: &str = "per_segment_index_values";
+
+            /// Returns the full list of features this build of the server
+            /// natively supports. Used by both OSS `re_server` and the
+            /// Rerun Hub frontend to populate `VersionResponse.features`.
+            pub fn all_supported_features() -> Vec<String> {
+                vec![PER_SEGMENT_INDEX_VALUES.to_owned()]
+            }
         }
     }
 }
@@ -114,6 +141,12 @@ pub enum TypeConversionError {
         package_name: &'static str,
         type_name: &'static str,
     },
+
+    #[error("invalid entry name: {0}")]
+    InvalidEntryName(#[from] InvalidEntryNameError),
+
+    #[error("invalid timeline name: {0}")]
+    InvalidTimelineName(#[from] re_types_core::InvalidTimelineNameError),
 
     #[error("failed to parse timestamp: {0}")]
     InvalidTime(#[from] jiff::Error),
@@ -395,6 +428,8 @@ mod sizes {
             let Self {
                 encoder_version,
                 payload,
+                compression: _,
+                uncompressed_size: _,
             } = self;
 
             encoder_version.heap_size_bytes()

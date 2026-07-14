@@ -2,6 +2,7 @@ use std::fmt::Formatter;
 
 use arrow::datatypes::{DataType, Field};
 use datafusion::common::Column;
+use datafusion::functions::core::expr_fn::arrow_cast;
 use datafusion::logical_expr::{Expr, col, lit, not};
 use datafusion::prelude::{array_element, array_has, array_sort};
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
@@ -41,10 +42,10 @@ impl Filter for NonNullableBooleanFilter {
                 Ok(array_has(col(field.name().clone()), lit(self.as_bool())))
             }
 
-            _ => Err(FilterError::InvalidNonNullableBooleanFilter(
-                self.clone(),
-                field.clone().into(),
-            )),
+            _ => Err(FilterError::InvalidNonNullableBooleanFilter {
+                filter: self.clone(),
+                field: field.clone().into(),
+            }),
         }
     }
 
@@ -198,8 +199,13 @@ impl Filter for NullableBooleanFilter {
                 if let Some(value) = self.value.as_bool() {
                     array_has(col(column), lit(value))
                 } else {
+                    // TODO(apache/datafusion#19947): Remove arrow_cast when resolved
                     col(column.clone()).is_null().or(array_element(
-                        array_sort(col(column), lit("ASC"), lit("NULLS FIRST")),
+                        array_sort(
+                            arrow_cast(col(column), lit("List(Boolean)")),
+                            lit("ASC"),
+                            lit("NULLS FIRST"),
+                        ),
                         lit(1),
                     )
                     .is_null())
@@ -207,10 +213,10 @@ impl Filter for NullableBooleanFilter {
             }
 
             _ => {
-                return Err(FilterError::InvalidNullableBooleanFilter(
-                    self.clone(),
-                    field.clone().into(),
-                ));
+                return Err(FilterError::InvalidNullableBooleanFilter {
+                    filter: self.clone(),
+                    field: field.clone().into(),
+                });
             }
         };
 

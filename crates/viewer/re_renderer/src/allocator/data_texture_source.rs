@@ -1,8 +1,9 @@
 use bytemuck::Pod;
+use re_log::debug_assert;
 
 use super::{CpuWriteGpuReadBuffer, CpuWriteGpuReadError};
 use crate::wgpu_resources::{self, GpuTexture};
-use crate::{DebugLabel, RenderContext};
+use crate::{Label, RenderContext};
 
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
 pub enum DataTextureSourceWriteError {
@@ -30,7 +31,7 @@ pub enum DataTextureSourceWriteError {
 /// Each texel in the data texture represents a single element of the type `T`.
 ///
 /// This is implemented by dynamically allocating cpu-write-gpu-read buffers from the
-/// central [`super::CpuWriteGpuReadBelt`] and copying all of them to the texture in the end.
+/// central [`crate::CpuWriteGpuReadBelt`] and copying all of them to the texture in the end.
 pub struct DataTextureSource<'a, T: Pod + Send + Sync> {
     ctx: &'a RenderContext, // TODO(andreas): Don't dependency inject, layers on top of this can do that.
 
@@ -143,14 +144,14 @@ impl<'a, T: Pod + Send + Sync> DataTextureSource<'a, T> {
     ///
     /// Returns the number of elements that are currently reserved.
     /// This value is *smaller* than the requested number of elements if the maximum number of
-    /// elements that can be stored is reached, see [`max_num_elements_per_data_texture`].
+    /// elements that can be stored is reached.
     ///
     /// Creating new buffers is a relatively expensive operation, so it's best to
     /// reserve gratuitously and often. Ideally, you know exactly how many elements you're going to write and reserve
     /// accordingly at the start.
     ///
     /// If there's no more space, a new buffer is allocated such that:
-    /// * have a total capacity for at least as many elements as requested, clamping total size to [`max_num_elements_per_data_texture`]
+    /// * have a total capacity for at least as many elements as requested, clamping total size to the maximum.
     /// * be at least double the size of the last buffer
     /// * keep it easy to copy to textures by always being a multiple of the maximum row size we use for data textures
     ///   - this massively simplifies the buffer->texture copy logic!
@@ -329,14 +330,14 @@ impl<'a, T: Pod + Send + Sync> DataTextureSource<'a, T> {
     pub fn finish(
         self,
         texture_format: wgpu::TextureFormat,
-        texture_label: impl Into<DebugLabel>,
+        texture_label: impl Into<Label>,
     ) -> Result<GpuTexture, CpuWriteGpuReadError> {
         re_tracing::profile_function!();
 
         debug_assert!(!texture_format.has_depth_aspect());
         debug_assert!(!texture_format.has_stencil_aspect());
         debug_assert!(!texture_format.is_compressed());
-        debug_assert_eq!(
+        re_log::debug_assert_eq!(
             texture_format
                 .block_copy_size(None)
                 .expect("Depth/stencil formats are not supported as data textures"),

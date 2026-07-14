@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -31,7 +32,8 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// ### Encoded image
 /// ```ignore
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_encoded_image").spawn()?;
+///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_encoded_image")
+///         .spawn()?;
 ///
 ///     let image = include_bytes!("ferris.png");
 ///
@@ -52,7 +54,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <img src="https://static.rerun.io/encoded_image/6e92868b6533be5fb2dfd9e26938eb7a256bfb01/full.png" width="640">
 /// </picture>
 /// </center>
-#[derive(Clone, Debug, PartialEq, Default)]
+#[derive(Clone, Debug, PartialEq, Default, ::re_byte_size::SizeBytes)]
 pub struct EncodedImage {
     /// The encoded content of some image file, e.g. a PNG or JPEG.
     pub blob: Option<SerializedComponentBatch>,
@@ -76,6 +78,9 @@ pub struct EncodedImage {
     ///
     /// Objects with higher values are drawn on top of those with lower values.
     pub draw_order: Option<SerializedComponentBatch>,
+
+    /// Optional filter used when a texel is magnified (displayed larger than a screen pixel).
+    pub magnification_filter: Option<SerializedComponentBatch>,
 }
 
 impl EncodedImage {
@@ -84,11 +89,13 @@ impl EncodedImage {
     /// The corresponding component is [`crate::components::Blob`].
     #[inline]
     pub fn descriptor_blob() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.EncodedImage".into()),
-            component: "EncodedImage:blob".into(),
-            component_type: Some("rerun.components.Blob".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.EncodedImage".into()),
+                component: "EncodedImage:blob".into(),
+                component_type: Some("rerun.components.Blob".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::media_type`].
@@ -96,11 +103,13 @@ impl EncodedImage {
     /// The corresponding component is [`crate::components::MediaType`].
     #[inline]
     pub fn descriptor_media_type() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.EncodedImage".into()),
-            component: "EncodedImage:media_type".into(),
-            component_type: Some("rerun.components.MediaType".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.EncodedImage".into()),
+                component: "EncodedImage:media_type".into(),
+                component_type: Some("rerun.components.MediaType".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::opacity`].
@@ -108,11 +117,13 @@ impl EncodedImage {
     /// The corresponding component is [`crate::components::Opacity`].
     #[inline]
     pub fn descriptor_opacity() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.EncodedImage".into()),
-            component: "EncodedImage:opacity".into(),
-            component_type: Some("rerun.components.Opacity".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.EncodedImage".into()),
+                component: "EncodedImage:opacity".into(),
+                component_type: Some("rerun.components.Opacity".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 
     /// Returns the [`ComponentDescriptor`] for [`Self::draw_order`].
@@ -120,11 +131,27 @@ impl EncodedImage {
     /// The corresponding component is [`crate::components::DrawOrder`].
     #[inline]
     pub fn descriptor_draw_order() -> ComponentDescriptor {
-        ComponentDescriptor {
-            archetype: Some("rerun.archetypes.EncodedImage".into()),
-            component: "EncodedImage:draw_order".into(),
-            component_type: Some("rerun.components.DrawOrder".into()),
-        }
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.EncodedImage".into()),
+                component: "EncodedImage:draw_order".into(),
+                component_type: Some("rerun.components.DrawOrder".into()),
+            });
+        (*DESCRIPTOR).clone()
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::magnification_filter`].
+    ///
+    /// The corresponding component is [`crate::components::MagnificationFilter`].
+    #[inline]
+    pub fn descriptor_magnification_filter() -> ComponentDescriptor {
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.archetypes.EncodedImage".into()),
+                component: "EncodedImage:magnification_filter".into(),
+                component_type: Some("rerun.components.MagnificationFilter".into()),
+            });
+        (*DESCRIPTOR).clone()
     }
 }
 
@@ -134,33 +161,38 @@ static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
 static RECOMMENDED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 1usize]> =
     std::sync::LazyLock::new(|| [EncodedImage::descriptor_media_type()]);
 
-static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 2usize]> =
+static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 3usize]> =
     std::sync::LazyLock::new(|| {
         [
             EncodedImage::descriptor_opacity(),
             EncodedImage::descriptor_draw_order(),
+            EncodedImage::descriptor_magnification_filter(),
         ]
     });
 
-static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 4usize]> =
+static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 5usize]> =
     std::sync::LazyLock::new(|| {
         [
             EncodedImage::descriptor_blob(),
             EncodedImage::descriptor_media_type(),
             EncodedImage::descriptor_opacity(),
             EncodedImage::descriptor_draw_order(),
+            EncodedImage::descriptor_magnification_filter(),
         ]
     });
 
 impl EncodedImage {
-    /// The total number of components in the archetype: 1 required, 1 recommended, 2 optional
-    pub const NUM_COMPONENTS: usize = 4usize;
+    /// The total number of components in the archetype: 1 required, 1 recommended, 3 optional
+    pub const NUM_COMPONENTS: usize = 5usize;
 }
 
 impl ::re_types_core::Archetype for EncodedImage {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        "rerun.archetypes.EncodedImage".into()
+        ::re_types_core::external::re_string_interner::intern_static!(
+            ::re_types_core::ArchetypeName,
+            "rerun.archetypes.EncodedImage"
+        )
     }
 
     #[inline]
@@ -211,11 +243,20 @@ impl ::re_types_core::Archetype for EncodedImage {
             .map(|array| {
                 SerializedComponentBatch::new(array.clone(), Self::descriptor_draw_order())
             });
+        let magnification_filter = arrays_by_descr
+            .get(&Self::descriptor_magnification_filter())
+            .map(|array| {
+                SerializedComponentBatch::new(
+                    array.clone(),
+                    Self::descriptor_magnification_filter(),
+                )
+            });
         Ok(Self {
             blob,
             media_type,
             opacity,
             draw_order,
+            magnification_filter,
         })
     }
 }
@@ -229,6 +270,7 @@ impl ::re_types_core::AsComponents for EncodedImage {
             self.media_type.clone(),
             self.opacity.clone(),
             self.draw_order.clone(),
+            self.magnification_filter.clone(),
         ]
         .into_iter()
         .flatten()
@@ -254,6 +296,7 @@ impl EncodedImage {
             media_type: None,
             opacity: None,
             draw_order: None,
+            magnification_filter: None,
         }
     }
 
@@ -283,6 +326,10 @@ impl EncodedImage {
             draw_order: Some(SerializedComponentBatch::new(
                 crate::components::DrawOrder::arrow_empty(),
                 Self::descriptor_draw_order(),
+            )),
+            magnification_filter: Some(SerializedComponentBatch::new(
+                crate::components::MagnificationFilter::arrow_empty(),
+                Self::descriptor_magnification_filter(),
             )),
         }
     }
@@ -318,6 +365,9 @@ impl EncodedImage {
             self.draw_order
                 .map(|draw_order| draw_order.partitioned(_lengths.clone()))
                 .transpose()?,
+            self.magnification_filter
+                .map(|magnification_filter| magnification_filter.partitioned(_lengths.clone()))
+                .transpose()?,
         ];
         Ok(columns.into_iter().flatten())
     }
@@ -334,11 +384,13 @@ impl EncodedImage {
         let len_media_type = self.media_type.as_ref().map(|b| b.array.len());
         let len_opacity = self.opacity.as_ref().map(|b| b.array.len());
         let len_draw_order = self.draw_order.as_ref().map(|b| b.array.len());
+        let len_magnification_filter = self.magnification_filter.as_ref().map(|b| b.array.len());
         let len = None
             .or(len_blob)
             .or(len_media_type)
             .or(len_opacity)
             .or(len_draw_order)
+            .or(len_magnification_filter)
             .unwrap_or(0);
         self.columns(std::iter::repeat_n(1, len))
     }
@@ -433,14 +485,35 @@ impl EncodedImage {
         self.draw_order = try_serialize_field(Self::descriptor_draw_order(), draw_order);
         self
     }
-}
 
-impl ::re_byte_size::SizeBytes for EncodedImage {
+    /// Optional filter used when a texel is magnified (displayed larger than a screen pixel).
     #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.blob.heap_size_bytes()
-            + self.media_type.heap_size_bytes()
-            + self.opacity.heap_size_bytes()
-            + self.draw_order.heap_size_bytes()
+    pub fn with_magnification_filter(
+        mut self,
+        magnification_filter: impl Into<crate::components::MagnificationFilter>,
+    ) -> Self {
+        self.magnification_filter = try_serialize_field(
+            Self::descriptor_magnification_filter(),
+            [magnification_filter],
+        );
+        self
+    }
+
+    /// This method makes it possible to pack multiple [`crate::components::MagnificationFilter`] in a single component batch.
+    ///
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_magnification_filter`] should
+    /// be used when logging a single row's worth of data.
+    #[inline]
+    pub fn with_many_magnification_filter(
+        mut self,
+        magnification_filter: impl IntoIterator<
+            Item = impl Into<crate::components::MagnificationFilter>,
+        >,
+    ) -> Self {
+        self.magnification_filter = try_serialize_field(
+            Self::descriptor_magnification_filter(),
+            magnification_filter,
+        );
+        self
     }
 }

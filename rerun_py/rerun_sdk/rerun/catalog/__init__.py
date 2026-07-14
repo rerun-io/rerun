@@ -8,22 +8,27 @@ from rerun_bindings import (
     EntryKind as EntryKind,
     IndexColumnDescriptor as IndexColumnDescriptor,
     IndexColumnSelector as IndexColumnSelector,
-    IndexConfig as IndexConfig,
-    IndexingResult as IndexingResult,
     NotFoundError as NotFoundError,
-    VectorDistanceMetric as VectorDistanceMetric,
-    rerun_trace_context as _rerun_trace_context,
 )
 from rerun_bindings.types import (
     IndexValuesLike as IndexValuesLike,
-    VectorDistanceMetricLike as VectorDistanceMetricLike,
 )
 
-from ._catalog_client import CatalogClient as CatalogClient
-from ._entry import DatasetEntry as DatasetEntry, DatasetView as DatasetView, Entry as Entry, TableEntry as TableEntry
+from ._catalog_client import CatalogClient as CatalogClient, VersionInfo as VersionInfo
+from ._content_filter import ContentFilter as ContentFilter
+from ._entry import (
+    DatasetEntry as DatasetEntry,
+    DatasetView as DatasetView,
+    Entry as Entry,
+    OnDuplicateSegmentLayer as OnDuplicateSegmentLayer,
+    TableEntry as TableEntry,
+)
 from ._registration_handle import (
     RegistrationHandle as RegistrationHandle,
     RegistrationResult as RegistrationResult,
     SegmentRegistrationResult as SegmentRegistrationResult,
 )
 from ._schema import Schema as Schema
+from ._unregistration_handle import (
+    UnregistrationHandle as UnregistrationHandle,
+)

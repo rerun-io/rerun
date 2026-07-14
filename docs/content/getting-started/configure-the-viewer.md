@@ -36,7 +36,7 @@ to take the images.
 
 Although the Rerun SDK is available in both Python and Rust, this walkthrough makes use the Python installation. Even if
 you plan to use Rerun with Rust, we still recommend having a Rerun Python environment available for quick
-experimentation and working with examples. You can either follow the [Python Quickstart](data-in/python.md) or simply run:
+experimentation and working with examples. You can either follow the [Log and Ingest tutorial](data-in.md) or simply run:
 
 ```bash
 pip install rerun-sdk
@@ -100,8 +100,8 @@ Each of the three sides has a button in the upper-right corner. Click these to s
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viewer_walkthrough_toggle/2dadc5f29d9948678bdec9ef0e0671f4643c5f24/1200w.png">
 </picture>
 
-There are several ways to rearrange the viewer layout to your liking: through the Viewer [user interface](#interactive-configuration),
-via the [Blueprint API](#programmatic-blueprints), or by [loading an .rbl file](#save-and-load-blueprint-files).
+There are several ways to rearrange the viewer layout to your liking: through the Viewer [user interface](configure-the-viewer/navigating-the-viewer.md#interactive-configuration),
+via the [Blueprint API](configure-the-viewer/navigating-the-viewer.md#programmatic-blueprints), or by [loading an .rbl file](configure-the-viewer/navigating-the-viewer.md#save-and-load-blueprint-files).
 
 ## Exploring data
 
@@ -118,7 +118,7 @@ Let's explore an example of this hierarchy in our scene:
 
 The hierarchy of logged entity streams and their component streams is found under `Streams` in the Timeline panel. A similar list appears in the `Blueprint` panel, but the key difference is that the Blueprint panel focuses on how data is arranged and visualized in the Viewport, while the Streams panel shows when and what events were logged. In other words, an entity may be logged once but displayed in multiple views.
 
-Visualizations can also be customized per each view using [Overrides](../concepts/visualization/visualizers-and-overrides.md) in the Selection panel. In the screenshot below, the same entity `keypoints` is displayed in different colors: yellow and magenta. This is reflected in Selection > Visualizers > Points2D > Color, where yellow is an overridden value, even though the logged color value was different.
+Visualizations can also be customized per each view using [Overrides](../concepts/visualization/customize-views.md) in the Selection panel. In the screenshot below, the same entity `keypoints` is displayed in different colors: yellow and magenta. This is reflected in Selection > Visualizers > Points2D > Color, where yellow is an overridden value, even though the logged color value was different.
 
 <picture>
   <img src="https://static.rerun.io/viewer_walkthrough_overrides/f6b6780491f1ea4312de7ef014362971c6efc541/full.png" alt="">
@@ -224,5 +224,5 @@ Again, if you ran into any issues following this guide, please don't hesitate to
 ### Up next
 
 -   [Get started](data-in) by writing a program to log data with the Rerun SDK.
--   Explore other [examples of using Rerun](/examples).
+-   Explore other [examples of using Rerun](https://rerun.io/examples).
 -   Consult the [concept overview](../concepts.md) for more context on the ideas covered here.

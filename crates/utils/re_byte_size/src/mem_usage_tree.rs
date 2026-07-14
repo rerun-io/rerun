@@ -2,6 +2,7 @@
 
 /// A snapshot of memory usage of a value,
 /// produced by [`MemUsageTreeCapture::capture_mem_usage_tree`].
+#[derive(Clone)]
 pub enum MemUsageTree {
     /// A leaf node with a known size in bytes.
     Bytes(u64),
@@ -33,6 +34,7 @@ impl MemUsageTree {
 }
 
 /// A named child in a [`MemUsageNode`].
+#[derive(Clone)]
 pub struct NamedMemUsageTree {
     /// Name of this child node.
     pub name: String,
@@ -55,7 +57,7 @@ impl NamedMemUsageTree {
 }
 
 /// A node in a [`MemUsageTree`] with children.
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct MemUsageNode {
     /// Children of this node.
     children: Vec<NamedMemUsageTree>,
@@ -132,5 +134,22 @@ impl<T: MemUsageTreeCapture> MemUsageTreeCapture for Option<T> {
             Some(value) => value.capture_mem_usage_tree(),
             None => MemUsageTree::Bytes(0),
         }
+    }
+}
+
+impl<K, V, S> MemUsageTreeCapture for std::collections::HashMap<K, V, S>
+where
+    K: std::fmt::Display,
+    V: MemUsageTreeCapture,
+{
+    fn capture_mem_usage_tree(&self) -> MemUsageTree {
+        let mut node = MemUsageNode::new();
+
+        for (key, value) in self {
+            // Assumes the keys are small enough
+            node.add(key.to_string(), value.capture_mem_usage_tree());
+        }
+
+        node.into_tree()
     }
 }

@@ -12,10 +12,10 @@ Each key-value pair is stored as a UTF-8 string mapping.
 
 ## Arrow datatype
 ```
-List<Struct {
-        first: utf8
-        second: utf8
-    }>
+List(non-null Struct(
+        "first": non-null Utf8
+        "second": non-null Utf8
+    ))
 ```
 
 ## API reference links

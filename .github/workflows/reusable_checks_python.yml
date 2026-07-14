@@ -34,9 +34,9 @@ jobs:
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-      - uses: prefix-dev/setup-pixi@v0.9.1
+      - uses: prefix-dev/setup-pixi@v0.10.0
         with:
-          pixi-version: v0.55.0
+          pixi-version: v0.71.3
 
       - name: Python format check
         run: pixi run py-fmt-check
@@ -49,6 +49,24 @@ jobs:
 
   # ---------------------------------------------------------------------------
 
+  py-test-notebook:
+    name: Notebook widget unit tests
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
+
+      - uses: prefix-dev/setup-pixi@v0.10.0
+        with:
+          pixi-version: v0.71.3
+
+      - name: Run notebook tests
+        run: pixi run py-test-notebook
+
+  # ---------------------------------------------------------------------------
+
   py-test-docs:
     name: Test Python Docs
     timeout-minutes: 60
@@ -58,9 +76,9 @@ jobs:
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-      - uses: prefix-dev/setup-pixi@v0.9.1
+      - uses: prefix-dev/setup-pixi@v0.10.0
         with:
-          pixi-version: v0.55.0
+          pixi-version: v0.71.3
 
       - name: Build via mkdocs
         run: |

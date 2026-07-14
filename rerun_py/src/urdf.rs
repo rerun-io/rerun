@@ -1,30 +1,61 @@
 use std::path::PathBuf;
+use std::sync::Arc;
 
-use pyo3::exceptions::PyRuntimeError;
+use arrow::array::{Array as _, ArrayData, ListArray, make_array};
+use arrow::pyarrow::{PyArrowType, ToPyArrow as _};
+use pyo3::exceptions::{PyNotImplementedError, PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
-use re_sdk::EntityPath;
-use re_sdk::external::re_data_loader::UrdfTree;
-use re_sdk::external::urdf_rs::{Joint, JointType, Link};
+use re_sdk::external::re_importer::{UrdfTree, urdf_joint_transform};
+use re_sdk::external::urdf_rs::{Joint, JointType, Link, Mimic};
+use re_sdk::{EntityPath, TimePoint};
+
+use crate::chunk_stream::PyLazyChunkStreamInternal;
+use crate::chunk_stream::stream::LazyChunkStream;
+use crate::chunk_stream::urdf_tree_stream::UrdfTreeStreamFactory;
+use crate::python_bridge::{PyRecordingStream, get_data_recording};
 
 /// A `.urdf` file loaded into memory (excluding any mesh files).
-#[pyclass(name = "_UrdfTreeInternal", module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq], non-trivial implementation
-pub struct PyUrdfTree(UrdfTree);
+#[pyclass(name = "_UrdfTreeInternal", module = "rerun_bindings.rerun_bindings")]
+pub struct PyUrdfTree(Arc<UrdfTree>);
 
 #[pymethods]
 impl PyUrdfTree {
     /// Load the URDF found at `path`.
     #[staticmethod]
-    #[pyo3(text_signature = "(path, entity_path_prefix=None)")]
-    pub fn from_file_path(path: PathBuf, entity_path_prefix: Option<String>) -> PyResult<Self> {
-        UrdfTree::from_file_path(path, entity_path_prefix.map(EntityPath::from_single_string))
-            .map(Self)
-            .map_err(|err| PyRuntimeError::new_err(format!("Failed to load URDF file: {err}")))
+    #[pyo3(signature = (path, entity_path_prefix=None, *, frame_prefix=None, static_transform_entity_path=None))]
+    #[pyo3(
+        text_signature = "(path, entity_path_prefix=None, *, frame_prefix=None, static_transform_entity_path=None)"
+    )]
+    pub fn from_file_path(
+        path: PathBuf,
+        entity_path_prefix: Option<String>,
+        frame_prefix: Option<String>,
+        static_transform_entity_path: Option<String>,
+    ) -> PyResult<Self> {
+        let mut tree =
+            UrdfTree::from_file_path(path, entity_path_prefix.map(EntityPath::from_single_string))
+                .map_err(|err| {
+                    PyRuntimeError::new_err(format!("Failed to load URDF file: {err}"))
+                })?;
+        if let Some(prefix) = frame_prefix {
+            tree = tree.with_frame_prefix(prefix);
+        }
+        if let Some(entity_path) = static_transform_entity_path {
+            tree = tree.with_static_transform_entity(entity_path);
+        }
+        Ok(Self(Arc::new(tree)))
     }
 
     /// Name of the robot defined in this URDF.
     #[getter]
     pub fn name(&self) -> &str {
         self.0.name()
+    }
+
+    /// The frame prefix, if set.
+    #[getter]
+    pub fn frame_prefix(&self) -> Option<&str> {
+        self.0.frame_prefix()
     }
 
     /// Returns the root link of the URDF hierarchy.
@@ -34,7 +65,15 @@ impl PyUrdfTree {
 
     /// Iterate over all joints defined in the URDF.
     pub fn joints(&self) -> Vec<PyUrdfJoint> {
-        self.0.joints().cloned().map(PyUrdfJoint).collect()
+        let frame_prefix = self.0.frame_prefix().map(str::to_owned);
+        self.0
+            .joints()
+            .cloned()
+            .map(|j| PyUrdfJoint {
+                joint: j,
+                frame_prefix: frame_prefix.clone(),
+            })
+            .collect()
     }
 
     /// Find a joint by name.
@@ -42,12 +81,15 @@ impl PyUrdfTree {
         self.0
             .get_joint_by_name(joint_name)
             .cloned()
-            .map(PyUrdfJoint)
+            .map(|j| PyUrdfJoint {
+                joint: j,
+                frame_prefix: self.0.frame_prefix().map(str::to_owned),
+            })
     }
 
     /// Returns the link that is the child of the given joint.
     pub fn get_joint_child(&self, joint: &PyUrdfJoint) -> PyUrdfLink {
-        PyUrdfLink(self.0.get_joint_child(&joint.0).clone())
+        PyUrdfLink(self.0.get_joint_child(&joint.joint).clone())
     }
 
     /// Returns the link with the given name, if it exists.
@@ -75,28 +117,105 @@ impl PyUrdfTree {
             .collect()
     }
 
+    /// Log the full robot model (geometry + static transforms) to a recording stream.
+    ///
+    /// Frame IDs respect the tree's `frame_prefix` if set.
+    #[pyo3(signature = (recording=None))]
+    pub(crate) fn log(&self, recording: Option<&PyRecordingStream>) -> PyResult<()> {
+        let Some(recording) = get_data_recording(recording) else {
+            return Ok(());
+        };
+
+        let mut chunks = Vec::new();
+        self.0
+            .emit(&mut |chunk| chunks.push(chunk), &TimePoint::default(), true)
+            .map_err(|err| PyRuntimeError::new_err(format!("Failed to log URDF: {err}")))?;
+
+        recording.send_chunks(chunks);
+
+        Ok(())
+    }
+
+    /// Return a new lazy stream over all chunks emitted from this URDF tree.
+    #[pyo3(signature = (*, include_joint_transforms = true))]
+    pub(crate) fn stream(&self, include_joint_transforms: bool) -> PyLazyChunkStreamInternal {
+        PyLazyChunkStreamInternal::new(LazyChunkStream::from_factory(UrdfTreeStreamFactory::new(
+            Arc::clone(&self.0),
+            include_joint_transforms,
+        )))
+    }
+
+    /// Compute transform batches from per-row joint name and value arrays.
+    #[pyo3(signature = (names, values, *, clamp = false))]
+    pub fn compute_joint_transform_batches(
+        &self,
+        py: Python<'_>,
+        names: PyArrowType<ArrayData>,
+        values: PyArrowType<ArrayData>,
+        clamp: bool,
+    ) -> PyResult<Py<PyAny>> {
+        let names = make_array(names.0);
+        let values = make_array(values.0);
+
+        let names = names.as_any().downcast_ref::<ListArray>().ok_or_else(|| {
+            PyValueError::new_err(format!(
+                "joint names must be a list array, got {:?}",
+                names.data_type()
+            ))
+        })?;
+        let values = values.as_any().downcast_ref::<ListArray>().ok_or_else(|| {
+            PyValueError::new_err(format!(
+                "joint values must be a list array, got {:?}",
+                values.data_type()
+            ))
+        })?;
+
+        let result = self
+            .0
+            .compute_joint_transform_batches(names, values, clamp)
+            .map_err(|err| {
+                if matches!(
+                    err.downcast_ref::<urdf_joint_transform::Error>(),
+                    Some(urdf_joint_transform::Error::UnsupportedJointType(_))
+                ) {
+                    PyNotImplementedError::new_err(err.to_string())
+                } else {
+                    PyValueError::new_err(err.to_string())
+                }
+            })?;
+
+        result.to_data().to_pyarrow(py).map(|obj| obj.unbind())
+    }
+
     fn __repr__(&self) -> String {
         format!("UrdfTree(name={:?})", self.0.name())
     }
 }
 
 /// Wrapper around a URDF joint.
-#[pyclass(name = "_UrdfJointInternal", module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq], non-trivial implementation
+#[pyclass(
+    name = "_UrdfJointInternal",
+    from_py_object,
+    module = "rerun_bindings.rerun_bindings"
+)]
 #[derive(Clone)]
-pub struct PyUrdfJoint(pub Joint);
+pub struct PyUrdfJoint {
+    pub joint: Joint,
+    pub frame_prefix: Option<String>,
+}
 
 #[pymethods]
 impl PyUrdfJoint {
     /// Name of the joint.
     #[getter]
     pub fn name(&self) -> &str {
-        &self.0.name
+        &self.joint.name
     }
 
     /// Type of the joint.
     #[getter]
     pub fn joint_type(&self) -> &'static str {
-        match self.0.joint_type {
+        match self.joint.joint_type {
             JointType::Revolute => "revolute",
             JointType::Continuous => "continuous",
             JointType::Prismatic => "prismatic",
@@ -110,70 +229,246 @@ impl PyUrdfJoint {
     /// Name of the parent link.
     #[getter]
     pub fn parent_link(&self) -> &str {
-        &self.0.parent.link
+        &self.joint.parent.link
     }
 
     /// Name of the child link.
     #[getter]
     pub fn child_link(&self) -> &str {
-        &self.0.child.link
+        &self.joint.child.link
     }
 
     /// Axis of the joint.
     #[getter]
     pub fn axis(&self) -> (f64, f64, f64) {
-        self.0.axis.xyz.0.into()
+        self.joint.axis.xyz.0.into()
     }
 
     /// Origin of the joint (translation).
     #[getter]
     pub fn origin_xyz(&self) -> (f64, f64, f64) {
-        self.0.origin.xyz.0.into()
+        self.joint.origin.xyz.0.into()
     }
 
     /// Origin of the joint (rotation in roll, pitch, yaw).
     #[getter]
     pub fn origin_rpy(&self) -> (f64, f64, f64) {
-        self.0.origin.rpy.0.into()
+        self.joint.origin.rpy.0.into()
     }
 
     /// Lower limit of the joint.
     #[getter]
     pub fn limit_lower(&self) -> f64 {
-        self.0.limit.lower
+        self.joint.limit.lower
     }
 
     /// Upper limit of the joint.
     #[getter]
     pub fn limit_upper(&self) -> f64 {
-        self.0.limit.upper
+        self.joint.limit.upper
     }
 
     /// Effort limit of the joint.
     #[getter]
     pub fn limit_effort(&self) -> f64 {
-        self.0.limit.effort
+        self.joint.limit.effort
     }
 
     /// Velocity limit of the joint.
     #[getter]
     pub fn limit_velocity(&self) -> f64 {
-        self.0.limit.velocity
+        self.joint.limit.velocity
+    }
+
+    /// Mimic-tag specification, or `None` if this joint is not a mimic joint.
+    #[getter]
+    pub fn mimic(&self) -> Option<PyUrdfMimic> {
+        self.joint.mimic.clone().map(PyUrdfMimic)
+    }
+
+    /// Compute the transform components for this joint at the given value.
+    ///
+    /// The result is wrapped in a dictionary for easy conversion to the final types in Python.
+    ///
+    /// If `clamp` is true, values outside joint limits will be clamped and a warning is generated.
+    /// If `clamp` is false (default), values outside limits are used as-is without warnings.
+    #[pyo3(signature = (value, clamp = false))]
+    pub fn compute_transform(
+        &self,
+        py: Python<'_>,
+        value: f64,
+        clamp: bool,
+    ) -> PyResult<Py<PyAny>> {
+        match urdf_joint_transform::internal::compute_joint_transform(&self.joint, value, clamp) {
+            Ok(result) => {
+                let dict = pyo3::types::PyDict::new(py);
+                dict.set_item(
+                    "quaternion_xyzw",
+                    (
+                        result.quaternion.x,
+                        result.quaternion.y,
+                        result.quaternion.z,
+                        result.quaternion.w,
+                    ),
+                )?;
+                dict.set_item(
+                    "translation",
+                    (
+                        result.translation.x,
+                        result.translation.y,
+                        result.translation.z,
+                    ),
+                )?;
+                dict.set_item(
+                    "parent_frame",
+                    Self::apply_prefix(self.frame_prefix.as_ref(), &result.parent_frame),
+                )?;
+                dict.set_item(
+                    "child_frame",
+                    Self::apply_prefix(self.frame_prefix.as_ref(), &result.child_frame),
+                )?;
+                dict.set_item("warning", result.warning)?;
+
+                Ok(dict.into())
+            }
+            Err(err @ urdf_joint_transform::Error::UnsupportedJointType(_)) => {
+                Err(PyNotImplementedError::new_err(err.to_string()))
+            }
+        }
+    }
+
+    /// Compute transforms for this joint at multiple values in a single call.
+    ///
+    /// Returns a dictionary with:
+    /// - `"translations"`: list of `(x, y, z)` tuples
+    /// - `"quaternions_xyzw"`: list of `(x, y, z, w)` tuples
+    /// - `"parent_frame"`: single string (constant per joint)
+    /// - `"child_frame"`: single string (constant per joint)
+    /// - `"warnings"`: list of warning strings
+    #[pyo3(signature = (values, *, clamp = false))]
+    #[allow(clippy::needless_pass_by_value)] // PyO3 requires owned Vec for Python list extraction
+    pub fn compute_transform_columns(
+        &self,
+        py: Python<'_>,
+        values: Vec<f64>,
+        clamp: bool,
+    ) -> PyResult<Py<PyAny>> {
+        let mut translations = Vec::with_capacity(values.len());
+        let mut quaternions = Vec::with_capacity(values.len());
+        let mut warnings = Vec::new();
+        let mut parent_frame = String::new();
+        let mut child_frame = String::new();
+
+        for (i, &value) in values.iter().enumerate() {
+            match urdf_joint_transform::internal::compute_joint_transform(&self.joint, value, clamp)
+            {
+                Ok(result) => {
+                    translations.push((
+                        result.translation.x,
+                        result.translation.y,
+                        result.translation.z,
+                    ));
+                    quaternions.push((
+                        result.quaternion.x,
+                        result.quaternion.y,
+                        result.quaternion.z,
+                        result.quaternion.w,
+                    ));
+                    if let Some(warning) = result.warning {
+                        warnings.push(warning);
+                    }
+                    if i == 0 {
+                        parent_frame =
+                            Self::apply_prefix(self.frame_prefix.as_ref(), &result.parent_frame);
+                        child_frame =
+                            Self::apply_prefix(self.frame_prefix.as_ref(), &result.child_frame);
+                    }
+                }
+                Err(err @ urdf_joint_transform::Error::UnsupportedJointType(_)) => {
+                    return Err(PyNotImplementedError::new_err(err.to_string()));
+                }
+            }
+        }
+
+        let dict = pyo3::types::PyDict::new(py);
+        dict.set_item("translations", translations)?;
+        dict.set_item("quaternions_xyzw", quaternions)?;
+        dict.set_item("parent_frame", parent_frame)?;
+        dict.set_item("child_frame", child_frame)?;
+        dict.set_item("warnings", warnings)?;
+
+        Ok(dict.into())
     }
 
     fn __repr__(&self) -> String {
         format!(
             "UrdfJoint(name={:?}, type={}, parent={:?}, child={:?})",
-            self.0.name,
-            &self.joint_type(),
-            self.0.parent.link,
-            self.0.child.link
+            self.joint.name,
+            self.joint_type(),
+            self.joint.parent.link,
+            self.joint.child.link
+        )
+    }
+}
+
+impl PyUrdfJoint {
+    fn apply_prefix(prefix: Option<&String>, frame_id: &str) -> String {
+        match prefix {
+            Some(prefix) => format!("{prefix}{frame_id}"),
+            None => frame_id.to_owned(),
+        }
+    }
+}
+
+/// URDF `<mimic>` tag: this joint's value is derived from a driver joint.
+#[pyclass(
+    name = "_UrdfMimicInternal",
+    from_py_object,
+    module = "rerun_bindings.rerun_bindings"
+)]
+#[derive(Clone)]
+pub struct PyUrdfMimic(pub Mimic);
+
+#[pymethods]
+impl PyUrdfMimic {
+    /// Name of the driver joint.
+    #[getter]
+    pub fn joint(&self) -> &str {
+        &self.0.joint
+    }
+
+    /// Multiplier applied to the driver joint's value.
+    ///
+    /// Defaults to `1.0` per the URDF spec when the `<mimic>` tag omits `multiplier`.
+    #[getter]
+    pub fn multiplier(&self) -> f64 {
+        self.0.multiplier.unwrap_or(1.0)
+    }
+
+    /// Offset added after multiplying the driver joint's value.
+    ///
+    /// Defaults to `0.0` per the URDF spec when the `<mimic>` tag omits `offset`.
+    #[getter]
+    pub fn offset(&self) -> f64 {
+        self.0.offset.unwrap_or(0.0)
+    }
+
+    fn __repr__(&self) -> String {
+        format!(
+            "UrdfMimic(joint={:?}, multiplier={}, offset={})",
+            self.0.joint,
+            self.multiplier(),
+            self.offset()
         )
     }
 }
 
 /// URDF link
-#[pyclass(name = "_UrdfLinkInternal", module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq], non-trivial implementation
+#[pyclass(
+    name = "_UrdfLinkInternal",
+    from_py_object,
+    module = "rerun_bindings.rerun_bindings"
+)]
 #[derive(Clone)]
 pub struct PyUrdfLink(pub Link);
 
@@ -194,6 +489,7 @@ impl PyUrdfLink {
 pub fn register(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyUrdfTree>()?;
     m.add_class::<PyUrdfJoint>()?;
+    m.add_class::<PyUrdfMimic>()?;
     m.add_class::<PyUrdfLink>()?;
 
     Ok(())

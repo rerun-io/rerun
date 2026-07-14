@@ -1,0 +1,15 @@
+---
+source: crates/viewer/re_viewer/tests/all_component_fallbacks.rs
+assertion_line: 55
+expression: arch_display
+---
+voxel_indices: [[0, 0, 0]]
+voxel_size: [[0.01, 0.01, 0.01]]
+values: [0.0]
+colors: [3161148927]
+translation: [[0.0, 0.0, 0.0]]
+rotation_axis_angle: [{axis: [1.0, 0.0, 0.0], angle: 0.0}]
+quaternion: [[0.0, 0.0, 0.0, 1.0]]
+opacity: [1.0]
+value_range: [[0.0, 1.0]]
+colormap: [5]

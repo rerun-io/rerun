@@ -39,12 +39,13 @@ re_arrow_util.workspace = true
 re_build_info.workspace = true
 re_crash_handler.workspace = true
 re_log = { workspace = true, features = ["setup"] }
-re_sdk = { workspace = true, features = ["data_loaders", "server"] }
+re_sdk = { workspace = true, features = ["importers", "server"] }
 re_video.workspace = true
 
 ahash.workspace = true
 arrow = { workspace = true, features = ["ffi"] }
 infer.workspace = true
+itertools.workspace = true
 parking_lot.workspace = true
 
 [build-dependencies]

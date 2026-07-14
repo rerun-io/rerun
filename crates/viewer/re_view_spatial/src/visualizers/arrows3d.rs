@@ -6,45 +6,34 @@ use re_sdk_types::components::{ClassId, Color, Position3D, Radius, ShowLabels, V
 use re_sdk_types::{Archetype as _, ArrowString};
 use re_view::{clamped_or, process_annotation_slices, process_color_slice};
 use re_viewer_context::{
-    IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
-    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
-    typed_fallback_for,
+    IdentifiedViewSystem, QueryContext, ViewClass as _, ViewContext, ViewContextCollection,
+    ViewQuery, ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo,
+    VisualizerSystem, typed_fallback_for,
 };
 
 use super::utilities::LabeledBatch;
 use super::{SpatialViewVisualizerData, process_labels_3d, process_radius_slice};
-use crate::contexts::SpatialSceneEntityContext;
-use crate::view_kind::SpatialViewKind;
-
+use crate::contexts::SpatialSceneVisualizerInstructionContext;
 // ---
 
-pub struct Arrows3DVisualizer {
-    pub data: SpatialViewVisualizerData,
-}
-
-impl Default for Arrows3DVisualizer {
-    fn default() -> Self {
-        Self {
-            data: SpatialViewVisualizerData::new(Some(SpatialViewKind::ThreeD)),
-        }
-    }
-}
+#[derive(Default)]
+pub struct Arrows3DVisualizer;
 
 // NOTE: Do not put profile scopes in these methods. They are called for all entities and all
 // timestamps within a time range -- it's _a lot_.
 impl Arrows3DVisualizer {
     fn process_data<'a>(
-        &mut self,
+        data: &mut SpatialViewVisualizerData,
         ctx: &QueryContext<'_>,
         line_builder: &mut LineDrawableBuilder<'_>,
         query: &ViewQuery<'_>,
-        ent_context: &SpatialSceneEntityContext<'_>,
-        data: impl Iterator<Item = Arrows3DComponentData<'a>>,
+        ent_context: &SpatialSceneVisualizerInstructionContext<'_>,
+        results_iter: impl Iterator<Item = Arrows3DComponentData<'a>>,
     ) {
         let entity_path = ctx.target_entity_path;
 
-        for data in data {
-            let num_instances = data.vectors.len();
+        for ent_data in results_iter {
+            let num_instances = ent_data.vectors.len();
             if num_instances == 0 {
                 continue;
             }
@@ -52,20 +41,23 @@ impl Arrows3DVisualizer {
             let annotation_infos = process_annotation_slices(
                 query.latest_at,
                 num_instances,
-                data.class_ids,
+                ent_data.class_ids,
                 &ent_context.annotations,
             );
 
-            // Has not custom fallback for radius, so we use the default.
-            // TODO(andreas): It would be nice to have this handle this fallback as part of the query.
-            let radii =
-                process_radius_slice(entity_path, num_instances, data.radii, Radius::default());
+            let radii = process_radius_slice(
+                ctx,
+                entity_path,
+                num_instances,
+                ent_data.radii,
+                Arrows3D::descriptor_radii().component,
+            );
             let colors = process_color_slice(
                 ctx,
                 Arrows3D::descriptor_colors().component,
                 num_instances,
                 &annotation_infos,
-                data.colors,
+                ent_data.colors,
             );
 
             let world_from_obj = ent_context
@@ -81,10 +73,10 @@ impl Arrows3DVisualizer {
 
             let mut obj_space_bounding_box = macaw::BoundingBox::nothing();
 
-            let origins = clamped_or(data.origins, &Position3D::ZERO);
+            let origins = clamped_or(ent_data.origins, &Position3D::ZERO);
 
             for (i, (vector, origin, radius, &color)) in
-                itertools::izip!(data.vectors, origins, radii, &colors).enumerate()
+                itertools::izip!(ent_data.vectors, origins, radii, &colors).enumerate()
             {
                 let vector: glam::Vec3 = vector.0.into();
                 let origin: glam::Vec3 = origin.0.into();
@@ -95,10 +87,10 @@ impl Arrows3DVisualizer {
                     .radius(radius)
                     .color(color)
                     .flags(
-                        LineStripFlags::FLAG_COLOR_GRADIENT
-                            | LineStripFlags::FLAG_CAP_END_TRIANGLE
-                            | LineStripFlags::FLAG_CAP_START_ROUND
-                            | LineStripFlags::FLAG_CAP_START_EXTEND_OUTWARDS,
+                        LineStripFlags::STRIP_FLAG_COLOR_GRADIENT
+                            | LineStripFlags::STRIP_FLAG_CAP_END_TRIANGLE
+                            | LineStripFlags::STRIP_FLAG_CAP_START_ROUND
+                            | LineStripFlags::STRIP_FLAG_CAP_START_EXTEND_OUTWARDS,
                     )
                     .picking_instance_id(PickingLayerInstanceId(i as _));
 
@@ -114,29 +106,29 @@ impl Arrows3DVisualizer {
                 obj_space_bounding_box.extend(end);
             }
 
-            self.data
-                .add_bounding_box(entity_path.hash(), obj_space_bounding_box, world_from_obj);
+            data.add_bounding_box(entity_path.hash(), obj_space_bounding_box, world_from_obj);
 
             {
                 let instance_positions = {
                     // Take middle point of every arrow.
-                    let origins = clamped_or(data.origins, &Position3D::ZERO);
+                    let origins = clamped_or(ent_data.origins, &Position3D::ZERO);
 
-                    itertools::izip!(data.vectors, origins).map(|(vector, origin)| {
+                    itertools::izip!(ent_data.vectors, origins).map(|(vector, origin)| {
                         // `0.45` rather than `0.5` to account for cap and such
                         glam::Vec3::from(origin.0) + glam::Vec3::from(vector.0) * 0.45
                     })
                 };
 
-                self.data.ui_labels.extend(process_labels_3d(
+                data.ui_labels.extend(process_labels_3d(
                     LabeledBatch {
                         entity_path,
+                        visualizer_instruction: ent_context.visualizer_instruction,
                         num_instances,
                         overall_position: obj_space_bounding_box.center(),
                         instance_positions,
-                        labels: &data.labels,
+                        labels: &ent_data.labels,
                         colors: &colors,
-                        show_labels: data.show_labels.unwrap_or_else(|| {
+                        show_labels: ent_data.show_labels.unwrap_or_else(|| {
                             typed_fallback_for(ctx, Arrows3D::descriptor_show_labels().component)
                         }),
                         annotation_infos: &annotation_infos,
@@ -167,7 +159,10 @@ struct Arrows3DComponentData<'a> {
 
 impl IdentifiedViewSystem for Arrows3DVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "Arrows3D".into()
+        re_viewer_context::external::re_string_interner::intern_static!(
+            re_viewer_context::ViewSystemIdentifier,
+            "Arrows3D"
+        )
     }
 }
 
@@ -176,39 +171,46 @@ impl VisualizerSystem for Arrows3DVisualizer {
         &self,
         _app_options: &re_viewer_context::AppOptions,
     ) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<Arrows3D>()
+        VisualizerQueryInfo::single_required_component::<Vector3D>(
+            &Arrows3D::descriptor_vectors(),
+            &Arrows3D::all_components(),
+        )
+    }
+
+    fn affinity(&self) -> Option<re_sdk_types::ViewClassIdentifier> {
+        Some(crate::SpatialView3D::identifier())
     }
 
     fn execute(
-        &mut self,
+        &self,
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
-        let mut output = VisualizerExecutionOutput::default();
+        let mut data = SpatialViewVisualizerData::default();
+        let output = VisualizerExecutionOutput::default();
 
         let mut line_builder = LineDrawableBuilder::new(ctx.viewer_ctx.render_ctx());
         line_builder.radius_boost_in_ui_points_for_outlines(
             re_view::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
         );
 
-        use super::entity_iterator::{iter_slices, process_archetype};
-        process_archetype::<Self, Arrows3D, _>(
+        use super::entity_iterator::process_archetype;
+        process_archetype::<Arrows3D, _, _>(
             ctx,
             view_query,
             context_systems,
-            &mut output,
-            self.data.preferred_view_kind,
+            &output,
+            self,
             |ctx, spatial_ctx, results| {
-                use re_view::RangeResultsExt as _;
-
-                let Some(all_vector_chunks) =
-                    results.get_required_chunks(Arrows3D::descriptor_vectors().component)
-                else {
+                let all_vectors = results.iter_required(Arrows3D::descriptor_vectors().component);
+                if all_vectors.is_empty() {
                     return Ok(());
-                };
+                }
 
-                let num_vectors = all_vector_chunks
+                // TODO(andreas): Introduce a utility for this?
+                let num_vectors = all_vectors
+                    .chunks()
                     .iter()
                     .flat_map(|chunk| chunk.iter_slices::<[f32; 3]>())
                     .map(|vectors| vectors.len())
@@ -221,20 +223,17 @@ impl VisualizerSystem for Arrows3DVisualizer {
                 line_builder.reserve_strips(num_vectors)?;
                 line_builder.reserve_vertices(num_vectors * 2)?;
 
-                let timeline = ctx.query.timeline();
-                let all_vectors_indexed = iter_slices::<[f32; 3]>(&all_vector_chunks, timeline);
-                let all_origins =
-                    results.iter_as(timeline, Arrows3D::descriptor_origins().component);
-                let all_colors = results.iter_as(timeline, Arrows3D::descriptor_colors().component);
-                let all_radii = results.iter_as(timeline, Arrows3D::descriptor_radii().component);
-                let all_labels = results.iter_as(timeline, Arrows3D::descriptor_labels().component);
+                let all_origins = results.iter_optional(Arrows3D::descriptor_origins().component);
+                let all_colors = results.iter_optional(Arrows3D::descriptor_colors().component);
+                let all_radii = results.iter_optional(Arrows3D::descriptor_radii().component);
+                let all_labels = results.iter_optional(Arrows3D::descriptor_labels().component);
                 let all_class_ids =
-                    results.iter_as(timeline, Arrows3D::descriptor_class_ids().component);
+                    results.iter_optional(Arrows3D::descriptor_class_ids().component);
                 let all_show_labels =
-                    results.iter_as(timeline, Arrows3D::descriptor_show_labels().component);
+                    results.iter_optional(Arrows3D::descriptor_show_labels().component);
 
-                let data = re_query::range_zip_1x6(
-                    all_vectors_indexed,
+                let results_iter = re_query::range_zip_1x6(
+                    all_vectors.slice::<[f32; 3]>(),
                     all_origins.slice::<[f32; 3]>(),
                     all_colors.slice::<u32>(),
                     all_radii.slice::<f32>(),
@@ -259,16 +258,21 @@ impl VisualizerSystem for Arrows3DVisualizer {
                     },
                 );
 
-                self.process_data(ctx, &mut line_builder, view_query, spatial_ctx, data);
+                Self::process_data(
+                    &mut data,
+                    ctx,
+                    &mut line_builder,
+                    view_query,
+                    spatial_ctx,
+                    results_iter,
+                );
 
                 Ok(())
             },
         )?;
 
-        Ok(output.with_draw_data([(line_builder.into_draw_data()?.into())]))
-    }
-
-    fn data(&self) -> Option<&dyn std::any::Any> {
-        Some(self.data.as_any())
+        Ok(output
+            .with_draw_data([(line_builder.into_draw_data()?.into())])
+            .with_visualizer_data(data))
     }
 }

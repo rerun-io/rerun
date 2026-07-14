@@ -1,12 +1,14 @@
 use std::collections::BTreeSet;
 use std::str::FromStr as _;
 
-use arrow::array::{ArrayData, Int64Array, make_array};
+use arrow::array::{ArrayData, ArrayRef, Int64Array, make_array};
+use arrow::compute::cast;
+use arrow::datatypes::DataType;
 use arrow::pyarrow::PyArrowType;
 use numpy::PyArrayMethods as _;
 use pyo3::exceptions::{PyTypeError, PyValueError};
 use pyo3::prelude::PyAnyMethods as _;
-use pyo3::{Bound, FromPyObject, PyAny, PyResult, pyclass, pymethods};
+use pyo3::{Borrowed, Bound, FromPyObject, PyAny, PyErr, PyResult, pyclass, pymethods};
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_sorbet::ComponentColumnSelector;
 
@@ -51,8 +53,10 @@ pub enum IndexValuesLike<'py> {
     CatchAll(Bound<'py, PyAny>),
 }
 
-impl<'py> FromPyObject<'py> for IndexValuesLike<'py> {
-    fn extract_bound(obj: &Bound<'py, PyAny>) -> PyResult<Self> {
+impl<'py> FromPyObject<'_, 'py> for IndexValuesLike<'py> {
+    type Error = PyErr;
+
+    fn extract(obj: Borrowed<'_, 'py, PyAny>) -> PyResult<Self> {
         // Try PyArrow first
         if let Ok(pyarrow) = obj.extract::<PyArrowType<ArrayData>>() {
             return Ok(Self::PyArrow(pyarrow));
@@ -84,8 +88,41 @@ impl<'py> FromPyObject<'py> for IndexValuesLike<'py> {
         }
 
         // Fall back to catch all
-        Ok(Self::CatchAll(obj.clone()))
+        Ok(Self::CatchAll(obj.to_owned()))
     }
+}
+
+/// Cast an Arrow array to [`Int64Array`], handling timestamp and duration types
+/// transparently.
+///
+/// Timestamp and duration arrays (e.g. from `get_index_ranges()`) share the same
+/// physical representation as int64, so the cast is essentially free.
+fn as_int64_array(array: &ArrayRef) -> PyResult<Int64Array> {
+    if let Some(arr) = array.downcast_array_ref::<Int64Array>() {
+        return Ok(arr.clone());
+    }
+
+    if matches!(
+        array.data_type(),
+        DataType::Timestamp(_, _) | DataType::Duration(_)
+    ) {
+        let cast_array = cast(array, &DataType::Int64).map_err(|err| {
+            PyTypeError::new_err(format!(
+                "Failed to cast {} to int64: {err}",
+                array.data_type()
+            ))
+        })?;
+        return cast_array
+            .downcast_array_ref::<Int64Array>()
+            .cloned()
+            .ok_or_else(|| {
+                PyTypeError::new_err(format!("Failed to cast {} to int64.", array.data_type()))
+            });
+    }
+
+    Err(PyTypeError::new_err(
+        "pyarrow.Array for IndexValuesLike must be of type int64, timestamp, or duration.",
+    ))
 }
 
 impl IndexValuesLike<'_> {
@@ -94,9 +131,7 @@ impl IndexValuesLike<'_> {
             Self::PyArrow(array) => {
                 let array = make_array(array.0.clone());
 
-                let int_array = array.downcast_array_ref::<Int64Array>().ok_or_else(|| {
-                    PyTypeError::new_err("pyarrow.Array for IndexValuesLike must be of type int64.")
-                })?;
+                let int_array = as_int64_array(&array)?;
 
                 let values: BTreeSet<re_chunk_store::TimeInt> = int_array
                     .iter()
@@ -143,12 +178,7 @@ impl IndexValuesLike<'_> {
                             let chunk = chunk?.extract::<PyArrowType<ArrayData>>()?;
                             let array = make_array(chunk.0.clone());
 
-                            let int_array =
-                                array.downcast_array_ref::<Int64Array>().ok_or_else(|| {
-                                    PyTypeError::new_err(
-                                        "pyarrow.Array for IndexValuesLike must be of type int64.",
-                                    )
-                                })?;
+                            let int_array = as_int64_array(&array)?;
 
                             values.extend(
                                 int_array
@@ -179,12 +209,14 @@ impl IndexValuesLike<'_> {
     }
 }
 
-/// A Python wrapper for testing [`IndexValuesLike`] extraction functionality.
+/// A Python wrapper for [`IndexValuesLike`] extraction and conversion.
 ///
-/// This wrapper allows testing the `extract_bound` functionality by providing
-/// a Python-accessible interface to create and convert index values.
+/// Provides a Python-accessible interface to normalize various index value
+/// representations (PyArrow arrays, NumPy arrays, ChunkedArrays) into sorted
+/// `TimeInt` values.
 #[pyclass(
     frozen,
+    from_py_object,
     name = "_IndexValuesLikeInternal",
     module = "rerun_bindings.rerun_bindings",
     hash,
@@ -207,7 +239,7 @@ impl PyIndexValuesLikeInternal {
     #[new]
     #[pyo3(text_signature = "(self, values)")]
     fn new(values: Bound<'_, PyAny>) -> PyResult<Self> {
-        let index_values_like = IndexValuesLike::extract_bound(&values)?;
+        let index_values_like = IndexValuesLike::extract(values.as_borrowed())?;
         let values = index_values_like.to_index_values()?;
         Ok(Self { values })
     }

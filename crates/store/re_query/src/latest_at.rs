@@ -6,7 +6,8 @@ use nohash_hasher::IntMap;
 use parking_lot::RwLock;
 use re_byte_size::SizeBytes;
 use re_chunk::{Chunk, ChunkId, ComponentIdentifier, RowId, UnitChunkShared};
-use re_chunk_store::{ChunkStore, LatestAtQuery, OnMissingChunk, TimeInt};
+use re_chunk_store::{ChunkStore, ChunkTrackingMode, LatestAtQuery, TimeInt};
+use re_log::debug_assert;
 use re_log_types::EntityPath;
 use re_types_core::components::ClearIsRecursive;
 use re_types_core::external::arrow::array::ArrayRef;
@@ -41,6 +42,7 @@ impl QueryCache {
     /// This is a cached API -- data will be lazily cached upon access.
     pub fn latest_at(
         &self,
+        report_mode: ChunkTrackingMode,
         query: &LatestAtQuery,
         entity_path: &EntityPath,
         components: impl IntoIterator<Item = ComponentIdentifier>,
@@ -55,7 +57,11 @@ impl QueryCache {
         // has non-negligible overhead even if the final result ends up being nothing, and our
         // number of queries for a frame grows linearly with the number of entity paths.
         let components = components.into_iter().filter(|component| {
-            store.entity_has_component_on_timeline(&query.timeline(), entity_path, *component)
+            store.entity_has_component_on_timeline(
+                query.timeline().as_ref(),
+                entity_path,
+                *component,
+            )
         });
 
         // Query-time clears
@@ -79,79 +85,84 @@ impl QueryCache {
         {
             let potential_clears = self.might_require_clearing.read();
 
-            let mut clear_entity_path = entity_path.clone();
-            loop {
-                if !potential_clears.contains(&clear_entity_path) {
-                    // This entity does not contain any `Clear`-related data at all, there's no
-                    // point in running actual queries.
+            // Fast path: most stores have no `Clear` components at all, e.g. the
+            // blueprint store.
+            if !potential_clears.is_empty() {
+                let mut clear_entity_path = entity_path.clone();
+                loop {
+                    if !potential_clears.contains(&clear_entity_path) {
+                        // This entity does not contain any `Clear`-related data at all, there's no
+                        // point in running actual queries.
+
+                        let Some(parent_entity_path) = clear_entity_path.parent() else {
+                            break;
+                        };
+                        clear_entity_path = parent_entity_path;
+
+                        continue;
+                    }
+
+                    let component = archetypes::Clear::descriptor_is_recursive().component;
+                    let key =
+                        QueryCacheKey::new(clear_entity_path.clone(), query.timeline(), component);
+
+                    let cache = Arc::clone(
+                        self.latest_at_per_cache_key
+                            .write()
+                            .entry(key.clone())
+                            .or_insert_with(|| Arc::new(RwLock::new(LatestAtCache::new(key)))),
+                    );
+
+                    let mut cache = cache.write();
+                    cache.handle_pending_invalidation();
+
+                    let (cached, missing) =
+                        cache.latest_at(report_mode, &store, query, &clear_entity_path, component);
+                    if cfg!(debug_assertions) && !missing.is_empty() {
+                        debug_assert!(
+                            cached.is_none(),
+                            "should never receive partial latest-at results"
+                        );
+                    }
+
+                    if let Some(cached) = cached {
+                        // TODO(andreas): Should clear also work if the component is not fully tagged?
+                        let found_recursive_clear = cached
+                            .component_mono::<ClearIsRecursive>(component)
+                            .and_then(Result::ok)
+                            == Some(ClearIsRecursive(true.into()));
+                        // When checking the entity itself, any kind of `Clear` component
+                        // (i.e. recursive or not) will do.
+                        //
+                        // For (recursive) parents, we need to deserialize the data to make sure the
+                        // recursive flag is set.
+                        if (clear_entity_path == *entity_path || found_recursive_clear)
+                            && let Some(index) = cached.index(query.timeline().as_ref())
+                            && compare_indices(index, max_clear_index)
+                                == std::cmp::Ordering::Greater
+                        {
+                            max_clear_index = index;
+                        }
+                    } else if !missing.is_empty() {
+                        // The query engine did find a relevant chunk that contains some kind of tombstone.
+                        //
+                        // We don't know anything else about this tombstone, since we don't have access to its data.
+                        // In particular, we don't know whether its index shadows the one of the data we're looking for,
+                        // nor if it is recursive or not.
+                        //
+                        // Because we don't know, we must assume the worst: it's both recursive and shadowing.
+                        // Indicate that we're missing this tombstone, and treat the data as incomplete until we know more.
+
+                        max_clear_index = (TimeInt::MAX, RowId::MAX);
+                        results.missing_virtual.extend(missing);
+                    }
 
                     let Some(parent_entity_path) = clear_entity_path.parent() else {
                         break;
                     };
+
                     clear_entity_path = parent_entity_path;
-
-                    continue;
                 }
-
-                let component = archetypes::Clear::descriptor_is_recursive().component;
-                let key =
-                    QueryCacheKey::new(clear_entity_path.clone(), query.timeline(), component);
-
-                let cache = Arc::clone(
-                    self.latest_at_per_cache_key
-                        .write()
-                        .entry(key.clone())
-                        .or_insert_with(|| Arc::new(RwLock::new(LatestAtCache::new(key)))),
-                );
-
-                let mut cache = cache.write();
-                cache.handle_pending_invalidation();
-
-                let (cached, missing) =
-                    cache.latest_at(&store, query, &clear_entity_path, component);
-                if cfg!(debug_assertions) && !missing.is_empty() {
-                    debug_assert!(
-                        cached.is_none(),
-                        "should never receive partial latest-at results"
-                    );
-                }
-
-                if let Some(cached) = cached {
-                    // TODO(andreas): Should clear also work if the component is not fully tagged?
-                    let found_recursive_clear = cached
-                        .component_mono::<ClearIsRecursive>(component)
-                        .and_then(Result::ok)
-                        == Some(ClearIsRecursive(true.into()));
-                    // When checking the entity itself, any kind of `Clear` component
-                    // (i.e. recursive or not) will do.
-                    //
-                    // For (recursive) parents, we need to deserialize the data to make sure the
-                    // recursive flag is set.
-                    if (clear_entity_path == *entity_path || found_recursive_clear)
-                        && let Some(index) = cached.index(&query.timeline())
-                        && compare_indices(index, max_clear_index) == std::cmp::Ordering::Greater
-                    {
-                        max_clear_index = index;
-                    }
-                } else if !missing.is_empty() {
-                    // The query engine did find a relevant chunk that contains some kind of tombstone.
-                    //
-                    // We don't know anything else about this tombstone, since we don't have access to its data.
-                    // In particular, we don't know whether its index shadows the one of the data we're looking for,
-                    // nor if it is recursive or not.
-                    //
-                    // Because we don't know, we must assume the worst: it's both recursive and shadowing.
-                    // Indicate that we're missing this tombstone, and treat the data as incomplete until we know more.
-
-                    max_clear_index = (TimeInt::MAX, RowId::MAX);
-                    results.missing.extend(missing);
-                }
-
-                let Some(parent_entity_path) = clear_entity_path.parent() else {
-                    break;
-                };
-
-                clear_entity_path = parent_entity_path;
             }
         }
 
@@ -168,20 +179,21 @@ impl QueryCache {
             let mut cache = cache.write();
             cache.handle_pending_invalidation();
 
-            let (cached, missing) = cache.latest_at(&store, query, entity_path, component);
+            let (cached, missing) =
+                cache.latest_at(report_mode, &store, query, entity_path, component);
             if cfg!(debug_assertions) && !missing.is_empty() {
                 debug_assert!(
                     cached.is_none(),
                     "should never have partial latest-at results"
                 );
             }
-            results.missing.extend(missing);
+            results.missing_virtual.extend(missing);
 
             if let Some(cached) = cached {
                 // 1. A `Clear` component doesn't shadow its own self.
                 // 2. If a `Clear` component was found with an index greater than or equal to the
                 //    component data, then we know for sure that it should shadow it.
-                if let Some(index) = cached.index(&query.timeline())
+                if let Some(index) = cached.index(query.timeline().as_ref())
                     && (component == archetypes::Clear::descriptor_is_recursive().component
                         || compare_indices(index, max_clear_index) == std::cmp::Ordering::Greater)
                 {
@@ -194,11 +206,13 @@ impl QueryCache {
     }
 
     /// Free up some RAM by forgetting the older parts of all timelines.
-    pub fn purge_fraction_of_ram(&self, fraction_to_purge: f32) {
+    pub fn gc(&self, target: re_chunk_store::GarbageCollectionTarget) {
         re_tracing::profile_function!();
 
+        let fraction_to_purge = target.target_fraction_from_size(self.total_size_bytes());
+
         let mut caches = self.latest_at_per_cache_key.write();
-        for (_key, cache) in caches.iter_mut() {
+        for cache in caches.values_mut() {
             let mut cache = cache.write();
 
             let split_point =
@@ -225,7 +239,7 @@ impl QueryCache {
 ///
 /// Since the introduction of virtual/offloaded chunks, it is possible for a query to detect that
 /// it is missing some data in order to compute accurate results.
-/// This lack of data is communicated using a non-empty [`LatestAtResults::missing`] field.
+/// This lack of data is communicated using a non-empty [`LatestAtResults::missing_virtual`] field.
 #[derive(Debug, Clone, PartialEq)]
 pub struct LatestAtResults {
     /// The associated [`EntityPath`].
@@ -238,22 +252,32 @@ pub struct LatestAtResults {
     ///
     /// Until these chunks have been fetched and inserted into the appropriate [`ChunkStore`], the
     /// results of this query cannot accurately be computed.
+    ///
+    /// Note, these are NOT necessarily _root_ chunks.
+    /// Use [`ChunkStore::find_root_chunks`] to get those.
     //
     // TODO(cmc): Once lineage tracking is in place, make sure that this only reports missing
     // chunks using their root-level IDs, so downstream consumers don't have to redundantly build
     // their own tracking. And document it so.
-    pub missing: Vec<ChunkId>,
+    pub missing_virtual: Vec<ChunkId>,
+
+    /// The first index of all the results.
+    pub min_index: (TimeInt, RowId),
 
     /// The compound index of this query result.
     ///
     /// A latest-at query is a compound operation that gathers data from many different rows.
     /// The index of that compound result corresponds to the index of most the recent row in all the
     /// sub-results, as defined by time and row-id order.
-    pub compound_index: (TimeInt, RowId),
+    pub max_index: (TimeInt, RowId),
 
     /// Results for each individual component.
     ///
     /// Each [`UnitChunkShared`] MUST always contain the corresponding component.
+    ///
+    /// Each [`UnitChunkShared`] will either contain the queried timeline, or be static.
+    /// Regardless, calling [`UnitChunkShared::index`] with the
+    /// [`LatestAtQuery::timeline`] will always return `Some`thing.
     pub components: IntMap<ComponentIdentifier, UnitChunkShared>,
 }
 
@@ -263,8 +287,9 @@ impl LatestAtResults {
         Self {
             entity_path,
             query,
-            missing: Default::default(),
-            compound_index: (TimeInt::STATIC, RowId::ZERO),
+            missing_virtual: Default::default(),
+            min_index: (TimeInt::MAX, RowId::MAX),
+            max_index: (TimeInt::STATIC, RowId::ZERO),
             components: Default::default(),
         }
     }
@@ -278,9 +303,9 @@ impl LatestAtResults {
     /// It is then the responsibility of the caller to look into the [missing chunk IDs], fetch
     /// them, load them, and then try the query again.
     ///
-    /// [missing chunk IDs]: `Self::missing`
+    /// [missing chunk IDs]: `Self::missing_virtual`
     pub fn is_partial(&self) -> bool {
-        !self.missing.is_empty()
+        !self.missing_virtual.is_empty()
     }
 
     /// Returns true if the results are *completely* empty.
@@ -290,11 +315,12 @@ impl LatestAtResults {
         let Self {
             entity_path: _,
             query: _,
-            missing,
-            compound_index: _,
+            missing_virtual,
+            min_index: _,
+            max_index: _,
             components,
         } = self;
-        missing.is_empty() && components.values().all(|chunks| chunks.is_empty())
+        missing_virtual.is_empty() && components.values().all(|chunks| chunks.is_empty())
     }
 
     /// Returns the [`UnitChunkShared`] for the specified [`Component`].
@@ -314,10 +340,16 @@ impl LatestAtResults {
         }
     }
 
-    /// Returns the compound index (`(TimeInt, RowId)` pair) of the results.
+    /// Returns the minimum index (`(TimeInt, RowId)` pair) of all the results.
     #[inline]
-    pub fn index(&self) -> (TimeInt, RowId) {
-        self.compound_index
+    pub fn min_index(&self) -> (TimeInt, RowId) {
+        self.min_index
+    }
+
+    /// Returns the maximum index (`(TimeInt, RowId)` pair) of all the results.
+    #[inline]
+    pub fn max_index(&self) -> (TimeInt, RowId) {
+        self.max_index
     }
 }
 
@@ -330,14 +362,10 @@ impl LatestAtResults {
         index: (TimeInt, RowId),
         chunk: UnitChunkShared,
     ) {
-        debug_assert!(chunk.num_rows() == 1);
+        re_log::debug_assert_eq!(chunk.num_rows(), 1);
 
-        // NOTE: Since this is a compound API that actually emits multiple queries, the index of the
-        // final result is the most recent index among all of its components, as defined by time
-        // and row-id order.
-        if index > self.compound_index {
-            self.compound_index = index;
-        }
+        self.min_index = self.min_index.min(index);
+        self.max_index = self.max_index.max(index);
 
         self.components.insert(component, chunk);
     }
@@ -384,7 +412,7 @@ impl LatestAtResults {
     /// Logs an error if the data cannot be deserialized.
     #[inline]
     pub fn component_batch<C: Component>(&self, component: ComponentIdentifier) -> Option<Vec<C>> {
-        self.component_batch_with_log_level(re_log::Level::Error, component)
+        self.component_batch_with_log_level(re_log::Level::ERROR, component)
     }
 
     /// Returns the deserialized data for the specified component.
@@ -426,7 +454,7 @@ impl LatestAtResults {
         component: ComponentIdentifier,
         instance_index: usize,
     ) -> Option<ArrowArrayRef> {
-        self.component_instance_raw_with_log_level(re_log::Level::Error, component, instance_index)
+        self.component_instance_raw_with_log_level(re_log::Level::ERROR, component, instance_index)
     }
 
     /// Returns the raw data for the specified component at the given instance index.
@@ -468,7 +496,7 @@ impl LatestAtResults {
         instance_index: usize,
         component: ComponentIdentifier,
     ) -> Option<C> {
-        self.component_instance_with_log_level(re_log::Level::Error, instance_index, component)
+        self.component_instance_with_log_level(re_log::Level::ERROR, instance_index, component)
     }
 
     /// Returns the deserialized data for the specified component at the given instance index.
@@ -504,7 +532,7 @@ impl LatestAtResults {
     /// Returns an error if the underlying batch is not of unit length.
     #[inline]
     pub fn component_mono_raw(&self, component: ComponentIdentifier) -> Option<ArrowArrayRef> {
-        self.component_mono_raw_with_log_level(re_log::Level::Error, component)
+        self.component_mono_raw_with_log_level(re_log::Level::ERROR, component)
     }
 
     /// Returns the raw data for the specified component, assuming a mono-batch.
@@ -538,7 +566,7 @@ impl LatestAtResults {
     /// Logs an error if the data cannot be deserialized, or if the underlying batch is not of unit length.
     #[inline]
     pub fn component_mono<C: Component>(&self, component: ComponentIdentifier) -> Option<C> {
-        self.component_mono_with_log_level(component, re_log::Level::Error)
+        self.component_mono_with_log_level(component, re_log::Level::ERROR)
     }
 
     /// Returns the deserialized data for the specified component, assuming a mono-batch.
@@ -567,7 +595,7 @@ impl LatestAtResults {
 
             Err(err) => {
                 let entity_path = &self.entity_path;
-                let index = self.compound_index;
+                let index = self.max_index;
                 let err = re_error::format_ref(&err);
                 re_log::log_once!(
                     log_level,
@@ -582,6 +610,7 @@ impl LatestAtResults {
 // --- Cached implementation ---
 
 /// Caches the results of `LatestAt` queries for a given [`QueryCacheKey`].
+#[derive(re_byte_size::SizeBytes)]
 pub struct LatestAtCache {
     /// For debugging purposes.
     pub cache_key: QueryCacheKey,
@@ -666,28 +695,13 @@ impl SizeBytes for LatestAtCachedChunk {
     }
 }
 
-impl SizeBytes for LatestAtCache {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            cache_key: _,
-            per_query_time,
-            pending_invalidations,
-        } = self;
-
-        let per_query_time = per_query_time.total_size_bytes();
-        let pending_invalidations = pending_invalidations.total_size_bytes();
-
-        per_query_time + pending_invalidations
-    }
-}
-
 impl LatestAtCache {
     /// Queries cached latest-at data for a single component.
     ///
     /// Returns `(cached_unit_chunk, missing_chunk_ids)`.
     fn latest_at(
         &mut self,
+        report_mode: ChunkTrackingMode,
         store: &ChunkStore,
         query: &LatestAtQuery,
         entity_path: &EntityPath,
@@ -696,7 +710,7 @@ impl LatestAtCache {
         // Don't do a profile scope here, this can have a lot of overhead when executing many small queries.
         //re_tracing::profile_scope!("latest_at", format!("{component_type} @ {query:?}"));
 
-        debug_assert_eq!(query.timeline(), self.cache_key.timeline_name);
+        re_log::debug_assert_eq!(query.timeline(), self.cache_key.timeline_name);
 
         let Self {
             cache_key: _,
@@ -705,23 +719,35 @@ impl LatestAtCache {
         } = self;
 
         if let Some(cached) = per_query_time.get(&query.at()) {
+            // Report to the store that we used this chunk to signal that
+            // it should stay in memory.
+            match report_mode {
+                ChunkTrackingMode::Report => {
+                    store.report_used_physical_chunk_id(cached.unit.original_chunk_id());
+                }
+                ChunkTrackingMode::ReportTransient => {
+                    store.report_transient_used_physical_chunk_id(cached.unit.original_chunk_id());
+                }
+                ChunkTrackingMode::Ignore | ChunkTrackingMode::PanicOnMissing => {}
+            }
             return (Some(cached.unit.clone()), vec![]);
         }
 
-        let results =
-            store.latest_at_relevant_chunks(OnMissingChunk::Report, query, entity_path, component);
+        let results = store.latest_at_relevant_chunks(report_mode, query, entity_path, component);
         if results.is_partial() {
             // Contrary to range results, partial latest-at results cannot ever be correct on their own,
             // therefore we must give up the current query entirely.
-            return (None, results.missing);
+            // TODO(RR-3762): return latest physical chunk, while still reporting missing virtual chunks
+            return (None, results.missing_virtual);
         }
 
         let Some(((data_time, _row_id), unit)) = results
             .chunks
             .into_iter()
             .filter_map(|chunk| {
-                let chunk = chunk.latest_at(query, component).into_unit()?;
-                chunk.index(&query.timeline()).map(|index| (index, chunk))
+                let unit = chunk.latest_at(query, component)?;
+                unit.index(query.timeline().as_ref())
+                    .map(|index| (index, unit))
             })
             .max_by_key(|(index, _chunk)| *index)
         else {
@@ -791,7 +817,8 @@ mod tests {
     use itertools::Itertools as _;
     use re_chunk::{Chunk, ChunkId, RowId};
     use re_chunk_store::{
-        ChunkStore, ChunkStoreConfig, ChunkStoreEvent, ChunkStoreHandle, ChunkStoreSubscriber as _,
+        ChunkDeletionReason, ChunkStore, ChunkStoreConfig, ChunkStoreEvent, ChunkStoreHandle,
+        ChunkStoreSubscriber as _,
     };
     use re_log_encoding::RrdManifest;
     use re_log_types::example_components::{MyPoint, MyPoints};
@@ -805,10 +832,9 @@ mod tests {
     #[test]
     #[expect(clippy::bool_assert_comparison)] // I like it that way, sue me
     fn partial_data_basics() {
-        let store = ChunkStore::new(
-            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
-            ChunkStoreConfig::ALL_DISABLED,
-        );
+        let store_id =
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app");
+        let store = ChunkStore::new(store_id.clone(), ChunkStoreConfig::ALL_DISABLED);
         let store = ChunkStoreHandle::new(store);
 
         let entity_path: EntityPath = "some_entity".into();
@@ -842,12 +868,22 @@ mod tests {
         // We haven't inserted anything yet, so we just expect empty results across the board.
         {
             let results = cache.latest_at(
+                ChunkTrackingMode::PanicOnMissing,
                 &LatestAtQuery::new(*timeline_frame.name(), 3),
                 &entity_path,
                 [MyPoints::descriptor_points().component],
             );
             assert!(results.is_empty());
         }
+
+        // Back the chunks with an RRD manifest so they stay recoverable after removal, and keep
+        // being reported as missing (partial results) rather than vanishing from the virtual indices.
+        let rrd_manifest = RrdManifest::build_in_memory_from_chunks(
+            store_id,
+            [&chunk1, &chunk2, &chunk3].into_iter(),
+        )
+        .unwrap();
+        _ = store.write().insert_rrd_manifest(rrd_manifest);
 
         // We don't care about events yet, since the cache is empty anyways.
         store
@@ -865,7 +901,12 @@ mod tests {
 
         // Now we've inserted everything, so we expect complete results across the board.
         {
-            let results = cache.latest_at(&query, &entity_path, [component]);
+            let results = cache.latest_at(
+                ChunkTrackingMode::PanicOnMissing,
+                &query,
+                &entity_path,
+                [component],
+            );
             let expected = {
                 let mut results = LatestAtResults::empty(entity_path.clone(), query.clone());
                 results.add(
@@ -882,6 +923,7 @@ mod tests {
         let dels = store.write().remove_chunks_shallow(
             vec![Arc::new(chunk1.clone()), Arc::new(chunk3.clone())],
             None,
+            ChunkDeletionReason::ExplicitDrop,
         );
         cache.on_events(
             &dels
@@ -899,19 +941,22 @@ mod tests {
         // of them are relevant to this query, and therefore the results are now partial.
         // Because partial latest-at results don't make any semantic sense, the end result is just empty.
         {
-            let results = cache.latest_at(&query, &entity_path, [component]);
+            let results =
+                cache.latest_at(ChunkTrackingMode::Report, &query, &entity_path, [component]);
             let expected = {
                 let mut results = LatestAtResults::empty(entity_path.clone(), query.clone());
-                results.missing = vec![chunk1.id(), chunk3.id()];
+                results.missing_virtual = vec![chunk1.id(), chunk3.id()];
                 results
             };
             assert_eq!(true, results.is_partial());
             assert_eq!(expected, results);
         }
 
-        let dels = store
-            .write()
-            .remove_chunks_shallow(vec![Arc::new(chunk2.clone())], None);
+        let dels = store.write().remove_chunks_shallow(
+            vec![Arc::new(chunk2.clone())],
+            None,
+            ChunkDeletionReason::ExplicitDrop,
+        );
         cache.on_events(
             &dels
                 .into_iter()
@@ -927,10 +972,11 @@ mod tests {
         // Now we've removed absolutely everything: we should only get partial results.
         // Because partial latest-at results don't make any semantic sense, the end result is just empty.
         {
-            let results = cache.latest_at(&query, &entity_path, [component]);
+            let results =
+                cache.latest_at(ChunkTrackingMode::Report, &query, &entity_path, [component]);
             let expected = {
                 let mut results = LatestAtResults::empty(entity_path.clone(), query.clone());
-                results.missing = vec![chunk1.id(), chunk2.id(), chunk3.id()];
+                results.missing_virtual = vec![chunk1.id(), chunk2.id(), chunk3.id()];
                 results
             };
             assert_eq!(true, results.is_partial());
@@ -949,7 +995,12 @@ mod tests {
 
         // We've inserted everything back: all results should be complete once again.
         {
-            let results = cache.latest_at(&query, &entity_path, [component]);
+            let results = cache.latest_at(
+                ChunkTrackingMode::PanicOnMissing,
+                &query,
+                &entity_path,
+                [component],
+            );
             let expected = {
                 let mut results = LatestAtResults::empty(entity_path.clone(), query.clone());
                 results.add(
@@ -968,10 +1019,9 @@ mod tests {
     #[test]
     #[expect(clippy::bool_assert_comparison)] // I like it that way, sue me
     fn partial_data_clears() {
-        let store = ChunkStore::new(
-            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
-            ChunkStoreConfig::COMPACTION_DISABLED,
-        );
+        let store_id =
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app");
+        let store = ChunkStore::new(store_id.clone(), ChunkStoreConfig::COMPACTION_DISABLED);
         let store = ChunkStoreHandle::new(store);
 
         let entity_parent: EntityPath = "/parent".into();
@@ -1025,7 +1075,12 @@ mod tests {
 
         // Now we've inserted everything, so we expect complete results across the board.
         {
-            let results = cache.latest_at(&query, &entity_child, [component]);
+            let results = cache.latest_at(
+                ChunkTrackingMode::PanicOnMissing,
+                &query,
+                &entity_child,
+                [component],
+            );
             let expected = {
                 let mut results = LatestAtResults::empty(entity_child.clone(), query.clone());
                 results.add(
@@ -1045,6 +1100,15 @@ mod tests {
             (chunk_parent_clear_recursive, true),
         ];
         for (tombstone, should_actually_clear) in tombstones {
+            // Back the tombstone with an RRD manifest so that, once shallowly removed, it stays
+            // recoverable and keeps being reported as missing (partial) instead of vanishing.
+            let rrd_manifest = RrdManifest::build_in_memory_from_chunks(
+                store_id.clone(),
+                [&tombstone].into_iter(),
+            )
+            .unwrap();
+            cache.on_events(&store.write().insert_rrd_manifest(rrd_manifest));
+
             cache.on_events(
                 &store
                     .write()
@@ -1054,13 +1118,23 @@ mod tests {
 
             if should_actually_clear {
                 // There is a physical tombstone affecting `/parent/child`, and therefore all 3 chunks should be shadowed.
-                let results = cache.latest_at(&query, &entity_child, [component]);
+                let results = cache.latest_at(
+                    ChunkTrackingMode::PanicOnMissing,
+                    &query,
+                    &entity_child,
+                    [component],
+                );
                 let expected = LatestAtResults::empty(entity_child.clone(), query.clone());
                 assert_eq!(false, results.is_partial());
                 assert_eq!(expected, results);
             } else {
                 // There is a physical tombstone present, but it doesn't affect `/parent/child`.
-                let results = cache.latest_at(&query, &entity_child, [component]);
+                let results = cache.latest_at(
+                    ChunkTrackingMode::PanicOnMissing,
+                    &query,
+                    &entity_child,
+                    [component],
+                );
                 let expected = {
                     let mut results = LatestAtResults::empty(entity_child.clone(), query.clone());
                     results.add(
@@ -1074,9 +1148,11 @@ mod tests {
                 assert_eq!(expected, results);
             }
 
-            let dels = store
-                .write()
-                .remove_chunks_shallow(vec![Arc::new(tombstone.clone())], None);
+            let dels = store.write().remove_chunks_shallow(
+                vec![Arc::new(tombstone.clone())],
+                None,
+                ChunkDeletionReason::ExplicitDrop,
+            );
             cache.on_events(
                 &dels
                     .into_iter()
@@ -1094,19 +1170,26 @@ mod tests {
             // to know the tombstone's index, as well as its recursivity settings), we must always assume so.
             // Therefore, we expect no results from this.
             {
-                let results = cache.latest_at(&query, &entity_child, [component]);
+                let results = cache.latest_at(
+                    ChunkTrackingMode::Report,
+                    &query,
+                    &entity_child,
+                    [component],
+                );
                 let expected = {
                     let mut results = LatestAtResults::empty(entity_child.clone(), query.clone());
-                    results.missing = vec![tombstone.id()];
+                    results.missing_virtual = vec![tombstone.id()];
                     results
                 };
                 assert_eq!(true, results.is_partial());
                 assert_eq!(expected, results);
             }
 
-            let dels = store
-                .write()
-                .remove_chunks_deep(vec![Arc::new(tombstone.clone())], None);
+            let dels = store.write().remove_chunks_deep(
+                vec![Arc::new(tombstone.clone())],
+                None,
+                ChunkDeletionReason::GarbageCollection,
+            );
             cache.on_events(
                 &dels
                     .into_iter()
@@ -1122,7 +1205,12 @@ mod tests {
             // We now have physically removed the tombstone on `/parent/child`.
             // At this point, it's as if the tombstone never existed: we expect our results back.
             {
-                let results = cache.latest_at(&query, &entity_child, [component]);
+                let results = cache.latest_at(
+                    ChunkTrackingMode::PanicOnMissing,
+                    &query,
+                    &entity_child,
+                    [component],
+                );
                 let expected = {
                     let mut results = LatestAtResults::empty(entity_child.clone(), query.clone());
                     results.add(
@@ -1180,7 +1268,7 @@ mod tests {
         let mut cache = QueryCache::new(store.clone());
 
         // The store is now aware that there is a virtual tombstone pending somewhere, and so should be the cache.
-        cache.on_events(&[store.write().insert_rrd_manifest(rrd_manifest).unwrap()]);
+        cache.on_events(&store.write().insert_rrd_manifest(rrd_manifest));
 
         // Load the physical data into the store, but not the tombstone.
         cache.on_events(
@@ -1197,10 +1285,15 @@ mod tests {
         // the RRD manifest that it exists somewhere out there.
         // Note that the tombstone isn't even recursive, but we cannot possibly know that yet.
         {
-            let results = cache.latest_at(&query, &entity_child, [component]);
+            let results = cache.latest_at(
+                ChunkTrackingMode::Report,
+                &query,
+                &entity_child,
+                [component],
+            );
             let expected = {
                 let mut results = LatestAtResults::empty(entity_child.clone(), query.clone());
-                results.missing = vec![chunk_parent_clear_flat.id()];
+                results.missing_virtual = vec![chunk_parent_clear_flat.id()];
                 results
             };
             assert_eq!(true, results.is_partial());
@@ -1217,7 +1310,12 @@ mod tests {
 
         // Turns out the tombstone was never recursive to begin with: we expect our results back.
         {
-            let results = cache.latest_at(&query, &entity_child, [component]);
+            let results = cache.latest_at(
+                ChunkTrackingMode::PanicOnMissing,
+                &query,
+                &entity_child,
+                [component],
+            );
             let expected = {
                 let mut results = LatestAtResults::empty(entity_child.clone(), query.clone());
                 results.add(

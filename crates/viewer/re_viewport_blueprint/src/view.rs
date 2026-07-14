@@ -9,9 +9,9 @@ use re_sdk_types::blueprint::components::{self as blueprint_components, ViewOrig
 use re_sdk_types::components::{Name, Visible};
 use re_types_core::Archetype as _;
 use re_viewer_context::{
-    BlueprintContext as _, ContentsName, QueryRange, RecommendedView, StoreContext, SystemCommand,
-    SystemCommandSender as _, ViewClass, ViewClassRegistry, ViewContext, ViewId, ViewState,
-    ViewStates, ViewerContext,
+    ActiveStoreContext, BlueprintContext as _, ContentsName, QueryRange, RecommendedView,
+    SystemCommand, SystemCommandSender as _, ViewClass, ViewClassRegistry, ViewContext, ViewId,
+    ViewState, ViewStates, ViewerContext,
 };
 
 use crate::{ViewContents, ViewProperty};
@@ -141,6 +141,7 @@ impl ViewBlueprint {
         re_tracing::profile_function!();
 
         let results = blueprint_db.storage_engine().cache().latest_at(
+            re_chunk_store::ChunkTrackingMode::Report,
             query,
             &id.as_entity_path(),
             blueprint_archetypes::ViewBlueprint::all_component_identifiers(),
@@ -148,7 +149,8 @@ impl ViewBlueprint {
 
         // This is a required component. Note that when loading views we crawl the subtree and so
         // cleared empty views paths may exist transiently. The fact that they have an empty class_identifier
-        // is the marker that the have been cleared and not an error.
+        // is the marker that the have been cleared and not an error: an empty string is not a valid
+        // `ViewClassIdentifier`, so the `try_new` below turns it into a `None` and we skip the view.
         let class_identifier = results.component_mono::<blueprint_components::ViewClass>(
             blueprint_archetypes::ViewBlueprint::descriptor_class_identifier().component,
         )?;
@@ -163,7 +165,7 @@ impl ViewBlueprint {
         );
 
         let space_origin = space_origin.map_or_else(EntityPath::root, |origin| origin.0.into());
-        let class_identifier: ViewClassIdentifier = class_identifier.0.as_str().into();
+        let class_identifier = ViewClassIdentifier::try_new(class_identifier.0.as_str()).ok()?;
         let display_name = display_name.map(|v| v.0.to_string());
 
         let space_env = EntityPathSubs::new_with_origin(&space_origin);
@@ -237,7 +239,7 @@ impl ViewBlueprint {
     /// Creates a new [`ViewBlueprint`] with the same contents, but a different [`ViewId`]
     ///
     /// Also duplicates all the queries in the view.
-    pub fn duplicate(&self, store_context: &StoreContext<'_>, query: &LatestAtQuery) -> Self {
+    pub fn duplicate(&self, store_context: &ActiveStoreContext<'_>, query: &LatestAtQuery) -> Self {
         let mut pending_writes = Vec::new();
         let blueprint = store_context.blueprint;
         let blueprint_engine = blueprint.storage_engine();
@@ -248,13 +250,13 @@ impl ViewBlueprint {
 
         // Create pending write operations to duplicate the entire subtree
         // TODO(jleibs): This should be a helper somewhere.
-        if let Some(tree) = blueprint.tree().subtree(&current_path) {
+        let bp_engine = blueprint.storage_engine();
+        if let Some(tree) = bp_engine.store().entity_tree().subtree(&current_path) {
             tree.visit_children_recursively(|path| {
-                let sub_path: EntityPath = new_path
-                    .iter()
-                    .chain(&path[current_path.len()..])
-                    .cloned()
-                    .collect();
+                let sub_path: EntityPath =
+                    std::iter::chain(new_path.iter(), &path[current_path.len()..])
+                        .cloned()
+                        .collect();
 
                 let chunk = Chunk::builder(sub_path)
                     .with_row(
@@ -262,7 +264,7 @@ impl ViewBlueprint {
                         store_context.blueprint_timepoint_for_writes(),
                         blueprint_engine
                             .store()
-                            .all_components_on_timeline(&query.timeline(), path)
+                            .all_components_on_timeline(query.timeline().as_ref(), path)
                             .into_iter()
                             .flat_map(|v| v.into_iter())
                             // It's important that we don't include the ViewBlueprint's components
@@ -275,9 +277,9 @@ impl ViewBlueprint {
                             .filter_map(|component| {
                                 let array = blueprint_engine
                                     .cache()
-                                    .latest_at(query, path, [component])
+                                    .latest_at(re_chunk_store::ChunkTrackingMode::Report, query, path, [component])
                                     .component_batch_raw(component)?;
-                                let descriptor = blueprint_engine.store().entity_component_descriptor(path, component)?;
+                                let descriptor = blueprint_engine.schema().entity_component_descriptor(path, component)?;
                                 Some((descriptor, array))
                             }),
                     )
@@ -388,6 +390,8 @@ impl ViewBlueprint {
         view_class_registry: &ViewClassRegistry,
         view_state: &dyn ViewState,
     ) -> QueryRange {
+        re_tracing::profile_function!();
+
         // Visual time range works with regular overrides for the most part but it's a bit special:
         // * we need it for all entities unconditionally
         // * default does not vary per visualizer
@@ -408,7 +412,7 @@ impl ViewBlueprint {
                 .ok()??
                 .iter()
                 .find(|range| range.timeline.as_str() == active_timeline.name().as_str())
-                .map(|range| range.range.clone())
+                .map(|range| range.range)
         });
 
         time_range.map_or_else(
@@ -416,7 +420,7 @@ impl ViewBlueprint {
                 let view_class = view_class_registry.get_class_or_log_error(self.class_identifier);
                 view_class.default_query_range(view_state)
             },
-            |time_range| QueryRange::TimeRange(time_range.clone()),
+            QueryRange::TimeRange,
         )
     }
 
@@ -428,7 +432,7 @@ impl ViewBlueprint {
         let class = ctx
             .view_class_registry()
             .get_class_or_log_error(self.class_identifier());
-        let view_state = view_states.get_mut_or_create(self.id, class);
+        let view_state = view_states.get_mut_or_create(ctx.store_id(), self.id, class);
         self.bundle_context_with_state(ctx, view_state)
     }
 
@@ -459,8 +463,7 @@ mod tests {
     use re_sdk_types::blueprint::archetypes::EntityBehavior;
     use re_test_context::TestContext;
     use re_viewer_context::{
-        PerVisualizer, PerVisualizerInViewClass, ViewClassPlaceholder, VisualizableEntities,
-        VisualizableReason,
+        PerVisualizerType, ViewClassPlaceholder, VisualizableEntities, VisualizableReason,
     };
 
     use super::*;
@@ -468,7 +471,7 @@ mod tests {
     #[test]
     fn test_visible_interactive_overrides() {
         let mut test_ctx = TestContext::new();
-        let mut visualizable_entities = PerVisualizer::<VisualizableEntities>::default();
+        let mut visualizable_entities = PerVisualizerType::<VisualizableEntities>::default();
 
         // Set up a store DB with some entities.
         {
@@ -503,11 +506,6 @@ mod tests {
                     )
                 });
         }
-
-        let visualizable_entities = PerVisualizerInViewClass::<VisualizableEntities> {
-            view_class_identifier: ViewClassPlaceholder::identifier(),
-            per_visualizer: visualizable_entities.0.clone(),
-        };
 
         // Basic blueprint - a single view that queries everything.
         test_ctx.register_view_class::<ViewClassPlaceholder>();
@@ -619,8 +617,7 @@ mod tests {
             // Reset blueprint store for each scenario.
             {
                 let blueprint_entities = blueprint_store
-                    .entity_paths()
-                    .iter()
+                    .sorted_entity_paths()
                     .map(|path| (*path).clone())
                     .collect::<Vec<_>>();
                 for entity_path in blueprint_entities {
@@ -645,7 +642,7 @@ mod tests {
                 add_to_blueprint(&base_override_path, batch.as_ref());
             }
 
-            let query_result = update_overrides(&test_ctx, &view, &visualizable_entities);
+            let query_result = update_overrides(&test_ctx, &view, &visualizable_entities.as_ref());
 
             query_result.tree.visit(&mut |node| {
                 let result = &node.data_result;
@@ -671,15 +668,16 @@ mod tests {
     fn update_overrides(
         test_ctx: &TestContext,
         view: &ViewBlueprint,
-        visualizable_entities: &PerVisualizerInViewClass<VisualizableEntities>,
+        visualizable_entities: &PerVisualizerType<&VisualizableEntities>,
     ) -> re_viewer_context::DataQueryResult {
         let mut result = None;
 
         test_ctx.run_in_egui_central_panel(|ctx, _ui| {
             let mut view_states = ViewStates::default();
             let view_state = view_states.get_mut_or_create(
+                ctx.store_id(),
                 view.id,
-                ctx.view_class_registry
+                ctx.view_class_registry()
                     .class(view.class_identifier())
                     .expect("view class should be registered"),
             );
@@ -688,7 +686,7 @@ mod tests {
                 ctx.blueprint_db(),
                 ctx.blueprint_query(),
                 ctx.time_ctrl.timeline(),
-                ctx.view_class_registry,
+                ctx.view_class_registry(),
                 view_state,
             );
 

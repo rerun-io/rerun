@@ -14,7 +14,9 @@ rr.init("rerun_example_transform3d_partial_updates", spawn=True)
 # Set up a 3D box.
 rr.log(
     "box",
-    rr.Boxes3D(half_sizes=[4.0, 2.0, 1.0], fill_mode=rr.components.FillMode.Solid),
+    rr.Boxes3D(
+        half_sizes=[4.0, 2.0, 1.0], fill_mode=rr.components.FillMode.Solid
+    ),
 )
 
 # Update only the rotation of the box.
@@ -23,7 +25,9 @@ for deg in range(46):
     rr.log(
         "box",
         rr.Transform3D.from_fields(
-            rotation_axis_angle=rr.RotationAxisAngle(axis=[0.0, 1.0, 0.0], radians=rad),
+            rotation_axis_angle=rr.RotationAxisAngle(
+                axis=[0.0, 1.0, 0.0], radians=rad
+            ),
         ),
     )
 
@@ -40,7 +44,9 @@ for deg in range(46):
     rr.log(
         "box",
         rr.Transform3D.from_fields(
-            rotation_axis_angle=rr.RotationAxisAngle(axis=[0.0, 1.0, 0.0], radians=rad),
+            rotation_axis_angle=rr.RotationAxisAngle(
+                axis=[0.0, 1.0, 0.0], radians=rad
+            ),
         ),
     )
 

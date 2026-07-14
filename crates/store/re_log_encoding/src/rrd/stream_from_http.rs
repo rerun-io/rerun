@@ -13,7 +13,31 @@ pub enum HttpMessage {
     Success,
 
     /// Something went wrong. End of stream.
-    Failure(Box<dyn std::error::Error + Send + Sync>),
+    Failure(Error),
+}
+
+/// Error type for HTTP streaming failures.
+#[derive(thiserror::Error, Debug)]
+pub enum Error {
+    #[error("Failed to fetch .rrd file: {status} {status_text}, url: {url}")]
+    HttpStatus {
+        status: u16,
+        status_text: String,
+        url: String,
+    },
+
+    #[error("Failed to fetch .rrd file: {reason}, url: {url}")]
+    Fetch { reason: String, url: String },
+
+    #[error("Failed to decode .rrd file: {source}, url: {url}")]
+    Decode {
+        #[source]
+        source: crate::DecodeError,
+        url: String,
+    },
+
+    #[error("Failed to decode .rrd: {0}")]
+    DecodeEager(#[source] crate::DecodeError),
 }
 
 pub type HttpMessageCallback = dyn Fn(HttpMessage) -> ControlFlow<()> + Send + Sync;
@@ -38,10 +62,11 @@ pub fn stream_from_http(url: String, on_msg: Arc<HttpMessageCallback>) {
                         re_log::debug!("Decoding .rrd file from {url:?}…");
                         ControlFlow::Continue(())
                     } else {
-                        on_msg(HttpMessage::Failure(
-                            format!("Failed to fetch .rrd file from {url}: {status} {status_text}")
-                                .into(),
-                        ))
+                        on_msg(HttpMessage::Failure(Error::HttpStatus {
+                            status,
+                            status_text,
+                            url,
+                        }))
                     }
                 }
                 ehttp::streaming::Part::Chunk(chunk) => {
@@ -64,17 +89,19 @@ pub fn stream_from_http(url: String, on_msg: Arc<HttpMessageCallback>) {
                                 None => return ControlFlow::Continue(()),
                             },
                             Err(err) => {
-                                return on_msg(HttpMessage::Failure(
-                                    format!("Failed to fetch .rrd file from {url}: {err}").into(),
-                                ));
+                                return on_msg(HttpMessage::Failure(Error::Decode {
+                                    source: err,
+                                    url: url.clone(),
+                                }));
                             }
                         }
                     }
                 }
             },
-            Err(err) => on_msg(HttpMessage::Failure(
-                format!("Failed to fetch .rrd file from {url}: {err}").into(),
-            )),
+            Err(err) => on_msg(HttpMessage::Failure(Error::Fetch {
+                reason: err,
+                url: url.clone(),
+            })),
         }
     });
 }
@@ -129,7 +156,7 @@ pub use web_event_listener::stream_rrd_from_event_listener;
 pub mod web_decode {
     use std::sync::Arc;
 
-    use super::{HttpMessage, HttpMessageCallback};
+    use super::{Error, HttpMessage, HttpMessageCallback};
 
     pub fn decode_rrd(rrd_bytes: Vec<u8>, on_msg: Arc<HttpMessageCallback>) {
         wasm_bindgen_futures::spawn_local(decode_rrd_async(rrd_bytes, on_msg));
@@ -168,9 +195,7 @@ pub mod web_decode {
             }
             Err(err) => {
                 // Regardless of what the message handler returns, we are done here.
-                let _ignored_control_flow = on_msg(HttpMessage::Failure(
-                    format!("Failed to decode .rrd: {err}").into(),
-                ));
+                let _ignored_control_flow = on_msg(HttpMessage::Failure(Error::DecodeEager(err)));
             }
         }
     }

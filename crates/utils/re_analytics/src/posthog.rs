@@ -40,8 +40,7 @@ impl<'a> PostHogEvent<'a> {
                 timestamp: event.time_utc,
                 event: event.name.as_ref(),
                 distinct_id: analytics_id,
-                properties: properties
-                    .chain([("session_id", session_id.into())])
+                properties: std::iter::chain(properties, [("session_id", session_id.into())])
                     .collect(),
             }),
             crate::EventKind::Identify => Self::Identify(PostHogIdentifyEvent {

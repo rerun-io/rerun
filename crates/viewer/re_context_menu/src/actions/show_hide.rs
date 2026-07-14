@@ -1,6 +1,7 @@
 use re_entity_db::InstancePath;
 use re_viewer_context::{ContainerId, Contents, Item, ViewId};
 
+use crate::visibility_actions::{entity_visibility_in_view, set_entity_visibility_in_view};
 use crate::{ContextMenuAction, ContextMenuContext};
 
 pub(crate) struct ShowAction;
@@ -17,8 +18,14 @@ impl ContextMenuAction for ShowAction {
                     .is_contents_visible(&Contents::Container(*container_id))
                     && ctx.viewport_blueprint.root_container != *container_id
             }
-            Item::DataResult(view_id, instance_path) => {
-                data_result_visible(ctx, view_id, instance_path).is_some_and(|vis| !vis)
+            Item::DataResult(data_result) => {
+                data_result.instance_path.is_all()
+                    && entity_visibility_in_view(
+                        ctx.viewer_context,
+                        data_result.view_id,
+                        &data_result.instance_path.entity_path,
+                    )
+                    .is_some_and(|vis| !vis)
             }
             _ => false,
         })
@@ -71,8 +78,14 @@ impl ContextMenuAction for HideAction {
                     .is_contents_visible(&Contents::Container(*container_id))
                     && ctx.viewport_blueprint.root_container != *container_id
             }
-            Item::DataResult(view_id, instance_path) => {
-                data_result_visible(ctx, view_id, instance_path).unwrap_or(false)
+            Item::DataResult(data_result) => {
+                data_result.instance_path.is_all()
+                    && entity_visibility_in_view(
+                        ctx.viewer_context,
+                        data_result.view_id,
+                        &data_result.instance_path.entity_path,
+                    )
+                    .unwrap_or(false)
             }
             _ => false,
         })
@@ -112,37 +125,16 @@ impl ContextMenuAction for HideAction {
     }
 }
 
-fn data_result_visible(
-    ctx: &ContextMenuContext<'_>,
-    view_id: &ViewId,
-    instance_path: &InstancePath,
-) -> Option<bool> {
-    instance_path
-        .is_all()
-        .then(|| {
-            let query_result = ctx.viewer_context.lookup_query_result(*view_id);
-            query_result
-                .tree
-                .lookup_result_by_path(instance_path.entity_path.hash())
-                .map(|data_result| data_result.is_visible())
-        })
-        .flatten()
-}
-
 fn set_data_result_visible(
     ctx: &ContextMenuContext<'_>,
     view_id: &ViewId,
     instance_path: &InstancePath,
     visible: bool,
 ) {
-    if let Some(query_result) = ctx.viewer_context.query_results.get(view_id) {
-        if let Some(data_result) = query_result
-            .tree
-            .lookup_result_by_path(instance_path.entity_path.hash())
-        {
-            data_result.save_visible(ctx.viewer_context, &query_result.tree, visible);
-        }
-    } else {
-        re_log::error!("No query available for view {:?}", view_id);
-    }
+    set_entity_visibility_in_view(
+        ctx.viewer_context,
+        *view_id,
+        &instance_path.entity_path,
+        visible,
+    );
 }

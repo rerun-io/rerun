@@ -12,7 +12,7 @@ table GraphView (
 
     /// Everything within these bounds is guaranteed to be visible.
     ///
-    /// Somethings outside of these bounds may also be visible due to letterboxing.
+    /// Some things outside of these bounds may also be visible due to letterboxing.
     visual_bounds: rerun.blueprint.archetypes.VisualBounds2D (order: 1000);
 
     /// Allows to control the interaction between two nodes connected by an edge.

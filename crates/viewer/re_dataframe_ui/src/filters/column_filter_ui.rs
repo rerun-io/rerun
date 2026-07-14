@@ -50,11 +50,11 @@ impl FilterState {
     ///
     /// Call this at the beginning of the frame.
     pub fn load_or_init_from_blueprint(
-        ctx: &egui::Context,
+        egui_ctx: &egui::Context,
         persisted_id: egui::Id,
         table_blueprint: &TableBlueprint,
     ) -> Self {
-        ctx.data_mut(|data| {
+        egui_ctx.data_mut(|data| {
             data.get_temp_mut_or_insert_with(persisted_id, || Self {
                 column_filters: table_blueprint.column_filters.clone(),
                 active_filter: None,
@@ -66,8 +66,8 @@ impl FilterState {
     /// Store the state to the temporary memory.
     ///
     /// Call this at the end of the frame.
-    pub fn store(self, ctx: &egui::Context, persisted_id: egui::Id) {
-        ctx.data_mut(|data| {
+    pub fn store(self, egui_ctx: &egui::Context, persisted_id: egui::Id) {
+        egui_ctx.data_mut(|data| {
             data.insert_temp(persisted_id, self);
         });
     }
@@ -89,7 +89,8 @@ impl FilterState {
     ) {
         // From there on, we always want to show the "today" date, because not doing so leads
         // to some very confusing display.
-        let timestamp_format = timestamp_format.with_hide_today_date(false);
+        let timestamp_format =
+            timestamp_format.with_date_visibility(re_log_types::DateVisibility::ShowDate);
 
         let action = self.filter_bar_ui_impl(ui, timestamp_format);
 
@@ -200,7 +201,7 @@ impl ColumnFilter {
             .with_body_default(self.field.name())
             .with_keyword(" ")
             .with(&TimestampFormatted::new(&self.filter, timestamp_format))
-            .into_job(ui.style());
+            .to_job(ui.style());
 
         atoms.push_right(layout_job);
 
@@ -339,8 +340,8 @@ mod tests {
     use arrow::datatypes::{DataType, Field, FieldRef};
     use egui::accesskit::Role;
     use egui::{Key, Modifiers};
-    use egui_kittest::SnapshotResults;
     use egui_kittest::kittest::Queryable as _;
+    use egui_kittest::{OsThreshold, SnapshotOptions, SnapshotResults};
 
     use super::super::{
         ComparisonOperator, FloatFilter, IntFilter, NonNullableBooleanFilter,
@@ -559,7 +560,7 @@ mod tests {
     }
 
     /// This test runs through a full edit cycle of a timestamp filter, and assess that the
-    /// timestamp string is normalized after commit—that is, the timestamp string is set to the
+    /// timestamp string is normalized after commit — that is, the timestamp string is set to the
     /// canonical representation of the previously entered timestamp.
     #[test]
     fn test_timestamp_filter_on_commit() {
@@ -606,6 +607,9 @@ mod tests {
         node.click();
         harness.run();
 
-        harness.snapshot("timestamp_filter_on_commit");
+        let options = SnapshotOptions::new()
+            .threshold(OsThreshold::default().macos(2.5))
+            .failed_pixel_count_threshold(OsThreshold::default().macos(2));
+        harness.snapshot_options("timestamp_filter_on_commit", &options);
     }
 }

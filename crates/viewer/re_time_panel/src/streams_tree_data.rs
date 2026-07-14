@@ -7,7 +7,7 @@ use re_entity_db::{EntityTree, InstancePath};
 use re_log_types::{ComponentPath, EntityPath};
 use re_sdk_types::ComponentDescriptor;
 use re_ui::filter_widget::{FilterMatcher, PathRanges};
-use re_viewer_context::{CollapseScope, Item, ViewerContext, VisitorControlFlow};
+use re_viewer_context::{AppContext, CollapseScope, Item, ViewerContext, VisitorControlFlow};
 use smallvec::SmallVec;
 
 use crate::time_panel::TimePanelSource;
@@ -33,8 +33,9 @@ impl StreamsTreeData {
 
         let mut hierarchy = Vec::default();
         let mut hierarchy_highlights = PathRanges::default();
+        let db_engine = db.storage_engine();
         let root_data = EntityData::from_entity_tree_and_filter(
-            db.tree(),
+            db_engine.store().entity_tree(),
             filter_matcher,
             &mut hierarchy,
             &mut hierarchy_highlights,
@@ -69,7 +70,7 @@ impl StreamsTreeData {
     /// components are visited.
     pub fn visit<B>(
         &self,
-        viewer_context: &ViewerContext<'_>,
+        ctx: &AppContext<'_>,
         entity_db: &re_entity_db::EntityDb,
         mut visitor: impl FnMut(EntityOrComponentData<'_>) -> VisitorControlFlow<B>,
     ) -> ControlFlow<B> {
@@ -77,7 +78,7 @@ impl StreamsTreeData {
         let store = engine.store();
 
         for child in &self.children {
-            child.visit(viewer_context, store, &mut visitor)?;
+            child.visit(ctx, store, &mut visitor)?;
         }
 
         ControlFlow::Continue(())
@@ -213,18 +214,16 @@ impl EntityData {
     /// Visit this entity, included its components in the provided store.
     pub fn visit<B>(
         &self,
-        viewer_context: &ViewerContext<'_>,
+        ctx: &AppContext<'_>,
         store: &ChunkStore,
         visitor: &mut impl FnMut(EntityOrComponentData<'_>) -> VisitorControlFlow<B>,
     ) -> ControlFlow<B> {
         if visitor(EntityOrComponentData::Entity(self)).visit_children()? {
             for child in &self.children {
-                child.visit(viewer_context, store, visitor)?;
+                child.visit(ctx, store, visitor)?;
             }
 
-            for (_, component_descriptors) in
-                components_for_entity(viewer_context, store, &self.entity_path)
-            {
+            for (_, component_descriptors) in components_for_entity(ctx, store, &self.entity_path) {
                 for component_descriptor in component_descriptors {
                     // these cannot have children
                     let _ = visitor(EntityOrComponentData::Component {
@@ -243,25 +242,27 @@ impl EntityData {
         Item::InstancePath(InstancePath::entity_all(self.entity_path.clone()))
     }
 
-    pub fn is_open(&self, ctx: &egui::Context, collapse_scope: CollapseScope) -> bool {
+    pub fn is_open(&self, egui_ctx: &egui::Context, collapse_scope: CollapseScope) -> bool {
         collapse_scope
             .item(self.item())
-            .is_some_and(|collapse_id| collapse_id.is_open(ctx).unwrap_or(self.default_open))
+            .is_some_and(|collapse_id| collapse_id.is_open(egui_ctx).unwrap_or(self.default_open))
     }
 }
 
 /// Lists the components to be displayed for the given entity
 pub fn components_for_entity(
-    viewer_context: &ViewerContext<'_>,
+    ctx: &AppContext<'_>,
     store: &ChunkStore,
     entity_path: &EntityPath,
 ) -> ArchetypeComponentMap {
-    if let Some(components) = store.all_components_for_entity(entity_path) {
+    if let Some(components) = store.schema().all_components_for_entity(entity_path) {
         sorted_component_list_by_archetype_for_ui(
-            viewer_context.reflection(),
-            components
-                .iter()
-                .filter_map(|component| store.entity_component_descriptor(entity_path, *component)),
+            ctx.reflection,
+            components.iter().filter_map(|component| {
+                store
+                    .schema()
+                    .entity_component_descriptor(entity_path, *component)
+            }),
         )
     } else {
         ArchetypeComponentMap::default()
@@ -293,9 +294,9 @@ impl EntityOrComponentData<'_> {
         }
     }
 
-    pub fn is_open(&self, ctx: &egui::Context, collapse_scope: CollapseScope) -> bool {
+    pub fn is_open(&self, egui_ctx: &egui::Context, collapse_scope: CollapseScope) -> bool {
         match self {
-            Self::Entity(entity_data) => entity_data.is_open(ctx, collapse_scope),
+            Self::Entity(entity_data) => entity_data.is_open(egui_ctx, collapse_scope),
             Self::Component { .. } => true,
         }
     }

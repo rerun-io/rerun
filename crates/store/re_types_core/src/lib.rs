@@ -29,10 +29,12 @@ mod chunk_id;
 mod component_batch;
 mod component_descriptor;
 mod dynamic_archetype;
+mod layer_name;
 mod loggable;
 pub mod reflection;
 mod result;
 mod row_id;
+mod segment_id;
 mod timeline_name;
 mod tuid;
 mod view;
@@ -52,18 +54,18 @@ pub use self::component_descriptor::{
     FIELD_METADATA_KEY_COMPONENT_TYPE,
 };
 pub use self::dynamic_archetype::DynamicArchetype;
-pub use self::loggable::{
-    Component, ComponentSet, ComponentType, DatatypeName, Loggable, UnorderedComponentSet,
-};
+pub use self::layer_name::LayerName;
+pub use self::loggable::{Component, ComponentSet, ComponentType, Loggable, UnorderedComponentSet};
 pub use self::result::{
     _Backtrace, DeserializationError, DeserializationResult, ResultExt, SerializationError,
     SerializationResult,
 };
 pub use self::row_id::RowId;
+pub use self::segment_id::SegmentId;
 pub use self::tuid::tuids_to_arrow;
 pub use self::view::{View, ViewClassIdentifier};
 pub use self::wrapper_component::WrapperComponent;
-pub use timeline_name::TimelineName;
+pub use timeline_name::{InvalidTimelineNameError, TimelineName};
 
 /// Fundamental [`Archetype`]s that are implemented in `re_types_core` directly for convenience and
 /// dependency optimization.
@@ -93,7 +95,7 @@ pub mod macros {
 }
 
 pub mod external {
-    pub use {anyhow, arrow, re_tuid};
+    pub use {anyhow, arrow, re_string_interner, re_tuid};
 }
 
 /// Useful macro for statically asserting that a `struct` contains some specific fields.

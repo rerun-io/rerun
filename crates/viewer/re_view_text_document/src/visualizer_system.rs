@@ -1,4 +1,5 @@
 use re_chunk_store::LatestAtQuery;
+use re_sdk_types::Archetype as _;
 use re_sdk_types::archetypes::TextDocument;
 use re_sdk_types::components;
 use re_view::DataResultQuery as _;
@@ -17,13 +18,14 @@ pub struct TextDocumentEntry {
 
 /// A text scene, with everything needed to render it.
 #[derive(Default)]
-pub struct TextDocumentSystem {
-    pub text_entries: Vec<TextDocumentEntry>,
-}
+pub struct TextDocumentSystem;
 
 impl IdentifiedViewSystem for TextDocumentSystem {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "TextDocument".into()
+        re_viewer_context::external::re_string_interner::intern_static!(
+            re_viewer_context::ViewSystemIdentifier,
+            "TextDocument"
+        )
     }
 }
 
@@ -32,16 +34,21 @@ impl VisualizerSystem for TextDocumentSystem {
         &self,
         _app_options: &re_viewer_context::AppOptions,
     ) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<TextDocument>()
+        VisualizerQueryInfo::single_required_component::<components::Text>(
+            &TextDocument::descriptor_text(),
+            &TextDocument::all_components(),
+        )
     }
 
     fn execute(
-        &mut self,
+        &self,
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         _context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         let timeline_query = LatestAtQuery::new(view_query.timeline, view_query.latest_at);
+
+        let mut text_entries = Vec::new();
 
         for (data_result, instruction) in
             view_query.iter_visualizer_instruction_for(Self::identifier())
@@ -52,18 +59,18 @@ impl VisualizerSystem for TextDocumentSystem {
                 Some(instruction),
             );
 
-            let Some(text) = results
-                .get_required_mono::<components::Text>(TextDocument::descriptor_text().component)
+            let Some(text) =
+                results.get_mono::<components::Text>(TextDocument::descriptor_text().component)
             else {
                 continue;
             };
-            self.text_entries.push(TextDocumentEntry {
+            text_entries.push(TextDocumentEntry {
                 body: text.clone(),
                 media_type: results
                     .get_mono_with_fallback(TextDocument::descriptor_media_type().component),
             });
         }
 
-        Ok(VisualizerExecutionOutput::default())
+        Ok(VisualizerExecutionOutput::default().with_visualizer_data(text_entries))
     }
 }

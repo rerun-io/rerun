@@ -5,13 +5,14 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, ClassVar
 
 from attrs import define, field
 
 from ... import components, datatypes
 from ..._baseclasses import (
     Archetype,
+    ComponentDescriptor,
 )
 from ...blueprint import components as blueprint_components
 from ...error_utils import catch_and_log_exceptions
@@ -26,6 +27,8 @@ class ViewBlueprint(Archetype):
 
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
+
+    NAME: ClassVar[str] = "rerun.blueprint.archetypes.ViewBlueprint"
 
     def __init__(
         self: Any,
@@ -145,6 +148,38 @@ class ViewBlueprint(Archetype):
     def cleared(cls) -> ViewBlueprint:
         """Clear all the fields of a `ViewBlueprint`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_class_identifier() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "ViewBlueprint:class_identifier",
+            archetype=ViewBlueprint.NAME,
+            component_type=blueprint_components.ViewClassBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_display_name() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "ViewBlueprint:display_name",
+            archetype=ViewBlueprint.NAME,
+            component_type=components.NameBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_space_origin() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "ViewBlueprint:space_origin",
+            archetype=ViewBlueprint.NAME,
+            component_type=blueprint_components.ViewOriginBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_visible() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "ViewBlueprint:visible",
+            archetype=ViewBlueprint.NAME,
+            component_type=components.VisibleBatch._COMPONENT_TYPE,
+        )
 
     class_identifier: blueprint_components.ViewClassBatch | None = field(
         metadata={"component": True},

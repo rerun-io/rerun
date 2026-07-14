@@ -13,7 +13,7 @@ fn test_help() {
         let mut harness = Harness::builder()
             .with_size(vec2(240.0, 420.0))
             .build_ui(|ui| {
-                ui.ctx().set_os(os);
+                ui.set_os(os);
                 re_ui::apply_style_and_install_loaders(ui.ctx());
 
                 ui.help_button(|ui| {

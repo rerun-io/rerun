@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any
 from ..error_utils import catch_and_log_exceptions
 
 if TYPE_CHECKING:
-    from .. import datatypes
+    from .. import components, datatypes
 
 
 class Points3DExt:
@@ -19,6 +19,7 @@ class Points3DExt:
         colors: datatypes.Rgba32ArrayLike | None = None,
         labels: datatypes.Utf8ArrayLike | None = None,
         show_labels: datatypes.BoolLike | None = None,
+        point_shading: components.PointShadingLike | None = None,
         class_ids: datatypes.ClassIdArrayLike | None = None,
         keypoint_ids: datatypes.KeypointIdArrayLike | None = None,
     ) -> None:
@@ -40,6 +41,8 @@ class Points3DExt:
              Optional text labels for the points.
         show_labels:
             Optional choice of whether the text labels should be shown by default.
+        point_shading:
+            Optional choice of whether points should be shaded like spheres.
         class_ids:
              Optional class Ids for the points.
 
@@ -66,6 +69,7 @@ class Points3DExt:
                 colors=colors,
                 labels=labels,
                 show_labels=show_labels,
+                point_shading=point_shading,
                 class_ids=class_ids,
                 keypoint_ids=keypoint_ids,
             )

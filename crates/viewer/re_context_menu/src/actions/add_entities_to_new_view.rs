@@ -20,7 +20,7 @@ impl ContextMenuAction for AddEntitiesToNewViewAction {
     }
 
     fn supports_item(&self, _ctx: &ContextMenuContext<'_>, item: &Item) -> bool {
-        matches!(item, Item::DataResult(_, _) | Item::InstancePath(_))
+        matches!(item, Item::DataResult(_) | Item::InstancePath(_))
     }
 
     fn ui(&self, ctx: &ContextMenuContext<'_>, ui: &mut Ui) -> Response {
@@ -46,7 +46,12 @@ impl ContextMenuAction for AddEntitiesToNewViewAction {
                                 view_class_registry.get_class_or_log_error(*identifier),
                             )
                         })
-                        .sorted_by_key(|(_, class)| class.display_name().to_owned())
+                        .sorted_by_key(|(_, class)| {
+                            (
+                                class.recommendation_order(),
+                                class.display_name().to_owned(),
+                            )
+                        })
                     {
                         let btn = class
                             .icon()
@@ -57,8 +62,6 @@ impl ContextMenuAction for AddEntitiesToNewViewAction {
                         }
                     }
                 };
-
-            ui.label(egui::WidgetText::from("Recommended:").italics());
             if recommended_view_classes.is_empty() {
                 ui.label("None");
             } else {
@@ -66,8 +69,10 @@ impl ContextMenuAction for AddEntitiesToNewViewAction {
             }
 
             if !other_view_classes.is_empty() {
-                ui.label(egui::WidgetText::from("Others:").italics());
-                buttons_for_view_classes(ui, &other_view_classes);
+                ui.separator();
+                ui.menu_button("Other views", |ui| {
+                    buttons_for_view_classes(ui, &other_view_classes);
+                });
             }
         })
         .response
@@ -101,21 +106,10 @@ fn recommended_views_for_selection(ctx: &ContextMenuContext<'_>) -> IntSet<ViewC
                     visualizable_entities
                         .0
                         .iter()
-                        .any(|(visualizable_entity, reason)| {
-                            let has_reason_for_recommendation = match reason {
-                                re_viewer_context::VisualizableReason::DatatypeMatchAny {
-                                    components,
-                                } => components.iter().any(|(_, match_kind)| {
-                                    *match_kind
-                                        == re_viewer_context::DatatypeMatchKind::NativeSemantics
-                                }),
-                                re_viewer_context::VisualizableReason::Always
-                                | re_viewer_context::VisualizableReason::ExactMatchAll
-                                | re_viewer_context::VisualizableReason::ExactMatchAny => true,
-                            };
-
+                        .any(|(visualizable_entity, _reason)| {
+                            // TODO(andreas): Do we want to consider certain reasons as more relevant than others?
+                            // For example, should we consider native-semantics as more recommended?
                             visualizable_entity.starts_with(candidate_entity)
-                                && has_reason_for_recommendation
                         })
                 })
         });

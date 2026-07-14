@@ -27,28 +27,6 @@ pub struct Quaternion {
     pub w: f64,
 }
 
-/// This contains the position of a point in free space
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Point {
-    pub x: f64,
-    pub y: f64,
-    pub z: f64,
-}
-
-/// A representation of pose in free space, composed of position and orientation.
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Pose {
-    pub position: Point,
-    pub orientation: Quaternion,
-}
-
-// A Pose with reference coordinate frame and timestamp.
-#[derive(Debug, Serialize, Deserialize)]
-pub struct PoseStamped {
-    pub header: Header,
-    pub pose: Pose,
-}
-
 /// This represents the transform between two coordinate frames in free space.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Transform {

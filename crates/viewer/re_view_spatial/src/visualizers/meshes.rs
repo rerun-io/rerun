@@ -3,74 +3,69 @@ use re_log_types::hash::Hash64;
 use re_log_types::{Instance, TimeInt};
 use re_renderer::RenderContext;
 use re_renderer::renderer::GpuMeshInstance;
+use re_sdk_types::Archetype as _;
 use re_sdk_types::archetypes::Mesh3D;
-use re_sdk_types::components::ImageFormat;
+use re_sdk_types::components::{ImageFormat, Position3D};
 use re_viewer_context::{
-    IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
-    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
+    IdentifiedViewSystem, QueryContext, ViewClass as _, ViewContext, ViewContextCollection,
+    ViewQuery, ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo,
+    VisualizerSystem,
 };
 
 use super::SpatialViewVisualizerData;
 use crate::caches::{AnyMesh, MeshCache, MeshCacheKey};
-use crate::contexts::SpatialSceneEntityContext;
+use crate::contexts::SpatialSceneVisualizerInstructionContext;
 use crate::mesh_loader::NativeMesh3D;
-use crate::view_kind::SpatialViewKind;
 
 // ---
 
-pub struct Mesh3DVisualizer(SpatialViewVisualizerData);
-
-impl Default for Mesh3DVisualizer {
-    fn default() -> Self {
-        Self(SpatialViewVisualizerData::new(Some(
-            SpatialViewKind::ThreeD,
-        )))
-    }
-}
+#[derive(Default)]
+pub struct Mesh3DVisualizer;
 
 struct Mesh3DComponentData<'a> {
     index: (TimeInt, RowId),
     query_result_hash: Hash64,
     native_mesh: NativeMesh3D<'a>,
+    cull_mode: Option<re_renderer::external::wgpu::Face>,
 }
 
 // NOTE: Do not put profile scopes in these methods. They are called for all entities and all
 // timestamps within a time range -- it's _a lot_.
 impl Mesh3DVisualizer {
     fn process_data<'a>(
-        &mut self,
+        data: &mut SpatialViewVisualizerData,
         ctx: &QueryContext<'_>,
         render_ctx: &RenderContext,
         instances: &mut Vec<GpuMeshInstance>,
-        ent_context: &SpatialSceneEntityContext<'_>,
-        data: impl Iterator<Item = Mesh3DComponentData<'a>>,
+        ent_context: &SpatialSceneVisualizerInstructionContext<'_>,
+        mesh_data: impl Iterator<Item = Mesh3DComponentData<'a>>,
     ) {
         let entity_path = ctx.target_entity_path;
 
-        for data in data {
-            let primary_row_id = data.index.1;
+        for mesh_entry in mesh_data {
+            let primary_row_id = mesh_entry.index.1;
             let picking_instance_hash = re_entity_db::InstancePathHash::entity_all(entity_path);
             let outline_mask_ids = ent_context.highlight.index_outline_mask(Instance::ALL);
 
             // Skip over empty meshes.
             // Note that we can deal with zero normals/colors/texcoords/indices just fine (we generate them),
             // but re_renderer insists on having at a non-zero vertex list.
-            if data.native_mesh.vertex_positions.is_empty() {
+            if mesh_entry.native_mesh.vertex_positions.is_empty() {
                 continue;
             }
 
-            let mesh = ctx.store_ctx().caches.entry(|c: &mut MeshCache| {
+            let mesh = ctx.store_ctx().memoizer(|c: &mut MeshCache| {
                 let key = MeshCacheKey {
                     versioned_instance_path_hash: picking_instance_hash.versioned(primary_row_id),
-                    query_result_hash: data.query_result_hash,
+                    query_result_hash: mesh_entry.query_result_hash,
                     media_type: None,
                 };
 
                 c.entry(
-                    &entity_path.to_string(),
+                    entity_path,
                     key.clone(),
                     AnyMesh::Mesh {
-                        mesh: data.native_mesh,
+                        mesh: mesh_entry.native_mesh,
                         texture_key: re_log_types::hash::Hash64::hash(&key).hash64(),
                     },
                     render_ctx,
@@ -94,11 +89,11 @@ impl Mesh3DVisualizer {
                                 picking_instance_hash,
                             ),
                             additive_tint: re_renderer::Color32::BLACK,
+                            cull_mode: mesh_entry.cull_mode,
                         }
                     }));
 
-                    self.0
-                        .add_bounding_box(entity_path.hash(), mesh.bbox(), world_from_instance);
+                    data.add_bounding_box(entity_path.hash(), mesh.bbox(), world_from_instance);
                 }
             }
         }
@@ -107,7 +102,10 @@ impl Mesh3DVisualizer {
 
 impl IdentifiedViewSystem for Mesh3DVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "Mesh3D".into()
+        re_viewer_context::external::re_string_interner::intern_static!(
+            re_viewer_context::ViewSystemIdentifier,
+            "Mesh3D"
+        )
     }
 }
 
@@ -116,60 +114,62 @@ impl VisualizerSystem for Mesh3DVisualizer {
         &self,
         _app_options: &re_viewer_context::AppOptions,
     ) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<Mesh3D>()
+        VisualizerQueryInfo::single_required_component::<Position3D>(
+            &Mesh3D::descriptor_vertex_positions(),
+            &Mesh3D::all_components(),
+        )
+    }
+
+    fn affinity(&self) -> Option<re_sdk_types::ViewClassIdentifier> {
+        Some(crate::SpatialView3D::identifier())
     }
 
     fn execute(
-        &mut self,
+        &self,
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
-        let mut output = VisualizerExecutionOutput::default();
+        re_tracing::profile_function!();
+
+        let mut data = SpatialViewVisualizerData::default();
+        let output = VisualizerExecutionOutput::default();
         let mut instances = Vec::new();
 
-        use super::entity_iterator::{iter_slices, process_archetype};
-        process_archetype::<Self, Mesh3D, _>(
+        use super::entity_iterator::process_archetype;
+        process_archetype::<Mesh3D, _, _>(
             ctx,
             view_query,
             context_systems,
-            &mut output,
-            self.0.preferred_view_kind,
+            &output,
+            self,
             |ctx, spatial_ctx, results| {
-                use re_view::RangeResultsExt as _;
-
-                let Some(all_vertex_position_chunks) =
-                    results.get_required_chunks(Mesh3D::descriptor_vertex_positions().component)
-                else {
+                let all_vertex_positions =
+                    results.iter_required(Mesh3D::descriptor_vertex_positions().component);
+                if all_vertex_positions.is_empty() {
                     return Ok(());
-                };
-
-                let timeline = ctx.query.timeline();
-                let all_vertex_positions_indexed =
-                    iter_slices::<[f32; 3]>(&all_vertex_position_chunks, timeline);
+                }
                 let all_vertex_normals =
-                    results.iter_as(timeline, Mesh3D::descriptor_vertex_normals().component);
+                    results.iter_optional(Mesh3D::descriptor_vertex_normals().component);
                 let all_vertex_colors =
-                    results.iter_as(timeline, Mesh3D::descriptor_vertex_colors().component);
+                    results.iter_optional(Mesh3D::descriptor_vertex_colors().component);
                 let all_vertex_texcoords =
-                    results.iter_as(timeline, Mesh3D::descriptor_vertex_texcoords().component);
+                    results.iter_optional(Mesh3D::descriptor_vertex_texcoords().component);
                 let all_triangle_indices =
-                    results.iter_as(timeline, Mesh3D::descriptor_triangle_indices().component);
+                    results.iter_optional(Mesh3D::descriptor_triangle_indices().component);
                 let all_albedo_factors =
-                    results.iter_as(timeline, Mesh3D::descriptor_albedo_factor().component);
-                let all_albedo_buffers = results.iter_as(
-                    timeline,
-                    Mesh3D::descriptor_albedo_texture_buffer().component,
-                );
-                let all_albedo_formats = results.iter_as(
-                    timeline,
-                    Mesh3D::descriptor_albedo_texture_format().component,
-                );
+                    results.iter_optional(Mesh3D::descriptor_albedo_factor().component);
+                let all_albedo_buffers =
+                    results.iter_optional(Mesh3D::descriptor_albedo_texture_buffer().component);
+                let all_albedo_formats =
+                    results.iter_optional(Mesh3D::descriptor_albedo_texture_format().component);
+                let all_face_rendering =
+                    results.iter_optional(Mesh3D::descriptor_face_rendering().component);
 
                 let query_result_hash = results.query_result_hash();
 
-                let data = re_query::range_zip_1x7(
-                    all_vertex_positions_indexed,
+                let mesh_data = re_query::range_zip_1x8(
+                    all_vertex_positions.slice::<[f32; 3]>(),
                     all_vertex_normals.slice::<[f32; 3]>(),
                     all_vertex_colors.slice::<u32>(),
                     all_vertex_texcoords.slice::<[f32; 2]>(),
@@ -178,6 +178,7 @@ impl VisualizerSystem for Mesh3DVisualizer {
                     all_albedo_buffers.slice::<&[u8]>(),
                     // Legit call to `component_slow`, `ImageFormat` is real complicated.
                     all_albedo_formats.component_slow::<ImageFormat>(),
+                    all_face_rendering.slice::<u8>(),
                 )
                 .map(
                     |(
@@ -190,6 +191,7 @@ impl VisualizerSystem for Mesh3DVisualizer {
                         albedo_factors,
                         albedo_buffers,
                         albedo_formats,
+                        face_rendering,
                     )| {
                         Mesh3DComponentData {
                             index,
@@ -216,26 +218,46 @@ impl VisualizerSystem for Mesh3DVisualizer {
                                     .first()
                                     .map(|format| format.0),
                             },
+                            cull_mode: face_rendering
+                                .and_then(|s| s.first().copied())
+                                .and_then(face_rendering_to_wgpu_cull),
                         }
                     },
                 );
 
-                self.process_data(ctx, ctx.render_ctx(), &mut instances, spatial_ctx, data);
+                Self::process_data(
+                    &mut data,
+                    ctx,
+                    ctx.render_ctx(),
+                    &mut instances,
+                    spatial_ctx,
+                    mesh_data,
+                );
 
                 Ok(())
             },
         )?;
 
-        Ok(
-            output.with_draw_data([re_renderer::renderer::MeshDrawData::new(
+        Ok(output
+            .with_draw_data([re_renderer::renderer::MeshDrawData::new(
                 ctx.viewer_ctx.render_ctx(),
                 &instances,
             )?
-            .into()]),
-        )
+            .into()])
+            .with_visualizer_data(data))
     }
+}
 
-    fn data(&self) -> Option<&dyn std::any::Any> {
-        Some(self.0.as_any())
+/// Converts a raw `MeshFaceRendering` u8 discriminant to `Option<wgpu::Face>` for culling.
+fn face_rendering_to_wgpu_cull(value: u8) -> Option<re_renderer::external::wgpu::Face> {
+    use re_sdk_types::components::MeshFaceRendering;
+    use re_sdk_types::reflection::Enum as _;
+
+    match MeshFaceRendering::try_from_integer(value)? {
+        MeshFaceRendering::DoubleSided => None,
+        // To show only front faces, cull back faces.
+        MeshFaceRendering::Front => Some(re_renderer::external::wgpu::Face::Back),
+        // To show only back faces, cull front faces.
+        MeshFaceRendering::Back => Some(re_renderer::external::wgpu::Face::Front),
     }
 }

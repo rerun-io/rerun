@@ -8,7 +8,7 @@ include_in_manifest = true
 allow_warnings = true # TODO(emilk): torch produces a warning because of `transformers` (I think?). We should fix that, if we can.
 -->
 
-Visualize object detection and segmentation using the [Huggingface's Transformers](https://huggingface.co/docs/transformers/index) and [CSRT](https://arxiv.org/pdf/1611.08461.pdf) from OpenCV.
+Visualize object detection and segmentation using the [Huggingface's Transformers](https://huggingface.co/docs/transformers/index) and optical flow tracking from OpenCV.
 
 <picture data-inline-viewer="examples/detect_and_track_objects">
   <img src="https://static.rerun.io/detact_and_track_objects/ce1939b8f2d22b36c4ca8b36dc0441e106b51da5/full.png" alt="">
@@ -22,7 +22,7 @@ Visualize object detection and segmentation using the [Huggingface's Transformer
 [`Image`](https://www.rerun.io/docs/reference/types/archetypes/image), [`AssetVideo`](https://www.rerun.io/docs/reference/types/archetypes/asset_video), [`VideoFrameReference`](https://rerun.io/docs/reference/types/archetypes/video_frame_reference), [`SegmentationImage`](https://www.rerun.io/docs/reference/types/archetypes/segmentation_image), [`AnnotationContext`](https://www.rerun.io/docs/reference/types/archetypes/annotation_context), [`Boxes2D`](https://www.rerun.io/docs/reference/types/archetypes/boxes2d), [`TextLog`](https://www.rerun.io/docs/reference/types/archetypes/text_log)
 
 ## Background
-In this example, CSRT (Channel and Spatial Reliability Tracker), a tracking API introduced in OpenCV, is employed for object detection and tracking across frames.
+In this example, optical flow tracking from OpenCV is employed for tracking objects across frames.
 Additionally, the example showcases basic object detection and segmentation on a video using the Huggingface transformers library.
 
 
@@ -31,7 +31,7 @@ The visualizations in this example were created with the following Rerun code.
 
 
 ### Timelines
-For each processed video frame, all data sent to Rerun is associated with the [`timelines`](https://www.rerun.io/docs/concepts/timelines) `frame_idx`.
+For each processed video frame, all data sent to Rerun is associated with the [`timelines`](https://www.rerun.io/docs/concepts/logging-and-ingestion/timelines) `frame_idx`.
 
 ```python
 rr.set_time("frame", sequence=frame_idx)
@@ -50,20 +50,14 @@ rr.log("video", video_asset, static=True)
 Each frame is processed and the timestamp is logged to the `frame` timeline using a [`VideoFrameReference`](https://www.rerun.io/docs/reference/types/archetypes/video_frame_reference).
 
 ```python
-rr.log(
-    "video",
-    rr.VideoFrameReference(nanoseconds=frame_timestamps_ns[frame_idx])
-)
+rr.log("video", rr.VideoFrameReference(nanoseconds=frame_timestamps_ns[frame_idx]))
 ```
 
 Since the detection and segmentation model operates on smaller images the resized images are logged to the separate `segmentation/rgb_scaled` entity.
 This allows us to subsequently visualize the segmentation mask on top of the video.
 
 ```python
-rr.log(
-    "segmentation/rgb_scaled",
-    rr.Image(rgb_scaled).compress(jpeg_quality=85)
-)
+rr.log("segmentation/rgb_scaled", rr.Image(rgb_scaled).compress(jpeg_quality=85))
 ```
 
 ### Segmentations
@@ -74,10 +68,7 @@ contains the id for each pixel. It is logged to the `segmentation` entity.
 
 
 ```python
-rr.log(
-    "segmentation",
-    rr.SegmentationImage(mask)
-)
+rr.log("segmentation", rr.SegmentationImage(mask))
 ```
 
 The color and label for each class is determined by the
@@ -86,12 +77,8 @@ logged to the root entity using `rr.log("/", …, static=True)` as it should app
 entities that have a class id.
 
 ```python
-class_descriptions = [ rr.AnnotationInfo(id=cat["id"], color=cat["color"], label=cat["name"]) for cat in coco_categories ]
-rr.log(
-     "/",
-     rr.AnnotationContext(class_descriptions),
-     static=True
-)
+class_descriptions = [rr.AnnotationInfo(id=cat["id"], color=cat["color"], label=cat["name"]) for cat in coco_categories]
+rr.log("/", rr.AnnotationContext(class_descriptions), static=True)
 ```
 
 ### Detections
@@ -152,10 +139,11 @@ def setup_logging() -> None:
     rerun_handler.setLevel(-1)
     logger.addHandler(rerun_handler)
 
+
 def main() -> None:
     # … existing code …
-    setup_logging() # setup logging
-    track_objects(video_path, max_frame_count=args.max_frame) # start tracking
+    setup_logging()  # setup logging
+    track_objects(video_path, max_frame_count=args.max_frame)  # start tracking
 ```
 In the Viewer you can adjust the filter level and look at the messages time-synchronized with respect to other logged data.
 

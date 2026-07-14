@@ -6,7 +6,7 @@
 #include <random>
 #include <vector>
 
-int main() {
+int main(int argc, char* argv[]) {
     const auto rec = rerun::RecordingStream("rerun_example_ellipsoid_simple");
     rec.spawn().exit_on_failure();
 
@@ -26,7 +26,9 @@ int main() {
 
     rec.log(
         "points",
-        rerun::Points3D(points3d).with_radii(0.02f).with_colors(rerun::Rgba32(188, 77, 185))
+        rerun::Points3D(points3d).with_radii(0.02f).with_colors(
+            rerun::Rgba32(188, 77, 185)
+        )
     );
 
     rec.log(

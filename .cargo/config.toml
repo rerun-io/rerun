@@ -7,6 +7,8 @@ codegen = "run --package re_types_builder --"
 # Temporary solution while we wait for our own xtasks!
 run-wasm = "run --release --package run_wasm --"
 
+[unstable]
+codegen-backend = true
 
 [build]
 # Incremental compilation blows up the size of the target folder, and is also buggy.
@@ -31,9 +33,8 @@ IS_IN_RERUN_WORKSPACE = "yes"
 # manually. But, mixing this with any pixi invocations will result in spurious rebuilds.
 PYO3_CONFIG_FILE = { value = "rerun_py/pyo3-build.cfg", relative = true }
 
-# TODO(rust-lang/stacker#127): Work around until wasm build on mac is resolved
 [target.osx-arm64.activation.env]
-AR = "llvm-ar"
+AR = "llvm-ar" # Various Wasm targets fail on mac without llvm-ar
 
 # `web_sys_unstable_apis` is required to enable the web_sys clipboard API which egui_web uses.
 # https://wasm-bindgen.github.io/wasm-bindgen/api/web_sys/struct.Clipboard.html
@@ -41,8 +42,28 @@ AR = "llvm-ar"
 #
 # `getrandom_backend="wasm_js"` is required to enable the `getrandom` crate to use the `wasm_js` backend.
 # https://docs.rs/getrandom/latest/getrandom/#webassembly-support
+#
+# `-Ctarget-feature=+simd128,…` enables LLVM auto-vectorization and a handful
+# of other Wasm proposals for wasm32. The SIMD baseline is
+# Chrome 91+, Firefox 89+, Safari 16.4+ — the JS loader feature-detects SIMD
+# and shows a friendly error on older browsers. Every other feature listed
+# here shipped strictly earlier in all three browsers, so the SIMD check is
+# sufficient to gate them all:
+#
+#   simd128             Chrome 91 / FF 89 / Safari 16.4   (auto-vectorization)
+#   bulk-memory         Chrome 75 / FF 79 / Safari 15     (single-instr memcpy/memset)
+#   nontrapping-fptoint Chrome 75 / FF 64 / Safari 15     (saturating float→int)
+#   multivalue          Chrome 85 / FF 78 / Safari 15     (multi-value returns)
+#
+# Note `bulk-memory` is already on by default in rustc 1.82+; listing it is
+# redundant but explicit. `mutable-globals`, `sign-ext`, and `reference-types`
+# are also enabled by default and not listed.
 [target.wasm32-unknown-unknown]
-rustflags = ['--cfg=web_sys_unstable_apis', '--cfg=getrandom_backend="wasm_js"']
+rustflags = [
+  '--cfg=web_sys_unstable_apis',
+  '--cfg=getrandom_backend="wasm_js"',
+  '-Ctarget-feature=+simd128,+bulk-memory,+nontrapping-fptoint,+multivalue',
+]
 
 # Use rust-lld on Windows due problems with large debug symbols.
 # See https://github.com/rust-lang/rust/issues/141626

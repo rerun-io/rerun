@@ -18,6 +18,12 @@ attribute "attr.rerun.component_recommended";
 /// Only applies to the fields of an archetype.
 attribute "attr.rerun.component_optional";
 
+/// Opts a component out of being editable through the UI.
+/// By default all components are editable. This is a boolean attribute (presence = true).
+///
+/// Note this is only a hint to the Viewer. Blueprint code may always set overrides for any component!
+attribute "attr.rerun.component_no_ui_edit";
+
 /// Override the type of a field.
 ///
 /// The only permitted values are:

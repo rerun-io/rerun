@@ -2,7 +2,7 @@ use std::hash::Hash;
 
 use super::dynamic_resource_pool::{DynamicResource, DynamicResourcePool, DynamicResourcesDesc};
 use super::resource::PoolError;
-use crate::debug_label::DebugLabel;
+use crate::label::Label;
 
 slotmap::new_key_type! { pub struct GpuTextureHandle; }
 
@@ -20,7 +20,7 @@ pub struct GpuTextureInternal {
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
 pub struct TextureDesc {
     /// Debug label of the texture. This will show up in graphics debuggers for easy identification.
-    pub label: DebugLabel,
+    pub label: Label,
 
     /// Size of the texture. All components must be greater than zero. For a
     /// regular 1D/2D texture, the unused sizes will be 1. For 2DArray textures,
@@ -45,7 +45,7 @@ pub struct TextureDesc {
 
 impl TextureDesc {
     /// Copies the desc but changes the label.
-    pub fn with_label(&self, label: DebugLabel) -> Self {
+    pub fn with_label(&self, label: Label) -> Self {
         Self {
             label,
             ..self.clone()
@@ -111,7 +111,7 @@ impl GpuTexturePool {
         re_tracing::profile_function!();
         self.pool.alloc(desc, |desc| {
             let texture = device.create_texture(&wgpu::TextureDescriptor {
-                label: desc.label.get(),
+                label: Some(desc.label.get()),
                 size: desc.size,
                 mip_level_count: desc.mip_level_count,
                 sample_count: desc.sample_count,

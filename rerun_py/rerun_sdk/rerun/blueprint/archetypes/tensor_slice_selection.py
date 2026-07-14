@@ -5,13 +5,14 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, ClassVar
 
 from attrs import define, field
 
 from ... import components, datatypes
 from ..._baseclasses import (
     Archetype,
+    ComponentDescriptor,
 )
 from ...blueprint import components as blueprint_components, datatypes as blueprint_datatypes
 from ...error_utils import catch_and_log_exceptions
@@ -26,6 +27,8 @@ class TensorSliceSelection(Archetype):
 
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
+
+    NAME: ClassVar[str] = "rerun.blueprint.archetypes.TensorSliceSelection"
 
     def __init__(
         self: Any,
@@ -143,6 +146,38 @@ class TensorSliceSelection(Archetype):
     def cleared(cls) -> TensorSliceSelection:
         """Clear all the fields of a `TensorSliceSelection`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_width() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "TensorSliceSelection:width",
+            archetype=TensorSliceSelection.NAME,
+            component_type=components.TensorWidthDimensionBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_height() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "TensorSliceSelection:height",
+            archetype=TensorSliceSelection.NAME,
+            component_type=components.TensorHeightDimensionBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_indices() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "TensorSliceSelection:indices",
+            archetype=TensorSliceSelection.NAME,
+            component_type=components.TensorDimensionIndexSelectionBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_slider() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "TensorSliceSelection:slider",
+            archetype=TensorSliceSelection.NAME,
+            component_type=blueprint_components.TensorDimensionIndexSliderBatch._COMPONENT_TYPE,
+        )
 
     width: components.TensorWidthDimensionBatch | None = field(
         metadata={"component": True},

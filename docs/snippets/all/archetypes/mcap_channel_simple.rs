@@ -1,7 +1,8 @@
 //! Log a simple MCAP channel definition.
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let rec = rerun::RecordingStreamBuilder::new("rerun_example_mcap_channel").spawn()?;
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_mcap_channel")
+        .spawn()?;
 
     rec.log(
         "mcap/channels/camera",

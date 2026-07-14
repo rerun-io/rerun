@@ -25,10 +25,10 @@ table SegmentationImage (
   // --- Required ---
 
   /// The raw image data.
-  buffer: rerun.components.ImageBuffer ("attr.rerun.component_required", order: 1000);
+  buffer: rerun.components.ImageBuffer ("attr.rerun.component_required", "attr.rerun.component_no_ui_edit", order: 1000);
 
   /// The format of the image.
-  format: rerun.components.ImageFormat ("attr.rerun.component_required", order: 1100);
+  format: rerun.components.ImageFormat ("attr.rerun.component_required", "attr.rerun.component_no_ui_edit", order: 1100);
 
   // --- Optional ---
 

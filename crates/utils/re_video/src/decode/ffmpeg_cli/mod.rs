@@ -1,7 +1,10 @@
 mod ffmpeg;
+mod ivf;
+mod transcode;
 mod version;
 
 pub use ffmpeg::{Error, FFmpegCliDecoder};
+pub use transcode::{TranscodedMp4, transcode_mp4_drop_b_frames};
 pub use version::{
     FFMPEG_MINIMUM_VERSION_MAJOR, FFMPEG_MINIMUM_VERSION_MINOR, FFmpegVersion,
     FFmpegVersionParseError,

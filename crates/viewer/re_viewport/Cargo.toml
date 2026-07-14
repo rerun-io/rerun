@@ -31,9 +31,7 @@ re_log.workspace = true
 re_renderer = { workspace = true, default-features = false, features = [
   "import-gltf",
   "import-obj",
-  "serde",
 ] }
-re_view.workspace = true
 re_tracing.workspace = true
 re_sdk_types.workspace = true
 re_ui.workspace = true
@@ -43,7 +41,6 @@ re_viewport_blueprint.workspace = true
 ahash.workspace = true
 egui_tiles.workspace = true
 egui.workspace = true
-itertools.workspace = true
 nohash-hasher.workspace = true
 rayon.workspace = true
 web-time.workspace = true

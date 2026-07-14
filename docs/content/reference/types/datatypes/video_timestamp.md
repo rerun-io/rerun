@@ -11,7 +11,7 @@ Presentation timestamps are typically measured as time since video start.
 
 ## Arrow datatype
 ```
-int64
+Int64
 ```
 
 ## API reference links

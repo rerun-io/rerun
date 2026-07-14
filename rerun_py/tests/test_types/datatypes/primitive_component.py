@@ -53,6 +53,7 @@ class PrimitiveComponentBatch(BaseBatch[PrimitiveComponentArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: PrimitiveComponentArrayLike, data_type: pa.DataType) -> pa.Array:
+
         typed_data: Sequence[PrimitiveComponent]
 
         if isinstance(data, PrimitiveComponent):

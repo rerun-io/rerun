@@ -17,6 +17,7 @@ from .annotation_context import (
 )
 from .axis_length import AxisLength, AxisLengthBatch
 from .blob import Blob, BlobBatch
+from .cell_size import CellSize, CellSizeBatch
 from .channel_id import ChannelId, ChannelIdBatch
 from .channel_message_counts import (
     ChannelMessageCounts,
@@ -45,6 +46,13 @@ from .image_buffer import ImageBuffer, ImageBufferBatch
 from .image_format import ImageFormat, ImageFormatBatch
 from .image_plane_distance import ImagePlaneDistance, ImagePlaneDistanceBatch
 from .interactive import Interactive, InteractiveBatch
+from .interpolation_mode import (
+    InterpolationMode,
+    InterpolationModeArrayLike,
+    InterpolationModeBatch,
+    InterpolationModeLike,
+)
+from .is_keyframe import IsKeyframe, IsKeyframeBatch
 from .key_value_pairs import KeyValuePairs, KeyValuePairsArrayLike, KeyValuePairsBatch, KeyValuePairsLike
 from .keypoint_id import KeypointId, KeypointIdBatch
 from .lat_lon import LatLon, LatLonBatch
@@ -61,10 +69,17 @@ from .magnification_filter import (
 from .marker_shape import MarkerShape, MarkerShapeArrayLike, MarkerShapeBatch, MarkerShapeLike
 from .marker_size import MarkerSize, MarkerSizeBatch
 from .media_type import MediaType, MediaTypeBatch
+from .mesh_face_rendering import (
+    MeshFaceRendering,
+    MeshFaceRenderingArrayLike,
+    MeshFaceRenderingBatch,
+    MeshFaceRenderingLike,
+)
 from .name import Name, NameBatch
 from .opacity import Opacity, OpacityBatch
 from .pinhole_projection import PinholeProjection, PinholeProjectionBatch
 from .plane3d import Plane3D, Plane3DBatch
+from .point_shading import PointShading, PointShadingArrayLike, PointShadingBatch, PointShadingLike
 from .position2d import Position2D, Position2DBatch
 from .position3d import Position3D, Position3DBatch
 from .radius import Radius, RadiusBatch
@@ -75,7 +90,6 @@ from .rotation_quat import RotationQuat, RotationQuatBatch
 from .scalar import Scalar, ScalarBatch
 from .scale3d import Scale3D, Scale3DBatch
 from .schema_id import SchemaId, SchemaIdBatch
-from .series_visible import SeriesVisible, SeriesVisibleBatch
 from .show_labels import ShowLabels, ShowLabelsBatch
 from .stroke_width import StrokeWidth, StrokeWidthBatch
 from .tensor_data import TensorData, TensorDataBatch
@@ -104,6 +118,9 @@ from .video_sample import VideoSample, VideoSampleBatch
 from .video_timestamp import VideoTimestamp, VideoTimestampBatch
 from .view_coordinates import ViewCoordinates, ViewCoordinatesBatch
 from .visible import Visible, VisibleBatch
+from .voxel_index import VoxelIndex, VoxelIndexBatch
+from .voxel_size import VoxelSize, VoxelSizeBatch
+from .voxel_value import VoxelValue, VoxelValueBatch
 
 __all__ = [
     "AggregationPolicy",
@@ -120,6 +137,8 @@ __all__ = [
     "AxisLengthBatch",
     "Blob",
     "BlobBatch",
+    "CellSize",
+    "CellSizeBatch",
     "ChannelId",
     "ChannelIdBatch",
     "ChannelMessageCounts",
@@ -176,6 +195,12 @@ __all__ = [
     "ImagePlaneDistanceBatch",
     "Interactive",
     "InteractiveBatch",
+    "InterpolationMode",
+    "InterpolationModeArrayLike",
+    "InterpolationModeBatch",
+    "InterpolationModeLike",
+    "IsKeyframe",
+    "IsKeyframeBatch",
     "KeyValuePairs",
     "KeyValuePairsArrayLike",
     "KeyValuePairsBatch",
@@ -208,6 +233,10 @@ __all__ = [
     "MarkerSizeBatch",
     "MediaType",
     "MediaTypeBatch",
+    "MeshFaceRendering",
+    "MeshFaceRenderingArrayLike",
+    "MeshFaceRenderingBatch",
+    "MeshFaceRenderingLike",
     "Name",
     "NameBatch",
     "Opacity",
@@ -216,6 +245,10 @@ __all__ = [
     "PinholeProjectionBatch",
     "Plane3D",
     "Plane3DBatch",
+    "PointShading",
+    "PointShadingArrayLike",
+    "PointShadingBatch",
+    "PointShadingLike",
     "Position2D",
     "Position2DBatch",
     "Position3D",
@@ -236,8 +269,6 @@ __all__ = [
     "Scale3DBatch",
     "SchemaId",
     "SchemaIdBatch",
-    "SeriesVisible",
-    "SeriesVisibleBatch",
     "ShowLabels",
     "ShowLabelsBatch",
     "StrokeWidth",
@@ -288,4 +319,10 @@ __all__ = [
     "ViewCoordinatesBatch",
     "Visible",
     "VisibleBatch",
+    "VoxelIndex",
+    "VoxelIndexBatch",
+    "VoxelSize",
+    "VoxelSizeBatch",
+    "VoxelValue",
+    "VoxelValueBatch",
 ]

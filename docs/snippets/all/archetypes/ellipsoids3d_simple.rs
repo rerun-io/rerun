@@ -3,7 +3,9 @@
 use rand::prelude::*;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let rec = rerun::RecordingStreamBuilder::new("rerun_example_ellipsoid_simple").spawn()?;
+    let rec =
+        rerun::RecordingStreamBuilder::new("rerun_example_ellipsoid_simple")
+            .spawn()?;
 
     let sigmas: [f32; 3] = [5., 3., 1.];
 

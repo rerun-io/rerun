@@ -1,23 +1,25 @@
 use std::sync::Arc;
 
-use egui::{RichText, Widget as _};
-use re_data_ui::DataUi as _;
+use egui::collapsing_header::CollapsingState;
+use egui::{RichText, WidgetInfo, WidgetType};
+use re_data_ui::AppUi as _;
 use re_data_ui::item_ui::{entity_db_button_ui, table_id_button_ui};
 use re_log_channel::LogSource;
 use re_log_types::TableId;
-use re_redap_browser::{Command, EXAMPLES_ORIGIN, RedapServers};
+use re_redap_browser::{EXAMPLES_ORIGIN, RedapServers};
 use re_ui::list_item::{LabelContent, ListItemContentButtonsExt as _};
-use re_ui::{OnResponseExt as _, UiExt as _, UiLayout, icons, list_item};
+use re_ui::{ContextExt as _, OnResponseExt as _, UiExt as _, UiLayout, icons, list_item};
+use re_uri::dataset_hierarchy_leaf_name;
 use re_viewer_context::open_url::ViewerOpenUrl;
 use re_viewer_context::{
-    DisplayMode, EditRedapServerModalCommand, Item, RecordingOrTable, SystemCommand,
-    SystemCommandSender as _, ViewerContext,
+    AppContext, Item, RecordingOrTable, RedapEntryKind, Route, SystemCommand,
+    SystemCommandSender as _,
 };
 
 use crate::RecordingPanelCommand;
 use crate::data::{
-    AppIdData, DatasetData, EntryData, FailedEntryData, RecordingPanelData, RemoteTableData,
-    SegmentData, ServerData, ServerEntriesData,
+    AppIdData, DatasetData, EntryData, EntryTreeNode, FailedEntryData, RecordingPanelData,
+    RemoteTableData, SegmentData, ServerData, ServerEntriesData, ServerLeafEntry,
 };
 
 #[derive(Debug, Clone, Default)]
@@ -32,11 +34,12 @@ impl RecordingPanel {
 
     pub fn show_panel(
         &mut self,
-        ctx: &ViewerContext<'_>,
+        ctx: &AppContext<'_>,
         ui: &mut egui::Ui,
         servers: &RedapServers,
         hide_examples: bool,
     ) {
+        re_tracing::profile_function!();
         let recording_panel_data = RecordingPanelData::new(ctx, servers, hide_examples);
 
         for command in self.commands.drain(..) {
@@ -48,6 +51,10 @@ impl RecordingPanel {
                     shift_through_recordings(ctx, &recording_panel_data, -1);
                 }
             }
+        }
+
+        for item in ctx.selection().iter_items() {
+            expand_parents_for_item(ui.ctx(), &recording_panel_data, item);
         }
 
         ui.panel_content(|ui| {
@@ -66,7 +73,11 @@ impl RecordingPanel {
             .show(ui, |ui| {
                 ui.panel_content(|ui| {
                     re_ui::list_item::list_item_scope(ui, "recording panel", |ui| {
-                        all_sections_ui(ctx, ui, servers, &recording_panel_data);
+                        all_sections_ui(ctx, ui, &recording_panel_data);
+                    })
+                    .response
+                    .widget_info(|| {
+                        WidgetInfo::labeled(WidgetType::Panel, true, "_recording_panel")
                     });
                 });
             });
@@ -74,11 +85,14 @@ impl RecordingPanel {
 }
 
 fn shift_through_recordings(
-    ctx: &ViewerContext<'_>,
+    ctx: &AppContext<'_>,
     recording_panel_data: &RecordingPanelData<'_>,
     direction: isize,
 ) {
-    let current_store_id = ctx.store_context.recording.store_id();
+    let Some(store_context) = ctx.active_store_context else {
+        return;
+    };
+    let current_store_id = store_context.recording.store_id();
 
     #[expect(clippy::cast_possible_wrap)]
     if let Some((idx, store_collection)) =
@@ -98,7 +112,7 @@ fn shift_through_recordings(
 }
 
 fn add_button_ui(
-    ctx: &ViewerContext<'_>,
+    ctx: &AppContext<'_>,
     ui: &mut egui::Ui,
     _recording_panel_data: &RecordingPanelData<'_>,
 ) {
@@ -107,6 +121,12 @@ fn add_button_ui(
             .on_hover_text("Open a file or connect to a server")
             .on_menu(|ui| {
                 if re_ui::UICommand::Open
+                    .menu_button_ui(ui, ctx.command_sender())
+                    .clicked()
+                {
+                    ui.close();
+                }
+                if re_ui::UICommand::OpenUrl
                     .menu_button_ui(ui, ctx.command_sender())
                     .clicked()
                 {
@@ -130,8 +150,7 @@ fn add_button_ui(
 
                     if ui.button("Print recording entity DBs").clicked() {
                         let recording_entity_dbs = ctx
-                            .storage_context
-                            .bundle
+                            .store_bundle()
                             .entity_dbs()
                             .filter(|entity_db| entity_db.store_id().is_recording())
                             .collect::<Vec<_>>();
@@ -147,9 +166,8 @@ fn add_button_ui(
 }
 
 fn all_sections_ui(
-    ctx: &ViewerContext<'_>,
+    ctx: &AppContext<'_>,
     ui: &mut egui::Ui,
-    servers: &RedapServers,
     recording_panel_data: &RecordingPanelData<'_>,
 ) {
     //
@@ -174,7 +192,7 @@ fn all_sections_ui(
     //
 
     for server_data in &recording_panel_data.servers {
-        server_section_ui(ctx, ui, servers, server_data);
+        server_section_ui(ctx, ui, server_data);
     }
 
     //
@@ -205,11 +223,7 @@ fn all_sections_ui(
             .item_response
             .clicked()
         {
-            let mut state = egui::collapsing_header::CollapsingState::load_with_default_open(
-                ui.ctx(),
-                id,
-                true,
-            );
+            let mut state = CollapsingState::load_with_default_open(ui.ctx(), id, true);
             state.toggle(ui);
             state.store(ui.ctx());
         }
@@ -226,15 +240,15 @@ fn all_sections_ui(
 }
 
 fn welcome_item_ui(
-    ctx: &ViewerContext<'_>,
+    ctx: &AppContext<'_>,
     ui: &mut egui::Ui,
     recording_panel_data: &RecordingPanelData<'_>,
 ) {
-    let item = Item::RedapServer(EXAMPLES_ORIGIN.clone());
+    let item = Item::welcome_page();
     let selected = ctx.is_selected_or_loading(&item);
     let active = matches!(
-        ctx.display_mode(),
-        DisplayMode::RedapServer(origin) if origin == &*EXAMPLES_ORIGIN
+        ctx.route(),
+        Route::RedapServer(origin) if origin == &*EXAMPLES_ORIGIN
     );
 
     let title = list_item::LabelContent::header("Welcome to rerun").with_icon(&icons::HOME);
@@ -269,64 +283,48 @@ fn welcome_item_ui(
 
 // ---
 
-fn server_section_ui(
-    ctx: &ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    servers: &RedapServers,
-    server_data: &ServerData<'_>,
-) {
+fn server_title(ctx: &AppContext<'_>, origin: &re_uri::Origin, is_internal: bool) -> String {
+    if is_internal {
+        "Viewer catalog".to_owned()
+    } else {
+        let host = origin.format_host();
+        if origin.scheme == re_uri::Scheme::RerunHttps && origin.port == 443 {
+            host
+        } else if ctx.egui_ctx.is_test() {
+            format!("{host}:XXXX")
+        } else {
+            format!("{host}:{}", origin.port)
+        }
+    }
+}
+
+fn server_section_ui(ctx: &AppContext<'_>, ui: &mut egui::Ui, server_data: &ServerData<'_>) {
     let ServerData {
         origin,
         is_active,
         is_selected,
+        is_internal,
         entries_data,
     } = server_data;
 
-    let content = list_item::LabelContent::header(origin.host.to_string())
-        .with_always_show_buttons(true)
-        .with_button(
-            ui.small_icon_button_widget(&icons::MORE, "Actions")
-                .on_menu(move |ui| {
-                    if icons::RESET
-                        .as_button_with_label(ui.tokens(), "Refresh")
-                        .ui(ui)
-                        .clicked()
-                    {
-                        servers.send_command(Command::RefreshCollection(origin.clone()));
-                    }
-                    if icons::SETTINGS
-                        .as_button_with_label(ui.tokens(), "Edit")
-                        .ui(ui)
-                        .clicked()
-                    {
-                        servers.send_command(Command::OpenEditServerModal(
-                            EditRedapServerModalCommand::new(origin.clone()),
-                        ));
-                    }
-                    if icons::TRASH
-                        .as_button_with_label(ui.tokens(), "Remove")
-                        .ui(ui)
-                        .clicked()
-                    {
-                        servers.send_command(Command::RemoveServer(origin.clone()));
-                    }
-                }),
-        );
+    let content = list_item::LabelContent::header(server_title(ctx, origin, *is_internal))
+        .with_menu_button(&icons::MORE, "Actions", move |ui| {
+            for command in re_ui::RedapServerCommand::all_for_server(origin) {
+                if command.requires_editable_server() && *is_internal {
+                    continue;
+                }
+                command.menu_button_ui(ui, ctx.command_sender());
+            }
+        });
 
     let item_response = ui
         .list_item()
         .header()
         .selected(*is_selected)
         .active(*is_active)
-        .show_hierarchical_with_children(
-            ui,
-            egui::Id::new(origin).with("server_item"),
-            true,
-            content,
-            |ui| {
-                server_entries_ui(ctx, ui, entries_data);
-            },
-        )
+        .show_hierarchical_with_children(ui, server_item_id(origin), true, content, |ui| {
+            server_entries_ui(ctx, ui, entries_data, origin);
+        })
         .item_response
         .on_hover_text(origin.to_string());
 
@@ -335,56 +333,108 @@ fn server_section_ui(
 
     if item_response.clicked() {
         ctx.command_sender()
-            .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapServer(
-                origin.clone(),
-            )));
+            .send_system(SystemCommand::SetRoute(Route::RedapServer(origin.clone())));
     }
 }
 
 fn server_entries_ui(
-    ctx: &ViewerContext<'_>,
+    ctx: &AppContext<'_>,
     ui: &mut egui::Ui,
     entries_data: &ServerEntriesData<'_>,
+    origin: &re_uri::Origin,
 ) {
     match entries_data {
         ServerEntriesData::Loading => {
-            ui.list_item_flat_noninteractive(
-                list_item::LabelContent::new("Loading entries…").italics(true),
-            );
+            ui.list_item_flat_noninteractive(list_item::CustomContent::new(|ui, _| {
+                // TODO(emilk): ideally we should show this loading indicator left of the server name,
+                // instead of the expand-chevron.
+                ui.loading_indicator("Loading server entries");
+            }));
         }
 
-        ServerEntriesData::Error(error_string) => {
-            ui.list_item_flat_noninteractive(list_item::LabelContent::new(
-                egui::RichText::new("Failed to load entries").color(ui.visuals().error_fg_color),
-            ))
-            .on_hover_text(error_string);
-        }
-
-        ServerEntriesData::Loaded {
-            dataset_entries,
-            table_entries,
-            failed_entries,
+        ServerEntriesData::Error {
+            message,
+            is_auth_error,
         } => {
-            for dataset in dataset_entries {
-                dataset_entry_ui(ctx, ui, dataset);
-            }
+            let (label, color) = if *is_auth_error {
+                ("Authentication required", ui.visuals().weak_text_color())
+            } else {
+                ("Failed to load entries", ui.visuals().error_fg_color)
+            };
+            ui.list_item_flat_noninteractive(list_item::LabelContent::new(
+                egui::RichText::new(label).color(color),
+            ))
+            .on_hover_text(message);
+        }
 
-            for table in table_entries {
-                remote_table_entry_ui(ctx, ui, table);
-            }
-
-            for failed_entry in failed_entries {
-                failed_entry_ui(ctx, ui, failed_entry);
+        ServerEntriesData::Loaded { entry_tree } => {
+            for node in entry_tree {
+                entry_tree_node_ui(ctx, ui, node, origin);
             }
         }
     }
 }
 
-fn dataset_entry_ui(
-    ctx: &ViewerContext<'_>,
+fn entry_tree_node_ui(
+    ctx: &AppContext<'_>,
     ui: &mut egui::Ui,
-    dataset_entry_data: &DatasetData<'_>,
+    node: &EntryTreeNode<'_>,
+    origin: &re_uri::Origin,
 ) {
+    match node {
+        EntryTreeNode::Entry(ServerLeafEntry::Dataset(dataset)) => {
+            dataset_entry_ui(ctx, ui, dataset);
+        }
+        EntryTreeNode::Entry(ServerLeafEntry::Table(table)) => {
+            remote_table_entry_ui(ctx, ui, table);
+        }
+        EntryTreeNode::Entry(ServerLeafEntry::Failed(failed_entry)) => {
+            failed_entry_ui(ctx, ui, failed_entry);
+        }
+        EntryTreeNode::Folder {
+            name,
+            path_prefix,
+            children,
+        } => {
+            let item = Item::RedapEntry {
+                origin: origin.clone(),
+                kind: re_viewer_context::RedapEntryKind::Folder(path_prefix.clone()),
+            };
+            let route = Route::from_item(&item); // Will always be `Some`, but easy to be defensive.
+
+            let is_selected = ctx.selection().contains_item(&item);
+            let is_active = Some(ctx.route()) == route.as_ref();
+
+            let content = list_item::LabelContent::new(name.as_str());
+            let id = dataset_group_id(path_prefix);
+
+            let item_response = ui
+                .list_item()
+                .selected(is_selected)
+                .active(is_active)
+                .show_hierarchical_with_children(ui, id, false, content, |ui| {
+                    for child in children {
+                        entry_tree_node_ui(ctx, ui, child, origin);
+                    }
+                })
+                .item_response;
+
+            ctx.handle_select_hover_drag_interactions(&item_response, item.clone(), false);
+            ctx.handle_select_focus_sync(&item_response, item.clone());
+
+            if item_response.clicked() {
+                ctx.command_sender()
+                    .send_system(SystemCommand::set_selection(item));
+                if let Some(route) = route {
+                    ctx.command_sender()
+                        .send_system(SystemCommand::SetRoute(route));
+                }
+            }
+        }
+    }
+}
+
+fn dataset_entry_ui(ctx: &AppContext<'_>, ui: &mut egui::Ui, dataset_entry_data: &DatasetData<'_>) {
     let DatasetData {
         entry_data:
             EntryData {
@@ -401,7 +451,9 @@ fn dataset_entry_ui(
     let item = dataset_entry_data.entry_data.item();
     let list_item = ui.list_item().selected(*is_selected).active(*is_active);
 
-    let mut list_item_content = re_ui::list_item::LabelContent::new(name).with_icon(icon);
+    let mut list_item_content =
+        re_ui::list_item::LabelContent::new(dataset_hierarchy_leaf_name(name.as_str()))
+            .with_icon(icon);
 
     let id = ui.make_persistent_id(dataset_entry_data.entry_data.id());
 
@@ -436,8 +488,8 @@ fn dataset_entry_ui(
                             let include_app_id = false; // we already show it in the parent item
                             let response = entity_db_button_ui(
                                 ctx,
-                                ui,
                                 entity_db,
+                                ui,
                                 UiLayout::SelectionPanel,
                                 include_app_id,
                             );
@@ -458,11 +510,10 @@ fn dataset_entry_ui(
         ui.label(format!("Dataset: {name:?}"));
     });
 
-    let new_display_mode =
-        DisplayMode::RedapEntry(re_uri::EntryUri::new(origin.clone(), *entry_id));
+    let new_route = Route::from(re_uri::EntryUri::new(origin.clone(), *entry_id));
 
     item_response.context_menu(|ui| {
-        let url = ViewerOpenUrl::from_display_mode(ctx.storage_context.hub, &new_display_mode)
+        let url = ViewerOpenUrl::from_route(ctx.store_hub(), &new_route)
             .and_then(|url| url.sharable_url(None));
         if ui
             .add_enabled(url.is_ok(), egui::Button::new("Copy link to dataset"))
@@ -476,13 +527,13 @@ fn dataset_entry_ui(
 
         if ui.button("Copy dataset name").clicked() {
             re_log::info!("Copied {name:?} to clipboard");
-            ui.ctx().copy_text(name.clone());
+            ui.copy_text(name.to_string());
         }
 
         if ui.button("Copy dataset id").clicked() {
             let id = entry_id.id.to_string();
             re_log::info!("Copied {id:?} to clipboard");
-            ui.ctx().copy_text(id);
+            ui.copy_text(id);
         }
     });
 
@@ -493,20 +544,20 @@ fn dataset_entry_ui(
         ctx.command_sender()
             .send_system(SystemCommand::set_selection(item));
         ctx.command_sender()
-            .send_system(SystemCommand::ChangeDisplayMode(new_display_mode));
+            .send_system(SystemCommand::SetRoute(new_route));
     }
 }
 
 fn remote_table_entry_ui(
-    ctx: &ViewerContext<'_>,
+    ctx: &AppContext<'_>,
     ui: &mut egui::Ui,
     remote_table_data: &RemoteTableData,
 ) {
     let RemoteTableData {
         entry_data:
             EntryData {
-                origin,
-                entry_id,
+                origin: _,
+                entry_id: _,
                 name,
                 icon,
                 is_selected,
@@ -515,7 +566,7 @@ fn remote_table_entry_ui(
     } = remote_table_data;
 
     let item = remote_table_data.entry_data.item();
-    let text = RichText::new(name);
+    let text = RichText::new(dataset_hierarchy_leaf_name(name.as_str()));
 
     let list_item = ui.list_item().selected(*is_selected).active(*is_active);
     let list_item_content = LabelContent::new(text).with_icon(icon);
@@ -525,20 +576,16 @@ fn remote_table_entry_ui(
     ctx.handle_select_focus_sync(&item_response, item.clone());
 
     if item_response.clicked() {
+        if let Some(route) = Route::from_item(&item) {
+            ctx.command_sender()
+                .send_system(SystemCommand::SetRoute(route));
+        }
         ctx.command_sender()
             .send_system(SystemCommand::set_selection(item));
-        ctx.command_sender()
-            .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapEntry(
-                re_uri::EntryUri::new(origin.clone(), *entry_id),
-            )));
     }
 }
 
-fn failed_entry_ui(
-    ctx: &ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    failed_entry_data: &FailedEntryData,
-) {
+fn failed_entry_ui(ctx: &AppContext<'_>, ui: &mut egui::Ui, failed_entry_data: &FailedEntryData) {
     let FailedEntryData {
         entry_data:
             EntryData {
@@ -553,7 +600,7 @@ fn failed_entry_ui(
     } = failed_entry_data;
 
     let item = failed_entry_data.entry_data.item();
-    let text = RichText::new(name).color(ui.visuals().error_fg_color);
+    let text = RichText::new(name.as_str()).color(ui.visuals().error_fg_color);
 
     let list_item = ui.list_item().selected(*is_selected).active(*is_active);
     let list_item_content = LabelContent::new(text).with_icon(icon);
@@ -562,10 +609,9 @@ fn failed_entry_ui(
     if item_response.clicked() {
         ctx.command_sender()
             .send_system(SystemCommand::set_selection(item));
-        ctx.command_sender()
-            .send_system(SystemCommand::ChangeDisplayMode(DisplayMode::RedapEntry(
-                re_uri::EntryUri::new(origin.clone(), *entry_id),
-            )));
+        ctx.command_sender().send_system(SystemCommand::SetRoute(
+            re_uri::EntryUri::new(origin.clone(), *entry_id).into(),
+        ));
     }
 
     item_response.on_hover_text(error);
@@ -573,7 +619,7 @@ fn failed_entry_ui(
 
 // ---
 
-fn app_id_section_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, local_app_id: &AppIdData<'_>) {
+fn app_id_section_ui(ctx: &AppContext<'_>, ui: &mut egui::Ui, local_app_id: &AppIdData<'_>) {
     let AppIdData {
         app_id,
         is_active,
@@ -610,8 +656,8 @@ fn app_id_section_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, local_app_id: &
                     let include_app_id = false; // we already show it in the parent item
                     let response = entity_db_button_ui(
                         ctx,
-                        ui,
                         recording_data.entity_db,
+                        ui,
                         UiLayout::SelectionPanel,
                         include_app_id,
                     );
@@ -627,7 +673,7 @@ fn app_id_section_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, local_app_id: &
     };
 
     item_response = item_response.on_hover_ui(|ui| {
-        app_id.data_ui_recording(ctx, ui, UiLayout::Tooltip);
+        app_id.app_ui(ctx, ui, UiLayout::Tooltip);
     });
 
     ctx.handle_select_hover_drag_interactions(&item_response, item.clone(), false);
@@ -644,12 +690,12 @@ fn app_id_section_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, local_app_id: &
     }
 }
 
-fn table_item_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, table_id: &TableId) {
+fn table_item_ui(ctx: &AppContext<'_>, ui: &mut egui::Ui, table_id: &TableId) {
     table_id_button_ui(ctx, ui, table_id, UiLayout::SelectionPanel);
 }
 
 fn loading_receivers_ui(
-    ctx: &ViewerContext<'_>,
+    ctx: &AppContext<'_>,
     ui: &mut egui::Ui,
     loading_receivers: &Vec<Arc<LogSource>>,
 ) {
@@ -659,7 +705,7 @@ fn loading_receivers_ui(
 }
 
 fn receiver_ui(
-    ctx: &ViewerContext<'_>,
+    ctx: &AppContext<'_>,
     ui: &mut egui::Ui,
     receiver: &LogSource,
     show_hierarchal: bool,
@@ -671,8 +717,15 @@ fn receiver_ui(
     let selected = ctx.is_selected_or_loading(&Item::DataSource(receiver.clone()));
 
     let label_content = re_ui::list_item::LabelContent::new(&name)
-        .with_icon_fn(|ui, rect, _| {
-            ui.put(rect, egui::Spinner::new());
+        .with_icon_fn(|ui, rect, visuals| {
+            re_ui::loading_indicator::paint_loading_indicator_inside(
+                ui,
+                egui::Align2::CENTER_CENTER,
+                rect,
+                1.0,
+                Some(visuals.text_color()),
+                "Loading data source",
+            );
         })
         .with_buttons(|ui| {
             let resp = ui
@@ -712,7 +765,139 @@ fn receiver_ui(
 
         if ui.button("Copy segment name").clicked() {
             re_log::info!("Copied {name:?} to clipboard");
-            ui.ctx().copy_text(name);
+            ui.copy_text(name);
         }
     });
+}
+
+/// Force the server item and all ancestor folder nodes for `item` to be expanded.
+///
+/// Returns `true` once expansion completed (or the item doesn't need any), `false` if a
+/// dependent lookup (entry name) failed because the dataset list isn't loaded yet — in
+/// which case the caller should retry next frame.
+fn expand_parents_for_item(
+    egui_ctx: &egui::Context,
+    recording_panel_data: &RecordingPanelData<'_>,
+    item: &Item,
+) -> bool {
+    let force_open = |id| {
+        let mut state = CollapsingState::load_with_default_open(egui_ctx, id, true);
+        state.set_open(true);
+        state.store(egui_ctx);
+    };
+
+    let expand_folder_path = |path: &str| {
+        for ancestor in ancestor_folder_paths(path) {
+            force_open(dataset_group_id(ancestor));
+        }
+    };
+
+    match item {
+        Item::RedapServer(origin) => {
+            force_open(server_item_id(origin));
+            true
+        }
+        Item::RedapEntry { origin, kind } => {
+            force_open(server_item_id(origin));
+            match kind {
+                RedapEntryKind::Folder(path) => {
+                    expand_folder_path(path);
+                    true
+                }
+                RedapEntryKind::Entry(entry_id) => expand_parent_folders_for_entry(
+                    egui_ctx,
+                    recording_panel_data,
+                    origin,
+                    *entry_id,
+                ),
+            }
+        }
+        _ => true,
+    }
+}
+
+fn server_item_id(origin: &re_uri::Origin) -> egui::Id {
+    egui::Id::new(origin).with("server_item")
+}
+
+fn dataset_group_id(path_prefix: &str) -> egui::Id {
+    egui::Id::new("dataset_group").with(path_prefix)
+}
+
+fn expand_parent_folders_for_entry(
+    egui_ctx: &egui::Context,
+    data: &RecordingPanelData<'_>,
+    origin: &re_uri::Origin,
+    entry_id: re_log_types::EntryId,
+) -> bool {
+    for server in &data.servers {
+        if &server.origin != origin {
+            continue;
+        }
+        let ServerEntriesData::Loaded { entry_tree } = &server.entries_data else {
+            return false;
+        };
+
+        expand_folder_nodes_containing_entry(egui_ctx, entry_tree, entry_id);
+        return true;
+    }
+
+    true
+}
+
+fn expand_folder_nodes_containing_entry(
+    egui_ctx: &egui::Context,
+    nodes: &[EntryTreeNode<'_>],
+    entry_id: re_log_types::EntryId,
+) -> bool {
+    for node in nodes {
+        match node {
+            EntryTreeNode::Entry(entry) => {
+                if entry.entry_id() == entry_id {
+                    return true;
+                }
+            }
+            EntryTreeNode::Folder {
+                path_prefix,
+                children,
+                ..
+            } => {
+                if expand_folder_nodes_containing_entry(egui_ctx, children, entry_id) {
+                    let mut state = CollapsingState::load_with_default_open(
+                        egui_ctx,
+                        dataset_group_id(path_prefix),
+                        true,
+                    );
+                    state.set_open(true);
+                    state.store(egui_ctx);
+                    return true;
+                }
+            }
+        }
+    }
+    false
+}
+
+/// Iterate every ancestor folder path of a dotted hierarchy `path`, shallowest first,
+/// including `path` itself. `"a.b.c"` → `"a"`, `"a.b"`, `"a.b.c"`. Allocation-free.
+fn ancestor_folder_paths(path: &str) -> impl Iterator<Item = &str> {
+    std::iter::chain(
+        path.match_indices(re_uri::DATASET_HIERARCHY_SEPARATOR)
+            .map(|(idx, _)| &path[..idx]),
+        std::iter::once(path),
+    )
+    .filter(|s| !s.is_empty())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ancestor_folder_paths;
+
+    #[test]
+    fn ancestor_folder_paths_basic() {
+        let collect = |p| ancestor_folder_paths(p).collect::<Vec<_>>();
+        assert_eq!(collect("a.b.c"), vec!["a", "a.b", "a.b.c"]);
+        assert_eq!(collect("a"), vec!["a"]);
+        assert_eq!(collect(""), Vec::<&str>::new());
+    }
 }

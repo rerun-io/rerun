@@ -19,28 +19,73 @@ use crate::nalu::ANNEXB_NAL_START_CODE;
 use crate::{StableIndexDeque, Time, Timescale};
 
 impl VideoDataDescription {
-    pub fn load_mp4(
-        bytes: &[u8],
+    pub fn load_mp4(bytes: &[u8], debug_name: &str) -> Result<Self, VideoLoadError> {
+        re_tracing::profile_function!();
+        Self::load_mp4_from_reader(&mut Cursor::new(bytes), bytes.len() as u64, debug_name)
+    }
+
+    /// Load mp4 metadata from a `Read + Seek` source.
+    ///
+    /// Only the container metadata (the `moov`/`stbl` boxes) is read up front;
+    /// the bulk sample data (`mdat`) stays on the source and is referenced by
+    /// the byte spans in [`SampleMetadata`], to be read on demand by the caller.
+    /// `size` is the total length of the stream in bytes (e.g. the file size).
+    ///
+    /// (VP8/VP9 are the one exception: their sync flags must be recovered from
+    /// the bitstream, so those samples are read from `reader` during load.)
+    pub fn load_mp4_from_reader<R: std::io::Read + std::io::Seek>(
+        reader: &mut R,
+        size: u64,
         debug_name: &str,
-        source_id: re_tuid::Tuid,
     ) -> Result<Self, VideoLoadError> {
         re_tracing::profile_function!();
         let mp4 = {
-            re_tracing::profile_scope!("Mp4::read_bytes");
-            re_mp4::Mp4::read_bytes(bytes)?
+            re_tracing::profile_scope!("Mp4::read");
+            re_mp4::Mp4::read(&mut *reader, size)?
         };
 
         let mp4_tracks = mp4.tracks().iter().map(|(k, t)| (*k, t.kind)).collect();
 
-        let track = mp4
+        let Some(track) = mp4
             .tracks()
             .values()
             .find(|t| t.kind == Some(re_mp4::TrackKind::Video))
-            .ok_or(VideoLoadError::NoVideoTrack)?;
+        else {
+            // No track has a codec we recognize as video. An unsupported video codec such as
+            // MPEG-4 Part 2, which uses the `mp4v` fourcc, is left as `Unknown` by `re_mp4` and
+            // so never tagged as a video track. Fall back to the media handler type so we can
+            // report the actual unsupported codec instead of the misleading "no video tracks".
+            let video_track = mp4.tracks().values().find(|t| {
+                matches!(
+                    re_mp4::TrackKind::try_from(&t.trak(&mp4).mdia.hdlr.handler_type),
+                    Ok(re_mp4::TrackKind::Video)
+                )
+            });
+            return Err(match video_track {
+                Some(track) => VideoLoadError::UnsupportedCodec(unknown_codec_fourcc(&mp4, track)),
+                None => VideoLoadError::NoVideoTrack,
+            });
+        };
 
         let stsd = track.trak(&mp4).mdia.minf.stbl.stsd.clone();
 
         let timescale = Timescale::new(track.timescale);
+
+        let codec = match &stsd.contents {
+            re_mp4::StsdBoxContent::Av01(_) => crate::VideoCodec::AV1,
+            re_mp4::StsdBoxContent::Avc1(_) => crate::VideoCodec::H264,
+            re_mp4::StsdBoxContent::Hvc1(_) | re_mp4::StsdBoxContent::Hev1(_) => {
+                crate::VideoCodec::H265
+            }
+            re_mp4::StsdBoxContent::Vp08(_) => crate::VideoCodec::VP8,
+            re_mp4::StsdBoxContent::Vp09(_) => crate::VideoCodec::VP9,
+            _ => {
+                return Err(VideoLoadError::UnsupportedCodec(unknown_codec_fourcc(
+                    &mp4, track,
+                )));
+            }
+        };
+
         let mut samples =
             StableIndexDeque::<SampleMetadataState>::with_capacity(track.samples.len());
         let mut keyframe_indices = Vec::new();
@@ -57,10 +102,7 @@ impl VideoDataDescription {
                 let presentation_timestamp = Time::new(sample.composition_timestamp);
                 let duration = Time::new(sample.duration.saturating_cast());
 
-                let byte_span = Span {
-                    start: sample.offset as u32,
-                    len: sample.size as u32,
-                };
+                let byte_span = Span::from_start_len(sample.offset as u32, sample.size as u32);
 
                 samples.push_back(SampleMetadataState::Present(SampleMetadata {
                     is_sync: sample.is_sync,
@@ -68,9 +110,38 @@ impl VideoDataDescription {
                     decode_timestamp,
                     presentation_timestamp,
                     duration: Some(duration),
-                    source_id,
-                    byte_span,
+                    source: crate::VideoSource::Span(byte_span),
                 }));
+            }
+        }
+
+        // VP8/VP9 MP4 files often have incorrect stss (sync sample) boxes,
+        // where the muxer marks non-keyframes as sync samples. Override is_sync
+        // by inspecting the actual bitstream, and rebuild keyframe_indices.
+        if matches!(codec, crate::VideoCodec::VP8 | crate::VideoCodec::VP9) {
+            re_tracing::profile_scope!("fix vp8/vp9 sync flags");
+            keyframe_indices.clear();
+            let mut data = Vec::new();
+            for (idx, sample_state) in samples.iter_mut().enumerate() {
+                if let Some(sample) = sample_state.sample_mut() {
+                    let span = match sample.source {
+                        crate::VideoSource::Span(span) => span,
+                        crate::VideoSource::Id { .. } => unreachable!(),
+                    };
+                    let byte_range = span.range_usize();
+                    reader.seek(std::io::SeekFrom::Start(byte_range.start as u64))?;
+                    data.resize(byte_range.len(), 0);
+                    reader.read_exact(&mut data)?;
+                    let bitstream_is_sync = match codec {
+                        crate::VideoCodec::VP8 => crate::vp8::vp8_is_keyframe(&data),
+                        crate::VideoCodec::VP9 => crate::vp9::vp9_is_keyframe(&data),
+                        _ => unreachable!(),
+                    };
+                    sample.is_sync = bitstream_is_sync;
+                    if bitstream_is_sync {
+                        keyframe_indices.push(idx);
+                    }
+                }
             }
         }
 
@@ -124,21 +195,6 @@ impl VideoDataDescription {
         }
 
         let samples_statistics = SamplesStatistics::new(&samples);
-
-        let codec = match &stsd.contents {
-            re_mp4::StsdBoxContent::Av01(_) => crate::VideoCodec::AV1,
-            re_mp4::StsdBoxContent::Avc1(_) => crate::VideoCodec::H264,
-            re_mp4::StsdBoxContent::Hvc1(_) | re_mp4::StsdBoxContent::Hev1(_) => {
-                crate::VideoCodec::H265
-            }
-            re_mp4::StsdBoxContent::Vp08(_) => crate::VideoCodec::VP8,
-            re_mp4::StsdBoxContent::Vp09(_) => crate::VideoCodec::VP9,
-            _ => {
-                return Err(VideoLoadError::UnsupportedCodec(unknown_codec_fourcc(
-                    &mp4, track,
-                )));
-            }
-        };
 
         let video_data_description = Self {
             codec,

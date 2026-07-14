@@ -1,15 +1,18 @@
 //! Ensures that 2D/3D visualizer report errors on incompatible topology.
 
+use re_chunk_store::external::re_chunk::external::crossbeam::atomic::AtomicCell;
 use re_log_types::TimePoint;
-use re_sdk_types::{ViewClassIdentifier, archetypes};
+use re_sdk_types::{
+    ViewClassIdentifier, archetypes, blueprint::archetypes as blueprint_archetypes,
+};
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
 use re_viewer_context::{RecommendedView, ViewClass as _};
-use re_viewport_blueprint::ViewBlueprint;
+use re_viewport_blueprint::{ViewBlueprint, ViewProperty};
 
 struct TestScenario {
     name: &'static str,
-    space_origin: &'static str,
+    target_frame: &'static str,
     view_class: ViewClassIdentifier,
 }
 
@@ -61,25 +64,11 @@ fn setup_scene(test_context: &mut TestContext) {
             )
     });
     test_context.log_entity("pinhole_entity", |builder| {
-        builder
-            .with_archetype_auto_row(
-                TimePoint::STATIC,
-                &archetypes::Pinhole::from_focal_length_and_resolution([1.0, 1.0], [100.0, 100.0])
-                    .with_child_frame("pinhole")
-                    .with_parent_frame("world"),
-            )
-            // TODO(RR-2997): Space origin can only be an entity, so we rely on pinhole having a coordinate frame that we can pick up.
-            .with_archetype_auto_row(
-                TimePoint::STATIC,
-                &archetypes::CoordinateFrame::new("pinhole"),
-            )
-    });
-
-    // TODO(RR-2997): If we could set the view's origin directly to a frame, we would set it to `world`. As there's nothing to be visualized on `world_entity` this would make this log call redundant.
-    test_context.log_entity("world_entity", |builder| {
         builder.with_archetype_auto_row(
             TimePoint::STATIC,
-            &archetypes::CoordinateFrame::new("world"),
+            &archetypes::Pinhole::from_focal_length_and_resolution([1.0, 1.0], [100.0, 100.0])
+                .with_child_frame("pinhole")
+                .with_parent_frame("world"),
         )
     });
     test_context.log_entity("points3d_entity", |builder| {
@@ -155,6 +144,59 @@ fn setup_scene(test_context: &mut TestContext) {
     });
 }
 
+fn snapshot_visualizer_errors(
+    test_context: &TestContext,
+    view_id: re_viewer_context::ViewId,
+) -> String {
+    let query_result_tree = AtomicCell::new(Default::default());
+    let mut harness = test_context
+        .setup_kittest_for_rendering_ui([100.0, 100.0])
+        .build_ui(|ui| {
+            test_context.run_ui(ui, |ctx, ui| {
+                test_context.ui_for_single_view(ui, ctx, view_id);
+
+                let query_results = ctx
+                    .query_results
+                    .get(&view_id)
+                    .expect("query results should exist for the test view");
+                query_result_tree.store(query_results.tree.clone());
+            });
+        });
+    harness.run();
+
+    let visualizer_errors = test_context
+        .view_states
+        .lock()
+        .per_visualizer_type_reports(&test_context.recording_store_id, view_id)
+        .cloned()
+        .unwrap_or_default();
+
+    // Don't show the UUIDs since they're not all that useful in the snapshot.
+    let query_result_tree = query_result_tree.take();
+    visualizer_errors
+        .iter()
+        .map(|(visualizer_type, error)| {
+            let error = match error {
+                re_viewer_context::VisualizerTypeReport::OverallError(err) => err.summary.clone(),
+                re_viewer_context::VisualizerTypeReport::PerInstructionReport(errors) => errors
+                    .iter()
+                    .flat_map(|(instr_id, reports)| {
+                        let data_result = query_result_tree
+                            .lookup_result_by_visualizer_instruction(*instr_id)
+                            .expect("visualizer instruction should resolve to a query result");
+                        reports.iter().map(|report| {
+                            format!("{:?}: {}", data_result.entity_path, report.summary)
+                        })
+                    })
+                    .collect::<Vec<_>>()
+                    .join("\n"),
+            };
+            format!("{visualizer_type:?}: {error}")
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
 #[test]
 fn test_topology_errors() {
     let mut test_context = TestContext::new();
@@ -166,54 +208,100 @@ fn test_topology_errors() {
     let scenarios = [
         TestScenario {
             name: "3d_view_at_root",
-            space_origin: "world_entity",
+            target_frame: "world",
             view_class: re_view_spatial::SpatialView3D::identifier(),
         },
         TestScenario {
             name: "2d_view_at_root",
-            space_origin: "world_entity",
+            target_frame: "world",
             view_class: re_view_spatial::SpatialView2D::identifier(),
         },
         TestScenario {
             name: "2d_view_at_pinhole",
-            space_origin: "pinhole_entity",
+            target_frame: "pinhole",
             view_class: re_view_spatial::SpatialView2D::identifier(),
         },
         TestScenario {
             name: "3d_view_at_pinhole",
-            space_origin: "pinhole_entity",
+            target_frame: "pinhole",
             view_class: re_view_spatial::SpatialView3D::identifier(),
         },
     ];
 
     for scenario in scenarios {
-        let view_id = test_context.setup_viewport_blueprint(|_ctx, blueprint| {
-            let view_blueprint = ViewBlueprint::new(
-                scenario.view_class,
-                RecommendedView {
-                    origin: scenario.space_origin.into(),
-                    query_filter: re_log_types::EntityPathFilter::all(),
-                },
-            );
+        let view_id = test_context.setup_viewport_blueprint(|ctx, blueprint| {
+            let view_blueprint = ViewBlueprint::new(scenario.view_class, RecommendedView::root());
             let view_id = view_blueprint.id;
+
+            ViewProperty::from_archetype::<blueprint_archetypes::SpatialInformation>(
+                ctx.blueprint_db(),
+                ctx.blueprint_query,
+                view_id,
+            )
+            .save_blueprint_component(
+                ctx,
+                &blueprint_archetypes::SpatialInformation::descriptor_target_frame(),
+                &re_tf::TransformFrameId::new(scenario.target_frame),
+            );
+
             blueprint.add_views(std::iter::once(view_blueprint), None, None);
             view_id
         });
 
-        let mut harness = test_context
-            .setup_kittest_for_rendering_ui([100.0, 100.0])
-            .build_ui(|ui| {
-                test_context.run_with_single_view(ui, view_id);
-            });
-        harness.run();
-
-        let visualizer_errors = test_context
-            .view_states
-            .lock()
-            .visualizer_errors(view_id)
-            .cloned()
-            .unwrap_or_default();
-
-        insta::assert_debug_snapshot!(scenario.name, visualizer_errors);
+        insta::assert_snapshot!(
+            scenario.name,
+            snapshot_visualizer_errors(&test_context, view_id)
+        );
     }
+}
+
+#[test]
+fn test_topology_error_for_empty_coordinate_frame_name() {
+    let mut test_context = TestContext::new();
+    test_context.register_view_class::<re_view_spatial::SpatialView3D>();
+
+    test_context.log_entity("transforms", |builder| {
+        builder.with_archetype_auto_row(
+            TimePoint::STATIC,
+            &archetypes::Transform3D::new()
+                .with_child_frame("points3d")
+                .with_parent_frame("world"),
+        )
+    });
+
+    test_context.log_entity("points3d_entity", |builder| {
+        builder
+            .with_archetype_auto_row(
+                TimePoint::STATIC,
+                &archetypes::Points3D::new([[1.0, 1.0, 1.0]]),
+            )
+            .with_archetype_auto_row(TimePoint::STATIC, &archetypes::CoordinateFrame::new(""))
+    });
+
+    let view_id = test_context.setup_viewport_blueprint(|ctx, blueprint| {
+        let view_blueprint = ViewBlueprint::new(
+            re_view_spatial::SpatialView3D::identifier(),
+            RecommendedView::root(),
+        );
+        let view_id = view_blueprint.id;
+
+        ViewProperty::from_archetype::<blueprint_archetypes::SpatialInformation>(
+            ctx.blueprint_db(),
+            ctx.blueprint_query,
+            view_id,
+        )
+        .save_blueprint_component(
+            ctx,
+            &blueprint_archetypes::SpatialInformation::descriptor_target_frame(),
+            &re_tf::TransformFrameId::new("world"),
+        );
+
+        blueprint.add_views(std::iter::once(view_blueprint), None, None);
+        view_id
+    });
+
+    insta::assert_snapshot!(
+        "topology_error_empty_coordinate_frame_name",
+        snapshot_visualizer_errors(&test_context, view_id)
+    );
 }

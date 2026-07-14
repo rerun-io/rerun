@@ -43,7 +43,7 @@ fn schema() -> anyhow::Result<()> {
     let chunk1 = Arc::new(chunk1);
     store.insert_chunk(&chunk1)?;
 
-    let ChunkColumnDescriptors { components, .. } = store.schema();
+    let ChunkColumnDescriptors { components, .. } = store.schema().chunk_column_descriptors();
 
     assert_eq!(
         components
@@ -112,7 +112,7 @@ fn schema_for_query() -> anyhow::Result<()> {
         include_semantically_empty_columns: false,
         include_tombstone_columns: false,
         include_static_columns: StaticColumnSelection::Both,
-        filtered_index: Some(TimelineName::new("frame_nr")),
+        filtered_index: Some(TimelineName::from("frame_nr")),
         filtered_index_range: None,
         filtered_index_values: None,
         using_index_values: None,

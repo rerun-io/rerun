@@ -1,15 +1,12 @@
-use re_log_types::EntryId;
-use re_protos::common::v1alpha1::ext::SegmentId;
 use re_types_core::ChunkId;
 
 use crate::store::Error;
+use crate::store::StoreSlotId;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct ChunkKey {
     pub chunk_id: ChunkId,
-    pub segment_id: SegmentId,
-    pub layer_name: String,
-    pub dataset_id: EntryId,
+    pub store_slot_id: StoreSlotId,
 }
 
 impl ChunkKey {

@@ -8,14 +8,14 @@ use pyo3::types::{
 use pyo3::{Bound, PyResult, Python, pyclass, pymethods};
 use re_server::{self, Args as ServerArgs, NamedPathCollection};
 
-#[pyclass(name = "_ServerInternal", module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq], non-trivial implementation
+#[pyclass(name = "_ServerInternal", module = "rerun_bindings.rerun_bindings")]
 pub struct PyServerInternal {
     handle: Option<re_server::ServerHandle>,
     host: std::net::IpAddr,
     url: String,
 }
 
-#[pymethods] // NOLINT: ignore[py-mthd-str]
+#[pymethods]
 impl PyServerInternal {
     #[new]
     #[pyo3(signature = (*, host, port, datasets, dataset_prefixes, tables))]
@@ -40,6 +40,8 @@ impl PyServerInternal {
             dataset_prefixes,
             tables,
             latency_ms: 0, // no artificial latency
+            bandwidth_limit: None,
+            cors_allow_origin: vec![],
         };
 
         let host: std::net::IpAddr = host
@@ -57,7 +59,7 @@ impl PyServerInternal {
         let url = format!("rerun+http://{connect_address}");
 
         crate::utils::wait_for_future(py, async {
-            let (handle, _) = args.create_server_handle().await.map_err(|err| {
+            let handle = args.create_server_handle().await.map_err(|err| {
                 PyValueError::new_err(format!("Failed to start Rerun server: {err:#}"))
             })?;
 
@@ -95,12 +97,32 @@ impl PyServerInternal {
     pub fn is_running(&self) -> bool {
         self.handle.is_some()
     }
+
+    /// Test hook: make the given gRPC method fail with a `NotFound` error.
+    ///
+    /// The `method` is the gRPC method name, e.g. `"FetchChunks"`.
+    pub fn inject_error(&self, method: &str) -> PyResult<()> {
+        let handle = self.handle.as_ref().ok_or_else(|| {
+            PyValueError::new_err("Server is not running or has already been shut down")
+        })?;
+        handle.injected_errors().inject(method);
+        Ok(())
+    }
+
+    /// Stop failing a previously injected endpoint.
+    pub fn clear_injected_error(&self, method: &str) -> PyResult<()> {
+        let handle = self.handle.as_ref().ok_or_else(|| {
+            PyValueError::new_err("Server is not running or has already been shut down")
+        })?;
+        handle.injected_errors().clear(method);
+        Ok(())
+    }
 }
 
 fn extract_named_paths(dict: &Bound<'_, PyDict>) -> Vec<re_server::NamedPath> {
     dict.iter()
         .filter_map(|(k, v)| {
-            let name = k.downcast::<PyString>().ok()?;
+            let name = k.cast::<PyString>().ok()?;
             let path = v.extract::<&str>().ok()?;
 
             Some(re_server::NamedPath {
@@ -114,11 +136,14 @@ fn extract_named_paths(dict: &Bound<'_, PyDict>) -> Vec<re_server::NamedPath> {
 fn extract_named_collections(dict: &Bound<'_, PyDict>) -> Vec<NamedPathCollection> {
     dict.iter()
         .filter_map(|(k, v)| {
-            let name = k.downcast::<PyString>().ok()?;
+            let name = k.cast::<PyString>().ok()?;
             let paths: Vec<String> = v.extract().ok()?;
 
+            let entry_name =
+                re_log_types::EntryName::new(name.to_string_lossy().to_string()).ok()?;
+
             Some(NamedPathCollection {
-                name: name.to_string_lossy().to_string(),
+                name: entry_name,
                 paths: paths.into_iter().map(std::path::PathBuf::from).collect(),
             })
         })

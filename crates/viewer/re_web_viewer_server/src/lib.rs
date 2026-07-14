@@ -14,19 +14,58 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
 pub const DEFAULT_WEB_VIEWER_SERVER_PORT: u16 = 9090;
 
-// See `Cargo.toml` for docs about the `disable_web_viewer_server` cfg:
-#[cfg(not(disable_web_viewer_server))]
+// See `Cargo.toml` for docs about the `disable_web_viewer_server` and `trailing_web_viewer` cfgs:
+#[cfg(all(not(disable_web_viewer_server), not(trailing_web_viewer)))]
 mod data {
     #![expect(clippy::large_include_file)]
 
     // If you add/remove/change the paths here, also update the include-list in `Cargo.toml`!
-    pub const INDEX_HTML: &[u8] = include_bytes!("../web_viewer/index.html");
-    pub const FAVICON: &[u8] = include_bytes!("../web_viewer/favicon.svg");
-    pub const SW_JS: &[u8] = include_bytes!("../web_viewer/sw.js");
-    pub const VIEWER_JS: &[u8] = include_bytes!("../web_viewer/re_viewer.js");
-    pub const VIEWER_WASM: &[u8] = include_bytes!("../web_viewer/re_viewer_bg.wasm");
-    pub const SIGNED_IN_HTML: &[u8] = include_bytes!("./signed-in.html");
+    #[inline]
+    pub fn index_html() -> &'static [u8] {
+        include_bytes!("../web_viewer/index.html")
+    }
+
+    #[inline]
+    pub fn favicon() -> &'static [u8] {
+        include_bytes!("../web_viewer/favicon.ico")
+    }
+
+    #[inline]
+    pub fn apple_touch_icon() -> &'static [u8] {
+        include_bytes!("../web_viewer/apple-touch-icon.png")
+    }
+
+    #[inline]
+    pub fn sw_js() -> &'static [u8] {
+        include_bytes!("../web_viewer/sw.js")
+    }
+
+    #[inline]
+    pub fn viewer_js() -> &'static [u8] {
+        include_bytes!("../web_viewer/re_viewer.js")
+    }
+
+    #[inline]
+    pub fn viewer_wasm() -> &'static [u8] {
+        include_bytes!("../web_viewer/re_viewer_bg.wasm")
+    }
+
+    #[inline]
+    pub fn signed_in_html() -> &'static [u8] {
+        include_bytes!("../web_viewer/signed-in.html")
+    }
+
+    #[inline]
+    pub fn signed_out_html() -> &'static [u8] {
+        include_bytes!("../web_viewer/signed-out.html")
+    }
 }
+
+#[cfg(all(not(disable_web_viewer_server), trailing_web_viewer))]
+mod trailing_data;
+
+#[cfg(all(not(disable_web_viewer_server), trailing_web_viewer))]
+use trailing_data as data;
 
 /// Failure to host the web viewer.
 #[derive(thiserror::Error, Debug)]
@@ -34,8 +73,11 @@ pub enum WebViewerServerError {
     #[error("Could not parse address: {0}")]
     AddrParseFailed(#[from] std::net::AddrParseError),
 
-    #[error("Failed to create server at address {0}: {1}")]
-    CreateServerFailed(String, Box<dyn std::error::Error + Send + Sync + 'static>),
+    #[error("Failed to create server: {source}: ({address})")]
+    CreateServerFailed {
+        source: Box<dyn std::error::Error + Send + Sync + 'static>,
+        address: String,
+    },
 }
 
 // ----------------------------------------------------------------------------
@@ -43,6 +85,13 @@ pub enum WebViewerServerError {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 /// Typed port for use with [`WebViewerServer`]
 pub struct WebViewerServerPort(pub u16);
+
+impl From<u16> for WebViewerServerPort {
+    #[inline]
+    fn from(port: u16) -> Self {
+        Self(port)
+    }
+}
 
 impl WebViewerServerPort {
     /// Port to use with [`WebViewerServer::new`] when you want the OS to pick a port for you.
@@ -106,10 +155,14 @@ impl WebViewerServer {
     /// # Ok(()) }
     /// ```
     pub fn new(bind_ip: &str, port: WebViewerServerPort) -> Result<Self, WebViewerServerError> {
-        let bind_addr: std::net::SocketAddr = format!("{bind_ip}:{port}").parse()?;
+        let bind_addr = std::net::SocketAddr::new(bind_ip.parse()?, port.0);
 
-        let server = tiny_http::Server::http(bind_addr)
-            .map_err(|err| WebViewerServerError::CreateServerFailed(bind_addr.to_string(), err))?;
+        let server = tiny_http::Server::http(bind_addr).map_err(|err| {
+            WebViewerServerError::CreateServerFailed {
+                address: bind_addr.to_string(),
+                source: err,
+            }
+        })?;
         let shutdown = AtomicBool::new(false);
 
         let inner = Arc::new(WebViewerServerInner {
@@ -142,6 +195,10 @@ impl WebViewerServer {
             return format!("http://127.0.0.1:{}", local_addr.port());
         }
         format!("http://{local_addr}")
+    }
+
+    pub fn bound_url(&self) -> String {
+        format!("http://{}", self.inner.server.server_addr())
     }
 
     /// Blocks execution as long as the server is running.
@@ -222,17 +279,18 @@ impl WebViewerServerInner {
         let url = request.url();
         let path = url.split('?').next().unwrap_or(url);
 
-        let (mime, bytes) = match path {
-            "/" | "/index.html" => ("text/html", data::INDEX_HTML),
-            "/favicon.svg" => ("image/svg+xml", data::FAVICON),
-            "/favicon.ico" => ("image/x-icon", data::FAVICON),
-            "/sw.js" => ("text/javascript", data::SW_JS),
-            "/re_viewer.js" => ("text/javascript", data::VIEWER_JS),
+        let (mime, bytes): (&str, &[u8]) = match path {
+            "/" | "/index.html" => ("text/html", data::index_html()),
+            "/favicon.ico" => ("image/x-icon", data::favicon()),
+            "/apple-touch-icon.png" => ("image/png", data::apple_touch_icon()),
+            "/sw.js" => ("text/javascript", data::sw_js()),
+            "/re_viewer.js" => ("text/javascript", data::viewer_js()),
             "/re_viewer_bg.wasm" => {
                 self.on_serve_wasm();
-                ("application/wasm", data::VIEWER_WASM)
+                ("application/wasm", data::viewer_wasm())
             }
-            "/signed-in" => ("text/html", data::SIGNED_IN_HTML),
+            "/signed-in" => ("text/html", data::signed_in_html()),
+            "/signed-out" => ("text/html", data::signed_out_html()),
             _ => {
                 re_log::warn!("404 path: {}", path);
                 return request.respond(tiny_http::Response::empty(404));
@@ -259,5 +317,19 @@ impl WebViewerServerInner {
         }
 
         request.respond(response)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn unspecified_bind_address_has_distinct_bound_and_connect_urls() {
+        let server = WebViewerServer::new("0.0.0.0", WebViewerServerPort::AUTO).unwrap();
+        let port = server.inner.server.server_addr().to_ip().unwrap().port();
+
+        assert_eq!(server.bound_url(), format!("http://0.0.0.0:{port}"));
+        assert_eq!(server.server_url(), format!("http://127.0.0.1:{port}"));
     }
 }

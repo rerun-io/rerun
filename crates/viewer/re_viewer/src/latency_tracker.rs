@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use ahash::HashMap;
-use parking_lot::Mutex;
+use re_mutex::Mutex;
 use re_redap_client::ConnectionRegistryHandle;
 
 pub const MIN_QUERY_INTERVAL: web_time::Duration = web_time::Duration::from_secs(1);
@@ -19,28 +19,20 @@ pub enum LatencyResult {
     MostRecent(web_time::Duration),
 }
 
-#[derive(Default)]
+#[derive(Default, re_byte_size::SizeBytes)]
 struct InnerState {
     accessed: bool,
     update_in_progress: bool,
     has_error: bool,
     last_latency: Option<web_time::Duration>,
+
+    #[size_bytes(ignore)] // No size bytes impl.
     last_update_time: Option<web_time::Instant>,
 }
 
-#[derive(Default)]
+#[derive(Default, re_byte_size::SizeBytes)]
 struct LatencyTracker {
     pub inner: Mutex<InnerState>,
-}
-
-impl re_byte_size::SizeBytes for LatencyTracker {
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    fn is_pod() -> bool {
-        true
-    }
 }
 
 impl LatencyTracker {

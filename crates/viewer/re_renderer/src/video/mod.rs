@@ -1,148 +1,54 @@
 mod chunk_decoder;
-mod player;
 
 use std::collections::hash_map::Entry;
 
 use ahash::HashMap;
-pub use chunk_decoder::VideoSampleDecoder;
-use parking_lot::Mutex;
-pub use player::{PlayerConfiguration, VideoPlayer};
 use re_log::ResultExt as _;
+use re_mutex::Mutex;
+use re_video::player::{DecoderDelayState, GetVideoSource, VideoPlayerError, VideoPlayerStreamId};
 use re_video::{DecodeSettings, VideoDataDescription};
 
 use crate::RenderContext;
 use crate::resource_managers::{GpuTexture2D, SourceImageDataFormat};
 
-/// Detailed error for lack of sample data.
-#[derive(thiserror::Error, Debug, Clone)]
-pub enum InsufficientSampleDataError {
-    #[error("Video doesn't have any key frames.")]
-    NoKeyFrames,
+/// A [`re_video::player::VideoPlayer`] with GPU texture output.
+pub type VideoPlayer = re_video::player::VideoPlayer<VideoTexture>;
 
-    #[error("Video doesn't have any samples.")]
-    NoSamples,
-
-    #[error("No key frames prior to current time.")]
-    NoKeyFramesPriorToRequestedTimestamp,
-
-    #[error("No frames prior to current time.")]
-    NoSamplesPriorToRequestedTimestamp,
-
-    #[error("The requested frame data is not, or no longer, available.")]
-    ExpectedSampleNotAvailable,
-
-    #[error("Missing samples between last decoded sample and requested sample.")]
-    MissingSamples,
-
-    #[error("Duplicate sample index encountered.")]
-    DuplicateSampleIdx,
-
-    #[error("Out of order sample index encountered.")]
-    OutOfOrderSampleIdx,
+impl From<crate::resource_managers::ImageDataToTextureError> for VideoPlayerError {
+    fn from(err: crate::resource_managers::ImageDataToTextureError) -> Self {
+        Self::TextureUploadError(err.to_string())
+    }
 }
 
-/// Error that can occur during playing videos.
-#[derive(thiserror::Error, Debug, Clone)]
-pub enum VideoPlayerError {
-    #[error("The decoder is lagging behind")]
-    EmptyBuffer,
-
-    #[error(transparent)]
-    InsufficientSampleData(#[from] InsufficientSampleDataError),
-
-    /// e.g. unsupported codec
-    #[error("Failed to create video chunk: {0}")]
-    CreateChunk(String),
-
-    /// e.g. unsupported codec
-    #[error("Failed to decode video chunk: {0}")]
-    DecodeChunk(String),
-
-    /// Various errors that can occur during video decoding.
-    #[error("Failed to decode video: {0}")]
-    Decoding(#[from] re_video::DecodeError),
-
-    #[error("The timestamp passed was negative.")]
-    NegativeTimestamp,
-
-    /// e.g. bad mp4, or bug in mp4 parse
-    #[error("Bad data.")]
-    BadData,
-
-    #[error("Failed to create gpu texture from decoded video data: {0}")]
-    ImageDataToTextureError(#[from] crate::resource_managers::ImageDataToTextureError),
-
-    #[error("Decoder unexpectedly exited")]
-    DecoderUnexpectedlyExited,
+pub struct FrameDecodingOutput {
+    pub output: Option<VideoFrameTexture>,
+    pub error: Option<VideoPlayerError>,
 }
 
-const _: () = assert!(
-    std::mem::size_of::<VideoPlayerError>() <= 64,
-    "Error type is too large. Try to reduce its size by boxing some of its variants.",
-);
-
-impl VideoPlayerError {
-    pub fn should_request_more_frames(&self) -> bool {
-        // Decoders often (not always!) recover from errors and will succeed eventually.
-        // Gotta keep trying!
-        match self {
-            Self::Decoding(err) => err.should_request_more_frames(),
-            _ => false,
+impl FrameDecodingOutput {
+    fn error(error: impl Into<VideoPlayerError>) -> Self {
+        Self {
+            output: None,
+            error: Some(error.into()),
         }
     }
 }
 
-pub type FrameDecodingResult = Result<VideoFrameTexture, VideoPlayerError>;
-
-/// Describes whether a decoder is lagging behind or not.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum DecoderDelayState {
-    /// The decoder is caught up with the most recent requested frame.
-    UpToDate,
-
-    /// We're not up to date, but we're close enough to the newest content of a live stream that we're ok.
-    ///
-    /// The leading edge of livestreams is treated specially since we don't want to show the waiting indicator
-    /// as readily.
-    /// Furthermore, it mitigates problems with some decoders not emitting the last few frames until
-    /// we signal the end of the video (after which we have to restart the decoder).
-    ///
-    /// I.e. the video texture may be quite a bit behind, but it's better than not showing new frames.
-    /// Unlike with [`DecoderDelayState::UpToDateWithinTolerance`], we won't show a loading spinner.
-    ///
-    /// The tolerance value used for this is the sum of
-    /// [`PlayerConfiguration::tolerated_output_delay_in_num_frames`] and
-    /// [`re_video::AsyncDecoder::min_num_samples_to_enqueue_ahead`].
-    UpToDateToleratedEdgeOfLiveStream,
-
-    /// The decoder is caught up within a certain tolerance.
-    ///
-    /// I.e. the video texture is not the most recently requested frame, but it's quite close.
-    ///
-    /// The tolerance value used for this is [`PlayerConfiguration::tolerated_output_delay_in_num_frames`].
-    UpToDateWithinTolerance,
-
-    /// The decoder is catching up after a long seek.
-    ///
-    /// The video texture is no longer updated until the decoder has caught up.
-    /// This state will only be left after reaching [`DecoderDelayState::UpToDate`] again.
-    ///
-    /// The tolerance value used for this is [`PlayerConfiguration::tolerated_output_delay_in_num_frames`].
-    Behind,
+/// A texture of a specific video frame.
+#[derive(Clone)]
+pub struct VideoTexture {
+    /// The video texture is created lazily on the first received frame.
+    pub texture: Option<GpuTexture2D>,
+    pub source_pixel_format: SourceImageDataFormat,
 }
 
-impl DecoderDelayState {
-    /// Whether a user of a video player should keep requesting a more up to date video frame even
-    /// if the requested time has not changed.
-    pub fn should_request_more_frames(&self) -> bool {
-        match self {
-            Self::UpToDate => false,
-
-            // Everything that isn't up-to-date means that we have to request more frames
-            // since the frame that is displayed right now is the one that was requested.
-            Self::UpToDateWithinTolerance
-            | Self::Behind
-            | Self::UpToDateToleratedEdgeOfLiveStream => true,
+impl Default for VideoTexture {
+    fn default() -> Self {
+        Self {
+            texture: None,
+            source_pixel_format: SourceImageDataFormat::WgpuCompatible(
+                wgpu::TextureFormat::Rgba8Unorm,
+            ),
         }
     }
 }
@@ -155,8 +61,8 @@ pub struct VideoFrameTexture {
     /// If true, the texture is outdated. Keep polling for a fresh one.
     pub decoder_delay_state: DecoderDelayState,
 
-    /// If true, this texture is so out-dated that it should have a loading spinner on top of it.
-    pub show_spinner: bool,
+    /// If true, this texture is so out-dated that it should have a loading indicator on top of it.
+    pub show_loading_indicator: bool,
 
     /// Format information about the original data from the video decoder.
     ///
@@ -167,69 +73,30 @@ pub struct VideoFrameTexture {
     pub frame_info: Option<re_video::FrameInfo>,
 }
 
-/// Identifier for an independent video decoding stream.
-///
-/// A single video may use several decoders at a time to simultaneously decode frames at different timestamps.
-/// The id does not need to be globally unique, just unique enough to distinguish streams of the same video.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-
-pub struct VideoPlayerStreamId(pub u64);
-
-impl re_byte_size::SizeBytes for VideoPlayerStreamId {
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    fn is_pod() -> bool {
-        true
-    }
-}
-
+#[derive(re_byte_size::SizeBytes)]
 struct PlayerEntry {
-    player: player::VideoPlayer,
+    player: VideoPlayer,
 
     /// Was this used last frame?
     /// This is reset every frame, and used to determine whether to purge the player.
     used_last_frame: bool,
 }
 
-impl re_byte_size::SizeBytes for PlayerEntry {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            player,
-            used_last_frame: _,
-        } = self;
-        player.heap_size_bytes()
-    }
-}
-
 /// Video data + decoder(s).
 ///
 /// Supports asynchronously decoding video into GPU textures via [`Video::frame_at`].
+#[derive(re_byte_size::SizeBytes)]
 pub struct Video {
     debug_name: String,
     video_description: re_video::VideoDataDescription,
     players: Mutex<HashMap<VideoPlayerStreamId, PlayerEntry>>,
+    #[size_bytes(ignore)]
     decode_settings: DecodeSettings,
-}
-
-impl re_byte_size::SizeBytes for Video {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            debug_name,
-            video_description,
-            players,
-            decode_settings: _,
-        } = self;
-        debug_name.heap_size_bytes()
-            + video_description.heap_size_bytes()
-            + players.lock().heap_size_bytes()
-    }
 }
 
 impl Drop for Video {
     fn drop(&mut self) {
-        re_log::debug!("Dropping Video {:?}", self.debug_name);
+        re_log::trace!("Dropping Video {:?}", self.debug_name);
     }
 }
 
@@ -251,6 +118,10 @@ impl Video {
             players,
             decode_settings,
         }
+    }
+
+    pub fn debug_name(&self) -> &str {
+        &self.debug_name
     }
 
     /// The video description.
@@ -299,13 +170,16 @@ impl Video {
     /// empty.
     ///
     /// The time is specified in seconds since the start of the video.
-    pub fn frame_at<'a>(
+    ///
+    /// `get_video_chunk` is used both to read data for frames internally, and as a way to request
+    /// what data should be loaded.
+    pub fn frame_at(
         &self,
         render_context: &RenderContext,
         player_stream_id: VideoPlayerStreamId,
         video_time: re_video::Time,
-        get_video_buffer: &dyn Fn(re_tuid::Tuid) -> &'a [u8],
-    ) -> FrameDecodingResult {
+        video_source: &dyn GetVideoSource,
+    ) -> FrameDecodingOutput {
         re_tracing::profile_function!();
 
         // We could protect this hashmap by a RwLock and the individual decoders by a Mutex.
@@ -317,11 +191,14 @@ impl Video {
         let decoder_entry = match players.entry(player_stream_id) {
             Entry::Occupied(occupied_entry) => occupied_entry.into_mut(),
             Entry::Vacant(vacant_entry) => {
-                let new_player = player::VideoPlayer::new(
+                let new_player = match VideoPlayer::new(
                     &self.debug_name,
                     &self.video_description,
                     &self.decode_settings,
-                )?;
+                ) {
+                    Ok(player) => player,
+                    Err(err) => return FrameDecodingOutput::error(err),
+                };
                 vacant_entry.insert(PlayerEntry {
                     player: new_player,
                     used_last_frame: true,
@@ -330,14 +207,79 @@ impl Video {
         };
 
         decoder_entry.used_last_frame = true;
-        decoder_entry.player.frame_at(
+        let status = decoder_entry.player.frame_at(
             video_time,
             &self.video_description,
             &mut |texture, frame| {
                 chunk_decoder::update_video_texture_with_frame(render_context, texture, frame)
             },
-            get_video_buffer,
-        )
+            video_source,
+        );
+
+        let output = decoder_entry.player.output();
+
+        FrameDecodingOutput {
+            output: Some(VideoFrameTexture {
+                texture: output.and_then(|o| o.texture.clone()),
+                decoder_delay_state: status
+                    .as_ref()
+                    .map(|s| s.decoder_delay_state)
+                    .unwrap_or(DecoderDelayState::UpToDate),
+                show_loading_indicator: status.as_ref().is_ok_and(|s| s.show_loading_indicator),
+                source_pixel_format: output.map_or(
+                    SourceImageDataFormat::WgpuCompatible(wgpu::TextureFormat::Rgba8Unorm),
+                    |o| o.source_pixel_format,
+                ),
+                frame_info: status.as_ref().ok().and_then(|s| s.frame_info.clone()),
+            }),
+            error: status.err(),
+        }
+    }
+
+    /// Notify players that samples were inserted/removed at `splice_start`,
+    /// changing the deque size by `size_delta`.
+    ///
+    /// Players whose active decoder pipeline overlaps the insertion region
+    /// are fully reset. All others just have their indices shifted.
+    pub fn handle_sample_insertion(
+        &self,
+        change_start: re_video::SampleIndex,
+        change_end: re_video::SampleIndex,
+        size_delta: isize,
+    ) {
+        let mut players = self.players.lock();
+        for entry in players.values_mut() {
+            let player = &mut entry.player;
+
+            // If the insertion falls within the player's active GOP range
+            // the decoder has a hole of missing samples and needs reset.
+            let needs_reset = {
+                let indices = std::iter::chain(player.last_enqueued(), player.last_requested());
+
+                indices
+                    .map(|idx| {
+                        let keyframe_idx = self.video_description.sample_keyframe_idx(idx)?;
+
+                        self.video_description
+                            .gop_sample_range_for_keyframe(keyframe_idx)
+                    })
+                    .reduce(|a, b| {
+                        Option::zip(a, b).map(|(a, b)| a.start.min(b.start)..a.end.max(b.end))
+                    })
+                    .flatten()
+                    .is_some_and(|gop| {
+                        // Check if the gop range overlaps with the changed samples range.
+                        gop.start <= change_end && change_start < gop.end
+                    })
+            };
+
+            if needs_reset {
+                player.reset(&self.video_description).ok_or_log_error_once();
+            } else {
+                // Shift player indices to the new index space.
+                player.shift_indices(change_end, size_delta);
+            }
+        }
     }
 
     /// Removes all decoders that have been unused in the last frame.

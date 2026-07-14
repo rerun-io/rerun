@@ -5,7 +5,7 @@ use re_types_core::{Loggable as _, RowId};
 use crate::MetadataExt as _;
 
 /// Describes the schema of the primary [`RowId`] column.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, re_byte_size::SizeBytes)]
 pub struct RowIdColumnDescriptor {
     /// Are the values in this column sorted?
     ///
@@ -17,6 +17,12 @@ impl RowIdColumnDescriptor {
     #[inline]
     pub fn from_sorted(is_sorted: bool) -> Self {
         Self { is_sorted }
+    }
+
+    /// Column name, used in Arrow record batches and schemas.
+    #[expect(clippy::unused_self)]
+    pub fn column_name(&self) -> String {
+        RowId::partial_descriptor().to_string()
     }
 
     /// Short field/column name
@@ -57,12 +63,8 @@ impl RowIdColumnDescriptor {
         }
 
         let nullable = false; // All rows has an id
-        ArrowField::new(
-            RowId::partial_descriptor().to_string(),
-            RowId::arrow_datatype(),
-            nullable,
-        )
-        .with_metadata(metadata)
+        ArrowField::new(self.column_name(), RowId::arrow_datatype(), nullable)
+            .with_metadata(metadata)
     }
 
     #[expect(clippy::unused_self)]

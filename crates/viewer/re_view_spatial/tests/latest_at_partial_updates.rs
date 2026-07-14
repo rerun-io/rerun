@@ -86,9 +86,11 @@ fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
     test_context.setup_viewport_blueprint(|ctx, blueprint| {
         let view = ViewBlueprint::new_with_root_wildcard(SpatialView2D::identifier());
 
+        let engine = ctx.store_context.blueprint.storage_engine();
+        let blueprint_tree = engine.store().entity_tree();
         let property_path = re_viewport_blueprint::entity_path_for_view_property(
             view.id,
-            ctx.store_context.blueprint.tree(),
+            blueprint_tree,
             re_sdk_types::blueprint::archetypes::VisualBounds2D::name(),
         );
         ctx.save_blueprint_archetype(

@@ -8,3 +8,8 @@ tab_width = 2
 indent_style = space
 indent_size = 2
 tab_width = 2
+
+[*.{js,ts,jsx,tsx}]
+indent_style = space
+indent_size = 2
+tab_width = 2

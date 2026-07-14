@@ -1,7 +1,7 @@
 //! [`ArrayUi`] can be used to show arbitrary Arrow data with a nice UI.
 //! The implementation is inspired from arrows built-in display formatter:
 //! <https://github.com/apache/arrow-rs/blob/c628435f9f14abc645fb546442132974d3d380ca/arrow-cast/src/display.rs>
-use std::ops::Range;
+use std::{iter, ops::Range};
 
 use arrow::array::cast::{
     AsArray as _, as_generic_list_array, as_map_array, as_struct_array, as_union_array,
@@ -24,6 +24,7 @@ use arrow::datatypes::{
 use arrow::error::ArrowError;
 use arrow::util::display::{ArrayFormatter, FormatOptions};
 use egui::{RichText, Ui};
+use itertools::Itertools as _;
 use re_log_types::TimestampFormat;
 use re_ui::list_item::{CustomContent, LabelContent};
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
@@ -56,6 +57,11 @@ pub struct DisplayOptions<'a> {
 
     /// Each nested level, by how much should the number of shown items decrease?
     pub decrease_nested_items_per_nested_level: usize,
+
+    /// Where should strings ([`arrow::array::StringArray`] etc.) be truncated?
+    ///
+    /// [`usize::MAX`] by default, will be set to `min(max_string_chars, 100)` by [`DisplayOptions::nested`].
+    pub max_string_chars: usize,
 }
 
 impl Default for DisplayOptions<'_> {
@@ -70,6 +76,7 @@ impl Default for DisplayOptions<'_> {
             max_map_items: 3,
             max_struct_items: 6,
             decrease_nested_items_per_nested_level: 1,
+            max_string_chars: usize::MAX,
         }
     }
 }
@@ -92,6 +99,7 @@ impl DisplayOptions<'_> {
                 .max_struct_items
                 .saturating_sub(self.decrease_nested_items_per_nested_level),
             decrease_nested_items_per_nested_level: self.decrease_nested_items_per_nested_level,
+            max_string_chars: 100,
         }
     }
 
@@ -128,7 +136,7 @@ impl<'a> ArrayUi<'a> {
     /// This will create a list item that might have some nested children.
     /// The list item will _not_ display the index.
     pub fn show_value(&self, idx: usize, ui: &mut Ui) {
-        self.show_index.show(idx, ui);
+        self.show_index.show(idx, ui, UiLayout::List);
     }
 
     /// Show a `list_item` based tree view of the data.
@@ -229,6 +237,7 @@ fn make_ui<'a>(
 struct ShowBuiltIn<'a> {
     array: &'a dyn Array,
     formatter: ArrayFormatter<'a>,
+    max_string_chars: usize,
 }
 
 impl ShowIndex for ShowBuiltIn<'_> {
@@ -244,7 +253,11 @@ impl ShowIndex for ShowBuiltIn<'_> {
             dt,
             DataType::Utf8 | DataType::LargeUtf8 | DataType::Utf8View
         ) {
-            f.append_string_value(&text);
+            if self.max_string_chars < usize::MAX {
+                f.append_string_value_truncated(&text, self.max_string_chars);
+            } else {
+                f.append_string_value(&text);
+            }
         } else {
             f.append_primitive(&text);
         }
@@ -265,6 +278,7 @@ fn show_arrow_builtin<'a>(
     Ok(Box::new(ShowBuiltIn {
         formatter: ArrayFormatter::try_new(array, &options.format_options)?,
         array,
+        max_string_chars: options.max_string_chars,
     }))
 }
 
@@ -283,7 +297,7 @@ pub(crate) trait ShowIndex {
     fn write(&self, idx: usize, f: &mut SyntaxHighlightedBuilder) -> EmptyArrowResult;
 
     /// Show the item at `idx` as a rerun `list_item`.
-    fn show(&self, idx: usize, ui: &mut Ui) {
+    fn show(&self, idx: usize, ui: &mut Ui, ui_layout: UiLayout) {
         let mut highlighted = SyntaxHighlightedBuilder::new();
         let result = self.write(idx, &mut highlighted);
         match result {
@@ -291,7 +305,7 @@ pub(crate) trait ShowIndex {
                 ui.list_item().show_hierarchical(
                     ui,
                     CustomContent::new(|ui, _context| {
-                        UiLayout::List.data_label(ui, highlighted);
+                        ui_layout.data_label(ui, highlighted);
                     }),
                 );
             }
@@ -356,7 +370,7 @@ impl<'a, T: ShowIndex> ShowIndexState<'a> for T {
 
     fn write(
         &self,
-        _: &Self::State,
+        (): &Self::State,
         idx: usize,
         f: &mut SyntaxHighlightedBuilder,
     ) -> EmptyArrowResult {
@@ -364,7 +378,7 @@ impl<'a, T: ShowIndex> ShowIndexState<'a> for T {
     }
 
     fn show(&self, _state: &Self::State, idx: usize, ui: &mut Ui) {
-        ShowIndex::show(self, idx, ui);
+        ShowIndex::show(self, idx, ui, UiLayout::List);
     }
 
     fn is_item_nested(&self) -> bool {
@@ -404,7 +418,7 @@ impl<'a, F: ShowIndexState<'a> + Array> ShowIndex for ShowCustom<'a, F> {
         ShowIndexState::write(&self.array, &self.state, idx, f)
     }
 
-    fn show(&self, idx: usize, ui: &mut Ui) {
+    fn show(&self, idx: usize, ui: &mut Ui, _layout: UiLayout) {
         ShowIndexState::show(&self.array, &self.state, idx, ui);
     }
 
@@ -538,16 +552,13 @@ fn write_list(
             values.write(idx, f)?;
         }
 
-        let mut items = 1;
-
-        for idx in range {
+        for (items, idx) in iter::zip(1.., range) {
             if items >= max_items {
                 f.append_syntax(", …");
                 break;
             }
             f.append_syntax(", ");
             values.write(idx, f)?;
-            items += 1;
         }
     }
     f.append_syntax("]");
@@ -676,15 +687,12 @@ impl<'a> ShowIndexState<'a> for &'a StructArray {
         let fields = self.fields();
         let nested_options = options.nested();
 
-        let items = self
-            .columns()
-            .iter()
-            .zip(fields)
-            .map(|(a, f)| {
+        let items = iter::zip(self.columns(), fields)
+            .map(|(a, f)| -> Result<_, ArrowError> {
                 let format = make_ui(a.as_ref(), &nested_options)?;
                 Ok((&**f, format))
             })
-            .collect::<Result<_, ArrowError>>()?;
+            .try_collect()?;
         Ok(FieldDisplayState {
             items,
             max_items: options.max_struct_items,
@@ -707,8 +715,7 @@ impl<'a> ShowIndexState<'a> for &'a StructArray {
                 f.append_syntax(": ");
                 display.as_ref().write(idx, f)?;
             }
-            let mut items = 1;
-            for (field, display) in iter {
+            for (items, (field, display)) in iter::zip(1.., iter) {
                 if items >= *max_items {
                     f.append_syntax(", …");
                     break;
@@ -717,7 +724,6 @@ impl<'a> ShowIndexState<'a> for &'a StructArray {
                 f.append_identifier(field.name());
                 f.append_syntax(": ");
                 display.as_ref().write(idx, f)?;
-                items += 1;
             }
         }
         f.append_syntax("}");
@@ -781,9 +787,7 @@ impl<'a> ShowIndexState<'a> for &'a MapArray {
                 values.write(idx, f)?;
             }
 
-            let mut items = 1;
-
-            for idx in iter {
+            for (items, idx) in iter::zip(1.., iter) {
                 if items >= *max_items {
                     f.append_syntax(", …");
                     break;
@@ -792,7 +796,6 @@ impl<'a> ShowIndexState<'a> for &'a MapArray {
                 keys.write(idx, f)?;
                 f.append_syntax(": ");
                 values.write(idx, f)?;
-                items += 1;
             }
         }
         f.append_syntax("}");

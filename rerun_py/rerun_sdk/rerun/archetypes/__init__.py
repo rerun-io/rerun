@@ -15,6 +15,7 @@ from .clear import Clear
 from .coordinate_frame import CoordinateFrame
 from .cylinders3d import Cylinders3D
 from .depth_image import DepthImage
+from .ellipses2d import Ellipses2D
 from .ellipsoids3d import Ellipsoids3D
 from .encoded_depth_image import EncodedDepthImage
 from .encoded_image import EncodedImage
@@ -22,6 +23,7 @@ from .geo_line_strings import GeoLineStrings
 from .geo_points import GeoPoints
 from .graph_edges import GraphEdges
 from .graph_nodes import GraphNodes
+from .grid_map import GridMap
 from .image import Image
 from .instance_poses3d import InstancePoses3D
 from .line_strips2d import LineStrips2D
@@ -39,6 +41,8 @@ from .scalars import Scalars
 from .segmentation_image import SegmentationImage
 from .series_lines import SeriesLines
 from .series_points import SeriesPoints
+from .state_change import StateChange
+from .state_configuration import StateConfiguration
 from .tensor import Tensor
 from .text_document import TextDocument
 from .text_log import TextLog
@@ -47,6 +51,7 @@ from .transform_axes3d import TransformAxes3D
 from .video_frame_reference import VideoFrameReference
 from .video_stream import VideoStream
 from .view_coordinates import ViewCoordinates
+from .voxel_grid_map import VoxelGridMap
 
 __all__ = [
     "AnnotationContext",
@@ -62,6 +67,7 @@ __all__ = [
     "CoordinateFrame",
     "Cylinders3D",
     "DepthImage",
+    "Ellipses2D",
     "Ellipsoids3D",
     "EncodedDepthImage",
     "EncodedImage",
@@ -69,6 +75,7 @@ __all__ = [
     "GeoPoints",
     "GraphEdges",
     "GraphNodes",
+    "GridMap",
     "Image",
     "InstancePoses3D",
     "LineStrips2D",
@@ -86,6 +93,8 @@ __all__ = [
     "SegmentationImage",
     "SeriesLines",
     "SeriesPoints",
+    "StateChange",
+    "StateConfiguration",
     "Tensor",
     "TextDocument",
     "TextLog",
@@ -94,4 +103,5 @@ __all__ = [
     "VideoFrameReference",
     "VideoStream",
     "ViewCoordinates",
+    "VoxelGridMap",
 ]

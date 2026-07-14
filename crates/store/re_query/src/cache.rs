@@ -18,25 +18,14 @@ use crate::{LatestAtCache, RangeCache};
 // ---
 
 /// Uniquely identifies cached query results in the [`QueryCache`].
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, re_byte_size::SizeBytes)]
 pub struct QueryCacheKey {
     pub entity_path: EntityPath,
-    pub timeline_name: TimelineName,
-    pub component: ComponentIdentifier,
-}
 
-impl re_byte_size::SizeBytes for QueryCacheKey {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            entity_path,
-            timeline_name,
-            component: component_identifier,
-        } = self;
-        entity_path.heap_size_bytes()
-            + timeline_name.heap_size_bytes()
-            + component_identifier.heap_size_bytes()
-    }
+    /// `None` for a static-only query, where no timeline is relevant.
+    pub timeline_name: Option<TimelineName>,
+
+    pub component: ComponentIdentifier,
 }
 
 impl std::fmt::Debug for QueryCacheKey {
@@ -47,9 +36,14 @@ impl std::fmt::Debug for QueryCacheKey {
             timeline_name,
             component: component_identifier,
         } = self;
-        f.write_fmt(format_args!(
-            "{entity_path}:{component_identifier} on '{timeline_name}'"
-        ))
+        match timeline_name {
+            Some(timeline_name) => f.write_fmt(format_args!(
+                "{entity_path}:{component_identifier} on '{timeline_name}'"
+            )),
+            None => f.write_fmt(format_args!(
+                "{entity_path}:{component_identifier} (static)"
+            )),
+        }
     }
 }
 
@@ -57,7 +51,7 @@ impl QueryCacheKey {
     #[inline]
     pub fn new(
         entity_path: impl Into<EntityPath>,
-        timeline: impl Into<TimelineName>,
+        timeline: impl Into<Option<TimelineName>>,
         component_identifier: ComponentIdentifier,
     ) -> Self {
         Self {
@@ -138,8 +132,10 @@ impl QueryCacheHandle {
     }
 }
 
+#[derive(re_byte_size::SizeBytes)]
 pub struct QueryCache {
     /// Handle to the associated [`ChunkStoreHandle`].
+    #[size_bytes(ignore)]
     pub(crate) store: ChunkStoreHandle,
 
     /// The [`StoreId`] of the associated [`ChunkStoreHandle`].
@@ -153,6 +149,9 @@ pub struct QueryCache {
     /// This is a huge performance improvement in practice, especially in recordings with many entities.
     pub(crate) might_require_clearing: RwLock<IntSet<EntityPath>>,
 
+    // TODO(RR-3800): better size estimation. This seems to be over-estimating a lot?
+    // Maybe double-counting chunks or other arrow data?
+    #[size_bytes(ignore)]
     // NOTE: `Arc` so we can cheaply free the top-level lock early when needed.
     pub(crate) latest_at_per_cache_key: RwLock<HashMap<QueryCacheKey, Arc<RwLock<LatestAtCache>>>>,
 
@@ -177,7 +176,7 @@ impl MemUsageTreeCapture for QueryCache {
                 "might_require_clearing",
                 might_require_clearing.total_size_bytes(),
             )
-            // TODO(RR-3366): this seems to be over-estimating a lot?
+            // TODO(RR-3800): this seems to be over-estimating a lot?
             // Maybe double-counting chunks or other arrow data?
             // .with_child(
             //     "latest_at_per_cache_key",
@@ -227,7 +226,9 @@ impl std::fmt::Debug for QueryCache {
                     cache.pending_invalidations.first().map(|&t| {
                         let range = AbsoluteTimeRange::new(t, TimeInt::MAX);
                         if let Some(time_type) =
-                            store.read().time_column_type(&cache_key.timeline_name)
+                            cache_key.timeline_name.as_ref().and_then(|timeline_name| {
+                                store.read().schema().time_column_type(timeline_name)
+                            })
                         {
                             time_type.format_range_utc(range)
                         } else {
@@ -344,64 +345,46 @@ impl ChunkStoreSubscriber for QueryCache {
                     // In particular, we must know if there are pending tombstones out there, in order to properly
                     // populate the `might_require_clearing` set.
 
-                    match rrd_manifest.get_static_data_as_a_map() {
-                        Ok(native_static_map) => {
-                            for (entity_path, per_component) in native_static_map {
-                                for (component, chunk_id) in per_component {
-                                    compacted_events
-                                        .static_
-                                        .entry((entity_path.clone(), component))
-                                        .or_default()
-                                        .insert(chunk_id);
-                                }
-                            }
-                        }
-
-                        Err(err) => {
-                            re_log::error!(%err, ?store_id, "static data from RRD manifest couldn't be parsed");
+                    for (entity_path, per_component) in rrd_manifest.static_map() {
+                        for (component, chunk_id) in per_component {
+                            compacted_events
+                                .static_
+                                .entry((entity_path.clone(), *component))
+                                .or_default()
+                                .insert(*chunk_id);
                         }
                     }
 
-                    match rrd_manifest.get_temporal_data_as_a_map() {
-                        Ok(native_temporal_map) => {
-                            for (entity_path, per_timeline) in native_temporal_map {
-                                for (timeline, per_component) in per_timeline {
-                                    for (component, per_chunk) in per_component {
-                                        for (chunk_id, entry) in per_chunk {
-                                            let key = QueryCacheKey::new(
-                                                entity_path.clone(),
-                                                *timeline.name(),
-                                                component,
-                                            );
+                    for (entity_path, per_timeline) in rrd_manifest.temporal_map() {
+                        for (timeline, per_component) in per_timeline {
+                            for (component, per_chunk) in per_component {
+                                for (chunk_id, entry) in per_chunk {
+                                    let key = QueryCacheKey::new(
+                                        entity_path.clone(),
+                                        *timeline.name(),
+                                        *component,
+                                    );
 
-                                            // latest-at
-                                            {
-                                                let data_time_min = entry.time_range.min();
-                                                compacted_events
-                                                    .temporal_latest_at
-                                                    .entry(key.clone())
-                                                    .and_modify(|time| {
-                                                        *time = TimeInt::min(*time, data_time_min);
-                                                    })
-                                                    .or_insert(data_time_min);
-                                            }
+                                    // latest-at
+                                    {
+                                        let data_time_min = entry.time_range.min();
+                                        compacted_events
+                                            .temporal_latest_at
+                                            .entry(key.clone())
+                                            .and_modify(|time| {
+                                                *time = TimeInt::min(*time, data_time_min);
+                                            })
+                                            .or_insert(data_time_min);
+                                    }
 
-                                            // range
-                                            {
-                                                let compacted_events = compacted_events
-                                                    .temporal_range
-                                                    .entry(key)
-                                                    .or_default();
-                                                compacted_events.insert(chunk_id);
-                                            }
-                                        }
+                                    // range
+                                    {
+                                        let compacted_events =
+                                            compacted_events.temporal_range.entry(key).or_default();
+                                        compacted_events.insert(*chunk_id);
                                     }
                                 }
                             }
-                        }
-
-                        Err(err) => {
-                            re_log::error!(%err, ?store_id, "temporal data from RRD manifest couldn't be parsed");
                         }
                     }
                 }
@@ -547,6 +530,7 @@ impl ChunkStoreSubscriber for QueryCache {
                         }
                     }
                 }
+                ChunkStoreDiff::SchemaAddition(_) => {} // Nothing to do here.
             }
         }
 

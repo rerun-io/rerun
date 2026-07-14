@@ -9,77 +9,77 @@ Tensor elements are stored in a contiguous buffer of a single type.
 
 ## Variants
 #### `U8` = 1
-Type: List of `uint8`
+Type: non-null List of `UInt8`
 
 8bit unsigned integer.
 
 #### `U16` = 2
-Type: List of `uint16`
+Type: non-null List of `UInt16`
 
 16bit unsigned integer.
 
 #### `U32` = 3
-Type: List of `uint32`
+Type: non-null List of `UInt32`
 
 32bit unsigned integer.
 
 #### `U64` = 4
-Type: List of `uint64`
+Type: non-null List of `UInt64`
 
 64bit unsigned integer.
 
 #### `I8` = 5
-Type: List of `int8`
+Type: non-null List of `Int8`
 
 8bit signed integer.
 
 #### `I16` = 6
-Type: List of `int16`
+Type: non-null List of `Int16`
 
 16bit signed integer.
 
 #### `I32` = 7
-Type: List of `int32`
+Type: non-null List of `Int32`
 
 32bit signed integer.
 
 #### `I64` = 8
-Type: List of `int64`
+Type: non-null List of `Int64`
 
 64bit signed integer.
 
 #### `F16` = 9
-Type: List of `float16`
+Type: non-null List of `Float16`
 
 16bit IEEE-754 floating point, also known as `half`.
 
 #### `F32` = 10
-Type: List of `float32`
+Type: non-null List of `Float32`
 
 32bit IEEE-754 floating point, also known as `float` or `single`.
 
 #### `F64` = 11
-Type: List of `float64`
+Type: non-null List of `Float64`
 
 64bit IEEE-754 floating point, also known as `double`.
 
 
 ## Arrow datatype
 ```
-DenseUnion {
-    0 = "_null_markers": nullable null
-    1 = "U8": List<uint8>
-    2 = "U16": List<uint16>
-    3 = "U32": List<uint32>
-    4 = "U64": List<uint64>
-    5 = "I8": List<int8>
-    6 = "I16": List<int16>
-    7 = "I32": List<int32>
-    8 = "I64": List<int64>
-    9 = "F16": List<float16>
-    10 = "F32": List<float32>
-    11 = "F64": List<float64>
-}
+Union(Dense,
+    0: ("_null_markers": Null)
+    1: ("U8": non-null List(non-null UInt8))
+    2: ("U16": non-null List(non-null UInt16))
+    3: ("U32": non-null List(non-null UInt32))
+    4: ("U64": non-null List(non-null UInt64))
+    5: ("I8": non-null List(non-null Int8))
+    6: ("I16": non-null List(non-null Int16))
+    7: ("I32": non-null List(non-null Int32))
+    8: ("I64": non-null List(non-null Int64))
+    9: ("F16": non-null List(non-null Float16))
+    10: ("F32": non-null List(non-null Float32))
+    11: ("F64": non-null List(non-null Float64))
+)
 ```
 
 ## API reference links

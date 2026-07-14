@@ -50,17 +50,6 @@ env:
   RUSTFLAGS: --deny warnings
   RUSTDOCFLAGS: --deny warnings
 
-  # Disable the GHA backend (Github's 10GB storage) since we use our own GCS backend.
-  # See: https://github.com/marketplace/actions/sccache-action
-  SCCACHE_GHA_ENABLED: "false"
-
-  # Wrap every `rustc` invocation in `sccache`.
-  RUSTC_WRAPPER: "sccache"
-
-  # Not only `sccache` cannot cache incremental builds, it's counter-productive to generate all
-  # these incremental artifacts when running on CI.
-  CARGO_INCREMENTAL: "0"
-
 defaults:
   run:
     shell: bash --noprofile --norc -euo pipefail {0}
@@ -87,13 +76,13 @@ jobs:
             linux-arm64)
               runner="ubuntu-arm-16-core"
               target="aarch64-unknown-linux-gnu"
-              container="'ghcr.io/rerun-io/ci_docker:0.16.0'"
+              container="'ghcr.io/rerun-io/ci_docker:0.18.0'"
               bin_name="rerun"
               ;;
             linux-x64)
               runner="ubuntu-latest-16-cores"
               target="x86_64-unknown-linux-gnu"
-              container="'ghcr.io/rerun-io/ci_docker:0.16.0'"
+              container="'ghcr.io/rerun-io/ci_docker:0.18.0'"
               bin_name="rerun"
               ;;
             windows-x64)
@@ -154,9 +143,9 @@ jobs:
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
           targets: ${{ needs.set-config.outputs.TARGET }}
 
-      - uses: prefix-dev/setup-pixi@v0.9.1
+      - uses: prefix-dev/setup-pixi@v0.10.0
         with:
-          pixi-version: v0.55.0
+          pixi-version: v0.71.3
 
       - name: Build web-viewer (release)
         run: pixi run rerun-build-web-release
@@ -185,19 +174,59 @@ jobs:
           full_commit="${{ inputs.RELEASE_COMMIT || ((github.event_name == 'pull_request' && github.event.pull_request.head.sha) || github.sha) }}"
           echo "sha=$(echo $full_commit | cut -c1-7)" >> "$GITHUB_OUTPUT"
 
+      # Wrap the macOS binary in a Rerun.app bundle so macOS uses "Rerun" as the
+      # dock label / "About" name instead of falling back to the binary filename.
+      - name: Bundle Rerun.app (macOS)
+        if: inputs.PLATFORM == 'macos-arm64'
+        run: |
+          version=$(pixi run python scripts/ci/crates.py get-version)
+          mkdir -p bundle-out
+          pixi run python scripts/ci/bundle_macos_app.py \
+            --binary "./target/${{ needs.set-config.outputs.TARGET }}/release/${{ needs.set-config.outputs.BIN_NAME }}" \
+            --icon crates/viewer/re_viewer/data/app_icon_mac.png \
+            --info-plist scripts/ci/macos/Info.plist \
+            --version "$version" \
+            --output-dir bundle-out
+          tar -czf bundle-out/Rerun.app.tar.gz -C bundle-out Rerun.app
+
       - name: "Upload rerun-cli (commit)"
-        uses: google-github-actions/upload-cloud-storage@v2
+        uses: google-github-actions/upload-cloud-storage@v3
         with:
           path: "./target/${{ needs.set-config.outputs.TARGET }}/release/${{ needs.set-config.outputs.BIN_NAME }}"
           destination: "rerun-builds/commit/${{ steps.get-sha.outputs.sha }}/rerun-cli/${{ inputs.PLATFORM }}"
           parent: false
           process_gcloudignore: false
 
+      - name: "Upload Rerun.app (commit, macOS)"
+        if: inputs.PLATFORM == 'macos-arm64'
+        uses: google-github-actions/upload-cloud-storage@v3
+        with:
+          path: "bundle-out/Rerun.app.tar.gz"
+          destination: "rerun-builds/commit/${{ steps.get-sha.outputs.sha }}/rerun-cli/${{ inputs.PLATFORM }}"
+          parent: false
+          process_gcloudignore: false
+          # The tarball is already gzip-compressed. Uploading with the action's default
+          # `gzip: true` sets `Content-Encoding: gzip` on the blob, so the download client
+          # transparently decompresses one layer while validating the checksum against the
+          # still-compressed stored hash — a guaranteed checksum mismatch.
+          gzip: false
+
       - name: "Upload rerun-cli (adhoc)"
         if: ${{ inputs.ADHOC_NAME != '' }}
-        uses: google-github-actions/upload-cloud-storage@v2
+        uses: google-github-actions/upload-cloud-storage@v3
         with:
           path: "./target/${{ needs.set-config.outputs.TARGET }}/release/${{ needs.set-config.outputs.BIN_NAME }}"
           destination: "rerun-builds/adhoc/${{inputs.ADHOC_NAME}}/rerun-cli/${{ inputs.PLATFORM }}"
           parent: false
           process_gcloudignore: false
+
+      - name: "Upload Rerun.app (adhoc, macOS)"
+        if: ${{ inputs.ADHOC_NAME != '' && inputs.PLATFORM == 'macos-arm64' }}
+        uses: google-github-actions/upload-cloud-storage@v3
+        with:
+          path: "bundle-out/Rerun.app.tar.gz"
+          destination: "rerun-builds/adhoc/${{inputs.ADHOC_NAME}}/rerun-cli/${{ inputs.PLATFORM }}"
+          parent: false
+          process_gcloudignore: false
+          # See the note on the commit upload above: keep the already-gzipped tarball raw.
+          gzip: false

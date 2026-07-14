@@ -71,7 +71,7 @@ For more information, check out the [Revy repository](https://github.com/rerun-i
 
 ## Usage
 
-1. [Install the Rerun Viewer](https://www.rerun.io/docs/getting-started/installing-viewer) (`0.15`).
+1. [Install the Rerun Viewer](https://www.rerun.io/docs/overview/installing-rerun/viewer) (`0.15`).
 
 2. Add `revy` to your dependencies:
     ```toml

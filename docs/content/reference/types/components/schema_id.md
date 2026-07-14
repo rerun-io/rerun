@@ -11,7 +11,7 @@ A 16-bit unique identifier for a schema within the MCAP file.
 
 ## Arrow datatype
 ```
-uint16
+UInt16
 ```
 
 ## API reference links

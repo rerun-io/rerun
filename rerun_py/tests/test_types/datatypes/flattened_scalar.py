@@ -53,6 +53,7 @@ class FlattenedScalarBatch(BaseBatch[FlattenedScalarArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: FlattenedScalarArrayLike, data_type: pa.DataType) -> pa.Array:
+
         typed_data: Sequence[FlattenedScalar]
 
         if isinstance(data, FlattenedScalar):

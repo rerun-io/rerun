@@ -6,7 +6,7 @@ use nohash_hasher::IntMap;
 use parking_lot::RwLock;
 use re_byte_size::SizeBytes;
 use re_chunk::{Chunk, ChunkId, ComponentIdentifier};
-use re_chunk_store::{ChunkStore, OnMissingChunk, RangeQuery, TimeInt};
+use re_chunk_store::{ChunkStore, ChunkTrackingMode, RangeQuery, TimeInt};
 use re_log_types::{AbsoluteTimeRange, EntityPath};
 
 use crate::{QueryCache, QueryCacheKey, QueryError};
@@ -19,8 +19,12 @@ impl QueryCache {
     /// See [`RangeResults`] for more information about how to handle the results.
     ///
     /// This is a cached API -- data will be lazily cached upon access.
+    /// The returned chunks preserve the original [`ChunkId`]s from the source [`ChunkStore`],
+    /// even though [`re_chunk::Chunk::range`] internally creates new IDs when slicing.
+    /// This is important so that `VideoStreamCache` can track which physical chunks are in use.
     pub fn range(
         &self,
+        tracking_mode: ChunkTrackingMode,
         query: &RangeQuery,
         entity_path: &EntityPath,
         components: impl IntoIterator<Item = ComponentIdentifier>,
@@ -36,7 +40,7 @@ impl QueryCache {
         // number of queries for a frame grows linearly with the number of entity paths.
         let components = components.into_iter().filter(|component_identifier| {
             store.entity_has_component_on_timeline(
-                query.timeline(),
+                Some(query.timeline()),
                 entity_path,
                 *component_identifier,
             )
@@ -56,8 +60,9 @@ impl QueryCache {
 
             cache.handle_pending_invalidation();
 
-            let (cached, missing) = cache.range(&store, query, entity_path, component);
-            results.missing.extend(missing);
+            let (cached, missing) =
+                cache.range(&store, query, entity_path, component, tracking_mode);
+            results.missing_virtual.extend(missing);
             if !cached.is_empty() {
                 results.add(component, cached);
             }
@@ -78,7 +83,7 @@ impl QueryCache {
 ///
 /// Since the introduction of virtual/offloaded chunks, it is possible for a query to detect that
 /// it is missing some data in order to compute accurate results.
-/// This lack of data is communicated using a non-empty [`RangeResults::missing`] field.
+/// This lack of data is communicated using a non-empty [`RangeResults::missing_virtual`] field.
 #[derive(Debug, PartialEq)]
 pub struct RangeResults {
     /// The query that yielded these results.
@@ -88,13 +93,19 @@ pub struct RangeResults {
     ///
     /// Until these chunks have been fetched and inserted into the appropriate [`ChunkStore`], the
     /// results of this query cannot accurately be computed.
+    ///
+    /// Note, these are NOT necessarily _root_ chunks.
+    /// Use [`ChunkStore::find_root_chunks`] to get those.
     //
     // TODO(cmc): Once lineage tracking is in place, make sure that this only reports missing
     // chunks using their root-level IDs, so downstream consumers don't have to redundantly build
     // their own tracking. And document it so.
-    pub missing: Vec<ChunkId>,
+    pub missing_virtual: Vec<ChunkId>,
 
     /// Results for each individual component.
+    ///
+    /// The chunks preserve the original [`ChunkId`]s from the [`ChunkStore`],
+    /// so that `VideoStreamCache` can track which physical chunks are in use.
     pub components: IntMap<ComponentIdentifier, Vec<Chunk>>,
 }
 
@@ -106,9 +117,9 @@ impl RangeResults {
     /// It is then the responsibility of the caller to look into the [missing chunk IDs], fetch
     /// them, load them, and then try the query again.
     ///
-    /// [missing chunk IDs]: `Self::missing`
+    /// [missing chunk IDs]: `Self::missing_virtual`
     pub fn is_partial(&self) -> bool {
-        !self.missing.is_empty()
+        !self.missing_virtual.is_empty()
     }
 
     /// Returns true if the results are *completely* empty.
@@ -117,10 +128,10 @@ impl RangeResults {
     pub fn is_empty(&self) -> bool {
         let Self {
             query: _,
-            missing,
+            missing_virtual,
             components,
         } = self;
-        missing.is_empty() && components.values().all(|chunks| chunks.is_empty())
+        missing_virtual.is_empty() && components.values().all(|chunks| chunks.is_empty())
     }
 
     /// Returns the [`Chunk`]s for the specified component.
@@ -148,7 +159,7 @@ impl RangeResults {
     fn new(query: RangeQuery) -> Self {
         Self {
             query,
-            missing: Default::default(),
+            missing_virtual: Default::default(),
             components: Default::default(),
         }
     }
@@ -162,6 +173,7 @@ impl RangeResults {
 // --- Cache implementation ---
 
 /// Caches the results of `Range` queries for a given [`QueryCacheKey`].
+#[derive(re_byte_size::SizeBytes)]
 pub struct RangeCache {
     /// For debugging purposes.
     pub cache_key: QueryCacheKey,
@@ -198,10 +210,10 @@ impl RangeCache {
         self.chunks
             .values()
             .filter_map(|cached| {
-                cached
-                    .chunk
-                    .timelines()
-                    .get(&self.cache_key.timeline_name)
+                self.cache_key
+                    .timeline_name
+                    .as_ref()
+                    .and_then(|timeline_name| cached.chunk.timelines().get(timeline_name))
                     .map(|time_column| time_column.time_range())
             })
             .fold(AbsoluteTimeRange::EMPTY, |mut acc, time_range| {
@@ -265,21 +277,6 @@ impl SizeBytes for RangeCachedChunk {
     }
 }
 
-impl SizeBytes for RangeCache {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            cache_key,
-            chunks,
-            pending_invalidations,
-        } = self;
-
-        cache_key.heap_size_bytes()
-            + chunks.heap_size_bytes()
-            + pending_invalidations.heap_size_bytes()
-    }
-}
-
 impl RangeCache {
     /// Queries cached range data for a single component.
     ///
@@ -289,16 +286,24 @@ impl RangeCache {
     /// them, load them, and then try the query again.
     ///
     /// Returns `(cached_chunks, missing_chunk_ids)`.
+    ///
+    /// The returned chunks preserve the original [`ChunkId`]s from the [`ChunkStore`],
+    /// even though [`Chunk::range`] internally creates new IDs when slicing.
+    /// This is done by calling [`Chunk::with_id`] to restore the original ID after slicing.
     fn range(
         &mut self,
         store: &ChunkStore,
         query: &RangeQuery,
         entity_path: &EntityPath,
         component: ComponentIdentifier,
+        tracking_mode: ChunkTrackingMode,
     ) -> (Vec<Chunk>, Vec<ChunkId>) {
         re_tracing::profile_scope!("range", format!("{query:?}"));
 
-        debug_assert_eq!(query.timeline(), &self.cache_key.timeline_name);
+        re_log::debug_assert_eq!(
+            Some(query.timeline()),
+            self.cache_key.timeline_name.as_ref()
+        );
 
         // First, we forward the query as-is to the store.
         //
@@ -308,24 +313,36 @@ impl RangeCache {
         // For all relevant chunks that we find, we process them according to the [`QueryCacheKey`], and
         // cache them.
 
-        let results =
-            store.range_relevant_chunks(OnMissingChunk::Report, query, entity_path, component);
+        let results = store.range_relevant_chunks(tracking_mode, query, entity_path, component);
         // It is perfectly safe to cache partial range results, since missing data (if any), cannot
         // possibly affect what's already cached, it can only augment it.
         // Therefore, we do not even check for partial results here.
         for raw_chunk in &results.chunks {
             self.chunks.entry(raw_chunk.id()).or_insert_with(|| {
+                // Preserve the original chunk ID so the store can track which physical chunks are in use.
+                let original_chunk_id = raw_chunk.id();
+
                 // Densify the cached chunk according to the cache key's component, which
                 // will speed up future arrow operations on this chunk.
                 let (chunk, densified) = raw_chunk.densified(component);
 
                 // Pre-sort the cached chunk according to the cache key's timeline.
+                // (Range caches always have one; a `None` timeline only happens for
+                // static-only latest-at caches.)
                 //
                 // TODO(#7008): avoid unnecessary sorting on the unhappy path
-                let chunk = chunk.sorted_by_timeline_if_unsorted(&self.cache_key.timeline_name);
+                let chunk = match self.cache_key.timeline_name.as_ref() {
+                    Some(timeline_name) => chunk.sorted_by_timeline_if_unsorted(timeline_name),
+                    None => chunk,
+                }
+                .with_id(original_chunk_id);
 
-                let reallocated =
-                    densified || !raw_chunk.is_timeline_sorted(&self.cache_key.timeline_name);
+                let reallocated = densified
+                    || self
+                        .cache_key
+                        .timeline_name
+                        .as_ref()
+                        .is_some_and(|timeline_name| !raw_chunk.is_timeline_sorted(timeline_name));
 
                 RangeCachedChunk { chunk, reallocated }
             });
@@ -344,7 +361,7 @@ impl RangeCache {
             .into_iter()
             .filter_map(|raw_chunk| self.chunks.get(&raw_chunk.id()))
             .map(|cached_sorted_chunk| {
-                debug_assert!(
+                re_log::debug_assert!(
                     cached_sorted_chunk
                         .chunk
                         .is_timeline_sorted(query.timeline())
@@ -352,12 +369,13 @@ impl RangeCache {
 
                 let chunk = &cached_sorted_chunk.chunk;
 
-                chunk.range(query, component)
+                let original_chunk_id = chunk.id();
+                chunk.range(query, component).with_id(original_chunk_id)
             })
             .filter(|chunk| !chunk.is_empty())
             .collect();
 
-        (chunks, results.missing)
+        (chunks, results.missing_virtual)
     }
 
     #[inline]
@@ -379,7 +397,8 @@ mod tests {
     use std::sync::Arc;
 
     use re_chunk::{Chunk, ChunkId, RowId};
-    use re_chunk_store::{ChunkStore, ChunkStoreConfig, ChunkStoreHandle};
+    use re_chunk_store::{ChunkDeletionReason, ChunkStore, ChunkStoreConfig, ChunkStoreHandle};
+    use re_log_encoding::RrdManifest;
     use re_log_types::example_components::{MyPoint, MyPoints};
     use re_log_types::external::re_tuid::Tuid;
     use re_log_types::{EntityPath, TimePoint, Timeline};
@@ -390,10 +409,9 @@ mod tests {
     #[test]
     #[expect(clippy::bool_assert_comparison)] // I like it that way, sue me
     fn partial_data_basics() {
-        let store = ChunkStore::new(
-            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
-            ChunkStoreConfig::ALL_DISABLED,
-        );
+        let store_id =
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app");
+        let store = ChunkStore::new(store_id.clone(), ChunkStoreConfig::ALL_DISABLED);
         let store = ChunkStoreHandle::new(store);
 
         let entity_path: EntityPath = "some_entity".into();
@@ -421,9 +439,23 @@ mod tests {
 
         // We haven't inserted anything yet, so we just expect empty results across the board.
         {
-            let results = cache.range(&query, &entity_path, [component]);
+            let results = cache.range(
+                ChunkTrackingMode::PanicOnMissing,
+                &query,
+                &entity_path,
+                [component],
+            );
             assert!(results.is_empty());
         }
+
+        // Back the chunks with an RRD manifest so they stay recoverable after removal, and keep
+        // being reported as missing (partial results) rather than vanishing from the virtual indices.
+        let rrd_manifest = RrdManifest::build_in_memory_from_chunks(
+            store_id,
+            [&chunk1, &chunk2, &chunk3].into_iter(),
+        )
+        .unwrap();
+        _ = store.write().insert_rrd_manifest(rrd_manifest);
 
         // Reminder: the store events are irrelevant here, since the range cache still always unconditionally
         // performs the underlying query regardless (only the sorting/slicing is cached).
@@ -442,7 +474,12 @@ mod tests {
 
         // Now we've inserted everything, so we expect complete results across the board.
         {
-            let results = cache.range(&query, &entity_path, [component]);
+            let results = cache.range(
+                ChunkTrackingMode::PanicOnMissing,
+                &query,
+                &entity_path,
+                [component],
+            );
             let expected = {
                 let mut results = RangeResults::new(query.clone());
                 results.add(
@@ -460,15 +497,16 @@ mod tests {
         store.write().remove_chunks_shallow(
             vec![Arc::new(chunk1.clone()), Arc::new(chunk3.clone())],
             None,
+            ChunkDeletionReason::ExplicitDrop,
         );
 
         // We've removed the first and last chunks from the store: results should now be partial.
         {
-            let results = cache.range(&query, &entity_path, [component]);
+            let results = cache.range(ChunkTrackingMode::Report, &query, &entity_path, [component]);
             let expected = {
                 let mut results = RangeResults::new(query.clone());
                 results.add(component, vec![chunk2.clone()]);
-                results.missing = vec![chunk1.id(), chunk3.id()];
+                results.missing_virtual = vec![chunk1.id(), chunk3.id()];
                 results
             };
             assert_eq!(true, results.is_partial());
@@ -477,16 +515,18 @@ mod tests {
 
         // Reminder: the store events are irrelevant here, since the range cache still always unconditionally
         // performs the underlying query regardless (only the sorting/slicing is cached).
-        store
-            .write()
-            .remove_chunks_shallow(vec![Arc::new(chunk2.clone())], None);
+        store.write().remove_chunks_shallow(
+            vec![Arc::new(chunk2.clone())],
+            None,
+            ChunkDeletionReason::ExplicitDrop,
+        );
 
         // Now we've removed absolutely everything: we should only get partial results.
         {
-            let results = cache.range(&query, &entity_path, [component]);
+            let results = cache.range(ChunkTrackingMode::Report, &query, &entity_path, [component]);
             let expected = {
                 let mut results = RangeResults::new(query.clone());
-                results.missing = vec![chunk1.id(), chunk2.id(), chunk3.id()];
+                results.missing_virtual = vec![chunk1.id(), chunk2.id(), chunk3.id()];
                 results
             };
             assert_eq!(true, results.is_partial());
@@ -510,7 +550,12 @@ mod tests {
 
         // We've inserted everything back: all results should be complete once again.
         {
-            let results = cache.range(&query, &entity_path, [component]);
+            let results = cache.range(
+                ChunkTrackingMode::PanicOnMissing,
+                &query,
+                &entity_path,
+                [component],
+            );
             let expected = {
                 let mut results = RangeResults::new(query.clone());
                 results.add(
@@ -522,6 +567,65 @@ mod tests {
             assert_eq!(false, results.is_partial());
             assert_eq!(expected, results);
         }
+    }
+
+    /// The cache must preserve original `ChunkId`s so that `VideoStreamCache` can track physical chunk usage.
+    #[test]
+    fn range_preserves_chunk_ids() {
+        let store = ChunkStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
+            ChunkStoreConfig::ALL_DISABLED,
+        );
+        let store = ChunkStoreHandle::new(store);
+
+        let entity_path: EntityPath = "some_entity".into();
+        let timeline_frame = Timeline::new_sequence("frame");
+        let component = MyPoints::descriptor_points().component;
+
+        let mut next_chunk_id = next_chunk_id_generator(0x42);
+
+        let chunk1 = create_chunk_with_point(
+            next_chunk_id(),
+            entity_path.clone(),
+            TimePoint::from_iter([(timeline_frame, 1)]),
+            MyPoint::new(1.0, 1.0),
+        );
+        let chunk2 = create_chunk_with_point(
+            next_chunk_id(),
+            entity_path.clone(),
+            TimePoint::from_iter([(timeline_frame, 2)]),
+            MyPoint::new(2.0, 2.0),
+        );
+
+        let chunk1_id = chunk1.id();
+        let chunk2_id = chunk2.id();
+
+        store.write().insert_chunk(&Arc::new(chunk1)).unwrap();
+        store.write().insert_chunk(&Arc::new(chunk2)).unwrap();
+
+        let cache = QueryCache::new(store);
+
+        let query = RangeQuery::new(*timeline_frame.name(), AbsoluteTimeRange::new(0, 3));
+        let results = cache.range(
+            ChunkTrackingMode::PanicOnMissing,
+            &query,
+            &entity_path,
+            [component],
+        );
+
+        let result_chunks = results.get(component).expect("should have results");
+        assert_eq!(result_chunks.len(), 2);
+
+        let result_ids: std::collections::BTreeSet<_> =
+            result_chunks.iter().map(|c| c.id()).collect();
+        assert!(
+            result_ids.contains(&chunk1_id),
+            "result should preserve chunk1's original ID"
+        );
+        assert!(
+            result_ids.contains(&chunk2_id),
+            "result should preserve chunk2's original ID"
+        );
     }
 
     fn next_chunk_id_generator(prefix: u64) -> impl FnMut() -> re_chunk::ChunkId {

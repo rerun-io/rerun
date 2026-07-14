@@ -1,7 +1,10 @@
 //! Log different transforms between three arrows.
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let rec = rerun::RecordingStreamBuilder::new("rerun_example_transform3d_hierarchy").spawn()?;
+    let rec = rerun::RecordingStreamBuilder::new(
+        "rerun_example_transform3d_hierarchy",
+    )
+    .spawn()?;
 
     // TODO(#5521): log two views as in the python example
 
@@ -13,30 +16,40 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Setup spheres, all are in the center of their own space:
     rec.log(
         "sun",
-        &rerun::Ellipsoids3D::from_centers_and_half_sizes([[0.0, 0.0, 0.0]], [[1.0, 1.0, 1.0]])
-            .with_colors([rerun::Color::from_rgb(255, 200, 10)])
-            .with_fill_mode(rerun::components::FillMode::Solid),
+        &rerun::Ellipsoids3D::from_centers_and_half_sizes(
+            [[0.0, 0.0, 0.0]],
+            [[1.0, 1.0, 1.0]],
+        )
+        .with_colors([rerun::Color::from_rgb(255, 200, 10)])
+        .with_fill_mode(rerun::components::FillMode::Solid),
     )?;
 
     rec.log(
         "sun/planet",
-        &rerun::Ellipsoids3D::from_centers_and_half_sizes([[0.0, 0.0, 0.0]], [[0.4, 0.4, 0.4]])
-            .with_colors([rerun::Color::from_rgb(40, 80, 200)])
-            .with_fill_mode(rerun::components::FillMode::Solid),
+        &rerun::Ellipsoids3D::from_centers_and_half_sizes(
+            [[0.0, 0.0, 0.0]],
+            [[0.4, 0.4, 0.4]],
+        )
+        .with_colors([rerun::Color::from_rgb(40, 80, 200)])
+        .with_fill_mode(rerun::components::FillMode::Solid),
     )?;
 
     rec.log(
         "sun/planet/moon",
-        &rerun::Ellipsoids3D::from_centers_and_half_sizes([[0.0, 0.0, 0.0]], [[0.15, 0.15, 0.15]])
-            .with_colors([rerun::Color::from_rgb(180, 180, 180)])
-            .with_fill_mode(rerun::components::FillMode::Solid),
+        &rerun::Ellipsoids3D::from_centers_and_half_sizes(
+            [[0.0, 0.0, 0.0]],
+            [[0.15, 0.15, 0.15]],
+        )
+        .with_colors([rerun::Color::from_rgb(180, 180, 180)])
+        .with_fill_mode(rerun::components::FillMode::Solid),
     )?;
 
     // Draw fixed paths where the planet & moon move.
     let d_planet = 6.0;
     let d_moon = 3.0;
     let angles = (0..=100).map(|i| i as f32 * 0.01 * std::f32::consts::TAU);
-    let circle: Vec<_> = angles.map(|angle| [angle.sin(), angle.cos()]).collect();
+    let circle: Vec<_> =
+        angles.map(|angle| [angle.sin(), angle.cos()]).collect();
     rec.log(
         "sun/planet_path",
         &rerun::LineStrips3D::new([rerun::LineStrip3D::from_iter(

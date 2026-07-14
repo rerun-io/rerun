@@ -5,9 +5,7 @@
 //!
 
 mod builder;
-mod cast;
 mod chunk;
-mod helpers;
 mod iter;
 mod latest_at;
 mod merge;
@@ -16,6 +14,7 @@ mod shuffle;
 mod slice;
 mod split;
 mod transport;
+mod unit_chunk;
 
 #[cfg(not(target_arch = "wasm32"))]
 mod batcher;
@@ -35,17 +34,17 @@ pub use self::batcher::{
     ChunkBatcherResult, PendingRow,
 };
 pub use self::builder::{ChunkBuilder, TimeColumnBuilder};
-pub use self::cast::CastToPrimitive;
 pub use self::chunk::{
     Chunk, ChunkComponents, ChunkError, ChunkResult, TimeColumn, TimeColumnError,
 };
-pub use self::helpers::{ChunkShared, UnitChunkShared};
 pub use self::iter::{
-    ChunkComponentIter, ChunkComponentIterItem, ChunkComponentSlicer, ChunkIndicesIter,
+    BoolOptSliceIter, ChunkComponentIter, ChunkComponentIterItem, ChunkComponentSlicer,
+    ChunkIndicesIter, NativeOptSliceIter, StringOptSliceIter,
 };
 pub use self::latest_at::LatestAtQuery;
 pub use self::range::{RangeQuery, RangeQueryOptions};
 pub use self::split::ChunkSplitConfig;
+pub use self::unit_chunk::{ChunkShared, UnitChunkShared};
 
 pub mod external {
     #[cfg(not(target_arch = "wasm32"))]

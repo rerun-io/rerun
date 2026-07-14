@@ -2,7 +2,7 @@
 
 ## Installing Rerun
 
-After you have [installed the viewer](https://www.rerun.io/docs/getting-started/installing-viewer) you can simply add [the Rerun crate](https://crates.io/crates/rerun) to your project with `cargo add rerun`.
+After you have [installed the viewer](https://www.rerun.io/docs/overview/installing-rerun/viewer) you can simply add [the Rerun crate](https://crates.io/crates/rerun) to your project with `cargo add rerun`.
 
 Let's try it out in a brand-new Rust project:
 
@@ -10,7 +10,7 @@ Let's try it out in a brand-new Rust project:
 cargo init cube && cd cube && cargo add rerun
 ```
 
-Note that the Rerun SDK requires a working installation of Rust 1.90+.
+Note that the Rerun SDK requires a working installation of Rust 1.95+.
 
 ## Logging your own data
 

@@ -26,7 +26,7 @@ Blue, Green, Red, Alpha
 
 ## Arrow datatype
 ```
-uint8
+UInt8
 ```
 
 ## API reference links

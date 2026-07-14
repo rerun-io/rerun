@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -21,7 +22,7 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, ::re_byte_size::SizeBytes)]
 pub struct AffixFuzzer22 {
     pub fixed_sized_native: [u8; 4usize],
 }
@@ -149,11 +150,11 @@ impl ::re_types_core::Loggable for AffixFuzzer22 {
             } else {
                 let (arrow_data_fields, arrow_data_arrays) =
                     (arrow_data.fields(), arrow_data.columns());
-                let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data_fields
-                    .iter()
-                    .map(|field| field.name().as_str())
-                    .zip(arrow_data_arrays)
-                    .collect();
+                let arrays_by_name: ::std::collections::HashMap<_, _> = ::std::iter::zip(
+                    arrow_data_fields.iter().map(|field| field.name().as_str()),
+                    arrow_data_arrays,
+                )
+                .collect();
                 let fixed_sized_native = {
                     if !arrays_by_name.contains_key("fixed_sized_native") {
                         return Err(DeserializationError::missing_struct_field(
@@ -181,9 +182,10 @@ impl ::re_types_core::Loggable for AffixFuzzer22 {
                         if arrow_data.is_empty() {
                             Vec::new()
                         } else {
-                            let offsets = (0..)
-                                .step_by(4usize)
-                                .zip((4usize..).step_by(4usize).take(arrow_data.len()));
+                            let offsets = ::std::iter::zip(
+                                (0..).step_by(4usize),
+                                (4usize..).step_by(4usize).take(arrow_data.len()),
+                            );
                             let arrow_data_inner = {
                                 let arrow_data_inner = &**arrow_data.values();
                                 arrow_data_inner
@@ -203,7 +205,7 @@ impl ::re_types_core::Loggable for AffixFuzzer22 {
                             ZipValidity::new_with_validity(offsets, arrow_data.nulls())
                                 .map(|elem| {
                                     elem.map(|(start, end): (usize, usize)| {
-                                        debug_assert!(end - start == 4usize);
+                                        re_log::debug_assert!(end - start == 4usize);
                                         if arrow_data_inner.len() < end {
                                             return Err(DeserializationError::offset_slice_oob(
                                                 (start, end),
@@ -262,17 +264,5 @@ impl From<AffixFuzzer22> for [u8; 4usize] {
     #[inline]
     fn from(value: AffixFuzzer22) -> Self {
         value.fixed_sized_native
-    }
-}
-
-impl ::re_byte_size::SizeBytes for AffixFuzzer22 {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.fixed_sized_native.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <[u8; 4usize]>::is_pod()
     }
 }

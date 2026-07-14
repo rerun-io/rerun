@@ -1,0 +1,290 @@
+use re_log_types::Instance;
+use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId};
+use re_sdk_types::archetypes::Ellipses2D;
+use re_sdk_types::components::{ClassId, Color, HalfSize2D, Position2D, Radius, ShowLabels};
+use re_sdk_types::{Archetype as _, ArrowString};
+use re_view::{clamped_or, process_annotation_slices, process_color_slice};
+use re_viewer_context::{
+    IdentifiedViewSystem, QueryContext, ViewClass as _, ViewContext, ViewContextCollection,
+    ViewQuery, ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo,
+    VisualizerSystem, typed_fallback_for,
+};
+
+use super::utilities::{LabeledBatch, process_labels};
+use super::{SpatialViewVisualizerData, process_radius_slice};
+use crate::contexts::SpatialSceneVisualizerInstructionContext;
+use crate::visualizers::UiLabelTarget;
+
+// ---
+
+/// Number of segments used to tessellate each ellipse outline.
+///
+/// The polyline closes, so we emit `ELLIPSE_SEGMENTS + 1` vertices per ellipse.
+const ELLIPSE_SEGMENTS: usize = 64;
+
+/// Extra padding added around the tight ellipse extents when computing the scene bounding box,
+/// so auto-fit views don't clip the outline at the edges.
+const BOUNDING_BOX_PADDING_FACTOR: f32 = 1.1;
+
+#[derive(Default)]
+pub struct Ellipses2DVisualizer;
+
+// NOTE: Do not put profile scopes in these methods. They are called for all entities and all
+// timestamps within a time range -- it's _a lot_.
+impl Ellipses2DVisualizer {
+    fn process_data<'a>(
+        view_data: &mut SpatialViewVisualizerData,
+        ctx: &QueryContext<'_>,
+        line_builder: &mut LineDrawableBuilder<'_>,
+        view_query: &ViewQuery<'_>,
+        ent_context: &SpatialSceneVisualizerInstructionContext<'_>,
+        data: impl Iterator<Item = Ellipses2DComponentData<'a>>,
+    ) {
+        let entity_path = ctx.target_entity_path;
+
+        for data in data {
+            let num_instances = data.half_sizes.len();
+            if num_instances == 0 {
+                continue;
+            }
+
+            let annotation_infos = process_annotation_slices(
+                view_query.latest_at,
+                num_instances,
+                data.class_ids,
+                &ent_context.annotations,
+            );
+
+            let radii = process_radius_slice(
+                ctx,
+                entity_path,
+                num_instances,
+                data.line_radii,
+                Ellipses2D::descriptor_line_radii().component,
+            );
+            let colors = process_color_slice(
+                ctx,
+                Ellipses2D::descriptor_colors().component,
+                num_instances,
+                &annotation_infos,
+                data.colors,
+            );
+
+            let world_from_obj = ent_context
+                .transform_info
+                .single_transform_required_for_entity(entity_path, Ellipses2D::name())
+                .as_affine3a();
+
+            let mut line_batch = line_builder
+                .batch("ellipses2d")
+                .depth_offset(ent_context.depth_offset)
+                .world_from_obj(world_from_obj)
+                .outline_mask_ids(ent_context.highlight.overall)
+                .picking_object_id(re_renderer::PickingLayerObjectId(entity_path.hash64()));
+
+            let mut obj_space_bounding_box = macaw::BoundingBox::nothing();
+
+            let centers = clamped_or(data.centers, &Position2D::ZERO);
+
+            for (i, (half_size, center, radius, &color)) in
+                itertools::izip!(data.half_sizes, centers, radii, &colors).enumerate()
+            {
+                let cx = center.x();
+                let cy = center.y();
+                let rx = half_size.x();
+                let ry = half_size.y();
+
+                let padded_half = glam::vec2(rx, ry) * BOUNDING_BOX_PADDING_FACTOR;
+                let bbox_center = glam::vec2(cx, cy);
+                obj_space_bounding_box.extend((bbox_center - padded_half).extend(0.0));
+                obj_space_bounding_box.extend((bbox_center + padded_half).extend(0.0));
+
+                let delta = std::f32::consts::TAU / ELLIPSE_SEGMENTS as f32;
+                let points = (0..ELLIPSE_SEGMENTS + 1).map(|n| {
+                    let theta = n as f32 * delta;
+                    glam::vec2(cx + rx * theta.cos(), cy + ry * theta.sin())
+                });
+
+                let ellipse = line_batch
+                    .add_strip_2d(points)
+                    .flags(LineDrawableBuilder::default_shape_flags())
+                    .color(color)
+                    .radius(radius)
+                    .picking_instance_id(PickingLayerInstanceId(i as _));
+                if let Some(outline_mask_ids) = ent_context
+                    .highlight
+                    .instances
+                    .get(&Instance::from(i as u64))
+                {
+                    ellipse.outline_mask_ids(*outline_mask_ids);
+                }
+            }
+
+            view_data.add_bounding_box(entity_path.hash(), obj_space_bounding_box, world_from_obj);
+
+            view_data.ui_labels.extend(process_labels(
+                LabeledBatch {
+                    entity_path,
+                    visualizer_instruction: ent_context.visualizer_instruction,
+                    num_instances,
+                    overall_position: UiLabelTarget::Point2D(
+                        <[f32; 2]>::from(obj_space_bounding_box.center().truncate()).into(),
+                    ),
+                    instance_positions: clamped_or(data.centers, &Position2D::ZERO)
+                        .map(|center| UiLabelTarget::Point2D(egui::pos2(center.x(), center.y()))),
+                    labels: &data.labels,
+                    colors: &colors,
+                    show_labels: data.show_labels.unwrap_or_else(|| {
+                        typed_fallback_for(ctx, Ellipses2D::descriptor_show_labels().component)
+                    }),
+                    annotation_infos: &annotation_infos,
+                },
+                std::convert::identity,
+            ));
+        }
+    }
+}
+
+// ---
+
+struct Ellipses2DComponentData<'a> {
+    // Point of views
+    half_sizes: &'a [HalfSize2D],
+
+    // Clamped to edge
+    centers: &'a [Position2D],
+    colors: &'a [Color],
+    line_radii: &'a [Radius],
+    labels: Vec<ArrowString>,
+    class_ids: &'a [ClassId],
+
+    // Non-repeated
+    show_labels: Option<ShowLabels>,
+}
+
+impl IdentifiedViewSystem for Ellipses2DVisualizer {
+    fn identifier() -> re_viewer_context::ViewSystemIdentifier {
+        "Ellipses2D".into()
+    }
+}
+
+impl VisualizerSystem for Ellipses2DVisualizer {
+    fn visualizer_query_info(
+        &self,
+        _app_options: &re_viewer_context::AppOptions,
+    ) -> VisualizerQueryInfo {
+        VisualizerQueryInfo::single_required_component::<HalfSize2D>(
+            &Ellipses2D::descriptor_half_sizes(),
+            &Ellipses2D::all_components(),
+        )
+    }
+
+    fn affinity(&self) -> Option<re_sdk_types::ViewClassIdentifier> {
+        Some(crate::SpatialView2D::identifier())
+    }
+
+    fn execute(
+        &self,
+        ctx: &ViewContext<'_>,
+        view_query: &ViewQuery<'_>,
+        context_systems: &ViewContextCollection,
+    ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        let mut view_data = SpatialViewVisualizerData::default();
+        let output = VisualizerExecutionOutput::default();
+        let mut line_builder = LineDrawableBuilder::new(ctx.viewer_ctx.render_ctx());
+        line_builder.radius_boost_in_ui_points_for_outlines(
+            re_view::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
+        );
+
+        use super::entity_iterator::process_archetype;
+        process_archetype::<Ellipses2D, _, _>(
+            ctx,
+            view_query,
+            context_systems,
+            &output,
+            self,
+            |ctx, spatial_ctx, results| {
+                let all_half_sizes =
+                    results.iter_required(Ellipses2D::descriptor_half_sizes().component);
+                if all_half_sizes.is_empty() {
+                    return Ok(());
+                }
+
+                let num_ellipses: usize = all_half_sizes
+                    .chunks()
+                    .iter()
+                    .flat_map(|chunk| chunk.iter_slices::<[f32; 2]>())
+                    .map(|vectors| vectors.len())
+                    .sum();
+                if num_ellipses == 0 {
+                    return Ok(());
+                }
+
+                // Each ellipse is one closed strip with `ELLIPSE_SEGMENTS + 1` vertices.
+                line_builder.reserve_strips(num_ellipses)?;
+                line_builder.reserve_vertices(num_ellipses * (ELLIPSE_SEGMENTS + 1))?;
+
+                let all_centers = results.iter_optional(Ellipses2D::descriptor_centers().component);
+                let all_colors = results.iter_optional(Ellipses2D::descriptor_colors().component);
+                let all_line_radii =
+                    results.iter_optional(Ellipses2D::descriptor_line_radii().component);
+                let all_labels = results.iter_optional(Ellipses2D::descriptor_labels().component);
+                let all_class_ids =
+                    results.iter_optional(Ellipses2D::descriptor_class_ids().component);
+                let all_show_labels =
+                    results.iter_optional(Ellipses2D::descriptor_show_labels().component);
+
+                let results_iter = re_query::range_zip_1x6(
+                    all_half_sizes.slice::<[f32; 2]>(),
+                    all_centers.slice::<[f32; 2]>(),
+                    all_colors.slice::<u32>(),
+                    all_line_radii.slice::<f32>(),
+                    all_labels.slice::<String>(),
+                    all_class_ids.slice::<u16>(),
+                    all_show_labels.slice::<bool>(),
+                )
+                .map(
+                    |(
+                        _index,
+                        half_sizes,
+                        centers,
+                        colors,
+                        line_radii,
+                        labels,
+                        class_ids,
+                        show_labels,
+                    )| {
+                        Ellipses2DComponentData {
+                            half_sizes: bytemuck::cast_slice(half_sizes),
+                            centers: centers.map_or(&[], |centers| bytemuck::cast_slice(centers)),
+                            colors: colors.map_or(&[], |colors| bytemuck::cast_slice(colors)),
+                            line_radii: line_radii
+                                .map_or(&[], |line_radii| bytemuck::cast_slice(line_radii)),
+                            labels: labels.unwrap_or_default(),
+                            class_ids: class_ids
+                                .map_or(&[], |class_ids| bytemuck::cast_slice(class_ids)),
+                            show_labels: show_labels
+                                .map(|b| !b.is_empty() && b.value(0))
+                                .map(Into::into),
+                        }
+                    },
+                );
+
+                Self::process_data(
+                    &mut view_data,
+                    ctx,
+                    &mut line_builder,
+                    view_query,
+                    spatial_ctx,
+                    results_iter,
+                );
+
+                Ok(())
+            },
+        )?;
+
+        Ok(output
+            .with_draw_data([(line_builder.into_draw_data()?.into())])
+            .with_visualizer_data(view_data))
+    }
+}

@@ -94,8 +94,8 @@ pub fn build(
     // in order to support recursive cargo builds (calling `cargo` from within a `build.rs`).
     let target_wasm_dir = Utf8PathBuf::from(format!("{}_wasm", target_directory()));
 
-    // Repository root
-    let root_dir = target_wasm_dir.parent().unwrap();
+    // Workspace root
+    let root_dir = workspace_root();
 
     // Where we will place the final .wasm and .js artifacts.
     assert!(
@@ -149,7 +149,7 @@ pub fn build(
 
         eprintln!("{root_dir}> {cmd:?}");
         let status = cmd
-            .current_dir(root_dir)
+            .current_dir(&root_dir)
             .status()
             .context("Failed to build Wasm")?;
 
@@ -220,6 +220,14 @@ pub fn build(
             "--output",
             wasm_path.as_str(),
             "--enable-reference-types",
+            // We compile with `-Ctarget-feature=+simd128,+bulk-memory,+nontrapping-fptoint,+multivalue`
+            // (see `.cargo/config.toml`). The JS loader feature-detects SIMD
+            // before loading the .wasm; every other feature here shipped strictly
+            // earlier in Chrome/Firefox/Safari, so the SIMD check covers them too.
+            "--enable-simd",
+            "--enable-bulk-memory",
+            "--enable-nontrapping-float-to-int",
+            "--enable-multivalue",
             "--vacuum",
         ];
         if debug_symbols {

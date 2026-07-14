@@ -15,8 +15,10 @@ use std::path::Path;
 use itertools::Itertools as _;
 
 fn main() {
-    let crate_path =
-        Path::new(&re_build_tools::get_and_track_env_var("CARGO_MANIFEST_DIR").unwrap()).to_owned();
+    let crate_path = Path::new(
+        &re_build_tools::get_and_track_env_var("CARGO_MANIFEST_DIR").unwrap(),
+    )
+    .to_owned();
     let all_path = crate_path.join("all");
     let src_path = crate_path.join("src");
     let snippets_path = src_path.join("snippets");
@@ -38,15 +40,18 @@ fn main() {
             let path = entry.path();
             if let Some(extension) = path.extension() {
                 if extension == "rs" {
-                    let snippet_name = path.file_stem().unwrap().to_str().unwrap().to_owned();
+                    let snippet_name =
+                        path.file_stem().unwrap().to_str().unwrap().to_owned();
 
                     let contents = fs::read_to_string(&path).unwrap();
 
                     // TODO(#4047): some snippets lack a main, they should come with their necessary stub code commented out so that we can re-add it here.
                     if contents.contains("fn main()") {
                         // Patch the source code so we can call into `main` and pass arguments to it:
-                        let contents =
-                            contents.replace("fn main()", "pub fn main(_args: &[String])");
+                        let contents = contents.replace(
+                            "fn main()",
+                            "pub fn main(_args: &[String])",
+                        );
                         let contents = contents.replace(
                             "let args = std::env::args().collect::<Vec<_>>();",
                             "let args = _args;",
@@ -57,16 +62,21 @@ fn main() {
                             path.to_str().unwrap().replace('\\', "/"),
                         );
 
-                        let target_path = snippets_path.join(format!("{snippet_name}.rs"));
+                        let target_path =
+                            snippets_path.join(format!("{snippet_name}.rs"));
                         println!("{}", target_path.display());
-                        re_build_tools::write_file_if_necessary(target_path, contents.as_bytes())
-                            .expect("failed to write snippet??");
+                        re_build_tools::write_file_if_necessary(
+                            target_path,
+                            contents.as_bytes(),
+                        )
+                        .expect("failed to write snippet??");
 
                         snippets.push(snippet_name);
                     }
                 } else if extension == "png" {
                     // Files used by the snippets, e.g. via `include_bytes`. Copy them:
-                    let target_path = snippets_path.join(path.file_name().unwrap());
+                    let target_path =
+                        snippets_path.join(path.file_name().unwrap());
                     fs::copy(&path, &target_path).unwrap();
                 }
             }
@@ -87,6 +97,8 @@ fn main() {
 
     ${MODS}
 
+    // The generated match arm grows with every snippet, so we have exceeded clippy's 600-line limit.
+    #[expect(clippy::too_many_lines)]
     pub fn run() {
         let args: Vec<String> = std::env::args().skip(1).collect();
 
@@ -135,8 +147,12 @@ fn main() {
             .join(",\n"),
     );
 
-    let source = re_build_tools::rustfmt_str(&source).expect("Failed to format");
+    let source =
+        re_build_tools::rustfmt_str(&source).expect("Failed to format");
 
-    re_build_tools::write_file_if_necessary(snippets_path.join("mod.rs"), source.as_bytes())
-        .unwrap();
+    re_build_tools::write_file_if_necessary(
+        snippets_path.join("mod.rs"),
+        source.as_bytes(),
+    )
+    .unwrap();
 }

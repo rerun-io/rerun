@@ -24,9 +24,15 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 mod arrow;
 mod catalog;
+mod chunk;
+mod chunk_stream;
+mod lenses;
 mod python_bridge;
-mod recording;
+mod query_metrics;
+mod selector;
 mod server;
+mod trace_context;
+mod tracing_session;
 mod urdf;
 mod utils;
 mod video;

@@ -20,7 +20,9 @@ blueprint = rrb.Blueprint(
         origin="/",
         name="Graph",
         # Note that this translates the viewbox.
-        visual_bounds=rrb.VisualBounds2D(x_range=[-150, 150], y_range=[-50, 150]),
+        visual_bounds=rrb.VisualBounds2D(
+            x_range=[-150, 150], y_range=[-50, 150]
+        ),
         background=rrb.archetypes.GraphBackground(color=[30, 10, 10]),
     ),
     collapse_panels=True,

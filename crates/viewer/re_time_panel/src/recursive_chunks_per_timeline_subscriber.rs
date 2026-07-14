@@ -1,6 +1,6 @@
-use std::sync::{Arc, OnceLock};
+use std::sync::{Arc, OnceLock, Weak};
 
-use egui::ahash::HashMap;
+use ahash::HashMap;
 use nohash_hasher::IntMap;
 use re_chunk_store::{
     Chunk, ChunkDirectLineageReport, ChunkId, ChunkStore, ChunkStoreDiff, ChunkStoreEvent,
@@ -9,24 +9,45 @@ use re_chunk_store::{
 use re_log_types::{AbsoluteTimeRange, EntityPath, EntityPathHash, StoreId, TimelineName};
 
 /// Cached information about a chunk in the context of a given timeline.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, re_byte_size::SizeBytes)]
 pub struct ChunkTimelineInfo {
-    pub chunk: Arc<Chunk>,
+    chunk: Weak<Chunk>,
     pub num_events: u64,
     pub resolved_time_range: AbsoluteTimeRange,
+}
+
+impl ChunkTimelineInfo {
+    pub fn chunk(&self) -> Option<Arc<Chunk>> {
+        let chunk = self.chunk.upgrade();
+
+        if chunk.is_none() {
+            re_log::debug_warn_once!(
+                "`recursive_chunks_for_entity_and_timeline` tracking dropped chunk"
+            );
+        }
+
+        chunk
+    }
 }
 
 #[cfg(test)]
 impl PartialEq for ChunkTimelineInfo {
     fn eq(&self, other: &Self) -> bool {
-        self.chunk.id() == other.chunk.id()
+        let Some(chunk) = self.chunk() else {
+            return false;
+        };
+        let Some(other_chunk) = other.chunk() else {
+            return false;
+        };
+
+        chunk.id() == other_chunk.id()
             && self.num_events == other.num_events
             && self.resolved_time_range == other.resolved_time_range
     }
 }
 
 /// Recursive chunk timeline infos for a given timeline & entity.
-#[derive(Debug, Default)]
+#[derive(Debug, Default, re_byte_size::SizeBytes)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct EntityTimelineChunks {
     /// All chunks used by the entity & timeline, recursive for all children of the entity.
@@ -84,7 +105,7 @@ impl PathRecursiveChunksPerTimelineStoreSubscriber {
                 .or_default();
 
             let chunk_info = ChunkTimelineInfo {
-                chunk: chunk.clone(),
+                chunk: Arc::downgrade(chunk),
                 // TODO(andreas): Would `num_events_cumulative_per_unique_time` be more appropriate?
                 num_events: chunk.num_events_cumulative(),
                 resolved_time_range: time_column.time_range(),
@@ -139,6 +160,13 @@ impl PathRecursiveChunksPerTimelineStoreSubscriber {
     }
 }
 
+impl re_byte_size::MemUsageTreeCapture for PathRecursiveChunksPerTimelineStoreSubscriber {
+    fn capture_mem_usage_tree(&self) -> re_byte_size::MemUsageTree {
+        use re_byte_size::SizeBytes as _;
+        re_byte_size::MemUsageTree::Bytes(self.chunks_per_timeline_per_entity.total_size_bytes())
+    }
+}
+
 impl PerStoreChunkSubscriber for PathRecursiveChunksPerTimelineStoreSubscriber {
     #[inline]
     fn name() -> String {
@@ -170,7 +198,7 @@ impl PerStoreChunkSubscriber for PathRecursiveChunksPerTimelineStoreSubscriber {
                     self.remove_chunk(&del.chunk);
                 }
 
-                ChunkStoreDiff::VirtualAddition(_) => {}
+                ChunkStoreDiff::VirtualAddition(_) | ChunkStoreDiff::SchemaAddition(_) => {}
             }
         }
     }

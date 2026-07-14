@@ -18,8 +18,9 @@ from pathlib import Path
 
 import lancedb
 import pyarrow as pa
-import rerun as rr
 from platformdirs import user_cache_dir
+
+import rerun as rr
 from rerun.catalog import CatalogClient
 
 
@@ -303,8 +304,8 @@ def _write_recordbatch_to_lance(reader: pa.RecordBatchReader, path: Path | str) 
 
 def _run_viewer_mode(host: str, port: int) -> None:
     name, batch = _build_record_batch()
-    addr = f"rerun+http://{host}:{port}/proxy"
-    client = rr.experimental.ViewerClient(addr=addr)
+    url = f"rerun+http://{host}:{port}/proxy"
+    client = rr.experimental.ViewerClient.connect(url=url)
     client.send_table(name, batch)
 
 

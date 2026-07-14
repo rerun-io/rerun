@@ -36,7 +36,7 @@ The visualizations in this example were created with the following Rerun code:
 ### Timelines
 
 All data logged using Rerun in the following sections is connected to a specific frame.
-Rerun assigns a frame id to each piece of logged data, and these frame ids are associated with a [`timeline`](https://www.rerun.io/docs/concepts/timelines).
+Rerun assigns a frame id to each piece of logged data, and these frame ids are associated with a [`timeline`](https://www.rerun.io/docs/concepts/logging-and-ingestion/timelines).
 
  ```python
 rr.set_time("frame", sequence=frame_idx)
@@ -59,7 +59,12 @@ This defines how to go from the 3D camera frame to the 2D image plane. The extri
 [`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d) to the `camera` entity.
 
 ```python
-rr.log("camera", rr.Transform3D(translation=image.tvec, rotation=rr.Quaternion(xyzw=quat_xyzw), relation=rr.TransformRelation.ChildFromParent))
+rr.log(
+    "camera",
+    rr.Transform3D(
+        translation=image.tvec, rotation=rr.Quaternion(xyzw=quat_xyzw), relation=rr.TransformRelation.ChildFromParent
+    ),
+)
 ```
 
 ```python

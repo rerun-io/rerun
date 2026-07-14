@@ -11,17 +11,20 @@ namespace fs = std::filesystem;
 
 int main(int argc, char* argv[]) {
     if (argc < 2) {
-        std::cerr << "Usage: " << argv[0] << " <path_to_depth_image.[png|rvl]>" << std::endl;
+        std::cerr << "Usage: " << argv[0] << " <path_to_depth_image.[png|rvl]>"
+                  << std::endl;
         return 1;
     }
 
-    const auto rec = rerun::RecordingStream("rerun_example_encoded_depth_image");
+    const auto rec =
+        rerun::RecordingStream("rerun_example_encoded_depth_image");
     rec.spawn().exit_on_failure();
 
     const auto depth_path = fs::path(argv[1]);
     std::ifstream file(depth_path, std::ios::binary);
     if (!file) {
-        std::cerr << "Failed to open encoded depth image: " << depth_path << std::endl;
+        std::cerr << "Failed to open encoded depth image: " << depth_path
+                  << std::endl;
         return 1;
     }
 
@@ -29,11 +32,11 @@ int main(int argc, char* argv[]) {
         std::istreambuf_iterator<char>(file),
         std::istreambuf_iterator<char>()};
     // Determine media type based on file extension
-    rerun::components::MediaType media_type;
+    rerun::MediaType media_type;
     if (depth_path.extension() == ".png") {
-        media_type = rerun::components::MediaType::png();
+        media_type = rerun::MediaType::png();
     } else {
-        media_type = rerun::components::MediaType::rvl();
+        media_type = rerun::MediaType::rvl();
     }
 
     rec.log(

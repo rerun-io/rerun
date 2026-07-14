@@ -5,40 +5,30 @@ use re_sdk_types::components::{ClassId, Color, HalfSize2D, Position2D, Radius, S
 use re_sdk_types::{Archetype as _, ArrowString};
 use re_view::{clamped_or, process_annotation_slices, process_color_slice};
 use re_viewer_context::{
-    IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
-    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
-    typed_fallback_for,
+    IdentifiedViewSystem, QueryContext, ViewClass as _, ViewContext, ViewContextCollection,
+    ViewQuery, ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo,
+    VisualizerSystem, typed_fallback_for,
 };
 
 use super::utilities::{LabeledBatch, process_labels};
 use super::{SpatialViewVisualizerData, process_radius_slice};
-use crate::contexts::SpatialSceneEntityContext;
-use crate::view_kind::SpatialViewKind;
+use crate::contexts::SpatialSceneVisualizerInstructionContext;
 use crate::visualizers::UiLabelTarget;
 
 // ---
 
-pub struct Boxes2DVisualizer {
-    pub data: SpatialViewVisualizerData,
-}
-
-impl Default for Boxes2DVisualizer {
-    fn default() -> Self {
-        Self {
-            data: SpatialViewVisualizerData::new(Some(SpatialViewKind::TwoD)),
-        }
-    }
-}
+#[derive(Default)]
+pub struct Boxes2DVisualizer;
 
 // NOTE: Do not put profile scopes in these methods. They are called for all entities and all
 // timestamps within a time range -- it's _a lot_.
 impl Boxes2DVisualizer {
     fn process_data<'a>(
-        &mut self,
+        view_data: &mut SpatialViewVisualizerData,
         ctx: &QueryContext<'_>,
         line_builder: &mut LineDrawableBuilder<'_>,
         view_query: &ViewQuery<'_>,
-        ent_context: &SpatialSceneEntityContext<'_>,
+        ent_context: &SpatialSceneVisualizerInstructionContext<'_>,
         data: impl Iterator<Item = Boxes2DComponentData<'a>>,
     ) {
         let entity_path = ctx.target_entity_path;
@@ -56,10 +46,13 @@ impl Boxes2DVisualizer {
                 &ent_context.annotations,
             );
 
-            // Has not custom fallback for radius, so we use the default.
-            // TODO(andreas): It would be nice to have this handle this fallback as part of the query.
-            let radii =
-                process_radius_slice(entity_path, num_instances, data.radii, Radius::default());
+            let radii = process_radius_slice(
+                ctx,
+                entity_path,
+                num_instances,
+                data.radii,
+                Boxes2D::descriptor_radii().component,
+            );
             let colors = process_color_slice(
                 ctx,
                 Boxes2D::descriptor_colors().component,
@@ -110,29 +103,28 @@ impl Boxes2DVisualizer {
                 }
             }
 
-            self.data
-                .add_bounding_box(entity_path.hash(), obj_space_bounding_box, world_from_obj);
+            view_data.add_bounding_box(entity_path.hash(), obj_space_bounding_box, world_from_obj);
 
-            self.data.ui_labels.extend(process_labels(
+            view_data.ui_labels.extend(process_labels(
                 LabeledBatch {
                     entity_path,
+                    visualizer_instruction: ent_context.visualizer_instruction,
                     num_instances,
                     overall_position: UiLabelTarget::Point2D(
                         <[f32; 2]>::from(obj_space_bounding_box.center().truncate()).into(),
                     ),
-                    instance_positions: data
-                        .half_sizes
-                        .iter()
-                        .copied()
-                        .zip(clamped_or(data.centers, &Position2D::ZERO).copied())
-                        .map(|(half_size, center)| {
-                            let min = half_size.box_min(center);
-                            let max = half_size.box_max(center);
-                            UiLabelTarget::Rect(egui::Rect::from_min_max(
-                                egui::pos2(min.x, min.y),
-                                egui::pos2(max.x, max.y),
-                            ))
-                        }),
+                    instance_positions: std::iter::zip(
+                        data.half_sizes.iter().copied(),
+                        clamped_or(data.centers, &Position2D::ZERO).copied(),
+                    )
+                    .map(|(half_size, center)| {
+                        let min = half_size.box_min(center);
+                        let max = half_size.box_max(center);
+                        UiLabelTarget::Rect(egui::Rect::from_min_max(
+                            egui::pos2(min.x, min.y),
+                            egui::pos2(max.x, max.y),
+                        ))
+                    }),
                     labels: &data.labels,
                     colors: &colors,
                     show_labels: data.show_labels.unwrap_or_else(|| {
@@ -165,7 +157,10 @@ struct Boxes2DComponentData<'a> {
 
 impl IdentifiedViewSystem for Boxes2DVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "Boxes2D".into()
+        re_viewer_context::external::re_string_interner::intern_static!(
+            re_viewer_context::ViewSystemIdentifier,
+            "Boxes2D"
+        )
     }
 }
 
@@ -174,38 +169,46 @@ impl VisualizerSystem for Boxes2DVisualizer {
         &self,
         _app_options: &re_viewer_context::AppOptions,
     ) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<Boxes2D>()
+        VisualizerQueryInfo::single_required_component::<HalfSize2D>(
+            &Boxes2D::descriptor_half_sizes(),
+            &Boxes2D::all_components(),
+        )
+    }
+
+    fn affinity(&self) -> Option<re_sdk_types::ViewClassIdentifier> {
+        Some(crate::SpatialView2D::identifier())
     }
 
     fn execute(
-        &mut self,
+        &self,
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
-        let mut output = VisualizerExecutionOutput::default();
+        let mut view_data = SpatialViewVisualizerData::default();
+        let output = VisualizerExecutionOutput::default();
         let mut line_builder = LineDrawableBuilder::new(ctx.viewer_ctx.render_ctx());
         line_builder.radius_boost_in_ui_points_for_outlines(
             re_view::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
         );
 
-        use super::entity_iterator::{iter_slices, process_archetype};
-        process_archetype::<Self, Boxes2D, _>(
+        use super::entity_iterator::process_archetype;
+        process_archetype::<Boxes2D, _, _>(
             ctx,
             view_query,
             context_systems,
-            &mut output,
-            self.data.preferred_view_kind,
+            &output,
+            self,
             |ctx, spatial_ctx, results| {
-                use re_view::RangeResultsExt as _;
-
-                let Some(all_half_size_chunks) =
-                    results.get_required_chunks(Boxes2D::descriptor_half_sizes().component)
-                else {
+                let all_half_sizes =
+                    results.iter_required(Boxes2D::descriptor_half_sizes().component);
+                if all_half_sizes.is_empty() {
                     return Ok(());
-                };
+                }
 
-                let num_boxes: usize = all_half_size_chunks
+                // TODO(andreas): Introduce a utility for this?
+                let num_boxes: usize = all_half_sizes
+                    .chunks()
                     .iter()
                     .flat_map(|chunk| chunk.iter_slices::<[f32; 2]>())
                     .map(|vectors| vectors.len())
@@ -218,21 +221,17 @@ impl VisualizerSystem for Boxes2DVisualizer {
                 line_builder.reserve_strips(num_boxes)?;
                 line_builder.reserve_vertices(num_boxes * 5)?;
 
-                let timeline = ctx.query.timeline();
-                let all_half_sizes_indexed =
-                    iter_slices::<[f32; 2]>(&all_half_size_chunks, timeline);
-                let all_centers =
-                    results.iter_as(timeline, Boxes2D::descriptor_centers().component);
-                let all_colors = results.iter_as(timeline, Boxes2D::descriptor_colors().component);
-                let all_radii = results.iter_as(timeline, Boxes2D::descriptor_radii().component);
-                let all_labels = results.iter_as(timeline, Boxes2D::descriptor_labels().component);
+                let all_centers = results.iter_optional(Boxes2D::descriptor_centers().component);
+                let all_colors = results.iter_optional(Boxes2D::descriptor_colors().component);
+                let all_radii = results.iter_optional(Boxes2D::descriptor_radii().component);
+                let all_labels = results.iter_optional(Boxes2D::descriptor_labels().component);
                 let all_class_ids =
-                    results.iter_as(timeline, Boxes2D::descriptor_class_ids().component);
+                    results.iter_optional(Boxes2D::descriptor_class_ids().component);
                 let all_show_labels =
-                    results.iter_as(timeline, Boxes2D::descriptor_show_labels().component);
+                    results.iter_optional(Boxes2D::descriptor_show_labels().component);
 
-                let data = re_query::range_zip_1x6(
-                    all_half_sizes_indexed,
+                let results_iter = re_query::range_zip_1x6(
+                    all_half_sizes.slice::<[f32; 2]>(),
                     all_centers.slice::<[f32; 2]>(),
                     all_colors.slice::<u32>(),
                     all_radii.slice::<f32>(),
@@ -266,16 +265,21 @@ impl VisualizerSystem for Boxes2DVisualizer {
                     },
                 );
 
-                self.process_data(ctx, &mut line_builder, view_query, spatial_ctx, data);
+                Self::process_data(
+                    &mut view_data,
+                    ctx,
+                    &mut line_builder,
+                    view_query,
+                    spatial_ctx,
+                    results_iter,
+                );
 
                 Ok(())
             },
         )?;
 
-        Ok(output.with_draw_data([(line_builder.into_draw_data()?.into())]))
-    }
-
-    fn data(&self) -> Option<&dyn std::any::Any> {
-        Some(self.data.as_any())
+        Ok(output
+            .with_draw_data([(line_builder.into_draw_data()?.into())])
+            .with_visualizer_data(view_data))
     }
 }

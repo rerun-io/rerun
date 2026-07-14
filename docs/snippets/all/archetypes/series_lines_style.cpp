@@ -6,7 +6,7 @@
 
 constexpr float TAU = 6.28318530717958647692528676655900577f;
 
-int main() {
+int main(int argc, char* argv[]) {
     const auto rec = rerun::RecordingStream("rerun_example_series_line_style");
     rec.spawn().exit_on_failure();
 
@@ -32,7 +32,13 @@ int main() {
     for (int t = 0; t < static_cast<int>(TAU * 2.0 * 100.0); ++t) {
         rec.set_time_sequence("step", t);
 
-        rec.log("trig/sin", rerun::Scalars(sin(static_cast<double>(t) / 100.0)));
-        rec.log("trig/cos", rerun::Scalars(cos(static_cast<double>(t) / 100.0)));
+        rec.log(
+            "trig/sin",
+            rerun::Scalars(sin(static_cast<double>(t) / 100.0))
+        );
+        rec.log(
+            "trig/cos",
+            rerun::Scalars(cos(static_cast<double>(t) / 100.0))
+        );
     }
 }

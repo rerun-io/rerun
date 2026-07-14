@@ -17,7 +17,7 @@ use crate::TimeSelection;
 /// #     assert!(test.parse::<Fragment>().unwrap() != Fragment::default());
 /// # }
 /// ```
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Default)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Default, re_byte_size::SizeBytes)]
 pub struct Fragment {
     pub selection: Option<DataPath>,
 
@@ -47,7 +47,7 @@ impl std::fmt::Display for Fragment {
             if did_write {
                 write!(f, "&")?;
             }
-            write!(f, "when={timeline}@",)?;
+            write!(f, "when={timeline}@")?;
             time_cell.format_url(f)?;
             did_write = true;
         }
@@ -56,7 +56,7 @@ impl std::fmt::Display for Fragment {
             if did_write {
                 write!(f, "&")?;
             }
-            write!(f, "time_selection=",)?;
+            write!(f, "time_selection=")?;
             time_selection.format_url(f)?;
         }
 
@@ -87,7 +87,8 @@ impl std::str::FromStr for Fragment {
                     },
                     "when" => {
                         if let Some((timeline, time)) = value.split_once('@') {
-                            let timeline = TimelineName::from(timeline);
+                            let timeline = TimelineName::try_new(timeline)
+                                .map_err(|err| format!("Bad timeline name {timeline:?}: {err}"))?;
                             match time.parse::<TimeCell>() {
                                 Ok(time_cell) => {
                                     // If there were when fragments before this we ignore them.

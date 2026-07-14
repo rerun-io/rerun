@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
     from rerun.datatypes.bool import BoolLike
     from rerun.datatypes.float32 import Float32ArrayLike
-    from rerun.datatypes.uint32 import UInt32ArrayLike
+    from rerun.datatypes.uint32 import UInt32Like
     from rerun.datatypes.utf8 import Utf8Like
 
 
@@ -105,7 +105,7 @@ def test_container_blueprint() -> None:
         row_shares = cast("Float32ArrayLike | None", row_shares)
         active_tab = cast("EntityPathLike | None", active_tab)
         visible = cast("BoolLike | None", visible)
-        grid_columns = cast("UInt32ArrayLike | None", grid_columns)
+        grid_columns = cast("UInt32Like | None", grid_columns)
 
         print(
             "rr.ContainerBlueprint(\n",
@@ -139,7 +139,7 @@ def test_container_blueprint() -> None:
         assert arch.col_shares == ColumnShareBatch._converter(none_empty_or_value(col_shares, col_shares_arrays[-1]))
         assert arch.row_shares == RowShareBatch._converter(none_empty_or_value(row_shares, row_shares_arrays[-1]))
         assert arch.active_tab == ActiveTabBatch._converter(none_empty_or_value(active_tab, active_tab_arrays[-1]))
-        assert arch.visible == VisibleBatch._converter(none_empty_or_value(visible, visible_arrays[-1]))
+        assert arch.visible == VisibleBatch._converter(none_empty_or_value(visible, visible_arrays[-1]))  # type: ignore[arg-type]
         assert arch.grid_columns == GridColumnsBatch._converter(
             none_empty_or_value(grid_columns, grid_columns_arrays[-1]),
         )

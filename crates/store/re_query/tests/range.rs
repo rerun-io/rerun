@@ -198,7 +198,12 @@ fn simple_range_with_differently_tagged_components() -> anyhow::Result<()> {
 
     // Check that we can also reach the other re-tagged component.
     let component = points3_2_serialized.descriptor.component;
-    let cached = caches.range(&query, &entity_path, [component]);
+    let cached = caches.range(
+        re_chunk_store::ChunkTrackingMode::PanicOnMissing,
+        &query,
+        &entity_path,
+        [component],
+    );
     let all_points_chunks = cached.get_required(component).unwrap();
     let all_points_indexed = all_points_chunks
         .iter()
@@ -404,7 +409,10 @@ fn time_back_and_forth() {
 
     // --- Query #1: `[8, 10]` ---
 
-    let query = RangeQuery::new(TimelineName::new("frame_nr"), AbsoluteTimeRange::new(8, 10));
+    let query = RangeQuery::new(
+        TimelineName::from("frame_nr"),
+        AbsoluteTimeRange::new(8, 10),
+    );
 
     let expected_points = &[
         (
@@ -433,7 +441,7 @@ fn time_back_and_forth() {
 
     // --- Query #2: `[1, 3]` ---
 
-    let query = RangeQuery::new(TimelineName::new("frame_nr"), AbsoluteTimeRange::new(1, 3));
+    let query = RangeQuery::new(TimelineName::from("frame_nr"), AbsoluteTimeRange::new(1, 3));
 
     let expected_points = &[
         (
@@ -469,7 +477,7 @@ fn time_back_and_forth() {
 
     // --- Query #3: `[5, 7]` ---
 
-    let query = RangeQuery::new(TimelineName::new("frame_nr"), AbsoluteTimeRange::new(5, 7));
+    let query = RangeQuery::new(TimelineName::from("frame_nr"), AbsoluteTimeRange::new(5, 7));
 
     let expected_points = &[
         (
@@ -1065,7 +1073,12 @@ fn concurrent_multitenant_edge_case() {
     eprintln!("{store}");
 
     {
-        let cached = caches.range(&query, &entity_path, MyPoints::all_component_identifiers());
+        let cached = caches.range(
+            re_chunk_store::ChunkTrackingMode::PanicOnMissing,
+            &query,
+            &entity_path,
+            MyPoints::all_component_identifiers(),
+        );
 
         let _cached_all_points = cached
             .get_required(MyPoints::descriptor_points().component)
@@ -1141,7 +1154,12 @@ fn concurrent_multitenant_edge_case2() {
 
     let query1 = RangeQuery::new(*timepoint1[0].0.name(), AbsoluteTimeRange::new(123, 223));
     {
-        let cached = caches.range(&query1, &entity_path, MyPoints::all_component_identifiers());
+        let cached = caches.range(
+            re_chunk_store::ChunkTrackingMode::PanicOnMissing,
+            &query1,
+            &entity_path,
+            MyPoints::all_component_identifiers(),
+        );
 
         let _cached_all_points = cached
             .get_required(MyPoints::descriptor_points().component)
@@ -1152,7 +1170,12 @@ fn concurrent_multitenant_edge_case2() {
 
     let query2 = RangeQuery::new(*timepoint1[0].0.name(), AbsoluteTimeRange::new(423, 523));
     {
-        let cached = caches.range(&query2, &entity_path, MyPoints::all_component_identifiers());
+        let cached = caches.range(
+            re_chunk_store::ChunkTrackingMode::PanicOnMissing,
+            &query2,
+            &entity_path,
+            MyPoints::all_component_identifiers(),
+        );
 
         let _cached_all_points = cached
             .get_required(MyPoints::descriptor_points().component)
@@ -1228,6 +1251,54 @@ fn concurrent_multitenant_edge_case2() {
     );
 }
 
+#[test]
+fn same_row_id_across_chunks() -> anyhow::Result<()> {
+    let store = ChunkStore::new_handle(
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
+        Default::default(),
+    );
+    let mut caches = QueryCache::new(store.clone());
+
+    let entity_path: EntityPath = "point".into();
+
+    // Two separate chunks at different times share a single RowId.
+    let row_id = RowId::new();
+
+    let timepoint1 = [build_frame_nr(123)];
+    let points1 = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
+    let chunk1 = Chunk::builder(entity_path.clone())
+        .with_archetype(row_id, timepoint1, &MyPoints::new(points1.clone()))
+        .build()?;
+    insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk1));
+
+    let timepoint2 = [build_frame_nr(223)];
+    let points2 = vec![MyPoint::new(10.0, 20.0), MyPoint::new(30.0, 40.0)];
+    let chunk2 = Chunk::builder(entity_path.clone())
+        .with_archetype(row_id, timepoint2, &MyPoints::new(points2.clone()))
+        .build()?;
+    insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk2));
+
+    let query = RangeQuery::new(
+        *timepoint1[0].0.name(),
+        AbsoluteTimeRange::new(timepoint1[0].1, timepoint2[0].1),
+    );
+
+    let expected_points = &[
+        ((TimeInt::new_temporal(123), row_id), points1.as_slice()),
+        ((TimeInt::new_temporal(223), row_id), points2.as_slice()),
+    ];
+    query_and_compare(
+        &caches,
+        &store.read(),
+        &query,
+        &entity_path,
+        expected_points,
+        &[],
+    );
+
+    Ok(())
+}
+
 // // ---
 
 fn insert_and_react(store: &mut ChunkStore, caches: &mut QueryCache, chunk: &Arc<Chunk>) {
@@ -1248,7 +1319,12 @@ fn query_and_compare(
     let component_colors = MyPoints::descriptor_colors().component;
 
     for _ in 0..3 {
-        let cached = caches.range(query, entity_path, [component_points, component_colors]);
+        let cached = caches.range(
+            re_chunk_store::ChunkTrackingMode::PanicOnMissing,
+            query,
+            entity_path,
+            [component_points, component_colors],
+        );
 
         let all_points_chunks = cached.get_required(component_points).unwrap();
         let all_points_indexed = all_points_chunks

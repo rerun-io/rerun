@@ -10,7 +10,7 @@ https://vimeo.com/1064055355?autoplay=1&loop=1&autopause=0&background=1&muted=1&
 
 ## Background
 
-Mast3r-slam is a realtime monocular slam system that is based on Mast3r, a two view 3D reconstruction and matching prior. Equipped with this strong prior, the system is robust on in-the-wild video sequences despite making no assumption on a fixed or parametric camera model beyond a unique camera center. It introduces efficient methods for pointmap matching, camera tracking and local fusion, graph construction and loop closure, and second-order global optimisation. With known calibration, a simple modification to the system achieves state-of-the-art performance across various benchmarks.
+Mast3r-slam is a realtime monocular slam system that is based on Mast3r, a two view 3D reconstruction and matching prior. Equipped with this strong prior, the system is robust on in-the-wild video sequences despite making no assumption on a fixed or parametric camera model beyond a unique camera center. It introduces efficient methods for pointmap matching, camera tracking and local fusion, graph construction and loop closure, and second-order global optimization. With known calibration, a simple modification to the system achieves state-of-the-art performance across various benchmarks.
 
 ## Run the code
 

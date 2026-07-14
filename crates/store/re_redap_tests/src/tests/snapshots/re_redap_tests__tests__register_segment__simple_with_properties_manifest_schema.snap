@@ -2,26 +2,27 @@
 source: crates/store/re_redap_tests/src/tests/register_segment.rs
 expression: batch.format_schema_snapshot()
 ---
-property:points:Points2D:positions: nullable List[nullable FixedSizeList[nullable f32; 2]] [
+property:points:Points2D:positions: List(FixedSizeList(2 x Float32)) [
     rerun:archetype: "rerun.archetypes.Points2D"
     rerun:component: "Points2D:positions"
     rerun:component_type: "rerun.components.Position2D"
     rerun:entity_path: "/__properties/points"
     rerun:kind: "data"
 ]
-property:text_log:TextLog:text: nullable List[nullable Utf8] [
+property:text_log:TextLog:text: List(Utf8) [
     rerun:archetype: "rerun.archetypes.TextLog"
     rerun:component: "TextLog:text"
     rerun:component_type: "rerun.components.Text"
     rerun:entity_path: "/__properties/text_log"
     rerun:kind: "data"
 ]
-rerun_last_updated_at: Timestamp(ns)
-rerun_layer_name: Utf8
-rerun_layer_type: Utf8
-rerun_num_chunks: u64
-rerun_registration_time: Timestamp(ns)
-rerun_schema_sha256: FixedSizeBinary[32]
-rerun_segment_id: Utf8
-rerun_size_bytes: u64
-rerun_storage_url: Utf8
+rerun_last_updated_at: non-null Timestamp(ns)
+rerun_layer_name: non-null Utf8
+rerun_layer_type: non-null Utf8
+rerun_num_chunks: non-null UInt64
+rerun_registration_status: non-null Utf8
+rerun_registration_time: non-null Timestamp(ns)
+rerun_schema_sha256: non-null FixedSizeBinary(32)
+rerun_segment_id: non-null Utf8
+rerun_size_bytes: non-null UInt64
+rerun_storage_url: non-null Utf8

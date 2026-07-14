@@ -232,28 +232,19 @@ pub fn find_drop_target<ItemId: Copy>(
     {
         // Visualize the drag zones
         if ui.input(|i| i.modifiers.alt) {
-            ui.ctx()
-                .debug_painter()
-                .debug_rect(top, egui::Color32::RED, "t");
-            ui.ctx()
-                .debug_painter()
+            ui.debug_painter().debug_rect(top, egui::Color32::RED, "t");
+            ui.debug_painter()
                 .debug_rect(bottom, egui::Color32::GREEN, "b");
 
-            ui.ctx().debug_painter().debug_rect(
-                left_top,
-                egui::Color32::RED.gamma_multiply(0.5),
-                "lt",
-            );
-            ui.ctx().debug_painter().debug_rect(
+            ui.debug_painter()
+                .debug_rect(left_top, egui::Color32::RED.gamma_multiply(0.5), "lt");
+            ui.debug_painter().debug_rect(
                 left_bottom,
                 egui::Color32::GREEN.gamma_multiply(0.5),
                 "lb",
             );
-            ui.ctx().debug_painter().debug_rect(
-                body_insert_after_me_area,
-                egui::Color32::YELLOW,
-                "bdy",
-            );
+            ui.debug_painter()
+                .debug_rect(body_insert_after_me_area, egui::Color32::YELLOW, "bdy");
         }
     }
 

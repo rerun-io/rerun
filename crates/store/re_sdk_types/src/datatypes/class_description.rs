@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -35,7 +36,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// defined, and both keypoints exist within the instance of the class, then the
 /// keypoints should be connected with an edge. The edge should be labeled and
 /// colored as described by the class's [`datatypes::AnnotationInfo`][crate::datatypes::AnnotationInfo].
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq, ::re_byte_size::SizeBytes)]
 pub struct ClassDescription {
     /// The [`datatypes::AnnotationInfo`][crate::datatypes::AnnotationInfo] for the class.
     pub info: crate::datatypes::AnnotationInfo,
@@ -265,11 +266,11 @@ impl ::re_types_core::Loggable for ClassDescription {
             } else {
                 let (arrow_data_fields, arrow_data_arrays) =
                     (arrow_data.fields(), arrow_data.columns());
-                let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data_fields
-                    .iter()
-                    .map(|field| field.name().as_str())
-                    .zip(arrow_data_arrays)
-                    .collect();
+                let arrays_by_name: ::std::collections::HashMap<_, _> = ::std::iter::zip(
+                    arrow_data_fields.iter().map(|field| field.name().as_str()),
+                    arrow_data_arrays,
+                )
+                .collect();
                 let info = {
                     if !arrays_by_name.contains_key("info") {
                         return Err(DeserializationError::missing_struct_field(
@@ -445,21 +446,5 @@ impl ::re_types_core::Loggable for ClassDescription {
                 .with_context("rerun.datatypes.ClassDescription")?
             }
         })
-    }
-}
-
-impl ::re_byte_size::SizeBytes for ClassDescription {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.info.heap_size_bytes()
-            + self.keypoint_annotations.heap_size_bytes()
-            + self.keypoint_connections.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::AnnotationInfo>::is_pod()
-            && <Vec<crate::datatypes::AnnotationInfo>>::is_pod()
-            && <Vec<crate::datatypes::KeypointPair>>::is_pod()
     }
 }

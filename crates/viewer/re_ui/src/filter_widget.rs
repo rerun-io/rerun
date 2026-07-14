@@ -2,6 +2,7 @@ use std::ops::Range;
 
 use egui::{Color32, NumExt as _, Widget as _};
 use itertools::Itertools as _;
+use re_log::debug_assert;
 use smallvec::SmallVec;
 
 use crate::{UiExt as _, icons, list_item};
@@ -142,10 +143,7 @@ impl FilterState {
                         }
 
                         if let Some(inner_state) = self.inner_state.as_mut() {
-                            // we add additional spacing for aesthetic reasons (active text edits have a
-                            // fat border)
-                            ui.spacing_mut().text_edit_width =
-                                (ui.max_rect().width() - 10.0).at_least(0.0);
+                            ui.spacing_mut().text_edit_width = ui.max_rect().width().at_least(0.0);
 
                             // TODO(ab): ideally _all_ text edits would be styled this way, but we
                             // require egui support for that (https://github.com/emilk/egui/issues/3284)
@@ -203,11 +201,11 @@ impl FilterState {
     ///
     /// In this mode, the filter is active as soon as the query is non-empty. The session remains
     /// active until the query is cleared.
-    pub fn search_field_ui(&mut self, ui: &mut egui::Ui) {
+    pub fn search_field_ui(&mut self, ui: &mut egui::Ui, hint_text: impl Into<egui::WidgetText>) {
         let inner_state = self.inner_state.get_or_insert_with(Default::default);
 
         let textedit_id = ui.id().with("textedit");
-        let response = ui.ctx().read_response(textedit_id);
+        let response = ui.read_response(textedit_id);
 
         let visuals = response
             .as_ref()
@@ -244,8 +242,8 @@ impl FilterState {
                         ui.add(
                             egui::TextEdit::singleline(&mut inner_state.filter_query)
                                 .id(textedit_id)
-                                .frame(false)
-                                .hint_text("Search for entity…")
+                                .frame(egui::Frame::new())
+                                .hint_text(hint_text)
                                 .desired_width(ui.available_width()),
                         )
                     });
@@ -591,7 +589,7 @@ pub fn format_matching_text(
                 &text[current..start],
                 0.0,
                 egui::TextFormat {
-                    font_id: egui::TextStyle::Body.resolve(&ctx.style()),
+                    font_id: egui::TextStyle::Body.resolve(&ctx.global_style()),
                     color,
                     ..Default::default()
                 },
@@ -602,9 +600,9 @@ pub fn format_matching_text(
             &text[start..end],
             0.0,
             egui::TextFormat {
-                font_id: egui::TextStyle::Body.resolve(&ctx.style()),
+                font_id: egui::TextStyle::Body.resolve(&ctx.global_style()),
                 color,
-                background: ctx.style().visuals.selection.bg_fill,
+                background: ctx.global_style().visuals.selection.bg_fill,
                 ..Default::default()
             },
         );
@@ -617,7 +615,7 @@ pub fn format_matching_text(
             &text[current..],
             0.0,
             egui::TextFormat {
-                font_id: egui::TextStyle::Body.resolve(&ctx.style()),
+                font_id: egui::TextStyle::Body.resolve(&ctx.global_style()),
                 color,
                 ..Default::default()
             },

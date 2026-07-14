@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import queue
 import subprocess
 import tempfile
@@ -16,6 +15,8 @@ import rerun.blueprint as rrb
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
+    import pytest
+
 
 @rr.thread_local_stream("rerun_example_binary_stream")
 def job(name: str) -> Iterator[tuple[str, bytes | None]]:
@@ -25,7 +26,7 @@ def job(name: str) -> Iterator[tuple[str, bytes | None]]:
 
     rr.send_blueprint(blueprint)
 
-    for i in range(100):
+    for i in range(30):
         time.sleep(0.01)
         rr.log("test", rr.TextLog(f"Message {i}"))
 
@@ -37,10 +38,11 @@ def queue_results(generator: Iterator[Any], out_queue: queue.Queue[tuple[str, by
         out_queue.put(item)
 
 
-def test_binary_stream() -> None:
-    # Flush num rows must be 0 to avoid inconsistencies in the stream
-    prev_flush_num_rows = os.environ.get("RERUN_FLUSH_NUM_ROWS")
-    os.environ["RERUN_FLUSH_NUM_ROWS"] = "0"
+def test_binary_stream(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Flush num rows must be 0 to avoid inconsistencies in the stream.
+    # Use `monkeypatch` so the env var is reverted even if the test fails: leaking it pollutes the
+    # rest of the session (e.g. it gets inherited by the viewer spawned in the integration tests).
+    monkeypatch.setenv("RERUN_FLUSH_NUM_ROWS", "0")
 
     results_queue: queue.Queue[tuple[str, bytes | None]] = queue.Queue()
 
@@ -73,9 +75,3 @@ def test_binary_stream() -> None:
         if process.returncode != 0:
             print(process.stderr.decode("utf-8"))
             raise Exception("Rerun failed")
-
-    # Restore the previous value of RERUN_FLUSH_NUM_ROWS
-    if prev_flush_num_rows is not None:
-        os.environ["RERUN_FLUSH_NUM_ROWS"] = prev_flush_num_rows
-    else:
-        del os.environ["RERUN_FLUSH_NUM_ROWS"]

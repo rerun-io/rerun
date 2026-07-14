@@ -1,0 +1,1096 @@
+use std::collections::{BTreeMap, BTreeSet};
+use std::sync::Arc;
+
+use arrow::array::RecordBatch;
+use datafusion::datasource::TableProvider as _;
+use datafusion::physical_plan::ExecutionPlanProperties as _;
+use datafusion::prelude::SessionContext;
+use futures::{StreamExt as _, TryStreamExt as _};
+use itertools::Itertools as _;
+use re_chunk_store::IndexValue;
+use re_datafusion::DataframeQueryTableProvider;
+use re_log_types::{EntityPath, TimeInt, TimeType};
+use re_protos::cloud::v1alpha1::ext;
+use re_protos::cloud::v1alpha1::ext::DatasetEntry;
+use re_protos::cloud::v1alpha1::ext::QueryDatasetDataframe;
+use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
+use re_types_core::SegmentId;
+
+use crate::RecordBatchTestExt as _;
+use crate::tests::common::{
+    DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _, concat_record_batches, prop,
+};
+use crate::utils::client::TestClient;
+
+pub async fn query_dataset_index_values_by_time_type<T: RerunCloudService>(
+    service: Arc<T>,
+    time_type: TimeType,
+) {
+    let tuid_prefix = match time_type {
+        TimeType::TimestampNs => 1,
+        TimeType::DurationNs => 10,
+        TimeType::Sequence => 20,
+    };
+
+    let data_sources_def = DataSourcesDefinition::new_with_tuid_prefix(
+        tuid_prefix,
+        [
+            LayerDefinition::simple_with_time(
+                "my_segment_id1",
+                &["my/entity", "my/other/entity"],
+                1000,
+                time_type,
+            ),
+            LayerDefinition::simple_with_time("my_segment_id2", &["my/entity"], 2000, time_type),
+            LayerDefinition::properties(
+                "my_segment_id1",
+                [prop(
+                    "text_log",
+                    re_sdk_types::archetypes::TextLog::new("i'm segment 1"),
+                )],
+            )
+            .layer_name("props"),
+            LayerDefinition::simple_with_time(
+                "my_segment_id3",
+                &["my/entity", "another/one", "yet/another/one"],
+                3000,
+                time_type,
+            ),
+        ],
+    );
+
+    let dataset_name = format!("dataset_{time_type}");
+    let dataset_entry = service.create_dataset_entry_with_name(&dataset_name).await;
+    service
+        .register_with_dataset_name_blocking(&dataset_name, data_sources_def.to_data_sources())
+        .await;
+
+    let client = TestClient::new(service);
+
+    let tests = vec![
+        (
+            vec![
+                ("my_segment_id1", vec![1020, 1040]),
+                ("my_segment_id2", vec![2010, 2030]),
+                ("my_segment_id3", vec![3010, 3020, 3030, 3040]),
+            ],
+            "all_valid_index_values",
+            true,
+        ),
+        (
+            vec![("my_segment_id1", vec![1020, 1040])],
+            "single_segment",
+            false,
+        ),
+        (
+            vec![("my_segment_id4", vec![1020, 1040])],
+            "unknown_segment",
+            false,
+        ),
+    ];
+
+    for (index_values, snapshot_name, check_schema) in tests {
+        query_dataset_snapshot(
+            client.clone(),
+            &dataset_entry,
+            index_values,
+            &format!("query_index_values_{time_type}_{snapshot_name}"),
+            time_type,
+            check_schema,
+        )
+        .await;
+    }
+}
+
+pub async fn query_dataset_index_values(service: impl RerunCloudService) {
+    let service = Arc::new(service);
+    query_dataset_index_values_by_time_type(service.clone(), TimeType::Sequence).await;
+    query_dataset_index_values_by_time_type(service.clone(), TimeType::DurationNs).await;
+    query_dataset_index_values_by_time_type(service.clone(), TimeType::TimestampNs).await;
+}
+
+/// Collect the set of chunk IDs returned by a query.
+///
+/// Lets us assert that `per_segment_values` actually narrows the result
+/// (a strict subset of the baseline chunk-id set) instead of just
+/// counting rows, which can pass even when the server ignores the
+/// per-segment filter and returns the full baseline.
+async fn per_segment_chunk_id_set<T: RerunCloudService>(
+    service: &T,
+    dataset_name: &str,
+    request: ext::QueryDatasetRequest,
+) -> BTreeSet<re_chunk::ChunkId> {
+    use re_protos::cloud::v1alpha1::QueryDatasetResponse;
+    use re_protos::headers::RerunHeadersInjectorExt as _;
+
+    let stream = service
+        .query_dataset(
+            tonic::Request::new(request.into())
+                .with_entry_name(crate::tests::common::entry_name(dataset_name)),
+        )
+        .await
+        .unwrap()
+        .into_inner();
+    let mut stream = Box::pin(stream);
+
+    let mut ids: BTreeSet<re_chunk::ChunkId> = BTreeSet::new();
+    while let Some(resp) = stream.next().await {
+        let resp: QueryDatasetResponse = resp.unwrap();
+        if let Some(part) = resp.data {
+            let batch: arrow::array::RecordBatch = part.try_into().unwrap();
+            let id_col = QueryDatasetDataframe::COLUMN_CHUNK_ID
+                .extract(&batch)
+                .expect("bad chunk_id column in response");
+            ids.extend(id_col.iter_owned());
+        }
+    }
+    ids
+}
+
+/// Set up the 3-segment dataset used by the `per_segment_values` wire-level
+/// tests. Each segment has one entity with **4 single-frame temporal chunks**
+/// at `start_time + {10, 20, 30, 40}` plus 1 static chunk.
+///
+/// Returns the [`DataSourcesDefinition`] so the caller can hold its temp
+/// files alive for the full duration of the test — some backends (the Rerun
+/// Rerun Hub manifest registry) re-read the RRD files lazily during
+/// `query_dataset`, so dropping the temp dir before that completes results
+/// in `NotFound` errors.
+async fn register_per_segment_dataset(
+    service: &impl RerunCloudService,
+    dataset_name: &str,
+    tuid_prefix: u64,
+    time_type: TimeType,
+) -> DataSourcesDefinition {
+    let data_sources_def = DataSourcesDefinition::new_with_tuid_prefix(
+        tuid_prefix,
+        [
+            LayerDefinition::simple_one_chunk_per_frame_with_time(
+                "seg1",
+                &["my/entity"],
+                1000,
+                time_type,
+            ),
+            LayerDefinition::simple_one_chunk_per_frame_with_time(
+                "seg2",
+                &["my/entity"],
+                2000,
+                time_type,
+            ),
+            LayerDefinition::simple_one_chunk_per_frame_with_time(
+                "seg3",
+                &["my/entity"],
+                3000,
+                time_type,
+            ),
+        ],
+    );
+
+    service.create_dataset_entry_with_name(dataset_name).await;
+    service
+        .register_with_dataset_name_blocking(dataset_name, data_sources_def.to_data_sources())
+        .await;
+    data_sources_def
+}
+
+fn per_segment_segment_ids() -> Vec<re_types_core::SegmentId> {
+    vec!["seg1".into(), "seg2".into(), "seg3".into()]
+}
+
+/// Wire-level test for `QueryLatestAt.per_segment_values`.
+///
+/// Builds a dataset with 3 segments, each holding 4 single-frame temporal
+/// chunks (`start_time + {10, 20, 30, 40}`) plus a static chunk, then issues
+/// three `QueryDatasetRequest`s directly via the gRPC layer:
+///
+/// 1. `range_baseline`: a `range(EVERYTHING)` query — every temporal chunk
+///    plus statics. Used as the strict-subset superset.
+/// 2. `latest_at_baseline`: `latest_at(MAX)` — the latest temporal chunk per
+///    segment plus statics. Used as a sanity check that filtered selects
+///    *different* chunks than the natural latest-at result.
+/// 3. `filtered`: `per_segment_values` carrying a single value per segment.
+///    Must be a strict subset of `range_baseline_ids` (proves push-down
+///    actually narrowed) and must NOT be a subset of `latest_at_baseline_ids`
+///    (proves the per-segment selection diverged from a plain latest-at).
+///
+/// This is the regression-guard for the per-segment chunk filter on every
+/// backend: the OSS server's per-row filter and the Rerun Hub's
+/// manifest-based virtual `ChunkStore` resolution both have to honor it.
+pub async fn query_dataset_per_segment_values_wire_level(service: impl RerunCloudService) {
+    let service = Arc::new(service);
+    for time_type in [
+        TimeType::Sequence,
+        TimeType::DurationNs,
+        TimeType::TimestampNs,
+    ] {
+        query_dataset_per_segment_values_wire_level_by_time_type(service.as_ref(), time_type).await;
+    }
+}
+
+async fn query_dataset_per_segment_values_wire_level_by_time_type<T: RerunCloudService>(
+    service: &T,
+    time_type: TimeType,
+) {
+    use re_protos::cloud::v1alpha1::ext::QueryDatasetRequest;
+
+    let dataset_name = &format!("per_segment_wire_level_{time_type}");
+    let tuid_prefix = match time_type {
+        TimeType::Sequence => 77,
+        TimeType::DurationNs => 78,
+        TimeType::TimestampNs => 79,
+    };
+    let _data_sources =
+        register_per_segment_dataset(service, dataset_name, tuid_prefix, time_type).await;
+
+    let index_name = re_log_types::build_index_value(0_i64, time_type)
+        .0
+        .name()
+        .as_str();
+
+    let segment_ids = per_segment_segment_ids();
+
+    // 1. range(EVERYTHING) baseline — superset of every other query.
+    let range_baseline_request = QueryDatasetRequest {
+        segment_ids: segment_ids.clone(),
+        select_all_entity_paths: true,
+        query: Some(ext::Query {
+            range: Some(ext::QueryRange {
+                index: index_name.into(),
+                index_range: re_log_types::AbsoluteTimeRange::EVERYTHING,
+            }),
+            ..Default::default()
+        }),
+        ..Default::default()
+    };
+    let range_baseline_ids =
+        per_segment_chunk_id_set(service, dataset_name, range_baseline_request).await;
+    assert!(
+        !range_baseline_ids.is_empty(),
+        "range baseline must return at least one chunk, got 0"
+    );
+
+    // 2. latest_at(MAX) baseline — picks the latest temporal chunk per
+    //    segment (frame `start + 40`) plus statics. Used to prove the
+    //    `per_segment_values` filter selects *different* chunks (frame
+    //    `start + 10`).
+    let latest_at_baseline_request = QueryDatasetRequest {
+        segment_ids: segment_ids.clone(),
+        select_all_entity_paths: true,
+        query: Some(ext::Query {
+            latest_at: Some(ext::QueryLatestAt {
+                index: Some(index_name.into()),
+                at: TimeInt::MAX,
+                per_segment_values: vec![],
+            }),
+            ..Default::default()
+        }),
+        ..Default::default()
+    };
+    let latest_at_baseline_ids =
+        per_segment_chunk_id_set(service, dataset_name, latest_at_baseline_request).await;
+    assert!(
+        !latest_at_baseline_ids.is_empty(),
+        "latest_at(MAX) baseline must return at least one chunk, got 0"
+    );
+
+    // 3. Filtered: per_segment_values with one value per segment that matches
+    //    a single temporal chunk (frame `start + 10`).
+    let filtered_request = QueryDatasetRequest {
+        segment_ids: segment_ids.clone(),
+        select_all_entity_paths: true,
+        query: Some(ext::Query {
+            latest_at: Some(ext::QueryLatestAt {
+                index: Some(index_name.into()),
+                // `at` is the global fallback; servers prefer per_segment_values when set.
+                at: TimeInt::STATIC,
+                per_segment_values: vec![
+                    vec![1010], // seg1 (start_time 1000)
+                    vec![2010], // seg2 (start_time 2000)
+                    vec![3010], // seg3 (start_time 3000)
+                ],
+            }),
+            ..Default::default()
+        }),
+        ..Default::default()
+    };
+    let filtered_ids = per_segment_chunk_id_set(service, dataset_name, filtered_request).await;
+    assert!(
+        !filtered_ids.is_empty(),
+        "per_segment_values filter must still return matched chunks, got 0"
+    );
+
+    // The per-segment filter must actually narrow: the resulting chunk-id set
+    // has to be a strict subset of the full-range baseline.
+    assert!(
+        filtered_ids.is_subset(&range_baseline_ids),
+        "per_segment_values must only return chunks already in the range baseline; \
+         got {} extra chunk(s)",
+        filtered_ids.difference(&range_baseline_ids).count(),
+    );
+    assert!(
+        filtered_ids.len() < range_baseline_ids.len(),
+        "per_segment_values must narrow the result set strictly below the range baseline; \
+         range_baseline={} filtered={}",
+        range_baseline_ids.len(),
+        filtered_ids.len(),
+    );
+
+    // Filtered must select different *temporal* chunks than a plain
+    // latest_at(MAX) — the per-segment values point at frame `start+10`, the
+    // latest_at baseline picks frame `start+40`. The two share static chunks
+    // but no temporal chunks, so the filtered set is NOT a subset of the
+    // latest_at baseline (proving the server honored `per_segment_values`
+    // rather than collapsing back to global latest-at).
+    assert!(
+        !filtered_ids.is_subset(&latest_at_baseline_ids),
+        "per_segment_values must select different temporal chunks than latest_at(MAX); \
+         filtered={filtered_ids:?} latest_at_baseline={latest_at_baseline_ids:?}",
+    );
+
+    // Empty per_segment_values list per segment → no temporal chunks, but
+    // statics MUST still surface (per the proto contract, the empty list
+    // means "static-only for this segment"). The fixture has one static
+    // chunk per `(segment, entity)` = 3 segments × 1 entity = 3 statics.
+    let static_only_request = QueryDatasetRequest {
+        segment_ids: segment_ids.clone(),
+        select_all_entity_paths: true,
+        query: Some(ext::Query {
+            latest_at: Some(ext::QueryLatestAt {
+                index: Some(index_name.into()),
+                at: TimeInt::STATIC,
+                per_segment_values: vec![vec![], vec![], vec![]],
+            }),
+            ..Default::default()
+        }),
+        ..Default::default()
+    };
+    let static_only_ids =
+        per_segment_chunk_id_set(service, dataset_name, static_only_request).await;
+    assert!(
+        static_only_ids.len() <= filtered_ids.len(),
+        "empty per_segment_values must return no MORE chunks than the temporal filter, \
+         got static={} filtered={}",
+        static_only_ids.len(),
+        filtered_ids.len(),
+    );
+    // Strict assertion: empty per-segment lists MUST surface every static
+    // chunk in the dataset. A vacuous `is_subset` would pass even if the
+    // backend silently dropped statics — this catches that regression.
+    assert!(
+        !static_only_ids.is_empty(),
+        "empty per_segment_values must still surface static chunks; got 0",
+    );
+    assert_eq!(
+        static_only_ids.len(),
+        3,
+        "fixture has 3 static chunks (one per segment); got {}",
+        static_only_ids.len(),
+    );
+    // Per the proto contract: empty values list still surfaces static
+    // chunks. The static-only result is a subset of the full-range baseline,
+    // and also of the single-value filtered result (which itself includes
+    // statics on top of one temporal chunk per segment).
+    assert!(
+        static_only_ids.is_subset(&range_baseline_ids),
+        "static-only result must be a subset of the range baseline chunks",
+    );
+    assert!(
+        static_only_ids.is_subset(&filtered_ids),
+        "static-only chunks must also appear in the single-value filtered result",
+    );
+}
+
+/// The client-side pushdown: a scoped
+/// `using_index_values` reader must emit `QueryLatestAt.per_segment_values`
+/// aligned to its `segment_ids`.
+///
+/// Unlike the wire-level tests above, this drives the real
+/// `DataframeQueryTableProvider::scan` and inspects the request it emits via
+/// [`TestClient`]'s recorded `query_dataset_requests`, rather than hand-building
+/// the request.
+///
+/// Runs for every [`TimeType`] (`Sequence`, `DurationNs`, `TimestampNs`) since
+/// the pushed-down index is timeline-typed.
+pub async fn query_dataset_emits_per_segment_pushdown(service: impl RerunCloudService) {
+    let service = Arc::new(service);
+    for time_type in [
+        TimeType::Sequence,
+        TimeType::DurationNs,
+        TimeType::TimestampNs,
+    ] {
+        query_dataset_emits_per_segment_pushdown_by_time_type(&service, time_type).await;
+    }
+}
+
+async fn query_dataset_emits_per_segment_pushdown_by_time_type<T: RerunCloudService>(
+    service: &Arc<T>,
+    time_type: TimeType,
+) {
+    use re_protos::cloud::v1alpha1::ext::QueryDatasetRequest;
+
+    let dataset_name = format!("client_pushdown_{time_type}");
+    let tuid_prefix = match time_type {
+        TimeType::Sequence => 88,
+        TimeType::DurationNs => 89,
+        TimeType::TimestampNs => 90,
+    };
+
+    // Inline the 3-segment fixture (rather than `register_per_segment_dataset`) so
+    // we create the dataset entry exactly once and keep its handle.
+    let data_sources_def = DataSourcesDefinition::new_with_tuid_prefix(
+        tuid_prefix,
+        [
+            LayerDefinition::simple_one_chunk_per_frame_with_time(
+                "seg1",
+                &["my/entity"],
+                1000,
+                time_type,
+            ),
+            LayerDefinition::simple_one_chunk_per_frame_with_time(
+                "seg2",
+                &["my/entity"],
+                2000,
+                time_type,
+            ),
+            LayerDefinition::simple_one_chunk_per_frame_with_time(
+                "seg3",
+                &["my/entity"],
+                3000,
+                time_type,
+            ),
+        ],
+    );
+    let dataset_entry = service.create_dataset_entry_with_name(&dataset_name).await;
+    service
+        .register_with_dataset_name_blocking(&dataset_name, data_sources_def.to_data_sources())
+        .await;
+    // Keep the temp RRD files alive: some backends re-read them during `query_dataset`.
+    let _data_sources = data_sources_def;
+
+    let segment_ids = ["seg1", "seg2", "seg3"];
+    let index_values: BTreeMap<SegmentId, BTreeSet<IndexValue>> = [
+        (SegmentId::from("seg1"), 1010),
+        (SegmentId::from("seg2"), 2010),
+        (SegmentId::from("seg3"), 3010),
+    ]
+    .into_iter()
+    .map(|(seg, value)| (seg, BTreeSet::from([TimeInt::new_temporal(value)])))
+    .collect();
+
+    let index_name = re_log_types::build_index_value(0_i64, time_type)
+        .0
+        .name()
+        .as_str();
+
+    let query = re_chunk_store::QueryExpression {
+        view_contents: Some(std::iter::once((EntityPath::from("my/entity"), None)).collect()),
+        filtered_index: Some(index_name.into()),
+        ..Default::default()
+    };
+
+    // Run `scan` against a recording client and return every per-segment value
+    // list it emitted, keyed by the segment it was aligned to.
+    async fn emitted_per_segment_values<T: RerunCloudService>(
+        service: &Arc<T>,
+        dataset_id: re_log_types::EntryId,
+        query: &re_chunk_store::QueryExpression,
+        segment_ids: &[&str],
+        index_values: &BTreeMap<SegmentId, BTreeSet<IndexValue>>,
+    ) -> BTreeMap<SegmentId, Vec<i64>> {
+        let client = TestClient::new(Arc::clone(service));
+        let provider = DataframeQueryTableProvider::new_from_client(
+            client.clone(),
+            dataset_id,
+            query,
+            segment_ids,
+            Some(Arc::new(index_values.clone())),
+            None,
+            None,
+            Vec::new(),
+        )
+        .await
+        .unwrap();
+
+        let ctx = SessionContext::default();
+        // `scan` is where the pushdown runs and the request is sent.
+        let _plan = provider.scan(&ctx.state(), None, &[], None).await.unwrap();
+
+        let captured = client.query_dataset_requests.lock().clone();
+        assert!(
+            !captured.is_empty(),
+            "scan must emit at least one query_dataset request"
+        );
+
+        let mut emitted: BTreeMap<SegmentId, Vec<i64>> = BTreeMap::new();
+        for wire in &captured {
+            let request = QueryDatasetRequest::try_from(wire.clone())
+                .expect("emitted request must pass server wire validation");
+            let Some(latest_at) = request.query.as_ref().and_then(|q| q.latest_at.as_ref()) else {
+                continue;
+            };
+            for (segment_id, values) in
+                std::iter::zip(&request.segment_ids, &latest_at.per_segment_values)
+            {
+                if !values.is_empty() {
+                    emitted.insert(segment_id.clone(), values.clone());
+                }
+            }
+        }
+        emitted
+    }
+
+    // Each segment's sampled value is pushed down, aligned to segment_ids.
+    let pushed = emitted_per_segment_values(
+        service,
+        dataset_entry.details.id,
+        &query,
+        &segment_ids,
+        &index_values,
+    )
+    .await;
+    let expected: BTreeMap<SegmentId, Vec<i64>> = [
+        (SegmentId::from("seg1"), vec![1010]),
+        (SegmentId::from("seg2"), vec![2010]),
+        (SegmentId::from("seg3"), vec![3010]),
+    ]
+    .into_iter()
+    .collect();
+    assert_eq!(
+        pushed, expected,
+        "pushdown must emit per_segment_values aligned to segment_ids"
+    );
+}
+
+/// Wire-level test that `per_segment_values` accepts multiple values
+/// per segment and unions their per-value latest-at results.
+///
+/// Uses the same fixture as [`query_dataset_per_segment_values_wire_level`]
+/// but issues `per_segment_values=[[1010, 1030], [2020], [3010, 3030]]`.
+/// With one chunk per frame, the filtered set must contain *both* chunks for
+/// seg1 and seg3, exactly one for seg2, and remain a strict subset of the
+/// full-range baseline.
+pub async fn query_dataset_per_segment_values_multi_value_wire_level(
+    service: impl RerunCloudService,
+) {
+    let service = Arc::new(service);
+    for time_type in [
+        TimeType::Sequence,
+        TimeType::DurationNs,
+        TimeType::TimestampNs,
+    ] {
+        query_dataset_per_segment_values_multi_value_wire_level_by_time_type(
+            service.as_ref(),
+            time_type,
+        )
+        .await;
+    }
+}
+
+async fn query_dataset_per_segment_values_multi_value_wire_level_by_time_type<
+    T: RerunCloudService,
+>(
+    service: &T,
+    time_type: TimeType,
+) {
+    use re_protos::cloud::v1alpha1::ext::QueryDatasetRequest;
+
+    let dataset_name = &format!("per_segment_multi_value_wire_level_{time_type}");
+    let tuid_prefix = match time_type {
+        TimeType::Sequence => 88,
+        TimeType::DurationNs => 89,
+        TimeType::TimestampNs => 90,
+    };
+    let _data_sources =
+        register_per_segment_dataset(service, dataset_name, tuid_prefix, time_type).await;
+
+    let index_name = re_log_types::build_index_value(0_i64, time_type)
+        .0
+        .name()
+        .as_str();
+
+    let segment_ids = per_segment_segment_ids();
+
+    let range_baseline_request = QueryDatasetRequest {
+        segment_ids: segment_ids.clone(),
+        select_all_entity_paths: true,
+        query: Some(ext::Query {
+            range: Some(ext::QueryRange {
+                index: index_name.into(),
+                index_range: re_log_types::AbsoluteTimeRange::EVERYTHING,
+            }),
+            ..Default::default()
+        }),
+        ..Default::default()
+    };
+    let range_baseline_ids =
+        per_segment_chunk_id_set(service, dataset_name, range_baseline_request).await;
+
+    // Multi-value: ask for two distinct chunks in seg1 and seg3, one in seg2.
+    let filtered_request = QueryDatasetRequest {
+        segment_ids: segment_ids.clone(),
+        select_all_entity_paths: true,
+        query: Some(ext::Query {
+            latest_at: Some(ext::QueryLatestAt {
+                index: Some(index_name.into()),
+                at: TimeInt::STATIC,
+                per_segment_values: vec![
+                    vec![1010, 1030], // seg1: two distinct chunks
+                    vec![2020],       // seg2: one chunk
+                    vec![3010, 3030], // seg3: two distinct chunks
+                ],
+            }),
+            ..Default::default()
+        }),
+        ..Default::default()
+    };
+    let filtered_ids = per_segment_chunk_id_set(service, dataset_name, filtered_request).await;
+
+    // The single-value test already proves "one value → one chunk" + statics.
+    // Here we additionally need the union to grow as more values are added.
+    // With 5 distinct temporal values across the 3 segments + 3 static chunks,
+    // a faithful server returns 8 chunk IDs. We assert ≥ 5 (defensive, in
+    // case statics are deduped or omitted by some intermediate layer) but
+    // strictly more than a single-value baseline would yield.
+    assert!(
+        filtered_ids.is_subset(&range_baseline_ids),
+        "multi-value per_segment_values must only return chunks in the range baseline; \
+         got {} extra chunk(s)",
+        filtered_ids.difference(&range_baseline_ids).count(),
+    );
+    assert!(
+        filtered_ids.len() >= 5,
+        "multi-value per_segment_values must surface at least one chunk per requested value; \
+         expected ≥ 5 (2+1+2), got {}",
+        filtered_ids.len(),
+    );
+    assert!(
+        filtered_ids.len() < range_baseline_ids.len(),
+        "multi-value per_segment_values must still strictly narrow vs the range baseline; \
+         range_baseline={} filtered={}",
+        range_baseline_ids.len(),
+        filtered_ids.len(),
+    );
+
+    // Sanity: a single-value request for the same dataset must return strictly
+    // fewer chunks (one fewer in seg1, one fewer in seg3 → 6 chunks vs 8).
+    let single_value_request = QueryDatasetRequest {
+        segment_ids: segment_ids.clone(),
+        select_all_entity_paths: true,
+        query: Some(ext::Query {
+            latest_at: Some(ext::QueryLatestAt {
+                index: Some(index_name.into()),
+                at: TimeInt::STATIC,
+                per_segment_values: vec![vec![1010], vec![2020], vec![3010]],
+            }),
+            ..Default::default()
+        }),
+        ..Default::default()
+    };
+    let single_value_ids =
+        per_segment_chunk_id_set(service, dataset_name, single_value_request).await;
+    assert!(
+        single_value_ids.len() < filtered_ids.len(),
+        "asking for more values per segment must surface more chunks; \
+         single_value={} multi_value={}",
+        single_value_ids.len(),
+        filtered_ids.len(),
+    );
+    assert!(
+        single_value_ids.is_subset(&filtered_ids),
+        "single-value result must be a subset of the multi-value result"
+    );
+}
+
+/// Wire-level test that the server rejects an invalid combination
+/// of `per_segment_values` and `latest_at.at`.
+///
+/// The ext-level `TryFrom<crate::cloud::v1alpha1::QueryDatasetRequest>` enforces
+/// that `at` must be unset (i.e. `STATIC`) when `per_segment_values` is non-empty.
+/// Unit tests in [`re_protos`] exercise that conversion directly. This test is
+/// the integration-level counterpart: it confirms that a wire request carrying
+/// the invalid combination is actually rejected by the server with
+/// `InvalidArgument`, on every `RerunCloudService` implementation that goes
+/// through the conversion layer. One violation is sufficient — the unit tests
+/// already cover the full rule matrix.
+pub async fn query_dataset_per_segment_values_validation_rejected(service: impl RerunCloudService) {
+    use re_protos::cloud::v1alpha1::QueryDatasetRequest as WireQueryDatasetRequest;
+    use re_protos::headers::RerunHeadersInjectorExt as _;
+
+    let dataset_name = "per_segment_validation_rejected";
+    // Time-type-independent: the conflict is rejected by the wire `TryFrom`
+    // conversion before any data lookup, so one timeline type is sufficient.
+    let _data_sources =
+        register_per_segment_dataset(&service, dataset_name, 99, TimeType::Sequence).await;
+
+    // Build the *wire* form directly so the server's TryFrom conversion runs
+    // — sending the ext form would just fail locally before hitting the
+    // server. `at = Some(...)` (i.e. non-STATIC) combined with non-empty
+    // `per_segment_values` is the explicit invalid case we're checking.
+    let request = WireQueryDatasetRequest {
+        segment_ids: vec![
+            re_protos::common::v1alpha1::SegmentId {
+                id: Some("seg1".to_owned()),
+            },
+            re_protos::common::v1alpha1::SegmentId {
+                id: Some("seg2".to_owned()),
+            },
+            re_protos::common::v1alpha1::SegmentId {
+                id: Some("seg3".to_owned()),
+            },
+        ],
+        select_all_entity_paths: true,
+        query: Some(re_protos::cloud::v1alpha1::Query {
+            latest_at: Some(re_protos::cloud::v1alpha1::QueryLatestAt {
+                index: Some(re_protos::common::v1alpha1::IndexColumnSelector {
+                    timeline: Some(re_protos::common::v1alpha1::Timeline {
+                        name: "frame_nr".into(),
+                    }),
+                }),
+                // Conflict: `at` set AND per_segment_values set.
+                at: Some(1010),
+                per_segment_values: vec![
+                    re_protos::cloud::v1alpha1::IndexValueList { values: vec![1010] },
+                    re_protos::cloud::v1alpha1::IndexValueList { values: vec![2010] },
+                    re_protos::cloud::v1alpha1::IndexValueList { values: vec![3010] },
+                ],
+            }),
+            ..Default::default()
+        }),
+        ..Default::default()
+    };
+
+    let result = service
+        .query_dataset(
+            tonic::Request::new(request)
+                .with_entry_name(crate::tests::common::entry_name(dataset_name)),
+        )
+        .await;
+
+    // `Result::expect_err` would require `Response: Debug`; the trait's
+    // associated `QueryDatasetStream` doesn't implement it. Match instead.
+    match result {
+        Ok(_) => panic!(
+            "server must reject `per_segment_values` combined with `at != STATIC` \
+             with InvalidArgument; got Ok",
+        ),
+        Err(err) => {
+            assert_eq!(
+                err.code(),
+                tonic::Code::InvalidArgument,
+                "expected InvalidArgument, got {err}",
+            );
+        }
+    }
+}
+
+/// Wire-level test that combining caller-supplied `chunk_ids` with
+/// `per_segment_values` intersects the two filters.
+///
+/// First issues a baseline `per_segment_values` request and captures the
+/// returned chunk-id set, then re-issues the same query with `chunk_ids`
+/// restricted to a single id from that set. The result must be exactly that
+/// one chunk — proving:
+///
+/// * the OSS server's per-row filter (`requested_chunk_ids.contains(…)`)
+///   in `rerun_cloud.rs` honors the intersection, and
+/// * the Rerun Hub's set-intersection in `manifest_writer` does too.
+///
+/// **Backend-conditional**: the OSS server currently returns
+/// `Unimplemented` whenever `chunk_ids` is non-empty (see
+/// `re_server::rerun_cloud::query_dataset` early-return). This test treats
+/// that response as "this backend doesn't support `chunk_ids` filtering
+/// yet" and exits cleanly without asserting; it'll automatically activate
+/// once OSS gains support. Backends that accept the filter must produce
+/// the strict-intersection result.
+pub async fn query_dataset_per_segment_values_with_chunk_ids_intersects(
+    service: impl RerunCloudService,
+) {
+    let service = Arc::new(service);
+    for time_type in [
+        TimeType::Sequence,
+        TimeType::DurationNs,
+        TimeType::TimestampNs,
+    ] {
+        query_dataset_per_segment_values_with_chunk_ids_intersects_by_time_type(
+            service.as_ref(),
+            time_type,
+        )
+        .await;
+    }
+}
+
+async fn query_dataset_per_segment_values_with_chunk_ids_intersects_by_time_type<
+    T: RerunCloudService,
+>(
+    service: &T,
+    time_type: TimeType,
+) {
+    use re_protos::cloud::v1alpha1::QueryDatasetResponse;
+    use re_protos::cloud::v1alpha1::ext::QueryDatasetRequest;
+    use re_protos::headers::RerunHeadersInjectorExt as _;
+
+    let dataset_name = &format!("per_segment_chunk_ids_intersect_{time_type}");
+    let tuid_prefix = match time_type {
+        TimeType::Sequence => 111,
+        TimeType::DurationNs => 112,
+        TimeType::TimestampNs => 113,
+    };
+    let _data_sources =
+        register_per_segment_dataset(service, dataset_name, tuid_prefix, time_type).await;
+
+    let index_name = re_log_types::build_index_value(0_i64, time_type)
+        .0
+        .name()
+        .as_str();
+
+    let segment_ids = per_segment_segment_ids();
+
+    // Baseline: per_segment_values with one value per segment. Returns one
+    // temporal chunk per segment + one static chunk per segment.
+    let baseline_request = QueryDatasetRequest {
+        segment_ids: segment_ids.clone(),
+        select_all_entity_paths: true,
+        query: Some(ext::Query {
+            latest_at: Some(ext::QueryLatestAt {
+                index: Some(index_name.into()),
+                at: TimeInt::STATIC,
+                per_segment_values: vec![vec![1010], vec![2010], vec![3010]],
+            }),
+            ..Default::default()
+        }),
+        ..Default::default()
+    };
+    let baseline_ids = per_segment_chunk_id_set(service, dataset_name, baseline_request).await;
+    assert!(
+        baseline_ids.len() >= 2,
+        "baseline must return ≥ 2 chunks so we can pick one and meaningfully \
+         narrow; got {}",
+        baseline_ids.len(),
+    );
+
+    // Pick a single chunk id from the baseline set as the caller-supplied
+    // filter. The order of `BTreeSet::iter` is deterministic but irrelevant
+    // — any one chunk is fine.
+    let pinned_chunk_id = *baseline_ids.iter().next().expect("baseline non-empty");
+
+    // Same request but with `chunk_ids` set to that one id. Both filters
+    // must be honored: the result is `baseline ∩ {pinned_chunk_id}`.
+    let intersected_request = QueryDatasetRequest {
+        segment_ids: segment_ids.clone(),
+        chunk_ids: vec![pinned_chunk_id],
+        select_all_entity_paths: true,
+        query: Some(ext::Query {
+            latest_at: Some(ext::QueryLatestAt {
+                index: Some(index_name.into()),
+                at: TimeInt::STATIC,
+                per_segment_values: vec![vec![1010], vec![2010], vec![3010]],
+            }),
+            ..Default::default()
+        }),
+        ..Default::default()
+    };
+
+    // Issue the request directly so we can match on the error code. We can't
+    // reuse `per_segment_chunk_id_set` here because it `unwrap()`s, which
+    // would panic on the OSS `Unimplemented` we want to soft-skip.
+    let request_wire: re_protos::cloud::v1alpha1::QueryDatasetRequest = intersected_request.into();
+    let response = service
+        .query_dataset(
+            tonic::Request::new(request_wire)
+                .with_entry_name(crate::tests::common::entry_name(dataset_name)),
+        )
+        .await;
+
+    let mut stream = match response {
+        Ok(resp) => Box::pin(resp.into_inner()),
+        Err(err) if err.code() == tonic::Code::Unimplemented => {
+            // OSS server-style: chunk_ids filter not yet implemented.
+            // Test is informational on this backend.
+            return;
+        }
+        Err(err) => panic!("query_dataset failed unexpectedly: {err}"),
+    };
+
+    let mut intersected_ids: BTreeSet<re_chunk::ChunkId> = BTreeSet::new();
+    while let Some(resp) = stream.next().await {
+        let resp: QueryDatasetResponse = resp.unwrap();
+        if let Some(part) = resp.data {
+            let batch: arrow::array::RecordBatch = part.try_into().unwrap();
+            let id_col = QueryDatasetDataframe::COLUMN_CHUNK_ID
+                .extract(&batch)
+                .expect("bad chunk_id column in response");
+            intersected_ids.extend(id_col.iter_owned());
+        }
+    }
+
+    assert_eq!(
+        intersected_ids,
+        BTreeSet::from([pinned_chunk_id]),
+        "chunk_ids ∩ per_segment_values must equal pinned_chunk_id; \
+         got {intersected_ids:?}",
+    );
+}
+
+/// RR-4355 wire-level test for the `(select_all_entity_paths=false,
+/// entity_paths=[])` truth-table case from `cloud.proto`.
+///
+/// Per the proto: `(false, [])` is a valid query that yields no results
+/// regardless of the rest of the filter. Both the Rerun Hub and OSS
+/// `re_server` honor this — the Rerun Hub via the per-segment
+/// short-circuit added in this PR, OSS via the entity-filter check in
+/// `get_chunks_for_query_results`.
+pub async fn query_dataset_per_segment_values_empty_entity_paths_short_circuits(
+    service: impl RerunCloudService,
+) {
+    let service = Arc::new(service);
+    for time_type in [
+        TimeType::Sequence,
+        TimeType::DurationNs,
+        TimeType::TimestampNs,
+    ] {
+        query_dataset_per_segment_values_empty_entity_paths_short_circuits_by_time_type(
+            service.as_ref(),
+            time_type,
+        )
+        .await;
+    }
+}
+
+async fn query_dataset_per_segment_values_empty_entity_paths_short_circuits_by_time_type<
+    T: RerunCloudService,
+>(
+    service: &T,
+    time_type: TimeType,
+) {
+    use re_protos::cloud::v1alpha1::ext::QueryDatasetRequest;
+
+    let dataset_name = &format!("per_segment_empty_entity_paths_{time_type}");
+    let tuid_prefix = match time_type {
+        TimeType::Sequence => 222,
+        TimeType::DurationNs => 223,
+        TimeType::TimestampNs => 224,
+    };
+    let _data_sources =
+        register_per_segment_dataset(service, dataset_name, tuid_prefix, time_type).await;
+
+    let index_name = re_log_types::build_index_value(0_i64, time_type)
+        .0
+        .name()
+        .as_str();
+
+    let request = QueryDatasetRequest {
+        segment_ids: per_segment_segment_ids(),
+        // Explicitly: no entity paths, no "all paths". Result must be empty.
+        select_all_entity_paths: false,
+        entity_paths: vec![],
+        query: Some(ext::Query {
+            latest_at: Some(ext::QueryLatestAt {
+                index: Some(index_name.into()),
+                at: TimeInt::STATIC,
+                per_segment_values: vec![vec![1010], vec![2010], vec![3010]],
+            }),
+            ..Default::default()
+        }),
+        ..Default::default()
+    };
+
+    let ids = per_segment_chunk_id_set(service, dataset_name, request).await;
+
+    assert!(
+        ids.is_empty(),
+        "(select_all_entity_paths=false, entity_paths=[]) must yield an empty \
+         result regardless of `per_segment_values`; got {} chunk(s)",
+        ids.len(),
+    );
+}
+
+// ---
+
+async fn query_dataset_snapshot<T: RerunCloudService>(
+    client: TestClient<T>,
+    dataset_entry: &DatasetEntry,
+    index_values: Vec<(&str, Vec<i64>)>,
+    snapshot_name: &str,
+    time_type: TimeType,
+    check_schema: bool,
+) {
+    let index_values: BTreeMap<SegmentId, BTreeSet<IndexValue>> = index_values
+        .into_iter()
+        .map(|(idx, values)| {
+            (
+                SegmentId::from(idx),
+                values.into_iter().map(TimeInt::new_temporal).collect(),
+            )
+        })
+        .collect();
+
+    let timeline_name = match time_type {
+        TimeType::Sequence => "frame_nr",
+        TimeType::DurationNs => "duration",
+        TimeType::TimestampNs => "timestamp",
+    };
+
+    let query = re_chunk_store::QueryExpression {
+        view_contents: Some(std::iter::once((EntityPath::from("my/entity"), None)).collect()),
+        filtered_index: Some(timeline_name.into()),
+        ..Default::default()
+    };
+
+    let table_provider = DataframeQueryTableProvider::new_from_client(
+        client,
+        dataset_entry.details.id,
+        &query,
+        &[] as &[&str],
+        Some(Arc::new(index_values)),
+        None,       // arrow_schema — let the provider fetch it
+        None,       // trace_headers
+        Vec::new(), // metrics_collectors
+    )
+    .await
+    .unwrap();
+
+    let ctx = SessionContext::default();
+    let plan = table_provider
+        .scan(&ctx.state(), None, &[], None)
+        .await
+        .unwrap();
+    let schema = plan.schema();
+
+    let num_partitions = plan.output_partitioning().partition_count();
+    let results: Vec<_> = (0..num_partitions)
+        .map(|partition| plan.execute(partition, ctx.task_ctx()))
+        .try_collect()
+        .unwrap();
+
+    let stream = futures::stream::iter(results);
+
+    let results: Vec<RecordBatch> = stream
+        .flat_map(|stream| stream)
+        .try_collect()
+        .await
+        .unwrap();
+
+    for batch in &results {
+        assert_eq!(batch.schema(), schema);
+    }
+
+    let results = if results.is_empty() {
+        RecordBatch::new_empty(schema)
+    } else {
+        concat_record_batches(&results)
+    };
+
+    if check_schema {
+        insta::assert_snapshot!(
+            format!("{snapshot_name}_schema"),
+            results.format_schema_snapshot()
+        );
+    }
+
+    let filtered_results = results.horizontally_sorted().auto_sort_rows().unwrap();
+
+    insta::assert_snapshot!(
+        format!("{snapshot_name}_data"),
+        filtered_results.format_snapshot(false)
+    );
+}

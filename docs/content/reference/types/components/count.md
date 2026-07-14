@@ -14,7 +14,7 @@ Used for counting various entities like messages, schemas, channels, etc.
 
 ## Arrow datatype
 ```
-uint64
+UInt64
 ```
 
 ## API reference links

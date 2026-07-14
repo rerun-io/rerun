@@ -4,8 +4,9 @@ use super::yuv_converter::{
     YuvFormatConversionTask, YuvMatrixCoefficients, YuvPixelLayout, YuvRange,
 };
 use crate::renderer::DrawError;
+use crate::resource_managers::AlphaChannelUsage;
 use crate::wgpu_resources::{GpuTexture, TextureDesc};
-use crate::{DebugLabel, RenderContext, Texture2DBufferInfo};
+use crate::{Label, RenderContext, Texture2DBufferInfo};
 
 /// Image data format that can be converted to a wgpu texture.
 // TODO(andreas): Right now this combines both color space and pixel format. Consider separating them similar to how we do on user facing APIs.
@@ -41,13 +42,13 @@ impl From<wgpu::TextureFormat> for SourceImageDataFormat {
 #[derive(thiserror::Error, Debug, Clone, PartialEq, Eq)]
 pub enum ImageDataToTextureError {
     #[error("Texture {0:?} has zero width or height!")]
-    ZeroSize(DebugLabel),
+    ZeroSize(Label),
 
     #[error(
         "Texture {label:?} was {width}x{height}, larger than the max of {max_texture_dimension_2d}"
     )]
     TooLarge {
-        label: DebugLabel,
+        label: Label,
         width: u32,
         height: u32,
         max_texture_dimension_2d: u32,
@@ -57,7 +58,7 @@ pub enum ImageDataToTextureError {
         "Invalid data length for texture {label:?}. Expected {expected} bytes, got {actual} bytes"
     )]
     InvalidDataLength {
-        label: DebugLabel,
+        label: Label,
         expected: usize,
         actual: usize,
     },
@@ -67,27 +68,27 @@ pub enum ImageDataToTextureError {
 
     #[error("Texture {label:?} has a format {format:?} that data can't be transferred to!")]
     UnsupportedFormatForTransfer {
-        label: DebugLabel,
+        label: Label,
         format: wgpu::TextureFormat,
     },
 
     #[error("Gpu-based conversion for texture {label:?} did not succeed: {err}")]
-    GpuBasedConversionError { label: DebugLabel, err: DrawError },
+    GpuBasedConversionError { label: Label, err: DrawError },
 
     #[error(
         "Texture {label:?} has invalid texture usage flags: {actual_usage:?}, expected at least {required_usage:?}"
     )]
     InvalidTargetTextureUsageFlags {
-        label: DebugLabel,
+        label: Label,
         actual_usage: wgpu::TextureUsages,
         required_usage: wgpu::TextureUsages,
     },
 
     #[error(
-        "Texture {label:?} has invalid texture format: {actual_format:?}, expected at least {required_format:?}"
+        "Texture {label:?} has invalid texture format: {actual_format:?}, expected {required_format:?}"
     )]
     InvalidTargetTextureFormat {
-        label: DebugLabel,
+        label: Label,
         actual_format: wgpu::TextureFormat,
         required_format: wgpu::TextureFormat,
     },
@@ -103,7 +104,7 @@ pub enum ImageDataToTextureError {
 pub struct ImageDataDesc<'a> {
     /// If this desc is not used for a texture update, this label is used for the target texture.
     /// Otherwise, it may still used for any intermediate resources that may be required during the conversion process.
-    pub label: DebugLabel,
+    pub label: Label,
 
     /// Data for the highest mipmap level.
     ///
@@ -120,6 +121,9 @@ pub struct ImageDataDesc<'a> {
     /// With the output always being a ("mainstream" gpu readable) texture format, the output texture's
     /// width/height is the semantic width/height of the image data!
     pub width_height: [u32; 2],
+
+    /// Information about how the alpha channel is used, if it exists.
+    pub alpha_channel_usage: AlphaChannelUsage,
     //generate_mip_maps: bool, // TODO(andreas): generate mipmaps!
 }
 
@@ -134,6 +138,7 @@ impl ImageDataDesc<'_> {
             data,
             format,
             width_height,
+            alpha_channel_usage: _,
         } = self;
 
         if !target_texture_desc
@@ -264,6 +269,7 @@ pub fn transfer_image_data_to_texture(
         data,
         format: source_format,
         width_height: output_width_height,
+        alpha_channel_usage: _, // TODO(#12223): Determine `AlphaChannelUsage` if it is set to `DontKnow`.
     } = image_data;
 
     // Determine size of the texture the image data is uploaded into.
@@ -367,7 +373,7 @@ fn copy_data_to_texture(
         let bytes_per_row_unpadded = buffer_info.bytes_per_row_unpadded as usize;
         let num_padding_bytes_per_row =
             buffer_info.bytes_per_row_padded as usize - bytes_per_row_unpadded;
-        debug_assert!(
+        re_log::debug_assert!(
             num_padding_bytes_per_row > 0,
             "No padding bytes, but the unpadded buffer size is not equal to the unpadded buffer."
         );

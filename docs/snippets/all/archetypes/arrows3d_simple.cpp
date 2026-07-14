@@ -7,7 +7,7 @@
 
 constexpr float TAU = 6.28318530717958647692528676655900577f;
 
-int main() {
+int main(int argc, char* argv[]) {
     const auto rec = rerun::RecordingStream("rerun_example_arrow3d");
     rec.spawn().exit_on_failure();
 
@@ -28,6 +28,8 @@ int main() {
 
     rec.log(
         "arrows",
-        rerun::Arrows3D::from_vectors(vectors).with_origins(origins).with_colors(colors)
+        rerun::Arrows3D::from_vectors(vectors)
+            .with_origins(origins)
+            .with_colors(colors)
     );
 }

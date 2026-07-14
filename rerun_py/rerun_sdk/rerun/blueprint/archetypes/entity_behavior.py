@@ -5,13 +5,14 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, ClassVar
 
 from attrs import define, field
 
 from ... import components, datatypes
 from ..._baseclasses import (
     Archetype,
+    ComponentDescriptor,
 )
 from ...error_utils import catch_and_log_exceptions
 
@@ -34,7 +35,8 @@ class EntityBehavior(Archetype):
 
     rr.init("rerun_example_entity_behavior", spawn=True)
 
-    # Use `EntityBehavior` to override visibility & interactivity of entities in the blueprint.
+    # Use `EntityBehavior` to override visibility & interactivity of entities
+    # in the blueprint.
     rr.send_blueprint(
         rrb.Spatial2DView(
             overrides={
@@ -49,7 +51,10 @@ class EntityBehavior(Archetype):
     rr.log("hidden_subtree/also_hidden", rr.LineStrips2D(strips=[(-1, 1), (1, -1)]))
     rr.log("hidden_subtree/not_hidden", rr.LineStrips2D(strips=[(1, 1), (-1, -1)]))
     rr.log("non_interactive_subtree", rr.Boxes2D(centers=(0, 0), half_sizes=(1, 1)))
-    rr.log("non_interactive_subtree/also_non_interactive", rr.Boxes2D(centers=(0, 0), half_sizes=(0.5, 0.5)))
+    rr.log(
+        "non_interactive_subtree/also_non_interactive",
+        rr.Boxes2D(centers=(0, 0), half_sizes=(0.5, 0.5)),
+    )
     ```
     <center>
     <picture>
@@ -62,6 +67,8 @@ class EntityBehavior(Archetype):
     </center>
 
     """
+
+    NAME: ClassVar[str] = "rerun.blueprint.archetypes.EntityBehavior"
 
     def __init__(
         self: Any, *, interactive: datatypes.BoolLike | None = None, visible: datatypes.BoolLike | None = None
@@ -160,6 +167,22 @@ class EntityBehavior(Archetype):
     def cleared(cls) -> EntityBehavior:
         """Clear all the fields of a `EntityBehavior`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_interactive() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "EntityBehavior:interactive",
+            archetype=EntityBehavior.NAME,
+            component_type=components.InteractiveBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_visible() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "EntityBehavior:visible",
+            archetype=EntityBehavior.NAME,
+            component_type=components.VisibleBatch._COMPONENT_TYPE,
+        )
 
     interactive: components.InteractiveBatch | None = field(
         metadata={"component": True},

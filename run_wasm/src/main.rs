@@ -92,7 +92,7 @@ fn main() {
         std::thread::sleep(Duration::from_millis(500));
 
         // Open browser tab.
-        let viewer_url = format!("http://{host}:{port}",);
+        let viewer_url = format!("http://{host}:{port}");
         webbrowser::open(&viewer_url).ok();
         println!("Opening browser at {viewer_url}");
 

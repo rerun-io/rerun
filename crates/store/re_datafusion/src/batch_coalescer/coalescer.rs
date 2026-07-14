@@ -121,7 +121,7 @@ impl SizedBatchCoalescer {
         {
             // Limit is reached
             let remaining_rows = max_rows - self.state.total_rows;
-            debug_assert!(remaining_rows > 0);
+            re_log::debug_assert!(remaining_rows > 0);
 
             let batch = batch.slice(0, remaining_rows);
             self.state.buffered_rows += batch.num_rows();
@@ -364,7 +364,7 @@ mod tests {
             let mut starting_idx = 0;
             assert_eq!(expected_output_sizes.len(), output_batches.len());
             for (i, (expected_size, batch)) in
-                expected_output_sizes.iter().zip(output_batches).enumerate()
+                std::iter::zip(&expected_output_sizes, output_batches).enumerate()
             {
                 assert_eq!(
                     *expected_size,
@@ -466,7 +466,7 @@ mod tests {
     /// Compares the values of two string view arrays
     fn compare_string_array_values(arr1: &StringViewArray, arr2: &StringViewArray) {
         assert_eq!(arr1.len(), arr2.len());
-        for (s1, s2) in arr1.iter().zip(arr2.iter()) {
+        for (s1, s2) in std::iter::zip(arr1.iter(), arr2.iter()) {
             assert_eq!(s1, s2);
         }
     }

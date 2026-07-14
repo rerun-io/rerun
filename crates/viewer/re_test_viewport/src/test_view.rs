@@ -1,5 +1,6 @@
 use re_chunk::EntityPath;
 use re_log_types::example_components::MyPoint;
+use re_sdk_types::Archetype as _;
 use re_ui::Help;
 use re_viewer_context::external::re_chunk_store::external::re_chunk;
 use re_viewer_context::{
@@ -10,6 +11,7 @@ use re_viewer_context::{
 #[derive(Default)]
 pub struct TestView;
 
+#[derive(re_byte_size::SizeBytes)]
 pub struct TestViewState;
 
 impl ViewState for TestViewState {
@@ -19,6 +21,10 @@ impl ViewState for TestViewState {
 
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
+    }
+
+    fn heap_size_bytes(&self) -> u64 {
+        re_viewer_context::SizeBytes::heap_size_bytes(self)
     }
 }
 
@@ -30,11 +36,14 @@ impl VisualizerSystem for TestSystem {
         &self,
         _app_options: &re_viewer_context::AppOptions,
     ) -> re_viewer_context::VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<re_log_types::example_components::MyPoints>()
+        VisualizerQueryInfo::single_required_component::<MyPoint>(
+            &re_log_types::example_components::MyPoints::descriptor_points(),
+            &re_log_types::example_components::MyPoints::all_components(),
+        )
     }
 
     fn execute(
-        &mut self,
+        &self,
         _ctx: &re_viewer_context::ViewContext<'_>,
         _query: &re_viewer_context::ViewQuery<'_>,
         _context_systems: &re_viewer_context::ViewContextCollection,
@@ -45,7 +54,10 @@ impl VisualizerSystem for TestSystem {
 
 impl IdentifiedViewSystem for TestSystem {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "Test".into()
+        re_viewer_context::external::re_string_interner::intern_static!(
+            re_viewer_context::ViewSystemIdentifier,
+            "Test"
+        )
     }
 }
 
@@ -98,6 +110,7 @@ impl ViewClass for TestView {
     fn ui(
         &self,
         _ctx: &ViewerContext<'_>,
+        _missing_chunk_reporter: &re_viewer_context::MissingChunkReporter,
         ui: &mut egui::Ui,
         _state: &mut dyn re_viewer_context::ViewState,
         _query: &re_viewer_context::ViewQuery<'_>,

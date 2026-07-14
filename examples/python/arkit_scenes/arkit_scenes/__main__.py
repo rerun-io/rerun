@@ -8,11 +8,12 @@ from typing import TYPE_CHECKING, Any
 
 import cv2
 import numpy as np
-import rerun as rr  # pip install rerun-sdk
-import rerun.blueprint as rrb
 import trimesh
 from scipy.spatial.transform import Rotation as R
 from tqdm import tqdm
+
+import rerun as rr  # pip install rerun-sdk
+import rerun.blueprint as rrb
 
 from .download_dataset import AVAILABLE_RECORDINGS, ensure_recording_available
 
@@ -213,6 +214,7 @@ def log_arkit(recording_path: Path, include_highres: bool) -> None:
             vertex_positions=mesh.vertices,  # type: ignore[attr-defined]
             vertex_colors=mesh.visual.vertex_colors,  # type: ignore[attr-defined]
             triangle_indices=mesh.faces,  # type: ignore[attr-defined]
+            face_rendering="Front",  # We want to hide the front facing faces, but the dataset uses mostly clockwise winding order which is the opposite of what Rerun assumes (CCW).
         ),
         static=True,
     )

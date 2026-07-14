@@ -30,12 +30,15 @@ all-features = true
 
 [advisories]
 version = 2
+unused-ignored-advisory = "deny"
 ignore = [
-  "RUSTSEC-2024-0436", # https://rustsec.org/advisories/RUSTSEC-2024-0436 - paste is unmaintained - https://github.com/dtolnay/paste
-  "RUSTSEC-2024-0014", # https://rustsec.org/advisories/RUSTSEC-2024-0014 - generational-arena is unmaintained
-  "RUSTSEC-2025-0141", # https://rustsec.org/advisories/RUSTSEC-2025-0141 - bincode is unmaintained - https://git.sr.ht/~stygianentity/bincode/tree/v3.0/item/README.md
-  # TODO(quickwit-oss/tantivy#2796): Remove when changes trickle down to `lance`.
-  "RUSTSEC-2026-0002", # https://rustsec.org/advisories/RUSTSEC-2026-0002 - lance uses an old version of `lru`
+  { id = "RUSTSEC-2024-0436", reason = "paste is unmaintained — https://github.com/dtolnay/paste" },
+  { id = "RUSTSEC-2024-0014", reason = "generational-arena is unmaintained" },
+  { id = "RUSTSEC-2025-0141", reason = "bincode is unmaintained — https://git.sr.ht/~stygianentity/bincode/tree/v3.0/item/README.md" },
+  { id = "RUSTSEC-2026-0176", reason = "RR-4865 can't update to pyo3 0.29 until numpy crate is updated" },
+  { id = "RUSTSEC-2026-0177", reason = "RR-4865 can't update to pyo3 0.29 until numpy crate is updated" },
+  { id = "RUSTSEC-2026-0194", reason = "quick-xml is pulled in by upstream crates that do not yet allow 0.41" },
+  { id = "RUSTSEC-2026-0195", reason = "quick-xml is pulled in by upstream crates that do not yet allow 0.41" },
 ]
 
 
@@ -49,6 +52,8 @@ deny = [
   { name = "egui_glow", reason = "We use wgpu" },
   { name = "openssl-sys", reason = "We prefer rustls" },
   { name = "openssl", reason = "We prefer rustls" },
+  { name = "protobuf_src", reason = "We don't want to force users to compile protoc" },
+  # { name = "protoc-prebuilt", reason = "It would be better if 3rd party crates shipped their pre-compiled proto sources" }, # unfortunately, we use this for our objectron example. TODO(emilk): avoid protoc-prebuilt
 
   # We have to allow egui_kittest since we use it behind a `testing` feature flag, rather than just as a dev-dependency.
   #{ name = "egui_kittest", reason = "Only allowed as a dev-dependency for testing." },
@@ -57,55 +62,45 @@ deny = [
   #{ name = "insta", reason = "Only allowed as a dev-dependency for testing." },
 ]
 skip = [
+  { name = "accesskit_consumer" }, # `egui_mcp` uses a newer version than the viewer's `eframe`/`accesskit_winit`.
   { name = "base64" }, # Too popular
+  { name = "bitflags" }, # core-graphics & png uses an older version.
   { name = "block2" }, # Old version via rfd
-  { name = "bzip2" }, # Remove after https://github.com/apache/datafusion/pull/17509 closes
   { name = "console" }, # smallish
-  { name = "cargo-platform" }, # used by rustdoc-json
-  { name = "cargo_metadata" }, # used by rustdoc-json
   { name = "core-foundation" }, # Currently, e.g. `webbrowser` and `winit` use different versions.
-  { name = "core-graphics-types" }, # wgpu requires 0.2 while winit is still on 0.1
-  { name = "downcast-rs" }, # eco-system is transitioning from 1 to 2
-  { name = "event-listener" }, # remove after https://github.com/lance-format/lance/pull/4834 closes
-  { name = "gimli" }, # wasm-bindgen
+  { name = "getrandom" }, # ring uses 0.2, ahash/arrow/datafusion use 0.3
   { name = "hashbrown" }, # Old version used by polar-rs
   { name = "itertools" }, # Too popular
+  { name = "kurbo" }, # Different versions in egui_extras/resvg and epaint/vello_cpu
   { name = "libloading" }, # datafusion-ffi needs an older version than wgpu
-  { name = "lru" }, # because of lance
+  { name = "linux-raw-sys" }, # because of two rustix versions.
   { name = "lz4_flex" }, # the Arrow ecosystem is a bit behind, but it's fine, this is a very tiny, flat dependency
   { name = "memmap2" }, # because of walkers
-  { name = "nom" }, # lance
   { name = "objc2-app-kit" }, # `accesskit_macos` uses a different version than `arboard`
   { name = "objc2-foundation" }, # `accesskit_macos` uses a different version than `arboard`
   { name = "objc2" }, # `accesskit_macos` uses a different version than `arboard`
   { name = "ordered-float" }, # Old version being used by parquet, but super small!
-  { name = "petgraph" }, # Remove after next release due to https://github.com/tokio-rs/prost/pull/1327
-  { name = "prost-build" }, # waiting new lance update
-  { name = "prost-derive" }, # waiting new lance update
-  { name = "prost-types" }, # waiting new lance update
-  { name = "prost" }, # waiting new lance update
   { name = "quick-xml" }, # because of urdf-rs
   { name = "redox_syscall" }, # Plenty of versions in the wild
   { name = "rustc-hash" }, # numpy with compatible pyo3 requires different version than wgpu
-  { name = "socket2" }, # tonic, axum, …
-  { name = "unicode-width" }, # walkers depends on 0.1 via http-cache-request / cacache
   { name = "rustix" }, # tantivy uses an old version.
-  { name = "linux-raw-sys" }, # because of two rustix versions.
-  { name = "bitflags" }, # core-graphics & png uses an older version.
+  { name = "socket2" }, # `egui_mcp` pulls `tokio` (→ socket2 0.6) into the non-dev graph; the viewer otherwise uses 0.5 via `hyper-util`.
+  { name = "unicode-width" }, # walkers depends on 0.1 via http-cache-request / cacache
+  { name = "ureq" }, # duplicated by `protoc-prebuilt`, which uses an outdated version.
+  { name = "webpki-roots" }, # need to update ureq
+  { name = "zip" }, # duplicated by `protoc-prebuilt`, which uses an ancient version.
 ]
 skip-tree = [
+  # PREFER `skip` (above): `skip-tree` exempts the crate AND its whole transitive subtree from the
+  # duplicate check, so it can silently hide unrelated new duplicates. Only use `skip-tree` when an
+  # outdated root drags in a self-contained cluster of old deps that would be noise to list one-by-one.
+  { name = "darling" }, # enumset_derive uses 0.21, serde_with_macros (via lance-namespace) uses 0.23
   { name = "petgraph" }, # b/c lance
   { name = "phf" }, # b/c mime_guess2
-  { name = "rand_distr" }, # from ndarray-rand
-  { name = "skeptic" }, # dev-dependency
   { name = "thiserror" }, # Waiting for eco-system to switch to 2.0
   { name = "toml" }, # b/c cargo_metadata
-  { name = "webpki-roots" }, # need to update ureq
   { name = "windows-sys" }, # Impossible
-  { name = "windows-targets" }, # Impossible
-  { name = "windows" }, # Impossible
   { name = "zerocopy" }, # Need to update re_rav1d
-  # NOTE: `skip-tree` skips the whole tree! Consider adding to just `skip` instead (scroll up!)
 ]
 
 [licenses]
@@ -129,7 +124,6 @@ allow = [
   "Ubuntu-font-1.0", # https://ubuntu.com/legal/font-licence
   "Unicode-3.0", # https://www.unicode.org/license.txt
   "Zlib", # https://tldrlegal.com/license/zlib-libpng-license-(zlib)
-  "bzip2-1.0.6", # https://github.com/trifectatechfoundation/libbzip2-rs/blob/v0.2.2/COPYING
 ]
 exceptions = []
 

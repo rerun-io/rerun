@@ -23,37 +23,21 @@ use crate::mesh_loader::{LoadedMesh, NativeAsset3D, NativeMesh3D};
 //
 // TODO(andreas): Maybe these should be different concerns?
 // Blobs need costly unpacking/reading/parsing, regular meshes don't.
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, re_byte_size::SizeBytes)]
 pub struct MeshCacheKey {
     pub versioned_instance_path_hash: VersionedInstancePathHash,
     pub query_result_hash: Hash64,
     pub media_type: Option<MediaType>,
 }
 
-impl re_byte_size::SizeBytes for MeshCacheKey {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            versioned_instance_path_hash: _,
-            query_result_hash: _,
-            media_type,
-        } = self;
-        media_type.heap_size_bytes()
-    }
-}
-
+#[derive(re_byte_size::SizeBytes)]
 struct MeshEntry {
     mesh: Option<Arc<LoadedMesh>>,
     last_used_generation: u64,
 }
 
-impl re_byte_size::SizeBytes for MeshEntry {
-    fn heap_size_bytes(&self) -> u64 {
-        self.mesh.heap_size_bytes()
-    }
-}
-
 /// Caches meshes based on their [`MeshCacheKey`].
-#[derive(Default)]
+#[derive(Default, re_byte_size::SizeBytes)]
 pub struct MeshCache {
     cache: HashMap<RowId, HashMap<MeshCacheKey, MeshEntry>>,
     generation: u64,
@@ -77,7 +61,7 @@ pub enum AnyMesh<'a> {
 impl MeshCache {
     pub fn entry(
         &mut self,
-        name: &str,
+        name: &dyn std::fmt::Display,
         key: MeshCacheKey,
         mesh: AnyMesh<'_>,
         render_ctx: &RenderContext,
@@ -88,9 +72,11 @@ impl MeshCache {
             .or_default()
             .entry(key)
             .or_insert_with(|| {
+                re_tracing::profile_scope!("MeshCache-miss");
+                let name = name.to_string();
                 re_log::trace!("Loading CPU mesh {name:?}…");
 
-                let result = LoadedMesh::load(name.to_owned(), mesh, render_ctx);
+                let result = LoadedMesh::load(name.clone(), mesh, render_ctx);
 
                 match result {
                     Ok(cpu_mesh) => MeshEntry {
@@ -131,7 +117,7 @@ impl Cache for MeshCache {
     }
 
     fn purge_memory(&mut self) {
-        self.cache.clear();
+        // We already purge everything that isn't being actively used
     }
 
     fn vram_usage(&self) -> re_byte_size::MemUsageTree {
@@ -194,16 +180,6 @@ impl Cache for MeshCache {
 
         self.cache
             .retain(|row_id, _meshes| !row_ids_removed.contains(row_id));
-    }
-}
-
-impl re_byte_size::SizeBytes for MeshCache {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            cache,
-            generation: _,
-        } = self;
-        cache.heap_size_bytes()
     }
 }
 

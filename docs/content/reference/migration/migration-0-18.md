@@ -82,7 +82,7 @@ When constructing a [`Mesh3D`](https://rerun.io/docs/reference/types/archetypes/
 * Python: `mesh_material=rr.Material(albedo_factor=color)` ➡ `albedo_factor=color`
 
 
-### Overhaul of [`Transform3D`](https://rerun.io/docs/reference/types/archetypes/Transform3D)
+### Overhaul of [`Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d)
 Previously, the transform component was represented as one of several variants (an Arrow union, `enum` in Rust) depending on how the transform was expressed, sometimes nested within.
 (for instance, the `TranslationRotationScale3D` variant had internally several variants for rotation & scale).
 
@@ -219,12 +219,13 @@ Furthermore, it can be used for instancing 3D meshes and is used to represent th
 Asset3D previously had a `transform` argument, now you have to send either a `InstancePoses3D` or a `Transform3D` on the same entity:
 Before:
 ```python
-rr.log("world/asset", rr.Asset3D(
+rr.log(
+    "world/asset",
+    rr.Asset3D(
         path=path,
-        transform=rr.OutOfTreeTransform3DBatch(
-            rr.TranslationRotationScale3D(translation=center, scale=scale)
-        )
-    ))
+        transform=rr.OutOfTreeTransform3DBatch(rr.TranslationRotationScale3D(translation=center, scale=scale)),
+    ),
+)
 ```
 After:
 ```python
@@ -263,9 +264,9 @@ rec.log("world/asset", &rerun::InstancePoses3D::default().with_translations([tra
 
 ### [`Boxes3D`](https://rerun.io/docs/reference/types/archetypes/boxes3d) changes
 
-`centers` is now a [`PoseTranslation3D`](https://rerun.io/docs/reference/types/components/pose_translation3d) instead of a [`Position3D`](https://rerun.io/docs/reference/types/components/position3d) component.
+`centers` is now a `PoseTranslation3D` instead of a [`Position3D`](https://rerun.io/docs/reference/types/components/position3d) component.
 The main difference in behavior is that this means it overlaps with the newly introduced [`InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d) archetype.
 
 `rotation` was removed in favor of `rotation_axis_angles` and `quaternions` which are
-[`PoseRotationAxisAngle`](https://rerun.io/docs/reference/types/components/pose_rotation_axis_angle) and `PoseRotationQuat`(https://rerun.io/docs/reference/types/components/pose_rotation_quat) components.
+`PoseRotationAxisAngle` and `PoseRotationQuat` components.
 Consequently, instead of using `with_rotations` (C++/Rust) or `rotation=` (Python) you'll need to use `with_quaternions`/`quaternions=`  or `with_rotation_axis_angles`/`rotation_axis_angles=` respectively.

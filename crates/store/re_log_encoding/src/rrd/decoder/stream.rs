@@ -3,7 +3,7 @@ use std::pin::Pin;
 use tokio::io::AsyncBufRead;
 use tokio_stream::{Stream, StreamExt as _};
 
-use crate::RrdManifest;
+use crate::RawRrdManifest;
 use crate::rrd::decoder::state_machine::DecoderState;
 use crate::rrd::{DecodeError, Decoder, DecoderEntrypoint};
 
@@ -116,7 +116,7 @@ impl<T: DecoderEntrypoint, R: AsyncBufRead> DecoderStream<T, R> {
     /// case of concatenated streams.
     ///
     /// This is not cheap: it automatically performs the transport to app level conversion.
-    pub fn rrd_manifests(&self) -> Result<Vec<RrdManifest>, DecodeError> {
+    pub fn rrd_manifests(&self) -> Result<Vec<RawRrdManifest>, DecodeError> {
         self.decoder.rrd_manifests()
     }
 }

@@ -17,6 +17,12 @@ use re_viewport_blueprint::{ContainerBlueprint, ViewportBlueprint};
 mod actions;
 pub mod collapse_expand;
 mod sub_menu;
+mod visibility_actions;
+
+pub use visibility_actions::{
+    any_view_has_entity_visibility, entity_visibility_in_view, set_entity_visibility_in_all_views,
+    set_entity_visibility_in_view,
+};
 
 use actions::add_container::AddContainerAction;
 use actions::add_entities_to_new_view::AddEntitiesToNewViewAction;
@@ -26,6 +32,7 @@ use actions::collapse_expand_all::CollapseExpandAllAction;
 use actions::move_contents_to_new_container::MoveContentsToNewContainerAction;
 use actions::remove::RemoveAction;
 use actions::show_hide::{HideAction, ShowAction};
+use actions::show_hide_in_all_views::ShowHideInAllViewsAction;
 use actions::{CopyEntityPathToClipboard, TrackEntity};
 use re_ui::menu::menu_style;
 use sub_menu::SubMenu;
@@ -114,7 +121,9 @@ fn context_menu_ui_for_item_with_context_impl(
             // handle selection
             match selection_update_behavior {
                 SelectionUpdateBehavior::UseSelection => {
-                    if !ctx.selection().contains_item(item) {
+                    if ctx.selection().contains_item(item) {
+                        show_context_menu(ctx.selection());
+                    } else {
                         // When the context menu is triggered open, we check if we're part of the selection,
                         // and, if not, we update the selection to include only the item that was clicked.
                         if item_response.hovered() && item_response.secondary_clicked() {
@@ -124,8 +133,6 @@ fn context_menu_ui_for_item_with_context_impl(
                         } else {
                             show_context_menu(ctx.selection());
                         }
-                    } else {
-                        show_context_menu(ctx.selection());
                     }
                 }
 
@@ -164,6 +171,8 @@ fn action_list(
             vec![
                 Box::new(ShowAction),
                 Box::new(HideAction),
+                Box::new(ShowHideInAllViewsAction::Show),
+                Box::new(ShowHideInAllViewsAction::Hide),
                 Box::new(RemoveAction),
                 Box::new(CopyEntityPathToClipboard),
                 Box::new(TrackEntity),
@@ -267,7 +276,8 @@ impl<'a> ContextMenuContext<'a> {
     /// position of the enclosing view is considered.
     pub fn clicked_item_enclosing_container_id_and_position(&self) -> Option<(ContainerId, usize)> {
         let contents = match self.clicked_item {
-            Item::View(view_id) | Item::DataResult(view_id, _) => Contents::View(*view_id),
+            Item::View(view_id) => Contents::View(*view_id),
+            Item::DataResult(data_result) => Contents::View(data_result.view_id),
             Item::Container(container_id) => Contents::Container(*container_id),
             _ => {
                 return None;
@@ -380,13 +390,15 @@ trait ContextMenuAction {
                 }
                 Item::View(view_id) => self.process_view(ctx, view_id),
                 Item::InstancePath(instance_path) => self.process_instance_path(ctx, instance_path),
-                Item::DataResult(view_id, instance_path) => {
-                    self.process_data_result(ctx, view_id, instance_path);
+                Item::DataResult(data_result) => {
+                    self.process_data_result(ctx, &data_result.view_id, &data_result.instance_path);
                 }
                 Item::Container(container_id) => self.process_container(ctx, container_id),
                 Item::RedapServer(origin) => self.process_redap_server(ctx, origin),
-                Item::RedapEntry(entry) => {
-                    self.process_redap_entry(ctx, &entry.entry_id);
+                Item::RedapEntry { kind, .. } => {
+                    if let Some(entry_id) = kind.entry_id() {
+                        self.process_redap_entry(ctx, &entry_id);
+                    }
                 }
             }
         }

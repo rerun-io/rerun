@@ -1,14 +1,17 @@
 mod app_testing_ext;
 
-#[cfg(feature = "testing")]
-pub use app_testing_ext::AppTestingExt;
-use egui_kittest::Harness;
-use re_build_info::build_info;
-
 use crate::{
     App, AppEnvironment, AsyncRuntimeHandle, MainThreadToken, StartupOptions,
     customize_eframe_and_setup_renderer,
 };
+#[cfg(feature = "testing")]
+pub use app_testing_ext::AppTestingExt;
+use egui_kittest::Harness;
+use re_build_info::build_info;
+use re_viewer_context::AppOptions;
+use re_viewer_context::external::re_log_types::DateVisibility;
+
+pub type AppOptionsEditor = Box<dyn Fn(&mut AppOptions)>;
 
 #[derive(Default)]
 pub struct HarnessOptions {
@@ -16,6 +19,13 @@ pub struct HarnessOptions {
     pub max_steps: Option<u64>,
     pub step_dt: Option<f32>,
     pub startup_url: Option<String>,
+    pub enable_component_mapping: bool,
+
+    /// Allows tests to emulate platform-specific UI behavior.
+    pub os: Option<egui::os::OperatingSystem>,
+
+    /// Allows the test to set `AppOptions` at start.
+    pub app_options_editor: Option<AppOptionsEditor>,
 }
 
 /// Convenience function for creating a kittest harness of the viewer App.
@@ -30,10 +40,25 @@ pub fn viewer_harness(options: &HarnessOptions) -> Harness<'static, App> {
     if let Some(step_dt) = options.step_dt {
         harness_builder = harness_builder.with_step_dt(step_dt);
     }
+    if let Some(os) = options.os {
+        harness_builder = harness_builder.with_os(os);
+    }
 
     harness_builder.build_eframe(|cc| {
-        cc.egui_ctx.set_os(egui::os::OperatingSystem::Nix);
         customize_eframe_and_setup_renderer(cc).expect("Failed to customize eframe");
+        let connection_registry =
+            re_redap_client::ConnectionRegistry::new_without_stored_credentials();
+        #[cfg(all(feature = "internal_catalog", not(target_arch = "wasm32")))]
+        {
+            // Tests don't spawn a proxy server, so the catalog is only reached in-process; the
+            // origin's port is just a label here.
+            let addr = std::net::SocketAddr::from((
+                std::net::Ipv4Addr::LOCALHOST,
+                re_uri::DEFAULT_PROXY_PORT,
+            ));
+            let catalog = crate::internal_catalog::build(addr);
+            connection_registry.set_internal((catalog.origin, catalog.connection));
+        }
         let mut app = App::new(
             MainThreadToken::i_promise_i_am_only_using_this_for_a_test(),
             build_info!(),
@@ -42,18 +67,33 @@ pub fn viewer_harness(options: &HarnessOptions) -> Harness<'static, App> {
                 // Don't show the welcome / example screen in tests.
                 // See also: https://github.com/rerun-io/rerun/issues/10989
                 hide_welcome_screen: true,
-                // Don't calculate memory limit in tests.
-                memory_limit: re_memory::MemoryLimit::UNLIMITED,
                 ..Default::default()
             },
             cc,
-            Some(re_redap_client::ConnectionRegistry::new_without_stored_credentials()),
+            Some(connection_registry),
             AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen()
                 .expect("Failed to create AsyncRuntimeHandle"),
         );
         // Force the FFmpeg path to be wrong so we have a reproducible behavior.
         app.app_options_mut().video.ffmpeg_path = "/fake/ffmpeg/path".to_owned();
         app.app_options_mut().video.override_ffmpeg_path = true;
+
+        // Enable table cards and blueprints in tests.
+        app.app_options_mut()
+            .experimental
+            .table_cards_and_blueprints = true;
+
+        // Always show the full date so timestamps render as `YYYY-MM-DD HH:MM:SS`
+        // regardless of when the test runs. The default `HideDateToday` would
+        // silently break snapshots once the calendar day rolls over.
+        app.app_options_mut().timestamp_format = app
+            .app_options()
+            .timestamp_format
+            .with_date_visibility(DateVisibility::ShowDate);
+
+        if let Some(editor) = &options.app_options_editor {
+            editor(app.app_options_mut());
+        }
 
         // This is slightly different than calling this after we created the harness since
         // the harness will do some stepping upon creation.
@@ -75,7 +115,7 @@ pub fn step_until<'app, 'harness, Predicate>(
     step_duration: std::time::Duration,
     max_duration: std::time::Duration,
 ) where
-    Predicate: for<'a> FnMut(&'a egui_kittest::Harness<'app, App>) -> bool,
+    Predicate: for<'a> FnMut(&'a mut egui_kittest::Harness<'app, App>) -> bool,
 {
     let start_time = std::time::Instant::now();
     let mut success = predicate(harness);

@@ -1,11 +1,12 @@
-use re_data_source::StreamMode;
+use re_entity_db::FetchStage;
 use re_log_types::TimestampFormat;
+use re_memory::MemoryLimit;
 use re_video::{DecodeHardwareAcceleration, DecodeSettings};
 
 const MAPBOX_ACCESS_TOKEN_ENV_VAR: &str = "RERUN_MAPBOX_ACCESS_TOKEN";
 
 /// Global options for the viewer.
-#[derive(Debug, PartialEq, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, PartialEq, serde::Deserialize, serde::Serialize, Clone)]
 #[serde(default)]
 pub struct AppOptions {
     /// Experimental feature flags.
@@ -21,6 +22,9 @@ pub struct AppOptions {
     ///
     /// If false, you can still view them in the notifications panel.
     pub show_notification_toasts: bool,
+
+    /// Use Rerun's custom window decorations instead of the native OS decorations.
+    pub custom_window_decorations: bool,
 
     /// Include the "Welcome screen" application in the recordings panel?
     #[serde(alias = "include_welcome_screen_button_in_recordings_panel")]
@@ -42,10 +46,26 @@ pub struct AppOptions {
     /// Video decoding options.
     pub video: VideoOptions,
 
+    /// Whether per-visualizer instance/element limits are enabled.
+    ///
+    /// Several visualizers (3D shapes, time series lines, etc.) cap the number of elements
+    /// they process to avoid hangs. When disabled, those caps are removed entirely,
+    /// which may cause the viewer to become unresponsive with very large data sets.
+    pub visualizer_limits_enabled: bool,
+
     /// Mapbox API key (used to enable Mapbox-based map view backgrounds).
     ///
     /// Can also be set using the `RERUN_MAPBOX_ACCESS_TOKEN` environment variable.
     pub mapbox_access_token: String,
+
+    /// When the total process RAM reaches this limit, we GC old data.
+    pub memory_limit: MemoryLimit,
+
+    /// Only prefetch chunks up to (and including) this stage.
+    ///
+    /// Useful for debugging and for users who want to limit how aggressively
+    /// we prefetch data ahead of what is strictly needed.
+    pub max_fetch_stage: FetchStage,
 
     /// Path to the directory suitable for storing cache data.
     ///
@@ -69,6 +89,8 @@ impl Default for AppOptions {
 
             show_notification_toasts: true,
 
+            custom_window_decorations: re_ui::custom_window_decorations_default(),
+
             include_rerun_examples_button_in_recordings_panel: true,
 
             show_picking_debug_overlay: false,
@@ -81,7 +103,13 @@ impl Default for AppOptions {
 
             video: Default::default(),
 
+            visualizer_limits_enabled: true,
+
             mapbox_access_token: String::new(),
+
+            memory_limit: MemoryLimit::default_for_current_platform(),
+
+            max_fetch_stage: FetchStage::default(),
 
             #[cfg(not(target_arch = "wasm32"))]
             cache_directory: Self::default_cache_directory(),
@@ -90,6 +118,16 @@ impl Default for AppOptions {
 }
 
 impl AppOptions {
+    pub fn test() -> Self {
+        Self {
+            memory_limit: MemoryLimit::UNLIMITED,
+            show_metrics: false, // flaky in snapshot tests
+            #[cfg(any(target_os = "windows", target_os = "linux"))]
+            custom_window_decorations: false,
+            ..Default::default()
+        }
+    }
+
     pub fn mapbox_access_token(&self) -> Option<String> {
         if self.mapbox_access_token.is_empty() {
             std::env::var(MAPBOX_ACCESS_TOKEN_ENV_VAR).ok()
@@ -128,7 +166,7 @@ impl AppOptions {
     }
 }
 
-#[derive(Debug, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize, Clone)]
 #[serde(default)]
 pub struct VideoOptions {
     /// Preferred method for video decoding on web.
@@ -151,29 +189,27 @@ pub struct VideoOptions {
     pub ffmpeg_path: String,
 }
 
-#[derive(Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize, Clone)]
 #[serde(default)]
 pub struct ExperimentalAppOptions {
-    /// Larger-than-RAM streaming using RRD manifest.
+    /// Enable table cards and blueprints.
     ///
-    /// If false, we load the entire recording into memory.
-    /// We skip loading the RRD manifest.
-    ///
-    /// If `true`, we stream in only the chunks we need, as we need it.
-    /// And we load the RRD manifest.
-    pub stream_mode: StreamMode,
+    /// This enables registered table blueprints,
+    /// plus the table/grid view toggle for card-based table layouts.
+    pub table_cards_and_blueprints: bool,
 
-    /// Enables experimental component mapping ui.
-    ///
-    /// TODO(RR-3338, RR-3382): Enable component mappings UI
-    pub component_mapping: bool,
-}
+    /// Enable gamepad navigation in 3D spatial views.
+    pub gamepad_navigation: bool,
 
-impl Default for ExperimentalAppOptions {
-    fn default() -> Self {
-        Self {
-            stream_mode: StreamMode::FullLoad,
-            component_mapping: false,
-        }
-    }
+    /// Host an in-process "internal catalog" `re_server` and load `.rrd` files through it instead
+    /// of importing them directly into the viewer.
+    ///
+    /// Read from persisted state at app startup; changes to this setting require a restart to
+    /// take effect. When enabled, opened `.rrd` files are registered with the catalog and surfaced
+    /// as redap datasets under an internal server in the recording panel. When disabled, files are
+    /// imported directly into the viewer as plain recordings.
+    ///
+    /// Native-only; ignored unless the viewer was built with internal catalog support.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub use_internal_catalog: bool,
 }

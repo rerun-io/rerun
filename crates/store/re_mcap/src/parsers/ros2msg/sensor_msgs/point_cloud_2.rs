@@ -154,6 +154,10 @@ impl<'a> Position3DIter<'a> {
         is_big_endian: bool,
         fields: &[PointField],
     ) -> Option<Self> {
+        if step == 0 {
+            return None;
+        }
+
         let mut x_accessor: Option<(usize, PointFieldDatatype)> = None;
         let mut y_accessor: Option<(usize, PointFieldDatatype)> = None;
         let mut z_accessor: Option<(usize, PointFieldDatatype)> = None;
@@ -181,7 +185,7 @@ fn unwrap(res: std::io::Result<f32>, component: &str) -> f32 {
     match res {
         Ok(x) => x,
         Err(err) => {
-            debug_assert!(false, "failed to read `{component}`: {err}");
+            re_log::debug_panic!("failed to read `{component}`: {err}");
             f32::NAN
         }
     }
@@ -211,6 +215,17 @@ fn add_field_value(
     is_big_endian: bool,
     data: &[u8],
 ) -> anyhow::Result<()> {
+    // TODO(michael): consider supporting extra fields with length greater than 1.
+    // (if this is a thing anyone uses?)
+    // We currently only extract the first value in such a case.
+    if field.count != 1 {
+        re_log::warn_once!(
+            "PointCloud2 field `{}` has count {}. This is currently not supported.",
+            field.name,
+            field.count
+        );
+    }
+
     let mut rdr = Cursor::new(data);
     match field.datatype {
         PointFieldDatatype::Int8 => {
@@ -331,8 +346,9 @@ impl MessageParser for PointCloud2MessageParser {
         let point_cloud = cdr::try_decode_message::<sensor_msgs::PointCloud2>(msg.data.as_ref())
             .map_err(|err| Error::Other(anyhow::anyhow!(err)))?;
 
-        ctx.add_timestamp_cell(crate::util::TimestampCell::guess_from_nanos_ros2(
+        ctx.add_timestamp_cell(crate::util::TimestampCell::from_nanos_ros2(
             point_cloud.header.stamp.as_nanos() as u64,
+            ctx.time_type(),
         ));
 
         let Self {
@@ -369,7 +385,7 @@ impl MessageParser for PointCloud2MessageParser {
 
         // We lazily initialize the builders that store the extracted fields from
         // the blob when we receive the first message.
-        if extracted_fields.len() != point_cloud.fields.len() {
+        if extracted_fields.is_empty() && !point_cloud.fields.is_empty() {
             *extracted_fields = point_cloud
                 .fields
                 .iter()
@@ -382,12 +398,26 @@ impl MessageParser for PointCloud2MessageParser {
                 .collect();
         }
 
-        for point in point_cloud.data.chunks(point_cloud.point_step as usize) {
-            for (field, (_name, builder)) in
-                point_cloud.fields.iter().zip(extracted_fields.iter_mut())
-            {
-                let field_builder = builder.values();
-                add_field_value(field_builder, field, point_cloud.is_bigendian, point)?;
+        // `PointCloud2` occasionally shows up as an empty placeholder message
+        // with `point_step == 0` and no payload. Skip per-point extraction in
+        // that case instead of panicking when chunking the blob.
+        if point_cloud.point_step != 0 {
+            for point in point_cloud.data.chunks(point_cloud.point_step as usize) {
+                for (field, (_name, builder)) in
+                    std::iter::zip(&point_cloud.fields, extracted_fields.iter_mut())
+                {
+                    let field_builder = builder.values();
+                    // ROS field offsets are relative to the start of each point record.
+                    let field_data = point
+                        .get((field.offset as usize)..point.len())
+                        .with_context(|| {
+                            format!(
+                                "field `{}` offset {} exceeds point step {}",
+                                field.name, field.offset, point_cloud.point_step
+                            )
+                        })?;
+                    add_field_value(field_builder, field, point_cloud.is_bigendian, field_data)?;
+                }
             }
         }
 
@@ -494,7 +524,7 @@ impl MessageParser for PointCloud2MessageParser {
         )?;
         chunks.push(frame_ids_chunk);
 
-        for (i, points_3d) in points_3ds.iter().enumerate() {
+        for (i, points_3d) in points_3ds.iter().flatten().enumerate() {
             let timelines = timelines
                 .iter()
                 .map(|(timeline, time_col)| (*timeline, time_col.row_sliced(i, 1).clone()))
@@ -520,73 +550,283 @@ impl MessageParser for PointCloud2MessageParser {
             ChunkId::new(),
             entity_path.clone(),
             timelines,
-            [
-                (
-                    ComponentDescriptor::partial("height")
-                        .with_builtin_archetype(Self::ARCHETYPE_NAME),
-                    height.finish().into(),
-                ),
-                (
-                    ComponentDescriptor::partial("width")
-                        .with_builtin_archetype(Self::ARCHETYPE_NAME),
-                    width.finish().into(),
-                ),
-                (
-                    ComponentDescriptor::partial("fields")
-                        .with_builtin_archetype(Self::ARCHETYPE_NAME),
-                    fields.finish().into(),
-                ),
-                (
-                    ComponentDescriptor::partial("is_bigendian")
-                        .with_builtin_archetype(Self::ARCHETYPE_NAME),
-                    is_bigendian.finish().into(),
-                ),
-                (
-                    ComponentDescriptor::partial("point_step")
-                        .with_builtin_archetype(Self::ARCHETYPE_NAME),
-                    point_step.finish().into(),
-                ),
-                (
-                    ComponentDescriptor::partial("row_step")
-                        .with_builtin_archetype(Self::ARCHETYPE_NAME),
-                    row_step.finish().into(),
-                ),
-                (
-                    ComponentDescriptor::partial("data")
-                        .with_builtin_archetype(Self::ARCHETYPE_NAME)
-                        .with_component_type(components::Blob::name()),
-                    data.finish().into(),
-                ),
-                (
-                    ComponentDescriptor::partial("is_dense")
-                        .with_builtin_archetype(Self::ARCHETYPE_NAME),
-                    is_dense.finish().into(),
-                ),
-            ]
-            .into_iter()
-            .chain(points.into_iter().filter_map(|(name, mut builder)| {
-                // We only extract additional fields when we have a `Points3d`
-                // archetype to attach them to. In that case we're not interested
-                // in the other components.
-                // TODO(grtlr): It would be nice to never initialize the unnecessary builders
-                // in the first place. But, we'll soon move the semantic extraction of `Points3d`
-                // into a different layer anyways, making that optimization obsolete.
-                points_3ds.as_ref()?;
-                if ["x", "y", "z"].contains(&name.as_str()) {
-                    None
-                } else {
-                    Some((
-                        ComponentDescriptor::partial(name.clone())
-                            .with_builtin_archetype(archetypes::Points3D::name()),
-                        builder.finish(),
-                    ))
-                }
-            }))
+            std::iter::chain(
+                [
+                    (
+                        ComponentDescriptor::partial("height")
+                            .with_builtin_archetype(Self::ARCHETYPE_NAME),
+                        height.finish().into(),
+                    ),
+                    (
+                        ComponentDescriptor::partial("width")
+                            .with_builtin_archetype(Self::ARCHETYPE_NAME),
+                        width.finish().into(),
+                    ),
+                    (
+                        ComponentDescriptor::partial("fields")
+                            .with_builtin_archetype(Self::ARCHETYPE_NAME),
+                        fields.finish().into(),
+                    ),
+                    (
+                        ComponentDescriptor::partial("is_bigendian")
+                            .with_builtin_archetype(Self::ARCHETYPE_NAME),
+                        is_bigendian.finish().into(),
+                    ),
+                    (
+                        ComponentDescriptor::partial("point_step")
+                            .with_builtin_archetype(Self::ARCHETYPE_NAME),
+                        point_step.finish().into(),
+                    ),
+                    (
+                        ComponentDescriptor::partial("row_step")
+                            .with_builtin_archetype(Self::ARCHETYPE_NAME),
+                        row_step.finish().into(),
+                    ),
+                    (
+                        ComponentDescriptor::partial("data")
+                            .with_builtin_archetype(Self::ARCHETYPE_NAME)
+                            .with_component_type(components::Blob::name()),
+                        data.finish().into(),
+                    ),
+                    (
+                        ComponentDescriptor::partial("is_dense")
+                            .with_builtin_archetype(Self::ARCHETYPE_NAME),
+                        is_dense.finish().into(),
+                    ),
+                ],
+                points.into_iter().filter_map(|(name, mut builder)| {
+                    // We only extract additional fields when we have a `Points3d`
+                    // archetype to attach them to. In that case we're not interested
+                    // in the other components.
+                    // TODO(grtlr): It would be nice to never initialize the unnecessary builders
+                    // in the first place. But, we'll soon move the semantic extraction of `Points3d`
+                    // into a different layer anyways, making that optimization obsolete.
+                    points_3ds.as_ref()?;
+                    if ["x", "y", "z"].contains(&name.as_str()) {
+                        None
+                    } else {
+                        Some((
+                            ComponentDescriptor::partial(name.clone())
+                                .with_builtin_archetype(archetypes::Points3D::name()),
+                            builder.finish(),
+                        ))
+                    }
+                }),
+            )
             .collect(),
         )?;
 
         chunks.push(data_chunk);
 
         Ok(chunks)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{borrow::Cow, collections::BTreeMap, sync::Arc};
+
+    use arrow::array::{Array as _, Float32Array};
+    use byteorder::LittleEndian;
+    use mcap::{Channel, Message};
+    use re_cdr::to_vec;
+    use re_log_types::TimeType;
+
+    use super::*;
+    use crate::parsers::decode::ParserContext;
+    use crate::parsers::ros2msg::definitions::{builtin_interfaces, std_msgs};
+    use re_chunk::EntityPath;
+
+    fn cdr_message(point_cloud: &sensor_msgs::PointCloud2) -> Message<'static> {
+        let mut data = vec![0x00, 0x01, 0x00, 0x00];
+        data.extend(to_vec::<sensor_msgs::PointCloud2, LittleEndian>(point_cloud).unwrap());
+
+        Message {
+            channel: Arc::new(Channel {
+                id: 1,
+                topic: "/nav2_percep_cloud".to_owned(),
+                schema: None,
+                message_encoding: "cdr".to_owned(),
+                metadata: BTreeMap::default(),
+            }),
+            sequence: 0,
+            log_time: 0,
+            publish_time: 0,
+            data: Cow::Owned(data),
+        }
+    }
+
+    #[test]
+    fn ignores_zero_point_step_after_valid_message() {
+        let mut parser = PointCloud2MessageParser::new(2);
+        let mut ctx = ParserContext::new(
+            EntityPath::from("/nav2_percep_cloud"),
+            "/nav2_percep_cloud",
+            TimeType::TimestampNs,
+        );
+
+        let valid_message = sensor_msgs::PointCloud2 {
+            header: std_msgs::Header {
+                stamp: builtin_interfaces::Time { sec: 1, nanosec: 0 },
+                frame_id: "map".to_owned(),
+            },
+            height: 1,
+            width: 1,
+            fields: vec![
+                PointField {
+                    name: "x".to_owned(),
+                    offset: 0,
+                    datatype: PointFieldDatatype::Float32,
+                    count: 1,
+                },
+                PointField {
+                    name: "y".to_owned(),
+                    offset: 4,
+                    datatype: PointFieldDatatype::Float32,
+                    count: 1,
+                },
+                PointField {
+                    name: "z".to_owned(),
+                    offset: 8,
+                    datatype: PointFieldDatatype::Float32,
+                    count: 1,
+                },
+                PointField {
+                    name: "intensity".to_owned(),
+                    offset: 12,
+                    datatype: PointFieldDatatype::Float32,
+                    count: 1,
+                },
+            ],
+            is_bigendian: false,
+            point_step: 16,
+            row_step: 16,
+            data: [1.0_f32, 2.0, 3.0, 4.0]
+                .into_iter()
+                .flat_map(f32::to_le_bytes)
+                .collect(),
+            is_dense: true,
+        };
+
+        let empty_message = sensor_msgs::PointCloud2 {
+            header: std_msgs::Header {
+                stamp: builtin_interfaces::Time { sec: 2, nanosec: 0 },
+                frame_id: "map".to_owned(),
+            },
+            height: 0,
+            width: 0,
+            fields: Vec::new(),
+            is_bigendian: false,
+            point_step: 0,
+            row_step: 0,
+            data: Vec::new(),
+            is_dense: false,
+        };
+
+        parser
+            .append(&mut ctx, &cdr_message(&valid_message))
+            .unwrap();
+
+        parser
+            .append(&mut ctx, &cdr_message(&empty_message))
+            .unwrap();
+
+        let chunks = Box::new(parser).finalize(ctx).unwrap();
+        let row_counts = chunks.iter().map(Chunk::num_rows).collect::<Vec<_>>();
+        let data_chunk = chunks
+            .iter()
+            .find(|chunk| chunk.num_rows() == 2 && chunk.num_components() > 1)
+            .unwrap();
+        let intensity_descriptor = ComponentDescriptor::partial("intensity")
+            .with_builtin_archetype(archetypes::Points3D::name());
+
+        assert_eq!(chunks.len(), 3);
+        assert_eq!(row_counts, vec![2, 1, 2]);
+        assert!(
+            data_chunk
+                .component_descriptors()
+                .any(|descriptor| descriptor == &intensity_descriptor)
+        );
+    }
+
+    /// Tests that additional point fields are read correctly using their declared offset.
+    #[test]
+    fn extracts_additional_fields_from_their_offsets() {
+        let mut parser = PointCloud2MessageParser::new(1);
+        let mut ctx = ParserContext::new(
+            EntityPath::from("/some_cloud"),
+            "/some_cloud",
+            TimeType::TimestampNs,
+        );
+
+        let point_cloud = sensor_msgs::PointCloud2 {
+            header: std_msgs::Header {
+                stamp: builtin_interfaces::Time { sec: 1, nanosec: 0 },
+                frame_id: "map".to_owned(),
+            },
+            height: 1,
+            width: 1,
+            fields: vec![
+                PointField {
+                    name: "x".to_owned(),
+                    offset: 0,
+                    datatype: PointFieldDatatype::Float32,
+                    count: 1,
+                },
+                PointField {
+                    name: "y".to_owned(),
+                    offset: 4,
+                    datatype: PointFieldDatatype::Float32,
+                    count: 1,
+                },
+                PointField {
+                    name: "z".to_owned(),
+                    offset: 8,
+                    datatype: PointFieldDatatype::Float32,
+                    count: 1,
+                },
+                PointField {
+                    name: "intensity".to_owned(),
+                    offset: 12,
+                    datatype: PointFieldDatatype::Float32,
+                    count: 1,
+                },
+            ],
+            is_bigendian: false,
+            point_step: 16,
+            row_step: 16,
+            data: [1.0_f32, 2.0, 3.0, 42.123]
+                .into_iter()
+                .flat_map(f32::to_le_bytes)
+                .collect(),
+            is_dense: true,
+        };
+
+        parser.append(&mut ctx, &cdr_message(&point_cloud)).unwrap();
+
+        let chunks = Box::new(parser).finalize(ctx).unwrap();
+        let intensity_descriptor = ComponentDescriptor::partial("intensity")
+            .with_builtin_archetype(archetypes::Points3D::name());
+        let data_chunk = chunks
+            .iter()
+            .find(|chunk| {
+                chunk
+                    .components()
+                    .contains_component(intensity_descriptor.component)
+            })
+            .unwrap();
+        let intensity = data_chunk
+            .components()
+            .get_array(intensity_descriptor.component)
+            .unwrap();
+        let values = intensity
+            .values()
+            .as_any()
+            .downcast_ref::<Float32Array>()
+            .unwrap();
+
+        assert_eq!(intensity.len(), 1);
+        assert_eq!(values.len(), 1);
+        assert_eq!(values.value(0), 42.123);
     }
 }

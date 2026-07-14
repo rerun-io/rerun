@@ -84,9 +84,7 @@ def run_cargo(
             f"{os.getcwd()}/{clippy_conf}"
         )
 
-    # TODO(#11359): We don't capture output on mac runners to help debug random hangs.
-    # However, if output_checks is provided, we need to capture output even on macOS.
-    capture = sys.platform != "darwin" or output_checks is not None
+    capture = output_checks is not None
 
     env = os.environ.copy()
     env.update(additional_env_vars)
@@ -222,7 +220,14 @@ def main() -> None:
 def base_checks(results: list[Result]) -> None:
     # First check with --locked to make sure Cargo.lock is up to date.
     results.append(run_cargo("check", "--locked --all-features"))
-    results.append(run_cargo("fmt", "--all -- --check"))
+
+    fmt_result = run_cargo("fmt", "--all -- --check")
+    if sys.platform == "win32" and not fmt_result.success:
+        # TODO(rust-lang/rustfmt#6934): cargo-fmt passes all target paths for an edition to one
+        # rustfmt spawn, which can exceed the Windows command-line length limit in large workspaces.
+        fmt_result.success = True
+    results.append(fmt_result)
+
     results.append(run_cargo("clippy", "--all-targets --all-features -- --deny warnings"))
 
 
@@ -230,6 +235,10 @@ def sdk_variations(results: list[Result]) -> None:
     # Check a few important permutations of the feature flags for our `rerun` library:
     results.append(run_cargo("check", "-p rerun --no-default-features"))
     results.append(run_cargo("check", "-p rerun --no-default-features --features sdk"))
+
+    # `re_server` is built without the optional `lance` feature in many configurations
+    # (e.g. when pulled in by `rerun`'s `--all-features`, which does not propagate `re_server/lance`).
+    results.append(run_cargo("check", "-p re_server"))
 
 
 deny_targets = [
@@ -247,7 +256,7 @@ def cargo_deny(results: list[Result]) -> None:
     # Note: running just `cargo deny check` without a `--target` can result in
     # false positives due to https://github.com/EmbarkStudios/cargo-deny/issues/324
     # Installing is quite quick if it's already installed.
-    results.append(run_cargo("install", "--locked cargo-deny@^0.18"))
+    results.append(run_cargo("install", "--locked cargo-deny@^0.19"))
 
     for target in deny_targets:
         results.append(
@@ -315,7 +324,11 @@ def wasm(results: list[Result]) -> None:
     )
     # Check re_renderer examples for wasm32.
     results.append(
-        run_cargo("check", "--target wasm32-unknown-unknown --target-dir target_wasm -p re_renderer --examples"),
+        run_cargo(
+            "clippy",
+            "--target wasm32-unknown-unknown --target-dir target_wasm -p re_renderer_examples",
+            clippy_conf="scripts/clippy_wasm",  # Use ./scripts/clippy_wasm/clippy.toml
+        ),
     )
 
 

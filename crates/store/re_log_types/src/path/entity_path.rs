@@ -1,3 +1,4 @@
+use std::hash::{Hash as _, Hasher as _};
 use std::sync::Arc;
 
 use ahash::{HashMap, HashSet};
@@ -11,15 +12,8 @@ use crate::hash::Hash64;
 // ----------------------------------------------------------------------------
 
 /// A 64 bit hash of [`EntityPath`] with very small risk of collision.
-#[derive(Copy, Clone, Eq, PartialOrd, Ord)]
+#[derive(Copy, Clone, Eq, PartialOrd, Ord, re_byte_size::SizeBytes)]
 pub struct EntityPathHash(Hash64);
-
-impl re_byte_size::SizeBytes for EntityPathHash {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-}
 
 impl EntityPathHash {
     /// Sometimes used as the hash of `None`.
@@ -78,7 +72,7 @@ impl std::fmt::Debug for EntityPathHash {
 /// When written as a string, some characters in the parts need to be escaped with a `\`
 /// (only character, numbers, `.`, `-`, `_` does not need escaping).
 ///
-/// See <https://www.rerun.io/docs/concepts/entity-path> for more on entity paths.
+/// See <https://www.rerun.io/docs/concepts/logging-and-ingestion/entity-path> for more on entity paths.
 ///
 /// This is basically implemented as a list of strings, but is reference-counted internally, so it is cheap to clone.
 /// It also has a precomputed hash and implemented [`nohash_hasher::IsEnabled`],
@@ -96,13 +90,14 @@ impl std::fmt::Debug for EntityPathHash {
 ///     ])
 /// );
 /// ```
-#[derive(Clone, Eq)]
+#[derive(Clone, Eq, SizeBytes)]
 pub struct EntityPath {
     /// precomputed hash
     hash: EntityPathHash,
 
     // [`Arc`] used for cheap cloning, and to keep down the size of [`EntityPath`].
     // We mostly use the hash for lookups and comparisons anyway!
+    #[size_bytes(ignore)] // NOTE: we assume it's amortized due to the `Arc`
     parts: Arc<Vec<EntityPathPart>>,
 }
 
@@ -161,6 +156,24 @@ impl EntityPath {
         )
     }
 
+    /// The full, unescaped path string for display purposes in the UI.
+    ///
+    /// Like [`std::fmt::Display`] but uses [`EntityPathPart::ui_string`] for each part,
+    /// producing a human-friendly representation without backslash escaping
+    /// (e.g. `/foo::bar` instead of `/foo\:\:bar`).
+    pub fn ui_string(&self) -> String {
+        if self.is_root() {
+            "/".to_owned()
+        } else {
+            let mut s = String::new();
+            for part in self.iter() {
+                s.push('/');
+                s.push_str(&part.ui_string());
+            }
+            s
+        }
+    }
+
     /// Treat the string as one opaque string, NOT splitting on any slashes.
     ///
     /// The given string is expected to be unescaped, i.e. any `\` is treated as a normal character.
@@ -206,7 +219,8 @@ impl EntityPath {
             return true; // optimization!
         }
 
-        prefix.len() <= self.len() && self.iter().zip(prefix.iter()).all(|(a, b)| a == b)
+        prefix.len() <= self.len()
+            && std::iter::zip(self.iter(), prefix.iter()).all(|(a, b)| a == b)
     }
 
     /// If this path starts with the given prefix,
@@ -224,13 +238,14 @@ impl EntityPath {
     /// Is this a strict descendant of the given path.
     #[inline]
     pub fn is_descendant_of(&self, other: &Self) -> bool {
-        other.len() < self.len() && self.iter().zip(other.iter()).all(|(a, b)| a == b)
+        other.len() < self.len() && std::iter::zip(self.iter(), other.iter()).all(|(a, b)| a == b)
     }
 
     /// Is this a direct child of the other path.
     #[inline]
     pub fn is_child_of(&self, other: &Self) -> bool {
-        other.len() + 1 == self.len() && self.iter().zip(other.iter()).all(|(a, b)| a == b)
+        other.len() + 1 == self.len()
+            && std::iter::zip(self.iter(), other.iter()).all(|(a, b)| a == b)
     }
 
     /// Number of parts
@@ -251,6 +266,16 @@ impl EntityPath {
         self.hash.hash64()
     }
 
+    /// Calculates a deterministic hash of the entity path.
+    ///
+    /// This is useful for generating deterministic IDs for visualizer instructions. By default,
+    /// self.hash is generated using ahash, which works differently on web and native.
+    pub fn calculate_deterministic_hash(&self) -> u64 {
+        let mut hasher = xxhash_rust::xxh64::Xxh64::new(0);
+        self.parts.hash(&mut hasher);
+        hasher.finish()
+    }
+
     /// Return [`None`] if root.
     #[must_use]
     pub fn parent(&self) -> Option<Self> {
@@ -261,7 +286,9 @@ impl EntityPath {
     }
 
     pub fn join(&self, other: &Self) -> Self {
-        self.iter().chain(other.iter()).cloned().collect()
+        std::iter::chain(self.iter(), other.iter())
+            .cloned()
+            .collect()
     }
 
     /// Helper function to iterate over all incremental [`EntityPath`]s from start to end, NOT including start itself.
@@ -286,7 +313,7 @@ impl EntityPath {
     /// If both paths are the same, the common ancestor is the path itself.
     pub fn common_ancestor(&self, other: &Self) -> Self {
         let mut common = Vec::new();
-        for (a, b) in self.iter().zip(other.iter()) {
+        for (a, b) in std::iter::zip(self.iter(), other.iter()) {
             if a == b {
                 common.push(a.clone());
             } else {
@@ -379,13 +406,6 @@ impl EntityPath {
     }
 }
 
-impl SizeBytes for EntityPath {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0 // NOTE: we assume it's amortized due to the `Arc`
-    }
-}
-
 impl FromIterator<EntityPathPart> for EntityPath {
     fn from_iter<T: IntoIterator<Item = EntityPathPart>>(parts: T) -> Self {
         Self::new(parts.into_iter().collect())
@@ -429,6 +449,10 @@ impl From<EntityPath> for String {
         path.to_string()
     }
 }
+
+// Make `quiver::Column<EntityPath>` work (backed by a `Utf8` column).
+// Reading parses with `parse_forgiving` (via `From<String>`).
+quiver::newtype_datatype!(EntityPath, quiver::Utf8);
 
 impl From<re_types_core::datatypes::EntityPath> for EntityPath {
     #[inline]
@@ -567,7 +591,6 @@ impl Loggable for EntityPath {
 
 // ----------------------------------------------------------------------------
 
-#[cfg(feature = "serde")]
 impl serde::Serialize for EntityPath {
     #[inline]
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
@@ -575,7 +598,6 @@ impl serde::Serialize for EntityPath {
     }
 }
 
-#[cfg(feature = "serde")]
 impl<'de> serde::Deserialize<'de> for EntityPath {
     #[inline]
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
@@ -733,7 +755,7 @@ mod tests {
                 .collect_vec();
             let result = EntityPath::short_names_with_disambiguation(paths.clone());
 
-            for (path, shortened) in paths.iter().zip(entities.iter().map(|e| e.1)) {
+            for (path, shortened) in std::iter::zip(&paths, entities.iter().map(|e| e.1)) {
                 assert_eq!(result[path], shortened);
             }
         }

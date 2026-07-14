@@ -12,7 +12,7 @@ use crate::datatypes::{Blob, ChannelDatatype, TensorBuffer, TensorData};
 // ----------------------------------------------------------------------------
 
 /// The kind of image data, either color, segmentation, or depth image.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, re_byte_size::SizeBytes)]
 pub enum ImageKind {
     /// A normal grayscale or color image ([`archetypes::Image`]).
     Color,
@@ -32,22 +32,13 @@ impl ImageKind {
     pub fn from_archetype_name(archetype_name: Option<ArchetypeName>) -> Self {
         if archetype_name == Some(archetypes::SegmentationImage::name()) {
             Self::Segmentation
-        } else if archetype_name == Some(archetypes::DepthImage::name()) {
+        } else if archetype_name == Some(archetypes::DepthImage::name())
+            || archetype_name == Some(archetypes::EncodedDepthImage::name())
+        {
             Self::Depth
         } else {
-            // TODO(#9046): Note that currently all encoded images are treated as color images.
             Self::Color
         }
-    }
-}
-
-impl re_byte_size::SizeBytes for ImageKind {
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    fn is_pod() -> bool {
-        true
     }
 }
 
@@ -250,7 +241,7 @@ pub fn find_non_empty_dim_indices(shape: &[u64]) -> SmallVec<[usize; 4]> {
     let mut non_unit_indices = shape
         .iter()
         .enumerate()
-        .filter_map(|(ind, &dim)| if dim != 1 { Some(ind) } else { None });
+        .filter_map(|(ind, &dim)| if dim == 1 { None } else { Some(ind) });
 
     // 0 is always a valid index.
     let mut min = non_unit_indices.next().unwrap_or(0);

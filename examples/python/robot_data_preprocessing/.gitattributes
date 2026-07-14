@@ -1,0 +1,2 @@
+input_data/meshes/tablelegs.obj filter=lfs diff=lfs merge=lfs -text
+input_data/meshes/tabletop.obj filter=lfs diff=lfs merge=lfs -text

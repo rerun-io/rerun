@@ -9,7 +9,7 @@ Part of the [`rerun`](https://github.com/rerun-io/rerun) family of crates.
 
 In-memory opensource implementation of the Rerun server.
 
-The goal for this crate is to support most of the same gRPC endpoints that our commercial Rerun Cloud service supports, but do so in-memory for maximum simplicity.
+The goal for this crate is to support most of the same gRPC endpoints that our commercial Rerun Hub service supports, but do so in-memory for maximum simplicity.
 
 We use this internally for testing, but in the future it might be useful for users too.
 

@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, ClassVar
+
 import numpy as np
 import pyarrow as pa
 from attrs import define, field
@@ -13,10 +15,14 @@ from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
+    ComponentDescriptor,
 )
 from ..blueprint import VisualizableArchetype, Visualizer
 from ..error_utils import catch_and_log_exceptions
 from .points3d_ext import Points3DExt
+
+if TYPE_CHECKING:
+    from ..blueprint.datatypes import VisualizerComponentMappingLike
 
 __all__ = ["Points3D"]
 
@@ -51,11 +57,13 @@ class Points3D(Points3DExt, Archetype, VisualizableArchetype):
     ### Update a point cloud over time:
     ```python
     import numpy as np
+
     import rerun as rr
 
     rr.init("rerun_example_points3d_row_updates", spawn=True)
 
-    # Prepare a point cloud that evolves over 5 timesteps, changing the number of points in the process.
+    # Prepare a point cloud that evolves over 5 timesteps, changing the
+    # number of points in the process.
     times = np.arange(10, 15, 1.0)
     # fmt: off
     positions = [
@@ -67,13 +75,16 @@ class Points3D(Points3DExt, Archetype, VisualizableArchetype):
     ]
     # fmt: on
 
-    # At each timestep, all points in the cloud share the same but changing color and radius.
+    # At each timestep, all points in the cloud share the same but changing
+    # color and radius.
     colors = [0xFF0000FF, 0x00FF00FF, 0x0000FFFF, 0xFFFF00FF, 0x00FFFFFF]
     radii = [0.05, 0.01, 0.2, 0.1, 0.3]
 
     for i in range(5):
         rr.set_time("time", duration=10 + i)
-        rr.log("points", rr.Points3D(positions[i], colors=colors[i], radii=radii[i]))
+        rr.log(
+            "points", rr.Points3D(positions[i], colors=colors[i], radii=radii[i])
+        )
     ```
     <center>
     <picture>
@@ -90,11 +101,13 @@ class Points3D(Points3DExt, Archetype, VisualizableArchetype):
     from __future__ import annotations
 
     import numpy as np
+
     import rerun as rr
 
     rr.init("rerun_example_points3d_column_updates", spawn=True)
 
-    # Prepare a point cloud that evolves over 5 timesteps, changing the number of points in the process.
+    # Prepare a point cloud that evolves over 5 timesteps, changing the
+    # number of points in the process.
     times = np.arange(10, 15, 1.0)
     # fmt: off
     positions = [
@@ -106,7 +119,8 @@ class Points3D(Points3DExt, Archetype, VisualizableArchetype):
     ]
     # fmt: on
 
-    # At each timestep, all points in the cloud share the same but changing color and radius.
+    # At each timestep, all points in the cloud share the same but changing
+    # color and radius.
     colors = [0xFF0000FF, 0x00FF00FF, 0x0000FFFF, 0xFFFF00FF, 0x00FFFFFF]
     radii = [0.05, 0.01, 0.2, 0.1, 0.3]
 
@@ -114,7 +128,9 @@ class Points3D(Points3DExt, Archetype, VisualizableArchetype):
         "points",
         indexes=[rr.TimeColumn("time", duration=times)],
         columns=[
-            *rr.Points3D.columns(positions=positions).partition(lengths=[2, 4, 4, 3, 4]),
+            *rr.Points3D.columns(positions=positions).partition(
+                lengths=[2, 4, 4, 3, 4]
+            ),
             *rr.Points3D.columns(colors=colors, radii=radii),
         ],
     )
@@ -150,7 +166,10 @@ class Points3D(Points3DExt, Archetype, VisualizableArchetype):
 
     # Update the positions and radii, and clear everything else in the process.
     rr.set_time("frame", sequence=20)
-    rr.log("points", rr.Points3D.from_fields(clear_unset=True, positions=positions, radii=0.3))
+    rr.log(
+        "points",
+        rr.Points3D.from_fields(clear_unset=True, positions=positions, radii=0.3),
+    )
     ```
     <center>
     <picture>
@@ -164,6 +183,8 @@ class Points3D(Points3DExt, Archetype, VisualizableArchetype):
 
     """
 
+    NAME: ClassVar[str] = "rerun.archetypes.Points3D"
+
     # __init__ can be found in points3d_ext.py
 
     def __attrs_clear__(self) -> None:
@@ -174,6 +195,7 @@ class Points3D(Points3DExt, Archetype, VisualizableArchetype):
             colors=None,
             labels=None,
             show_labels=None,
+            point_shading=None,
             class_ids=None,
             keypoint_ids=None,
         )
@@ -195,6 +217,7 @@ class Points3D(Points3DExt, Archetype, VisualizableArchetype):
         colors: datatypes.Rgba32ArrayLike | None = None,
         labels: datatypes.Utf8ArrayLike | None = None,
         show_labels: datatypes.BoolLike | None = None,
+        point_shading: components.PointShadingLike | None = None,
         class_ids: datatypes.ClassIdArrayLike | None = None,
         keypoint_ids: datatypes.KeypointIdArrayLike | None = None,
     ) -> Points3D:
@@ -224,6 +247,10 @@ class Points3D(Points3DExt, Archetype, VisualizableArchetype):
 
             If not set, labels will automatically appear when there is exactly one label for this entity
             or the number of instances on this entity is under a certain threshold.
+        point_shading:
+            How points should be shaded.
+
+            If not set, points are rendered with [`components.PointShading.Gradient`][rerun.components.PointShading.Gradient] by default.
         class_ids:
             Optional class Ids for the points.
 
@@ -248,6 +275,7 @@ class Points3D(Points3DExt, Archetype, VisualizableArchetype):
                 "colors": colors,
                 "labels": labels,
                 "show_labels": show_labels,
+                "point_shading": point_shading,
                 "class_ids": class_ids,
                 "keypoint_ids": keypoint_ids,
             }
@@ -266,6 +294,70 @@ class Points3D(Points3DExt, Archetype, VisualizableArchetype):
         """Clear all the fields of a `Points3D`."""
         return cls.from_fields(clear_unset=True)
 
+    @staticmethod
+    def descriptor_positions() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Points3D:positions",
+            archetype=Points3D.NAME,
+            component_type=components.Position3DBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_radii() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Points3D:radii",
+            archetype=Points3D.NAME,
+            component_type=components.RadiusBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_colors() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Points3D:colors",
+            archetype=Points3D.NAME,
+            component_type=components.ColorBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_labels() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Points3D:labels",
+            archetype=Points3D.NAME,
+            component_type=components.TextBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_show_labels() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Points3D:show_labels",
+            archetype=Points3D.NAME,
+            component_type=components.ShowLabelsBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_point_shading() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Points3D:point_shading",
+            archetype=Points3D.NAME,
+            component_type=components.PointShadingBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_class_ids() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Points3D:class_ids",
+            archetype=Points3D.NAME,
+            component_type=components.ClassIdBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_keypoint_ids() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Points3D:keypoint_ids",
+            archetype=Points3D.NAME,
+            component_type=components.KeypointIdBatch._COMPONENT_TYPE,
+        )
+
     @classmethod
     def columns(
         cls,
@@ -275,6 +367,7 @@ class Points3D(Points3DExt, Archetype, VisualizableArchetype):
         colors: datatypes.Rgba32ArrayLike | None = None,
         labels: datatypes.Utf8ArrayLike | None = None,
         show_labels: datatypes.BoolArrayLike | None = None,
+        point_shading: components.PointShadingArrayLike | None = None,
         class_ids: datatypes.ClassIdArrayLike | None = None,
         keypoint_ids: datatypes.KeypointIdArrayLike | None = None,
     ) -> ComponentColumnList:
@@ -307,6 +400,10 @@ class Points3D(Points3DExt, Archetype, VisualizableArchetype):
 
             If not set, labels will automatically appear when there is exactly one label for this entity
             or the number of instances on this entity is under a certain threshold.
+        point_shading:
+            How points should be shaded.
+
+            If not set, points are rendered with [`components.PointShading.Gradient`][rerun.components.PointShading.Gradient] by default.
         class_ids:
             Optional class Ids for the points.
 
@@ -331,6 +428,7 @@ class Points3D(Points3DExt, Archetype, VisualizableArchetype):
                 colors=colors,
                 labels=labels,
                 show_labels=show_labels,
+                point_shading=point_shading,
                 class_ids=class_ids,
                 keypoint_ids=keypoint_ids,
             )
@@ -345,6 +443,7 @@ class Points3D(Points3DExt, Archetype, VisualizableArchetype):
             "Points3D:colors": colors,
             "Points3D:labels": labels,
             "Points3D:show_labels": show_labels,
+            "Points3D:point_shading": point_shading,
             "Points3D:class_ids": class_ids,
             "Points3D:keypoint_ids": keypoint_ids,
         }
@@ -357,17 +456,21 @@ class Points3D(Points3DExt, Archetype, VisualizableArchetype):
             if pa.types.is_primitive(arrow_array.type) or pa.types.is_fixed_size_list(arrow_array.type):
                 param = kwargs[batch.component_descriptor().component]  # type: ignore[index]
                 shape = np.shape(param)  # type: ignore[arg-type]
-                elem_flat_len = int(np.prod(shape[1:])) if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
-
-                if pa.types.is_fixed_size_list(arrow_array.type) and arrow_array.type.list_size == elem_flat_len:
-                    # If the product of the last dimensions of the shape are equal to the size of the fixed size list array,
-                    # we have `num_rows` single element batches (each element is a fixed sized list).
-                    # (This should have been already validated by conversion to the arrow_array)
-                    batch_length = 1
-                else:
-                    batch_length = shape[1] if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
-
                 num_rows = shape[0] if len(shape) >= 1 else 1  # type: ignore[redundant-expr,misc]
+
+                if pa.types.is_fixed_size_list(arrow_array.type):
+                    elem_flat_len = int(np.prod(shape[1:])) if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
+                    if arrow_array.type.list_size == elem_flat_len:
+                        # The product of the last dimensions of the shape are equal to the size of the fixed size list array,
+                        # so we have `num_rows` single element batches (each element is a fixed sized list).
+                        batch_length = 1
+                    else:
+                        batch_length = shape[1] if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
+                else:
+                    # For primitive types, derive batch_length from the actual arrow array length
+                    # since the input shape can be misleading (e.g. colors [R,G,B] -> single uint32).
+                    batch_length = len(arrow_array) // num_rows if num_rows > 0 else 1
+
                 sizes = batch_length * np.ones(num_rows)
             else:
                 # For non-primitive types, default to partitioning each element separately.
@@ -431,6 +534,17 @@ class Points3D(Points3DExt, Archetype, VisualizableArchetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
+    point_shading: components.PointShadingBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.PointShadingBatch._converter,  # type: ignore[misc]
+    )
+    # How points should be shaded.
+    #
+    # If not set, points are rendered with [`components.PointShading.Gradient`][rerun.components.PointShading.Gradient] by default.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
     class_ids: components.ClassIdBatch | None = field(
         metadata={"component": True},
         default=None,
@@ -461,6 +575,17 @@ class Points3D(Points3DExt, Archetype, VisualizableArchetype):
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__  # type: ignore[assignment]
 
-    def visualizer(self) -> Visualizer:
-        """Creates a visualizer for this archetype, using all currently set values as overrides."""
-        return Visualizer("Points3D", overrides=self.as_component_batches(), mappings=None)
+    def visualizer(self, *, mappings: list[VisualizerComponentMappingLike] | None = None) -> Visualizer:
+        """
+        Creates a visualizer for this archetype, using all currently set values as overrides.
+
+        Parameters
+        ----------
+        mappings:
+            Optional component mappings to control how the visualizer sources its data.
+
+            ⚠️ **Experimental**: Component mappings are an experimental feature and may change.
+            See https://github.com/rerun-io/rerun/issues/10631 for more information.
+
+        """
+        return Visualizer("Points3D", overrides=self.as_component_batches(), mappings=mappings)

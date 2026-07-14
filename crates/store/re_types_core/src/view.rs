@@ -1,13 +1,12 @@
 // ---
-re_string_interner::declare_new_type!(
+re_string_interner::declare_new_type_nonempty!(
     /// The unique name of a view
-    #[cfg_attr(feature = "serde", derive(::serde::Deserialize, ::serde::Serialize))]
     pub struct ViewClassIdentifier;
 );
 
 impl ViewClassIdentifier {
     pub fn invalid() -> Self {
-        Self::from("invalid")
+        re_string_interner::intern_static_nonempty!(ViewClassIdentifier, "invalid")
     }
 }
 

@@ -7,22 +7,22 @@ Selection of a single tensor dimension.
 
 ## Fields
 #### `dimension`
-Type: `uint32`
+Type: non-null `UInt32`
 
 The dimension number to select.
 
 #### `invert`
-Type: `boolean`
+Type: non-null `Boolean`
 
 Invert the direction of the dimension.
 
 
 ## Arrow datatype
 ```
-Struct {
-    dimension: uint32
-    invert: boolean
-}
+Struct(
+    "dimension": non-null UInt32
+    "invert": non-null Boolean
+)
 ```
 
 ## API reference links

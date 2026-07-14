@@ -19,7 +19,7 @@ pub enum ColumnError {
     UnsupportedColumnKind { kind: ColumnKind },
 
     #[error(transparent)]
-    UnsupportedTimeType(#[from] crate::UnsupportedTimeType),
+    IndexColumn(#[from] crate::IndexColumnError),
 }
 
 /// Describes any kind of column.
@@ -28,7 +28,7 @@ pub enum ColumnError {
 /// * [`RowIdColumnDescriptor`]
 /// * [`IndexColumnDescriptor`]
 /// * [`ComponentColumnDescriptor`]
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, re_byte_size::SizeBytes)]
 pub enum ColumnDescriptor {
     /// The primary row id column.
     ///
@@ -66,6 +66,16 @@ impl ColumnDescriptor {
         match self {
             Self::RowId(_) | Self::Time(_) => None,
             Self::Component(descr) => descr.component_type.as_ref(),
+        }
+    }
+
+    /// Column name, used in record batches.
+    #[inline]
+    pub fn column_name(&self, batch_type: crate::BatchType) -> String {
+        match self {
+            Self::RowId(descr) => descr.column_name(),
+            Self::Time(descr) => descr.column_name().to_owned(),
+            Self::Component(descr) => descr.column_name(batch_type),
         }
     }
 

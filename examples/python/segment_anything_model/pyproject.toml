@@ -8,8 +8,8 @@ dependencies = [
   "opencv-python",
   "requests>=2.31,<3",
   "rerun-sdk",
-  "torch==2.8.0", # This must match the version captured in pixi.toml
-  "torchvision==0.23.0",
+  "torch", # this will use the version defined in the uv workspace
+  "torchvision", # this will use the version defined in the uv workspace
   "tqdm",
 ]
 

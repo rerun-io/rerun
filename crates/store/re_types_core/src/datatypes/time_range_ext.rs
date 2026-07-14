@@ -1,3 +1,5 @@
+use crate::datatypes::TimeInt;
+
 use super::{TimeRange, TimeRangeBoundary};
 
 impl TimeRange {
@@ -18,4 +20,12 @@ impl TimeRange {
         start: TimeRangeBoundary::AT_CURSOR,
         end: TimeRangeBoundary::AT_CURSOR,
     };
+
+    /// Focus on the current play head in the viewer, with some margin on each side
+    pub fn from_cursor_plus_minus(margin: i64) -> Self {
+        Self {
+            start: TimeRangeBoundary::CursorRelative(TimeInt::from(-margin)),
+            end: TimeRangeBoundary::CursorRelative(TimeInt::from(margin)),
+        }
+    }
 }

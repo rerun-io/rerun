@@ -5,7 +5,10 @@
 use rerun::TimeColumn;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let rec = rerun::RecordingStreamBuilder::new("rerun_example_scalar_column_updates").spawn()?;
+    let rec = rerun::RecordingStreamBuilder::new(
+        "rerun_example_scalar_column_updates",
+    )
+    .spawn()?;
 
     let times = TimeColumn::new_sequence("step", 0..64);
     let scalars = (0..64).map(|step| (step as f64 / 10.0).sin());

@@ -267,11 +267,11 @@ pub fn quote_arrow_serializer(
                             1 + num_variants) // +1 for the virtual `nulls` arm
                         .collect();
 
-                    debug_assert_eq!(field_type_ids.len(), fields.len());
-                    debug_assert_eq!(fields.len(), children.len());
+                    re_log::debug_assert_eq!(field_type_ids.len(), fields.len());
+                    re_log::debug_assert_eq!(fields.len(), children.len());
 
                     as_array_ref(UnionArray::try_new(
-                        UnionFields::new(field_type_ids, fields),
+                        UnionFields::try_new(field_type_ids, fields)?,
                         ScalarBuffer::from(type_ids),
                         None,
                         children,
@@ -433,11 +433,11 @@ pub fn quote_arrow_serializer(
                     let offsets = #quoted_offsets;
                     let children = #quoted_children;
 
-                    debug_assert_eq!(field_type_ids.len(), fields.len());
-                    debug_assert_eq!(fields.len(), children.len());
+                    re_log::debug_assert_eq!(field_type_ids.len(), fields.len());
+                    re_log::debug_assert_eq!(fields.len(), children.len());
 
                     as_array_ref(UnionArray::try_new(
-                        UnionFields::new(field_type_ids, fields),
+                        UnionFields::try_new(field_type_ids, fields)?,
                         ScalarBuffer::from(type_ids),
                         Some(offsets),
                         children,
@@ -782,12 +782,14 @@ fn quote_arrow_field_serializer(
                                         }
                                         (Some(first_buf), Some(second_buf)) => {
                                             // Multiple buffers: single Vec allocation for slices
-                                            std::iter::once(first_buf.as_ref() as &[_])
-                                                .chain(std::iter::once(second_buf.as_ref() as &[_]))
-                                                .chain(iter.map(|b| b.as_ref() as &[_]))
-                                                .collect::<Vec<_>>()
-                                                .concat()
-                                                .into()
+                                            ::itertools::chain!(
+                                                ::std::iter::once(first_buf.as_ref() as &[_]),
+                                                ::std::iter::once(second_buf.as_ref() as &[_]),
+                                                iter.map(|b| b.as_ref() as &[_]),
+                                            )
+                                            .collect::<Vec<_>>()
+                                            .concat()
+                                            .into()
                                         }
                                         _ => {
                                             // Empty case

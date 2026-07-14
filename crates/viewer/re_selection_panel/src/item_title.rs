@@ -1,6 +1,6 @@
 use egui::WidgetText;
 use re_chunk::EntityPath;
-use re_data_ui::item_ui::{guess_instance_path_icon, guess_query_and_db_for_selected_entity};
+use re_data_ui::item_ui::guess_instance_path_icon;
 use re_entity_db::InstancePath;
 use re_log_types::{ComponentPath, TableId};
 use re_sdk_types::archetypes::RecordingInfo;
@@ -9,7 +9,10 @@ use re_ui::syntax_highlighting::{
     InstanceInBrackets as InstanceWithBrackets, SyntaxHighlightedBuilder,
 };
 use re_ui::{SyntaxHighlighting as _, icons};
-use re_viewer_context::{ContainerId, Contents, Item, ViewId, ViewerContext, contents_name_style};
+use re_viewer_context::{
+    ContainerId, Contents, DataResultInteractionAddress, Item, RedapEntryKind, ViewId,
+    ViewerContext, contents_name_style,
+};
 use re_viewport_blueprint::ViewportBlueprint;
 
 pub fn is_component_static(ctx: &ViewerContext<'_>, component_path: &ComponentPath) -> bool {
@@ -17,8 +20,9 @@ pub fn is_component_static(ctx: &ViewerContext<'_>, component_path: &ComponentPa
         entity_path,
         component,
     } = component_path;
-    let (_query, db) = guess_query_and_db_for_selected_entity(ctx, entity_path);
-    db.storage_engine()
+    ctx.guess_store_view_context_for_entity(entity_path)
+        .db
+        .storage_engine()
         .store()
         .entity_has_static_component(entity_path, *component)
 }
@@ -58,7 +62,11 @@ impl ItemTitle {
 
             Item::View(view_id) => Self::from_view_id(ctx, viewport, view_id),
 
-            Item::DataResult(view_id, instance_path) => {
+            Item::DataResult(DataResultInteractionAddress {
+                view_id,
+                instance_path,
+                visualizer: _, // Can't distinguish visualizer here since we don't name them.
+            }) => {
                 let item_title = Self::from_instance_path(ctx, style, instance_path);
                 if let Some(view) = viewport.view(view_id) {
                     item_title.with_tooltip(
@@ -66,7 +74,7 @@ impl ItemTitle {
                             .with(instance_path)
                             .with_body(" in view ")
                             .with(&view.display_name_or_default())
-                            .into_widget_text(&ctx.egui_ctx().style()),
+                            .into_widget_text(&ctx.egui_ctx().global_style()),
                     )
                 } else {
                     item_title
@@ -74,7 +82,12 @@ impl ItemTitle {
             }
 
             // TODO(#10566): There should be an `EntryName` in this `Item` arm.
-            Item::RedapEntry(entry) => Self::new(entry.entry_id.to_string(), &icons::DATASET),
+            Item::RedapEntry { kind, .. } => match kind {
+                RedapEntryKind::Entry(id) => Self::new(id.to_string(), &icons::DATASET),
+                RedapEntryKind::Folder(path_prefix) => {
+                    Self::new(path_prefix.clone(), &icons::DATASET)
+                }
+            },
 
             // TODO(lucasmerlin): Icon?
             Item::RedapServer(origin) => Self::new(origin.to_string(), &icons::DATASET),
@@ -86,7 +99,7 @@ impl ItemTitle {
     }
 
     pub fn from_store_id(ctx: &ViewerContext<'_>, store_id: &re_log_types::StoreId) -> Self {
-        let title = if let Some(entity_db) = ctx.storage_context.bundle.get(store_id) {
+        let title = if let Some(entity_db) = ctx.store_bundle().get(store_id) {
             if let Some(started) = entity_db.recording_info_property::<Timestamp>(
                 RecordingInfo::descriptor_start_time().component,
             ) {
@@ -182,7 +195,7 @@ impl ItemTitle {
                     container_blueprint.container_kind,
                 )
             } else {
-                format!("{:?} container", container_blueprint.container_kind,)
+                format!("{:?} container", container_blueprint.container_kind)
             };
 
             let container_name = container_blueprint.display_name_or_default();
@@ -210,7 +223,7 @@ impl ItemTitle {
             let view_class = view.class(ctx.view_class_registry());
 
             let hover_text = if let Some(display_name) = view.display_name.as_ref() {
-                format!("{} view {display_name:?}", view_class.display_name(),)
+                format!("{} view {display_name:?}", view_class.display_name())
             } else {
                 format!("{} view", view_class.display_name())
             };

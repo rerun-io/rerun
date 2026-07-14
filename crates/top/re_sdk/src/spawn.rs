@@ -34,7 +34,7 @@ pub struct SpawnOptions {
     /// When this limit is reached, Rerun will drop the oldest data.
     /// Example: `16GB` or `50%` (of system total).
     ///
-    /// Defaults to `0B`.
+    /// Defaults to `1GiB`.
     pub server_memory_limit: String,
 
     /// Specifies the name of the Rerun executable.
@@ -44,7 +44,7 @@ pub struct SpawnOptions {
     /// Defaults to `rerun`.
     pub executable_name: String,
 
-    /// Enforce a specific executable to use instead of searching though PATH
+    /// Enforce a specific executable to use instead of searching through PATH
     /// for [`Self::executable_name`].
     ///
     /// Unspecified by default.
@@ -56,11 +56,19 @@ pub struct SpawnOptions {
     /// Extra environment variables that will be passed as-is to the Rerun Viewer process.
     pub extra_env: Vec<(String, String)>,
 
+    /// Always start a new viewer. If the port is already in use, a free port will be picked automatically.
+    ///
+    /// Equivalent to using `--port auto` on the CLI.
+    pub new: bool,
+
     /// Hide the welcome screen.
     pub hide_welcome_screen: bool,
 
     /// Detach Rerun Viewer process from the application process.
     pub detach_process: bool,
+
+    /// Run the spawned viewer in headless mode (no OS window).
+    pub headless: bool,
 }
 
 // NOTE: No need for .exe extension on windows.
@@ -69,16 +77,18 @@ const RERUN_BINARY: &str = "rerun";
 impl Default for SpawnOptions {
     fn default() -> Self {
         Self {
-            port: re_grpc_server::DEFAULT_SERVER_PORT,
+            port: crate::DEFAULT_SERVER_PORT,
             wait_for_bind: false,
             memory_limit: "75%".into(),
-            server_memory_limit: "0B".into(),
+            server_memory_limit: "1GiB".into(),
             executable_name: RERUN_BINARY.into(),
             executable_path: None,
             extra_args: Vec::new(),
             extra_env: Vec::new(),
+            new: false,
             hide_welcome_screen: false,
             detach_process: true,
+            headless: false,
         }
     }
 }
@@ -170,6 +180,20 @@ impl std::fmt::Debug for SpawnError {
     }
 }
 
+/// Result of [`spawn`].
+#[derive(Debug, Clone, Copy)]
+pub struct SpawnInfo {
+    /// The port the spawned (or reused) Rerun Viewer is listening on.
+    pub port: u16,
+
+    /// PID of the newly spawned viewer process, or `None` if an existing
+    /// viewer was reused (so this call did not actually spawn anything).
+    ///
+    /// Useful when the caller wants to forward signals to the child or kill
+    /// it on shutdown.
+    pub child_pid: Option<u32>,
+}
+
 /// Spawns a new Rerun Viewer process ready to listen for connections.
 ///
 /// If there is already a process listening on this port (Rerun or not), this function returns `Ok`
@@ -179,7 +203,7 @@ impl std::fmt::Debug for SpawnError {
 ///
 /// This only starts a Viewer process: if you'd like to connect to it and start sending data, refer
 /// to [`crate::RecordingStream::connect_grpc`] or use [`crate::RecordingStream::spawn`] directly.
-pub fn spawn(opts: &SpawnOptions) -> Result<(), SpawnError> {
+pub fn spawn(opts: &SpawnOptions) -> Result<SpawnInfo, SpawnError> {
     use std::net::TcpStream;
     #[cfg(target_family = "unix")]
     use std::os::unix::process::CommandExt as _;
@@ -196,7 +220,7 @@ pub fn spawn(opts: &SpawnOptions) -> Result<(), SpawnError> {
     * Using `pip`: `pip3 install rerun-sdk`
 
     For more information, refer to our complete install documentation over at:
-    https://rerun.io/docs/getting-started/installing-viewer
+    https://rerun.io/docs/overview/installing-rerun/viewer
     ";
 
     const MSG_INSTALL_HOW_TO_VERSIONED: &str = //
@@ -207,7 +231,7 @@ pub fn spawn(opts: &SpawnOptions) -> Result<(), SpawnError> {
     * Using `pip`: `pip3 install rerun-sdk==__VIEWER_VERSION__`
 
     For more information, refer to our complete install documentation over at:
-    https://rerun.io/docs/getting-started/installing-viewer
+    https://rerun.io/docs/overview/installing-rerun/viewer
     ";
 
     const MSG_VERSION_MISMATCH: &str = //
@@ -219,6 +243,14 @@ pub fn spawn(opts: &SpawnOptions) -> Result<(), SpawnError> {
     > Rerun Viewer: v__VIEWER_VERSION__ (executable: \"__VIEWER_PATH__\")
     > Rerun SDK: v__SDK_VERSION__";
 
+    if std::env::var_os("CI").is_some() {
+        re_log::warn!(
+            "Spawning a Rerun Viewer while the `CI` environment variable is set. \
+            This is almost certainly unintended and will hang or fail on most CI runners. \
+            Consider removing `spawn=True` from this code path."
+        );
+    }
+
     let port = opts.port;
     let connect_addr = opts.connect_addr();
     let memory_limit = &opts.memory_limit;
@@ -226,13 +258,35 @@ pub fn spawn(opts: &SpawnOptions) -> Result<(), SpawnError> {
     let executable_path = opts.executable_path();
 
     // TODO(#4019): application-level handshake
-    if TcpStream::connect_timeout(&connect_addr, Duration::from_secs(1)).is_ok() {
+    if !opts.new && TcpStream::connect_timeout(&connect_addr, Duration::from_secs(1)).is_ok() {
         re_log::info!(
             addr = %opts.listen_addr(),
-            "A process is already listening at this address. Assuming it's a Rerun Viewer."
+            "A process is already listening at this address. Assuming it's a Rerun Viewer. \
+            Use `new: true` in SpawnOptions or `--port auto` on the CLI to force a new viewer."
         );
-        return Ok(());
+        return Ok(SpawnInfo {
+            port,
+            child_pid: None,
+        });
     }
+
+    // When --new is requested and the default port is already taken, find a free one.
+    let port = if opts.new
+        && TcpStream::connect_timeout(&connect_addr, Duration::from_secs(1)).is_ok()
+    {
+        let listener = std::net::TcpListener::bind(std::net::SocketAddr::new(
+            std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST),
+            0,
+        ))?;
+        let free_port = listener.local_addr()?.port();
+        drop(listener);
+        re_log::info!(
+            "Default port {port} is already in use, spawning viewer on port {free_port} instead."
+        );
+        free_port
+    } else {
+        port
+    };
 
     let map_err = |err: std::io::Error| -> SpawnError {
         if err.kind() == std::io::ErrorKind::NotFound {
@@ -312,27 +366,44 @@ pub fn spawn(opts: &SpawnOptions) -> Result<(), SpawnError> {
         rerun_bin.arg("--hide-welcome-screen");
     }
 
+    if opts.headless {
+        rerun_bin.arg("--headless");
+    }
+
     rerun_bin.args(opts.extra_args.clone());
     rerun_bin.envs(opts.extra_env.clone());
 
-    if opts.detach_process {
-        // SAFETY: This code is only run in the child fork, we are not modifying any memory
-        // that is shared with the parent process.
-        #[cfg(target_family = "unix")]
+    #[cfg(target_family = "unix")]
+    {
+        // A headless viewer must stay attached so it shuts down together with the
+        // spawning process; only a windowed viewer is detached, and only when asked.
+        let should_detach = opts.detach_process && !opts.headless;
+
+        // SAFETY: This code only runs in the forked child before exec; we only call
+        // async-signal-safe libc functions and don't touch memory shared with the parent.
         #[expect(unsafe_code)]
         unsafe {
-            rerun_bin.pre_exec(|| {
-                // On unix systems, we want to make sure that the child process becomes its
-                // own session leader, so that it doesn't die if the parent process crashes
-                // or is killed.
-                libc::setsid();
+            rerun_bin.pre_exec(move || {
+                if should_detach {
+                    // Make the child its own session leader so a detached viewer doesn't die
+                    // if the parent process crashes or is killed.
+                    libc::setsid();
+                } else {
+                    // Put the attached child in its own process group (it does not become a
+                    // session leader). The `rerun` launcher forks the actual viewer process and
+                    // exits, and that viewer inherits this group — so the owner can terminate the
+                    // whole group on close, instead of only the launcher (which would orphan the
+                    // viewer and leak the port it holds).
+                    libc::setpgid(0, 0);
+                }
 
                 Ok(())
             })
         };
     }
 
-    rerun_bin.spawn().map_err(map_err)?;
+    let child = rerun_bin.spawn().map_err(map_err)?;
+    let child_pid = child.id();
 
     if opts.wait_for_bind {
         // Give the newly spawned Rerun Viewer some time to bind.
@@ -340,17 +411,35 @@ pub fn spawn(opts: &SpawnOptions) -> Result<(), SpawnError> {
         // NOTE: The timeout only covers the TCP handshake: if no process is bound to that address
         // at all, the connection will fail immediately, irrelevant of the timeout configuration.
         // For that reason we use an extra loop.
-        for i in 0..5 {
+        let bind_addr =
+            std::net::SocketAddr::new(std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST), port);
+        let mut bound = false;
+        for i in 0..30 {
             re_log::debug!("connection attempt {}", i + 1);
-            if TcpStream::connect_timeout(&connect_addr, Duration::from_secs(1)).is_ok() {
+            if TcpStream::connect_timeout(&bind_addr, Duration::from_secs(1)).is_ok() {
+                bound = true;
                 break;
             }
-            std::thread::sleep(Duration::from_millis(100));
+            std::thread::sleep(Duration::from_millis(200));
         }
+
+        if !bound {
+            re_log::warn!(
+                "Spawned Rerun Viewer did not bind to port {port} in time. Connections to it may fail."
+            );
+        }
+        re_log::debug_assert!(
+            bound,
+            "Spawned Rerun Viewer did not bind to port {port} in time"
+        );
     }
 
     // Simply forget about the child process, we want it to outlive the parent process if needed.
     _ = rerun_bin;
+    _ = child;
 
-    Ok(())
+    Ok(SpawnInfo {
+        port,
+        child_pid: Some(child_pid),
+    })
 }

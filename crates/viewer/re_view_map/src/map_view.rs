@@ -1,25 +1,31 @@
-use egui::{Context, Modifiers, NumExt as _, Rect, Response};
+use std::mem::size_of;
+
+use egui::{Modifiers, NumExt as _, Rect, Response};
 use re_data_ui::{DataUi as _, item_ui};
 use re_entity_db::InstancePathHash;
 use re_log_types::EntityPath;
 use re_renderer::view_builder::ViewBuilderError;
-use re_renderer::{RenderContext, ViewBuilder, ViewPickingConfiguration};
+use re_renderer::{ViewBuilder, ViewPickingConfiguration};
 use re_sdk_types::blueprint::archetypes::{MapBackground, MapZoom};
 use re_sdk_types::blueprint::components::{MapProvider, ZoomLevel};
 use re_sdk_types::{View as _, ViewClassIdentifier};
 use re_ui::{Help, IconText, icons, list_item};
 use re_view::AnnotationSceneContext;
 use re_viewer_context::{
-    IdentifiedViewSystem as _, Item, SystemCommand, SystemCommandSender as _,
-    SystemExecutionOutput, UiLayout, ViewClass, ViewClassExt as _, ViewClassLayoutPriority,
-    ViewClassRegistryError, ViewHighlights, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState,
-    ViewStateExt as _, ViewSystemExecutionError, ViewSystemRegistrator, ViewerContext, gpu_bridge,
+    DataResultInteractionAddress, IdentifiedViewSystem as _, Item, StoreViewContext, SystemCommand,
+    SystemCommandSender as _, SystemExecutionOutput, UiLayout, ViewClass, ViewClassExt as _,
+    ViewClassLayoutPriority, ViewClassRegistryError, ViewHighlights, ViewId, ViewQuery,
+    ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
+    ViewSystemRegistrator, ViewerContext, gpu_bridge,
 };
 use re_viewport_blueprint::ViewProperty;
 use walkers::{HttpTiles, Map, MapMemory, Tiles};
 
 use crate::map_overlays;
-use crate::visualizers::{GeoLineStringsVisualizer, GeoPointsVisualizer, update_span};
+use crate::visualizers::{
+    GeoLineStringsOutput, GeoLineStringsVisualizer, GeoPointsOutput, GeoPointsVisualizer,
+    update_span,
+};
 
 pub struct MapViewState {
     tiles: Option<HttpTiles>,
@@ -45,6 +51,36 @@ impl Default for MapViewState {
             last_center_position: walkers::lat_lon(59.319224, 18.075514),
             last_gpu_picking_result: None,
         }
+    }
+}
+
+impl re_byte_size::SizeBytes for MapViewState {
+    fn heap_size_bytes(&self) -> u64 {
+        let Self {
+            tiles,
+            map_memory: _,
+            selected_provider,
+            last_center_position: _,
+            last_gpu_picking_result: _,
+        } = self;
+
+        // `walkers::HttpTiles` keeps its tile cache private, so this is a best-effort estimate
+        // based on walkers 0.53 internals: an LRU cache with capacity 256 plus the currently queued
+        // download ids.
+        // - `TilesIo::new`: <https://docs.rs/walkers/0.53.0/src/walkers/io/tiles_io.rs.html#57>
+        // - `HttpTiles::stats`: <https://docs.rs/walkers/0.53.0/src/walkers/http_tiles.rs.html#61>
+        // Texture memory itself is tracked by egui/wgpu.
+        let tiles = tiles.as_ref().map_or(0, |tiles| {
+            const WALKERS_TILE_CACHE_CAPACITY: usize = 256;
+
+            let tile_cache = WALKERS_TILE_CACHE_CAPACITY
+                * (size_of::<(walkers::TileId, Option<walkers::Tile>)>() + 1);
+            let in_progress = tiles.stats().in_progress * size_of::<walkers::TileId>();
+
+            (tile_cache + in_progress) as u64
+        });
+
+        tiles + selected_provider.heap_size_bytes()
     }
 }
 
@@ -76,6 +112,10 @@ impl ViewState for MapViewState {
 
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
+    }
+
+    fn heap_size_bytes(&self) -> u64 {
+        re_byte_size::SizeBytes::heap_size_bytes(self)
     }
 }
 
@@ -185,6 +225,7 @@ impl ViewClass for MapView {
     fn ui(
         &self,
         ctx: &ViewerContext<'_>,
+        _missing_chunk_reporter: &re_viewer_context::MissingChunkReporter,
         ui: &mut egui::Ui,
         state: &mut dyn ViewState,
         query: &ViewQuery<'_>,
@@ -203,10 +244,12 @@ impl ViewClass for MapView {
             query.view_id,
         );
 
-        let geo_points_visualizer = system_output.view_systems.get::<GeoPointsVisualizer>()?;
+        let geo_points_visualizer = system_output
+            .visualizer_data_or_default::<GeoPointsOutput>(GeoPointsVisualizer::identifier())?;
         let geo_line_strings_visualizers = system_output
-            .view_systems
-            .get::<GeoLineStringsVisualizer>()?;
+            .visualizer_data_or_default::<GeoLineStringsOutput>(
+                GeoLineStringsVisualizer::identifier(),
+            )?;
 
         //
         // Map Provider
@@ -304,8 +347,7 @@ impl ViewClass for MapView {
         //
 
         let picking_config = handle_picking_and_ui_interactions(
-            ctx,
-            ctx.render_ctx(),
+            &ctx.active_recording_store_view_context(),
             ui.ctx(),
             query,
             state,
@@ -387,7 +429,7 @@ fn create_view_builder(
                 .then(|| re_view::outline_config(egui_ctx)),
 
             // Make sure the map in the background is not completely overwritten
-            blend_with_background: true,
+            blend_with_background: re_renderer::BlendWithBackground::AlphaToCoverage,
 
             picking_config,
         },
@@ -396,8 +438,7 @@ fn create_view_builder(
 
 /// Handle picking and related ui interactions.
 fn handle_picking_and_ui_interactions(
-    ctx: &ViewerContext<'_>,
-    render_ctx: &RenderContext,
+    ctx: &StoreViewContext<'_>,
     egui_ctx: &egui::Context,
     query: &ViewQuery<'_>,
     state: &mut MapViewState,
@@ -413,7 +454,7 @@ fn handle_picking_and_ui_interactions(
         pointer_in_pixel *= pixels_per_point;
 
         let picking_result = picking_gpu(
-            render_ctx,
+            ctx.render_ctx(),
             picking_readback_identifier,
             glam::vec2(pointer_in_pixel.x, pointer_in_pixel.y),
             &mut state.last_gpu_picking_result,
@@ -455,40 +496,41 @@ fn handle_picking_and_ui_interactions(
 
 /// Handle all UI interactions based on the currently picked instance (if any).
 fn handle_ui_interactions(
-    ctx: &ViewerContext<'_>,
+    ctx: &StoreViewContext<'_>,
     query: &ViewQuery<'_>,
     mut map_response: Response,
     picked_instance: Option<InstancePathHash>,
 ) {
-    if let Some(instance_path) = picked_instance.and_then(|hash| hash.resolve(ctx.recording())) {
+    if let Some(instance_path) = picked_instance.and_then(|hash| hash.resolve(ctx.db)) {
+        // TODO(andreas): GPU picking doesn't tell us which visualizer produced the result.
+        // We need to add the ability to look up the visualizer id when using GPU-based picking.
+        let visualizer = None;
+
         map_response = map_response.on_hover_ui_at_pointer(|ui| {
             list_item::list_item_scope(ui, "map_hover", |ui| {
-                item_ui::instance_path_button(
-                    ctx,
-                    &query.latest_at_query(),
-                    ctx.recording(),
-                    ui,
-                    Some(query.view_id),
-                    &instance_path,
-                );
+                item_ui::instance_path_button(ctx, ui, Some(query.view_id), &instance_path);
 
-                instance_path.data_ui_recording(ctx, ui, UiLayout::Tooltip);
+                instance_path.data_ui(ctx, ui, UiLayout::Tooltip);
             });
         });
 
+        let address = DataResultInteractionAddress {
+            view_id: query.view_id,
+            instance_path: instance_path.clone(),
+            visualizer,
+        };
+
         ctx.handle_select_hover_drag_interactions(
             &map_response,
-            Item::DataResult(query.view_id, instance_path.clone()),
+            Item::DataResult(address.clone()),
             false,
         );
 
         // double click selects the entire entity
         if map_response.double_clicked() {
-            // Select the entire entity
             ctx.command_sender()
                 .send_system(SystemCommand::set_selection(Item::DataResult(
-                    query.view_id,
-                    instance_path.entity_path.clone().into(),
+                    address.as_entity_all(),
                 )));
         }
     } else if map_response.clicked() {
@@ -519,7 +561,7 @@ fn http_options(_ctx: &ViewerContext<'_>) -> walkers::HttpOptions {
 fn get_tile_manager(
     ctx: &ViewerContext<'_>,
     provider: MapProvider,
-    egui_ctx: &Context,
+    egui_ctx: &egui::Context,
 ) -> HttpTiles {
     let mapbox_access_token = ctx.app_options().mapbox_access_token().unwrap_or_default();
 

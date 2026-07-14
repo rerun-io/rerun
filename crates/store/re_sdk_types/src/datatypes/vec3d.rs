@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -22,7 +23,16 @@ use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: A vector in 3D space.
-#[derive(Clone, Debug, Default, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(
+    Clone,
+    Debug,
+    Default,
+    Copy,
+    PartialEq,
+    bytemuck::Pod,
+    bytemuck::Zeroable,
+    ::re_byte_size::SizeBytes,
+)]
 #[repr(C)]
 pub struct Vec3D(pub [f32; 3usize]);
 
@@ -114,9 +124,10 @@ impl ::re_types_core::Loggable for Vec3D {
             if arrow_data.is_empty() {
                 Vec::new()
             } else {
-                let offsets = (0..)
-                    .step_by(3usize)
-                    .zip((3usize..).step_by(3usize).take(arrow_data.len()));
+                let offsets = ::std::iter::zip(
+                    (0..).step_by(3usize),
+                    (3usize..).step_by(3usize).take(arrow_data.len()),
+                );
                 let arrow_data_inner = {
                     let arrow_data_inner = &**arrow_data.values();
                     arrow_data_inner
@@ -134,7 +145,7 @@ impl ::re_types_core::Loggable for Vec3D {
                 ZipValidity::new_with_validity(offsets, arrow_data.nulls())
                     .map(|elem| {
                         elem.map(|(start, end): (usize, usize)| {
-                            debug_assert!(end - start == 3usize);
+                            re_log::debug_assert!(end - start == 3usize);
                             if arrow_data_inner.len() < end {
                                 return Err(DeserializationError::offset_slice_oob(
                                     (start, end),
@@ -220,17 +231,5 @@ impl From<Vec3D> for [f32; 3usize] {
     #[inline]
     fn from(value: Vec3D) -> Self {
         value.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for Vec3D {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <[f32; 3usize]>::is_pod()
     }
 }

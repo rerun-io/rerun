@@ -20,6 +20,9 @@ namespace rerun::archetypes {
         archetype.show_labels =
             ComponentBatch::empty<rerun::components::ShowLabels>(Descriptor_show_labels)
                 .value_or_throw();
+        archetype.point_shading =
+            ComponentBatch::empty<rerun::components::PointShading>(Descriptor_point_shading)
+                .value_or_throw();
         archetype.class_ids =
             ComponentBatch::empty<rerun::components::ClassId>(Descriptor_class_ids)
                 .value_or_throw();
@@ -31,7 +34,7 @@ namespace rerun::archetypes {
 
     Collection<ComponentColumn> Points3D::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(7);
+        columns.reserve(8);
         if (positions.has_value()) {
             columns.push_back(positions.value().partitioned(lengths_).value_or_throw());
         }
@@ -46,6 +49,9 @@ namespace rerun::archetypes {
         }
         if (show_labels.has_value()) {
             columns.push_back(show_labels.value().partitioned(lengths_).value_or_throw());
+        }
+        if (point_shading.has_value()) {
+            columns.push_back(point_shading.value().partitioned(lengths_).value_or_throw());
         }
         if (class_ids.has_value()) {
             columns.push_back(class_ids.value().partitioned(lengths_).value_or_throw());
@@ -72,6 +78,9 @@ namespace rerun::archetypes {
         if (show_labels.has_value()) {
             return columns(std::vector<uint32_t>(show_labels.value().length(), 1));
         }
+        if (point_shading.has_value()) {
+            return columns(std::vector<uint32_t>(point_shading.value().length(), 1));
+        }
         if (class_ids.has_value()) {
             return columns(std::vector<uint32_t>(class_ids.value().length(), 1));
         }
@@ -89,7 +98,7 @@ namespace rerun {
     ) {
         using namespace archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(7);
+        cells.reserve(8);
 
         if (archetype.positions.has_value()) {
             cells.push_back(archetype.positions.value());
@@ -105,6 +114,9 @@ namespace rerun {
         }
         if (archetype.show_labels.has_value()) {
             cells.push_back(archetype.show_labels.value());
+        }
+        if (archetype.point_shading.has_value()) {
+            cells.push_back(archetype.point_shading.value());
         }
         if (archetype.class_ids.has_value()) {
             cells.push_back(archetype.class_ids.value());

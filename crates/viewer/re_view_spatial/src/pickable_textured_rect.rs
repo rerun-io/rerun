@@ -13,7 +13,7 @@ pub enum PickableRectSourceData {
     },
 
     /// The rectangle is a frame in a video.
-    Video,
+    Video { depth_meter: Option<DepthMeter> },
 
     /// The rectangle represents a placeholder icon.
     Placeholder,
@@ -48,9 +48,9 @@ impl PickableTexturedRect {
             .collect::<Vec<_>>();
         match re_renderer::renderer::RectangleDrawData::new(render_ctx, &rectangles) {
             Ok(draw_data) => Ok(draw_data.into()),
-            Err(err) => Err(ViewSystemExecutionError::DrawDataCreationError(Box::new(
-                err,
-            ))),
+            Err(err) => Err(ViewSystemExecutionError::DrawDataCreationError(
+                std::sync::Arc::new(err),
+            )),
         }
     }
 }

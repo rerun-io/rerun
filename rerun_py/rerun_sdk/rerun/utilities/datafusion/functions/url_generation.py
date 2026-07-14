@@ -3,8 +3,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pyarrow as pa
-import pyarrow.compute
-from typing_extensions import deprecated
 
 from rerun.error_utils import RerunMissingDependencyError
 
@@ -13,7 +11,7 @@ if TYPE_CHECKING:
 
 HAS_DATAFUSION = True
 try:
-    from datafusion import Expr, ScalarUDF, col, udf
+    from datafusion import Expr, ScalarUDF, col, lit
 except ModuleNotFoundError:
     HAS_DATAFUSION = False
 
@@ -21,9 +19,12 @@ except ModuleNotFoundError:
 def segment_url(
     dataset: DatasetEntry,
     *,
-    segment_id_col: str | Expr | None = None,
-    timestamp_col: str | Expr | None = None,
+    segment_id: str | Expr | None = None,
+    timestamp: str | Expr | None = None,
     timeline_name: str | None = None,
+    time_range_start: str | Expr | None = None,
+    time_range_end: str | Expr | None = None,
+    selection: str | Expr | None = None,
 ) -> Expr:
     """
     Compute the URL for a segment within a dataset.
@@ -31,123 +32,103 @@ def segment_url(
     This is a Rerun focused DataFusion function that will create a DataFusion
     expression for the segment URL.
 
-    To manually invoke the underlying UDF, see `segment_url_udf` or
-    `segment_url_with_timeref_udf`.
-
     Parameters
     ----------
     dataset:
         The input Rerun Dataset.
-    segment_id_col:
-        The column containing the segment ID. If not provided, it will assume
-        a default value of `rerun_segment_id`. You may pass either a DataFusion
-        expression or a string column name.
-    timestamp_col:
-        If this parameter is passed in, generate a URL that will jump to a
-        specific timestamp within the segment.
+    segment_id:
+        Expression or column name for the segment ID. If not provided, the column named `rerun_segment_id` will be used.
+    timestamp:
+        Expression or column name for a timestamp. Generate a URL that specifies the position of the time cursor when
+        opened by the viewer.
     timeline_name:
-        When used in combination with `timestamp_col`, this specifies which timeline
-        to seek along. By default this will use the same string as timestamp_col.
+        Specifies which timeline to use when used in combination with `timestamp` and/or `time_range_start`/
+        `time_range_end`. By default, this will use the same string as `timestamp` if provided.
+    time_range_start:
+        Expression or column name for the start of a time range selection. Must be used together with `time_range_end`.
+        Generates a URL that specifies a time range to be selected when opened by the viewer.
+    time_range_end:
+        Expression or column name for the end of a time range selection. Must be used together with `time_range_start`.
+        Generates a URL that specifies a time range to be selected when opened by the viewer.
+    selection:
+        Expression or column name for the data path to select. The syntax is an entity path, optionally
+        followed by an instance index and/or component name (e.g. `/world/points`,
+        `/world/points[#42]`, `/world/points:Color`, `/world/points[#42]:Color`).
+        Generates a URL that specifies the data to be selected when opened by the viewer.
 
     """
     if not HAS_DATAFUSION:
         raise RerunMissingDependencyError("datafusion", "datafusion")
-    if segment_id_col is None:
-        segment_id_col = col("rerun_segment_id")
-    if isinstance(segment_id_col, str):
-        segment_id_col = col(segment_id_col)
 
-    if timestamp_col is not None:
-        if timeline_name is None:
-            timeline_name = str(timestamp_col)
+    if (time_range_start is None) != (time_range_end is None):
+        raise ValueError("time_range_start and time_range_end must both be provided or both be omitted")
 
-        if isinstance(timestamp_col, str):
-            timestamp_col = col(timestamp_col)
+    if segment_id is None:
+        segment_id = col("rerun_segment_id")
+    if isinstance(segment_id, str):
+        segment_id = col(segment_id)
 
-        inner_udf = segment_url_with_timeref_udf(dataset, timeline_name)
-        return inner_udf(segment_id_col, timestamp_col).alias("segment_url_with_timestamp")
+    rust_udf = _make_rust_udf()
 
-    inner_udf = segment_url_udf(dataset)
-    return inner_udf(segment_id_col).alias("segment_url")
+    origin_expr = lit(dataset.catalog.url)
+    entry_id_expr = lit(pa.scalar(dataset.id.as_bytes(), type=pa.binary(16)))
+
+    # Derive timeline_name default from timestamp if not explicitly provided
+    if timeline_name is None and timestamp is not None:
+        timeline_name = str(timestamp)
+
+    # Validate that timeline_name is available when needed
+    has_time_range = time_range_start is not None
+    if timeline_name is None and (timestamp is not None or has_time_range):
+        raise ValueError("timeline_name must be provided when using time_range without timestamp")
+
+    # Build timestamp expression
+    if timestamp is not None:
+        if isinstance(timestamp, str):
+            timestamp = col(timestamp)
+        ts_expr = timestamp
+    else:
+        ts_expr = lit(None)
+
+    # Build timeline expression
+    timeline_expr = lit(timeline_name) if timeline_name is not None else lit(None)
+
+    # Build time range expressions
+    if time_range_start is not None and time_range_end is not None:
+        if isinstance(time_range_start, str):
+            time_range_start = col(time_range_start)
+        if isinstance(time_range_end, str):
+            time_range_end = col(time_range_end)
+        range_start_expr = time_range_start
+        range_end_expr = time_range_end
+    else:
+        range_start_expr = lit(None)
+        range_end_expr = lit(None)
+
+    # Build selection expression
+    if selection is not None:
+        if isinstance(selection, str):
+            selection = col(selection)
+        selection_expr = selection
+    else:
+        selection_expr = lit(None)
+
+    return rust_udf(
+        origin_expr,
+        entry_id_expr,
+        segment_id,
+        ts_expr,
+        timeline_expr,
+        range_start_expr,
+        range_end_expr,
+        selection_expr,
+    ).alias("segment_url")
 
 
-@deprecated("Use segment_url() instead")
-def partition_url(
-    dataset: DatasetEntry,
-    *,
-    partition_id_col: str | Expr | None = None,
-    timestamp_col: str | Expr | None = None,
-    timeline_name: str | None = None,
-) -> Expr:
-    """Compute the URL for a partition within a dataset."""
-    return segment_url(
-        dataset,
-        segment_id_col=partition_id_col,
-        timestamp_col=timestamp_col,
-        timeline_name=timeline_name,
-    )
-
-
-def segment_url_udf(dataset: DatasetEntry) -> ScalarUDF:
-    """
-    Create a UDF to the URL for a segment within a Dataset.
-
-    This function will generate a UDF that expects one column of input,
-    a string containing the segment ID.
-    """
+def _make_rust_udf() -> ScalarUDF:
     if not HAS_DATAFUSION:
         raise RerunMissingDependencyError("datafusion", "datafusion")
 
-    def inner_udf(segment_id_arr: pa.Array) -> pa.Array:
-        return pa.compute.binary_join_element_wise(
-            dataset.segment_url(""),
-            segment_id_arr,
-            "",  # Required for join
-        )
+    from rerun_bindings import SegmentUrlUdfInternal  # type: ignore[attr-defined]
 
-    return udf(inner_udf, [pa.string()], pa.string(), "stable")
-
-
-@deprecated("Use segment_url_udf() instead")
-def partition_url_udf(dataset: DatasetEntry) -> ScalarUDF:
-    """Create a UDF to the URL for a partition within a Dataset."""
-    return segment_url_udf(dataset)
-
-
-def segment_url_with_timeref_udf(dataset: DatasetEntry, timeline_name: str) -> ScalarUDF:
-    """
-    Create a UDF to the URL for a segment within a Dataset with timestamp.
-
-    This function will generate a UDF that expects two columns of input,
-    a string containing the segment ID and the timestamp in nanoseconds.
-    """
-    if not HAS_DATAFUSION:
-        raise RerunMissingDependencyError("datafusion", "datafusion")
-
-    def inner_udf(segment_id_arr: pa.Array, timestamp_arr: pa.Array) -> pa.Array:
-        # The choice of `ceil_temporal` is important since this timestamp drives a cursor
-        # selection. Due to Rerun latest-at semantics, in order for data from the provided
-        # timestamp to be visible, the cursor must be set to a point in time which is
-        # greater than or equal to the target.
-        timestamp_us = pa.compute.ceil_temporal(timestamp_arr, unit="microsecond")
-
-        timestamp_us = pa.compute.strftime(
-            timestamp_us,
-            "%Y-%m-%dT%H:%M:%SZ",
-        )
-
-        return pa.compute.binary_join_element_wise(
-            dataset.segment_url(""),
-            segment_id_arr,
-            f"#when={timeline_name}@",
-            timestamp_us,
-            "",  # Required for join
-        )
-
-    return udf(inner_udf, [pa.string(), pa.timestamp("ns")], pa.string(), "stable")
-
-
-@deprecated("Use segment_url_with_timeref_udf() instead")
-def partition_url_with_timeref_udf(dataset: DatasetEntry, timeline_name: str) -> ScalarUDF:
-    """Create a UDF to the URL for a partition within a Dataset with timestamp."""
-    return segment_url_with_timeref_udf(dataset, timeline_name)
+    return ScalarUDF.from_pycapsule(SegmentUrlUdfInternal())

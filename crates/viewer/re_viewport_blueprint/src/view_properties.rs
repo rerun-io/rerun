@@ -1,5 +1,6 @@
 use arrow::array::ArrayRef;
-use re_chunk::{ComponentIdentifier, ComponentType};
+use re_chunk::ComponentIdentifier;
+use re_chunk_store::EntityTree;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_entity_db::external::re_query::LatestAtResults;
@@ -7,7 +8,6 @@ use re_log_types::EntityPath;
 use re_sdk_types::{
     Archetype, ArchetypeName, ComponentBatch, ComponentDescriptor, DeserializationError,
 };
-use re_viewer_context::external::re_entity_db::EntityTree;
 use re_viewer_context::{
     BlueprintContext, ComponentFallbackError, QueryContext, ViewContext, ViewId,
     ViewSystemExecutionError, ViewerContext,
@@ -58,6 +58,8 @@ impl ViewProperty {
         blueprint_query: &LatestAtQuery,
         view_id: ViewId,
     ) -> Self {
+        re_tracing::profile_function!(A::name());
+
         Self::from_archetype_impl(
             blueprint_db,
             blueprint_query.clone(),
@@ -74,8 +76,9 @@ impl ViewProperty {
         archetype_name: ArchetypeName,
         component_descrs: Vec<ComponentDescriptor>,
     ) -> Self {
+        let engine = blueprint_db.storage_engine();
         let blueprint_store_path =
-            entity_path_for_view_property(view_id, blueprint_db.tree(), archetype_name);
+            entity_path_for_view_property(view_id, engine.store().entity_tree(), archetype_name);
 
         let query_results = blueprint_db.latest_at(
             &blueprint_query,
@@ -98,6 +101,8 @@ impl ViewProperty {
         ctx: &ViewContext<'_>,
         component: ComponentIdentifier,
     ) -> Result<C, ViewPropertyQueryError> {
+        re_tracing::profile_function!(component);
+
         self.component_array_or_fallback::<C>(ctx, component)?
             .into_iter()
             .next()
@@ -111,8 +116,15 @@ impl ViewProperty {
         component: ComponentIdentifier,
     ) -> Result<Vec<C>, ViewPropertyQueryError> {
         C::from_arrow(
-            self.component_or_fallback_raw(ctx, component, Some(C::name()))
-                .as_ref(),
+            self.component_or_fallback_raw(
+                ctx,
+                &re_types_core::ComponentDescriptor {
+                    component,
+                    archetype: Some(self.archetype_name),
+                    component_type: Some(C::name()),
+                },
+            )
+            .as_ref(),
         )
         .map_err(|err| err.into())
     }
@@ -150,29 +162,29 @@ impl ViewProperty {
         self.query_results.get(component)?.row_id()
     }
 
+    /// Returns `None` for empty arrays, which are written by
+    /// [`ViewerContext::clear_blueprint_component`] to represent an unset value.
     pub fn component_raw(&self, component: ComponentIdentifier) -> Option<arrow::array::ArrayRef> {
         self.query_results
             .get(component)?
             .component_batch_raw(component)
+            .filter(|a| !a.is_empty())
     }
 
     fn component_or_fallback_raw(
         &self,
         ctx: &ViewContext<'_>,
-        component_identifier: ComponentIdentifier,
-        component_type: Option<ComponentType>,
+        descr: &re_types_core::ComponentDescriptor,
     ) -> ArrayRef {
-        if let Some(value) = self.component_raw(component_identifier)
+        if let Some(value) = self.component_raw(descr.component)
             && !value.is_empty()
         {
             return value;
         }
 
-        ctx.viewer_ctx.component_fallback_registry.fallback_for(
-            component_identifier,
-            component_type,
-            &self.query_context(ctx),
-        )
+        ctx.viewer_ctx
+            .component_fallback_registry()
+            .fallback_for(descr, &self.query_context(ctx))
     }
 
     /// Save change to a blueprint component.
@@ -233,8 +245,9 @@ impl ViewProperty {
         let blueprint_storage_engine = ctx.blueprint_db().storage_engine();
         let blueprint_store = blueprint_storage_engine.store();
         for component in self.query_results.components.keys().copied() {
-            if let Some(component_descr) =
-                blueprint_store.entity_component_descriptor(&self.blueprint_store_path, component)
+            if let Some(component_descr) = blueprint_store
+                .schema()
+                .entity_component_descriptor(&self.blueprint_store_path, component)
             {
                 ctx.clear_blueprint_component(self.blueprint_store_path.clone(), component_descr);
             }
@@ -254,8 +267,9 @@ impl ViewProperty {
         QueryContext {
             view_ctx,
             target_entity_path: &self.blueprint_store_path,
+            instruction_id: None,
             archetype_name: Some(self.archetype_name),
-            query: &self.blueprint_query,
+            query: self.blueprint_query.clone(),
         }
     }
 }

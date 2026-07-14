@@ -2,35 +2,6 @@ use prost::bytes::Bytes;
 
 use crate::{TypeConversionError, invalid_field, missing_field};
 
-/// Compression format used.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-#[repr(u8)]
-pub enum Compression {
-    Off = 0,
-
-    /// Very fast compression and decompression, but not very good compression ratio.
-    LZ4 = 1,
-}
-
-impl From<crate::log_msg::v1alpha1::Compression> for Compression {
-    fn from(value: crate::log_msg::v1alpha1::Compression) -> Self {
-        match value {
-            crate::log_msg::v1alpha1::Compression::Unspecified
-            | crate::log_msg::v1alpha1::Compression::None => Self::Off,
-            crate::log_msg::v1alpha1::Compression::Lz4 => Self::LZ4,
-        }
-    }
-}
-
-impl From<Compression> for crate::log_msg::v1alpha1::Compression {
-    fn from(value: Compression) -> Self {
-        match value {
-            Compression::Off => Self::None,
-            Compression::LZ4 => Self::Lz4,
-        }
-    }
-}
-
 impl From<crate::log_msg::v1alpha1::log_msg::Msg> for crate::log_msg::v1alpha1::LogMsg {
     fn from(msg: crate::log_msg::v1alpha1::log_msg::Msg) -> Self {
         Self { msg: Some(msg) }

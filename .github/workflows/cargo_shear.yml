@@ -15,11 +15,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      # The snippets crate has a build.rs that generates src/snippets/*.rs from all/*/*.rs.
+      # Without this step, cargo-shear can't deduce requirements from the generated code.
+      - name: Regenerate snippets
+        run: |
+          cargo check -p snippets
+
       - name: Install Cargo Shear
         uses: taiki-e/install-action@v2.48.7
         with:
-          tool: cargo-shear@1.5.0
+          tool: cargo-shear@1.11.2
 
+      # TODO(Boshen/cargo-shear#468): enable warnings as errors once we can ignore no (doc) test warnings.
       - name: Run Cargo Shear
         run: |
           cargo shear

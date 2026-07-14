@@ -7,7 +7,7 @@ use crate::ui::CloudState;
 use crate::ui::welcome_screen::intro_section::intro_section;
 use crate::ui::welcome_screen::welcome_section::welcome_section_ui;
 use re_ui::{DesignTokens, UiExt as _};
-use re_viewer_context::GlobalContext;
+use re_viewer_context::AppContext;
 
 #[derive(Debug, serde::Deserialize)]
 struct ExampleThumbnail {
@@ -130,10 +130,7 @@ fn load_file_size(egui_ctx: &egui::Context, url: String) -> Promise<Option<u64>>
     let (sender, promise) = Promise::new();
     let egui_ctx = egui_ctx.clone(); // So we can wake up the ui thread
 
-    let request = Request {
-        method: "HEAD".into(),
-        ..Request::get(url.clone())
-    };
+    let request = Request::head(url.clone());
 
     fetch(request, move |response| {
         match response {
@@ -155,7 +152,7 @@ fn load_file_size(egui_ctx: &egui::Context, url: String) -> Promise<Option<u64>>
                 }
             }
             Err(err) => {
-                re_log::debug!("Failed to load file size of {url:?}: {err}");
+                re_log::debug!(?url, "Failed to load file size: {err}");
                 sender.send(None);
             }
         }
@@ -244,12 +241,7 @@ impl ExampleSection {
     /// │                               │    │
     /// │                               │    │
     /// ```
-    pub(super) fn ui(
-        &mut self,
-        ui: &mut egui::Ui,
-        ctx: &GlobalContext<'_>,
-        login_state: &CloudState,
-    ) {
+    pub(super) fn ui(&mut self, ui: &mut egui::Ui, ctx: &AppContext<'_>, login_state: &CloudState) {
         let examples = self
             .examples
             .get_or_insert_with(|| load_manifest(ui.ctx(), self.manifest_url.clone()));
@@ -282,7 +274,7 @@ impl ExampleSection {
                     // Still waiting for example to load
                     ui.separator();
 
-                    ui.spinner(); // Placeholder for the examples
+                    ui.loading_indicator("Fetching example list"); // Placeholder for the examples
                     return;
                 };
 
@@ -353,7 +345,7 @@ impl ExampleSection {
                                     // panel to quit auto-zoom mode.
                                     ui.input_mut(|i| i.pointer = Default::default());
 
-                                    ui.ctx().open_url(egui::output::OpenUrl {
+                                    ui.open_url(egui::output::OpenUrl {
                                         url: example.desc.rrd_url.clone(),
                                         new_tab: false,
                                     });
@@ -533,7 +525,7 @@ impl ExampleDescLayout {
                     .clicked()
                     && let Some(source_url) = source_url
                 {
-                    ui.ctx().open_url(egui::output::OpenUrl {
+                    ui.open_url(egui::output::OpenUrl {
                         url: source_url.to_owned(),
                         new_tab: true,
                     });

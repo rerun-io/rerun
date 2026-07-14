@@ -9,7 +9,7 @@ use crate::layout::{ForceLayoutParams, ForceLayoutProvider, Layout, LayoutReques
 /// View state for the custom view.
 ///
 /// This state is preserved between frames, but not across Viewer sessions.
-#[derive(Default)]
+#[derive(Default, re_byte_size::SizeBytes)]
 pub struct GraphViewState {
     pub layout_state: LayoutState,
     pub visual_bounds: Option<VisualBounds2D>,
@@ -25,8 +25,8 @@ impl GraphViewState {
         ui.vertical(|ui| {
             ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
             let egui::Rect { min, max } = rect;
-            ui.label(format!("x [{} - {}]", format_f32(min.x), format_f32(max.x),));
-            ui.label(format!("y [{} - {}]", format_f32(min.y), format_f32(max.y),));
+            ui.label(format!("x [{} - {}]", format_f32(min.x), format_f32(max.x)));
+            ui.label(format!("y [{} - {}]", format_f32(min.y), format_f32(max.y)));
         });
         ui.end_row();
     }
@@ -46,12 +46,16 @@ impl ViewState for GraphViewState {
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
     }
+
+    fn heap_size_bytes(&self) -> u64 {
+        re_byte_size::SizeBytes::heap_size_bytes(self)
+    }
 }
 
 /// The following is a simple state machine that keeps track of the different
 /// layouts and if they need to be recomputed. It also holds the state of the
 /// force-based simulation.
-#[derive(Default)]
+#[derive(Default, re_byte_size::SizeBytes)]
 pub enum LayoutState {
     #[default]
     None,

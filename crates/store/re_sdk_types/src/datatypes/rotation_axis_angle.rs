@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -22,7 +23,7 @@ use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: 3D rotation represented by a rotation around a given axis.
-#[derive(Clone, Debug, Copy, PartialEq)]
+#[derive(Clone, Debug, Copy, PartialEq, ::re_byte_size::SizeBytes)]
 pub struct RotationAxisAngle {
     /// Axis to rotate around.
     ///
@@ -169,11 +170,11 @@ impl ::re_types_core::Loggable for RotationAxisAngle {
             } else {
                 let (arrow_data_fields, arrow_data_arrays) =
                     (arrow_data.fields(), arrow_data.columns());
-                let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data_fields
-                    .iter()
-                    .map(|field| field.name().as_str())
-                    .zip(arrow_data_arrays)
-                    .collect();
+                let arrays_by_name: ::std::collections::HashMap<_, _> = ::std::iter::zip(
+                    arrow_data_fields.iter().map(|field| field.name().as_str()),
+                    arrow_data_arrays,
+                )
+                .collect();
                 let axis = {
                     if !arrays_by_name.contains_key("axis") {
                         return Err(DeserializationError::missing_struct_field(
@@ -203,9 +204,10 @@ impl ::re_types_core::Loggable for RotationAxisAngle {
                         if arrow_data.is_empty() {
                             Vec::new()
                         } else {
-                            let offsets = (0..)
-                                .step_by(3usize)
-                                .zip((3usize..).step_by(3usize).take(arrow_data.len()));
+                            let offsets = ::std::iter::zip(
+                                (0..).step_by(3usize),
+                                (3usize..).step_by(3usize).take(arrow_data.len()),
+                            );
                             let arrow_data_inner = {
                                 let arrow_data_inner = &**arrow_data.values();
                                 arrow_data_inner
@@ -223,7 +225,7 @@ impl ::re_types_core::Loggable for RotationAxisAngle {
                             ZipValidity::new_with_validity(offsets, arrow_data.nulls())
                                 .map(|elem| {
                                     elem.map(|(start, end): (usize, usize)| {
-                                        debug_assert!(end - start == 3usize);
+                                        re_log::debug_assert!(end - start == 3usize);
                                         if arrow_data_inner.len() < end {
                                             return Err(DeserializationError::offset_slice_oob(
                                                 (start, end),
@@ -293,17 +295,5 @@ impl ::re_types_core::Loggable for RotationAxisAngle {
                     .with_context("rerun.datatypes.RotationAxisAngle")?
             }
         })
-    }
-}
-
-impl ::re_byte_size::SizeBytes for RotationAxisAngle {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.axis.heap_size_bytes() + self.angle.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Vec3D>::is_pod() && <crate::datatypes::Angle>::is_pod()
     }
 }

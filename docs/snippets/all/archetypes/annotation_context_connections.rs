@@ -1,8 +1,10 @@
 //! Log annotation context with connections between keypoints.
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let rec = rerun::RecordingStreamBuilder::new("rerun_example_annotation_context_connections")
-        .spawn()?;
+    let rec = rerun::RecordingStreamBuilder::new(
+        "rerun_example_annotation_context_connections",
+    )
+    .spawn()?;
 
     // Log an annotation context to assign a label and color to each class
     // Create a class description with labels and color for each keypoint ID as well as some
@@ -17,7 +19,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 (2, "two", rerun::Rgba32::from_rgb(0, 0, 255)).into(),
                 (3, "three", rerun::Rgba32::from_rgb(255, 255, 0)).into(),
             ],
-            keypoint_connections: rerun::KeypointPair::vec_from([(0, 2), (1, 2), (2, 3)]),
+            keypoint_connections: rerun::KeypointPair::vec_from([
+                (0, 2),
+                (1, 2),
+                (2, 3),
+            ]),
         }]),
     )?;
 

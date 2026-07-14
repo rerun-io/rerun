@@ -6,15 +6,16 @@ Logs many medium-sized recordings that contain a lot of small-ish rows.
 Usage:
 - Start a Rerun Viewer in release mode with 500MiB of memory limit:
   `cargo r -p rerun-cli --release --no-default-features --features native_viewer -- --memory-limit 500MiB`
-- Open the memory panel to see what's going on.
+- Open the dev panel to see what's going on.
 - Run this script.
 - You should see recordings coming in and going out in a ringbuffer-like rolling fashion.
 """
 
 from __future__ import annotations
 
-import rerun as rr
 from numpy.random import default_rng
+
+import rerun as rr
 
 rng = default_rng(12345)
 

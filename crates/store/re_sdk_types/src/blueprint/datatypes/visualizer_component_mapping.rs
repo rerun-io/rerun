@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -24,7 +25,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Datatype**: Associate components of an entity to components of a visualizer.
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, ::re_byte_size::SizeBytes)]
 pub struct VisualizerComponentMapping {
     /// Target component name which is being mapped to.
     ///
@@ -37,12 +38,14 @@ pub struct VisualizerComponentMapping {
     /// Component selector for mapping.
     ///
     /// Defaults to `target` if not specified.
-    pub source_component: Option<crate::datatypes::Utf8>,
+    pub source_component: Option<::re_types_core::ArrowString>,
 
     /// Optional selector string using jq-like syntax to pick a specific field on `source_component`.
     ///
+    /// Example: ".x" picks a field called "x" from the `source_component` if present.
+    ///
     /// Defaults to empty string if not specified.
-    pub selector: Option<crate::datatypes::Utf8>,
+    pub selector: Option<::re_types_core::ArrowString>,
 }
 
 ::re_types_core::macros::impl_into_cow!(VisualizerComponentMapping);
@@ -58,12 +61,8 @@ impl ::re_types_core::Loggable for VisualizerComponentMapping {
                 <crate::blueprint::datatypes::ComponentSourceKind>::arrow_datatype(),
                 false,
             ),
-            Field::new(
-                "source_component",
-                <crate::datatypes::Utf8>::arrow_datatype(),
-                true,
-            ),
-            Field::new("selector", <crate::datatypes::Utf8>::arrow_datatype(), true),
+            Field::new("source_component", DataType::Utf8, true),
+            Field::new("selector", DataType::Utf8, true),
         ]))
     }
 
@@ -84,12 +83,8 @@ impl ::re_types_core::Loggable for VisualizerComponentMapping {
                     <crate::blueprint::datatypes::ComponentSourceKind>::arrow_datatype(),
                     false,
                 ),
-                Field::new(
-                    "source_component",
-                    <crate::datatypes::Utf8>::arrow_datatype(),
-                    true,
-                ),
-                Field::new("selector", <crate::datatypes::Utf8>::arrow_datatype(), true),
+                Field::new("source_component", DataType::Utf8, true),
+                Field::new("selector", DataType::Utf8, true),
             ]);
             let (somes, data): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -175,7 +170,7 @@ impl ::re_types_core::Loggable for VisualizerComponentMapping {
                         {
                             let offsets = arrow::buffer::OffsetBuffer::from_lengths(
                                 source_component.iter().map(|opt| {
-                                    opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()
+                                    opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
                                 }),
                             );
                             #[expect(clippy::unwrap_used)]
@@ -183,7 +178,7 @@ impl ::re_types_core::Loggable for VisualizerComponentMapping {
                             let mut buffer_builder =
                                 arrow::array::builder::BufferBuilder::<u8>::new(capacity);
                             for data in source_component.iter().flatten() {
-                                buffer_builder.append_slice(data.0.as_bytes());
+                                buffer_builder.append_slice(data.as_bytes());
                             }
                             let inner_data: arrow::buffer::Buffer = buffer_builder.finish();
 
@@ -211,17 +206,16 @@ impl ::re_types_core::Loggable for VisualizerComponentMapping {
                             any_nones.then(|| somes.into())
                         };
                         {
-                            let offsets = arrow::buffer::OffsetBuffer::from_lengths(
-                                selector.iter().map(|opt| {
-                                    opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()
-                                }),
-                            );
+                            let offsets =
+                                arrow::buffer::OffsetBuffer::from_lengths(selector.iter().map(
+                                    |opt| opt.as_ref().map(|datum| datum.len()).unwrap_or_default(),
+                                ));
                             #[expect(clippy::unwrap_used)]
                             let capacity = offsets.last().copied().unwrap() as usize;
                             let mut buffer_builder =
                                 arrow::array::builder::BufferBuilder::<u8>::new(capacity);
                             for data in selector.iter().flatten() {
-                                buffer_builder.append_slice(data.0.as_bytes());
+                                buffer_builder.append_slice(data.as_bytes());
                             }
                             let inner_data: arrow::buffer::Buffer = buffer_builder.finish();
 
@@ -260,11 +254,11 @@ impl ::re_types_core::Loggable for VisualizerComponentMapping {
             } else {
                 let (arrow_data_fields, arrow_data_arrays) =
                     (arrow_data.fields(), arrow_data.columns());
-                let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data_fields
-                    .iter()
-                    .map(|field| field.name().as_str())
-                    .zip(arrow_data_arrays)
-                    .collect();
+                let arrays_by_name: ::std::collections::HashMap<_, _> = ::std::iter::zip(
+                    arrow_data_fields.iter().map(|field| field.name().as_str()),
+                    arrow_data_arrays,
+                )
+                .collect();
                 let target = {
                     if !arrays_by_name.contains_key("target") {
                         return Err(DeserializationError::missing_struct_field(
@@ -385,10 +379,7 @@ impl ::re_types_core::Loggable for VisualizerComponentMapping {
                             .map(|res_or_opt| {
                                 res_or_opt
                                     .map(|res_or_opt| {
-                                        res_or_opt
-                                            .map(|v| crate::datatypes::Utf8(
-                                                ::re_types_core::ArrowString::from(v),
-                                            ))
+                                        res_or_opt.map(|v| ::re_types_core::ArrowString::from(v))
                                     })
                             })
                             .collect::<DeserializationResult<Vec<Option<_>>>>()
@@ -440,11 +431,7 @@ impl ::re_types_core::Loggable for VisualizerComponentMapping {
                             })
                             .map(|res_or_opt| {
                                 res_or_opt.map(|res_or_opt| {
-                                    res_or_opt.map(|v| {
-                                        crate::datatypes::Utf8(::re_types_core::ArrowString::from(
-                                            v,
-                                        ))
-                                    })
+                                    res_or_opt.map(|v| ::re_types_core::ArrowString::from(v))
                                 })
                             })
                             .collect::<DeserializationResult<Vec<Option<_>>>>()
@@ -484,23 +471,5 @@ impl ::re_types_core::Loggable for VisualizerComponentMapping {
                     )?
             }
         })
-    }
-}
-
-impl ::re_byte_size::SizeBytes for VisualizerComponentMapping {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.target.heap_size_bytes()
-            + self.source_kind.heap_size_bytes()
-            + self.source_component.heap_size_bytes()
-            + self.selector.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Utf8>::is_pod()
-            && <crate::blueprint::datatypes::ComponentSourceKind>::is_pod()
-            && <Option<crate::datatypes::Utf8>>::is_pod()
-            && <Option<crate::datatypes::Utf8>>::is_pod()
     }
 }

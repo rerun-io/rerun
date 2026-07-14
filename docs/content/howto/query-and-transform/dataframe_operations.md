@@ -28,10 +28,11 @@ snippet: howto/dataframe_operations[group_by]
 Some of our columns start much later than others.
 Find out how often this delay exceeds some threshold.
 
-⚠️ **Performance warning:**
-Even though datafusion pulls data lazily, we don't currently decouple our payload from its timeline.
-E.g. in this example this means that we have to pull the full camera data to inspect their min/max timestamps.
-This works quickly when the data is already local and in memory, but can be a bottleneck on cloud at scale.
+> [!WARNING]
+> **Performance warning:**
+> Even though datafusion pulls data lazily, we don't currently decouple our payload from its timeline.
+> E.g. in this example this means that we have to pull the full camera data to inspect their min/max timestamps.
+> This works quickly when the data is already local and in memory, but can be a bottleneck on cloud at scale.
 
 snippet: howto/dataframe_operations[join_query]
 

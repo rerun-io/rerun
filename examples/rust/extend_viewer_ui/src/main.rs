@@ -25,7 +25,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Listen for gRPC connections from Rerun's logging SDKs.
     // There are other ways of "feeding" the viewer though - all you need is a `re_log_channel::LogReceiver`.
-    let rx = re_grpc_server::spawn_with_recv(
+    let (rx, _grpc_server_handle) = re_grpc_server::spawn_with_recv(
         "0.0.0.0:9876".parse()?,
         Default::default(),
         re_grpc_server::shutdown::never(),
@@ -76,16 +76,20 @@ impl eframe::App for MyApp {
     }
 
     /// Called whenever we need repainting, which could be 60 Hz.
-    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+    fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
         // First add our panel(s):
-        egui::SidePanel::right("my_side_panel")
-            .default_width(200.0)
-            .show(ctx, |ui| {
+        egui::Panel::right("my_side_panel")
+            .default_size(200.0)
+            .show(ui, |ui| {
                 self.ui(ui);
             });
 
         // Now show the Rerun Viewer in the remaining space:
-        self.rerun_app.update(ctx, frame);
+        self.rerun_app.ui(ui, frame);
+    }
+
+    fn logic(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+        self.rerun_app.logic(ctx, frame);
     }
 }
 
@@ -121,7 +125,7 @@ fn entity_db_ui(ui: &mut egui::Ui, entity_db: &re_entity_db::EntityDb) {
     egui::ScrollArea::vertical()
         .auto_shrink([false, true])
         .show(ui, |ui| {
-            for entity_path in entity_db.entity_paths() {
+            for entity_path in entity_db.sorted_entity_paths() {
                 ui.collapsing(entity_path.to_string(), |ui| {
                     entity_ui(ui, entity_db, timeline, entity_path);
                 });
@@ -160,10 +164,12 @@ fn component_ui(
     // just show the last value logged for each component:
     let query = re_chunk_store::LatestAtQuery::latest(timeline);
 
-    let results = entity_db
-        .storage_engine()
-        .cache()
-        .latest_at(&query, entity_path, [component]);
+    let results = entity_db.storage_engine().cache().latest_at(
+        re_chunk_store::ChunkTrackingMode::Report,
+        &query,
+        entity_path,
+        [component],
+    );
 
     if let Some(data) = results.component_batch_raw(component) {
         egui::ScrollArea::vertical()

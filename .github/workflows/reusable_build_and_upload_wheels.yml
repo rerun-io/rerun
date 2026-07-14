@@ -67,17 +67,6 @@ env:
   RUSTFLAGS: --deny warnings
   RUSTDOCFLAGS: --deny warnings
 
-  # Disable the GHA backend (Github's 10GB storage) since we use our own GCS backend.
-  # See: https://github.com/marketplace/actions/sccache-action
-  SCCACHE_GHA_ENABLED: "false"
-
-  # Wrap every `rustc` invocation in `sccache`.
-  RUSTC_WRAPPER: "sccache"
-
-  # Not only `sccache` cannot cache incremental builds, it's counter-productive to generate all
-  # these incremental artifacts when running on CI.
-  CARGO_INCREMENTAL: "0"
-
 defaults:
   run:
     shell: bash --noprofile --norc -euo pipefail {0}
@@ -114,14 +103,14 @@ jobs:
             linux-arm64)
                 runner="ubuntu-arm-16-core"
                 target="aarch64-unknown-linux-gnu"
-                container="'ghcr.io/rerun-io/ci_docker:0.16.0'" # Required to be manylinux compatible
+                container="'ghcr.io/rerun-io/ci_docker:0.18.0'" # Required to be manylinux compatible
                 compat="manylinux_2_28"
                 ;;
             linux-x64)
               runner="ubuntu-latest-16-cores"
               target="x86_64-unknown-linux-gnu"
               compat="manylinux_2_28"
-              container="'ghcr.io/rerun-io/ci_docker:0.16.0'" # Required to be manylinux compatible
+              container="'ghcr.io/rerun-io/ci_docker:0.18.0'" # Required to be manylinux compatible
               ;;
             windows-x64)
               runner="windows-latest-32-cores"
@@ -184,9 +173,9 @@ jobs:
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
           targets: ${{ needs.set-config.outputs.TARGET }}
 
-      - uses: prefix-dev/setup-pixi@v0.9.1
+      - uses: prefix-dev/setup-pixi@v0.10.0
         with:
-          pixi-version: v0.55.0
+          pixi-version: v0.71.3
 
       - name: Get sha
         id: get-sha
@@ -196,11 +185,21 @@ jobs:
 
       - name: "Download rerun-cli"
         run: |
-          pixi run fetch-artifact \
-          --commit-sha ${{ steps.get-sha.outputs.sha }} \
-          --artifact rerun-cli \
-          --platform ${{ inputs.PLATFORM }} \
-          --dest rerun_py/rerun_sdk/rerun_cli
+          if [ "${{ inputs.PLATFORM }}" = "macos-arm64" ]; then
+            # macOS gets the Rerun.app bundle so the dock label reads "Rerun"
+            # (see scripts/ci/bundle_macos_app.py).
+            pixi run fetch-artifact \
+              --commit-sha ${{ steps.get-sha.outputs.sha }} \
+              --artifact rerun-cli-macos-app \
+              --platform ${{ inputs.PLATFORM }} \
+              --dest rerun_py/rerun_sdk/rerun_cli
+          else
+            pixi run fetch-artifact \
+              --commit-sha ${{ steps.get-sha.outputs.sha }} \
+              --artifact rerun-cli \
+              --platform ${{ inputs.PLATFORM }} \
+              --dest rerun_py/rerun_sdk/rerun_cli
+          fi
 
       - name: Build
         run: |
@@ -228,7 +227,8 @@ jobs:
           rm -rf dist
           pixi run js-build-base
           pixi run uvpy scripts/ci/build_and_upload_rerun_notebook.py \
-            --dir commit/${{ steps.get-sha.outputs.sha }}/wheels
+            --dir commit/${{ steps.get-sha.outputs.sha }}/wheels \
+            --notebook-dir commit/${{ steps.get-sha.outputs.sha }}/notebook
 
       - name: Save rerun_notebook wheel artifact
         if: ${{ (inputs.MODE == 'pypi' || inputs.MODE == 'extra') && inputs.PLATFORM == 'linux-x64' }}

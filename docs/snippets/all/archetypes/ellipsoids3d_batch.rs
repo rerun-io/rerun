@@ -1,7 +1,9 @@
 //! Log a batch of `Ellipsoids3D`.
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let rec = rerun::RecordingStreamBuilder::new("rerun_example_ellipsoid_batch").spawn()?;
+    let rec =
+        rerun::RecordingStreamBuilder::new("rerun_example_ellipsoid_batch")
+            .spawn()?;
 
     // Let's build a snowman!
     let belly_z = 2.5;

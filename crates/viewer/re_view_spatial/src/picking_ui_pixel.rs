@@ -7,7 +7,7 @@ use re_sdk_types::image::ImageKind;
 use re_sdk_types::tensor_data::TensorElement;
 use re_ui::UiExt as _;
 use re_view::AnnotationSceneContext;
-use re_viewer_context::{Annotations, ImageInfo, ViewQuery, ViewerContext, gpu_bridge};
+use re_viewer_context::{Annotations, ImageInfo, StoreViewContext, ViewQuery, gpu_bridge};
 
 use crate::PickableRectSourceData;
 use crate::view_kind::SpatialViewKind;
@@ -18,9 +18,8 @@ pub struct PickedPixelInfo {
     pub pixel_coordinates: [u32; 2],
 }
 
-#[expect(clippy::too_many_arguments)]
 pub fn textured_rect_hover_ui(
-    ctx: &ViewerContext<'_>,
+    ctx: &StoreViewContext<'_>,
     ui: &mut egui::Ui,
     instance_path: &re_entity_db::InstancePath,
     query: &ViewQuery<'_>,
@@ -37,8 +36,8 @@ pub fn textured_rect_hover_ui(
     } = picked_pixel_info;
 
     let depth_meter = match &source_data {
-        PickableRectSourceData::Image { depth_meter, .. } => *depth_meter,
-        PickableRectSourceData::Video => None,
+        PickableRectSourceData::Image { depth_meter, .. }
+        | PickableRectSourceData::Video { depth_meter } => *depth_meter,
         PickableRectSourceData::Placeholder => {
             // No point in zooming into a placeholder!
             return;
@@ -47,14 +46,7 @@ pub fn textured_rect_hover_ui(
 
     let depth_meter = depth_meter.map(|d| *d.0);
 
-    item_ui::instance_path_button(
-        ctx,
-        &query.latest_at_query(),
-        ctx.recording(),
-        ui,
-        Some(query.view_id),
-        instance_path,
-    );
+    item_ui::instance_path_button(ctx, ui, Some(query.view_id), instance_path);
 
     ui.add_space(8.0);
 
@@ -158,7 +150,7 @@ pub struct TextureInteractionId<'a> {
 }
 
 impl TextureInteractionId<'_> {
-    pub fn debug_label(&self, topic: &str) -> re_renderer::DebugLabel {
+    pub fn debug_label(&self, topic: &str) -> re_renderer::Label {
         format!("{topic}__{:?}_{}", self.entity_path, self.interaction_idx).into()
     }
 
@@ -168,7 +160,6 @@ impl TextureInteractionId<'_> {
 }
 
 /// `meter`: iff this is a depth map, how long is one meter?
-#[expect(clippy::too_many_arguments)]
 pub fn show_zoomed_image_region(
     render_ctx: &re_renderer::RenderContext,
     ui: &mut egui::Ui,
@@ -194,7 +185,6 @@ pub fn show_zoomed_image_region(
 }
 
 /// `meter`: iff this is a depth map, how long is one meter?
-#[expect(clippy::too_many_arguments)]
 fn try_show_zoomed_image_region(
     render_ctx: &re_renderer::RenderContext,
     ui: &mut egui::Ui,
@@ -355,15 +345,16 @@ fn pixel_value_ui(
             if let Some(meter) = meter
                 && let Some(raw_value) = image.get_xyc(x, y, 0)
             {
-                let raw_value = raw_value.as_f64();
-                let meters = raw_value / (meter as f64);
-                ui.label("Depth:");
-                if meters < 1.0 {
-                    ui.monospace(format!("{:.1} mm", meters * 1e3));
-                } else {
-                    ui.monospace(format!("{meters:.3} m"));
-                }
+                show_depth_at_hover(ui, raw_value.as_f64(), meter);
             }
+        }
+
+        if let PixelValueSource::GpuTexture(texture) = &pixel_value_source
+            && let Some(meter) = meter
+            && let Some(raw_value) =
+                depth_value_from_gpu_texture(ui.ctx(), render_ctx, texture, interaction_id, [x, y])
+        {
+            show_depth_at_hover(ui, raw_value, meter);
         }
 
         let text = match pixel_value_source {
@@ -384,6 +375,16 @@ fn pixel_value_ui(
             ui.label("No value");
         }
     });
+}
+
+fn show_depth_at_hover(ui: &mut egui::Ui, raw_value: f64, meter: f32) {
+    let meters = raw_value / (meter as f64);
+    ui.label("Depth:");
+    if meters < 1.0 {
+        ui.monospace(format!("{:.1} mm", meters * 1e3));
+    } else {
+        ui.monospace(format!("{meters:.3} m"));
+    }
 }
 
 fn format_pixel_value(
@@ -559,21 +560,22 @@ struct TextureReadbackUserdata {
     buffer_info: re_renderer::Texture2DBufferInfo,
 }
 
-fn pixel_value_string_from_gpu_texture(
-    ui_ctx: &egui::Context,
+/// Read back raw pixel bytes from a GPU texture at the given coordinates.
+///
+/// Schedules a 64x64 region readback around the cursor and polls for results
+/// from a previous frame. Returns the raw bytes for the single pixel, or `None`
+/// if no result is available yet.
+fn readback_pixel_from_gpu_texture(
+    egui_ctx: &egui::Context,
     render_ctx: &re_renderer::RenderContext,
     texture: &GpuTexture2D,
     interaction_id: &TextureInteractionId<'_>,
     [x, y]: [u32; 2],
-) -> Option<(String, String)> {
+) -> Option<Vec<u8>> {
     // TODO(andreas): Should parts of this be a utility in re_renderer?
     // Note that before this was implemented the readback belt was private to `re_renderer` because it is fairly advanced in its usage.
 
-    // Only support Rgb8Unorm textures for now.
-    // We could support more here but that needs more handling code and it doesn't look like we have to right now.
-    if texture.format() != wgpu::TextureFormat::Rgba8Unorm {
-        return None;
-    }
+    let bytes_per_pixel: u32 = texture.format().block_copy_size(None)?;
 
     let readback_id = interaction_id.gpu_readback_id();
 
@@ -585,10 +587,10 @@ fn pixel_value_string_from_gpu_texture(
     // First check if we have a result ready to read.
     // Keep in mind that copy operation may have required row-padding, use `buffer_info` to get the right values.
     // Readbacks from GPU might come in bursts for all sort of reasons. So make sure we only look at the latest result.
-    let readback_result_rgb = readback_belt.readback_newest_available(
+    let readback_result = readback_belt.readback_newest_available(
         readback_id,
         |data, userdata: Box<TextureReadbackUserdata>| {
-            debug_assert!(data.len() == userdata.buffer_info.buffer_size_padded as usize);
+            re_log::debug_assert!(data.len() == userdata.buffer_info.buffer_size_padded as usize);
 
             // Try to find the pixel at the mouse position.
             // If our position isn't available, just clamp to the edge of the area.
@@ -599,27 +601,25 @@ fn pixel_value_string_from_gpu_texture(
                     userdata.readback_rect.extent.as_ivec2() - glam::IVec2::ONE,
                 )
                 .as_uvec2();
-            let start_index =
-                (data_pos.x * 4 + userdata.buffer_info.bytes_per_row_padded * data_pos.y) as usize;
+            let start_index = (data_pos.x * bytes_per_pixel
+                + userdata.buffer_info.bytes_per_row_padded * data_pos.y)
+                as usize;
+            let end_index = start_index + bytes_per_pixel as usize;
 
-            [
-                data[start_index],
-                data[start_index + 1],
-                data[start_index + 2],
-            ]
+            data[start_index..end_index].to_vec()
         },
     );
 
     // Unfortunately, it can happen that GPU readbacks come in bursts one frame and we get thing in the next.
     // Therefore, we have to keep around the previous result and use that until we get a new one.
-    let readback_result_rgb = {
-        let frame_nr = ui_ctx.cumulative_frame_nr();
+    let readback_result = {
+        let frame_nr = egui_ctx.cumulative_frame_nr();
 
         #[derive(Clone)]
         struct PreviousReadbackResult {
             frame_nr: u64,
             interaction_id: re_renderer::GpuReadbackIdentifier,
-            readback_result_rgb: [u8; 3],
+            pixel_bytes: Vec<u8>,
         }
 
         // Only use the interaction *index* to identify the memory itself so we don't accumulate data indefinitely.
@@ -627,31 +627,30 @@ fn pixel_value_string_from_gpu_texture(
         let memory_id = egui::Id::new(interaction_id.interaction_idx);
         let interaction_id = interaction_id.gpu_readback_id();
 
-        if let Some(readback_result_rgb) = readback_result_rgb {
-            ui_ctx.memory_mut(|m| {
+        if let Some(pixel_bytes) = readback_result {
+            egui_ctx.memory_mut(|m| {
                 m.data.insert_temp(
                     memory_id,
                     PreviousReadbackResult {
                         frame_nr,
                         interaction_id,
-                        readback_result_rgb,
+                        pixel_bytes: pixel_bytes.clone(),
                     },
                 );
             });
 
-            Some(readback_result_rgb)
+            Some(pixel_bytes)
         } else {
             const MAX_FRAMES_WITHOUT_GPU_READBACK: u64 = 3;
 
-            let cached: PreviousReadbackResult = ui_ctx.memory(|m| m.data.get_temp(memory_id))?;
+            let cached: Option<PreviousReadbackResult> =
+                egui_ctx.memory(|m| m.data.get_temp(memory_id));
 
-            if cached.interaction_id == interaction_id
-                && cached.frame_nr + MAX_FRAMES_WITHOUT_GPU_READBACK >= frame_nr
-            {
-                Some(cached.readback_result_rgb)
-            } else {
-                None
-            }
+            cached.and_then(|cached| {
+                (cached.interaction_id == interaction_id
+                    && cached.frame_nr + MAX_FRAMES_WITHOUT_GPU_READBACK >= frame_nr)
+                    .then_some(cached.pixel_bytes)
+            })
         }
     };
 
@@ -663,7 +662,7 @@ fn pixel_value_string_from_gpu_texture(
     // * the result we received is still about the exact same texture _content_
     //      * if it is a video the exact same texture may show a different frame by now
     // So instead we err on the safe side and keep requesting readbacks & frames.
-    ui_ctx.request_repaint();
+    egui_ctx.request_repaint();
 
     // Read back a region of a few pixels. Criteria:
     // * moving the mouse doesn't typically immediately end up in a different region, important since readback has a delay
@@ -718,11 +717,76 @@ fn pixel_value_string_from_gpu_texture(
         }
     }
 
-    let rgb = readback_result_rgb?;
-    let rgb = [
-        TensorElement::U8(rgb[0]),
-        TensorElement::U8(rgb[1]),
-        TensorElement::U8(rgb[2]),
-    ];
-    format_pixel_value(ImageKind::Color, ColorModel::RGB, &rgb)
+    readback_result
+}
+
+/// Read back a pixel value from a GPU texture and format it as a string.
+fn pixel_value_string_from_gpu_texture(
+    egui_ctx: &egui::Context,
+    render_ctx: &re_renderer::RenderContext,
+    texture: &GpuTexture2D,
+    interaction_id: &TextureInteractionId<'_>,
+    [x, y]: [u32; 2],
+) -> Option<(String, String)> {
+    let pixel_bytes =
+        readback_pixel_from_gpu_texture(egui_ctx, render_ctx, texture, interaction_id, [x, y])?;
+
+    match texture.format() {
+        wgpu::TextureFormat::Rgba8Unorm => {
+            let elements = [
+                TensorElement::U8(pixel_bytes[0]),
+                TensorElement::U8(pixel_bytes[1]),
+                TensorElement::U8(pixel_bytes[2]),
+            ];
+            format_pixel_value(ImageKind::Color, ColorModel::RGB, &elements)
+        }
+        wgpu::TextureFormat::R8Unorm => {
+            let elements = [TensorElement::U8(pixel_bytes[0])];
+            format_pixel_value(ImageKind::Depth, ColorModel::L, &elements)
+        }
+        wgpu::TextureFormat::R16Uint => {
+            let value = u16::from_le_bytes([pixel_bytes[0], pixel_bytes[1]]);
+            let elements = [TensorElement::U16(value)];
+            format_pixel_value(ImageKind::Depth, ColorModel::L, &elements)
+        }
+        wgpu::TextureFormat::R32Float => {
+            let value = f32::from_le_bytes([
+                pixel_bytes[0],
+                pixel_bytes[1],
+                pixel_bytes[2],
+                pixel_bytes[3],
+            ]);
+            let elements = [TensorElement::F32(value)];
+            format_pixel_value(ImageKind::Depth, ColorModel::L, &elements)
+        }
+        _ => None,
+    }
+}
+
+/// Read back a raw depth value from a GPU texture at the given pixel.
+///
+/// Returns the depth value as f64, suitable for division by `depth_meter`.
+pub fn depth_value_from_gpu_texture(
+    egui_ctx: &egui::Context,
+    render_ctx: &re_renderer::RenderContext,
+    texture: &GpuTexture2D,
+    interaction_id: &TextureInteractionId<'_>,
+    [x, y]: [u32; 2],
+) -> Option<f64> {
+    let pixel_bytes =
+        readback_pixel_from_gpu_texture(egui_ctx, render_ctx, texture, interaction_id, [x, y])?;
+
+    match texture.format() {
+        wgpu::TextureFormat::R8Unorm => Some(pixel_bytes[0] as f64),
+        wgpu::TextureFormat::R16Uint => {
+            Some(u16::from_le_bytes([pixel_bytes[0], pixel_bytes[1]]) as f64)
+        }
+        wgpu::TextureFormat::R32Float => Some(f32::from_le_bytes([
+            pixel_bytes[0],
+            pixel_bytes[1],
+            pixel_bytes[2],
+            pixel_bytes[3],
+        ]) as f64),
+        _ => None,
+    }
 }

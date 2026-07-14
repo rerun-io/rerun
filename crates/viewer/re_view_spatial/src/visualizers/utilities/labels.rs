@@ -4,6 +4,7 @@ use egui::Color32;
 use itertools::{Either, izip};
 use re_entity_db::InstancePathHash;
 use re_log_types::{EntityPath, Instance};
+use re_sdk_types::blueprint::components::VisualizerInstructionId;
 use re_view::clamped_or;
 use re_viewer_context::ResolvedAnnotationInfos;
 
@@ -19,7 +20,7 @@ pub enum UiLabelTarget {
     Position3D(glam::Vec3),
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum UiLabelStyle {
     Default,
 
@@ -46,6 +47,9 @@ pub struct UiLabel {
 
     /// What is hovered if this label is hovered.
     pub labeled_instance: InstancePathHash,
+
+    /// The visualizer instruction that produced this label.
+    pub visualizer_instruction: VisualizerInstructionId,
 }
 
 /// Inputs for [`process_labels()`], defining the label(s) of a single [batch].
@@ -56,6 +60,8 @@ pub struct UiLabel {
 /// [batch]: https://rerun.io/docs/concepts/batches
 pub struct LabeledBatch<'a, P: 'a, I: Iterator<Item = P> + 'a> {
     pub entity_path: &'a EntityPath,
+
+    pub visualizer_instruction: VisualizerInstructionId,
 
     /// `num_instances` should be equal to the length of `instance_positions`.
     pub num_instances: usize,
@@ -125,6 +131,7 @@ pub fn process_labels<'a, P: 'a>(
 ) -> impl Iterator<Item = UiLabel> + 'a {
     let LabeledBatch {
         entity_path,
+        visualizer_instruction,
         num_instances,
         overall_position,
         instance_positions,
@@ -150,7 +157,7 @@ pub fn process_labels<'a, P: 'a>(
 
     let labels = izip!(
         annotation_infos.iter(),
-        labels.iter().map(Some).chain(std::iter::repeat(None))
+        std::iter::chain(labels.iter().map(Some), std::iter::repeat(None))
     )
     .map(|(annotation_info, label)| annotation_info.label(label.map(|l| l.as_str())));
 
@@ -160,7 +167,8 @@ pub fn process_labels<'a, P: 'a>(
         itertools::izip!(label_positions, labels, colors)
             .enumerate()
             .filter_map(move |(i, (position, label, color))| {
-                label.map(|label| UiLabel {
+                let label = label?;
+                (!label.is_empty()).then(|| UiLabel {
                     text: label,
                     style: if *color == Color32::PLACEHOLDER {
                         UiLabelStyle::Default
@@ -172,6 +180,7 @@ pub fn process_labels<'a, P: 'a>(
                         entity_path,
                         Instance::from(i as u64),
                     ),
+                    visualizer_instruction,
                 })
             }),
     )

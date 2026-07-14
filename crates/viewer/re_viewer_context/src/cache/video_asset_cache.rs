@@ -19,7 +19,10 @@ use crate::image_info::StoredBlobCacheKey;
 
 // ----------------------------------------------------------------------------
 
+#[derive(re_byte_size::SizeBytes)]
 struct Entry {
+    // `AtomicBool` doesn't impl `SizeBytes`; it's POD (no heap).
+    #[size_bytes(ignore)]
     used_this_frame: AtomicBool,
 
     /// Keeps failed loads around, so we can don't try again and again.
@@ -27,17 +30,6 @@ struct Entry {
 
     /// Debug name for this video entry (typically the entity path).
     debug_name: String,
-}
-
-impl re_byte_size::SizeBytes for Entry {
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            used_this_frame: _,
-            video,
-            debug_name,
-        } = self;
-        debug_name.heap_size_bytes() + video.heap_size_bytes()
-    }
 }
 
 /// Caches videos assets and their players based on media type & row id.
@@ -83,12 +75,11 @@ impl VideoAssetCache {
             .or_default()
             .entry(inner_key)
             .or_insert_with(|| {
+                let _ = blob_row_id; // used to be the source id, now unused
                 let video = re_video::VideoDataDescription::load_from_bytes(
                     video_buffer,
                     &media_type,
                     &debug_name,
-                    // For video assets we use the row-id as the source identifier.
-                    blob_row_id.as_tuid(),
                 )
                 .map(|data| Video::load(debug_name.clone(), data, decode_settings));
                 Entry {
@@ -106,12 +97,7 @@ impl VideoAssetCache {
     }
 }
 
-impl Cache for VideoAssetCache
-where
-    // NOTE: Explicit bounds help the compiler avoid recursion overflow when checking trait implementations.
-    Video: Send + Sync,
-    VideoLoadError: Send + Sync,
-{
+impl Cache for VideoAssetCache {
     fn name(&self) -> &'static str {
         "VideoAssetCache"
     }

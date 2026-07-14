@@ -52,8 +52,8 @@ pub fn view_property_force_ui<A: Archetype + ArchetypeReflectionMarker>(
         let singleline_ui: &dyn Fn(&mut egui::Ui) = &|ui| {
             ctx.viewer_ctx.component_ui_registry().singleline_edit_ui(
                 &query_ctx,
+                &ctx.viewer_ctx.blueprint_store_view_ctx(),
                 ui,
-                ctx.blueprint_db(),
                 query_ctx.target_entity_path.clone(),
                 &component_descr,
                 row_id,

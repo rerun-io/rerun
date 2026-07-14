@@ -27,11 +27,17 @@ def test_removed_apis() -> None:
 
         assert "register_batch" not in dir(ds)  # me
 
-        # These were renamed with `_index` -> `_search_index`
+        # The custom-index / vector-search subsystem was removed entirely.
         assert "create_fts_index" not in dir(ds)
         assert "create_vector_index" not in dir(ds)
         assert "list_indexes" not in dir(ds)
         assert "delete_indexes" not in dir(ds)
+        assert "create_fts_search_index" not in dir(ds)
+        assert "create_vector_search_index" not in dir(ds)
+        assert "list_search_indexes" not in dir(ds)
+        assert "delete_search_indexes" not in dir(ds)
+        assert "search_fts" not in dir(ds)
+        assert "search_vector" not in dir(ds)
 
         # Replaced by a better, simpler API outline in
         # https://linear.app/rerun/issue/RR-3018/improve-the-dataset-blueprint-apis-in-the-python-sdk

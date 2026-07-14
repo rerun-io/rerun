@@ -12,7 +12,7 @@ import sys
 import time
 from glob import glob
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Self
 
 if TYPE_CHECKING:
     from types import TracebackType
@@ -52,7 +52,7 @@ SKIP_LIST = [
     # ros requires complex system dependencies to be installed
     "examples/python/ros_node",
     # this needs special treatment to run
-    "examples/python/external_data_loader",
+    "examples/python/external_importer",
 ]
 
 MAC_SKIP_LIST: list[str] = []
@@ -186,7 +186,7 @@ class Viewer:
         time.sleep(1)
         return self
 
-    def __enter__(self) -> Viewer:
+    def __enter__(self) -> Self:
         self.start()
         return self
 

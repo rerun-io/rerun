@@ -3,6 +3,7 @@
 mod views;
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::fmt::Write as _;
 use std::iter;
 use std::ops::Deref;
 
@@ -566,7 +567,7 @@ impl PythonCodeGenerator {
             from __future__ import annotations
 
             from collections.abc import Iterable, Mapping, Set, Sequence, Dict
-            from typing import Any, Optional, Union, TYPE_CHECKING, SupportsFloat, Literal, Tuple
+            from typing import Any, ClassVar, Optional, Union, TYPE_CHECKING, SupportsFloat, Literal, Tuple
             from typing_extensions import deprecated # type: ignore[misc, unused-ignore]
 
             from attrs import define, field
@@ -612,7 +613,7 @@ impl PythonCodeGenerator {
 
             if ext_class.found {
                 code.push_unindented(
-                    format!("from .{} import {}", ext_class.module_name, ext_class.name,),
+                    format!("from .{} import {}", ext_class.module_name, ext_class.name),
                     1,
                 );
             }
@@ -622,22 +623,29 @@ impl PythonCodeGenerator {
                 .is_some()
             {
                 code.push_unindented(
-                    format!("from {rerun_path}blueprint import Visualizer, VisualizableArchetype"),
+                    format!("from {rerun_path}blueprint import VisualizableArchetype, Visualizer"),
+                    1,
+                );
+                code.push_unindented(
+                    format!(
+                        "from {rerun_path}blueprint.datatypes import VisualizerComponentMappingLike"
+                    ),
                     1,
                 );
             }
 
-            let import_clauses: HashSet<_> = obj
-                .fields
-                .iter()
-                .filter_map(|field| quote_import_clauses_from_field(&obj.scope(), field))
-                .chain(obj.fields.iter().filter_map(|field| {
+            let import_clauses: HashSet<_> = std::iter::chain(
+                obj.fields.iter().filter_map(|field| {
+                    quote_import_clauses_from_field(obj.scope().as_ref(), field)
+                }),
+                obj.fields.iter().filter_map(|field| {
                     let fqname = field.typ.fqname()?;
                     objects[fqname].delegate_datatype(objects).map(|delegate| {
-                        quote_import_clauses_from_fqname(&obj.scope(), &delegate.fqname)
+                        quote_import_clauses_from_fqname(obj.scope().as_ref(), &delegate.fqname)
                     })
-                }))
-                .collect();
+                }),
+            )
+            .collect();
             for clause in import_clauses {
                 code.push_indented(0, &clause, 1);
             }
@@ -710,7 +718,7 @@ fn write_init_file(
 
     let path = kind_path.join("__init__.py");
     let mut code = String::new();
-    let manifest = quote_manifest(mods.iter().flat_map(|(_, names)| names.iter()));
+    let manifest = quote_manifest(mods.values().flat_map(|names| names.iter()));
     code.push_indented(0, format!("# {}", autogen_warning!()), 2);
     code.push_unindented(
         "
@@ -860,6 +868,10 @@ fn code_for_struct(
         code.push_indented(1, "_BATCH_TYPE = None", 1);
     }
 
+    if *kind == ObjectKind::Archetype {
+        code.push_indented(1, format!(r#"NAME: ClassVar[str] = "{}""#, obj.fqname), 2);
+    }
+
     if ext_class.has_init {
         code.push_indented(
             1,
@@ -898,6 +910,7 @@ fn code_for_struct(
     if obj.kind == ObjectKind::Archetype {
         code.push_indented(1, quote_clear_methods(obj), 2);
         code.push_indented(1, quote_partial_update_methods(reporter, obj, objects), 2);
+        code.push_indented(1, quote_descriptor_methods(obj, objects), 2);
         if obj.scope().is_none() {
             code.push_indented(1, quote_columnar_methods(reporter, obj, objects), 2);
         }
@@ -923,10 +936,10 @@ fn code_for_struct(
         //  and appear at the end of the list, but it currently doesn't. This is unfortunate as
         //  the apparent field order is inconsistent with what the `xxxx_init()` override
         //  accepts.
-        let fields_in_order = fields
-            .iter()
-            .filter(|field| !field.is_nullable)
-            .chain(fields.iter().filter(|field| field.is_nullable));
+        let fields_in_order = std::iter::chain(
+            fields.iter().filter(|field| !field.is_nullable),
+            fields.iter().filter(|field| field.is_nullable),
+        );
         for field in fields_in_order {
             let ObjectField {
                 name, is_nullable, ..
@@ -992,11 +1005,23 @@ fn code_for_struct(
             );
 
             if let Some(visualizer_name) = visualizer_name {
+                // TODO(#10631): Marked as experimental
+                let docstring = r#""""
+        Creates a visualizer for this archetype, using all currently set values as overrides.
+
+        Parameters
+        ----------
+        mappings:
+            Optional component mappings to control how the visualizer sources its data.
+
+            ⚠️ **Experimental**: Component mappings are an experimental feature and may change.
+            See https://github.com/rerun-io/rerun/issues/10631 for more information.
+
+        """"#;
                 code.push_indented(1, "", 1);
-                code.push_indented(1, "def visualizer(self) -> Visualizer:", 1);
-                code.push_indented(2, r#""""Creates a visualizer for this archetype, using all currently set values as overrides.""""#, 1);
-                // TODO(RR-3254): Add options for mapping here
-                code.push_indented(2, format!(r#"return Visualizer("{visualizer_name}", overrides=self.as_component_batches(), mappings=None)"#), 1);
+                code.push_indented(1, "def visualizer(self, *, mappings: list[VisualizerComponentMappingLike] | None = None) -> Visualizer:", 1);
+                code.push_indented(2, docstring, 1);
+                code.push_indented(2, format!(r#"return Visualizer("{visualizer_name}", overrides=self.as_component_batches(), mappings=mappings)"#), 1);
             }
         }
 
@@ -1075,7 +1100,7 @@ fn code_for_enum(
         superclasses.push("Enum".to_owned());
         superclasses.join(",")
     };
-    code.push_str(&format!("class {enum_name}({superclasses}):\n"));
+    writeln!(code, "class {enum_name}({superclasses}):").ok();
     code.push_indented(1, quote_obj_docs(reporter, objects, obj), 0);
 
     for variant in &obj.fields {
@@ -1419,7 +1444,7 @@ fn quote_examples(examples: Vec<Example<'_>>, lines: &mut Vec<String>) {
             lines.push(format!("### `{name}`:"));
         }
         lines.push("```python".into());
-        lines.extend(example.lines.into_iter());
+        lines.extend(example.lines);
         lines.push("```".into());
         if let Some(image) = &image {
             lines.extend(
@@ -1778,7 +1803,7 @@ fn quote_union_aliases_from_object<'a>(
 }
 
 fn quote_import_clauses_from_field(
-    obj_scope: &Option<String>,
+    obj_scope: Option<&String>,
     field: &ObjectField,
 ) -> Option<String> {
     let fqname = match &field.typ {
@@ -1800,7 +1825,7 @@ fn quote_import_clauses_from_field(
     fqname.map(|fqname| quote_import_clauses_from_fqname(obj_scope, fqname))
 }
 
-fn quote_import_clauses_from_fqname(obj_scope: &Option<String>, fqname: &str) -> String {
+fn quote_import_clauses_from_fqname(obj_scope: Option<&String>, fqname: &str) -> String {
     // NOTE: The distinction between `from .` vs. `from rerun.datatypes` has been shown to fix some
     // nasty lazy circular dependencies in weird edge cases…
     // In any case it will be normalized by `ruff` if it turns out to be unnecessary.
@@ -2280,21 +2305,19 @@ fn quote_arrow_serialization(
                         "##,
                     ));
                 } else if let Some(np_dtype) = np_dtype_from_type(&obj.fields[0].typ) {
-                    if !obj.is_attr_set(ATTR_PYTHON_ALIASES) {
-                        if !obj.is_testing() {
-                            reporter.warn(
-                                &obj.virtpath,
-                                &obj.fqname,
-                                format!("Expected this to have {ATTR_PYTHON_ALIASES} set"),
-                            );
-                        }
-                    } else {
+                    if obj.is_attr_set(ATTR_PYTHON_ALIASES) {
                         return Ok(unindent(&format!(
                             r##"
                                 array = np.asarray(data, dtype={np_dtype}).flatten()
                                 return pa.array(array, type=data_type)
                             "##
                         )));
+                    } else if !obj.is_testing() {
+                        reporter.warn(
+                            &obj.virtpath,
+                            &obj.fqname,
+                            format!("Expected this to have {ATTR_PYTHON_ALIASES} set"),
+                        );
                     }
                 }
             }
@@ -2395,7 +2418,7 @@ fn quote_arrow_serialization(
 if isinstance(data, ({name}, int, str)):
     data = [data]
 
-pa_data = [{name}.auto(v).value if v is not None else None for v in data] # type: ignore[redundant-expr]
+pa_data = [{name}.auto(v).value if v is not None else None for v in data]  # type: ignore[redundant-expr]  # ty: ignore[not-iterable]
 
 return pa.array(pa_data, type=data_type)
         "##
@@ -2854,6 +2877,32 @@ fn quote_component_field_mapping(obj: &Object) -> String {
         .join(",\n")
 }
 
+fn quote_descriptor_methods(obj: &Object, objects: &Objects) -> String {
+    let archetype_short_name = &obj.name;
+
+    obj.fields
+        .iter()
+        .map(|field| {
+            let field_name = field.snake_case_name();
+            let (typ_unwrapped, _) = quote_field_type_from_field(objects, field, true);
+            let batch_type = format!("{typ_unwrapped}Batch");
+
+            unindent(&format!(
+                r#"
+                @staticmethod
+                def descriptor_{field_name}() -> ComponentDescriptor:
+                    return ComponentDescriptor(
+                        "{archetype_short_name}:{field_name}",
+                        archetype={archetype_short_name}.NAME,
+                        component_type={batch_type}._COMPONENT_TYPE,
+                    )
+                "#
+            ))
+        })
+        .collect_vec()
+        .join("\n")
+}
+
 fn quote_partial_update_methods(reporter: &Reporter, obj: &Object, objects: &Objects) -> String {
     let name = &obj.name;
 
@@ -3008,17 +3057,21 @@ fn quote_columnar_methods(reporter: &Reporter, obj: &Object, objects: &Objects) 
                 if pa.types.is_primitive(arrow_array.type) or pa.types.is_fixed_size_list(arrow_array.type):
                     param = kwargs[batch.component_descriptor().component] # type: ignore[index]
                     shape = np.shape(param)  # type: ignore[arg-type]
-                    elem_flat_len = int(np.prod(shape[1:])) if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
-
-                    if pa.types.is_fixed_size_list(arrow_array.type) and arrow_array.type.list_size == elem_flat_len:
-                        # If the product of the last dimensions of the shape are equal to the size of the fixed size list array,
-                        # we have `num_rows` single element batches (each element is a fixed sized list).
-                        # (This should have been already validated by conversion to the arrow_array)
-                        batch_length = 1
-                    else:
-                        batch_length = shape[1] if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
-
                     num_rows = shape[0] if len(shape) >= 1 else 1  # type: ignore[redundant-expr,misc]
+
+                    if pa.types.is_fixed_size_list(arrow_array.type):
+                        elem_flat_len = int(np.prod(shape[1:])) if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
+                        if arrow_array.type.list_size == elem_flat_len:
+                            # The product of the last dimensions of the shape are equal to the size of the fixed size list array,
+                            # so we have `num_rows` single element batches (each element is a fixed sized list).
+                            batch_length = 1
+                        else:
+                            batch_length = shape[1] if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
+                    else:
+                        # For primitive types, derive batch_length from the actual arrow array length
+                        # since the input shape can be misleading (e.g. colors [R,G,B] -> single uint32).
+                        batch_length = len(arrow_array) // num_rows if num_rows > 0 else 1
+
                     sizes = batch_length * np.ones(num_rows)
                 else:
                     # For non-primitive types, default to partitioning each element separately.

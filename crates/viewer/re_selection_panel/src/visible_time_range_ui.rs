@@ -1,3 +1,5 @@
+use std::fmt::Write as _;
+
 use egui::{NumExt as _, Ui};
 use re_chunk::Timeline;
 use re_log_types::{AbsoluteTimeRange, EntityPath, TimeType, TimelineName};
@@ -8,7 +10,8 @@ use re_sdk_types::datatypes::{TimeInt, TimeRange, TimeRangeBoundary};
 use re_ui::list_item::{LabelContent, ListItemContentButtonsExt as _};
 use re_ui::{RelativeTimeRange, TimeDragValue, UiExt as _, relative_time_range_label_text};
 use re_viewer_context::{
-    BlueprintContext as _, QueryRange, TimeControlCommand, ViewClass, ViewState, ViewerContext,
+    BlueprintContext as _, QueryRange, TimeControlCommand, TimeRangeHighlight,
+    TimeRangeHighlightKind, ViewClass, ViewState, ViewerContext,
 };
 use re_viewport_blueprint::{ViewBlueprint, entity_path_for_view_property};
 
@@ -23,9 +26,10 @@ pub fn visible_time_range_ui_for_view(
         return;
     }
 
+    let engine = ctx.store_context.blueprint.storage_engine();
     let property_path = entity_path_for_view_property(
         view.id,
-        ctx.store_context.blueprint.tree(),
+        engine.store().entity_tree(),
         re_sdk_types::blueprint::archetypes::VisibleTimeRanges::name(),
     );
 
@@ -46,7 +50,7 @@ pub fn visible_time_range_ui_for_data_result(
     ui: &mut Ui,
     data_result: &re_viewer_context::DataResult,
 ) {
-    let query_range = data_result.query_range.clone();
+    let query_range = data_result.query_range;
     let is_view = false;
     visible_time_range_ui(
         ctx,
@@ -83,11 +87,11 @@ fn visible_time_range_ui(
         .any(|range| range.timeline.as_str() == timeline_name.as_str());
 
     let has_individual_range_before = has_individual_range;
-    let query_range_before = resolved_query_range.clone();
+    let query_range_before = resolved_query_range;
 
     ui.scope(|ui| {
         // TODO(#6075): Because `list_item_scope` changes it. Temporary until everything is `ListItem`.
-        ui.spacing_mut().item_spacing.y = ui.ctx().style().spacing.item_spacing.y;
+        ui.spacing_mut().item_spacing.y = ui.global_style().spacing.item_spacing.y;
         query_range_ui(
             ctx,
             ui,
@@ -209,7 +213,7 @@ Notes:
                 time_ctrl
                     .time_i64()
                     .unwrap_or_default()
-                    .at_least(*time_drag_value.range.start()),
+                    .at_least(time_drag_value.range.start),
             ); // accounts for static time (TimeInt::MIN)
 
             if *has_individual_time_range {
@@ -265,7 +269,12 @@ Notes:
     {
         let absolute_time_range =
             AbsoluteTimeRange::from_relative_time_range(time_range, current_time);
-        ctx.send_time_commands([TimeControlCommand::HighlightRange(absolute_time_range)]);
+        ctx.send_time_commands([TimeControlCommand::HighlightRange(TimeRangeHighlight {
+            range: absolute_time_range,
+            timeline: *time_ctrl.timeline_name(),
+            kind: TimeRangeHighlightKind::TimeRangeConfiguration,
+            color: None,
+        })]);
     }
 }
 
@@ -301,13 +310,9 @@ fn show_visual_time_range(
     let time_type = timeline.typ();
 
     // Show the resolved visible range as labels (user can't edit them):
-    if resolved_range.start == TimeRangeBoundary::Infinite
-        && resolved_range.end == TimeRangeBoundary::Infinite
-    {
-        ui.label("Entire timeline");
-    } else if resolved_range.start == TimeRangeBoundary::AT_CURSOR
-        && resolved_range.end == TimeRangeBoundary::AT_CURSOR
-    {
+    if resolved_range == &TimeRange::EVERYTHING {
+        ui.label("Entire timeline").on_hover_text("The full timeline of the recording, which may be bigger than the data range of this plot");
+    } else if resolved_range == &TimeRange::AT_CURSOR {
         let current_time = time_type.format(current_time, ctx.app_options().timestamp_format);
         ui.label(format!("At {} = {current_time}", timeline.name())).on_hover_text("Does not perform a latest-at query, shows only data logged at exactly the current time cursor position.");
     } else {
@@ -386,22 +391,26 @@ fn resolved_visible_history_boundary_ui(
                             ("ns", 1.)
                         };
 
-                        label += &format!(" with {} {} offset", offset as f64 / factor, unit);
+                        write!(label, " with {} {} offset", offset as f64 / factor, unit).ok();
                     }
                     TimeType::Sequence => {
-                        label += &format!(
-                            " with {offset} frame{} offset",
-                            if offset.abs() > 1 { "s" } else { "" }
-                        );
+                        write!(
+                            label,
+                            " with {} offset",
+                            re_format::format_plural_signed_s(offset, "frame")
+                        )
+                        .ok();
                     }
                 }
             }
         }
         TimeRangeBoundary::Absolute(time) => {
-            label += &format!(
+            write!(
+                label,
                 " {}",
                 time_type.format(*time, ctx.app_options().timestamp_format)
-            );
+            )
+            .ok();
         }
         TimeRangeBoundary::Infinite => {}
     }

@@ -5,13 +5,12 @@ build-backend = "hatchling.build"
 [project]
 name = "rerun-notebook"
 description = "Implementation helper for running rerun-sdk in notebooks"
-version = "0.29.0-alpha.1+dev"
+version = "0.35.0-alpha.1+dev"
 dependencies = [
   "anywidget",
   "jupyter-ui-poll",
-  # ipykernel 7.0.0 has a bug that prevents it from sending display data from a different thread.
-  # TODO(ipython/ipykernel/#1450)
-  "ipykernel<7.0.0",
+  # ipykernel 7.0.x has a bug that prevents it from sending display data from a different thread.
+  "ipykernel != 7.0.*",
 ]
 readme = "README.md"
 keywords = ["rerun", "notebook"]
@@ -25,6 +24,7 @@ text = "MIT OR Apache-2.0"
 
 [project.optional-dependencies]
 dev = ["watchfiles", "jupyterlab", "hatch"]
+test = ["pytest>=8.0"]
 
 # automatically add the dev feature to the default env (e.g., hatch shell)
 [tool.hatch.envs.default]

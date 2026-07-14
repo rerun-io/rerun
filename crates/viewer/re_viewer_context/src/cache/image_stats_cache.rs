@@ -6,7 +6,7 @@ use re_sdk_types::image::ImageKind;
 use re_sdk_types::{Component as _, components};
 
 use crate::image_info::StoredBlobCacheKey;
-use crate::{Cache, ImageInfo, ImageStats};
+use crate::{Cache, CacheEntryAccess, ImageInfo, ImageStats};
 
 // Caches image stats (use e.g. `RowId` to generate cache key).
 #[derive(Default)]
@@ -21,13 +21,25 @@ impl ImageStatsCache {
     }
 }
 
+impl CacheEntryAccess<ImageInfo, ImageStats> for ImageStatsCache {
+    fn read(&self, image: &ImageInfo) -> Option<ImageStats> {
+        self.0
+            .get(&(image.buffer_content_hash, image.kind))
+            .copied()
+    }
+
+    fn compute(&mut self, image: &ImageInfo) -> ImageStats {
+        self.entry(image)
+    }
+}
+
 impl Cache for ImageStatsCache {
     fn name(&self) -> &'static str {
         "ImageStatsCache"
     }
 
     fn purge_memory(&mut self) {
-        // Purging the image stats is not worth it - these are very small objects!
+        self.0.clear();
     }
 
     fn on_store_events(&mut self, events: &[&ChunkStoreEvent], _entity_db: &EntityDb) {

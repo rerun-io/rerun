@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -23,25 +24,31 @@ use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: What kind of source to use for a visualizer component mapping.
-#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, ::re_byte_size::SizeBytes)]
 #[repr(u8)]
 pub enum ComponentSourceKind {
     /// Use an explicit selection defined by `source_component`.
     ///
     /// May or may not make use of a selector string.
+    ///
+    /// If the source component is not found on the entity,
+    /// a heuristically determined value will be used instead.
     SourceComponent = 1,
 
     /// Use a timeless override value that is defined in the blueprint.
     ///
     /// The override value is stored on the same entity as the visualizer instruction
     /// and uses the `target` as its component name.
+    ///
+    /// If there is no override value with the target component name,
+    /// a heuristically determined value will be used instead.
     Override = 2,
 
     /// Default as specified on the view's blueprint.
+    ///
+    /// If the view doesn't specify a default for the target component name,
+    /// a heuristically determined value will be used instead.
     Default = 3,
-
-    /// Make use of the viewer's fallback logic to produce a value.
-    Fallback = 4,
 }
 
 ::re_types_core::macros::impl_into_cow!(ComponentSourceKind);
@@ -106,16 +113,16 @@ impl ::re_types_core::Loggable for ComponentSourceKind {
             .with_context("rerun.blueprint.datatypes.ComponentSourceKind#enum")?
             .into_iter()
             .map(|typ| match typ {
-                Some(1) => Ok(Some(Self::SourceComponent)),
-                Some(2) => Ok(Some(Self::Override)),
-                Some(3) => Ok(Some(Self::Default)),
-                Some(4) => Ok(Some(Self::Fallback)),
+                Some(val) => <Self as ::re_types_core::reflection::Enum>::try_from_integer(val)
+                    .map(Some)
+                    .ok_or_else(|| {
+                        DeserializationError::missing_union_arm(
+                            Self::arrow_datatype(),
+                            "<invalid>",
+                            val as _,
+                        )
+                    }),
                 None => Ok(None),
-                Some(invalid) => Err(DeserializationError::missing_union_arm(
-                    Self::arrow_datatype(),
-                    "<invalid>",
-                    invalid as _,
-                )),
             })
             .collect::<DeserializationResult<Vec<Option<_>>>>()
             .with_context("rerun.blueprint.datatypes.ComponentSourceKind")?)
@@ -128,45 +135,37 @@ impl std::fmt::Display for ComponentSourceKind {
             Self::SourceComponent => write!(f, "SourceComponent"),
             Self::Override => write!(f, "Override"),
             Self::Default => write!(f, "Default"),
-            Self::Fallback => write!(f, "Fallback"),
         }
     }
 }
 
 impl ::re_types_core::reflection::Enum for ComponentSourceKind {
+    type Repr = u8;
+
     #[inline]
     fn variants() -> &'static [Self] {
-        &[
-            Self::SourceComponent,
-            Self::Override,
-            Self::Default,
-            Self::Fallback,
-        ]
+        &[Self::SourceComponent, Self::Override, Self::Default]
     }
 
     #[inline]
     fn docstring_md(self) -> &'static str {
         match self {
             Self::SourceComponent => {
-                "Use an explicit selection defined by `source_component`.\n\nMay or may not make use of a selector string."
+                "Use an explicit selection defined by `source_component`.\n\nMay or may not make use of a selector string.\n\nIf the source component is not found on the entity,\na heuristically determined value will be used instead."
             }
             Self::Override => {
-                "Use a timeless override value that is defined in the blueprint.\n\nThe override value is stored on the same entity as the visualizer instruction\nand uses the `target` as its component name."
+                "Use a timeless override value that is defined in the blueprint.\n\nThe override value is stored on the same entity as the visualizer instruction\nand uses the `target` as its component name.\n\nIf there is no override value with the target component name,\na heuristically determined value will be used instead."
             }
-            Self::Default => "Default as specified on the view's blueprint.",
-            Self::Fallback => "Make use of the viewer's fallback logic to produce a value.",
+            Self::Default => {
+                "Default as specified on the view's blueprint.\n\nIf the view doesn't specify a default for the target component name,\na heuristically determined value will be used instead."
+            }
         }
     }
-}
-
-impl ::re_byte_size::SizeBytes for ComponentSourceKind {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
 
     #[inline]
-    fn is_pod() -> bool {
-        true
+    fn try_from_integer(value: u8) -> Option<Self> {
+        Self::variants()
+            .get((value as usize).wrapping_sub(1))
+            .copied()
     }
 }

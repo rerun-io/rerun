@@ -31,8 +31,8 @@ namespace rerun {
         /// When this limit is reached, Rerun will drop the oldest data.
         /// Example: `16GB` or `50%` (of system total).
         ///
-        /// Defaults to `0B`.
-        std::string_view server_memory_limit = "0B";
+        /// Defaults to `1GiB`.
+        std::string_view server_memory_limit = "1GiB";
 
         /// Hide the normal Rerun welcome screen.
         ///
@@ -51,7 +51,7 @@ namespace rerun {
         /// Defaults to `rerun` if unset.
         std::string_view executable_name = "rerun";
 
-        /// Enforce a specific executable to use instead of searching though PATH
+        /// Enforce a specific executable to use instead of searching through PATH
         /// for `SpawnOptions::executable_name`.
         std::string_view executable_path;
 

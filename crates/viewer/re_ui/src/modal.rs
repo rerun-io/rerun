@@ -77,6 +77,7 @@ impl ModalHandler {
 
             if self.should_close || (self.allow_escape && response.should_close()) {
                 self.modal = None;
+                self.should_close = false;
             }
 
             Some(response.inner)
@@ -105,6 +106,7 @@ pub struct ModalWrapper {
     min_width: Option<f32>,
     max_width: Option<f32>,
     min_height: Option<f32>,
+    max_height: Option<f32>,
     default_height: Option<f32>,
     full_span_content: bool,
     set_side_margins: bool,
@@ -119,6 +121,7 @@ impl ModalWrapper {
             min_width: None,
             max_width: None,
             min_height: None,
+            max_height: None,
             default_height: None,
             full_span_content: false,
             set_side_margins: true,
@@ -144,6 +147,13 @@ impl ModalWrapper {
     #[inline]
     pub fn max_width(mut self, max_width: f32) -> Self {
         self.max_width = Some(max_width);
+        self
+    }
+
+    /// Set the maximum height of the modal window.
+    #[inline]
+    pub fn max_height(mut self, max_height: f32) -> Self {
+        self.max_height = Some(max_height);
         self
     }
 
@@ -207,7 +217,7 @@ impl ModalWrapper {
             .show(ctx, |ui| {
                 prevent_shrinking(ui);
                 egui::Frame {
-                    fill: ctx.style().visuals.panel_fill,
+                    fill: ctx.global_style().visuals.panel_fill,
                     ..Default::default()
                 }
                 .show(ui, |ui| {
@@ -227,6 +237,9 @@ impl ModalWrapper {
 
                     if let Some(min_height) = self.min_height {
                         ui.set_min_height(min_height);
+                    }
+                    if let Some(max_height) = self.max_height {
+                        ui.set_max_height(max_height);
                     }
 
                     //
@@ -295,8 +308,8 @@ impl ModalWrapper {
 
                     if self.scrollable.any() {
                         // Make the modal size less jumpy and work around https://github.com/emilk/egui/issues/5138
-                        let max_height = 0.85 * ui.ctx().content_rect().height();
-                        let min_height = 0.3 * ui.ctx().content_rect().height().at_most(max_height);
+                        let max_height = 0.85 * ui.content_rect().height();
+                        let min_height = 0.3 * ui.content_rect().height().at_most(max_height);
 
                         egui::ScrollArea::new(self.scrollable)
                             .min_scrolled_height(max_height)
@@ -383,7 +396,7 @@ pub fn prevent_shrinking(ui: &mut egui::Ui) {
     let last_rect = ui.response().rect;
 
     #[expect(clippy::useless_let_if_seq)]
-    let mut screen_size = ui.ctx().content_rect().size();
+    let mut screen_size = ui.content_rect().size();
     if ui.is_sizing_pass() {
         // On the very first frame, there will be a sizing pass and the max_rect that frame might
         // be bigger than necessary. We don't want to lock to that size, so we need to ignore it.

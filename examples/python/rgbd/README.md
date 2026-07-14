@@ -34,7 +34,7 @@ The visualizations in this example were created with the following Rerun code:
 ### Timelines
 
 All data logged using Rerun in the following sections is connected to a specific time.
-Rerun assigns a timestamp to each piece of logged data, and these timestamps are associated with a [`timeline`](https://www.rerun.io/docs/concepts/timelines).
+Rerun assigns a timestamp to each piece of logged data, and these timestamps are associated with a [`timeline`](https://www.rerun.io/docs/concepts/logging-and-ingestion/timelines).
 
 ```python
 rr.set_time("time", timestamp=time.timestamp())

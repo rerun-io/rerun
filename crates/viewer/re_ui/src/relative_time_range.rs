@@ -38,7 +38,6 @@ pub fn relative_time_range_boundary_label_text(
     }
 }
 
-#[expect(clippy::too_many_arguments)]
 fn edit_boundary_ui(
     ui: &mut egui::Ui,
     boundary: &mut TimeRangeBoundary,
@@ -323,7 +322,7 @@ mod tests {
 
     #[test]
     fn test_relative_time_range_ui() {
-        let timestamp_format = TimestampFormat::utc().with_hide_today_date(true);
+        let timestamp_format = TimestampFormat::utc();
         let mut snapshot_results = SnapshotResults::new();
         for (time_type, time_range) in [
             (TimeType::Sequence, 0..=100),

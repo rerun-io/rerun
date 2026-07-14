@@ -2,8 +2,9 @@
 
 #include <rerun.hpp>
 
-int main() {
-    const auto rec = rerun::RecordingStream("rerun_example_annotation_context_rects");
+int main(int argc, char* argv[]) {
+    const auto rec =
+        rerun::RecordingStream("rerun_example_annotation_context_rects");
     rec.spawn().exit_on_failure();
 
     // Log an annotation context to assign a label and color to each class

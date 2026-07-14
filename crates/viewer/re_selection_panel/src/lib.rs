@@ -13,6 +13,7 @@ mod visible_time_range_ui;
 mod visualizer_ui;
 
 pub use selection_panel::SelectionPanel;
+pub use visualizer_ui::SourceSelectorContext;
 
 #[cfg(test)]
 mod test {
@@ -41,7 +42,7 @@ mod test {
             );
 
             let mut selection_panel = SelectionPanel::default();
-            selection_panel.show_panel(ctx, &blueprint, &mut Default::default(), ui, true);
+            selection_panel.show_panel(ctx, &blueprint, &mut Default::default(), ui, &mut true);
         });
     }
 }

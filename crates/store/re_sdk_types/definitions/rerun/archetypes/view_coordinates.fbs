@@ -25,5 +25,5 @@ table ViewCoordinates (
   "attr.rust.repr": "transparent"
 ) {
   /// The directions of the [x, y, z] axes.
-  xyz: rerun.components.ViewCoordinates ("attr.rerun.component_required", order: 1000);
+  xyz: rerun.components.ViewCoordinates ("attr.rerun.component_required", "attr.rerun.component_no_ui_edit", order: 1000);
 }

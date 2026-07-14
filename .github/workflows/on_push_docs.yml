@@ -30,9 +30,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: prefix-dev/setup-pixi@v0.9.1
+      - uses: prefix-dev/setup-pixi@v0.10.0
         with:
-          pixi-version: v0.55.0
+          pixi-version: v0.71.3
 
       - name: Get version
         id: versioning
@@ -42,10 +42,6 @@ jobs:
 
   build-search-index:
     runs-on: ubuntu-latest-16-cores
-    strategy:
-      matrix:
-        # We have to use a nightly version because rustdoc json format is unstable.
-        toolchain: ["nightly-2025-09-16"]
     needs: [get-version]
     steps:
       - uses: actions/checkout@v4
@@ -57,46 +53,46 @@ jobs:
           save_cache: false
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
-          # pinned to a specific version that happens to work with current `rustdoc-types`
-          toolchains: ${{ matrix.toolchain }}
 
-      - uses: prefix-dev/setup-pixi@v0.9.1
+      - uses: prefix-dev/setup-pixi@v0.10.0
         with:
-          pixi-version: v0.55.0
-
-      - name: Install rerun-sdk
-        run: |
+          pixi-version: v0.71.3
 
       - name: Build search index
-        env:
-          # Here we disable:
-          # - All warnings - nightly toolchain has a different set of warnings enabled by default.
-          #   We already test with `-D warnings` elsewhere, and the output is really noisy with the nightly warnings.
-          # - The web viewer server - we don't want to waste time building the web viewer,
-          #   because it is not actually going to run
-          RUSTFLAGS: "-Awarnings"
-          RERUN_DISABLE_WEB_VIEWER_SERVER: "1"
         run: |
           pixi run search-index build \
             landing \
-            --url "https://edge.meilisearch.com" \
+            --url "https://ms-b22605aed932-7275.fra.meilisearch.io" \
             --master-key "${{ secrets.MEILISEARCH_TOKEN }}" \
-            --release-version "${{ needs.get-version.outputs.version }}" \
-            --rust-toolchain "${{ matrix.toolchain }}"
+            --release-version "${{ needs.get-version.outputs.version }}"
 
-  redeploy-rerun-io:
+  # The website reads prose from GCS at SSR time, so a `docs-latest`
+  # push takes effect via a GCS re-upload + ISR revalidate.
+  upload-prose:
+    name: Upload prose to GCS
     runs-on: ubuntu-latest
     needs: [get-version]
     steps:
       - uses: actions/checkout@v4
 
-      - name: Re-deploy rerun.io
-        uses: ./.github/actions/vercel
+      - uses: prefix-dev/setup-pixi@v0.10.0
         with:
-          command: "deploy"
-          vercel_token: "${{ secrets.VERCEL_TOKEN }}"
-          vercel_team_name: "${{ vars.VERCEL_TEAM_NAME }}"
-          vercel_project_name: "${{ vars.VERCEL_PROJECT_NAME }}"
-          release_commit: "docs-latest"
-          release_version: "${{ needs.get-version.outputs.version }}"
-          target: "production"
+          pixi-version: v0.71.3
+
+      - id: "auth"
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+
+      - name: "Upload markdown docs & examples to GCS"
+        env:
+          ISR_BYPASS_TOKEN: ${{ secrets.ISR_BYPASS_TOKEN }}
+          VERSION_LABEL: ${{ needs.get-version.outputs.version }}
+          RERUN_COMMIT: ${{ github.sha }}
+        run: |
+          pixi run uv run scripts/ci/upload_docs.py upload \
+            --version "$VERSION_LABEL" \
+            --rerun-commit "$RERUN_COMMIT" \
+            --mark-latest \
+            --purge-token "$ISR_BYPASS_TOKEN"

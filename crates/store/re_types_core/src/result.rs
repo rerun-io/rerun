@@ -2,6 +2,8 @@ use std::any;
 use std::fmt::Display;
 use std::ops::Deref;
 
+use arrow::datatypes::DataType;
+
 // ---
 
 // NOTE: We have to make an alias, otherwise we'll trigger `thiserror`'s magic codepath which will
@@ -143,7 +145,7 @@ pub enum DeserializationError {
 
     #[error("Expected field {field_name:?} to be present in {datatype}")]
     MissingStructField {
-        datatype: arrow::datatypes::DataType,
+        datatype: DataType,
         field_name: String,
         backtrace: Box<_Backtrace>,
     },
@@ -161,7 +163,7 @@ pub enum DeserializationError {
 
     #[error("Expected union arm {arm_name:?} (#{arm_index}) to be present in {datatype}")]
     MissingUnionArm {
-        datatype: arrow::datatypes::DataType,
+        datatype: DataType,
         arm_name: String,
         arm_index: usize,
         backtrace: Box<_Backtrace>,
@@ -169,8 +171,8 @@ pub enum DeserializationError {
 
     #[error("Expected {expected} but found {got} instead")]
     DatatypeMismatch {
-        expected: arrow::datatypes::DataType,
-        got: arrow::datatypes::DataType,
+        expected: DataType,
+        got: DataType,
         backtrace: Box<_Backtrace>,
     },
 

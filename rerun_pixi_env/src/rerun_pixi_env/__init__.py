@@ -23,6 +23,14 @@ def get_scripts_dir() -> Path:
     return get_pixi_project_root() / "scripts" / "pixi"
 
 
+def _shim_is_up_to_date(target: Path, source: str) -> bool:
+    """Check if the installed shim matches the current source."""
+    try:
+        return target.read_bytes() == Path(source).read_bytes()
+    except OSError:
+        return False
+
+
 def _install_shim(shim_name: str, target_name: str) -> None:
     """
     Install a shim executable to scripts/pixi/.
@@ -37,16 +45,16 @@ def _install_shim(shim_name: str, target_name: str) -> None:
     else:
         target = scripts_dir / target_name
 
-    if not target.exists():
-        source = shutil.which(shim_name)
-        if source:
-            print(f"Installing {target_name} shim: {target}")
-            shutil.copy(source, target)
-            if sys.platform != "win32":
-                target.chmod(0o755)
-        else:
-            print(f"ERROR: {shim_name} not found in PATH", file=sys.stderr)
-            sys.exit(1)
+    source = shutil.which(shim_name)
+    if not source:
+        print(f"ERROR: {shim_name} not found in PATH", file=sys.stderr)
+        sys.exit(1)
+
+    if not target.exists() or not _shim_is_up_to_date(target, source):
+        print(f"Installing {target_name} shim: {target}")
+        shutil.copy(source, target)
+        if sys.platform != "win32":
+            target.chmod(0o755)
 
 
 def ensure_uv_shim() -> None:

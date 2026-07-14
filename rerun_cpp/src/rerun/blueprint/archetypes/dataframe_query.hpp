@@ -4,6 +4,8 @@
 #pragma once
 
 #include "../../blueprint/components/apply_latest_at.hpp"
+#include "../../blueprint/components/auto_scroll.hpp"
+#include "../../blueprint/components/column_order.hpp"
 #include "../../blueprint/components/filter_by_range.hpp"
 #include "../../blueprint/components/filter_is_not_null.hpp"
 #include "../../blueprint/components/selected_columns.hpp"
@@ -40,8 +42,22 @@ namespace rerun::blueprint::archetypes {
         /// Should empty cells be filled with latest-at queries?
         std::optional<ComponentBatch> apply_latest_at;
 
-        /// Selected columns. If unset, all columns are selected.
+        /// Selected columns. If unset, only the active timeline and all component columns are selected.
         std::optional<ComponentBatch> select;
+
+        /// The order of entity path column groups. If unset, the default order is used.
+        ///
+        /// This affects the order of component columns, which are always grouped by entity path. Timeline columns always
+        /// come first. Entities not listed here are appended at the end in default order.
+        ///
+        /// If `entity_order` contains any entity path that is not included in the view, they are ignored.
+        std::optional<ComponentBatch> entity_order;
+
+        /// Whether to auto-scroll to track the time cursor.
+        ///
+        /// When enabled and the view's timeline matches the time panel's active timeline,
+        /// the view will scroll to keep the row at or before the current time cursor visible.
+        std::optional<ComponentBatch> auto_scroll;
 
       public:
         /// The name of the archetype as used in `ComponentDescriptor`s.
@@ -71,6 +87,16 @@ namespace rerun::blueprint::archetypes {
         static constexpr auto Descriptor_select = ComponentDescriptor(
             ArchetypeName, "DataframeQuery:select",
             Loggable<rerun::blueprint::components::SelectedColumns>::ComponentType
+        );
+        /// `ComponentDescriptor` for the `entity_order` field.
+        static constexpr auto Descriptor_entity_order = ComponentDescriptor(
+            ArchetypeName, "DataframeQuery:entity_order",
+            Loggable<rerun::blueprint::components::ColumnOrder>::ComponentType
+        );
+        /// `ComponentDescriptor` for the `auto_scroll` field.
+        static constexpr auto Descriptor_auto_scroll = ComponentDescriptor(
+            ArchetypeName, "DataframeQuery:auto_scroll",
+            Loggable<rerun::blueprint::components::AutoScroll>::ComponentType
         );
 
       public:
@@ -130,10 +156,35 @@ namespace rerun::blueprint::archetypes {
             return std::move(*this);
         }
 
-        /// Selected columns. If unset, all columns are selected.
+        /// Selected columns. If unset, only the active timeline and all component columns are selected.
         DataframeQuery with_select(const rerun::blueprint::components::SelectedColumns& _select
         ) && {
             select = ComponentBatch::from_loggable(_select, Descriptor_select).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// The order of entity path column groups. If unset, the default order is used.
+        ///
+        /// This affects the order of component columns, which are always grouped by entity path. Timeline columns always
+        /// come first. Entities not listed here are appended at the end in default order.
+        ///
+        /// If `entity_order` contains any entity path that is not included in the view, they are ignored.
+        DataframeQuery with_entity_order(
+            const rerun::blueprint::components::ColumnOrder& _entity_order
+        ) && {
+            entity_order = ComponentBatch::from_loggable(_entity_order, Descriptor_entity_order)
+                               .value_or_throw();
+            return std::move(*this);
+        }
+
+        /// Whether to auto-scroll to track the time cursor.
+        ///
+        /// When enabled and the view's timeline matches the time panel's active timeline,
+        /// the view will scroll to keep the row at or before the current time cursor visible.
+        DataframeQuery with_auto_scroll(const rerun::blueprint::components::AutoScroll& _auto_scroll
+        ) && {
+            auto_scroll = ComponentBatch::from_loggable(_auto_scroll, Descriptor_auto_scroll)
+                              .value_or_throw();
             return std::move(*this);
         }
 

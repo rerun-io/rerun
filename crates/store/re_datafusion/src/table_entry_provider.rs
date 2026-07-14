@@ -15,18 +15,23 @@ use datafusion::physical_expr::{EquivalenceProperties, Partitioning};
 use datafusion::physical_plan::execution_plan::{Boundedness, EmissionType};
 use datafusion::physical_plan::{DisplayAs, DisplayFormatType, ExecutionPlan, PlanProperties};
 use futures::Stream;
+use parking_lot::Mutex;
 use re_log_types::{EntryId, EntryIdOrName};
 use re_protos::cloud::v1alpha1::ext::{EntryDetails, TableInsertMode};
 use re_protos::cloud::v1alpha1::{
     EntryFilter, EntryKind, FindEntriesRequest, GetTableSchemaRequest, ScanTableRequest,
     ScanTableResponse,
 };
-use re_redap_client::ConnectionClient;
+use re_protos::headers::RerunHeadersInjectorExt as _;
+use re_redap_client::{ApiError, ApiResult, ConnectionAnalyticsExporter, ConnectionClient};
 use tokio::runtime::Handle;
 use tracing::instrument;
 
-use crate::grpc_streaming_provider::{GrpcStreamProvider, GrpcStreamToTable};
+use crate::IntoDfError as _;
+use crate::analytics::{TableQueryInfo, expr_filter_signature};
+use crate::grpc_streaming_provider::{GrpcStreamProvider, GrpcStreamToTable, ScanParams};
 use crate::wasm_compat::make_future_send;
+use crate::{ConnectionAnalytics, PendingTableQueryAnalytics, TableKind, TableQueryCaller};
 
 #[derive(Clone)]
 pub struct TableEntryTableProvider {
@@ -36,6 +41,28 @@ pub struct TableEntryTableProvider {
 
     // cache the table id when resolved
     table_id: Option<EntryId>,
+
+    /// Captured at construction so DataFusion-spawned execution tasks can re-attach
+    /// the caller's tracing span — otherwise gRPC spans below surface as root traces.
+    parent_span: tracing::Span,
+
+    /// Per-connection analytics sink. `None` ⇒ no analytics emitted for this provider.
+    analytics: Option<ConnectionAnalytics>,
+
+    /// What initiated this provider's scans. Defaults to `CatalogResolver`; should
+    /// be set explicitly via [`Self::with_caller`] when the caller is known.
+    caller: TableQueryCaller,
+
+    /// Underlying provider variant for analytics. Defaults to `Unknown`; set via
+    /// [`Self::with_table_kind`] when the caller already has the `ProviderDetails`.
+    table_kind: TableKind,
+
+    /// Filter expressions offered by DataFusion at planning time, stored for
+    /// inclusion in the `cloud_scan_table` analytics span.
+    ///
+    /// `Arc` so that the value survives the clone that `GrpcStreamProvider::scan`
+    /// makes when constructing partition streams.
+    filter_capture: Arc<Mutex<Option<(u32, String)>>>,
 }
 
 impl std::fmt::Debug for TableEntryTableProvider {
@@ -43,7 +70,7 @@ impl std::fmt::Debug for TableEntryTableProvider {
         f.debug_struct("TableEntryTableProvider")
             .field("table", &self.table)
             .field("table_id", &self.table_id)
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 
@@ -58,11 +85,40 @@ impl TableEntryTableProvider {
             table: table.into(),
             table_id: None,
             runtime,
+            parent_span: tracing::Span::current(),
+            analytics: None,
+            caller: TableQueryCaller::CatalogResolver,
+            table_kind: TableKind::Unknown,
+            filter_capture: Arc::new(Mutex::new(None)),
         }
     }
 
     pub fn new_entry_list(client: ConnectionClient, runtime: Option<Handle>) -> Self {
         Self::new(client, "__entries", runtime)
+            .with_caller(TableQueryCaller::EntriesTable)
+            .with_table_kind(TableKind::SystemEntries)
+    }
+
+    /// Enable per-scan analytics for this provider.
+    ///
+    /// Without this call no `cloud_scan_table` span will be emitted.
+    pub fn with_analytics(mut self, exporter: ConnectionAnalyticsExporter) -> Self {
+        self.analytics = Some(ConnectionAnalytics::new(exporter));
+        self
+    }
+
+    /// Set the caller identity recorded in the analytics span. Has no effect
+    /// unless [`Self::with_analytics`] is also set.
+    pub fn with_caller(mut self, caller: TableQueryCaller) -> Self {
+        self.caller = caller;
+        self
+    }
+
+    /// Set the underlying table kind recorded in the analytics span. Has no
+    /// effect unless [`Self::with_analytics`] is also set.
+    pub fn with_table_kind(mut self, table_kind: TableKind) -> Self {
+        self.table_kind = table_kind;
+        self
     }
 
     /// This is a convenience function
@@ -70,8 +126,8 @@ impl TableEntryTableProvider {
         Ok(GrpcStreamProvider::prepare(self).await?)
     }
 
-    #[instrument(skip(self), err)]
-    async fn table_id(&mut self) -> Result<EntryId, DataFusionError> {
+    #[instrument(skip(self), err, parent = &self.parent_span)]
+    async fn table_id(&mut self) -> ApiResult<EntryId> {
         if let Some(table_id) = self.table_id {
             return Ok(table_id);
         }
@@ -83,8 +139,8 @@ impl TableEntryTableProvider {
                 let mut client = self.client.clone();
                 let table_name_copy = table_name.clone();
 
-                let entry_details: EntryDetails = make_future_send(async move {
-                    Ok(client
+                let response = make_future_send(async move {
+                    client
                         .inner()
                         .find_entries(FindEntriesRequest {
                             filter: Some(EntryFilter {
@@ -93,21 +149,31 @@ impl TableEntryTableProvider {
                                 entry_kind: Some(EntryKind::Table as i32),
                             }),
                         })
-                        .await)
+                        .await
+                        .map_err(|err| ApiError::tonic(err, "/FindEntries failed"))
                 })
-                .await?
-                .map_err(|err| DataFusionError::External(Box::new(err)))?
-                .into_inner()
-                .entries
-                .first()
-                .ok_or_else(|| {
-                    DataFusionError::External(
-                        format!("No entry found with name: {table_name}").into(),
-                    )
-                })?
-                .clone()
-                .try_into()
-                .map_err(|err| DataFusionError::External(Box::new(err)))?;
+                .await?;
+                let trace_id = re_redap_client::extract_trace_id(response.metadata());
+
+                let entry_details: EntryDetails = response
+                    .into_inner()
+                    .entries
+                    .first()
+                    .ok_or_else(|| {
+                        ApiError::deserialization(
+                            trace_id,
+                            format!("No entry found with name: {table_name}"),
+                        )
+                    })?
+                    .clone()
+                    .try_into()
+                    .map_err(|err: re_protos::TypeConversionError| {
+                        ApiError::deserialization_with_source(
+                            trace_id,
+                            err,
+                            "failed decoding /FindEntries response",
+                        )
+                    })?;
 
                 entry_details.id
             }
@@ -122,53 +188,154 @@ impl TableEntryTableProvider {
 impl GrpcStreamToTable for TableEntryTableProvider {
     type GrpcStreamData = ScanTableResponse;
 
-    #[instrument(skip(self), err)]
-    async fn fetch_schema(&mut self) -> DataFusionResult<SchemaRef> {
-        let request = GetTableSchemaRequest {
-            table_id: Some(self.table_id().await?.into()),
-        };
+    #[instrument(skip(self), err, parent = &self.parent_span)]
+    async fn fetch_schema(&mut self) -> ApiResult<SchemaRef> {
+        let table_id = self.table_id().await?;
+        let request = tonic::Request::new(GetTableSchemaRequest {
+            table_id: Some(table_id.into()),
+        })
+        .with_entry_id(table_id);
 
         let mut client = self.client.clone();
 
+        let response = make_future_send(async move {
+            client
+                .inner()
+                .get_table_schema(request)
+                .await
+                .map_err(|err| ApiError::tonic(err, "/GetTableSchema failed"))
+        })
+        .await?;
+        let trace_id = re_redap_client::extract_trace_id(response.metadata());
+
         Ok(Arc::new(
-            make_future_send(async move { Ok(client.inner().get_table_schema(request).await) })
-                .await?
-                .map_err(|err| DataFusionError::External(Box::new(err)))?
+            response
                 .into_inner()
                 .schema
-                .ok_or(DataFusionError::External(
-                    "Schema missing from GetTableSchema response".into(),
-                ))?
-                .try_into()?,
+                .ok_or_else(|| {
+                    ApiError::deserialization(
+                        trace_id,
+                        "Schema missing from GetTableSchema response",
+                    )
+                })?
+                .try_into()
+                .map_err(|err: arrow::error::ArrowError| {
+                    ApiError::deserialization_with_source(
+                        trace_id,
+                        err,
+                        "failed decoding /GetTableSchema response",
+                    )
+                })?,
         ))
     }
 
-    #[instrument(skip(self), err)]
+    #[instrument(skip(self, _params), err, parent = &self.parent_span)]
     async fn send_streaming_request(
         &mut self,
-    ) -> DataFusionResult<tonic::Response<tonic::Streaming<Self::GrpcStreamData>>> {
-        let request = ScanTableRequest {
-            table_id: Some(self.table_id().await?.into()),
-        };
+        _params: &ScanParams,
+    ) -> ApiResult<re_redap_client::ApiResponseStream<Self::GrpcStreamData>> {
+        let table_id = self.table_id().await?;
+        let request = tonic::Request::new(ScanTableRequest {
+            table_id: Some(table_id.into()),
+        })
+        .with_entry_id(table_id);
 
         let mut client = self.client.clone();
 
-        make_future_send(async move { Ok(client.inner().scan_table(request).await) })
-            .await?
-            .map_err(|err| DataFusionError::External(Box::new(err)))
+        let response = make_future_send(async move {
+            client
+                .inner()
+                .scan_table(request)
+                .await
+                .map_err(|err| ApiError::tonic(err, "/ScanTable failed"))
+        })
+        .await?;
+
+        Ok(re_redap_client::ApiResponseStream::from_tonic_response(
+            response,
+            "/ScanTable",
+        ))
     }
 
     fn process_response(
         &mut self,
         response: Self::GrpcStreamData,
-    ) -> DataFusionResult<RecordBatch> {
+        _params: &ScanParams,
+    ) -> ApiResult<RecordBatch> {
         response
             .dataframe_part
-            .ok_or(DataFusionError::Execution(
-                "DataFrame missing from PartitionList response".to_owned(),
-            ))?
+            .ok_or_else(|| {
+                ApiError::deserialization(None, "DataFrame missing from PartitionList response")
+            })?
             .try_into()
-            .map_err(|err| DataFusionError::External(Box::new(err)))
+            .map_err(|err: re_protos::TypeConversionError| {
+                ApiError::deserialization_with_source(
+                    None,
+                    err,
+                    "failed decoding /ScanTable response",
+                )
+            })
+    }
+
+    fn supports_filters_pushdown(
+        &self,
+        filters: &[&datafusion::prelude::Expr],
+    ) -> datafusion::error::Result<Vec<datafusion::logical_expr::TableProviderFilterPushDown>> {
+        let decisions =
+            vec![datafusion::logical_expr::TableProviderFilterPushDown::Unsupported; filters.len()];
+
+        let sigs: String = filters
+            .iter()
+            .map(|e| expr_filter_signature(e))
+            .collect::<Vec<_>>()
+            .join(";");
+
+        *self.filter_capture.lock() = Some((filters.len() as u32, sigs));
+
+        Ok(decisions)
+    }
+
+    fn begin_scan_analytics(
+        &self,
+        schema: &SchemaRef,
+        projection: Option<&Vec<usize>>,
+        limit: Option<usize>,
+    ) -> Option<PendingTableQueryAnalytics> {
+        let analytics = self.analytics.as_ref()?;
+
+        // `table_id` is `None` until the first `scan()` resolves it. For
+        // name-based providers this is normally cached by the time we get
+        // here (the schema fetch in `prepare()` calls `table_id()`).
+        let table_id = match (&self.table_id, &self.table) {
+            (Some(id), _) | (None, EntryIdOrName::Id(id)) => id.to_string(),
+            (None, EntryIdOrName::Name(name)) => name.clone(),
+        };
+
+        let schema_total_columns = schema.fields().len() as u32;
+        let projected_columns = projection
+            .map(|p| p.len() as u32)
+            .unwrap_or(schema_total_columns);
+
+        let (filters_total, filters_signatures) = self
+            .filter_capture
+            .lock()
+            .take()
+            .unwrap_or((0, String::new()));
+
+        let info = TableQueryInfo {
+            table_id,
+            table_kind: self.table_kind,
+            caller: self.caller,
+            schema_total_columns,
+            projected_columns,
+            has_limit: limit.is_some(),
+            limit_value: limit.map(|v| v as u64),
+            time_range: web_time::SystemTime::now()..web_time::SystemTime::now(),
+            filters_total,
+            filters_signatures,
+        };
+
+        Some(analytics.begin_table_query(info, web_time::Instant::now()))
     }
 
     async fn insert_into(
@@ -178,7 +345,11 @@ impl GrpcStreamToTable for TableEntryTableProvider {
         insert_op: InsertOp,
     ) -> DataFusionResult<Arc<dyn ExecutionPlan>> {
         let num_partitions = input.properties().output_partitioning().partition_count();
-        let entry_id = self.clone().table_id().await?;
+        let entry_id = self
+            .clone()
+            .table_id()
+            .await
+            .map_err(|err| err.into_df_error())?;
         let insert_op = match insert_op {
             InsertOp::Append => TableInsertMode::Append,
             InsertOp::Replace => {
@@ -203,7 +374,7 @@ impl GrpcStreamToTable for TableEntryTableProvider {
 #[derive(Debug, Clone)]
 struct TableEntryWriterExec {
     client: ConnectionClient,
-    props: PlanProperties,
+    props: Arc<PlanProperties>,
     child: Arc<dyn ExecutionPlan>,
     runtime: Handle,
     table_id: EntryId,
@@ -232,7 +403,8 @@ impl TableEntryWriterExec {
                 Partitioning::UnknownPartitioning(default_partitioning),
                 EmissionType::Incremental,
                 Boundedness::Bounded,
-            ),
+            )
+            .into(),
             child,
             runtime,
             table_id,
@@ -250,7 +422,7 @@ impl ExecutionPlan for TableEntryWriterExec {
         self
     }
 
-    fn properties(&self) -> &PlanProperties {
+    fn properties(&self) -> &Arc<PlanProperties> {
         &self.props
     }
 
@@ -297,9 +469,9 @@ impl ExecutionPlan for TableEntryWriterExec {
 struct RecordBatchGrpcOutputStream {
     input_stream: SendableRecordBatchStream,
     grpc_sender: Option<GrpcStreamSender>,
-    thread_status: tokio::sync::oneshot::Receiver<re_redap_client::ApiResult>,
+    thread_status: tokio::sync::oneshot::Receiver<ApiResult>,
     complete: bool,
-    grpc_error: Option<tonic::Status>,
+    grpc_error: Option<re_redap_client::ApiError>,
 }
 
 struct GrpcStreamSender {
@@ -355,12 +527,10 @@ impl Stream for RecordBatchGrpcOutputStream {
         // Check for gRPC errors first (only if we haven't already stored one)
         if self.grpc_error.is_none() {
             match Pin::new(&mut self.thread_status).poll(cx) {
-                Poll::Ready(Ok(Err(status))) => {
+                Poll::Ready(Ok(Err(err))) => {
                     // Store the error for potential future use
-                    // Not ideal to throw out the ApiError, but it doesn't impl Clone
-                    self.grpc_error = Some(tonic::Status::internal(status.to_string()));
-                    // Return the error immediately
-                    return Poll::Ready(Some(Err(DataFusionError::External(Box::new(status)))));
+                    self.grpc_error = Some(err.clone());
+                    return Poll::Ready(Some(Err(err.into_df_error())));
                 }
                 Poll::Ready(Ok(Ok(())) | Err(_)) => {
                     self.complete = true;
@@ -384,18 +554,14 @@ impl Stream for RecordBatchGrpcOutputStream {
                         Err(tokio::sync::mpsc::error::TrySendError::Closed(_)) => {
                             // Channel closed - the gRPC task may have failed
                             // Check if we have a stored error
-                            if let Some(status) = self.grpc_error.take() {
-                                return Poll::Ready(Some(Err(DataFusionError::External(
-                                    Box::new(status),
-                                ))));
+                            if let Some(err) = self.grpc_error.take() {
+                                return Poll::Ready(Some(Err(err.into_df_error())));
                             } else {
                                 // Channel closed without error - treat as broken pipe
-                                return Poll::Ready(Some(Err(DataFusionError::External(
-                                    Box::new(std::io::Error::new(
-                                        std::io::ErrorKind::BrokenPipe,
-                                        "gRPC stream closed unexpectedly",
-                                    )),
-                                ))));
+                                return Poll::Ready(Some(Err(ApiError::connection(
+                                    "/WriteTable gRPC stream closed unexpectedly",
+                                )
+                                .into_df_error())));
                             }
                         }
                     }

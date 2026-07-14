@@ -9,6 +9,7 @@
 #include "../components/draw_order.hpp"
 #include "../components/image_buffer.hpp"
 #include "../components/image_format.hpp"
+#include "../components/magnification_filter.hpp"
 #include "../components/opacity.hpp"
 #include "../image_utils.hpp"
 #include "../result.hpp"
@@ -48,7 +49,7 @@ namespace rerun::archetypes {
     ///
     /// #include <vector>
     ///
-    /// int main() {
+    /// int main(int argc, char* argv[]) {
     ///     const auto rec = rerun::RecordingStream("rerun_example_image");
     ///     rec.spawn().exit_on_failure();
     ///
@@ -81,7 +82,7 @@ namespace rerun::archetypes {
     ///
     /// #include <rerun.hpp>
     ///
-    /// int main() {
+    /// int main(int argc, char* argv[]) {
     ///     const auto rec = rerun::RecordingStream("rerun_example_image_formats");
     ///     rec.spawn().exit_on_failure();
     ///
@@ -90,7 +91,8 @@ namespace rerun::archetypes {
     ///     for (size_t y = 0; y <256; ++y) {
     ///         for (size_t x = 0; x <256; ++x) {
     ///             image[(y * 256 + x) * 3 + 0] = static_cast<uint8_t>(x);
-    ///             image[(y * 256 + x) * 3 + 1] = static_cast<uint8_t>(std::min<size_t>(255, x + y));
+    ///             image[(y * 256 + x) * 3 + 1] =
+    ///                 static_cast<uint8_t>(std::min<size_t>(255, x + y));
     ///             image[(y * 256 + x) * 3 + 2] = static_cast<uint8_t>(y);
     ///         }
     ///     }
@@ -105,7 +107,11 @@ namespace rerun::archetypes {
     ///     }
     ///     rec.log(
     ///         "image_green_only",
-    ///         rerun::Image(rerun::borrow(green_channel), {256, 256}, rerun::ColorModel::L)
+    ///         rerun::Image(
+    ///             rerun::borrow(green_channel),
+    ///             {256, 256},
+    ///             rerun::ColorModel::L
+    ///         )
     ///     );
     ///
     ///     // BGR image
@@ -117,24 +123,38 @@ namespace rerun::archetypes {
     ///     }
     ///     rec.log(
     ///         "image_bgr",
-    ///         rerun::Image(rerun::borrow(bgr_image), {256, 256}, rerun::ColorModel::BGR)
+    ///         rerun::Image(
+    ///             rerun::borrow(bgr_image),
+    ///             {256, 256},
+    ///             rerun::ColorModel::BGR
+    ///         )
     ///     );
     ///
     ///     // New image with Separate Y/U/V planes with 4:2:2 chroma downsampling
     ///     std::vector<uint8_t> yuv_bytes(256 * 256 + 128 * 256 * 2);
-    ///     std::fill_n(yuv_bytes.begin(), 256 * 256, static_cast<uint8_t>(128)); // Fixed value for Y
+    ///     std::fill_n(
+    ///         yuv_bytes.begin(),
+    ///         256 * 256,
+    ///         static_cast<uint8_t>(128) // Fixed value for Y
+    ///     );
     ///     size_t u_plane_offset = 256 * 256;
     ///     size_t v_plane_offset = u_plane_offset + 128 * 256;
     ///     for (size_t y = 0; y <256; ++y) {
     ///         for (size_t x = 0; x <128; ++x) {
     ///             auto coord = y * 128 + x;
-    ///             yuv_bytes[u_plane_offset + coord] = static_cast<uint8_t>(x * 2); // Gradient for U
-    ///             yuv_bytes[v_plane_offset + coord] = static_cast<uint8_t>(y);     // Gradient for V
+    ///             yuv_bytes[u_plane_offset + coord] =
+    ///                 static_cast<uint8_t>(x * 2); // Gradient for U
+    ///             yuv_bytes[v_plane_offset + coord] =
+    ///                 static_cast<uint8_t>(y); // Gradient for V
     ///         }
     ///     }
     ///     rec.log(
     ///         "image_yuv422",
-    ///         rerun::Image(rerun::borrow(yuv_bytes), {256, 256}, rerun::PixelFormat::Y_U_V16_FullRange)
+    ///         rerun::Image(
+    ///             rerun::borrow(yuv_bytes),
+    ///             {256, 256},
+    ///             rerun::PixelFormat::Y_U_V16_FullRange
+    ///         )
     ///     );
     ///
     ///     return 0;
@@ -158,6 +178,9 @@ namespace rerun::archetypes {
         /// Defaults to `-10.0`.
         std::optional<ComponentBatch> draw_order;
 
+        /// Optional filter used when a texel is magnified (displayed larger than a screen pixel).
+        std::optional<ComponentBatch> magnification_filter;
+
       public:
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.Image";
@@ -177,6 +200,11 @@ namespace rerun::archetypes {
         /// `ComponentDescriptor` for the `draw_order` field.
         static constexpr auto Descriptor_draw_order = ComponentDescriptor(
             ArchetypeName, "Image:draw_order", Loggable<rerun::components::DrawOrder>::ComponentType
+        );
+        /// `ComponentDescriptor` for the `magnification_filter` field.
+        static constexpr auto Descriptor_magnification_filter = ComponentDescriptor(
+            ArchetypeName, "Image:magnification_filter",
+            Loggable<rerun::components::MagnificationFilter>::ComponentType
         );
 
       public: // START of extensions from image_ext.cpp:
@@ -407,6 +435,33 @@ namespace rerun::archetypes {
         Image with_many_draw_order(const Collection<rerun::components::DrawOrder>& _draw_order) && {
             draw_order =
                 ComponentBatch::from_loggable(_draw_order, Descriptor_draw_order).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// Optional filter used when a texel is magnified (displayed larger than a screen pixel).
+        Image with_magnification_filter(
+            const rerun::components::MagnificationFilter& _magnification_filter
+        ) && {
+            magnification_filter = ComponentBatch::from_loggable(
+                                       _magnification_filter,
+                                       Descriptor_magnification_filter
+            )
+                                       .value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `magnification_filter` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_magnification_filter` should
+        /// be used when logging a single row's worth of data.
+        Image with_many_magnification_filter(
+            const Collection<rerun::components::MagnificationFilter>& _magnification_filter
+        ) && {
+            magnification_filter = ComponentBatch::from_loggable(
+                                       _magnification_filter,
+                                       Descriptor_magnification_filter
+            )
+                                       .value_or_throw();
             return std::move(*this);
         }
 

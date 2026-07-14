@@ -1,4 +1,4 @@
-use egui::text::LayoutJob;
+use egui::text::{ByteIndex, LayoutJob};
 use egui::{Color32, Style, TextFormat, TextStyle};
 use re_entity_db::InstancePath;
 use re_log_types::external::re_types_core::{
@@ -13,7 +13,7 @@ pub trait SyntaxHighlighting {
     fn syntax_highlighted(&self, style: &Style) -> LayoutJob {
         let mut builder = SyntaxHighlightedBuilder::new();
         self.syntax_highlight_into(&mut builder);
-        builder.into_job(style)
+        builder.to_job(style)
     }
 
     fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder);
@@ -78,9 +78,9 @@ impl SyntaxHighlightedBuilder {
     }
 
     fn append_kind(&mut self, style: SyntaxHighlightedStyle, portion: &str) -> &mut Self {
-        let start = self.text.len();
+        let start = ByteIndex(self.text.len());
         self.text.push_str(portion);
-        let end = self.text.len();
+        let end = ByteIndex(self.text.len());
         self.parts.push(SyntaxHighlightedPart {
             byte_range: start..end,
             style,
@@ -149,6 +149,22 @@ impl SyntaxHighlightedBuilder {
             self.append_kind(SyntaxHighlightedStyle::StringValue, &quote);
         }
     );
+
+    /// Like [`Self::append_string_value`], but truncates to `max_chars` characters
+    /// and appends `…` (in syntax style) when truncated.
+    pub fn append_string_value_truncated(&mut self, portion: &str, max_chars: usize) -> &mut Self {
+        let quote = Self::QUOTE_CHAR.to_string();
+        self.append_kind(SyntaxHighlightedStyle::StringValue, &quote);
+        if portion.len() > max_chars {
+            let truncated = &portion[..portion.floor_char_boundary(max_chars)];
+            self.append_kind(SyntaxHighlightedStyle::StringValue, truncated);
+            self.append_kind(SyntaxHighlightedStyle::Syntax, "…");
+        } else {
+            self.append_kind(SyntaxHighlightedStyle::StringValue, portion);
+        }
+        self.append_kind(SyntaxHighlightedStyle::StringValue, &quote);
+        self
+    }
 
     impl_style_fns!(
         "A keyword, e.g. a filter operator, like `and` or `all`",
@@ -237,17 +253,17 @@ impl SyntaxHighlightedBuilder {
 
 impl SyntaxHighlightedBuilder {
     #[inline]
-    pub fn into_job(self, style: &Style) -> LayoutJob {
+    pub fn to_job(&self, style: &Style) -> LayoutJob {
         let mut job = LayoutJob {
-            text: self.text,
+            text: self.text.clone(),
             sections: Vec::with_capacity(self.parts.len()),
             ..Default::default()
         };
 
-        for part in self.parts {
-            let format = part.style.into_format(style);
+        for part in &self.parts {
+            let format = part.style.to_format(style);
             job.sections.push(egui::text::LayoutSection {
-                byte_range: part.byte_range,
+                byte_range: part.byte_range.clone(),
                 format,
                 leading_space: 0.0,
             });
@@ -258,7 +274,7 @@ impl SyntaxHighlightedBuilder {
 
     #[inline]
     pub fn into_widget_text(self, style: &Style) -> egui::WidgetText {
-        self.into_job(style).into()
+        self.to_job(style).into()
     }
 
     pub fn text(&self) -> &str {
@@ -304,7 +320,7 @@ impl std::fmt::Debug for SyntaxHighlightedStyle {
 
 #[derive(Debug)]
 struct SyntaxHighlightedPart {
-    byte_range: std::ops::Range<usize>,
+    byte_range: egui::text::ByteRange,
     style: SyntaxHighlightedStyle,
 }
 
@@ -330,7 +346,7 @@ impl SyntaxHighlightedStyle {
         Self::body_with_color(style, Color32::PLACEHOLDER)
     }
 
-    pub fn into_format(self, style: &Style) -> TextFormat {
+    pub fn to_format(&self, style: &Style) -> TextFormat {
         match self {
             Self::StringValue => {
                 Self::monospace_with_color(style, style.tokens().code_string_color)
@@ -358,7 +374,7 @@ impl SyntaxHighlightedStyle {
                 format.italics = true;
                 format
             }
-            Self::Custom(format) => *format,
+            Self::Custom(format) => *format.clone(),
             Self::CustomClosure(f) => f(style),
         }
     }

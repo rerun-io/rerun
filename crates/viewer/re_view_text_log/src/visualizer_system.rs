@@ -6,7 +6,7 @@ use re_query::{clamped_zip_1x2, range_zip_1x2};
 use re_sdk_types::Archetype as _;
 use re_sdk_types::archetypes::TextLog;
 use re_sdk_types::components::{Color, Text, TextLogLevel};
-use re_view::{RangeResultsExt as _, range_with_blueprint_resolved_data};
+use re_view::range_with_blueprint_resolved_data;
 use re_viewer_context::{
     IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError,
     VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
@@ -24,13 +24,14 @@ pub struct Entry {
 
 /// A text scene, with everything needed to render it.
 #[derive(Default)]
-pub struct TextLogSystem {
-    pub entries: Vec<Entry>,
-}
+pub struct TextLogSystem;
 
 impl IdentifiedViewSystem for TextLogSystem {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "TextLog".into()
+        re_viewer_context::external::re_string_interner::intern_static!(
+            re_viewer_context::ViewSystemIdentifier,
+            "TextLog"
+        )
     }
 }
 
@@ -39,48 +40,62 @@ impl VisualizerSystem for TextLogSystem {
         &self,
         _app_options: &re_viewer_context::AppOptions,
     ) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<TextLog>()
+        VisualizerQueryInfo::single_required_component::<Text>(
+            &TextLog::descriptor_text(),
+            &TextLog::all_components(),
+        )
     }
 
     fn execute(
-        &mut self,
+        &self,
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         _context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
+        let output = VisualizerExecutionOutput::default();
         let query =
             re_chunk_store::RangeQuery::new(view_query.timeline, AbsoluteTimeRange::EVERYTHING)
                 .keep_extra_timelines(true);
 
+        let mut entries = Vec::new();
+
         for (data_result, instruction) in
             view_query.iter_visualizer_instruction_for(Self::identifier())
         {
-            self.process_visualizer_instruction(ctx, &query, data_result, instruction);
+            Self::process_visualizer_instruction(
+                &mut entries,
+                ctx,
+                &query,
+                data_result,
+                instruction,
+                &output,
+            );
         }
 
         {
             // Sort by currently selected timeline
             re_tracing::profile_scope!("sort");
-            self.entries.sort_by_key(|e| e.time);
+            entries.sort_by_key(|e| e.time);
         }
 
-        Ok(VisualizerExecutionOutput::default())
+        Ok(output.with_visualizer_data(entries))
     }
 }
 
 impl TextLogSystem {
     fn process_visualizer_instruction(
-        &mut self,
+        entries: &mut Vec<Entry>,
         ctx: &ViewContext<'_>,
         query: &re_chunk_store::RangeQuery,
         data_result: &re_viewer_context::DataResult,
         instruction: &re_viewer_context::VisualizerInstruction,
+        output: &VisualizerExecutionOutput,
     ) {
         re_tracing::profile_function!();
 
-        let results = range_with_blueprint_resolved_data(
+        let range_results = range_with_blueprint_resolved_data(
             ctx,
             None,
             query,
@@ -89,23 +104,26 @@ impl TextLogSystem {
             instruction,
         );
 
-        let Some(all_text_chunks) =
-            results.get_required_chunks(TextLog::descriptor_text().component)
-        else {
+        // Convert to HybridResults for unified access
+        let results = re_view::BlueprintResolvedResults::from((query.clone(), range_results));
+        let results =
+            re_view::VisualizerInstructionQueryResults::new(instruction, &results, output);
+
+        let all_texts = results.iter_required(TextLog::descriptor_text().component);
+        if all_texts.is_empty() {
             return;
-        };
+        }
 
         // TODO(cmc): It would be more efficient (both space and compute) to do this lazily as
         // we're rendering the table by indexing back into the original chunk etc.
         // Let's keep it simple for now, until we have data suggested we need the extra perf.
-        let all_timepoints = all_text_chunks
+        let all_timepoints = all_texts
+            .chunks()
             .iter()
             .flat_map(|chunk| chunk.iter_component_timepoints());
 
-        let timeline = *query.timeline();
-        let all_texts = results.iter_as(timeline, TextLog::descriptor_text().component);
-        let all_levels = results.iter_as(timeline, TextLog::descriptor_level().component);
-        let all_colors = results.iter_as(timeline, TextLog::descriptor_color().component);
+        let all_levels = results.iter_optional(TextLog::descriptor_level().component);
+        let all_colors = results.iter_optional(TextLog::descriptor_color().component);
 
         let all_frames = range_zip_1x2(
             all_texts.slice::<String>(),
@@ -131,7 +149,7 @@ impl TextLogSystem {
                 clamped_zip_1x2(bodies, levels, level_default_fn, colors, color_default_fn);
 
             for (text, level, color) in results {
-                self.entries.push(Entry {
+                entries.push(Entry {
                     entity_path: data_result.entity_path.clone(),
                     time: data_time,
                     timepoint: timepoint.clone(),

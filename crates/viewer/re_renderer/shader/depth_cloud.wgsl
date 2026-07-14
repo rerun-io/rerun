@@ -85,6 +85,12 @@ struct VertexOut {
 
     @location(4) @interpolate(flat)
     quad_idx: u32,
+
+    // Offset vector from `point_pos_in_world` to the quad.
+    // Interpolating along this small-scale local offset for coverage math avoids float-precision issues,
+    // compared to subtracting potentially large world positions in the fragment shader.
+    @location(5) @interpolate(perspective)
+    quad_offset_from_center: vec3f,
 };
 
 // ---
@@ -123,7 +129,7 @@ fn compute_point_data(quad_idx: u32) -> PointData {
         let normalized_depth =
             (world_space_depth - depth_cloud_info.min_max_depth_in_world.x) /
             (depth_cloud_info.min_max_depth_in_world.y - depth_cloud_info.min_max_depth_in_world.x);
-        let color = vec4f(colormap_linear(depth_cloud_info.colormap, normalized_depth), 1.0);
+        let color = colormap_linear(depth_cloud_info.colormap, normalized_depth);
 
         // TODO(cmc): This assumes a pinhole camera; need to support other kinds at some point.
         let intrinsics = depth_cloud_info.depth_camera_intrinsics;
@@ -164,41 +170,73 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
 
     if 0.0 < point_data.unresolved_radius {
         // Span quad
-        let camera_distance = distance(frame.camera_position, point_data.pos_in_world);
+        // Use depth along camera forward axis (see approx_pixel_world_size_at doc comment).
+        let camera_distance = dot(point_data.pos_in_world - frame.camera_position, frame.camera_forward);
         let world_scale_factor = average_scale_from_transform(depth_cloud_info.world_from_rdf); // TODO(andreas): somewhat costly, should precompute this
         let world_radius = unresolved_size_to_world(point_data.unresolved_radius, camera_distance, world_scale_factor) +
                            world_size_from_point_size(depth_cloud_info.radius_boost_in_ui_points, camera_distance);
         let quad = sphere_or_circle_quad_span(vertex_idx, point_data.pos_in_world, world_radius, false);
         out.pos_in_clip = frame.projection_from_world * vec4f(quad.pos_in_world, 1.0);
         out.pos_in_world = quad.pos_in_world;
+        out.quad_offset_from_center = quad.pos_in_world - point_data.pos_in_world;
         out.point_radius = quad.point_resolved_radius;
     } else {
         // Degenerate case - early-out!
         out.pos_in_clip = vec4f(0.0);
         out.pos_in_world = vec3f(0.0);
+        out.quad_offset_from_center = vec3f(0.0);
         out.point_radius = 0.0;
     }
 
     return out;
 }
 
+fn coverage(
+    pos_in_world: vec3f,
+    point_radius: f32,
+    point_pos_in_world: vec3f,
+    quad_offset_from_center: vec3f,
+) -> f32 {
+    if is_camera_orthographic() {
+        return circle_quad_coverage(quad_offset_from_center, point_radius);
+    } else {
+        return sphere_quad_coverage(pos_in_world, point_radius, point_pos_in_world);
+    }
+}
+
 @fragment
 fn fs_main(in: VertexOut) -> @location(0) vec4f {
-    var coverage = sphere_quad_coverage(in.pos_in_world, in.point_radius, in.point_pos_in_world);
+    var coverage = coverage(
+        in.pos_in_world,
+        in.point_radius,
+        in.point_pos_in_world,
+        in.quad_offset_from_center,
+    );
 
     if frame.deterministic_rendering == 1 {
         coverage = step(0.5, coverage);
     }
 
-    if coverage < 0.001 {
-        discard;
-    }
-    return vec4f(in.point_color.rgb, coverage);
+    // As per benchmarking on Apple Silicon M5, putting a discard can be
+    // a significant pessimization in high-overdraw situations and at best only a very mild optimization.
+    // Desktop graphics cards like the tested RTX4070 do not exhibit this behavior and aren't affected by it at all.
+    // This is likely due to Apple Silicon being a tile based GPU, it's still a bit surprising though int he presence of alpha-to-coverage.
+    // (Disabling alpha-to-coverage also shows performance benefits _independently_ of the discard instructions)
+    // if coverage < 0.001 {
+    //     discard;
+    // }
+
+    return vec4f(in.point_color.rgb, in.point_color.a * coverage);
 }
 
 @fragment
 fn fs_main_picking_layer(in: VertexOut) -> @location(0) vec4u {
-    let coverage = sphere_quad_coverage(in.pos_in_world, in.point_radius, in.point_pos_in_world);
+    let coverage = coverage(
+        in.pos_in_world,
+        in.point_radius,
+        in.point_pos_in_world,
+        in.quad_offset_from_center,
+    );
     if coverage <= 0.5 {
         discard;
     }
@@ -209,7 +247,12 @@ fn fs_main_picking_layer(in: VertexOut) -> @location(0) vec4u {
 fn fs_main_outline_mask(in: VertexOut) -> @location(0) vec2u {
     // Output is an integer target so we can't use coverage even though
     // the target is anti-aliased.
-    let coverage = sphere_quad_coverage(in.pos_in_world, in.point_radius, in.point_pos_in_world);
+    let coverage = coverage(
+        in.pos_in_world,
+        in.point_radius,
+        in.point_pos_in_world,
+        in.quad_offset_from_center,
+    );
     if coverage <= 0.5 {
         discard;
     }

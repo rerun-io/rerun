@@ -7,6 +7,7 @@
 #![allow(clippy::allow_attributes)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::cloned_instead_of_copied)]
+#![allow(clippy::eq_op)]
 #![allow(clippy::map_flatten)]
 #![allow(clippy::needless_question_mark)]
 #![allow(clippy::new_without_default)]
@@ -24,7 +25,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Datatype**: A binary blob of data.
 ///
 /// Ref-counted internally and therefore cheap to clone.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, ::re_byte_size::SizeBytes)]
 #[repr(transparent)]
 pub struct Blob(pub ::arrow::buffer::ScalarBuffer<u8>);
 
@@ -75,14 +76,14 @@ impl ::re_types_core::Loggable for Blob {
                     let second = iter.next();
                     match (first, second) {
                         (Some(single), None) => single.clone(),
-                        (Some(first_buf), Some(second_buf)) => {
-                            std::iter::once(first_buf.as_ref() as &[_])
-                                .chain(std::iter::once(second_buf.as_ref() as &[_]))
-                                .chain(iter.map(|b| b.as_ref() as &[_]))
-                                .collect::<Vec<_>>()
-                                .concat()
-                                .into()
-                        }
+                        (Some(first_buf), Some(second_buf)) => ::itertools::chain!(
+                            ::std::iter::once(first_buf.as_ref() as &[_]),
+                            ::std::iter::once(second_buf.as_ref() as &[_]),
+                            iter.map(|b| b.as_ref() as &[_]),
+                        )
+                        .collect::<Vec<_>>()
+                        .concat()
+                        .into(),
                         _ => Vec::new().into(),
                     }
                 };
@@ -174,17 +175,5 @@ impl From<Blob> for ::arrow::buffer::ScalarBuffer<u8> {
     #[inline]
     fn from(value: Blob) -> Self {
         value.0
-    }
-}
-
-impl ::re_byte_size::SizeBytes for Blob {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <::arrow::buffer::ScalarBuffer<u8>>::is_pod()
     }
 }

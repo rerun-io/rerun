@@ -5,11 +5,14 @@
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 from attrs import define, field
 
 from ... import components, datatypes
 from ..._baseclasses import (
     Archetype,
+    ComponentDescriptor,
 )
 from ...blueprint import components as blueprint_components
 from ...error_utils import catch_and_log_exceptions
@@ -25,6 +28,8 @@ class LineGrid3D(LineGrid3DExt, Archetype):
 
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
+
+    NAME: ClassVar[str] = "rerun.blueprint.archetypes.LineGrid3D"
 
     # __init__ can be found in line_grid3d_ext.py
 
@@ -111,6 +116,46 @@ class LineGrid3D(LineGrid3DExt, Archetype):
     def cleared(cls) -> LineGrid3D:
         """Clear all the fields of a `LineGrid3D`."""
         return cls.from_fields(clear_unset=True)
+
+    @staticmethod
+    def descriptor_visible() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "LineGrid3D:visible",
+            archetype=LineGrid3D.NAME,
+            component_type=components.VisibleBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_spacing() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "LineGrid3D:spacing",
+            archetype=LineGrid3D.NAME,
+            component_type=blueprint_components.GridSpacingBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_plane() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "LineGrid3D:plane",
+            archetype=LineGrid3D.NAME,
+            component_type=components.Plane3DBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_stroke_width() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "LineGrid3D:stroke_width",
+            archetype=LineGrid3D.NAME,
+            component_type=components.StrokeWidthBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_color() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "LineGrid3D:color",
+            archetype=LineGrid3D.NAME,
+            component_type=components.ColorBatch._COMPONENT_TYPE,
+        )
 
     visible: components.VisibleBatch | None = field(
         metadata={"component": True},

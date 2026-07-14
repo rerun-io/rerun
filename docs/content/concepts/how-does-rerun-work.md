@@ -9,7 +9,7 @@ Rerun has several components manage multimodal data across its lifetime. This pa
 
 ### Logging SDK
 
-The Logging SDK is how you get data into Rerun. Available for Python, Rust, and C++, it runs inside your application and logs data using [archetypes](logging-and-ingestion/entity-component.md)—structured types like `Points3D`, `Image`, or `Transform3D`.
+The Logging SDK is how you get data into Rerun. Available for Python, Rust, and C++, it runs inside your application and logs data using [archetypes](logging-and-ingestion/entity-component.md) — structured types like `Points3D`, `Image`, or `Transform3D`.
 
 Data can be streamed directly to the Viewer, saved to `.rrd` files, or both.
 
@@ -26,60 +26,30 @@ The Web Viewer has performance limitations compared to the native viewer. It run
 
 Both viewers can be extended: the Native Viewer through its [Rust API](../howto/visualization/extend-ui.md), and the Web Viewer can be [embedded in web applications](../howto/integrations/embed-web.md) or [Jupyter notebooks](../howto/integrations/embed-notebooks.md).
 
-### Data platform
+### Catalog server
 
-The Data Platform provides persistent storage and indexing for large-scale data. It organizes data into:
+The catalog server provides persistent storage and indexing for large-scale data. It organizes data into:
 
 - **Datasets**: Named collections of related recordings
 - **Segments**: Individual `.rrd` files registered to a dataset
 
 Data is served via the **redap** protocol (**Re**run **Da**ta **P**rotocol).
 
-The Data Platform is available as:
+The catalog server is available as:
 - Open-source server for local development (`rerun server`)
-- Managed offering for production deployments
+- **Rerun Hub**, our managed offering for production deployments
 
 ### Catalog SDK
 
-The Catalog SDK (`rerun.catalog`) is a Python library for querying and manipulating the data stored on the Data Platform. Combined with the managed Data Platform, it allows building complex data transformation pipelines.
+The Catalog SDK (`rerun.catalog`) is a Python library for querying and manipulating the data stored on a catalog server. Combined with Rerun Hub, it allows building complex data transformation pipelines.
 
 
 ## How they connect
 
-```d2
-direction: down
-horizontal-gap: 0
-vertical-gap: 0
-
-Logging SDK
-
-".rrd files"
-
-Viewer: {
-  label.near: bottom-center
-
-  gRPC endpoint
-  Chunk Store
-  Renderer
-}
-
-Viewer.gRPC endpoint -> Viewer.Chunk Store
-Viewer.Chunk Store -> Viewer.Renderer
-
-Data Platform: {
-  label.near: bottom-center
-  Datasets
-}
-
-Catalog SDK
-
-Logging SDK -> Viewer.gRPC endpoint: stream
-Logging SDK -> ".rrd files": save
-".rrd files" -> Viewer.Chunk Store: load
-".rrd files" -> Data Platform: register
-Data Platform -> Viewer.Chunk Store: redap
-Data Platform -> Catalog SDK: redap
-```
+<div class="d2-diagram">
+  <img class="d2-dark" src="https://static.rerun.io/d28ca214a6a6e8386b76e6d9a841901a00051a83_d2.svg" alt="">
+  <img class="d2-light" src="https://static.rerun.io/5ed885f3c2319cad1fe6f6ba55b68ac88ce989d8_d2-light.svg" alt="">
+</div>
 
 
 ## What ships where?
@@ -93,7 +63,7 @@ It's a great place to start exploring the examples.
 
 The `rerun` binary bundles multiple tools in one:
 - **Native Viewer** for visualization
-- **OSS Data Platform** server (via `rerun server`)
+- **OSS catalog server** (via `rerun server`)
 - **RRD tools** for file manipulation
 - **Web Viewer** (via `rerun --serve-web`)
 
@@ -110,19 +80,19 @@ The Python SDK includes:
 - **Catalog SDK**
 - **CLI**, including the Viewer (the `rerun` CLI is made available by installing the `rerun-sdk` Python package)
 
-See: Python SDK [installation instructions](../overview/installing-rerun/python.md) and [quick start guide](../getting-started/data-in/python.md)
+See: Python SDK [installation instructions](../getting-started/install-rerun/python.md) and [quick start guide](../getting-started/data-in.md)
 
 ### Rust SDK
 
 The Logging SDK as a Rust crate.
 
-See: Rust SDK [installation instructions](../overview/installing-rerun/rust.md) and [quick start guide](../getting-started/data-in/rust.md)
+See: Rust SDK [installation instructions](../getting-started/install-rerun/rust.md) and [quick start guide](../getting-started/data-in.md)
 
 ### C++ SDK
 
 The Logging SDK for C++ projects.
 
-See: C++ SDK [installation instructions](../overview/installing-rerun/cpp.md) and [quick start guide](../getting-started/data-in/cpp.md)
+See: C++ SDK [installation instructions](../getting-started/install-rerun/cpp.md) and [quick start guide](../getting-started/data-in.md)
 
 ### The `web-viewer` and `web-viewer-react` NPM packages
 
@@ -136,10 +106,10 @@ See: the `web-viewer` package [reference](../reference/npm.md)
 
 The simplest workflow: stream data directly from your code to the Viewer for live visualization.
 
-```d2
-direction: right
-Logging SDK -> Viewer: stream
-```
+<div class="d2-diagram">
+  <img class="d2-dark" src="https://static.rerun.io/c5379695876baa96bbe0449d5f85d48e33756cf7_d2.svg" alt="">
+  <img class="d2-light" src="https://static.rerun.io/f90c1b537583a0fb7c3a860aa07aa355711d04de_d2-light.svg" alt="">
+</div>
 
 Minimal example:
 
@@ -153,11 +123,10 @@ Best for: development, debugging, real-time monitoring.
 
 Log data to `.rrd` files, then open them in the Viewer whenever needed. Files can be loaded from disk or URLs.
 
-```d2
-direction: right
-Logging SDK -> ".rrd": save
-".rrd" -> Viewer: load
-```
+<div class="d2-diagram">
+  <img class="d2-dark" src="https://static.rerun.io/f7a409bc10f2836d5e3e7b87720170a6e5bd4e46_d2.svg" alt="">
+  <img class="d2-light" src="https://static.rerun.io/7529efba5c4ebb304fb0c7732ded6d22a3921084_d2-light.svg" alt="">
+</div>
 
 Minimal example:
 
@@ -173,16 +142,14 @@ Best for: sharing recordings, offline analysis, archiving.
 
 
 
-### Store on data platform
+### Store on a catalog server
 
-Register `.rrd` files with the Data Platform for persistent, indexed storage. Query and visualize on demand.
+Register `.rrd` files with a catalog server for persistent, indexed storage. Query and visualize on demand.
 
-```d2
-direction: right
-".rrd" -> Data Platform: register
-Data Platform -> Viewer: redap
-Data Platform -> Catalog SDK: redap
-```
+<div class="d2-diagram">
+  <img class="d2-dark" src="https://static.rerun.io/18348c4200f019117478a602f6413d2603e29cbb_d2.svg" alt="">
+  <img class="d2-light" src="https://static.rerun.io/0bc4ab0773cc2c68c5a0c4ee92620b819a12dea1_d2-light.svg" alt="">
+</div>
 
 Minimal example of creating a dataset and registering files:
 
@@ -201,14 +168,12 @@ Best for: large datasets, team collaboration, production pipelines.
 
 ### Query and transform data
 
-Use the Catalog SDK to query data from the Data Platform, process it, and write results back. Visualization is available at any time.
+Use the Catalog SDK to query data from a catalog server, process it, and write results back. Visualization is available at any time.
 
-```d2
-direction: right
-Data Platform -> Catalog SDK: redap
-Data Platform <- Catalog SDK: redap
-Data Platform -> Viewer: redap
-```
+<div class="d2-diagram">
+  <img class="d2-dark" src="https://static.rerun.io/7c8a7ac0667fd6395b7715fe1e5732153774ba1f_d2.svg" alt="">
+  <img class="d2-light" src="https://static.rerun.io/2d2cb8f1eb42a30600ac2060c653f5a50f4c0f33_d2-light.svg" alt="">
+</div>
 
 Minimal example of querying a dataset:
 
@@ -218,7 +183,7 @@ import rerun as rr
 
 client = rr.catalog.CatalogClient("rerun://example.cloud.rerun.io")
 dataset = client.get_dataset("my_data")
-df = dataset.filter_contents("/obs").reader(index="log_time")    # `df` is a DataFusion dataframe
+df = dataset.filter_contents("/obs").reader(index="log_time")  # `df` is a DataFusion dataframe
 df.filter(dfn.col("obs:Scalars:scalars").is_not_null()).count()  # count observations in recording
 ```
 

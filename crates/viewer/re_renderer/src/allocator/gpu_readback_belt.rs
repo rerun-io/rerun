@@ -1,6 +1,8 @@
 use std::ops::Range;
 use std::sync::mpsc;
 
+use re_log::debug_assert;
+
 use crate::texture_info::Texture2DBufferInfo;
 use crate::wgpu_resources::{BufferDesc, GpuBuffer, GpuBufferPool};
 
@@ -237,6 +239,8 @@ impl GpuReadbackBelt {
     /// TODO(andreas): Adaptive chunk sizes
     /// TODO(andreas): Shrinking after usage spikes (e.g. screenshots of different sizes!)
     pub fn new(chunk_size: wgpu::BufferSize) -> Self {
+        // we must use an unbounded channel to avoid blocking on web
+        #[expect(clippy::disallowed_methods)]
         let (sender, receiver) = mpsc::channel();
         Self {
             chunk_size: wgpu::util::align_to(chunk_size.get(), Self::MIN_ALIGNMENT),

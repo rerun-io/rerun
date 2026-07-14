@@ -26,7 +26,7 @@ namespace rerun {
         }
     };
 
-    /// Adapter for a iterable container (see `rerun::traits::is_iterable_v`) which
+    /// Adapter for an iterable container (see `rerun::traits::is_iterable_v`) which
     /// has a value type from which `TElement` can be constructed but is not equal to `TElement`.
     ///
     /// Since this needs to do a conversion, this will always need to allocate space.

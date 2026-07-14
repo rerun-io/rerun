@@ -11,6 +11,7 @@
 #include "../components/depth_meter.hpp"
 #include "../components/draw_order.hpp"
 #include "../components/fill_ratio.hpp"
+#include "../components/magnification_filter.hpp"
 #include "../components/media_type.hpp"
 #include "../components/value_range.hpp"
 #include "../result.hpp"
@@ -42,17 +43,20 @@ namespace rerun::archetypes {
     ///
     /// int main(int argc, char* argv[]) {
     ///     if (argc <2) {
-    ///         std::cerr <<"Usage: " <<argv[0] <<" <path_to_depth_image.[png|rvl]>" <<std::endl;
+    ///         std::cerr <<"Usage: " <<argv[0] <<" <path_to_depth_image.[png|rvl]>"
+    ///                   <<std::endl;
     ///         return 1;
     ///     }
     ///
-    ///     const auto rec = rerun::RecordingStream("rerun_example_encoded_depth_image");
+    ///     const auto rec =
+    ///         rerun::RecordingStream("rerun_example_encoded_depth_image");
     ///     rec.spawn().exit_on_failure();
     ///
     ///     const auto depth_path = fs::path(argv[1]);
     ///     std::ifstream file(depth_path, std::ios::binary);
     ///     if (!file) {
-    ///         std::cerr <<"Failed to open encoded depth image: " <<depth_path <<std::endl;
+    ///         std::cerr <<"Failed to open encoded depth image: " <<depth_path
+    ///                   <<std::endl;
     ///         return 1;
     ///     }
     ///
@@ -60,11 +64,11 @@ namespace rerun::archetypes {
     ///         std::istreambuf_iterator<char>(file),
     ///         std::istreambuf_iterator<char>()};
     ///     // Determine media type based on file extension
-    ///     rerun::components::MediaType media_type;
+    ///     rerun::MediaType media_type;
     ///     if (depth_path.extension() == ".png") {
-    ///         media_type = rerun::components::MediaType::png();
+    ///         media_type = rerun::MediaType::png();
     ///     } else {
-    ///         media_type = rerun::components::MediaType::rvl();
+    ///         media_type = rerun::MediaType::rvl();
     ///     }
     ///
     ///     rec.log(
@@ -112,6 +116,13 @@ namespace rerun::archetypes {
         /// Optional 2D draw order.
         std::optional<ComponentBatch> draw_order;
 
+        /// Optional filter used when a texel is magnified (displayed larger than a screen pixel) in 2D views.
+        ///
+        /// The filter is applied to the scalar values *before* they are mapped to color via the colormap.
+        ///
+        /// Has no effect in 3D views.
+        std::optional<ComponentBatch> magnification_filter;
+
       public:
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.EncodedDepthImage";
@@ -150,6 +161,11 @@ namespace rerun::archetypes {
         static constexpr auto Descriptor_draw_order = ComponentDescriptor(
             ArchetypeName, "EncodedDepthImage:draw_order",
             Loggable<rerun::components::DrawOrder>::ComponentType
+        );
+        /// `ComponentDescriptor` for the `magnification_filter` field.
+        static constexpr auto Descriptor_magnification_filter = ComponentDescriptor(
+            ArchetypeName, "EncodedDepthImage:magnification_filter",
+            Loggable<rerun::components::MagnificationFilter>::ComponentType
         );
 
       public:
@@ -307,6 +323,37 @@ namespace rerun::archetypes {
         ) && {
             draw_order =
                 ComponentBatch::from_loggable(_draw_order, Descriptor_draw_order).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// Optional filter used when a texel is magnified (displayed larger than a screen pixel) in 2D views.
+        ///
+        /// The filter is applied to the scalar values *before* they are mapped to color via the colormap.
+        ///
+        /// Has no effect in 3D views.
+        EncodedDepthImage with_magnification_filter(
+            const rerun::components::MagnificationFilter& _magnification_filter
+        ) && {
+            magnification_filter = ComponentBatch::from_loggable(
+                                       _magnification_filter,
+                                       Descriptor_magnification_filter
+            )
+                                       .value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `magnification_filter` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_magnification_filter` should
+        /// be used when logging a single row's worth of data.
+        EncodedDepthImage with_many_magnification_filter(
+            const Collection<rerun::components::MagnificationFilter>& _magnification_filter
+        ) && {
+            magnification_filter = ComponentBatch::from_loggable(
+                                       _magnification_filter,
+                                       Descriptor_magnification_filter
+            )
+                                       .value_or_throw();
             return std::move(*this);
         }
 

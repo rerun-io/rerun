@@ -16,7 +16,7 @@ Draw order for entities with the same draw order is generally undefined.
 
 ## Arrow datatype
 ```
-float32
+Float32
 ```
 
 ## API reference links
@@ -30,8 +30,10 @@ float32
 * [`Arrows2D`](../archetypes/arrows2d.md)
 * [`Boxes2D`](../archetypes/boxes2d.md)
 * [`DepthImage`](../archetypes/depth_image.md)
+* [`Ellipses2D`](../archetypes/ellipses2d.md)
 * [`EncodedDepthImage`](../archetypes/encoded_depth_image.md)
 * [`EncodedImage`](../archetypes/encoded_image.md)
+* [`GridMap`](../archetypes/grid_map.md)
 * [`Image`](../archetypes/image.md)
 * [`LineStrips2D`](../archetypes/line_strips2d.md)
 * [`Points2D`](../archetypes/points2d.md)

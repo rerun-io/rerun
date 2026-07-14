@@ -7,32 +7,32 @@ Visible time range bounds for a specific timeline.
 
 ## Fields
 #### `start`
-Type: [`TimeRangeBoundary`](../datatypes/time_range_boundary.md)
+Type: non-null [`TimeRangeBoundary`](../datatypes/time_range_boundary.md)
 
 Low time boundary for sequence timeline.
 
 #### `end`
-Type: [`TimeRangeBoundary`](../datatypes/time_range_boundary.md)
+Type: non-null [`TimeRangeBoundary`](../datatypes/time_range_boundary.md)
 
 High time boundary for sequence timeline.
 
 
 ## Arrow datatype
 ```
-Struct {
-    start: DenseUnion {
-        0 = "_null_markers": nullable null
-        1 = "CursorRelative": int64
-        2 = "Absolute": int64
-        3 = "Infinite": nullable null
-    }
-    end: DenseUnion {
-        0 = "_null_markers": nullable null
-        1 = "CursorRelative": int64
-        2 = "Absolute": int64
-        3 = "Infinite": nullable null
-    }
-}
+Struct(
+    "start": non-null Union(Dense,
+        0: ("_null_markers": Null)
+        1: ("CursorRelative": non-null Int64)
+        2: ("Absolute": non-null Int64)
+        3: ("Infinite": Null)
+    )
+    "end": non-null Union(Dense,
+        0: ("_null_markers": Null)
+        1: ("CursorRelative": non-null Int64)
+        2: ("Absolute": non-null Int64)
+        3: ("Infinite": Null)
+    )
+)
 ```
 
 ## API reference links

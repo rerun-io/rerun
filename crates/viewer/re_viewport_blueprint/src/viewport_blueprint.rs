@@ -6,10 +6,10 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use ahash::HashMap;
 use egui_tiles::{SimplificationOptions, TileId};
 use nohash_hasher::IntSet;
-use parking_lot::Mutex;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityPath;
 use re_log_types::{EntityPathHash, EntityPathSubs};
+use re_mutex::Mutex;
 use re_sdk_types::blueprint::archetypes as blueprint_archetypes;
 use re_sdk_types::blueprint::components::{
     AutoLayout, AutoViews, RootContainer, ViewMaximized, ViewerRecommendationHash,
@@ -84,6 +84,7 @@ impl ViewportBlueprint {
         let blueprint_engine = blueprint_db.storage_engine();
 
         let results = blueprint_engine.cache().latest_at(
+            re_chunk_store::ChunkTrackingMode::Report,
             query,
             &VIEWPORT_PATH.into(),
             blueprint_archetypes::ViewportBlueprint::all_component_identifiers(),
@@ -263,23 +264,23 @@ impl ViewportBlueprint {
             | Item::StoreId(_)
             | Item::ComponentPath(_)
             | Item::InstancePath(_)
-            | Item::RedapEntry(_)
+            | Item::RedapEntry { .. }
             | Item::RedapServer(_) => true,
 
             Item::View(view_id) => self.view(view_id).is_some(),
 
-            Item::DataResult(view_id, instance_path) => {
-                self.view(view_id).is_some_and(|view| {
-                    let entity_path = &instance_path.entity_path;
+            Item::DataResult(data_result) => {
+                self.view(&data_result.view_id).is_some_and(|view| {
+                    let entity_path = &data_result.instance_path.entity_path;
 
-                    // TODO(#5742): including any path that is—or descend from—the space origin is
+                    // TODO(#5742): including any path that is — or descend from — the space origin is
                     // necessary because such items may actually be displayed in the blueprint tree.
                     entity_path == &view.space_origin
                         || entity_path.is_descendant_of(&view.space_origin)
                         || view
                             .contents
                             .entity_path_filter()
-                            .matches(&instance_path.entity_path)
+                            .matches(&data_result.instance_path.entity_path)
                 })
             }
 
@@ -314,12 +315,25 @@ impl ViewportBlueprint {
             let excluded_entities = re_log_types::ResolvedEntityPathFilter::properties();
             let include_entity = |ent: &EntityPath| !excluded_entities.matches(ent);
 
-            let mut recommended_views = entry
-                .class
-                .spawn_heuristics(ctx, &include_entity)
-                .into_vec();
+            let spawn_heuristics = entry.class.spawn_heuristics(ctx, &include_entity);
+            let max_views_spawned = spawn_heuristics.max_views_spawned();
+            let mut recommended_views = spawn_heuristics.into_vec();
 
             re_tracing::profile_scope!("filter_recommendations_for", class_id);
+
+            // Count how many views of this class already exist.
+            let existing_view_count = self
+                .views
+                .values()
+                .filter(|view| view.class_identifier() == class_id)
+                .count();
+
+            // Limit recommendations based on max_views_spawned.
+            // If we already have max or more views, don't spawn any more.
+            let max_new_views = max_views_spawned.saturating_sub(existing_view_count);
+            if max_new_views < recommended_views.len() {
+                recommended_views.truncate(max_new_views);
+            }
 
             // Remove all views that we already spawned via heuristic before.
             recommended_views.retain(|recommended_view| {
@@ -343,11 +357,9 @@ impl ViewportBlueprint {
             // If now the user edits the view at `/**` to be `/points/**`, that does *not*
             // mean we should suddenly add `/camera/**` to the viewport.
             if !recommended_views.is_empty() {
-                let new_viewer_recommendation_hashes: Vec<ViewerRecommendationHash> = self
-                    .past_viewer_recommendations
-                    .iter()
-                    .cloned()
-                    .chain(
+                let new_viewer_recommendation_hashes: Vec<ViewerRecommendationHash> =
+                    std::iter::chain(
+                        self.past_viewer_recommendations.iter().cloned(),
                         recommended_views
                             .iter()
                             .map(|recommendation| recommendation.recommendation_hash(class_id)),
@@ -442,14 +454,12 @@ impl ViewportBlueprint {
 
     /// Returns an iterator over all the contents (views and containers) in the viewport.
     pub fn contents_iter(&self) -> impl Iterator<Item = Contents> + '_ {
-        self.views
-            .keys()
-            .map(|view_id| Contents::View(*view_id))
-            .chain(
-                self.containers
-                    .keys()
-                    .map(|container_id| Contents::Container(*container_id)),
-            )
+        std::iter::chain(
+            self.views.keys().map(|view_id| Contents::View(*view_id)),
+            self.containers
+                .keys()
+                .map(|container_id| Contents::Container(*container_id)),
+        )
     }
 
     /// Walk the entire [`Contents`] tree, starting from the root container.

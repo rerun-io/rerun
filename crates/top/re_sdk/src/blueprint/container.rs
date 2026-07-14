@@ -376,3 +376,9 @@ impl From<crate::blueprint::Spatial3DView> for ContainerLike {
         Self::View(view.0)
     }
 }
+
+impl From<crate::blueprint::GraphView> for ContainerLike {
+    fn from(view: crate::blueprint::GraphView) -> Self {
+        Self::View(view.0)
+    }
+}

@@ -9,9 +9,10 @@ use ffmpeg_sidecar::child::FfmpegChild;
 use ffmpeg_sidecar::command::FfmpegCommand;
 use ffmpeg_sidecar::event::{FfmpegEvent, LogLevel};
 use h264_reader::nal::UnitType;
-use parking_lot::Mutex;
+use re_log::debug_assert;
 use re_quota_channel::{Receiver, SendError, Sender};
 
+use super::ivf::write_chunk_to_ivf_stream;
 use super::version::FFmpegVersionParseError;
 use crate::decode::ffmpeg_cli::{
     FFMPEG_MINIMUM_VERSION_MAJOR, FFMPEG_MINIMUM_VERSION_MINOR, FFmpegVersion,
@@ -110,7 +111,7 @@ impl From<AnnexBStreamWriteError> for Error {
 }
 
 /// ffmpeg does not tell us the timestamp/duration of a given frame, so we need to remember it.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, re_byte_size::SizeBytes)]
 struct FFmpegFrameInfo {
     /// The start of a new group of pictures?
     ///
@@ -139,24 +140,10 @@ struct FFmpegFrameInfo {
     decode_timestamp: Time,
 }
 
-impl re_byte_size::SizeBytes for FFmpegFrameInfo {
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-}
-
+#[derive(re_byte_size::SizeBytes)]
 enum FFmpegFrameData {
     Chunk(Chunk),
     Quit,
-}
-
-impl re_byte_size::SizeBytes for FFmpegFrameData {
-    fn heap_size_bytes(&self) -> u64 {
-        match self {
-            Self::Chunk(chunk) => chunk.heap_size_bytes(),
-            Self::Quit => 0,
-        }
-    }
 }
 
 /// Wraps an stdin with a shared shutdown boolean.
@@ -189,19 +176,25 @@ impl std::io::Write for StdinWithShutdown {
     }
 }
 
-/// Output sender is mutex protected `Option` so that we can stop sending output frames on ffmpeg shutdown by setting it to `None`.
-type OutputSender = Mutex<Option<Sender<FrameResult>>>;
+/// A sender with a signal to know if it should stop.
+struct OutputSender {
+    sender: Sender<FrameResult>,
+
+    /// After this is true the sender won't try to send additional
+    /// [`FrameResult`]s. The sender might still be blocked because of
+    /// backpressure, and send one last frame after this has been set to true.
+    stop_signal: AtomicBool,
+}
 
 /// Send a result to the output sender.
 fn send_output(
     output_sender: &OutputSender,
     result: FrameResult,
 ) -> Result<(), SendError<FrameResult>> {
-    let output_sender_guard = output_sender.lock();
-    if let Some(output_sender) = output_sender_guard.as_ref() {
-        output_sender.send(result)
-    } else {
+    if output_sender.stop_signal.load(Ordering::Acquire) {
         Err(SendError(result))
+    } else {
+        output_sender.sender.send(result)
     }
 }
 
@@ -236,7 +229,7 @@ impl FFmpegProcessAndListener {
     fn new(
         debug_name: &str,
         output_sender: Sender<FrameResult>,
-        encoding_details: &Option<VideoEncodingDetails>,
+        encoding_details: Option<&VideoEncodingDetails>,
         ffmpeg_path: Option<&std::path::Path>,
         codec: &crate::VideoCodec,
     ) -> Result<Self, Error> {
@@ -245,7 +238,7 @@ impl FFmpegProcessAndListener {
         // TODO(andreas): should get SPS also without AVCC from ongoing stream.
 
         let (pixel_format, ffmpeg_pix_fmt) = if let Some(chroma_subsampling) =
-            encoding_details.as_ref().and_then(|e| e.chroma_subsampling)
+            encoding_details.and_then(|e| e.chroma_subsampling)
         {
             // We always get planar layouts back from ffmpeg.
             let (layout, ffmpeg_pix_fmt) = match chroma_subsampling {
@@ -288,6 +281,7 @@ impl FFmpegProcessAndListener {
         let codec_str = match codec {
             crate::VideoCodec::H264 => "h264",
             crate::VideoCodec::H265 => "hevc",
+            crate::VideoCodec::VP8 | crate::VideoCodec::VP9 => "ivf",
             _ => unreachable!(),
         };
 
@@ -309,8 +303,8 @@ impl FFmpegProcessAndListener {
             .format(codec_str) // TODO(andreas): should we check ahead of time whether this is available?
             //.fps_mode("0")
             .input("-") // stdin is our input!
-            // h264 bitstreams doesn't have timestamp information. Whatever ffmpeg tries to make up about timing & framerates is wrong!
-            // If we don't tell it to just pass the frames through, variable framerate (VFR) video will just not play at all.
+            // h264 bitstreams doesn't have timestamp information. Whatever ffmpeg tries to make up about timing & frame rates is wrong!
+            // If we don't tell it to just pass the frames through, variable frame rate (VFR) video will just not play at all.
             .fps_mode("passthrough")
             .pix_fmt(ffmpeg_pix_fmt)
             // ffmpeg-sidecar's .rawvideo() sets pix_fmt to rgb24, we don't want that.
@@ -339,7 +333,10 @@ impl FFmpegProcessAndListener {
 
         // Mutex protect `output_sender` so that we can shut down the threads at a defined point in time at which we
         // no longer receive any new frames or errors from this process.
-        let output_sender = Arc::new(Mutex::new(Some(output_sender)));
+        let output_sender = Arc::new(OutputSender {
+            sender: output_sender,
+            stop_signal: AtomicBool::new(false),
+        });
 
         // Reads the output from the ffmpeg process:
         let listen_thread = std::thread::Builder::new()
@@ -363,11 +360,7 @@ impl FFmpegProcessAndListener {
             })
             .expect("Failed to spawn ffmpeg listener thread");
 
-        let codec_meta = encoding_details
-            .as_ref()
-            .and_then(|e| e.stsd.as_ref())
-            .and_then(CodecMeta::from_stsd)
-            .unwrap_or(CodecMeta::RawBytestream);
+        let mut codec_meta = CodecMeta::for_decoder(codec, encoding_details);
 
         // Writes video data to the ffmpeg process:
         let write_thread = std::thread::Builder::new()
@@ -384,7 +377,7 @@ impl FFmpegProcessAndListener {
                         &mut ffmpeg_stdin,
                         &frame_data_rx,
                         &output_sender,
-                        &codec_meta,
+                        &mut codec_meta,
                     );
                 }
             })
@@ -441,12 +434,15 @@ impl Drop for FFmpegProcessAndListener {
     fn drop(&mut self) {
         re_tracing::profile_function!();
 
-        // Stop all outputs from being written to - any attempt from here on out will fail and cause thread shutdown.
-        // This way, we ensure all ongoing writes are finished and won't get any more on_output callbacks from this process
+        // Stop all outputs from being written to - any new attempt from here on out will fail and cause thread shutdown.
+        // This way, we ensure there won't be any new writes and won't get any more on_output callbacks from this process
         // before we take any other action on the shutdown sequence.
-        {
-            self.output_sender.lock().take();
-        }
+        //
+        // This does mean the encoder can send one final message if it's blocked, which is fine since either it will be
+        // cleaned up the next time we receive decode outputs. Or it will be overridden when said sample is decoded again.
+        self.output_sender
+            .stop_signal
+            .store(true, Ordering::Release);
 
         // Notify (potentially wake up) the stdin write thread to stop it (it might be sleeping).
         self.frame_data_tx.send(FFmpegFrameData::Quit).ok();
@@ -505,24 +501,13 @@ fn write_ffmpeg_input(
     ffmpeg_stdin: &mut dyn std::io::Write,
     frame_data_rx: &Receiver<FFmpegFrameData>,
     output_sender: &OutputSender,
-    codec_meta: &CodecMeta,
+    codec_meta: &mut CodecMeta,
 ) {
-    let mut state = AnnexBStreamState::default();
-
     while let Ok(data) = frame_data_rx.recv() {
         let chunk = match data {
             FFmpegFrameData::Chunk(chunk) => chunk,
             FFmpegFrameData::Quit => {
-                // Try to flush out the last frames from ffmpeg with an EndSequence/EndStream NAL units.
-                // Unfortunatelt this doesn't help, at least not for https://github.com/rerun-io/rerun/issues/8073
-                let end_nals: Vec<u8> = [
-                    ANNEXB_NAL_START_CODE,
-                    &[UnitType::EndOfSeq.id()],
-                    ANNEXB_NAL_START_CODE,
-                    &[UnitType::EndOfStream.id()],
-                ]
-                .concat();
-                write_bytes(ffmpeg_stdin, &end_nals).ok();
+                codec_meta.write_end_of_stream(ffmpeg_stdin).ok();
 
                 // NOTE(emilk): I've also tried writing `NalUnitType::AccessUnitDelimiter` here, but to no avail.
 
@@ -532,17 +517,7 @@ fn write_ffmpeg_input(
             }
         };
 
-        let write_result = match codec_meta {
-            CodecMeta::Avc(avcc) => {
-                write_avc_chunk_to_nalu_stream(avcc, ffmpeg_stdin, &chunk, &mut state)
-                    .map_err(Error::from)
-            }
-            CodecMeta::Hevc(hvcc) => {
-                write_hevc_chunk_to_nalu_stream(hvcc, ffmpeg_stdin, &chunk, &mut state)
-                    .map_err(Error::from)
-            }
-            CodecMeta::RawBytestream => write_bytes(ffmpeg_stdin, &chunk.data),
-        };
+        let write_result = codec_meta.write_chunk(ffmpeg_stdin, &chunk);
 
         if let Err(err) = write_result {
             let write_error = matches!(err, Error::FailedToWriteToFfmpeg(_));
@@ -641,7 +616,7 @@ impl FrameBuffer {
             timestamp: _, // This is a timestamp made up by ffmpeg_sidecar based on limited information it has.
         } = frame;
 
-        debug_assert_eq!(
+        re_log::debug_assert_eq!(
             data.len() * 8,
             (width * height * pixel_format.bits_per_pixel()) as usize
         );
@@ -893,7 +868,7 @@ pub struct FFmpegCliDecoder {
 impl FFmpegCliDecoder {
     pub fn new(
         debug_name: String,
-        encoding_details: &Option<VideoEncodingDetails>,
+        encoding_details: Option<&VideoEncodingDetails>,
         output_sender: Sender<FrameResult>,
         ffmpeg_path: Option<std::path::PathBuf>,
         codec: &crate::VideoCodec,
@@ -922,12 +897,12 @@ impl FFmpegCliDecoder {
             ffmpeg,
             output_sender,
             ffmpeg_path,
-            codec: *codec,
+            codec: codec.clone(),
         })
     }
 }
 
-fn check_ffmpeg_version(
+pub(super) fn check_ffmpeg_version(
     ffmpeg_version_result: Result<FFmpegVersion, FFmpegVersionParseError>,
 ) -> Result<(), Error> {
     match ffmpeg_version_result {
@@ -983,7 +958,7 @@ impl AsyncDecoder for FFmpegCliDecoder {
         self.ffmpeg = FFmpegProcessAndListener::new(
             &self.debug_name,
             self.output_sender.clone(),
-            &video_descr.encoding_details,
+            video_descr.encoding_details.as_ref(),
             self.ffmpeg_path.as_deref(),
             &self.codec,
         )?;
@@ -1022,7 +997,7 @@ fn should_ignore_log_msg(msg: &str) -> bool {
         // This is supported by experimentation yielding that it shows only up when using the `-colorspace` parameter.
         // (color range and yuvj formats are fine though!)
         "No accelerated colorspace conversion found from yuv420p to bgr24",
-        // We actually don't even want it to estimate a framerate!
+        // We actually don't even want it to estimate a frame rate!
         "not enough frames to estimate rate",
         // Similar: we don't want it to be able to estimate any of these things and we set those values explicitly, see invocation.
         // Observed on Windows FFmpeg 7.1, but not with the same version on Mac with the same video.
@@ -1068,22 +1043,149 @@ fn sanitize_ffmpeg_log_message(msg: &str) -> String {
     msg
 }
 
-#[derive(Clone)]
 enum CodecMeta {
-    RawBytestream, // generic “pass-through” label for any format that’s ready to feed to the decoder as-is.
-    Avc(re_mp4::Avc1Box),
-    Hevc(re_mp4::HevcBox),
+    /// Pass `chunk.data` through verbatim. Used for streamed H.264/H.265 (already Annex-B),
+    /// or any format that is ready to feed to the decoder as-is.
+    RawBytestream,
+
+    /// H.264 in MP4: prepend SPS/PPS to each IDR, otherwise length-prefix → Annex-B.
+    Avc {
+        avcc: re_mp4::Avc1Box,
+        state: AnnexBStreamState,
+    },
+
+    /// H.265 in MP4: prepend VPS/SPS/PPS to each IRAP, otherwise length-prefix → Annex-B.
+    Hevc {
+        hvcc: re_mp4::HevcBox,
+        state: AnnexBStreamState,
+    },
+
+    /// VP8 / VP9: wrap each chunk in an IVF file/frame header, since their raw bitstream
+    /// has no self-delimiting framing and `FFmpeg` has no `vp8`/`vp9` raw demuxer.
+    /// See <https://wiki.multimedia.cx/index.php/IVF>.
+    Ivf {
+        /// `b"VP80"` for VP8, `b"VP90"` for VP9.
+        fourcc: [u8; 4],
+        width: u16,
+        height: u16,
+
+        /// Whether we already wrote the 32-byte file header to `FFmpeg`'s stdin.
+        file_header_written: bool,
+
+        /// Frame counter used as the per-frame IVF PTS.
+        ///
+        /// `FFmpeg` is run with `-fps_mode passthrough`, so absolute PTS values
+        /// are immaterial as long as they are monotonically increasing.
+        frame_idx: u64,
+    },
 }
 
 impl CodecMeta {
+    fn for_decoder(
+        codec: &crate::VideoCodec,
+        encoding_details: Option<&VideoEncodingDetails>,
+    ) -> Self {
+        match codec {
+            crate::VideoCodec::VP8 | crate::VideoCodec::VP9 => {
+                let fourcc = if matches!(codec, crate::VideoCodec::VP8) {
+                    *b"VP80"
+                } else {
+                    *b"VP90"
+                };
+                let (width, height) = encoding_details
+                    .map(|e| (e.coded_dimensions[0], e.coded_dimensions[1]))
+                    .unwrap_or((0, 0));
+                Self::Ivf {
+                    fourcc,
+                    width,
+                    height,
+                    file_header_written: false,
+                    frame_idx: 0,
+                }
+            }
+            _ => encoding_details
+                .and_then(|e| e.stsd.as_ref())
+                .and_then(Self::from_stsd)
+                .unwrap_or(Self::RawBytestream),
+        }
+    }
+
     fn from_stsd(stsd: &re_mp4::StsdBox) -> Option<Self> {
-        use re_mp4::StsdBoxContent::{Avc1, Hev1, Hvc1};
-
         match &stsd.contents {
-            Avc1(avc) => Some(Self::Avc(avc.clone())),
-            Hev1(hevc) | Hvc1(hevc) => Some(Self::Hevc(hevc.clone())),
-
+            re_mp4::StsdBoxContent::Avc1(avcc) => Some(Self::Avc {
+                avcc: avcc.clone(),
+                state: AnnexBStreamState::default(),
+            }),
+            re_mp4::StsdBoxContent::Hev1(hvcc) | re_mp4::StsdBoxContent::Hvc1(hvcc) => {
+                Some(Self::Hevc {
+                    hvcc: hvcc.clone(),
+                    state: AnnexBStreamState::default(),
+                })
+            }
+            re_mp4::StsdBoxContent::Vp08(vp8) => Some(Self::Ivf {
+                fourcc: *b"VP80",
+                width: vp8.width,
+                height: vp8.height,
+                file_header_written: false,
+                frame_idx: 0,
+            }),
+            re_mp4::StsdBoxContent::Vp09(vp9) => Some(Self::Ivf {
+                fourcc: *b"VP90",
+                width: vp9.width,
+                height: vp9.height,
+                file_header_written: false,
+                frame_idx: 0,
+            }),
             _ => None,
+        }
+    }
+
+    fn write_chunk(&mut self, out: &mut dyn std::io::Write, chunk: &Chunk) -> Result<(), Error> {
+        match self {
+            Self::RawBytestream => write_bytes(out, &chunk.data),
+
+            Self::Avc { avcc, state } => {
+                write_avc_chunk_to_nalu_stream(avcc, out, chunk, state).map_err(Error::from)
+            }
+
+            Self::Hevc { hvcc, state } => {
+                write_hevc_chunk_to_nalu_stream(hvcc, out, chunk, state).map_err(Error::from)
+            }
+
+            Self::Ivf {
+                fourcc,
+                width,
+                height,
+                file_header_written,
+                frame_idx,
+            } => write_chunk_to_ivf_stream(
+                fourcc,
+                width,
+                height,
+                file_header_written,
+                frame_idx,
+                out,
+                chunk,
+            ),
+        }
+    }
+
+    fn write_end_of_stream(&self, out: &mut dyn std::io::Write) -> Result<(), Error> {
+        match self {
+            Self::Ivf { .. } => Ok(()),
+            Self::RawBytestream | Self::Avc { .. } | Self::Hevc { .. } => {
+                // Try to flush out the last frames from ffmpeg with EndSequence/EndStream NAL units.
+                // Unfortunately this doesn't help, at least not for https://github.com/rerun-io/rerun/issues/8073
+                let end_nals: Vec<u8> = [
+                    ANNEXB_NAL_START_CODE,
+                    &[UnitType::EndOfSeq.id()],
+                    ANNEXB_NAL_START_CODE,
+                    &[UnitType::EndOfStream.id()],
+                ]
+                .concat();
+
+                write_bytes(out, &end_nals)
+            }
         }
     }
 }

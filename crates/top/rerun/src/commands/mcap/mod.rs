@@ -1,14 +1,40 @@
+mod info;
+
 use std::collections::BTreeSet;
 use std::fs::File;
 use std::io::BufWriter;
-use std::sync::mpsc::Receiver;
 
 use clap::Subcommand;
+use clap::builder::TypedValueParser as _;
 use re_log_encoding::Encoder;
-use re_log_types::{LogMsg, RecordingId};
-use re_mcap::{LayerIdentifier, SelectedLayers};
-use re_sdk::external::re_data_loader::McapLoader;
-use re_sdk::{ApplicationId, DataLoader, DataLoaderSettings, LoadedData};
+use re_log_types::{LogMsg, RecordingId, TimeType};
+use re_mcap::{DecoderIdentifier, SelectedDecoders, TopicFilter};
+use re_sdk::external::re_importer::{McapImporter, supported_mcap_decoder_identifiers};
+use re_sdk::{ApplicationId, ImportedData, Importer, ImporterSettings};
+
+use info::InfoCommand;
+
+fn possible_timeline_types() -> impl clap::builder::TypedValueParser {
+    clap::builder::PossibleValuesParser::new(["timestamp", "duration"]).map(|value: String| {
+        match value.as_str() {
+            "timestamp" => TimeType::TimestampNs,
+            "duration" => TimeType::DurationNs,
+            _ => unreachable!("PossibleValuesParser already validated the input"),
+        }
+    })
+}
+
+fn possible_decoders() -> clap::builder::PossibleValuesParser {
+    static DECODER_IDS: std::sync::LazyLock<Vec<String>> = std::sync::LazyLock::new(|| {
+        supported_mcap_decoder_identifiers(true)
+            .into_iter()
+            .map(|identifier| identifier.to_string())
+            .collect()
+    });
+    clap::builder::PossibleValuesParser::new(
+        DECODER_IDS.iter().map(String::as_str).collect::<Vec<_>>(),
+    )
+}
 
 #[derive(Debug, Clone, clap::Parser)]
 pub struct ConvertCommand {
@@ -23,13 +49,13 @@ pub struct ConvertCommand {
     #[clap(long = "application-id")]
     application_id: Option<String>,
 
-    /// Specifies which layers to apply during conversion.
-    #[clap(short = 'l', long = "layer")]
-    selected_layers: Vec<String>,
+    /// Specifies which decoders to apply during conversion.
+    #[clap(short = 'd', long = "decoder", value_parser = possible_decoders())]
+    selected_decoders: Vec<String>,
 
-    /// Disable using the raw layer as a fallback for unsupported channels.
-    /// By default, channels that cannot be handled by semantic layers (protobuf, ROS2)
-    /// will be processed by the raw layer.
+    /// Disable using the raw decoder as a fallback for unsupported channels.
+    /// By default, channels that cannot be handled by semantic decoders (protobuf, ROS2)
+    /// will be processed by the raw decoder.
     #[clap(long = "disable-raw-fallback")]
     disable_raw_fallback: bool,
 
@@ -40,6 +66,56 @@ pub struct ConvertCommand {
     /// output.
     #[clap(long = "recording-id")]
     recording_id: Option<String>,
+
+    /// If set, an offset in nanoseconds to add to all timestamp timelines.
+    ///
+    /// This can be used to shift all timestamps of the MCAP file if they are not yet
+    /// relative to the UNIX epoch.
+    ///
+    /// Duration and sequence timelines are not affected by this offset.
+    #[clap(long = "timestamp-offset-ns")]
+    timestamp_offset_ns: Option<i64>,
+
+    /// The timeline type to use for timestamp timelines.
+    ///
+    /// "timestamp" (default) creates `TimestampNs` timelines (nanoseconds since Unix epoch).
+    /// "duration" creates `DurationNs` timelines (nanosecond durations).
+    #[clap(long = "timeline-type", value_parser = possible_timeline_types(), default_value = "timestamp")]
+    timeline_type: TimeType,
+
+    /// Include only topics matching this regex (RE2 syntax). Repeatable.
+    ///
+    /// If omitted, all topics are included. Patterns are not implicitly anchored;
+    /// use `^` / `$` if you need anchoring.
+    ///
+    /// Example: `-y "^/tf.*" -n ".*depth.*" -y "^/camera/(compressed|camera_info)$"`
+    #[clap(short = 'y', long = "include-topic-regex")]
+    include_topic_regex: Vec<String>,
+
+    /// Exclude topics matching this regex (RE2 syntax). Repeatable.
+    ///
+    /// Applied after includes: a topic is kept only if it matches an include
+    /// (or no includes are set) AND matches no exclude.
+    #[clap(short = 'n', long = "exclude-topic-regex")]
+    exclude_topic_regex: Vec<String>,
+}
+
+fn compile_topic_filter(include: &[String], exclude: &[String]) -> anyhow::Result<TopicFilter> {
+    for pattern in include {
+        TopicFilter::default()
+            .with_include_patterns(std::slice::from_ref(pattern))
+            .map_err(|err| anyhow::anyhow!("Invalid include topic regex {pattern:?}: {err}"))?;
+    }
+    for pattern in exclude {
+        TopicFilter::default()
+            .with_exclude_patterns(std::slice::from_ref(pattern))
+            .map_err(|err| anyhow::anyhow!("Invalid exclude topic regex {pattern:?}: {err}"))?;
+    }
+
+    TopicFilter::default()
+        .with_include_patterns(include)
+        .and_then(|filter| filter.with_exclude_patterns(exclude))
+        .map_err(|err| anyhow::anyhow!("Invalid topic regex in include/exclude filters: {err}"))
 }
 
 impl ConvertCommand {
@@ -49,9 +125,15 @@ impl ConvertCommand {
             path_to_output_rrd,
             application_id,
             recording_id,
-            selected_layers,
+            selected_decoders,
             disable_raw_fallback,
+            timestamp_offset_ns,
+            timeline_type,
+            include_topic_regex,
+            exclude_topic_regex,
         } = self;
+
+        let topic_filter = compile_topic_filter(include_topic_regex, exclude_topic_regex)?;
 
         let start_time = std::time::Instant::now();
 
@@ -65,31 +147,30 @@ impl ConvertCommand {
             .map(RecordingId::from)
             .unwrap_or_else(RecordingId::random);
 
-        let selected_layers = if selected_layers.is_empty() {
-            SelectedLayers::All
+        let selected_decoders = if selected_decoders.is_empty() {
+            SelectedDecoders::All
         } else {
-            SelectedLayers::Subset(
-                selected_layers
+            SelectedDecoders::Subset(
+                selected_decoders
                     .iter()
                     .cloned()
-                    .map(LayerIdentifier::from)
+                    .map(DecoderIdentifier::from)
                     .collect(),
             )
         };
 
-        let loader: &dyn DataLoader =
-            &McapLoader::with_raw_fallback(selected_layers, !*disable_raw_fallback);
+        let importer: &dyn Importer = &McapImporter::new(&selected_decoders)
+            .with_raw_fallback(!*disable_raw_fallback)
+            .with_topic_filter(topic_filter);
 
         // TODO(#10862): This currently loads the entire file into memory.
-        let (tx, rx) = std::sync::mpsc::channel::<LoadedData>();
-        loader.load_from_path(
-            &DataLoaderSettings {
+        let (tx, rx) = crossbeam::channel::bounded::<ImportedData>(1024);
+        importer.import_from_path(
+            &ImporterSettings {
                 application_id: Some(application_id),
-                recording_id,
-                opened_store_id: None,
-                force_store_info: false,
-                entity_path_prefix: None,
-                timepoint: None,
+                timestamp_offset_ns: *timestamp_offset_ns,
+                timeline_type: *timeline_type,
+                ..ImporterSettings::recommended(recording_id)
             },
             path_to_input_mcap.into(),
             tx,
@@ -116,19 +197,23 @@ impl ConvertCommand {
 pub enum McapCommands {
     /// Convert an .mcap file to an .rrd
     Convert(ConvertCommand),
+
+    /// Print timeline / sortedness diagnostics for an .mcap file
+    Info(InfoCommand),
 }
 
 impl McapCommands {
     pub fn run(&self) -> anyhow::Result<()> {
         match self {
             Self::Convert(cmd) => cmd.run(),
+            Self::Info(cmd) => cmd.run(),
         }
     }
 }
 
 fn process_mcap<W: std::io::Write>(
     writer: W,
-    receiver: &Receiver<LoadedData>,
+    receiver: &crossbeam::channel::Receiver<ImportedData>,
 ) -> anyhow::Result<()> {
     let mut num_total_msgs = 0;
     let mut topics = BTreeSet::new();
@@ -140,13 +225,13 @@ fn process_mcap<W: std::io::Write>(
         num_total_msgs += 1;
 
         let log_msg = match res {
-            LoadedData::LogMsg(_, log_msg) => log_msg,
-            LoadedData::Chunk(_, store_id, chunk) => {
+            ImportedData::LogMsg(_, log_msg) => log_msg,
+            ImportedData::Chunk(_, store_id, chunk) => {
                 topics.insert(chunk.entity_path().clone());
                 let arrow_msg = chunk.to_arrow_msg()?;
                 LogMsg::ArrowMsg(store_id, arrow_msg)
             }
-            LoadedData::ArrowMsg(_, store_id, arrow_msg) => LogMsg::ArrowMsg(store_id, arrow_msg),
+            ImportedData::ArrowMsg(_, store_id, arrow_msg) => LogMsg::ArrowMsg(store_id, arrow_msg),
         };
         encoder.append(&log_msg)?;
     }

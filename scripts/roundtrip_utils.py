@@ -54,6 +54,9 @@ def run(
 def roundtrip_env(*, save_path: str | None = None) -> dict[str, str]:
     env = os.environ.copy()
 
+    # Force UTF-8 encoding for Python I/O to handle Unicode output on Windows
+    env["PYTHONIOENCODING"] = "utf-8"
+
     # raise exception on warnings, e.g. when using a @deprecated function:
     env["PYTHONWARNINGS"] = "error"
 
@@ -74,10 +77,17 @@ def roundtrip_env(*, save_path: str | None = None) -> dict[str, str]:
     return env
 
 
-def run_comparison(rrd0_path: str, rrd1_path: str, full_dump: bool) -> None:
+def run_comparison(
+    rrd0_path: Path | str,
+    rrd1_path: Path | str,
+    full_dump: bool,
+    ignore_timelines: list[str] | None = None,
+) -> None:
     cmd = ["rerun", "rrd", "compare", "--unordered", "--ignore-chunks-without-components"]
     if full_dump:
         cmd += ["--full-dump"]
-    cmd += [rrd0_path, rrd1_path]
+    for timeline in ignore_timelines or []:
+        cmd += ["--ignore-timeline", timeline]
+    cmd += [str(rrd0_path), str(rrd1_path)]
 
     run(cmd, env=roundtrip_env(), timeout=60)

@@ -1,16 +1,17 @@
 use re_log_types::{EntityPath, Instance};
 use re_renderer::PickingLayerInstanceId;
 use re_renderer::renderer::{LineDrawDataError, LineStripFlags};
+use re_sdk_types::Archetype as _;
 use re_sdk_types::archetypes::GeoLineStrings;
-use re_sdk_types::components::{Color, Radius};
-use re_view::{DataResultQuery as _, RangeResultsExt as _};
+use re_sdk_types::components::{Color, GeoLineString, Radius};
+use re_view::{DataResultQuery as _, VisualizerInstructionQueryResults};
 use re_viewer_context::{
     IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewHighlights, ViewQuery,
     ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
     typed_fallback_for,
 };
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 struct GeoLineStringsBatch {
     lines: Vec<Vec<walkers::Position>>,
     radii: Vec<Radius>,
@@ -18,15 +19,22 @@ struct GeoLineStringsBatch {
     instance_id: Vec<PickingLayerInstanceId>,
 }
 
-/// Visualizer for [`GeoLineStrings`].
-#[derive(Default)]
-pub struct GeoLineStringsVisualizer {
+/// Output data from [`GeoLineStringsVisualizer`].
+#[derive(Default, Clone)]
+pub struct GeoLineStringsOutput {
     batches: Vec<(EntityPath, GeoLineStringsBatch)>,
 }
 
+/// Visualizer for [`GeoLineStrings`].
+#[derive(Default)]
+pub struct GeoLineStringsVisualizer;
+
 impl IdentifiedViewSystem for GeoLineStringsVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "GeoLineStrings".into()
+        re_viewer_context::external::re_string_interner::intern_static!(
+            re_viewer_context::ViewSystemIdentifier,
+            "GeoLineStrings"
+        )
     }
 }
 
@@ -35,15 +43,21 @@ impl VisualizerSystem for GeoLineStringsVisualizer {
         &self,
         _app_options: &re_viewer_context::AppOptions,
     ) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<GeoLineStrings>()
+        VisualizerQueryInfo::single_required_component::<GeoLineString>(
+            &GeoLineStrings::descriptor_line_strings(),
+            &GeoLineStrings::all_components(),
+        )
     }
 
     fn execute(
-        &mut self,
+        &self,
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
         _context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
+        let output = VisualizerExecutionOutput::default();
+        let mut batches = Vec::new();
+
         for (data_result, instruction) in
             view_query.iter_visualizer_instruction_for(Self::identifier())
         {
@@ -52,28 +66,25 @@ impl VisualizerSystem for GeoLineStringsVisualizer {
                 view_query,
                 instruction,
             );
+            let results = VisualizerInstructionQueryResults::new(instruction, &results, &output);
 
             let mut batch_data = GeoLineStringsBatch::default();
 
             // gather all relevant chunks
-            let timeline = view_query.timeline;
-            let all_lines = results.iter_as(
-                timeline,
-                GeoLineStrings::descriptor_line_strings().component,
-            );
-            let all_colors =
-                results.iter_as(timeline, GeoLineStrings::descriptor_colors().component);
-            let all_radii = results.iter_as(timeline, GeoLineStrings::descriptor_radii().component);
+            let all_lines =
+                results.iter_required(GeoLineStrings::descriptor_line_strings().component);
+            let all_colors = results.iter_optional(GeoLineStrings::descriptor_colors().component);
+            let all_radii = results.iter_optional(GeoLineStrings::descriptor_radii().component);
 
             // fallback component values
+            let query_context =
+                ctx.query_context(data_result, view_query.latest_at_query(), instruction.id);
             let fallback_color: Color = typed_fallback_for(
-                &ctx.query_context(data_result, &view_query.latest_at_query()),
+                &query_context,
                 GeoLineStrings::descriptor_colors().component,
             );
-            let fallback_radius: Radius = typed_fallback_for(
-                &ctx.query_context(data_result, &view_query.latest_at_query()),
-                GeoLineStrings::descriptor_radii().component,
-            );
+            let fallback_radius: Radius =
+                typed_fallback_for(&query_context, GeoLineStrings::descriptor_radii().component);
 
             // iterate over each chunk and find all relevant component slices
             for (_index, lines, colors, radii) in re_query::range_zip_1x2(
@@ -95,8 +106,8 @@ impl VisualizerSystem for GeoLineStringsVisualizer {
                 // iterate over all instances
                 for (instance_index, (line, color, radius)) in itertools::izip!(
                     lines,
-                    colors.iter().chain(std::iter::repeat(&last_color)),
-                    radii.iter().chain(std::iter::repeat(&last_radii)),
+                    std::iter::chain(colors, std::iter::repeat(&last_color)),
+                    std::iter::chain(radii, std::iter::repeat(&last_radii)),
                 )
                 .enumerate()
                 {
@@ -113,15 +124,14 @@ impl VisualizerSystem for GeoLineStringsVisualizer {
                 }
             }
 
-            self.batches
-                .push((data_result.entity_path.clone(), batch_data));
+            batches.push((data_result.entity_path.clone(), batch_data));
         }
 
-        Ok(VisualizerExecutionOutput::default())
+        Ok(output.with_visualizer_data(GeoLineStringsOutput { batches }))
     }
 }
 
-impl GeoLineStringsVisualizer {
+impl GeoLineStringsOutput {
     /// Compute the [`super::GeoSpan`] of all the points in the visualizer.
     pub fn span(&self) -> Option<super::GeoSpan> {
         super::GeoSpan::from_lat_long(
@@ -176,7 +186,7 @@ impl GeoLineStringsVisualizer {
                             .unwrap_or_else(|| walkers::lat_lon(0.0, 0.0)),
                     ))
                     // Looped lines should be connected with rounded corners, so we always add outward extending caps.
-                    .flags(LineStripFlags::FLAGS_OUTWARD_EXTENDING_ROUND_CAPS)
+                    .flags(LineStripFlags::STRIP_FLAGS_OUTWARD_EXTENDING_ROUND_CAPS)
                     .color(*color)
                     .picking_instance_id(*instance)
                     .outline_mask_ids(

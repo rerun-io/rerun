@@ -15,26 +15,26 @@
 //! In the viewer these logs, if >= info, become notifications. See
 //! `re_ui::notifications` for more information.
 
-mod channel_logger;
-mod result_extensions;
-
 #[cfg(feature = "setup")]
-mod multi_logger;
-
+mod channel_logger;
+mod debug_assert;
+#[cfg(feature = "setup")]
+mod event_visitor;
+mod result_extensions;
 #[cfg(feature = "setup")]
 mod setup;
+#[cfg(feature = "setup")]
+pub use channel_logger::{LogMsg, Receiver, Sender, add_log_msg_receiver};
+#[cfg(feature = "setup")]
+pub use event_visitor::FieldValue;
 
-#[cfg(all(feature = "setup", target_arch = "wasm32"))]
-mod web_logger;
-
-pub use channel_logger::*;
-pub use log::{Level, LevelFilter};
+pub use tracing::Level;
+#[cfg(feature = "setup")]
+pub use tracing_subscriber::filter::LevelFilter;
 // The `re_log::info_once!(…)` etc are nice helpers, but the `log-once` crate is a bit lacking.
 // In the future we should implement our own macros to de-duplicate based on the callsite,
 // similar to how the log console in a browser will automatically suppress duplicates.
-pub use log_once::{debug_once, error_once, info_once, log_once, trace_once, warn_once};
-#[cfg(feature = "setup")]
-pub use multi_logger::{MultiLoggerNotSetupError, add_boxed_logger, add_logger};
+pub use log_once::{debug_once, error_once, info_once, trace_once, warn_once};
 pub use result_extensions::ResultExt;
 #[cfg(all(feature = "setup", not(target_arch = "wasm32")))]
 pub use setup::PanicOnWarnScope;
@@ -42,6 +42,80 @@ pub use setup::PanicOnWarnScope;
 pub use setup::{setup_logging, setup_logging_with_filter};
 // The tracing macros support more syntax features than the log, that's why we use them:
 pub use tracing::{debug, error, info, trace, warn};
+
+/// Log once at the given [`Level`].
+#[macro_export]
+macro_rules! log_once {
+    ($level:expr, $($arg:tt)+) => {
+        match $level {
+            $crate::Level::ERROR => $crate::error_once!($($arg)+),
+            $crate::Level::WARN => $crate::warn_once!($($arg)+),
+            $crate::Level::INFO => $crate::info_once!($($arg)+),
+            $crate::Level::DEBUG => $crate::debug_once!($($arg)+),
+            $crate::Level::TRACE => $crate::trace_once!($($arg)+),
+        }
+    };
+}
+
+/// Log a warning in debug builds, or a debug message in release builds.
+///
+/// This is useful for logging messages that should be visible during development
+/// (to help catch issues), but shouldn't spam the logs in release builds.
+///
+/// In debug builds, the message is prefixed with "DEBUG: " and logged at WARN level.
+/// In release builds, the message is logged at DEBUG level without any prefix.
+#[cfg(debug_assertions)]
+#[macro_export]
+macro_rules! debug_warn {
+    ($($arg:tt)+) => {
+        $crate::warn!("DEBUG: {}", format_args!($($arg)+))
+    };
+}
+
+/// Log a warning in debug builds, or a debug message in release builds.
+///
+/// This is useful for logging messages that should be visible during development
+/// (to help catch issues), but shouldn't spam the logs in release builds.
+///
+/// In debug builds, the message is prefixed with "DEBUG: " and logged at WARN level.
+/// In release builds, the message is logged at DEBUG level without any prefix.
+#[cfg(not(debug_assertions))]
+#[macro_export]
+macro_rules! debug_warn {
+    ($($arg:tt)+) => {
+        $crate::debug!($($arg)+)
+    };
+}
+
+/// Like [`debug_warn!`], but only logs once per call site.
+///
+/// This is useful for logging messages that should be visible during development
+/// (to help catch issues), but shouldn't spam the logs in release builds.
+///
+/// In debug builds, the message is prefixed with "DEBUG: " and logged at WARN level.
+/// In release builds, the message is logged at DEBUG level without any prefix.
+#[cfg(debug_assertions)]
+#[macro_export]
+macro_rules! debug_warn_once {
+    ($($arg:tt)+) => {
+        $crate::warn_once!("DEBUG: {}", format_args!($($arg)+))
+    };
+}
+
+/// Like [`debug_warn!`], but only logs once per call site.
+///
+/// This is useful for logging messages that should be visible during development
+/// (to help catch issues), but shouldn't spam the logs in release builds.
+///
+/// In debug builds, the message is prefixed with "DEBUG: " and logged at WARN level.
+/// In release builds, the message is logged at DEBUG level without any prefix.
+#[cfg(not(debug_assertions))]
+#[macro_export]
+macro_rules! debug_warn_once {
+    ($($arg:tt)+) => {
+        $crate::debug_once!($($arg)+)
+    };
+}
 
 /// Re-exports of other crates.
 pub mod external {
@@ -74,6 +148,7 @@ const CRATES_AT_INFO_LEVEL: &[&str] = &[
     "datafusion",
     "h2",
     "hyper",
+    "opentelemetry", // Spams about NoopMeterProvider
     "prost_build",
     "reqwest", // Spams "starting new connection: …"
     "sqlparser",
@@ -133,6 +208,8 @@ pub fn log_filter_from_env_or_default(default_base_log_filter: &str) -> String {
 /// Adds builtin log level filters for crates that are too verbose.
 #[cfg(not(target_arch = "wasm32"))]
 fn add_builtin_log_filter(base_log_filter: &str) -> String {
+    use std::fmt::Write as _;
+
     let mut rust_log = base_log_filter.to_lowercase();
 
     if base_log_filter != "off" {
@@ -140,7 +217,7 @@ fn add_builtin_log_filter(base_log_filter: &str) -> String {
 
         for crate_name in crate::CRATES_AT_ERROR_LEVEL {
             if !rust_log.contains(&format!("{crate_name}=")) {
-                rust_log += &format!(",{crate_name}=error");
+                write!(rust_log, ",{crate_name}=error").ok();
             }
         }
 
@@ -149,7 +226,7 @@ fn add_builtin_log_filter(base_log_filter: &str) -> String {
 
             for crate_name in crate::CRATES_AT_WARN_LEVEL {
                 if !rust_log.contains(&format!("{crate_name}=")) {
-                    rust_log += &format!(",{crate_name}=warn");
+                    write!(rust_log, ",{crate_name}=warn").ok();
                 }
             }
 
@@ -158,7 +235,7 @@ fn add_builtin_log_filter(base_log_filter: &str) -> String {
 
                 for crate_name in crate::CRATES_AT_INFO_LEVEL {
                     if !rust_log.contains(&format!("{crate_name}=")) {
-                        rust_log += &format!(",{crate_name}=info");
+                        write!(rust_log, ",{crate_name}=info").ok();
                     }
                 }
             }
@@ -172,35 +249,68 @@ fn add_builtin_log_filter(base_log_filter: &str) -> String {
 }
 
 /// Should we log this message given the filter?
-fn is_log_enabled(filter: log::LevelFilter, metadata: &log::Metadata<'_>) -> bool {
+#[cfg(feature = "setup")]
+fn is_log_enabled(
+    filter: tracing_subscriber::filter::LevelFilter,
+    metadata: &tracing::Metadata<'_>,
+) -> bool {
     if CRATES_AT_ERROR_LEVEL
         .iter()
         .any(|crate_name| metadata.target().starts_with(crate_name))
     {
-        return metadata.level() <= log::LevelFilter::Error;
-    }
-
-    if CRATES_AT_WARN_LEVEL
+        *metadata.level() <= tracing_subscriber::filter::LevelFilter::ERROR
+    } else if CRATES_AT_WARN_LEVEL
         .iter()
         .any(|crate_name| metadata.target().starts_with(crate_name))
     {
-        return metadata.level() <= log::LevelFilter::Warn;
-    }
-
-    if CRATES_AT_INFO_LEVEL
+        *metadata.level() <= tracing_subscriber::filter::LevelFilter::WARN
+    } else if CRATES_AT_INFO_LEVEL
         .iter()
         .any(|crate_name| metadata.target().starts_with(crate_name))
     {
-        return metadata.level() <= log::LevelFilter::Info;
+        *metadata.level() <= tracing_subscriber::filter::LevelFilter::INFO
+    } else {
+        *metadata.level() <= filter
     }
-
-    metadata.level() <= filter
 }
 
 /// Check if an environment variable is set to a truthy value.
 ///
-/// Returns `true` if the environment variable is set to "1", "true", or "yes" (case-insensitive).
-/// Returns `false` otherwise (including when the variable is not set).
+/// Returns `true` if the environment variable is set to "1/true/yes/on" (case-insensitive).
+/// Returns `false` if the environment variable is set to "0/false/no/off" (case-insensitive).
+/// Otherwise returns `None`.
+///
+/// # Example
+///
+/// ```ignore
+/// if env_var_flag("TELEMETRY_ENABLED") == Some(true) {
+///     // enable telemetry
+/// }
+/// ```
+pub fn env_var_flag(var_name: &str) -> Option<bool> {
+    match std::env::var(var_name)
+        .ok()?
+        .trim()
+        .to_ascii_lowercase()
+        .as_str()
+    {
+        "" => None,
+        "0" | "false" | "no" | "off" => Some(false),
+        "1" | "true" | "yes" | "on" => Some(true),
+        value => {
+            crate::warn_once!(
+                "Ignoring unrecognized value {value:?} for environment variable {var_name:?} \
+                    (expected one of: 1/true/yes/on, 0/false/no/off); falling back to the default."
+            );
+            None
+        }
+    }
+}
+
+/// Check if an environment variable is set to a truthy value.
+///
+/// Returns `true` if the environment variable is set to "1/true/yes/on" (case-insensitive).
+/// Otherwise returns `false`.
 ///
 /// # Example
 ///
@@ -210,12 +320,21 @@ fn is_log_enabled(filter: log::LevelFilter, metadata: &log::Metadata<'_>) -> boo
 /// }
 /// ```
 pub fn env_var_is_truthy(var_name: &str) -> bool {
-    std::env::var(var_name)
-        .map(|v| {
-            let v = v.to_lowercase();
-            v == "1" || v == "true" || v == "yes"
-        })
-        .unwrap_or(false)
+    env_var_flag(var_name).unwrap_or(false)
+}
+
+/// Is `RERUN_VERY_STRICT` set to a truthy value?
+///
+/// In very strict mode, Rerun may panic anywhere, at any time, for any reason whenever it
+/// detects something it does not like — e.g. out-of-order chunks, unsorted timelines,
+/// or other invariant violations. Very strict mode is meant for development, testing and
+/// CI, never for production: enable it to catch silent corruption early.
+///
+/// The result is cached on the first call, so subsequent calls are very cheap and
+/// changing the environment variable at runtime has no effect.
+pub fn is_rerun_very_strict() -> bool {
+    static VERY_STRICT: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *VERY_STRICT.get_or_init(|| env_var_is_truthy("RERUN_VERY_STRICT"))
 }
 
 /// Shorten a path to a Rust source file.

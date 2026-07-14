@@ -8,7 +8,7 @@ A single-precision 32-bit IEEE 754 floating point number.
 
 ## Arrow datatype
 ```
-float32
+Float32
 ```
 
 ## API reference links
@@ -20,6 +20,7 @@ float32
 ## Used by
 
 * [`AxisLength`](../components/axis_length.md)
+* [`CellSize`](../components/cell_size.md)
 * [`DepthMeter`](../components/depth_meter.md)
 * [`DrawOrder`](../components/draw_order.md)
 * [`FillRatio`](../components/fill_ratio.md)
@@ -30,3 +31,4 @@ float32
 * [`Opacity`](../components/opacity.md)
 * [`Radius`](../components/radius.md)
 * [`StrokeWidth`](../components/stroke_width.md)
+* [`VoxelValue`](../components/voxel_value.md)

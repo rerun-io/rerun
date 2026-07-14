@@ -60,6 +60,7 @@ impl DrawData for GenericSkyboxDrawData {
             DrawPhase::Background,
             DrawDataDrawable {
                 distance_sort_key: 0.0,
+                secondary_sort_key: 0.0,
                 draw_data_payload: 0,
             },
         );
@@ -144,8 +145,8 @@ impl Renderer for GenericSkybox {
                     format: ViewBuilder::MAIN_TARGET_DEPTH_FORMAT,
                     // Pass depth test only if the fragment hasn't been written to.
                     // This allows us to draw the skybox last which is much more efficient than using it as a clear pass!
-                    depth_compare: wgpu::CompareFunction::Equal,
-                    depth_write_enabled: false,
+                    depth_compare: Some(wgpu::CompareFunction::Equal),
+                    depth_write_enabled: Some(false),
                     stencil: Default::default(),
                     bias: Default::default(),
                 }),

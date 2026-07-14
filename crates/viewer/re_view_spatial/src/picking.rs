@@ -9,7 +9,7 @@ use re_renderer::PickingLayerProcessor;
 use crate::PickableTexturedRect;
 use crate::eye::Eye;
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, re_byte_size::SizeBytes)]
 pub enum PickingHitType {
     /// The hit was a textured rect.
     TexturedRect,
@@ -21,11 +21,12 @@ pub enum PickingHitType {
     GuiOverlay,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, re_byte_size::SizeBytes)]
 pub struct PickingRayHit {
     /// What entity or instance got hit by the picking ray.
     ///
     /// The ray hit position may not actually be on this entity, as we allow snapping to closest entity!
+    // `InstancePathHash` doesn't impl `SizeBytes`; it's all POD (no heap).
     pub instance_path_hash: InstancePathHash,
 
     /// Where the ray hit the entity.
@@ -37,7 +38,7 @@ pub struct PickingRayHit {
     pub hit_type: PickingHitType,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, re_byte_size::SizeBytes)]
 pub struct PickingResult {
     /// Picking ray hits.
     ///
@@ -121,7 +122,7 @@ impl PickingContext {
         &self,
         render_ctx: &re_renderer::RenderContext,
         gpu_readback_identifier: re_renderer::GpuReadbackIdentifier,
-        previous_picking_result: &Option<PickingResult>,
+        previous_picking_result: Option<&PickingResult>,
         images: impl Iterator<Item = &'a PickableTexturedRect>,
         ui_rects: &[PickableUiRect],
     ) -> PickingResult {
@@ -136,7 +137,7 @@ impl PickingContext {
         );
 
         let mut image_hits = picking_textured_rects(self, images);
-        image_hits.sort_by(|a, b| b.depth_offset.cmp(&a.depth_offset));
+        image_hits.sort_by_key(|a| std::cmp::Reverse(a.depth_offset));
 
         let ui_hits = picking_ui_rects(self, ui_rects);
 
@@ -189,7 +190,7 @@ fn picking_gpu(
     render_ctx: &re_renderer::RenderContext,
     gpu_readback_identifier: u64,
     context: &PickingContext,
-    previous_picking_result: &Option<PickingResult>,
+    previous_picking_result: Option<&PickingResult>,
 ) -> Option<PickingRayHit> {
     re_tracing::profile_function!();
 

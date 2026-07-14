@@ -14,15 +14,24 @@
 #![doc = document_features::document_features!()]
 //!
 
+mod compact;
 mod dataframe;
+
 mod drop_time_range;
+pub mod entity_tree;
 mod events;
 mod gc;
+mod lazy_store;
 mod lineage;
+mod missing_chunk_reporter;
+mod profile;
 mod properties;
 mod query;
+mod rebatch_videos;
+mod split_thick_thin;
 mod stats;
 mod store;
+mod store_schema;
 mod subscribers;
 mod writes;
 
@@ -37,25 +46,34 @@ pub use {
     re_sorbet::{ColumnDescriptor, ComponentColumnDescriptor, IndexColumnDescriptor},
 };
 
+pub use self::compact::{CompactionOptions, IsStartOfGop};
 pub use self::dataframe::{
     Index, IndexRange, IndexValue, QueryExpression, SparseFillStrategy, StaticColumnSelection,
     ViewContentsSelector,
 };
+pub use self::entity_tree::EntityTree;
 pub use self::events::{
-    ChunkStoreDiff, ChunkStoreDiffAddition, ChunkStoreDiffDeletion, ChunkStoreDiffVirtualAddition,
+    ChunkComponentMeta, ChunkDeletionReason, ChunkMeta, ChunkStoreDiff, ChunkStoreDiffAddition,
+    ChunkStoreDiffDeletion, ChunkStoreDiffSchemaAddition, ChunkStoreDiffVirtualAddition,
     ChunkStoreEvent,
 };
 pub use self::gc::{GarbageCollectionOptions, GarbageCollectionTarget};
 pub use self::lineage::{ChunkDirectLineage, ChunkDirectLineageReport};
-pub use self::properties::ExtractPropertiesError;
+pub use self::missing_chunk_reporter::MissingChunkReporter;
+pub use self::profile::OptimizationProfile;
+pub use self::properties::{ExtractPropertiesError, extract_properties_from_chunks};
 pub use self::query::QueryResults;
 pub use self::stats::{ChunkStoreChunkStats, ChunkStoreStats};
 pub use self::store::{
-    ChunkStore, ChunkStoreConfig, ChunkStoreGeneration, ChunkStoreHandle, ColumnMetadata,
+    ChunkStore, ChunkStoreConfig, ChunkStoreGeneration, ChunkStoreHandle, ChunkStoreHandleWeak,
+    ColumnMetadata, QueriedChunkIdTracker,
 };
+pub use self::store_schema::StoreSchema;
 pub use self::subscribers::{
     ChunkStoreSubscriber, ChunkStoreSubscriberHandle, PerStoreChunkSubscriber,
 };
+
+pub use self::lazy_store::LazyStore;
 
 pub(crate) use self::store::ColumnMetadataState;
 
@@ -76,6 +94,9 @@ pub enum ChunkStoreError {
     #[error("Failed to load data, parsing error: {0:#}")]
     Codec(#[from] re_log_encoding::CodecError),
 
+    #[error(transparent)]
+    Provider(#[from] re_log_encoding::ChunkProviderError),
+
     #[error("Failed to load data, semantic error: {0:#}")]
     Sorbet(#[from] re_sorbet::SorbetError),
 
@@ -86,22 +107,39 @@ pub enum ChunkStoreError {
         value: String,
         err: Box<dyn std::error::Error + Send + Sync>,
     },
+
+    #[error("{0:#}")]
+    VideoRebatch(anyhow::Error),
 }
 
 pub type ChunkStoreResult<T> = ::std::result::Result<T, ChunkStoreError>;
 
 /// What to do when a virtual chunk is missing from the store.
+///
+/// The default for queries should be [`ChunkTrackingMode::Report`], which signals
+/// that the chunk should be downloaded/protected from GC. And similar chunks (same
+/// entity & components) should be prefetched.
+///
+/// When a query is driven by something short-lived, [`ChunkTrackingMode::ReportTransient`]
+/// should be used. That does download/protect the given chunk, but ignores similar chunks.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum OnMissingChunk {
-    /// Ignore the missing chunk, and return partial results.
+pub enum ChunkTrackingMode {
+    /// Ignore missing & used chunks, and return partial results.
     Ignore,
 
-    /// Remember the missing chunk ID in [`ChunkStore::take_missing_chunk_ids`]
-    /// and report it back in [`QueryResults::missing`].
+    /// Remember the missing & used chunk ID in [`ChunkStore::take_tracked_chunk_ids`].
+    ///
+    /// This signals to the prefetcher that this, and similar chunks should be fetched.
     Report,
+
+    /// Like [`ChunkTrackingMode::Report`], but doesn't speculate by prefetching similar chunks.
+    ///
+    /// This should be used for short-lived things like queries on-hover ui.
+    ReportTransient,
 
     /// Panic when a chunk is missing.
     ///
-    /// Only use this in tests!
-    Panic,
+    /// Only use this in tests, or contexts where there really can't be
+    /// any virtual chunks, and you rather panic than have silent bugs.
+    PanicOnMissing,
 }

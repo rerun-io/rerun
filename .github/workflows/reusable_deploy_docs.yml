@@ -15,6 +15,14 @@ on:
       CPP_DOCS_VERSION_NAME:
         required: true
         type: string
+      MARKDOWN_DOCS_VERSION_NAME:
+        required: true
+        type: string
+        description: |
+          Version label to upload markdown docs/examples under on GCS
+          (`gs://rerun-docs/prose/{label}/`). Use `dev` for non-final
+          releases / pushes to main, the semver string for final
+          releases, or `pr-{N}` for PR previews.
       RELEASE_VERSION:
         required: false
         type: string
@@ -44,17 +52,6 @@ env:
   RUSTFLAGS: --deny warnings
   RUSTDOCFLAGS: --deny warnings
 
-  # Disable the GHA backend (Github's 10GB storage) since we use our own GCS backend.
-  # See: https://github.com/marketplace/actions/sccache-action
-  SCCACHE_GHA_ENABLED: "false"
-
-  # Wrap every `rustc` invocation in `sccache`.
-  RUSTC_WRAPPER: "sccache"
-
-  # Not only `sccache` cannot cache incremental builds, it's counter-productive to generate all
-  # these incremental artifacts when running on CI.
-  CARGO_INCREMENTAL: "0"
-
 jobs:
   # ---------------------------------------------------------------------------
 
@@ -66,9 +63,9 @@ jobs:
         with:
           ref: ${{ inputs.RELEASE_COMMIT || (github.event_name == 'pull_request' && github.event.pull_request.head.ref || '') }}
 
-      - uses: prefix-dev/setup-pixi@v0.9.1
+      - uses: prefix-dev/setup-pixi@v0.10.0
         with:
-          pixi-version: v0.55.0
+          pixi-version: v0.71.3
 
       - id: "auth"
         uses: google-github-actions/auth@v2
@@ -85,12 +82,13 @@ jobs:
         run: pixi run uv run --group docs mkdocs build -f rerun_py/mkdocs.yml -d site
 
       - name: "Upload Python Docs (version)"
-        uses: google-github-actions/upload-cloud-storage@v2
+        uses: google-github-actions/upload-cloud-storage@v3
         with:
           path: "rerun_py/site"
           destination: "rerun-docs/docs/python/${{ inputs.PY_DOCS_VERSION_NAME }}"
           process_gcloudignore: false
           parent: false
+          resumable: false
 
       - name: "Update URL rewrite rules for stable"
         if: ${{ inputs.UPDATE_LATEST }}
@@ -145,29 +143,31 @@ jobs:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
-      - uses: prefix-dev/setup-pixi@v0.9.1
+      - uses: prefix-dev/setup-pixi@v0.10.0
         with:
-          pixi-version: v0.55.0
+          pixi-version: v0.71.3
 
       - name: Doxygen C++ docs
         run: pixi run -e cpp cpp-docs
 
       - name: "Upload C++ Docs (version)"
-        uses: google-github-actions/upload-cloud-storage@v2
+        uses: google-github-actions/upload-cloud-storage@v3
         with:
           path: "rerun_cpp/docs/html"
           destination: "rerun-docs/docs/cpp/${{ inputs.RELEASE_VERSION }}"
           process_gcloudignore: false
           parent: false
+          resumable: false
 
       - name: "Upload C++ Docs (named)"
         if: ${{ inputs.UPDATE_LATEST }}
-        uses: google-github-actions/upload-cloud-storage@v2
+        uses: google-github-actions/upload-cloud-storage@v3
         with:
           path: "rerun_cpp/docs/html"
           destination: "rerun-docs/docs/cpp/${{ inputs.CPP_DOCS_VERSION_NAME }}"
           process_gcloudignore: false
           parent: false
+          resumable: false
 
   js-deploy-docs:
     name: JS
@@ -177,9 +177,9 @@ jobs:
         with:
           ref: ${{ inputs.RELEASE_COMMIT || (github.event_name == 'pull_request' && github.event.pull_request.head.ref || '') }}
 
-      - uses: prefix-dev/setup-pixi@v0.9.1
+      - uses: prefix-dev/setup-pixi@v0.10.0
         with:
-          pixi-version: v0.55.0
+          pixi-version: v0.71.3
 
       - id: "auth"
         uses: google-github-actions/auth@v2
@@ -196,14 +196,51 @@ jobs:
         run: pixi run js-docs
 
       - name: "Upload (version)"
-        uses: google-github-actions/upload-cloud-storage@v2
+        uses: google-github-actions/upload-cloud-storage@v3
         with:
           path: "rerun_js/docs"
           destination: "rerun-docs/docs/js/${{ inputs.JS_DOCS_VERSION_NAME }}"
           process_gcloudignore: false
           parent: false
+          resumable: false
 
       - name: "Update URL rewrite rules for stable"
         if: ${{ inputs.UPDATE_LATEST }}
         run: |
           pixi run uv run --group dev scripts/update_docs_url_rewrite.py --version ${{ inputs.JS_DOCS_VERSION_NAME }} --language js
+
+  # ---------------------------------------------------------------------------
+
+  md-deploy-docs:
+    name: Markdown
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.RELEASE_COMMIT || (github.event_name == 'pull_request' && github.event.pull_request.head.ref || '') }}
+
+      - uses: prefix-dev/setup-pixi@v0.10.0
+        with:
+          pixi-version: v0.71.3
+
+      - id: "auth"
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+
+      - name: "Upload markdown docs & examples to GCS"
+        env:
+          ISR_BYPASS_TOKEN: ${{ secrets.ISR_BYPASS_TOKEN }}
+          VERSION_LABEL: ${{ inputs.MARKDOWN_DOCS_VERSION_NAME }}
+          MARK_LATEST: ${{ inputs.UPDATE_LATEST }}
+          RERUN_COMMIT: ${{ inputs.RELEASE_COMMIT }}
+        run: |
+          ARGS=(upload --version "$VERSION_LABEL" --purge-token "$ISR_BYPASS_TOKEN")
+          if [ "$MARK_LATEST" = "true" ]; then
+            ARGS+=(--mark-latest)
+          fi
+          if [ -n "$RERUN_COMMIT" ]; then
+            ARGS+=(--rerun-commit "$RERUN_COMMIT")
+          fi
+          pixi run uv run scripts/ci/upload_docs.py "${ARGS[@]}"

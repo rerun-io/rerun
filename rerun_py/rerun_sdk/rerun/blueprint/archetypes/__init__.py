@@ -23,9 +23,11 @@ from .plot_background import PlotBackground
 from .plot_legend import PlotLegend
 from .scalar_axis import ScalarAxis
 from .spatial_information import SpatialInformation
+from .table_blueprint import TableBlueprint
 from .tensor_scalar_mapping import TensorScalarMapping
 from .tensor_slice_selection import TensorSliceSelection
 from .tensor_view_fit import TensorViewFit
+from .text_document_format import TextDocumentFormat
 from .text_log_columns import TextLogColumns
 from .text_log_format import TextLogFormat
 from .text_log_rows import TextLogRows
@@ -60,9 +62,11 @@ __all__ = [
     "PlotLegend",
     "ScalarAxis",
     "SpatialInformation",
+    "TableBlueprint",
     "TensorScalarMapping",
     "TensorSliceSelection",
     "TensorViewFit",
+    "TextDocumentFormat",
     "TextLogColumns",
     "TextLogFormat",
     "TextLogRows",

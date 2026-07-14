@@ -2,7 +2,7 @@ use re_log_types::hash::Hash64;
 use re_sdk_types::components;
 
 /// A 64 bit hash of [`components::GraphNode`] with very small risk of collision.
-#[derive(Copy, Clone, Eq, PartialOrd, Ord)]
+#[derive(Copy, Clone, Eq, PartialOrd, Ord, re_byte_size::SizeBytes)]
 pub struct GraphNodeHash(Hash64);
 
 impl nohash_hasher::IsEnabled for GraphNodeHash {}

@@ -8,7 +8,7 @@ A 64-bit number describing either nanoseconds OR sequence numbers.
 
 ## Arrow datatype
 ```
-int64
+Int64
 ```
 
 ## API reference links

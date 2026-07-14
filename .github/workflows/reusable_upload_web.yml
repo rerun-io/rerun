@@ -62,6 +62,11 @@ jobs:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
+      - name: "Set up Cloud SDK"
+        uses: "google-github-actions/setup-gcloud@v2"
+        with:
+          version: ">= 363.0.0"
+
       - name: Get sha
         id: get-sha
         run: |
@@ -70,7 +75,7 @@ jobs:
 
       - name: "Upload web-viewer (commit)"
         if: ${{ !inputs.NIGHTLY }}
-        uses: google-github-actions/upload-cloud-storage@v2
+        uses: google-github-actions/upload-cloud-storage@v3
         with:
           path: "crates/viewer/re_web_viewer_server/web_viewer"
           destination: "rerun-web-viewer/commit/${{ steps.get-sha.outputs.sha }}"
@@ -79,7 +84,7 @@ jobs:
 
       - name: "Upload web-viewer (tagged)"
         if: inputs.MARK_TAGGED_VERSION
-        uses: google-github-actions/upload-cloud-storage@v2
+        uses: google-github-actions/upload-cloud-storage@v3
         with:
           path: "crates/viewer/re_web_viewer_server/web_viewer"
           destination: "rerun-web-viewer/version/${{inputs.RELEASE_VERSION}}"
@@ -88,7 +93,7 @@ jobs:
 
       - name: "Upload web-viewer (adhoc)"
         if: ${{ inputs.ADHOC_NAME != '' }}
-        uses: google-github-actions/upload-cloud-storage@v2
+        uses: google-github-actions/upload-cloud-storage@v3
         with:
           path: "crates/viewer/re_web_viewer_server/web_viewer"
           destination: "rerun-web-viewer/adhoc/${{inputs.ADHOC_NAME}}"
@@ -97,7 +102,7 @@ jobs:
 
       - name: "Upload web-viewer (prerelease)"
         if: github.ref == 'refs/heads/main'
-        uses: google-github-actions/upload-cloud-storage@v2
+        uses: google-github-actions/upload-cloud-storage@v3
         with:
           path: "crates/viewer/re_web_viewer_server/web_viewer"
           destination: "rerun-web-viewer/prerelease"
@@ -108,7 +113,7 @@ jobs:
 
       - name: "Upload web-viewer (main)"
         if: github.ref == 'refs/heads/main'
-        uses: google-github-actions/upload-cloud-storage@v2
+        uses: google-github-actions/upload-cloud-storage@v3
         with:
           path: "crates/viewer/re_web_viewer_server/web_viewer"
           destination: "rerun-web-viewer/version/main"
@@ -119,7 +124,7 @@ jobs:
 
       - name: "Upload web-viewer (pr)"
         if: ${{ inputs.PR_NUMBER != '' }}
-        uses: google-github-actions/upload-cloud-storage@v2
+        uses: google-github-actions/upload-cloud-storage@v3
         with:
           path: "crates/viewer/re_web_viewer_server/web_viewer"
           destination: "rerun-web-viewer/pr/${{ inputs.PR_NUMBER }}"
@@ -130,7 +135,7 @@ jobs:
 
       - name: "Upload web-viewer (nightly)"
         if: ${{ inputs.NIGHTLY }}
-        uses: google-github-actions/upload-cloud-storage@v2
+        uses: google-github-actions/upload-cloud-storage@v3
         with:
           path: "crates/viewer/re_web_viewer_server/web_viewer"
           destination: "rerun-web-viewer/version/nightly"
@@ -139,10 +144,25 @@ jobs:
           headers: |-
             cache-control: no-cache, max-age=0
 
+      # Upload extensionless HTML aliases (signed-in, signed-out) to the
+      # bucket root with the correct Content-Type. The OAuth redirect uses the
+      # origin (app.rerun.io/signed-in), not a versioned path.
+      - name: "Upload HTML aliases to bucket root"
+        run: |
+          cd crates/viewer/re_web_viewer_server/web_viewer
+          for f in *.html; do
+            name="${f%.html}"
+            if [ "$name" != "index" ] && [ "$name" != "index_bundled" ]; then
+              gcloud storage cp --content-type="text/html" "$f" "gs://rerun-web-viewer/${name}"
+            fi
+          done
+
       - name: Status comment
         if: success() && github.event_name == 'pull_request'
         # https://github.com/mshick/add-pr-comment
-        uses: mshick/add-pr-comment@v2.8.2
+        uses: mshick/add-pr-comment@v3.9.1
+        # GitHub API is very unreliable. We don't want to fail the entire workflow just because we couldn't post a comment.
+        continue-on-error: true
         with:
           message-id: "web-viewer-build-status"
           repo-token: ${{ secrets.GITHUB_TOKEN }}
@@ -160,7 +180,9 @@ jobs:
       - name: Status comment
         if: failure() && github.event_name == 'pull_request'
         # https://github.com/mshick/add-pr-comment
-        uses: mshick/add-pr-comment@v2.8.2
+        uses: mshick/add-pr-comment@v3.9.1
+        # GitHub API is very unreliable. We don't want to fail the entire workflow just because we couldn't post a comment.
+        continue-on-error: true
         with:
           message-id: "web-viewer-build-status"
           repo-token: ${{ secrets.GITHUB_TOKEN }}

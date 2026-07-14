@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, ClassVar
 
 import numpy as np
 import pyarrow as pa
@@ -15,6 +15,7 @@ from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
+    ComponentDescriptor,
 )
 from ..error_utils import catch_and_log_exceptions
 
@@ -43,13 +44,15 @@ class CoordinateFrame(Archetype):
     rr.log(
         "red_box",
         rr.Boxes3D(half_sizes=[0.5, 0.5, 0.5], colors=[255, 0, 0]),
-        # Use Transform3D to place the box, so we actually change the underlying coordinate frame and not just the box's pose.
+        # Use Transform3D to place the box, so we actually change the underlying
+        # coordinate frame and not just the box's pose.
         rr.Transform3D(translation=[2.0, 0.0, 0.0]),
     )
     rr.log(
         "blue_box",
         rr.Boxes3D(half_sizes=[0.5, 0.5, 0.5], colors=[0, 0, 255]),
-        # Use Transform3D to place the box, so we actually change the underlying coordinate frame and not just the box's pose.
+        # Use Transform3D to place the box, so we actually change the underlying
+        # coordinate frame and not just the box's pose.
         rr.Transform3D(translation=[-2.0, 0.0, 0.0]),
     )
     rr.log("point", rr.Points3D([0.0, 0.0, 0.0], radii=0.5))
@@ -71,6 +74,8 @@ class CoordinateFrame(Archetype):
 
     """
 
+    NAME: ClassVar[str] = "rerun.archetypes.CoordinateFrame"
+
     def __init__(self: Any, frame: datatypes.Utf8Like) -> None:
         """
         Create a new instance of the CoordinateFrame archetype.
@@ -79,6 +84,8 @@ class CoordinateFrame(Archetype):
         ----------
         frame:
             The coordinate frame to use for the current entity.
+
+            Note that empty strings are not valid transform frame IDs.
 
         """
 
@@ -118,6 +125,8 @@ class CoordinateFrame(Archetype):
         frame:
             The coordinate frame to use for the current entity.
 
+            Note that empty strings are not valid transform frame IDs.
+
         """
 
         inst = cls.__new__(cls)
@@ -140,6 +149,14 @@ class CoordinateFrame(Archetype):
         """Clear all the fields of a `CoordinateFrame`."""
         return cls.from_fields(clear_unset=True)
 
+    @staticmethod
+    def descriptor_frame() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "CoordinateFrame:frame",
+            archetype=CoordinateFrame.NAME,
+            component_type=components.TransformFrameIdBatch._COMPONENT_TYPE,
+        )
+
     @classmethod
     def columns(
         cls,
@@ -158,6 +175,8 @@ class CoordinateFrame(Archetype):
         ----------
         frame:
             The coordinate frame to use for the current entity.
+
+            Note that empty strings are not valid transform frame IDs.
 
         """
 
@@ -181,17 +200,21 @@ class CoordinateFrame(Archetype):
             if pa.types.is_primitive(arrow_array.type) or pa.types.is_fixed_size_list(arrow_array.type):
                 param = kwargs[batch.component_descriptor().component]  # type: ignore[index]
                 shape = np.shape(param)  # type: ignore[arg-type]
-                elem_flat_len = int(np.prod(shape[1:])) if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
-
-                if pa.types.is_fixed_size_list(arrow_array.type) and arrow_array.type.list_size == elem_flat_len:
-                    # If the product of the last dimensions of the shape are equal to the size of the fixed size list array,
-                    # we have `num_rows` single element batches (each element is a fixed sized list).
-                    # (This should have been already validated by conversion to the arrow_array)
-                    batch_length = 1
-                else:
-                    batch_length = shape[1] if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
-
                 num_rows = shape[0] if len(shape) >= 1 else 1  # type: ignore[redundant-expr,misc]
+
+                if pa.types.is_fixed_size_list(arrow_array.type):
+                    elem_flat_len = int(np.prod(shape[1:])) if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
+                    if arrow_array.type.list_size == elem_flat_len:
+                        # The product of the last dimensions of the shape are equal to the size of the fixed size list array,
+                        # so we have `num_rows` single element batches (each element is a fixed sized list).
+                        batch_length = 1
+                    else:
+                        batch_length = shape[1] if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
+                else:
+                    # For primitive types, derive batch_length from the actual arrow array length
+                    # since the input shape can be misleading (e.g. colors [R,G,B] -> single uint32).
+                    batch_length = len(arrow_array) // num_rows if num_rows > 0 else 1
+
                 sizes = batch_length * np.ones(num_rows)
             else:
                 # For non-primitive types, default to partitioning each element separately.
@@ -207,6 +230,8 @@ class CoordinateFrame(Archetype):
         converter=components.TransformFrameIdBatch._converter,  # type: ignore[misc]
     )
     # The coordinate frame to use for the current entity.
+    #
+    # Note that empty strings are not valid transform frame IDs.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

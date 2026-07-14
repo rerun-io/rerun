@@ -9,6 +9,7 @@
 #include "../components/class_id.hpp"
 #include "../components/color.hpp"
 #include "../components/keypoint_id.hpp"
+#include "../components/point_shading.hpp"
 #include "../components/position3d.hpp"
 #include "../components/radius.hpp"
 #include "../components/show_labels.hpp"
@@ -33,11 +34,14 @@ namespace rerun::archetypes {
     /// ```cpp
     /// #include <rerun.hpp>
     ///
-    /// int main() {
+    /// int main(int argc, char* argv[]) {
     ///     const auto rec = rerun::RecordingStream("rerun_example_points3d");
     ///     rec.spawn().exit_on_failure();
     ///
-    ///     rec.log("points", rerun::Points3D({{0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}}));
+    ///     rec.log(
+    ///         "points",
+    ///         rerun::Points3D({{0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}})
+    ///     );
     /// }
     /// ```
     ///
@@ -50,8 +54,9 @@ namespace rerun::archetypes {
     /// #include <algorithm>
     /// #include <vector>
     ///
-    /// int main() {
-    ///     const auto rec = rerun::RecordingStream("rerun_example_points3d_row_updates");
+    /// int main(int argc, char* argv[]) {
+    ///     const auto rec =
+    ///         rerun::RecordingStream("rerun_example_points3d_row_updates");
     ///     rec.spawn().exit_on_failure();
     ///
     ///     // Prepare a point cloud that evolves over 5 timesteps, changing the number of points in the process.
@@ -66,14 +71,17 @@ namespace rerun::archetypes {
     ///     };
     ///
     ///     // At each timestep, all points in the cloud share the same but changing color and radius.
-    ///     std::vector<uint32_t> colors = {0xFF0000FF, 0x00FF00FF, 0x0000FFFF, 0xFFFF00FF, 0x00FFFFFF};
+    ///     std::vector<uint32_t> colors =
+    ///         {0xFF0000FF, 0x00FF00FF, 0x0000FFFF, 0xFFFF00FF, 0x00FFFFFF};
     ///     std::vector<float> radii = {0.05f, 0.01f, 0.2f, 0.1f, 0.3f};
     ///
     ///     for (size_t i = 0; i <5; i++) {
     ///         rec.set_time_duration_secs("time", 10.0 + static_cast<double>(i));
     ///         rec.log(
     ///             "points",
-    ///             rerun::Points3D(positions[i]).with_colors(colors[i]).with_radii(radii[i])
+    ///             rerun::Points3D(positions[i])
+    ///                 .with_colors(colors[i])
+    ///                 .with_radii(radii[i])
     ///         );
     ///     }
     /// }
@@ -89,8 +97,9 @@ namespace rerun::archetypes {
     ///
     /// using namespace std::chrono_literals;
     ///
-    /// int main() {
-    ///     const auto rec = rerun::RecordingStream("rerun_example_points3d_column_updates");
+    /// int main(int argc, char* argv[]) {
+    ///     const auto rec =
+    ///         rerun::RecordingStream("rerun_example_points3d_column_updates");
     ///     rec.spawn().exit_on_failure();
     ///
     ///     // Prepare a point cloud that evolves over 5 timesteps, changing the number of points in the process.
@@ -105,16 +114,20 @@ namespace rerun::archetypes {
     ///     };
     ///
     ///     // At each timestep, all points in the cloud share the same but changing color and radius.
-    ///     std::vector<uint32_t> colors = {0xFF0000FF, 0x00FF00FF, 0x0000FFFF, 0xFFFF00FF, 0x00FFFFFF};
+    ///     std::vector<uint32_t> colors =
+    ///         {0xFF0000FF, 0x00FF00FF, 0x0000FFFF, 0xFFFF00FF, 0x00FFFFFF};
     ///     std::vector<float> radii = {0.05f, 0.01f, 0.2f, 0.1f, 0.3f};
     ///
     ///     // Log at seconds 10-14
     ///     auto times = rerun::Collection{10s, 11s, 12s, 13s, 14s};
-    ///     auto time_column = rerun::TimeColumn::from_durations("time", std::move(times));
+    ///     auto time_column =
+    ///         rerun::TimeColumn::from_durations("time", std::move(times));
     ///
     ///     // Partition our data as expected across the 5 timesteps.
-    ///     auto position = rerun::Points3D().with_positions(positions).columns({2, 4, 4, 3, 4});
-    ///     auto color_and_radius = rerun::Points3D().with_colors(colors).with_radii(radii).columns();
+    ///     auto position =
+    ///         rerun::Points3D().with_positions(positions).columns({2, 4, 4, 3, 4});
+    ///     auto color_and_radius =
+    ///         rerun::Points3D().with_colors(colors).with_radii(radii).columns();
     ///
     ///     rec.send_columns("points", time_column, position, color_and_radius);
     /// }
@@ -129,8 +142,9 @@ namespace rerun::archetypes {
     /// #include <algorithm>
     /// #include <vector>
     ///
-    /// int main() {
-    ///     const auto rec = rerun::RecordingStream("rerun_example_points3d_partial_updates");
+    /// int main(int argc, char* argv[]) {
+    ///     const auto rec =
+    ///         rerun::RecordingStream("rerun_example_points3d_partial_updates");
     ///     rec.spawn().exit_on_failure();
     ///
     ///     std::vector<rerun::Position3D> positions;
@@ -162,7 +176,12 @@ namespace rerun::archetypes {
     ///
     ///         // Update only the colors and radii, leaving everything else as-is.
     ///         rec.set_time_sequence("frame", i);
-    ///         rec.log("points", rerun::Points3D::update_fields().with_radii(radii).with_colors(colors));
+    ///         rec.log(
+    ///             "points",
+    ///             rerun::Points3D::update_fields().with_radii(radii).with_colors(
+    ///                 colors
+    ///             )
+    ///         );
     ///     }
     ///
     ///     std::vector<rerun::Radius> radii;
@@ -170,7 +189,12 @@ namespace rerun::archetypes {
     ///
     ///     // Update the positions and radii, and clear everything else in the process.
     ///     rec.set_time_sequence("frame", 20);
-    ///     rec.log("points", rerun::Points3D::clear_fields().with_positions(positions).with_radii(radii));
+    ///     rec.log(
+    ///         "points",
+    ///         rerun::Points3D::clear_fields().with_positions(positions).with_radii(
+    ///             radii
+    ///         )
+    ///     );
     /// }
     /// ```
     struct Points3D {
@@ -194,6 +218,11 @@ namespace rerun::archetypes {
         /// If not set, labels will automatically appear when there is exactly one label for this entity
         /// or the number of instances on this entity is under a certain threshold.
         std::optional<ComponentBatch> show_labels;
+
+        /// How points should be shaded.
+        ///
+        /// If not set, points are rendered with `components::PointShading::Gradient` by default.
+        std::optional<ComponentBatch> point_shading;
 
         /// Optional class Ids for the points.
         ///
@@ -235,6 +264,11 @@ namespace rerun::archetypes {
         static constexpr auto Descriptor_show_labels = ComponentDescriptor(
             ArchetypeName, "Points3D:show_labels",
             Loggable<rerun::components::ShowLabels>::ComponentType
+        );
+        /// `ComponentDescriptor` for the `point_shading` field.
+        static constexpr auto Descriptor_point_shading = ComponentDescriptor(
+            ArchetypeName, "Points3D:point_shading",
+            Loggable<rerun::components::PointShading>::ComponentType
         );
         /// `ComponentDescriptor` for the `class_ids` field.
         static constexpr auto Descriptor_class_ids = ComponentDescriptor(
@@ -311,6 +345,27 @@ namespace rerun::archetypes {
         ) && {
             show_labels = ComponentBatch::from_loggable(_show_labels, Descriptor_show_labels)
                               .value_or_throw();
+            return std::move(*this);
+        }
+
+        /// How points should be shaded.
+        ///
+        /// If not set, points are rendered with `components::PointShading::Gradient` by default.
+        Points3D with_point_shading(const rerun::components::PointShading& _point_shading) && {
+            point_shading = ComponentBatch::from_loggable(_point_shading, Descriptor_point_shading)
+                                .value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `point_shading` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_point_shading` should
+        /// be used when logging a single row's worth of data.
+        Points3D with_many_point_shading(
+            const Collection<rerun::components::PointShading>& _point_shading
+        ) && {
+            point_shading = ComponentBatch::from_loggable(_point_shading, Descriptor_point_shading)
+                                .value_or_throw();
             return std::move(*this);
         }
 

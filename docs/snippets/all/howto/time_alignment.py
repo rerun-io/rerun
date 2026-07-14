@@ -1,13 +1,18 @@
+"""Efficiently time align multirate columns."""
+
 # region: setup
 from __future__ import annotations
 
 from pathlib import Path
 
 import numpy as np
-import rerun as rr
-from datafusion import col, functions as F
+from datafusion import col
 
-sample_5_path = Path(__file__).parents[4] / "tests" / "assets" / "rrd" / "sample_5"
+import rerun as rr
+
+sample_5_path = (
+    Path(__file__).parents[4] / "tests" / "assets" / "rrd" / "sample_5"
+)
 
 server = rr.server.Server(datasets={"sample_dataset": sample_5_path})
 CATALOG_URL = server.url()
@@ -16,19 +21,16 @@ dataset = client.get_dataset(name="sample_dataset")
 # endregion: setup
 
 # region: extract_timepoints
-cheaper_column = (
-    dataset.filter_segments("ILIAD_sbd7d2c6_2023_12_24_16h_20m_37s")
-    .filter_contents("/observation/joint_positions")
-    .reader(index="real_time")
-)
-# TODO(RR-3189): Fix when we have a cleaner way to extract this time range efficiently
-min_max = cheaper_column.aggregate(
-    "rerun_segment_id", [F.min(col("real_time")).alias("min"), F.max(col("real_time")).alias("max")]
-)
+view = dataset.filter_segments(
+    "ILIAD_sbd7d2c6_2023_12_24_16h_20m_37s"
+).filter_contents("/observation/joint_positions")
+ranges = view.get_index_ranges().to_arrow_table()
 
-min_time = min_max.to_arrow_table()["min"].to_numpy().flatten()
-max_time = min_max.to_arrow_table()["max"].to_numpy().flatten()
-desired_timestamps = np.arange(min_time[0], max_time[0], np.timedelta64(100, "ms"))  # 10Hz
+min_time = ranges["real_time:start"].to_numpy().flatten()
+max_time = ranges["real_time:end"].to_numpy().flatten()
+desired_timestamps = np.arange(
+    min_time[0], max_time[0], np.timedelta64(100, "ms")
+)  # 10Hz
 # endregion: extract_timepoints
 
 # region: time_align
@@ -36,9 +38,14 @@ desired_timestamps = np.arange(min_time[0], max_time[0], np.timedelta64(100, "ms
 # specify desired timestamps
 # forward fill to specified time for alignment
 fixed_hz = (
-    dataset.filter_segments("ILIAD_sbd7d2c6_2023_12_24_16h_20m_37s")
+    dataset
+    .filter_segments("ILIAD_sbd7d2c6_2023_12_24_16h_20m_37s")
     .filter_contents(["/observation/joint_positions", "/camera/ext1/**"])
-    .reader(index="real_time", using_index_values=desired_timestamps, fill_latest_at=True)
+    .reader(
+        index="real_time",
+        using_index_values=desired_timestamps,
+        fill_latest_at=True,
+    )
 )
 
 # Filter out partially sparse rows (since one column may start before the other)

@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 import numpy as np
 import pyarrow as pa
 from attrs import define, field
@@ -13,6 +15,7 @@ from .. import components, datatypes
 from .._baseclasses import (
     Archetype,
     ComponentColumnList,
+    ComponentDescriptor,
 )
 from ..error_utils import catch_and_log_exceptions
 from .transform3d_ext import Transform3DExt
@@ -90,7 +93,9 @@ class Transform3D(Transform3DExt, Archetype):
     rr.set_time("tick", sequence=0)
     rr.log(
         "box",
-        rr.Boxes3D(half_sizes=[4.0, 2.0, 1.0], fill_mode=rr.components.FillMode.Solid),
+        rr.Boxes3D(
+            half_sizes=[4.0, 2.0, 1.0], fill_mode=rr.components.FillMode.Solid
+        ),
         rr.TransformAxes3D(10.0),
     )
 
@@ -100,7 +105,9 @@ class Transform3D(Transform3DExt, Archetype):
             "box",
             rr.Transform3D(
                 translation=[0, 0, t / 10.0],
-                rotation_axis_angle=rr.RotationAxisAngle(axis=[0.0, 1.0, 0.0], radians=truncated_radians(t * 4)),
+                rotation_axis_angle=rr.RotationAxisAngle(
+                    axis=[0.0, 1.0, 0.0], radians=truncated_radians(t * 4)
+                ),
             ),
         )
     ```
@@ -130,7 +137,9 @@ class Transform3D(Transform3DExt, Archetype):
     rr.set_time("tick", sequence=0)
     rr.log(
         "box",
-        rr.Boxes3D(half_sizes=[4.0, 2.0, 1.0], fill_mode=rr.components.FillMode.Solid),
+        rr.Boxes3D(
+            half_sizes=[4.0, 2.0, 1.0], fill_mode=rr.components.FillMode.Solid
+        ),
         rr.TransformAxes3D(10.0),
     )
 
@@ -140,7 +149,10 @@ class Transform3D(Transform3DExt, Archetype):
         columns=rr.Transform3D.columns(
             translation=[[0, 0, t / 10.0] for t in range(100)],
             rotation_axis_angle=[
-                rr.RotationAxisAngle(axis=[0.0, 1.0, 0.0], radians=truncated_radians(t * 4)) for t in range(100)
+                rr.RotationAxisAngle(
+                    axis=[0.0, 1.0, 0.0], radians=truncated_radians(t * 4)
+                )
+                for t in range(100)
             ],
         ),
     )
@@ -171,7 +183,9 @@ class Transform3D(Transform3DExt, Archetype):
     # Set up a 3D box.
     rr.log(
         "box",
-        rr.Boxes3D(half_sizes=[4.0, 2.0, 1.0], fill_mode=rr.components.FillMode.Solid),
+        rr.Boxes3D(
+            half_sizes=[4.0, 2.0, 1.0], fill_mode=rr.components.FillMode.Solid
+        ),
     )
 
     # Update only the rotation of the box.
@@ -180,7 +194,9 @@ class Transform3D(Transform3DExt, Archetype):
         rr.log(
             "box",
             rr.Transform3D.from_fields(
-                rotation_axis_angle=rr.RotationAxisAngle(axis=[0.0, 1.0, 0.0], radians=rad),
+                rotation_axis_angle=rr.RotationAxisAngle(
+                    axis=[0.0, 1.0, 0.0], radians=rad
+                ),
             ),
         )
 
@@ -197,7 +213,9 @@ class Transform3D(Transform3DExt, Archetype):
         rr.log(
             "box",
             rr.Transform3D.from_fields(
-                rotation_axis_angle=rr.RotationAxisAngle(axis=[0.0, 1.0, 0.0], radians=rad),
+                rotation_axis_angle=rr.RotationAxisAngle(
+                    axis=[0.0, 1.0, 0.0], radians=rad
+                ),
             ),
         )
 
@@ -218,6 +236,8 @@ class Transform3D(Transform3DExt, Archetype):
     </center>
 
     """
+
+    NAME: ClassVar[str] = "rerun.archetypes.Transform3D"
 
     # __init__ can be found in transform3d_ext.py
 
@@ -338,6 +358,70 @@ class Transform3D(Transform3DExt, Archetype):
         """Clear all the fields of a `Transform3D`."""
         return cls.from_fields(clear_unset=True)
 
+    @staticmethod
+    def descriptor_translation() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Transform3D:translation",
+            archetype=Transform3D.NAME,
+            component_type=components.Translation3DBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_rotation_axis_angle() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Transform3D:rotation_axis_angle",
+            archetype=Transform3D.NAME,
+            component_type=components.RotationAxisAngleBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_quaternion() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Transform3D:quaternion",
+            archetype=Transform3D.NAME,
+            component_type=components.RotationQuatBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_scale() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Transform3D:scale",
+            archetype=Transform3D.NAME,
+            component_type=components.Scale3DBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_mat3x3() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Transform3D:mat3x3",
+            archetype=Transform3D.NAME,
+            component_type=components.TransformMat3x3Batch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_relation() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Transform3D:relation",
+            archetype=Transform3D.NAME,
+            component_type=components.TransformRelationBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_child_frame() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Transform3D:child_frame",
+            archetype=Transform3D.NAME,
+            component_type=components.TransformFrameIdBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_parent_frame() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "Transform3D:parent_frame",
+            archetype=Transform3D.NAME,
+            component_type=components.TransformFrameIdBatch._COMPONENT_TYPE,
+        )
+
     @classmethod
     def columns(
         cls,
@@ -446,17 +530,21 @@ class Transform3D(Transform3DExt, Archetype):
             if pa.types.is_primitive(arrow_array.type) or pa.types.is_fixed_size_list(arrow_array.type):
                 param = kwargs[batch.component_descriptor().component]  # type: ignore[index]
                 shape = np.shape(param)  # type: ignore[arg-type]
-                elem_flat_len = int(np.prod(shape[1:])) if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
-
-                if pa.types.is_fixed_size_list(arrow_array.type) and arrow_array.type.list_size == elem_flat_len:
-                    # If the product of the last dimensions of the shape are equal to the size of the fixed size list array,
-                    # we have `num_rows` single element batches (each element is a fixed sized list).
-                    # (This should have been already validated by conversion to the arrow_array)
-                    batch_length = 1
-                else:
-                    batch_length = shape[1] if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
-
                 num_rows = shape[0] if len(shape) >= 1 else 1  # type: ignore[redundant-expr,misc]
+
+                if pa.types.is_fixed_size_list(arrow_array.type):
+                    elem_flat_len = int(np.prod(shape[1:])) if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
+                    if arrow_array.type.list_size == elem_flat_len:
+                        # The product of the last dimensions of the shape are equal to the size of the fixed size list array,
+                        # so we have `num_rows` single element batches (each element is a fixed sized list).
+                        batch_length = 1
+                    else:
+                        batch_length = shape[1] if len(shape) > 1 else 1  # type: ignore[redundant-expr,misc]
+                else:
+                    # For primitive types, derive batch_length from the actual arrow array length
+                    # since the input shape can be misleading (e.g. colors [R,G,B] -> single uint32).
+                    batch_length = len(arrow_array) // num_rows if num_rows > 0 else 1
+
                 sizes = batch_length * np.ones(num_rows)
             else:
                 # For non-primitive types, default to partitioning each element separately.

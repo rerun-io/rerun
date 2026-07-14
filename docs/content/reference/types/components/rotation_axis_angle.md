@@ -14,10 +14,10 @@ angle is zero in which case it is treated as an identity.
 
 ## Arrow datatype
 ```
-Struct {
-    axis: FixedSizeList<3, float32>
-    angle: float32
-}
+Struct(
+    "axis": non-null FixedSizeList(3 x non-null Float32)
+    "angle": non-null Float32
+)
 ```
 
 ## API reference links
@@ -32,5 +32,7 @@ Struct {
 * [`Capsules3D`](../archetypes/capsules3d.md)
 * [`Cylinders3D`](../archetypes/cylinders3d.md)
 * [`Ellipsoids3D`](../archetypes/ellipsoids3d.md)
+* [`GridMap`](../archetypes/grid_map.md)
 * [`InstancePoses3D`](../archetypes/instance_poses3d.md)
 * [`Transform3D`](../archetypes/transform3d.md)
+* [`VoxelGridMap`](../archetypes/voxel_grid_map.md)

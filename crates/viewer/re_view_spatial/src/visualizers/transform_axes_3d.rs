@@ -1,3 +1,4 @@
+use itertools::chain;
 use re_entity_db::InstancePathHash;
 use re_log_types::{EntityPath, Instance};
 use re_sdk_types::Archetype as _;
@@ -7,28 +8,24 @@ use re_sdk_types::archetypes::{
 use re_sdk_types::components::{AxisLength, ShowLabels};
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
-    IdentifiedViewSystem, RequiredComponents, ViewContext, ViewContextCollection, ViewQuery,
-    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
+    IdentifiedViewSystem, ViewClass as _, ViewContext, ViewContextCollection, ViewQuery,
+    ViewSystemExecutionError, VisualizabilityConstraints, VisualizerExecutionOutput,
+    VisualizerQueryInfo, VisualizerReportSeverity, VisualizerSystem,
 };
 
 use super::{SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget};
 use crate::contexts::TransformTreeContext;
-use crate::view_kind::SpatialViewKind;
 use crate::visualizers::utilities::format_transform_info_result;
 
-pub struct TransformAxes3DVisualizer(SpatialViewVisualizerData);
-
-impl Default for TransformAxes3DVisualizer {
-    fn default() -> Self {
-        Self(SpatialViewVisualizerData::new(Some(
-            SpatialViewKind::ThreeD,
-        )))
-    }
-}
+#[derive(Default)]
+pub struct TransformAxes3DVisualizer;
 
 impl IdentifiedViewSystem for TransformAxes3DVisualizer {
     fn identifier() -> re_viewer_context::ViewSystemIdentifier {
-        "TransformAxes3D".into()
+        re_viewer_context::external::re_string_interner::intern_static!(
+            re_viewer_context::ViewSystemIdentifier,
+            "TransformAxes3D"
+        )
     }
 }
 
@@ -37,30 +34,39 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
         &self,
         _app_options: &re_viewer_context::AppOptions,
     ) -> VisualizerQueryInfo {
-        let mut query_info = VisualizerQueryInfo::from_archetype::<TransformAxes3D>();
-
-        // Make this visualizer available for any entity with Transform3D components
-        query_info.required = RequiredComponents::AnyComponent(
-            Transform3D::all_component_identifiers()
-                .chain(CoordinateFrame::all_component_identifiers())
-                .chain(InstancePoses3D::all_component_identifiers())
-                .chain(Pinhole::all_component_identifiers())
-                .chain(TransformAxes3D::all_component_identifiers())
+        VisualizerQueryInfo {
+            relevant_archetype: Some(TransformAxes3D::name()),
+            // Make this visualizer available for any entity with Transform3D components
+            constraints: VisualizabilityConstraints::AnyBuiltinComponent(
+                chain!(
+                    Transform3D::all_component_identifiers(),
+                    CoordinateFrame::all_component_identifiers(),
+                    InstancePoses3D::all_component_identifiers(),
+                    Pinhole::all_component_identifiers(),
+                    TransformAxes3D::all_component_identifiers(),
+                )
                 .collect(),
-        );
+            ),
+            queried: TransformAxes3D::all_components().iter().cloned().collect(),
+        }
+    }
 
-        query_info
+    fn affinity(&self) -> Option<re_sdk_types::ViewClassIdentifier> {
+        Some(crate::SpatialView3D::identifier())
     }
 
     fn execute(
-        &mut self,
+        &self,
         ctx: &ViewContext<'_>,
         query: &ViewQuery<'_>,
         context_systems: &ViewContextCollection,
     ) -> Result<VisualizerExecutionOutput, ViewSystemExecutionError> {
-        let mut output = VisualizerExecutionOutput::default();
+        re_tracing::profile_function!();
 
-        let transforms = context_systems.get::<TransformTreeContext>()?;
+        let output = VisualizerExecutionOutput::default();
+        let mut data = SpatialViewVisualizerData::default();
+
+        let transforms = context_systems.get::<TransformTreeContext>(&output)?;
 
         let latest_at_query = re_chunk_store::LatestAtQuery::new(query.timeline, query.latest_at);
 
@@ -76,7 +82,6 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
             let entity_path = &data_result.entity_path;
 
             // Draw all transforms defined _at_ this entity.
-            // TODO(RR-3319): consider also root frames here (not only child frames).
             let mut transforms_to_draw: smallvec::SmallVec<[_; 1]> = transforms
                 .child_frames_for_entity(entity_path.hash())
                 .map(|(frame_id_hash, transform)| {
@@ -92,6 +97,23 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
                     (*frame_id_hash, target_from_source.as_affine3a())
                 })
                 .collect();
+
+            let num_transforms_on_entity = transforms_to_draw.len(); // Note: must be measured here, right after the call to `child_frames_for_entity`
+
+            // A bit of a hack here, but when visualizing a whole transform hierarchy,
+            // it's very nice to also show the root:
+            let show_root = 2 <= num_transforms_on_entity;
+            if show_root {
+                // Add the root:
+                let target_frame = transforms.target_frame();
+                let root_from_target = transforms.transform_forest().root_from_frame(target_frame);
+                if let Some(root_from_target) = root_from_target {
+                    let root_id = root_from_target.root;
+                    let root_from_target = root_from_target.target_from_source;
+                    let target_from_root = root_from_target.inverse();
+                    transforms_to_draw.push((root_id, target_from_root.as_affine3a()));
+                }
+            }
 
             // We then *prepend* the axes for the entity's coordinate frame, because we want them to be drawn below
             // the additional transform data (the user usually knows which entity they are on).
@@ -129,10 +151,16 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
                         && src.as_entity_path_hash() == entity_path.hash() => {}
 
                 _ => {
-                    if let Err(err_msg) =
-                        format_transform_info_result(transforms, coordinate_frame_transform_result)
-                    {
-                        output.report_error_for(entity_path.clone(), err_msg);
+                    if let Err(err_msg) = format_transform_info_result(
+                        entity_path,
+                        transforms,
+                        coordinate_frame_transform_result,
+                    ) {
+                        output.report_unspecified_source(
+                            instruction.id,
+                            VisualizerReportSeverity::Error,
+                            err_msg,
+                        );
                     }
                 }
             }
@@ -154,7 +182,6 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
                 &latest_at_query,
                 data_result,
                 [axis_length_identifier, show_frame_identifier],
-                false,
                 Some(instruction),
             );
 
@@ -167,7 +194,7 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
                 continue;
             }
 
-            let show_frame: bool = results
+            let show_frame_label: bool = results
                 .get_mono_with_fallback::<ShowLabels>(show_frame_identifier)
                 .into();
 
@@ -175,9 +202,9 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
             for (instance_index, (label_id_hash, world_from_obj)) in
                 transforms_to_draw.iter().enumerate()
             {
-                if show_frame {
+                if show_frame_label {
                     if let Some(frame_id) = transforms.lookup_frame_id(*label_id_hash) {
-                        self.0.ui_labels.push(UiLabel {
+                        data.ui_labels.push(UiLabel {
                             text: frame_id.to_string(),
                             style: UiLabelStyle::Default,
                             target: UiLabelTarget::Position3D(
@@ -186,23 +213,22 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
                             labeled_instance: InstancePathHash::entity_all(
                                 &data_result.entity_path,
                             ),
+                            visualizer_instruction: instruction.id,
                         });
                     } else {
                         // It should not be possible to hit this path and frame id hashes are not something that
                         // we should ever expose to our users, so let's add a debug assert for good measure.
-                        debug_assert!(
-                            false,
-                            "[DEBUG ASSERT] unable to resolve frame id hash {label_id_hash:?}"
-                        );
-                        output.report_error_for(
-                            data_result.entity_path.clone(),
+                        re_log::debug_panic!("unable to resolve frame id hash {label_id_hash:?}");
+                        output.report_unspecified_source(
+                            instruction.id,
+                            VisualizerReportSeverity::Error,
                             format!("Could not resolve frame id hash {label_id_hash:?}"),
                         );
                     }
                 }
 
                 // Only add the center to the bounding box - the lines may be dependent on the bounding box, causing a feedback loop otherwise.
-                self.0.add_bounding_box(
+                data.add_bounding_box(
                     data_result.entity_path.hash(),
                     macaw::BoundingBox::ZERO,
                     *world_from_obj,
@@ -234,11 +260,9 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
             }
         }
 
-        Ok(output.with_draw_data([line_builder.into_draw_data()?.into()]))
-    }
-
-    fn data(&self) -> Option<&dyn std::any::Any> {
-        Some(self.0.as_any())
+        Ok(output
+            .with_draw_data([line_builder.into_draw_data()?.into()])
+            .with_visualizer_data(data))
     }
 }
 
@@ -272,18 +296,27 @@ pub fn add_axis_arrows(
         .add_segment(glam::Vec3::ZERO, glam::Vec3::X * axis_length)
         .radius(line_radius)
         .color(tokens.axis_color_x)
-        .flags(LineStripFlags::FLAG_CAP_END_TRIANGLE | LineStripFlags::FLAG_CAP_START_ROUND)
+        .flags(
+            LineStripFlags::STRIP_FLAG_CAP_END_TRIANGLE
+                | LineStripFlags::STRIP_FLAG_CAP_START_ROUND,
+        )
         .picking_instance_id(picking_instance_id);
     line_batch
         .add_segment(glam::Vec3::ZERO, glam::Vec3::Y * axis_length)
         .radius(line_radius)
         .color(tokens.axis_color_y)
-        .flags(LineStripFlags::FLAG_CAP_END_TRIANGLE | LineStripFlags::FLAG_CAP_START_ROUND)
+        .flags(
+            LineStripFlags::STRIP_FLAG_CAP_END_TRIANGLE
+                | LineStripFlags::STRIP_FLAG_CAP_START_ROUND,
+        )
         .picking_instance_id(picking_instance_id);
     line_batch
         .add_segment(glam::Vec3::ZERO, glam::Vec3::Z * axis_length)
         .radius(line_radius)
         .color(tokens.axis_color_z)
-        .flags(LineStripFlags::FLAG_CAP_END_TRIANGLE | LineStripFlags::FLAG_CAP_START_ROUND)
+        .flags(
+            LineStripFlags::STRIP_FLAG_CAP_END_TRIANGLE
+                | LineStripFlags::STRIP_FLAG_CAP_START_ROUND,
+        )
         .picking_instance_id(picking_instance_id);
 }

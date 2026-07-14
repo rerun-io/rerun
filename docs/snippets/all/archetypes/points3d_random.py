@@ -1,7 +1,8 @@
 """Log some random points with color and radii."""
 
-import rerun as rr
 from numpy.random import default_rng
+
+import rerun as rr
 
 rr.init("rerun_example_points3d_random", spawn=True)
 rng = default_rng(12345)

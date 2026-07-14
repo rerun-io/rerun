@@ -91,7 +91,7 @@ impl CodeGenerator for DocsCodeGenerator {
                 1,
                 r"Archetypes are bundles of components for which the Rerun viewer has first-class
 built-in support. See [Entities and Components](../../concepts/logging-and-ingestion/entity-component.md) and
-[Visualizers and Overrides](../../concepts/visualization/visualizers-and-overrides.md) for more information.
+[Visualizers and Overrides](../../concepts/visualization/customize-views.md) for more information.
 
 This page lists all built-in archetypes.",
                 &archetypes,
@@ -153,7 +153,14 @@ fn index_page(
 ) -> String {
     let mut page = String::new();
 
-    write_frontmatter(&mut page, kind.plural_name(), Some(order));
+    // Sort the (long, generated) child type pages alphabetically in the
+    // side nav rather than requiring an explicit `order` on each one.
+    write_frontmatter(
+        &mut page,
+        kind.plural_name(),
+        Some(order),
+        Some("alphabetical"),
+    );
     putln!(page);
     putln!(page, "{prelude}");
     putln!(page);
@@ -241,7 +248,7 @@ fn object_page(
         object.name.clone()
     };
 
-    write_frontmatter(&mut page, &title, None);
+    write_frontmatter(&mut page, &title, None, None);
     putln!(page);
 
     if let Some(docline_summary) = object.state.docline_summary() {
@@ -375,12 +382,19 @@ fn list_links(page: &mut String, object: &Object) {
     }
 }
 
-fn write_frontmatter(o: &mut String, title: &str, order: Option<u64>) {
+fn write_frontmatter(o: &mut String, title: &str, order: Option<u64>, sort_children: Option<&str>) {
     putln!(o, "---");
     putln!(o, "title: {title:?}");
     if let Some(order) = order {
         // The order is used to sort `rerun.io/docs` side navigation
         putln!(o, "order: {order}");
+    }
+    if let Some(sort_children) = sort_children {
+        // Sorts this page's children in the `rerun.io/docs` side navigation,
+        // overriding their individual `order`. Used here to keep the long,
+        // generated type lists alphabetical without stamping an `order` on
+        // every single page.
+        putln!(o, "sort_children: {sort_children}");
     }
     putln!(o, "---");
     // Can't put the autogen warning before the frontmatter, stuff breaks down then.
@@ -401,20 +415,20 @@ fn write_fields(reporter: &Reporter, objects: &Objects, o: &mut String, object: 
             Type::Unit => unreachable!("Should be handled elsewhere"),
 
             // We use explicit, arrow-like names:
-            Type::UInt8 => atomic("uint8"),
-            Type::UInt16 => atomic("uint16"),
-            Type::UInt32 => atomic("uint32"),
-            Type::UInt64 => atomic("uint64"),
-            Type::Int8 => atomic("int8"),
-            Type::Int16 => atomic("int16"),
-            Type::Int32 => atomic("int32"),
-            Type::Int64 => atomic("int64"),
-            Type::Bool => atomic("boolean"),
-            Type::Float16 => atomic("float16"),
-            Type::Float32 => atomic("float32"),
-            Type::Float64 => atomic("float64"),
-            Type::Binary => atomic("binary"),
-            Type::String => atomic("utf8"),
+            Type::UInt8 => atomic("UInt8"),
+            Type::UInt16 => atomic("UInt16"),
+            Type::UInt32 => atomic("UInt32"),
+            Type::UInt64 => atomic("UInt64"),
+            Type::Int8 => atomic("Int8"),
+            Type::Int16 => atomic("Int16"),
+            Type::Int32 => atomic("Int32"),
+            Type::Int64 => atomic("Int64"),
+            Type::Bool => atomic("Boolean"),
+            Type::Float16 => atomic("Float16"),
+            Type::Float32 => atomic("Float32"),
+            Type::Float64 => atomic("Float64"),
+            Type::Binary => atomic("Binary"),
+            Type::String => atomic("Utf8"),
 
             Type::Array { elem_type, length } => {
                 format!(
@@ -460,12 +474,14 @@ fn write_fields(reporter: &Reporter, objects: &Objects, o: &mut String, object: 
 
         if let Some(enum_or_union_variant_value) = field.enum_or_union_variant_value {
             if let Some(enum_integer_type) = object.enum_integer_type() {
-                field_string.push_str(&format!(
+                write!(
+                    field_string,
                     " = {}",
                     enum_integer_type.format_value(enum_or_union_variant_value)
-                ));
+                )
+                .ok();
             } else {
-                field_string.push_str(&format!(" = {enum_or_union_variant_value}"));
+                write!(field_string, " = {enum_or_union_variant_value}").ok();
             }
         }
         field_string.push('\n');
@@ -475,8 +491,11 @@ fn write_fields(reporter: &Reporter, objects: &Objects, o: &mut String, object: 
             if field.typ == Type::Unit {
                 field_string.push_str("`null`");
             } else {
-                if field.is_nullable {
-                    field_string.push_str("nullable ");
+                if !field.is_nullable {
+                    // This follows the notation set by arrow-rs.
+                    // If we change this, we should probably change
+                    // arrow-rs and datafusion to match.
+                    field_string.push_str("non-null ");
                 }
                 field_string.push_str(&type_info(objects, &field.typ));
             }
@@ -607,12 +626,14 @@ fn write_archetype_fields(
             explanation,
         } in view_types
         {
-            page.push_str(&format!(
+            write!(
+                page,
                 "* [{view_name}](../views/{}.md)",
                 re_case::to_snake_case(view_name)
-            ));
+            )
+            .ok();
             if let Some(explanation) = explanation {
-                page.push_str(&format!(" ({explanation})"));
+                write!(page, " ({explanation})").ok();
             }
             putln!(page);
         }
@@ -659,14 +680,16 @@ fn write_visualized_archetypes(
     } else {
         for (fqname, explanation) in archetype_fqnames {
             let object = &objects[&fqname];
-            page.push_str(&format!(
+            write!(
+                page,
                 "* [`{}`](../{}/{}.md)",
                 object.name,
                 object.kind.plural_snake_case(),
                 object.snake_case_name()
-            ));
+            )
+            .ok();
             if let Some(explanation) = explanation {
-                page.push_str(&format!(" ({explanation})"));
+                write!(page, " ({explanation})").ok();
             }
             putln!(page);
         }

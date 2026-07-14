@@ -1,7 +1,11 @@
-use std::fmt::{Debug, Formatter};
-use std::sync::Arc;
+use std::{
+    collections::BTreeSet,
+    fmt::{Debug, Formatter, Write as _},
+    ops::Deref,
+    sync::Arc,
+};
 
-use itertools::Itertools as _;
+use itertools::chain;
 use nohash_hasher::IntMap;
 use re_byte_size::{MemUsageNode, MemUsageTree, MemUsageTreeCapture, SizeBytes as _};
 use re_chunk::{
@@ -12,19 +16,21 @@ use re_chunk_store::{
     ChunkStore, ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreEvent, ChunkStoreHandle,
     ChunkStoreSubscriber as _, GarbageCollectionOptions, GarbageCollectionTarget,
 };
+use re_log::{debug_assert, debug_assert_eq};
 use re_log_channel::LogSource;
 use re_log_encoding::RrdManifest;
 use re_log_types::{
     AbsoluteTimeRange, AbsoluteTimeRangeF, ApplicationId, EntityPath, EntityPathHash, LogMsg,
-    RecordingId, SetStoreInfo, StoreId, StoreInfo, StoreKind, TimeType,
+    RecordingId, SetStoreInfo, StoreId, StoreInfo, StoreKind, TimeType, TimelinePoint,
 };
+use re_mutex::Mutex;
 use re_query::{
     QueryCache, QueryCacheHandle, StorageEngine, StorageEngineArcReadGuard, StorageEngineReadGuard,
 };
 
+use crate::Error;
 use crate::ingestion_statistics::IngestionStatistics;
 use crate::rrd_manifest_index::RrdManifestIndex;
-use crate::{Error, TimeHistogramPerTimeline};
 
 // ----------------------------------------------------------------------------
 
@@ -61,6 +67,45 @@ impl EntityDbClass<'_> {
 
 // ---
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RedapConnectionState {
+    /// We are not connected to redap
+    NotConnected,
+
+    /// We are downloading the manifest (no parts received yet).
+    DownloadingFirstManifestPart,
+
+    /// Connected but manifest is missing or failed to download.
+    MissingManifest,
+
+    /// We have some manifest data, but more parts are still arriving.
+    PartialManifest,
+
+    /// The full manifest has been received and we are ready to fetch chunks.
+    Ready,
+}
+
+// ---
+
+struct StoreSizeBytes(Mutex<Option<u64>>);
+
+impl Clone for StoreSizeBytes {
+    fn clone(&self) -> Self {
+        Self(Mutex::new(*self.0.lock()))
+    }
+}
+
+impl Deref for StoreSizeBytes {
+    type Target = Mutex<Option<u64>>;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+// ---
+
 /// An in-memory database built from a stream of [`LogMsg`]es.
 ///
 /// NOTE: all mutation is to be done via public functions!
@@ -81,7 +126,7 @@ pub struct EntityDb {
     /// Clones of an [`EntityDb`] gets a `None` source.
     pub data_source: Option<re_log_channel::LogSource>,
 
-    pub rrd_manifest_index: RrdManifestIndex,
+    rrd_manifest_index: RrdManifestIndex,
 
     /// Comes in a special message, [`LogMsg::SetStoreInfo`].
     set_store_info: Option<SetStoreInfo>,
@@ -94,11 +139,17 @@ pub struct EntityDb {
     /// Ignores deletions.
     latest_row_id: Option<RowId>,
 
+    /// All the entity paths in this database, sorted for use in GUIs.
+    entity_paths: BTreeSet<EntityPath>,
+
     /// In many places we just store the hashes, so we need a way to translate back.
     entity_path_from_hash: IntMap<EntityPathHash, EntityPath>,
 
-    /// A time histogram of all entities, for every timeline.
-    time_histogram_per_timeline: crate::TimeHistogramPerTimeline,
+    /// Keeps track of meta per timeline.
+    ///
+    /// This includes:
+    /// - Row count.
+    data_meta_per_timeline: crate::data_meta_per_timeline::DataMetaPerTimeline,
 
     /// The [`StorageEngine`] that backs this [`EntityDb`].
     ///
@@ -111,6 +162,9 @@ pub struct EntityDb {
     /// results from letting store and cache handles arbitrarily loose all across the codebase.
     storage_engine: StorageEngine,
 
+    /// Lazily calculated
+    store_size_bytes: StoreSizeBytes,
+
     stats: IngestionStatistics,
 }
 
@@ -121,7 +175,7 @@ impl Debug for EntityDb {
             .field("store_id", &self.store_id)
             .field("data_source", &self.data_source)
             .field("set_store_info", &self.set_store_info)
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 
@@ -163,16 +217,13 @@ impl EntityDb {
             set_store_info: None,
             last_modified_at: web_time::Instant::now(),
             latest_row_id: None,
+            entity_paths: Default::default(),
             entity_path_from_hash: Default::default(),
-            time_histogram_per_timeline: Default::default(),
+            data_meta_per_timeline: Default::default(),
             storage_engine,
+            store_size_bytes: StoreSizeBytes(Mutex::new(None)),
             stats: IngestionStatistics::default(),
         }
-    }
-
-    #[inline]
-    pub fn tree(&self) -> &crate::EntityTree {
-        &self.rrd_manifest_index.entity_tree
     }
 
     /// Formats the entity tree into a human-readable text representation with component schema information.
@@ -182,42 +233,31 @@ impl EntityDb {
         let storage_engine = self.storage_engine();
         let store = storage_engine.store();
 
-        self.tree().visit_children_recursively(|entity_path| {
-            if entity_path.is_root() {
-                return;
-            }
-            let depth = entity_path.len() - 1;
-            let indent = "  ".repeat(depth);
-            text.push_str(&format!("{indent}{entity_path}\n"));
-            let Some(components) = store.all_components_for_entity_sorted(entity_path) else {
-                return;
-            };
-            for component in components {
-                let component_indent = "  ".repeat(depth + 1);
-                if let Some(component_descr) =
-                    store.entity_component_descriptor(entity_path, component)
-                    && let Some(component_type) = &component_descr.component_type
-                {
-                    if let Some(datatype) = store.lookup_datatype(component_type) {
-                        text.push_str(&format!(
-                            "{}{}: {}\n",
-                            component_indent,
-                            component_type.short_name(),
-                            re_arrow_util::format_data_type(&datatype)
-                        ));
-                    } else {
-                        text.push_str(&format!(
-                            "{}{}\n",
-                            component_indent,
-                            component_type.short_name()
-                        ));
-                    }
-                } else {
-                    // Fallback to component identifier
-                    text.push_str(&format!("{component_indent}{component}\n"));
+        store
+            .entity_tree()
+            .visit_children_recursively(|entity_path| {
+                if entity_path.is_root() {
+                    return;
                 }
-            }
-        });
+                let depth = entity_path.len() - 1;
+                let indent = "  ".repeat(depth);
+                writeln!(text, "{indent}{entity_path}").ok();
+                let Some(components) = store.schema().all_components_for_entity(entity_path) else {
+                    return;
+                };
+                for &component in components {
+                    let component_indent = "  ".repeat(depth + 1);
+                    if let Some((component_type, datatype)) =
+                        store.schema().lookup_component_type(entity_path, component)
+                    {
+                        let name = component_type
+                            .map_or_else(|| component.to_string(), |ct| ct.short_name().to_owned());
+                        writeln!(text, "{component_indent}{name}: {datatype}").ok();
+                    } else {
+                        writeln!(text, "{component_indent}{component}").ok();
+                    }
+                }
+            });
         text
     }
 
@@ -225,6 +265,30 @@ impl EntityDb {
     #[inline]
     pub fn storage_engine(&self) -> StorageEngineReadGuard<'_> {
         self.storage_engine.read()
+    }
+
+    /// Number of physical chunks currently loaded.
+    pub fn num_physical_chunks(&self) -> usize {
+        re_tracing::profile_function!();
+        self.storage_engine().store().num_physical_chunks()
+    }
+
+    /// The total size of the physical chunks currently loaded in memory.
+    ///
+    /// This is the evictable data — the raw arrow chunk data that can be GC'd.
+    pub fn byte_size_of_physical_chunks(&self) -> u64 {
+        re_tracing::profile_function!();
+        self.storage_engine()
+            .store()
+            .physical_chunks()
+            .map(|chunk| Chunk::total_size_bytes(chunk.as_ref()))
+            .sum()
+    }
+
+    pub fn rrd_manifest_index_mut_and_storage_engine(
+        &mut self,
+    ) -> (&mut RrdManifestIndex, StorageEngineReadGuard<'_>) {
+        (&mut self.rrd_manifest_index, self.storage_engine.read())
     }
 
     /// Returns a reference to the backing [`StorageEngine`].
@@ -264,6 +328,86 @@ impl EntityDb {
     #[inline]
     pub fn rrd_manifest_index_mut(&mut self) -> &mut RrdManifestIndex {
         &mut self.rrd_manifest_index
+    }
+
+    pub fn redap_connection_state(&self) -> RedapConnectionState {
+        // TODO(RR-3670): Check that connection is healthy and pick the correct icon to show the user based on that
+        let is_connected_to_redap = self
+            .data_source
+            .as_ref()
+            .is_some_and(|source| source.is_redap());
+
+        if is_connected_to_redap {
+            if self.rrd_manifest_index.has_manifest() {
+                if self.rrd_manifest_index.is_manifest_complete() {
+                    RedapConnectionState::Ready
+                } else {
+                    RedapConnectionState::PartialManifest
+                }
+            } else if self.num_physical_chunks() == 0 {
+                RedapConnectionState::DownloadingFirstManifestPart
+            } else {
+                // This handles the case where we tried and failed to download the manifest,
+                // but managed to download the data anyhow.
+                RedapConnectionState::MissingManifest
+            }
+        } else {
+            RedapConnectionState::NotConnected
+        }
+    }
+
+    /// True if this recording has chunks we're actively keeping in memory.
+    ///
+    /// Recordings with protected chunks should not be auto-closed during memory pressure,
+    /// since we'd immediately need to re-download them.
+    pub fn has_protected_chunks(&self) -> bool {
+        self.rrd_manifest_index.has_protected_chunks()
+    }
+
+    /// Are we connected to redap, and can fetch missing chunks?
+    pub fn can_fetch_chunks_from_redap(&self) -> bool {
+        match self.redap_connection_state() {
+            RedapConnectionState::NotConnected | RedapConnectionState::MissingManifest => false,
+            RedapConnectionState::DownloadingFirstManifestPart
+            | RedapConnectionState::PartialManifest
+            | RedapConnectionState::Ready => true,
+        }
+    }
+
+    /// Are we currently in the process of downloading the RRD Manifest?
+    pub fn is_downloading_manifest(&self) -> bool {
+        matches!(
+            self.redap_connection_state(),
+            RedapConnectionState::DownloadingFirstManifestPart
+                | RedapConnectionState::PartialManifest
+        )
+    }
+
+    /// Are we currently waiting for the first part of the RRD Manifest?
+    pub fn is_downloading_first_part_of_manifest(&self) -> bool {
+        self.redap_connection_state() == RedapConnectionState::DownloadingFirstManifestPart
+    }
+
+    /// True if we're are currently waiting for necessary
+    /// data to be loaded before we can show it.
+    pub fn is_buffering(&self) -> bool {
+        match self.redap_connection_state() {
+            RedapConnectionState::NotConnected | RedapConnectionState::MissingManifest => false,
+            RedapConnectionState::DownloadingFirstManifestPart
+            | RedapConnectionState::PartialManifest => true,
+
+            RedapConnectionState::Ready => {
+                if let Some(state) = self
+                    .rrd_manifest_index()
+                    .chunk_prioritizer()
+                    .latest_result()
+                {
+                    state.all_required_are_loaded != Some(true)
+                } else {
+                    true // no prefetch done yet
+                }
+            }
+        }
     }
 
     #[inline]
@@ -311,7 +455,7 @@ impl EntityDb {
             StoreKind::Blueprint => EntityDbClass::Blueprint,
 
             StoreKind::Recording => match &self.data_source {
-                Some(LogSource::RrdHttpStream { url, .. })
+                Some(LogSource::HttpStream { url, .. })
                     if url.starts_with("https://app.rerun.io") =>
                 {
                     EntityDbClass::ExampleRecording
@@ -372,7 +516,7 @@ impl EntityDb {
 
     pub fn timeline_type(&self, timeline_name: &TimelineName) -> TimeType {
         self.storage_engine()
-            .store()
+            .schema()
             .time_column_type(timeline_name)
             .unwrap_or_else(|| {
                 if timeline_name == &TimelineName::log_time() {
@@ -398,10 +542,12 @@ impl EntityDb {
         entity_path: &EntityPath,
         components: impl IntoIterator<Item = ComponentIdentifier>,
     ) -> re_query::LatestAtResults {
-        self.storage_engine
-            .read()
-            .cache()
-            .latest_at(query, entity_path, components)
+        self.storage_engine.read().cache().latest_at(
+            re_chunk_store::ChunkTrackingMode::Report,
+            query,
+            entity_path,
+            components,
+        )
     }
 
     /// Get the latest index and value for a given dense [`re_types_core::Component`].
@@ -419,14 +565,10 @@ impl EntityDb {
         query: &re_chunk_store::LatestAtQuery,
         component: ComponentIdentifier,
     ) -> Option<((TimeInt, RowId), C)> {
-        let results = self
-            .storage_engine
-            .read()
-            .cache()
-            .latest_at(query, entity_path, [component]);
+        let results = self.latest_at(query, entity_path, [component]);
         results
             .component_mono(component)
-            .map(|value| (results.index(), value))
+            .map(|value| (results.max_index(), value))
     }
 
     /// Get the latest index and value for a given dense [`re_types_core::Component`].
@@ -444,15 +586,10 @@ impl EntityDb {
         query: &re_chunk_store::LatestAtQuery,
         component: ComponentIdentifier,
     ) -> Option<((TimeInt, RowId), C)> {
-        let results = self
-            .storage_engine
-            .read()
-            .cache()
-            .latest_at(query, entity_path, [component]);
-
+        let results = self.latest_at(query, entity_path, [component]);
         results
             .component_mono_quiet(component)
-            .map(|value| (results.index(), value))
+            .map(|value| (results.max_index(), value))
     }
 
     #[inline]
@@ -475,6 +612,32 @@ impl EntityDb {
         None
     }
 
+    /// Can we load this recording more right now?
+    pub fn can_load_more(&self) -> bool {
+        if !self.can_fetch_chunks_from_redap() {
+            return false;
+        }
+
+        self.is_buffering() || !self.rrd_manifest_index.is_fully_loaded()
+    }
+
+    /// Check if we have all loaded chunk for the given entity and component at `query.at()`.
+    pub fn has_fully_loaded_query(
+        &self,
+        entity_path: &EntityPath,
+        component: ComponentIdentifier,
+        query: &LatestAtQuery,
+    ) -> bool {
+        let Some(timeline) = query.timeline() else {
+            return true; // Static-only query: there are no temporal chunks to load.
+        };
+
+        !self
+            .rrd_manifest_index()
+            .unloaded_temporal_entries_for(&timeline, entity_path, Some(component))
+            .any(|chunk| chunk.time_range.contains(query.at()))
+    }
+
     /// If this entity db is the result of a clone, which store was it cloned from?
     ///
     /// A cloned store always gets a new unique ID.
@@ -490,27 +653,46 @@ impl EntityDb {
     }
 
     pub fn timelines(&self) -> std::collections::BTreeMap<TimelineName, Timeline> {
-        self.storage_engine().store().timelines()
-    }
-
-    /// When do we have data on each timeline?
-    pub fn timeline_histograms(&self) -> &TimeHistogramPerTimeline {
-        &self.time_histogram_per_timeline
+        self.storage_engine().schema().timelines()
     }
 
     /// Returns the time range of data on the given timeline, ignoring any static times.
     pub fn time_range_for(&self, timeline: &TimelineName) -> Option<AbsoluteTimeRange> {
-        self.storage_engine().store().time_range(timeline)
+        self.storage_engine.read().store().time_range(timeline)
     }
 
-    /// Histogram of all events on the timeeline, of all entities.
-    pub fn time_histogram(&self, timeline: &TimelineName) -> Option<&crate::TimeHistogram> {
-        self.time_histogram_per_timeline.get(timeline)
+    /// Data time ranges for gap collapsing in the time panel.
+    ///
+    /// Only available for redap connections with manifests.
+    pub fn data_time_ranges_for(&self, timeline: &TimelineName) -> Option<&[AbsoluteTimeRange]> {
+        self.rrd_manifest_index.data_time_ranges_for(timeline)
     }
 
-    #[inline]
-    pub fn num_rows(&self) -> u64 {
-        self.storage_engine.read().store().stats().total().num_rows
+    /// Returns the total number of temporal rows on the given timeline across all entities.
+    pub fn num_temporal_rows_on_timeline(&self, timeline: &TimelineName) -> u64 {
+        self.data_meta_per_timeline.row_count_for_timeline(timeline)
+    }
+
+    /// Returns the next time with data on the given timeline, strictly after `after`.
+    pub fn next_time_on_timeline(
+        &self,
+        timeline: &TimelineName,
+        after: TimeInt,
+    ) -> Option<TimeInt> {
+        self.storage_engine()
+            .store()
+            .next_time_on_timeline(timeline, after)
+    }
+
+    /// Returns the previous time with data on the given timeline, strictly before `before`.
+    pub fn prev_time_on_timeline(
+        &self,
+        timeline: &TimelineName,
+        before: TimeInt,
+    ) -> Option<TimeInt> {
+        self.storage_engine()
+            .store()
+            .prev_time_on_timeline(timeline, before)
     }
 
     /// Return the current `ChunkStoreGeneration`. This can be used to determine whether the
@@ -533,15 +715,9 @@ impl EntityDb {
         self.latest_row_id
     }
 
-    #[inline]
-    pub fn is_empty(&self) -> bool {
-        self.set_store_info.is_none() && self.num_rows() == 0
-    }
-
     /// A sorted list of all the entity paths in this database.
-    pub fn entity_paths(&self) -> Vec<&EntityPath> {
-        use itertools::Itertools as _;
-        self.entity_path_from_hash.values().sorted().collect()
+    pub fn sorted_entity_paths(&self) -> impl Iterator<Item = &EntityPath> {
+        self.entity_paths.iter()
     }
 
     #[inline]
@@ -557,7 +733,12 @@ impl EntityDb {
     /// Returns `true` also for entities higher up in the hierarchy.
     #[inline]
     pub fn is_known_entity(&self, entity_path: &EntityPath) -> bool {
-        self.tree().subtree(entity_path).is_some()
+        self.storage_engine
+            .read()
+            .store()
+            .entity_tree()
+            .subtree(entity_path)
+            .is_some()
     }
 
     /// If you log `world/points`, then that is a logged entity, but `world` is not,
@@ -567,29 +748,38 @@ impl EntityDb {
         self.entity_path_from_hash.contains_key(&entity_path.hash())
     }
 
-    pub fn add_rrd_manifest_message(&mut self, rrd_manifest: RrdManifest) {
+    pub fn add_rrd_manifest_message(
+        &mut self,
+        rrd_manifest: Arc<RrdManifest>,
+    ) -> Vec<ChunkStoreEvent> {
         re_tracing::profile_function!();
-        re_log::debug!("Received RrdManifest for {:?}", self.store_id());
 
-        if let Err(err) = self
+        let events = self
             .storage_engine
             .write()
             .store()
-            .insert_rrd_manifest(Arc::new(rrd_manifest.clone()))
-        {
-            re_log::error!("Failed to load RRD Manifest into store: {err}");
+            .insert_rrd_manifest(rrd_manifest.clone());
+
+        self.on_store_events(&events);
+
+        let engine = self.storage_engine.read();
+        let entity_tree = engine.store().entity_tree();
+        if let Err(err) = self.rrd_manifest_index.append(rrd_manifest, entity_tree) {
+            re_log::error!("Failed to append RRD manifest: {err}");
         }
 
-        if let Err(err) = self.rrd_manifest_index.append(rrd_manifest) {
-            re_log::error!("Failed to load RRD Manifest: {err}");
-        }
+        events
+    }
 
-        self.time_histogram_per_timeline
-            .on_rrd_manifest(&self.rrd_manifest_index);
+    /// Mark the RRD manifest as complete (all parts have been received).
+    pub fn mark_rrd_manifest_complete(&mut self) {
+        self.rrd_manifest_index.set_manifest_complete();
     }
 
     /// Insert new data into the store.
     pub fn add_log_msg(&mut self, msg: &LogMsg) -> Result<Vec<ChunkStoreEvent>, Error> {
+        re_tracing::profile_function!();
+
         debug_assert_eq!(msg.store_id(), self.store_id());
 
         match &msg {
@@ -612,13 +802,16 @@ impl EntityDb {
         &mut self,
         record_batch: &arrow::array::RecordBatch,
     ) -> Result<Vec<ChunkStoreEvent>, Error> {
-        re_tracing::profile_function!();
+        re_tracing::profile_function!(format!(
+            "{} rows",
+            re_format::format_uint(record_batch.num_rows())
+        ));
 
         self.last_modified_at = web_time::Instant::now();
         let chunk_batch =
             re_sorbet::ChunkBatch::try_from(record_batch).map_err(re_chunk::ChunkError::from)?;
         let mut chunk = re_chunk::Chunk::from_chunk_batch(&chunk_batch)?;
-        chunk.sort_if_unsorted();
+        chunk.sort_by_row_ids_if_needed();
         self.add_chunk_with_timestamp_metadata(
             &Arc::new(chunk),
             &chunk_batch.sorbet_schema().timestamps,
@@ -627,6 +820,7 @@ impl EntityDb {
 
     /// Insert new data into the store.
     pub fn add_chunk(&mut self, chunk: &Arc<Chunk>) -> Result<Vec<ChunkStoreEvent>, Error> {
+        re_tracing::profile_function!();
         self.add_chunk_with_timestamp_metadata(chunk, &Default::default())
     }
 
@@ -637,6 +831,8 @@ impl EntityDb {
     ) -> Result<Vec<ChunkStoreEvent>, Error> {
         let store_events = self.storage_engine.write().store().insert_chunk(chunk)?;
 
+        self.entity_paths.insert(chunk.entity_path().clone());
+
         self.entity_path_from_hash
             .entry(chunk.entity_path().hash())
             .or_insert_with(|| chunk.entity_path().clone());
@@ -644,8 +840,6 @@ impl EntityDb {
         if self.latest_row_id < chunk.row_id_range().map(|(_, row_id_max)| row_id_max) {
             self.latest_row_id = chunk.row_id_range().map(|(_, row_id_max)| row_id_max);
         }
-
-        self.rrd_manifest_index.mark_as_loaded(chunk.id());
 
         self.on_store_events(&store_events);
 
@@ -662,6 +856,8 @@ impl EntityDb {
     pub(crate) fn on_store_events(&mut self, store_events: &[ChunkStoreEvent]) {
         re_tracing::profile_function!();
 
+        self.store_size_bytes.lock().take(); // invalidate
+
         let mut engine = self.storage_engine.write();
 
         // The query cache isn't specific to the viewer. Always update it.
@@ -677,33 +873,11 @@ impl EntityDb {
             .on_events(engine.store(), store_events);
 
         // Update our internal views by notifying them of resulting [`ChunkStoreEvent`]s.
-        self.time_histogram_per_timeline.on_events(
-            engine.store(),
+        self.data_meta_per_timeline.on_events(
             &self.rrd_manifest_index,
+            engine.store(),
             store_events,
         );
-        self.rrd_manifest_index
-            .entity_tree
-            .on_store_additions(store_events.iter().filter_map(|e| e.to_addition()));
-
-        let dels = store_events
-            .iter()
-            .filter_map(|e| e.to_deletion())
-            .collect_vec();
-
-        // It is possible for writes to trigger deletions: specifically in the case of
-        // overwritten static data leading to dangling chunks.
-        let entity_paths_with_deletions =
-            dels.iter().map(|e| e.chunk.entity_path().clone()).collect();
-
-        {
-            re_tracing::profile_scope!("on_store_deletions");
-            self.rrd_manifest_index.entity_tree.on_store_deletions(
-                &engine,
-                &entity_paths_with_deletions,
-                &dels,
-            );
-        }
     }
 
     pub fn set_store_info(&mut self, store_info: SetStoreInfo) {
@@ -711,37 +885,45 @@ impl EntityDb {
     }
 
     /// Free up some RAM by forgetting the older parts of all timelines.
-    pub fn purge_fraction_of_ram(
+    pub fn gc_with_target(
         &mut self,
-        fraction_to_purge: f32,
-        time_cursor: Option<(Timeline, TimeInt)>,
+        target: GarbageCollectionTarget,
+        time_cursor: Option<TimelinePoint>,
     ) -> Vec<ChunkStoreEvent> {
         re_tracing::profile_function!();
 
-        assert!((0.0..=1.0).contains(&fraction_to_purge));
+        let protected_chunks = self
+            .rrd_manifest_index
+            .chunk_prioritizer()
+            .protected_chunks()
+            .physical
+            .clone();
 
         let store_events = self.gc(&GarbageCollectionOptions {
-            target: GarbageCollectionTarget::DropAtLeastFraction(fraction_to_purge as _),
+            target,
             time_budget: DEFAULT_GC_TIME_BUDGET,
 
-            // NOTE: This will only apply if the GC is forced to fall back to row ID based collection,
-            // otherwise timestamp-based collection will ignore it.
-            protect_latest: 1,
+            #[expect(clippy::bool_to_int_with_if)]
+            protect_latest: if self.can_fetch_chunks_from_redap() {
+                // We can redownload data, so we are free to drop anything.
+                // This makes the GC faster.
+                // Also, if it is important, then chunk is already in the `protected_chunks` set,
+                // which is based (in part) on the chunks used in the previous frame.
+                0
+            } else {
+                1 // We can't redownload data, so always keep the latest data point of each component
+            },
 
-            // TODO(emilk): we could protect the data that is currently being viewed
-            // (e.g. when paused in the live camera example).
-            // To be perfect it would need margins (because of latest-at), i.e. we would need to know
-            // exactly how far back the latest-at is of each component at the current time…
-            // …but maybe it doesn't have to be perfect.
-            //
             // NOTE: This will only apply if the GC is forced to fall back to row ID based collection,
             // otherwise timestamp-based collection will ignore it.
             protected_time_ranges: Default::default(),
 
-            furthest_from: if self.rrd_manifest_index.has_manifest() {
-                // If we have an RRD manifest, it means we can download chunks on-demand.
+            protected_chunks,
+
+            furthest_from: if self.can_fetch_chunks_from_redap() {
+                // We can download chunks on-demand.
                 // So it makes sense to GC the things furthest from the current time cursor:
-                time_cursor.map(|(timeline, time)| (*timeline.name(), time))
+                time_cursor.map(|tc| (tc.name, tc.time))
             } else {
                 // If we don't have an RRD manifest, then we can't redownload data,
                 // and we GC the oldest data instead.
@@ -757,10 +939,7 @@ impl EntityDb {
             // to regain some space.
             // See <https://github.com/rerun-io/rerun/issues/7369#issuecomment-2335164098> for the
             // complete rationale.
-            self.storage_engine
-                .write()
-                .cache()
-                .purge_fraction_of_ram(fraction_to_purge);
+            self.storage_engine.write().cache().gc(target);
         } else {
             self.on_store_events(&store_events);
         }
@@ -791,6 +970,7 @@ impl EntityDb {
         &mut self,
         timeline: &TimelineName,
         drop_range: AbsoluteTimeRange,
+        reason: re_chunk_store::ChunkDeletionReason,
     ) -> Vec<ChunkStoreEvent> {
         re_tracing::profile_function!();
 
@@ -798,7 +978,7 @@ impl EntityDb {
             .storage_engine
             .write()
             .store()
-            .drop_time_range(timeline, drop_range);
+            .drop_time_range_deep(timeline, drop_range, reason);
 
         self.on_store_events(&store_events);
 
@@ -828,10 +1008,14 @@ impl EntityDb {
 
         let mut to_drop = vec![entity_path.clone()];
 
-        if let Some(tree) = self.tree().subtree(entity_path) {
-            tree.visit_children_recursively(|path| {
-                to_drop.push(path.clone());
-            });
+        {
+            let storage_engine = self.storage_engine();
+            let tree = storage_engine.store().entity_tree();
+            if let Some(subtree) = tree.subtree(entity_path) {
+                subtree.visit_children_recursively(|path| {
+                    to_drop.push(path.clone());
+                });
+            }
         }
 
         for entity_path in to_drop {
@@ -911,10 +1095,7 @@ impl EntityDb {
             itertools::Either::Right(std::iter::empty())
         };
 
-        set_store_info_msg
-            .into_iter()
-            .chain(data_messages)
-            .chain(blueprint_ready)
+        chain!(set_store_info_msg, data_messages, blueprint_ready)
     }
 
     /// Make a clone of this [`EntityDb`], assigning it a new [`StoreId`].
@@ -961,13 +1142,13 @@ impl EntityDb {
     ///
     /// This excludes temporal data.
     pub fn subtree_stats_static(
-        &self,
         engine: &StorageEngineReadGuard<'_>,
         entity_path: &EntityPath,
     ) -> ChunkStoreChunkStats {
         re_tracing::profile_function!();
 
-        let Some(subtree) = self.tree().subtree(entity_path) else {
+        let entity_tree = engine.store().entity_tree();
+        let Some(subtree) = entity_tree.subtree(entity_path) else {
             return Default::default();
         };
 
@@ -983,14 +1164,14 @@ impl EntityDb {
     ///
     /// This excludes static data.
     pub fn subtree_stats_on_timeline(
-        &self,
         engine: &StorageEngineReadGuard<'_>,
         entity_path: &EntityPath,
         timeline: &TimelineName,
     ) -> ChunkStoreChunkStats {
         re_tracing::profile_function!();
 
-        let Some(subtree) = self.tree().subtree(entity_path) else {
+        let entity_tree = engine.store().entity_tree();
+        let Some(subtree) = entity_tree.subtree(entity_path) else {
             return Default::default();
         };
 
@@ -1013,7 +1194,8 @@ impl EntityDb {
     ) -> bool {
         re_tracing::profile_function!();
 
-        let Some(subtree) = self.tree().subtree(entity_path) else {
+        let entity_tree = engine.store().entity_tree();
+        let Some(subtree) = entity_tree.subtree(entity_path) else {
             return false;
         };
 
@@ -1021,7 +1203,9 @@ impl EntityDb {
             .find_first_child_recursive(|path| {
                 self.rrd_manifest_index
                     .entity_has_data_on_timeline(path, timeline)
-                    || engine.store().entity_has_data_on_timeline(timeline, path)
+                    || engine
+                        .store()
+                        .entity_has_physical_data_on_timeline(timeline, path)
             })
             .is_some()
     }
@@ -1037,7 +1221,8 @@ impl EntityDb {
     ) -> bool {
         re_tracing::profile_function!();
 
-        let Some(subtree) = self.tree().subtree(entity_path) else {
+        let entity_tree = engine.store().entity_tree();
+        let Some(subtree) = entity_tree.subtree(entity_path) else {
             return false;
         };
 
@@ -1047,7 +1232,7 @@ impl EntityDb {
                     .entity_has_temporal_data_on_timeline(path, timeline)
                     || engine
                         .store()
-                        .entity_has_temporal_data_on_timeline(timeline, path)
+                        .entity_has_physical_temporal_data_on_timeline(path, timeline)
             })
             .is_some()
     }
@@ -1067,20 +1252,76 @@ impl EntityDb {
             .entity_has_temporal_data_on_timeline(entity_path, timeline)
             || engine
                 .store()
-                .entity_has_temporal_data_on_timeline(timeline, entity_path)
+                .entity_has_physical_temporal_data_on_timeline(entity_path, timeline)
+    }
+
+    /// Returns true if an entity has data for the given component on the given timeline at any point in time.
+    ///
+    /// This ignores static data.
+    /// This is a more fine grained version of [`Self::entity_has_temporal_data_on_timeline`].
+    pub fn entity_has_temporal_data_on_timeline_for_component(
+        &self,
+        engine: &StorageEngineReadGuard<'_>,
+        timeline: &TimelineName,
+        entity_path: &EntityPath,
+        component: ComponentIdentifier,
+    ) -> bool {
+        re_tracing::profile_function!();
+
+        self.rrd_manifest_index
+            .entity_has_temporal_data_on_timeline_for_component(entity_path, timeline, component)
+            || engine
+                .store()
+                .entity_has_physical_temporal_data_on_timeline_for_component(
+                    entity_path,
+                    timeline,
+                    &component,
+                )
     }
 }
 
 impl re_byte_size::SizeBytes for EntityDb {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        // TODO(emilk): size of entire EntityDb, including secondary indices etc
-        self.storage_engine
-            .read()
-            .store()
-            .stats()
-            .total()
-            .total_size_bytes
+        // TODO(RR-3800): verify size estimation
+
+        re_tracing::profile_function!();
+
+        let Self {
+            store_id,
+            enable_viewer_indexes,
+            data_source: _,
+            rrd_manifest_index,
+            set_store_info,
+            last_modified_at: _,
+            latest_row_id: _,
+            entity_paths,
+            entity_path_from_hash,
+            data_meta_per_timeline,
+            storage_engine,
+            store_size_bytes,
+            stats: _,
+        } = self;
+
+        let storage_engine = storage_engine.read();
+
+        let store_size_bytes = {
+            // Calculate lazily
+            *store_size_bytes
+                .lock()
+                .get_or_insert_with(|| storage_engine.store().heap_size_bytes())
+        };
+
+        let storage_engine_size = storage_engine.cache().heap_size_bytes() + store_size_bytes;
+
+        store_id.heap_size_bytes()
+            + enable_viewer_indexes.heap_size_bytes()
+            + rrd_manifest_index.heap_size_bytes()
+            + set_store_info.heap_size_bytes()
+            + entity_paths.heap_size_bytes()
+            + entity_path_from_hash.heap_size_bytes()
+            + data_meta_per_timeline.heap_size_bytes()
+            + storage_engine_size
     }
 }
 
@@ -1090,8 +1331,9 @@ impl MemUsageTreeCapture for EntityDb {
 
         let Self {
             rrd_manifest_index,
-            time_histogram_per_timeline,
+            data_meta_per_timeline,
             storage_engine,
+            entity_paths,
             entity_path_from_hash,
 
             // Small:
@@ -1101,6 +1343,7 @@ impl MemUsageTreeCapture for EntityDb {
             set_store_info: _,
             last_modified_at: _,
             latest_row_id: _,
+            store_size_bytes: _,
             stats: _,
         } = self;
 
@@ -1112,13 +1355,18 @@ impl MemUsageTreeCapture for EntityDb {
         );
 
         node.add(
+            "entity_paths",
+            MemUsageTree::Bytes(entity_paths.total_size_bytes()),
+        );
+
+        node.add(
             "entity_path_from_hash",
             MemUsageTree::Bytes(entity_path_from_hash.total_size_bytes()),
         );
 
         node.add(
-            "time_histogram_per_timeline",
-            time_histogram_per_timeline.capture_mem_usage_tree(),
+            "data_meta_per_timeline",
+            data_meta_per_timeline.total_size_bytes(),
         );
         node.add(
             "rrd_manifest_index",
@@ -1166,10 +1414,12 @@ mod tests {
             db.add_chunk(&Arc::new(chunk))?;
         }
 
-        assert_eq!(
-            db.format_with_components(),
-            "/parent\n  /parent/child1\n    /parent/child1/grandchild\n      example.MyPoint: Struct[2]\n"
-        );
+        insta::assert_snapshot!(db.format_with_components(), @r###"
+        /parent
+          /parent/child1
+            /parent/child1/grandchild
+              example.MyPoint: Struct("x": non-null Float32, "y": non-null Float32)
+        "###);
 
         Ok(())
     }

@@ -81,6 +81,8 @@ jobs:
               - pixi.lock # maybe our build commands have changed
               - pixi.toml # maybe our build commands have changed
               - "**/*.rs"
+              # wgsl is embedded into Rust binaries and should trigger tests.
+              - "rerun/**/*.wgsl"
               - "**/*.toml"
               - "crates/**/*.png"
               - "tests/rust/**/*.png"
@@ -199,6 +201,15 @@ jobs:
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
       CHANNEL: main
+    secrets: inherit
+
+  web-test:
+    name: "Web tests"
+    needs: [paths-filter]
+    if: github.event.pull_request.head.repo.owner.login == 'rerun-io' && needs.paths-filter.outputs.web_changes == 'true'
+    uses: ./.github/workflows/reusable_web_test.yml
+    with:
+      CONCURRENCY: pr-${{ github.event.pull_request.number }}
     secrets: inherit
 
   upload-web:

@@ -75,7 +75,7 @@ impl Objects {
         }
 
         let mut this = Self {
-            objects: resolved_enums.into_iter().chain(resolved_objs).collect(),
+            objects: std::iter::chain(resolved_enums, resolved_objs).collect(),
         };
 
         // Validate fields types: Archetype consist of components, Views (aka SuperArchetypes) consist of archetypes, everything else consists of datatypes.
@@ -117,6 +117,39 @@ impl Objects {
                         &obj.fqname,
                         "Nullable fields on unions are not supported.",
                     );
+                }
+
+                // Validate whether someone is using a type we use for non-nullable arrays to describe some nullable field.
+                if field.is_nullable
+                    && (obj.kind == ObjectKind::Datatype || obj.kind == ObjectKind::Component)
+                    && let Some(field_type_fqname) = field.typ.fqname()
+                    // TODO(andreas): This is a hack, here because introducing this warning, I really don't want to touch annotation info right now.
+                    && obj.name != "AnnotationInfo"
+                {
+                    let field_obj = &this[field_type_fqname];
+                    if field_obj.is_arrow_transparent() {
+                        let suggestion = if field_obj.name == "Utf8" {
+                            "Use `string (nullable)` instead of `rerun.datatypes.Utf8 (nullable)`."
+                                .to_owned()
+                        } else {
+                            format!(
+                                "Consider using a primitive type instead of nullable transparent wrapper `{}`.",
+                                field_obj.name
+                            )
+                        };
+
+                        reporter.warn(
+                                virtpath,
+                                field_type_fqname,
+                                format!(
+                                    "Nullable transparent wrapper type detected. {} \
+                                     Transparent wrapper types like '{}' don't handle None internally, \
+                                     which can cause serialization issues.",
+                                    suggestion,
+                                    field_obj.name
+                                ),
+                            );
+                    }
                 }
             }
         }
@@ -636,8 +669,8 @@ impl Object {
                 class.is_enum()
                     || val
                         .union_type()
-                        .filter(|utype| utype.base_type() != FbsBaseType::None)
-                        .is_some()
+                        .as_ref()
+                        .is_some_and(|utype| utype.base_type() != FbsBaseType::None)
             })
             .map(|val| {
                 ObjectField::from_raw_enum_value(reporter, include_dir_path, enums, objs, enm, &val)
@@ -854,6 +887,16 @@ impl EnumIntegerType {
             Self::U16 => format!("0x{:0X}", value as u16),
             Self::U32 => format!("0x{:0X}", value as u32),
             Self::U64 => format!("0x{value:0X}"),
+        }
+    }
+
+    /// Returns the suffix used for the repr type, e.g. `"u8"`, `"u16"`, etc.
+    pub fn type_str(self) -> &'static str {
+        match self {
+            Self::U8 => "u8",
+            Self::U16 => "u16",
+            Self::U32 => "u32",
+            Self::U64 => "u64",
         }
     }
 }
