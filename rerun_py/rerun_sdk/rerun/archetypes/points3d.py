@@ -237,6 +237,9 @@ class Points3D(Points3DExt, Archetype, VisualizableArchetype):
 
             The colors are interpreted as RGB or RGBA in sRGB gamma-space,
             As either 0-1 floats or 0-255 integers, with separate alpha.
+
+            The alpha channel affects the brightness (not transparency).
+            TODO(#1611): The alpha channel does not yet affect transparency.
         labels:
             Optional text labels for the points.
 
@@ -390,6 +393,9 @@ class Points3D(Points3DExt, Archetype, VisualizableArchetype):
 
             The colors are interpreted as RGB or RGBA in sRGB gamma-space,
             As either 0-1 floats or 0-255 integers, with separate alpha.
+
+            The alpha channel affects the brightness (not transparency).
+            TODO(#1611): The alpha channel does not yet affect transparency.
         labels:
             Optional text labels for the points.
 
@@ -507,6 +513,9 @@ class Points3D(Points3DExt, Archetype, VisualizableArchetype):
     #
     # The colors are interpreted as RGB or RGBA in sRGB gamma-space,
     # As either 0-1 floats or 0-255 integers, with separate alpha.
+    #
+    # The alpha channel affects the brightness (not transparency).
+    # TODO(#1611): The alpha channel does not yet affect transparency.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

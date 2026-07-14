@@ -214,6 +214,9 @@ pub struct Points3D {
     pub radii: Option<SerializedComponentBatch>,
 
     /// Optional colors for the points.
+    ///
+    /// The alpha channel affects the brightness (not transparency).
+    /// TODO(#1611): The alpha channel does not yet affect transparency.
     pub colors: Option<SerializedComponentBatch>,
 
     /// Optional text labels for the points.
@@ -677,6 +680,9 @@ impl Points3D {
     }
 
     /// Optional colors for the points.
+    ///
+    /// The alpha channel affects the brightness (not transparency).
+    /// TODO(#1611): The alpha channel does not yet affect transparency.
     #[inline]
     pub fn with_colors(
         mut self,
