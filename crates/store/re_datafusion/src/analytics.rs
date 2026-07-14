@@ -220,20 +220,22 @@ impl ConnectionAnalytics {
 /// [`crate::metrics_capture`] subscribers and DataFusion's `metrics()`) but
 /// skips the `PostHog` OTLP send at drop time.
 ///
-/// `metrics` is the plan's [`QueryMetrics`], shared with `SegmentStreamExec`.
-/// It's the single source of truth for fetch counters: the
-/// `PendingInner::Drop` path reads it via [`build_query_snapshot`] to
-/// construct the OTLP span attribute set.
+/// Constructs the query's [`QueryMetrics`] from `query_info` and owns it —
+/// retrieve the shared handle via [`PendingQueryAnalytics::metrics`]. It's the
+/// single source of truth for fetch counters: the `PendingInner::Drop` path
+/// reads it via [`build_query_snapshot`] to construct the OTLP span attribute
+/// set, and `SegmentStreamExec` reads it for the snapshot path and
+/// `EXPLAIN ANALYZE`.
 pub fn begin_query(
     connection: Option<ConnectionAnalytics>,
-    metrics: Arc<QueryMetrics>,
+    query_info: QueryInfo,
     scan_start: Instant,
     scan_start_wall: SystemTime,
 ) -> PendingQueryAnalytics {
     PendingQueryAnalytics {
         inner: Arc::new(PendingInner {
             connection,
-            metrics,
+            metrics: Arc::new(QueryMetrics::new(query_info)),
             scan_start,
             scan_start_wall,
             time_to_first_chunk: OnceLock::new(),
@@ -400,10 +402,11 @@ pub(crate) struct PendingInner {
     /// `metrics()`) but the drop-time OTLP send is skipped.
     connection: Option<ConnectionAnalytics>,
 
-    /// Shared with `SegmentStreamExec`. IO tasks `fetch_add` into the atomics
-    /// during execution; `Drop` reads them via [`build_query_snapshot`] to
-    /// build the OTLP span. Single source of truth — there is no parallel
-    /// accumulator. The embedded `query_info` carries plan-time scalars.
+    /// The query's fetch counters + embedded plan-time `QueryInfo`. IO tasks
+    /// `fetch_add` into the atomics during execution; `Drop` reads them via
+    /// [`build_query_snapshot`] to build the OTLP span. Single source of
+    /// truth — there is no parallel accumulator; `SegmentStreamExec` reaches
+    /// it through [`PendingQueryAnalytics::metrics`].
     metrics: Arc<QueryMetrics>,
 
     /// Monotonic start time of the query, for computing elapsed durations.
@@ -495,6 +498,13 @@ impl DirectFetchFailureReason {
 }
 
 impl PendingQueryAnalytics {
+    /// The shared per-query [`QueryMetrics`] handle — the single source of
+    /// truth for fetch counters and the plan-time `QueryInfo`. Also read by
+    /// `SegmentStreamExec` for the snapshot path and `EXPLAIN ANALYZE`.
+    pub(crate) fn metrics(&self) -> &Arc<QueryMetrics> {
+        &self.inner.metrics
+    }
+
     /// Record that the first result chunk has been returned to the user.
     /// Only the first call has any effect.
     #[cfg_attr(target_arch = "wasm32", expect(dead_code))]
@@ -713,15 +723,14 @@ impl TaskFetchStats {
         }
     }
 
-    /// Flush this buffer into `metrics`, also recording an error (if any) onto
-    /// `analytics`.
+    /// Flush this buffer into `analytics`' shared [`QueryMetrics`], also
+    /// recording an error (if any) onto `analytics`.
     pub fn try_flush_into(
         self,
         analytics: &PendingQueryAnalytics,
-        metrics: &QueryMetrics,
         result: Result<(), QueryErrorKind>,
     ) {
-        self.flush_into(metrics);
+        self.flush_into(analytics.metrics());
         if let Err(err) = result {
             analytics.record_error(err);
         }

@@ -15,7 +15,6 @@ use crate::dataframe_query_common::{
     DataframeClientAPI, IndexValuesMap, PlanSummary, group_chunk_infos_by_segment_id,
     segment_partition_hash,
 };
-use crate::metrics_capture::QueryMetrics;
 use crate::pipeline_budget::PipelineBudget;
 use arrow::array::RecordBatch;
 use arrow::compute::SortOptions;
@@ -101,6 +100,12 @@ pub(crate) struct SegmentStreamExec<T: DataframeClientAPI> {
 
     /// Pending query analytics — always present; the OTLP send on drop is
     /// gated internally by whether the per-process telemetry stack is active.
+    ///
+    /// Also owns the shared [`crate::metrics_capture::QueryMetrics`] (fetch counters + embedded
+    /// plan-time `QueryInfo`): each IO task flushes its `TaskFetchStats`
+    /// there, the snapshot path reads the atomics in `build_query_snapshot`,
+    /// and `ExecutionPlan::metrics()` builds an ad-hoc `MetricsSet` from them
+    /// on demand for `EXPLAIN ANALYZE`.
     pending_analytics: crate::PendingQueryAnalytics,
 
     /// Subscribers (from `query_metrics()`) captured at plan-construction
@@ -122,13 +127,6 @@ pub(crate) struct SegmentStreamExec<T: DataframeClientAPI> {
     /// Created once and shared across all partitions so the total memory
     /// usage is bounded by a single global budget.
     pipeline_budget: Arc<PipelineBudget>,
-
-    /// Per-query counters + embedded plan-time `QueryInfo`. Single source of
-    /// truth for fetch counters: each IO task flushes its `TaskFetchStats`
-    /// here, the snapshot path reads the atomics in `build_query_snapshot`,
-    /// and `ExecutionPlan::metrics()` builds an ad-hoc `MetricsSet` from
-    /// them on demand for `EXPLAIN ANALYZE`.
-    metrics: Arc<QueryMetrics>,
 
     /// Plan-time summary used by `DisplayAs::Verbose` so that `EXPLAIN` (without
     /// `ANALYZE`) also exposes the most useful planning-phase decisions.
@@ -170,7 +168,9 @@ pub struct DataframeSegmentStreamInner<T: DataframeClientAPI> {
     /// This may or may not match request `trace_headers`.
     server_trace_id: Option<re_redap_client::TraceId>,
 
-    /// Pending query analytics — keeps alive until stream completes.
+    /// Pending query analytics — keeps alive until stream completes. Owns the
+    /// shared [`crate::metrics_capture::QueryMetrics`] handle used by the snapshot path (same one as
+    /// the parent plan, by construction).
     pending_analytics: crate::PendingQueryAnalytics,
 
     /// Subscribers cloned from the parent `SegmentStreamExec`. On
@@ -184,9 +184,16 @@ pub struct DataframeSegmentStreamInner<T: DataframeClientAPI> {
     /// Shared latch — see `SegmentStreamExec::snapshot_sent`.
     snapshot_sent: Arc<AtomicBool>,
 
-    /// Shared metrics handle used by the snapshot path. Same `QueryMetrics`
-    /// as the parent plan; reading the atomics gives the final fetch counters.
-    metrics: Arc<QueryMetrics>,
+    /// Set when `poll_next` observes clean end-of-stream and routes this
+    /// partition through [`emit_snapshot_if_last_partition`]. Tells `Drop`
+    /// that this stream has already been accounted for, so the drop fallback
+    /// only fires on a genuinely early drop (LIMIT short-circuit, plan
+    /// cancellation). Without it, the first partition to finish cleanly
+    /// would emit the snapshot from its own `Drop` (triggered by the
+    /// RR-4607 `inner = None` workaround) while other partitions are still
+    /// fetching — under-counting their fetches and making the
+    /// `partitions_remaining` countdown moot.
+    completed: bool,
 
     /// Shared byte budget for end-to-end pipeline backpressure.
     pipeline_budget: Arc<PipelineBudget>,
@@ -274,7 +281,6 @@ impl<T: DataframeClientAPI> Stream for DataframeSegmentStream<T> {
             let filtered_index_timeline = this.filtered_index_timeline;
             let pending_analytics = this.pending_analytics.clone();
             let pipeline_budget = Arc::clone(&this.pipeline_budget);
-            let metrics = Arc::clone(&this.metrics);
 
             // Parent the IO pipeline under the original caller's trace via the
             // `attach_trace_context` guard above, not under whichever DataFusion
@@ -291,7 +297,6 @@ impl<T: DataframeClientAPI> Stream for DataframeSegmentStream<T> {
                             chunk_tx,
                             pending_analytics,
                             pipeline_budget,
-                            metrics,
                         )
                         .await
                     }
@@ -317,6 +322,7 @@ impl<T: DataframeClientAPI> Stream for DataframeSegmentStream<T> {
             // subscribers when this is the last per-partition stream to
             // finish — long before the FFI capsule on the Python side gets
             // garbage-collected and triggers `PendingInner::Drop`.
+            this.completed = true;
             this.maybe_emit_snapshot();
             this_outer.inner = None;
         }
@@ -340,10 +346,9 @@ impl<T: DataframeClientAPI> RecordBatchStream for DataframeSegmentStream<T> {
 fn build_and_push_snapshot(
     captured_collectors: &[crate::MetricsCollector],
     pending_analytics: &crate::PendingQueryAnalytics,
-    metrics: &QueryMetrics,
 ) {
     let snapshot = crate::metrics_capture::build_query_snapshot(
-        metrics,
+        pending_analytics.metrics(),
         pending_analytics.total_duration(),
         pending_analytics.time_to_first_chunk(),
         pending_analytics.error_kind(),
@@ -362,7 +367,6 @@ fn emit_snapshot_if_last_partition(
     partitions_remaining: &AtomicUsize,
     snapshot_sent: &AtomicBool,
     pending_analytics: &crate::PendingQueryAnalytics,
-    metrics: &QueryMetrics,
 ) {
     if captured_collectors.is_empty() {
         // Fast path: no `query_metrics()` scope was active when this plan was
@@ -384,7 +388,7 @@ fn emit_snapshot_if_last_partition(
         return;
     }
 
-    build_and_push_snapshot(captured_collectors, pending_analytics, metrics);
+    build_and_push_snapshot(captured_collectors, pending_analytics);
 }
 
 /// Cancellation/short-circuit fallback: if no other path has emitted yet,
@@ -395,7 +399,6 @@ fn emit_snapshot_drop_fallback(
     captured_collectors: &[crate::MetricsCollector],
     snapshot_sent: &AtomicBool,
     pending_analytics: &crate::PendingQueryAnalytics,
-    metrics: &QueryMetrics,
 ) {
     if captured_collectors.is_empty() {
         return;
@@ -406,7 +409,7 @@ fn emit_snapshot_drop_fallback(
     {
         return;
     }
-    build_and_push_snapshot(captured_collectors, pending_analytics, metrics);
+    build_and_push_snapshot(captured_collectors, pending_analytics);
 }
 
 impl<T: DataframeClientAPI> DataframeSegmentStreamInner<T> {
@@ -417,20 +420,25 @@ impl<T: DataframeClientAPI> DataframeSegmentStreamInner<T> {
             &self.partitions_remaining,
             &self.snapshot_sent,
             &self.pending_analytics,
-            &self.metrics,
         );
     }
 }
 
 impl<T: DataframeClientAPI> Drop for DataframeSegmentStreamInner<T> {
     fn drop(&mut self) {
-        // Cover the cancelled/short-circuited case — `poll_next` may already
-        // have called `maybe_emit_snapshot`, in which case the CAS no-ops.
+        if self.completed {
+            // Clean end-of-stream: this partition already went through
+            // `emit_snapshot_if_last_partition` in `poll_next`; emission is
+            // the countdown's job so the snapshot carries every partition's
+            // counters, not just the first finisher's.
+            return;
+        }
+        // Dropped mid-stream (LIMIT short-circuit / cancellation) — emit
+        // eagerly with whatever has been recorded so far.
         emit_snapshot_drop_fallback(
             &self.captured_collectors,
             &self.snapshot_sent,
             &self.pending_analytics,
-            &self.metrics,
         );
     }
 }
@@ -450,7 +458,6 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
         trace_headers: Option<crate::TraceHeaders>,
         server_trace_id: Option<re_redap_client::TraceId>,
         pending_analytics: crate::PendingQueryAnalytics,
-        metrics: Arc<QueryMetrics>,
         captured_collectors: Vec<crate::MetricsCollector>,
     ) -> datafusion::common::Result<Self> {
         let projected_schema = match projection {
@@ -549,10 +556,10 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
 
         let worker_runtime = Arc::new(CpuRuntime::try_new(num_partitions)?);
 
-        // `metrics` carries the plan-time `QueryInfo` (set by the caller in
-        // `dataframe_query_common::scan`) plus zero-initialized fetch atomics
-        // that the IO loop will populate.
-        let plan_summary = PlanSummary::from_query_info(&metrics.query_info);
+        // The analytics' `QueryMetrics` carries the plan-time `QueryInfo`
+        // (set by the caller in `dataframe_query_common::scan`) plus
+        // zero-initialized fetch atomics that the IO loop will populate.
+        let plan_summary = PlanSummary::from_query_info(&pending_analytics.metrics().query_info);
 
         // `captured_collectors` was sourced from the `DataframeQueryTableProvider`
         // (which itself read the Python `query_metrics()` ContextVar at the
@@ -575,7 +582,6 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
             server_trace_id,
             pending_analytics,
             pipeline_budget: Arc::new(PipelineBudget::new(total_uncompressed, num_partitions)),
-            metrics,
             plan_summary,
             captured_collectors,
             partitions_remaining,
@@ -680,7 +686,6 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
                 &self.partitions_remaining,
                 &self.snapshot_sent,
                 &self.pending_analytics,
-                &self.metrics,
             );
             let stream: DataframeSegmentStream<T> = DataframeSegmentStream { inner: None };
             return Ok(Box::pin(stream));
@@ -726,7 +731,7 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
             captured_collectors: self.captured_collectors.clone(),
             partitions_remaining: Arc::clone(&self.partitions_remaining),
             snapshot_sent: Arc::clone(&self.snapshot_sent),
-            metrics: Arc::clone(&self.metrics),
+            completed: false,
         };
         let stream = DataframeSegmentStream {
             inner: Some(stream),
@@ -740,7 +745,7 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
         // see `build_metrics_set_for_explain` for why we don't hold a
         // `MetricsSet` as the source of truth.
         Some(build_metrics_set_for_explain(
-            &self.metrics,
+            self.pending_analytics.metrics(),
             self.target_partitions,
             self.pending_analytics.time_to_first_chunk(),
         ))
@@ -767,12 +772,12 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
             limit_rows: self.limit_rows,
             trace_headers: self.trace_headers.clone(),
             server_trace_id: self.server_trace_id,
+            // Cloning the analytics handle shares the same `QueryMetrics`
+            // atomics across the original and repartitioned plans, so any
+            // in-flight writes are still observed by the original
+            // `PendingInner::drop` snapshot path.
             pending_analytics: self.pending_analytics.clone(),
             pipeline_budget: Arc::clone(&self.pipeline_budget),
-            // Share the same `QueryMetrics` atomics across the original and
-            // repartitioned plans so any in-flight writes are still observed
-            // by the original `PendingInner::drop` snapshot path.
-            metrics: Arc::clone(&self.metrics),
             plan_summary: self.plan_summary.clone(),
             captured_collectors: self.captured_collectors.clone(),
             // Reset the partition counter for the repartitioned plan — it

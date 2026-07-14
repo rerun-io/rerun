@@ -695,6 +695,7 @@ async fn fetch_remaining_via_grpc<T: DataframeClientAPI>(
     filtered_index_timeline: Option<&str>,
     output_channel: &Sender<ApiResult<CpuWorkerMsg>>,
     pipeline_budget: &PipelineBudget,
+    metrics: &QueryMetrics,
 ) -> ApiResult<()> {
     let total_batches = batches.len();
     let mut batches_completed = 0usize;
@@ -744,6 +745,22 @@ async fn fetch_remaining_via_grpc<T: DataframeClientAPI>(
             .sum();
         guard.commit(actual);
 
+        // Flush this group's fetch stats into the shared atomics *before*
+        // handing the chunks downstream. The ordering is load-bearing for the
+        // `metrics_capture` snapshot path: under a row LIMIT the consumer
+        // tears the stream down (and the `Drop` fallback builds the
+        // `QuerySnapshot`) as soon as enough rows have arrived, so a
+        // delivered row must imply its fetches are already visible in the
+        // counters. The hybrid path below gets the same guarantee from its
+        // per-task flush. One `record_grpc_fetch` per batch, matching the one
+        // `FetchChunks` request per batch that `fetch_batch_group_via_grpc`
+        // issues.
+        let mut stats = TaskFetchStats::default();
+        for batch in batch_group {
+            stats.record_grpc_fetch(batch_byte_size(batch));
+        }
+        stats.flush_into(metrics);
+
         batches_completed += batch_group.len();
         if !send_sorted_chunks(all_chunks, global_segment_order, output_channel).await {
             // Consumer (CPU worker) hung up — typically because a row LIMIT was hit
@@ -790,7 +807,6 @@ pub(super) async fn chunk_stream_io_loop<T: DataframeClientAPI>(
     output_channel: Sender<ApiResult<CpuWorkerMsg>>,
     pending_analytics: crate::PendingQueryAnalytics,
     pipeline_budget: Arc<PipelineBudget>,
-    metrics: Arc<QueryMetrics>,
 ) -> ApiResult<()> {
     let target_size_bytes = TARGET_BATCH_SIZE_BYTES as u64;
 
@@ -873,6 +889,7 @@ pub(super) async fn chunk_stream_io_loop<T: DataframeClientAPI>(
                     filtered_index_timeline_str.as_deref(),
                     &output_channel,
                     &pipeline_budget,
+                    pending_analytics.metrics(),
                 )
                 .await?;
             }
@@ -880,18 +897,12 @@ pub(super) async fn chunk_stream_io_loop<T: DataframeClientAPI>(
         }
         .await;
 
-        match &result {
-            Ok(()) => {
-                // All fetches were gRPC — record total bytes into a task-local
-                // buffer and flush once. No intermediate atomics.
-                let total_bytes: u64 = request_batches.iter().map(batch_byte_size).sum();
-                let mut stats = TaskFetchStats::default();
-                stats.record_grpc_fetch(total_bytes);
-                stats.flush_into(&metrics);
-            }
-            Err(_) => {
-                pending_analytics.record_error(QueryErrorKind::GrpcFetch);
-            }
+        // Fetch stats are flushed per batch group inside
+        // `fetch_remaining_via_grpc`, before the corresponding chunks are
+        // handed downstream — see the comment there for why the ordering
+        // matters. Only the error needs recording here.
+        if result.is_err() {
+            pending_analytics.record_error(QueryErrorKind::GrpcFetch);
         }
 
         return result;
@@ -944,7 +955,6 @@ pub(super) async fn chunk_stream_io_loop<T: DataframeClientAPI>(
                 let client = client.clone();
                 let pending_analytics = pending_analytics.clone();
                 let pipeline_budget = Arc::clone(&pipeline_budget);
-                let metrics = Arc::clone(&metrics);
                 let filtered_index_timeline = filtered_index_timeline_str.as_ref().map(Arc::clone);
                 async move {
                     // Task-local stats buffer — flushed once to the shared atomics
@@ -987,7 +997,6 @@ pub(super) async fn chunk_stream_io_loop<T: DataframeClientAPI>(
                                 Err(err) => {
                                     stats.try_flush_into(
                                         &pending_analytics,
-                                        &metrics,
                                         Err(QueryErrorKind::DirectFetch),
                                     );
                                     return Err(err);
@@ -1010,7 +1019,6 @@ pub(super) async fn chunk_stream_io_loop<T: DataframeClientAPI>(
                                 Err(err) => {
                                     stats.try_flush_into(
                                         &pending_analytics,
-                                        &metrics,
                                         Err(QueryErrorKind::GrpcFetch),
                                     );
                                     return Err(err);
@@ -1021,7 +1029,7 @@ pub(super) async fn chunk_stream_io_loop<T: DataframeClientAPI>(
                         }
                     };
 
-                    stats.try_flush_into(&pending_analytics, &metrics, Ok(()));
+                    stats.try_flush_into(&pending_analytics, Ok(()));
                     let actual: usize = chunks
                         .iter()
                         .flat_map(|seg| {

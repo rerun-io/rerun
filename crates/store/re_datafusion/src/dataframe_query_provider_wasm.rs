@@ -27,7 +27,6 @@ use datafusion::physical_plan::execution_plan::{Boundedness, EmissionType};
 use datafusion::physical_plan::metrics::MetricsSet;
 
 use crate::analytics::build_metrics_set_for_explain;
-use crate::metrics_capture::QueryMetrics;
 use datafusion::physical_plan::{DisplayAs, DisplayFormatType, ExecutionPlan, PlanProperties};
 use futures_util::{Stream, StreamExt as _};
 use re_dataframe::external::re_chunk_store::ChunkStore;
@@ -61,12 +60,6 @@ pub(crate) struct SegmentStreamExec<T: DataframeClientAPI> {
     /// gated internally by whether the per-process telemetry stack is active.
     pending_analytics: crate::PendingQueryAnalytics,
 
-    /// Per-query counters + embedded plan-time `QueryInfo`. The wasm path
-    /// doesn't run a per-partition IO loop with `TaskFetchStats`, so the
-    /// fetch counters stay at zero; the embedded `query_info` is what feeds
-    /// the snapshot path and `EXPLAIN ANALYZE`.
-    metrics: Arc<QueryMetrics>,
-
     /// Plan-time summary used by `DisplayAs::Verbose`.
     plan_summary: PlanSummary,
 
@@ -93,9 +86,6 @@ pub struct DataframeSegmentStream<T: DataframeClientAPI> {
 
     /// Shared latch — see `SegmentStreamExec::snapshot_sent`.
     snapshot_sent: Arc<AtomicBool>,
-
-    /// Shared metrics handle used by the snapshot path.
-    metrics: Arc<QueryMetrics>,
 }
 
 impl<T: DataframeClientAPI> DataframeSegmentStream<T> {
@@ -192,7 +182,7 @@ impl<T: DataframeClientAPI> DataframeSegmentStream<T> {
             return;
         }
         let snapshot = crate::metrics_capture::build_query_snapshot(
-            &self.metrics,
+            self.pending_analytics.metrics(),
             self.pending_analytics.total_duration(),
             self.pending_analytics.time_to_first_chunk(),
             self.pending_analytics.error_kind(),
@@ -285,7 +275,6 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
         client: T,
         _limit: Option<usize>,
         pending_analytics: crate::PendingQueryAnalytics,
-        metrics: Arc<QueryMetrics>,
         captured_collectors: Vec<crate::MetricsCollector>,
     ) -> datafusion::common::Result<Self> {
         let projected_schema = match projection {
@@ -353,7 +342,7 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
         let chunk_info = group_chunk_infos_by_segment_id(chunk_info_batches.as_slice())?;
         drop(chunk_info_batches);
 
-        let plan_summary = PlanSummary::from_query_info(&metrics.query_info);
+        let plan_summary = PlanSummary::from_query_info(&pending_analytics.metrics().query_info);
 
         let snapshot_sent = Arc::new(AtomicBool::new(false));
 
@@ -365,7 +354,6 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
             target_partitions: num_partitions,
             client,
             pending_analytics,
-            metrics,
             plan_summary,
             captured_collectors,
             snapshot_sent,
@@ -474,7 +462,6 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
             target_partitions,
             client: self.client.clone(),
             pending_analytics: self.pending_analytics.clone(),
-            metrics: Arc::clone(&self.metrics),
             plan_summary: self.plan_summary.clone(),
             captured_collectors: self.captured_collectors.clone(),
             snapshot_sent: Arc::clone(&self.snapshot_sent),
@@ -537,7 +524,6 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
             pending_analytics: self.pending_analytics.clone(),
             captured_collectors: self.captured_collectors.clone(),
             snapshot_sent: Arc::clone(&self.snapshot_sent),
-            metrics: Arc::clone(&self.metrics),
         };
 
         Ok(Box::pin(stream))
@@ -545,7 +531,7 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
 
     fn metrics(&self) -> Option<MetricsSet> {
         Some(build_metrics_set_for_explain(
-            &self.metrics,
+            self.pending_analytics.metrics(),
             self.target_partitions,
             self.pending_analytics.time_to_first_chunk(),
         ))

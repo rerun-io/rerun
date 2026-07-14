@@ -1,7 +1,6 @@
 use crate::analytics::{QueryInfo, QueryType, expr_filter_signature};
 use crate::batch_coalescer::coalesce_exec::SizedCoalesceBatchesExec;
 use crate::batch_coalescer::coalescer::CoalescerOptions;
-use crate::metrics_capture::QueryMetrics;
 use crate::pushdown_expressions::{apply_filter_expr_to_queries, filter_expr_is_supported};
 use ahash::{HashMap, HashMapExt as _, HashSet};
 use arrow::array::{
@@ -631,20 +630,17 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
                 filters_signatures_unsupported,
             };
 
-            // Construct the plan's `QueryMetrics` here so it can be shared by
-            // both the analytics struct (for PostHog Drop-time span building)
-            // and `SegmentStreamExec` (for fetch counters + ad-hoc
-            // `EXPLAIN ANALYZE` MetricsSet). Single source of truth: there is
-            // no parallel `MetricsSet` accumulator.
-            let metrics = Arc::new(QueryMetrics::new(query_info));
-
-            // Begin analytics tracking. The PostHog OTLP send is gated by
-            // `self.analytics.is_some()`; the resulting struct is always
+            // Begin analytics tracking. This also constructs the plan's
+            // `QueryMetrics` (fetch counters + ad-hoc `EXPLAIN ANALYZE`
+            // MetricsSet), owned by the analytics struct as the single source
+            // of truth — `SegmentStreamExec` reads it through
+            // `PendingQueryAnalytics::metrics`. The PostHog OTLP send is gated
+            // by `self.analytics.is_some()`; the resulting struct is always
             // returned so the `metrics_capture` subscribers and DataFusion
             // `metrics()` see the same data.
             let pending_analytics = crate::analytics::begin_query(
                 self.analytics.clone(),
-                Arc::clone(&metrics),
+                query_info,
                 scan_start,
                 scan_start_wall,
             );
@@ -682,7 +678,6 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
                 #[cfg(not(target_arch = "wasm32"))]
                 trace_id,
                 pending_analytics,
-                metrics,
                 self.metrics_collectors.clone(),
             )
             .map(Arc::new)
