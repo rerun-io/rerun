@@ -38,7 +38,7 @@ pub use view_2d::SpatialView2D;
 pub use view_3d::SpatialView3D;
 
 // Export some other types that are useful for extensions.
-pub use contexts::TransformTreeContext;
+pub use contexts::{EntityDepthOffsets, TransformTreeContext};
 
 mod view_kind {
     /// Whether a spatial visualizer prefers 2D or 3D views.
