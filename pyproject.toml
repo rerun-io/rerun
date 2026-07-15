@@ -212,6 +212,7 @@ rrt_star = { workspace = true }
 segment_anything_model = { workspace = true }
 server_tables = { workspace = true }
 shared_recording = { workspace = true }
+state_timeline = { workspace = true }
 stdio = { workspace = true }
 structure_from_motion = { workspace = true }
 using_index_values = { workspace = true }
@@ -269,6 +270,7 @@ members = [
   "examples/python/segment_anything_model",
   "examples/python/server_tables",
   "examples/python/shared_recording",
+  "examples/python/state_timeline",
   "examples/python/stdio",
   "examples/python/structure_from_motion",
   "examples/python/table_blueprints",
