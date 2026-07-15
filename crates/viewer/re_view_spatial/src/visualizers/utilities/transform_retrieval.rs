@@ -3,6 +3,7 @@ use re_sdk_types::ViewClassIdentifier;
 use re_sdk_types::blueprint::components::VisualizerInstructionId;
 use re_sdk_types::components::{RotationAxisAngle, RotationQuat, Translation3D};
 use re_sdk_types::datatypes::Quaternion;
+use re_tf::TransformFrameIdHash;
 use re_viewer_context::{ViewClass as _, VisualizerExecutionOutput, VisualizerReportSeverity};
 
 use crate::contexts::{TransformInfo, TransformTreeContext};
@@ -271,25 +272,49 @@ pub fn is_valid_space_for_content(
         .pinhole_tree_root_info(transform.tree_root())
         .is_some();
 
+    // Helper for formatting messages below.
+    let frame_text = |frame_hash: TransformFrameIdHash| {
+        if let Some(frame) = transform_context.format_frame_or_debug_warn(frame_hash, entity_path) {
+            format!(" ({frame:?})")
+        } else {
+            String::new()
+        }
+    };
+
     match content_view_kind {
         SpatialViewKind::TwoD => {
             match view_kind {
                 SpatialViewKind::TwoD => {
-                    // Degenerated case: 2D content is under a pinhole which itself is NOT the pinhole that the 2D view is in.
-                    // We don't allow this since this would mean to apply a 3D->2D projection to a space that's already 2D.
-                    if transform_has_pinhole_ancestor
-                        && target_frame_pinhole_root.is_none_or(|target_frame_pinhole_root| {
-                            target_frame_pinhole_root != transform.tree_root()
-                        })
-                    {
-                        output.report_unspecified_source(
-                            *instruction_id,
-                            VisualizerReportSeverity::Error,
-                            "Can't visualize 2D content with a pinhole ancestor that's embedded within the 2D view. This applies a 3D → 2D projection to a space that's already regarded 2D.",
-                        );
-                        false
-                    } else {
-                        true
+                    if !transform_has_pinhole_ancestor {
+                        return true;
+                    }
+                    // 2D content below a pinhole is only valid when the view targets the same pinhole-defined 2D subspace.
+                    match target_frame_pinhole_root {
+                        None => {
+                            output.report_unspecified_source(
+                                    *instruction_id,
+                                    VisualizerReportSeverity::Error,
+                                    format!(
+                                        "This 2D content has a pinhole transform frame ancestor{}, but the 2D view's target frame doesn't have a pinhole root.",
+                                        frame_text(transform.tree_root())
+                                    ),
+                                );
+                            false
+                        }
+                        Some(target_frame_pinhole_root)
+                            if target_frame_pinhole_root != transform.tree_root() =>
+                        {
+                            output.report_unspecified_source(
+                                    *instruction_id,
+                                    VisualizerReportSeverity::Error,
+                                    format!(
+                                        "This 2D content has a pinhole transform frame ancestor{} that is different from the 2D view's pinhole root{}.",
+                                        frame_text(transform.tree_root()), frame_text(target_frame_pinhole_root)
+                                    ),
+                                );
+                            false
+                        }
+                        Some(_) => true,
                     }
                 }
 

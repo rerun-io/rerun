@@ -256,6 +256,64 @@ fn test_topology_errors() {
 }
 
 #[test]
+fn test_topology_errors_for_nested_pinholes() {
+    let mut test_context = TestContext::new();
+    test_context.register_view_class::<re_view_spatial::SpatialView2D>();
+
+    test_context.log_entity("outer_pinhole_entity", |builder| {
+        builder.with_archetype_auto_row(
+            TimePoint::STATIC,
+            &archetypes::Pinhole::from_focal_length_and_resolution([1.0, 1.0], [100.0, 100.0])
+                .with_child_frame("outer_pinhole")
+                .with_parent_frame("world"),
+        )
+    });
+    test_context.log_entity("inner_pinhole_entity", |builder| {
+        builder.with_archetype_auto_row(
+            TimePoint::STATIC,
+            &archetypes::Pinhole::from_focal_length_and_resolution([1.0, 1.0], [100.0, 100.0])
+                .with_child_frame("inner_pinhole")
+                .with_parent_frame("outer_pinhole"),
+        )
+    });
+    test_context.log_entity("points2d_entity", |builder| {
+        builder
+            .with_archetype_auto_row(TimePoint::STATIC, &archetypes::Points2D::new([[1.0, 1.0]]))
+            .with_archetype_auto_row(
+                TimePoint::STATIC,
+                &archetypes::CoordinateFrame::new("outer_pinhole"),
+            )
+    });
+
+    let view_id = test_context.setup_viewport_blueprint(|ctx, blueprint| {
+        let view_blueprint = ViewBlueprint::new(
+            re_view_spatial::SpatialView2D::identifier(),
+            RecommendedView::root(),
+        );
+        let view_id = view_blueprint.id;
+
+        ViewProperty::from_archetype::<blueprint_archetypes::SpatialInformation>(
+            ctx.blueprint_db(),
+            ctx.blueprint_query,
+            view_id,
+        )
+        .save_blueprint_component(
+            ctx,
+            &blueprint_archetypes::SpatialInformation::descriptor_target_frame(),
+            &re_tf::TransformFrameId::new("inner_pinhole"),
+        );
+
+        blueprint.add_views(std::iter::once(view_blueprint), None, None);
+        view_id
+    });
+
+    insta::assert_snapshot!(
+        "2d_view_at_inner_pinhole_with_nested_pinhole",
+        snapshot_visualizer_errors(&test_context, view_id)
+    );
+}
+
+#[test]
 fn test_topology_error_for_empty_coordinate_frame_name() {
     let mut test_context = TestContext::new();
     test_context.register_view_class::<re_view_spatial::SpatialView3D>();
