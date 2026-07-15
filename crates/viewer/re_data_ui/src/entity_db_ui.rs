@@ -305,7 +305,7 @@ fn grid_content_ui(ctx: &AppContext<'_>, db: &EntityDb, ui: &mut egui::Ui, ui_la
             chunk_max_rows_if_unsorted,
         } = db.storage_engine().store().config();
 
-        ui.grid_left_hand_label("Compaction");
+        ui.grid_left_hand_label("Compaction config");
         ui.label(format!(
             "{} rows ({} if unsorted) or {}",
             re_format::format_uint(chunk_max_rows),
