@@ -123,7 +123,7 @@ impl Clear {
 impl crate::Archetype for Clear {
     #[inline]
     fn name() -> crate::ArchetypeName {
-        crate::external::re_string_interner::intern_static!(
+        crate::external::re_string_interner::intern_static_nonempty!(
             crate::ArchetypeName,
             "rerun.archetypes.Clear"
         )

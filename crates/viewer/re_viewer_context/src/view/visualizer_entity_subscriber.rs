@@ -457,7 +457,7 @@ mod tests {
         ComponentDescriptor {
             archetype: None,
             component: component.into(),
-            component_type: component_type.map(Into::into),
+            component_type: component_type.and_then(|s| ComponentType::try_new(s).ok()),
         }
     }
 

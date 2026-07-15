@@ -117,9 +117,8 @@ pub trait ArchetypeReflectionMarker {}
 
 // ---
 
-re_string_interner::declare_new_type!(
+re_string_interner::declare_new_type_nonempty!(
     /// The fully-qualified name of an [`Archetype`], e.g. `rerun.archetypes.Points3D`.
-    #[derive(::serde::Deserialize, ::serde::Serialize)]
     pub struct ArchetypeName;
 );
 

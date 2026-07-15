@@ -169,16 +169,14 @@ impl From<arrow::datatypes::Field> for ComponentDescriptor {
         let descr = Self {
             archetype: md
                 .get(FIELD_METADATA_KEY_ARCHETYPE)
-                .cloned()
-                .map(Into::into),
+                .and_then(|s| ArchetypeName::try_new(s).ok()),
             component: md.get(FIELD_METADATA_KEY_COMPONENT).cloned().unwrap_or_else(|| {
                 re_log::debug!("Missing metadata field {FIELD_METADATA_KEY_COMPONENT}, resorting to field name: {}", field.name());
                 field.name().clone()
             }).into(),
             component_type: md
                 .get(FIELD_METADATA_KEY_COMPONENT_TYPE)
-                .cloned()
-                .map(Into::into),
+                .and_then(|s| ComponentType::try_new(s).ok()),
         };
         descr.sanity_check();
         descr

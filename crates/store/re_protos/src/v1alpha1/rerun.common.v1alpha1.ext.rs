@@ -900,9 +900,10 @@ impl TryFrom<crate::common::v1alpha1::ComponentDescriptor> for ComponentDescript
         ))?;
 
         Ok(ComponentDescriptor {
-            archetype: archetype.map(Into::into),
+            archetype: archetype.and_then(|s| re_types_core::ArchetypeName::try_new(s).ok()),
             component: component.into(),
-            component_type: component_type.map(Into::into),
+            component_type: component_type
+                .and_then(|s| re_types_core::ComponentType::try_new(s).ok()),
         })
     }
 }

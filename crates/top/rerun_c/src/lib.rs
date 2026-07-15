@@ -26,8 +26,8 @@ use re_sdk::external::re_log_types::TimelineName;
 use re_sdk::log::{Chunk, ChunkId, PendingRow, TimeColumn};
 use re_sdk::time::TimeType;
 use re_sdk::{
-    ComponentDescriptor, EntityPath, RecordingStream, RecordingStreamBuilder, StoreKind, TimeCell,
-    TimePoint, Timeline,
+    ArchetypeName, ComponentDescriptor, ComponentType, EntityPath, RecordingStream,
+    RecordingStreamBuilder, StoreKind, TimeCell, TimePoint, Timeline,
 };
 use recording_streams::{RECORDING_STREAMS, recording_stream};
 
@@ -494,9 +494,9 @@ fn rr_register_component_type_impl(
         component_type_descr.as_optional_str("component_type.descriptor.component_type")?;
 
     let component_descr = ComponentDescriptor {
-        archetype: archetype_name.map(Into::into),
+        archetype: archetype_name.and_then(|s| ArchetypeName::try_new(s).ok()),
         component: component.into(),
-        component_type: component_type_descr.map(Into::into),
+        component_type: component_type_descr.and_then(|s| ComponentType::try_new(s).ok()),
     };
 
     let field = arrow::datatypes::Field::try_from(&component_type.schema).map_err(|err| {

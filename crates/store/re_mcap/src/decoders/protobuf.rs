@@ -11,8 +11,8 @@ use prost_reflect::{
     OneofDescriptor, ReflectMessage as _, Value,
 };
 use re_chunk::{Chunk, ChunkId};
-use re_sdk_types::ComponentDescriptor;
 use re_sdk_types::reflection::ComponentDescriptorExt as _;
+use re_sdk_types::{ArchetypeName, ComponentDescriptor};
 
 use crate::parsers::{MessageParser, ParserContext};
 use crate::{DecoderIdentifier, Error, MessageDecoder};
@@ -166,8 +166,9 @@ impl MessageParser for ProtobufMessageParser {
             entity_path,
             timelines,
             std::iter::once((
-                ComponentDescriptor::partial("message")
-                    .with_builtin_archetype(message_descriptor.full_name()),
+                ComponentDescriptor::partial("message").with_builtin_archetype(
+                    ArchetypeName::try_new(message_descriptor.full_name())?,
+                ),
                 builder.finish().into(),
             ))
             .collect(),

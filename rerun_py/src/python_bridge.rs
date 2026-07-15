@@ -24,7 +24,10 @@ use re_log_types::{BlueprintActivationCommand, EntityPathPart, LogMsg, Recording
 use re_sdk::external::re_log_encoding::Encoder;
 use re_sdk::sink::{BinaryStreamStorage, CallbackSink, MemorySinkStorage, SinkFlushError};
 use re_sdk::time::TimePoint;
-use re_sdk::{ComponentDescriptor, EntityPath, RecordingStream, RecordingStreamBuilder, TimeCell};
+use re_sdk::{
+    ArchetypeName, ComponentDescriptor, ComponentType, EntityPath, RecordingStream,
+    RecordingStreamBuilder, TimeCell,
+};
 #[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
 
@@ -1924,9 +1927,9 @@ impl PyComponentDescriptor {
     #[pyo3(text_signature = "(self, component, archetype=None, component_type=None)")]
     fn new(component: &str, archetype: Option<&str>, component_type: Option<&str>) -> Self {
         let descr = ComponentDescriptor {
-            archetype: archetype.map(Into::into),
+            archetype: archetype.and_then(|s| ArchetypeName::try_new(s).ok()),
             component: component.into(),
-            component_type: component_type.map(Into::into),
+            component_type: component_type.and_then(|s| ComponentType::try_new(s).ok()),
         };
 
         Self(descr)
@@ -1977,11 +1980,11 @@ impl PyComponentDescriptor {
     #[pyo3(signature = (archetype=None, component_type=None))]
     fn with_overrides(&mut self, archetype: Option<&str>, component_type: Option<&str>) -> Self {
         let mut cloned = self.0.clone();
-        if let Some(archetype) = archetype {
-            cloned = cloned.with_archetype(archetype.into());
+        if let Some(archetype) = archetype.and_then(|s| ArchetypeName::try_new(s).ok()) {
+            cloned = cloned.with_archetype(archetype);
         }
-        if let Some(component_type) = component_type {
-            cloned = cloned.with_component_type(component_type.into());
+        if let Some(component_type) = component_type.and_then(|s| ComponentType::try_new(s).ok()) {
+            cloned = cloned.with_component_type(component_type);
         }
         Self(cloned)
     }
@@ -1990,18 +1993,22 @@ impl PyComponentDescriptor {
     #[pyo3(signature = (archetype=None, component_type=None))]
     fn or_with_overrides(&mut self, archetype: Option<&str>, component_type: Option<&str>) -> Self {
         let mut cloned = self.0.clone();
-        if let Some(archetype) = archetype {
-            cloned = cloned.or_with_archetype(|| archetype.into());
+        if let Some(archetype) = archetype.and_then(|s| ArchetypeName::try_new(s).ok()) {
+            cloned = cloned.or_with_archetype(|| archetype);
         }
-        if let Some(component_type) = component_type {
-            cloned = cloned.or_with_component_type(|| component_type.into());
+        if let Some(component_type) = component_type.and_then(|s| ComponentType::try_new(s).ok()) {
+            cloned = cloned.or_with_component_type(|| component_type);
         }
         Self(cloned)
     }
 
     /// Sets `archetype` in a format similar to built-in archetypes.
     fn with_builtin_archetype(&mut self, archetype: &str) -> Self {
-        Self(self.0.clone().with_builtin_archetype(archetype))
+        if let Ok(archetype) = ArchetypeName::try_new(archetype) {
+            Self(self.0.clone().with_builtin_archetype(archetype))
+        } else {
+            Self(self.0.clone())
+        }
     }
 }
 

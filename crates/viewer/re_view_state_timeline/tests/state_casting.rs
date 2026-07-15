@@ -15,7 +15,7 @@ use re_log_types::external::arrow::array::{
 use re_log_types::{EntityPath, Timeline};
 use re_sdk_types::archetypes::TextLog;
 use re_sdk_types::blueprint::datatypes::{ComponentSourceKind, VisualizerComponentMapping};
-use re_sdk_types::{DynamicArchetype, Visualizer};
+use re_sdk_types::{ArchetypeName, DynamicArchetype, Visualizer};
 use re_test_context::TestContext;
 use re_test_context::VisualizerBlueprintContext as _;
 use re_test_viewport::TestContextExt as _;
@@ -193,8 +193,9 @@ where
     let source_component = format!("{archetype_name}:{field_name}");
 
     for (tick, array) in std::iter::zip(0..3i64, arrays) {
-        let archetype = DynamicArchetype::new(archetype_name)
-            .with_component_from_data(field_name, array.into());
+        let archetype =
+            DynamicArchetype::new(ArchetypeName::try_new(archetype_name).expect("valid archetype"))
+                .with_component_from_data(field_name, array.into());
         test_context.log_entity(entity, |builder| {
             builder.with_archetype_auto_row([(Timeline::log_tick(), tick)], &archetype)
         });

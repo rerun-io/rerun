@@ -1135,11 +1135,13 @@ impl RawRrdManifest {
                     }));
                 };
                 let descr = ComponentDescriptor {
-                    archetype: md.get("rerun:archetype").map(|s| ArchetypeName::new(s)),
+                    archetype: md
+                        .get("rerun:archetype")
+                        .and_then(|s| ArchetypeName::try_new(s).ok()),
                     component: ComponentIdentifier::new(component),
                     component_type: md
                         .get("rerun:component_type")
-                        .map(|s| ComponentType::new(s)),
+                        .and_then(|s| ComponentType::try_new(s).ok()),
                 };
                 let column_name = Self::compute_column_name(
                     None,
@@ -1211,11 +1213,13 @@ impl RawRrdManifest {
                     }));
                 };
                 let descr = ComponentDescriptor {
-                    archetype: md.get("rerun:archetype").map(|s| ArchetypeName::new(s)),
+                    archetype: md
+                        .get("rerun:archetype")
+                        .and_then(|s| ArchetypeName::try_new(s).ok()),
                     component: ComponentIdentifier::new(component),
                     component_type: md
                         .get("rerun:component_type")
-                        .map(|s| ComponentType::new(s)),
+                        .and_then(|s| ComponentType::try_new(s).ok()),
                 };
 
                 for suffix in ["start", "end"] {

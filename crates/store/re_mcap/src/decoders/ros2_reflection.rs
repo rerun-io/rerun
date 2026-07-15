@@ -18,8 +18,8 @@ use re_ros_msg::deserialize::{MapResolver, Value, decode_message};
 use re_ros_msg::message_spec::{
     ArraySize, BuiltInType, ComplexType, MessageSpecification, Type, message_package,
 };
-use re_sdk_types::ComponentDescriptor;
 use re_sdk_types::reflection::ComponentDescriptorExt as _;
+use re_sdk_types::{ArchetypeName, ComponentDescriptor};
 
 use super::ros2::supports_ros2_cdr_channel;
 use crate::parsers::{MessageParser, ParserContext, dds};
@@ -173,7 +173,7 @@ impl MessageParser for Ros2ReflectionMessageParser {
             mut builder,
         } = *self;
 
-        let archetype_name = message_schema.spec.name.clone().replace('/', ".");
+        let archetype_name = ArchetypeName::try_new(message_schema.spec.name.replace('/', "."))?;
 
         let message_chunk = Chunk::from_auto_row_ids(
             ChunkId::new(),

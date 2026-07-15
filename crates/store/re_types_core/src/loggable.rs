@@ -95,9 +95,8 @@ pub type UnorderedComponentSet = IntSet<ComponentIdentifier>;
 
 pub type ComponentSet = std::collections::BTreeSet<ComponentIdentifier>;
 
-re_string_interner::declare_new_type!(
+re_string_interner::declare_new_type_nonempty!(
     /// The fully-qualified name of a [`Component`], e.g. `rerun.components.Position2D`.
-    #[derive(::serde::Deserialize, ::serde::Serialize)]
     pub struct ComponentType;
 );
 

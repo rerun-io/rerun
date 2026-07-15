@@ -1570,7 +1570,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
     re_tracing::profile_function!();
     let array = [
         (
-            ArchetypeName::new("rerun.archetypes.AnnotationContext"),
+            ArchetypeName::from("rerun.archetypes.AnnotationContext"),
             ArchetypeReflection {
                 display_name: "Annotation context",
                 deprecation_summary: None,
@@ -1586,7 +1586,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.archetypes.Arrows2D"),
+            ArchetypeName::from("rerun.archetypes.Arrows2D"),
             ArchetypeReflection {
                 display_name: "Arrows 2D",
                 deprecation_summary: None,
@@ -1653,7 +1653,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.archetypes.Arrows3D"),
+            ArchetypeName::from("rerun.archetypes.Arrows3D"),
             ArchetypeReflection {
                 display_name: "Arrows 3D",
                 deprecation_summary: None,
@@ -1713,7 +1713,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.archetypes.Asset3D"),
+            ArchetypeName::from("rerun.archetypes.Asset3D"),
             ArchetypeReflection {
                 display_name: "Asset 3D",
                 deprecation_summary: None,
@@ -1745,7 +1745,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.archetypes.AssetVideo"),
+            ArchetypeName::from("rerun.archetypes.AssetVideo"),
             ArchetypeReflection {
                 display_name: "Asset video",
                 deprecation_summary: None,
@@ -1770,7 +1770,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.archetypes.BarChart"),
+            ArchetypeName::from("rerun.archetypes.BarChart"),
             ArchetypeReflection {
                 display_name: "Bar chart",
                 deprecation_summary: None,
@@ -1809,7 +1809,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.archetypes.Boxes2D"),
+            ArchetypeName::from("rerun.archetypes.Boxes2D"),
             ArchetypeReflection {
                 display_name: "Boxes 2D",
                 deprecation_summary: None,
@@ -1876,7 +1876,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.archetypes.Boxes3D"),
+            ArchetypeName::from("rerun.archetypes.Boxes3D"),
             ArchetypeReflection {
                 display_name: "Boxes 3D",
                 deprecation_summary: None,
@@ -1957,7 +1957,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.archetypes.Capsules3D"),
+            ArchetypeName::from("rerun.archetypes.Capsules3D"),
             ArchetypeReflection {
                 display_name: "Capsules 3D",
                 deprecation_summary: None,
@@ -2045,7 +2045,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.archetypes.Clear"),
+            ArchetypeName::from("rerun.archetypes.Clear"),
             ArchetypeReflection {
                 display_name: "Clear",
                 deprecation_summary: None,
@@ -2061,7 +2061,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.archetypes.CoordinateFrame"),
+            ArchetypeName::from("rerun.archetypes.CoordinateFrame"),
             ArchetypeReflection {
                 display_name: "Coordinate frame",
                 deprecation_summary: None,
@@ -2077,7 +2077,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.archetypes.Cylinders3D"),
+            ArchetypeName::from("rerun.archetypes.Cylinders3D"),
             ArchetypeReflection {
                 display_name: "Cylinders 3D",
                 deprecation_summary: None,
@@ -2165,7 +2165,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.archetypes.DepthImage"),
+            ArchetypeName::from("rerun.archetypes.DepthImage"),
             ArchetypeReflection {
                 display_name: "Depth image",
                 deprecation_summary: None,
@@ -2232,7 +2232,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.archetypes.Ellipses2D"),
+            ArchetypeName::from("rerun.archetypes.Ellipses2D"),
             ArchetypeReflection {
                 display_name: "Ellipses 2D",
                 deprecation_summary: None,
@@ -2299,7 +2299,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.archetypes.Ellipsoids3D"),
+            ArchetypeName::from("rerun.archetypes.Ellipsoids3D"),
             ArchetypeReflection {
                 display_name: "Ellipsoids 3D",
                 deprecation_summary: None,
@@ -2380,7 +2380,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.archetypes.EncodedDepthImage"),
+            ArchetypeName::from("rerun.archetypes.EncodedDepthImage"),
             ArchetypeReflection {
                 display_name: "Encoded depth image",
                 deprecation_summary: None,
@@ -2447,7 +2447,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.archetypes.EncodedImage"),
+            ArchetypeName::from("rerun.archetypes.EncodedImage"),
             ArchetypeReflection {
                 display_name: "Encoded image",
                 deprecation_summary: None,
@@ -2493,7 +2493,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.archetypes.GeoLineStrings"),
+            ArchetypeName::from("rerun.archetypes.GeoLineStrings"),
             ArchetypeReflection {
                 display_name: "Geo line strings",
                 deprecation_summary: None,
@@ -2525,7 +2525,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.archetypes.GeoPoints"),
+            ArchetypeName::from("rerun.archetypes.GeoPoints"),
             ArchetypeReflection {
                 display_name: "Geo points",
                 deprecation_summary: None,
@@ -2564,7 +2564,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.archetypes.GraphEdges"),
+            ArchetypeName::from("rerun.archetypes.GraphEdges"),
             ArchetypeReflection {
                 display_name: "Graph edges",
                 deprecation_summary: None,
@@ -2589,7 +2589,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.archetypes.GraphNodes"),
+            ArchetypeName::from("rerun.archetypes.GraphNodes"),
             ArchetypeReflection {
                 display_name: "Graph nodes",
                 deprecation_summary: None,
@@ -2642,7 +2642,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.archetypes.GridMap"),
+            ArchetypeName::from("rerun.archetypes.GridMap"),
             ArchetypeReflection {
                 display_name: "Grid map",
                 deprecation_summary: None,
@@ -2716,7 +2716,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.archetypes.Image"),
+            ArchetypeName::from("rerun.archetypes.Image"),
             ArchetypeReflection {
                 display_name: "Image",
                 deprecation_summary: None,
@@ -2762,7 +2762,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.archetypes.InstancePoses3D"),
+            ArchetypeName::from("rerun.archetypes.InstancePoses3D"),
             ArchetypeReflection {
                 display_name: "Instance poses 3D",
                 deprecation_summary: None,
@@ -2808,7 +2808,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.archetypes.LineStrips2D"),
+            ArchetypeName::from("rerun.archetypes.LineStrips2D"),
             ArchetypeReflection {
                 display_name: "Line strips 2D",
                 deprecation_summary: None,
@@ -2868,7 +2868,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.archetypes.LineStrips3D"),
+            ArchetypeName::from("rerun.archetypes.LineStrips3D"),
             ArchetypeReflection {
                 display_name: "Line strips 3D",
                 deprecation_summary: None,
@@ -2921,7 +2921,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.archetypes.McapChannel"),
+            ArchetypeName::from("rerun.archetypes.McapChannel"),
             ArchetypeReflection {
                 display_name: "Mcap channel",
                 deprecation_summary: None,
@@ -2960,7 +2960,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.archetypes.McapMessage"),
+            ArchetypeName::from("rerun.archetypes.McapMessage"),
             ArchetypeReflection {
                 display_name: "Mcap message",
                 deprecation_summary: None,
@@ -2976,7 +2976,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.archetypes.McapSchema"),
+            ArchetypeName::from("rerun.archetypes.McapSchema"),
             ArchetypeReflection {
                 display_name: "Mcap schema",
                 deprecation_summary: None,
@@ -3015,7 +3015,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.archetypes.McapStatistics"),
+            ArchetypeName::from("rerun.archetypes.McapStatistics"),
             ArchetypeReflection {
                 display_name: "Mcap statistics",
                 deprecation_summary: None,
@@ -3089,7 +3089,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.archetypes.Mesh3D"),
+            ArchetypeName::from("rerun.archetypes.Mesh3D"),
             ArchetypeReflection {
                 display_name: "Mesh 3D",
                 deprecation_summary: None,
@@ -3170,7 +3170,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.archetypes.Pinhole"),
+            ArchetypeName::from("rerun.archetypes.Pinhole"),
             ArchetypeReflection {
                 display_name: "Pinhole",
                 deprecation_summary: None,
@@ -3237,7 +3237,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.archetypes.Points2D"),
+            ArchetypeName::from("rerun.archetypes.Points2D"),
             ArchetypeReflection {
                 display_name: "Points 2D",
                 deprecation_summary: None,
@@ -3304,7 +3304,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.archetypes.Points3D"),
+            ArchetypeName::from("rerun.archetypes.Points3D"),
             ArchetypeReflection {
                 display_name: "Points 3D",
                 deprecation_summary: None,
@@ -3371,7 +3371,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.archetypes.RecordingInfo"),
+            ArchetypeName::from("rerun.archetypes.RecordingInfo"),
             ArchetypeReflection {
                 display_name: "Recording info",
                 deprecation_summary: None,
@@ -3396,7 +3396,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.archetypes.Scalars"),
+            ArchetypeName::from("rerun.archetypes.Scalars"),
             ArchetypeReflection {
                 display_name: "Scalars",
                 deprecation_summary: None,
@@ -3412,7 +3412,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.archetypes.SegmentationImage"),
+            ArchetypeName::from("rerun.archetypes.SegmentationImage"),
             ArchetypeReflection {
                 display_name: "Segmentation image",
                 deprecation_summary: None,
@@ -3451,7 +3451,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.archetypes.SeriesLines"),
+            ArchetypeName::from("rerun.archetypes.SeriesLines"),
             ArchetypeReflection {
                 display_name: "Series lines",
                 deprecation_summary: None,
@@ -3504,7 +3504,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.archetypes.SeriesPoints"),
+            ArchetypeName::from("rerun.archetypes.SeriesPoints"),
             ArchetypeReflection {
                 display_name: "Series points",
                 deprecation_summary: None,
@@ -3550,7 +3550,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.archetypes.StateChange"),
+            ArchetypeName::from("rerun.archetypes.StateChange"),
             ArchetypeReflection {
                 display_name: "State change",
                 deprecation_summary: None,
@@ -3566,7 +3566,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.archetypes.StateConfiguration"),
+            ArchetypeName::from("rerun.archetypes.StateConfiguration"),
             ArchetypeReflection {
                 display_name: "State configuration",
                 deprecation_summary: None,
@@ -3605,7 +3605,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.archetypes.Tensor"),
+            ArchetypeName::from("rerun.archetypes.Tensor"),
             ArchetypeReflection {
                 display_name: "Tensor",
                 deprecation_summary: None,
@@ -3630,7 +3630,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.archetypes.TextDocument"),
+            ArchetypeName::from("rerun.archetypes.TextDocument"),
             ArchetypeReflection {
                 display_name: "Text document",
                 deprecation_summary: None,
@@ -3655,7 +3655,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.archetypes.TextLog"),
+            ArchetypeName::from("rerun.archetypes.TextLog"),
             ArchetypeReflection {
                 display_name: "Text log",
                 deprecation_summary: None,
@@ -3687,7 +3687,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.archetypes.Transform3D"),
+            ArchetypeName::from("rerun.archetypes.Transform3D"),
             ArchetypeReflection {
                 display_name: "Transform 3D",
                 deprecation_summary: None,
@@ -3754,7 +3754,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.archetypes.TransformAxes3D"),
+            ArchetypeName::from("rerun.archetypes.TransformAxes3D"),
             ArchetypeReflection {
                 display_name: "Transform axes 3D",
                 deprecation_summary: None,
@@ -3779,7 +3779,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.archetypes.VideoFrameReference"),
+            ArchetypeName::from("rerun.archetypes.VideoFrameReference"),
             ArchetypeReflection {
                 display_name: "Video frame reference",
                 deprecation_summary: None,
@@ -3818,7 +3818,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.archetypes.VideoStream"),
+            ArchetypeName::from("rerun.archetypes.VideoStream"),
             ArchetypeReflection {
                 display_name: "Video stream",
                 deprecation_summary: None,
@@ -3864,7 +3864,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.archetypes.ViewCoordinates"),
+            ArchetypeName::from("rerun.archetypes.ViewCoordinates"),
             ArchetypeReflection {
                 display_name: "View coordinates",
                 deprecation_summary: None,
@@ -3880,7 +3880,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.archetypes.VoxelGridMap"),
+            ArchetypeName::from("rerun.archetypes.VoxelGridMap"),
             ArchetypeReflection {
                 display_name: "Voxel grid map",
                 deprecation_summary: None,
@@ -3961,7 +3961,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.blueprint.archetypes.ActiveVisualizers"),
+            ArchetypeName::from("rerun.blueprint.archetypes.ActiveVisualizers"),
             ArchetypeReflection {
                 display_name: "Active visualizers",
                 deprecation_summary: None,
@@ -3977,7 +3977,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.blueprint.archetypes.Background"),
+            ArchetypeName::from("rerun.blueprint.archetypes.Background"),
             ArchetypeReflection {
                 display_name: "Background",
                 deprecation_summary: None,
@@ -4002,7 +4002,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.blueprint.archetypes.ContainerBlueprint"),
+            ArchetypeName::from("rerun.blueprint.archetypes.ContainerBlueprint"),
             ArchetypeReflection {
                 display_name: "Container blueprint",
                 deprecation_summary: None,
@@ -4069,7 +4069,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.blueprint.archetypes.DataframeQuery"),
+            ArchetypeName::from("rerun.blueprint.archetypes.DataframeQuery"),
             ArchetypeReflection {
                 display_name: "Dataframe query",
                 deprecation_summary: None,
@@ -4129,7 +4129,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.blueprint.archetypes.EntityBehavior"),
+            ArchetypeName::from("rerun.blueprint.archetypes.EntityBehavior"),
             ArchetypeReflection {
                 display_name: "Entity behavior",
                 deprecation_summary: None,
@@ -4154,7 +4154,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.blueprint.archetypes.EyeControls3D"),
+            ArchetypeName::from("rerun.blueprint.archetypes.EyeControls3D"),
             ArchetypeReflection {
                 display_name: "Eye controls 3D",
                 deprecation_summary: None,
@@ -4214,7 +4214,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.blueprint.archetypes.ForceCenter"),
+            ArchetypeName::from("rerun.blueprint.archetypes.ForceCenter"),
             ArchetypeReflection {
                 display_name: "Force center",
                 deprecation_summary: None,
@@ -4239,7 +4239,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.blueprint.archetypes.ForceCollisionRadius"),
+            ArchetypeName::from("rerun.blueprint.archetypes.ForceCollisionRadius"),
             ArchetypeReflection {
                 display_name: "Force collision radius",
                 deprecation_summary: None,
@@ -4271,7 +4271,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.blueprint.archetypes.ForceLink"),
+            ArchetypeName::from("rerun.blueprint.archetypes.ForceLink"),
             ArchetypeReflection {
                 display_name: "Force link",
                 deprecation_summary: None,
@@ -4303,7 +4303,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.blueprint.archetypes.ForceManyBody"),
+            ArchetypeName::from("rerun.blueprint.archetypes.ForceManyBody"),
             ArchetypeReflection {
                 display_name: "Force many body",
                 deprecation_summary: None,
@@ -4328,7 +4328,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.blueprint.archetypes.ForcePosition"),
+            ArchetypeName::from("rerun.blueprint.archetypes.ForcePosition"),
             ArchetypeReflection {
                 display_name: "Force position",
                 deprecation_summary: None,
@@ -4360,7 +4360,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.blueprint.archetypes.GraphBackground"),
+            ArchetypeName::from("rerun.blueprint.archetypes.GraphBackground"),
             ArchetypeReflection {
                 display_name: "Graph background",
                 deprecation_summary: None,
@@ -4376,7 +4376,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.blueprint.archetypes.LineGrid3D"),
+            ArchetypeName::from("rerun.blueprint.archetypes.LineGrid3D"),
             ArchetypeReflection {
                 display_name: "Line grid 3D",
                 deprecation_summary: None,
@@ -4422,7 +4422,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.blueprint.archetypes.MapBackground"),
+            ArchetypeName::from("rerun.blueprint.archetypes.MapBackground"),
             ArchetypeReflection {
                 display_name: "Map background",
                 deprecation_summary: None,
@@ -4438,7 +4438,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.blueprint.archetypes.MapZoom"),
+            ArchetypeName::from("rerun.blueprint.archetypes.MapZoom"),
             ArchetypeReflection {
                 display_name: "Map zoom",
                 deprecation_summary: None,
@@ -4454,7 +4454,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.blueprint.archetypes.NearClipPlane"),
+            ArchetypeName::from("rerun.blueprint.archetypes.NearClipPlane"),
             ArchetypeReflection {
                 display_name: "Near clip plane",
                 deprecation_summary: None,
@@ -4470,7 +4470,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.blueprint.archetypes.PanelBlueprint"),
+            ArchetypeName::from("rerun.blueprint.archetypes.PanelBlueprint"),
             ArchetypeReflection {
                 display_name: "Panel blueprint",
                 deprecation_summary: None,
@@ -4486,7 +4486,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.blueprint.archetypes.PlotBackground"),
+            ArchetypeName::from("rerun.blueprint.archetypes.PlotBackground"),
             ArchetypeReflection {
                 display_name: "Plot background",
                 deprecation_summary: None,
@@ -4511,7 +4511,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.blueprint.archetypes.PlotLegend"),
+            ArchetypeName::from("rerun.blueprint.archetypes.PlotLegend"),
             ArchetypeReflection {
                 display_name: "Plot legend",
                 deprecation_summary: None,
@@ -4536,7 +4536,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.blueprint.archetypes.ScalarAxis"),
+            ArchetypeName::from("rerun.blueprint.archetypes.ScalarAxis"),
             ArchetypeReflection {
                 display_name: "Scalar axis",
                 deprecation_summary: None,
@@ -4561,7 +4561,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.blueprint.archetypes.SpatialInformation"),
+            ArchetypeName::from("rerun.blueprint.archetypes.SpatialInformation"),
             ArchetypeReflection {
                 display_name: "Spatial information",
                 deprecation_summary: None,
@@ -4593,7 +4593,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.blueprint.archetypes.TableBlueprint"),
+            ArchetypeName::from("rerun.blueprint.archetypes.TableBlueprint"),
             ArchetypeReflection {
                 display_name: "Table blueprint",
                 deprecation_summary: None,
@@ -4632,7 +4632,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.blueprint.archetypes.TensorScalarMapping"),
+            ArchetypeName::from("rerun.blueprint.archetypes.TensorScalarMapping"),
             ArchetypeReflection {
                 display_name: "Tensor scalar mapping",
                 deprecation_summary: None,
@@ -4664,7 +4664,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.blueprint.archetypes.TensorSliceSelection"),
+            ArchetypeName::from("rerun.blueprint.archetypes.TensorSliceSelection"),
             ArchetypeReflection {
                 display_name: "Tensor slice selection",
                 deprecation_summary: None,
@@ -4704,7 +4704,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.blueprint.archetypes.TensorViewFit"),
+            ArchetypeName::from("rerun.blueprint.archetypes.TensorViewFit"),
             ArchetypeReflection {
                 display_name: "Tensor view fit",
                 deprecation_summary: None,
@@ -4720,7 +4720,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.blueprint.archetypes.TextDocumentFormat"),
+            ArchetypeName::from("rerun.blueprint.archetypes.TextDocumentFormat"),
             ArchetypeReflection {
                 display_name: "Text document format",
                 deprecation_summary: None,
@@ -4745,7 +4745,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.blueprint.archetypes.TextLogColumns"),
+            ArchetypeName::from("rerun.blueprint.archetypes.TextLogColumns"),
             ArchetypeReflection {
                 display_name: "Text log columns",
                 deprecation_summary: None,
@@ -4770,7 +4770,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.blueprint.archetypes.TextLogFormat"),
+            ArchetypeName::from("rerun.blueprint.archetypes.TextLogFormat"),
             ArchetypeReflection {
                 display_name: "Text log format",
                 deprecation_summary: None,
@@ -4786,7 +4786,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.blueprint.archetypes.TextLogRows"),
+            ArchetypeName::from("rerun.blueprint.archetypes.TextLogRows"),
             ArchetypeReflection {
                 display_name: "Text log rows",
                 deprecation_summary: None,
@@ -4802,7 +4802,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.blueprint.archetypes.TimeAxis"),
+            ArchetypeName::from("rerun.blueprint.archetypes.TimeAxis"),
             ArchetypeReflection {
                 display_name: "Time axis",
                 deprecation_summary: None,
@@ -4834,7 +4834,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.blueprint.archetypes.TimePanelBlueprint"),
+            ArchetypeName::from("rerun.blueprint.archetypes.TimePanelBlueprint"),
             ArchetypeReflection {
                 display_name: "Time panel blueprint",
                 deprecation_summary: None,
@@ -4894,7 +4894,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.blueprint.archetypes.ViewBlueprint"),
+            ArchetypeName::from("rerun.blueprint.archetypes.ViewBlueprint"),
             ArchetypeReflection {
                 display_name: "View blueprint",
                 deprecation_summary: None,
@@ -4933,7 +4933,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.blueprint.archetypes.ViewContents"),
+            ArchetypeName::from("rerun.blueprint.archetypes.ViewContents"),
             ArchetypeReflection {
                 display_name: "View contents",
                 deprecation_summary: None,
@@ -4949,7 +4949,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.blueprint.archetypes.ViewportBlueprint"),
+            ArchetypeName::from("rerun.blueprint.archetypes.ViewportBlueprint"),
             ArchetypeReflection {
                 display_name: "Viewport blueprint",
                 deprecation_summary: None,
@@ -4996,7 +4996,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.blueprint.archetypes.VisibleTimeRanges"),
+            ArchetypeName::from("rerun.blueprint.archetypes.VisibleTimeRanges"),
             ArchetypeReflection {
                 display_name: "Visible time ranges",
                 deprecation_summary: None,
@@ -5012,7 +5012,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.blueprint.archetypes.VisualBounds2D"),
+            ArchetypeName::from("rerun.blueprint.archetypes.VisualBounds2D"),
             ArchetypeReflection {
                 display_name: "Visual bounds 2D",
                 deprecation_summary: None,
@@ -5028,7 +5028,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.blueprint.archetypes.VisualizerInstruction"),
+            ArchetypeName::from("rerun.blueprint.archetypes.VisualizerInstruction"),
             ArchetypeReflection {
                 display_name: "Visualizer instruction",
                 deprecation_summary: None,
