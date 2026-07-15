@@ -5,6 +5,7 @@
 
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
+use std::time::Duration;
 
 use arrow::array::{RecordBatch, StringArray};
 use futures::StreamExt as _;
@@ -42,6 +43,17 @@ const GRPC_BATCH_SIZE: usize = 12;
 /// Max batch-level futures in-flight at once in the IO pipeline.
 /// This bounds both concurrency and the reorder buffer size.
 const IO_PIPELINE_BUFFER: usize = 24;
+
+/// Connect timeout for direct-URL (S3) fetches. Bounds DNS + TCP + TLS
+/// setup so a hung connect cannot indefinitely hold one of the scarce
+/// process-global direct-fetch permits. Mirrors the gRPC client's 10s.
+const DIRECT_FETCH_CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
+
+/// Idle read timeout for direct-URL fetches: the max gap between received
+/// bytes. Idle-based (not a total-request cap) so a large-but-progressing
+/// 16 MB merged range is never falsely cancelled, while a stalled body
+/// still releases its permit.
+const DIRECT_FETCH_READ_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// Build a [`SegmentChunkManifest`] per segment from the `:start` column
 /// the server attaches to each `chunk_info` row when the query has a
@@ -926,7 +938,11 @@ pub(super) async fn chunk_stream_io_loop<T: DataframeClientAPI>(
     }
     re_log::debug!("Fetch tasks: {total_n_direct} direct, {total_n_grpc} gRPC fallback");
 
-    let http_client = reqwest::Client::new();
+    let http_client = reqwest::Client::builder()
+        .connect_timeout(DIRECT_FETCH_CONNECT_TIMEOUT)
+        .read_timeout(DIRECT_FETCH_READ_TIMEOUT)
+        .build()
+        .expect("static reqwest client config is valid");
     let total_tasks = total_n_direct + total_n_grpc;
     let mut tasks_completed: usize = 0;
 

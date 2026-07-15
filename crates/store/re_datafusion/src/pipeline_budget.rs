@@ -58,14 +58,16 @@
 //!
 //! ## Runtime overrides
 //!
-//! The three sizing parameters can be tuned without a rebuild via
-//! environment variables:
+//! The budget sizing parameters — plus the direct-fetch concurrency cap
+//! this module also owns (see [`direct_fetch_semaphore`]) — can be tuned
+//! without a rebuild via environment variables:
 //!
-//! | Variable                          | Type   | Accepted range | Default |
-//! |-----------------------------------|--------|----------------|---------|
-//! | `RERUN_PIPELINE_BUDGET_MIN`       | size   | `> 0`          | `4GiB`  |
-//! | `RERUN_PIPELINE_BUDGET_MAX`       | size   | `> 0`          | `1TiB`  |
-//! | `RERUN_PIPELINE_BUDGET_FRACTION`  | float  | `(0.0, 1.0]`   | 1.0     |
+//! | Variable                             | Type  | Accepted range | Default |
+//! |--------------------------------------|-------|----------------|---------|
+//! | `RERUN_PIPELINE_BUDGET_MIN`          | size  | `> 0`          | `4GiB`  |
+//! | `RERUN_PIPELINE_BUDGET_MAX`          | size  | `> 0`          | `1TiB`  |
+//! | `RERUN_PIPELINE_BUDGET_FRACTION`     | float | `(0.0, 1.0]`   | 1.0     |
+//! | `RERUN_DIRECT_FETCH_MAX_CONCURRENCY` | int   | `>= 1`         | 128     |
 //!
 //! Sizes accept either a SI/IEC suffix (`64MB`, `1GiB`, `512KiB`) or a
 //! bare positive integer interpreted as bytes. Values are trimmed of
@@ -324,6 +326,26 @@ const MAX_ESTIMATE_MULTIPLIER: f64 = 3.0;
 /// every such fetch with `new_segments > MAX_CONCURRENT_SEGMENTS`
 /// would deadlock on the gate (the gate can never admit it).
 pub(crate) const MAX_CONCURRENT_SEGMENTS: usize = 3;
+
+/// Default process-wide ceiling on concurrent in-flight direct-URL fetch
+/// requests, enforced by [`direct_fetch_semaphore`].
+///
+/// The direct-fetch path has two independent `buffer_unordered` layers —
+/// `IO_PIPELINE_BUFFER` batches in flight, each fanning out to the
+/// per-batch adaptive concurrency (`calculate_adaptive_concurrency`, up to
+/// 130). Their product (~3000) is unbounded by either layer alone, and a
+/// burst that large storms the OS DNS resolver (`getaddrinfo` returns
+/// spurious `EAI_NONAME`), failing whole queries at large
+/// `--segment-batch-size`. This ceiling composes the two layers into one
+/// bound. 128 ≈ the per-batch adaptive ceiling, so a lone batch is
+/// essentially unaffected; the cap only bites when multiple batches would
+/// otherwise multiply. Overridable via [`ENV_DIRECT_FETCH_MAX_CONCURRENCY`].
+const DEFAULT_DIRECT_FETCH_MAX_CONCURRENCY: usize = 128;
+
+/// Env override for [`DEFAULT_DIRECT_FETCH_MAX_CONCURRENCY`]. A positive
+/// integer; invalid/≤0 values log an error and fall back to the default,
+/// which is then floored at 1.
+const ENV_DIRECT_FETCH_MAX_CONCURRENCY: &str = "RERUN_DIRECT_FETCH_MAX_CONCURRENCY";
 
 /// Number of consecutive `flush_incremental` calls that observed zero
 /// emittable rows while the budget was near-saturated before
@@ -603,6 +625,25 @@ fn parse_fraction_or_default(key: &str, raw: &str, default: f64) -> f64 {
     }
 }
 
+/// Parse a positive `usize` from a pre-trimmed string, falling back to
+/// `default` when unparsable or ≤ 0.
+fn parse_usize_or_default(key: &str, raw: &str, default: usize) -> usize {
+    match raw.parse::<i64>() {
+        Ok(n) if n > 0 => n as usize,
+        Ok(_) => {
+            re_log::error!("{key}={raw:?} must be > 0; falling back to default {default}");
+            default
+        }
+        Err(err) => {
+            re_log::error!(
+                "{key}={raw:?} could not be parsed as a positive integer ({err}); \
+                 falling back to default {default}",
+            );
+            default
+        }
+    }
+}
+
 /// Resolve a byte-size environment variable, falling back to the
 /// default (in bytes) when unset, empty, unparsable, or ≤ 0. Accepts
 /// either a SI/IEC suffix (`64MB`, `1GiB`) or a bare positive integer
@@ -622,6 +663,36 @@ fn read_env_fraction(key: &str, default: f64) -> f64 {
         Some(raw) => parse_fraction_or_default(key, &raw, default),
         None => default,
     }
+}
+
+/// Resolve a positive-integer environment variable, falling back to the
+/// default when unset, empty, unparsable, or ≤ 0.
+fn read_env_usize(key: &str, default: usize) -> usize {
+    match read_env_trimmed(key) {
+        Some(raw) => parse_usize_or_default(key, &raw, default),
+        None => default,
+    }
+}
+
+/// Process-wide ceiling on concurrent in-flight direct-URL fetch requests.
+///
+/// See [`DEFAULT_DIRECT_FETCH_MAX_CONCURRENCY`] for why this bound exists.
+/// Resolved once from [`ENV_DIRECT_FETCH_MAX_CONCURRENCY`] on first use and
+/// shared process-wide (the exhausted resource — the DNS resolver,
+/// ephemeral ports, local socket stack — is per-process, and the fetch
+/// client is per-query, so a per-query cap would not bound co-tenant
+/// queries).
+pub(crate) fn direct_fetch_semaphore() -> &'static tokio::sync::Semaphore {
+    static SEM: std::sync::OnceLock<tokio::sync::Semaphore> = std::sync::OnceLock::new();
+    SEM.get_or_init(|| {
+        let permits = read_env_usize(
+            ENV_DIRECT_FETCH_MAX_CONCURRENCY,
+            DEFAULT_DIRECT_FETCH_MAX_CONCURRENCY,
+        )
+        .max(1);
+        re_log::debug!("direct-fetch concurrency cap = {permits}");
+        tokio::sync::Semaphore::new(permits)
+    })
 }
 
 impl PipelineBudget {

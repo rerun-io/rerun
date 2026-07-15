@@ -8967,6 +8967,7 @@ dependencies = [
  "arrow",
  "async-stream",
  "async-trait",
+ "bytes",
  "chrono",
  "datafusion",
  "futures",

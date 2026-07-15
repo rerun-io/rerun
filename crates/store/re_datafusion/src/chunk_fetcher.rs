@@ -881,42 +881,21 @@ async fn fetch_merged_range(
     let expected_etag = expected_etag.as_ref();
     let registration_time = *registration_time;
 
-    let mut http_request = http_client
-        .get(url)
-        .header("Range", format!("bytes={range_start}-{range_end}"));
-
-    // If-Match header to detect manifest drift at the source.
-    if let Some(etag) = expected_etag.and_then(ETag::as_if_match) {
-        http_request = http_request.header(reqwest::header::IF_MATCH, etag);
-    }
-    let response = http_request.send().await?;
-
-    if response.status() == reqwest::StatusCode::PRECONDITION_FAILED {
-        return Err(DirectFetchError::source_changed(segment_id));
-    }
-
-    if !response.status().is_success() {
-        return Err(classify_http_status(response.status()));
-    }
-
-    // Captured for decode-failure attribution (RR-4549): compared against
-    // `expected_etag` if the chunk fails to decode. `last_modified` is
-    // logged alongside for diagnostics.
-    let returned_etag: Option<ETag> = response
-        .headers()
-        .get(reqwest::header::ETAG)
-        .and_then(|v| v.to_str().ok())
-        .map(ETag::new);
-    let last_modified = response
-        .headers()
-        .get(reqwest::header::LAST_MODIFIED)
-        .and_then(|v| v.to_str().ok())
-        .map(str::to_owned);
-
-    let merged_bytes = response
-        .bytes()
-        .await
-        .map_err(|err| DirectFetchError::new(format!("failed to read body: {err}"), true))?;
+    // The direct-fetch concurrency permit lives inside `fetch_merged_range_bytes`
+    // and is released when it returns — decoding below runs uncapped.
+    let FetchedRange {
+        merged_bytes,
+        returned_etag,
+        last_modified,
+    } = fetch_merged_range_bytes(
+        http_client,
+        url,
+        *range_start,
+        range_end,
+        expected_etag,
+        segment_id,
+    )
+    .await?;
 
     tracing::Span::current().record("bytes", merged_bytes.len());
 
@@ -968,6 +947,78 @@ async fn fetch_merged_range(
                 .map(|chunk_with_segment| (info.original_row_index, chunk_with_segment))
         })
         .try_collect()
+}
+
+/// The undecoded bytes and metadata of a fetched merged range.
+struct FetchedRange {
+    /// The merged response body covering every chunk in the range.
+    merged_bytes: bytes::Bytes,
+
+    /// `ETag` returned by the source, captured for decode-failure attribution
+    /// (RR-4549): compared against `expected_etag` if a chunk fails to decode.
+    returned_etag: Option<ETag>,
+
+    /// `Last-Modified` returned by the source, logged alongside on decode failure.
+    last_modified: Option<String>,
+}
+
+/// Fetch a merged byte range over HTTP, without decoding it.
+///
+/// Acquires the process-wide direct-fetch concurrency permit and holds it for
+/// the network transfer only: the permit drops when this function returns, so
+/// the caller's decoding runs uncapped.
+async fn fetch_merged_range_bytes(
+    http_client: &reqwest::Client,
+    url: &str,
+    range_start: usize,
+    range_end: usize,
+    expected_etag: Option<&ETag>,
+    segment_id: Option<&SegmentId>,
+) -> Result<FetchedRange, DirectFetchError> {
+    let _permit = crate::pipeline_budget::direct_fetch_semaphore()
+        .acquire()
+        .await
+        .expect("direct-fetch semaphore is never closed");
+
+    let mut http_request = http_client
+        .get(url)
+        .header("Range", format!("bytes={range_start}-{range_end}"));
+
+    // If-Match header to detect manifest drift at the source.
+    if let Some(etag) = expected_etag.and_then(ETag::as_if_match) {
+        http_request = http_request.header(reqwest::header::IF_MATCH, etag);
+    }
+    let response = http_request.send().await?;
+
+    if response.status() == reqwest::StatusCode::PRECONDITION_FAILED {
+        return Err(DirectFetchError::source_changed(segment_id));
+    }
+
+    if !response.status().is_success() {
+        return Err(classify_http_status(response.status()));
+    }
+
+    let returned_etag: Option<ETag> = response
+        .headers()
+        .get(reqwest::header::ETAG)
+        .and_then(|v| v.to_str().ok())
+        .map(ETag::new);
+    let last_modified = response
+        .headers()
+        .get(reqwest::header::LAST_MODIFIED)
+        .and_then(|v| v.to_str().ok())
+        .map(str::to_owned);
+
+    let merged_bytes = response
+        .bytes()
+        .await
+        .map_err(|err| DirectFetchError::new(format!("failed to read body: {err}"), true))?;
+
+    Ok(FetchedRange {
+        merged_bytes,
+        returned_etag,
+        last_modified,
+    })
 }
 
 #[cfg(test)]

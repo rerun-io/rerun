@@ -68,6 +68,7 @@ web-time.workspace = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 re_perf_telemetry.workspace = true
+bytes.workspace = true
 reqwest.workspace = true
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]

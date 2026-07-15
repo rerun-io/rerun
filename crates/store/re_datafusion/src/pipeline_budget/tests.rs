@@ -578,6 +578,28 @@ fn test_parse_fraction_rejects_non_numeric() {
     assert!((parse_fraction_or_default("TEST", "bogus", 0.25) - 0.25).abs() < 1e-12);
 }
 
+#[test]
+fn test_parse_usize_accepts_positive() {
+    assert_eq!(parse_usize_or_default("TEST", "64", 128), 64);
+    assert_eq!(parse_usize_or_default("TEST", "1", 128), 1);
+}
+
+#[test]
+fn test_parse_usize_rejects_zero() {
+    assert_eq!(parse_usize_or_default("TEST", "0", 128), 128);
+}
+
+#[test]
+fn test_parse_usize_rejects_negative() {
+    assert_eq!(parse_usize_or_default("TEST", "-1", 128), 128);
+}
+
+#[test]
+fn test_parse_usize_rejects_non_numeric() {
+    assert_eq!(parse_usize_or_default("TEST", "not-a-number", 128), 128);
+    assert_eq!(parse_usize_or_default("TEST", "64MB", 128), 128);
+}
+
 // -----------------------------------------------------------------
 // PR C: budget extensions — priority-wake, segment-count gate,
 // stall-detection circuit-breaker.
