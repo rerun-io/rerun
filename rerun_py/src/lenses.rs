@@ -41,14 +41,15 @@ impl PyDeriveLensInternal {
         signature = (input_component, *, output_entity = None, scatter = false),
         text_signature = "(self, input_component, *, output_entity=None, scatter=False)"
     )]
-    fn new(input_component: &str, output_entity: Option<String>, scatter: bool) -> Self {
-        Self {
+    fn new(input_component: &str, output_entity: Option<String>, scatter: bool) -> PyResult<Self> {
+        Ok(Self {
             components: Vec::new(),
             times: Vec::new(),
-            input_component: input_component.into(),
+            input_component: ComponentIdentifier::try_new(input_component)
+                .map_err(|err| PyValueError::new_err(err.to_string()))?,
             output_entity,
             scatter,
-        }
+        })
     }
 
     /// Add a component output column. Returns a new instance with the component added.
@@ -147,12 +148,17 @@ impl PyMutateLensInternal {
         signature = (input_component, selector, *, keep_row_ids = false),
         text_signature = "(self, input_component, selector, *, keep_row_ids=False)"
     )]
-    fn new(input_component: &str, selector: &PySelectorInternal, keep_row_ids: bool) -> Self {
-        Self {
-            input_component: input_component.into(),
+    fn new(
+        input_component: &str,
+        selector: &PySelectorInternal,
+        keep_row_ids: bool,
+    ) -> PyResult<Self> {
+        Ok(Self {
+            input_component: ComponentIdentifier::try_new(input_component)
+                .map_err(|err| PyValueError::new_err(err.to_string()))?,
             selector: selector.selector().clone(),
             keep_row_ids,
-        }
+        })
     }
 }
 

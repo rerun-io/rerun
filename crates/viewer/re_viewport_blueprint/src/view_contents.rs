@@ -714,13 +714,14 @@ impl DataQueryPropertyResolver<'_> {
             {
                 instruction
                     .component_mappings
-                    .extend(mappings_from_store.into_iter().map(|mapping| {
-                        (
-                            mapping.target.as_str().into(),
+                    .extend(mappings_from_store.into_iter().filter_map(|mapping| {
+                        let target = mapping.0.target_component().ok_or_log_error_once()?;
+                        let source =
                             re_viewer_context::VisualizerComponentSource::from_blueprint_mapping(
                                 &mapping.0,
-                            ),
-                        )
+                            )
+                            .ok_or_log_error()?;
+                        Some((target, source))
                     }));
             }
         }

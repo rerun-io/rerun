@@ -42,6 +42,7 @@ mod wrapper_component;
 
 pub use self::archetype::{
     Archetype, ArchetypeName, ArchetypeReflectionMarker, ComponentIdentifier,
+    InvalidComponentIdentifierError,
 };
 pub use self::arrow_string::ArrowString;
 pub use self::as_components::AsComponents;

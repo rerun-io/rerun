@@ -25,8 +25,8 @@ use re_sdk::external::re_log_encoding::Encoder;
 use re_sdk::sink::{BinaryStreamStorage, CallbackSink, MemorySinkStorage, SinkFlushError};
 use re_sdk::time::TimePoint;
 use re_sdk::{
-    ArchetypeName, ComponentDescriptor, ComponentType, EntityPath, RecordingStream,
-    RecordingStreamBuilder, TimeCell,
+    ArchetypeName, ComponentDescriptor, ComponentIdentifier, ComponentType, EntityPath,
+    RecordingStream, RecordingStreamBuilder, TimeCell,
 };
 #[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
@@ -1925,14 +1925,19 @@ impl PyComponentDescriptor {
     #[new]
     #[pyo3(signature = (component, archetype=None, component_type=None))]
     #[pyo3(text_signature = "(self, component, archetype=None, component_type=None)")]
-    fn new(component: &str, archetype: Option<&str>, component_type: Option<&str>) -> Self {
+    fn new(
+        component: &str,
+        archetype: Option<&str>,
+        component_type: Option<&str>,
+    ) -> PyResult<Self> {
         let descr = ComponentDescriptor {
             archetype: archetype.and_then(|s| ArchetypeName::try_new(s).ok()),
-            component: component.into(),
+            component: ComponentIdentifier::try_new(component)
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?,
             component_type: component_type.and_then(|s| ComponentType::try_new(s).ok()),
         };
 
-        Self(descr)
+        Ok(Self(descr))
     }
 
     fn __hash__(&self) -> u64 {

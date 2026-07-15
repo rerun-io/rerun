@@ -18,6 +18,9 @@ pub enum SorbetError {
     WrongDatatypeError(#[from] re_arrow_util::WrongDatatypeError),
 
     #[error(transparent)]
+    InvalidComponentIdentifier(#[from] re_types_core::InvalidComponentIdentifierError),
+
+    #[error(transparent)]
     ArrowError(#[from] ArrowError),
 
     #[error("Missing chunk ID")]

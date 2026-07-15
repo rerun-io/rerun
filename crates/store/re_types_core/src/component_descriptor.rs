@@ -161,24 +161,31 @@ pub const FIELD_METADATA_KEY_COMPONENT: &str = "rerun:component";
 /// The key used to identify the [`crate::ComponentType`] in field-level metadata.
 pub const FIELD_METADATA_KEY_COMPONENT_TYPE: &str = "rerun:component_type";
 
-impl From<arrow::datatypes::Field> for ComponentDescriptor {
+impl TryFrom<arrow::datatypes::Field> for ComponentDescriptor {
+    type Error = crate::InvalidComponentIdentifierError;
+
     #[inline]
-    fn from(field: arrow::datatypes::Field) -> Self {
+    fn try_from(field: arrow::datatypes::Field) -> Result<Self, Self::Error> {
         let md = field.metadata();
+
+        let component = md.get(FIELD_METADATA_KEY_COMPONENT).cloned().unwrap_or_else(|| {
+            re_log::debug!(
+                "Missing metadata field {FIELD_METADATA_KEY_COMPONENT}, resorting to field name: {}",
+                field.name()
+            );
+            field.name().clone()
+        });
 
         let descr = Self {
             archetype: md
                 .get(FIELD_METADATA_KEY_ARCHETYPE)
                 .and_then(|s| ArchetypeName::try_new(s).ok()),
-            component: md.get(FIELD_METADATA_KEY_COMPONENT).cloned().unwrap_or_else(|| {
-                re_log::debug!("Missing metadata field {FIELD_METADATA_KEY_COMPONENT}, resorting to field name: {}", field.name());
-                field.name().clone()
-            }).into(),
+            component: ComponentIdentifier::try_new(component)?,
             component_type: md
                 .get(FIELD_METADATA_KEY_COMPONENT_TYPE)
                 .and_then(|s| ComponentType::try_new(s).ok()),
         };
         descr.sanity_check();
-        descr
+        Ok(descr)
     }
 }

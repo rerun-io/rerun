@@ -10,10 +10,11 @@ use arrow::array::{
 use arrow::datatypes::{DataType, Field, Fields};
 use byteorder::{BigEndian, LittleEndian, ReadBytesExt as _};
 use re_chunk::{Chunk, ChunkComponents, ChunkId};
+use re_log::ResultExt as _;
 use re_sdk_types::archetypes::CoordinateFrame;
 use re_sdk_types::reflection::ComponentDescriptorExt as _;
 use re_sdk_types::{
-    Archetype as _, AsComponents as _, Component as _, ComponentDescriptor,
+    Archetype as _, AsComponents as _, Component as _, ComponentDescriptor, ComponentIdentifier,
     SerializedComponentColumn, archetypes, components,
 };
 
@@ -344,7 +345,7 @@ fn add_field_value(
 impl MessageParser for PointCloud2MessageParser {
     fn append(&mut self, ctx: &mut ParserContext, msg: &mcap::Message<'_>) -> anyhow::Result<()> {
         let point_cloud = cdr::try_decode_message::<sensor_msgs::PointCloud2>(msg.data.as_ref())
-            .map_err(|err| Error::Other(anyhow::anyhow!(err)))?;
+            .map_err(Error::other)?;
 
         ctx.add_timestamp_cell(crate::util::TimestampCell::from_nanos_ros2(
             point_cloud.header.stamp.as_nanos() as u64,
@@ -606,8 +607,11 @@ impl MessageParser for PointCloud2MessageParser {
                         None
                     } else {
                         Some((
-                            ComponentDescriptor::partial(name.clone())
-                                .with_builtin_archetype(archetypes::Points3D::name()),
+                            ComponentDescriptor::partial(
+                                ComponentIdentifier::try_new(name.clone())
+                                    .ok_or_log_error_once()?,
+                            )
+                            .with_builtin_archetype(archetypes::Points3D::name()),
                             builder.finish(),
                         ))
                     }

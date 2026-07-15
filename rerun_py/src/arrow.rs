@@ -15,7 +15,9 @@ use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::{Chunk, ChunkError, ChunkId, PendingRow, RowId, TimeColumn, TimelineName};
 use re_log_types::TimePoint;
 use re_sdk::external::nohash_hasher::IntMap;
-use re_sdk::{ArchetypeName, ComponentDescriptor, ComponentType, EntityPath, Timeline};
+use re_sdk::{
+    ArchetypeName, ComponentDescriptor, ComponentIdentifier, ComponentType, EntityPath, Timeline,
+};
 
 /// Perform Python-to-Rust conversion for a `ComponentDescriptor`.
 pub fn descriptor_to_rust(component_descr: &Bound<'_, PyAny>) -> PyResult<ComponentDescriptor> {
@@ -40,7 +42,8 @@ pub fn descriptor_to_rust(component_descr: &Bound<'_, PyAny>) -> PyResult<Compon
 
     let descr = ComponentDescriptor {
         archetype: archetype.and_then(|s| ArchetypeName::try_new(s.as_ref()).ok()),
-        component: component.as_ref().into(),
+        component: ComponentIdentifier::try_new(component.as_ref())
+            .map_err(|err| PyRuntimeError::new_err(err.to_string()))?,
         component_type: component_type.and_then(|s| ComponentType::try_new(s.as_ref()).ok()),
     };
     descr.sanity_check();

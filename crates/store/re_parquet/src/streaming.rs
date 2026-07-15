@@ -9,9 +9,15 @@ use arrow::array::{
 };
 use arrow::buffer::OffsetBuffer;
 use arrow::datatypes::{Field, Fields};
-use re_chunk::{Chunk, ChunkId, EntityPath, RowId, TimeColumn, TimePoint};
+use re_chunk::{
+    Chunk, ChunkId, EntityPath, RowId, TimeColumn, TimePoint, external::nohash_hasher::IntMap,
+};
+use re_log::ResultExt as _;
 // Component: for KeyValuePairs::name(), ComponentBatch: for .try_serialized()
-use re_sdk_types::{Component as _, ComponentBatch as _, ComponentDescriptor, datatypes};
+use re_sdk_types::{
+    Component as _, ComponentBatch as _, ComponentDescriptor, ComponentIdentifier,
+    InvalidComponentIdentifierError, datatypes,
+};
 
 use crate::config::{ColumnGrouping, ParquetConfig};
 use crate::grouping::{ColumnEntry, ColumnGroup, compute_column_groups};
@@ -293,11 +299,8 @@ impl ParquetChunkIterator {
     }
 
     /// Build timeline columns for a single batch.
-    fn build_timelines(
-        &self,
-        batch: &RecordBatch,
-    ) -> re_chunk::external::nohash_hasher::IntMap<re_chunk::TimelineName, TimeColumn> {
-        let mut tls: re_chunk::external::nohash_hasher::IntMap<_, TimeColumn> = Default::default();
+    fn build_timelines(&self, batch: &RecordBatch) -> IntMap<re_chunk::TimelineName, TimeColumn> {
+        let mut tls: IntMap<_, TimeColumn> = Default::default();
         for tl_info in &self.timeline_infos {
             let time_col = batch.column(tl_info.column_index);
             if let Some(times) =
@@ -318,7 +321,7 @@ impl ParquetChunkIterator {
     fn build_data_chunks(
         &mut self,
         batch: &RecordBatch,
-        timelines: &re_chunk::external::nohash_hasher::IntMap<re_chunk::TimelineName, TimeColumn>,
+        timelines: &IntMap<re_chunk::TimelineName, TimeColumn>,
     ) {
         let num_rows = batch.num_rows();
 
@@ -334,7 +337,10 @@ impl ParquetChunkIterator {
                     group
                         .entries
                         .iter()
-                        .map(|entry| build_single_entry_component(&self.schema, batch, entry))
+                        .filter_map(|entry| {
+                            build_single_entry_component(&self.schema, batch, entry)
+                                .ok_or_log_error_once()
+                        })
                         .collect()
                 };
             emit_chunk(
@@ -351,13 +357,15 @@ impl ParquetChunkIterator {
         if let Some(ref refs) = self.static_reference {
             let components: re_chunk::ChunkComponents = refs
                 .iter()
-                .map(|(name, array)| {
+                .filter_map(|(name, array)| {
+                    let component =
+                        ComponentIdentifier::try_new(name.as_str()).ok_or_log_error_once()?;
                     let field = Field::new(name.as_str(), array.data_type().clone(), true);
                     let list_array = wrap_in_fixed_size_list(&field, array.clone());
-                    (
-                        ComponentDescriptor::partial(name.as_str()),
+                    Some((
+                        ComponentDescriptor::partial(component),
                         arrow::array::ListArray::from(list_array),
-                    )
+                    ))
                 })
                 .collect();
             emit_chunk(
@@ -413,7 +421,7 @@ fn build_metadata_chunk(metadata: &parquet::file::metadata::ParquetMetaData) -> 
 fn emit_chunk(
     pending: &mut VecDeque<Result<Chunk, ParquetError>>,
     entity_path: EntityPath,
-    timelines: &re_chunk::external::nohash_hasher::IntMap<re_chunk::TimelineName, TimeColumn>,
+    timelines: &IntMap<re_chunk::TimelineName, TimeColumn>,
     components: re_chunk::ChunkComponents,
 ) {
     match Chunk::from_auto_row_ids(ChunkId::new(), entity_path, timelines.clone(), components) {
@@ -464,15 +472,16 @@ fn build_single_entry_component(
     schema: &arrow::datatypes::Schema,
     batch: &RecordBatch,
     entry: &ColumnEntry,
-) -> (ComponentDescriptor, arrow::array::ListArray) {
+) -> Result<(ComponentDescriptor, arrow::array::ListArray), InvalidComponentIdentifierError> {
     let ColumnEntry { col_idx, comp_name } = entry;
+    let component = ComponentIdentifier::try_new(comp_name.as_str())?;
     let field = &schema.fields()[*col_idx];
     let array = batch.column(*col_idx).clone();
     let list_array = wrap_in_fixed_size_list(field, array);
-    (
-        ComponentDescriptor::partial(comp_name.as_str()),
+    Ok((
+        ComponentDescriptor::partial(component),
         arrow::array::ListArray::from(list_array),
-    )
+    ))
 }
 
 /// Verify that every value in `array` is identical.

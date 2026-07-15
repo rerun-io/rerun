@@ -33,3 +33,11 @@ pub enum Error {
     #[error(transparent)]
     Other(#[from] anyhow::Error),
 }
+
+impl Error {
+    /// Wrap an arbitrary error in the [`Error::Other`] variant.
+    #[inline]
+    pub fn other(err: impl Into<anyhow::Error>) -> Self {
+        Self::Other(err.into())
+    }
+}

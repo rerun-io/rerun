@@ -20,6 +20,9 @@ pub enum ColumnError {
 
     #[error(transparent)]
     IndexColumn(#[from] crate::IndexColumnError),
+
+    #[error(transparent)]
+    InvalidComponentIdentifier(#[from] re_types_core::InvalidComponentIdentifierError),
 }
 
 /// Describes any kind of column.
@@ -158,7 +161,7 @@ impl ColumnDescriptor {
             ColumnKind::Index => Ok(Self::Time(IndexColumnDescriptor::try_from(field)?)),
 
             ColumnKind::Component => Ok(Self::Component(
-                ComponentColumnDescriptor::from_arrow_field(chunk_entity_path, field),
+                ComponentColumnDescriptor::from_arrow_field(chunk_entity_path, field)?,
             )),
         }
     }
@@ -176,7 +179,7 @@ fn test_schema_over_ipc() {
         ColumnDescriptor::Component(ComponentColumnDescriptor {
             entity_path: re_log_types::EntityPath::from("/some/path"),
             archetype: Some("archetype".into()),
-            component: "component".to_owned().into(),
+            component: "component".into(),
             component_type: Some(re_types_core::ComponentType::from("component_type")),
             store_datatype: arrow::datatypes::DataType::Int64,
             is_static: true,

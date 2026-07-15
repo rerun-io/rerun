@@ -508,7 +508,11 @@ impl RawRrdManifest {
                         ),
                     }));
                 };
-                let component = ComponentIdentifier::new(component);
+                let component = ComponentIdentifier::try_new(component).map_err(|err| {
+                    CodecError::from(ChunkError::Malformed {
+                        reason: err.to_string(),
+                    })
+                })?;
 
                 let per_component = per_entity.entry(entity_path.clone()).or_default();
 
@@ -662,7 +666,11 @@ impl RawRrdManifest {
                     continue;
                 }
 
-                let component = ComponentIdentifier::new(component);
+                let component = ComponentIdentifier::try_new(component).map_err(|err| {
+                    CodecError::from(ChunkError::Malformed {
+                        reason: err.to_string(),
+                    })
+                })?;
                 let timeline = Timeline::new(TimelineName::try_new(*index)?, *time_type);
 
                 let per_timeline = per_entity.entry(entity_path.clone()).or_default();
@@ -1138,7 +1146,11 @@ impl RawRrdManifest {
                     archetype: md
                         .get("rerun:archetype")
                         .and_then(|s| ArchetypeName::try_new(s).ok()),
-                    component: ComponentIdentifier::new(component),
+                    component: ComponentIdentifier::try_new(component).map_err(|err| {
+                        CodecError::from(ChunkError::Malformed {
+                            reason: err.to_string(),
+                        })
+                    })?,
                     component_type: md
                         .get("rerun:component_type")
                         .and_then(|s| ComponentType::try_new(s).ok()),
@@ -1216,7 +1228,11 @@ impl RawRrdManifest {
                     archetype: md
                         .get("rerun:archetype")
                         .and_then(|s| ArchetypeName::try_new(s).ok()),
-                    component: ComponentIdentifier::new(component),
+                    component: ComponentIdentifier::try_new(component).map_err(|err| {
+                        CodecError::from(ChunkError::Malformed {
+                            reason: err.to_string(),
+                        })
+                    })?,
                     component_type: md
                         .get("rerun:component_type")
                         .and_then(|s| ComponentType::try_new(s).ok()),

@@ -161,7 +161,7 @@ fn forward_unmatched_no_prefix_when_all_consumed() {
     let chunk = three_component_chunk();
     let original_row_ids = chunk.row_ids_slice();
 
-    let make_lens = |input: &str, output: &str| {
+    let make_lens = |input: &'static str, output: &'static str| {
         Lens::derive(input)
             .output_entity(input)
             .to_component(

@@ -453,7 +453,10 @@ mod tests {
     }
 
     /// Build a `ComponentDescriptor` with the given component identifier and optional semantic type.
-    fn descriptor(component: &str, component_type: Option<&str>) -> ComponentDescriptor {
+    fn descriptor(
+        component: impl Into<ComponentIdentifier>,
+        component_type: Option<&str>,
+    ) -> ComponentDescriptor {
         ComponentDescriptor {
             archetype: None,
             component: component.into(),

@@ -8,7 +8,7 @@ use re_sdk::lenses::{Lens, Lenses, OutputMode, Selector};
 use re_sdk_types::ComponentDescriptor;
 
 /// Helper to create a simple chunk with string data for testing
-fn create_test_chunk(entity_path: &str, component_name: &str) -> Chunk {
+fn create_test_chunk(entity_path: &str, component_name: &'static str) -> Chunk {
     let mut builder = ListBuilder::new(StringBuilder::new());
     builder.values().append_value("test");
     builder.append(true);

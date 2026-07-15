@@ -264,8 +264,7 @@ impl Query {
                 all_components
                     .iter()
                     .copied()
-                    .any(|component| component.as_str() == component_sel.component)
-                    .then_some(component_sel.component.into())
+                    .find(|component| component.as_str() == component_sel.component)
             })
             .or_else(|| all_components.iter().next().copied());
 

@@ -15,7 +15,7 @@ use re_log_types::external::arrow::array::{
 use re_log_types::{EntityPath, Timeline};
 use re_sdk_types::archetypes::TextLog;
 use re_sdk_types::blueprint::datatypes::{ComponentSourceKind, VisualizerComponentMapping};
-use re_sdk_types::{ArchetypeName, DynamicArchetype, Visualizer};
+use re_sdk_types::{ArchetypeName, ComponentIdentifier, DynamicArchetype, Visualizer};
 use re_test_context::TestContext;
 use re_test_context::VisualizerBlueprintContext as _;
 use re_test_viewport::TestContextExt as _;
@@ -33,12 +33,13 @@ const STATE_TARGET: &str = "StateChange:state";
 /// `save_visualizers` bypasses the default auto-spawn heuristics, which only fire when the
 /// entity is indicated for the `StateChange` archetype. Custom archetypes (`DynamicArchetype`,
 /// `TextLog`) are not indicated, so the visualizer instruction has to be installed explicitly.
-fn map_source_to_state(source_component: &str) -> Visualizer {
+fn map_source_to_state(source_component: impl Into<ComponentIdentifier>) -> Visualizer {
+    let source_component = source_component.into();
     Visualizer::new(StateVisualizer::identifier().as_str()).with_mappings([
         VisualizerComponentMapping {
             target: STATE_TARGET.into(),
             source_kind: ComponentSourceKind::SourceComponent,
-            source_component: Some(source_component.into()),
+            source_component: Some(source_component.as_str().into()),
             selector: None,
         }
         .into(),
@@ -183,28 +184,30 @@ fn value_kind(lanes_data: &StateLanesData, entity: &str) -> StateValueKind {
 fn setup_single_field<F>(
     test_context: &mut TestContext,
     entity: &str,
-    archetype_name: &str,
+    archetype_name: impl Into<ArchetypeName>,
     field_name: &str,
     arrays: [F; 3],
 ) -> ViewId
 where
     F: Into<re_log_types::external::arrow::array::ArrayRef>,
 {
-    let source_component = format!("{archetype_name}:{field_name}");
+    let archetype = archetype_name.into();
+    let source_component = ComponentIdentifier::from_archetype_field(archetype, field_name);
 
     for (tick, array) in std::iter::zip(0..3i64, arrays) {
-        let archetype =
-            DynamicArchetype::new(ArchetypeName::try_new(archetype_name).expect("valid archetype"))
-                .with_component_from_data(field_name, array.into());
+        let dyn_archetype = DynamicArchetype::new(archetype).with_component_from_data(
+            ComponentIdentifier::try_new(field_name).expect("valid component"),
+            array.into(),
+        );
         test_context.log_entity(entity, |builder| {
-            builder.with_archetype_auto_row([(Timeline::log_tick(), tick)], &archetype)
+            builder.with_archetype_auto_row([(Timeline::log_tick(), tick)], &dyn_archetype)
         });
     }
 
     build_view(
         test_context,
         entity,
-        [map_source_to_state(&source_component)],
+        [map_source_to_state(source_component)],
     )
 }
 

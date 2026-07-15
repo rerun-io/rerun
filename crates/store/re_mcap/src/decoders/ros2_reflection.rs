@@ -185,7 +185,7 @@ impl MessageParser for Ros2ReflectionMessageParser {
             ))
             .collect(),
         )
-        .map_err(|err| Error::Other(anyhow::anyhow!(err)))?;
+        .map_err(Error::other)?;
 
         Ok(vec![message_chunk])
     }

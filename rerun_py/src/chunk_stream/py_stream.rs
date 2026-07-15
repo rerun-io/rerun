@@ -5,6 +5,7 @@ use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
 
+use re_log::ResultExt as _;
 use re_log_types::{
     EntityPathFilter, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource,
 };
@@ -380,7 +381,7 @@ fn build_structured_filter(
 
     let components = components.map(|cs| {
         cs.iter()
-            .map(|s| ComponentIdentifier::from(s.as_str()))
+            .filter_map(|s| ComponentIdentifier::try_new(s.as_str()).ok_or_log_error_once())
             .collect()
     });
 

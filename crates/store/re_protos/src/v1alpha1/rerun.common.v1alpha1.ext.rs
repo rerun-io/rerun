@@ -901,7 +901,13 @@ impl TryFrom<crate::common::v1alpha1::ComponentDescriptor> for ComponentDescript
 
         Ok(ComponentDescriptor {
             archetype: archetype.and_then(|s| re_types_core::ArchetypeName::try_new(s).ok()),
-            component: component.into(),
+            component: re_types_core::ComponentIdentifier::try_new(component).map_err(|err| {
+                invalid_field!(
+                    crate::common::v1alpha1::ComponentDescriptor,
+                    "component",
+                    err
+                )
+            })?,
             component_type: component_type
                 .and_then(|s| re_types_core::ComponentType::try_new(s).ok()),
         })

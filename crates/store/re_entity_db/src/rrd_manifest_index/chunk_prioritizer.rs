@@ -353,7 +353,7 @@ impl ComponentPathKey {
     pub fn dummy() -> Self {
         Self {
             entity_path: EntityPathHash::NONE,
-            component: ComponentIdentifier::new("test"),
+            component: ComponentIdentifier::from("test"),
         }
     }
 }

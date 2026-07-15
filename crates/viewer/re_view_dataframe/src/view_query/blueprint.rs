@@ -441,7 +441,7 @@ mod test {
 
     use super::{Query, reorder_columns_by_entity};
 
-    fn make_component_column(entity: &str, component: &str) -> ColumnDescriptor {
+    fn make_component_column(entity: &str, component: &'static str) -> ColumnDescriptor {
         ColumnDescriptor::Component(ComponentColumnDescriptor {
             entity_path: entity.into(),
             component: ComponentIdentifier::from(component),

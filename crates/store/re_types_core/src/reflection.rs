@@ -448,7 +448,7 @@ impl ArchetypeFieldReflection {
     /// Returns the component identifier for this field.
     #[inline]
     pub fn component(&self, archetype_name: ArchetypeName) -> ComponentIdentifier {
-        format!("{}:{}", archetype_name.short_name(), self.name).into()
+        ComponentIdentifier::from_archetype_field(archetype_name, self.name)
     }
 }
 
@@ -480,16 +480,6 @@ pub trait ComponentDescriptorExt {
     fn or_with_builtin_archetype(self, archetype: impl Fn() -> ArchetypeName) -> Self;
 }
 
-/// Constructs a [`ComponentIdentifier`] from this archetype by supplying a field name.
-///
-/// Mainly used as a convenience function to create [`ComponentDescriptor`]s for
-/// Rerun-builtin types. In general, the [`ArchetypeName`] does not place any restrictions
-/// on the contents of [`ComponentIdentifier`].
-#[inline]
-fn with_field(archetype: ArchetypeName, field_name: impl AsRef<str>) -> ComponentIdentifier {
-    format!("{}:{}", archetype.short_name(), field_name.as_ref()).into()
-}
-
 impl ComponentDescriptorExt for ComponentDescriptor {
     fn archetype_field_name(&self) -> &str {
         self.archetype
@@ -505,7 +495,7 @@ impl ComponentDescriptorExt for ComponentDescriptor {
         let archetype = archetype.into();
         {
             let field_name = self.archetype_field_name();
-            self.component = with_field(archetype, field_name);
+            self.component = ComponentIdentifier::from_archetype_field(archetype, field_name);
         }
         self.archetype = Some(archetype);
         self
@@ -515,7 +505,8 @@ impl ComponentDescriptorExt for ComponentDescriptor {
     fn or_with_builtin_archetype(mut self, archetype: impl Fn() -> ArchetypeName) -> Self {
         if self.archetype.is_none() {
             let archetype = archetype();
-            self.component = with_field(archetype, self.component);
+            self.component =
+                ComponentIdentifier::from_archetype_field(archetype, self.component.as_str());
             self.archetype = Some(archetype);
         }
         self
@@ -524,15 +515,15 @@ impl ComponentDescriptorExt for ComponentDescriptor {
 
 #[cfg(test)]
 mod test {
-    use super::{ComponentDescriptor, ComponentDescriptorExt as _, with_field};
-    use crate::ArchetypeName;
+    use super::{ComponentDescriptor, ComponentDescriptorExt as _};
+    use crate::{ArchetypeName, ComponentIdentifier};
 
     #[test]
     fn component_descriptor_manipulation() {
         let archetype_name: ArchetypeName = "rerun.archetypes.MyExample".into();
         let descr = ComponentDescriptor {
             archetype: Some(archetype_name),
-            component: with_field(archetype_name, "test"),
+            component: ComponentIdentifier::from_archetype_field(archetype_name, "test"),
             component_type: Some("user.Whatever".into()),
         };
         assert_eq!(descr.archetype_field_name(), "test");

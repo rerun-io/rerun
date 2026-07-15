@@ -524,7 +524,7 @@ mod tests {
     }
 
     fn comp(s: &str) -> ComponentIdentifier {
-        ComponentIdentifier::new(s)
+        ComponentIdentifier::try_new(s).expect("valid component identifier")
     }
 
     #[test]

@@ -206,7 +206,8 @@ impl PyChunkInternal {
         use re_lenses_core::ChunkExt as _;
         use re_types_core::ComponentIdentifier;
 
-        let source_id = ComponentIdentifier::from(source);
+        let source_id = ComponentIdentifier::try_new(source)
+            .map_err(|err| PyValueError::new_err(err.to_string()))?;
 
         let new_chunk = self
             .chunk

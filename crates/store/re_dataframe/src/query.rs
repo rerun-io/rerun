@@ -23,7 +23,7 @@ use re_chunk_store::{
     ChunkStore, ChunkTrackingMode, ColumnDescriptor, ComponentColumnDescriptor, Index,
     IndexColumnDescriptor, IndexValue, QueryExpression, SparseFillStrategy,
 };
-use re_log::{debug_assert, debug_assert_eq, debug_panic};
+use re_log::{ResultExt as _, debug_assert, debug_assert_eq, debug_panic};
 use re_log_types::AbsoluteTimeRange;
 use re_query::{QueryCache, StorageEngineLike};
 use re_sorbet::{
@@ -438,84 +438,96 @@ pub(crate) fn compute_user_selection(
 ) -> Vec<(usize, ColumnDescriptor)> {
     selection
         .iter()
-        .map(|column| match column {
-            ColumnSelector::RowId => view_contents
-                .iter()
-                .enumerate()
-                .find_map(|(idx, view_column)| {
-                    if let ColumnDescriptor::RowId(descr) = view_column {
-                        Some((idx, ColumnDescriptor::RowId(descr.clone())))
-                    } else {
-                        None
-                    }
-                })
-                .unwrap_or_else(|| {
-                    (
-                        usize::MAX,
-                        ColumnDescriptor::RowId(RowIdColumnDescriptor::from_sorted(false)),
-                    )
-                }),
+        .filter_map(|column| match column {
+            ColumnSelector::RowId => Some(
+                view_contents
+                    .iter()
+                    .enumerate()
+                    .find_map(|(idx, view_column)| {
+                        if let ColumnDescriptor::RowId(descr) = view_column {
+                            Some((idx, ColumnDescriptor::RowId(descr.clone())))
+                        } else {
+                            None
+                        }
+                    })
+                    .unwrap_or_else(|| {
+                        (
+                            usize::MAX,
+                            ColumnDescriptor::RowId(RowIdColumnDescriptor::from_sorted(false)),
+                        )
+                    }),
+            ),
 
             ColumnSelector::Time(selected_column) => {
                 let TimeColumnSelector {
                     timeline: selected_timeline,
                 } = selected_column;
 
-                view_contents
+                Some(
+                    view_contents
+                        .iter()
+                        .enumerate()
+                        .filter_map(|(idx, view_column)| {
+                            if let ColumnDescriptor::Time(view_descr) = view_column {
+                                Some((idx, view_descr))
+                            } else {
+                                None
+                            }
+                        })
+                        .find(|(_idx, view_descr)| {
+                            *view_descr.timeline().name() == *selected_timeline
+                        })
+                        .map_or_else(
+                            || {
+                                (
+                                    usize::MAX,
+                                    ColumnDescriptor::Time(IndexColumnDescriptor::new_null(
+                                        *selected_timeline,
+                                    )),
+                                )
+                            },
+                            |(idx, view_descr)| (idx, ColumnDescriptor::Time(view_descr.clone())),
+                        ),
+                )
+            }
+
+            ColumnSelector::Component(selected_column) => {
+                if let Some((idx, view_descr)) = view_contents
                     .iter()
                     .enumerate()
                     .filter_map(|(idx, view_column)| {
-                        if let ColumnDescriptor::Time(view_descr) = view_column {
+                        if let ColumnDescriptor::Component(view_descr) = view_column {
                             Some((idx, view_descr))
                         } else {
                             None
                         }
                     })
-                    .find(|(_idx, view_descr)| *view_descr.timeline().name() == *selected_timeline)
-                    .map_or_else(
-                        || {
-                            (
-                                usize::MAX,
-                                ColumnDescriptor::Time(IndexColumnDescriptor::new_null(
-                                    *selected_timeline,
-                                )),
-                            )
-                        },
-                        |(idx, view_descr)| (idx, ColumnDescriptor::Time(view_descr.clone())),
-                    )
+                    .find(|(_idx, view_descr)| view_descr.matches(selected_column))
+                {
+                    Some((idx, ColumnDescriptor::Component(view_descr.clone())))
+                } else {
+                    // Not found in the view contents: craft a placeholder "missing" descriptor.
+                    // Skip (and log) selectors with an invalid component identifier.
+                    let component = selected_column
+                        .component_identifier()
+                        .ok_or_log_error_once()?;
+                    Some((
+                        usize::MAX,
+                        ColumnDescriptor::Component(ComponentColumnDescriptor {
+                            entity_path: selected_column.entity_path.clone(),
+                            archetype: None,
+                            component,
+                            component_type: None,
+                            store_datatype: ArrowDataType::Null,
+                            is_static: false,
+                            is_tombstone: false,
+                            is_semantically_empty: false,
+                        }),
+                    ))
+                }
             }
-
-            ColumnSelector::Component(selected_column) => view_contents
-                .iter()
-                .enumerate()
-                .filter_map(|(idx, view_column)| {
-                    if let ColumnDescriptor::Component(view_descr) = view_column {
-                        Some((idx, view_descr))
-                    } else {
-                        None
-                    }
-                })
-                .find(|(_idx, view_descr)| view_descr.matches(selected_column))
-                .map_or_else(
-                    || {
-                        (
-                            usize::MAX,
-                            ColumnDescriptor::Component(ComponentColumnDescriptor {
-                                entity_path: selected_column.entity_path.clone(),
-                                archetype: None,
-                                component: selected_column.component.as_str().into(),
-                                component_type: None,
-                                store_datatype: ArrowDataType::Null,
-                                is_static: false,
-                                is_tombstone: false,
-                                is_semantically_empty: false,
-                            }),
-                        )
-                    },
-                    |(idx, view_descr)| (idx, ColumnDescriptor::Component(view_descr.clone())),
-                ),
         })
-        .collect_vec()
+        .collect()
 }
 
 impl<E: StorageEngineLike> QueryHandle<E> {
@@ -2967,7 +2979,7 @@ mod tests {
                             [
                                 MyPoints::descriptor_labels().component,
                                 MyPoints::descriptor_colors().component,
-                                ComponentIdentifier::new("AColumnThatDoesntEvenExist"),
+                                ComponentIdentifier::from("AColumnThatDoesntEvenExist"),
                             ]
                             .into_iter()
                             .collect(),
