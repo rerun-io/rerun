@@ -198,14 +198,12 @@ impl SpatialViewState {
 pub fn create_labels(
     labels: &[UiLabel],
     ui_from_scene: egui::emath::RectTransform,
-    eye3d: &Eye,
+    ui_from_world_3d: glam::Mat4,
     parent_ui: &egui::Ui,
     highlights: &ViewHighlights,
     spatial_kind: SpatialViewKind,
 ) -> (Vec<egui::Shape>, Vec<PickableUiRect>) {
     re_tracing::profile_function!();
-
-    let ui_from_world_3d = eye3d.ui_from_world(*ui_from_scene.to());
 
     let resolved_labels =
         resolve_label_positions(labels, &ui_from_scene, &ui_from_world_3d, spatial_kind);
@@ -385,9 +383,6 @@ fn resolve_label_positions(
                 (f32::INFINITY, pos_in_ui)
             }
             UiLabelTarget::Position3D(pos) => {
-                if spatial_kind == SpatialViewKind::TwoD {
-                    continue; // TODO(#1640): 3D labels are not visible in 2D for now.
-                }
                 let pos_in_ui = *ui_from_world_3d * pos.extend(1.0);
                 if pos_in_ui.w <= 0.0 {
                     continue; // behind camera

@@ -5,7 +5,7 @@ use re_chunk_store::MissingChunkReporter;
 use re_entity_db::EntityPath;
 use re_log::ResultExt as _;
 use re_renderer::ViewPickingConfiguration;
-use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
+use re_renderer::view_builder::{Projection, TargetConfiguration, ViewBuilder};
 use re_sdk_types::blueprint::archetypes::{Background, NearClipPlane, VisualBounds2D};
 use re_sdk_types::blueprint::components as blueprint_components;
 use re_sdk_types::{Archetype as _, archetypes};
@@ -291,11 +291,27 @@ impl SpatialView2D {
         // Don't let clipping plane become zero
         let near_clip_plane = f32::max(f32::MIN_POSITIVE, *near_clip_plane.0);
 
+        let scene_bounds = *scene_from_ui.to();
+        let Ok(mut target_config) = setup_target_config(
+            ctx.render_mode(),
+            &painter,
+            ui_rect,
+            scene_bounds,
+            near_clip_plane,
+            &query.space_origin.to_string(),
+            query.highlights.any_outlines(),
+            state.pinhole_at_origin.as_ref(),
+            None,
+        ) else {
+            return Ok(());
+        };
+        let ui2d = ui2d_from_world(&target_config, ui_rect);
+
         // Create labels now since their shapes participate are added to scene.ui for picking.
         let (label_shapes, label_ui_rects) = create_labels(
             &collect_ui_labels(&system_output),
             ui_from_scene,
-            &eye,
+            ui2d,
             ui,
             &query.highlights,
             SpatialViewKind::TwoD,
@@ -325,21 +341,8 @@ impl SpatialView2D {
             state.previous_picking_result = None;
             None
         };
+        target_config.picking_config = picking_config;
 
-        let scene_bounds = *scene_from_ui.to();
-        let Ok(target_config) = setup_target_config(
-            ctx.render_mode(),
-            &painter,
-            ui_rect,
-            scene_bounds,
-            near_clip_plane,
-            &query.space_origin.to_string(),
-            query.highlights.any_outlines(),
-            state.pinhole_at_origin.as_ref(),
-            picking_config,
-        ) else {
-            return Ok(());
-        };
         let mut view_builder = ViewBuilder::new(ctx.render_ctx(), target_config)?;
 
         let view_ctx = self.view_context(ctx, query.view_id, state, query.space_origin); // Recreate view state to handle context editing during picking.
@@ -456,7 +459,7 @@ fn setup_target_config(
     let focal_length = pinhole.focal_length_in_pixels();
     let focal_length = 2.0 / (1.0 / focal_length.x + 1.0 / focal_length.y); // harmonic mean (lack of anamorphic support)
 
-    let projection_from_view = re_renderer::view_builder::Projection::Perspective {
+    let projection_from_view = Projection::Perspective {
         vertical_fov: pinhole.fov_y(),
         near_plane_distance: near_clip_plane * focal_length / 500.0, // TODO(#8373): The need to scale this by 500 is quite hacky.
         aspect_ratio: pinhole.aspect_ratio(),
@@ -503,6 +506,24 @@ fn setup_target_config(
             picking_config,
         }
     })
+}
+
+fn ui2d_from_world(config: &TargetConfiguration, space2d_rect: Rect) -> glam::Mat4 {
+    let projection_from_view = config
+        .projection_from_view
+        .projection_from_view(config.resolution_in_pixel);
+    let ndc_scale_and_translation = config
+        .viewport_transformation
+        .to_ndc_scale_and_translation();
+    let projection_from_view = ndc_scale_and_translation * projection_from_view;
+
+    glam::Mat4::from_translation(glam::vec3(
+        space2d_rect.center().x,
+        space2d_rect.center().y,
+        0.0,
+    )) * glam::Mat4::from_scale(0.5 * glam::vec3(space2d_rect.width(), -space2d_rect.height(), 1.0))
+        * projection_from_view
+        * config.view_from_world.to_mat4()
 }
 
 fn re_render_rect_from_egui_rect(rect: egui::Rect) -> re_renderer::RectF32 {

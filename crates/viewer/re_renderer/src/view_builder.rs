@@ -115,7 +115,7 @@ pub enum Projection {
 }
 
 impl Projection {
-    fn projection_from_view(self, resolution_in_pixel: [u32; 2]) -> glam::Mat4 {
+    pub fn projection_from_view(self, resolution_in_pixel: [u32; 2]) -> glam::Mat4 {
         match self {
             Self::Perspective {
                 vertical_fov,
