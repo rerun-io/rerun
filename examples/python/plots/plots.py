@@ -118,6 +118,50 @@ def log_classification() -> None:
         )
 
 
+def log_states() -> None:
+    # Configure how each raw state value is displayed (label, color). This is
+    # time-independent, so we log it as static.
+    rr.log(
+        "states/trend",
+        rr.StateConfiguration(
+            values=["rising", "falling"],
+            labels=["Rising", "Falling"],
+            colors=[0x4CAF50FF, 0xEF5350FF],
+        ),
+        static=True,
+    )
+    rr.log(
+        "states/level",
+        rr.StateConfiguration(
+            values=["low", "mid", "high"],
+            # Wrapped as `np.uint32` so that a length-3 list isn't mistaken for a single RGB color.
+            colors=np.array([0x5C6BC0FF, 0x9E9E9EFF, 0xFFB300FF], dtype=np.uint32),
+        ),
+        static=True,
+    )
+
+    # Derive discrete states from the same sine wave as `log_trig`, and log a
+    # `StateChange` whenever a state transition happens. The state timeline view
+    # displays these as horizontal colored lanes over time.
+    trend = None
+    level = None
+    for t in range(int(tau * 2 * 100.0)):
+        rr.set_time("frame_nr", sequence=t)
+
+        sin_of_t = sin(float(t) / 100.0)
+        cos_of_t = cos(float(t) / 100.0)
+
+        new_trend = "rising" if cos_of_t >= 0.0 else "falling"
+        if new_trend != trend:
+            trend = new_trend
+            rr.log("states/trend", rr.StateChange(state=trend))
+
+        new_level = "high" if sin_of_t > 0.5 else "low" if sin_of_t < -0.5 else "mid"
+        if new_level != level:
+            level = new_level
+            rr.log("states/level", rr.StateChange(state=level))
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="demonstrates how to integrate python's native `logging` with the Rerun SDK",
@@ -152,10 +196,15 @@ def main() -> None:
                         },
                     ),
                 ),
-                rrb.TimeSeriesView(
-                    name="Spiral",
-                    origin="/spiral",
-                    overrides={"spiral": rr.SeriesLines.from_fields(names=["0.01t cos(0.01t)", "0.01t sin(0.01t)"])},  # type: ignore[arg-type]
+                rrb.Horizontal(
+                    rrb.TimeSeriesView(
+                        name="Spiral",
+                        origin="/spiral",
+                        overrides={
+                            "spiral": rr.SeriesLines.from_fields(names=["0.01t cos(0.01t)", "0.01t sin(0.01t)"])
+                        },  # type: ignore[arg-type]
+                    ),
+                    rrb.StateTimelineView(name="States", origin="/states"),
                 ),
                 row_shares=[2, 1],
             ),
@@ -174,6 +223,7 @@ def main() -> None:
     log_trig()
     log_spiral()
     log_classification()
+    log_states()
 
     rr.script_teardown(args)
 
