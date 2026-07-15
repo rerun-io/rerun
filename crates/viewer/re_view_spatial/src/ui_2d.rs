@@ -340,7 +340,11 @@ impl SpatialView2D {
         ) else {
             return Ok(());
         };
-        let mut view_builder = ViewBuilder::new(ctx.render_ctx(), target_config)?;
+        let mut view_builder = ViewBuilder::new(
+            ctx.render_ctx(),
+            target_config,
+            query.view_id.render_view_id(),
+        )?;
 
         let view_ctx = self.view_context(ctx, query.view_id, state, query.space_origin); // Recreate view state to handle context editing during picking.
 

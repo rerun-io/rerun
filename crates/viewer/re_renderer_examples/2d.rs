@@ -310,6 +310,7 @@ impl framework::Example for Render2D {
                         pixels_per_point,
                         ..Default::default()
                     },
+                    re_renderer::ViewBuilderId::new(0),
                 )?;
                 view_builder.queue_draw(re_ctx, line_strip_draw_data.clone());
                 view_builder.queue_draw(re_ctx, point_draw_data.clone());
@@ -350,6 +351,7 @@ impl framework::Example for Render2D {
                         pixels_per_point,
                         ..Default::default()
                     },
+                    re_renderer::ViewBuilderId::new(1),
                 )?;
                 let command_buffer = view_builder
                     .queue_draw(re_ctx, line_strip_draw_data)

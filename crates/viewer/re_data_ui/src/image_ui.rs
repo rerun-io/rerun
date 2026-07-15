@@ -199,6 +199,7 @@ fn show_image_preview(
             minification: egui::TextureFilter::Linear,
             ..Default::default()
         },
+        re_renderer::ViewBuilderId::new(response.id.value()),
         debug_name.into(),
     ) {
         let color = ui.visuals().error_fg_color;

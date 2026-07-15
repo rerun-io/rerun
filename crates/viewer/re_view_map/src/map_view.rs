@@ -355,8 +355,14 @@ impl ViewClass for MapView {
             map_rect,
         );
 
-        let mut view_builder =
-            create_view_builder(ctx, ui.ctx(), map_rect, &query.highlights, picking_config)?;
+        let mut view_builder = create_view_builder(
+            ctx,
+            ui.ctx(),
+            query.view_id.render_view_id(),
+            map_rect,
+            &query.highlights,
+            picking_config,
+        )?;
 
         geo_line_strings_visualizers.queue_draw_data(
             ctx.render_ctx(),
@@ -394,6 +400,7 @@ impl ViewClass for MapView {
 fn create_view_builder(
     ctx: &ViewerContext<'_>,
     egui_ctx: &egui::Context,
+    view_id: re_renderer::ViewBuilderId,
     view_rect: Rect,
     highlights: &ViewHighlights,
     picking_config: Option<ViewPickingConfiguration>,
@@ -433,6 +440,7 @@ fn create_view_builder(
 
             picking_config,
         },
+        view_id,
     )
 }
 

@@ -28,17 +28,25 @@ struct BatchUniformBuffer {
     world_from_obj: mat4x4f,
     flags: u32,
     depth_offset: f32,
-    _padding: vec2u,
+    // Index of this batch's first point in the shared point-data textures.
+    // This is effectively the min instance index!
+    first_point_index: u32,
+    _padding: u32,
     outline_mask: vec2u,
     picking_layer_object_id: vec2u,
 };
 @group(2) @binding(0)
 var<uniform> batch: BatchUniformBuffer;
 
+@group(3) @binding(0)
+var point_index_lookup_texture: texture_2d<u32>;
+
 // Flags
 // See point_cloud.rs#PointCloudBatchFlags
 const FLAG_ENABLE_SHADING: u32 = 1u;
 const FLAG_DRAW_AS_CIRCLES: u32 = 2u;
+const FLAG_PREMULTIPLIED_ALPHA: u32 = 4u;
+const FLAG_ENABLE_INDEX_LOOKUP: u32 = 8u;
 
 struct VertexOut {
     @builtin(position)
@@ -105,9 +113,19 @@ fn read_data(idx: u32) -> PointData {
 @vertex
 fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     let quad_idx = sphere_quad_index(vertex_idx);
+    var point_idx = quad_idx;
+    if has_any_flag(batch.flags, FLAG_ENABLE_INDEX_LOOKUP) {
+        let lookup_idx = quad_idx - batch.first_point_index;
+        let lookup_texture_size = textureDimensions(point_index_lookup_texture);
+        point_idx = batch.first_point_index + textureLoad(
+            point_index_lookup_texture,
+            vec2u(lookup_idx % lookup_texture_size.x, lookup_idx / lookup_texture_size.x),
+            0,
+        ).x;
+    }
 
     // Read point data (valid for the entire quad)
-    let point_data = read_data(quad_idx);
+    let point_data = read_data(point_idx);
 
     // Span quad
     // The pixel size formula `pixel_world_size_from_camera_distance` is derived from
@@ -170,7 +188,13 @@ fn fs_main(in: VertexOut) -> @location(0) vec4f {
     if has_any_flag(batch.flags, FLAG_ENABLE_SHADING) {
         shading = max(0.4, sqrt(1.2 - distance(in.point_center, in.world_position) / in.radius)); // quick and dirty coloring
     }
-    return vec4f(in.color.rgb * shading, coverage);
+    if has_any_flag(batch.flags, FLAG_PREMULTIPLIED_ALPHA) {
+        // Premultiplied alpha output for the no-alpha-to-coverage (alpha-blended) pipeline.
+        return vec4f(in.color.rgb * shading, in.color.a) * coverage;
+    } else {
+        // Default alpha-to-coverage output: alpha encodes per-fragment coverage.
+        return vec4f(in.color.rgb * shading, coverage);
+    }
 }
 
 @fragment

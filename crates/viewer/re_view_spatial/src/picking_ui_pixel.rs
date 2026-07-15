@@ -157,6 +157,13 @@ impl TextureInteractionId<'_> {
     pub fn gpu_readback_id(&self) -> re_renderer::GpuReadbackIdentifier {
         re_log_types::hash::Hash64::hash((self.entity_path, self.interaction_idx)).hash64()
     }
+
+    fn render_view_id(&self, topic: &str) -> re_renderer::ViewBuilderId {
+        re_renderer::ViewBuilderId::new(
+            re_log_types::hash::Hash64::hash((self.entity_path, self.interaction_idx, topic))
+                .hash64(),
+        )
+    }
 }
 
 /// `meter`: iff this is a depth map, how long is one meter?
@@ -223,6 +230,7 @@ fn try_show_zoomed_image_region(
             image_rect_on_screen,
             colormapped_texture.clone(),
             egui::TextureOptions::NEAREST,
+            interaction_id.render_view_id("zoomed_region"),
             interaction_id.debug_label("zoomed_region"),
         )?;
     }
@@ -282,6 +290,7 @@ fn try_show_zoomed_image_region(
                 image_rect_on_screen,
                 colormapped_texture,
                 egui::TextureOptions::NEAREST,
+                interaction_id.render_view_id("single_pixel"),
                 interaction_id.debug_label("single_pixel"),
             )
         })

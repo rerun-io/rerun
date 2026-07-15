@@ -117,6 +117,7 @@ const PROP_SCALE_Z: &str = "scale_2";
 const PROP_SH_DC_0: &str = "f_dc_0";
 const PROP_SH_DC_1: &str = "f_dc_1";
 const PROP_SH_DC_2: &str = "f_dc_2";
+const PROP_OPACITY: &str = "opacity";
 
 /// A single vertex, parsed in-place by the PLY parser.
 ///
@@ -142,6 +143,7 @@ struct Vertex {
     scale_x: Option<f32>,
     scale_y: Option<f32>,
     scale_z: Option<f32>,
+    opacity: Option<f32>,
 }
 
 impl PropertyAccess for Vertex {
@@ -168,6 +170,7 @@ impl PropertyAccess for Vertex {
             PROP_SCALE_X => self.scale_x = f32(&property),
             PROP_SCALE_Y => self.scale_y = f32(&property),
             PROP_SCALE_Z => self.scale_z = f32(&property),
+            PROP_OPACITY => self.opacity = f32(&property),
             _ => {}
         }
     }
@@ -193,8 +196,12 @@ impl Vertex {
             let g = to_u8(0.5 + sp_c0 * g_dc);
             let b = to_u8(0.5 + sp_c0 * b_dc);
 
-            // Note: gaussian splat opacity is intentionally ignored until we have transparency support.
-            Some(Color::new((r, g, b, 255)))
+            // Gaussian splat opacity is stored as a logit; convert it to alpha via the sigmoid.
+            let a = self
+                .opacity
+                .map_or(255, |opacity| to_u8(1.0 / (1.0 + (-opacity).exp())));
+
+            Some(Color::new((r, g, b, a)))
         } else if let (Some(r), Some(g), Some(b)) = (self.red, self.green, self.blue) {
             Some(Color::new((r, g, b, self.alpha.unwrap_or(255))))
         } else {
@@ -240,6 +247,7 @@ fn read_ply(reader: &mut impl std::io::BufRead) -> std::io::Result<Points3D> {
         PROP_SH_DC_0,
         PROP_SH_DC_1,
         PROP_SH_DC_2,
+        PROP_OPACITY,
     ];
 
     let mut positions = Vec::new();

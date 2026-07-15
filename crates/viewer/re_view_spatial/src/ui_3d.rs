@@ -288,7 +288,11 @@ impl SpatialView3D {
             picking_config,
         };
 
-        let mut view_builder = ViewBuilder::new(ctx.render_ctx(), target_config)?;
+        let mut view_builder = ViewBuilder::new(
+            ctx.render_ctx(),
+            target_config,
+            query.view_id.render_view_id(),
+        )?;
 
         let eye_property = ViewProperty::from_archetype::<EyeControls3D>(
             ctx.blueprint_db(),

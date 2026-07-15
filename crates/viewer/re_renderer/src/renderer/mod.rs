@@ -17,6 +17,7 @@ pub use lines::{LineBatchInfo, LineDrawData, LineDrawDataError, LineStripFlags};
 pub use mesh_renderer::{GpuMeshInstance, MeshDrawData};
 pub use point_cloud::{
     PointCloudBatchFlags, PointCloudBatchInfo, PointCloudDrawData, PointCloudDrawDataError,
+    PointCloudSortOrderCache,
 };
 pub use rectangles::{
     ColorMapper, ColormappedTexture, RectangleDrawData, RectangleOptions, ShaderDecoding,
@@ -108,6 +109,9 @@ impl DrawDataDrawable {
 
 /// Information about the view for which can be taken into account when collecting drawables.
 pub struct DrawableCollectionViewInfo {
+    /// Stable identity of the view collecting the drawables.
+    pub view_id: crate::ViewBuilderId,
+
     /// The position of the camera in world space.
     pub camera_world_position: glam::Vec3A,
 }

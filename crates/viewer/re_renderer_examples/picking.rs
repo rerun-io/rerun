@@ -152,6 +152,7 @@ impl framework::Example for Picking {
                 picking_config: Some(picking_config),
                 ..Default::default()
             },
+            re_renderer::ViewBuilderId::new(0),
         )?;
 
         let mut point_builder = PointCloudBuilder::new(re_ctx);

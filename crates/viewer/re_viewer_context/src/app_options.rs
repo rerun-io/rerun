@@ -201,6 +201,12 @@ pub struct ExperimentalAppOptions {
     /// Enable gamepad navigation in 3D spatial views.
     pub gamepad_navigation: bool,
 
+    /// Enable alpha-blending of semi-transparent point clouds.
+    ///
+    /// Off by default: transparent point clouds are sorted on the CPU every frame, which is
+    /// slow for large clouds. Opaque point clouds render much faster.
+    pub point_cloud_transparency: bool,
+
     /// Host an in-process "internal catalog" `re_server` and load `.rrd` files through it instead
     /// of importing them directly into the viewer.
     ///

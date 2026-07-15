@@ -842,7 +842,13 @@ impl ViewClass for TimeSeriesView {
             }
 
             // Render re_renderer draw data (already in screen space) via ViewBuilder.
-            render_re_renderer_draw_data(ctx, ui, &response, re_renderer_draw_data);
+            render_re_renderer_draw_data(
+                ctx,
+                ui,
+                &response,
+                query.view_id.render_view_id(),
+                re_renderer_draw_data,
+            );
 
             // Custom hover detection: find nearest actual data point and show tooltip.
             let hovered_data_result = (!legend_hovered)
@@ -1785,6 +1791,7 @@ fn render_re_renderer_draw_data(
     ctx: &ViewerContext<'_>,
     ui: &egui::Ui,
     response: &egui::Response,
+    view_id: re_renderer::ViewBuilderId,
     draw_data: Vec<re_renderer::QueueableDrawData>,
 ) {
     if draw_data.is_empty() {
@@ -1829,7 +1836,8 @@ fn render_re_renderer_draw_data(
         ..Default::default()
     };
 
-    let Ok(mut view_builder) = re_renderer::ViewBuilder::new(render_ctx, target_config) else {
+    let Ok(mut view_builder) = re_renderer::ViewBuilder::new(render_ctx, target_config, view_id)
+    else {
         return;
     };
 

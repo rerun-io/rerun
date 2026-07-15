@@ -442,6 +442,7 @@ impl TensorView {
             image_rect,
             colormapped_texture,
             texture_options,
+            ctx.view_id.render_view_id(),
             re_renderer::Label::from("tensor_slice"),
         )?;
 

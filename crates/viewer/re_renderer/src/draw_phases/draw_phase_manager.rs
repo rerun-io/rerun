@@ -182,7 +182,7 @@ impl DrawPhaseManager {
         let renderer_key = draw_data.renderer_key(ctx);
 
         {
-            let mut collector = DrawableCollector::new(self, draw_data_index, renderer_key);
+            let mut collector = DrawableCollector::new(ctx, self, draw_data_index, renderer_key);
             re_tracing::profile_scope!("collect_drawables");
             draw_data.collect_drawables(view_info, &mut collector);
         }
@@ -276,18 +276,27 @@ impl DrawPhaseManager {
 
 /// Collector injected into [`crate::renderer::DrawData::collect_drawables`] in order to build up drawable list.
 pub struct DrawableCollector<'a> {
+    render_ctx: &'a RenderContext,
     per_phase_drawables: &'a mut DrawPhaseManager,
     draw_data_index: DrawDataIndex,
     renderer_key: RendererTypeId,
 }
 
 impl<'a> DrawableCollector<'a> {
+    /// The render context for allocating view-dependent draw resources.
+    #[inline]
+    pub fn render_ctx(&self) -> &RenderContext {
+        self.render_ctx
+    }
+
     fn new(
+        render_ctx: &'a RenderContext,
         per_phase_drawables: &'a mut DrawPhaseManager,
         draw_data_index: DrawDataIndex,
         renderer_key: RendererTypeId,
     ) -> Self {
         Self {
+            render_ctx,
             per_phase_drawables,
             draw_data_index,
             renderer_key,
@@ -321,6 +330,7 @@ impl<'a> DrawableCollector<'a> {
         drawables: &[DrawDataDrawable],
     ) {
         let Self {
+            render_ctx: _,
             per_phase_drawables,
             draw_data_index,
             renderer_key,
@@ -357,6 +367,7 @@ impl<'a> DrawableCollector<'a> {
     #[inline]
     pub fn add_drawable_for_phase(&mut self, phase: DrawPhase, drawable: DrawDataDrawable) {
         let Self {
+            render_ctx: _,
             per_phase_drawables,
             draw_data_index,
             renderer_key,

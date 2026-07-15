@@ -2,10 +2,14 @@ use std::sync::Arc;
 
 use itertools::Itertools as _;
 use nohash_hasher::IntMap;
+use parking_lot::Mutex;
 use re_byte_size::SizeBytes as _;
 use re_entity_db::EntityDb;
 use re_log_types::hash::Hash64;
-use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId, PointCloudBuilder, PositionRadius};
+use re_renderer::{
+    LineDrawableBuilder, PickingLayerInstanceId, PointCloudBuilder, PositionRadius,
+    renderer::PointCloudSortOrderCache,
+};
 use re_sdk_types::Archetype as _;
 use re_sdk_types::ArrowString;
 use re_sdk_types::archetypes::Points3D;
@@ -54,13 +58,25 @@ struct Points3DComponentData<'a> {
 /// This bundles together the results of processing raw component data
 /// (computing annotations, colors, radii, bounding boxes, etc.)
 /// so that it can be memoized based on `data.query_hash`.
+#[derive(re_byte_size::SizeBytes)]
 struct Points3DCpu {
     position_radii: Vec<PositionRadius>,
+
+    #[size_bytes(ignore)] // Lives entirely on the stack.
     point_cloud_bounds: re_renderer::util::PointCloudBounds,
+
     picking_ids: Vec<PickingLayerInstanceId>,
     annotation_infos: ResolvedAnnotationInfos,
     keypoints: Keypoints,
     colors: Vec<egui::Color32>,
+
+    /// Whether any point has a non-opaque color, requiring alpha-blended rendering.
+    has_transparency: bool,
+
+    /// Scratch buffers holding the back-to-front point ordering across frames.
+    ///
+    /// Each instance transform has its own cache, which tracks ordering per rendered view.
+    sort_order_caches: Mutex<Vec<PointCloudSortOrderCache>>,
 }
 
 impl Points3DCpu {
@@ -113,6 +129,8 @@ impl Points3DCpu {
 
         let position_radii = PositionRadius::from_many(positions, &radii);
 
+        let has_transparency = colors.iter().any(|c| !c.is_opaque());
+
         Self {
             position_radii,
             point_cloud_bounds,
@@ -120,24 +138,15 @@ impl Points3DCpu {
             annotation_infos,
             keypoints,
             colors,
+            has_transparency,
+            sort_order_caches: Mutex::new(Vec::new()),
         }
     }
 
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            position_radii,
-            point_cloud_bounds: _,
-            picking_ids,
-            annotation_infos,
-            keypoints,
-            colors,
-        } = self;
-
-        (position_radii.capacity() * std::mem::size_of::<PositionRadius>()) as u64
-            + picking_ids.heap_size_bytes()
-            + annotation_infos.heap_size_bytes()
-            + keypoints.heap_size_bytes()
-            + colors.heap_size_bytes()
+    fn sort_order_cache(&self, transform_index: usize) -> PointCloudSortOrderCache {
+        let mut caches = self.sort_order_caches.lock();
+        caches.resize_with(transform_index + 1, PointCloudSortOrderCache::default);
+        caches[transform_index].clone()
     }
 }
 
@@ -227,7 +236,9 @@ impl re_byte_size::SizeBytes for Points3DCache {
         // Count the underlying data of the Arc directly instead of weighing active
         cache
             .values()
-            .map(|entry| entry.cpu.heap_size_bytes() + std::mem::size_of_val(&entry.cpu) as u64)
+            .map(|entry| {
+                entry.cpu.as_ref().heap_size_bytes() + std::mem::size_of_val(&entry.cpu) as u64
+            })
             .sum::<u64>()
             + (cache.capacity() * std::mem::size_of::<(Hash64, Points3DCacheEntry)>()) as u64
     }
@@ -254,6 +265,13 @@ impl Points3DVisualizer {
         re_tracing::profile_function!();
         let entity_path = ctx.target_entity_path;
 
+        // Opt-in due to the cost of CPU-sorting transparent point clouds every frame.
+        let transparency_enabled = ctx
+            .viewer_ctx()
+            .app_options()
+            .experimental
+            .point_cloud_transparency;
+
         for data in data {
             let num_instances = data.positions.len();
             if num_instances == 0 {
@@ -278,20 +296,29 @@ impl Points3DVisualizer {
             // with point clouds: We sent the same point cloud multiple times to the GPU (bad
             // for memory) and render them with multiple draw calls across different batches (bad
             // for performance).
-            for world_from_obj in ent_context
+            for (transform_index, world_from_obj) in ent_context
                 .transform_info
                 .target_from_instances()
                 .iter()
                 .map(|transform| transform.as_affine3a())
+                .enumerate()
             {
                 re_tracing::profile_scope!("one-transform");
 
-                let point_batch = point_builder
+                let alpha_blend = transparency_enabled && cpu.has_transparency;
+
+                let mut point_batch = point_builder
                     .batch(entity_path.to_string())
                     .enable_shading(matches!(point_shading, PointShading::Gradient))
+                    .enable_alpha_blending(alpha_blend)
                     .world_from_obj(world_from_obj)
+                    .object_space_bounding_box(cpu.point_cloud_bounds.bbox)
                     .outline_mask_ids(ent_context.highlight.overall)
                     .picking_object_id(re_renderer::PickingLayerObjectId(entity_path.hash64()));
+
+                if alpha_blend {
+                    point_batch = point_batch.sort_order(cpu.sort_order_cache(transform_index));
+                }
 
                 let mut point_range_builder =
                     point_batch.add_points(&cpu.position_radii, &cpu.colors, &cpu.picking_ids);

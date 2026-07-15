@@ -62,6 +62,7 @@ fn colormap_preview_ui(
         rect,
         colormapped_texture,
         egui::TextureOptions::LINEAR,
+        re_renderer::ViewBuilderId::new(response.id.value()),
         debug_name.into(),
     )?;
 
