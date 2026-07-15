@@ -62,7 +62,7 @@ jobs:
           [ubuntu-latest-16-cores, macos-26-xlarge, windows-latest-8-cores]
     runs-on: ${{ matrix.runs_on }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: 1.95.0

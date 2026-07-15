@@ -35,7 +35,7 @@ jobs:
     timeout-minutes: 60
     runs-on: ubuntu-latest-16-cores
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.REF || (github.event_name == 'pull_request' && github.event.pull_request.head.ref) || '' }}
 

@@ -89,7 +89,7 @@ jobs:
       COMPAT: ${{ steps.set-config.outputs.compat }}
     steps:
       - name: Login to GHCR (with retries)
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
           timeout_seconds: 10
           max_attempts: 12
@@ -159,7 +159,7 @@ jobs:
           JOB_CONTEXT: ${{ toJson(job) }}
           INPUTS_CONTEXT: ${{ toJson(inputs) }}
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.RELEASE_COMMIT || ((github.event_name == 'pull_request' && github.event.pull_request.head.ref) || '') }}
 
@@ -212,7 +212,7 @@ jobs:
 
       - name: Save wheel artifact
         if: ${{ inputs.WHEEL_ARTIFACT_NAME != '' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{inputs.WHEEL_ARTIFACT_NAME}}
           path: dist/${{ needs.set-config.outputs.TARGET }}
@@ -232,7 +232,7 @@ jobs:
 
       - name: Save rerun_notebook wheel artifact
         if: ${{ (inputs.MODE == 'pypi' || inputs.MODE == 'extra') && inputs.PLATFORM == 'linux-x64' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: rerun_notebook_wheel
           path: dist

@@ -36,7 +36,7 @@ jobs:
       protobuf_changes: ${{ steps.filter.outputs.protobuf_changes }}
       web_changes: ${{ steps.filter.outputs.web_changes }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
       - uses: dorny/paths-filter@v3

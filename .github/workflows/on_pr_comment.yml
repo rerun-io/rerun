@@ -33,7 +33,7 @@ jobs:
       command: ${{ steps.parse.outputs.command }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Parse comment
         id: parse
@@ -55,7 +55,7 @@ jobs:
             -f content=eyes
 
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Dispatch main workflow
         id: dispatch

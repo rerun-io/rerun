@@ -44,7 +44,7 @@ jobs:
     timeout-minutes: 60
     runs-on: ubuntu-latest-16-cores
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
           lfs: true
@@ -89,7 +89,7 @@ jobs:
     env:
       RUSTDOCFLAGS: ""
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
           lfs: true
@@ -127,7 +127,7 @@ jobs:
         run: pixi run rs-check --only tests_without_all_features
 
       - name: Upload test results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: test-results-linux
@@ -150,7 +150,7 @@ jobs:
     if: ${{ inputs.CHANNEL == 'main' }}
     runs-on: ${{ matrix.runs_on }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           lfs: true
 
@@ -184,7 +184,7 @@ jobs:
         run: pixi run rs-check --only tests
 
       - name: Upload test results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: test-results-${{ matrix.name }}
@@ -228,7 +228,7 @@ jobs:
     if: ${{ inputs.CHANNEL == 'nightly' }}
     runs-on: ${{ matrix.platform.runs_on }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           lfs: true
 
@@ -262,7 +262,7 @@ jobs:
         run: pixi run rs-check --only ${{ matrix.checks_group.checks }}
 
       - name: Upload test results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: test-results-${{ matrix.platform.name }}-${{ matrix.checks_group.name }}

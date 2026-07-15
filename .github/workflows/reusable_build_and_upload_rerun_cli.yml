@@ -130,7 +130,7 @@ jobs:
           JOB_CONTEXT: ${{ toJson(job) }}
           INPUTS_CONTEXT: ${{ toJson(inputs) }}
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.RELEASE_COMMIT || ((github.event_name == 'pull_request' && github.event.pull_request.head.ref) || '') }}
 

@@ -59,7 +59,7 @@ jobs:
     name: Python
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.RELEASE_COMMIT || (github.event_name == 'pull_request' && github.event.pull_request.head.ref || '') }}
 
@@ -68,13 +68,13 @@ jobs:
           pixi-version: v0.71.3
 
       - id: "auth"
-        uses: google-github-actions/auth@v2
+        uses: google-github-actions/auth@v3
         with:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
       - name: "Set up Cloud SDK"
-        uses: "google-github-actions/setup-gcloud@v2"
+        uses: "google-github-actions/setup-gcloud@v3"
         with:
           version: ">= 363.0.0"
 
@@ -133,12 +133,12 @@ jobs:
           JOB_CONTEXT: ${{ toJson(job) }}
           INPUTS_CONTEXT: ${{ toJson(inputs) }}
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.RELEASE_COMMIT || (github.event_name == 'pull_request' && github.event.pull_request.head.ref || '') }}
 
       - id: "auth"
-        uses: google-github-actions/auth@v2
+        uses: google-github-actions/auth@v3
         with:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
@@ -173,7 +173,7 @@ jobs:
     name: JS
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.RELEASE_COMMIT || (github.event_name == 'pull_request' && github.event.pull_request.head.ref || '') }}
 
@@ -182,13 +182,13 @@ jobs:
           pixi-version: v0.71.3
 
       - id: "auth"
-        uses: google-github-actions/auth@v2
+        uses: google-github-actions/auth@v3
         with:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
       - name: "Set up Cloud SDK"
-        uses: "google-github-actions/setup-gcloud@v2"
+        uses: "google-github-actions/setup-gcloud@v3"
         with:
           version: ">= 363.0.0"
 
@@ -215,7 +215,7 @@ jobs:
     name: Markdown
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.RELEASE_COMMIT || (github.event_name == 'pull_request' && github.event.pull_request.head.ref || '') }}
 
@@ -224,7 +224,7 @@ jobs:
           pixi-version: v0.71.3
 
       - id: "auth"
-        uses: google-github-actions/auth@v2
+        uses: google-github-actions/auth@v3
         with:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}

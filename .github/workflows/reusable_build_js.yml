@@ -29,13 +29,13 @@ jobs:
     timeout-minutes: 60
     runs-on: ubuntu-latest-16-cores
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
-          node-version: "22.x"
+          node-version: "24.x"
 
       - name: Install Yarn
         run: npm install -g yarn
@@ -66,7 +66,7 @@ jobs:
           cp rerun_js/*/*.tar.gz rerun_js_package/
 
       - name: Upload rerun_js
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: rerun_js
           path: rerun_js_package

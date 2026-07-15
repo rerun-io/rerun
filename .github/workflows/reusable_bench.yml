@@ -48,7 +48,7 @@ jobs:
     timeout-minutes: 60
     runs-on: ubuntu-latest-16-cores
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0 # we need full history
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
@@ -83,7 +83,7 @@ jobs:
             -- --output-format=bencher | tee /tmp/${{ env.SHORT_SHA }}
 
       - name: "Set up Cloud SDK"
-        uses: "google-github-actions/setup-gcloud@v2"
+        uses: "google-github-actions/setup-gcloud@v3"
         with:
           version: ">= 363.0.0"
 

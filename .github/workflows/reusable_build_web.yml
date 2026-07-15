@@ -37,7 +37,7 @@ jobs:
     timeout-minutes: 60
     runs-on: ubuntu-latest-16-cores
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
@@ -100,7 +100,7 @@ jobs:
             "crates/viewer/re_web_viewer_server/web_viewer/examples_manifest.json"
 
       - name: Upload web viewer
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: web_viewer
           path: "crates/viewer/re_web_viewer_server/web_viewer"

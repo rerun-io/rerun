@@ -35,7 +35,7 @@ jobs:
     timeout-minutes: 60
     runs-on: ubuntu-latest-16-cores
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ (github.event_name == 'pull_request' && github.event.pull_request.head.ref) || '' }}
           lfs: true
@@ -53,13 +53,13 @@ jobs:
           pixi-version: v0.71.3
 
       - name: Download Rerun Wheel
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: ${{ inputs.WHEEL_ARTIFACT_NAME }}
           path: wheel
 
       - name: Download Rerun Notebook Wheel
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: rerun_notebook_wheel
           path: wheel
@@ -98,7 +98,7 @@ jobs:
             example_data/snippets
 
       - name: Upload assets
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: example_data
           path: example_data

@@ -55,7 +55,7 @@ jobs:
       CONTAINER: ${{ steps.set-config.outputs.container }}
     steps:
       - name: Login to GHCR (with retries)
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
           timeout_seconds: 10
           max_attempts: 12
@@ -122,7 +122,7 @@ jobs:
           JOB_CONTEXT: ${{ toJson(job) }}
           INPUTS_CONTEXT: ${{ toJson(inputs) }}
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.RELEASE_COMMIT || ((github.event_name == 'pull_request' && github.event.pull_request.head.ref) || '') }}
           lfs: true
@@ -141,7 +141,7 @@ jobs:
           pixi-version: v0.71.3
 
       - name: Download Wheel
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: ${{ inputs.WHEEL_ARTIFACT_NAME }}
           path: wheel
