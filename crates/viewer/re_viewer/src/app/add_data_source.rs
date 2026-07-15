@@ -2,8 +2,7 @@ use re_data_source::LogDataSource;
 use re_entity_db::LogSource;
 use re_log_channel::{LogReceiver, RecordingOpenBehavior};
 use re_log_types::StoreId;
-use re_sdk_types::blueprint::components::PlayState;
-use re_viewer_context::{StoreHub, SystemCommand, SystemCommandSender as _, TimeControlCommand};
+use re_viewer_context::{StoreHub, SystemCommand, SystemCommandSender as _};
 
 use super::App;
 
@@ -83,24 +82,13 @@ impl App {
             std::iter::chain(store_sources, active_sources.iter().map(|s| s.as_ref()));
 
         match data_source {
-            LogDataSource::HttpUrl { url, follow } => {
+            LogDataSource::HttpUrl { url } => {
                 let new_source = LogSource::HttpStream {
                     url: url.to_string(),
-                    follow: *follow,
                 };
 
                 if all_sources.any(|source| source.is_same_ignoring_uri_fragments(&new_source)) {
                     if let Some(entity_db) = store_hub.find_recording_store_by_source(&new_source) {
-                        if *follow {
-                            self.command_sender
-                                .send_system(SystemCommand::TimeControlCommands {
-                                    store_id: entity_db.store_id().clone(),
-                                    time_commands: vec![TimeControlCommand::SetPlayState(
-                                        PlayState::Following,
-                                    )],
-                                });
-                        }
-
                         let store_id = entity_db.store_id().clone();
                         re_log::debug_assert!(store_id.is_recording()); // `find_recording_store_by_source` should have filtered for recordings rather than blueprints.
                         drop(all_sources);
@@ -111,15 +99,11 @@ impl App {
             }
 
             #[cfg(not(target_arch = "wasm32"))]
-            LogDataSource::FilePath { path, follow, .. } => {
+            LogDataSource::FilePath { path, .. } => {
                 #[cfg(all(feature = "internal_catalog", not(target_arch = "wasm32")))]
                 {
                     // If the internal catalog is enabled, route `.rrd` files through it.
-                    //
-                    // TODO(RR-5039): `follow` (tailing a growing file) is incompatible with
-                    // this, followed files keep the direct loading path.
-                    if !*follow
-                        && path.extension().is_some_and(|ext| ext == "rrd")
+                    if path.extension().is_some_and(|ext| ext == "rrd")
                         && self.app_options().experimental.use_internal_catalog
                         && self.connection_registry.internal_origin().is_some()
                     {
@@ -153,10 +137,7 @@ impl App {
                     }
                 }
 
-                let new_source = LogSource::File {
-                    path: path.clone(),
-                    follow: *follow,
-                };
+                let new_source = LogSource::File { path: path.clone() };
                 if all_sources.any(|source| source.is_same_ignoring_uri_fragments(&new_source)) {
                     drop(all_sources);
                     self.try_make_recording_from_source_active(egui_ctx, store_hub, &new_source);

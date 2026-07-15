@@ -649,8 +649,7 @@ impl StoreHub {
     ///
     /// Ignores any blueprint stores.
     ///
-    /// If the data source is a grpc uri, it will ignore any fragments.
-    /// If the data source is a http url, it will ignore the follow flag.
+    /// If the data source is a grpc or HTTP URI, it will ignore any fragments.
     pub fn find_recording_store_by_source(
         &self,
         data_source: &re_log_channel::LogSource,

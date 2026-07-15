@@ -163,7 +163,6 @@ fn handle_popstate(
             url.open(
                 egui_ctx,
                 &open_url::OpenUrlOptions {
-                    follow: false,
                     recording_open_behavior: RecordingOpenBehavior::OpenAndSelect,
                     show_loader: true,
                 },

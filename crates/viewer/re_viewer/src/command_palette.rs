@@ -294,7 +294,6 @@ impl CommandPaletteProvider<CommandPaletteAction> for CommandPaletteProviderImpl
             raw_url,
             &re_data_source::FromUriOptions {
                 accept_extensionless_http: true,
-                ..Default::default()
             },
         ) {
             // The user entered something openable (URL, file path, …). Offer to open it!

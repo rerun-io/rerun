@@ -57,22 +57,13 @@ pub enum FlushError {
 pub enum LogSource {
     /// The sender is a background thread reading data from a file on disk
     /// (could be `.rrd` files, or `.glb`, `.png`, …).
-    File {
-        path: std::path::PathBuf,
-
-        /// If `true`, the viewer should start in `Following` mode.
-        follow: bool,
-    },
+    File { path: std::path::PathBuf },
 
     /// The sender is a background thread fetching data from an HTTP file server.
     #[serde(alias = "RrdHttpStream")]
     HttpStream {
         /// Should include `http(s)://` prefix.
         url: String,
-
-        /// Indicates whether the viewer should open the stream in `Following` mode rather than `Playing` mode.
-        // TODO(andreas): having follow in here is a bit weird. This should be part of the link fragments instead.
-        follow: bool,
     },
 
     /// The channel was created in the context of loading an `.rrd` file from a `postMessage`
@@ -122,8 +113,8 @@ pub struct TableBlueprintSource {
 impl std::fmt::Display for LogSource {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::File { path, .. } => write!(f, "file://{}", path.to_string_lossy()),
-            Self::HttpStream { url, follow: _ } => url_display_name(url).fmt(f),
+            Self::File { path } => write!(f, "file://{}", path.to_string_lossy()),
+            Self::HttpStream { url } => url_display_name(url).fmt(f),
             Self::MessageProxy(uri) => uri.fmt(f),
             Self::RedapGrpcStream { uri, .. } => uri.fmt(f),
             Self::RrdWebEvent => "Web event listener".fmt(f),
@@ -195,8 +186,8 @@ impl LogSource {
     pub fn loading_name(&self) -> Option<String> {
         match self {
             // We only show things we know are very-soon-to-be recordings:
-            Self::File { path, .. } => Some(path.to_string_lossy().into_owned()),
-            Self::HttpStream { url, .. } => Some(url_display_name(url)),
+            Self::File { path } => Some(path.to_string_lossy().into_owned()),
+            Self::HttpStream { url } => Some(url_display_name(url)),
             Self::RedapGrpcStream { uri, .. } => Some(uri.segment_id.to_string()),
 
             Self::RrdWebEvent
@@ -214,11 +205,11 @@ impl LogSource {
     /// Status string describing waiting or loading status for a source.
     pub fn status_string(&self) -> String {
         match self {
-            Self::File { path, .. } => {
+            Self::File { path } => {
                 format!("Loading {}…", path.display())
             }
             Self::Stdin => "Loading stdin…".to_owned(),
-            Self::HttpStream { url, .. } => {
+            Self::HttpStream { url } => {
                 format!("Waiting for data on {}…", url_display_name(url))
             }
             Self::MessageProxy(uri) => {
@@ -242,9 +233,7 @@ impl LogSource {
             (Self::RedapGrpcStream { uri: uri1, .. }, Self::RedapGrpcStream { uri: uri2, .. }) => {
                 uri1.clone().without_fragment() == uri2.clone().without_fragment()
             }
-            (Self::HttpStream { url: url1, .. }, Self::HttpStream { url: url2, .. }) => {
-                url1 == url2
-            }
+            (Self::HttpStream { url: url1 }, Self::HttpStream { url: url2 }) => url1 == url2,
             _ => self == other,
         }
     }

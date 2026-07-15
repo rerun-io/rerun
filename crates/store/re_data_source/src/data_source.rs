@@ -22,9 +22,6 @@ pub enum LogDataSource {
     HttpUrl {
         /// This is a canonicalized URL path without any parameters or fragments.
         url: url::Url,
-
-        /// If `follow` is `true`, the viewer will open the stream in `Following` mode rather than `Playing` mode.
-        follow: bool,
     },
 
     /// A path to a local file.
@@ -35,9 +32,6 @@ pub enum LogDataSource {
 
         /// Where the file is
         path: std::path::PathBuf,
-
-        /// If `true`, keep reading `.rrd` files past EOF, tailing new data as it arrives.
-        follow: bool,
     },
 
     /// The contents of a file.
@@ -63,9 +57,6 @@ pub enum LogDataSource {
 /// Options for [`LogDataSource::from_uri`].
 #[derive(Clone, Debug, Default)]
 pub struct FromUriOptions {
-    /// If `true`, keep reading `.rrd` files past EOF, tailing new data as it arrives.
-    pub follow: bool,
-
     /// If `true`, accept extensionless HTTP URLs for magic-bytes-based format detection.
     ///
     /// This should be `true` at external entry points (CLI, explicit user URL input),
@@ -154,7 +145,6 @@ impl LogDataSource {
                 return Some(Self::FilePath {
                     file_source: _file_source,
                     path,
-                    follow: options.follow,
                 });
             }
 
@@ -162,7 +152,6 @@ impl LogDataSource {
                 return Some(Self::FilePath {
                     file_source: _file_source,
                     path,
-                    follow: options.follow,
                 });
             }
         }
@@ -188,10 +177,7 @@ impl LogDataSource {
             // `data:` and `blob:` URLs are only fetchable through the browser's `fetch`.
             #[cfg(target_arch = "wasm32")]
             if url.scheme() == "data" || url.scheme() == "blob" {
-                return Some(Self::HttpUrl {
-                    url,
-                    follow: options.follow,
-                });
+                return Some(Self::HttpUrl { url });
             }
 
             // We can only load http/s urls, so don't try to load any other schemes
@@ -210,20 +196,14 @@ impl LogDataSource {
             let contains_viewer_query_url_param = url.query_pairs().any(|(key, _)| key == "url");
 
             if re_importer::is_supported_file_extension(extension) {
-                Some(Self::HttpUrl {
-                    url,
-                    follow: options.follow,
-                })
+                Some(Self::HttpUrl { url })
             } else if options.accept_extensionless_http
                 && extension.is_empty()
                 && was_proper_http_url
                 && !contains_viewer_query_url_param
             {
                 // No extension — accept the URL and try to detect format after download
-                Some(Self::HttpUrl {
-                    url,
-                    follow: options.follow,
-                })
+                Some(Self::HttpUrl { url })
             } else if contains_viewer_query_url_param {
                 // This is a web viewer URL with a `?url=` parameter.
                 // Extract the URL parameter and try to parse it as a redap URI.
@@ -272,26 +252,19 @@ impl LogDataSource {
         re_tracing::profile_function!();
 
         match self {
-            Self::HttpUrl { url, follow } => {
+            Self::HttpUrl { url } => {
                 let path = url.path();
                 let is_rrd = path.ends_with(".rrd") || path.ends_with(".rbl");
                 if is_rrd {
-                    Ok(stream_from_http_to_channel(url.to_string(), follow))
+                    Ok(stream_from_http_to_channel(url.to_string()))
                 } else {
                     Ok(crate::fetch_file_from_http::fetch_and_load(&url))
                 }
             }
 
             #[cfg(not(target_arch = "wasm32"))]
-            Self::FilePath {
-                file_source,
-                path,
-                follow,
-            } => {
-                let (tx, rx) = re_log_channel::log_channel(LogSource::File {
-                    path: path.clone(),
-                    follow,
-                });
+            Self::FilePath { file_source, path } => {
+                let (tx, rx) = re_log_channel::log_channel(LogSource::File { path: path.clone() });
 
                 // This recording will be communicated to all `Importer`s, which may or may not
                 // decide to use it depending on whether they want to share a common recording
@@ -300,7 +273,6 @@ impl LogDataSource {
                 let settings = re_importer::ImporterSettings {
                     opened_store_id: file_source.recommended_store_id().cloned(),
                     force_store_info: file_source.force_store_info(),
-                    follow,
                     ..re_importer::ImporterSettings::recommended(shared_recording_id)
                 };
                 re_importer::import_from_path(&settings, file_source, &path, &tx)
@@ -314,7 +286,6 @@ impl LogDataSource {
                 let name = file_contents.name.clone();
                 let (tx, rx) = re_log_channel::log_channel(LogSource::File {
                     path: name.clone().into(),
-                    follow: false,
                 });
 
                 // This `StoreId` will be communicated to all `Importer`s, which may or may not
@@ -587,7 +558,6 @@ mod tests {
         let default_options = FromUriOptions::default();
         let extensionless_options = FromUriOptions {
             accept_extensionless_http: true,
-            ..Default::default()
         };
 
         for uri in file {

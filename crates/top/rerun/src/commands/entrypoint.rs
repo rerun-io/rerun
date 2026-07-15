@@ -257,14 +257,6 @@ When persisted, the state will be stored at the following locations:
     #[clap(long)]
     expect_data_soon: bool,
 
-    /// Tail .rrd files, waiting for new data to be appended after reaching EOF.
-    ///
-    /// Without this flag, .rrd files are read once and the viewer stops loading when EOF is reached.
-    /// With this flag, the viewer will keep watching for new data, which is useful for live streaming
-    /// from a writer process.
-    #[clap(long)]
-    follow: bool,
-
     /// The number of compute threads to use.
     ///
     /// If zero, the same number of threads as the number of cores will be used.
@@ -907,7 +899,6 @@ fn run_impl(
             &UrlParamProcessingConfig::convert_everything_to_data_sources(),
             &connection_registry,
             None,
-            args.follow,
         )?;
         save_or_test_receive(
             args.save,
@@ -925,7 +916,6 @@ fn run_impl(
                     &UrlParamProcessingConfig::convert_everything_to_data_sources(),
                     &connection_registry,
                     None,
-                    args.follow,
                 )?;
                 serve_grpc(
                     receivers,
@@ -956,7 +946,6 @@ fn run_impl(
                     &UrlParamProcessingConfig::grpc_server_and_web_viewer(),
                     &connection_registry,
                     None,
-                    args.follow,
                 )?;
                 #[cfg(all(feature = "server", feature = "web_viewer"))]
                 serve_web(
@@ -977,7 +966,6 @@ fn run_impl(
             &UrlParamProcessingConfig::convert_everything_to_data_sources(),
             &connection_registry,
             None,
-            args.follow,
         )?;
         connect_to_existing_server(receivers, server_addr)
     } else {
@@ -1024,7 +1012,6 @@ fn start_native_viewer(
     let startup_options = native_startup_options_from_args(args)?;
 
     let connect = args.connect.is_some();
-    let follow = args.follow;
     let renderer = args.renderer.as_deref();
     let memory_limit = args
         .memory_limit
@@ -1057,7 +1044,6 @@ fn start_native_viewer(
         &UrlParamProcessingConfig::native_viewer(),
         &connection_registry,
         Some(auth_error_handler),
-        follow,
     )?;
 
     let create_app = move |cc: &eframe::CreationContext<'_>| -> re_viewer::App {
@@ -1731,7 +1717,6 @@ impl ReceiversFromUrlParams {
         config: &UrlParamProcessingConfig,
         connection_registry: &re_redap_client::ConnectionRegistryHandle,
         auth_error_handler: Option<AuthErrorHandler>,
-        follow: bool,
     ) -> anyhow::Result<Self> {
         let mut data_sources = Vec::new();
         let mut urls_to_pass_on_to_viewer = Vec::new();
@@ -1741,7 +1726,6 @@ impl ReceiversFromUrlParams {
                 re_log_types::FileSource::Cli,
                 &url,
                 &re_data_source::FromUriOptions {
-                    follow,
                     accept_extensionless_http: true,
                 },
             ) {
@@ -1833,7 +1817,6 @@ fn record_cli_command_analytics(args: &Args) {
         detach_process,
 
         // Not logged
-        follow: _,
         threads: _,
         url_or_paths: _,
         version: _,

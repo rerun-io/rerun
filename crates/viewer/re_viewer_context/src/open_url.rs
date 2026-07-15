@@ -250,11 +250,6 @@ pub fn base_url(url: &Url) -> Url {
 
 #[derive(Debug, Clone, Copy)]
 pub struct OpenUrlOptions {
-    /// Follow live HTTP or file paths.
-    //
-    // TODO(emilk): consider making this part of `ViewerOpenUrl::RrdHttpUrl/FilePath` instead
-    pub follow: bool,
-
     pub recording_open_behavior: RecordingOpenBehavior,
 
     /// Shows the loading screen.
@@ -264,7 +259,6 @@ pub struct OpenUrlOptions {
 impl Default for OpenUrlOptions {
     fn default() -> Self {
         Self {
-            follow: false,
             recording_open_behavior: RecordingOpenBehavior::Open,
             show_loader: false,
         }
@@ -544,13 +538,9 @@ impl ViewerOpenUrl {
 
             Self::HttpUrl(url) => Some(LogSource::HttpStream {
                 url: url.to_string(),
-                follow: false,
             }),
             #[cfg(not(target_arch = "wasm32"))]
-            Self::FilePath(path) => Some(LogSource::File {
-                path: path.clone(),
-                follow: false,
-            }),
+            Self::FilePath(path) => Some(LogSource::File { path: path.clone() }),
             Self::RedapDatasetSegment(uri) => Some(LogSource::RedapGrpcStream {
                 uri: uri.clone(),
                 open_behavior: RecordingOpenBehavior::Background,
@@ -601,7 +591,6 @@ impl ViewerOpenUrl {
             Self::HttpUrl(url) => {
                 command_sender.send_system(SystemCommand::LoadDataSource(LogDataSource::HttpUrl {
                     url,
-                    follow: options.follow,
                 }));
             }
             #[cfg(not(target_arch = "wasm32"))]
@@ -610,7 +599,6 @@ impl ViewerOpenUrl {
                     LogDataSource::FilePath {
                         file_source: re_log_types::FileSource::Uri,
                         path,
-                        follow: options.follow,
                     },
                 ));
             }
@@ -1160,7 +1148,6 @@ mod tests {
             &mut store_hub,
             Some(LogSource::File {
                 path: std::path::PathBuf::from("/path/to/test.rrd"),
-                follow: false,
             }),
         );
         assert_eq!(
@@ -1174,7 +1161,6 @@ mod tests {
             &mut store_hub,
             Some(LogSource::HttpStream {
                 url: "https://example.com/recording.rrd".to_owned(),
-                follow: false,
             }),
         );
         assert_eq!(

@@ -41,7 +41,6 @@ impl DownloadCommand {
                 re_log_types::FileSource::Cli,
                 url,
                 &FromUriOptions {
-                    follow: false,
                     accept_extensionless_http: true,
                 },
             );

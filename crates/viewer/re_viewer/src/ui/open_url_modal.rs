@@ -57,7 +57,6 @@ impl OpenUrlModal {
                     &self.url,
                     &re_data_source::FromUriOptions {
                         accept_extensionless_http: true,
-                        ..Default::default()
                     },
                 );
                 let can_import = match &open_url {

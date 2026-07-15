@@ -1501,7 +1501,6 @@ impl RecordingStream {
 
         let (tx, rx) = re_log_channel::log_channel(re_log_channel::LogSource::File {
             path: filepath.into(),
-            follow: false,
         });
 
         let mut settings = crate::ImporterSettings {
@@ -1510,7 +1509,6 @@ impl RecordingStream {
             opened_store_id: None,
             force_store_info: false,
             entity_path_prefix,
-            follow: false,
             timepoint: (!static_).then(|| {
                 self.with(|inner| {
                     // Get the current time on all timelines, for the current recording, on the current

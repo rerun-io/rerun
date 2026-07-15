@@ -580,14 +580,12 @@ impl App {
             url,
             &re_data_source::FromUriOptions {
                 accept_extensionless_http: true,
-                ..Default::default()
             },
         ) {
             Ok(url) => {
                 url.open(
                     &self.egui_ctx,
                     &OpenUrlOptions {
-                        follow: false,
                         recording_open_behavior: RecordingOpenBehavior::OpenAndSelect,
                         show_loader: true,
                     },
@@ -1028,7 +1026,6 @@ impl App {
                             force_store_info,
                         },
                         path,
-                        follow: false,
                     },
                 ));
             }
@@ -1580,14 +1577,12 @@ impl eframe::App for App {
                             url.as_str(),
                             &re_data_source::FromUriOptions {
                                 accept_extensionless_http: true,
-                                ..Default::default()
                             },
                         ) {
                             Ok(url) => {
                                 url.open(
                                     ui,
                                     &OpenUrlOptions {
-                                        follow: false,
                                         recording_open_behavior:
                                             RecordingOpenBehavior::OpenAndSelect,
                                         show_loader: true,

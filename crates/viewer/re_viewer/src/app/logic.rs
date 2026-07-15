@@ -587,7 +587,6 @@ impl App {
                     &url,
                     &re_data_source::FromUriOptions {
                         accept_extensionless_http: true,
-                        ..Default::default()
                     },
                 );
                 match result {

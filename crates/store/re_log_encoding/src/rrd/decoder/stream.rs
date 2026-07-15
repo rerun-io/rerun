@@ -4,7 +4,6 @@ use tokio::io::AsyncBufRead;
 use tokio_stream::{Stream, StreamExt as _};
 
 use crate::RawRrdManifest;
-use crate::rrd::decoder::state_machine::DecoderState;
 use crate::rrd::{DecodeError, Decoder, DecoderEntrypoint};
 
 // ---
@@ -20,28 +19,10 @@ impl<T: DecoderEntrypoint + Unpin> Decoder<T> {
     /// * This lets the end-user in control of the buffering, which prevents unfortunately stacked
     ///   buffers (and thus exploding memory usage and copies).
     ///
-    /// See also [`Self::decode_lazy_async_with_opts`].
     pub fn decode_lazy_async<R: tokio::io::AsyncBufRead>(reader: R) -> DecoderStream<T, R> {
-        let wait_for_eos = false;
-        Self::decode_lazy_async_with_opts(reader, wait_for_eos)
-    }
-
-    /// Same as [`Self::decode_lazy_async`], with extra options.
-    ///
-    /// * `wait_for_eos`: if true, the decoder will always wait for an end-of-stream marker before
-    ///   calling it a day, even if the underlying reader has already reached its EOF state (…for now).
-    ///   This only really makes sense when running in tail mode (see `RetryableFileReader`), otherwise
-    ///   we'd rather terminate early when a potentially short-circuited (and therefore lacking a proper
-    ///   end-of-stream marker) RRD stream indicates EOF.
-    pub fn decode_lazy_async_with_opts<R: tokio::io::AsyncBufRead>(
-        reader: R,
-        wait_for_eos: bool,
-    ) -> DecoderStream<T, R> {
-        let decoder = Self::new();
         DecoderStream {
-            decoder,
+            decoder: Self::new(),
             reader,
-            wait_for_eos,
             first_msg: None,
         }
     }
@@ -57,30 +38,12 @@ impl<T: DecoderEntrypoint + Unpin> Decoder<T> {
     /// * This lets the end-user in control of the buffering, which prevents unfortunately stacked
     ///   buffers (and thus exploding memory usage and copies).
     ///
-    /// See also [`Self::decode_eager_async_with_opts`].
     pub async fn decode_eager_async<R: tokio::io::AsyncBufRead + Unpin>(
         reader: R,
     ) -> Result<DecoderStream<T, R>, DecodeError> {
-        let wait_for_eos = false;
-        Self::decode_eager_async_with_opts(reader, wait_for_eos).await
-    }
-
-    /// Same as [`Self::decode_eager_async`], with extra options.
-    ///
-    /// * `wait_for_eos`: if true, the decoder will always wait for an end-of-stream marker before
-    ///   calling it a day, even if the underlying reader has already reached its EOF state (…for now).
-    ///   This only really makes sense when running in tail mode (see `RetryableFileReader`), otherwise
-    ///   we'd rather terminate early when a potentially short-circuited (and therefore lacking a proper
-    ///   end-of-stream marker) RRD stream indicates EOF.
-    pub async fn decode_eager_async_with_opts<R: tokio::io::AsyncBufRead + Unpin>(
-        reader: R,
-        wait_for_eos: bool,
-    ) -> Result<DecoderStream<T, R>, DecodeError> {
-        let decoder = Self::new();
         let mut it = DecoderStream {
-            decoder,
+            decoder: Self::new(),
             reader,
-            wait_for_eos,
             first_msg: None,
         };
 
@@ -96,14 +59,6 @@ impl<T: DecoderEntrypoint + Unpin> Decoder<T> {
 pub struct DecoderStream<T, R: AsyncBufRead> {
     pub decoder: Decoder<T>,
     pub reader: R,
-
-    /// If true, the decoder will always wait for an end-of-stream marker before calling it a day,
-    /// even if the underlying reader has already reached its EOF state (…for now).
-    ///
-    /// This only really makes sense when running in tail mode (see `RetryableFileReader`),
-    /// otherwise we'd rather terminate early when a potentially short-circuited (and therefore
-    /// lacking a proper end-of-stream marker) RRD stream indicates EOF.
-    pub wait_for_eos: bool,
 
     /// See [`Decoder::decode_eager`] for more information.
     pub first_msg: Option<T>,
@@ -139,7 +94,6 @@ impl<T: DecoderEntrypoint + Unpin, R: AsyncBufRead + Unpin> Stream for DecoderSt
             let Self {
                 decoder,
                 reader,
-                wait_for_eos,
                 first_msg: _,
             } = &mut *self;
 
@@ -160,18 +114,8 @@ impl<T: DecoderEntrypoint + Unpin, R: AsyncBufRead + Unpin> Stream for DecoderSt
                         // more messages, so go on for now.
                         Ok(Some(msg)) => return std::task::Poll::Ready(Some(Ok(msg))),
 
-                        // …and we don't want to explicitly wait around for more to come, so just leave.
-                        Ok(None) if !*wait_for_eos => return std::task::Poll::Ready(None),
-
-                        // …and the underlying decoder already considers that it's done (i.e. it's
-                        // waiting for a whole new stream to begin): time to stop.
-                        Ok(None) if decoder.state == DecoderState::WaitingForStreamHeader => {
-                            return std::task::Poll::Ready(None);
-                        }
-
-                        // …but the underlying decoder doesn't believe it's done yet (i.e. it's still
-                        // waiting for an EOS marker to show up): we continue.
-                        Ok(None) => {}
+                        // …and there is nothing left to decode.
+                        Ok(None) => return std::task::Poll::Ready(None),
 
                         Err(err) => return std::task::Poll::Ready(Some(Err(err))),
                     }

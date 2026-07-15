@@ -831,7 +831,6 @@ impl App {
                                 force_store_info,
                             },
                             path: file_path,
-                            follow: false,
                         }));
                 }
             }
@@ -864,7 +863,6 @@ impl App {
                                 force_store_info,
                             },
                             path: file_path,
-                            follow: false,
                         }));
                 }
             }
@@ -910,7 +908,6 @@ impl App {
                     url.clone().open(
                         egui_ctx,
                         &OpenUrlOptions {
-                            follow: true,
                             recording_open_behavior: RecordingOpenBehavior::OpenAndSelect,
                             show_loader: true,
                         },
@@ -923,7 +920,6 @@ impl App {
                     url.clone().open(
                         egui_ctx,
                         &OpenUrlOptions {
-                            follow: true,
                             recording_open_behavior: RecordingOpenBehavior::OpenAndSelect,
                             show_loader: true,
                         },
@@ -1527,7 +1523,6 @@ impl App {
         url.clone().open(
             egui_ctx,
             &OpenUrlOptions {
-                follow: true,
                 recording_open_behavior: RecordingOpenBehavior::OpenAndSelect,
                 show_loader: true,
             },

@@ -1103,11 +1103,11 @@ pub(crate) fn create_time_control_for<'cfgs>(
     ) -> TimeControl {
         let follow = if let Some(data_source) = &entity_db.data_source {
             match data_source {
-                // Potentially live data:
-                LogSource::File { follow, .. } | LogSource::HttpStream { follow, .. } => *follow,
-
                 // Not live data:
-                LogSource::RedapGrpcStream { .. } | LogSource::RrdWebEvent => false,
+                LogSource::File { .. }
+                | LogSource::HttpStream { .. }
+                | LogSource::RedapGrpcStream { .. }
+                | LogSource::RrdWebEvent => false,
 
                 // Live data:
                 LogSource::Sdk
@@ -1154,13 +1154,11 @@ fn check_for_clicked_hyperlinks(egui_ctx: &egui::Context, command_sender: &Comma
                     &open_url.url,
                     &re_data_source::FromUriOptions {
                         accept_extensionless_http: false,
-                        ..Default::default()
                     },
                 ) {
                     url.open(
                         egui_ctx,
                         &open_url::OpenUrlOptions {
-                            follow: false,
                             recording_open_behavior: if open_url.new_tab {
                                 RecordingOpenBehavior::Open
                             } else {
