@@ -187,16 +187,18 @@ fn edge_filter_ui(ui: &mut egui::Ui, state: &mut TransformCacheUiState) {
 
 /// Draws the horizontal/vertical layout controls.
 fn layout_direction_ui(ui: &mut egui::Ui, state: &mut TransformCacheUiState) {
-    ui.label("Layout:");
-    ui.selectable_toggle(|ui| {
-        ui.selectable_value(
-            &mut state.layout_direction,
-            LayoutDirection::Horizontal,
-            "▶",
-        )
-        .on_hover_text("Lay out transform frames horizontally");
-        ui.selectable_value(&mut state.layout_direction, LayoutDirection::Vertical, "▼")
-            .on_hover_text("Lay out transform frames vertically");
+    ui.horizontal_centered(|ui| {
+        ui.label("Layout:");
+        ui.selectable_toggle(|ui| {
+            ui.selectable_value(
+                &mut state.layout_direction,
+                LayoutDirection::Horizontal,
+                "▶",
+            )
+            .on_hover_text("Lay out transform frames horizontally");
+            ui.selectable_value(&mut state.layout_direction, LayoutDirection::Vertical, "▼")
+                .on_hover_text("Lay out transform frames vertically");
+        })
     });
 }
 
