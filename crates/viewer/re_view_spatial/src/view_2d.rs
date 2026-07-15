@@ -2,7 +2,9 @@ use nohash_hasher::{IntMap, IntSet};
 use re_chunk_store::MissingChunkReporter;
 use re_entity_db::{EntityDb, EntityTree};
 use re_log_types::EntityPath;
-use re_sdk_types::blueprint::archetypes::{Background, NearClipPlane, VisualBounds2D};
+use re_sdk_types::blueprint::archetypes::{
+    Background, NearClipPlane, SpatialInformation, VisualBounds2D,
+};
 use re_sdk_types::{View as _, ViewClassIdentifier};
 use re_ui::{Help, UiExt as _};
 use re_view::view_property_ui;
@@ -17,6 +19,8 @@ use crate::max_image_dimension_subscriber::{ImageTypes, MaxDimensions};
 use crate::shared_fallbacks;
 use crate::spatial_topology::{SpatialTopology, SubSpaceConnectionFlags};
 use crate::ui::SpatialViewState;
+#[cfg(debug_assertions)]
+use crate::ui::bbox_debug_ui;
 use crate::view_kind::SpatialViewKind;
 use crate::visualizers::register_2d_spatial_visualizers;
 
@@ -238,10 +242,14 @@ impl ViewClass for SpatialView2D {
         // TODO(andreas): list_item'ify the rest
         ui.selection_grid("spatial_settings_ui").show(ui, |ui| {
             state.bounding_box_ui(ui, SpatialViewKind::TwoD);
+
+            #[cfg(debug_assertions)]
+            bbox_debug_ui(ui, state);
         });
 
         re_ui::list_item::list_item_scope(ui, "spatial_view2d_selection_ui", |ui| {
             let view_ctx = self.view_context(ctx, view_id, state, space_origin);
+            view_property_ui::<SpatialInformation>(&view_ctx, ui);
             view_property_ui::<VisualBounds2D>(&view_ctx, ui);
             view_property_ui::<NearClipPlane>(&view_ctx, ui);
             view_property_ui::<Background>(&view_ctx, ui);

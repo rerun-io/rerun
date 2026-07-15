@@ -3,7 +3,6 @@ use egui::{Modifiers, NumExt as _};
 use glam::Vec3;
 use macaw::BoundingBox;
 use re_chunk_store::MissingChunkReporter;
-use re_log_types::Instance;
 use re_renderer::view_builder::{Projection, TargetConfiguration, ViewBuilder};
 use re_renderer::{LineDrawableBuilder, Size};
 use re_sdk_types::blueprint::archetypes::{
@@ -27,9 +26,9 @@ use super::eye::{Eye, EyeState};
 use crate::SpatialView3D;
 use crate::eye::find_camera;
 use crate::pinhole_wrapper::PinholeWrapper;
-use crate::ui::{SpatialViewState, create_labels};
+use crate::ui::{SpatialViewState, create_labels, draw_bounding_boxes, draw_origin_axes};
 use crate::view_kind::SpatialViewKind;
-use crate::visualizers::{CamerasVisualizerOutput, collect_ui_labels};
+use crate::visualizers::{Axes, CamerasVisualizerOutput, collect_ui_labels};
 
 // ---
 
@@ -43,9 +42,6 @@ pub struct View3DState {
 
     eye_interact_fade_in: bool,
     eye_interact_fade_change_time: f64,
-
-    pub show_smoothed_bbox: bool,
-    pub show_per_entity_bbox: bool,
 }
 
 impl Default for View3DState {
@@ -55,8 +51,6 @@ impl Default for View3DState {
             scene_view_coordinates: None,
             eye_interact_fade_in: false,
             eye_interact_fade_change_time: f64::NEG_INFINITY,
-            show_smoothed_bbox: false,
-            show_per_entity_bbox: false,
         }
     }
 }
@@ -188,6 +182,7 @@ impl SpatialView3D {
         )?;
 
         state.state_3d = state_3d;
+        state.show_bounding_box = show_bounding_box;
 
         // Determine view port resolution and position.
         let resolution_in_pixel =
@@ -205,27 +200,10 @@ impl SpatialView3D {
         line_builder.reserve_strips(32)?;
         line_builder.reserve_vertices(64)?;
 
-        // Origin gizmo if requested.
-        // TODO(andreas): Move this to the transform3d_arrow scene part.
-        //              As of #2522 state is now longer accessible there, move the property to a context?
         if show_axes {
-            let axis_length = 1.0; // The axes are also a measuring stick
-            crate::visualizers::add_axis_arrows(
-                ctx.tokens(),
-                &mut line_builder,
-                glam::Affine3A::IDENTITY,
-                None,
-                axis_length,
-                re_renderer::OutlineMaskPreference::NONE,
-                Instance::ALL.get(),
-            );
-
-            // If we are showing the axes for the space, then add the space origin to the region of interest, but not the scene bounding box.
-            state
-                .bounding_boxes
-                .region_of_interest_current
-                .extend(glam::Vec3::ZERO);
+            draw_origin_axes(ctx.tokens(), &mut line_builder, state, Axes::Xyz);
         }
+        draw_bounding_boxes(ctx.tokens(), &mut line_builder, state);
 
         // Create labels now since their shapes participate are added to scene.ui for picking.
         let (label_shapes, ui_rects) = create_labels(
@@ -396,40 +374,6 @@ impl SpatialView3D {
                 hovered_context,
                 ui.hover_stroke().color,
             );
-        }
-
-        // TODO(andreas): Make configurable. Could pick up default radius for this view?
-        let box_line_radius = Size(*re_sdk_types::components::Radius::default().0);
-
-        // TODO(andreas): Make this an enum so the user can choose between showing
-        // the bounding box (all entities), the region of interest, or per-entity bounding boxes.
-        if show_bounding_box {
-            line_builder
-                .batch("scene_bbox_current")
-                .add_box_outline(&state.bounding_boxes.current)
-                .map(|lines| {
-                    lines
-                        .radius(box_line_radius)
-                        .color(ui.tokens().frustum_color)
-                });
-        }
-        if state.state_3d.show_smoothed_bbox {
-            line_builder
-                .batch("scene_region_of_interest_smoothed")
-                .add_box_outline(&state.bounding_boxes.region_of_interest_smoothed)
-                .map(|lines| {
-                    lines
-                        .radius(box_line_radius)
-                        .color(ctx.tokens().frustum_color)
-                });
-        }
-        if state.state_3d.show_per_entity_bbox {
-            let mut batch = line_builder.batch("per_entity_regions_of_interest");
-            for region_of_interest in state.bounding_boxes.region_of_interest_per_entity.values() {
-                batch
-                    .add_box_outline(region_of_interest)
-                    .map(|lines| lines.radius(box_line_radius).color(egui::Color32::YELLOW));
-            }
         }
 
         show_orbit_eye_center(

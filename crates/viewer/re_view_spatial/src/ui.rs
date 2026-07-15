@@ -5,6 +5,7 @@ use macaw::BoundingBox;
 use re_format::format_f32;
 use re_sdk_types::blueprint::archetypes::EyeControls3D;
 use re_sdk_types::blueprint::components::VisualBounds2D;
+use re_sdk_types::components::Radius;
 use re_sdk_types::image::ImageKind;
 use re_ui::UiExt as _;
 use re_viewer_context::{
@@ -19,7 +20,7 @@ use crate::pickable_textured_rect::PickableRectSourceData;
 use crate::picking::{PickableUiRect, PickingResult};
 use crate::scene_bounding_boxes::SceneBoundingBoxes;
 use crate::view_kind::SpatialViewKind;
-use crate::visualizers::{UiLabel, UiLabelStyle, UiLabelTarget, iter_spatial_data};
+use crate::visualizers::{Axes, UiLabel, UiLabelStyle, UiLabelTarget, iter_spatial_data};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum AutoSizeUnit {
@@ -50,6 +51,10 @@ pub struct ImageCounts {
 #[derive(Clone, Default, re_byte_size::SizeBytes)]
 pub struct SpatialViewState {
     pub bounding_boxes: SceneBoundingBoxes,
+    pub show_bounding_box: bool,
+
+    pub show_smoothed_bbox: bool,
+    pub show_per_entity_bbox: bool,
 
     /// Number of images per image kind processed last frame.
     pub image_counts_last_frame: ImageCounts,
@@ -506,6 +511,74 @@ pub fn paint_loading_indicators(
                 None,
                 reason,
             );
+        }
+    }
+}
+
+/// UI for the debug-build-only bounding box controls.
+#[cfg(debug_assertions)]
+pub fn bbox_debug_ui(ui: &mut egui::Ui, state: &mut SpatialViewState) {
+    ui.re_checkbox(&mut state.show_smoothed_bbox, "Smoothed bbox");
+    ui.re_checkbox(&mut state.show_per_entity_bbox, "Per-entity bboxes");
+}
+
+/// Draws the origin axes gizmo of a spatial view.
+pub fn draw_origin_axes(
+    tokens: &re_ui::DesignTokens,
+    line_builder: &mut re_renderer::LineDrawableBuilder<'_>,
+    state: &mut SpatialViewState,
+    axes: Axes,
+) {
+    let axis_length = 1.0; // The axes are also a measuring stick
+    crate::visualizers::add_axis_arrows(
+        tokens,
+        line_builder,
+        glam::Affine3A::IDENTITY,
+        None,
+        axis_length,
+        axes,
+        re_renderer::OutlineMaskPreference::NONE,
+        re_log_types::Instance::ALL.get(),
+    );
+
+    // If we are showing the axes for the space, then add the space origin to the region of interest, but not the scene bounding box.
+    state
+        .bounding_boxes
+        .region_of_interest_current
+        .extend(glam::Vec3::ZERO);
+}
+
+/// Draws the enabled bounding boxes for a spatial view.
+pub fn draw_bounding_boxes(
+    tokens: &re_ui::DesignTokens,
+    line_builder: &mut re_renderer::LineDrawableBuilder<'_>,
+    state: &SpatialViewState,
+) {
+    // TODO(andreas): Make configurable. Could pick up default radius for this view?
+    let box_line_radius = re_renderer::Size(*Radius::default().0);
+
+    // TODO(andreas): Make this an enum so the user can choose between showing
+    // the bounding box (all entities), the region of interest, or per-entity bounding boxes.
+    if state.show_bounding_box {
+        line_builder
+            .batch("scene_bbox_current")
+            .add_box_outline(&state.bounding_boxes.current)
+            .map(|lines| lines.radius(box_line_radius).color(tokens.frustum_color));
+    }
+
+    if state.show_smoothed_bbox {
+        line_builder
+            .batch("scene_region_of_interest_smoothed")
+            .add_box_outline(&state.bounding_boxes.region_of_interest_smoothed)
+            .map(|lines| lines.radius(box_line_radius).color(tokens.frustum_color));
+    }
+
+    if state.show_per_entity_bbox {
+        let mut batch = line_builder.batch("per_entity_regions_of_interest");
+        for region_of_interest in state.bounding_boxes.region_of_interest_per_entity.values() {
+            batch
+                .add_box_outline(region_of_interest)
+                .map(|lines| lines.radius(box_line_radius).color(egui::Color32::YELLOW));
         }
     }
 }

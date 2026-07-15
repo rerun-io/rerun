@@ -27,7 +27,7 @@ mod voxel_grid_map;
 pub use cameras::{CamerasVisualizer, CamerasVisualizerOutput};
 pub use depth_images::{DepthImageProcessResult, DepthImageVisualizer, DepthImageVisualizerOutput};
 use re_sdk_types::{ComponentDescriptor, ComponentIdentifier, archetypes};
-pub use transform_axes_3d::{TransformAxes3DVisualizer, add_axis_arrows};
+pub use transform_axes_3d::{Axes, TransformAxes3DVisualizer, add_axis_arrows};
 pub use utilities::{
     SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget, entity_from_grid_transform,
     entity_iterator, iter_spatial_data, process_labels_3d, textured_rect_from_image,

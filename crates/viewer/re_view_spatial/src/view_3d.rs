@@ -30,6 +30,8 @@ use crate::heuristics::IndicatedVisualizableEntities;
 use crate::shared_fallbacks;
 use crate::spatial_topology::{HeuristicHints, SpatialTopology, SubSpaceConnectionFlags};
 use crate::ui::SpatialViewState;
+#[cfg(debug_assertions)]
+use crate::ui::bbox_debug_ui;
 use crate::view_kind::SpatialViewKind;
 use crate::visualizers::{
     CamerasVisualizer, TransformAxes3DVisualizer, register_3d_spatial_visualizers,
@@ -519,13 +521,7 @@ impl ViewClass for SpatialView3D {
             state.bounding_box_ui(ui, SpatialViewKind::ThreeD);
 
             #[cfg(debug_assertions)]
-            {
-                ui.re_checkbox(&mut state.state_3d.show_smoothed_bbox, "Smoothed bbox");
-                ui.re_checkbox(
-                    &mut state.state_3d.show_per_entity_bbox,
-                    "Per-entity bboxes",
-                );
-            }
+            bbox_debug_ui(ui, state);
         });
 
         re_ui::list_item::list_item_scope(ui, "spatial_view3d_selection_ui", |ui| {

@@ -4,10 +4,12 @@ use macaw::IsoTransform;
 use re_chunk_store::MissingChunkReporter;
 use re_entity_db::EntityPath;
 use re_log::ResultExt as _;
-use re_renderer::ViewPickingConfiguration;
 use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
-use re_sdk_types::blueprint::archetypes::{Background, NearClipPlane, VisualBounds2D};
-use re_sdk_types::blueprint::components as blueprint_components;
+use re_renderer::{LineDrawableBuilder, ViewPickingConfiguration};
+use re_sdk_types::blueprint::archetypes::{
+    Background, NearClipPlane, SpatialInformation, VisualBounds2D,
+};
+use re_sdk_types::blueprint::components::{self as blueprint_components, Enabled};
 use re_sdk_types::{Archetype as _, archetypes};
 use re_ui::{ContextExt as _, Help, MouseButtonText, icons};
 use re_view::controls::DRAG_PAN2D_BUTTON;
@@ -18,11 +20,11 @@ use re_viewer_context::{
 use re_viewport_blueprint::ViewProperty;
 
 use super::eye::Eye;
-use super::ui::create_labels;
+use super::ui::{create_labels, draw_bounding_boxes, draw_origin_axes};
 use crate::contexts::TransformTreeContext;
 use crate::ui::SpatialViewState;
 use crate::view_kind::SpatialViewKind;
-use crate::visualizers::collect_ui_labels;
+use crate::visualizers::{Axes, collect_ui_labels};
 use crate::{Pinhole, SpatialView2D};
 // ---
 
@@ -346,12 +348,38 @@ impl SpatialView2D {
             query.view_id.render_view_id(),
         )?;
 
-        let view_ctx = self.view_context(ctx, query.view_id, state, query.space_origin); // Recreate view state to handle context editing during picking.
+        let (show_axes, show_bounding_box) = {
+            let view_ctx = self.view_context(ctx, query.view_id, state, query.space_origin);
+            let information_property = ViewProperty::from_archetype::<SpatialInformation>(
+                ctx.blueprint_db(),
+                ctx.blueprint_query,
+                query.view_id,
+            );
+            let show_axes = **information_property.component_or_fallback::<Enabled>(
+                &view_ctx,
+                SpatialInformation::descriptor_show_axes().component,
+            )?;
+            let show_bounding_box = **information_property.component_or_fallback::<Enabled>(
+                &view_ctx,
+                SpatialInformation::descriptor_show_bounding_box().component,
+            )?;
+            (show_axes, show_bounding_box)
+        };
+        state.show_bounding_box = show_bounding_box;
+
+        let mut line_builder = LineDrawableBuilder::new(ctx.render_ctx());
+
+        if show_axes {
+            draw_origin_axes(ctx.tokens(), &mut line_builder, state, Axes::Xy);
+        }
+        draw_bounding_boxes(ctx.tokens(), &mut line_builder, state);
 
         for draw_data in system_output.drain_draw_data() {
             view_builder.queue_draw(ctx.render_ctx(), draw_data);
         }
+        view_builder.queue_draw(ctx.render_ctx(), line_builder.into_draw_data()?);
 
+        let view_ctx = self.view_context(ctx, query.view_id, state, query.space_origin);
         let background = ViewProperty::from_archetype::<Background>(
             ctx.blueprint_db(),
             ctx.blueprint_query,
