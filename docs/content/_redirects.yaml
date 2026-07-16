@@ -89,6 +89,7 @@ reference/video: concepts/logging-and-ingestion/video
 howto/build-a-blueprint-programmatically: howto/visualization/build-a-blueprint-programmatically
 howto/callbacks: howto/visualization/callbacks
 howto/configure-viewer-through-code: getting-started/configure-the-viewer/navigating-the-viewer#programmatic-blueprints
+howto/logging-and-ingestion/convert-existing-data: concepts/logging-and-ingestion/chunk-processing-api
 howto/dataframe-api: howto/query-and-transform/get-data-out
 howto/embed-rerun-viewer: howto/integrations/embed-web
 howto/fixed-window-plot: howto/visualization/fixed-window-plot
