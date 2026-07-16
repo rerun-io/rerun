@@ -220,6 +220,9 @@ impl App {
                     storage_context,
                 );
                 close_requested = response.close_requested;
+                if response.repaint_requested {
+                    ui.request_repaint();
+                }
             });
         // `show_collapsible` flips `dev_panel_open` when the user drags the panel closed:
         self.dev_panel_open = dev_panel_open && !close_requested;

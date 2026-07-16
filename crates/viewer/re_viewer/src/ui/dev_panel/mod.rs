@@ -72,6 +72,7 @@ pub struct DevPanel {
 #[derive(Default)]
 pub struct DevPanelResponse {
     pub close_requested: bool,
+    pub repaint_requested: bool,
 }
 
 impl DevPanel {
@@ -114,7 +115,8 @@ impl DevPanel {
         re_tracing::profile_function!();
 
         // We show realtime stats, so keep showing the latest!
-        ui.request_repaint();
+        // Specific dev panel tabs can opt-out of this below, for resource efficiency if it's not necessary.
+        let mut request_repaint = true;
 
         ui.add_space(4.0);
 
@@ -157,6 +159,9 @@ impl DevPanel {
             }
             DevPanelTab::TransformCache => {
                 self.transform_cache_ui(ui, store_context, time_controls, storage_context);
+                // Normal repaint behavior of the viewer is enough for the transform debugger,
+                // no need to constantly trigger an expensive repaint.
+                request_repaint = false;
             }
             DevPanelTab::Streaming => {
                 server_streaming_tab::server_streaming_tab_ui(
@@ -183,6 +188,7 @@ impl DevPanel {
 
         DevPanelResponse {
             close_requested: close_clicked,
+            repaint_requested: request_repaint,
         }
     }
 
