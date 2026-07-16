@@ -496,20 +496,26 @@ impl ViewClass for StateTimelineView {
                         );
                         visible_lane_band_rects.push((band_rect, *lane));
                     }
+
+                    // Mark the limits of the timeline with the same zig-zag bands the time
+                    // panel uses. Painted over the lanes: the open-ended last phase of each
+                    // lane extends slightly under the band, so its teeth carve into the phase.
+                    // Painted inside the scroll area so its scroll bar stays on top.
+                    re_time_ruler::paint_time_ranges_gaps(
+                        &time_ranges_ui,
+                        ui,
+                        &painter,
+                        rect.y_range(),
+                    );
+
+                    // Lane labels go on top of the zig-zag bands; their translucent
+                    // background plates keep them readable over the teeth.
+                    let lanes_painter = painter.with_clip_rect(lanes_rect);
+                    for (band_rect, lane) in &visible_lane_band_rects {
+                        paint_lane_label(ui, lane, label_color, &lanes_painter, *band_rect);
+                    }
                 });
         });
-
-        // Mark the limits of the timeline with the same zig-zag bands the time panel uses.
-        // Painted over the lanes: the open-ended last phase of each lane extends slightly
-        // under the band, so its teeth carve into the phase.
-        re_time_ruler::paint_time_ranges_gaps(&time_ranges_ui, ui, &painter, rect.y_range());
-
-        // Lane labels go on top of the zig-zag bands; their translucent background plates
-        // keep them readable over the teeth.
-        let lanes_painter = painter.with_clip_rect(lanes_rect);
-        for (band_rect, lane) in &visible_lane_band_rects {
-            paint_lane_label(ui, lane, label_color, &lanes_painter, *band_rect);
-        }
 
         // Dragging the time cursor.
         if let Some(cursor_response) = &cursor_response

@@ -34,13 +34,22 @@ const STATE_TARGET: &str = "StateChange:state";
 /// entity is indicated for the `StateChange` archetype. Custom archetypes (`DynamicArchetype`,
 /// `TextLog`) are not indicated, so the visualizer instruction has to be installed explicitly.
 fn map_source_to_state(source_component: impl Into<ComponentIdentifier>) -> Visualizer {
+    map_source_to_state_with_selector(source_component, None)
+}
+
+/// Like [`map_source_to_state`] but with a jq-like selector into the source component,
+/// e.g. `.u8` to pick a field nested in a struct.
+fn map_source_to_state_with_selector(
+    source_component: impl Into<ComponentIdentifier>,
+    selector: Option<&str>,
+) -> Visualizer {
     let source_component = source_component.into();
     Visualizer::new(StateVisualizer::identifier().as_str()).with_mappings([
         VisualizerComponentMapping {
             target: STATE_TARGET.into(),
             source_kind: ComponentSourceKind::SourceComponent,
             source_component: Some(source_component.as_str().into()),
-            selector: None,
+            selector: selector.map(Into::into),
         }
         .into(),
     ])
@@ -765,6 +774,50 @@ fn test_textlog_archetype_visualized_as_string() {
     test_context
         .run_view_ui_and_save_snapshot(view_id, "state_cast_textlog", egui::vec2(400.0, 80.0), None)
         .unwrap();
+}
+
+/// A `u8` field nested in a struct, picked via a selector (RR-5038): the polymorphic cast
+/// rule must judge the post-selector element type (`UInt8` → `Float64`), not the struct's
+/// datatype — otherwise the cast is skipped and the lane silently vanishes.
+#[test]
+fn test_cast_nested_struct_u8_field_via_selector() {
+    use re_log_types::external::arrow::array::{ArrayRef, StructArray, UInt8Array};
+    use re_log_types::external::arrow::datatypes::{DataType, Field};
+
+    let mut test_context = TestContext::new_with_view_class::<StateTimelineView>();
+    let entity = "/state/nested_u8";
+
+    for (tick, value) in [(0_i64, 1_u8), (1, 2), (2, 1)] {
+        let struct_array = StructArray::from(vec![
+            (
+                Arc::new(Field::new("u8", DataType::UInt8, false)),
+                Arc::new(UInt8Array::from(vec![value])) as ArrayRef,
+            ),
+            (
+                Arc::new(Field::new("text", DataType::Utf8, false)),
+                Arc::new(StringArray::from(vec!["ignored"])) as ArrayRef,
+            ),
+        ]);
+        let archetype = DynamicArchetype::new("nested")
+            .with_component_from_data("value", Arc::new(struct_array));
+        test_context.log_entity(entity, |builder| {
+            builder.with_archetype_auto_row([(Timeline::log_tick(), tick)], &archetype)
+        });
+    }
+
+    let view_id = build_view(
+        &mut test_context,
+        entity,
+        [map_source_to_state_with_selector(
+            "nested:value",
+            Some(".u8"),
+        )],
+    );
+
+    let outputs = run_visualizer(&test_context, view_id);
+    assert_eq!(outputs.len(), 1);
+    assert_eq!(value_kind(&outputs[0], entity), StateValueKind::Scalar);
+    assert_eq!(phase_labels(&outputs[0], entity), vec!["1", "2", "1"]);
 }
 
 /// When the underlying column's physical type changes over time, the polymorphic cast hands
