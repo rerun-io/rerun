@@ -24,9 +24,19 @@ use re_viewport_blueprint::{
 
 use crate::system_execution::{execute_systems_for_all_views, execute_systems_for_view};
 
-/// Toggle the currently selected view to be maximized or not.
+/// Shortcut for maximizing a view.
+///
+/// Use [`is_toggle_maximize_view_pressed`] to check for this shortcut!
 // NOTE: we use CTRL and not COMMAND, because ⌘+M minimizes the whole window on macOS.
 const TOGGLE_MAXIMIZE_VIEW: KeyboardShortcut = KeyboardShortcut::new(Modifiers::CTRL, Key::M);
+
+/// Checks if the keyboard shortcut for maximizing a view is pressed,
+/// avoiding clashes with other similar shortcuts.
+fn is_toggle_maximize_view_pressed(input: &mut egui::InputState) -> bool {
+    // Check if CTRL+SHIFT+M is pressed instead, which is used to open the dev panel.
+    // `consume_shortcut` intentionally ignores extra Shift and Alt modifiers.
+    !input.modifiers.shift && input.consume_shortcut(&TOGGLE_MAXIMIZE_VIEW)
+}
 
 /// Defines the UI and layout of the Viewport.
 pub struct ViewportUi {
@@ -591,7 +601,7 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
                         .ui(ui);
                 })
                 .clicked()
-                || ui.input_mut(|input| input.consume_shortcut(&TOGGLE_MAXIMIZE_VIEW))
+                || ui.input_mut(is_toggle_maximize_view_pressed)
             {
                 *self.maximized = None;
                 MaximizeAnimationState::restore_view(ui.ctx(), view_id);
@@ -600,8 +610,7 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
             // Show maximize-button:
             let is_view_the_only_selected =
                 self.ctx.selection().is_view_the_only_selected(&view_id);
-            let toggle = is_view_the_only_selected
-                && ui.input_mut(|input| input.consume_shortcut(&TOGGLE_MAXIMIZE_VIEW));
+            let toggle = is_view_the_only_selected && ui.input_mut(is_toggle_maximize_view_pressed);
             if ui
                 .small_icon_button(&re_ui::icons::MAXIMIZE, "Maximize view")
                 .on_hover_ui(|ui| {
