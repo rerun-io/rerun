@@ -466,7 +466,7 @@ impl LeRobotDatasetV3 {
                     // this always refers to the subtask description in the dataset metadata.
                     chunks.extend(self.log_episode_subtask(&timeline, &data)?);
                 }
-                DType::Int16 | DType::Int64 | DType::Bool | DType::String => {
+                DType::Int16 | DType::Int64 | DType::Bool | DType::String | DType::Language => {
                     re_log::warn_once!(
                         "Loading LeRobot feature ({feature_key}) of dtype `{:?}` into Rerun is not yet implemented",
                         feature.dtype
