@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from collections import Counter
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -189,6 +190,42 @@ def test_topic_filter_invalid_regex() -> None:
         McapReader(POINT_CLOUD_MCAP, include_topic_regex=["["])
     with pytest.raises(ValueError, match="exclude topic regex"):
         McapReader(POINT_CLOUD_MCAP, exclude_topic_regex=["["])
+
+
+# ---------------------------------------------------------------------------
+# Time-range filter
+# ---------------------------------------------------------------------------
+
+
+def _temporal_rows_by_entity(chunks: list[Chunk]) -> Counter[str]:
+    """Total non-static rows per entity — invariant under chunking and RowId regeneration."""
+    counts: Counter[str] = Counter()
+    for chunk in chunks:
+        if not chunk.is_static:
+            counts[chunk.entity_path] += chunk.num_rows
+    return counts
+
+
+def test_stream_time_range_override_matches_constructor() -> None:
+    """`stream(start/end)` restricts the scan identically to the constructor bounds."""
+    lo, hi = McapReader(LOG_MCAP).time_bounds()
+    half = lo + (hi - lo) // 2 + 1  # exclusive end below `hi`, so at least the last message drops
+
+    by_ctor = _temporal_rows_by_entity(McapReader(LOG_MCAP, start_time_ns=lo, end_time_ns=half).stream().to_chunks())
+    by_override = _temporal_rows_by_entity(McapReader(LOG_MCAP).stream(start_time_ns=lo, end_time_ns=half).to_chunks())
+    full = _temporal_rows_by_entity(McapReader(LOG_MCAP).stream().to_chunks())
+
+    assert by_override == by_ctor
+    assert 0 < sum(by_override.values()) < sum(full.values())
+
+
+def test_empty_time_range_rejected() -> None:
+    """A half-open `[t, t)` range is empty and rejected, on both the constructor and `stream`."""
+    lo, _ = McapReader(LOG_MCAP).time_bounds()
+    with pytest.raises(ValueError, match="must be less than"):
+        McapReader(LOG_MCAP, start_time_ns=lo, end_time_ns=lo)
+    with pytest.raises(ValueError, match="must be less than"):
+        McapReader(LOG_MCAP).stream(start_time_ns=lo, end_time_ns=lo)
 
 
 # ---------------------------------------------------------------------------

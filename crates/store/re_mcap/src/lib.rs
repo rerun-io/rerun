@@ -16,4 +16,5 @@ pub use parsers::ros2msg::sensor_msgs::{
 };
 pub use parsers::{MessageParser, ParserContext, cdr};
 // TODO(grtlr): We should expose an `Mcap` object that internally holds the summary + a reference to the bytes.
+pub use mcap::Summary;
 pub use util::read_summary;

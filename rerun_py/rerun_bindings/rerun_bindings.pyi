@@ -1554,8 +1554,16 @@ class McapReaderInternal:
         decoders: list[str] | None,
         include_topic_regex: list[str] | None,
         exclude_topic_regex: list[str] | None,
+        start_time_ns: int | None,
+        end_time_ns: int | None,
     ) -> None: ...
-    def stream(self) -> LazyChunkStreamInternal: ...
+    def stream(
+        self,
+        *,
+        start_time_ns: int | None = None,
+        end_time_ns: int | None = None,
+    ) -> LazyChunkStreamInternal: ...
+    def time_bounds(self) -> tuple[int, int]: ...
     @property
     def path(self) -> Path: ...
     @staticmethod
