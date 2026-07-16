@@ -292,7 +292,7 @@ pub(super) fn draw_transform_cache_contents(
                 edge,
                 layout,
                 node_size,
-                egui::Stroke::new(EDGE_HIGHLIGHT_STROKE_WIDTH, edge_color(ui)),
+                egui::Stroke::new(EDGE_HIGHLIGHT_STROKE_WIDTH, edge_color(ui, highlighted)),
             );
         }
     }
@@ -302,8 +302,8 @@ pub(super) fn draw_transform_cache_contents(
         let Some((start, end)) = edge_unique_segment(edge, model, layout, node_size) else {
             continue;
         };
-        let color = edge_color(ui);
         let highlighted = highlighted_path.edges.contains(&edge_index);
+        let color = edge_color(ui, highlighted);
         draw_edge_line(
             painter,
             start,
@@ -334,7 +334,7 @@ pub(super) fn draw_transform_cache_contents(
             rect,
             tokens.small_corner_radius(),
             if highlighted {
-                tokens.widget_hovered_color
+                tokens.highlight_color
             } else {
                 tokens.panel_bg_color
             },
@@ -395,8 +395,13 @@ pub(super) fn draw_transform_cache_contents(
 /// Draws the static/temporal edge-style legend contents.
 fn legend_ui(ui: &mut egui::Ui) {
     ui.vertical(|ui| {
-        legend_item_ui(ui, "static", edge_color(ui), TimeInt::STATIC);
-        legend_item_ui(ui, "temporal", edge_color(ui), TimeInt::new_temporal(0));
+        legend_item_ui(ui, "static", edge_color(ui, false), TimeInt::STATIC);
+        legend_item_ui(
+            ui,
+            "temporal",
+            edge_color(ui, false),
+            TimeInt::new_temporal(0),
+        );
     });
 }
 
@@ -412,9 +417,14 @@ fn legend_item_ui(ui: &mut egui::Ui, label: &str, color: egui::Color32, time: Ti
     });
 }
 
-/// Returns the neutral color used for transform edges.
-pub(super) fn edge_color(ui: &egui::Ui) -> egui::Color32 {
-    ui.tokens().text_subdued
+/// Returns the color used for transform edges.
+pub(super) fn edge_color(ui: &egui::Ui, highlighted: bool) -> egui::Color32 {
+    if highlighted {
+        // Highlight color has alpha, make it opaque to avoid blending at crossing edges.
+        ui.tokens().highlight_color.to_opaque()
+    } else {
+        ui.tokens().text_subdued
+    }
 }
 
 /// Returns the icon size used for zoomable scene contents.
@@ -546,7 +556,7 @@ fn draw_shared_fork_segments(
     node_size: egui::Vec2,
     ui: &egui::Ui,
 ) {
-    let color = edge_color(ui);
+    let color = edge_color(ui, false);
     let stroke = egui::Stroke::new(EDGE_STROKE_WIDTH, color);
     // These tiny disks hide rasterization gaps where perpendicular line caps meet.
     let intersection_radius = stroke.width / 2.0;
