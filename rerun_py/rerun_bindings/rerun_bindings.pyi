@@ -1766,7 +1766,7 @@ class _QueryMetrics:
     """Number of direct (HTTP Range) fetches the scanner issued. Counts each merged request once, regardless of byte ranges or retry attempts."""
 
     fetch_direct_bytes: int
-    """Sum of `chunk_byte_length` (catalog metadata, compressed on-disk size) over chunks fetched via direct HTTP. Does **not** count filler bytes that range-merging pulls between adjacent chunks, so actual wire traffic can exceed this value."""
+    """Sum of `chunk_byte_length` (catalog metadata, compressed on-disk size) over chunks fetched via direct HTTP. Does **not** count filler bytes that range-merging pulls between adjacent chunks, so actual wire traffic can exceed this value. Includes successful merged-range fetches even when a sibling range makes the overall batch fail."""
 
     fetch_direct_retries: int
     """Total number of direct-fetch retry *attempts* across all requests. A request retried 3 times contributes 3 here."""
@@ -1778,13 +1778,46 @@ class _QueryMetrics:
     """Total backoff time slept across all direct-fetch retries."""
 
     fetch_direct_max_attempt: int
-    """Sum of per-partition max attempts. For a single-partition query this is the true max; for multi-partition queries it is an upper bound on the true max — `MetricsSet::Count` has no `fetch_max` operation, so cross-partition aggregation sums."""
+    """True maximum attempt number across all partitions."""
 
     fetch_direct_original_ranges: int
     """Number of byte ranges the planner *wanted* to fetch directly, before adjacent ranges were coalesced. With `fetch_direct_merged_ranges`, gives the range-merging ratio."""
 
     fetch_direct_merged_ranges: int
-    """Number of byte ranges actually issued after merging adjacent ranges into combined HTTP Range requests. Equals `fetch_direct_requests` for a single-range-per-request scanner."""
+    """Number of combined HTTP Range requests produced by merging adjacent byte ranges. Normally equals `fetch_direct_requests` after a completed scan, but can differ when cancellation stops only part of the planned work from being issued."""
+
+    planned_fetch_batches: int
+    """Transport batches planned before splitting direct and gRPC work."""
+
+    planned_segment_waves: int
+    """Segment waves produced by the current admission scheduler."""
+
+    segment_admission_limit: int
+    """Maximum concurrently admitted segments configured for this query."""
+
+    max_segments_per_fetch_batch: int
+    """Largest distinct-segment count in a planned transport batch."""
+
+    max_segments_per_wave: int
+    """Largest distinct-segment count in a planned admission wave."""
+
+    peak_active_segments: int
+    """Highest observed number of active admitted segments. May exceed `segment_admission_limit` when the stall breaker admits bypass segments."""
+
+    pipeline_budget_bytes: int
+    """Total decoded-byte capacity shared across all query partitions."""
+
+    pipeline_peak_decoded_bytes: int
+    """Highest observed number of decoded bytes charged to the pipeline budget."""
+
+    pipeline_byte_waits: int
+    """Reservations that first parked because decoded-byte capacity was full."""
+
+    segment_admission_waits: int
+    """Reservations that first parked because segment admission was full."""
+
+    pipeline_stall_breaker_activations: int
+    """Number of saturated-pipeline stall-breaker activations."""
 
 class _MetricsCollectorHandle:
     """Opaque handle held by the `query_metrics()` context manager."""

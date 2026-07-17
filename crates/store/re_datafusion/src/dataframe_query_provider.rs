@@ -557,6 +557,11 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
         // was active.
         let partitions_remaining = Arc::new(AtomicUsize::new(num_partitions));
         let snapshot_sent = Arc::new(AtomicBool::new(false));
+        let pipeline_budget = Arc::new(PipelineBudget::new_with_metrics(
+            total_uncompressed,
+            num_partitions,
+            Arc::clone(pending_analytics.metrics()),
+        ));
 
         Ok(Self {
             props,
@@ -570,7 +575,7 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
             trace_headers,
             server_trace_id,
             pending_analytics,
-            pipeline_budget: Arc::new(PipelineBudget::new(total_uncompressed, num_partitions)),
+            pipeline_budget,
             plan_summary,
             captured_collectors,
             partitions_remaining,

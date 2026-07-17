@@ -1,6 +1,36 @@
 use std::sync::Arc;
 
+use crate::analytics::{QueryInfo, QueryType};
+use crate::metrics_capture::QueryMetrics;
+
 use super::*;
+
+fn test_query_metrics() -> Arc<QueryMetrics> {
+    Arc::new(QueryMetrics::new(QueryInfo {
+        dataset_id: "test".to_owned(),
+        query_chunks: 0,
+        query_segments: 0,
+        query_layers: 0,
+        query_columns: 0,
+        query_entities: 0,
+        query_bytes: 0,
+        query_chunks_per_segment_min: 0,
+        query_chunks_per_segment_max: 0,
+        query_chunks_per_segment_mean: 0.0,
+        query_type: QueryType::FullScan,
+        primary_index_name: None,
+        time_to_first_chunk_info: None,
+        trace_id: None,
+        filters_pushed_down: 0,
+        filters_applied_client_side: 0,
+        entity_path_narrowing_applied: false,
+        filters_total: 0,
+        filters_signatures: String::new(),
+        filters_signatures_exact: String::new(),
+        filters_signatures_inexact: String::new(),
+        filters_signatures_unsupported: String::new(),
+    }))
+}
 
 // Default constants are tuned to leave the budget effectively
 // disengaged (FRACTION=1.0, MIN=4 GiB, MAX=1 TiB). The tests below
@@ -170,8 +200,16 @@ async fn test_estimate_multiplier_is_clamped() {
 
 #[tokio::test]
 async fn test_peak_current_tracks_high_water_mark() {
-    let budget = Arc::new(PipelineBudget::new(0, 1));
+    let metrics = test_query_metrics();
+    let budget = Arc::new(PipelineBudget::with_exact_budget_and_metrics(
+        100 * 1024 * 1024,
+        Some(Arc::clone(&metrics)),
+    ));
     budget.set_multiplier(1.0);
+    assert_eq!(
+        metrics.pipeline_budget_bytes.load(Acquire),
+        100 * 1024 * 1024
+    );
 
     // Reserve, release, reserve smaller — peak should reflect the
     // larger of the two in-flight values, not the latest.
@@ -181,6 +219,10 @@ async fn test_peak_current_tracks_high_water_mark() {
         .peak_current
         .load(std::sync::atomic::Ordering::Acquire);
     assert_eq!(peak_before, r1 + r2);
+    assert_eq!(
+        metrics.pipeline_peak_decoded_bytes.load(Acquire),
+        u64::try_from(peak_before).unwrap()
+    );
 
     budget.release(r1 + r2);
     let r3 = budget.reserve(1024 * 1024).await;
@@ -190,6 +232,11 @@ async fn test_peak_current_tracks_high_water_mark() {
     assert_eq!(
         peak_after, peak_before,
         "peak should not regress after releases",
+    );
+    assert_eq!(
+        metrics.pipeline_peak_decoded_bytes.load(Acquire),
+        u64::try_from(peak_before).unwrap(),
+        "published peak should not regress after releases",
     );
 
     budget.release(r3);
@@ -576,6 +623,41 @@ fn test_parse_fraction_rejects_nan_and_inf() {
 #[test]
 fn test_parse_fraction_rejects_non_numeric() {
     assert!((parse_fraction_or_default("TEST", "bogus", 0.25) - 0.25).abs() < 1e-12);
+}
+
+#[tokio::test]
+async fn test_admission_metrics_record_combined_pressure_after_parking() {
+    let metrics = test_query_metrics();
+    let budget = Arc::new(PipelineBudget::with_exact_budget_and_metrics(
+        100,
+        Some(Arc::clone(&metrics)),
+    ));
+    budget.set_multiplier(1.0);
+
+    let active = vec!["s1".to_owned(), "s2".to_owned(), "s3".to_owned()];
+    budget
+        .reserve_with_priority(100, TimeInt::MAX, &active)
+        .await;
+
+    let waiter_budget = Arc::clone(&budget);
+    let waiter = tokio::spawn(async move {
+        waiter_budget
+            .reserve_with_priority(1, TimeInt::MAX, &["s4".to_owned()])
+            .await;
+    });
+
+    for _ in 0..100 {
+        if metrics.segment_admission_waits.load(Acquire) == 1 {
+            break;
+        }
+        tokio::task::yield_now().await;
+    }
+
+    assert!(!waiter.is_finished());
+    assert_eq!(metrics.pipeline_byte_waits.load(Acquire), 1);
+    assert_eq!(metrics.segment_admission_waits.load(Acquire), 1);
+    assert_eq!(metrics.peak_active_segments.load(Acquire), 3);
+    waiter.abort();
 }
 
 #[test]

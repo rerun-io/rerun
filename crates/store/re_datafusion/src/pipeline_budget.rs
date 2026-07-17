@@ -225,6 +225,8 @@ use re_log_types::TimeInt;
 use parking_lot::Mutex;
 use tokio::sync::Notify;
 
+use crate::metrics_capture::QueryMetrics;
+
 // ---------------------------------------------------------------------------
 // Defaults are intentionally tuned to leave the budget effectively disengaged.
 //
@@ -444,6 +446,12 @@ impl SegmentGate {
     }
 }
 
+#[derive(Clone, Copy)]
+struct AdmissionBlockers {
+    bytes: bool,
+    segments: bool,
+}
+
 /// Tracks total decoded bytes in the pipeline and enforces a memory budget.
 ///
 /// See the [module-level documentation](self) for the full design.
@@ -522,6 +530,10 @@ pub(crate) struct PipelineBudget {
     /// Highest value `current` ever reached during the lifetime of
     /// this budget. Used in the lifecycle summary emitted on `Drop`.
     peak_current: AtomicUsize,
+
+    /// Query-level metrics updated at admission boundaries.
+    /// Tests that construct an isolated budget leave this unset.
+    metrics: Option<Arc<QueryMetrics>>,
 
     /// Cumulative bytes ever passed to [`Self::release`]. Lifecycle
     /// summary diagnostic only.
@@ -705,7 +717,24 @@ impl PipelineBudget {
     /// [`ENV_BUDGET_FRACTION`]. Invalid values are logged at error
     /// level and the affected parameter falls back to its compile-time
     /// default.
+    #[cfg(test)]
     pub(crate) fn new(total_uncompressed_estimate: usize, num_partitions: usize) -> Self {
+        Self::new_impl(total_uncompressed_estimate, num_partitions, None)
+    }
+
+    pub(crate) fn new_with_metrics(
+        total_uncompressed_estimate: usize,
+        num_partitions: usize,
+        metrics: Arc<QueryMetrics>,
+    ) -> Self {
+        Self::new_impl(total_uncompressed_estimate, num_partitions, Some(metrics))
+    }
+
+    fn new_impl(
+        total_uncompressed_estimate: usize,
+        num_partitions: usize,
+        metrics: Option<Arc<QueryMetrics>>,
+    ) -> Self {
         let fraction = read_env_fraction(ENV_BUDGET_FRACTION, BUDGET_FRACTION);
         let mut min_per_partition = read_env_bytes(ENV_BUDGET_MIN, MIN_BUDGET_PER_PARTITION);
         let mut max_per_partition = read_env_bytes(ENV_BUDGET_MAX, MAX_BUDGET_PER_PARTITION);
@@ -728,7 +757,7 @@ impl PipelineBudget {
 
         re_log::debug!("Pipeline budget: {}MB", budget / (1024 * 1024));
 
-        Self::with_exact_budget(budget)
+        Self::with_exact_budget_and_metrics(budget, metrics)
     }
 
     /// Construct a budget of exactly `budget` bytes with all counters
@@ -737,7 +766,18 @@ impl PipelineBudget {
     /// env-var lookup and the `MIN_BUDGET_PER_PARTITION` clamp and pin
     /// the budget to a small known value (e.g. for stall-detector
     /// saturation tests where `budget = 100` matters exactly).
+    #[cfg(test)]
     fn with_exact_budget(budget: usize) -> Self {
+        Self::with_exact_budget_and_metrics(budget, None)
+    }
+
+    fn with_exact_budget_and_metrics(budget: usize, metrics: Option<Arc<QueryMetrics>>) -> Self {
+        if let Some(metrics) = &metrics {
+            metrics
+                .pipeline_budget_bytes
+                .fetch_max(u64::try_from(budget).unwrap_or(u64::MAX), Relaxed);
+        }
+
         Self {
             budget,
             current: AtomicUsize::new(0),
@@ -748,6 +788,7 @@ impl PipelineBudget {
             force_overcommit: AtomicBool::new(false),
             estimate_multiplier: AtomicU64::new(INITIAL_ESTIMATE_MULTIPLIER.to_bits()),
             peak_current: AtomicUsize::new(0),
+            metrics,
             total_released_bytes: AtomicUsize::new(0),
             total_releases: AtomicU64::new(0),
             #[cfg(test)]
@@ -899,7 +940,36 @@ impl PipelineBudget {
         current + waiter.reserved_bytes <= self.budget
     }
 
-    /// Combined byte + segment-count gate. Returns `Some(new_current)`
+    fn record_peak_active_segments(&self, segments: &SegmentGate) {
+        if let Some(metrics) = &self.metrics {
+            metrics
+                .peak_active_segments
+                .fetch_max(segments.all.len() as u64, Relaxed);
+        }
+    }
+
+    fn record_peak_decoded_bytes(&self, current: usize) {
+        self.peak_current.fetch_max(current, AcqRel);
+        if let Some(metrics) = &self.metrics {
+            metrics
+                .pipeline_peak_decoded_bytes
+                .fetch_max(u64::try_from(current).unwrap_or(u64::MAX), Relaxed);
+        }
+    }
+
+    fn record_initial_wait(&self, blockers: AdmissionBlockers) {
+        let Some(metrics) = &self.metrics else {
+            return;
+        };
+        if blockers.bytes {
+            metrics.pipeline_byte_waits.fetch_add(1, Relaxed);
+        }
+        if blockers.segments {
+            metrics.segment_admission_waits.fetch_add(1, Relaxed);
+        }
+    }
+
+    /// Combined byte + segment-count gate. Returns the new current byte count
     /// when both gates admit `reserved_bytes` AND every segment in
     /// `segment_ids` either already holds a reservation or pushing the
     /// *effective* in-flight count to include them stays within
@@ -917,12 +987,16 @@ impl PipelineBudget {
     /// segments finalize rather than blocking every new admission
     /// until enough segments drain to bring `all.len()` back below
     /// `MAX_CONCURRENT_SEGMENTS`.
-    fn try_admit(&self, reserved_bytes: usize, segment_ids: &[String]) -> Option<usize> {
+    fn try_admit(
+        &self,
+        reserved_bytes: usize,
+        segment_ids: &[String],
+    ) -> Result<usize, AdmissionBlockers> {
         let mut segments = self.active_segments.lock();
 
         if self.force_overcommit.load(Acquire) {
             let new_cur = self.current.fetch_add(reserved_bytes, AcqRel) + reserved_bytes;
-            self.peak_current.fetch_max(new_cur, AcqRel);
+            self.record_peak_decoded_bytes(new_cur);
             for s in segment_ids {
                 // A segment that's *already* tracked (normal or prior
                 // bypass) doesn't add to the bypass overflow. A truly
@@ -933,7 +1007,8 @@ impl PipelineBudget {
                     segments.bypass.insert(s.clone());
                 }
             }
-            return Some(new_cur);
+            self.record_peak_active_segments(&segments);
+            return Ok(new_cur);
         }
 
         // How many *new* segments would this admission introduce?
@@ -945,15 +1020,25 @@ impl PipelineBudget {
             .iter()
             .filter(|s| !segments.all.contains(s.as_str()))
             .count();
-        if segments.effective_len() + new_segments > MAX_CONCURRENT_SEGMENTS {
-            return None;
+        let segments_blocked = segments.effective_len() + new_segments > MAX_CONCURRENT_SEGMENTS;
+        if segments_blocked {
+            let bytes_blocked =
+                self.current.load(Acquire).saturating_add(reserved_bytes) > self.budget;
+            return Err(AdmissionBlockers {
+                bytes: bytes_blocked,
+                segments: true,
+            });
         }
 
-        let new_cur = self.try_acquire(reserved_bytes)?;
+        let new_cur = self.try_acquire(reserved_bytes).ok_or(AdmissionBlockers {
+            bytes: true,
+            segments: false,
+        })?;
         // Bytes admitted; add the new segments. Existing entries
         // (already in the set) re-insert as no-ops.
         segments.all.extend(segment_ids.iter().cloned());
-        Some(new_cur)
+        self.record_peak_active_segments(&segments);
+        Ok(new_cur)
     }
 
     /// Try to atomically claim `reserved_bytes` of budget without
@@ -976,7 +1061,7 @@ impl PipelineBudget {
             .ok()?;
         let current = previous + reserved_bytes;
 
-        self.peak_current.fetch_max(current, AcqRel);
+        self.record_peak_decoded_bytes(current);
         Some(current)
     }
 
@@ -1032,7 +1117,7 @@ impl PipelineBudget {
                 self.budget / (1024 * 1024),
             );
             let new_cur = self.current.fetch_add(reserved_bytes, AcqRel) + reserved_bytes;
-            self.peak_current.fetch_max(new_cur, AcqRel);
+            self.record_peak_decoded_bytes(new_cur);
             // This is a deadlock-avoidance escape hatch — the fetch's
             // segments are intentionally admitted past the cap, same
             // as the `force_overcommit` bypass. Track them as bypass
@@ -1043,6 +1128,7 @@ impl PipelineBudget {
                     segments.bypass.insert(s.clone());
                 }
             }
+            self.record_peak_active_segments(&segments);
             return reserved_bytes;
         }
 
@@ -1061,20 +1147,21 @@ impl PipelineBudget {
                  it through to avoid deadlock.",
             );
             let new_cur = self.current.fetch_add(reserved_bytes, AcqRel) + reserved_bytes;
-            self.peak_current.fetch_max(new_cur, AcqRel);
+            self.record_peak_decoded_bytes(new_cur);
             let mut segments = self.active_segments.lock();
             for s in segment_ids {
                 if segments.all.insert(s.clone()) {
                     segments.bypass.insert(s.clone());
                 }
             }
+            self.record_peak_active_segments(&segments);
             return reserved_bytes;
         }
 
         let mut wait_count: u32 = 0;
         loop {
             // Fast path: combined byte + segment-count gate.
-            if let Some(new_cur) = self.try_admit(reserved_bytes, segment_ids) {
+            if let Ok(new_cur) = self.try_admit(reserved_bytes, segment_ids) {
                 if new_cur < self.budget {
                     self.wake_next();
                 }
@@ -1121,21 +1208,27 @@ impl PipelineBudget {
                 }
             }
 
-            if let Some(new_cur) = self.try_admit(reserved_bytes, segment_ids) {
-                // Acquired between our wait decision and enqueue. Mark
-                // the just-pushed waiter cancelled so `wake_next`
-                // drains it instead of wasting a wake on our dropped
-                // Arc — otherwise a low-`task_time_min` orphan sitting
-                // at the top of the priority heap would steal wake
-                // events from genuine parked waiters with higher
-                // `task_time_min`.
-                cancelled.store(true, Release);
-                if new_cur < self.budget {
-                    self.wake_next();
+            let blockers = match self.try_admit(reserved_bytes, segment_ids) {
+                Ok(new_cur) => {
+                    // Acquired between our wait decision and enqueue. Mark
+                    // the just-pushed waiter cancelled so `wake_next`
+                    // drains it instead of wasting a wake on our dropped
+                    // Arc — otherwise a low-`task_time_min` orphan sitting
+                    // at the top of the priority heap would steal wake
+                    // events from genuine parked waiters with higher
+                    // `task_time_min`.
+                    cancelled.store(true, Release);
+                    if new_cur < self.budget {
+                        self.wake_next();
+                    }
+                    return reserved_bytes;
                 }
-                return reserved_bytes;
-            }
+                Err(blockers) => blockers,
+            };
 
+            if wait_count == 0 {
+                self.record_initial_wait(blockers);
+            }
             wait_count += 1;
             if wait_count == 1 || wait_count.is_multiple_of(10) {
                 // info-level so it's visible for tuning MAX_BUDGET_PER_PARTITION
@@ -1177,7 +1270,7 @@ impl PipelineBudget {
     pub(crate) fn adjust_reservation(&self, estimated: usize, reserved: usize, actual: usize) {
         if actual > reserved {
             let new_cur = self.current.fetch_add(actual - reserved, AcqRel) + (actual - reserved);
-            self.peak_current.fetch_max(new_cur, AcqRel);
+            self.record_peak_decoded_bytes(new_cur);
         } else if reserved > actual {
             self.current
                 .fetch_update(AcqRel, Acquire, |current| {
@@ -1293,6 +1386,11 @@ impl PipelineBudget {
                 .compare_exchange(false, true, AcqRel, Relaxed)
                 .is_ok()
         {
+            if let Some(metrics) = &self.metrics {
+                metrics
+                    .pipeline_stall_breaker_activations
+                    .fetch_add(1, Relaxed);
+            }
             re_log::info!(
                 "PipelineBudget stall detected: {count} consecutive empty emits with \
                  budget {:.0}% saturated — enabling force_overcommit until next progress",

@@ -1,6 +1,7 @@
 //! Chunk fetching strategies: direct URL (HTTP Range) and gRPC.
 
 use std::collections::BTreeMap;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 use std::{error::Error as _, fmt::Write as _};
 
@@ -277,6 +278,7 @@ pub fn batch_byte_size_uncompressed(batch: &RecordBatch) -> Option<u64> {
 pub async fn fetch_batch_direct(
     batch: &RecordBatch,
     http_client: &reqwest::Client,
+    request_counter: &AtomicU64,
     stats: &mut TaskFetchStats,
     pending: &PendingQueryAnalytics,
 ) -> ApiResult<Vec<ChunksWithSegment>> {
@@ -288,7 +290,7 @@ pub async fn fetch_batch_direct(
     #[cfg(not(target_arch = "wasm32"))]
     span.record("byte_size", byte_size);
 
-    match fetch_batch_via_direct_urls(http_client, batch, stats).await {
+    match fetch_batch_via_direct_urls(http_client, batch, request_counter, stats).await {
         Ok(chunks) => {
             #[cfg(not(target_arch = "wasm32"))]
             metrics::record_direct_success(byte_size);
@@ -345,11 +347,14 @@ impl DirectFetchFailureReason {
 pub async fn fetch_batch_group_via_grpc<T: DataframeClientAPI>(
     batch_group: &[RecordBatch],
     client: &T,
+    request_counter: &AtomicU64,
+    stats: &mut TaskFetchStats,
 ) -> ApiResult<Vec<ChunksWithSegment>> {
     let mut all_chunks = Vec::new();
 
     let mut client = client.clone();
     for batch in batch_group {
+        request_counter.fetch_add(1, Ordering::Relaxed);
         let chunk_info: re_protos::common::v1alpha1::DataframePart = batch.clone().into();
 
         let fetch_chunks_request = FetchChunksRequest {
@@ -374,6 +379,7 @@ pub async fn fetch_batch_group_via_grpc<T: DataframeClientAPI>(
         for chunk_result in batch_chunks {
             all_chunks.push(chunk_result?);
         }
+        stats.record_grpc_bytes(batch_byte_size(batch));
     }
 
     Ok(all_chunks)
@@ -620,6 +626,7 @@ fn decode_chunk_from_bytes(bytes: &[u8]) -> Result<(Chunk, Option<SegmentId>), D
 async fn fetch_batch_via_direct_urls(
     http_client: &reqwest::Client,
     batch: &RecordBatch,
+    request_counter: &AtomicU64,
     stats: &mut TaskFetchStats,
 ) -> Result<Vec<ChunksWithSegment>, DirectFetchError> {
     fn batch_column<'a, T: arrow::array::Array + 'static>(
@@ -750,7 +757,9 @@ async fn fetch_batch_via_direct_urls(
         .map(|(req_idx, request)| {
             let http_client = http_client.clone();
             async move {
+                request_counter.fetch_add(1, Ordering::Relaxed);
                 let mut local_stats = TaskFetchStats::default();
+                let useful_bytes = request.chunks.iter().map(|chunk| chunk.length as u64).sum();
                 // Range headers are inclusive
                 let range_end = request.file_range_end - 1;
                 re_log::debug!(
@@ -792,6 +801,7 @@ async fn fetch_batch_via_direct_urls(
                                     "Direct fetch [{req_idx}] succeeded on attempt {attempt}"
                                 );
                             }
+                            local_stats.record_direct_bytes(useful_bytes);
                             return (Ok(results), local_stats);
                         }
                         Err(err) if err.retryable => {
@@ -1023,7 +1033,107 @@ async fn fetch_merged_range_bytes(
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+    use std::sync::atomic::{AtomicU64, Ordering};
+
+    use re_protos::cloud::v1alpha1::{
+        FetchChunksResponse, GetDatasetSchemaRequest, GetDatasetSchemaResponse,
+        QueryDatasetRequest, QueryDatasetResponse,
+    };
+    use tonic::codec::DecodeBuf;
+    use tonic::{Request, Response, Status};
+
     use super::*;
+
+    #[derive(Clone, Debug, Default)]
+    struct TestFetchClient {
+        calls: Arc<AtomicU64>,
+        fail_on_call: u64,
+    }
+
+    #[derive(Debug)]
+    struct EmptyDecoder;
+
+    impl tonic::codec::Decoder for EmptyDecoder {
+        type Item = FetchChunksResponse;
+        type Error = Status;
+
+        fn decode(&mut self, _src: &mut DecodeBuf<'_>) -> Result<Option<Self::Item>, Self::Error> {
+            Ok(None)
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl DataframeClientAPI for TestFetchClient {
+        async fn get_dataset_schema(
+            &mut self,
+            _request: Request<GetDatasetSchemaRequest>,
+        ) -> tonic::Result<Response<GetDatasetSchemaResponse>> {
+            Err(Status::unimplemented("unused by test"))
+        }
+
+        async fn query_dataset(
+            &mut self,
+            _request: Request<QueryDatasetRequest>,
+        ) -> tonic::Result<Response<tonic::codec::Streaming<QueryDatasetResponse>>> {
+            Err(Status::unimplemented("unused by test"))
+        }
+
+        async fn fetch_chunks(
+            &mut self,
+            _request: Request<FetchChunksRequest>,
+        ) -> tonic::Result<Response<tonic::codec::Streaming<FetchChunksResponse>>> {
+            let call = self.calls.fetch_add(1, Ordering::Relaxed) + 1;
+            if call == self.fail_on_call {
+                return Err(Status::unavailable("injected fetch failure"));
+            }
+            let streaming = Request::new(tonic::codec::Streaming::new_request(
+                EmptyDecoder,
+                String::new(),
+                None,
+                None,
+            ))
+            .into_inner();
+            Ok(Response::new(streaming))
+        }
+    }
+
+    #[tokio::test]
+    async fn grpc_request_metrics_count_calls_before_an_error() {
+        let batch = RecordBatch::new_empty(QueryDatasetDataframe::min_schema().into());
+        let batches = [batch.clone(), batch];
+        let client = TestFetchClient {
+            fail_on_call: 1,
+            ..Default::default()
+        };
+        let calls = Arc::clone(&client.calls);
+        let request_counter = AtomicU64::new(0);
+        let mut stats = TaskFetchStats::default();
+
+        let result =
+            fetch_batch_group_via_grpc(&batches, &client, &request_counter, &mut stats).await;
+
+        assert!(result.is_err());
+        assert_eq!(calls.load(Ordering::Relaxed), 1);
+        assert_eq!(request_counter.load(Ordering::Relaxed), 1);
+    }
+
+    #[tokio::test]
+    async fn grpc_request_metrics_count_every_successful_call() {
+        let batch = RecordBatch::new_empty(QueryDatasetDataframe::min_schema().into());
+        let batches = [batch.clone(), batch];
+        let client = TestFetchClient::default();
+        let calls = Arc::clone(&client.calls);
+        let request_counter = AtomicU64::new(0);
+        let mut stats = TaskFetchStats::default();
+
+        let result =
+            fetch_batch_group_via_grpc(&batches, &client, &request_counter, &mut stats).await;
+
+        assert!(result.is_ok());
+        assert_eq!(calls.load(Ordering::Relaxed), 2);
+        assert_eq!(request_counter.load(Ordering::Relaxed), 2);
+    }
 
     fn reason(msg: &str) -> DirectFetchFailureReason {
         DirectFetchFailureReason::classify(&DirectFetchError::new(msg.to_owned(), false))

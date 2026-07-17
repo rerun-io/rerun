@@ -206,7 +206,8 @@ impl PyQueryMetrics {
     /// Sum of `chunk_byte_length` (catalog metadata, compressed on-disk size)
     /// over chunks fetched via direct HTTP. Does **not** count filler bytes
     /// that range-merging pulls between adjacent chunks, so actual wire
-    /// traffic can exceed this value.
+    /// traffic can exceed this value. Includes successful merged-range fetches
+    /// even when a sibling range makes the overall batch fail.
     #[getter]
     fn fetch_direct_bytes(&self) -> u64 {
         self.snap.fetch_direct_bytes
@@ -233,10 +234,7 @@ impl PyQueryMetrics {
         self.snap.fetch_direct_retry_sleep
     }
 
-    /// Sum of per-partition max attempts. For a single-partition query this
-    /// is the true max; for multi-partition queries it is an upper bound on
-    /// the true max — `MetricsSet::Count` has no `fetch_max` operation, so
-    /// cross-partition aggregation sums.
+    /// True maximum attempt number across all partitions.
     #[getter]
     fn fetch_direct_max_attempt(&self) -> u64 {
         self.snap.fetch_direct_max_attempt
@@ -250,12 +248,80 @@ impl PyQueryMetrics {
         self.snap.fetch_direct_original_ranges
     }
 
-    /// Number of byte ranges actually issued after merging adjacent ranges
-    /// into combined HTTP Range requests. Equals `fetch_direct_requests` for
-    /// a single-range-per-request scanner.
+    /// Number of combined HTTP Range requests produced by merging adjacent
+    /// byte ranges. Normally equals `fetch_direct_requests` after a completed
+    /// scan, but can differ when cancellation stops only part of the planned
+    /// work from being issued.
     #[getter]
     fn fetch_direct_merged_ranges(&self) -> u64 {
         self.snap.fetch_direct_merged_ranges
+    }
+
+    /// Transport batches planned before splitting direct and gRPC work.
+    #[getter]
+    fn planned_fetch_batches(&self) -> u64 {
+        self.snap.planned_fetch_batches
+    }
+
+    /// Segment waves produced by the current admission scheduler.
+    #[getter]
+    fn planned_segment_waves(&self) -> u64 {
+        self.snap.planned_segment_waves
+    }
+
+    /// Maximum concurrently admitted segments configured for this query.
+    #[getter]
+    fn segment_admission_limit(&self) -> u64 {
+        self.snap.segment_admission_limit
+    }
+
+    /// Largest distinct-segment count in a planned transport batch.
+    #[getter]
+    fn max_segments_per_fetch_batch(&self) -> u64 {
+        self.snap.max_segments_per_fetch_batch
+    }
+
+    /// Largest distinct-segment count in a planned admission wave.
+    #[getter]
+    fn max_segments_per_wave(&self) -> u64 {
+        self.snap.max_segments_per_wave
+    }
+
+    /// Highest observed number of active admitted segments. May exceed
+    /// `segment_admission_limit` when the stall breaker admits bypass segments.
+    #[getter]
+    fn peak_active_segments(&self) -> u64 {
+        self.snap.peak_active_segments
+    }
+
+    /// Total decoded-byte capacity shared across all query partitions.
+    #[getter]
+    fn pipeline_budget_bytes(&self) -> u64 {
+        self.snap.pipeline_budget_bytes
+    }
+
+    /// Highest observed number of decoded bytes charged to the pipeline budget.
+    #[getter]
+    fn pipeline_peak_decoded_bytes(&self) -> u64 {
+        self.snap.pipeline_peak_decoded_bytes
+    }
+
+    /// Reservations that first parked because decoded-byte capacity was full.
+    #[getter]
+    fn pipeline_byte_waits(&self) -> u64 {
+        self.snap.pipeline_byte_waits
+    }
+
+    /// Reservations that first parked because segment admission was full.
+    #[getter]
+    fn segment_admission_waits(&self) -> u64 {
+        self.snap.segment_admission_waits
+    }
+
+    /// Number of saturated-pipeline stall-breaker activations.
+    #[getter]
+    fn pipeline_stall_breaker_activations(&self) -> u64 {
+        self.snap.pipeline_stall_breaker_activations
     }
 
     fn __repr__(&self) -> String {

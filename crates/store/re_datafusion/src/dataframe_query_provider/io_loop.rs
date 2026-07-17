@@ -5,6 +5,7 @@
 
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
+use std::sync::atomic::Ordering;
 use std::time::Duration;
 
 use arrow::array::{RecordBatch, StringArray};
@@ -318,7 +319,19 @@ fn split_batches_into_fetch_tasks(batches: &[RecordBatch]) -> (Vec<FetchTask>, u
 /// Returns (batches, `segment_order`) where:
 /// - batches: list of merged `RecordBatch`es, each representing a `target_size` request
 /// - `segment_order`: Original order of segments for preserving segment order
-#[tracing::instrument(level = "info", skip_all, fields(num_chunk_infos = chunk_infos.len(), target_size_bytes))]
+#[tracing::instrument(
+    level = "info",
+    skip_all,
+    fields(
+        num_chunk_infos = chunk_infos.len(),
+        target_size_bytes,
+        output_batches,
+        byte_target_flushes,
+        segment_limit_flushes,
+        large_segment_batches,
+        end_of_input_batches,
+    )
+)]
 fn create_request_batches(
     chunk_infos: Vec<RecordBatch>,
     target_size_bytes: u64,
@@ -334,6 +347,10 @@ fn create_request_batches(
     let mut current_batch_segments: HashSet<SegmentId> = HashSet::new();
     let mut segment_order = Vec::new();
     let mut segment_seen = HashSet::new();
+    let mut byte_target_flushes = 0usize;
+    let mut segment_limit_flushes = 0usize;
+    let mut large_segment_batches = 0usize;
+    let mut end_of_input_batches = 0usize;
 
     for chunk_info in chunk_infos {
         let segment_id = extract_segment_id(&chunk_info)?;
@@ -357,6 +374,11 @@ fn create_request_batches(
         let would_exceed_segments =
             adds_new_segment && current_batch_segments.len() >= MAX_CONCURRENT_SEGMENTS;
         if !current_batch.is_empty() && (would_exceed_size || would_exceed_segments) {
+            if would_exceed_segments {
+                segment_limit_flushes += 1;
+            } else {
+                byte_target_flushes += 1;
+            }
             // Merge current batch and add to results
             let merged_batch = re_arrow_util::concat_polymorphic_batches(&current_batch)
                 .map_err(|err| merge_err(err, "merging chunk-info batches"))?;
@@ -370,6 +392,7 @@ fn create_request_batches(
         if segment_size > target_size_bytes {
             // If current batch is not empty, merge and send it first
             if !current_batch.is_empty() {
+                byte_target_flushes += 1;
                 let merged_batch = re_arrow_util::concat_polymorphic_batches(&current_batch)
                     .map_err(|err| merge_err(err, "merging chunk-info batches"))?;
                 request_batches.push(merged_batch);
@@ -380,6 +403,7 @@ fn create_request_batches(
 
             let split_batches =
                 split_large_segments(&segment_id, &chunk_info, target_size_bytes, &chunk_sizes)?;
+            large_segment_batches += split_batches.len();
 
             // Split batches are already individual RecordBatches, add them directly
             for split_batch in split_batches {
@@ -397,7 +421,21 @@ fn create_request_batches(
         let merged_batch = re_arrow_util::concat_polymorphic_batches(&current_batch)
             .map_err(|err| merge_err(err, "merging final chunk-info batch"))?;
         request_batches.push(merged_batch);
+        end_of_input_batches += 1;
     }
+
+    re_log::debug_assert_eq!(
+        request_batches.len(),
+        byte_target_flushes + segment_limit_flushes + large_segment_batches + end_of_input_batches,
+        "every planned batch must have exactly one flush reason"
+    );
+
+    let span = tracing::Span::current();
+    span.record("output_batches", request_batches.len());
+    span.record("byte_target_flushes", byte_target_flushes);
+    span.record("segment_limit_flushes", segment_limit_flushes);
+    span.record("large_segment_batches", large_segment_batches);
+    span.record("end_of_input_batches", end_of_input_batches);
 
     tracing::debug!(
         "Batching complete: {} segments → {} batches (target_size={}KB)",
@@ -574,9 +612,17 @@ fn create_grpc_batch_groups(batches: &[RecordBatch]) -> ApiResult<Vec<&[RecordBa
 }
 
 fn distinct_segment_ids_for_batch(batch: &RecordBatch) -> ApiResult<Vec<String>> {
+    distinct_segment_ids_for_batches(std::iter::once(batch))
+}
+
+fn distinct_segment_ids_for_batches<'a>(
+    batches: impl IntoIterator<Item = &'a RecordBatch>,
+) -> ApiResult<Vec<String>> {
     let mut seen = HashSet::new();
     let mut segment_ids = Vec::new();
-    extend_distinct_segment_ids(batch, &mut seen, &mut segment_ids)?;
+    for batch in batches {
+        extend_distinct_segment_ids(batch, &mut seen, &mut segment_ids)?;
+    }
     Ok(segment_ids)
 }
 
@@ -594,7 +640,7 @@ fn segment_wave_index(
 fn batches_by_segment_wave(
     batches: &[RecordBatch],
     global_segment_order: &[SegmentId],
-) -> ApiResult<Vec<Vec<RecordBatch>>> {
+) -> ApiResult<(Vec<Vec<RecordBatch>>, usize, usize)> {
     let n_waves = global_segment_order.len().div_ceil(MAX_CONCURRENT_SEGMENTS);
     let mut segment_to_wave = HashMap::new();
     for (idx, segment_id) in global_segment_order.iter().enumerate() {
@@ -605,11 +651,14 @@ fn batches_by_segment_wave(
     }
 
     let mut waves = vec![Vec::new(); n_waves];
+    let mut wave_segment_ids = vec![HashSet::new(); n_waves];
+    let mut max_segments_per_batch = 0;
     for batch in batches {
         let segment_ids = distinct_segment_ids_for_batch(batch)?;
         let Some(first_segment) = segment_ids.first() else {
             continue;
         };
+        max_segments_per_batch = max_segments_per_batch.max(segment_ids.len());
         let wave_idx = segment_wave_index(first_segment, &segment_to_wave)?;
         for segment_id in &segment_ids[1..] {
             let other_wave_idx = segment_wave_index(segment_id, &segment_to_wave)?;
@@ -620,10 +669,16 @@ fn batches_by_segment_wave(
                 )));
             }
         }
+        wave_segment_ids[wave_idx].extend(segment_ids);
         waves[wave_idx].push(batch.clone());
     }
+    let max_segments_per_wave = wave_segment_ids
+        .into_iter()
+        .map(|segment_ids| segment_ids.len())
+        .max()
+        .unwrap_or(0);
 
-    Ok(waves)
+    Ok((waves, max_segments_per_batch, max_segments_per_wave))
 }
 
 async fn admit_segment_wave(
@@ -745,7 +800,14 @@ async fn fetch_remaining_via_grpc<T: DataframeClientAPI>(
         // both the reserved bytes and the segment-count gate slots — so
         // an error from the gRPC fetch does not leak headroom to the
         // shared cross-partition budget.
-        let all_chunks = fetch_batch_group_via_grpc(batch_group, client).await?;
+        let mut stats = TaskFetchStats::default();
+        let all_chunks = fetch_batch_group_via_grpc(
+            batch_group,
+            client,
+            &metrics.fetch_grpc_requests,
+            &mut stats,
+        )
+        .await?;
 
         let actual: usize = all_chunks
             .iter()
@@ -757,20 +819,10 @@ async fn fetch_remaining_via_grpc<T: DataframeClientAPI>(
             .sum();
         guard.commit(actual);
 
-        // Flush this group's fetch stats into the shared atomics *before*
-        // handing the chunks downstream. The ordering is load-bearing for the
-        // `metrics_capture` snapshot path: under a row LIMIT the consumer
-        // tears the stream down (and the `Drop` fallback builds the
-        // `QuerySnapshot`) as soon as enough rows have arrived, so a
-        // delivered row must imply its fetches are already visible in the
-        // counters. The hybrid path below gets the same guarantee from its
-        // per-task flush. One `record_grpc_fetch` per batch, matching the one
-        // `FetchChunks` request per batch that `fetch_batch_group_via_grpc`
-        // issues.
-        let mut stats = TaskFetchStats::default();
-        for batch in batch_group {
-            stats.record_grpc_fetch(batch_byte_size(batch));
-        }
+        // Flush bytes before handing chunks downstream so a LIMIT-triggered
+        // snapshot cannot observe delivered rows without their fetch metrics.
+        // Issued-request counts are updated at the transport boundary and are
+        // therefore already visible even if this future is cancelled.
         stats.flush_into(metrics);
 
         batches_completed += batch_group.len();
@@ -810,7 +862,16 @@ async fn fetch_remaining_via_grpc<T: DataframeClientAPI>(
 #[tracing::instrument(
     level = "info",
     skip_all,
-    fields(n_chunks, n_batches, n_segments, fetch_strategy)
+    fields(
+        n_chunks,
+        n_batches,
+        n_segments,
+        n_waves,
+        segment_admission_limit,
+        max_segments_per_batch,
+        max_segments_per_wave,
+        fetch_strategy,
+    )
 )]
 pub(super) async fn chunk_stream_io_loop<T: DataframeClientAPI>(
     client: T,
@@ -821,6 +882,7 @@ pub(super) async fn chunk_stream_io_loop<T: DataframeClientAPI>(
     pipeline_budget: Arc<PipelineBudget>,
 ) -> ApiResult<()> {
     let target_size_bytes = TARGET_BATCH_SIZE_BYTES as u64;
+    let metrics = Arc::clone(pending_analytics.metrics());
 
     // One row per chunk in each `RecordBatch` of chunk-info.
     let n_chunks: usize = chunk_infos.iter().map(|rb| rb.num_rows()).sum();
@@ -841,12 +903,33 @@ pub(super) async fn chunk_stream_io_loop<T: DataframeClientAPI>(
 
     let (request_batches, global_segment_order) =
         create_request_batches(chunk_infos, target_size_bytes)?;
-    let request_batches_by_wave = batches_by_segment_wave(&request_batches, &global_segment_order)?;
+    let (request_batches_by_wave, max_segments_per_batch, max_segments_per_wave) =
+        batches_by_segment_wave(&request_batches, &global_segment_order)?;
+
+    metrics
+        .planned_fetch_batches
+        .fetch_add(request_batches.len() as u64, Ordering::Relaxed);
+    metrics
+        .planned_segment_waves
+        .fetch_add(request_batches_by_wave.len() as u64, Ordering::Relaxed);
+    metrics
+        .segment_admission_limit
+        .fetch_max(MAX_CONCURRENT_SEGMENTS as u64, Ordering::Relaxed);
+    metrics
+        .max_segments_per_fetch_batch
+        .fetch_max(max_segments_per_batch as u64, Ordering::Relaxed);
+    metrics
+        .max_segments_per_wave
+        .fetch_max(max_segments_per_wave as u64, Ordering::Relaxed);
 
     let span = tracing::Span::current();
     span.record("n_chunks", n_chunks);
     span.record("n_batches", request_batches.len());
     span.record("n_segments", global_segment_order.len());
+    span.record("n_waves", request_batches_by_wave.len());
+    span.record("segment_admission_limit", MAX_CONCURRENT_SEGMENTS);
+    span.record("max_segments_per_batch", max_segments_per_batch);
+    span.record("max_segments_per_wave", max_segments_per_wave);
 
     re_log::debug!(
         "Fetching {n_chunks} chunks in {} batches ({} segments)",
@@ -901,7 +984,7 @@ pub(super) async fn chunk_stream_io_loop<T: DataframeClientAPI>(
                     filtered_index_timeline_str.as_deref(),
                     &output_channel,
                     &pipeline_budget,
-                    pending_analytics.metrics(),
+                    &metrics,
                 )
                 .await?;
             }
@@ -911,8 +994,7 @@ pub(super) async fn chunk_stream_io_loop<T: DataframeClientAPI>(
 
         // Fetch stats are flushed per batch group inside
         // `fetch_remaining_via_grpc`, before the corresponding chunks are
-        // handed downstream — see the comment there for why the ordering
-        // matters. Only the error needs recording here.
+        // handed downstream. Only the error needs recording here.
         if result.is_err() {
             pending_analytics.record_error(QueryErrorKind::GrpcFetch);
         }
@@ -971,6 +1053,7 @@ pub(super) async fn chunk_stream_io_loop<T: DataframeClientAPI>(
                 let client = client.clone();
                 let pending_analytics = pending_analytics.clone();
                 let pipeline_budget = Arc::clone(&pipeline_budget);
+                let metrics = Arc::clone(&metrics);
                 let filtered_index_timeline = filtered_index_timeline_str.as_ref().map(Arc::clone);
                 async move {
                     // Task-local stats buffer — flushed once to the shared atomics
@@ -1000,10 +1083,10 @@ pub(super) async fn chunk_stream_io_loop<T: DataframeClientAPI>(
 
                     let chunks = match task {
                         FetchTask::Direct(batch) => {
-                            let bytes = batch_byte_size(&batch);
-                            let chunks = match fetch_batch_direct(
+                            match fetch_batch_direct(
                                 &batch,
                                 &http_client,
+                                &metrics.fetch_direct_requests,
                                 &mut stats,
                                 &pending_analytics,
                             )
@@ -1017,17 +1100,17 @@ pub(super) async fn chunk_stream_io_loop<T: DataframeClientAPI>(
                                     );
                                     return Err(err);
                                 }
-                            };
-                            stats.record_direct_fetch(bytes);
-                            chunks
+                            }
                         }
                         FetchTask::Grpc(batch) => {
                             let bytes = batch_byte_size(&batch);
                             #[cfg(not(target_arch = "wasm32"))]
                             crate::chunk_fetcher::metrics::record_grpc_no_direct_urls(bytes);
-                            let chunks = match fetch_batch_group_via_grpc(
+                            match fetch_batch_group_via_grpc(
                                 std::slice::from_ref(&batch),
                                 &client,
+                                &metrics.fetch_grpc_requests,
+                                &mut stats,
                             )
                             .await
                             {
@@ -1039,9 +1122,7 @@ pub(super) async fn chunk_stream_io_loop<T: DataframeClientAPI>(
                                     );
                                     return Err(err);
                                 }
-                            };
-                            stats.record_grpc_fetch(bytes);
-                            chunks
+                            }
                         }
                     };
 
@@ -1242,6 +1323,32 @@ mod tests {
         );
     }
 
+    #[test]
+    fn test_many_tiny_segments_expose_serial_wave_shape() {
+        const NUM_SEGMENTS: usize = 3_990;
+        let chunk_infos = (0..NUM_SEGMENTS)
+            .map(|idx| create_test_chunk_info(&format!("seg{idx:04}"), &[10]))
+            .collect();
+
+        let (batches, segment_order) =
+            create_request_batches(chunk_infos, TARGET_BATCH_SIZE_BYTES as u64).unwrap();
+        let (waves, max_segments_per_batch, max_segments_per_wave) =
+            batches_by_segment_wave(&batches, &segment_order).unwrap();
+
+        let expected = NUM_SEGMENTS.div_ceil(MAX_CONCURRENT_SEGMENTS);
+        assert_eq!(segment_order.len(), NUM_SEGMENTS);
+        assert_eq!(batches.len(), expected);
+        assert_eq!(waves.len(), expected);
+        assert_eq!(max_segments_per_batch, MAX_CONCURRENT_SEGMENTS);
+        assert_eq!(max_segments_per_wave, MAX_CONCURRENT_SEGMENTS);
+        assert!(waves.iter().all(|wave| wave.len() == 1));
+        assert!(
+            batches
+                .iter()
+                .all(|batch| batch.num_rows() == MAX_CONCURRENT_SEGMENTS)
+        );
+    }
+
     fn distinct_segments_in_batches<'a>(
         batches: impl IntoIterator<Item = &'a RecordBatch>,
     ) -> HashSet<String> {
@@ -1264,7 +1371,7 @@ mod tests {
         ];
         let (batches, segment_order) = create_request_batches(chunk_infos, 10_000).unwrap();
 
-        let waves = batches_by_segment_wave(&batches, &segment_order).unwrap();
+        let (waves, _, _) = batches_by_segment_wave(&batches, &segment_order).unwrap();
 
         assert_eq!(waves.len(), 2);
         assert_eq!(waves[0].len(), 1);
@@ -1333,6 +1440,36 @@ mod tests {
             segment_order_as_strs(&segment_order),
             vec!["seg1", "seg2", "seg3"]
         );
+    }
+
+    #[test]
+    fn test_skewed_segment_sizes_preserve_rows_order_and_caps() {
+        let mut chunk_infos: Vec<_> = (0..30)
+            .map(|idx| create_test_chunk_info(&format!("tiny{idx:02}"), &[1]))
+            .collect();
+        chunk_infos.push(create_test_chunk_info("large", &[600, 600, 600]));
+
+        let expected_rows: usize = chunk_infos.iter().map(RecordBatch::num_rows).sum();
+        let (batches, segment_order) = create_request_batches(chunk_infos, 1_000).unwrap();
+        let (waves, max_segments_per_batch, max_segments_per_wave) =
+            batches_by_segment_wave(&batches, &segment_order).unwrap();
+
+        assert_eq!(segment_order.len(), 31);
+        assert_eq!(segment_order.last().unwrap().as_ref(), "large");
+        assert_eq!(batches.len(), 13);
+        assert_eq!(waves.len(), 11);
+        assert_eq!(max_segments_per_batch, MAX_CONCURRENT_SEGMENTS);
+        assert_eq!(max_segments_per_wave, MAX_CONCURRENT_SEGMENTS);
+        assert_eq!(
+            batches.iter().map(RecordBatch::num_rows).sum::<usize>(),
+            expected_rows
+        );
+        assert!(batches.iter().all(|batch| {
+            distinct_segment_ids_for_batch(batch).unwrap().len() <= MAX_CONCURRENT_SEGMENTS
+        }));
+        assert!(waves.iter().all(|wave| {
+            distinct_segments_in_batches(wave.iter()).len() <= MAX_CONCURRENT_SEGMENTS
+        }));
     }
 
     #[test]

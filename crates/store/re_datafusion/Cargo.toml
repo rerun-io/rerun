@@ -54,6 +54,7 @@ async-trait.workspace = true
 datafusion.workspace = true
 futures.workspace = true
 futures-util.workspace = true
+getrandom = { workspace = true, features = ["wasm_js"] }
 itertools.workspace = true
 opentelemetry.workspace = true
 opentelemetry-proto = { workspace = true, features = ["gen-tonic-messages", "trace"] }
@@ -77,7 +78,6 @@ wasm-bindgen-futures.workspace = true
 
 # These are used by Datafusion but the required features are not set for wasm build.
 chrono = { workspace = true, features = ["wasmbind"] }
-getrandom = { workspace = true, features = ["wasm_js"] }
 
 
 [dev-dependencies]

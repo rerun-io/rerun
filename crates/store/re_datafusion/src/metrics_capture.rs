@@ -22,8 +22,8 @@ use crate::analytics::{DirectFetchFailureReason, QueryInfo};
 ///
 /// Each `SegmentStreamExec` owns one of these (wrapped in [`Arc`](std::sync::Arc)) and shares
 /// it with:
-/// - the IO fetch tasks, which `fetch_add` into the counters once per task
-///   at flush time (via `TaskFetchStats::flush_into`),
+/// - the IO fetch tasks, which record issued requests at the transport
+///   boundary and flush buffered byte/retry counters via `TaskFetchStats`,
 /// - the snapshot path, which reads the atomics via [`build_query_snapshot`]
 ///   when the last per-partition stream completes,
 /// - DataFusion's `ExecutionPlan::metrics()`, which builds an ad-hoc
@@ -49,6 +49,18 @@ pub(crate) struct QueryMetrics {
     pub fetch_direct_max_attempt: AtomicU64,
     pub fetch_direct_original_ranges: AtomicU64,
     pub fetch_direct_merged_ranges: AtomicU64,
+
+    pub planned_fetch_batches: AtomicU64,
+    pub planned_segment_waves: AtomicU64,
+    pub segment_admission_limit: AtomicU64,
+    pub max_segments_per_fetch_batch: AtomicU64,
+    pub max_segments_per_wave: AtomicU64,
+    pub peak_active_segments: AtomicU64,
+    pub pipeline_budget_bytes: AtomicU64,
+    pub pipeline_peak_decoded_bytes: AtomicU64,
+    pub pipeline_byte_waits: AtomicU64,
+    pub segment_admission_waits: AtomicU64,
+    pub pipeline_stall_breaker_activations: AtomicU64,
 }
 
 impl QueryMetrics {
@@ -65,6 +77,17 @@ impl QueryMetrics {
             fetch_direct_max_attempt: AtomicU64::new(0),
             fetch_direct_original_ranges: AtomicU64::new(0),
             fetch_direct_merged_ranges: AtomicU64::new(0),
+            planned_fetch_batches: AtomicU64::new(0),
+            planned_segment_waves: AtomicU64::new(0),
+            segment_admission_limit: AtomicU64::new(0),
+            max_segments_per_fetch_batch: AtomicU64::new(0),
+            max_segments_per_wave: AtomicU64::new(0),
+            peak_active_segments: AtomicU64::new(0),
+            pipeline_budget_bytes: AtomicU64::new(0),
+            pipeline_peak_decoded_bytes: AtomicU64::new(0),
+            pipeline_byte_waits: AtomicU64::new(0),
+            segment_admission_waits: AtomicU64::new(0),
+            pipeline_stall_breaker_activations: AtomicU64::new(0),
         }
     }
 }
@@ -134,7 +157,9 @@ pub struct QuerySnapshot {
     /// Sum of `chunk_byte_length` (catalog metadata, compressed on-disk size)
     /// over chunks fetched via direct HTTP. Notably this does **not** count
     /// the filler bytes that range-merging pulls between adjacent chunks in
-    /// the same object, so actual wire traffic can exceed this value.
+    /// the same object, so actual wire traffic can exceed this value. Includes
+    /// successful merged-range fetches even when a sibling range makes the
+    /// overall batch fail.
     pub fetch_direct_bytes: u64,
 
     /// Total number of direct-fetch retry *attempts* across all requests.
@@ -158,10 +183,47 @@ pub struct QuerySnapshot {
     /// gives the range-merging ratio.
     pub fetch_direct_original_ranges: u64,
 
-    /// Number of byte ranges actually issued after merging adjacent ranges
-    /// into combined HTTP Range requests. Equals `fetch_direct_requests` for
-    /// a single-range-per-request scanner.
+    /// Number of combined HTTP Range requests produced by merging adjacent
+    /// byte ranges. Normally equals `fetch_direct_requests` after a completed
+    /// scan, but can differ when cancellation stops only part of the planned
+    /// work from being issued.
     pub fetch_direct_merged_ranges: u64,
+
+    /// Transport batches produced before splitting direct and gRPC work.
+    pub planned_fetch_batches: u64,
+
+    /// Segment waves produced by the current admission scheduler.
+    pub planned_segment_waves: u64,
+
+    /// Maximum number of concurrently admitted segments configured for this query.
+    pub segment_admission_limit: u64,
+
+    /// Largest distinct-segment count in any planned transport batch.
+    pub max_segments_per_fetch_batch: u64,
+
+    /// Largest distinct-segment count in any planned admission wave.
+    pub max_segments_per_wave: u64,
+
+    /// Highest observed number of active segments in the admission gate. May
+    /// exceed `segment_admission_limit` when the stall breaker admits bypass
+    /// segments to restore forward progress.
+    pub peak_active_segments: u64,
+
+    /// Total decoded-byte capacity shared across all query partitions.
+    pub pipeline_budget_bytes: u64,
+
+    /// Highest observed number of decoded bytes charged to the pipeline budget.
+    /// May exceed `pipeline_budget_bytes` on an explicit overcommit path.
+    pub pipeline_peak_decoded_bytes: u64,
+
+    /// Number of reservations that first parked because decoded-byte capacity was full.
+    pub pipeline_byte_waits: u64,
+
+    /// Number of reservations that first parked because segment admission was full.
+    pub segment_admission_waits: u64,
+
+    /// Number of times the saturated-pipeline stall breaker activated.
+    pub pipeline_stall_breaker_activations: u64,
 }
 
 /// Build a [`QuerySnapshot`] from the canonical [`QueryMetrics`] source.
@@ -194,6 +256,17 @@ pub(crate) fn build_query_snapshot(
         fetch_direct_max_attempt: load(&metrics.fetch_direct_max_attempt),
         fetch_direct_original_ranges: load(&metrics.fetch_direct_original_ranges),
         fetch_direct_merged_ranges: load(&metrics.fetch_direct_merged_ranges),
+        planned_fetch_batches: load(&metrics.planned_fetch_batches),
+        planned_segment_waves: load(&metrics.planned_segment_waves),
+        segment_admission_limit: load(&metrics.segment_admission_limit),
+        max_segments_per_fetch_batch: load(&metrics.max_segments_per_fetch_batch),
+        max_segments_per_wave: load(&metrics.max_segments_per_wave),
+        peak_active_segments: load(&metrics.peak_active_segments),
+        pipeline_budget_bytes: load(&metrics.pipeline_budget_bytes),
+        pipeline_peak_decoded_bytes: load(&metrics.pipeline_peak_decoded_bytes),
+        pipeline_byte_waits: load(&metrics.pipeline_byte_waits),
+        segment_admission_waits: load(&metrics.segment_admission_waits),
+        pipeline_stall_breaker_activations: load(&metrics.pipeline_stall_breaker_activations),
     }
 }
 
@@ -293,12 +366,50 @@ mod tests {
         metrics
             .fetch_direct_requests
             .fetch_add(3, Ordering::Relaxed);
+        metrics
+            .planned_fetch_batches
+            .fetch_add(16, Ordering::Relaxed);
+        metrics
+            .planned_segment_waves
+            .fetch_add(1_332, Ordering::Relaxed);
+        metrics
+            .segment_admission_limit
+            .fetch_max(3, Ordering::Relaxed);
+        metrics
+            .max_segments_per_fetch_batch
+            .fetch_max(3, Ordering::Relaxed);
+        metrics
+            .max_segments_per_wave
+            .fetch_max(3, Ordering::Relaxed);
+        metrics.peak_active_segments.fetch_max(3, Ordering::Relaxed);
+        metrics.pipeline_budget_bytes.store(4096, Ordering::Relaxed);
+        metrics
+            .pipeline_peak_decoded_bytes
+            .fetch_max(3072, Ordering::Relaxed);
+        metrics.pipeline_byte_waits.fetch_add(2, Ordering::Relaxed);
+        metrics
+            .segment_admission_waits
+            .fetch_add(4, Ordering::Relaxed);
+        metrics
+            .pipeline_stall_breaker_activations
+            .fetch_add(1, Ordering::Relaxed);
 
         let snap = build_query_snapshot(&metrics, Duration::from_millis(42), None, None, None);
 
         assert_eq!(snap.fetch_grpc_bytes, 3_500);
         assert_eq!(snap.fetch_direct_requests, 3);
         assert_eq!(snap.fetch_grpc_requests, 0);
+        assert_eq!(snap.planned_fetch_batches, 16);
+        assert_eq!(snap.planned_segment_waves, 1_332);
+        assert_eq!(snap.segment_admission_limit, 3);
+        assert_eq!(snap.max_segments_per_fetch_batch, 3);
+        assert_eq!(snap.max_segments_per_wave, 3);
+        assert_eq!(snap.peak_active_segments, 3);
+        assert_eq!(snap.pipeline_budget_bytes, 4096);
+        assert_eq!(snap.pipeline_peak_decoded_bytes, 3072);
+        assert_eq!(snap.pipeline_byte_waits, 2);
+        assert_eq!(snap.segment_admission_waits, 4);
+        assert_eq!(snap.pipeline_stall_breaker_activations, 1);
         assert_eq!(snap.query_info.dataset_id, "ds-test");
         assert_eq!(snap.total_duration, Duration::from_millis(42));
         assert!(snap.query_info.entity_path_narrowing_applied);

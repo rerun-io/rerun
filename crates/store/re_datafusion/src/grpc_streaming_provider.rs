@@ -674,8 +674,9 @@ mod table_query_pipeline_tests {
         let _ = drain(stream).await;
 
         let span = pending.build_span_for_test();
-        assert_eq!(span.links.len(), 1);
-        assert_eq!(span.links[0].trace_id, trace_id.to_bytes().to_vec());
+        assert_eq!(span.trace_id, trace_id.to_bytes());
+        assert_eq!(span.span_id.len(), 8);
+        assert!(span.span_id.iter().any(|byte| *byte != 0));
     }
 
     #[tokio::test]
