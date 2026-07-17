@@ -3,7 +3,7 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-use crate::TypeRegistry;
+use crate::{Object, Objects, TypeRegistry};
 
 /// Mode of [`DataType::Union`]
 ///
@@ -146,6 +146,16 @@ impl DataType {
         } else {
             self
         }
+    }
+
+    /// `Some(Object)` if this is an enum object.
+    pub fn enum_obj<'a>(&self, objects: &'a Objects) -> Option<&'a Object> {
+        let Self::Object { fqname, .. } = self else {
+            return None;
+        };
+
+        let obj = &objects[fqname];
+        obj.is_enum().then_some(obj)
     }
 }
 

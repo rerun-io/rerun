@@ -5,7 +5,9 @@ use re_log::debug_assert;
 use crate::codegen::rust::arrow::{
     ArrowDataTypeTokenizer, is_backed_by_scalar_buffer, quote_fqname_as_type_path,
 };
-use crate::codegen::rust::util::{is_tuple_struct_from_obj, quote_comment};
+use crate::codegen::rust::util::{
+    is_tuple_struct_from_obj, quote_comment, quote_default_value_for_datatype,
+};
 use crate::data_type::{AtomicDataType, DataType, UnionMode};
 use crate::{Object, Objects, TypeRegistry};
 
@@ -492,10 +494,8 @@ fn quote_arrow_field_deserializer(
     _ = is_nullable; // not yet used, will be needed very soon
 
     // If the inner object is an enum, then dispatch to its deserializer.
-    if let DataType::Object { fqname, .. } = datatype
-        && objects.get(fqname).is_some_and(|obj| obj.is_enum())
-    {
-        let fqname_use = quote_fqname_as_type_path(fqname);
+    if let Some(obj) = datatype.enum_obj(objects) {
+        let fqname_use = quote_fqname_as_type_path(&obj.fqname);
         return quote!(#fqname_use::from_arrow_opt(#data_src).with_context(#obj_field_fqname)?.into_iter());
     }
 
@@ -662,6 +662,26 @@ fn quote_arrow_field_deserializer(
                 None,
             );
 
+            let is_enum = inner.data_type().enum_obj(objects).is_some();
+            let quoted_enum_missing_check = if is_enum {
+                quote! {
+                    if data.iter().any(Option::is_none) {
+                        return Err(DeserializationError::missing_data());
+                    }
+                }
+            } else {
+                quote! {}
+            };
+            // Enums have no `Default` impl, so fall back to their first variant instead.
+            // (See the note below on why we need to fill in _something_ here.)
+            let quoted_unwrap = if is_enum {
+                let quoted_default_value =
+                    quote_default_value_for_datatype(objects, inner.data_type());
+                quote!(.map(|opt| opt.unwrap_or_else(|| #quoted_default_value)))
+            } else {
+                quote!(.map(Option::unwrap_or_default))
+            };
+
             let comment_note_unwrap =
                 quote_comment("NOTE: Unwrapping cannot fail: the length must be correct.");
 
@@ -705,6 +725,8 @@ fn quote_arrow_field_deserializer(
                                 #[expect(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                 let data = unsafe { #data_src_inner.get_unchecked(start..end) };
 
+                                #quoted_enum_missing_check
+
                                 // NOTE: The call to `Option::unwrap_or_default` is very important here.
                                 //
                                 // Since we can only get here if the outer entry is marked as
@@ -725,7 +747,7 @@ fn quote_arrow_field_deserializer(
                                 // is null.
                                 //
                                 // TODO(#2875): use MaybeUninit rather than requiring a default impl
-                                let data = data.iter().cloned().map(Option::unwrap_or_default);
+                                let data = data.iter().cloned() #quoted_unwrap;
                                 // The following would be the correct thing to do, but costs us way
                                 // too much performance-wise for something that only applies to
                                 // malformed inputs.
@@ -1168,6 +1190,7 @@ fn quote_arrow_field_deserializer_buffer_slice(
 ///
 /// This should always be checked before using [`quote_arrow_deserializer_buffer_slice`].
 pub fn should_optimize_buffer_slice_deserialize(
+    objects: &Objects,
     obj: &Object,
     type_registry: &TypeRegistry,
 ) -> bool {
@@ -1175,23 +1198,24 @@ pub fn should_optimize_buffer_slice_deserialize(
     if is_arrow_transparent {
         let typ = type_registry.get(&obj.fqname);
         let obj_field = &obj.fields[0];
-        !obj_field.is_nullable && should_optimize_buffer_slice_deserialize_datatype(&typ)
+        !obj_field.is_nullable && should_optimize_buffer_slice_deserialize_datatype(objects, &typ)
     } else {
         false
     }
 }
 
 /// Whether or not this datatype allows for the buffer slice optimizations.
-fn should_optimize_buffer_slice_deserialize_datatype(typ: &DataType) -> bool {
+fn should_optimize_buffer_slice_deserialize_datatype(objects: &Objects, typ: &DataType) -> bool {
     match typ {
         DataType::Atomic(atomic) => {
             !matches!(atomic, AtomicDataType::Null | AtomicDataType::Boolean)
         }
         DataType::Object { datatype, .. } => {
-            should_optimize_buffer_slice_deserialize_datatype(datatype)
+            typ.enum_obj(objects).is_none()
+                && should_optimize_buffer_slice_deserialize_datatype(objects, datatype)
         }
         DataType::FixedSizeList(field, _) => {
-            should_optimize_buffer_slice_deserialize_datatype(field.data_type())
+            should_optimize_buffer_slice_deserialize_datatype(objects, field.data_type())
         }
         _ => false,
     }

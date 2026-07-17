@@ -822,7 +822,8 @@ fn quote_trait_impls_for_datatype_or_component(
 
     let datatype = type_registry.get(fqname);
 
-    let optimize_for_buffer_slice = should_optimize_buffer_slice_deserialize(obj, type_registry);
+    let optimize_for_buffer_slice =
+        should_optimize_buffer_slice_deserialize(objects, obj, type_registry);
 
     let is_forwarded_type = obj.is_arrow_transparent()
         && !obj.fields[0].is_nullable

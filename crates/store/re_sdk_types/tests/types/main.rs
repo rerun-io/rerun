@@ -10,6 +10,8 @@ mod box3d;
 mod clear;
 mod depth_image;
 mod dynamic_archetype;
+#[cfg(feature = "testing")]
+mod fixed_size_enum_array;
 mod image;
 mod line_strips2d;
 mod line_strips3d;

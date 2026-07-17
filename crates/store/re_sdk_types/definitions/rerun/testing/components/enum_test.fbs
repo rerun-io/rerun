@@ -42,6 +42,40 @@ enum ValuedEnum: ubyte {
     TheAnswer = 42,
 }
 
+/// Test datatype for fixed-size enum arrays.
+struct FixedSizeEnumArray (
+  "attr.arrow.transparent",
+  "attr.rust.derive": "Copy, PartialEq, Eq",
+  "attr.rust.repr": "transparent",
+  "attr.rust.tuple_struct"
+) {
+  /// Fixed-size enum array.
+  values: [rerun.testing.datatypes.EnumTest: 3] (order: 100);
+}
+
+/// A test enum with values that require more than one byte.
+enum WideEnum: uint {
+    /// Invalid value. Won't show up in generated types.
+    Invalid = 0,
+
+    /// Low value.
+    Low = 1,
+
+    /// High value.
+    High = 65536,
+}
+
+/// Test datatype for fixed-size arrays of wide enums.
+struct FixedSizeWideEnumArray (
+  "attr.arrow.transparent",
+  "attr.rust.derive": "Copy, PartialEq, Eq",
+  "attr.rust.repr": "transparent",
+  "attr.rust.tuple_struct"
+) {
+  /// Fixed-size wide enum array.
+  values: [rerun.testing.datatypes.WideEnum: 2] (order: 100);
+}
+
 table MultiEnum (
     "attr.rust.derive": "Default, PartialEq, Eq"
 ) {
