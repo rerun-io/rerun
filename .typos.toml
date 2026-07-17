@@ -244,7 +244,7 @@ extend-ignore-re = [
 
   "isse", # Name
 
-  "\"framerate\"", # ffmpeg/avfoundation container option name, not prose
+  "[\".]framerate\\b", # ffmpeg/avfoundation container option name, or PyAV's `CodecContext.framerate` attribute
 
   "@[a-zA-Z]+", # GitHub user names
 

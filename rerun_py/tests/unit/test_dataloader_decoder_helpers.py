@@ -2,9 +2,14 @@
 
 from __future__ import annotations
 
+import pickle
+from fractions import Fraction
+
+import av
 import numpy as np
 import pyarrow as pa
 import pytest
+import torch
 from rerun.experimental.dataloader import Field
 from rerun.experimental.dataloader._decoders import (
     VideoFrameDecoder,
@@ -14,6 +19,7 @@ from rerun.experimental.dataloader._decoders import (
     _hevc_annex_b_has_irap,
     _is_annex_b,
     _is_av1_keyframe_packet,
+    _starts_with,
     _unwrap_to_numpy,
 )
 from rerun.experimental.dataloader._utils import _field_index_range, _prior_keyframe
@@ -382,3 +388,119 @@ def test_prior_keyframe_target_between_returns_largest_leq() -> None:
 
 def test_prior_keyframe_target_after_last_returns_last() -> None:
     assert _prior_keyframe(np.array([50, 100, 150], dtype=np.int64), 9999) == 150
+
+
+def test_starts_with() -> None:
+    assert _starts_with([b"a", b"b", b"c"], [])
+    assert _starts_with([b"a", b"b", b"c"], [b"a", b"b"])
+    assert _starts_with([b"a", b"b"], [b"a", b"b"])
+    assert not _starts_with([b"a"], [b"a", b"b"])
+    assert not _starts_with([b"a", b"x"], [b"a", b"b"])
+
+
+def _encode_h264(num_frames: int, gop: int, b_frames: int = 0) -> list[bytes]:
+    """One Annex B sample per frame, keyframes every *gop* frames."""
+    encoder = av.CodecContext.create("libx264", "w")
+    encoder.width, encoder.height = 64, 64
+    encoder.pix_fmt = "yuv420p"
+    encoder.time_base = Fraction(1, 30)
+    encoder.framerate = Fraction(30, 1)
+    encoder.options = {"g": str(gop), "bf": str(b_frames), "tune": "zerolatency" if b_frames == 0 else "psnr"}
+    samples: list[bytes] = []
+    for i in range(num_frames):
+        pixels = np.empty((64, 64, 3), dtype=np.uint8)
+        pixels[:, :, 0] = ((np.arange(64) + i) % 256)[np.newaxis, :]
+        pixels[:, :, 1] = ((np.arange(64) + i * 3) % 256)[:, np.newaxis]
+        pixels[:, :, 2] = (i * 7) % 256
+        frame = av.VideoFrame.from_ndarray(pixels, format="rgb24").reformat(format="yuv420p")
+        frame.pts = i
+        samples.extend(bytes(p) for p in encoder.encode(frame))
+    samples.extend(bytes(p) for p in encoder.encode(None))
+    assert len(samples) == num_frames
+    return samples
+
+
+def _raw_window(samples: list[bytes]) -> pa.ChunkedArray:
+    return pa.chunked_array([pa.array([[s] for s in samples], type=pa.list_(pa.binary()))])
+
+
+def _session_contexts(decoder: VideoFrameDecoder) -> list[av.VideoCodecContext]:
+    return [session.context for session in decoder._sessions.values()]
+
+
+def test_video_frame_decoder_sequential_reads_reuse_session() -> None:
+    gop = 6
+    samples = _encode_h264(num_frames=12, gop=gop)
+    decoder = VideoFrameDecoder(codec="h264", keyframe_interval=gop)
+
+    contexts = []
+    for target in range(12):
+        keyframe = (target // gop) * gop
+        window = _raw_window(samples[keyframe : target + 1])
+        got = decoder.decode(window, target, "seg")
+        expected = VideoFrameDecoder(codec="h264", keyframe_interval=gop).decode(window, target, "seg")
+        assert got is not None and expected is not None
+        assert torch.equal(got, expected)
+        contexts.extend(_session_contexts(decoder))
+
+    # One context per GOP; without sessions this would be one per target.
+    assert len(set(map(id, contexts))) == 2
+
+
+def test_video_frame_decoder_repeated_target_hits_session() -> None:
+    samples = _encode_h264(num_frames=4, gop=4)
+    decoder = VideoFrameDecoder(codec="h264", keyframe_interval=4)
+
+    window = _raw_window(samples[:3])
+    first = decoder.decode(window, 2, "seg")
+    context = _session_contexts(decoder)[0]
+    second = decoder.decode(window, 2, "seg")
+    assert first is not None and second is not None
+    assert torch.equal(first, second)
+    assert _session_contexts(decoder) == [context]
+
+
+def test_video_frame_decoder_backward_step_restarts_session() -> None:
+    gop = 6
+    samples = _encode_h264(num_frames=6, gop=gop)
+    decoder = VideoFrameDecoder(codec="h264", keyframe_interval=gop)
+
+    decoder.decode(_raw_window(samples[:5]), 4, "seg")
+    context = _session_contexts(decoder)[0]
+    # A shorter window is not an extension: a fresh context must replay it.
+    got = decoder.decode(_raw_window(samples[:3]), 2, "seg")
+    expected = VideoFrameDecoder(codec="h264", keyframe_interval=gop).decode(_raw_window(samples[:3]), 2, "seg")
+    assert got is not None and expected is not None
+    assert torch.equal(got, expected)
+    assert _session_contexts(decoder) != [context]
+
+
+def test_video_frame_decoder_segments_get_separate_sessions() -> None:
+    samples = _encode_h264(num_frames=4, gop=4)
+    decoder = VideoFrameDecoder(codec="h264", keyframe_interval=4)
+
+    a = decoder.decode(_raw_window(samples[:2]), 1, "seg_a")
+    b = decoder.decode(_raw_window(samples[:2]), 1, "seg_b")
+    assert a is not None and b is not None
+    assert torch.equal(a, b)
+    assert len(decoder._sessions) == 2
+
+
+def test_video_frame_decoder_delayed_stream_falls_back_to_flush() -> None:
+    # B-frames make the decoder hold frames back, so no session can be kept.
+    samples = _encode_h264(num_frames=8, gop=8, b_frames=2)
+    decoder = VideoFrameDecoder(codec="h264", keyframe_interval=8)
+
+    assert decoder.decode(_raw_window(samples[:8]), 7, "seg") is not None
+    assert len(decoder._sessions) == 0
+
+
+def test_video_frame_decoder_pickle_drops_sessions() -> None:
+    samples = _encode_h264(num_frames=4, gop=4)
+    decoder = VideoFrameDecoder(codec="h264", keyframe_interval=4)
+    assert decoder.decode(_raw_window(samples[:2]), 1, "seg") is not None
+    assert len(decoder._sessions) == 1
+
+    restored = pickle.loads(pickle.dumps(decoder))
+    assert len(restored._sessions) == 0
+    assert restored.decode(_raw_window(samples[:2]), 1, "seg") is not None
