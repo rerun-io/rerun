@@ -5,6 +5,7 @@ mod create_table;
 mod dataset_schema;
 mod entries_table;
 mod fetch_chunks;
+mod find_entries_filters;
 mod query_dataset;
 mod query_filter;
 mod query_index_values;
@@ -108,6 +109,16 @@ define_redap_tests! {
     entries_table::list_entries_table,
     fetch_chunks::multi_dataset_fetch_chunk_completeness,
     fetch_chunks::simple_dataset_fetch_chunk_snapshot,
+    find_entries_filters::find_entries_asset_by_id_requires_explicit_kind,
+    find_entries_filters::find_entries_asset_by_name_requires_explicit_kind,
+    find_entries_filters::find_entries_default_excludes_asset_datasets,
+    find_entries_filters::find_entries_entry_kinds_exact,
+    find_entries_filters::find_entries_entry_kinds_multi_kind_name_lookup,
+    find_entries_filters::find_entries_entry_kinds_rejects_unspecified,
+    find_entries_filters::find_entries_ignores_unknown_entry_kinds,
+    find_entries_filters::find_entries_legacy_entry_kind_miss_returns_empty,
+    find_entries_filters::find_entries_legacy_entry_kind_still_works,
+    find_entries_filters::find_entries_rejects_legacy_unspecified,
     query_dataset::query_dataset_should_fail,
     query_dataset::query_dataset_unknown_segment_id_returns_empty,
     query_dataset::query_dataset_consistent_schema_across_timelines,

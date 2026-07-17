@@ -1558,8 +1558,18 @@ pub struct EntryFilter {
     pub id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
     #[prost(string, optional, tag = "2")]
     pub name: ::core::option::Option<::prost::alloc::string::String>,
+    /// Deprecated: use `entry_kinds` instead. Ignored by servers when `entry_kinds` is non-empty.
     #[prost(enumeration = "EntryKind", optional, tag = "3")]
     pub entry_kind: ::core::option::Option<i32>,
+    /// The entry kinds to include. If non-empty, the server returns exactly entries of these kinds
+    /// (ENTRY_KIND_UNSPECIFIED is rejected with an `invalid_argument` error).
+    ///
+    /// It is recommended to always explicitly ask for a set of entry kinds.
+    /// When unset the server returns a default set of kinds to ensure backwards compatibility with
+    /// old clients that did not set this. This behavior may be dropped in future releases.
+    /// (condition: after rerun-sdk 0.34 is out of its support cycle)
+    #[prost(enumeration = "EntryKind", repeated, tag = "4")]
+    pub entry_kinds: ::prost::alloc::vec::Vec<i32>,
 }
 impl ::prost::Name for EntryFilter {
     const NAME: &'static str = "EntryFilter";

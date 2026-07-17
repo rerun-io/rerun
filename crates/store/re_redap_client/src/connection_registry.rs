@@ -575,6 +575,7 @@ impl ConnectionRegistryHandle {
                             id: None,
                             name: None,
                             entry_kind: None,
+                            entry_kinds: vec![],
                         }),
                     })
                     .await

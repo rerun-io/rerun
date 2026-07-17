@@ -1046,7 +1046,18 @@ message UpdateTableEntryResponse {
 message EntryFilter {
   optional rerun.common.v1alpha1.EntryId id = 1;
   optional string name = 2;
+
+  // Deprecated: use `entry_kinds` instead. Ignored by servers when `entry_kinds` is non-empty.
   optional EntryKind entry_kind = 3;
+
+  // The entry kinds to include. If non-empty, the server returns exactly entries of these kinds
+  // (ENTRY_KIND_UNSPECIFIED is rejected with an `invalid_argument` error).
+  //
+  // It is recommended to always explicitly ask for a set of entry kinds.
+  // When unset the server returns a default set of kinds to ensure backwards compatibility with
+  // old clients that did not set this. This behavior may be dropped in future releases.
+  // (condition: after rerun-sdk 0.34 is out of its support cycle)
+  repeated EntryKind entry_kinds = 4;
 }
 
 // What type of entry. This has strong implication on which APIs are available for this entry.

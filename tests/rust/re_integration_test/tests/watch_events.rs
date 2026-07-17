@@ -142,6 +142,7 @@ pub async fn watch_events_auto_refresh_test() {
                 id: None,
                 name: Some(name.to_owned()),
                 entry_kind: None,
+                entry_kinds: vec![],
             })
             .await
             .expect("find_entries failed");

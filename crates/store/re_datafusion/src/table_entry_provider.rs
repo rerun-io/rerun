@@ -146,7 +146,12 @@ impl TableEntryTableProvider {
                             filter: Some(EntryFilter {
                                 id: None,
                                 name: Some(table_name_copy),
+                                // Pass both `entry_kind` (deprecated) and `entry_kinds`
+                                // to be compatible with old Hub versions.
+                                // Drop `entry_kind` when no customer has a 0.14 deployment
+                                // or older of Rerun Hub.
                                 entry_kind: Some(EntryKind::Table as i32),
+                                entry_kinds: vec![EntryKind::Table as i32],
                             }),
                         })
                         .await

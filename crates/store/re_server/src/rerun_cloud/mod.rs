@@ -668,76 +668,98 @@ impl RerunCloudService for RerunCloudHandler {
         &self,
         request: tonic::Request<re_protos::cloud::v1alpha1::FindEntriesRequest>,
     ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::FindEntriesResponse>> {
-        let filter = request.into_inner().filter;
-        let entry_id = filter
-            .as_ref()
-            .and_then(|filter| filter.id)
-            .map(TryInto::try_into)
-            .transpose()?;
+        let filter = request.into_inner().filter.unwrap_or_default();
+
+        let entry_id = filter.id.map(TryInto::try_into).transpose()?;
         let name = filter
-            .as_ref()
-            .and_then(|filter| filter.name.clone())
+            .name
             .map(EntryName::new)
             .transpose()
             .map_err(|err| Status::invalid_argument(err.to_string()))?;
-        let kind = filter
-            .and_then(|filter| filter.entry_kind)
-            .map(EntryKind::try_from)
-            .transpose()
-            .map_err(|err| {
+
+        // `entry_kinds` (new, repeated) always wins over the legacy singular `entry_kind` when
+        // both are set. `ENTRY_KIND_UNSPECIFIED` is rejected outright; unknown *positive* values
+        // (kinds newer than this server knows about) are intentionally allowed through and
+        // simply match no entry, so a client requesting them degrades gracefully instead of
+        // erroring out (forward compat, mirrors Rerun Hub).
+        if filter
+            .entry_kinds
+            .contains(&(EntryKind::Unspecified as i32))
+        {
+            return Err(Status::invalid_argument(
+                "find_entries: entry_kinds must not contain ENTRY_KIND_UNSPECIFIED",
+            ));
+        }
+
+        // The effective set of raw `EntryKind` values to match against. `None` for the
+        // kind-less default.
+        let effective_kinds: Option<Vec<i32>> = if !filter.entry_kinds.is_empty() {
+            Some(filter.entry_kinds)
+        } else if let Some(kind) = filter.entry_kind {
+            // Legacy singular field (pre hub 0.15)
+            let kind = EntryKind::try_from(kind).map_err(|err| {
                 Status::invalid_argument(format!("find_entries: invalid entry kind {err}"))
             })?;
-
-        let entries = match kind {
-            Some(EntryKind::Dataset | EntryKind::AssetDataset) => {
-                self.find_datasets(entry_id, name, Some(StoreKind::Recording))
-                    .await?
-            }
-
-            Some(EntryKind::BlueprintDataset) => {
-                self.find_datasets(entry_id, name, Some(StoreKind::Blueprint))
-                    .await?
-            }
-
-            Some(EntryKind::Table) => self.find_tables(entry_id, name).await?,
-
-            Some(EntryKind::DatasetView | EntryKind::TableView) => {
-                return Err(Status::unimplemented(
-                    "find_entries: dataset and table views are not supported",
-                ));
-            }
-
-            Some(EntryKind::Unspecified) => {
+            if kind == EntryKind::Unspecified {
                 return Err(Status::invalid_argument(
                     "find_entries: entry kind unspecified",
                 ));
             }
-
-            None => {
-                let mut datasets = match self.find_datasets(entry_id, name.clone(), None).await {
-                    Ok(datasets) => datasets,
-                    Err(err) => {
-                        if err.code() == Code::NotFound {
-                            vec![]
-                        } else {
-                            return Err(err);
-                        }
-                    }
-                };
-                let tables = match self.find_tables(entry_id, name).await {
-                    Ok(tables) => tables,
-                    Err(err) => {
-                        if err.code() == Code::NotFound {
-                            vec![]
-                        } else {
-                            return Err(err);
-                        }
-                    }
-                };
-                datasets.extend(tables);
-                datasets
-            }
+            Some(vec![kind as i32])
+        } else {
+            None
         };
+
+        let matches_kind = |raw_kind: i32| match &effective_kinds {
+            Some(kinds) => kinds.contains(&raw_kind),
+            // When neither the new `entry_kinds` nor legacy `entry_kind` (singular)
+            // are specified we fall back to the legacy default.
+            //
+            // See RR-5186.
+            None => EntryKind::try_from(raw_kind).is_ok_and(EntryKind::is_legacy_default_kind),
+        };
+
+        let soften_not_found = |result: tonic::Result<Vec<EntryDetails>>| match result {
+            Ok(entries) => Ok(entries),
+            // this is a find. Degrade a NotFound to an empty result set.
+            Err(err) if err.code() == Code::NotFound => Ok(vec![]),
+            Err(err) => Err(err),
+        };
+
+        let mut entries = if effective_kinds.is_some() {
+            // `Dataset` and `AssetDataset` are both backed by `StoreKind::Recording`, so a
+            // request for just one of them still has to fetch the whole recording family and
+            // filter by actual kind below (an asset dataset otherwise leaks into
+            // `entry_kind=Dataset` results).
+            let mut entries = Vec::new();
+            if matches_kind(EntryKind::Dataset as i32)
+                || matches_kind(EntryKind::AssetDataset as i32)
+            {
+                let result = self
+                    .find_datasets(entry_id, name.clone(), Some(StoreKind::Recording))
+                    .await;
+                entries.extend(soften_not_found(result)?);
+            }
+            if matches_kind(EntryKind::BlueprintDataset as i32) {
+                let result = self
+                    .find_datasets(entry_id, name.clone(), Some(StoreKind::Blueprint))
+                    .await;
+                entries.extend(soften_not_found(result)?);
+            }
+            if matches_kind(EntryKind::Table as i32) {
+                let result = self.find_tables(entry_id, name.clone()).await;
+                entries.extend(soften_not_found(result)?);
+            }
+            entries
+        } else {
+            let datasets = self.find_datasets(entry_id, name.clone(), None).await;
+            let mut datasets = soften_not_found(datasets)?;
+            let tables = self.find_tables(entry_id, name.clone()).await;
+            datasets.extend(soften_not_found(tables)?);
+            datasets
+        };
+
+        entries.retain(|entry| matches_kind(entry.entry_kind));
 
         let response = re_protos::cloud::v1alpha1::FindEntriesResponse { entries };
 

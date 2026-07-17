@@ -199,11 +199,7 @@ async fn fetch_entries_and_register_tables(
     let analytics = connection.analytics;
 
     let entries = client
-        .find_entries(EntryFilter {
-            id: None,
-            name: None,
-            entry_kind: None,
-        })
+        .find_entries(EntryFilter::default().with_all_kinds())
         .await?;
 
     let origin_ref = &origin;

@@ -1200,7 +1200,12 @@ where
     pub async fn get_table_names(&mut self) -> ApiResult<Vec<EntryName>> {
         Ok(self
             .find_entries(re_protos::cloud::v1alpha1::EntryFilter {
+                // Pass both `entry_kind` (deprecated) and `entry_kinds`
+                // to be compatible with old Hub versions.
+                // Drop `entry_kind` when no customer has a 0.14 deployment
+                // or older of Rerun Hub.
                 entry_kind: Some(EntryKind::Table.into()),
+                entry_kinds: vec![EntryKind::Table.into()],
                 ..Default::default()
             })
             .await?
@@ -1269,7 +1274,12 @@ where
                     filter: Some(EntryFilter {
                         id: None,
                         name: Some(entry_name.to_string()),
+                        // Pass both `entry_kind` (deprecated) and `entry_kinds`
+                        // to be compatible with old Hub versions.
+                        // Drop `entry_kind` when no customer has a 0.14 deployment
+                        // or older of Rerun Hub.
                         entry_kind: entry_kind.map(|kind| kind.into()),
+                        entry_kinds: entry_kind.into_iter().map(|k| k as i32).collect(),
                     }),
                 })
                 .await
@@ -1354,7 +1364,12 @@ where
         let entries = match self
             .find_entries(EntryFilter {
                 name: Some(name.to_owned()),
+                // Pass both `entry_kind` (deprecated) and `entry_kinds`
+                // to be compatible with old Hub versions.
+                // Drop `entry_kind` when no customer has a 0.14 deployment
+                // or older of Rerun Hub.
                 entry_kind: Some(EntryKind::Dataset.into()),
+                entry_kinds: vec![EntryKind::Dataset.into()],
                 ..Default::default()
             })
             .await

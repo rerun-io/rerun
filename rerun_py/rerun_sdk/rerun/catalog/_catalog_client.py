@@ -226,7 +226,7 @@ class CatalogClient:
         Parameters
         ----------
         include_hidden
-            If True, include hidden entries (blueprint datasets and system tables like `__entries`).
+            If True, include hidden entries (blueprint and asset datasets, and system tables like `__entries`).
 
         """
         return self.datasets(include_hidden=include_hidden) + self.tables(include_hidden=include_hidden)
@@ -238,7 +238,7 @@ class CatalogClient:
         Parameters
         ----------
         include_hidden
-            If True, include blueprint datasets.
+            If True, include hidden datasets (blueprint and asset datasets).
 
         """
         from . import DatasetEntry

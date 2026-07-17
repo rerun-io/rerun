@@ -660,8 +660,42 @@ impl crate::cloud::v1alpha1::EntryFilter {
         self
     }
 
+    // deprecated: use `with_entry_kinds` instead.
+    //
+    // Exception: use this for backwards compatibility with 0.14 Hub or earlier.
+    #[deprecated]
     pub fn with_entry_kind(mut self, kind: EntryKind) -> Self {
         self.entry_kind = Some(kind as i32);
+        self
+    }
+
+    pub fn with_entry_kinds(mut self, kinds: impl IntoIterator<Item = EntryKind>) -> Self {
+        self.entry_kinds = kinds.into_iter().map(|k| k as i32).collect();
+        self
+    }
+
+    /// Requests every entry kind known to the client.
+    pub fn with_all_kinds(mut self) -> Self {
+        // Exhaustive match with no logic of its own: if a new `EntryKind` variant is added, this
+        // fails to compile as a reminder to add it to the vector below.
+        let _ = |kind: EntryKind| match kind {
+            EntryKind::Unspecified
+            | EntryKind::Dataset
+            | EntryKind::DatasetView
+            | EntryKind::Table
+            | EntryKind::TableView
+            | EntryKind::BlueprintDataset
+            | EntryKind::AssetDataset => {}
+        };
+
+        self.entry_kinds = vec![
+            EntryKind::Dataset as i32,
+            EntryKind::DatasetView as i32,
+            EntryKind::Table as i32,
+            EntryKind::TableView as i32,
+            EntryKind::BlueprintDataset as i32,
+            EntryKind::AssetDataset as i32,
+        ];
         self
     }
 }
@@ -1758,6 +1792,25 @@ impl EntryKind {
             EntryKind::BlueprintDataset => "Blueprint Dataset",
             EntryKind::AssetDataset => "Asset Dataset",
         }
+    }
+
+    /// Was this EntryKind a kind that legacy clients expected to get by default
+    /// in /FindEntries calls?
+    ///
+    /// 0.34 clients and older expected to get those kinds on `entry_kind: None`
+    /// find requests. This helper method is used to maintain backwards
+    /// compatibility with such clients.
+    ///
+    /// See RR-5186 for more details.
+    pub fn is_legacy_default_kind(self) -> bool {
+        matches!(
+            self,
+            EntryKind::Dataset
+                | EntryKind::Table
+                | EntryKind::DatasetView
+                | EntryKind::TableView
+                | EntryKind::BlueprintDataset
+        )
     }
 }
 

@@ -47,7 +47,7 @@ pub async fn load_test_data_with_name(
 
     // Make sure that we have an entries table.
     let entries_table = client
-        .find_entries(EntryFilter::default().with_entry_kind(EntryKind::Table))
+        .find_entries(EntryFilter::default().with_entry_kinds([EntryKind::Table]))
         .await?;
     assert_eq!(entries_table.len(), 1);
     assert_eq!(entries_table[0].name, re_protos::EntryName::entries_table());

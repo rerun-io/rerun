@@ -158,23 +158,34 @@ impl PyCatalogClientInternal {
         let _span = read_trace_context_from_python(py, "CatalogClient.datasets").entered();
         let connection = self_.borrow(py).connection.clone();
 
-        let mut entry_details =
-            connection.find_entries(py, EntryFilter::new().with_entry_kind(EntryKind::Dataset))?;
-
-        if include_hidden {
-            entry_details.extend(connection.find_entries(
-                py,
-                EntryFilter::new().with_entry_kind(EntryKind::BlueprintDataset),
-            )?);
-            entry_details.extend(connection.find_entries(
-                py,
-                EntryFilter::new().with_entry_kind(EntryKind::AssetDataset),
-            )?);
-        }
+        let entry_details = connection.find_entries(
+            py,
+            EntryFilter {
+                id: None,
+                name: None,
+                // Passing the deprecated `entry_kind` as None for
+                // compatibility with older Rerun Hub versions.
+                //
+                // With this setting legacy Rerun Hub versions will return
+                // return all known entry kinds, which we'll need to filter below.
+                // See RR-5186.
+                entry_kind: None,
+                entry_kinds: vec![
+                    EntryKind::Dataset as i32,
+                    EntryKind::BlueprintDataset as i32,
+                    EntryKind::AssetDataset as i32,
+                ],
+            },
+        )?;
 
         entry_details
             .into_iter()
-            .filter(|details| include_hidden || !details.name.is_hidden())
+            .filter(|details| {
+                matches!(
+                    details.kind,
+                    EntryKind::Dataset | EntryKind::BlueprintDataset | EntryKind::AssetDataset
+                ) && (include_hidden || !details.name.is_hidden())
+            })
             .map(|details| {
                 let dataset_entry = connection.read_dataset(py, details.id)?;
                 Py::new(
@@ -194,8 +205,15 @@ impl PyCatalogClientInternal {
         let _span = read_trace_context_from_python(py, "CatalogClient.tables").entered();
         let connection = self_.borrow(py).connection.clone();
 
-        let entry_details =
-            connection.find_entries(py, EntryFilter::new().with_entry_kind(EntryKind::Table))?;
+        // `with_entry_kind` is deprecated and kept for compatibility with Rerun Hub
+        // older than 0.15. Drop when all customers are on 0.15 or newer.
+        #[expect(deprecated)]
+        let entry_details = connection.find_entries(
+            py,
+            EntryFilter::new()
+                .with_entry_kind(EntryKind::Table)
+                .with_entry_kinds([EntryKind::Table]),
+        )?;
 
         entry_details
             .into_iter()
