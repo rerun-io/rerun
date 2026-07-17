@@ -5,6 +5,7 @@
 
 mod app_caches;
 mod cache_trait;
+mod encoded_depth_image_stats_cache;
 mod image_decode_cache;
 mod image_histogram_cache;
 mod image_stats_cache;
@@ -23,6 +24,7 @@ pub use store_cache::StoreCache;
 // Caches are fully dynamic and registration based, so they can be added at runtime by any crate.
 // The reason this happens it that various viewer crates wants to access these, mostly for ui purposes.
 // Ideally, they would only depend on the ones needed.
+pub use encoded_depth_image_stats_cache::EncodedDepthImageStatsCache;
 pub use image_decode_cache::ImageDecodeCache;
 pub use image_histogram_cache::{ImageHistogramCache, Rgb8Histogram};
 pub use image_stats_cache::ImageStatsCache;
