@@ -88,6 +88,18 @@ impl Span<u32> {
     }
 }
 
+impl Span<u64> {
+    /// Cast to native pointer width; useful for indexing on native platforms.
+    #[inline]
+    pub fn range_usize(self) -> Range<usize> {
+        let Self { start, len } = self;
+        Range {
+            start: start as usize,
+            end: start as usize + len as usize,
+        }
+    }
+}
+
 impl<Idx: Unsigned + Copy> From<Span<Idx>> for Range<Idx> {
     #[inline]
     fn from(value: Span<Idx>) -> Self {

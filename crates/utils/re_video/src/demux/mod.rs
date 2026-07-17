@@ -747,7 +747,7 @@ impl VideoDataDescription {
             let Some(duration) = sample.duration else {
                 continue;
             };
-            total_bytes += span.len as u64;
+            total_bytes += span.len;
             total_secs += duration.into_secs(timescale);
         }
 
@@ -1090,7 +1090,7 @@ impl SampleMetadataState {
 pub enum VideoSource {
     /// The bytes occupy this byte range within a single source buffer the user
     /// already knows about. Used for e.g. mp4 assets.
-    Span(#[size_bytes(ignore)] /* pod without size bytes impl */ Span<u32>),
+    Span(#[size_bytes(ignore)] /* pod without size bytes impl */ Span<u64>),
 
     /// An identifier pair the host resolves to the sample's bytes.
     ///
