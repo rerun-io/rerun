@@ -1,5 +1,6 @@
 //! Lenses for converting ROS 2 messages to Rerun components & archetypes.
 
+mod camera_info;
 mod log;
 mod magnetic_field;
 mod occupancy_grid;
@@ -11,6 +12,9 @@ mod voxel_grid;
 use re_lenses::{LensBuilderError, Lenses, OutputMode};
 use re_log_types::TimeType;
 
+use super::IMAGE_PLANE_SUFFIX;
+
+pub use camera_info::camera_info;
 pub use log::log;
 pub use magnetic_field::magnetic_field;
 pub use occupancy_grid::occupancy_grid;
@@ -27,6 +31,7 @@ pub fn add_ros2msg_lenses(
     time_type: TimeType,
 ) -> Result<(), LensBuilderError> {
     *lenses = std::mem::replace(lenses, Lenses::new(OutputMode::ForwardUnmatched))
+        .add_lens(camera_info(time_type)?)
         .add_lens(log(time_type)?)
         .add_lens(magnetic_field(time_type)?)
         .add_lens(occupancy_grid(time_type)?)
