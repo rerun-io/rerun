@@ -31,7 +31,7 @@ pub async fn test_state_phase_hover_propagates_to_time_series() {
             builder.with_archetype(
                 RowId::new(),
                 [(timeline, *t)],
-                &re_sdk_types::archetypes::StateChange::new().with_state(*state),
+                &re_sdk_types::archetypes::StateChange::single(*state),
             )
         });
     }

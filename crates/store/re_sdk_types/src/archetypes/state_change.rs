@@ -39,13 +39,13 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///         .spawn()?;
 ///
 ///     rec.set_time_sequence("step", 0);
-///     rec.log("door", &rerun::StateChange::new().with_state("open"))?;
+///     rec.log("door", &rerun::StateChange::single("open"))?;
 ///
 ///     rec.set_time_sequence("step", 1);
-///     rec.log("door", &rerun::StateChange::new().with_state("closed"))?;
+///     rec.log("door", &rerun::StateChange::single("closed"))?;
 ///
 ///     rec.set_time_sequence("step", 2);
-///     rec.log("door", &rerun::StateChange::new().with_state("open"))?;
+///     rec.log("door", &rerun::StateChange::single("open"))?;
 ///
 ///     Ok(())
 /// }
@@ -61,11 +61,13 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// </center>
 #[derive(Clone, Debug, PartialEq, Default, ::re_byte_size::SizeBytes)]
 pub struct StateChange {
-    /// The new state value.
+    /// The new state values; each instance gets its own lane in the state timeline view.
     ///
-    /// A `null` value in the state batch is treated as a state reset: the previous state ends
-    /// and a gap is shown in the state timeline view until the next state. An empty string and
-    /// an empty state batch (e.g. from clearing the field) act the same way.
+    /// A reset ends the previous state and shows a gap in the state timeline view until the
+    /// next state. An empty string, a null array entry, and an empty state array (e.g. from
+    /// clearing the field) all act as resets.
+    ///
+    /// The length of the state array should not change over time.
     pub state: Option<SerializedComponentBatch>,
 }
 
@@ -230,23 +232,15 @@ impl StateChange {
         self.columns(std::iter::repeat_n(1, len))
     }
 
-    /// The new state value.
+    /// The new state values; each instance gets its own lane in the state timeline view.
     ///
-    /// A `null` value in the state batch is treated as a state reset: the previous state ends
-    /// and a gap is shown in the state timeline view until the next state. An empty string and
-    /// an empty state batch (e.g. from clearing the field) act the same way.
-    #[inline]
-    pub fn with_state(mut self, state: impl Into<crate::components::Text>) -> Self {
-        self.state = try_serialize_field(Self::descriptor_state(), [state]);
-        self
-    }
-
-    /// This method makes it possible to pack multiple [`crate::components::Text`] in a single component batch.
+    /// A reset ends the previous state and shows a gap in the state timeline view until the
+    /// next state. An empty string, a null array entry, and an empty state array (e.g. from
+    /// clearing the field) all act as resets.
     ///
-    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_state`] should
-    /// be used when logging a single row's worth of data.
+    /// The length of the state array should not change over time.
     #[inline]
-    pub fn with_many_state(
+    pub fn with_state(
         mut self,
         state: impl IntoIterator<Item = impl Into<crate::components::Text>>,
     ) -> Self {

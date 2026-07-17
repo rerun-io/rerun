@@ -1,7 +1,7 @@
-/// Collection of state change lanes produced by a visualizer.
+/// Collection of state change lane groups produced by a visualizer.
 #[derive(Clone, Debug, Default)]
 pub struct StateLanesData {
-    pub lanes: Vec<StateLane>,
+    pub groups: Vec<StateLaneGroup>,
 }
 
 /// Canonical post-cast value type of a state lane.
@@ -16,18 +16,29 @@ pub enum StateValueKind {
     Bool,
 }
 
+/// All state lanes of a single visualizer instruction, displayed under one shared label.
+///
+/// A `StateChange` row can carry multiple instances (an array of states, e.g. the buttons of a
+/// joystick). Each instance index becomes its own [`StateLane`]; they share the entity label,
+/// value kind, and `StateConfiguration`.
+#[derive(Clone, Debug)]
+pub struct StateLaneGroup {
+    /// Display name for this group (typically the entity path).
+    pub label: String,
+
+    /// The entity path this group belongs to.
+    pub entity_path: re_log_types::EntityPath,
+
+    /// The canonical post-cast type of the values in this group.
+    pub value_kind: StateValueKind,
+
+    /// One lane per instance index, in instance order. Never empty.
+    pub lanes: Vec<StateLane>,
+}
+
 /// A single horizontal lane of state change phases.
 #[derive(Clone, Debug)]
 pub struct StateLane {
-    /// Display name for this lane (typically the entity path).
-    pub label: String,
-
-    /// The entity path this lane belongs to.
-    pub entity_path: re_log_types::EntityPath,
-
-    /// The canonical post-cast type of the values in this lane.
-    pub value_kind: StateValueKind,
-
     /// Ordered list of phases. Each phase starts at `start_time` and implicitly ends
     /// where the next phase begins (or at the right edge of the visible range).
     pub phases: Vec<StateLanePhase>,

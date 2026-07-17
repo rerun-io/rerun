@@ -36,21 +36,23 @@ namespace rerun::archetypes {
     ///     rec.spawn().exit_on_failure();
     ///
     ///     rec.set_time_sequence("step", 0);
-    ///     rec.log("door", rerun::StateChange().with_state("open"));
+    ///     rec.log("door", rerun::StateChange().with_state({"open"}));
     ///
     ///     rec.set_time_sequence("step", 1);
-    ///     rec.log("door", rerun::StateChange().with_state("closed"));
+    ///     rec.log("door", rerun::StateChange().with_state({"closed"}));
     ///
     ///     rec.set_time_sequence("step", 2);
-    ///     rec.log("door", rerun::StateChange().with_state("open"));
+    ///     rec.log("door", rerun::StateChange().with_state({"open"}));
     /// }
     /// ```
     struct StateChange {
-        /// The new state value.
+        /// The new state values; each instance gets its own lane in the state timeline view.
         ///
-        /// A `null` value in the state batch is treated as a state reset: the previous state ends
-        /// and a gap is shown in the state timeline view until the next state. An empty string and
-        /// an empty state batch (e.g. from clearing the field) act the same way.
+        /// A reset ends the previous state and shows a gap in the state timeline view until the
+        /// next state. An empty string, a null array entry, and an empty state array (e.g. from
+        /// clearing the field) all act as resets.
+        ///
+        /// The length of the state array should not change over time.
         std::optional<ComponentBatch> state;
 
       public:
@@ -77,21 +79,14 @@ namespace rerun::archetypes {
         /// Clear all the fields of a `StateChange`.
         static StateChange clear_fields();
 
-        /// The new state value.
+        /// The new state values; each instance gets its own lane in the state timeline view.
         ///
-        /// A `null` value in the state batch is treated as a state reset: the previous state ends
-        /// and a gap is shown in the state timeline view until the next state. An empty string and
-        /// an empty state batch (e.g. from clearing the field) act the same way.
-        StateChange with_state(const rerun::components::Text& _state) && {
-            state = ComponentBatch::from_loggable(_state, Descriptor_state).value_or_throw();
-            return std::move(*this);
-        }
-
-        /// This method makes it possible to pack multiple `state` in a single component batch.
+        /// A reset ends the previous state and shows a gap in the state timeline view until the
+        /// next state. An empty string, a null array entry, and an empty state array (e.g. from
+        /// clearing the field) all act as resets.
         ///
-        /// This only makes sense when used in conjunction with `columns`. `with_state` should
-        /// be used when logging a single row's worth of data.
-        StateChange with_many_state(const Collection<rerun::components::Text>& _state) && {
+        /// The length of the state array should not change over time.
+        StateChange with_state(const Collection<rerun::components::Text>& _state) && {
             state = ComponentBatch::from_loggable(_state, Descriptor_state).value_or_throw();
             return std::move(*this);
         }

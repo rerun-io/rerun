@@ -143,12 +143,18 @@ fn run_visualizer_impl(
 }
 
 fn phase_labels(lanes_data: &StateLanesData, entity: &str) -> Vec<String> {
-    let lane = lanes_data
-        .lanes
+    let group = lanes_data
+        .groups
         .iter()
-        .find(|l| l.entity_path == EntityPath::from(entity))
-        .unwrap_or_else(|| panic!("no lane for entity {entity}"));
-    lane.phases
+        .find(|g| g.entity_path == EntityPath::from(entity))
+        .unwrap_or_else(|| panic!("no lane group for entity {entity}"));
+    assert_eq!(
+        group.lanes.len(),
+        1,
+        "expected a single-instance lane group for entity {entity}"
+    );
+    group.lanes[0]
+        .phases
         .iter()
         .map(|p| {
             p.content
@@ -161,12 +167,18 @@ fn phase_labels(lanes_data: &StateLanesData, entity: &str) -> Vec<String> {
 /// Like [`phase_labels`] but keeps each phase's start time, so tests can assert *when* a
 /// reset (gap, rendered as an empty label) begins.
 fn timed_phase_labels(lanes_data: &StateLanesData, entity: &str) -> Vec<(i64, String)> {
-    let lane = lanes_data
-        .lanes
+    let group = lanes_data
+        .groups
         .iter()
-        .find(|l| l.entity_path == EntityPath::from(entity))
-        .unwrap_or_else(|| panic!("no lane for entity {entity}"));
-    lane.phases
+        .find(|g| g.entity_path == EntityPath::from(entity))
+        .unwrap_or_else(|| panic!("no lane group for entity {entity}"));
+    assert_eq!(
+        group.lanes.len(),
+        1,
+        "expected a single-instance lane group for entity {entity}"
+    );
+    group.lanes[0]
+        .phases
         .iter()
         .map(|p| {
             (
@@ -180,12 +192,12 @@ fn timed_phase_labels(lanes_data: &StateLanesData, entity: &str) -> Vec<(i64, St
 }
 
 fn value_kind(lanes_data: &StateLanesData, entity: &str) -> StateValueKind {
-    let lane = lanes_data
-        .lanes
+    let group = lanes_data
+        .groups
         .iter()
-        .find(|l| l.entity_path == EntityPath::from(entity))
-        .unwrap_or_else(|| panic!("no lane for entity {entity}"));
-    lane.value_kind
+        .find(|g| g.entity_path == EntityPath::from(entity))
+        .unwrap_or_else(|| panic!("no lane group for entity {entity}"));
+    group.value_kind
 }
 
 /// Log a `DynamicArchetype` with one field at three ticks, then install an explicit visualizer
@@ -640,35 +652,40 @@ fn test_dynamic_archetype_multiple_same_type() {
     let outputs = run_visualizer(&test_context, view_id);
     assert_eq!(outputs.len(), 1);
 
-    // One lane per visualizer instruction; both lanes share the same entity path.
-    let lanes_on_entity: Vec<_> = outputs[0]
-        .lanes
+    // One lane group per visualizer instruction; both groups share the same entity path.
+    let groups_on_entity: Vec<_> = outputs[0]
+        .groups
         .iter()
-        .filter(|l| l.entity_path == EntityPath::from(entity))
+        .filter(|g| g.entity_path == EntityPath::from(entity))
         .collect();
-    assert_eq!(lanes_on_entity.len(), 2);
+    assert_eq!(groups_on_entity.len(), 2);
 
-    for lane in &lanes_on_entity {
-        assert_eq!(lane.value_kind, StateValueKind::String);
+    for group in &groups_on_entity {
+        assert_eq!(group.value_kind, StateValueKind::String);
+        assert_eq!(group.lanes.len(), 1);
     }
 
-    // The lane label disambiguates which source field is feeding this lane.
-    let mode_lane = lanes_on_entity
+    // The group label disambiguates which source field is feeding this group.
+    let mode_group = groups_on_entity
         .iter()
-        .find(|l| l.label.contains("multi_str:mode"))
-        .expect("expected a lane sourced from multi_str:mode");
-    let power_lane = lanes_on_entity
+        .find(|g| g.label.contains("multi_str:mode"))
+        .expect("expected a lane group sourced from multi_str:mode");
+    let power_group = groups_on_entity
         .iter()
-        .find(|l| l.label.contains("multi_str:power"))
-        .expect("expected a lane sourced from multi_str:power");
+        .find(|g| g.label.contains("multi_str:power"))
+        .expect("expected a lane group sourced from multi_str:power");
 
     let phase_label = |p: &re_view_state_timeline::StateLanePhase| {
         p.content
             .as_ref()
             .map_or_else(String::new, |s| s.label.clone())
     };
-    let mode_labels: Vec<_> = mode_lane.phases.iter().map(phase_label).collect();
-    let power_labels: Vec<_> = power_lane.phases.iter().map(phase_label).collect();
+    let mode_labels: Vec<_> = mode_group.lanes[0].phases.iter().map(phase_label).collect();
+    let power_labels: Vec<_> = power_group.lanes[0]
+        .phases
+        .iter()
+        .map(phase_label)
+        .collect();
     assert_eq!(mode_labels, vec!["Idle", "Active", "Idle"]);
     // "On" at ticks 1 and 2 merge into a single phase.
     assert_eq!(power_labels, vec!["Off", "On"]);
@@ -718,14 +735,14 @@ fn test_dynamic_archetype_multiple_different_types() {
 
     let outputs = run_visualizer(&test_context, view_id);
     assert_eq!(outputs.len(), 1);
-    let lanes = &outputs[0].lanes;
-    assert_eq!(lanes.len(), 3);
+    let groups = &outputs[0].groups;
+    assert_eq!(groups.len(), 3);
 
     let kind_of = |source: &str| {
-        lanes
+        groups
             .iter()
-            .find(|l| l.label.contains(source))
-            .unwrap_or_else(|| panic!("no lane labelled with {source}"))
+            .find(|g| g.label.contains(source))
+            .unwrap_or_else(|| panic!("no lane group labelled with {source}"))
             .value_kind
     };
     assert_eq!(kind_of("multi_mix:label"), StateValueKind::String);
@@ -856,10 +873,10 @@ fn test_mixed_chunk_types_do_not_panic() {
     assert_eq!(outputs.len(), 1);
     assert!(
         outputs[0]
-            .lanes
+            .groups
             .iter()
-            .all(|l| l.entity_path != EntityPath::from(entity)),
-        "expected no lane for the mixed-type entity, got: {:?}",
-        outputs[0].lanes
+            .all(|g| g.entity_path != EntityPath::from(entity)),
+        "expected no lane group for the mixed-type entity, got: {:?}",
+        outputs[0].groups
     );
 }

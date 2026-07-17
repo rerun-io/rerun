@@ -2,6 +2,13 @@
 
 use std::sync::Arc;
 
+/// Build a `StateChange` whose state array can contain nulls.
+///
+/// A null entry resets that instance's state, showing a gap in its lane.
+fn multi_state(states: &[Option<&str>]) -> rerun::StateChange {
+    rerun::StateChange::new().with_state_opt(states.iter().copied())
+}
+
 fn main() -> anyhow::Result<()> {
     let rec = rerun::RecordingStreamBuilder::new("rerun_example_state_timeline").spawn()?;
 
@@ -38,8 +45,39 @@ fn main() -> anyhow::Result<()> {
     for (tick, entity, label) in &states {
         rec.set_time_sequence("tick", *tick);
         rec.set_timestamp_secs_since_epoch("timestamp", base_ts + *tick as f64 * step_secs);
-        rec.log(*entity, &rerun::StateChange::new().with_state(*label))?;
+        rec.log(*entity, &rerun::StateChange::single(*label))?;
     }
+
+    // Multi-instance state: a gamepad's buttons logged as one state array, in the spirit of
+    // ROS `sensor_msgs/Joy`. Each instance gets its own lane, grouped under a single label.
+    // Every row is a full assignment of the array: `None` resets its instance (gap in that
+    // lane), and the shorter row at tick 28 resets the omitted third button the same way.
+    #[rustfmt::skip]
+    let button_states: Vec<(i64, Vec<Option<&str>>)> = vec![
+        (0,  vec![Some("Released"), Some("Released"), Some("Released")]),
+        (5,  vec![Some("Pressed"),  Some("Released"), Some("Released")]),
+        (12, vec![Some("Pressed"),  Some("Pressed"),  Some("Released")]),
+        (18, vec![Some("Released"), None,             Some("Pressed")]),
+        (28, vec![Some("Released"), Some("Released")]),
+        (38, vec![Some("Pressed"),  Some("Pressed"),  Some("Pressed")]),
+        (46, vec![Some("Pressed"),  Some("Released"), Some("Released")]),
+    ];
+    for (tick, states) in &button_states {
+        rec.set_time_sequence("tick", *tick);
+        rec.set_timestamp_secs_since_epoch("timestamp", base_ts + *tick as f64 * step_secs);
+        rec.log("state/gamepad_buttons", &multi_state(states))?;
+    }
+
+    // One shared configuration styles every instance lane of the group.
+    rec.log_static(
+        "state/gamepad_buttons",
+        &rerun::StateConfiguration::new()
+            .with_values(["Pressed", "Released"])
+            .with_colors([
+                rerun::Rgba32::from_rgb(239, 83, 80),
+                rerun::Rgba32::from_rgb(76, 175, 80),
+            ]),
+    )?;
 
     // Log an alternative string component on robot_mode via DynamicArchetype.
     // This allows switching the state source in the source selector dropdown.

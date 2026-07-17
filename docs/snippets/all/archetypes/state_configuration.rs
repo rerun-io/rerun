@@ -15,13 +15,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     )?;
 
     rec.set_time_sequence("step", 0);
-    rec.log("door", &rerun::StateChange::new().with_state("open"))?;
+    rec.log("door", &rerun::StateChange::single("open"))?;
 
     rec.set_time_sequence("step", 1);
-    rec.log("door", &rerun::StateChange::new().with_state("closed"))?;
+    rec.log("door", &rerun::StateChange::single("closed"))?;
 
     rec.set_time_sequence("step", 2);
-    rec.log("door", &rerun::StateChange::new().with_state("open"))?;
+    rec.log("door", &rerun::StateChange::single("open"))?;
 
     Ok(())
 }

@@ -14,8 +14,18 @@ use re_viewer_context::{
 };
 
 use crate::data::{
-    StateLane, StateLanePhase, StateLanePhaseContent, StateLanesData, StateValueKind,
+    StateLane, StateLaneGroup, StateLanePhase, StateLanePhaseContent, StateLanesData,
+    StateValueKind,
 };
+
+/// One logged row of the state component.
+struct StateRow {
+    time: i64,
+    row_id: RowId,
+
+    /// One formatted label per instance in the row's state array.
+    labels: Vec<Option<String>>,
+}
 
 /// Maps each accepted source physical type to a type that the visualizer can handle.
 static COMPONENT_CAST_MAP: std::sync::LazyLock<std::collections::BTreeMap<DataType, DataType>> =
@@ -179,9 +189,10 @@ fn resolve_state_config(
     config
 }
 
-/// A visualizer that queries [`StateChange`] archetypes and groups them into state change lanes per entity.
+/// A visualizer that queries [`StateChange`] archetypes and groups them into state change lanes.
 ///
-/// Each entity path becomes one lane. Each distinct state value within a lane gets a unique color.
+/// Each visualizer instruction (typically one per entity path) becomes one lane group, with one
+/// lane per state instance. Each distinct state value within a lane gets a unique color.
 #[derive(Default)]
 pub struct StateVisualizer;
 
@@ -274,7 +285,7 @@ impl VisualizerSystem for StateVisualizer {
         // The `include_extended_bounds` above only considered visible chunks.
         let window_start_query_time = query.range.min();
 
-        let mut lanes: Vec<StateLane> = Vec::new();
+        let mut groups: Vec<StateLaneGroup> = Vec::new();
 
         // The state slot is polymorphic on the source datatype: numerics collapse to f64,
         // strings/bools pass through. The post-cast chunks served by the query layer are
@@ -394,38 +405,65 @@ impl VisualizerSystem for StateVisualizer {
 
             // The bootstrapped state-before-the-window comes first (it has the earliest time),
             // followed by the in-window changes.
-            let mut value_events = collect_state_events(&bootstrap_values, &element_type);
-            value_events.extend(collect_state_events(&range_values, &element_type));
+            let mut rows = collect_state_rows(&bootstrap_values, &element_type);
+            rows.extend(collect_state_rows(&range_values, &element_type));
 
             // `Clear` archetypes logged on this entity (or on an ancestor with
             // `is_recursive = true`) end the current state regardless of value type.
             let clear_events = collect_recursive_clears(ctx, &query, &data_result.entity_path);
 
-            // Build the lane label, appending the source component if remapped.
+            // One lane per instance index.
+            let instance_count = calculate_instance_count(
+                ctx,
+                &rows,
+                view_query.timeline,
+                &data_result.entity_path,
+                instruction,
+                state_component,
+            );
+
+            // Build the lane label: append the source component if remapped, and mark
+            // multi-instance groups with a `[]` suffix.
             let lane_label = {
-                let base = data_result.entity_path.to_string();
-                match instruction.component_mappings.get(&state_component) {
-                    Some(re_viewer_context::VisualizerComponentSource::SourceComponent {
-                        source_component,
-                        ..
-                    }) if source_component != &state_component => {
-                        format!("{base} ({source_component})")
-                    }
-                    _ => base,
+                let mut label = data_result.entity_path.to_string();
+                if let Some(re_viewer_context::VisualizerComponentSource::SourceComponent {
+                    source_component,
+                    ..
+                }) = instruction.component_mappings.get(&state_component)
+                    && source_component != &state_component
+                {
+                    label = format!("{label} ({source_component})");
                 }
+                if instance_count > 1 {
+                    label.push_str("[]");
+                }
+                label
             };
 
-            let lane_phases = build_lane_phases(value_events, clear_events, &state_config);
+            let lanes = (0..instance_count)
+                .map(|instance| {
+                    let mut instance_events = Vec::with_capacity(rows.len());
+                    for row in &rows {
+                        instance_events.push((
+                            row.time,
+                            row.row_id,
+                            row.labels.get(instance).cloned().flatten(),
+                        ));
+                    }
+                    let phases = build_lane_phases(instance_events, &clear_events, &state_config);
+                    StateLane { phases }
+                })
+                .collect();
 
-            lanes.push(StateLane {
+            groups.push(StateLaneGroup {
                 label: lane_label,
                 entity_path: data_result.entity_path.clone(),
                 value_kind,
-                phases: lane_phases,
+                lanes,
             });
         }
 
-        Ok(output.with_visualizer_data(StateLanesData { lanes }))
+        Ok(output.with_visualizer_data(StateLanesData { groups }))
     }
 }
 
@@ -463,31 +501,21 @@ impl StateLabel for bool {
     }
 }
 
-/// Format a typed iterator of rows into `(time, RowId, event)` tuples.
-///
-/// A null (`None`) value is a state reset and becomes a gap event; any other value starts a
-/// new phase labeled with the value. An empty batch (a row with zero values, e.g. from
-/// `clear_fields`) also resets: it means "component cleared" everywhere else in Rerun
-/// (`Clear`, latest-at queries), so the lane treats it the same.
-fn collect_typed_events<T, ChunkIter, RowValues>(
-    rows: ChunkIter,
-) -> Vec<(i64, RowId, Option<String>)>
+/// Format a typed iterator of rows into [`StateRow`]s.
+fn collect_typed_rows<T, ChunkIter, RowValues>(rows: ChunkIter) -> Vec<StateRow>
 where
     T: StateLabel,
     ChunkIter: IntoIterator<Item = (TimeInt, RowId, RowValues)>,
     RowValues: IntoIterator<Item = Option<T>>,
 {
     rows.into_iter()
-        .flat_map(|(data_time, row_id, row_values)| {
-            let t = data_time.as_i64();
-            let mut events: Vec<_> = row_values
+        .map(|(data_time, row_id, row_values)| StateRow {
+            time: data_time.as_i64(),
+            row_id,
+            labels: row_values
                 .into_iter()
-                .map(|v| (t, row_id, v.map(|v| v.to_lane_label())))
-                .collect();
-            if events.is_empty() {
-                events.push((t, row_id, None));
-            }
-            events
+                .map(|v| v.map(|v| v.to_lane_label()))
+                .collect(),
         })
         .collect()
 }
@@ -501,11 +529,11 @@ where
 /// - Leading `None`s (no preceding state) are dropped.
 fn build_lane_phases(
     value_events: Vec<(i64, RowId, Option<String>)>,
-    clear_events: Vec<(TimeInt, RowId)>,
+    clear_events: &[(TimeInt, RowId)],
     state_config: &[(String, StateStyle)],
 ) -> Vec<StateLanePhase> {
     let mut events = value_events;
-    events.extend(clear_events.into_iter().map(|(t, r)| (t.as_i64(), r, None)));
+    events.extend(clear_events.iter().map(|&(t, r)| (t.as_i64(), r, None)));
     if events.is_empty() {
         return Vec::new();
     }
@@ -565,40 +593,37 @@ fn build_phase_content(
     }
 }
 
-/// Collect typed `(time, RowId, Some(label)/None)` events for one element type from a query
-/// result iterator. Returns an empty vec for element types the polymorphic cast can't produce.
-fn collect_state_events(
+/// Collect typed state rows for one element type from a query result iterator.
+/// Returns no rows for element types the polymorphic cast can't produce.
+///
+/// Null values, empty strings, and empty arrays all reset (see [`StateRow`]); any other
+/// value starts a new phase for its instance.
+fn collect_state_rows(
     values: &re_view::HybridResultsChunkIter<'_>,
     element_type: &DataType,
-) -> Vec<(i64, RowId, Option<String>)> {
+) -> Vec<StateRow> {
     match element_type {
         DataType::Utf8 | DataType::LargeUtf8 => {
-            // Null values, empty strings, and empty batches (zero values in a row) all reset
-            // the lane; any other string starts a new phase.
+            // Strings get their own path: unlike the typed collector, an empty string is
+            // also a reset for its instance.
             values
                 .slice::<Option<String>>()
-                .flat_map(|((data_time, row_id), texts)| {
-                    let t = data_time.as_i64();
-                    let mut events: Vec<_> = texts
+                .map(|((data_time, row_id), texts)| StateRow {
+                    time: data_time.as_i64(),
+                    row_id,
+                    labels: texts
                         .into_iter()
-                        .map(|opt| {
-                            let event = opt.filter(|s| !s.is_empty()).map(|s| s.to_lane_label());
-                            (t, row_id, event)
-                        })
-                        .collect();
-                    if events.is_empty() {
-                        events.push((t, row_id, None));
-                    }
-                    events
+                        .map(|opt| opt.filter(|s| !s.is_empty()).map(|s| s.to_lane_label()))
+                        .collect(),
                 })
                 .collect()
         }
-        DataType::Float64 => collect_typed_events::<f64, _, _>(
+        DataType::Float64 => collect_typed_rows::<f64, _, _>(
             values
                 .slice::<Option<f64>>()
                 .map(|((data_time, row_id), values)| (data_time, row_id, values)),
         ),
-        DataType::Boolean => collect_typed_events::<bool, _, _>(
+        DataType::Boolean => collect_typed_rows::<bool, _, _>(
             values
                 .slice::<Option<bool>>()
                 .map(|((data_time, row_id), values)| (data_time, row_id, values)),
@@ -623,6 +648,56 @@ fn state_chunk_element_types(
         .filter_map(|chunk| chunk.components().get_array(chunks.component))
         .map(|arr| arr.value_type())
         .collect()
+}
+
+/// The length (instance count) of the state arrays logged for `entity_path` on `timeline`.
+fn calculate_instance_count(
+    ctx: &ViewContext<'_>,
+    rows: &[StateRow],
+    timeline: re_log_types::TimelineName,
+    entity_path: &re_log_types::EntityPath,
+    instruction: &re_viewer_context::VisualizerInstruction,
+    state_component: re_sdk_types::ComponentIdentifier,
+) -> usize {
+    use re_chunk_store::external::arrow::array::Array as _;
+
+    if let Some(max) = rows.iter().map(|row| row.labels.len()).max() {
+        return max;
+    }
+
+    // No on-screen data, fallback to probing the store.
+    // Component remappings redirect the state slot to another source component.
+    let source_component = match instruction.component_mappings.get(&state_component) {
+        Some(re_viewer_context::VisualizerComponentSource::SourceComponent {
+            source_component,
+            ..
+        }) => *source_component,
+        _ => state_component,
+    };
+
+    let full_range_query = re_chunk_store::RangeQuery::new(timeline, AbsoluteTimeRange::EVERYTHING);
+    let engine = ctx.recording_engine();
+    let results = engine.store().range_relevant_chunks(
+        re_chunk_store::ChunkTrackingMode::Ignore,
+        &full_range_query,
+        entity_path,
+        source_component,
+    );
+
+    // Best effort: check the first piece of data we find instead of scanning the entire timeline.
+    for chunk in &results.chunks {
+        if let Some(array) = chunk.components().get_array(source_component) {
+            for i in 0..array.len() {
+                if array.is_valid(i) {
+                    // The length of the first valid array.
+                    return (array.value_length(i) as usize).max(1);
+                }
+            }
+        }
+    }
+
+    // No data found in store, display a single empty lane.
+    1
 }
 
 #[cfg(test)]
@@ -655,7 +730,7 @@ mod tests {
         let cfg = visible_config(&["Idle"]);
         let events = vec![(40, RowId::new(), Some("Idle".to_owned()))];
 
-        let phases = build_lane_phases(events, Vec::new(), &cfg);
+        let phases = build_lane_phases(events, &[], &cfg);
 
         assert_eq!(phases.len(), 1, "{phases:?}");
         assert_eq!(phases[0].start_time, 40, "{phases:?}");
@@ -672,7 +747,7 @@ mod tests {
             (100, RowId::new(), Some("Moving".to_owned())), // real change at the same time
         ];
 
-        let phases = build_lane_phases(events, Vec::new(), &cfg);
+        let phases = build_lane_phases(events, &[], &cfg);
 
         assert_eq!(phases.len(), 1, "{phases:?}");
         assert_eq!(phases[0].start_time, 100, "{phases:?}");

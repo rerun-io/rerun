@@ -3560,7 +3560,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     name: "state",
                     display_name: "State",
                     component_type: "rerun.components.Text".into(),
-                    docstring_md: "The new state value.\n\nA `null` value in the state batch is treated as a state reset: the previous state ends\nand a gap is shown in the state timeline view until the next state. An empty string and\nan empty state batch (e.g. from clearing the field) act the same way.",
+                    docstring_md: "The new state values; each instance gets its own lane in the state timeline view.\n\nA reset ends the previous state and shows a gap in the state timeline view until the\nnext state. An empty string, a null array entry, and an empty state array (e.g. from\nclearing the field) all act as resets.\n\nThe length of the state array should not change over time.",
                     flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
                 }],
             },

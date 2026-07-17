@@ -14,13 +14,15 @@ use re_viewer_context::{
 };
 use re_viewport_blueprint::ViewProperty;
 
-use crate::data::{StateLane, StateLanePhase, StateLanesData};
+use crate::data::{StateLaneGroup, StateLanePhase, StateLanesData};
 
 // Layout constants (in screen pixels).
 const LANE_BAND_HEIGHT: f32 = 22.0;
 const LANE_LABEL_HEIGHT: f32 = 14.0;
 const LANE_GAP: f32 = 4.0;
-const LANE_TOTAL_HEIGHT: f32 = LANE_BAND_HEIGHT + LANE_LABEL_HEIGHT + LANE_GAP;
+
+/// Vertical gap between the stacked instance lanes of a multi-instance group.
+const SUB_LANE_GAP: f32 = 1.0;
 
 const TIME_AXIS_HEIGHT: f32 = 20.0;
 const TOP_MARGIN: f32 = 4.0;
@@ -305,13 +307,13 @@ impl ViewClass for StateTimelineView {
 
         let state = state.downcast_mut::<StateTimelineViewState>()?;
 
-        // Collect all lanes from all visualizers.
-        let all_lanes: Vec<&StateLane> = system_output
+        // Collect all lane groups from all visualizers.
+        let all_groups: Vec<&StateLaneGroup> = system_output
             .iter_visualizer_data::<StateLanesData>()
-            .flat_map(|d| d.lanes.iter())
+            .flat_map(|d| d.groups.iter())
             .collect();
 
-        if all_lanes.is_empty() {
+        if all_groups.is_empty() {
             let (rect, _) =
                 ui.allocate_exact_size(ui.available_size(), egui::Sense::click_and_drag());
             ui.scope_builder(egui::UiBuilder::new().max_rect(rect), |ui| {
@@ -327,7 +329,7 @@ impl ViewClass for StateTimelineView {
         // Compute data time range.
         let timeline_range = ctx.recording().time_range_for(&query.timeline);
         let timeline_end: Option<i64> = timeline_range.map(|r| r.max.as_i64());
-        let (data_min, data_max) = data_time_range(&all_lanes, timeline_end);
+        let (data_min, data_max) = data_time_range(&all_groups, timeline_end);
 
         // How is the time (X) axis linked? When linked to global, the pan/zoom window is
         // shared with all other plots (e.g. time series views) via the global blueprint view,
@@ -470,10 +472,12 @@ impl ViewClass for StateTimelineView {
             }
         }
 
-        // Lanes: each one is its own widget, stacked vertically inside a ScrollArea.
+        // Lane groups: each one is its own widget, stacked vertically inside a ScrollArea.
         let label_color = ui.style().visuals.text_color();
-        let mut visible_lane_band_rects: Vec<(egui::Rect, &StateLane)> =
-            Vec::with_capacity(all_lanes.len());
+        let mut hovered_entity: Option<&EntityPath> = None;
+        let mut hovered_phase: Option<HoveredPhase> = None;
+        let mut group_label_anchors: Vec<(egui::Pos2, &StateLaneGroup)> =
+            Vec::with_capacity(all_groups.len());
         ui.scope_builder(egui::UiBuilder::new().max_rect(lanes_rect), |ui| {
             egui::ScrollArea::vertical()
                 .auto_shrink([false, false])
@@ -485,16 +489,22 @@ impl ViewClass for StateTimelineView {
                 .show(ui, |ui: &mut egui::Ui| {
                     ui.add_space(TOP_MARGIN);
                     ui.spacing_mut().item_spacing.y = 0.0;
-                    for lane in &all_lanes {
-                        let band_rect = show_lane(
+                    for group in &all_groups {
+                        let result = show_group(
                             ui,
-                            lane,
+                            group,
                             &time_ranges_ui,
                             time_type,
                             timestamp_format,
                             open_end_time,
                         );
-                        visible_lane_band_rects.push((band_rect, *lane));
+                        group_label_anchors.push((result.label_pos, *group));
+                        if result.is_hovered {
+                            hovered_entity = Some(&group.entity_path);
+                        }
+                        if result.hovered_phase.is_some() {
+                            hovered_phase = result.hovered_phase;
+                        }
                     }
 
                     // Mark the limits of the timeline with the same zig-zag bands the time
@@ -508,11 +518,11 @@ impl ViewClass for StateTimelineView {
                         rect.y_range(),
                     );
 
-                    // Lane labels go on top of the zig-zag bands; their translucent
+                    // Group labels go on top of the zig-zag bands; their translucent
                     // background plates keep them readable over the teeth.
                     let lanes_painter = painter.with_clip_rect(lanes_rect);
-                    for (band_rect, lane) in &visible_lane_band_rects {
-                        paint_lane_label(ui, lane, label_color, &lanes_painter, *band_rect);
+                    for (label_pos, group) in &group_label_anchors {
+                        paint_group_label(ui, group, label_color, &lanes_painter, *label_pos);
                     }
                 });
         });
@@ -599,21 +609,16 @@ impl ViewClass for StateTimelineView {
             state.time_views.insert(query.timeline, time_view);
         }
 
-        // Handle selection: determine what's under the pointer (lane entity or view).
-        let hover_pos = ui.input(|i| i.pointer.hover_pos());
-        let hovered_lane = hover_pos.and_then(|pos| hovered_lane(pos, &visible_lane_band_rects));
-
         // Publish the hovered phase so other views can highlight the same range.
-        if let Some(pos) = hover_pos
-            && let Some((phase_start, phase_end, phase_color)) =
-                find_hovered_phase(pos, lanes_rect, &all_lanes, &time_ranges_ui, open_end_time)
-        {
-            let [r, g, b, _] = phase_color.to_array();
+        if let Some(phase) = hovered_phase {
+            let [r, g, b, _] = phase.color.to_array();
             #[expect(clippy::disallowed_methods)]
             let band_color = egui::Color32::from_rgba_unmultiplied(r, g, b, 30);
             let range = AbsoluteTimeRange::new(
-                phase_start,
-                phase_end.map_or(TimeInt::MAX, TimeInt::saturated_temporal_i64),
+                phase.start_time,
+                phase
+                    .end_time
+                    .map_or(TimeInt::MAX, TimeInt::saturated_temporal_i64),
             );
             ctx.send_time_commands([TimeControlCommand::HighlightRange(
                 re_viewer_context::TimeRangeHighlight {
@@ -633,7 +638,8 @@ impl ViewClass for StateTimelineView {
             ui.paint_time_cursor(&painter, cursor_response.as_ref(), cursor_x, rect.y_range());
         }
 
-        let interacted_item = if let Some(entity_path) = hovered_lane {
+        // Selection: a hovered lane band selects its entity, anywhere else the view.
+        let interacted_item = if let Some(entity_path) = hovered_entity {
             Item::DataResult(DataResultInteractionAddress::from_entity_path(
                 query.view_id,
                 entity_path.clone(),
@@ -654,7 +660,7 @@ impl ViewClass for StateTimelineView {
 /// rather than being folded into a visible merged region. A run of narrow phases that
 /// contains a single phase is emitted as a [`RenderItem::Single`] (no merge marker).
 fn compute_render_items<'a>(
-    lane: &'a StateLane,
+    phases: &'a [StateLanePhase],
     lanes_rect: egui::Rect,
     time_ranges_ui: &TimeRangesUi,
     open_end_time: Option<f64>,
@@ -715,16 +721,15 @@ fn compute_render_items<'a>(
     let mut items: Vec<RenderItem<'a>> = Vec::new();
     let mut pending = Pending::default();
 
-    for (i, phase) in lane.phases.iter().enumerate() {
+    for (i, phase) in phases.iter().enumerate() {
         // Gaps break the merge chain.
         if phase.content.is_none() {
             pending.flush(&mut items);
             continue;
         }
 
-        let is_last = i + 1 == lane.phases.len();
-        let next_time: Option<f64> = lane
-            .phases
+        let is_last = i + 1 == phases.len();
+        let next_time: Option<f64> = phases
             .get(i + 1)
             .map(|p| p.start_time as f64)
             .or(open_end_time);
@@ -790,12 +795,12 @@ fn compute_render_items<'a>(
     items
 }
 
-/// Compute the (min, max) time range across all lanes.
-fn data_time_range(lanes: &[&StateLane], timeline_end: Option<i64>) -> (f64, f64) {
+/// Compute the (min, max) time range across all lane groups.
+fn data_time_range(groups: &[&StateLaneGroup], timeline_end: Option<i64>) -> (f64, f64) {
     let mut min = f64::MAX;
     let mut max = f64::MIN;
-    for lane in lanes {
-        for phase in &lane.phases {
+    for group in groups {
+        for phase in group.lanes.iter().flat_map(|lane| &lane.phases) {
             let t = phase.start_time as f64;
             min = min.min(t);
             max = max.max(t);
@@ -879,148 +884,146 @@ fn save_linked_time_view(
     global_time_axis.save_blueprint_component(ctx, &TimeAxis::descriptor_view_range(), &new_range);
 }
 
-/// Returns the entity path of the lane whose band contains `pos`, if any.
-fn hovered_lane<'a>(
-    pos: egui::Pos2,
-    lane_band_rects: &'a [(egui::Rect, &'a StateLane)],
-) -> Option<&'a EntityPath> {
-    lane_band_rects
-        .iter()
-        .find_map(|(band_rect, lane)| band_rect.contains(pos).then_some(&lane.entity_path))
+/// What the lane-group widgets found under the pointer this frame.
+struct HoveredPhase {
+    start_time: i64,
+
+    /// `None` for an open-ended last phase.
+    end_time: Option<i64>,
+
+    color: egui::Color32,
 }
 
-/// Returns the (start, end, color) of the visible phase under `pos`, if any.
-/// The end is `None` for the last phase in a lane (no known end).
-fn find_hovered_phase(
-    pos: egui::Pos2,
-    lanes_rect: egui::Rect,
-    lanes: &[&StateLane],
-    time_ranges_ui: &TimeRangesUi,
-    open_end_time: Option<f64>,
-) -> Option<(i64, Option<i64>, egui::Color32)> {
-    re_tracing::profile_function!();
+/// What [`show_group`] rendered and found under the pointer.
+struct ShowGroupResult {
+    /// Where the shared group label goes.
+    label_pos: egui::Pos2,
 
-    for (lane_idx, lane) in lanes.iter().enumerate() {
-        let y_top = lanes_rect.top() + TOP_MARGIN + lane_idx as f32 * LANE_TOTAL_HEIGHT;
-        let band_y_top = y_top + LANE_LABEL_HEIGHT;
-        let band_y_bottom = band_y_top + LANE_BAND_HEIGHT;
-        if pos.y < band_y_top || pos.y > band_y_bottom {
-            continue;
-        }
-        for (i, phase) in lane.phases.iter().enumerate() {
-            let Some(content) = phase.content.as_ref() else {
-                continue;
-            };
-            let Some(x_start) =
-                time_ranges_ui.x_from_time_f32(TimeReal::from(phase.start_time as f64))
-            else {
-                continue;
-            };
-            let next_phase = lane.phases.get(i + 1);
-            let x_start = x_start.max(lanes_rect.left());
-            // The last phase extends to the end of the timeline, not the rect edge.
-            let x_end = match next_phase {
-                Some(next) => time_ranges_ui
-                    .x_from_time_f32(TimeReal::from(next.start_time as f64))
-                    .unwrap_or_else(|| lanes_rect.right()),
-                None => open_end_time
-                    .and_then(|t| time_ranges_ui.x_from_time_f32(TimeReal::from(t)))
-                    .unwrap_or_else(|| lanes_rect.right()),
-            }
-            .min(lanes_rect.right());
-            if x_end <= x_start {
-                continue;
-            }
-            if pos.x >= x_start && pos.x <= x_end {
-                return Some((
-                    phase.start_time,
-                    next_phase.map(|n| n.start_time),
-                    content.color,
-                ));
-            }
-        }
-    }
-    None
+    /// Whether the pointer is over one of the group's bands, including gaps.
+    is_hovered: bool,
+
+    /// The render item under the pointer, if any. For a merged region this is the
+    /// region's full span.
+    hovered_phase: Option<HoveredPhase>,
 }
 
-/// Render a single lane as a self-contained widget. Returns the lane's *band* rect
-/// (the colored phase strip, excluding the label and inter-lane gap).
-fn show_lane(
+/// Render a lane group as a self-contained widget: label space at the top, then one
+/// band per instance lane, stacked vertically.
+fn show_group(
     ui: &mut egui::Ui,
-    lane: &StateLane,
+    group: &StateLaneGroup,
     time_ranges_ui: &TimeRangesUi,
     time_type: TimeType,
     timestamp_format: TimestampFormat,
     open_end_time: Option<f64>,
-) -> egui::Rect {
+) -> ShowGroupResult {
+    let num_lanes = group.lanes.len();
+    let bands_height =
+        num_lanes as f32 * LANE_BAND_HEIGHT + num_lanes.saturating_sub(1) as f32 * SUB_LANE_GAP;
     let (response, painter) = ui.allocate_painter(
-        egui::vec2(ui.available_width(), LANE_TOTAL_HEIGHT),
+        egui::vec2(
+            ui.available_width(),
+            LANE_LABEL_HEIGHT + bands_height + LANE_GAP,
+        ),
         egui::Sense::hover(),
     );
     let rect = response.rect;
-    let band_rect = egui::Rect::from_min_max(
-        egui::pos2(rect.left(), rect.top() + LANE_LABEL_HEIGHT),
-        egui::pos2(
-            rect.right(),
-            rect.top() + LANE_LABEL_HEIGHT + LANE_BAND_HEIGHT,
-        ),
-    );
 
     let hover_pos = response.hover_pos();
-    // `compute_render_items` uses the rect's x bounds for clipping phases to the
-    // visible time range; y is unused. Passing the lane's own rect gives the same
-    // bounds as the old whole-area lanes_rect since every lane spans the full width.
-    let render_items = compute_render_items(lane, rect, time_ranges_ui, open_end_time);
-
     let merged_fill_inactive = ui.visuals().widgets.inactive.bg_fill;
     let merged_fill_hovered = ui.visuals().widgets.hovered.bg_fill;
     let merged_text_color = ui.visuals().text_color();
 
-    for item in &render_items {
-        let (x_start, x_end) = item.x_range();
-        let item_rect = egui::Rect::from_min_max(
-            egui::pos2(x_start, band_rect.top()),
-            egui::pos2(x_end, band_rect.bottom()),
-        );
-        let hovered = hover_pos.is_some_and(|pos| item_rect.contains(pos));
+    let mut is_hovered = false;
+    let mut hovered_phase = None;
 
-        match item {
-            RenderItem::Single { phase, .. } => {
-                paint_single_phase(&painter, item_rect, phase, hovered);
-            }
-            RenderItem::Merged { count, .. } => {
-                let fill = if hovered {
-                    merged_fill_hovered
-                } else {
-                    merged_fill_inactive
-                };
-                paint_merged_phase(&painter, item_rect, *count, fill, merged_text_color);
-            }
+    for (instance, lane) in group.lanes.iter().enumerate() {
+        let band_top =
+            rect.top() + LANE_LABEL_HEIGHT + instance as f32 * (LANE_BAND_HEIGHT + SUB_LANE_GAP);
+        let band_rect = egui::Rect::from_min_max(
+            egui::pos2(rect.left(), band_top),
+            egui::pos2(rect.right(), band_top + LANE_BAND_HEIGHT),
+        );
+
+        if hover_pos.is_some_and(|pos| band_rect.contains(pos)) {
+            is_hovered = true;
         }
 
-        if let Some(pos) = hover_pos
-            && item_rect.contains(pos)
-        {
-            show_item_tooltip(ui, item, time_type, timestamp_format);
+        // `compute_render_items` uses the rect's x bounds for clipping phases to the
+        // visible time range; y is unused. Passing the group's own rect gives the same
+        // bounds as the old whole-area lanes_rect since every group spans the full width.
+        let render_items = compute_render_items(&lane.phases, rect, time_ranges_ui, open_end_time);
+
+        for item in &render_items {
+            let (x_start, x_end) = item.x_range();
+            let item_rect = egui::Rect::from_min_max(
+                egui::pos2(x_start, band_rect.top()),
+                egui::pos2(x_end, band_rect.bottom()),
+            );
+            let hovered = hover_pos.is_some_and(|pos| item_rect.contains(pos));
+
+            match item {
+                RenderItem::Single {
+                    phase, end_time, ..
+                } => {
+                    paint_single_phase(&painter, item_rect, phase, hovered);
+                    if hovered && let Some(content) = &phase.content {
+                        hovered_phase = Some(HoveredPhase {
+                            start_time: phase.start_time,
+                            end_time: *end_time,
+                            color: content.color,
+                        });
+                    }
+                }
+                RenderItem::Merged {
+                    start_time,
+                    end_time,
+                    count,
+                    ..
+                } => {
+                    let fill = if hovered {
+                        merged_fill_hovered
+                    } else {
+                        merged_fill_inactive
+                    };
+                    paint_merged_phase(&painter, item_rect, *count, fill, merged_text_color);
+                    if hovered {
+                        hovered_phase = Some(HoveredPhase {
+                            start_time: *start_time,
+                            end_time: *end_time,
+                            color: fill,
+                        });
+                    }
+                }
+            }
+
+            if hovered {
+                let instance = (num_lanes > 1).then_some(instance);
+                show_item_tooltip(ui, item, instance, time_type, timestamp_format);
+            }
         }
     }
 
-    band_rect
+    ShowGroupResult {
+        label_pos: egui::pos2(rect.left() + 4.0, rect.top()),
+        is_hovered,
+        hovered_phase,
+    }
 }
 
-/// Paint a lane's entity label (above `band_rect`) on a translucent background-colored
-/// plate, so it stays readable where it overlaps the zig-zag "end of timeline" bands.
+/// Paint a group's label (shared by all its instance lanes) on a translucent
+/// background-colored plate, so it stays readable where it overlaps the zig-zag
+/// "end of timeline" bands.
 /// Over the plain background (the common case) the plate is invisible.
-fn paint_lane_label(
+fn paint_group_label(
     ui: &egui::Ui,
-    lane: &StateLane,
+    group: &StateLaneGroup,
     label_color: egui::Color32,
     painter: &egui::Painter,
-    band_rect: egui::Rect,
+    label_pos: egui::Pos2,
 ) {
-    let label_pos = egui::pos2(band_rect.left() + 4.0, band_rect.top() - LANE_LABEL_HEIGHT);
     let label_galley = painter.layout_no_wrap(
-        lane.label.clone(),
+        group.label.clone(),
         egui::FontId::proportional(11.0),
         label_color,
     );
@@ -1108,6 +1111,7 @@ fn paint_merged_phase(
 fn show_item_tooltip(
     ui: &egui::Ui,
     item: &RenderItem<'_>,
+    instance: Option<usize>,
     time_type: TimeType,
     timestamp_format: TimestampFormat,
 ) {
@@ -1120,6 +1124,13 @@ fn show_item_tooltip(
     .show(|ui| {
         let weak = ui.visuals().weak_text_color();
         let small = egui::FontId::proportional(11.0);
+        if let Some(instance) = instance {
+            ui.label(
+                egui::RichText::new(format!("Instance {instance}"))
+                    .font(small.clone())
+                    .color(weak),
+            );
+        }
         match item {
             RenderItem::Single {
                 phase, end_time, ..
@@ -1192,27 +1203,21 @@ fn test_help_view() {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use re_log_types::EntityPath;
 
-    /// Construct a `StateLane` from `(start_time, drawn)` pairs. `drawn = true` is
+    /// Construct a phase list from `(start_time, drawn)` pairs. `drawn = true` is
     /// a visible state; `drawn = false` is a gap. Color/label are unused by
     /// `compute_render_items`, so we leave them dummy.
-    fn lane(phases: &[(i64, bool)]) -> StateLane {
-        StateLane {
-            label: "test".into(),
-            entity_path: EntityPath::from("/test"),
-            value_kind: crate::data::StateValueKind::String,
-            phases: phases
-                .iter()
-                .map(|&(t, drawn)| StateLanePhase {
-                    start_time: t,
-                    content: drawn.then(|| crate::data::StateLanePhaseContent {
-                        label: String::new(),
-                        color: egui::Color32::TRANSPARENT,
-                    }),
-                })
-                .collect(),
-        }
+    fn lane(phases: &[(i64, bool)]) -> Vec<StateLanePhase> {
+        phases
+            .iter()
+            .map(|&(t, drawn)| StateLanePhase {
+                start_time: t,
+                content: drawn.then(|| crate::data::StateLanePhaseContent {
+                    label: String::new(),
+                    color: egui::Color32::TRANSPARENT,
+                }),
+            })
+            .collect()
     }
 
     /// 100-pixel-wide lane rect; combined with a `TimeView` covering `[0, 100]`

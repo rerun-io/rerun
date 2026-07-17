@@ -61,6 +61,7 @@ mod segmentation_image_ext;
 mod series_lines;
 mod series_points;
 mod state_change;
+mod state_change_ext;
 mod state_configuration;
 mod tensor;
 mod tensor_ext;

@@ -18,10 +18,12 @@ table StateChange (
 ) {
   // --- Required ---
 
-  /// The new state value.
+  /// The new state values; each instance gets its own lane in the state timeline view.
   ///
-  /// A `null` value in the state batch is treated as a state reset: the previous state ends
-  /// and a gap is shown in the state timeline view until the next state. An empty string and
-  /// an empty state batch (e.g. from clearing the field) act the same way.
-  state: rerun.components.Text ("attr.rerun.component_required", nullable, order: 100);
+  /// A reset ends the previous state and shows a gap in the state timeline view until the
+  /// next state. An empty string, a null array entry, and an empty state array (e.g. from
+  /// clearing the field) all act as resets.
+  ///
+  /// The length of the state array should not change over time.
+  state: [rerun.components.Text] ("attr.rerun.component_required", nullable, order: 100);
 }
