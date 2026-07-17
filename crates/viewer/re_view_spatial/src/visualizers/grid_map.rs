@@ -19,7 +19,7 @@ use re_viewer_context::{
 use super::SpatialViewVisualizerData;
 use super::entity_iterator::process_archetype;
 use crate::contexts::SpatialSceneVisualizerInstructionContext;
-use crate::{PickableRectSourceData, PickableTexturedRect};
+use crate::{PickableRectSourceData, PickableTexturedRect, SpaceKind};
 
 #[derive(Default)]
 pub struct GridMapVisualizer;
@@ -198,7 +198,7 @@ impl GridMapVisualizer {
                 component_data,
                 &color_mode,
             ) {
-                data.add_bounding_box(
+                data.add_bounding_box_3d(
                     entity_path.hash(),
                     textured_rect.bounding_box(),
                     glam::Affine3A::IDENTITY,
@@ -212,7 +212,7 @@ impl GridMapVisualizer {
                             depth_meter: None,
                         },
                     },
-                    spatial_ctx.view_class_identifier,
+                    SpaceKind::ThreeD, // The bounding box is flat, but this is distinctively a 3D object in a 3D space!
                 );
             }
         }

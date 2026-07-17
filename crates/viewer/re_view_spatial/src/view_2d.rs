@@ -13,6 +13,7 @@ use re_viewer_context::{
     ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewerContext,
 };
 
+use crate::SpaceKind;
 use crate::contexts::register_spatial_contexts;
 use crate::heuristics::IndicatedVisualizableEntities;
 use crate::max_image_dimension_subscriber::{ImageTypes, MaxDimensions};
@@ -21,7 +22,6 @@ use crate::spatial_topology::{SpatialTopology, SubSpaceConnectionFlags};
 use crate::ui::SpatialViewState;
 #[cfg(debug_assertions)]
 use crate::ui::bbox_debug_ui;
-use crate::view_kind::SpatialViewKind;
 use crate::visualizers::register_2d_spatial_visualizers;
 
 #[derive(Default)]
@@ -241,7 +241,7 @@ impl ViewClass for SpatialView2D {
         let state = state.downcast_mut::<SpatialViewState>()?;
         // TODO(andreas): list_item'ify the rest
         ui.selection_grid("spatial_settings_ui").show(ui, |ui| {
-            state.bounding_box_ui(ui, SpatialViewKind::TwoD);
+            state.bounding_box_ui(ui, SpaceKind::TwoD);
 
             #[cfg(debug_assertions)]
             bbox_debug_ui(ui, state);
@@ -270,7 +270,7 @@ impl ViewClass for SpatialView2D {
         re_tracing::profile_function!();
 
         let state = state.downcast_mut::<SpatialViewState>()?;
-        state.update_frame_statistics(ui, &system_output, SpatialViewKind::TwoD);
+        state.update_frame_statistics(ui, &system_output, SpaceKind::TwoD);
 
         self.view_2d(ctx, missing_chunk_reporter, ui, state, query, system_output)
     }

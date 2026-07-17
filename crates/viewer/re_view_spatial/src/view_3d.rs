@@ -25,6 +25,7 @@ use re_viewer_context::{
 };
 use re_viewport_blueprint::ViewProperty;
 
+use crate::SpaceKind;
 use crate::contexts::register_spatial_contexts;
 use crate::heuristics::IndicatedVisualizableEntities;
 use crate::shared_fallbacks;
@@ -32,7 +33,6 @@ use crate::spatial_topology::{HeuristicHints, SpatialTopology, SubSpaceConnectio
 use crate::ui::SpatialViewState;
 #[cfg(debug_assertions)]
 use crate::ui::bbox_debug_ui;
-use crate::view_kind::SpatialViewKind;
 use crate::visualizers::{
     CamerasVisualizer, TransformAxes3DVisualizer, register_3d_spatial_visualizers,
 };
@@ -518,7 +518,7 @@ impl ViewClass for SpatialView3D {
             });
             ui.end_row();
 
-            state.bounding_box_ui(ui, SpatialViewKind::ThreeD);
+            state.bounding_box_ui(ui, SpaceKind::ThreeD);
 
             #[cfg(debug_assertions)]
             bbox_debug_ui(ui, state);
@@ -547,7 +547,7 @@ impl ViewClass for SpatialView3D {
         re_tracing::profile_function!();
 
         let state = state.downcast_mut::<SpatialViewState>()?;
-        state.update_frame_statistics(ui, &system_output, SpatialViewKind::ThreeD);
+        state.update_frame_statistics(ui, &system_output, SpaceKind::ThreeD);
 
         self.view_3d(ctx, missing_chunk_reporter, ui, state, query, system_output)
     }

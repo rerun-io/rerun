@@ -1,9 +1,9 @@
 use egui::NumExt as _;
 use nohash_hasher::IntMap;
 use re_log_types::EntityPathHash;
-use re_viewer_context::{SystemExecutionOutput, ViewClass as _};
+use re_viewer_context::SystemExecutionOutput;
 
-use crate::view_kind::SpatialViewKind;
+use crate::SpaceKind;
 use crate::visualizers::iter_spatial_data;
 
 #[derive(Clone, re_byte_size::SizeBytes)]
@@ -46,7 +46,7 @@ impl SceneBoundingBoxes {
         &mut self,
         ui: &egui::Ui,
         system_output: &SystemExecutionOutput,
-        space_kind: SpatialViewKind,
+        space_kind: SpaceKind,
     ) {
         re_tracing::profile_function!();
 
@@ -56,28 +56,36 @@ impl SceneBoundingBoxes {
         self.region_of_interest_current = macaw::BoundingBox::nothing();
         self.region_of_interest_per_entity.clear();
 
-        for (affinity, data) in iter_spatial_data(system_output) {
-            // If we're in a 3D space, but the visualizer is distinctly 2D, don't count it towards the bounding box.
-            // These visualizers show up when we're on a pinhole camera plane which itself is heuristically fed by the
-            // bounding box, creating a feedback loop if we were to add it here.
-            if space_kind == SpatialViewKind::ThreeD
-                && affinity == Some(crate::SpatialView2D::identifier())
-            {
-                continue;
-            }
+        for data in iter_spatial_data(system_output) {
+            for bounding_box in data.iter_bounding_boxes() {
+                // 2D objects under a pinhole are placed on its image plane. Since the image plane
+                // distance may depend on the scene bounds, including them could create a feedback loop.
+                if space_kind == SpaceKind::ThreeD && bounding_box.subspace == SpaceKind::TwoD {
+                    continue;
+                }
 
-            for (entity, bbox) in data.iter_bounding_boxes() {
                 self.per_entity
-                    .entry(*entity)
-                    .and_modify(|bbox_entry| *bbox_entry = bbox_entry.union(*bbox))
-                    .or_insert(*bbox);
+                    .entry(bounding_box.entity_path_hash)
+                    .and_modify(|bbox_entry| {
+                        *bbox_entry = bbox_entry.union(bounding_box.bounding_box);
+                    })
+                    .or_insert(bounding_box.bounding_box);
             }
 
-            for (entity, region_of_interest) in data.iter_regions_of_interest() {
+            for region_of_interest in data.iter_regions_of_interest() {
+                // 2D objects under a pinhole are placed on its image plane. Since the image plane
+                // distance may depend on the region of interest, including them could create a feedback loop.
+                if space_kind == SpaceKind::ThreeD && region_of_interest.subspace == SpaceKind::TwoD
+                {
+                    continue;
+                }
+
                 self.region_of_interest_per_entity
-                    .entry(*entity)
-                    .and_modify(|entry| *entry = entry.union(*region_of_interest))
-                    .or_insert(*region_of_interest);
+                    .entry(region_of_interest.entity_path_hash)
+                    .and_modify(|entry| {
+                        *entry = entry.union(region_of_interest.bounding_box);
+                    })
+                    .or_insert(region_of_interest.bounding_box);
             }
         }
 

@@ -10,7 +10,7 @@ use re_view::AnnotationSceneContext;
 use re_viewer_context::{Annotations, ImageInfo, StoreViewContext, ViewQuery, gpu_bridge};
 
 use crate::PickableRectSourceData;
-use crate::view_kind::SpatialViewKind;
+use crate::SpaceKind;
 
 pub struct PickedPixelInfo {
     pub source_data: PickableRectSourceData,
@@ -23,7 +23,7 @@ pub fn textured_rect_hover_ui(
     ui: &mut egui::Ui,
     instance_path: &re_entity_db::InstancePath,
     query: &ViewQuery<'_>,
-    spatial_kind: SpatialViewKind,
+    spatial_kind: SpaceKind,
     ui_pan_and_zoom_from_ui: egui::emath::RectTransform,
     annotations: &AnnotationSceneContext,
     picked_pixel_info: PickedPixelInfo,
@@ -54,7 +54,7 @@ pub fn textured_rect_hover_ui(
         let [w, h] = texture.width_height();
         let (w, h) = (w as f32, h as f32);
 
-        if spatial_kind == SpatialViewKind::TwoD {
+        if spatial_kind == SpaceKind::TwoD {
             let rect = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(w, h));
 
             show_zoomed_image_region_area_outline(

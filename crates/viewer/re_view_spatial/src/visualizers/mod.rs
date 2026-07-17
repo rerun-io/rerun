@@ -190,7 +190,7 @@ pub fn visualizers_processing_draw_order()
 
 pub fn collect_ui_labels(system_output: &SystemExecutionOutput) -> Vec<UiLabel> {
     iter_spatial_data(system_output)
-        .flat_map(|(_affinity, data)| data.ui_labels.iter().cloned())
+        .flat_map(|data| data.ui_labels.iter().cloned())
         .collect()
 }
 

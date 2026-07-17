@@ -23,11 +23,11 @@ use re_viewer_context::{
 use re_viewport_blueprint::ViewProperty;
 
 use super::eye::{Eye, EyeState};
+use crate::SpaceKind;
 use crate::SpatialView3D;
 use crate::eye::find_camera;
 use crate::pinhole_wrapper::PinholeWrapper;
 use crate::ui::{SpatialViewState, create_labels, draw_bounding_boxes, draw_origin_axes};
-use crate::view_kind::SpatialViewKind;
 use crate::visualizers::{Axes, CamerasVisualizerOutput, collect_ui_labels};
 
 // ---
@@ -212,7 +212,7 @@ impl SpatialView3D {
             &eye,
             ui,
             highlights,
-            SpatialViewKind::ThreeD,
+            SpaceKind::ThreeD,
         );
 
         let (response, picking_config) = if let Some(pointer_pos_ui) = response.hover_pos() {
@@ -235,7 +235,7 @@ impl SpatialView3D {
                 &system_output,
                 &ui_rects,
                 query,
-                SpatialViewKind::ThreeD,
+                SpaceKind::ThreeD,
             )?
         } else {
             state.previous_picking_result = None;

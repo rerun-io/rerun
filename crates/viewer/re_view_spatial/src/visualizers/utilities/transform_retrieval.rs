@@ -6,8 +6,8 @@ use re_sdk_types::datatypes::Quaternion;
 use re_tf::TransformFrameIdHash;
 use re_viewer_context::{ViewClass as _, VisualizerExecutionOutput, VisualizerReportSeverity};
 
+use crate::SpaceKind;
 use crate::contexts::{TransformInfo, TransformTreeContext};
-use crate::view_kind::SpatialViewKind;
 
 /// Resolves the optional translation and rotation components of a grid-like archetype into a
 /// `grid_from_entity` affine transform.
@@ -81,28 +81,26 @@ pub fn entity_from_grid_transform(
 }
 
 /// Derive the spatial view kind from the view class identifier.
-pub fn spatial_view_kind_from_view_class(class: ViewClassIdentifier) -> SpatialViewKind {
+pub fn spatial_view_kind_from_view_class(class: ViewClassIdentifier) -> SpaceKind {
     if class == crate::SpatialView3D::identifier() {
-        SpatialViewKind::ThreeD
+        SpaceKind::ThreeD
     } else if class == crate::SpatialView2D::identifier() {
-        SpatialViewKind::TwoD
+        SpaceKind::TwoD
     } else {
         re_log::debug_panic!("Not a spatial view class identifier {class:?}");
-        SpatialViewKind::TwoD
+        SpaceKind::TwoD
     }
 }
 
 /// Derive the spatial view kind from an optional view class affinity.
 ///
 /// Returns `None` if the affinity is `None` or not a spatial view class.
-pub fn spatial_view_kind_from_affinity(
-    affinity: Option<ViewClassIdentifier>,
-) -> Option<SpatialViewKind> {
+pub fn spatial_view_kind_from_affinity(affinity: Option<ViewClassIdentifier>) -> Option<SpaceKind> {
     let class = affinity?;
     if class == crate::SpatialView3D::identifier() {
-        Some(SpatialViewKind::ThreeD)
+        Some(SpaceKind::ThreeD)
     } else if class == crate::SpatialView2D::identifier() {
-        Some(SpatialViewKind::TwoD)
+        Some(SpaceKind::TwoD)
     } else {
         None
     }
@@ -112,8 +110,8 @@ pub fn spatial_view_kind_from_affinity(
 pub fn transform_info_for_archetype_or_report_error<'a>(
     entity_path: &EntityPath,
     transform_context: &'a TransformTreeContext,
-    archetype_kind: Option<SpatialViewKind>,
-    view_kind: SpatialViewKind,
+    archetype_kind: Option<SpaceKind>,
+    view_kind: SpaceKind,
     instruction_id: &VisualizerInstructionId,
     output: &VisualizerExecutionOutput,
 ) -> Option<&'a TransformInfo> {
@@ -235,8 +233,8 @@ pub fn is_valid_space_for_content(
     instruction_id: &VisualizerInstructionId,
     transform_context: &TransformTreeContext,
     transform: &TransformInfo,
-    content_kind: Option<SpatialViewKind>,
-    view_kind: SpatialViewKind,
+    content_kind: Option<SpaceKind>,
+    view_kind: SpaceKind,
     output: &VisualizerExecutionOutput,
 ) -> bool {
     let Some(content_view_kind) = content_kind else {
@@ -252,7 +250,7 @@ pub fn is_valid_space_for_content(
     //
     // Everything in this 3D view is technically 2D already, but we still have the 3D controls etc.
     // (We can however, still show some "agnostic" content like the Pinhole itself)
-    if view_kind == SpatialViewKind::ThreeD
+    if view_kind == SpaceKind::ThreeD
         && let Some(target_frame_pinhole_root) = target_frame_pinhole_root
     {
         let origin = if let Some(origin) =
@@ -282,9 +280,9 @@ pub fn is_valid_space_for_content(
     };
 
     match content_view_kind {
-        SpatialViewKind::TwoD => {
+        SpaceKind::TwoD => {
             match view_kind {
-                SpatialViewKind::TwoD => {
+                SpaceKind::TwoD => {
                     if !transform_has_pinhole_ancestor {
                         return true;
                     }
@@ -318,7 +316,7 @@ pub fn is_valid_space_for_content(
                     }
                 }
 
-                SpatialViewKind::ThreeD => {
+                SpaceKind::ThreeD => {
                     // 2D content in a 3D view needs to be under a Pinhole transform.
                     if transform_has_pinhole_ancestor {
                         true
@@ -334,7 +332,7 @@ pub fn is_valid_space_for_content(
             }
         }
 
-        SpatialViewKind::ThreeD => {
+        SpaceKind::ThreeD => {
             // View agnostic failure case for 3D content: if the 3D content is under a pinhole projection, we can't show it!
             if transform_has_pinhole_ancestor {
                 output.report_unspecified_source(
@@ -346,7 +344,7 @@ pub fn is_valid_space_for_content(
             }
 
             match view_kind {
-                SpatialViewKind::TwoD => {
+                SpaceKind::TwoD => {
                     // 3D content in 2D works only if there's a Pinhole transform at the origin of the view.
                     //
                     // TODO(andreas): What's actually keeping us from allowing the 2D view to be rooted _under_ a pinhole, e.g. `/pinhole_here/some_2d_stuff`?
@@ -366,7 +364,7 @@ pub fn is_valid_space_for_content(
                     }
                 }
 
-                SpatialViewKind::ThreeD => true, // Valid 3D content in a valid 3D view is always fine.
+                SpaceKind::ThreeD => true, // Valid 3D content in a valid 3D view is always fine.
             }
         }
     }

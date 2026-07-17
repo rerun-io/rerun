@@ -13,13 +13,12 @@ use re_viewer_context::{
 
 use crate::visualizers::DepthImageProcessResult;
 use crate::{
-    PickableRectSourceData, PickableTexturedRect,
+    PickableRectSourceData, PickableTexturedRect, SpaceKind,
     picking::{PickableUiRect, PickingContext, PickingHitType},
     picking_ui_pixel::{
         PickedPixelInfo, TextureInteractionId, depth_value_from_gpu_texture, textured_rect_hover_ui,
     },
     ui::SpatialViewState,
-    view_kind::SpatialViewKind,
     visualizers::{
         CamerasVisualizer, CamerasVisualizerOutput, DepthImageVisualizer,
         DepthImageVisualizerOutput, EncodedDepthImageVisualizer, EncodedDepthImageVisualizerOutput,
@@ -37,7 +36,7 @@ pub fn picking(
     system_output: &re_viewer_context::SystemExecutionOutput,
     ui_rects: &[PickableUiRect],
     query: &ViewQuery<'_>,
-    spatial_kind: SpatialViewKind,
+    spatial_kind: SpaceKind,
 ) -> Result<(egui::Response, Option<ViewPickingConfiguration>), ViewSystemExecutionError> {
     re_tracing::profile_function!();
 
@@ -225,13 +224,13 @@ pub fn picking(
 
     if let Some((_, context)) = hovered_items.iter_mut().next() {
         *context = Some(match spatial_kind {
-            SpatialViewKind::TwoD => ItemContext::TwoD {
+            SpaceKind::TwoD => ItemContext::TwoD {
                 space_2d: query.space_origin.clone(),
                 pos: picking_context
                     .pointer_in_camera_plane
                     .extend(depth_at_pointer.unwrap_or(f32::INFINITY)),
             },
-            SpatialViewKind::ThreeD => {
+            SpaceKind::ThreeD => {
                 let hovered_point = picking_result.space_position();
                 let cameras = system_output.visualizer_data_or_default::<CamerasVisualizerOutput>(
                     CamerasVisualizer::identifier(),
@@ -265,7 +264,7 @@ pub fn picking(
 fn iter_pickable_rects(
     system_output: &re_viewer_context::SystemExecutionOutput,
 ) -> impl Iterator<Item = &PickableTexturedRect> {
-    iter_spatial_data(system_output).flat_map(|(_affinity, data)| data.pickable_rects.iter())
+    iter_spatial_data(system_output).flat_map(|data| data.pickable_rects.iter())
 }
 
 /// If available, finds pixel info for a picking hit.

@@ -315,7 +315,7 @@ impl VoxelGridMapVisualizer {
         }
 
         let world_bbox = local_bbox.transform_affine3(&world_from_grid);
-        data.add_bounding_box(entity_path.hash(), world_bbox, glam::Affine3A::IDENTITY);
+        data.add_bounding_box_3d(entity_path.hash(), world_bbox, glam::Affine3A::IDENTITY);
 
         let draw_data = VoxelGridDrawData::new(
             ctx.viewer_ctx().render_ctx(),

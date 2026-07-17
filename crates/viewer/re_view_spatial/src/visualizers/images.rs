@@ -12,7 +12,7 @@ use super::SpatialViewVisualizerData;
 use super::entity_iterator::process_archetype;
 use crate::contexts::SpatialSceneVisualizerInstructionContext;
 use crate::visualizers::{first_copied, textured_rect_from_image};
-use crate::{PickableRectSourceData, PickableTexturedRect};
+use crate::{PickableRectSourceData, PickableTexturedRect, SpaceKind};
 
 #[derive(Default)]
 pub struct ImageVisualizer;
@@ -162,7 +162,7 @@ impl ImageVisualizer {
                                 depth_meter: None,
                             },
                         },
-                        spatial_ctx.view_class_identifier,
+                        SpaceKind::TwoD,
                     );
                 }
                 Err(err) => {

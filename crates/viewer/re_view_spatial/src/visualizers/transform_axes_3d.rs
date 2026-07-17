@@ -228,7 +228,7 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
                 }
 
                 // Only add the center to the bounding box - the lines may be dependent on the bounding box, causing a feedback loop otherwise.
-                data.add_bounding_box(
+                data.add_bounding_box_3d(
                     data_result.entity_path.hash(),
                     macaw::BoundingBox::ZERO,
                     *world_from_obj,

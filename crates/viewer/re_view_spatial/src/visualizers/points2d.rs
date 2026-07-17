@@ -12,6 +12,7 @@ use re_viewer_context::{
 
 use super::SpatialViewVisualizerData;
 use super::utilities::{LabeledBatch, process_labels_2d};
+use crate::SpaceKind;
 use crate::contexts::SpatialSceneVisualizerInstructionContext;
 use crate::visualizers::{load_keypoint_connections, process_radius_slice};
 
@@ -127,6 +128,7 @@ impl Points2DVisualizer {
                 point_cloud_bounds.bbox,
                 point_cloud_bounds.region_of_interest,
                 world_from_obj,
+                SpaceKind::TwoD,
             );
 
             load_keypoint_connections(

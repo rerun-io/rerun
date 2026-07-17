@@ -26,6 +26,7 @@ use re_viewer_context::{
 
 use super::utilities::LabeledBatch;
 use super::{Keypoints, SpatialViewVisualizerData, process_labels_3d};
+use crate::SpaceKind;
 use crate::contexts::SpatialSceneVisualizerInstructionContext;
 use crate::visualizers::{load_keypoint_connections, process_radius_slice};
 
@@ -345,6 +346,7 @@ impl Points3DVisualizer {
                     cpu.point_cloud_bounds.bbox,
                     cpu.point_cloud_bounds.region_of_interest,
                     world_from_obj,
+                    SpaceKind::ThreeD,
                 );
 
                 load_keypoint_connections(

@@ -21,9 +21,9 @@ use re_viewport_blueprint::ViewProperty;
 
 use super::eye::Eye;
 use super::ui::{create_labels, draw_bounding_boxes, draw_origin_axes};
+use crate::SpaceKind;
 use crate::contexts::TransformTreeContext;
 use crate::ui::SpatialViewState;
-use crate::view_kind::SpatialViewKind;
 use crate::visualizers::{Axes, collect_ui_labels};
 use crate::{Pinhole, SpatialView2D};
 // ---
@@ -300,7 +300,7 @@ impl SpatialView2D {
             &eye,
             ui,
             &query.highlights,
-            SpatialViewKind::TwoD,
+            SpaceKind::TwoD,
         );
 
         let picking_config = if let Some(pointer_pos_ui) = response.hover_pos() {
@@ -320,7 +320,7 @@ impl SpatialView2D {
                 &system_output,
                 &label_ui_rects,
                 query,
-                SpatialViewKind::TwoD,
+                SpaceKind::TwoD,
             )?;
             picking_config
         } else {

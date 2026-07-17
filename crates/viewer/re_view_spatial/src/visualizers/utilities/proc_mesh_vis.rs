@@ -357,7 +357,7 @@ impl<'ctx> ProcMeshDrawableBuilder<'ctx> {
             }
         }
 
-        self.data.add_bounding_box(
+        self.data.add_bounding_box_3d(
             entity_path.hash(),
             world_space_bounding_box,
             glam::Affine3A::IDENTITY,
