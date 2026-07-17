@@ -41,6 +41,10 @@ pub struct Args {
     /// whether to exclude default features from `re_viewer` wasm build
     #[argh(switch, long = "no-default-features")]
     no_default_features: bool,
+
+    /// generate a cargo build timings report in `<target-dir>/cargo-timings/`.
+    #[argh(switch)]
+    timings: bool,
 }
 
 fn default_features() -> String {
@@ -67,5 +71,6 @@ pub fn main(args: Args) -> anyhow::Result<()> {
         &build_dir,
         args.no_default_features,
         &args.features,
+        args.timings,
     )
 }

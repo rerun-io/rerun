@@ -25,7 +25,7 @@ dev = [
   # with editable installs by adding rerun_py/rerun_sdk to the Python path.
   "rerun-dev-fixup",
   "opentelemetry-exporter-otlp-proto-grpc==1.39.0",
-  "maturin>=1.0.0",
+  "maturin>=1.14.1",
   "ruff==0.15.7",
   "mypy==1.19.1",
   "nbqa==1.9.1",

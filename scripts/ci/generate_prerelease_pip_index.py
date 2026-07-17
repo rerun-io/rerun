@@ -30,7 +30,7 @@ def generate_pip_index(title: str, dir: str, upload: bool, check: bool) -> None:
 
     # Initialize the GCS clients
     t0 = time.time()
-    gcs_client = storage.Client()
+    gcs_client = storage.Client(project="rerun-open")
     print(f"GCS client initialized in {time.time() - t0:.2f}s")
 
     # Prepare the found_builds list

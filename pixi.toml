@@ -188,6 +188,7 @@ rerun-build-native-and-web-release = { cmd = "cargo build --package rerun-cli --
 ] }
 
 rerun-build-native-and-pending-web-release = { cmd = "cargo build --package rerun-cli --no-default-features --features release_full --release --", env = { RERUN_TRAILING_WEB_VIEWER = "1" } }
+rerun-build-native-and-pending-web-release-zig = { cmd = "cargo zigbuild --locked --package rerun-cli --no-default-features --features release_full --release --target x86_64-unknown-linux-gnu.2.28", env = { RERUN_TRAILING_WEB_VIEWER = "1" } }
 
 # Compile and run the web-viewer via rerun-cli.
 #
@@ -489,6 +490,7 @@ py-build-notebook-js = { cmd = "npm --prefix rerun_notebook run build", depends-
 
 # Build an installable SDK-only wheel. IMPORTANT: unlike the officially published wheels, the wheel produced by this command does NOT include the viewer.
 py-build-wheels-sdk-only = { cmd = "RERUN_ALLOW_MISSING_BIN=1 python scripts/ci/build_and_upload_wheels.py --mode pr --dir ''" }
+py-build-wheels-sdk-only-zig = { cmd = "RERUN_ALLOW_MISSING_BIN=1 python scripts/ci/build_and_upload_wheels.py --mode pr --dir '' --compat manylinux_2_28 --zig" }
 
 # Helper alias to run the python interpreter in the context of the python environment
 rrpy = "uvpy"
@@ -642,15 +644,19 @@ rerun-pixi-env = { path = "rerun_pixi_env", editable = true }
 uv = "==0.9.17"
 
 [target.linux-64.dependencies]
+cargo-zigbuild = "0.20.*"
 libudev = "257.4.*" # for `gilrs` Linux backend
 patchelf = ">=0.17"
 pkgconf = ">=2" # Provides `pkg-config` for `gilrs` Linux backend.
 meilisearch = "1.5.1.*" # not available for linux-aarch64
 buf = "1.*" # not available for linux-aarch64
+zig = "0.13.0.*"
 
 [target.linux-aarch64.dependencies]
+cargo-zigbuild = "0.20.*"
 libudev = "257.4.*" # for `gilrs` Linux backend
 pkgconf = ">=2" # Provides `pkg-config` for `gilrs` Linux backend.
+zig = "0.13.0.*"
 
 [target.osx-arm64.dependencies]
 buf = "1.*" # not available for linux-aarch64
