@@ -20,6 +20,7 @@ from .enabled import Enabled, EnabledBatch
 from .eye3d_kind import Eye3DKind, Eye3DKindArrayLike, Eye3DKindBatch, Eye3DKindLike
 from .filter_by_range import FilterByRange, FilterByRangeBatch
 from .filter_is_not_null import FilterIsNotNull, FilterIsNotNullBatch
+from .follow_delay_ms import FollowDelayMs, FollowDelayMsBatch
 from .force_distance import ForceDistance, ForceDistanceBatch
 from .force_iterations import ForceIterations, ForceIterationsBatch
 from .force_strength import ForceStrength, ForceStrengthBatch
@@ -104,6 +105,8 @@ __all__ = [
     "FilterByRangeBatch",
     "FilterIsNotNull",
     "FilterIsNotNullBatch",
+    "FollowDelayMs",
+    "FollowDelayMsBatch",
     "ForceDistance",
     "ForceDistanceBatch",
     "ForceIterations",

@@ -1,0 +1,16 @@
+namespace rerun.blueprint.components;
+
+// ---
+
+/// A follow mode delay in millisecond to allow proper buffering.
+table FollowDelayMs (
+  "attr.python.aliases": "int",
+  "attr.python.array_aliases": "npt.ArrayLike",
+  "attr.rerun.scope": "blueprint",
+  "attr.rust.derive": "Copy, PartialEq, PartialOrd",
+  "attr.rust.repr": "transparent",
+  "attr.rust.tuple_struct"
+) {
+  /// 100ms is default delay.
+  speed: rerun.datatypes.UInt64 (order: 100);
+}

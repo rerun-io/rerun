@@ -39,6 +39,9 @@ pub struct TimePanelBlueprint {
     /// Frames per second. Only applicable for sequence timelines.
     pub fps: Option<SerializedComponentBatch>,
 
+    /// Follow delay ms. Only applicable for follow mode
+    pub follow_delay_ms: Option<SerializedComponentBatch>,
+
     /// If the time is currently paused, playing, or following.
     ///
     /// Defaults to either playing or following, depending on the data source.
@@ -110,6 +113,20 @@ impl TimePanelBlueprint {
         (*DESCRIPTOR).clone()
     }
 
+    /// Returns the [`ComponentDescriptor`] for [`Self::follow_delay_ms`].
+    ///
+    /// The corresponding component is [`crate::blueprint::components::FollowDelayMs`].
+    #[inline]
+    pub fn descriptor_follow_delay_ms() -> ComponentDescriptor {
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.TimePanelBlueprint".into()),
+                component: "TimePanelBlueprint:follow_delay_ms".into(),
+                component_type: Some("rerun.blueprint.components.FollowDelayMs".into()),
+            });
+        (*DESCRIPTOR).clone()
+    }
+
     /// Returns the [`ComponentDescriptor`] for [`Self::play_state`].
     ///
     /// The corresponding component is [`crate::blueprint::components::PlayState`].
@@ -159,26 +176,28 @@ static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
 static RECOMMENDED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
     std::sync::LazyLock::new(|| []);
 
-static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 7usize]> =
+static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 8usize]> =
     std::sync::LazyLock::new(|| {
         [
             TimePanelBlueprint::descriptor_state(),
             TimePanelBlueprint::descriptor_timeline(),
             TimePanelBlueprint::descriptor_playback_speed(),
             TimePanelBlueprint::descriptor_fps(),
+            TimePanelBlueprint::descriptor_follow_delay_ms(),
             TimePanelBlueprint::descriptor_play_state(),
             TimePanelBlueprint::descriptor_loop_mode(),
             TimePanelBlueprint::descriptor_time_selection(),
         ]
     });
 
-static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 7usize]> =
+static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 8usize]> =
     std::sync::LazyLock::new(|| {
         [
             TimePanelBlueprint::descriptor_state(),
             TimePanelBlueprint::descriptor_timeline(),
             TimePanelBlueprint::descriptor_playback_speed(),
             TimePanelBlueprint::descriptor_fps(),
+            TimePanelBlueprint::descriptor_follow_delay_ms(),
             TimePanelBlueprint::descriptor_play_state(),
             TimePanelBlueprint::descriptor_loop_mode(),
             TimePanelBlueprint::descriptor_time_selection(),
@@ -186,8 +205,8 @@ static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 7usize]> =
     });
 
 impl TimePanelBlueprint {
-    /// The total number of components in the archetype: 0 required, 0 recommended, 7 optional
-    pub const NUM_COMPONENTS: usize = 7usize;
+    /// The total number of components in the archetype: 0 required, 0 recommended, 8 optional
+    pub const NUM_COMPONENTS: usize = 8usize;
 }
 
 impl ::re_types_core::Archetype for TimePanelBlueprint {
@@ -245,6 +264,11 @@ impl ::re_types_core::Archetype for TimePanelBlueprint {
         let fps = arrays_by_descr
             .get(&Self::descriptor_fps())
             .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_fps()));
+        let follow_delay_ms = arrays_by_descr
+            .get(&Self::descriptor_follow_delay_ms())
+            .map(|array| {
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_follow_delay_ms())
+            });
         let play_state = arrays_by_descr
             .get(&Self::descriptor_play_state())
             .map(|array| {
@@ -265,6 +289,7 @@ impl ::re_types_core::Archetype for TimePanelBlueprint {
             timeline,
             playback_speed,
             fps,
+            follow_delay_ms,
             play_state,
             loop_mode,
             time_selection,
@@ -281,6 +306,7 @@ impl ::re_types_core::AsComponents for TimePanelBlueprint {
             self.timeline.clone(),
             self.playback_speed.clone(),
             self.fps.clone(),
+            self.follow_delay_ms.clone(),
             self.play_state.clone(),
             self.loop_mode.clone(),
             self.time_selection.clone(),
@@ -302,6 +328,7 @@ impl TimePanelBlueprint {
             timeline: None,
             playback_speed: None,
             fps: None,
+            follow_delay_ms: None,
             play_state: None,
             loop_mode: None,
             time_selection: None,
@@ -334,6 +361,10 @@ impl TimePanelBlueprint {
             fps: Some(SerializedComponentBatch::new(
                 crate::blueprint::components::Fps::arrow_empty(),
                 Self::descriptor_fps(),
+            )),
+            follow_delay_ms: Some(SerializedComponentBatch::new(
+                crate::blueprint::components::FollowDelayMs::arrow_empty(),
+                Self::descriptor_follow_delay_ms(),
             )),
             play_state: Some(SerializedComponentBatch::new(
                 crate::blueprint::components::PlayState::arrow_empty(),
@@ -385,6 +416,17 @@ impl TimePanelBlueprint {
     #[inline]
     pub fn with_fps(mut self, fps: impl Into<crate::blueprint::components::Fps>) -> Self {
         self.fps = try_serialize_field(Self::descriptor_fps(), [fps]);
+        self
+    }
+
+    /// Follow delay ms. Only applicable for follow mode
+    #[inline]
+    pub fn with_follow_delay_ms(
+        mut self,
+        follow_delay_ms: impl Into<crate::blueprint::components::FollowDelayMs>,
+    ) -> Self {
+        self.follow_delay_ms =
+            try_serialize_field(Self::descriptor_follow_delay_ms(), [follow_delay_ms]);
         self
     }
 

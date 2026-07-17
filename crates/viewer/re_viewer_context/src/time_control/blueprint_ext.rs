@@ -24,6 +24,9 @@ pub(super) trait TimeBlueprintExt {
     fn set_playback_speed(&self, playback_speed: f64);
     fn playback_speed(&self) -> Option<f64>;
 
+    fn set_follow_delay_ms(&self, delay_ms: u64);
+    fn follow_delay_ms(&self) -> Option<u64>;
+
     fn set_fps(&self, fps: f64);
     fn fps(&self) -> Option<f64>;
 
@@ -84,6 +87,26 @@ impl<T: BlueprintContext> TimeBlueprintExt for T {
         )?;
 
         Some(**playback_speed)
+    }
+
+    fn set_follow_delay_ms(&self, delay_ms: u64) {
+        self.save_blueprint_component(
+            time_panel_blueprint_entity_path(),
+            &TimePanelBlueprint::descriptor_follow_delay_ms(),
+            &re_sdk_types::blueprint::components::FollowDelayMs(delay_ms.into()),
+        );
+    }
+
+    fn follow_delay_ms(&self) -> Option<u64> {
+        let (_, follow_delay_ms) = self
+            .current_blueprint()
+            .latest_at_component_quiet::<re_sdk_types::blueprint::components::FollowDelayMs>(
+            &time_panel_blueprint_entity_path(),
+            self.blueprint_query(),
+            TimePanelBlueprint::descriptor_follow_delay_ms().component,
+        )?;
+
+        Some(**follow_delay_ms)
     }
 
     fn set_fps(&self, fps: f64) {

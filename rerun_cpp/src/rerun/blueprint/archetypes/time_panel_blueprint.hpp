@@ -4,6 +4,7 @@
 #pragma once
 
 #include "../../blueprint/components/absolute_time_range.hpp"
+#include "../../blueprint/components/follow_delay_ms.hpp"
 #include "../../blueprint/components/fps.hpp"
 #include "../../blueprint/components/loop_mode.hpp"
 #include "../../blueprint/components/panel_state.hpp"
@@ -37,6 +38,9 @@ namespace rerun::blueprint::archetypes {
 
         /// Frames per second. Only applicable for sequence timelines.
         std::optional<ComponentBatch> fps;
+
+        /// Follow delay ms. Only applicable for follow mode
+        std::optional<ComponentBatch> follow_delay_ms;
 
         /// If the time is currently paused, playing, or following.
         ///
@@ -75,6 +79,11 @@ namespace rerun::blueprint::archetypes {
         static constexpr auto Descriptor_fps = ComponentDescriptor(
             ArchetypeName, "TimePanelBlueprint:fps",
             Loggable<rerun::blueprint::components::Fps>::ComponentType
+        );
+        /// `ComponentDescriptor` for the `follow_delay_ms` field.
+        static constexpr auto Descriptor_follow_delay_ms = ComponentDescriptor(
+            ArchetypeName, "TimePanelBlueprint:follow_delay_ms",
+            Loggable<rerun::blueprint::components::FollowDelayMs>::ComponentType
         );
         /// `ComponentDescriptor` for the `play_state` field.
         static constexpr auto Descriptor_play_state = ComponentDescriptor(
@@ -134,6 +143,16 @@ namespace rerun::blueprint::archetypes {
         /// Frames per second. Only applicable for sequence timelines.
         TimePanelBlueprint with_fps(const rerun::blueprint::components::Fps& _fps) && {
             fps = ComponentBatch::from_loggable(_fps, Descriptor_fps).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// Follow delay ms. Only applicable for follow mode
+        TimePanelBlueprint with_follow_delay_ms(
+            const rerun::blueprint::components::FollowDelayMs& _follow_delay_ms
+        ) && {
+            follow_delay_ms =
+                ComponentBatch::from_loggable(_follow_delay_ms, Descriptor_follow_delay_ms)
+                    .value_or_throw();
             return std::move(*this);
         }
 

@@ -62,6 +62,9 @@ pub enum TimeControlCommand {
     /// Set playback fps.
     SetFps(f32),
 
+    /// Set follow delay ms.
+    SetFollowDelayMs(u64),
+
     /// Set the current time selection exactly as given, without enabling looping.
     ///
     /// The range is honored as-is — no intersection with currently-loaded data.
@@ -375,6 +378,19 @@ impl TimeControl {
                     NeedsRepaint::Yes
                 } else {
                     NeedsRepaint::No
+                }
+            }
+            TimeControlCommand::SetFollowDelayMs(delay_ms) => {
+                if *delay_ms == self.follow_delay_ms {
+                    NeedsRepaint::No
+                } else {
+                    self.follow_delay_ms = *delay_ms;
+
+                    if let Some(blueprint_ctx) = blueprint_ctx {
+                        blueprint_ctx.set_follow_delay_ms(*delay_ms as u64);
+                    }
+
+                    NeedsRepaint::Yes
                 }
             }
             TimeControlCommand::SetTimeSelection(time_range) => {

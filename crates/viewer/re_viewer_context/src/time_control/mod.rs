@@ -212,6 +212,9 @@ pub struct TimeControl {
 
     /// The value of `buffer_next_frame` last update.
     was_buffering: bool,
+
+    /// custom delay for follow mode
+    follow_delay_ms: u64,
 }
 
 impl Default for TimeControl {
@@ -229,6 +232,9 @@ impl Default for TimeControl {
             just_interacted: false,
             buffer_next_frame: false,
             was_buffering: false,
+
+            follow_delay_ms: 100, 
+
         }
     }
 }
@@ -542,8 +548,14 @@ impl TimeControl {
                     }
                 }
                 PlayState::Following => {
-                    // Set the time to the max:
-                    self.set_time_ad_hoc(full_range.max().into());
+                    // Set the time to the max - safety_margin:
+
+                    let abs_max = full_range.max().as_i64();
+                    let safety_margin_ns = self.follow_delay_ms * 1_000_000;
+                    let cursor_time_raw = abs_max.saturating_sub(safety_margin_ns as i64);
+
+                    let cursor_time = TimeReal::from(cursor_time_raw);
+                    self.set_time_ad_hoc(cursor_time);
 
                     NeedsRepaint::No // no need for request_repaint - we already repaint when new data arrives
                 }
@@ -681,10 +693,14 @@ impl TimeControl {
                     && let Some(range) = db.time_range_for(self.timeline_name())
                 {
                     // Set the time to the max:
+                    let abs_max = range.max().as_i64();
+                    let safety_margin_ns = self.follow_delay_ms * 1_000_000;
+                    let cursor_time_raw = abs_max.saturating_sub(safety_margin_ns as i64);
+
                     self.states
                         .entry(*self.timeline_name())
-                        .or_insert_with(|| TimeState::new(range.max))
-                        .time = range.max.into();
+                        .or_insert_with(|| TimeState::new(cursor_time_raw))
+                        .time = cursor_time_raw.into();
                 }
             }
         }
@@ -739,6 +755,11 @@ impl TimeControl {
     /// playback fps
     pub fn fps(&self) -> Option<f32> {
         self.states.get(self.timeline_name()).map(|state| state.fps)
+    }
+
+    /// follow mode delay ms
+    pub fn follow_delay_ms(&self) -> u64 {
+        self.follow_delay_ms
     }
 
     /// Make sure the selected timeline is a valid one

@@ -239,6 +239,17 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <FollowDelayMs as Component>::name(),
+            ComponentReflection {
+                docstring_md: "A follow mode delay in millisecond to allow proper buffering.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: None,
+                datatype: FollowDelayMs::arrow_datatype(),
+                is_enum: false,
+                verify_arrow_array: FollowDelayMs::verify_arrow_array,
+            },
+        ),
+        (
             <ForceDistance as Component>::name(),
             ComponentReflection {
                 docstring_md: "The target distance between two nodes.\n\nThis is helpful to scale the layout, for example if long labels are involved.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
@@ -4867,6 +4878,13 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Fps",
                         component_type: "rerun.blueprint.components.Fps".into(),
                         docstring_md: "Frames per second. Only applicable for sequence timelines.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "follow_delay_ms",
+                        display_name: "Follow delay ms",
+                        component_type: "rerun.blueprint.components.FollowDelayMs".into(),
+                        docstring_md: "Follow delay ms. Only applicable for follow mode",
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {

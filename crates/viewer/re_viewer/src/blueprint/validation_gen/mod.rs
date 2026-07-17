@@ -22,6 +22,7 @@ pub use re_sdk_types::blueprint::components::Enabled;
 pub use re_sdk_types::blueprint::components::Eye3DKind;
 pub use re_sdk_types::blueprint::components::FilterByRange;
 pub use re_sdk_types::blueprint::components::FilterIsNotNull;
+pub use re_sdk_types::blueprint::components::FollowDelayMs;
 pub use re_sdk_types::blueprint::components::ForceDistance;
 pub use re_sdk_types::blueprint::components::ForceIterations;
 pub use re_sdk_types::blueprint::components::ForceStrength;
@@ -81,6 +82,7 @@ pub fn is_valid_blueprint(blueprint: &EntityDb) -> bool {
         && validate_component::<Eye3DKind>(blueprint)
         && validate_component::<FilterByRange>(blueprint)
         && validate_component::<FilterIsNotNull>(blueprint)
+        && validate_component::<FollowDelayMs>(blueprint)
         && validate_component::<ForceDistance>(blueprint)
         && validate_component::<ForceIterations>(blueprint)
         && validate_component::<ForceStrength>(blueprint)

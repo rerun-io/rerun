@@ -136,6 +136,7 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
             self.play_pause_button_ui(time_ctrl, ui, time_commands);
             self.playhead_nav_ui(ui, time_commands);
             self.loop_button_ui(time_ctrl, ui, time_commands);
+            self.follow_delay_ui(time_ctrl, ui, time_commands);
         });
     }
 
@@ -303,6 +304,33 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
 
         if speed != time_ctrl.speed() {
             time_commands.push(TimeControlCommand::SetSpeed(speed));
+        }
+    }
+
+
+    #[expect(clippy::unused_self)]
+    pub fn follow_delay_ui(
+        &self,
+        time_ctrl: &TimeControl,
+        ui: &mut egui::Ui,
+        time_commands: &mut Vec<TimeControlCommand>,
+    ) {
+        let mut delay_ms = time_ctrl.follow_delay_ms();
+        let drag_speed = (delay_ms / 50).at_least(1);
+
+        ui.scope(|ui| {
+            ui.spacing_mut().interact_size -= egui::Vec2::new(0., 4.);
+            ui.add(
+                egui::DragValue::new(&mut delay_ms)
+                    .speed(drag_speed as f64) // change by 10 increments
+                    .range(0..=2000) // limit range from 0 to 2 secs
+                    .suffix("ms"),
+            )
+            .on_hover_text("Follow delay ms");
+        });
+
+        if delay_ms != time_ctrl.follow_delay_ms() {
+            time_commands.push(TimeControlCommand::SetFollowDelayMs(delay_ms));
         }
     }
 }
