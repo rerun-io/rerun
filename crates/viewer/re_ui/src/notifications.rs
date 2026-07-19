@@ -158,6 +158,9 @@ impl Notification {
         for (key, value) in &self.fields {
             write!(text, "\n{key}: {value}").ok();
         }
+        if let Some(details) = &self.details {
+            text = re_error::format_with_details(text, details.as_str());
+        }
         text
     }
 
@@ -166,8 +169,27 @@ impl Notification {
         self
     }
 
+    /// Set the structured key-value fields, shown one `key: value` per line.
+    ///
+    /// Field values containing [`re_error::DETAILS_SEPARATOR`] are split: the part after the
+    /// separator is moved into the collapsible details section. This matters e.g. for
+    /// `#[tracing::instrument(err)]`, which reports the whole error — details and all — as an
+    /// `error` field.
     pub fn with_fields(mut self, fields: Vec<(&'static str, re_log::FieldValue)>) -> Self {
-        self.fields = fields;
+        self.fields = fields
+            .into_iter()
+            .map(|(key, value)| {
+                let (value, value_details) = split_field_details(value);
+                if let Some(value_details) = value_details {
+                    let details = self.details.get_or_insert_default();
+                    if !details.is_empty() {
+                        details.push('\n');
+                    }
+                    details.push_str(&value_details);
+                }
+                (key, value)
+            })
+            .collect();
         self
     }
 
@@ -202,6 +224,29 @@ impl Notification {
             ctx.data_mut(|data| data.get_persisted::<PermaDismissiedMarker>(id))
                 .is_some()
         })
+    }
+}
+
+/// Split a field value on [`re_error::DETAILS_SEPARATOR`], returning the value with the details
+/// removed, plus the details themselves (if any).
+fn split_field_details(value: re_log::FieldValue) -> (re_log::FieldValue, Option<String>) {
+    use re_log::FieldValue;
+
+    fn split(text: &str) -> Option<(String, String)> {
+        let (summary, details) = re_error::split_details(text);
+        details.map(|details| (summary.trim_end().to_owned(), details.to_owned()))
+    }
+
+    let split = match &value {
+        FieldValue::String(text) => split(text).map(|(s, d)| (FieldValue::String(s), d)),
+        FieldValue::Debug(text) => split(text).map(|(s, d)| (FieldValue::Debug(s), d)),
+        FieldValue::Error(text) => split(text).map(|(s, d)| (FieldValue::Error(s), d)),
+        FieldValue::Bool(_) | FieldValue::I64(_) | FieldValue::U64(_) => None,
+    };
+
+    match split {
+        Some((value, details)) => (value, Some(details)),
+        None => (value, None),
     }
 }
 
@@ -541,7 +586,9 @@ fn show_notification(
                         ui.vertical(|ui| {
                             ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
                             ui.set_width(270.0);
-                            ui.label(text);
+                            if !text.is_empty() {
+                                ui.label(text);
+                            }
 
                             for (key, value) in fields {
                                 ui.label(
@@ -552,7 +599,9 @@ fn show_notification(
                             }
 
                             if let Some(details) = details {
-                                ui.collapsing_header("Details", false, |ui| ui.label(details));
+                                ui.collapsing_header("Details", false, |ui| {
+                                    ui.label(egui::RichText::new(details).monospace().weak());
+                                });
                             }
                         });
 
