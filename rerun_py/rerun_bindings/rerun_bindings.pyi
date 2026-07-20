@@ -1556,6 +1556,7 @@ class McapReaderInternal:
         exclude_topic_regex: list[str] | None,
         start_time_ns: int | None,
         end_time_ns: int | None,
+        recover: bool,
     ) -> None: ...
     def stream(
         self,

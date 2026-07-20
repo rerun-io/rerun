@@ -29,6 +29,7 @@ class McapReader:
         exclude_topic_regex: Sequence[str] | None = None,
         start_time_ns: int | None = None,
         end_time_ns: int | None = None,
+        recover: bool = False,
     ) -> None:
         """
         Construct a new MCAP reader.
@@ -61,6 +62,14 @@ class McapReader:
             Optional exclusive upper bound on the raw MCAP `log_time` (nanoseconds).
             Messages at or after this time are skipped. `None` leaves the range open
             at the end.
+        recover:
+            Whether to recover a missing or invalid MCAP summary in memory. Our reader normally
+            requires the summary + chunk index that live at the end of the file, so an interrupted
+            recording (valid start, truncated tail, no footer/summary) fails to read. When `recover`
+            is set, the summary is reconstructed from a front-to-back scan instead: the incomplete
+            tail chunk/record is dropped with a warning, and any channel declared only in the
+            dropped tail is lost. The recovered statistics only count the channels and messages that
+            could be recovered. Healthy files are unaffected.
 
         """
         self._internal = McapReaderInternal(
@@ -72,6 +81,7 @@ class McapReader:
             exclude_topic_regex=list(exclude_topic_regex) if exclude_topic_regex is not None else None,
             start_time_ns=start_time_ns,
             end_time_ns=end_time_ns,
+            recover=recover,
         )
 
     def stream(

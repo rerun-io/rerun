@@ -25,6 +25,9 @@ pub struct PyMcapReaderInternal {
     timeline_type: TimeType,
     timestamp_offset_ns: Option<i64>,
 
+    /// Whether to reconstruct a missing/invalid summary in memory (truncated files).
+    recover: bool,
+
     /// The parsed MCAP summary, read once and shared across `time_bounds()` and every `stream()`
     /// so repeated (e.g. windowed) scans don't each re-parse it.
     summary: std::sync::OnceLock<Arc<re_mcap::Summary>>,
@@ -34,7 +37,7 @@ pub struct PyMcapReaderInternal {
 impl PyMcapReaderInternal {
     #[new]
     #[pyo3(
-        text_signature = "(self, path, timeline_type, timestamp_offset_ns, decoders, include_topic_regex, exclude_topic_regex, start_time_ns, end_time_ns)"
+        text_signature = "(self, path, timeline_type, timestamp_offset_ns, decoders, include_topic_regex, exclude_topic_regex, start_time_ns, end_time_ns, recover)"
     )]
     fn new(
         path: &str,
@@ -45,6 +48,7 @@ impl PyMcapReaderInternal {
         exclude_topic_regex: Option<Vec<String>>,
         start_time_ns: Option<i64>,
         end_time_ns: Option<i64>,
+        recover: bool,
     ) -> PyResult<Self> {
         let path = PathBuf::from(path);
         if !path.exists() {
@@ -91,13 +95,15 @@ impl PyMcapReaderInternal {
         let loader = re_importer::importer_mcap::McapImporter::new(&selected_decoders)
             .with_raw_fallback(true)
             .with_topic_filter(topic_filter)
-            .with_time_range(time_range);
+            .with_time_range(time_range)
+            .with_recover(recover);
 
         Ok(Self {
             path,
             loader,
             timeline_type,
             timestamp_offset_ns,
+            recover,
             summary: std::sync::OnceLock::new(),
         })
     }
@@ -131,26 +137,65 @@ impl PyMcapReaderInternal {
 
     /// Return the `(min, max)` MCAP `log_time` bounds (nanoseconds, inclusive) of the file.
     fn time_bounds(&self) -> PyResult<(u64, u64)> {
-        let summary = self.summary()?;
+        // If we already have a summary (cached from an earlier `stream()`), use it directly.
+        // Otherwise read the summary. We deliberately do *not*
+        // reconstruct the full summary here (which decompresses chunks to harvest channels): time
+        // bounds only need the chunk time ranges, preserving the cheap "reads no chunks" contract.
+        let bounds_from_summary = |summary: &re_mcap::Summary| {
+            let stats = summary
+                .stats
+                .as_ref()
+                .map(|s| (s.message_count, s.message_start_time, s.message_end_time));
+            compute_time_bounds(
+                stats,
+                summary
+                    .chunk_indexes
+                    .iter()
+                    .map(|c| (c.message_start_time, c.message_end_time)),
+            )
+        };
 
-        // Prefer the statistics record; fall back to the chunk-index bounds if it is absent or
-        // empty (the statistics record is optional per the MCAP spec).
-        if let Some(stats) = &summary.stats
-            && stats.message_count > 0
-        {
-            return Ok((stats.message_start_time, stats.message_end_time));
+        if let Some(summary) = self.summary.get() {
+            return bounds_from_summary(summary);
         }
 
-        let mut lo = u64::MAX;
-        let mut hi = 0_u64;
-        for chunk in &summary.chunk_indexes {
-            lo = lo.min(chunk.message_start_time);
-            hi = hi.max(chunk.message_end_time);
+        let mmap = mmap_file(&self.path)?;
+        let bounds_from_scan = || {
+            let scan = re_mcap::build_chunk_index(&mmap).map_err(|err| {
+                PyValueError::new_err(format!("Failed to scan MCAP chunk index: {err}"))
+            })?;
+            scan.reject_if_unrecoverable()
+                .map_err(|err| PyValueError::new_err(err.to_string()))?;
+            // `usable_chunks` is the same set `reconstruct_summary` (and thus `stream()`) keeps, so
+            // the bounds don't report a `max` past the last message any `stream()` can decode.
+            compute_time_bounds(
+                None,
+                scan.usable_chunks()
+                    .map(|c| (c.message_start_time, c.message_end_time)),
+            )
+        };
+
+        match re_mcap::read_summary(std::io::Cursor::new(&mmap[..])) {
+            Ok(Some(summary)) => bounds_from_summary(&summary),
+            Ok(None) if self.recover => {
+                re_log::warn!(
+                    "MCAP file has no summary; scanning the chunk index for time bounds. The file may be truncated"
+                );
+                bounds_from_scan()
+            }
+            Err(err) if self.recover => {
+                re_log::warn!(
+                    "Failed to read the MCAP summary ({err}); scanning the chunk index for time bounds. The file may be truncated"
+                );
+                bounds_from_scan()
+            }
+            Ok(None) => Err(PyValueError::new_err(
+                "MCAP file does not contain a summary",
+            )),
+            Err(err) => Err(PyValueError::new_err(format!(
+                "Failed to read MCAP summary: {err}"
+            ))),
         }
-        if lo > hi {
-            return Err(PyValueError::new_err("MCAP file contains no messages"));
-        }
-        Ok((lo, hi))
     }
 
     /// The file path this reader was constructed with.
@@ -177,13 +222,37 @@ impl PyMcapReaderInternal {
         }
 
         let mmap = mmap_file(&self.path)?;
-        let summary = re_mcap::read_summary(std::io::Cursor::new(&mmap[..]))
-            .map_err(|err| PyValueError::new_err(format!("Failed to read MCAP summary: {err}")))?
-            .ok_or_else(|| PyValueError::new_err("MCAP file does not contain a summary"))?;
+        let summary = re_mcap::read_or_reconstruct_summary(&mmap, self.recover)
+            .map_err(|err| PyValueError::new_err(format!("Failed to read MCAP summary: {err}")))?;
 
         // A concurrent caller may have won the race; `get_or_init` keeps whichever landed first.
         Ok(self.summary.get_or_init(|| Arc::new(summary)).clone())
     }
+}
+
+/// Computes the inclusive `(min, max)` `log_time` bounds, preferring the statistics record
+/// (`(message_count, start, end)`) and falling back to the per-chunk `(start, end)` time ranges
+/// (both are optional per the MCAP spec).
+fn compute_time_bounds(
+    stats: Option<(u64, u64, u64)>,
+    chunk_ranges: impl Iterator<Item = (u64, u64)>,
+) -> PyResult<(u64, u64)> {
+    if let Some((message_count, start, end)) = stats
+        && message_count > 0
+    {
+        return Ok((start, end));
+    }
+
+    let mut lo = u64::MAX;
+    let mut hi = 0_u64;
+    for (start, end) in chunk_ranges {
+        lo = lo.min(start);
+        hi = hi.max(end);
+    }
+    if lo > hi {
+        return Err(PyValueError::new_err("MCAP file contains no messages"));
+    }
+    Ok((lo, hi))
 }
 
 /// Factory for creating chunk streams from MCAP files.

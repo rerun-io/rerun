@@ -1,7 +1,6 @@
 //! MCAP file importer implementation.
 
 use std::collections::HashMap;
-use std::io::Cursor;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -35,6 +34,7 @@ pub struct McapImporter {
     raw_fallback_enabled: bool,
     topic_filter: TopicFilter,
     time_range: Option<(u64, u64)>,
+    recover: bool,
     lenses_by_time_type: HashMap<re_log_types::TimeType, Arc<Lenses>>,
 }
 
@@ -62,6 +62,7 @@ impl McapImporter {
             raw_fallback_enabled: true,
             topic_filter: TopicFilter::default(),
             time_range: None,
+            recover: false,
             lenses_by_time_type,
         }
     }
@@ -88,6 +89,18 @@ impl McapImporter {
     /// `None` clears the filter.
     pub fn with_time_range(mut self, time_range: Option<(u64, u64)>) -> Self {
         self.time_range = time_range;
+        self
+    }
+
+    /// Enables recovery of truncated / summary-less MCAP files.
+    ///
+    /// When set, [`Self::emit_chunks`] reconstructs a [`re_mcap::Summary`] in memory (via
+    /// [`re_mcap::read_or_reconstruct_summary`]) if the file has no valid summary — the incomplete tail
+    /// chunk/record is dropped with a warning, and channels declared only in the dropped tail are
+    /// lost. The recovered statistics therefore only count the channels and messages that could be
+    /// recovered.
+    pub fn with_recover(mut self, recover: bool) -> Self {
+        self.recover = recover;
         self
     }
 
@@ -127,8 +140,8 @@ impl McapImporter {
         timestamp_offset_ns: Option<i64>,
         emit_chunk: &(dyn Fn(re_chunk::Chunk) + Send + Sync),
     ) -> Result<(), ImporterError> {
-        let summary = re_mcap::read_summary(Cursor::new(&mcap))?
-            .ok_or_else(|| anyhow::anyhow!("MCAP file does not contain a summary"))?;
+        let summary = re_mcap::read_or_reconstruct_summary(mcap, self.recover)
+            .map_err(anyhow::Error::from)?;
         self.emit_chunks_with_summary(
             mcap,
             &summary,
@@ -205,6 +218,7 @@ impl McapImporter {
                 mcap,
                 summary,
                 &self.topic_filter,
+                self.recover,
                 &on_chunk_with_transforms,
             )
         {
