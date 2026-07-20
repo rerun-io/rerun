@@ -8,6 +8,8 @@ use super::App;
 
 #[cfg(all(feature = "internal_catalog", not(target_arch = "wasm32")))]
 use std::path::Path;
+#[cfg(all(feature = "internal_catalog", not(target_arch = "wasm32")))]
+use tokio_util::compat::TokioAsyncReadCompatExt as _;
 #[cfg(feature = "internal_catalog")]
 use {
     anyhow::Context as _, re_protos::cloud::v1alpha1::ext::DataSource,
@@ -381,18 +383,30 @@ async fn register_local_file(
         )
     })?;
 
-    let mut file = std::fs::File::open(&abs_path).with_context(|| {
-        format!(
-            "failed to open RRD for application id extraction\nFile path: {}",
+    let dataset_name = async {
+        let mut file = tokio::fs::File::open(&abs_path)
+            .await
+            .with_context(|| {
+                format!(
+                    "failed to open RRD for application id extraction\nFile path: {}",
+                    abs_path.display(),
+                )
+            })?
+            .compat();
+        rrd_dataset_name(&mut file).await
+    }
+    .await
+    .unwrap_or_else(|err| {
+        re_log::warn!(
+            "Failed to read application id from RRD: {err}\nFile path: {}",
             abs_path.display(),
-        )
-    })?;
-    let dataset_name = rrd_dataset_name(&mut file).with_context(|| {
-        format!(
-            "failed to read application id from RRD\nFile path: {}",
-            abs_path.display(),
-        )
-    })?;
+        );
+        abs_path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("recording")
+            .to_owned()
+    });
 
     register_file(connection_registry, dataset_name, file_url).await
 }
@@ -402,7 +416,8 @@ async fn register_opfs_file(
     connection_registry: &re_redap_client::ConnectionRegistryHandle,
     file_contents: &re_data_source::FileContents,
 ) -> anyhow::Result<re_uri::DatasetSegmentUri> {
-    let dataset_name = rrd_dataset_name(&mut std::io::Cursor::new(file_contents.bytes.as_ref()))
+    let dataset_name = rrd_dataset_name(&mut futures::io::Cursor::new(file_contents.bytes.clone()))
+        .await
         .with_context(|| {
             format!(
                 "failed to read application id from RRD\nFile path: {}",
@@ -478,8 +493,10 @@ async fn register_file(
 }
 
 #[cfg(feature = "internal_catalog")]
-fn rrd_dataset_name(reader: &mut (impl std::io::Read + std::io::Seek)) -> anyhow::Result<String> {
-    let store_ids = re_log_encoding::enumerate_rrd_stores(reader)?;
+async fn rrd_dataset_name(
+    reader: &mut impl re_log_encoding::AsyncReadAt,
+) -> anyhow::Result<String> {
+    let store_ids = re_log_encoding::enumerate_rrd_stores(reader).await?;
     let first_application_id = store_ids
         .first()
         .map(re_log_types::StoreId::application_id)

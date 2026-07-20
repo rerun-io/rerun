@@ -1,10 +1,11 @@
-use std::io::{Read, Seek, SeekFrom};
+use std::io::SeekFrom;
 
+use futures::{AsyncReadExt as _, AsyncSeekExt as _};
 use re_log_types::{LogMsg, StoreId};
 
 use crate::rrd::{
-    CodecError, Decodable as _, DecoderEntrypoint as _, MessageHeader, MessageKind, StreamFooter,
-    StreamHeader,
+    AsyncReadAt, CodecError, Decodable as _, DecoderEntrypoint as _, MessageHeader, MessageKind,
+    StreamFooter, StreamHeader,
 };
 use crate::{CachingApplicationIdInjector, RrdFooter, ToApplication as _};
 
@@ -17,8 +18,10 @@ use crate::{CachingApplicationIdInjector, RrdFooter, ToApplication as _};
 ///
 /// The returned [`RrdFooter`] contains manifests for ALL stores in the file.
 /// Caller is responsible for selecting the desired store.
-pub fn read_rrd_footer<R: Read + Seek>(reader: &mut R) -> Result<Option<RrdFooter>, CodecError> {
-    let file_len = reader.seek(SeekFrom::End(0))?;
+pub async fn read_rrd_footer<R: AsyncReadAt>(
+    reader: &mut R,
+) -> Result<Option<RrdFooter>, CodecError> {
+    let file_len = reader.seek(SeekFrom::End(0)).await?;
 
     // 1. Validate the StreamHeader to confirm this is actually an RRD file.
     if file_len < StreamHeader::ENCODED_SIZE_BYTES as u64 {
@@ -26,9 +29,9 @@ pub fn read_rrd_footer<R: Read + Seek>(reader: &mut R) -> Result<Option<RrdFoote
             "file too small to be an RRD".to_owned(),
         ));
     }
-    reader.seek(SeekFrom::Start(0))?;
+    reader.seek(SeekFrom::Start(0)).await?;
     let mut header_buf = [0u8; StreamHeader::ENCODED_SIZE_BYTES];
-    reader.read_exact(&mut header_buf)?;
+    reader.read_exact(&mut header_buf).await?;
     StreamHeader::from_rrd_bytes(&header_buf)?; // validates FourCC + version
 
     // 2. Read the StreamFooter from the end of the file.
@@ -37,9 +40,11 @@ pub fn read_rrd_footer<R: Read + Seek>(reader: &mut R) -> Result<Option<RrdFoote
     }
     // SAFETY: ENCODED_SIZE_BYTES is a small constant (32), fits in i64.
     #[expect(clippy::cast_possible_wrap)]
-    reader.seek(SeekFrom::End(-(StreamFooter::ENCODED_SIZE_BYTES as i64)))?;
+    reader
+        .seek(SeekFrom::End(-(StreamFooter::ENCODED_SIZE_BYTES as i64)))
+        .await?;
     let mut footer_buf = [0u8; StreamFooter::ENCODED_SIZE_BYTES];
-    reader.read_exact(&mut footer_buf)?;
+    reader.read_exact(&mut footer_buf).await?;
 
     let Ok(stream_footer) = StreamFooter::from_rrd_bytes(&footer_buf) else {
         return Ok(None); // Valid RRD, but no footer (legacy).
@@ -64,9 +69,9 @@ pub fn read_rrd_footer<R: Read + Seek>(reader: &mut R) -> Result<Option<RrdFoote
     }
 
     // 3. Seek to the RrdFooter payload and read it.
-    reader.seek(SeekFrom::Start(span.start))?;
+    reader.seek(SeekFrom::Start(span.start)).await?;
     let mut payload_buf = vec![0u8; payload_len];
-    reader.read_exact(&mut payload_buf)?;
+    reader.read_exact(&mut payload_buf).await?;
 
     // 4. Validate CRC.
     let actual_crc = StreamFooter::compute_crc(&payload_buf);
@@ -94,15 +99,17 @@ pub fn read_rrd_footer<R: Read + Seek>(reader: &mut R) -> Result<Option<RrdFoote
 ///
 /// The reader position is moved during reading. The returned list is sorted by [`StoreId`]'s
 /// natural order for determinism.
-pub fn enumerate_rrd_stores<R: Read + Seek>(reader: &mut R) -> Result<Vec<StoreId>, CodecError> {
+pub async fn enumerate_rrd_stores<R: AsyncReadAt>(
+    reader: &mut R,
+) -> Result<Vec<StoreId>, CodecError> {
     // Try footer first (cheap: 3 seeks, no chunk data read).
-    if let Some(footer) = read_rrd_footer(reader)? {
+    if let Some(footer) = read_rrd_footer(reader).await? {
         let mut store_ids: Vec<StoreId> = footer.manifests.into_keys().collect();
         store_ids.sort();
         return Ok(store_ids);
     }
 
-    enumerate_legacy_stores(reader)
+    enumerate_legacy_stores(reader).await
 }
 
 /// Legacy (no-footer) enumeration: walk message frames without decoding chunk data.
@@ -114,14 +121,16 @@ pub fn enumerate_rrd_stores<R: Read + Seek>(reader: &mut R) -> Result<Vec<StoreI
 ///
 /// The same `StoreId` can appear in multiple `SetStoreInfo` messages (e.g. after a
 /// flush/reconnect); the returned list is deduplicated.
-fn enumerate_legacy_stores<R: Read + Seek>(reader: &mut R) -> Result<Vec<StoreId>, CodecError> {
+async fn enumerate_legacy_stores<R: AsyncReadAt>(
+    reader: &mut R,
+) -> Result<Vec<StoreId>, CodecError> {
     // `read_rrd_footer` already moved the reader position — seek back to start.
-    reader.seek(SeekFrom::Start(0))?;
+    reader.seek(SeekFrom::Start(0)).await?;
 
     // Read and validate the StreamHeader; it also carries the crate version we need when
     // decoding individual message payloads (for version-dependent migrations).
     let mut stream_header_buf = [0u8; StreamHeader::ENCODED_SIZE_BYTES];
-    reader.read_exact(&mut stream_header_buf)?;
+    reader.read_exact(&mut stream_header_buf).await?;
     let stream_header = StreamHeader::from_rrd_bytes(&stream_header_buf)?;
     let (version, _options) = stream_header.to_version_and_options()?;
 
@@ -130,7 +139,7 @@ fn enumerate_legacy_stores<R: Read + Seek>(reader: &mut R) -> Result<Vec<StoreId
 
     loop {
         let mut msg_header_buf = [0u8; MessageHeader::ENCODED_SIZE_BYTES];
-        match reader.read_exact(&mut msg_header_buf) {
+        match reader.read_exact(&mut msg_header_buf).await {
             Ok(()) => {}
             Err(err) if err.kind() == std::io::ErrorKind::UnexpectedEof => break,
             Err(err) => return Err(CodecError::Io(err)),
@@ -143,7 +152,7 @@ fn enumerate_legacy_stores<R: Read + Seek>(reader: &mut R) -> Result<Vec<StoreId
             MessageKind::SetStoreInfo => {
                 let payload_len = usize::try_from(header.len).map_err(CodecError::Overflow)?;
                 let mut payload = vec![0u8; payload_len];
-                reader.read_exact(&mut payload)?;
+                reader.read_exact(&mut payload).await?;
                 let byte_span = re_chunk::Span::from_start_len(0, header.len);
                 if let Some(LogMsg::SetStoreInfo(set_store_info)) = LogMsg::decode(
                     bytes::Bytes::from(payload),
@@ -158,7 +167,7 @@ fn enumerate_legacy_stores<R: Read + Seek>(reader: &mut R) -> Result<Vec<StoreId
 
             MessageKind::ArrowMsg | MessageKind::BlueprintActivationCommand => {
                 let offset = i64::try_from(header.len).map_err(CodecError::Overflow)?;
-                reader.seek(SeekFrom::Current(offset))?;
+                reader.seek(SeekFrom::Current(offset)).await?;
             }
         }
     }
@@ -181,7 +190,8 @@ mod tests {
         let chunks = make_test_chunks(5);
         let (file, _store_id) = encode_test_rrd(&chunks);
 
-        let footer = read_rrd_footer(&mut File::open(file.path()).unwrap()).unwrap();
+        let mut file = futures::io::AllowStdIo::new(File::open(file.path()).unwrap());
+        let footer = futures::executor::block_on(read_rrd_footer(&mut file)).unwrap();
         assert!(footer.is_some(), "Footer should be present");
         let footer = footer.unwrap();
         assert!(
@@ -197,7 +207,8 @@ mod tests {
         let chunks = make_test_chunks(3);
         encode_test_rrd_to_file(file.path(), &chunks, false);
 
-        let footer = read_rrd_footer(&mut File::open(file.path()).unwrap()).unwrap();
+        let mut file = futures::io::AllowStdIo::new(File::open(file.path()).unwrap());
+        let footer = futures::executor::block_on(read_rrd_footer(&mut file)).unwrap();
         assert!(footer.is_none(), "Legacy RRD should have no footer");
     }
 
@@ -206,7 +217,8 @@ mod tests {
         let chunks = make_test_chunks(5);
         let (file, store_id) = encode_test_rrd(&chunks);
 
-        let ids = enumerate_rrd_stores(&mut File::open(file.path()).unwrap()).unwrap();
+        let mut file = futures::io::AllowStdIo::new(File::open(file.path()).unwrap());
+        let ids = futures::executor::block_on(enumerate_rrd_stores(&mut file)).unwrap();
         assert_eq!(ids, vec![store_id]);
     }
 
@@ -216,7 +228,8 @@ mod tests {
         let chunks = make_test_chunks(3);
         encode_test_rrd_to_file(file.path(), &chunks, false);
 
-        let ids = enumerate_rrd_stores(&mut File::open(file.path()).unwrap()).unwrap();
+        let mut file = futures::io::AllowStdIo::new(File::open(file.path()).unwrap());
+        let ids = futures::executor::block_on(enumerate_rrd_stores(&mut file)).unwrap();
         assert_eq!(
             ids.len(),
             1,
@@ -249,10 +262,14 @@ mod tests {
             crate::EncodingOptions::PROTOBUF_COMPRESSED,
         );
 
+        let mut with_footer_file =
+            futures::io::AllowStdIo::new(File::open(with_footer.path()).unwrap());
         let ids_footer =
-            enumerate_rrd_stores(&mut File::open(with_footer.path()).unwrap()).unwrap();
+            futures::executor::block_on(enumerate_rrd_stores(&mut with_footer_file)).unwrap();
+        let mut without_footer_file =
+            futures::io::AllowStdIo::new(File::open(without_footer.path()).unwrap());
         let ids_legacy =
-            enumerate_rrd_stores(&mut File::open(without_footer.path()).unwrap()).unwrap();
+            futures::executor::block_on(enumerate_rrd_stores(&mut without_footer_file)).unwrap();
 
         assert_eq!(ids_footer, vec![store_id]);
         assert_eq!(
@@ -312,7 +329,8 @@ mod tests {
             encoder.finish().unwrap();
         }
 
-        let ids = enumerate_rrd_stores(&mut File::open(file.path()).unwrap()).unwrap();
+        let mut file = futures::io::AllowStdIo::new(File::open(file.path()).unwrap());
+        let ids = futures::executor::block_on(enumerate_rrd_stores(&mut file)).unwrap();
         assert_eq!(
             ids,
             vec![store_id],
@@ -379,10 +397,14 @@ mod tests {
         write_interleaved(with_footer.path(), true);
         write_interleaved(without_footer.path(), false);
 
+        let mut with_footer_file =
+            futures::io::AllowStdIo::new(File::open(with_footer.path()).unwrap());
         let ids_footer =
-            enumerate_rrd_stores(&mut File::open(with_footer.path()).unwrap()).unwrap();
+            futures::executor::block_on(enumerate_rrd_stores(&mut with_footer_file)).unwrap();
+        let mut without_footer_file =
+            futures::io::AllowStdIo::new(File::open(without_footer.path()).unwrap());
         let ids_legacy =
-            enumerate_rrd_stores(&mut File::open(without_footer.path()).unwrap()).unwrap();
+            futures::executor::block_on(enumerate_rrd_stores(&mut without_footer_file)).unwrap();
 
         let mut expected = vec![store_a, store_b];
         expected.sort();
@@ -402,7 +424,8 @@ mod tests {
         let file = tempfile::NamedTempFile::new().unwrap();
         std::fs::write(file.path(), b"this is not an rrd file at all").unwrap();
 
-        let result = read_rrd_footer(&mut File::open(file.path()).unwrap());
+        let mut file = futures::io::AllowStdIo::new(File::open(file.path()).unwrap());
+        let result = futures::executor::block_on(read_rrd_footer(&mut file));
         assert!(result.is_err(), "Non-RRD file should return an error");
     }
 
@@ -411,7 +434,8 @@ mod tests {
         let file = tempfile::NamedTempFile::new().unwrap();
         std::fs::write(file.path(), b"tiny").unwrap();
 
-        let result = read_rrd_footer(&mut File::open(file.path()).unwrap());
+        let mut file = futures::io::AllowStdIo::new(File::open(file.path()).unwrap());
+        let result = futures::executor::block_on(read_rrd_footer(&mut file));
         assert!(
             result.is_err(),
             "File too small for StreamHeader should error"
@@ -435,7 +459,8 @@ mod tests {
         data[payload_start] ^= 0xFF;
         std::fs::write(file.path(), &data).unwrap();
 
-        let result = read_rrd_footer(&mut File::open(file.path()).unwrap());
+        let mut file = futures::io::AllowStdIo::new(File::open(file.path()).unwrap());
+        let result = futures::executor::block_on(read_rrd_footer(&mut file));
         assert!(
             matches!(result, Err(CodecError::CrcMismatch { .. })),
             "Expected CRC mismatch, got: {result:?}"

@@ -127,8 +127,8 @@ impl Source {
         re_log_encoding::RawRrdManifest::compute_sorbet_schema_sha256(&self.schema())
     }
 
-    pub fn compute_properties(&self) -> Result<RecordBatch, super::Error> {
-        self.resolved.extract_properties()
+    pub async fn compute_properties(&self) -> Result<RecordBatch, super::Error> {
+        self.resolved.extract_properties().await
     }
 
     /// Produce a [`RawRrdManifest`] for this layer, with a `chunk_key` column already populated.
@@ -294,6 +294,7 @@ mod tests {
         example_components::{MyPoint, MyPoints},
     };
     use re_types_core::ChunkId;
+    use tokio_util::compat::TokioAsyncReadCompatExt as _;
 
     use super::*;
     use crate::store::{ChunkKey, ResolvedStore};
@@ -356,8 +357,8 @@ mod tests {
     ///
     /// Byte-size/offset columns are intentionally NOT compared: per the `RawRrdManifest`
     /// docstring, Lazy reports RRD-encoded IPC sizes while Eager reports heap sizes.
-    #[test]
-    fn rrd_manifest_lazy_and_eager_produce_equivalent_output() {
+    #[tokio::test]
+    async fn rrd_manifest_lazy_and_eager_produce_equivalent_output() {
         let (store_id, chunks) = build_chunks();
 
         // Eager backend: in-memory `ChunkStore`. `ALL_DISABLED` matches `LazyStore`'s internal
@@ -384,14 +385,21 @@ mod tests {
         let rrd_path = dir.path().join("test.rrd");
         write_rrd(&rrd_path, &store_id, &chunks);
 
-        let mut footer_file = std::fs::File::open(&rrd_path).expect("failed to open test RRD");
+        let mut footer_file = tokio::fs::File::open(&rrd_path)
+            .await
+            .expect("failed to open test RRD")
+            .compat();
         let footer = re_log_encoding::read_rrd_footer(&mut footer_file)
+            .await
             .expect("failed to read test RRD footer")
             .expect("test RRD should have a footer");
         let raw_manifest = Arc::new(footer.manifests[&store_id].clone());
-        let store_file = std::fs::File::open(&rrd_path).expect("failed to open test RRD");
+        let store_file = tokio::fs::File::open(&rrd_path)
+            .await
+            .expect("failed to open test RRD")
+            .compat();
         let provider = Arc::new(
-            RrdChunkProvider::try_from_file(store_file, &rrd_path, raw_manifest)
+            RrdChunkProvider::from_reader(store_file, rrd_path.display().to_string(), raw_manifest)
                 .expect("failed to create test RRD chunk provider"),
         );
         let lazy = Arc::new(LazyStore::new(provider));

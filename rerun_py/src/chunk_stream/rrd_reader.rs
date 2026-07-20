@@ -9,6 +9,8 @@ use re_chunk_store::LazyStore;
 use re_log_encoding::{RawRrdManifest, RrdChunkProvider};
 use re_log_types::{LogMsg, StoreId, StoreKind};
 
+use crate::utils::wait_for_future;
+
 use super::error::ChunkPipelineError;
 use super::lazy_store::PyLazyStoreInternal;
 use super::py_stream::PyLazyChunkStreamInternal;
@@ -80,7 +82,7 @@ pub struct PyRrdReaderInternal {
 impl PyRrdReaderInternal {
     #[new]
     #[pyo3(text_signature = "(self, path)")]
-    fn new(path: &str) -> PyResult<Self> {
+    fn new(py: Python<'_>, path: &str) -> PyResult<Self> {
         let path = PathBuf::from(path);
 
         if !path.exists() {
@@ -94,8 +96,14 @@ impl PyRrdReaderInternal {
         // legacy RRD that has no manifest. Without one, store enumeration falls
         // back to a whole-file frame scan and `store()` won't work at all,
         // so it's worth surfacing this up-front rather than at first use.
-        if let Ok(mut file) = std::fs::File::open(&path)
-            && matches!(re_log_encoding::read_rrd_footer(&mut file), Ok(None))
+        if let Ok(file) = std::fs::File::open(&path)
+            && matches!(
+                wait_for_future(
+                    py,
+                    re_log_encoding::read_rrd_footer(&mut futures::io::AllowStdIo::new(file)),
+                ),
+                Ok(None)
+            )
         {
             crate::utils::py_rerun_warn(&format!(
                 "RRD file has no footer/manifest: {}. \
@@ -114,9 +122,9 @@ impl PyRrdReaderInternal {
     /// List all store entries in this RRD file.
     ///
     /// Lazily computed on first call, then cached.
-    fn store_entries(&self) -> PyResult<Vec<PyStoreEntryInternal>> {
+    fn store_entries(&self, py: Python<'_>) -> PyResult<Vec<PyStoreEntryInternal>> {
         Ok(self
-            .ensure_cached_stores()?
+            .ensure_cached_stores(py)?
             .into_iter()
             .map(|store_id| PyStoreEntryInternal { store_id })
             .collect())
@@ -127,8 +135,12 @@ impl PyRrdReaderInternal {
     /// If `store` is `None`, streams the first recording store found in this RRD. Errors
     /// if the file contains no recording stores.
     #[pyo3(signature = (store=None))]
-    fn stream(&self, store: Option<&PyStoreEntryInternal>) -> PyResult<PyLazyChunkStreamInternal> {
-        let target = self.resolve_target(store)?;
+    fn stream(
+        &self,
+        store: Option<&PyStoreEntryInternal>,
+        py: Python<'_>,
+    ) -> PyResult<PyLazyChunkStreamInternal> {
+        let target = self.resolve_target(py, store)?;
         Ok(PyLazyChunkStreamInternal::new(
             LazyChunkStream::from_factory(RrdStreamFactory::new(self.path.clone(), target)),
         ))
@@ -146,26 +158,29 @@ impl PyRrdReaderInternal {
         py: Python<'_>,
     ) -> PyResult<PyLazyStoreInternal> {
         let path = self.path.clone();
-        let target_store_id = self.resolve_target(store)?;
+        let target_store_id = self.resolve_target(py, store)?;
 
-        py.detach(move || -> Result<_, ChunkPipelineError> {
+        wait_for_future(py, async move {
             let path_buf = path.clone();
-            let mut file =
-                std::fs::File::open(&path).map_err(|err| ChunkPipelineError::RrdRead {
-                    path: path_buf.clone(),
-                    reason: err.to_string(),
-                })?;
+            let file = std::fs::File::open(&path).map_err(|err| ChunkPipelineError::RrdRead {
+                path: path_buf.clone(),
+                reason: err.to_string(),
+            })?;
+            let mut reader = futures::io::AllowStdIo::new(file);
 
-            match re_log_encoding::read_rrd_footer(&mut file) {
+            match re_log_encoding::read_rrd_footer(&mut reader).await {
                 Ok(Some(rrd_footer)) => {
                     let raw = pick_manifest(&rrd_footer, &path, &target_store_id)?;
                     let provider = Arc::new(
-                        RrdChunkProvider::try_from_file(file, &path, Arc::new(raw)).map_err(
-                            |err| ChunkPipelineError::RrdRead {
-                                path: path_buf.clone(),
-                                reason: format!("Invalid RRD manifest: {err}"),
-                            },
-                        )?,
+                        RrdChunkProvider::from_reader(
+                            reader,
+                            path.display().to_string(),
+                            Arc::new(raw),
+                        )
+                        .map_err(|err| ChunkPipelineError::RrdRead {
+                            path: path_buf.clone(),
+                            reason: format!("Invalid RRD manifest: {err}"),
+                        })?,
                     );
                     Ok(PyLazyStoreInternal::new(LazyStore::new(provider)))
                 }
@@ -188,10 +203,10 @@ impl PyRrdReaderInternal {
 
 impl PyRrdReaderInternal {
     /// Populate the store cache on first call, then return a clone of the cached list.
-    fn ensure_cached_stores(&self) -> PyResult<Vec<StoreId>> {
+    fn ensure_cached_stores(&self, py: Python<'_>) -> PyResult<Vec<StoreId>> {
         let mut cache = self.cached_stores.lock();
         if cache.is_none() {
-            *cache = Some(enumerate_rrd_stores(&self.path).map_err(PyErr::from)?);
+            *cache = Some(enumerate_rrd_stores(py, &self.path).map_err(PyErr::from)?);
         }
         Ok(cache.as_ref().expect("just populated above").clone())
     }
@@ -201,8 +216,12 @@ impl PyRrdReaderInternal {
     /// If `store` is `Some`, returns its id after validating it belongs to this RRD.
     /// If `None`, picks the first recording store, erroring if there isn't one and
     /// warning if there are several (so the implicit pick doesn't go unnoticed).
-    fn resolve_target(&self, store: Option<&PyStoreEntryInternal>) -> PyResult<StoreId> {
-        let cached = self.ensure_cached_stores()?;
+    fn resolve_target(
+        &self,
+        py: Python<'_>,
+        store: Option<&PyStoreEntryInternal>,
+    ) -> PyResult<StoreId> {
+        let cached = self.ensure_cached_stores(py)?;
         if let Some(s) = store {
             if !cached.contains(&s.store_id) {
                 return Err(PyValueError::new_err(format!(
@@ -341,14 +360,17 @@ impl ChunkStream for RrdStream {
 }
 
 /// Open `path` and enumerate its stores, wrapping I/O and codec errors into [`ChunkPipelineError`].
-fn enumerate_rrd_stores(path: &Path) -> Result<Vec<StoreId>, ChunkPipelineError> {
-    let mut file = std::fs::File::open(path).map_err(|err| ChunkPipelineError::RrdRead {
+fn enumerate_rrd_stores(py: Python<'_>, path: &Path) -> Result<Vec<StoreId>, ChunkPipelineError> {
+    let file = std::fs::File::open(path).map_err(|err| ChunkPipelineError::RrdRead {
         path: path.to_path_buf(),
         reason: err.to_string(),
     })?;
-    re_log_encoding::enumerate_rrd_stores(&mut file).map_err(|err| ChunkPipelineError::RrdRead {
-        path: path.to_path_buf(),
-        reason: err.to_string(),
+    let mut reader = futures::io::AllowStdIo::new(file);
+    wait_for_future(py, re_log_encoding::enumerate_rrd_stores(&mut reader)).map_err(|err| {
+        ChunkPipelineError::RrdRead {
+            path: path.to_path_buf(),
+            reason: err.to_string(),
+        }
     })
 }
 

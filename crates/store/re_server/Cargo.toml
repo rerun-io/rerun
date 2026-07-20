@@ -65,6 +65,7 @@ parking_lot.workspace = true
 serde.workspace = true
 thiserror.workspace = true
 tokio = { workspace = true, features = ["sync"] }
+tokio-util = { workspace = true, features = ["compat"] }
 tonic.workspace = true
 url.workspace = true
 

@@ -9,6 +9,9 @@ use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, SegmentId};
 use re_types_core::LayerName;
 use url::Url;
 
+#[cfg(not(target_arch = "wasm32"))]
+use tokio_util::compat::TokioAsyncReadCompatExt as _;
+
 #[cfg(target_arch = "wasm32")]
 use crate::opfs as fs;
 use crate::store::{
@@ -437,8 +440,7 @@ async fn load_store_ids(rrd_path: &Path) -> tonic::Result<BTreeSet<StoreId>> {
                 "Failed to open RRD file: {err:#}\nFile path: {rrd_path:?}"
             ))
         })?
-        .into_std()
-        .await;
+        .compat();
 
     #[cfg(target_arch = "wasm32")]
     let mut file = {
@@ -448,12 +450,14 @@ async fn load_store_ids(rrd_path: &Path) -> tonic::Result<BTreeSet<StoreId>> {
             ))
         })?;
         // TODO(RR-5154): Avoid buffering the full OPFS file once footer enumeration can use range reads.
-        std::io::Cursor::new(bytes)
+        futures::io::Cursor::new(bytes)
     };
 
-    let store_ids = re_log_encoding::enumerate_rrd_stores(&mut file).map_err(|err| {
-        tonic::Status::internal(format!("Failed to enumerate RRD stores: {err:#}"))
-    })?;
+    let store_ids = re_log_encoding::enumerate_rrd_stores(&mut file)
+        .await
+        .map_err(|err| {
+            tonic::Status::internal(format!("Failed to enumerate RRD stores: {err:#}"))
+        })?;
 
     Ok(store_ids.into_iter().collect())
 }

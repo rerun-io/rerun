@@ -15,6 +15,8 @@
 //! sort of state. That's the job of the `Encoder` and `Decoder`: they provide the IO and the
 //! state machines that turn collections of `Encodable`s and `Decodable`s into actual RRD streams.
 
+use futures::{AsyncRead, AsyncSeek};
+
 mod errors;
 mod footer;
 mod frames;
@@ -74,6 +76,21 @@ pub const RRD_FOURCC: [u8; 4] = *b"RRF2";
 
 /// Previously used `FourCC`s for Rerun RRD files.
 pub const OLD_RRD_FOURCC: &[[u8; 4]] = &[*b"RRF0", *b"RRF1"];
+
+// ---
+
+// NOTE: Today this is an alias for `AsyncRead + AsyncSeek + Unpin`: reads are done by seeking a shared
+// cursor, which forces a `Mutex<R>` in `RrdChunkProvider` and blocks the reactor when backed by a
+// synchronous `AllowStdIo` file.
+//
+// TODO(grtlr): Make this an actual positioned reader — a stateless `read_at(offset, len)` (no
+// shared cursor, so no `Mutex`), with blocking file I/O pushed to a `spawn_blocking` boundary and
+// coalesced reads issued concurrently.
+
+/// Asynchronous reads of bytes for loading chunks and footers.
+pub trait AsyncReadAt: AsyncRead + AsyncSeek + Unpin {}
+
+impl<R: AsyncRead + AsyncSeek + Unpin> AsyncReadAt for R {}
 
 // ---
 

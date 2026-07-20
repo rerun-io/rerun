@@ -224,7 +224,7 @@ impl Dataset {
         self.inner.segments.keys().cloned()
     }
 
-    pub fn segment_table(&self) -> Result<RecordBatch, Error> {
+    pub async fn segment_table(&self) -> Result<RecordBatch, Error> {
         let row_count = self.inner.segments.len();
 
         let mut all_segment_properties = Vec::with_capacity(row_count);
@@ -250,7 +250,7 @@ impl Dataset {
                 layer_names_row.push(layer_name.clone());
                 storage_urls_row.push(format!("memory:///store/{}", layer.store_slot_id()));
 
-                let layer_properties = layer.compute_properties()?;
+                let layer_properties = layer.compute_properties().await?;
 
                 // Accumulate properties.
                 //
@@ -364,8 +364,8 @@ impl Dataset {
             .map_err(Into::into)
     }
 
-    pub fn dataset_manifest(&self) -> Result<RecordBatch, Error> {
-        self.dataset_manifest_filtered(None, None)
+    pub async fn dataset_manifest(&self) -> Result<RecordBatch, Error> {
+        self.dataset_manifest_filtered(None, None).await
     }
 
     /// Like [`Self::dataset_manifest`] but filtered down to just the segments/layers of interest.
@@ -375,7 +375,7 @@ impl Dataset {
     /// * `None` `segments_of_interest` + `Some` `layers_of_interest`: return specified layers for *all* segments
     /// * `Some` `segments_of_interest` + `None` `layers_of_interest`: return *all* layers for specified segments
     /// * `Some` `segments_of_interest` + `Some` `layers_of_interest`: return *all* specified layers for *all* specified segments
-    pub fn dataset_manifest_filtered(
+    pub async fn dataset_manifest_filtered(
         &self,
         segments_of_interest: Option<&HashSet<&SegmentId>>,
         layers_of_interest: Option<&HashSet<&LayerName>>,
@@ -435,7 +435,7 @@ impl Dataset {
             // so all entries are always `Done`.
             registration_statuses.push(cloud_ext::LayerRegistrationStatus::Done.to_string());
 
-            properties.push(source.compute_properties()?);
+            properties.push(source.compute_properties().await?);
         }
 
         let base_record_batch = ScanDatasetManifestDataframe::new(

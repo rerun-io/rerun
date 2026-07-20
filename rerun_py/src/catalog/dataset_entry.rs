@@ -21,7 +21,7 @@ use crate::catalog::entry::set_entry_name;
 use crate::catalog::unregistration_handle::PyUnregistrationHandleInternal;
 use crate::chunk_stream::lazy_store::PyLazyStoreInternal;
 use crate::trace_context::read_trace_context_from_python;
-use crate::utils::{get_tokio_runtime, wait_for_future};
+use crate::utils::wait_for_future;
 
 /// A dataset entry in the catalog.
 #[pyclass(
@@ -543,7 +543,6 @@ impl PyDatasetEntryInternal {
 
         let provider = wait_for_future(py, async {
             SegmentChunkProvider::try_new(
-                get_tokio_runtime().handle().clone(),
                 connection.connection_registry().clone(),
                 connection.origin().clone(),
                 dataset_id,

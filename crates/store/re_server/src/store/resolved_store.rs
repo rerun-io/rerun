@@ -2,6 +2,9 @@ use std::path::Path;
 use std::sync::Arc;
 
 use arrow::array::RecordBatch;
+use futures::AsyncRead;
+#[cfg(not(target_arch = "wasm32"))]
+use futures::AsyncSeekExt as _;
 use nohash_hasher::IntSet;
 use re_chunk_store::{
     ChunkStoreHandle, ChunkStoreHandleWeak, ChunkTrackingMode, LazyStore, QueryResults, StoreSchema,
@@ -10,6 +13,8 @@ use re_chunk_store::{
 use re_log_encoding::RrdChunkProvider;
 use re_log_encoding::RrdManifest;
 use re_log_types::{EntityPath, StoreId, StoreKind};
+#[cfg(not(target_arch = "wasm32"))]
+use tokio_util::compat::TokioAsyncReadCompatExt as _;
 
 /// A store backend: either an in-memory eager store or a provider-backed lazy store.
 ///
@@ -98,10 +103,10 @@ impl ResolvedStore {
         }
     }
 
-    pub fn extract_properties(&self) -> Result<RecordBatch, super::Error> {
+    pub async fn extract_properties(&self) -> Result<RecordBatch, super::Error> {
         match self {
             Self::Eager(h) => h.read().extract_properties(),
-            Self::Lazy(l) => l.extract_properties(),
+            Self::Lazy(l) => l.extract_properties().await,
         }
         .map_err(super::Error::failed_to_extract_properties)
     }
@@ -116,13 +121,14 @@ impl ResolvedStore {
     /// Load an RRD reader as one or more _eager_ [`ResolvedStore`]s, one per store found in the stream.
     ///
     /// Stores whose kind does not match `store_kind` are filtered out.
-    fn load_rrd_reader_eager(
-        reader: impl std::io::Read,
+    async fn load_rrd_reader_eager<R: AsyncRead + Unpin + Send>(
+        reader: R,
         store_kind: StoreKind,
         config: &re_chunk_store::ChunkStoreConfig,
     ) -> Result<Vec<(StoreId, Self)>, super::Error> {
         Ok(
-            re_chunk_store::ChunkStore::handle_from_rrd_reader(config, reader)
+            re_chunk_store::ChunkStore::handle_from_rrd_reader_async(config, reader)
+                .await
                 .map_err(super::Error::RrdLoadingError)?
                 .into_iter()
                 .filter(|(store_id, _)| store_id.kind() == store_kind)
@@ -146,29 +152,31 @@ impl ResolvedStore {
 
             // TODO(RR-5086): Ultimately, we want to be able to load from an OPFS file into a lazy store too.
             Self::load_rrd_reader_eager(
-                std::io::Cursor::new(bytes),
+                futures::io::Cursor::new(bytes),
                 store_kind,
                 &super::InMemoryStore::default_eager_chunk_store_config(),
             )
+            .await
         }
 
         #[cfg(not(target_arch = "wasm32"))]
         {
-            let mut file = tokio::fs::File::open(path).await?.into_std().await;
+            let mut file = tokio::fs::File::open(path).await?.compat();
 
-            if let Ok(Some(footer)) = re_log_encoding::read_rrd_footer(&mut file) {
-                // The footer-reading handle is no longer needed — each `LazyStore` holds its own.
-                drop(file);
-
+            if let Ok(Some(footer)) = re_log_encoding::read_rrd_footer(&mut file).await {
                 let mut out = Vec::with_capacity(footer.manifests.len());
                 for (store_id, raw_manifest) in footer.manifests {
                     if store_id.kind() != store_kind {
                         continue;
                     }
-                    let store_file = tokio::fs::File::open(path).await?.into_std().await;
+                    let store_file = tokio::fs::File::open(path).await?.compat();
                     let provider = Arc::new(
-                        RrdChunkProvider::try_from_file(store_file, path, Arc::new(raw_manifest))
-                            .map_err(|err| super::Error::RrdLoadingError(err.into()))?,
+                        RrdChunkProvider::from_reader(
+                            store_file,
+                            path.display().to_string(),
+                            Arc::new(raw_manifest),
+                        )
+                        .map_err(|err| super::Error::RrdLoadingError(err.into()))?,
                     );
                     let lazy = Arc::new(LazyStore::new(provider));
                     out.push((store_id, Self::Lazy(lazy)));
@@ -176,13 +184,13 @@ impl ResolvedStore {
                 Ok(out)
             } else {
                 // Legacy fallback: eager load (no footer, or footer read error).
-                use std::io::Seek as _;
-                file.seek(std::io::SeekFrom::Start(0))?;
+                file.seek(std::io::SeekFrom::Start(0)).await?;
                 Self::load_rrd_reader_eager(
                     file,
                     store_kind,
                     &super::InMemoryStore::default_eager_chunk_store_config(),
                 )
+                .await
             }
         }
     }
@@ -213,6 +221,7 @@ mod tests {
     use re_log_types::{
         EntityPath, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource,
     };
+    use tokio_util::compat::TokioAsyncReadCompatExt as _;
 
     use super::ResolvedStore;
 
@@ -280,13 +289,16 @@ mod tests {
             let store_id = StoreId::random(StoreKind::Recording, "test");
             write_rrd(path, &store_id, with_footer);
 
-            let validated: BTreeSet<StoreId> = re_log_encoding::enumerate_rrd_stores(
-                &mut std::fs::File::open(path).expect("failed to open test RRD file"),
-            )
-            .expect("failed to enumerate test RRD stores")
-            .into_iter()
-            .filter(|id| id.kind() == StoreKind::Recording)
-            .collect();
+            let mut file = tokio::fs::File::open(path)
+                .await
+                .expect("failed to open test RRD file")
+                .compat();
+            let validated: BTreeSet<StoreId> = re_log_encoding::enumerate_rrd_stores(&mut file)
+                .await
+                .expect("failed to enumerate test RRD stores")
+                .into_iter()
+                .filter(|id| id.kind() == StoreKind::Recording)
+                .collect();
 
             let loaded: BTreeSet<StoreId> =
                 ResolvedStore::load_rrd_file(path, StoreKind::Recording)

@@ -1226,7 +1226,7 @@ impl RerunCloudService for RerunCloudHandler {
 
         let entry_id = get_entry_id_from_headers(&store, &request)?;
         let dataset = store.dataset(entry_id)?;
-        let record_batch = dataset.segment_table().map_err(|err| {
+        let record_batch = dataset.segment_table().await.map_err(|err| {
             tonic::Status::internal(format!("Unable to read segment table: {err:#}"))
         })?;
 
@@ -1255,7 +1255,7 @@ impl RerunCloudService for RerunCloudHandler {
             let store = self.store.read().await;
             let entry_id = get_entry_id_from_headers(&store, &request)?;
             let dataset = store.dataset(entry_id)?;
-            let record_batch = dataset.segment_table().map_err(|err| {
+            let record_batch = dataset.segment_table().await.map_err(|err| {
                 tonic::Status::internal(format!("Unable to read segment table: {err:#}"))
             })?;
             (record_batch, request.into_inner())
@@ -1292,7 +1292,7 @@ impl RerunCloudService for RerunCloudHandler {
 
         let entry_id = get_entry_id_from_headers(&store, &request)?;
         let dataset = store.dataset(entry_id)?;
-        let record_batch = dataset.dataset_manifest()?;
+        let record_batch = dataset.dataset_manifest().await?;
 
         Ok(tonic::Response::new(GetDatasetManifestSchemaResponse {
             schema: Some(
@@ -1319,7 +1319,7 @@ impl RerunCloudService for RerunCloudHandler {
             let store = self.store.read().await;
             let entry_id = get_entry_id_from_headers(&store, &request)?;
             let dataset = store.dataset(entry_id)?;
-            let record_batch = dataset.dataset_manifest()?;
+            let record_batch = dataset.dataset_manifest().await?;
             (record_batch, request.into_inner())
         };
 
@@ -1829,7 +1829,8 @@ impl RerunCloudService for RerunCloudHandler {
             .store
             .read()
             .await
-            .chunks_from_chunk_keys(&chunk_keys)?;
+            .chunks_from_chunk_keys(&chunk_keys)
+            .await?;
 
         let stream = futures::stream::iter(chunks).map(|(store_id, chunk)| {
             let arrow_msg = re_log_types::ArrowMsg {
