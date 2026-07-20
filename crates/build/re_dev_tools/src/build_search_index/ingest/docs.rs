@@ -2,7 +2,7 @@ use std::path::Path;
 
 use camino::Utf8PathBuf;
 
-use super::{Context, DocumentData, DocumentKind, strip_html_tags};
+use super::{Context, DocumentData, DocumentKind, strip_html_tags, weight};
 use crate::build_search_index::util::ProgressBarExt as _;
 
 pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
@@ -63,17 +63,17 @@ pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
                 ),
             };
 
-            // Ranking weight (used by the `weight:desc` rule): a page's own
-            // intro represents the page (10) and should beat another page's
-            // niche section (9) for a bare term, while sections still beat
-            // examples (8) and API symbols (3). Migration titles sit below
-            // examples (6).
+            // Ranking weight for the `weight:desc` rule: a page's own intro
+            // represents the whole page and beats another page's niche section
+            // for a bare term; sections tie examples and beat API symbols;
+            // migration titles sit below examples. See the `weight` module for
+            // the full scale.
             let weight = if is_migration {
-                6
+                weight::MIGRATION
             } else if part.anchor.is_none() {
-                10
+                weight::DOCS_PAGE
             } else {
-                9
+                weight::DOCS_SECTION
             };
 
             ctx.push_weighted(
@@ -244,6 +244,14 @@ fn word_count(s: &str) -> usize {
 /// expands them, but the raw markdown leaves search with the opaque directive
 /// line as its only content (and excerpt). Python is preferred because these
 /// snippets lead with a descriptive docstring that makes an ideal excerpt.
+///
+/// This mirrors the website's snippet expansion (rerun-io/landing
+/// `src/lib/server/snippets.ts`: `replaceSnippetsIn`, `getSnippet`,
+/// `extractRegion`). The two can't share code across the Rust/TS repo split,
+/// so the `snippet:` directive and `region`/`endregion` marker conventions
+/// must stay compatible between them. Only what search needs is reimplemented
+/// here (single-language pick, marker stripping); the website also renders
+/// language tabs and RRD links.
 fn resolve_snippets(body: &str, snippets_root: &camino::Utf8Path) -> String {
     let mut out = String::with_capacity(body.len());
     for line in body.lines() {

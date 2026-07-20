@@ -88,7 +88,7 @@ impl SearchClient {
             // best-matching) section per page. Other kinds set `page` to
             // their unique URL and are unaffected.
             "distinctAttribute": "page",
-            // Default rules plus `weight:desc` (see `DocumentKind::weight`) so
+            // Default rules plus `weight:desc` (see the `ingest::weight` module) so
             // docs/example pages rank above per-symbol API documents, while
             // `exactness` still lets exact symbol queries win.
             "rankingRules": [

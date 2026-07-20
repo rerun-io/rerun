@@ -178,22 +178,54 @@ enum DocumentKind {
 }
 
 impl DocumentKind {
-    /// Documents are ranked by this weight (descending) after word/typo/proximity/attribute
-    /// matching, so that whole-page guides beat the thousands of per-symbol API documents
-    /// for generic queries, while exact symbol matches still win on `exactness`.
+    /// Page-type ranking weight for the `weight:desc` ranking rule (see
+    /// [`weight`] for the full scale and rationale).
     ///
-    /// Examples tie docs sections (9, just under whole-page docs at 10): for a query
-    /// that names an example or integration (`urdf`, `ros`, `lerobot`), the example —
-    /// whose title is an exact match — then wins on `exactness`, instead of losing to a
-    /// niche docs subsection. Concept queries (`transform`, `video`) have no competing
-    /// example, so they stay docs-first.
+    /// Only kinds pushed via [`Context::push`] read their weight from here.
+    /// Docs vary the weight per document (page intro vs. section vs. migration
+    /// guide) and push it explicitly via [`Context::push_weighted`], so the
+    /// [`Self::Docs`] arm below is only a sensible default.
     fn weight(self) -> u64 {
         match self {
-            Self::Docs => 10,
-            Self::Examples => 9,
-            Self::Python | Self::Cpp => 3,
+            Self::Docs => weight::DOCS_PAGE,
+            Self::Examples => weight::EXAMPLE,
+            Self::Python | Self::Cpp => weight::API_SYMBOL,
         }
     }
+}
+
+/// Page-type ranking weights for the `weight:desc` ranking rule (configured in
+/// [`meili`](super::meili)). Every weight lives here so the scale stays
+/// mutually consistent and can be tuned in one place.
+///
+/// The rule runs *after* word/typo/proximity/attribute matching, so these only
+/// break ties between comparably-good matches: whole-page guides beat the
+/// thousands of per-symbol API documents for generic queries, while an exact
+/// symbol match still wins afterwards on `exactness`.
+pub mod weight {
+    /// A documentation page's own intro. Represents the whole page, so it beats
+    /// another page's niche section for a bare term.
+    pub const DOCS_PAGE: u64 = 10;
+
+    /// A documentation `##`/`###` section. Ties [`EXAMPLE`] on purpose.
+    pub const DOCS_SECTION: u64 = 9;
+
+    /// An example or example category. Ties docs sections ([`DOCS_SECTION`]):
+    /// for a query naming an example or integration (`urdf`, `ros`, `lerobot`)
+    /// the example's exact-match title then wins on `exactness`, while concept
+    /// queries (`transform`, `video`) have no competing example and stay
+    /// docs-first.
+    pub const EXAMPLE: u64 = 9;
+
+    /// A migration-guide title (migration guides are indexed title-only).
+    /// Below examples, so they stay findable by version or name but stop
+    /// outranking real guides on the common terms in their body.
+    pub const MIGRATION: u64 = 6;
+
+    /// An individual API symbol (Python/C++). These outnumber docs pages ~27:1,
+    /// so they sit far below page-level content to avoid drowning generic
+    /// queries.
+    pub const API_SYMBOL: u64 = 3;
 }
 
 /// Remove HTML tags (e.g. the `<picture>`/`<img>` embeds in docs and example
