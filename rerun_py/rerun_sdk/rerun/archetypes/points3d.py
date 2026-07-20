@@ -237,6 +237,9 @@ class Points3D(Points3DExt, Archetype, VisualizableArchetype):
 
             The colors are interpreted as RGB or RGBA in sRGB gamma-space,
             As either 0-1 floats or 0-255 integers, with separate alpha.
+
+            By default, the alpha channel affects brightness rather than transparency.
+            TODO(#1611): To use the alpha channel for transparency, enable the experimental "Transparent point clouds" feature flag.
         labels:
             Optional text labels for the points.
 
@@ -390,6 +393,9 @@ class Points3D(Points3DExt, Archetype, VisualizableArchetype):
 
             The colors are interpreted as RGB or RGBA in sRGB gamma-space,
             As either 0-1 floats or 0-255 integers, with separate alpha.
+
+            By default, the alpha channel affects brightness rather than transparency.
+            TODO(#1611): To use the alpha channel for transparency, enable the experimental "Transparent point clouds" feature flag.
         labels:
             Optional text labels for the points.
 
@@ -507,6 +513,9 @@ class Points3D(Points3DExt, Archetype, VisualizableArchetype):
     #
     # The colors are interpreted as RGB or RGBA in sRGB gamma-space,
     # As either 0-1 floats or 0-255 integers, with separate alpha.
+    #
+    # By default, the alpha channel affects brightness rather than transparency.
+    # TODO(#1611): To use the alpha channel for transparency, enable the experimental "Transparent point clouds" feature flag.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

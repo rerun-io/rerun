@@ -202,6 +202,8 @@ class LineStrips3D(Archetype, VisualizableArchetype):
             Optional radii for the line strips.
         colors:
             Optional colors for the line strips.
+
+            The alpha channel is ignored.
         labels:
             Optional text labels for the line strips.
 
@@ -270,6 +272,8 @@ class LineStrips3D(Archetype, VisualizableArchetype):
             Optional radii for the line strips.
         colors:
             Optional colors for the line strips.
+
+            The alpha channel is ignored.
         labels:
             Optional text labels for the line strips.
 
@@ -387,6 +391,8 @@ class LineStrips3D(Archetype, VisualizableArchetype):
             Optional radii for the line strips.
         colors:
             Optional colors for the line strips.
+
+            The alpha channel is ignored.
         labels:
             Optional text labels for the line strips.
 
@@ -484,6 +490,8 @@ class LineStrips3D(Archetype, VisualizableArchetype):
         converter=components.ColorBatch._converter,  # type: ignore[misc]
     )
     # Optional colors for the line strips.
+    #
+    # The alpha channel is ignored.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
