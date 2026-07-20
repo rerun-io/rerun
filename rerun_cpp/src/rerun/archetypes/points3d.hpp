@@ -206,8 +206,8 @@ namespace rerun::archetypes {
 
         /// Optional colors for the points.
         ///
-        /// The alpha channel affects the brightness (not transparency).
-        /// TODO(#1611): The alpha channel does not yet affect transparency.
+        /// By default, the alpha channel affects brightness rather than transparency.
+        /// TODO(#1611): To use the alpha channel for transparency, enable the experimental "Transparent point clouds" feature flag.
         std::optional<ComponentBatch> colors;
 
         /// Optional text labels for the points.
@@ -317,8 +317,8 @@ namespace rerun::archetypes {
 
         /// Optional colors for the points.
         ///
-        /// The alpha channel affects the brightness (not transparency).
-        /// TODO(#1611): The alpha channel does not yet affect transparency.
+        /// By default, the alpha channel affects brightness rather than transparency.
+        /// TODO(#1611): To use the alpha channel for transparency, enable the experimental "Transparent point clouds" feature flag.
         Points3D with_colors(const Collection<rerun::components::Color>& _colors) && {
             colors = ComponentBatch::from_loggable(_colors, Descriptor_colors).value_or_throw();
             return std::move(*this);

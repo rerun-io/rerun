@@ -3329,7 +3329,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         name: "colors",
                         display_name: "Colors",
                         component_type: "rerun.components.Color".into(),
-                        docstring_md: "Optional colors for the points.\n\nThe alpha channel affects the brightness (not transparency). \nTODO(#1611): The alpha channel does not yet affect transparency.",
+                        docstring_md: "Optional colors for the points.\n\nBy default, the alpha channel affects brightness rather than transparency.\nTODO(#1611): To use the alpha channel for transparency, enable the experimental \"Transparent point clouds\" feature flag.",
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
