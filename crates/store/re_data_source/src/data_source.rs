@@ -283,9 +283,8 @@ impl LogDataSource {
 
             // When loading a file on Web, or when using drag-n-drop.
             Self::FileContents(file_source, file_contents) => {
-                let name = file_contents.name.clone();
                 let (tx, rx) = re_log_channel::log_channel(LogSource::File {
-                    path: name.clone().into(),
+                    path: file_contents.path.clone(),
                 });
 
                 // This `StoreId` will be communicated to all `Importer`s, which may or may not
@@ -300,7 +299,7 @@ impl LogDataSource {
                 re_importer::import_from_file_contents(
                     &settings,
                     file_source,
-                    &std::path::PathBuf::from(file_contents.name),
+                    &file_contents.path,
                     std::borrow::Cow::Borrowed(&file_contents.bytes),
                     &tx,
                 )?;
@@ -386,7 +385,8 @@ impl LogDataSource {
             }
 
             Self::FileContents(file_src, file_contents) => {
-                let file_extension = std::path::Path::new(&file_contents.name)
+                let file_extension = file_contents
+                    .path
                     .extension()
                     .and_then(|e| e.to_str())
                     .map(|s| s.to_lowercase());

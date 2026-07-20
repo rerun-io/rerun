@@ -215,7 +215,6 @@ pub struct ExperimentalAppOptions {
     /// as redap datasets under an internal server in the recording panel. When disabled, files are
     /// imported directly into the viewer as plain recordings.
     ///
-    /// Native-only; ignored unless the viewer was built with internal catalog support.
-    #[cfg(not(target_arch = "wasm32"))]
+    /// Ignored unless the viewer was built with internal catalog support.
     pub use_internal_catalog: bool,
 }

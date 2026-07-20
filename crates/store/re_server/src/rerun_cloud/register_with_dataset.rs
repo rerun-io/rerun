@@ -246,7 +246,9 @@ fn rrd_path_from_url(storage_url: &url::Url) -> tonic::Result<PathBuf> {
                     bytes.extend(percent_decode(segment.as_bytes()));
                 }
 
-                String::from_utf8(bytes).map(PathBuf::from).map_err(|_| ())
+                String::from_utf8(bytes)
+                    .map(PathBuf::from)
+                    .map_err(|_err| ())
             })
         } else {
             Err(())

@@ -119,6 +119,7 @@ re_viewport.workspace = true
 
 # Internal (optional):
 re_analytics = { workspace = true, optional = true }
+re_server = { workspace = true, optional = true }
 re_view_map = { workspace = true, optional = true }
 
 # Test dependencies (optional):
@@ -170,7 +171,6 @@ wgpu.workspace = true
 egui_kittest.workspace = true
 poll-promise = { workspace = true, features = ["tokio"] }
 re_perf_telemetry = { workspace = true, optional = true }
-re_server = { workspace = true, optional = true }
 tokio.workspace = true
 
 [target.'cfg(target_os = "windows")'.dependencies]

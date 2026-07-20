@@ -102,6 +102,21 @@ impl WebHandle {
             ..Default::default()
         };
 
+        // The Wasm catalog is rebuilt empty on every page load while OPFS persists, so any upload
+        // from a prior session is unreachable — the dataset → path mapping lived only in the
+        // in-memory catalog. Clear the uploads directory before the app (and thus the catalog)
+        // exists, so OPFS does not grow without bound.
+        //
+        // TODO(grtlr): Instead of clearing, prepopulate the catalog with the previously uploaded
+        // recordings already sitting in OPFS `/uploads` — reconstruct the datasets via the
+        // `re_server` constructors (`RerunCloudHandlerBuilder` + `create_dataset_entry` /
+        // `register_with_dataset`, as exercised in `re_server/tests/opfs.rs`) so reloads no longer
+        // discard uploaded data.
+        #[cfg(feature = "internal_catalog")]
+        if let Err(err) = re_server::opfs::remove_dir_all("/uploads").await {
+            re_log::warn!("Failed to clear OPFS uploads directory: {err}");
+        }
+
         let connection_registry = self.connection_registry.clone();
         self.runner
             .start(

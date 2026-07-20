@@ -113,7 +113,7 @@ impl App {
                     let is_start_of_new_frame = ui.current_pass_index() == 0;
 
                     if is_start_of_new_frame {
-                        #[cfg(all(feature = "internal_catalog", not(target_arch = "wasm32")))]
+                        #[cfg(feature = "internal_catalog")]
                         if self.app_options().experimental.use_internal_catalog
                             && let Some(origin) = self.connection_registry.internal_origin()
                         {

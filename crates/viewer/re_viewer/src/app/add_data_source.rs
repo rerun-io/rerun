@@ -7,9 +7,11 @@ use re_viewer_context::{StoreHub, SystemCommand, SystemCommandSender as _};
 use super::App;
 
 #[cfg(all(feature = "internal_catalog", not(target_arch = "wasm32")))]
+use std::path::Path;
+#[cfg(feature = "internal_catalog")]
 use {
     anyhow::Context as _, re_protos::cloud::v1alpha1::ext::DataSource,
-    re_protos::common::v1alpha1::ext::IfDuplicateBehavior, std::path::Path,
+    re_protos::common::v1alpha1::ext::IfDuplicateBehavior,
 };
 
 impl App {
@@ -145,7 +147,14 @@ impl App {
                 }
             }
 
-            LogDataSource::FileContents(_file_source, _file_contents) => {
+            LogDataSource::FileContents(_file_source, file_contents) => {
+                if self
+                    .try_register_via_internal_catalog(file_contents)
+                    .is_break()
+                {
+                    return;
+                }
+
                 // For raw file contents we currently can't determine whether we're already receiving them.
             }
 
@@ -290,6 +299,67 @@ impl App {
             self.make_store_active_and_highlight(store_hub, egui_ctx, &store_id);
         }
     }
+
+    /// On Wasm with the internal catalog enabled, register a dropped `.rrd`'s contents with the
+    /// in-process catalog and open the resulting segment, returning [`ControlFlow::Break`] when it
+    /// took ownership of the load. Other builds have nothing to route through and return
+    /// [`ControlFlow::Continue`].
+    #[cfg(all(feature = "internal_catalog", target_arch = "wasm32"))]
+    fn try_register_via_internal_catalog(
+        &self,
+        file_contents: &re_data_source::FileContents,
+    ) -> std::ops::ControlFlow<()> {
+        use std::ops::ControlFlow;
+
+        let is_rrd = file_contents
+            .path
+            .extension()
+            .and_then(|ext| ext.to_str())
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("rrd"));
+        if !(is_rrd
+            && self.app_options().experimental.use_internal_catalog
+            && self.connection_registry.internal_origin().is_some())
+        {
+            return ControlFlow::Continue(());
+        }
+
+        let file_contents = file_contents.clone();
+        let connection_registry = self.connection_registry.clone();
+        let sender = self.command_sender.clone();
+        self.async_runtime.spawn_future(async move {
+            match register_opfs_file(&connection_registry, &file_contents).await {
+                Ok(uri) => {
+                    sender.send_system(SystemCommand::RefreshRedapEntry {
+                        origin: uri.origin.clone(),
+                        entry_id: uri.dataset_id.into(),
+                    });
+                    sender.send_system(SystemCommand::LoadDataSource(
+                        LogDataSource::RedapDatasetSegment {
+                            uri,
+                            open_behavior: RecordingOpenBehavior::OpenAndSelect,
+                        },
+                    ));
+                }
+                Err(err) => {
+                    re_log::error!(
+                        "Failed to load file via the Viewer catalog: {err}\nFile path: {}",
+                        file_contents.path.display(),
+                    );
+                }
+            }
+        });
+
+        ControlFlow::Break(())
+    }
+
+    #[cfg(not(all(feature = "internal_catalog", target_arch = "wasm32")))]
+    #[expect(clippy::unused_self)]
+    fn try_register_via_internal_catalog(
+        &self,
+        _file_contents: &re_data_source::FileContents,
+    ) -> std::ops::ControlFlow<()> {
+        std::ops::ControlFlow::Continue(())
+    }
 }
 
 /// Register a local `.rrd` file with the catalog server.
@@ -298,11 +368,6 @@ async fn register_local_file(
     connection_registry: &re_redap_client::ConnectionRegistryHandle,
     path: &Path,
 ) -> anyhow::Result<re_uri::DatasetSegmentUri> {
-    let origin = connection_registry
-        .internal_origin()
-        .context("internal catalog is not running")?;
-    let mut client = connection_registry.client(origin.clone()).await?;
-
     let abs_path = std::path::absolute(path).with_context(|| {
         format!(
             "failed to resolve absolute path\nFile path: {}",
@@ -316,45 +381,85 @@ async fn register_local_file(
         )
     })?;
 
-    let dataset_name = std::fs::File::open(&abs_path)
+    let mut file = std::fs::File::open(&abs_path).with_context(|| {
+        format!(
+            "failed to open RRD for application id extraction\nFile path: {}",
+            abs_path.display(),
+        )
+    })?;
+    let dataset_name = rrd_dataset_name(&mut file).with_context(|| {
+        format!(
+            "failed to read application id from RRD\nFile path: {}",
+            abs_path.display(),
+        )
+    })?;
+
+    register_file(connection_registry, dataset_name, file_url).await
+}
+
+#[cfg(all(feature = "internal_catalog", target_arch = "wasm32"))]
+async fn register_opfs_file(
+    connection_registry: &re_redap_client::ConnectionRegistryHandle,
+    file_contents: &re_data_source::FileContents,
+) -> anyhow::Result<re_uri::DatasetSegmentUri> {
+    let dataset_name = rrd_dataset_name(&mut std::io::Cursor::new(file_contents.bytes.as_ref()))
         .with_context(|| {
             format!(
-                "failed to open RRD for application id extraction\nFile path: {}",
-                abs_path.display(),
+                "failed to read application id from RRD\nFile path: {}",
+                file_contents.path.display(),
             )
-        })
-        .and_then(|mut file| {
-            let file: &mut std::fs::File = &mut file;
-            let store_ids = re_log_encoding::enumerate_rrd_stores(file)?;
-            let first_application_id = store_ids
-                .first()
-                .map(re_log_types::StoreId::application_id)
-                .context("no application id found in RRD")?;
+        })?;
 
-            if store_ids
-                .iter()
-                .any(|store_id| store_id.application_id() != first_application_id)
-            {
-                re_log::warn!(
-                    "RRD contains multiple application ids; using the first as the dataset name: {first_application_id}"
-                );
-            }
+    let file_name = file_contents
+        .path
+        .file_name()
+        .filter(|file_name| !file_name.is_empty())
+        .context("OPFS upload path has no file name")?
+        .to_str()
+        .context("OPFS upload file name is not UTF-8")?;
 
-            Ok(first_application_id.to_string())
-        })
-        .unwrap_or_else(|err| {
-            re_log::warn!(
-                "Failed to read application id from RRD: {err}\nFile path: {}",
-                abs_path.display(),
-            );
-            let path: &Path = &abs_path;
-            path.file_stem()
-                .and_then(|s| s.to_str())
-                .unwrap_or("recording")
-                .to_owned()
-        });
+    // The web file picker yields only a base name, so uploads routinely collide on `file_name`.
+    // Key the OPFS location on a content hash so that distinct bytes never share a path (which would
+    // truncate-overwrite the earlier upload); identical re-uploads dedupe to the same path.
+    let content_hash = format!(
+        "{:016x}",
+        re_log_types::hash::Hash64::hash(file_contents.bytes.as_ref()).hash64()
+    );
+    let path = std::path::PathBuf::from("/uploads")
+        .join(&content_hash)
+        .join(file_name);
 
-    let data_source = DataSource::new_rrd(file_url.as_str())?;
+    re_server::opfs::write(&path, file_contents.bytes.clone())
+        .await
+        .with_context(|| {
+            format!(
+                "failed to write OPFS upload file\nFile path: {}",
+                path.display()
+            )
+        })?;
+
+    // `Url::from_file_path` is unavailable on `wasm32-unknown-unknown`, so build the `file://` URL
+    // for the same on-disk location by hand. Both fallible steps are infallible for a known base.
+    let mut file_url = url::Url::parse("file:///").expect("`file:///` is a valid base URL");
+    file_url
+        .path_segments_mut()
+        .expect("`file:///` is a base URL")
+        .extend(["uploads", content_hash.as_str(), file_name]);
+
+    register_file(connection_registry, dataset_name, file_url).await
+}
+
+#[cfg(feature = "internal_catalog")]
+async fn register_file(
+    connection_registry: &re_redap_client::ConnectionRegistryHandle,
+    dataset_name: String,
+    file_url: url::Url,
+) -> anyhow::Result<re_uri::DatasetSegmentUri> {
+    let origin = connection_registry
+        .internal_origin()
+        .context("internal catalog is not running")?;
+    let mut client = connection_registry.client(origin.clone()).await?;
+    let data_source = DataSource::new_rrd_url(file_url);
 
     let (dataset_id, segment_id) = client
         .ensure_dataset_and_register(
@@ -370,4 +475,24 @@ async fn register_local_file(
         segment_id,
         fragment: Default::default(),
     })
+}
+
+#[cfg(feature = "internal_catalog")]
+fn rrd_dataset_name(reader: &mut (impl std::io::Read + std::io::Seek)) -> anyhow::Result<String> {
+    let store_ids = re_log_encoding::enumerate_rrd_stores(reader)?;
+    let first_application_id = store_ids
+        .first()
+        .map(re_log_types::StoreId::application_id)
+        .context("no application id found in RRD")?;
+
+    if store_ids
+        .iter()
+        .any(|store_id| store_id.application_id() != first_application_id)
+    {
+        re_log::warn!(
+            "RRD contains multiple application ids; using the first as the dataset name: {first_application_id}"
+        );
+    }
+
+    Ok(first_application_id.to_string())
 }

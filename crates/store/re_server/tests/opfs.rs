@@ -16,10 +16,7 @@ use re_protos::cloud::v1alpha1::{
 };
 use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_server::RerunCloudHandlerBuilder;
-use wasm_bindgen::JsCast as _;
-use wasm_bindgen_futures::JsFuture;
 use wasm_bindgen_test::wasm_bindgen_test;
-use web_sys::{FileSystemDirectoryHandle, FileSystemFileHandle, FileSystemWritableFileStream};
 
 wasm_bindgen_test::wasm_bindgen_test_configure!(run_in_browser);
 
@@ -44,7 +41,9 @@ async fn register_rrd_from_file_url_in_opfs() {
     let file_name = format!("{}.rrd", re_tuid::Tuid::new());
     let url = format!("file:///{file_name}");
 
-    write_opfs_file(&file_name, &encode_rrd()).await;
+    re_server::opfs::write(&file_name, encode_rrd().into())
+        .await
+        .expect("failed to write OPFS file");
 
     service
         .create_dataset_entry(tonic::Request::new(CreateDatasetEntryRequest {
@@ -151,35 +150,4 @@ fn encode_rrd() -> Vec<u8> {
     encoder.finish().expect("failed to finish test RRD");
     drop(encoder);
     bytes
-}
-
-async fn write_opfs_file(name: &str, bytes: &[u8]) {
-    write_opfs_file_main(name, bytes)
-        .await
-        .expect("failed to write OPFS file");
-}
-
-async fn write_opfs_file_main(name: &str, bytes: &[u8]) -> Result<(), wasm_bindgen::JsValue> {
-    let nav = web_sys::window()
-        .ok_or_else(|| wasm_bindgen::JsValue::from_str("OPFS requires a browser Window"))?
-        .navigator();
-    let root: FileSystemDirectoryHandle = JsFuture::from(nav.storage().get_directory())
-        .await?
-        .dyn_into()?;
-
-    let options = web_sys::FileSystemGetFileOptions::new();
-    options.set_create(true);
-    let file: FileSystemFileHandle =
-        JsFuture::from(root.get_file_handle_with_options(name, &options))
-            .await?
-            .dyn_into()?;
-    let writer: FileSystemWritableFileStream =
-        JsFuture::from(file.create_writable()).await?.dyn_into()?;
-
-    JsFuture::from(writer.write_with_u8_array(bytes)?).await?;
-
-    let stream: &web_sys::WritableStream = writer.as_ref();
-    JsFuture::from(stream.close()).await?;
-
-    Ok(())
 }

@@ -204,10 +204,7 @@ impl App {
 
         let is_test = app_env.is_test();
 
-        #[cfg_attr(
-            not(all(feature = "internal_catalog", not(target_arch = "wasm32"))),
-            expect(unused_variables)
-        )]
+        #[cfg_attr(not(feature = "internal_catalog"), expect(unused_variables))]
         let connection_registry_was_provided = connection_registry.is_some();
         let connection_registry = connection_registry
             .unwrap_or_else(re_redap_client::ConnectionRegistry::new_with_stored_credentials);
@@ -298,18 +295,24 @@ impl App {
             state.app_options = AppOptions::test();
         }
 
-        #[cfg(all(feature = "internal_catalog", not(target_arch = "wasm32")))]
-        let connection_registry = if state.app_options.experimental.use_internal_catalog
-            && !connection_registry_was_provided
-            && connection_registry.internal_origin().is_none()
-        {
-            let catalog = crate::internal_catalog::build(std::net::SocketAddr::from((
-                std::net::Ipv4Addr::LOCALHOST,
-                re_uri::DEFAULT_PROXY_PORT,
-            )));
-            connection_registry.with_internal((catalog.origin, catalog.connection))
-        } else {
-            connection_registry
+        #[cfg(feature = "internal_catalog")]
+        let connection_registry = {
+            if state.app_options.experimental.use_internal_catalog
+                && (!connection_registry_was_provided || cfg!(target_arch = "wasm32"))
+                && connection_registry.internal_origin().is_none()
+            {
+                #[cfg(not(target_arch = "wasm32"))]
+                let catalog = crate::internal_catalog::build(std::net::SocketAddr::from((
+                    std::net::Ipv4Addr::LOCALHOST,
+                    re_uri::DEFAULT_PROXY_PORT,
+                )));
+                #[cfg(target_arch = "wasm32")]
+                let catalog = crate::internal_catalog::build();
+
+                connection_registry.with_internal((catalog.origin, catalog.connection))
+            } else {
+                connection_registry
+            }
         };
 
         let reflection = re_sdk_types::reflection::generate_reflection().unwrap_or_else(|err| {
@@ -970,6 +973,13 @@ impl App {
         let mut force_store_info = false;
 
         for file in dropped_files {
+            // egui gives an optional filesystem `path` plus a display `name` (only `name` is set on
+            // web); reconcile them once so the fallback isn't reproduced at each use below.
+            let file_path = file
+                .path
+                .clone()
+                .unwrap_or_else(|| std::path::PathBuf::from(&file.name));
+
             let active_store_id = route
                 .recording_id()
                 .cloned()
@@ -982,11 +992,7 @@ impl App {
 
                     // If we don't have any application ID to recommend (which means we are on the welcome screen),
                     // then we use the file path as the application ID or the file name if there is no path (on web builds).
-                    let application_id = file
-                        .path
-                        .clone()
-                        .map(|p| ApplicationId::from(p.display().to_string()))
-                        .unwrap_or_else(|| ApplicationId::from(file.name.clone()));
+                    let application_id = ApplicationId::from(file_path.display().to_string());
 
                     // NOTE: We don't override blueprints' store IDs anyhow, so it is sound to assume that
                     // this can only be a recording.
@@ -1008,7 +1014,7 @@ impl App {
                             force_store_info,
                         },
                         FileContents {
-                            name: file.name.clone(),
+                            path: file_path,
                             bytes: bytes.clone(),
                         },
                     ),

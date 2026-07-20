@@ -1748,7 +1748,7 @@ async fn async_open_rrd_dialog() -> Vec<re_data_source::FileContents> {
             re_format::format_bytes(bytes.len() as _)
         );
         file_contents.push(re_data_source::FileContents {
-            name: file_name,
+            path: std::path::PathBuf::from(file_name),
             bytes: bytes.into(),
         });
     }

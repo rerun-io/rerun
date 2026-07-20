@@ -64,11 +64,13 @@ use crate::store::{
 use crate::store::{LayerInfo, TASK_ID_SUCCESS};
 
 #[derive(Debug)]
+#[cfg_attr(target_arch = "wasm32", derive(Clone, Copy, Default))]
 pub struct RerunCloudHandlerSettings {
     #[cfg(not(target_arch = "wasm32"))]
     storage_dir: tempfile::TempDir,
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl Default for RerunCloudHandlerSettings {
     fn default() -> Self {
         Self {
@@ -277,6 +279,7 @@ impl RerunCloudHandler {
             .collect())
     }
 
+    #[cfg_attr(target_arch = "wasm32", expect(clippy::unused_async))]
     async fn resolve_data_sources(data_sources: &[DataSource]) -> tonic::Result<Vec<DataSource>> {
         let mut resolved = Vec::<DataSource>::with_capacity(data_sources.len());
         for source in data_sources {
@@ -2101,34 +2104,32 @@ impl RerunCloudService for RerunCloudHandler {
 
         let schema = Arc::new(request.schema);
 
+        #[cfg(target_arch = "wasm32")]
+        let Some(details) = request.provider_details else {
+            return Err(tonic::Status::unimplemented(
+                "filesystem-backed table creation is not supported on wasm",
+            ));
+        };
+
+        #[cfg(not(target_arch = "wasm32"))]
         let details = if let Some(details) = request.provider_details {
             details
         } else {
-            #[cfg(target_arch = "wasm32")]
-            {
-                return Err(tonic::Status::unimplemented(
-                    "filesystem-backed table creation is not supported on wasm",
-                ));
-            }
-
-            #[cfg(not(target_arch = "wasm32"))]
-            {
-                // Create a directory in the storage directory. We use a tuid to avoid collisions
-                // and avoid any sanitization issue with the provided table name.
-                let table_path = self
-                    .settings
-                    .storage_dir
-                    .path()
-                    .join(format!("lance-{}", Tuid::new()));
-                ProviderDetails::LanceTable(ext::LanceTable {
-                    table_url: url::Url::from_directory_path(table_path).map_err(|_err| {
-                        Status::internal(format!(
-                            "Failed to create table directory in {:?}",
-                            self.settings.storage_dir.path()
-                        ))
-                    })?,
-                })
-            }
+            // Create a directory in the storage directory. We use a tuid to avoid collisions
+            // and avoid any sanitization issue with the provided table name.
+            let table_path = self
+                .settings
+                .storage_dir
+                .path()
+                .join(format!("lance-{}", Tuid::new()));
+            ProviderDetails::LanceTable(ext::LanceTable {
+                table_url: url::Url::from_directory_path(table_path).map_err(|_err| {
+                    Status::internal(format!(
+                        "Failed to create table directory in {:?}",
+                        self.settings.storage_dir.path()
+                    ))
+                })?,
+            })
         };
 
         #[cfg(target_arch = "wasm32")]
