@@ -119,6 +119,7 @@ jobs:
           install_runtime: true
           cache: true
           stripdown: true
+          destination: ${{ github.workspace }}/vulkan_sdk
 
       - name: Setup software rasterizer
         run: pixi run python ./scripts/ci/setup_software_rasterizer.py

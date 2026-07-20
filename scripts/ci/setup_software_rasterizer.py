@@ -291,12 +291,63 @@ def vulkan_info(extra_env_vars: dict[str, str]) -> None:
     print(run([vulkaninfo_path, "--summary"], env=env).stdout)
 
 
+def _looks_like_vulkan_sdk(path: Path) -> bool:
+    """Whether `path` holds a usable Vulkan SDK, i.e. ships the vulkaninfo utility."""
+    exe = "vulkaninfoSDK.exe" if os.name == "nt" else "vulkaninfo"
+    return (path / "bin" / exe).exists()
+
+
+def print_vulkan_sdk_candidate_locations() -> None:
+    """
+    Dump the places the Vulkan SDK might have ended up, to diagnose a cache mismatch.
+    """
+    workspace = os.environ.get("GITHUB_WORKSPACE") or os.getcwd()
+    version = os.environ.get("VULKAN_SDK_VERSION", "")
+
+    print("Vulkan SDK diagnostics:")
+    print(f"  VULKAN_SDK         = {os.environ.get('VULKAN_SDK')}")
+    print(f"  VULKAN_SDK_VERSION = {version or '<unset>'}")
+    print(f"  GITHUB_WORKSPACE   = {workspace}")
+    print(f"  cwd                = {os.getcwd()}")
+
+    if not version:
+        print("  (VULKAN_SDK_VERSION unset — cannot enumerate versioned locations)")
+        return
+
+    candidates: list[Path] = [Path(workspace) / "vulkan_sdk" / version]  # intended destination
+    if os.name == "nt":
+        candidates.append(Path(f"C:\\VulkanSDK\\{version}"))  # the action's default destination
+    # A relative `..` chain that under/overshoots lands the SDK next to some ancestor of
+    # the workspace; probe each, using both the casings the action and default use.
+    for ancestor in [Path(workspace), *Path(workspace).parents]:
+        candidates.append(ancestor / "vulkan_sdk" / version)
+        candidates.append(ancestor / "VulkanSDK" / version)
+
+    print("  candidate locations:")
+    seen: set[Path] = set()
+    for path in candidates:
+        if path in seen:
+            continue
+        seen.add(path)
+        if not path.exists():
+            print(f"    [missing] {path}")
+        elif _looks_like_vulkan_sdk(path):
+            print(f"    [SDK!]    {path}")
+        else:
+            print(f"    [dir]     {path} (exists, but no vulkaninfo)")
+
+
 def check_for_vulkan_sdk() -> None:
     vulkan_sdk_path = os.environ.get("VULKAN_SDK")
     if vulkan_sdk_path is None:
         print(
             "ERROR: VULKAN_SDK is not set. The sdk needs to be installed prior including runtime & vulkaninfo utility.",
         )
+        print_vulkan_sdk_candidate_locations()
+        sys.exit(1)
+    if not Path(vulkan_sdk_path).exists():
+        print("ERROR: VULKAN_SDK points to a path that does not exist (likely a cache restored to the wrong location).")
+        print_vulkan_sdk_candidate_locations()
         sys.exit(1)
 
 
