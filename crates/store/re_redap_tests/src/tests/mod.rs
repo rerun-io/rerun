@@ -12,6 +12,7 @@ mod query_index_values;
 mod register_asset;
 mod register_segment;
 mod rrd_manifest;
+mod scan_filter;
 mod unregister_segment;
 mod update_entry;
 mod watch_events;
@@ -165,6 +166,8 @@ define_redap_tests! {
     register_segment::register_with_dataset_if_duplicate_behavior_overwrite,
     register_segment::register_with_dataset_if_duplicate_behavior_skip,
     register_segment::register_with_prefix,
+    scan_filter::scan_segment_table_filter,
+    scan_filter::scan_dataset_manifest_filter,
     rrd_manifest::segment_id_not_found,
     rrd_manifest::simple_dataset_rrd_manifest,
     rrd_manifest::unregistered_segment,
