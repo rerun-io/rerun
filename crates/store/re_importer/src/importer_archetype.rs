@@ -151,11 +151,7 @@ impl Importer for ArchetypeImporter {
             )
         } else if crate::SUPPORTED_POINT_CLOUD_EXTENSIONS.contains(&extension.as_str()) {
             re_log::debug!(?filepath, importer = self.name(), "Loading .ply geometry…",);
-            self.send_chunks(
-                &tx,
-                &store_id,
-                load_ply(timepoint, entity_path, &contents)?,
-            )
+            self.send_chunks(&tx, &store_id, load_ply(timepoint, entity_path, &contents)?)
         } else if crate::SUPPORTED_TEXT_EXTENSIONS.contains(&extension.as_str()) {
             re_log::debug!(?filepath, importer = self.name(), "Loading text document…",);
             self.send_chunks(

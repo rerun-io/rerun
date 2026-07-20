@@ -7819,7 +7819,7 @@ dependencies = [
 
 [[package]]
 name = "ply_stl_tetrahedrons"
-version = "0.32.0-alpha.1+dev"
+version = "0.35.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "rerun",

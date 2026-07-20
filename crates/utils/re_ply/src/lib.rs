@@ -43,6 +43,16 @@ pub const MESH_VERTEX_PROPERTIES: [&str; 10] = [
 
 pub const MESH_FACE_INDEX_PROPERTIES: [&str; 2] = [PROP_VERTEX_INDICES, PROP_VERTEX_INDEX];
 
+/// A zero-sized payload target for elements that need to be consumed but not retained.
+#[derive(Default)]
+pub struct IgnoredElement;
+
+impl ply_rs_bw::ply::PropertyAccess for IgnoredElement {
+    fn new() -> Self {
+        Self
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PlyVertexLayout {
     Xy,

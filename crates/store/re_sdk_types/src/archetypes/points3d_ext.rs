@@ -12,7 +12,6 @@ const PROP_SH_DC_1: &str = "f_dc_1";
 const PROP_SH_DC_2: &str = "f_dc_2";
 const PROP_OPACITY: &str = "opacity";
 
-
 const SEEN_X: u16 = 1 << 0;
 const SEEN_Y: u16 = 1 << 1;
 const SEEN_Z: u16 = 1 << 2;
@@ -355,13 +354,48 @@ impl ply_rs_bw::ply::PropertyAccess for ParsedVertex {
                     PropertyAccessResult::Ignored
                 }
             }
-            PROP_SCALE_X => set_f32(&property, &mut self.seen_props, SEEN_SCALE_X, &mut self.scale_x),
-            PROP_SCALE_Y => set_f32(&property, &mut self.seen_props, SEEN_SCALE_Y, &mut self.scale_y),
-            PROP_SCALE_Z => set_f32(&property, &mut self.seen_props, SEEN_SCALE_Z, &mut self.scale_z),
-            PROP_SH_DC_0 => set_f32(&property, &mut self.seen_props, SEEN_SH_DC_0, &mut self.sh_dc_0),
-            PROP_SH_DC_1 => set_f32(&property, &mut self.seen_props, SEEN_SH_DC_1, &mut self.sh_dc_1),
-            PROP_SH_DC_2 => set_f32(&property, &mut self.seen_props, SEEN_SH_DC_2, &mut self.sh_dc_2),
-            PROP_OPACITY => set_f32(&property, &mut self.seen_props, SEEN_OPACITY, &mut self.opacity),
+            PROP_SCALE_X => set_f32(
+                &property,
+                &mut self.seen_props,
+                SEEN_SCALE_X,
+                &mut self.scale_x,
+            ),
+            PROP_SCALE_Y => set_f32(
+                &property,
+                &mut self.seen_props,
+                SEEN_SCALE_Y,
+                &mut self.scale_y,
+            ),
+            PROP_SCALE_Z => set_f32(
+                &property,
+                &mut self.seen_props,
+                SEEN_SCALE_Z,
+                &mut self.scale_z,
+            ),
+            PROP_SH_DC_0 => set_f32(
+                &property,
+                &mut self.seen_props,
+                SEEN_SH_DC_0,
+                &mut self.sh_dc_0,
+            ),
+            PROP_SH_DC_1 => set_f32(
+                &property,
+                &mut self.seen_props,
+                SEEN_SH_DC_1,
+                &mut self.sh_dc_1,
+            ),
+            PROP_SH_DC_2 => set_f32(
+                &property,
+                &mut self.seen_props,
+                SEEN_SH_DC_2,
+                &mut self.sh_dc_2,
+            ),
+            PROP_OPACITY => set_f32(
+                &property,
+                &mut self.seen_props,
+                SEEN_OPACITY,
+                &mut self.opacity,
+            ),
             _ => PropertyAccessResult::Ignored,
         }
     }
@@ -416,8 +450,6 @@ impl Points3D {
     }
 
     /// Creates a new [`Points3D`] from the contents of a `.ply` file.
-    ///
-    /// If unspecified, he media type will be inferred from the contents.
     pub fn from_file_contents(contents: &[u8]) -> std::io::Result<Self> {
         re_tracing::profile_function!();
         let mut contents = std::io::Cursor::new(contents);
@@ -440,14 +472,14 @@ struct ParsedPly {
 fn parse_ply_vertices<T: std::io::BufRead>(reader: &mut T) -> std::io::Result<ParsedPly> {
     re_tracing::profile_function!();
 
-    let default_element_parser = ply_rs_bw::parser::Parser::<ply_rs_bw::ply::DefaultElement>::new();
+    let ignored_element_parser = ply_rs_bw::parser::Parser::<re_ply::IgnoredElement>::new();
     let vertex_parser = ply_rs_bw::parser::Parser::<ParsedVertex>::new();
 
     let (vertex_layout, vertex_unknown_props, header, mut payload_reader) = {
         re_tracing::profile_scope!("read_ply_header");
 
         let mut payload_reader = ply_rs_bw::parser::Reader::new(reader);
-        let header = default_element_parser
+        let header = ignored_element_parser
             .read_header(&mut payload_reader)
             .map_err(std::io::Error::from)?;
         let vertex_layout = header
@@ -505,7 +537,7 @@ fn parse_ply_vertices<T: std::io::BufRead>(reader: &mut T) -> std::io::Result<Pa
             ply.vertices = vertices;
         } else {
             re_log::warn!("Ignoring {:?} in .ply file", element_def.name);
-            let _ignored = default_element_parser
+            let _ignored = ignored_element_parser
                 .read_payload_for_element(&mut payload_reader, element_def, &header)
                 .map_err(std::io::Error::from)?;
         }

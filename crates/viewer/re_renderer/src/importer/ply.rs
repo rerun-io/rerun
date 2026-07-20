@@ -306,7 +306,7 @@ fn parse_ply_mesh_from_buffer(buffer: &[u8]) -> std::io::Result<ParsedPlyMesh> {
 fn parse_ply_mesh<T: std::io::BufRead>(reader: &mut T) -> std::io::Result<ParsedPlyMesh> {
     re_tracing::profile_function!();
 
-    let default_element_parser = ply_rs_bw::parser::Parser::<ply_rs_bw::ply::DefaultElement>::new();
+    let ignored_element_parser = ply_rs_bw::parser::Parser::<re_ply::IgnoredElement>::new();
     let vertex_parser = ply_rs_bw::parser::Parser::<ParsedMeshVertex>::new();
     let face_indices_parser = ply_rs_bw::parser::Parser::<ParsedMeshFace<true>>::new();
     let face_index_parser = ply_rs_bw::parser::Parser::<ParsedMeshFace<false>>::new();
@@ -315,7 +315,7 @@ fn parse_ply_mesh<T: std::io::BufRead>(reader: &mut T) -> std::io::Result<Parsed
         re_tracing::profile_scope!("read_ply_header");
 
         let mut payload_reader = ply_rs_bw::parser::Reader::new(reader);
-        let header = default_element_parser
+        let header = ignored_element_parser
             .read_header(&mut payload_reader)
             .map_err(std::io::Error::from)?;
         let face_index_property = header
@@ -405,7 +405,7 @@ fn parse_ply_mesh<T: std::io::BufRead>(reader: &mut T) -> std::io::Result<Parsed
             }
             _ => {
                 re_log::warn!("Ignoring {:?} in .ply file", element_def.name);
-                let _ignored = default_element_parser
+                let _ignored = ignored_element_parser
                     .read_payload_for_element(&mut payload_reader, element_def, &header)
                     .map_err(std::io::Error::from)?;
             }
