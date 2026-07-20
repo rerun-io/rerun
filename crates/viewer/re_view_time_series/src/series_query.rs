@@ -17,7 +17,7 @@ use crate::{MAX_NUM_SERIES_FOR_REMAPPED_SCALARS, PlotPoint, PlotSeriesKind};
 
 type PlotPointsPerSeries = smallvec::SmallVec<[Vec<PlotPoint>; 1]>;
 
-/// All scalar rows in chunk iteration order. Used twice in this file.
+/// All scalar rows in chunk iteration order.
 fn iter_scalar_slices<'a>(
     all_scalar_chunks: &'a re_view::ChunksWithComponent<'_>,
 ) -> impl Iterator<Item = &'a [f64]> + 'a {
