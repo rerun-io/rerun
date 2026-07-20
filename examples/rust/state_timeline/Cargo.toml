@@ -9,8 +9,4 @@ publish = false
 [dependencies]
 anyhow.workspace = true
 arrow.workspace = true
-rerun = { path = "../../../crates/top/rerun", default-features = false, features = [
-  "native_viewer",
-  "sdk",
-  "server",
-] }
+rerun = { path = "../../../crates/top/rerun", default-features = false, features = ["sdk"] }
