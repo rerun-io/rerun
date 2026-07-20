@@ -817,9 +817,10 @@ To learn more about coordinate frames, see the [Spaces & Transforms](https://rer
         });
 
     if frame_id_before.is_empty() {
-        ui.warning_label(
-            "Transform relation can't be resolved due to empty coordinate frame name.",
-        );
+        ui.warning_label(format!(
+            "CoordinateFrame has an empty frame ID; falling back to the implicit frame {:?}.",
+            TransformFrameId::from_entity_path(&data_result.entity_path).as_str(),
+        ));
     }
 
     if frame_id_before != frame_id {

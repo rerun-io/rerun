@@ -149,6 +149,9 @@ struct EntityTransformIdMapping {
     ///
     /// Does *not* contain any implicit transform frame id.
     entity_path_to_transform_frame_id: IntMap<EntityPathHash, TransformFrameIdHash>,
+
+    /// Entities whose logged coordinate frame was empty and therefore fell back to their implicit frame.
+    empty_coordinate_frames: IntSet<EntityPathHash>,
 }
 
 impl IdentifiedViewSystem for TransformTreeContext {
@@ -289,11 +292,16 @@ impl ViewContextSystem for TransformTreeContext {
             re_tracing::profile_scope!("add-overrides");
             // Add overrides to the additional frame id hash map so we can get back the id for errors.
             for results in frame_id_results {
-                let Some(frame) =
-                    results.get_mono(archetypes::CoordinateFrame::descriptor_frame().component)
-                else {
+                let Some(frame) = results.get_mono::<TransformFrameId>(
+                    archetypes::CoordinateFrame::descriptor_frame().component,
+                ) else {
                     continue;
                 };
+
+                // Empty coordinate frames resolve to implicit frames, so don't register the empty ID for diagnostics.
+                if frame.as_str().is_empty() {
+                    continue;
+                }
 
                 let frame_hash = TransformFrameIdHash::new(&frame);
 
@@ -513,6 +521,17 @@ impl TransformTreeContext {
             .unwrap_or_else(|| TransformFrameIdHash::from_entity_path_hash(entity_path))
     }
 
+    /// Returns whether the entity's empty coordinate frame was replaced with its implicit frame.
+    #[inline]
+    pub fn uses_implicit_frame_for_empty_coordinate_frame(
+        &self,
+        entity_path: EntityPathHash,
+    ) -> bool {
+        self.entity_transform_id_mapping
+            .empty_coordinate_frames
+            .contains(&entity_path)
+    }
+
     /// Returns all reachable frame for the current root.
     #[inline]
     pub fn child_frames_for_entity(
@@ -670,34 +689,42 @@ impl EntityTransformIdMapping {
         let transform_frame_id_component =
             archetypes::CoordinateFrame::descriptor_frame().component;
 
-        let frame_id = results
-            .get_mono::<TransformFrameId>(transform_frame_id_component)
-            .map_or_else(
-                || {
-                    let fallback =
-                        TransformFrameIdHash::from_entity_path(results.entity_path());
-                    // Make sure this is the same as the fallback provider (which is a lot slower to run)
-                    re_log::debug_assert_eq!(
-                        TransformFrameIdHash::new(&typed_fallback_for::<TransformFrameId>(
-                            results.query_context(),
-                            transform_frame_id_component
-                        )),
-                        fallback
-                    );
-                    fallback
-                },
-                |frame_id| {
-                    let is_mono = results.get_raw_cell(transform_frame_id_component).is_some_and(|array| array.len() == 1);
-                    if !is_mono {
-                        re_log::warn_once!(
-                            "Entity {:?} has multiple coordinate frame instances, which is not supported. Using the first one.",
-                            results.entity_path(),
-                        );
-                    }
-                    TransformFrameIdHash::new(&frame_id)},
-            );
-
         let entity_path_hash = results.entity_path().hash();
+        // Missing coordinate frames use the implicit frame derived from the entity path.
+        let fallback = || {
+            let fallback = TransformFrameIdHash::from_entity_path(results.entity_path());
+            // Make sure this is the same as the fallback provider (which is a lot slower to run)
+            re_log::debug_assert_eq!(
+                TransformFrameIdHash::new(&typed_fallback_for::<TransformFrameId>(
+                    results.query_context(),
+                    transform_frame_id_component
+                )),
+                fallback
+            );
+            fallback
+        };
+        let frame_id = match results.get_mono::<TransformFrameId>(transform_frame_id_component) {
+            None => fallback(),
+            Some(frame_id) => {
+                let is_mono = results
+                    .get_raw_cell(transform_frame_id_component)
+                    .is_some_and(|array| array.len() == 1);
+                if !is_mono {
+                    re_log::warn_once!(
+                        "Entity {:?} has multiple coordinate frame instances, which is not supported. Using the first one.",
+                        results.entity_path(),
+                    );
+                }
+
+                if frame_id.as_str().is_empty() {
+                    // Treat an empty value like an absent CoordinateFrame, but remember it so visualizers can warn.
+                    self.empty_coordinate_frames.insert(entity_path_hash);
+                    fallback()
+                } else {
+                    TransformFrameIdHash::new(&frame_id)
+                }
+            }
+        };
 
         match self.transform_frame_id_to_entity_path.entry(frame_id) {
             std::collections::hash_map::Entry::Vacant(entry) => {

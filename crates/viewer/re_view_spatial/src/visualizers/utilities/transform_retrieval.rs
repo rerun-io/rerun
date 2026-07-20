@@ -117,6 +117,17 @@ pub fn transform_info_for_archetype_or_report_error<'a>(
 ) -> Option<&'a TransformInfo> {
     re_tracing::profile_function!();
 
+    if transform_context.uses_implicit_frame_for_empty_coordinate_frame(entity_path.hash()) {
+        output.report_unspecified_source(
+            *instruction_id,
+            VisualizerReportSeverity::Warning,
+            format!(
+                "CoordinateFrame has an empty frame ID; falling back to the implicit frame {:?}.",
+                re_tf::TransformFrameId::from_entity_path(entity_path).as_str(),
+            ),
+        );
+    }
+
     let result = transform_context.target_from_entity_path(entity_path.hash());
     let transform_info = match format_transform_info_result(entity_path, transform_context, result)
     {
