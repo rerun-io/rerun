@@ -120,7 +120,7 @@ impl SearchClient {
                 "no gui": ["headless", "serve"],
                 "point cloud": ["points3d", "points"],
                 "pointcloud": ["point cloud", "points3d"],
-                "3d points": ["points3d"],
+                "3d points": ["points3d"], // NOLINT: lowercase user query term
                 "splat": ["gaussian splatting"],
                 "gaussian splat": ["gaussian splatting", "splat"],
                 "ros": ["ros2"],

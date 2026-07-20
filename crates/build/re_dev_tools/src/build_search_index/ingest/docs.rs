@@ -109,6 +109,7 @@ const MIN_SUBSECTION_WORDS: usize = 15;
 struct DocPart {
     /// Display title: the page title for the intro, else the heading text.
     title: String,
+
     /// Heading anchor (`#some-heading`); `None` for the page intro.
     anchor: Option<String>,
     content: String,

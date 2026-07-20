@@ -119,6 +119,7 @@ impl Context {
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct Document {
     id: u64,
+
     /// Page-type ranking weight, used by the `weight:desc` ranking rule
     /// so that guides and examples rank above individual API symbols.
     #[serde(default)]
@@ -151,14 +152,17 @@ struct DocumentData {
     tags: Vec<String>,
     content: String,
     url: String,
+
     /// Deduplication key (Meilisearch `distinctAttribute`). Defaults to `url`
     /// in [`Context::push`]; docs sections set it to their parent page URL.
     #[serde(default)]
     page: Option<String>,
+
     /// For docs sections: the title of the page the section belongs to.
     /// Display-only (NOT searchable — see the settings in `meili.rs`).
     #[serde(skip_serializing_if = "Option::is_none", default)]
     page_title: Option<String>,
+
     /// Thumbnail shown next to the result in the website's search dialog.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     image: Option<String>,
