@@ -28,17 +28,25 @@ struct BatchUniformBuffer {
     world_from_obj: mat4x4f,
     flags: u32,
     depth_offset: f32,
-    _padding: vec2u,
+    // Index of this batch's first point in the shared point-data textures.
+    // This is effectively the min instance index!
+    first_point_index: u32,
+    _padding: u32,
     outline_mask: vec2u,
     picking_layer_object_id: vec2u,
 };
 @group(2) @binding(0)
 var<uniform> batch: BatchUniformBuffer;
 
+@group(3) @binding(0)
+var point_index_lookup_texture: texture_2d<u32>;
+
 // Flags
 // See point_cloud.rs#PointCloudBatchFlags
 const FLAG_ENABLE_SHADING: u32 = 1u;
 const FLAG_DRAW_AS_CIRCLES: u32 = 2u;
+const FLAG_PREMULTIPLIED_ALPHA: u32 = 4u;
+const FLAG_ENABLE_INDEX_LOOKUP: u32 = 8u;
 
 struct VertexOut {
     @builtin(position)
@@ -64,6 +72,12 @@ struct VertexOut {
 
     @location(4) @interpolate(flat)
     picking_instance_id: vec2u,
+
+    // Offset vector from `point_center` to the quad.
+    // Interpolating along this small-scale local offset for coverage math avoids float-precision issues,
+    // compared to subtracting potentially large world positions in the fragment shader.
+    @location(5) @interpolate(perspective)
+    quad_offset_from_center: vec3f,
 };
 
 struct PointData {
@@ -99,9 +113,19 @@ fn read_data(idx: u32) -> PointData {
 @vertex
 fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     let quad_idx = sphere_quad_index(vertex_idx);
+    var point_idx = quad_idx;
+    if has_any_flag(batch.flags, FLAG_ENABLE_INDEX_LOOKUP) {
+        let lookup_idx = quad_idx - batch.first_point_index;
+        let lookup_texture_size = textureDimensions(point_index_lookup_texture);
+        point_idx = batch.first_point_index + textureLoad(
+            point_index_lookup_texture,
+            vec2u(lookup_idx % lookup_texture_size.x, lookup_idx / lookup_texture_size.x),
+            0,
+        ).x;
+    }
 
     // Read point data (valid for the entire quad)
-    let point_data = read_data(quad_idx);
+    let point_data = read_data(point_idx);
 
     // Span quad
     // The pixel size formula `pixel_world_size_from_camera_distance` is derived from
@@ -121,36 +145,28 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     out.radius = quad.point_resolved_radius;
     out.world_position = quad.pos_in_world;
     out.point_center = point_data.pos;
+    out.quad_offset_from_center = quad.pos_in_world - point_data.pos;
     out.picking_instance_id = point_data.picking_instance_id;
 
     return out;
 }
 
-// TODO(andreas): move this to sphere_quad.wgsl once https://github.com/gfx-rs/naga/issues/1743 is resolved
-// point_cloud.rs has a specific workaround in place so we don't need to split vertex/fragment shader here
-//
-/// Computes coverage of a 2D sphere placed at `circle_center` in the fragment shader using the currently set camera.
-///
-/// 2D primitives are always facing the camera - the difference to sphere_quad_coverage is that
-/// perspective projection is not taken into account.
-fn circle_quad_coverage(world_position: vec3f, radius: f32, circle_center: vec3f) -> f32 {
-    let circle_distance = distance(circle_center, world_position);
-    let feathering_radius = fwidth(circle_distance) * 0.5;
-    return smoothstep(radius + feathering_radius, radius - feathering_radius, circle_distance);
-}
-
-fn coverage(world_position: vec3f, radius: f32, point_center: vec3f) -> f32 {
+fn coverage(world_position: vec3f, radius: f32, point_center: vec3f, quad_offset_from_center: vec3f) -> f32 {
     if is_camera_orthographic() || has_any_flag(batch.flags, FLAG_DRAW_AS_CIRCLES) {
-        return circle_quad_coverage(world_position, radius, point_center);
+        return circle_quad_coverage(quad_offset_from_center, radius);
     } else {
         return sphere_quad_coverage(world_position, radius, point_center);
     }
 }
 
-
 @fragment
 fn fs_main(in: VertexOut) -> @location(0) vec4f {
-    var coverage = coverage(in.world_position, in.radius, in.point_center);
+    var coverage = coverage(
+        in.world_position,
+        in.radius,
+        in.point_center,
+        in.quad_offset_from_center,
+    );
 
     if frame.deterministic_rendering == 1 {
         coverage = step(0.5, coverage);
@@ -172,12 +188,23 @@ fn fs_main(in: VertexOut) -> @location(0) vec4f {
     if has_any_flag(batch.flags, FLAG_ENABLE_SHADING) {
         shading = max(0.4, sqrt(1.2 - distance(in.point_center, in.world_position) / in.radius)); // quick and dirty coloring
     }
-    return vec4f(in.color.rgb * shading, coverage);
+    if has_any_flag(batch.flags, FLAG_PREMULTIPLIED_ALPHA) {
+        // Premultiplied alpha output for the no-alpha-to-coverage (alpha-blended) pipeline.
+        return vec4f(in.color.rgb * shading, in.color.a) * coverage;
+    } else {
+        // Default alpha-to-coverage output: alpha encodes per-fragment coverage.
+        return vec4f(in.color.rgb * shading, coverage);
+    }
 }
 
 @fragment
 fn fs_main_picking_layer(in: VertexOut) -> @location(0) vec4u {
-    let cov = coverage(in.world_position, in.radius, in.point_center);
+    let cov = coverage(
+        in.world_position,
+        in.radius,
+        in.point_center,
+        in.quad_offset_from_center,
+    );
     if cov <= 0.5 {
         discard;
     }
@@ -188,7 +215,12 @@ fn fs_main_picking_layer(in: VertexOut) -> @location(0) vec4u {
 fn fs_main_outline_mask(in: VertexOut) -> @location(0) vec2u {
     // Output is an integer target so we can't use coverage even though
     // the target is anti-aliased.
-    let cov = coverage(in.world_position, in.radius, in.point_center);
+    let cov = coverage(
+        in.world_position,
+        in.radius,
+        in.point_center,
+        in.quad_offset_from_center,
+    );
     if cov <= 0.5 {
         discard;
     }

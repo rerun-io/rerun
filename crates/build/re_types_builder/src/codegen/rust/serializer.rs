@@ -5,7 +5,7 @@ use super::arrow::{
     ArrowFieldTokenizer, is_backed_by_scalar_buffer, quote_fqname_as_type_path,
     quoted_arrow_primitive_type,
 };
-use super::util::{is_tuple_struct_from_obj, quote_comment};
+use super::util::{is_tuple_struct_from_obj, quote_comment, quote_default_value_for_datatype};
 use crate::data_type::{AtomicDataType, DataType, UnionMode};
 use crate::objects::EnumIntegerType;
 use crate::{Object, Objects, TypeRegistry};
@@ -484,9 +484,7 @@ fn quote_arrow_field_serializer(
     };
 
     // If the inner object is an enum, then dispatch to its serializer.
-    if let Some(obj) = inner_obj
-        && obj.is_enum()
-    {
+    if let Some(obj) = datatype.enum_obj(objects) {
         let fqname_use = quote_fqname_as_type_path(&obj.fqname);
         let option_wrapper = if elements_are_nullable {
             quote! {}
@@ -814,13 +812,15 @@ fn quote_arrow_field_serializer(
                     InnerRepr::NativeIterable => {
                         if let DataType::FixedSizeList(_, count) = datatype.to_logical_type() {
                             if elements_are_nullable {
+                                let placeholder =
+                                    quote_default_value_for_datatype(objects, inner_datatype);
                                 quote! {
                                     #data_src
                                     .into_iter()
                                     .flat_map(|v| match v {
                                         Some(v) => itertools::Either::Left(v.into_iter()),
                                         None => itertools::Either::Right(
-                                            std::iter::repeat_n(Default::default(), #count),
+                                            std::iter::repeat_n(#placeholder, #count),
                                         ),
                                     })
                                 }

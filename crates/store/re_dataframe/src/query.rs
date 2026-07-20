@@ -20,10 +20,10 @@ use re_chunk::{
     UnitChunkShared,
 };
 use re_chunk_store::{
-    ChunkStore, ColumnDescriptor, ComponentColumnDescriptor, Index, IndexColumnDescriptor,
-    IndexValue, QueryExpression, SparseFillStrategy,
+    ChunkStore, ChunkTrackingMode, ColumnDescriptor, ComponentColumnDescriptor, Index,
+    IndexColumnDescriptor, IndexValue, QueryExpression, SparseFillStrategy,
 };
-use re_log::{debug_assert, debug_assert_eq, debug_panic};
+use re_log::{ResultExt as _, debug_assert, debug_assert_eq, debug_panic};
 use re_log_types::AbsoluteTimeRange;
 use re_query::{QueryCache, StorageEngineLike};
 use re_sorbet::{
@@ -378,11 +378,10 @@ struct QueryHandleState {
     /// `selected_contents`: [`QueryHandleState::selected_contents`]
     selected_static_values: Vec<Option<UnitChunkShared>>,
 
-    /// The actual index filter in use, since the user-specified one is optional.
+    /// The actual index filter in use.
     ///
-    /// This just defaults to `Index::default()` if the user hasn't specified any: the actual
-    /// value is irrelevant since this means we are only concerned with static data anyway.
-    filtered_index: Index,
+    /// `None` means the user hasn't specified any index: we are only concerned with static data.
+    filtered_index: Option<Index>,
 
     /// The Arrow schema that corresponds to the `selected_contents`.
     ///
@@ -439,84 +438,96 @@ pub(crate) fn compute_user_selection(
 ) -> Vec<(usize, ColumnDescriptor)> {
     selection
         .iter()
-        .map(|column| match column {
-            ColumnSelector::RowId => view_contents
-                .iter()
-                .enumerate()
-                .find_map(|(idx, view_column)| {
-                    if let ColumnDescriptor::RowId(descr) = view_column {
-                        Some((idx, ColumnDescriptor::RowId(descr.clone())))
-                    } else {
-                        None
-                    }
-                })
-                .unwrap_or_else(|| {
-                    (
-                        usize::MAX,
-                        ColumnDescriptor::RowId(RowIdColumnDescriptor::from_sorted(false)),
-                    )
-                }),
+        .filter_map(|column| match column {
+            ColumnSelector::RowId => Some(
+                view_contents
+                    .iter()
+                    .enumerate()
+                    .find_map(|(idx, view_column)| {
+                        if let ColumnDescriptor::RowId(descr) = view_column {
+                            Some((idx, ColumnDescriptor::RowId(descr.clone())))
+                        } else {
+                            None
+                        }
+                    })
+                    .unwrap_or_else(|| {
+                        (
+                            usize::MAX,
+                            ColumnDescriptor::RowId(RowIdColumnDescriptor::from_sorted(false)),
+                        )
+                    }),
+            ),
 
             ColumnSelector::Time(selected_column) => {
                 let TimeColumnSelector {
                     timeline: selected_timeline,
                 } = selected_column;
 
-                view_contents
+                Some(
+                    view_contents
+                        .iter()
+                        .enumerate()
+                        .filter_map(|(idx, view_column)| {
+                            if let ColumnDescriptor::Time(view_descr) = view_column {
+                                Some((idx, view_descr))
+                            } else {
+                                None
+                            }
+                        })
+                        .find(|(_idx, view_descr)| {
+                            *view_descr.timeline().name() == *selected_timeline
+                        })
+                        .map_or_else(
+                            || {
+                                (
+                                    usize::MAX,
+                                    ColumnDescriptor::Time(IndexColumnDescriptor::new_null(
+                                        *selected_timeline,
+                                    )),
+                                )
+                            },
+                            |(idx, view_descr)| (idx, ColumnDescriptor::Time(view_descr.clone())),
+                        ),
+                )
+            }
+
+            ColumnSelector::Component(selected_column) => {
+                if let Some((idx, view_descr)) = view_contents
                     .iter()
                     .enumerate()
                     .filter_map(|(idx, view_column)| {
-                        if let ColumnDescriptor::Time(view_descr) = view_column {
+                        if let ColumnDescriptor::Component(view_descr) = view_column {
                             Some((idx, view_descr))
                         } else {
                             None
                         }
                     })
-                    .find(|(_idx, view_descr)| *view_descr.timeline().name() == *selected_timeline)
-                    .map_or_else(
-                        || {
-                            (
-                                usize::MAX,
-                                ColumnDescriptor::Time(IndexColumnDescriptor::new_null(
-                                    *selected_timeline,
-                                )),
-                            )
-                        },
-                        |(idx, view_descr)| (idx, ColumnDescriptor::Time(view_descr.clone())),
-                    )
+                    .find(|(_idx, view_descr)| view_descr.matches(selected_column))
+                {
+                    Some((idx, ColumnDescriptor::Component(view_descr.clone())))
+                } else {
+                    // Not found in the view contents: craft a placeholder "missing" descriptor.
+                    // Skip (and log) selectors with an invalid component identifier.
+                    let component = selected_column
+                        .component_identifier()
+                        .ok_or_log_error_once()?;
+                    Some((
+                        usize::MAX,
+                        ColumnDescriptor::Component(ComponentColumnDescriptor {
+                            entity_path: selected_column.entity_path.clone(),
+                            archetype: None,
+                            component,
+                            component_type: None,
+                            store_datatype: ArrowDataType::Null,
+                            is_static: false,
+                            is_tombstone: false,
+                            is_semantically_empty: false,
+                        }),
+                    ))
+                }
             }
-
-            ColumnSelector::Component(selected_column) => view_contents
-                .iter()
-                .enumerate()
-                .filter_map(|(idx, view_column)| {
-                    if let ColumnDescriptor::Component(view_descr) = view_column {
-                        Some((idx, view_descr))
-                    } else {
-                        None
-                    }
-                })
-                .find(|(_idx, view_descr)| view_descr.matches(selected_column))
-                .map_or_else(
-                    || {
-                        (
-                            usize::MAX,
-                            ColumnDescriptor::Component(ComponentColumnDescriptor {
-                                entity_path: selected_column.entity_path.clone(),
-                                archetype: None,
-                                component: selected_column.component.as_str().into(),
-                                component_type: None,
-                                store_datatype: ArrowDataType::Null,
-                                is_static: false,
-                                is_tombstone: false,
-                                is_semantically_empty: false,
-                            }),
-                        )
-                    },
-                    |(idx, view_descr)| (idx, ColumnDescriptor::Component(view_descr.clone())),
-                ),
         })
-        .collect_vec()
+        .collect()
 }
 
 impl<E: StorageEngineLike> QueryHandle<E> {
@@ -553,10 +564,8 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     fn init_(query: &QueryExpression, store: &ChunkStore, cache: &QueryCache) -> QueryHandleState {
         re_tracing::profile_scope!("QueryHandle::init");
 
-        // The timeline doesn't matter if we're running in static-only mode.
-        let filtered_index = query
-            .filtered_index
-            .unwrap_or_else(|| TimelineName::new(""));
+        // `None` means static-only mode: no timeline is relevant.
+        let filtered_index = query.filtered_index;
 
         // 1. Compute the schema for the query.
         let view_contents_schema = store.schema_for_query(query);
@@ -584,10 +593,11 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         ));
 
         // 4. Perform the query and keep track of all the relevant chunks.
-        let range_query = {
-            let index_range = if query.filtered_index.is_none() {
-                AbsoluteTimeRange::EMPTY // static-only
-            } else if let Some(using_index_values) = query.using_index_values.as_ref() {
+        //
+        // In static-only mode there is no timeline to range over: no range query is issued,
+        // and the fetchers fall back to a static latest-at query instead.
+        let range_query = filtered_index.map(|filtered_index| {
+            let index_range = if let Some(using_index_values) = query.using_index_values.as_ref() {
                 Option::zip(using_index_values.first(), using_index_values.last())
                     .map_or(AbsoluteTimeRange::EMPTY, |(start, end)| {
                         AbsoluteTimeRange::new(*start, *end)
@@ -601,9 +611,9 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             RangeQuery::new(filtered_index, index_range)
                 .keep_extra_timelines(true) // we want all the timelines we can get!
                 .keep_extra_components(false)
-        };
+        });
         let (view_pov_chunks_idx, mut view_chunks) =
-            Self::fetch_view_chunks(query, store, cache, &range_query, &view_contents);
+            Self::fetch_view_chunks(query, store, cache, range_query.as_ref(), &view_contents);
 
         // 5. Collect all relevant clear chunks and update the view accordingly.
         //
@@ -612,7 +622,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             re_tracing::profile_scope!("clear_chunks");
 
             let clear_chunks =
-                Self::fetch_clear_chunks(query, store, cache, &range_query, &view_contents);
+                Self::fetch_clear_chunks(query, store, cache, range_query.as_ref(), &view_contents);
             for (view_idx, chunks) in view_chunks.iter_mut().enumerate() {
                 let Some(ColumnDescriptor::Component(descr)) = view_contents.get(view_idx) else {
                     continue;
@@ -651,7 +661,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                             ))
                             .unwrap();
 
-                        ChunkBundle::new(chunk, Some(&filtered_index))
+                        ChunkBundle::new(chunk, filtered_index.as_ref())
                     }));
                 }
             }
@@ -670,49 +680,53 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         // 6. Collect all unique index values.
         //
         // Used to achieve ~O(log(n)) pagination.
-        let unique_index_values = if query.filtered_index.is_none() {
-            vec![TimeInt::STATIC]
-        } else if let Some(using_index_values) = query.using_index_values.as_ref() {
-            using_index_values
-                .iter()
-                .filter(|index_value| !index_value.is_static())
-                .copied()
-                .collect_vec()
-        } else {
-            re_tracing::profile_scope!("index_values");
-
-            let mut view_chunks = view_chunks.iter();
-            let view_chunks = if let Some(view_pov_chunks_idx) = view_pov_chunks_idx {
-                Either::Left(view_chunks.nth(view_pov_chunks_idx).into_iter())
+        let unique_index_values = if let Some(filtered_index) = filtered_index.as_ref() {
+            if let Some(using_index_values) = query.using_index_values.as_ref() {
+                using_index_values
+                    .iter()
+                    .filter(|index_value| !index_value.is_static())
+                    .copied()
+                    .collect_vec()
             } else {
-                Either::Right(view_chunks)
-            };
+                re_tracing::profile_scope!("index_values");
 
-            let mut all_unique_index_values: BTreeSet<TimeInt> = view_chunks
-                .flat_map(|chunks| {
-                    chunks.iter().filter_map(|cc| {
-                        cc.chunk
-                            .timelines()
-                            .get(&filtered_index)
-                            .map(|time_column| time_column.times())
+                let mut view_chunks = view_chunks.iter();
+                let view_chunks = if let Some(view_pov_chunks_idx) = view_pov_chunks_idx {
+                    Either::Left(view_chunks.nth(view_pov_chunks_idx).into_iter())
+                } else {
+                    Either::Right(view_chunks)
+                };
+
+                let mut all_unique_index_values: BTreeSet<TimeInt> = view_chunks
+                    .flat_map(|chunks| {
+                        chunks.iter().filter_map(|cc| {
+                            cc.chunk
+                                .timelines()
+                                .get(filtered_index)
+                                .map(|time_column| time_column.times())
+                        })
                     })
-                })
-                .flatten()
-                .collect();
+                    .flatten()
+                    .collect();
 
-            if let Some(filtered_index_values) = query.filtered_index_values.as_ref() {
-                all_unique_index_values.retain(|time| filtered_index_values.contains(time));
+                if let Some(filtered_index_values) = query.filtered_index_values.as_ref() {
+                    all_unique_index_values.retain(|time| filtered_index_values.contains(time));
+                }
+
+                all_unique_index_values
+                    .into_iter()
+                    .filter(|index_value| !index_value.is_static())
+                    .collect_vec()
             }
-
-            all_unique_index_values
-                .into_iter()
-                .filter(|index_value| !index_value.is_static())
-                .collect_vec()
+        } else {
+            vec![TimeInt::STATIC] // static-only
         };
 
         // 6b. Fill per-chunk bulk-emit metadata, now that both `view_chunks` (sorted)
         //     and `unique_index_values` are known.
-        Self::fill_bulk_metadata(&mut view_chunks, &unique_index_values, &filtered_index);
+        if let Some(filtered_index) = filtered_index.as_ref() {
+            Self::fill_bulk_metadata(&mut view_chunks, &unique_index_values, filtered_index);
+        }
 
         let selected_static_values = {
             re_tracing::profile_scope!("static_values");
@@ -724,11 +738,14 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                     ColumnDescriptor::Component(descr) => {
                         descr.sanity_check();
 
-                        let query =
-                            re_chunk::LatestAtQuery::new(TimelineName::new(""), TimeInt::STATIC);
+                        let query = re_chunk::LatestAtQuery::new_static();
 
-                        let results =
-                            cache.latest_at(&query, &descr.entity_path, [descr.component]);
+                        let results = cache.latest_at(
+                            ChunkTrackingMode::Report,
+                            &query,
+                            &descr.entity_path,
+                            [descr.component],
+                        );
 
                         results.components.into_values().next()
                     }
@@ -826,7 +843,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         query: &QueryExpression,
         store: &ChunkStore,
         cache: &QueryCache,
-        range_query: &RangeQuery,
+        range_query: Option<&RangeQuery>,
         view_contents: &[ColumnDescriptor],
     ) -> (Option<usize>, Vec<Vec<ChunkBundle>>) {
         re_tracing::profile_function!();
@@ -871,7 +888,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         query: &QueryExpression,
         store: &ChunkStore,
         cache: &QueryCache,
-        range_query: &RangeQuery,
+        range_query: Option<&RangeQuery>,
         view_contents: &[ColumnDescriptor],
     ) -> IntMap<EntityPath, Vec<Chunk>> {
         re_tracing::profile_function!();
@@ -973,11 +990,36 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         query: &QueryExpression,
         _store: &ChunkStore,
         cache: &QueryCache,
-        range_query: &RangeQuery,
+        range_query: Option<&RangeQuery>,
         entity_path: &EntityPath,
         components: impl IntoIterator<Item = ComponentIdentifier>,
     ) -> Option<Vec<ChunkBundle>> {
         re_tracing::profile_function!();
+
+        let Some(range_query) = range_query else {
+            // Static-only query (no timeline to range over): a static chunk overrides everything,
+            // which makes this equivalent to a latest-at query at `TimeInt::STATIC`:
+            let results = cache.latest_at(
+                ChunkTrackingMode::Report,
+                &re_chunk::LatestAtQuery::new_static(),
+                entity_path,
+                components,
+            );
+
+            debug_assert!(
+                results.components.len() <= 1,
+                "cannot possibly get more than one component with this query"
+            );
+
+            return results
+                .components
+                .into_iter()
+                .next()
+                .map(|(_component, unit)| {
+                    let chunk = std::sync::Arc::unwrap_or_clone(unit.into_chunk());
+                    vec![ChunkBundle::new(chunk, None)]
+                });
+        };
 
         // NOTE: Keep in mind that the range APIs natively make sure that we will
         // either get a bunch of relevant _static_ chunks, or a bunch of relevant
@@ -985,7 +1027,12 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         //
         // TODO(cmc): Going through the cache is very useful in a Viewer context, but
         // not so much in an SDK context. Make it configurable.
-        let results = cache.range(range_query, entity_path, components);
+        let results = cache.range(
+            ChunkTrackingMode::Report,
+            range_query,
+            entity_path,
+            components,
+        );
 
         debug_assert!(
             results.components.len() <= 1,
@@ -1117,7 +1164,11 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             for (bundle, cc) in std::iter::zip(state_chunks, iter_chunks) {
                 // NOTE: The chunk has been densified already: its global time range is the same as
                 // the time range for the specific component of interest.
-                let Some(time_column) = bundle.chunk.timelines().get(&state.filtered_index) else {
+                let Some(time_column) = state
+                    .filtered_index
+                    .as_ref()
+                    .and_then(|filtered_index| bundle.chunk.timelines().get(filtered_index))
+                else {
                     continue;
                 };
 
@@ -1415,10 +1466,10 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                 let mut cur_cursor_value = cs.cursor;
 
                 let cur_index_times_empty: &[i64] = &[];
-                let cur_index_times = cc
-                    .chunk
-                    .timelines()
-                    .get(&state.filtered_index)
+                let cur_index_times = state
+                    .filtered_index
+                    .as_ref()
+                    .and_then(|filtered_index| cc.chunk.timelines().get(filtered_index))
                     .map_or(cur_index_times_empty, |time_column| time_column.times_raw());
                 let cur_index_row_ids = cc.chunk.row_ids_slice();
 
@@ -1540,11 +1591,19 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                     // the cost of some extra complexity (e.g. caching the result across
                     // consecutive nulls etc). Later.
 
-                    let query =
-                        re_chunk::LatestAtQuery::new(state.filtered_index, *cur_index_value);
+                    let query = match state.filtered_index {
+                        Some(filtered_index) => {
+                            re_chunk::LatestAtQuery::new(filtered_index, *cur_index_value)
+                        }
+                        None => re_chunk::LatestAtQuery::new_static(),
+                    };
 
-                    let results =
-                        cache.latest_at(&query, &descr.entity_path.clone(), [descr.component]);
+                    let results = cache.latest_at(
+                        ChunkTrackingMode::Report,
+                        &query,
+                        &descr.entity_path.clone(),
+                        [descr.component],
+                    );
 
                     *streaming_state = results
                         .components
@@ -1614,11 +1673,13 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                     .or_insert((time, time_sliced));
             });
 
-        if !cur_index_value.is_static() {
+        if !cur_index_value.is_static()
+            && let Some(filtered_index) = state.filtered_index
+        {
             // The current index value (if temporal) should be the one returned for the
             // queried index, no matter what.
             max_value_per_index.insert(
-                state.filtered_index,
+                filtered_index,
                 (
                     *cur_index_value,
                     ArrowScalarBuffer::from(vec![cur_index_value.as_i64()]),
@@ -2227,7 +2288,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         if 1 < slice_count {
             let has_other_timeline_selected = state.selected_contents.iter().any(|(_, col)| {
                 if let ColumnDescriptor::Time(descr) = col {
-                    *descr.timeline().name() != state.filtered_index
+                    Some(*descr.timeline().name()) != state.filtered_index
                 } else {
                     false
                 }
@@ -2294,7 +2355,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                         continue;
                     };
 
-                    if *descr.timeline().name() == state.filtered_index {
+                    if Some(*descr.timeline().name()) == state.filtered_index {
                         values.extend(
                             state.unique_index_values[cur_row..cur_row + min_len]
                                 .iter()
@@ -2528,7 +2589,7 @@ mod tests {
         let query_cache = QueryCache::new_handle(store.clone());
         let query_engine = QueryEngine::new(store.clone(), query_cache.clone());
 
-        let filtered_index = Some(TimelineName::new("frame_nr"));
+        let filtered_index = Some(TimelineName::from("frame_nr"));
 
         // static
         {
@@ -2581,7 +2642,7 @@ mod tests {
         let query_cache = QueryCache::new_handle(store.clone());
         let query_engine = QueryEngine::new(store.clone(), query_cache.clone());
 
-        let filtered_index = Some(TimelineName::new("frame_nr"));
+        let filtered_index = Some(TimelineName::from("frame_nr"));
         let query = QueryExpression {
             filtered_index,
             sparse_fill_strategy: SparseFillStrategy::LatestAtGlobal,
@@ -2613,7 +2674,7 @@ mod tests {
         let query_cache = QueryCache::new_handle(store.clone());
         let query_engine = QueryEngine::new(store.clone(), query_cache.clone());
 
-        let filtered_index = Some(TimelineName::new("frame_nr"));
+        let filtered_index = Some(TimelineName::from("frame_nr"));
         let query = QueryExpression {
             filtered_index,
             filtered_index_range: Some(AbsoluteTimeRange::new(30, 60)),
@@ -2645,7 +2706,7 @@ mod tests {
         let query_cache = QueryCache::new_handle(store.clone());
         let query_engine = QueryEngine::new(store.clone(), query_cache.clone());
 
-        let filtered_index = Some(TimelineName::new("frame_nr"));
+        let filtered_index = Some(TimelineName::from("frame_nr"));
         let query = QueryExpression {
             filtered_index,
             filtered_index_values: Some(
@@ -2683,7 +2744,7 @@ mod tests {
         let query_cache = QueryCache::new_handle(store.clone());
         let query_engine = QueryEngine::new(store.clone(), query_cache.clone());
 
-        let filtered_index = Some(TimelineName::new("frame_nr"));
+        let filtered_index = Some(TimelineName::from("frame_nr"));
 
         // vanilla
         {
@@ -2758,7 +2819,7 @@ mod tests {
         let query_cache = QueryCache::new_handle(store.clone());
         let query_engine = QueryEngine::new(store.clone(), query_cache.clone());
 
-        let filtered_index = Some(TimelineName::new("frame_nr"));
+        let filtered_index = Some(TimelineName::from("frame_nr"));
         let entity_path: EntityPath = "this/that".into();
 
         // non-existing entity
@@ -2880,7 +2941,7 @@ mod tests {
         let query_engine = QueryEngine::new(store.clone(), query_cache.clone());
 
         let entity_path: EntityPath = "this/that".into();
-        let filtered_index = Some(TimelineName::new("frame_nr"));
+        let filtered_index = Some(TimelineName::from("frame_nr"));
 
         // empty view
         {
@@ -2918,7 +2979,7 @@ mod tests {
                             [
                                 MyPoints::descriptor_labels().component,
                                 MyPoints::descriptor_colors().component,
-                                ComponentIdentifier::new("AColumnThatDoesntEvenExist"),
+                                ComponentIdentifier::from("AColumnThatDoesntEvenExist"),
                             ]
                             .into_iter()
                             .collect(),
@@ -2957,7 +3018,7 @@ mod tests {
         let query_engine = QueryEngine::new(store.clone(), query_cache.clone());
 
         let entity_path: EntityPath = "this/that".into();
-        let filtered_index = TimelineName::new("frame_nr");
+        let filtered_index = TimelineName::from("frame_nr");
 
         // empty selection
         {
@@ -2988,7 +3049,9 @@ mod tests {
                 selection: Some(vec![
                     ColumnSelector::Time(TimeColumnSelector::from(filtered_index)),
                     ColumnSelector::Time(TimeColumnSelector::from(filtered_index)),
-                    ColumnSelector::Time(TimeColumnSelector::from("ATimeColumnThatDoesntExist")),
+                    ColumnSelector::Time(TimeColumnSelector::from(TimelineName::from(
+                        "ATimeColumnThatDoesntExist",
+                    ))),
                 ]),
                 ..Default::default()
             };
@@ -3114,7 +3177,7 @@ mod tests {
         let query_engine = QueryEngine::new(store.clone(), query_cache.clone());
 
         let entity_path: EntityPath = "this/that".into();
-        let filtered_index = TimelineName::new("frame_nr");
+        let filtered_index = TimelineName::from("frame_nr");
 
         // only components
         {
@@ -3184,7 +3247,7 @@ mod tests {
         let query_cache = QueryCache::new_handle(store.clone());
         let query_engine = QueryEngine::new(store.clone(), query_cache.clone());
 
-        let filtered_index = Some(TimelineName::new("frame_nr"));
+        let filtered_index = Some(TimelineName::from("frame_nr"));
         let entity_path = EntityPath::from("this/that");
 
         // barebones
@@ -3248,7 +3311,7 @@ mod tests {
         let query_cache = QueryCache::new_handle(store.clone());
         let query_engine = QueryEngine::new(store.clone(), query_cache.clone());
 
-        let filtered_index = Some(TimelineName::new("frame_nr"));
+        let filtered_index = Some(TimelineName::from("frame_nr"));
         let entity_path = EntityPath::from("this/that");
 
         // basic
@@ -3499,7 +3562,7 @@ mod tests {
 
         let engine_guard = query_engine.engine.write_arc();
 
-        let filtered_index = Some(TimelineName::new("frame_nr"));
+        let filtered_index = Some(TimelineName::from("frame_nr"));
 
         // static
         let handle_static = tokio::spawn({
@@ -3630,7 +3693,7 @@ mod tests {
         let query_cache = QueryCache::new_handle(store.clone());
         let query_engine = QueryEngine::new(store.clone(), query_cache.clone());
 
-        let filtered_index = Some(TimelineName::new("frame_nr"));
+        let filtered_index = Some(TimelineName::from("frame_nr"));
 
         // Cover: static, temporal, range-filtered, and LatestAtGlobal sparse fill.
         let queries = [
@@ -3723,7 +3786,7 @@ mod tests {
             ChunkStoreConfig::COMPACTION_DISABLED,
         );
         let entity_path = EntityPath::from("/disjoint");
-        let timeline = TimelineName::new("frame");
+        let timeline = TimelineName::from("frame");
 
         // Three pairwise-disjoint chunks, each dense (10 rows step 1, strictly
         // increasing) so all three should satisfy `is_bulk_eligible`.
@@ -3821,7 +3884,7 @@ mod tests {
             ChunkStoreConfig::COMPACTION_DISABLED,
         );
         let entity_path = EntityPath::from("/multi");
-        let timeline = TimelineName::new("frame");
+        let timeline = TimelineName::from("frame");
 
         let chunk_ranges: [(i64, i64); 3] = [(10, 19), (30, 39), (50, 59)];
         for (lo, hi) in chunk_ranges {
@@ -4366,7 +4429,7 @@ mod tests {
         let store_rev = ChunkStoreHandle::new(build_overlapping_chunk_store(&chunks, &reversed)?);
         let store_shuf = ChunkStoreHandle::new(build_overlapping_chunk_store(&chunks, &shuffled)?);
 
-        let filtered_index_name = TimelineName::new("frame_nr");
+        let filtered_index_name = TimelineName::from("frame_nr");
         let filtered_index = Some(filtered_index_name);
 
         let make_query = |range: Option<AbsoluteTimeRange>| QueryExpression {
@@ -4481,7 +4544,7 @@ mod tests {
             &shuffled,
         )?);
 
-        let filtered_index = Some(TimelineName::new("frame_nr"));
+        let filtered_index = Some(TimelineName::from("frame_nr"));
 
         // Full-range query: all rows visible. Each row should match across orderings.
         let full_query = QueryExpression {

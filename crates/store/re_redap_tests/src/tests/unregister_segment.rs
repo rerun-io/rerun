@@ -5,17 +5,20 @@ use super::common::{
 };
 use crate::tests::common::concat_record_batches;
 use crate::{FieldsTestExt as _, RecordBatchTestExt as _, SchemaTestExt as _};
-use arrow::array::{RecordBatch, StringArray};
+use arrow::array::RecordBatch;
 use arrow::datatypes::Schema;
 use futures::TryStreamExt as _;
 use itertools::Itertools as _;
-use re_arrow_util::{ArrowArrayDowncastRef as _, RecordBatchExt as _};
-use re_protos::cloud::v1alpha1::ext::{LayerRegistrationStatus, QueryDatasetRequest};
+use re_arrow_util::RecordBatchExt as _;
+use re_protos::cloud::v1alpha1::ext::ScanDatasetManifestDataframe;
+use re_protos::cloud::v1alpha1::ext::ScanSegmentTableDataframe;
+use re_protos::cloud::v1alpha1::ext::{
+    LayerRegistrationStatus, QueryDatasetDataframe, QueryDatasetRequest,
+};
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::cloud::v1alpha1::{
-    GetDatasetManifestSchemaRequest, GetSegmentTableSchemaRequest, QueryDatasetResponse,
-    ReadDatasetEntryRequest, ScanDatasetManifestRequest, ScanDatasetManifestResponse,
-    ScanSegmentTableRequest, ScanSegmentTableResponse,
+    GetDatasetManifestSchemaRequest, GetSegmentTableSchemaRequest, ReadDatasetEntryRequest,
+    ScanDatasetManifestRequest, ScanSegmentTableRequest,
 };
 use re_protos::headers::RerunHeadersInjectorExt as _;
 
@@ -44,40 +47,28 @@ pub async fn unregister_simple(service: impl RerunCloudService) {
         scan_dataset_manifest_and_snapshot(&service, dataset_name, snapshot_name).await;
     }
 
-    let removed = service
-        .unregister_from_dataset_name(dataset_name, &["my_segment_id2"], &["base"])
-        .await;
+    service
+        .unregister_from_dataset_name_blocking(dataset_name, &["my_segment_id2"], &["base"])
+        .await
+        .expect("removal should succeed");
     let dataset_updated_at_2 = get_dataset_updated_at_nanos(&service, dataset_name).await;
     {
         let snapshot_name = "simple_2_remove_segment_id2";
-        snapshot_response(
-            &service,
-            dataset_name,
-            snapshot_name,
-            removed.expect("removal should succeed"),
-        )
-        .await;
         scan_segment_table_and_snapshot(&service, dataset_name, snapshot_name).await;
         scan_dataset_manifest_and_snapshot(&service, dataset_name, snapshot_name).await;
     }
 
-    let removed = service
-        .unregister_from_dataset_name(
+    service
+        .unregister_from_dataset_name_blocking(
             dataset_name,
             &["my_segment_id1", "my_segment_id3"],
             &["base"],
         )
-        .await;
+        .await
+        .expect("removal should succeed");
     let dataset_updated_at_3 = get_dataset_updated_at_nanos(&service, dataset_name).await;
     {
         let snapshot_name = "simple_3_remove_remaining_segments";
-        snapshot_response(
-            &service,
-            dataset_name,
-            snapshot_name,
-            removed.expect("removal should succeed"),
-        )
-        .await;
         scan_segment_table_and_snapshot(&service, dataset_name, snapshot_name).await;
         scan_dataset_manifest_and_snapshot(&service, dataset_name, snapshot_name).await;
     }
@@ -139,54 +130,40 @@ pub async fn unregister_products(service: impl RerunCloudService) {
         scan_dataset_manifest_and_snapshot(&service, dataset_name, snapshot_name).await;
     }
 
-    let removed = service
-        .unregister_from_dataset_name(
+    service
+        .unregister_from_dataset_name_blocking(
             dataset_name,
             &["my_segment_id1", "my_segment_id3"],
             &["B", "D"],
         )
-        .await;
+        .await
+        .expect("removal should succeed");
     {
         let snapshot_name = "products_2_remove_layers_BD_for_segments_13";
-        snapshot_response(
-            &service,
-            dataset_name,
-            snapshot_name,
-            removed.expect("removal should succeed"),
-        )
-        .await;
         scan_segment_table_and_snapshot(&service, dataset_name, snapshot_name).await;
         scan_dataset_manifest_and_snapshot(&service, dataset_name, snapshot_name).await;
     }
 
-    let removed = service
-        .unregister_from_dataset_name(dataset_name, &[], &["B", "D"])
-        .await;
+    service
+        .unregister_from_dataset_name_blocking(dataset_name, &[], &["B", "D"])
+        .await
+        .expect("removal should succeed");
     {
         let snapshot_name = "products_3_remove_layers_BD_for_all_segments";
-        snapshot_response(
-            &service,
-            dataset_name,
-            snapshot_name,
-            removed.expect("removal should succeed"),
-        )
-        .await;
         scan_segment_table_and_snapshot(&service, dataset_name, snapshot_name).await;
         scan_dataset_manifest_and_snapshot(&service, dataset_name, snapshot_name).await;
     }
 
-    let removed = service
-        .unregister_from_dataset_name(dataset_name, &["my_segment_id2", "my_segment_id3"], &[])
-        .await;
+    service
+        .unregister_from_dataset_name_blocking(
+            dataset_name,
+            &["my_segment_id2", "my_segment_id3"],
+            &[],
+        )
+        .await
+        .expect("removal should succeed");
     {
         let snapshot_name = "products_4_remove_all_layers_for_segments_23";
-        snapshot_response(
-            &service,
-            dataset_name,
-            snapshot_name,
-            removed.expect("removal should succeed"),
-        )
-        .await;
         scan_segment_table_and_snapshot(&service, dataset_name, snapshot_name).await;
         scan_dataset_manifest_and_snapshot(&service, dataset_name, snapshot_name).await;
     }
@@ -196,7 +173,7 @@ pub async fn unregister_missing_dataset(service: impl RerunCloudService) {
     let dataset_name = "my_dataset_thats_not_there";
 
     let err = service
-        .unregister_from_dataset_name(dataset_name, &["my_segment"], &[])
+        .unregister_from_dataset_name_blocking(dataset_name, &["my_segment"], &[])
         .await
         .unwrap_err();
     assert_eq!(tonic::Code::NotFound, err.code());
@@ -218,7 +195,7 @@ pub async fn unregister_missing_segment(service: impl RerunCloudService) {
         .await;
 
     let removed = service
-        .unregister_from_dataset_name(dataset_name, &["some_segment_thats_not_there"], &[])
+        .unregister_from_dataset_name_blocking(dataset_name, &["some_segment_thats_not_there"], &[])
         .await;
     {
         let snapshot_name = "missing_1_should_be_empty";
@@ -237,7 +214,7 @@ pub async fn unregister_invalid_args(service: impl RerunCloudService) {
         let dataset_name = "my_dataset_thats_not_there";
 
         let err = service
-            .unregister_from_dataset_name(dataset_name, &[], &[])
+            .unregister_from_dataset_name_blocking(dataset_name, &[], &[])
             .await
             .unwrap_err();
         assert_eq!(tonic::Code::NotFound, err.code());
@@ -259,7 +236,7 @@ pub async fn unregister_invalid_args(service: impl RerunCloudService) {
             .await;
 
         let err = service
-            .unregister_from_dataset_name(dataset_name, &[], &[])
+            .unregister_from_dataset_name_blocking(dataset_name, &[], &[])
             .await
             .unwrap_err();
         assert_eq!(tonic::Code::InvalidArgument, err.code());
@@ -290,7 +267,7 @@ pub async fn unregister_then_query(service: impl RerunCloudService) {
     .await;
 
     service
-        .unregister_from_dataset_name(dataset_name, &["my_segment_id"], &[])
+        .unregister_from_dataset_name_blocking(dataset_name, &["my_segment_id"], &[])
         .await
         .unwrap();
 
@@ -312,10 +289,8 @@ async fn scan_segment_table_and_snapshot(
 ) -> RecordBatch {
     let responses: Vec<_> = service
         .scan_segment_table(
-            tonic::Request::new(ScanSegmentTableRequest {
-                columns: vec![], // all of them
-            })
-            .with_entry_name(entry_name(dataset_name)),
+            tonic::Request::new(ScanSegmentTableRequest::all())
+                .with_entry_name(entry_name(dataset_name)),
         )
         .await
         .unwrap()
@@ -363,16 +338,16 @@ async fn scan_segment_table_and_snapshot(
         alleged_schema.format_snapshot(),
     );
 
-    let required_fields = ScanSegmentTableResponse::fields();
+    let required_fields = ScanSegmentTableDataframe::min_schema().fields().to_vec();
     assert!(
         batch.schema().fields().contains_unordered(&required_fields),
         "the schema should contain all the required fields, but it doesn't",
     );
 
     let unstable_column_names = vec![
-        ScanSegmentTableResponse::FIELD_STORAGE_URLS,
-        ScanSegmentTableResponse::FIELD_SIZE_BYTES,
-        ScanSegmentTableResponse::FIELD_LAST_UPDATED_AT,
+        ScanSegmentTableDataframe::COLUMN_RERUN_STORAGE_URLS_NAME,
+        ScanSegmentTableDataframe::COLUMN_RERUN_SIZE_BYTES_NAME,
+        ScanSegmentTableDataframe::COLUMN_RERUN_LAST_UPDATED_AT_NAME,
     ];
     let filtered_batch = batch
         .remove_columns(&unstable_column_names)
@@ -400,10 +375,8 @@ async fn scan_dataset_manifest_and_snapshot(
 ) -> RecordBatch {
     let responses: Vec<_> = service
         .scan_dataset_manifest(
-            tonic::Request::new(ScanDatasetManifestRequest {
-                columns: vec![], // all of them
-            })
-            .with_entry_name(entry_name(dataset_name)),
+            tonic::Request::new(ScanDatasetManifestRequest::all())
+                .with_entry_name(entry_name(dataset_name)),
         )
         .await
         .unwrap()
@@ -451,7 +424,7 @@ async fn scan_dataset_manifest_and_snapshot(
         alleged_schema.format_snapshot(),
     );
 
-    let required_fields = ScanDatasetManifestResponse::fields();
+    let required_fields = ScanDatasetManifestDataframe::min_schema().fields().to_vec();
     assert!(
         batch.schema().fields().contains_unordered(&required_fields),
         "the schema should contain all the required fields, but it doesn't",
@@ -459,11 +432,11 @@ async fn scan_dataset_manifest_and_snapshot(
 
     let unstable_column_names = vec![
         // implementation-dependent
-        ScanDatasetManifestResponse::FIELD_STORAGE_URL,
-        ScanDatasetManifestResponse::FIELD_SIZE_BYTES,
+        ScanDatasetManifestDataframe::COLUMN_RERUN_STORAGE_URL_NAME,
+        ScanDatasetManifestDataframe::COLUMN_RERUN_SIZE_BYTES_NAME,
         // unstable
-        ScanDatasetManifestResponse::FIELD_LAST_UPDATED_AT,
-        ScanDatasetManifestResponse::FIELD_REGISTRATION_TIME,
+        ScanDatasetManifestDataframe::COLUMN_RERUN_LAST_UPDATED_AT_NAME,
+        ScanDatasetManifestDataframe::COLUMN_RERUN_REGISTRATION_TIME_NAME,
     ];
     let filtered_batch = batch
         .remove_columns(&unstable_column_names)
@@ -474,14 +447,13 @@ async fn scan_dataset_manifest_and_snapshot(
     // For the comparison to make sense across the OSS and enterprise servers, we need to filter
     // out rows where `status=deleted`, since OSS doesn't keep track of removed segments/layers.
     let filtered_batch = {
-        let col_status = filtered_batch
-            .column_by_name(ScanDatasetManifestResponse::FIELD_REGISTRATION_STATUS)
+        let col_status = ScanDatasetManifestDataframe::COLUMN_RERUN_REGISTRATION_STATUS
+            .extract(&filtered_batch)
             .unwrap();
-        let col_status = col_status.downcast_array_ref::<StringArray>().unwrap();
 
         let mask = col_status
             .iter()
-            .map(|s| s != Some(LayerRegistrationStatus::Deleted.as_str()))
+            .map(|s| s != LayerRegistrationStatus::Deleted.as_str())
             .collect_vec();
 
         arrow::compute::filter_record_batch(&filtered_batch, &mask.into()).unwrap()
@@ -530,7 +502,7 @@ async fn snapshot_response(
         alleged_schema.format_snapshot(),
     );
 
-    let required_fields = ScanDatasetManifestResponse::fields();
+    let required_fields = ScanDatasetManifestDataframe::min_schema().fields().to_vec();
     assert!(
         batch.schema().fields().contains_unordered(&required_fields),
         "the schema should contain all the required fields, but it doesn't",
@@ -538,11 +510,11 @@ async fn snapshot_response(
 
     let unstable_column_names = vec![
         // implementation-dependent
-        ScanDatasetManifestResponse::FIELD_STORAGE_URL,
-        ScanDatasetManifestResponse::FIELD_SIZE_BYTES,
+        ScanDatasetManifestDataframe::COLUMN_RERUN_STORAGE_URL_NAME,
+        ScanDatasetManifestDataframe::COLUMN_RERUN_SIZE_BYTES_NAME,
         // unstable
-        ScanDatasetManifestResponse::FIELD_LAST_UPDATED_AT,
-        ScanDatasetManifestResponse::FIELD_REGISTRATION_TIME,
+        ScanDatasetManifestDataframe::COLUMN_RERUN_LAST_UPDATED_AT_NAME,
+        ScanDatasetManifestDataframe::COLUMN_RERUN_REGISTRATION_TIME_NAME,
     ];
     let filtered_batch = batch
         .remove_columns(&unstable_column_names)
@@ -553,14 +525,13 @@ async fn snapshot_response(
     // For the comparison to make sense across the OSS and enterprise servers, we need to filter
     // out rows where `status=deleted`, since OSS doesn't keep track of removed segments/layers.
     let filtered_batch = {
-        let col_status = filtered_batch
-            .column_by_name(ScanDatasetManifestResponse::FIELD_REGISTRATION_STATUS)
+        let col_status = ScanDatasetManifestDataframe::COLUMN_RERUN_REGISTRATION_STATUS
+            .extract(&filtered_batch)
             .unwrap();
-        let col_status = col_status.downcast_array_ref::<StringArray>().unwrap();
 
         let mask = col_status
             .iter()
-            .map(|s| s != Some(LayerRegistrationStatus::Deleted.as_str()))
+            .map(|s| s != LayerRegistrationStatus::Deleted.as_str())
             .collect_vec();
 
         arrow::compute::filter_record_batch(&filtered_batch, &mask.into()).unwrap()
@@ -600,7 +571,7 @@ async fn query_dataset_snapshot(
     let merged_chunk_info = concat_record_batches(&chunk_info);
 
     // these are the only columns guaranteed to be returned by `query_dataset`
-    let required_field = QueryDatasetResponse::fields();
+    let required_field = QueryDatasetDataframe::min_schema().fields().to_vec();
 
     assert!(
         merged_chunk_info
@@ -628,9 +599,9 @@ async fn query_dataset_snapshot(
     // these columns are not stable, so we cannot snapshot them
     let filtered_chunk_info = required_chunk_info
         .remove_columns(&[
-            QueryDatasetResponse::FIELD_CHUNK_KEY,
-            QueryDatasetResponse::FIELD_CHUNK_BYTE_LENGTH,
-            QueryDatasetResponse::FIELD_CHUNK_BYTE_LENGTH_UNCOMPRESSED,
+            QueryDatasetDataframe::COLUMN_CHUNK_KEY_NAME,
+            QueryDatasetDataframe::COLUMN_CHUNK_BYTE_LEN_NAME,
+            QueryDatasetDataframe::COLUMN_CHUNK_BYTE_SIZE_UNCOMPRESSED_NAME,
         ])
         .auto_sort_rows()
         .unwrap();

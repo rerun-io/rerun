@@ -109,6 +109,7 @@ wasm-bindgen.workspace = true
 
 [dev-dependencies]
 re_log = { workspace = true, features = ["setup"] }
+
 criterion.workspace = true
 pollster.workspace = true
 unindent.workspace = true
@@ -118,6 +119,10 @@ bench = false
 
 [[bench]]
 name = "bench_bounding_box"
+harness = false
+
+[[bench]]
+name = "bench_voxel_grid_draw_data"
 harness = false
 
 # For build.rs:

@@ -26,11 +26,9 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// Useful for representing discrete state machines, mode transitions, or
 /// state changes over time. Each logged [`archetypes::StateChange`][crate::archetypes::StateChange] marks a new state
-/// at the given time. A `null` state is ignored by the state timeline view.
+/// at the given time. A `null` state resets the state, showing a gap in the state timeline view.
 ///
 /// The state timeline view displays these as horizontal colored lanes over time.
-///
-/// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 ///
 /// ## Example
 ///
@@ -41,13 +39,13 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///         .spawn()?;
 ///
 ///     rec.set_time_sequence("step", 0);
-///     rec.log("door", &rerun::StateChange::new().with_state("open"))?;
+///     rec.log("door", &rerun::StateChange::single("open"))?;
 ///
 ///     rec.set_time_sequence("step", 1);
-///     rec.log("door", &rerun::StateChange::new().with_state("closed"))?;
+///     rec.log("door", &rerun::StateChange::single("closed"))?;
 ///
 ///     rec.set_time_sequence("step", 2);
-///     rec.log("door", &rerun::StateChange::new().with_state("open"))?;
+///     rec.log("door", &rerun::StateChange::single("open"))?;
 ///
 ///     Ok(())
 /// }
@@ -63,10 +61,13 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// </center>
 #[derive(Clone, Debug, PartialEq, Default, ::re_byte_size::SizeBytes)]
 pub struct StateChange {
-    /// The new state value.
+    /// The new state values; each instance gets its own lane in the state timeline view.
     ///
-    /// A `null` state is ignored, it can be used to partially update a multi-instance state array.
-    /// An empty string is treated as state reset, and a gap is shown in the state timeline view.
+    /// A reset ends the previous state and shows a gap in the state timeline view until the
+    /// next state. An empty string, a null array entry, and an empty state array (e.g. from
+    /// clearing the field) all act as resets.
+    ///
+    /// The length of the state array should not change over time.
     pub state: Option<SerializedComponentBatch>,
 }
 
@@ -106,7 +107,7 @@ impl StateChange {
 impl ::re_types_core::Archetype for StateChange {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        ::re_types_core::external::re_string_interner::intern_static!(
+        ::re_types_core::external::re_string_interner::intern_static_nonempty!(
             ::re_types_core::ArchetypeName,
             "rerun.archetypes.StateChange"
         )
@@ -231,22 +232,15 @@ impl StateChange {
         self.columns(std::iter::repeat_n(1, len))
     }
 
-    /// The new state value.
+    /// The new state values; each instance gets its own lane in the state timeline view.
     ///
-    /// A `null` state is ignored, it can be used to partially update a multi-instance state array.
-    /// An empty string is treated as state reset, and a gap is shown in the state timeline view.
-    #[inline]
-    pub fn with_state(mut self, state: impl Into<crate::components::Text>) -> Self {
-        self.state = try_serialize_field(Self::descriptor_state(), [state]);
-        self
-    }
-
-    /// This method makes it possible to pack multiple [`crate::components::Text`] in a single component batch.
+    /// A reset ends the previous state and shows a gap in the state timeline view until the
+    /// next state. An empty string, a null array entry, and an empty state array (e.g. from
+    /// clearing the field) all act as resets.
     ///
-    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_state`] should
-    /// be used when logging a single row's worth of data.
+    /// The length of the state array should not change over time.
     #[inline]
-    pub fn with_many_state(
+    pub fn with_state(
         mut self,
         state: impl IntoIterator<Item = impl Into<crate::components::Text>>,
     ) -> Self {

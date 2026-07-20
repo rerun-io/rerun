@@ -16,7 +16,8 @@ This document describes the current release and versioning strategy. This strate
 
 ## Release cadence
 
-New Rerun versions are released approximately once every month. Sometimes we do out-of-schedule patch releases.
+New Rerun versions are released every two weeks. Sometimes we do out-of-schedule patch releases.
+We do not block a release on a PR. Incomplete work should be hidden behind a feature flag.
 
 ## Library versioning and release cadence
 

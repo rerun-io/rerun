@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use re_chunk::{Chunk, RowId, TimeInt, Timeline};
+use re_chunk_store::ChunkTrackingMode;
 use re_entity_db::EntityDb;
 use re_log_types::StoreId;
 use re_sdk_types::archetypes::EncodedDepthImage;
@@ -52,6 +53,23 @@ fn depth_image_chunk(start_time: f64, dt: f64, count: u64) -> Chunk {
 
 fn playable_stream(cache: &mut VideoStreamCache, store: &EntityDb) -> SharablePlayableVideoStream {
     let blob_component = EncodedDepthImage::descriptor_blob().component;
+    let media_type_component = EncodedDepthImage::descriptor_media_type().component;
+    let query_result = store.storage_engine().cache().latest_at(
+        ChunkTrackingMode::Report,
+        &re_chunk::LatestAtQuery::new(TIMELINE_NAME.into(), re_chunk::TimeInt::MAX),
+        &re_chunk::EntityPath::from(STREAM_ENTITY),
+        [media_type_component],
+    );
+    let media_type = query_result
+        .get_required(media_type_component)
+        .ok()
+        .and_then(|chunk| {
+            chunk
+                .component_mono::<re_sdk_types::components::MediaType>(media_type_component)?
+                .ok()
+                .map(|mt| mt.to_string())
+        });
+
     cache
         .entry(
             store,
@@ -62,26 +80,7 @@ fn playable_stream(cache: &mut VideoStreamCache, store: &EntityDb) -> SharablePl
                 ffmpeg_path: Some(std::path::PathBuf::from("/not/used")),
             },
             blob_component,
-            &|| {
-                let media_type_component = EncodedDepthImage::descriptor_media_type().component;
-                let query_result = store.storage_engine().cache().latest_at(
-                    &re_chunk::LatestAtQuery::new(TIMELINE_NAME.into(), re_chunk::TimeInt::MAX),
-                    &re_chunk::EntityPath::from(STREAM_ENTITY),
-                    [media_type_component],
-                );
-                let media_type = query_result
-                    .get_required(media_type_component)
-                    .ok()
-                    .and_then(|chunk| {
-                        chunk
-                            .component_mono::<re_sdk_types::components::MediaType>(
-                                media_type_component,
-                            )?
-                            .ok()
-                            .map(|mt| mt.to_string())
-                    });
-                Ok(re_video::VideoCodec::ImageSequence(media_type))
-            },
+            re_video::VideoCodec::ImageSequence(media_type),
         )
         .unwrap()
 }
@@ -260,7 +259,7 @@ fn guesses_png_media_type() {
             ffmpeg_path: Some(std::path::PathBuf::from("/not/used")),
         },
         blob_component,
-        &|| Ok(re_video::VideoCodec::ImageSequence(None)),
+        re_video::VideoCodec::ImageSequence(None),
     );
 
     assert!(

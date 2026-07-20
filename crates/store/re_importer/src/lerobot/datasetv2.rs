@@ -436,6 +436,14 @@ fn load_episode(
                     feature.dtype
                 );
             }
+            DType::Language => {
+                // The `language` dtype was introduced with the v3 dataset format; it has no
+                // meaning in a v2 dataset, so surface it as a hard error rather than a warning.
+                return Err(anyhow!(
+                    "LeRobot v2 datasets do not support the `language` dtype (feature `{feature_key}`)"
+                )
+                .into());
+            }
             DType::Float32 | DType::Float64 => {
                 chunks.extend(load_scalar(feature_key, feature, &timelines, &data)?);
             }
@@ -552,5 +560,100 @@ fn load_episode_video(
     } else {
         // Still log the video asset, but don't include video frames.
         Ok(Either::Right(std::iter::once(video_asset_chunk)))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use std::sync::Arc;
+
+    use arrow::array::RecordBatchOptions;
+    use arrow::datatypes::{DataType, Field as ArrowField, Schema};
+    use parquet::arrow::ArrowWriter;
+
+    /// Write a minimal single-column (`frame_index`) parquet file so `load_episode` can build a timeline.
+    fn write_minimal_parquet(path: &Path) {
+        let schema = Arc::new(Schema::new_with_metadata(
+            vec![ArrowField::new("frame_index", DataType::Int64, false)],
+            Default::default(),
+        ));
+        let batch = RecordBatch::try_new_with_options(
+            schema.clone(),
+            vec![Arc::new(Int64Array::from(vec![0_i64, 1, 2]))],
+            &RecordBatchOptions::default(),
+        )
+        .unwrap();
+
+        let file = File::create(path).unwrap();
+        let mut writer = ArrowWriter::try_new(file, schema, None).unwrap();
+        writer.write(&batch).unwrap();
+        writer.close().unwrap();
+    }
+
+    /// Build an in-memory v2 dataset with a single `language` feature, backed by a parquet file on disk.
+    fn dataset_with_language_feature(dir: &Path) -> LeRobotDatasetV2 {
+        let data_path = "episode_000000.parquet";
+        write_minimal_parquet(&dir.join(data_path));
+
+        let mut features = HashMap::default();
+        features.insert(
+            "instruction".to_owned(),
+            Feature {
+                dtype: DType::Language,
+                shape: vec![1],
+                names: None,
+            },
+        );
+
+        let info = LeRobotDatasetInfo {
+            robot_type: None,
+            codebase_version: "v2.0".to_owned(),
+            total_episodes: 1,
+            total_frames: 3,
+            total_tasks: 0,
+            total_videos: 0,
+            total_chunks: 1,
+            chunks_size: 1,
+            data_path: data_path.to_owned(),
+            video_path: None,
+            image_path: None,
+            fps: 30.0,
+            features,
+        };
+
+        let episodes = std::iter::once((
+            EpisodeIndex(0),
+            LeRobotDatasetEpisode {
+                index: EpisodeIndex(0),
+                tasks: vec![],
+                length: 3,
+            },
+        ))
+        .collect();
+
+        LeRobotDatasetV2 {
+            path: dir.to_path_buf(),
+            metadata: LeRobotDatasetMetadata {
+                info,
+                episodes,
+                tasks: vec![],
+            },
+        }
+    }
+
+    #[test]
+    fn test_v2_language_dtype_is_rejected() {
+        let dir = tempfile::tempdir().unwrap();
+        let dataset = dataset_with_language_feature(dir.path());
+
+        let err = load_episode(&dataset, EpisodeIndex(0))
+            .expect_err("v2 importer must reject the `language` dtype");
+
+        assert!(
+            err.to_string().to_lowercase().contains("language"),
+            "expected a `language`-related error, got: {err}"
+        );
     }
 }

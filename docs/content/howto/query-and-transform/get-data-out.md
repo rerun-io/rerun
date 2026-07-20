@@ -7,7 +7,9 @@ Rerun comes with the ability to get data out of Rerun from code. This page provi
 
 ## Starting a server with recordings
 
-The first step to query data is to start a server and load it with a dataset containing your recording.
+The first step to query data is to start a catalog server and load it with a dataset containing your recording.
+
+See the [catalog object model](../../concepts/query-and-transform/catalog-object-model.md) docs for more details on how datasets are organized in Rerun.
 
 ```python
 import rerun as rr

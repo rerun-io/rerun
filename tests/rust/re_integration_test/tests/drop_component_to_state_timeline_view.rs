@@ -26,7 +26,7 @@ fn make_harness<'a>() -> egui_kittest::Harness<'a, re_viewer::App> {
             builder.with_archetype(
                 RowId::new(),
                 [(timeline, tick)],
-                &re_sdk_types::archetypes::StateChange::new().with_state(*state),
+                &re_sdk_types::archetypes::StateChange::single(*state),
             )
         });
     }

@@ -87,16 +87,54 @@ impl PyChunkInternal {
         Ok(batch.to_pyarrow(py)?.unbind())
     }
 
-    /// Create a Chunk from a PyArrow RecordBatch with Rerun schema metadata.
+    /// Interpret a PyArrow RecordBatch as Rerun chunk data, one chunk per entity path.
     ///
-    /// The RecordBatch must have been produced by `to_record_batch()` or have
-    /// equivalent Rerun metadata in its schema.
+    /// `index_mode` is one of `"auto"`, `"static"`, or `"columns"`; when it is `"columns"`,
+    /// `index_columns` names the columns to promote to timelines. `entity_path` is the default
+    /// entity path for un-located component columns.
+    ///
+    /// All conversion errors (both `SorbetError` and `ChunkError`) are mapped to `ValueError`, so
+    /// the documented `Raises` contract of `Chunk.from_record_batch` holds.
     #[staticmethod]
-    #[expect(clippy::needless_pass_by_value)] // PyO3 requires owned PyArrowType for #[staticmethod]
-    fn from_record_batch(record_batch: PyArrowType<ArrowRecordBatch>) -> PyResult<Self> {
-        let chunk = Chunk::from_record_batch(&record_batch.0)
-            .map_err(|err| PyValueError::new_err(err.to_string()))?;
-        Ok(Self::new(Arc::new(chunk)))
+    #[pyo3(signature = (record_batch, index_mode, index_columns, entity_path))]
+    #[expect(clippy::needless_pass_by_value)] // PyO3 requires owned arguments for #[staticmethod]
+    fn from_record_batch(
+        record_batch: PyArrowType<ArrowRecordBatch>,
+        index_mode: &str,
+        index_columns: Vec<String>,
+        entity_path: Option<String>,
+    ) -> PyResult<Vec<Self>> {
+        use re_log_types::TimelineName;
+        use re_sorbet::DataframeIndex;
+
+        let index = match index_mode {
+            "auto" => DataframeIndex::Auto,
+            "static" => DataframeIndex::Static,
+            "columns" => DataframeIndex::Columns(
+                index_columns
+                    .iter()
+                    .map(|s| {
+                        TimelineName::try_new(s.as_str())
+                            .map_err(|err| PyValueError::new_err(err.to_string()))
+                    })
+                    .collect::<PyResult<Vec<_>>>()?,
+            ),
+            _ => {
+                return Err(PyValueError::new_err(format!(
+                    "Invalid index mode {index_mode:?}; expected \"auto\", \"static\", or \"columns\"."
+                )));
+            }
+        };
+        let entity_path = entity_path.map(|p| EntityPath::parse_forgiving(&p));
+
+        let chunks =
+            Chunk::from_dataframe_record_batch(&record_batch.0, &index, entity_path.as_ref())
+                .map_err(|err| PyValueError::new_err(err.to_string()))?;
+
+        Ok(chunks
+            .into_iter()
+            .map(|chunk| Self::new(Arc::new(chunk)))
+            .collect())
     }
 
     /// Return a copy of this chunk with a new entity path.
@@ -137,7 +175,10 @@ impl PyChunkInternal {
             .iter()
             .map(|l| l.build(py))
             .collect::<PyResult<Vec<_>>>()?;
-        match self.chunk.apply_lenses(&lenses) {
+        match self
+            .chunk
+            .apply_lenses(&lenses, &re_lenses::default_runtime())
+        {
             Ok(chunks) => Ok(chunks
                 .into_iter()
                 .map(|chunk| Self {
@@ -165,11 +206,16 @@ impl PyChunkInternal {
         use re_lenses_core::ChunkExt as _;
         use re_types_core::ComponentIdentifier;
 
-        let source_id = ComponentIdentifier::from(source);
+        let source_id = ComponentIdentifier::try_new(source)
+            .map_err(|err| PyValueError::new_err(err.to_string()))?;
 
         let new_chunk = self
             .chunk
-            .apply_selector(source_id, selector.selector())
+            .apply_selector(
+                source_id,
+                selector.selector(),
+                &re_lenses::default_runtime(),
+            )
             .map_err(|err| PyValueError::new_err(err.to_string()))?;
 
         Ok(Self::new(Arc::new(new_chunk)))

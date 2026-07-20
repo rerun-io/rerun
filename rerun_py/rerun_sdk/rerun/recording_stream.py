@@ -13,6 +13,8 @@ from typing_extensions import Self
 from rerun import bindings
 from rerun_bindings import ChunkBatcherConfig as ChunkBatcherConfig  # noqa: TC001
 
+from ._send_dataframe import AUTO_INDEX, _AutoIndex
+
 if TYPE_CHECKING:
     from collections.abc import Iterable
     from datetime import datetime, timedelta
@@ -25,6 +27,7 @@ if TYPE_CHECKING:
     from rerun import AsComponents, BlueprintLike, ComponentColumn, DescribedComponentBatch as DescribedComponentBatch
     from rerun._memory import MemoryRecording
     from rerun.experimental import Chunk, ChunkStore, LazyChunkStream, LazyStore
+    from rerun.experimental._chunk import DataframeLike
     from rerun.sinks import LogSinkLike
 
     from ._send_columns import TimeColumnLike as TimeColumnLike
@@ -1253,20 +1256,68 @@ class RecordingStream:
 
         send_chunks(chunks, recording=self)
 
-    def send_record_batch(self, batch: pa.RecordBatch) -> None:
-        """Coerce a single pyarrow `RecordBatch` to Rerun structure."""
+    def send_record_batch(
+        self,
+        batch: pa.RecordBatch,
+        *,
+        index: str | list[str] | None | _AutoIndex = AUTO_INDEX,
+        entity_path: str | None = None,
+    ) -> None:
+        """
+        Coerce a single pyarrow `RecordBatch` to Rerun structure and log it.
 
+        A thin wrapper over [`Chunk.from_record_batch`][rerun.experimental.Chunk.from_record_batch]
+        followed by [`send_chunks`][rerun.experimental.send_chunks]. See `Chunk.from_record_batch` for
+        the full column-classification semantics and the conditions under which a `ValueError` is raised.
+
+        Parameters
+        ----------
+        batch:
+            The Arrow record batch to interpret.
+        index:
+            Determines which columns are index (timeline) columns. See
+            [`Chunk.from_record_batch`][rerun.experimental.Chunk.from_record_batch] for the full
+            semantics. Defaults to deriving the index from the batch's Rerun metadata.
+        entity_path:
+            Default entity path for component columns that do not otherwise specify one.
+
+        """
         from ._send_dataframe import send_record_batch
 
-        send_record_batch(batch, recording=self)
+        send_record_batch(batch, recording=self, index=index, entity_path=entity_path)
 
-    # TODO(RR-3198): this should accept a `datafusion.DataFrame` as a soft dependency
-    def send_dataframe(self, df: pa.RecordBatchReader | pa.Table) -> None:
-        """Coerce a pyarrow `RecordBatchReader` or `Table` to Rerun structure."""
+    def send_dataframe(
+        self,
+        df: DataframeLike,
+        *,
+        index: str | list[str] | None | _AutoIndex = AUTO_INDEX,
+        entity_path: str | None = None,
+    ) -> None:
+        """
+        Coerce a pyarrow `Table` / `RecordBatch` / `RecordBatchReader`, or a datafusion `DataFrame`, to Rerun structure and log it.
 
+        A thin wrapper over [`Chunk.from_dataframe`][rerun.experimental.Chunk.from_dataframe] followed by
+        [`send_chunks`][rerun.experimental.send_chunks]. See `Chunk.from_dataframe` for the accepted input
+        types, and `Chunk.from_record_batch` for the full column-classification semantics and the
+        conditions under which a `ValueError` is raised.
+
+        Parameters
+        ----------
+        df:
+            The dataframe to interpret. Must be a pyarrow `Table`, pyarrow `RecordBatch`, pyarrow
+            `RecordBatchReader`, or datafusion `DataFrame` (an optional dependency) — each has a
+            single fixed schema.
+        index:
+            Determines which columns are index (timeline) columns. See
+            [`Chunk.from_record_batch`][rerun.experimental.Chunk.from_record_batch] for the full
+            semantics. Defaults to deriving the index from the dataframe's Rerun metadata.
+        entity_path:
+            Default entity path for component columns that do not otherwise specify one.
+
+        """
         from ._send_dataframe import send_dataframe
 
-        send_dataframe(df, recording=self)
+        send_dataframe(df, recording=self, index=index, entity_path=entity_path)
 
     def __str__(self) -> str:
         return str(self.inner)

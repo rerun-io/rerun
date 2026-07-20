@@ -60,6 +60,7 @@ impl ContextMenuAction for ScreenshotAction {
             .send_system(SystemCommand::SaveScreenshot {
                 target,
                 view_id: Some(*view_id),
+                notify: true,
             });
     }
 }

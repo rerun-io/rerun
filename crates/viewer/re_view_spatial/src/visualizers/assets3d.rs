@@ -92,7 +92,7 @@ impl Asset3DVisualizer {
                         }
                     }));
 
-                    data.add_bounding_box(entity_path.hash(), mesh.bbox(), world_from_pose);
+                    data.add_bounding_box_3d(entity_path.hash(), mesh.bbox(), world_from_pose);
                 }
             }
         }

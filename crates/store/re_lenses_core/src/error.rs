@@ -140,4 +140,20 @@ pub enum LensRuntimeError {
         expected: usize,
         actual: usize,
     },
+
+    #[error("Failed to cast output component '{component}': {source} (entity: `{target_entity}`)")]
+    ComponentCastFailed {
+        target_entity: EntityPath,
+        component: ComponentIdentifier,
+        #[source]
+        source: arrow::error::ArrowError,
+    },
+
+    #[error(
+        "Cannot auto-cast output component '{component}' — its descriptor carries no known component type to derive the target Arrow datatype from (entity: `{target_entity}`)"
+    )]
+    UnknownComponentType {
+        target_entity: EntityPath,
+        component: ComponentIdentifier,
+    },
 }

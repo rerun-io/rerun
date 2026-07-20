@@ -576,6 +576,40 @@ pub fn format_bytes(number_of_bytes: f64) -> String {
     }
 }
 
+/// Pretty format a bitrate (bits per second) using decimal SI notation (base 10).
+///
+/// Note: bitrate is conventionally given in decimal (base 1000) units, not binary (base 1024) units.
+///
+/// ```
+/// # use re_format::format_bits_per_second;
+/// assert_eq!(format_bits_per_second(123.0), "123 bit/s");
+/// assert_eq!(format_bits_per_second(12_345.0), "12.3 kbit/s");
+/// assert_eq!(format_bits_per_second(1_234_567.0), "1.2 Mbit/s");
+/// assert_eq!(format_bits_per_second(1_234_567_890.0), "1.2 Gbit/s");
+/// ```
+pub fn format_bits_per_second(bits_per_second: f64) -> String {
+    if bits_per_second < 0.0 {
+        return format!("{MINUS}{}", format_bits_per_second(-bits_per_second));
+    }
+
+    // Bitrate is conventionally given in decimal (base 1000) units.
+    let (value, unit) = if bits_per_second < 1e3 {
+        (bits_per_second, "bit/s")
+    } else if bits_per_second < 1e6 {
+        (bits_per_second / 1e3, "kbit/s")
+    } else if bits_per_second < 1e9 {
+        (bits_per_second / 1e6, "Mbit/s")
+    } else {
+        (bits_per_second / 1e9, "Gbit/s")
+    };
+
+    if unit == "bit/s" {
+        format!("{value:.0} {unit}")
+    } else {
+        format!("{value:.1} {unit}")
+    }
+}
+
 #[test]
 fn test_format_bytes() {
     let test_cases = [

@@ -10,23 +10,23 @@ use re_log_types::hash::Hash64;
 use re_log_types::{EntityPath, EntityPathHash};
 use re_renderer::renderer;
 use re_renderer::resource_managers::{GpuTexture2D, ImageDataDesc};
-use re_sdk_types::ViewClassIdentifier;
 use re_sdk_types::blueprint::components::VisualizerInstructionId;
 use re_sdk_types::components::Opacity;
 use re_ui::ContextExt as _;
 use re_video::player::{VideoPlaybackIssueSeverity, VideoPlayerError};
 use re_view::DataResultQuery as _;
 use re_viewer_context::{
-    VideoStreamCache, VideoStreamProcessingError, ViewClass as _, ViewContext,
-    ViewContextCollection, ViewQuery, ViewSystemExecutionError, ViewSystemIdentifier,
-    VisualizerExecutionOutput, typed_fallback_for, video_stream_time_from_query,
+    SystemCommandSender as _, VideoStoreSource, VideoStreamCache, VideoStreamProcessingError,
+    ViewClass as _, ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError,
+    ViewSystemIdentifier, VisualizerExecutionOutput, typed_fallback_for,
+    video_stream_time_from_query,
 };
 pub use video_frame_reference::VideoFrameReferenceVisualizer;
 pub use video_stream::VideoStreamVisualizer;
 
 use super::{LoadingIndicator, SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget};
+use crate::SpaceKind;
 use crate::contexts::EntityDepthOffsets;
-use crate::view_kind::SpatialViewKind;
 use crate::visualizers::DepthImageProcessResult;
 use crate::visualizers::utilities::{
     spatial_view_kind_from_view_class, transform_info_for_archetype_or_report_error,
@@ -186,7 +186,7 @@ fn execute_video_stream_like(
         let Some(transform_info) = transform_info_for_archetype_or_report_error(
             entity_path,
             transforms,
-            Some(SpatialViewKind::TwoD),
+            Some(SpaceKind::TwoD),
             view_kind,
             &instruction.id,
             &output,
@@ -246,13 +246,16 @@ fn execute_video_stream_like(
         let video = match viewer_ctx
             .store_context
             .memoizer(|c: &mut VideoStreamCache| {
+                let new_codec =
+                    (ctx.get_codec)(&ctx, &latest_at, data_result, instruction, &output)?;
+
                 c.entry(
                     viewer_ctx.recording(),
                     entity_path,
                     ctx.view_query.timeline,
                     viewer_ctx.app_options().video_decoder_settings(),
                     ctx.sample_component,
-                    &|| (ctx.get_codec)(&ctx, &latest_at, data_result, instruction, &output),
+                    new_codec,
                 )
             }) {
             Ok(video) => video,
@@ -316,37 +319,15 @@ fn execute_video_stream_like(
             }
 
             let storage_engine = ctx.viewer_ctx.store_context.recording.storage_engine();
-            // Both real fetches and "mark in use" calls go through here: the
-            // `use_chunk_or_report_missing` call marks the chunk in use either
-            // way; if `sub_id` is `None` we stop there.
-            let lookup = |id: re_log_types::external::re_tuid::Tuid,
-                          sub_id: Option<re_log_types::external::re_tuid::Tuid>|
-             -> Option<&[u8]> {
-                let Some(chunk) = storage_engine
-                    .store()
-                    .use_chunk_or_report_missing(&re_sdk_types::ChunkId::from_tuid(id))
-                else {
-                    output.set_missing_chunks(); // view-wide loading indicator
-                    return None;
-                };
-                let sub_id = sub_id?;
-                let (offsets, buffer) = re_arrow_util::blob_arrays_offsets_and_buffer(
-                    chunk.raw_component_array(ctx.sample_component)?,
-                )?;
-                let row_idx = chunk.row_index_of(re_sdk_types::RowId::from_tuid(sub_id))?;
-                let start = offsets[row_idx] as usize;
-                let end = offsets[row_idx + 1] as usize;
-                Some(&buffer.as_slice()[start..end])
-            };
 
             video.video_renderer.frame_at(
                 ctx.viewer_ctx.render_ctx(),
                 video_stream_id(entity_path, ctx.sample_component, AT_TIME_CURSOR_SALT),
                 video_stream_time_from_query(&query_context.query),
-                &|source| match source {
-                    re_video::VideoSource::Id { id, sub_id } => lookup(id, sub_id).unwrap_or(&[]),
-                    // No `Span` sources for video streams.
-                    re_video::VideoSource::Span(_) => &[],
+                &VideoStoreSource {
+                    store: storage_engine.store(),
+                    sample_component: ctx.sample_component,
+                    indicate: true,
                 },
             )
         };
@@ -371,7 +352,7 @@ fn execute_video_stream_like(
         });
 
         // In 3D views, depth images should render as point clouds when a pinhole camera is available.
-        let rendered_as_depth_cloud = if view_kind == SpatialViewKind::ThreeD
+        let rendered_as_depth_cloud = if view_kind == SpaceKind::ThreeD
             && let Some(depth_config) = &depth_config
             && let Some(frame_texture) = frame_output
                 .output
@@ -419,7 +400,7 @@ fn execute_video_stream_like(
                         picking_object_id: re_renderer::PickingLayerObjectId(entity_path.hash64()),
                     };
 
-                    ctx.data.add_bounding_box(
+                    ctx.data.add_bounding_box_3d(
                         entity_path.hash(),
                         cloud.world_space_bbox(),
                         glam::Affine3A::IDENTITY,
@@ -469,7 +450,7 @@ fn execute_video_stream_like(
                     video_resolution.extend(0.0),
                 );
                 ctx.data
-                    .add_bounding_box(entity_path.hash(), bounding_box, world_from_entity);
+                    .add_bounding_box_2d(entity_path.hash(), bounding_box, world_from_entity);
             }
         }
     }
@@ -544,22 +525,7 @@ impl From<VideoPlayerError> for VideoPlaybackIssue {
             message: error.to_string(),
             severity: error.severity(),
             should_request_more_frames: error.should_request_more_frames(),
-            show_frame: match error {
-                VideoPlayerError::NegativeTimestamp
-                | VideoPlayerError::InsufficientSampleData(_)
-                | VideoPlayerError::Decoding(re_video::DecodeError::WaitingForCodecDetails) => {
-                    false
-                }
-
-                VideoPlayerError::EmptyBuffer
-                | VideoPlayerError::UnloadedSampleData(_)
-                | VideoPlayerError::CreateChunk(_)
-                | VideoPlayerError::DecodeChunk(_)
-                | VideoPlayerError::Decoding(_)
-                | VideoPlayerError::BadData
-                | VideoPlayerError::TextureUploadError(_)
-                | VideoPlayerError::DecoderUnexpectedlyExited => true,
-            },
+            show_frame: error.severity() != VideoPlaybackIssueSeverity::Informational,
         }
     }
 }
@@ -619,6 +585,13 @@ fn show_video_frame(
     };
 
     if let Some(reason) = loading_indicator_reason {
+        ctx.viewer_ctx.command_sender().send_system(
+            re_viewer_context::SystemCommand::TimeControlCommands {
+                store_id: ctx.store_id().clone(),
+                time_commands: vec![re_viewer_context::TimeControlCommand::Buffer],
+            },
+        );
+
         visualizer_data.loading_indicators.push(LoadingIndicator {
             center: top_left_corner_position + 0.5 * (extent_u + extent_v),
             half_extent_u: 0.5 * extent_u,
@@ -676,7 +649,7 @@ fn show_video_frame(
                         depth_meter: depth_config.map(|c| c.depth_meter),
                     },
                 },
-                ctx.view_class_identifier,
+                SpaceKind::TwoD,
             );
         }
     }
@@ -689,7 +662,6 @@ fn show_video_frame(
             visualizer_data,
             world_from_entity,
             video_size,
-            ctx.view_class_identifier,
         );
     }
 
@@ -807,7 +779,7 @@ fn show_video_frame(
             textured_rect: error_rect,
             source_data: PickableRectSourceData::Placeholder,
         },
-        ctx.view_class_identifier,
+        SpaceKind::TwoD,
     );
 }
 
@@ -816,19 +788,10 @@ fn register_video_bounds_with_bounding_box(
     visualizer_data: &mut SpatialViewVisualizerData,
     world_from_entity: glam::Affine3A,
     video_size: glam::Vec2,
-    class_identifier: ViewClassIdentifier,
 ) {
-    // Only update the bounding box if this is a 2D view.
-    // This is avoids a cyclic relationship where the image plane grows
-    // the bounds which in turn influence the size of the image plane.
-    // See: https://github.com/rerun-io/rerun/issues/3728
-    if class_identifier != SpatialView2D::identifier() {
-        return;
-    }
-
     let top_left = glam::Vec3::from(world_from_entity.translation);
 
-    visualizer_data.add_bounding_box(
+    visualizer_data.add_bounding_box_2d(
         entity_path,
         macaw::BoundingBox {
             min: top_left,

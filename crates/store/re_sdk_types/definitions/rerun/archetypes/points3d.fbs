@@ -33,6 +33,9 @@ table Points3D (
   ///
   /// \py The colors are interpreted as RGB or RGBA in sRGB gamma-space,
   /// \py As either 0-1 floats or 0-255 integers, with separate alpha.
+  ///
+  /// By default, the alpha channel affects brightness rather than transparency.
+  /// TODO(#1611): To use the alpha channel for transparency, enable the experimental "Transparent point clouds" feature flag.
   colors: [rerun.components.Color] ("attr.rerun.component_recommended", nullable, order: 2100);
 
   // --- Optional ---

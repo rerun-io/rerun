@@ -9,20 +9,25 @@ use std::time::Duration;
 
 use arrow::array::RecordBatch as ArrowRecordBatch;
 use itertools::Itertools as _;
-use pyo3::exceptions::{PyKeyboardInterrupt, PyRuntimeError, PyStopIteration, PyTypeError};
+use pyo3::exceptions::{
+    PyKeyboardInterrupt, PyRuntimeError, PyStopIteration, PyTypeError, PyValueError,
+};
 use pyo3::prelude::*;
 use pyo3::types::{PyBytes, PyDict};
 use re_auth::oauth::Credentials;
 use re_auth::oauth::login_flow::{DeviceCodeFlow, DeviceCodeFlowState};
 //use crate::reflection::ComponentDescriptorExt as _;
-use re_chunk::ChunkBatcherConfig;
+use re_chunk::{ChunkBatcherConfig, TimelineName};
 use re_log::ResultExt as _;
 use re_log_types::external::re_types_core::reflection::ComponentDescriptorExt as _;
 use re_log_types::{BlueprintActivationCommand, EntityPathPart, LogMsg, RecordingId};
 use re_sdk::external::re_log_encoding::Encoder;
 use re_sdk::sink::{BinaryStreamStorage, CallbackSink, MemorySinkStorage, SinkFlushError};
 use re_sdk::time::TimePoint;
-use re_sdk::{ComponentDescriptor, EntityPath, RecordingStream, RecordingStreamBuilder, TimeCell};
+use re_sdk::{
+    ArchetypeName, ComponentDescriptor, ComponentIdentifier, ComponentType, EntityPath,
+    RecordingStream, RecordingStreamBuilder, TimeCell,
+};
 #[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
 
@@ -1920,14 +1925,19 @@ impl PyComponentDescriptor {
     #[new]
     #[pyo3(signature = (component, archetype=None, component_type=None))]
     #[pyo3(text_signature = "(self, component, archetype=None, component_type=None)")]
-    fn new(component: &str, archetype: Option<&str>, component_type: Option<&str>) -> Self {
+    fn new(
+        component: &str,
+        archetype: Option<&str>,
+        component_type: Option<&str>,
+    ) -> PyResult<Self> {
         let descr = ComponentDescriptor {
-            archetype: archetype.map(Into::into),
-            component: component.into(),
-            component_type: component_type.map(Into::into),
+            archetype: archetype.and_then(|s| ArchetypeName::try_new(s).ok()),
+            component: ComponentIdentifier::try_new(component)
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?,
+            component_type: component_type.and_then(|s| ComponentType::try_new(s).ok()),
         };
 
-        Self(descr)
+        Ok(Self(descr))
     }
 
     fn __hash__(&self) -> u64 {
@@ -1975,11 +1985,11 @@ impl PyComponentDescriptor {
     #[pyo3(signature = (archetype=None, component_type=None))]
     fn with_overrides(&mut self, archetype: Option<&str>, component_type: Option<&str>) -> Self {
         let mut cloned = self.0.clone();
-        if let Some(archetype) = archetype {
-            cloned = cloned.with_archetype(archetype.into());
+        if let Some(archetype) = archetype.and_then(|s| ArchetypeName::try_new(s).ok()) {
+            cloned = cloned.with_archetype(archetype);
         }
-        if let Some(component_type) = component_type {
-            cloned = cloned.with_component_type(component_type.into());
+        if let Some(component_type) = component_type.and_then(|s| ComponentType::try_new(s).ok()) {
+            cloned = cloned.with_component_type(component_type);
         }
         Self(cloned)
     }
@@ -1988,18 +1998,22 @@ impl PyComponentDescriptor {
     #[pyo3(signature = (archetype=None, component_type=None))]
     fn or_with_overrides(&mut self, archetype: Option<&str>, component_type: Option<&str>) -> Self {
         let mut cloned = self.0.clone();
-        if let Some(archetype) = archetype {
-            cloned = cloned.or_with_archetype(|| archetype.into());
+        if let Some(archetype) = archetype.and_then(|s| ArchetypeName::try_new(s).ok()) {
+            cloned = cloned.or_with_archetype(|| archetype);
         }
-        if let Some(component_type) = component_type {
-            cloned = cloned.or_with_component_type(|| component_type.into());
+        if let Some(component_type) = component_type.and_then(|s| ComponentType::try_new(s).ok()) {
+            cloned = cloned.or_with_component_type(|| component_type);
         }
         Self(cloned)
     }
 
     /// Sets `archetype` in a format similar to built-in archetypes.
     fn with_builtin_archetype(&mut self, archetype: &str) -> Self {
-        Self(self.0.clone().with_builtin_archetype(archetype))
+        if let Ok(archetype) = ArchetypeName::try_new(archetype) {
+            Self(self.0.clone().with_builtin_archetype(archetype))
+        } else {
+            Self(self.0.clone())
+        }
     }
 }
 
@@ -2008,21 +2022,35 @@ impl PyComponentDescriptor {
 /// Set the current time for this thread as an integer sequence.
 #[pyfunction]
 #[pyo3(signature = (timeline, sequence, recording=None))]
-fn set_time_sequence(timeline: &str, sequence: i64, recording: Option<&PyRecordingStream>) {
+fn set_time_sequence(
+    timeline: &str,
+    sequence: i64,
+    recording: Option<&PyRecordingStream>,
+) -> PyResult<()> {
+    let timeline =
+        TimelineName::try_new(timeline).map_err(|err| PyValueError::new_err(err.to_string()))?;
     let Some(recording) = get_data_recording(recording) else {
-        return;
+        return Ok(());
     };
     recording.set_time(timeline, TimeCell::from_sequence(sequence));
+    Ok(())
 }
 
 /// Set the current duration for this thread in nanoseconds.
 #[pyfunction]
 #[pyo3(signature = (timeline, nanos, recording=None))]
-fn set_time_duration_nanos(timeline: &str, nanos: i64, recording: Option<&PyRecordingStream>) {
+fn set_time_duration_nanos(
+    timeline: &str,
+    nanos: i64,
+    recording: Option<&PyRecordingStream>,
+) -> PyResult<()> {
+    let timeline =
+        TimelineName::try_new(timeline).map_err(|err| PyValueError::new_err(err.to_string()))?;
     let Some(recording) = get_data_recording(recording) else {
-        return;
+        return Ok(());
     };
     recording.set_time(timeline, TimeCell::from_duration_nanos(nanos));
+    Ok(())
 }
 
 /// Set the current time for this thread in nanoseconds.
@@ -2032,21 +2060,27 @@ fn set_time_timestamp_nanos_since_epoch(
     timeline: &str,
     nanos: i64,
     recording: Option<&PyRecordingStream>,
-) {
+) -> PyResult<()> {
+    let timeline =
+        TimelineName::try_new(timeline).map_err(|err| PyValueError::new_err(err.to_string()))?;
     let Some(recording) = get_data_recording(recording) else {
-        return;
+        return Ok(());
     };
     recording.set_time(timeline, TimeCell::from_timestamp_nanos_since_epoch(nanos));
+    Ok(())
 }
 
 /// Clear time information for the specified timeline on this thread.
 #[pyfunction]
 #[pyo3(signature = (timeline, recording=None))]
-fn disable_timeline(timeline: &str, recording: Option<&PyRecordingStream>) {
+fn disable_timeline(timeline: &str, recording: Option<&PyRecordingStream>) -> PyResult<()> {
+    let timeline =
+        TimelineName::try_new(timeline).map_err(|err| PyValueError::new_err(err.to_string()))?;
     let Some(recording) = get_data_recording(recording) else {
-        return;
+        return Ok(());
     };
     recording.disable_timeline(timeline);
+    Ok(())
 }
 
 /// Clear all timeline information on this thread.

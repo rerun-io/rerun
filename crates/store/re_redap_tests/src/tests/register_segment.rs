@@ -2,28 +2,26 @@
 
 use std::sync::Arc;
 
-use arrow::array::{
-    Array as _, Float32Array, Float64Array, ListArray, RecordBatch, StringArray,
-    TimestampNanosecondArray,
-};
+use arrow::array::{Float32Array, Float64Array, ListArray, RecordBatch, StringArray};
 use arrow::datatypes::Schema;
 use futures::TryStreamExt as _;
-use itertools::Itertools as _;
+use itertools::{Itertools as _, izip};
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_log_types::{EntityPath, TimeType};
-use re_protos::cloud::v1alpha1::ext as cloud_ext;
 use re_protos::cloud::v1alpha1::ext::{
-    DatasetDetails, RegisterWithDatasetRequest, TableDetails, UpdateTableEntryRequest,
+    self, DatasetDetails, RegisterWithDatasetRequest, TableDetails, UpdateTableEntryRequest,
 };
+use re_protos::cloud::v1alpha1::ext::{ScanDatasetManifestDataframe, ScanSegmentTableDataframe};
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::cloud::v1alpha1::{
     CreateDatasetEntryRequest, GetDatasetManifestSchemaRequest, GetSegmentTableSchemaRequest,
     ReadDatasetEntryRequest, ReadTableEntryRequest, ScanDatasetManifestRequest,
-    ScanDatasetManifestResponse, ScanSegmentTableRequest, ScanSegmentTableResponse, ext,
+    ScanSegmentTableRequest,
 };
 use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
 use re_protos::headers::RerunHeadersInjectorExt as _;
-use re_sdk_types::AnyValues;
+use re_protos::{cloud::v1alpha1::ext as cloud_ext, common::v1alpha1::TaskId};
+use re_sdk_types::{AnyValues, LayerName};
 use re_types_core::AsComponents;
 use re_types_core::SegmentId;
 use url::Url;
@@ -293,10 +291,8 @@ pub async fn register_and_scan_simple_dataset_with_properties_out_of_order(
     scan_segment_table_and_snapshot(&service, dataset_name, "out_of_order_properties").await;
 
     // assert test correctness
-    let registration_time_col = dataset_manifest
-        .column_by_name(ScanDatasetManifestResponse::FIELD_REGISTRATION_TIME)
-        .unwrap()
-        .downcast_array_ref::<TimestampNanosecondArray>()
+    let registration_time_col = ScanDatasetManifestDataframe::COLUMN_RERUN_REGISTRATION_TIME
+        .extract(&dataset_manifest)
         .unwrap();
 
     let prop_col = dataset_manifest
@@ -305,7 +301,7 @@ pub async fn register_and_scan_simple_dataset_with_properties_out_of_order(
         .downcast_array_ref::<ListArray>()
         .unwrap();
 
-    assert!(registration_time_col.value(0) < registration_time_col.value(1));
+    assert!(registration_time_col[0] < registration_time_col[1]);
 
     assert_eq!(
         prop_col
@@ -930,10 +926,8 @@ async fn scan_dataset_manifest(
 ) -> RecordBatch {
     let responses: Vec<_> = service
         .scan_dataset_manifest(
-            tonic::Request::new(ScanDatasetManifestRequest {
-                columns: vec![], // all of them
-            })
-            .with_entry_name(entry_name(dataset_name)),
+            tonic::Request::new(ScanDatasetManifestRequest::all())
+                .with_entry_name(entry_name(dataset_name)),
         )
         .await
         .unwrap()
@@ -1142,15 +1136,11 @@ pub async fn register_conflicting_schema_filters_segment_table(service: impl Rer
     // Verify the segment table only contains segment1 (the successful one)
     let segment_table = scan_segment_table(&service, dataset_name).await;
 
-    let segment_id_col = segment_table
-        .column_by_name(ScanSegmentTableResponse::FIELD_SEGMENT_ID)
-        .expect("segment_id column expected")
-        .downcast_array_ref::<StringArray>()
-        .expect("segment_id should be string array");
+    let segment_id_col = ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID
+        .extract(&segment_table)
+        .expect("segment_id column expected");
 
-    let segment_ids: Vec<&str> = (0..segment_id_col.len())
-        .map(|i| segment_id_col.value(i))
-        .collect();
+    let segment_ids: Vec<&str> = segment_id_col.iter().collect();
 
     assert_eq!(
         segment_ids.len(),
@@ -1223,17 +1213,13 @@ pub async fn register_conflicting_schema_same_segment_filters_layer(
     // Verify the segment table shows segment1 with only the base layer
     let segment_table = scan_segment_table(&service, dataset_name).await;
 
-    let segment_id_col = segment_table
-        .column_by_name(ScanSegmentTableResponse::FIELD_SEGMENT_ID)
-        .expect("segment_id column expected")
-        .downcast_array_ref::<StringArray>()
-        .expect("segment_id should be string array");
+    let segment_id_col = ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID
+        .extract(&segment_table)
+        .expect("segment_id column expected");
 
-    let layer_names_col = segment_table
-        .column_by_name(ScanSegmentTableResponse::FIELD_LAYER_NAMES)
-        .expect("layer_names column expected")
-        .downcast_array_ref::<ListArray>()
-        .expect("layer_names should be list array");
+    let layer_names_col = ScanSegmentTableDataframe::COLUMN_RERUN_LAYER_NAMES
+        .extract(&segment_table)
+        .expect("layer_names column expected");
 
     assert_eq!(
         segment_id_col.len(),
@@ -1241,19 +1227,11 @@ pub async fn register_conflicting_schema_same_segment_filters_layer(
         "Segment table should only contain 1 segment"
     );
     assert_eq!(
-        segment_id_col.value(0),
-        "segment1",
+        &segment_id_col[0], "segment1",
         "Segment table should contain 'segment1'"
     );
 
-    let layer_names_arr = layer_names_col.value(0);
-    let layer_names = layer_names_arr
-        .downcast_array_ref::<StringArray>()
-        .expect("inner array should be string array");
-
-    let layers: Vec<&str> = (0..layer_names.len())
-        .map(|i| layer_names.value(i))
-        .collect();
+    let layers: Vec<&str> = layer_names_col.value(0).collect();
 
     assert_eq!(
         layers,
@@ -1275,7 +1253,7 @@ fn assert_task_failed(task_results: &[RecordBatch], expected_message_substring: 
             .extract(batch)
             .expect("valid msgs column");
 
-        for (status, msg) in std::iter::zip(&statuses, &msgs) {
+        for (status, msg) in izip!(&statuses, &msgs) {
             if status != "success" {
                 found_failure = true;
                 failure_message = msg.unwrap_or_default().to_owned();
@@ -1303,10 +1281,8 @@ fn assert_task_failed(task_results: &[RecordBatch], expected_message_substring: 
 async fn scan_segment_table(service: &impl RerunCloudService, dataset_name: &str) -> RecordBatch {
     let responses: Vec<_> = service
         .scan_segment_table(
-            tonic::Request::new(ScanSegmentTableRequest {
-                columns: vec![], // all of them
-            })
-            .with_entry_name(entry_name(dataset_name)),
+            tonic::Request::new(ScanSegmentTableRequest::all())
+                .with_entry_name(entry_name(dataset_name)),
         )
         .await
         .unwrap()
@@ -1322,7 +1298,7 @@ async fn scan_segment_table(service: &impl RerunCloudService, dataset_name: &str
 
     // Handle empty responses by returning an empty batch with the expected schema
     if batches.is_empty() {
-        return RecordBatch::new_empty(Arc::new(ScanSegmentTableResponse::schema()));
+        return RecordBatch::new_empty(Arc::new(ScanSegmentTableDataframe::min_schema()));
     }
 
     arrow::compute::concat_batches(batches.first().unwrap().schema_ref(), &batches).unwrap()
@@ -1334,11 +1310,11 @@ async fn scan_segment_table(service: &impl RerunCloudService, dataset_name: &str
 #[derive(Debug)]
 struct TaskResult {
     #[expect(dead_code)]
-    task_id: String,
+    task_id: TaskId,
     status: String,
     message: String,
     #[expect(dead_code)]
-    layers: Vec<(SegmentId, String)>,
+    layers: Vec<(SegmentId, LayerName)>,
 }
 
 /// Helper to register data sources and wait for task completion.
@@ -1374,34 +1350,28 @@ async fn register_and_wait_for_task_result(
         .expect("record batch expected");
 
     // Extract task IDs and group segments by task
-    let task_id_col = ext::RegisterWithDatasetDataframe::COLUMN_RERUN_TASK_ID
-        .extract(&batch)
-        .expect("valid task_id column");
-    let segment_id_col = ext::RegisterWithDatasetDataframe::COLUMN_RERUN_SEGMENT_ID
-        .extract(&batch)
-        .expect("valid segment_id column");
-    let layer_col = ext::RegisterWithDatasetDataframe::COLUMN_RERUN_SEGMENT_LAYER
-        .extract(&batch)
-        .expect("valid layer column");
+    let ext::RegisterWithDatasetDataframe {
+        rerun_segment_id,
+        rerun_segment_layer,
+        rerun_task_id,
+        ..
+    } = ext::RegisterWithDatasetDataframe::try_from(batch)
+        .expect("valid RegisterWithDataset response dataframe");
 
     // Group (segment_id, layer) by task_id
-    let mut task_layers: HashMap<String, Vec<(SegmentId, String)>> = HashMap::default();
-    for (task_id, segment_id, layer_name) in
-        itertools::izip!(&task_id_col, &segment_id_col, &layer_col)
-    {
-        let task_id = task_id.to_owned();
-        let segment_id = SegmentId::from(segment_id);
-        let layer_name = layer_name.to_owned();
+    let mut task_layers: HashMap<TaskId, Vec<(SegmentId, LayerName)>> = HashMap::default();
+    for (task_id, segment_id, layer_name) in izip!(
+        rerun_task_id.into_iter_owned(),
+        rerun_segment_id.into_iter_owned(),
+        rerun_segment_layer.into_iter_owned()
+    ) {
         task_layers
             .entry(task_id)
             .or_default()
             .push((segment_id, layer_name));
     }
 
-    let task_ids: Vec<TaskId> = task_layers
-        .keys()
-        .map(|id| TaskId { id: id.clone() })
-        .collect();
+    let task_ids: Vec<TaskId> = task_layers.keys().cloned().collect();
 
     // Wait for task completion
     let query_results: Vec<RecordBatch> = service
@@ -1430,20 +1400,19 @@ async fn register_and_wait_for_task_result(
     // Build TaskResult for each task
     let mut results = Vec::new();
     for batch in &query_results {
-        let task_ids = cloud_ext::QueryTasksDataframe::COLUMN_TASK_ID
-            .extract(batch)
-            .expect("valid task_id column");
-        let statuses = cloud_ext::QueryTasksDataframe::COLUMN_EXEC_STATUS
-            .extract(batch)
-            .expect("valid exec_status column");
-        let msgs = cloud_ext::QueryTasksDataframe::COLUMN_MSGS
-            .extract(batch)
-            .expect("valid msgs column");
+        let cloud_ext::QueryTasksDataframe {
+            task_id,
+            exec_status,
+            msgs,
+            ..
+        } = cloud_ext::QueryTasksDataframe::try_from(batch).expect("valid QueryTasks dataframe");
 
-        for (task_id, status, message) in itertools::izip!(&task_ids, &statuses, &msgs) {
-            let task_id = task_id.to_owned();
-            let status = status.to_owned();
-            let message = message.unwrap_or_default().to_owned();
+        for (task_id, status, message) in izip!(
+            task_id.into_iter_owned(),
+            exec_status.into_iter_owned(),
+            msgs.into_iter_owned()
+        ) {
+            let message = message.unwrap_or_default();
             let layers = task_layers.remove(&task_id).unwrap_or_default();
 
             results.push(TaskResult {
@@ -1467,10 +1436,8 @@ async fn scan_segment_table_and_snapshot(
 ) -> RecordBatch {
     let responses: Vec<_> = service
         .scan_segment_table(
-            tonic::Request::new(ScanSegmentTableRequest {
-                columns: vec![], // all of them
-            })
-            .with_entry_name(entry_name(dataset_name)),
+            tonic::Request::new(ScanSegmentTableRequest::all())
+                .with_entry_name(entry_name(dataset_name)),
         )
         .await
         .unwrap()
@@ -1518,16 +1485,16 @@ async fn scan_segment_table_and_snapshot(
         alleged_schema.format_snapshot(),
     );
 
-    let required_fields = ScanSegmentTableResponse::fields();
+    let required_fields = ScanSegmentTableDataframe::min_schema().fields().to_vec();
     assert!(
         batch.schema().fields().contains_unordered(&required_fields),
         "the schema should contain all the required fields, but it doesn't",
     );
 
     let unstable_column_names = vec![
-        ScanSegmentTableResponse::FIELD_STORAGE_URLS,
-        ScanSegmentTableResponse::FIELD_SIZE_BYTES,
-        ScanSegmentTableResponse::FIELD_LAST_UPDATED_AT,
+        ScanSegmentTableDataframe::COLUMN_RERUN_STORAGE_URLS_NAME,
+        ScanSegmentTableDataframe::COLUMN_RERUN_SIZE_BYTES_NAME,
+        ScanSegmentTableDataframe::COLUMN_RERUN_LAST_UPDATED_AT_NAME,
     ];
     let filtered_batch = batch
         .remove_columns(&unstable_column_names)
@@ -1555,10 +1522,8 @@ async fn scan_dataset_manifest_and_snapshot(
 ) -> RecordBatch {
     let responses: Vec<_> = service
         .scan_dataset_manifest(
-            tonic::Request::new(ScanDatasetManifestRequest {
-                columns: vec![], // all of them
-            })
-            .with_entry_name(entry_name(dataset_name)),
+            tonic::Request::new(ScanDatasetManifestRequest::all())
+                .with_entry_name(entry_name(dataset_name)),
         )
         .await
         .unwrap()
@@ -1606,7 +1571,7 @@ async fn scan_dataset_manifest_and_snapshot(
         alleged_schema.format_snapshot(),
     );
 
-    let required_fields = ScanDatasetManifestResponse::fields();
+    let required_fields = ScanDatasetManifestDataframe::min_schema().fields().to_vec();
     assert!(
         batch.schema().fields().contains_unordered(&required_fields),
         "the schema should contain all the required fields, but it doesn't",
@@ -1614,11 +1579,11 @@ async fn scan_dataset_manifest_and_snapshot(
 
     let unstable_column_names = vec![
         // implementation-dependent
-        ScanDatasetManifestResponse::FIELD_STORAGE_URL,
-        ScanDatasetManifestResponse::FIELD_SIZE_BYTES,
+        ScanDatasetManifestDataframe::COLUMN_RERUN_STORAGE_URL_NAME,
+        ScanDatasetManifestDataframe::COLUMN_RERUN_SIZE_BYTES_NAME,
         // unstable
-        ScanDatasetManifestResponse::FIELD_LAST_UPDATED_AT,
-        ScanDatasetManifestResponse::FIELD_REGISTRATION_TIME,
+        ScanDatasetManifestDataframe::COLUMN_RERUN_LAST_UPDATED_AT_NAME,
+        ScanDatasetManifestDataframe::COLUMN_RERUN_REGISTRATION_TIME_NAME,
     ];
     let filtered_batch = batch
         .remove_columns(&unstable_column_names)

@@ -15,7 +15,9 @@ use re_protos::TypeConversionError;
 use re_protos::cloud::v1alpha1::ext::{DatasetEntry, EntryDetails, ProviderDetails, TableEntry};
 use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind};
 use re_protos::external::prost;
-use re_redap_client::{ApiError, ConnectionClient, ConnectionRegistryHandle};
+use re_redap_client::{
+    ApiError, ConnectionAnalyticsExporter, ConnectionClient, ConnectionRegistryHandle,
+};
 use re_ui::{Icon, icons};
 use re_viewer_context::{
     AsyncRuntimeHandle, CommandSender, SystemCommand, SystemCommandSender as _,
@@ -98,9 +100,10 @@ impl Entry {
 
     pub fn icon(&self) -> Icon {
         match &self.details.kind {
-            EntryKind::Dataset | EntryKind::DatasetView | EntryKind::BlueprintDataset => {
-                icons::DATASET
-            }
+            EntryKind::Dataset
+            | EntryKind::DatasetView
+            | EntryKind::BlueprintDataset
+            | EntryKind::AssetDataset => icons::DATASET,
             EntryKind::Table | EntryKind::TableView => icons::TABLE,
             EntryKind::Unspecified => icons::VIEW_UNKNOWN,
         }
@@ -140,6 +143,32 @@ impl Entries {
         }
     }
 
+    pub(crate) fn refresh(
+        self,
+        connection_registry: ConnectionRegistryHandle,
+        runtime: &AsyncRuntimeHandle,
+        egui_ctx: &egui::Context,
+        origin: re_uri::Origin,
+        session_context: Arc<SessionContext>,
+        command_sender: CommandSender,
+    ) -> Self {
+        let entries_fut = fetch_entries_and_register_tables(
+            connection_registry,
+            origin,
+            session_context,
+            runtime.clone(),
+            command_sender,
+        );
+
+        Self {
+            entries: self.entries.refresh_with_previous_and_repaint(
+                runtime,
+                egui_ctx.clone(),
+                entries_fut,
+            ),
+        }
+    }
+
     pub(crate) fn on_frame_start(&mut self) {
         self.entries.on_frame_start();
     }
@@ -165,14 +194,12 @@ async fn fetch_entries_and_register_tables(
     runtime: AsyncRuntimeHandle,
     command_sender: CommandSender,
 ) -> EntryResult<HashMap<EntryId, Entry>> {
-    let mut client = connection_registry.client(origin.clone()).await?;
+    let connection = connection_registry.connection(origin.clone()).await?;
+    let mut client = connection.client;
+    let analytics = connection.analytics;
 
     let entries = client
-        .find_entries(EntryFilter {
-            id: None,
-            name: None,
-            entry_kind: None,
-        })
+        .find_entries(EntryFilter::default().with_all_kinds())
         .await?;
 
     let origin_ref = &origin;
@@ -182,6 +209,7 @@ async fn fetch_entries_and_register_tables(
         fetch_entry_details(
             client.clone(),
             origin_ref,
+            analytics.clone(),
             e,
             runtime_ref,
             command_sender_ref,
@@ -239,6 +267,7 @@ type FetchEntryDetailsOutput = (
 fn fetch_entry_details(
     client: ConnectionClient,
     origin: &re_uri::Origin,
+    analytics: Option<ConnectionAnalyticsExporter>,
     entry: EntryDetails,
     runtime: &AsyncRuntimeHandle,
     command_sender: &CommandSender,
@@ -250,14 +279,14 @@ fn fetch_entry_details(
     match &entry.kind {
         // These are often empty datasets, and thus fail.
         // Since we don't need these tables yet, we just skip them for now.
-        EntryKind::BlueprintDataset => None,
+        EntryKind::BlueprintDataset | EntryKind::AssetDataset => None,
         EntryKind::Dataset => Some(Left(Left(
             fetch_dataset_details(client, entry.id, origin, runtime, command_sender)
                 .map_ok(|(dataset, table_provider)| (EntryInner::Dataset(dataset), table_provider))
                 .map(move |res| (entry, res)),
         ))),
         EntryKind::Table => Some(Left(Right(
-            fetch_table_details(client, entry.id, origin, runtime, command_sender)
+            fetch_table_details(client, entry.id, origin, analytics, runtime, command_sender)
                 .map_ok(|(table, table_provider)| (EntryInner::Table(table), table_provider))
                 .map(move |res| (entry, res)),
         ))),
@@ -404,6 +433,7 @@ async fn fetch_table_details(
     mut client: ConnectionClient,
     id: EntryId,
     origin: &re_uri::Origin,
+    analytics: Option<ConnectionAnalyticsExporter>,
     runtime: &AsyncRuntimeHandle,
     command_sender: &CommandSender,
 ) -> EntryResult<(Table, Arc<dyn TableProvider>)> {
@@ -431,15 +461,15 @@ async fn fetch_table_details(
         TableKind::Lance | TableKind::Unknown => TableQueryCaller::BrowserDetailView,
     };
 
-    let table_provider = TableEntryTableProvider::new(client, id, runtime)
+    let mut table_provider = TableEntryTableProvider::new(client, id, runtime)
         .with_caller(caller)
-        .with_table_kind(table_kind)
-        .with_analytics(origin.clone())
-        .into_provider()
-        .await
-        .map_err(|err| {
-            ApiError::internal_with_source(None, err, "failed creating table-entry table provider")
-        })?;
+        .with_table_kind(table_kind);
+    if let Some(exporter) = analytics {
+        table_provider = table_provider.with_analytics(exporter);
+    }
+    let table_provider = table_provider.into_provider().await.map_err(|err| {
+        ApiError::internal_with_source(None, err, "failed creating table-entry table provider")
+    })?;
 
     Ok((result, table_provider))
 }

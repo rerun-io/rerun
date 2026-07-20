@@ -12,6 +12,7 @@ use re_viewer_context::{
 
 use super::SpatialViewVisualizerData;
 use super::utilities::{LabeledBatch, process_labels_2d};
+use crate::SpaceKind;
 use crate::contexts::SpatialSceneVisualizerInstructionContext;
 use crate::visualizers::{load_keypoint_connections, process_radius_slice};
 
@@ -33,6 +34,13 @@ impl Points2DVisualizer {
         data: impl Iterator<Item = Points2DComponentData<'a>>,
     ) -> Result<(), ViewSystemExecutionError> {
         let entity_path = ctx.target_entity_path;
+
+        // Opt-in due to the cost of CPU-sorting transparent point clouds every frame.
+        let transparency_enabled = ctx
+            .viewer_ctx()
+            .app_options()
+            .experimental
+            .point_cloud_transparency;
 
         for data in data {
             let num_instances = data.positions.len();
@@ -76,6 +84,9 @@ impl Points2DVisualizer {
                 .single_transform_required_for_entity(entity_path, Points2D::name())
                 .as_affine3a();
 
+            let has_transparency = transparency_enabled && colors.iter().any(|c| !c.is_opaque());
+            let point_cloud_bounds = re_renderer::util::point_cloud_bounds(&positions);
+
             {
                 let point_batch = point_builder
                     .batch(entity_path.to_string())
@@ -84,7 +95,9 @@ impl Points2DVisualizer {
                         re_renderer::renderer::PointCloudBatchFlags::FLAG_DRAW_AS_CIRCLES
                             | re_renderer::renderer::PointCloudBatchFlags::FLAG_ENABLE_SHADING,
                     )
+                    .enable_alpha_blending(has_transparency)
                     .world_from_obj(world_from_obj)
+                    .object_space_bounding_box(point_cloud_bounds.bbox)
                     .outline_mask_ids(ent_context.highlight.overall)
                     .picking_object_id(re_renderer::PickingLayerObjectId(entity_path.hash64()));
 
@@ -110,12 +123,12 @@ impl Points2DVisualizer {
                 }
             }
 
-            let point_cloud_bounds = re_renderer::util::point_cloud_bounds(&positions);
             view_data.add_bounding_box_and_region_of_interest(
                 entity_path.hash(),
                 point_cloud_bounds.bbox,
                 point_cloud_bounds.region_of_interest,
                 world_from_obj,
+                SpaceKind::TwoD,
             );
 
             load_keypoint_connections(

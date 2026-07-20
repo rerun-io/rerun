@@ -1,0 +1,5 @@
+---
+source: crates/viewer/re_view_spatial/tests/topology_errors.rs
+expression: "snapshot_visualizer_errors(&test_context, view_id)"
+---
+"Points2D": /points2d_entity: This 2D content has a pinhole transform frame ancestor ("outer_pinhole") that is different from the 2D view's pinhole root ("inner_pinhole").

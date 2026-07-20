@@ -12,11 +12,46 @@ use crate::ChunkStoreConfig;
 /// of [`Self::to_chunk_store_config`].
 #[derive(Debug, Clone, PartialEq)]
 pub struct OptimizationProfile {
+    /// Maximum byte size of a single chunk.
+    ///
+    /// Two chunks are only merged if their combined size stays within this limit.
+    /// Incoming chunks that exceed this size are recursively split.
+    /// Setting this to `0` disables merging entirely.
     pub chunk_max_bytes: u64,
+
+    /// Maximum row count for time-sorted chunks.
+    ///
+    /// Applied as both a compaction ceiling and a splitting trigger, but only when
+    /// all timelines in the chunk are sorted. See also [`Self::chunk_max_rows_if_unsorted`].
     pub chunk_max_rows: u64,
+
+    /// Maximum row count for chunks that contain at least one unsorted timeline.
+    ///
+    /// Kept lower than [`Self::chunk_max_rows`] because unsorted chunks have higher
+    /// query costs — they require a full scan to resolve time ranges.
     pub chunk_max_rows_if_unsorted: u64,
+
+    /// How many additional compaction passes to run after initial ingestion.
+    ///
+    /// Each pass walks all chunks and merges neighboring pairs that fit within the
+    /// size thresholds. Passes stop early if a pass produces no merges.
     pub num_extra_passes: u32,
+
+    /// Whether to rebatch video stream chunks along Group-of-Pictures (GoP) boundaries.
+    ///
+    /// When enabled, chunks containing video frames are reorganized so each chunk
+    /// begins at a keyframe. A single GoP that exceeds `chunk_max_bytes` is kept
+    /// intact (oversized chunks are permitted). Aligning to GoP boundaries lets
+    /// random-access reads load at most one chunk per frame.
     pub gop_batching: bool,
+
+    /// If set, split chunks so no two archetype groups within a chunk differ in
+    /// byte size by more than this ratio.
+    ///
+    /// This separates "thick" columns (images, blobs) from "thin" columns (scalars,
+    /// transforms). A value of `1.0` forces each archetype into its own chunk.
+    /// Components belonging to the same archetype are never split across chunks.
+    /// `None` disables the thick/thin split entirely.
     pub split_size_ratio: Option<f64>,
 }
 
@@ -43,7 +78,10 @@ impl OptimizationProfile {
         chunk_max_rows_if_unsorted: 8_192,
         num_extra_passes: 50,
         gop_batching: true,
-        split_size_ratio: None,
+        // Separate thick columns (images, blobs) from thin columns (scalars, transforms) so
+        // that viewers and query engines can fetch lightweight metadata without downloading
+        // the full image payload. 10× is the recommended starting point.
+        split_size_ratio: Some(10.0),
     };
 
     /// Build a [`ChunkStoreConfig`] from this profile, with `enable_changelog`

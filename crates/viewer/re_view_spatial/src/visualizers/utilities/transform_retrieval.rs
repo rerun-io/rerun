@@ -1,34 +1,106 @@
 use re_log_types::EntityPath;
 use re_sdk_types::ViewClassIdentifier;
 use re_sdk_types::blueprint::components::VisualizerInstructionId;
+use re_sdk_types::components::{RotationAxisAngle, RotationQuat, Translation3D};
+use re_sdk_types::datatypes::Quaternion;
+use re_tf::TransformFrameIdHash;
 use re_viewer_context::{ViewClass as _, VisualizerExecutionOutput, VisualizerReportSeverity};
 
+use crate::SpaceKind;
 use crate::contexts::{TransformInfo, TransformTreeContext};
-use crate::view_kind::SpatialViewKind;
+
+/// Resolves the optional translation and rotation components of a grid-like archetype into a
+/// `grid_from_entity` affine transform.
+///
+/// If both a quaternion and an axis-angle rotation are set, the quaternion takes precedence (and a
+/// warning is reported). Reports an error and returns `None` if a provided rotation is invalid.
+///
+/// `archetype_label` is used in the warning message, e.g. `"GridMap"` or `"VoxelGridMap"`.
+#[expect(clippy::too_many_arguments)]
+pub fn entity_from_grid_transform(
+    results: &re_view::VisualizerInstructionQueryResults<'_>,
+    entity_path: &EntityPath,
+    archetype_label: &str,
+    translation: Option<Translation3D>,
+    rotation_axis_angle: Option<RotationAxisAngle>,
+    quaternion: Option<RotationQuat>,
+    quaternion_component: re_sdk_types::ComponentIdentifier,
+    rotation_axis_angle_component: re_sdk_types::ComponentIdentifier,
+) -> Option<glam::Affine3A> {
+    let translation = translation.map_or(glam::Affine3A::IDENTITY, Into::into);
+
+    let rotation = match (quaternion, rotation_axis_angle) {
+        (Some(quaternion), Some(rotation_axis_angle))
+            if quaternion.0 != Quaternion::IDENTITY
+                && rotation_axis_angle != RotationAxisAngle::IDENTITY =>
+        {
+            results.report_for_component(
+                quaternion_component,
+                VisualizerReportSeverity::Warning,
+                format!(
+                    "{archetype_label} {entity_path} has both quaternion and rotation_axis_angle set; using quaternion."
+                ),
+            );
+
+            let Ok(rotation) = glam::Affine3A::try_from(quaternion) else {
+                results.report_for_component(
+                    quaternion_component,
+                    VisualizerReportSeverity::Error,
+                    "invalid rotation quaternion",
+                );
+                return None;
+            };
+            rotation
+        }
+        (Some(quaternion), _) => {
+            let Ok(rotation) = glam::Affine3A::try_from(quaternion) else {
+                results.report_for_component(
+                    quaternion_component,
+                    VisualizerReportSeverity::Error,
+                    "invalid rotation quaternion",
+                );
+                return None;
+            };
+            rotation
+        }
+        (_, Some(rotation_axis_angle)) => {
+            let Ok(rotation) = glam::Affine3A::try_from(rotation_axis_angle) else {
+                results.report_for_component(
+                    rotation_axis_angle_component,
+                    VisualizerReportSeverity::Error,
+                    "invalid rotation axis-angle",
+                );
+                return None;
+            };
+            rotation
+        }
+        (None, None) => glam::Affine3A::IDENTITY,
+    };
+
+    Some(translation * rotation)
+}
 
 /// Derive the spatial view kind from the view class identifier.
-pub fn spatial_view_kind_from_view_class(class: ViewClassIdentifier) -> SpatialViewKind {
+pub fn spatial_view_kind_from_view_class(class: ViewClassIdentifier) -> SpaceKind {
     if class == crate::SpatialView3D::identifier() {
-        SpatialViewKind::ThreeD
+        SpaceKind::ThreeD
     } else if class == crate::SpatialView2D::identifier() {
-        SpatialViewKind::TwoD
+        SpaceKind::TwoD
     } else {
         re_log::debug_panic!("Not a spatial view class identifier {class:?}");
-        SpatialViewKind::TwoD
+        SpaceKind::TwoD
     }
 }
 
 /// Derive the spatial view kind from an optional view class affinity.
 ///
 /// Returns `None` if the affinity is `None` or not a spatial view class.
-pub fn spatial_view_kind_from_affinity(
-    affinity: Option<ViewClassIdentifier>,
-) -> Option<SpatialViewKind> {
+pub fn spatial_view_kind_from_affinity(affinity: Option<ViewClassIdentifier>) -> Option<SpaceKind> {
     let class = affinity?;
     if class == crate::SpatialView3D::identifier() {
-        Some(SpatialViewKind::ThreeD)
+        Some(SpaceKind::ThreeD)
     } else if class == crate::SpatialView2D::identifier() {
-        Some(SpatialViewKind::TwoD)
+        Some(SpaceKind::TwoD)
     } else {
         None
     }
@@ -38,12 +110,23 @@ pub fn spatial_view_kind_from_affinity(
 pub fn transform_info_for_archetype_or_report_error<'a>(
     entity_path: &EntityPath,
     transform_context: &'a TransformTreeContext,
-    archetype_kind: Option<SpatialViewKind>,
-    view_kind: SpatialViewKind,
+    archetype_kind: Option<SpaceKind>,
+    view_kind: SpaceKind,
     instruction_id: &VisualizerInstructionId,
     output: &VisualizerExecutionOutput,
 ) -> Option<&'a TransformInfo> {
     re_tracing::profile_function!();
+
+    if transform_context.uses_implicit_frame_for_empty_coordinate_frame(entity_path.hash()) {
+        output.report_unspecified_source(
+            *instruction_id,
+            VisualizerReportSeverity::Warning,
+            format!(
+                "CoordinateFrame has an empty frame ID; falling back to the implicit frame {:?}.",
+                re_tf::TransformFrameId::from_entity_path(entity_path).as_str(),
+            ),
+        );
+    }
 
     let result = transform_context.target_from_entity_path(entity_path.hash());
     let transform_info = match format_transform_info_result(entity_path, transform_context, result)
@@ -161,8 +244,8 @@ pub fn is_valid_space_for_content(
     instruction_id: &VisualizerInstructionId,
     transform_context: &TransformTreeContext,
     transform: &TransformInfo,
-    content_kind: Option<SpatialViewKind>,
-    view_kind: SpatialViewKind,
+    content_kind: Option<SpaceKind>,
+    view_kind: SpaceKind,
     output: &VisualizerExecutionOutput,
 ) -> bool {
     let Some(content_view_kind) = content_kind else {
@@ -178,7 +261,7 @@ pub fn is_valid_space_for_content(
     //
     // Everything in this 3D view is technically 2D already, but we still have the 3D controls etc.
     // (We can however, still show some "agnostic" content like the Pinhole itself)
-    if view_kind == SpatialViewKind::ThreeD
+    if view_kind == SpaceKind::ThreeD
         && let Some(target_frame_pinhole_root) = target_frame_pinhole_root
     {
         let origin = if let Some(origin) =
@@ -198,29 +281,53 @@ pub fn is_valid_space_for_content(
         .pinhole_tree_root_info(transform.tree_root())
         .is_some();
 
+    // Helper for formatting messages below.
+    let frame_text = |frame_hash: TransformFrameIdHash| {
+        if let Some(frame) = transform_context.format_frame_or_debug_warn(frame_hash, entity_path) {
+            format!(" ({frame:?})")
+        } else {
+            String::new()
+        }
+    };
+
     match content_view_kind {
-        SpatialViewKind::TwoD => {
+        SpaceKind::TwoD => {
             match view_kind {
-                SpatialViewKind::TwoD => {
-                    // Degenerated case: 2D content is under a pinhole which itself is NOT the pinhole that the 2D view is in.
-                    // We don't allow this since this would mean to apply a 3D->2D projection to a space that's already 2D.
-                    if transform_has_pinhole_ancestor
-                        && target_frame_pinhole_root.is_none_or(|target_frame_pinhole_root| {
-                            target_frame_pinhole_root != transform.tree_root()
-                        })
-                    {
-                        output.report_unspecified_source(
-                            *instruction_id,
-                            VisualizerReportSeverity::Error,
-                            "Can't visualize 2D content with a pinhole ancestor that's embedded within the 2D view. This applies a 3D → 2D projection to a space that's already regarded 2D.",
-                        );
-                        false
-                    } else {
-                        true
+                SpaceKind::TwoD => {
+                    if !transform_has_pinhole_ancestor {
+                        return true;
+                    }
+                    // 2D content below a pinhole is only valid when the view targets the same pinhole-defined 2D subspace.
+                    match target_frame_pinhole_root {
+                        None => {
+                            output.report_unspecified_source(
+                                    *instruction_id,
+                                    VisualizerReportSeverity::Error,
+                                    format!(
+                                        "This 2D content has a pinhole transform frame ancestor{}, but the 2D view's target frame doesn't have a pinhole root.",
+                                        frame_text(transform.tree_root())
+                                    ),
+                                );
+                            false
+                        }
+                        Some(target_frame_pinhole_root)
+                            if target_frame_pinhole_root != transform.tree_root() =>
+                        {
+                            output.report_unspecified_source(
+                                    *instruction_id,
+                                    VisualizerReportSeverity::Error,
+                                    format!(
+                                        "This 2D content has a pinhole transform frame ancestor{} that is different from the 2D view's pinhole root{}.",
+                                        frame_text(transform.tree_root()), frame_text(target_frame_pinhole_root)
+                                    ),
+                                );
+                            false
+                        }
+                        Some(_) => true,
                     }
                 }
 
-                SpatialViewKind::ThreeD => {
+                SpaceKind::ThreeD => {
                     // 2D content in a 3D view needs to be under a Pinhole transform.
                     if transform_has_pinhole_ancestor {
                         true
@@ -236,7 +343,7 @@ pub fn is_valid_space_for_content(
             }
         }
 
-        SpatialViewKind::ThreeD => {
+        SpaceKind::ThreeD => {
             // View agnostic failure case for 3D content: if the 3D content is under a pinhole projection, we can't show it!
             if transform_has_pinhole_ancestor {
                 output.report_unspecified_source(
@@ -248,7 +355,7 @@ pub fn is_valid_space_for_content(
             }
 
             match view_kind {
-                SpatialViewKind::TwoD => {
+                SpaceKind::TwoD => {
                     // 3D content in 2D works only if there's a Pinhole transform at the origin of the view.
                     //
                     // TODO(andreas): What's actually keeping us from allowing the 2D view to be rooted _under_ a pinhole, e.g. `/pinhole_here/some_2d_stuff`?
@@ -268,7 +375,7 @@ pub fn is_valid_space_for_content(
                     }
                 }
 
-                SpatialViewKind::ThreeD => true, // Valid 3D content in a valid 3D view is always fine.
+                SpaceKind::ThreeD => true, // Valid 3D content in a valid 3D view is always fine.
             }
         }
     }

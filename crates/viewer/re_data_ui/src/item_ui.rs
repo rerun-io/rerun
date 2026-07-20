@@ -449,7 +449,7 @@ pub fn timeline_button_to(
     timeline_name: &TimelineName,
 ) -> egui::Response {
     let is_selected = ctx
-        .active_time_ctrl
+        .active_time_ctrl()
         .is_some_and(|time_ctr| time_ctr.timeline_name() == timeline_name);
 
     let response = ui

@@ -14,7 +14,6 @@ use re_viewer_context::{
     VisualizerReportSeverity, VisualizerViewReport, contents_name_style, icon_for_container_kind,
 };
 use re_viewport_blueprint::ViewportBlueprint;
-use re_viewport_blueprint::ui::show_add_view_or_container_modal;
 use smallvec::SmallVec;
 
 use crate::data::{
@@ -105,7 +104,12 @@ impl BlueprintTree {
                         &re_ui::icons::MORE,
                         "Open menu with more options",
                         |ui| {
-                            add_new_view_or_container_menu_button(ctx, viewport_blueprint, ui);
+                            let recording_id = ctx.store_context.recording_store_id();
+                            re_ui::RecordingCommandKind::AddViewOrContainer.menu_button_ui(
+                                ui,
+                                Some(recording_id),
+                                ctx.command_sender(),
+                            );
                             set_blueprint_to_default_menu_buttons(ctx, ui);
                             set_blueprint_to_auto_menu_button(ctx, ui);
                         },
@@ -1235,31 +1239,6 @@ impl BlueprintTree {
 
 // ----------------------------------------------------------------------------
 
-/// Add a button to trigger the addition of a new view or container.
-fn add_new_view_or_container_menu_button(
-    ctx: &ViewerContext<'_>,
-    viewport: &ViewportBlueprint,
-    ui: &mut egui::Ui,
-) {
-    if ui
-        .add(re_ui::icons::ADD.as_button_with_label(ui.tokens(), "Add view or container…"))
-        .clicked()
-    {
-        ui.close();
-
-        // If a single container is selected, we use it as target. Otherwise, we target the
-        // root container.
-        let target_container_id =
-            if let Some(Item::Container(container_id)) = ctx.selection().single_item() {
-                *container_id
-            } else {
-                viewport.root_container
-            };
-
-        show_add_view_or_container_modal(target_container_id);
-    }
-}
-
 fn set_blueprint_to_default_menu_buttons(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
     let default_blueprint_id = ctx
         .store_hub()
@@ -1282,45 +1261,33 @@ fn set_blueprint_to_default_menu_buttons(ctx: &ViewerContext<'_>, ui: &mut egui:
         }
     };
 
-    let enabled = disabled_reason.is_none();
-    let mut response = ui
-        .add_enabled(
-            enabled,
-            re_ui::icons::RESET.as_button_with_label(ui.tokens(), "Reset to default blueprint"),
-        )
-        .on_hover_text("Reset to the default blueprint for this app");
+    let recording_id = disabled_reason
+        .is_none()
+        .then(|| ctx.store_context.recording_store_id());
+    let response = re_ui::RecordingCommandKind::ClearActiveBlueprint.menu_button_ui(
+        ui,
+        recording_id,
+        ctx.command_sender(),
+    );
 
     if let Some(disabled_reason) = disabled_reason {
-        response = response.on_disabled_hover_text(disabled_reason);
-    }
-
-    if response.clicked() {
-        ui.close();
-        ctx.command_sender()
-            .send_system(re_viewer_context::SystemCommand::ClearActiveBlueprint);
+        response.on_disabled_hover_text(disabled_reason);
     }
 }
 
 fn set_blueprint_to_auto_menu_button(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
-    // Figuring out when resetting to heuristic blueprint is not changing anything is actually quite hard.
-    // There's a wide variety of things to consider that aren't easily caught:
+    // This is always enabled: figuring out when resetting to heuristic blueprint is not changing
+    // anything is actually quite hard. There's a wide variety of things to consider that aren't
+    // easily caught:
     // * does running view-generation/layout-generation change anything?
     //    * these heuristics run incrementally, does rerunning them in bulk change anything?
     // * any changes in overrides/defaults/view-property means that a reset would change something
-    let enabled = true;
-
-    if ui
-        .add_enabled(
-            enabled,
-            re_ui::icons::RESET.as_button_with_label(ui.tokens(), "Reset to heuristic blueprint"),
-        )
-        .on_hover_text("Re-populate viewport with automatically chosen views")
-        .clicked()
-    {
-        ui.close();
-        ctx.command_sender()
-            .send_system(re_viewer_context::SystemCommand::ClearActiveBlueprintAndEnableHeuristics);
-    }
+    let recording_id = ctx.store_context.recording_store_id();
+    re_ui::RecordingCommandKind::ClearActiveBlueprintAndEnableHeuristics.menu_button_ui(
+        ui,
+        Some(recording_id),
+        ctx.command_sender(),
+    );
 }
 
 /// List all views that have the provided entity as data result.

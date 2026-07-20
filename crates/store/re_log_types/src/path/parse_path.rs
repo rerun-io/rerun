@@ -49,6 +49,9 @@ pub enum PathParseError {
     #[error("Missing component")]
     MissingComponentIdentifier,
 
+    #[error(transparent)]
+    InvalidComponentIdentifier(#[from] re_types_core::InvalidComponentIdentifierError),
+
     #[error("Found trailing colon (:)")]
     TrailingColon,
 
@@ -113,7 +116,7 @@ impl std::str::FromStr for DataPath {
 
                 let field = join(&component_tokens[0..component_tokens_end]);
 
-                component = Some(field.into());
+                component = Some(ComponentIdentifier::try_new(field)?);
 
                 tokens.truncate(first_colon);
             } else {
@@ -467,7 +470,7 @@ mod tests {
     #[test]
     fn test_parse_component_path() {
         #[track_caller]
-        fn parse_ok(src: &str, entity_path: &str, component: &str) {
+        fn parse_ok(src: &str, entity_path: &str, component: &'static str) {
             test_parse_ok(
                 src,
                 &ComponentPath {
@@ -513,7 +516,12 @@ mod tests {
     #[test]
     fn test_parse_data_path() {
         #[track_caller]
-        fn parse_ok(src: &str, entity_path: &str, instance: Option<u64>, component: Option<&str>) {
+        fn parse_ok(
+            src: &str,
+            entity_path: &str,
+            instance: Option<u64>,
+            component: Option<&'static str>,
+        ) {
             test_parse_ok(
                 src,
                 &DataPath {

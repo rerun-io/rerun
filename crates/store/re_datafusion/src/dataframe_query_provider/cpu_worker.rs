@@ -17,7 +17,8 @@ use re_dataframe::{
     StorageEngine, TimelineName,
 };
 use re_log_types::{AbsoluteTimeRange, ApplicationId, StoreId, StoreKind, TimeInt};
-use re_protos::{cloud::v1alpha1::ScanSegmentTableResponse, common::v1alpha1::ext::SegmentId};
+use re_protos::cloud::v1alpha1::ext::ScanSegmentTableDataframe;
+use re_protos::common::v1alpha1::ext::SegmentId;
 use re_redap_client::{ApiError, ApiResult};
 use tokio::sync::mpsc::{Receiver, Sender};
 use tracing::{Instrument as _, instrument};
@@ -91,7 +92,7 @@ async fn send_next_row_batch(
         re_tracing::profile_scope!("build_and_align_batch");
         let batch_schema = Arc::new(prepend_string_column_schema(
             &query_schema,
-            ScanSegmentTableResponse::FIELD_SEGMENT_ID,
+            ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME,
         ));
 
         let batch = RecordBatch::try_new_with_options(
@@ -278,6 +279,13 @@ struct CurrentStores {
     /// crosses 10.
     max_arrived_time_max: Option<TimeInt>,
 
+    /// Whether this segment has already left the segment-count gate.
+    /// Completed segments can wait in `ready_pending` behind earlier
+    /// segments, but they no longer need IO admission, so holding their
+    /// segment slot would block the missing earlier segments that are
+    /// required to make ordered emit progress.
+    segment_slot_released: bool,
+
     /// Scratch storage for the `protected_chunks` set built by
     /// [`Self::gc_up_to_horizon`]. Kept on the struct (rather than
     /// allocated per call) so the underlying `HashMap` capacity is
@@ -328,7 +336,16 @@ impl CurrentStores {
             processed_through_time: None,
             last_horizon: None,
             max_arrived_time_max: None,
+            segment_slot_released: false,
             protected_chunks_scratch: ahash::HashSet::default(),
+        }
+    }
+
+    fn release_segment_slot(&mut self) {
+        if !self.segment_slot_released {
+            self.pipeline_budget
+                .publish_segment_finalized(self.segment_id.as_str());
+            self.segment_slot_released = true;
         }
     }
 
@@ -446,6 +463,9 @@ impl CurrentStores {
             return Ok(());
         }
         let Some(horizon) = self.manifest.as_ref().and_then(|m| m.safe_horizon()) else {
+            // No horizon info available — feeds the stall detector
+            // because nothing else will here.
+            self.pipeline_budget.notify_empty_emit();
             return Ok(()); // path 1 — no horizon info available
         };
 
@@ -468,6 +488,7 @@ impl CurrentStores {
         if let Some(last) = self.processed_through_time
             && horizon <= last
         {
+            self.pipeline_budget.notify_empty_emit();
             return Ok(());
         }
 
@@ -485,12 +506,16 @@ impl CurrentStores {
             .max_arrived_time_max
             .is_none_or(|tmax| self.processed_through_time.is_some_and(|p| tmax <= p))
         {
+            // No emittable rows in range — still an empty emit cycle,
+            // so feed the stall detector before short-circuiting.
+            self.pipeline_budget.notify_empty_emit();
             self.gc_up_to_horizon(horizon);
             self.processed_through_time = Some(horizon);
             return Ok(());
         }
 
         // Path 2: emit + GC up to the new horizon.
+        let rows_before = *rows_sent;
         self.emit_up_to(
             Some(horizon),
             projected_schema,
@@ -499,6 +524,11 @@ impl CurrentStores {
             limit_rows,
         )
         .await?;
+        if *rows_sent > rows_before {
+            self.pipeline_budget.notify_row_emitted();
+        } else {
+            self.pipeline_budget.notify_empty_emit();
+        }
         self.gc_up_to_horizon(horizon);
         Ok(())
     }
@@ -684,6 +714,13 @@ impl Drop for CurrentStores {
         // comment in the CPU worker about why `store_bytes >= reserved_sum`
         // and the resulting under-utilization is benign.
         self.pipeline_budget.release(self.store_bytes() as usize);
+
+        // Free the segment's slot in the segment-count gate so a
+        // parked higher-priority reserver can be admitted. The byte
+        // refund above and the segment-gate slot are independent: the
+        // slot must be vacated here regardless of how the bytes were
+        // released.
+        self.release_segment_slot();
     }
 }
 
@@ -818,6 +855,7 @@ pub(super) async fn chunk_store_cpu_worker_thread(
                 // announcement arrived (out-of-order on the channel),
                 // park the segment as ready-to-emit and try to drain.
                 if stores.is_complete() {
+                    stores.release_segment_slot();
                     let taken = current_stores
                         .remove(&segment_id)
                         .expect("just inserted via entry()");
@@ -992,6 +1030,7 @@ pub(super) async fn chunk_store_cpu_worker_thread(
 
                 let complete = stores.is_complete();
                 if complete {
+                    stores.release_segment_slot();
                     let taken = current_stores
                         .remove(&segment_id)
                         .expect("just inserted via entry()");
@@ -1157,6 +1196,45 @@ mod tests {
     /// early-return on an upstream error, consumer hangup mid-segment,
     /// panic. Without the refund, the reservation would be pinned for
     /// the remainder of the query.
+    #[tokio::test]
+    async fn test_completed_segment_releases_gate_before_flush() {
+        let budget = Arc::new(PipelineBudget::new(1 << 30, 1));
+
+        let ready_segment = SegmentId::from("ready-pending");
+        budget
+            .reserve_with_priority(1, TimeInt::MAX, &[ready_segment.as_ref().to_owned()])
+            .await;
+        for i in 1..crate::pipeline_budget::MAX_CONCURRENT_SEGMENTS {
+            budget
+                .reserve_with_priority(1, TimeInt::MAX, &[format!("held-{i}")])
+                .await;
+        }
+
+        let b = Arc::clone(&budget);
+        let parked = tokio::spawn(async move {
+            b.reserve_with_priority(1, TimeInt::MAX, &["new-segment".to_owned()])
+                .await;
+        });
+        for _ in 0..16 {
+            tokio::task::yield_now().await;
+        }
+        assert!(!parked.is_finished());
+
+        let mut stores = CurrentStores::new(
+            ready_segment,
+            &QueryExpression::default(),
+            &None,
+            Arc::clone(&budget),
+        );
+        stores.release_segment_slot();
+
+        for _ in 0..16 {
+            tokio::task::yield_now().await;
+        }
+        assert!(parked.is_finished());
+        parked.await.unwrap();
+    }
+
     #[tokio::test]
     async fn test_current_stores_drop_refunds_budget() {
         let budget = Arc::new(PipelineBudget::new(1 << 30, 1));
@@ -1509,7 +1587,7 @@ mod tests {
     /// carrying one `MyLabel` component, so the chunk has non-zero
     /// stored bytes and the store's `latest_at` machinery has a
     /// component to find.
-    fn temporal_chunk(entity: &str, timeline_name: &str, time: i64) -> Chunk {
+    fn temporal_chunk(entity: &str, timeline_name: &'static str, time: i64) -> Chunk {
         use re_dataframe::external::re_chunk::RowId;
         use re_log_types::Timeline;
         use re_log_types::example_components::{MyLabel, MyPoints};
@@ -1536,7 +1614,7 @@ mod tests {
         budget: Arc<PipelineBudget>,
     ) -> CurrentStores {
         let query_expression = QueryExpression {
-            filtered_index: Some(TimelineName::new(timeline_name)),
+            filtered_index: Some(TimelineName::try_new(timeline_name).unwrap()),
             ..Default::default()
         };
         let mut stores = CurrentStores::new(
@@ -1910,7 +1988,7 @@ mod tests {
         let mut stores = CurrentStores::new(
             SegmentId::from("seg"),
             &QueryExpression {
-                filtered_index: Some(TimelineName::new("frame")),
+                filtered_index: Some(TimelineName::from("frame")),
                 ..Default::default()
             },
             &None,
@@ -1944,7 +2022,7 @@ mod tests {
         let mut stores = CurrentStores::new(
             SegmentId::from("seg"),
             &QueryExpression {
-                filtered_index: Some(TimelineName::new("frame")),
+                filtered_index: Some(TimelineName::from("frame")),
                 ..Default::default()
             },
             &None,
@@ -2136,6 +2214,71 @@ mod tests {
             budget.total_releases(),
             releases_before + 1,
             "Drop for CurrentStores must run exactly once for the cancelled segment",
+        );
+    }
+
+    /// In production `SegmentStreamExec::execute` spawns the worker on the
+    /// process-wide CPU runtime and the stream holds its `JoinHandle`; when
+    /// the stream is dropped mid-flight the handle is dropped too, which
+    /// *detaches* the task rather than aborting it. Nothing joins or aborts
+    /// the detached worker — it must self-terminate via channel closure and
+    /// refund its budget reservation, without any runtime teardown.
+    #[tokio::test]
+    async fn test_detached_cpu_worker_winds_down_after_stream_drop() {
+        let budget = Arc::new(PipelineBudget::new(1 << 30, 4));
+        let releases_before = budget.total_releases();
+
+        let (input_tx, input_rx) = tokio::sync::mpsc::channel::<ApiResult<CpuWorkerMsg>>(8);
+        let (output_tx, output_rx) = tokio::sync::mpsc::channel::<RecordBatch>(8);
+
+        // Announce more chunks than we deliver, so a reservation is held and
+        // the segment never completes on its own.
+        input_tx
+            .send(Ok(CpuWorkerMsg::SegmentChunkCount {
+                segment_id: SegmentId::from("A"),
+                count: 5,
+            }))
+            .await
+            .unwrap();
+        input_tx
+            .send(Ok(CpuWorkerMsg::Chunks((
+                SegmentId::from("A"),
+                vec![empty_chunk()],
+            ))))
+            .await
+            .unwrap();
+
+        // Spawn the worker as a detached task; dropping the `JoinHandle` matches `execute`'s detach behavior.
+        let join = tokio::spawn(chunk_store_cpu_worker_thread(
+            input_rx,
+            output_tx,
+            QueryExpression::default(),
+            Arc::new(Schema::empty()),
+            None,
+            None,
+            budget.clone(),
+        ));
+
+        // Simulate the stream being dropped mid-flight: the consumer hangs up,
+        // the IO side finishes, and the join handle is dropped (detach, not
+        // abort). None of this tears down the runtime the task runs on.
+        drop(output_rx);
+        drop(input_tx);
+        drop(join);
+
+        // The detached worker must wind down on its own and refund the budget.
+        tokio::time::timeout(std::time::Duration::from_secs(5), async {
+            while budget.total_releases() == releases_before {
+                tokio::time::sleep(std::time::Duration::from_millis(1)).await;
+            }
+        })
+        .await
+        .expect("detached worker must terminate and refund its budget after the stream is dropped");
+
+        assert_eq!(
+            budget.total_releases(),
+            releases_before + 1,
+            "exactly one budget release for the abandoned segment",
         );
     }
 }

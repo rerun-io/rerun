@@ -41,16 +41,24 @@ impl QueryEngine<StorageEngine> {
         Self::new(store.clone(), QueryCache::new_handle(store))
     }
 
-    /// Like [`re_chunk_store::ChunkStore::from_rrd_filepath`], but automatically instantiates [`QueryEngine`]s
-    /// with new empty [`QueryCache`]s.
+    /// Loads an RRD file and instantiates [`QueryEngine`]s with new empty [`QueryCache`]s.
     #[cfg(not(target_arch = "wasm32"))]
     #[inline]
     pub fn from_rrd_filepath(
         store_config: &re_chunk_store::ChunkStoreConfig,
         path_to_rrd: impl AsRef<std::path::Path>,
     ) -> anyhow::Result<std::collections::BTreeMap<re_log_types::StoreId, Self>> {
+        use anyhow::Context as _;
+
+        let path_to_rrd = path_to_rrd.as_ref();
+        re_tracing::profile_function!(path_to_rrd.to_string_lossy());
+
+        let rrd_file = std::fs::File::open(path_to_rrd)
+            .with_context(|| format!("couldn't open RRD file\nFile path: {path_to_rrd:?}"))?;
+
         Ok(
-            re_chunk_store::ChunkStore::handle_from_rrd_filepath(store_config, path_to_rrd)?
+            re_chunk_store::ChunkStore::handle_from_rrd_reader(store_config, rrd_file)
+                .with_context(|| format!("couldn't decode RRD file\nFile path: {path_to_rrd:?}"))?
                 .into_iter()
                 .map(|(store_id, store)| (store_id, Self::from_store(store)))
                 .collect(),

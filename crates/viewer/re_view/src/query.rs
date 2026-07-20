@@ -59,12 +59,21 @@ fn cast_list_array(
         })
 }
 
+/// How to decide the cast destination for a remapped target slot.
+enum CastTarget {
+    /// Cast to a fixed datatype or skip the cast entirely when `None`.
+    Fixed(Option<arrow::datatypes::DataType>),
+
+    /// Derive the destination from the element datatype via the rule.
+    Polymorphic(ComponentCastRule),
+}
+
 /// Applies a selector (if present) and casts the component for known datatypes (if required).
 fn transform_chunk(
     target: &ComponentIdentifier,
     source: &ComponentIdentifier,
     selector: Option<&re_lenses_core::Selector>,
-    target_datatype: Option<&arrow::datatypes::DataType>,
+    cast: &CastTarget,
     chunk: &re_chunk_store::Chunk,
 ) -> Result<re_chunk_store::Chunk, ComponentMappingError> {
     chunk.with_shadowed_component(*source, *target, |arr| {
@@ -79,6 +88,11 @@ fn transform_chunk(
                 })
         } else {
             arr
+        };
+
+        let target_datatype = match cast {
+            CastTarget::Polymorphic(rule) => rule(&transformed.value_type()),
+            CastTarget::Fixed(dt) => dt.clone(),
         };
 
         // Apply casting if target datatype is known.
@@ -112,25 +126,19 @@ struct ActiveRemapping {
     selector: Option<re_lenses_core::Selector>,
 }
 
-/// Decide the cast destination datatype for one chunk during a remapping.
+/// Decide how the cast destination is chosen for one remapped target slot.
 ///
-/// With a polymorphic `rule`, the destination is derived from the chunk's actual source element
-/// datatype. Without a rule, fall back to the target component's reflection-registered datatype.
-/// Returning `None` means "skip the cast" (matches `transform_chunk`'s contract).
-fn chunk_target_datatype(
+/// With a polymorphic `rule`, the destination is derived per-chunk from the post-selector
+/// element datatype. Without a rule, fall back to the target component's
+/// reflection-registered datatype.
+fn cast_target_for_remapping(
     rule: Option<ComponentCastRule>,
     target: &ComponentIdentifier,
-    source: &ComponentIdentifier,
     reflection: &re_types_core::reflection::Reflection,
-    chunk: &re_chunk_store::Chunk,
-) -> Option<arrow::datatypes::DataType> {
-    if let Some(rule) = rule {
-        chunk
-            .components()
-            .get_array(*source)
-            .and_then(|arr| rule(&arr.value_type()))
-    } else {
-        reflection.lookup_datatype(*target).cloned()
+) -> CastTarget {
+    match rule {
+        Some(rule) => CastTarget::Polymorphic(rule),
+        None => CastTarget::Fixed(reflection.lookup_datatype(*target).cloned()),
     }
 }
 
@@ -141,16 +149,18 @@ fn component_not_found_error(
     missing_virtual_chunks: &[re_chunk_store::ChunkId],
     entity_db: &re_entity_db::EntityDb,
     store_engine: &re_query::StorageEngineReadGuard<'_>,
-    timeline_name: re_log_types::TimelineName,
+    timeline_name: Option<re_log_types::TimelineName>,
 ) -> ComponentMappingError {
     // Check whether the component is *ever* present on this entity.
     // Since static data would show up in both latest-at & range queries, we only care about temporal data here.
-    if entity_db.entity_has_temporal_data_on_timeline_for_component(
-        store_engine,
-        &timeline_name,
-        entity_path,
-        component,
-    ) {
+    if timeline_name.is_some_and(|timeline_name| {
+        entity_db.entity_has_temporal_data_on_timeline_for_component(
+            store_engine,
+            &timeline_name,
+            entity_path,
+            component,
+        )
+    }) {
         ComponentMappingError::NoComponentDataForQuery(component)
     } else {
         // Check whether the data *might* come in later.
@@ -159,7 +169,8 @@ fn component_not_found_error(
         {
             let store = store_engine.store();
 
-            let timeline = store.schema().timelines().get(&timeline_name).copied();
+            let timeline = timeline_name
+                .and_then(|timeline_name| store.schema().timelines().get(&timeline_name).copied());
 
             for missing_root_chunk_id in missing_virtual_chunks
                 .iter()
@@ -291,6 +302,7 @@ pub fn range_with_blueprint_resolved_data_polymorphic<'a>(
 
         let engine = ctx.recording_engine();
         let mut results = engine.cache().range(
+            re_chunk_store::ChunkTrackingMode::Report,
             range_query,
             &data_result.entity_path,
             components.iter().copied(),
@@ -304,23 +316,16 @@ pub fn range_with_blueprint_resolved_data_polymorphic<'a>(
             selector,
         } in &active_remappings
         {
-            let rule = cast_rules.get(target).copied();
+            let cast =
+                cast_target_for_remapping(cast_rules.get(target).copied(), target, reflection);
 
             // NOTE: We clone the chunks instead of removing them, because multiple mappings may
             // reference the same source component.
             if let Some(mut chunks) = results.components.get(source).cloned() {
                 'ctx: {
                     for chunk in &mut chunks {
-                        let chunk_target_dt =
-                            chunk_target_datatype(rule, target, source, reflection, chunk);
-
-                        let result = transform_chunk(
-                            target,
-                            source,
-                            selector.as_ref(),
-                            chunk_target_dt.as_ref(),
-                            chunk,
-                        );
+                        let result =
+                            transform_chunk(target, source, selector.as_ref(), &cast, chunk);
 
                         match result {
                             Ok(modified_chunk) => *chunk = modified_chunk,
@@ -341,7 +346,7 @@ pub fn range_with_blueprint_resolved_data_polymorphic<'a>(
                         &results.missing_virtual,
                         ctx.recording(),
                         &engine,
-                        range_query.timeline,
+                        Some(range_query.timeline),
                     )),
                 );
             }
@@ -494,6 +499,7 @@ pub fn latest_at_with_blueprint_resolved_data_polymorphic<'a>(
 
     let engine = ctx.viewer_ctx.recording_engine();
     let mut store_results = engine.cache().latest_at(
+        re_chunk_store::ChunkTrackingMode::Report,
         latest_at_query,
         &data_result.entity_path,
         components.iter().copied(),
@@ -507,19 +513,12 @@ pub fn latest_at_with_blueprint_resolved_data_polymorphic<'a>(
         selector,
     } in &active_remappings
     {
-        let rule = cast_rules.get(target).copied();
+        let cast = cast_target_for_remapping(cast_rules.get(target).copied(), target, reflection);
 
         // NOTE: We borrow the chunk instead of removing it, because multiple mappings may
         // reference the same source component.
         if let Some(chunk) = store_results.components.get(source) {
-            let chunk_target_dt = chunk_target_datatype(rule, target, source, reflection, chunk);
-            let result = transform_chunk(
-                target,
-                source,
-                selector.as_ref(),
-                chunk_target_dt.as_ref(),
-                chunk,
-            );
+            let result = transform_chunk(target, source, selector.as_ref(), &cast, chunk);
             match result {
                 Ok(modified_chunk) => {
                     let chunk = std::sync::Arc::new(modified_chunk)
@@ -669,14 +668,16 @@ fn query_overrides_at_path(
 
     for component in components {
         // TODO(andreas): Batch these queries?
-        let component_override_result =
-            blueprint_engine
-                .cache()
-                .latest_at(ctx.blueprint_query, blueprint_path, [component]);
+        let component_override_result = blueprint_engine.cache().latest_at(
+            re_chunk_store::ChunkTrackingMode::Report,
+            ctx.blueprint_query,
+            blueprint_path,
+            [component],
+        );
 
         // If we successfully find a non-empty override, add it to our results.
         if let Some(value) = component_override_result.get(component) {
-            let index = value.index(&ctx.blueprint_query.timeline());
+            let index = value.index(ctx.blueprint_query.timeline().as_ref());
 
             // NOTE: This can never happen, but I'd rather it happens than an unwrap.
             re_log::debug_assert!(index.is_some(), "{value:#?}");

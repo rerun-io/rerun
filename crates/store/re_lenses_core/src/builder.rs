@@ -7,8 +7,8 @@ use re_sdk_types::ComponentDescriptor;
 use vec1::Vec1;
 
 use crate::ast::{
-    ComponentOutput, DeriveSameEntityLens, DeriveSeparateEntityLens, Lens, LensInner, MutateLens,
-    Rows, TimeOutput,
+    CastTo, ComponentOutput, DeriveSameEntityLens, DeriveSeparateEntityLens, Lens, LensInner,
+    MutateLens, Rows, TimeOutput,
 };
 use crate::selector::DynExpr;
 use crate::{LensBuilderError, Selector};
@@ -49,19 +49,47 @@ impl DeriveLensBuilder {
         self
     }
 
-    /// Adds a component output column.
+    /// Adds a component output column, emitted unchanged.
+    ///
+    /// See [`Self::to_component_with_cast`] to cast the output to match the target component.
     #[expect(
         clippy::wrong_self_convention,
         reason = "builder pattern: consumes self"
     )]
     pub fn to_component(
+        self,
+        component_descr: ComponentDescriptor,
+        selector: impl Into<Selector<DynExpr>>,
+    ) -> Self {
+        self.push_component(component_descr, selector, None)
+    }
+
+    /// Adds a component output column, casting it to the target component (or a given) datatype.
+    ///
+    /// See [`CastTo`] for the available casting behaviors.
+    #[expect(
+        clippy::wrong_self_convention,
+        reason = "builder pattern: consumes self"
+    )]
+    pub fn to_component_with_cast(
+        self,
+        component_descr: ComponentDescriptor,
+        selector: impl Into<Selector<DynExpr>>,
+        cast: CastTo,
+    ) -> Self {
+        self.push_component(component_descr, selector, Some(cast))
+    }
+
+    fn push_component(
         mut self,
         component_descr: ComponentDescriptor,
         selector: impl Into<Selector<DynExpr>>,
+        cast: Option<CastTo>,
     ) -> Self {
         self.components.push(ComponentOutput {
             component_descr,
             selector: selector.into(),
+            cast,
         });
         self
     }

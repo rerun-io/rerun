@@ -28,21 +28,20 @@ use std::sync::{Arc, OnceLock};
 use datafusion::logical_expr::Expr;
 use datafusion::physical_plan::metrics::{ExecutionPlanMetricsSet, MetricBuilder, MetricsSet};
 use opentelemetry_proto::tonic::{
-    collector::trace::v1::{ExportTraceServiceRequest, ExportTraceServiceResponse},
+    collector::trace::v1::ExportTraceServiceRequest,
     common::v1::any_value::Value,
     common::v1::{AnyValue, KeyValue},
     resource::v1::Resource,
-    trace::v1::{ResourceSpans, ScopeSpans, Span, span::Link, span::SpanKind},
+    trace::v1::{ResourceSpans, ScopeSpans, Span, span::SpanKind},
 };
 use re_dataframe::QueryExpression;
 use re_protos::cloud::v1alpha1::SystemTableKind;
 use re_protos::cloud::v1alpha1::ext::ProviderDetails;
+use re_redap_client::ConnectionAnalyticsExporter;
 use re_uri::Origin;
 use web_time::{Duration, Instant, SystemTime};
 
 use crate::metrics_capture::{QueryMetrics, QuerySnapshot, build_query_snapshot};
-
-const EXPORT_PATH: &str = "/opentelemetry.proto.collector.trace.v1.TraceService/Export";
 
 /// A per-connection analytics client that sends OTLP traces to a specific
 /// Rerun Hub's OTEL ingest endpoint.
@@ -68,31 +67,33 @@ impl fmt::Debug for ConnectionAnalytics {
 struct Inner {
     origin: Origin,
 
-    /// gRPC client sharing the layered tower service of the sibling
-    /// [`re_redap_client::ConnectionClient`] (i.e. same HTTP/2 transport, same auth /
+    /// Analytics OTLP exporter sharing the layered tower service of the sibling
+    /// [`re_redap_client::ConnectionClient`] (same HTTP/2 transport, same auth /
     /// version / propagate-headers stack).
-    ///
-    /// Cloned per send so concurrent OTLP exports don't serialize on a single client.
-    grpc: tonic::client::Grpc<re_redap_client::RedapClientInner>,
+    exporter: Option<ConnectionAnalyticsExporter>,
 }
 
 impl ConnectionAnalytics {
     /// Create a new analytics sender for the given origin.
     ///
-    /// The analytics OTLP channel reuses the layered tower service of the supplied
-    /// [`re_redap_client::ConnectionClient`], so exports go through the same
-    /// authenticated and version-tagged HTTP/2 connection as regular RPCs.
-    pub fn new(origin: Origin, client: &re_redap_client::ConnectionClient) -> Self {
+    /// The analytics OTLP exports go through the same authenticated and
+    /// version-tagged HTTP/2 connection as regular REDAP RPCs.
+    pub fn new(exporter: ConnectionAnalyticsExporter) -> Self {
+        let origin = exporter.origin().clone();
         Self {
             inner: Arc::new(Inner {
                 origin,
-                // NOTE: client-side gzip is intentionally *not* enabled here. A new
-                // viewer SDK could otherwise send `grpc-encoding: gzip` to a Hub
-                // whose `OtelIngestService` predates `accept_compressed(Gzip)`,
-                // causing analytics events to be silently dropped with an
-                // `UNIMPLEMENTED` rejection. Re-enable once the deployed Hub
-                // version range is known to support gzip.
-                grpc: tonic::client::Grpc::new(client.service()),
+                exporter: Some(exporter),
+            }),
+        }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn disabled_for_test(origin: Origin) -> Self {
+        Self {
+            inner: Arc::new(Inner {
+                origin,
+                exporter: None,
             }),
         }
     }
@@ -165,12 +166,13 @@ impl ConnectionAnalytics {
 
     async fn send_span_impl(
         &self,
-        span: Span,
+        mut span: Span,
         trace_id: Option<opentelemetry::TraceId>,
     ) -> tonic::Result<()> {
-        // Clone per send: avoids serializing
-        // concurrent sends behind a single client's `&mut self` borrow.
-        let mut grpc = self.inner.grpc.clone();
+        let Some(exporter) = &self.inner.exporter else {
+            return Ok(());
+        };
+        assign_span_identity(&mut span, trace_id)?;
 
         // `service.name` is the OTel resource attribute that identifies the
         // sending service in the trace store (Grafana/Tempo etc.). We
@@ -205,24 +207,34 @@ impl ConnectionAnalytics {
             }],
         };
 
-        let mut request = tonic::Request::new(export_request);
-        if let Some(trace_id) = trace_id
-            && let Ok(value) = trace_id.to_string().parse()
-        {
-            request.metadata_mut().insert("x-request-trace-id", value);
-        }
+        exporter.export_trace(export_request, trace_id).await
+    }
+}
 
-        grpc.ready().await.map_err(|err| {
-            tonic::Status::unavailable(format!("analytics channel not ready: {err}"))
+fn assign_span_identity(
+    span: &mut Span,
+    correlated_trace_id: Option<opentelemetry::TraceId>,
+) -> tonic::Result<()> {
+    span.trace_id = if let Some(trace_id) =
+        correlated_trace_id.filter(|trace_id| *trace_id != opentelemetry::TraceId::INVALID)
+    {
+        trace_id.to_bytes().to_vec()
+    } else {
+        random_nonzero_id::<16>()?
+    };
+    span.span_id = random_nonzero_id::<8>()?;
+    Ok(())
+}
+
+fn random_nonzero_id<const N: usize>() -> tonic::Result<Vec<u8>> {
+    loop {
+        let mut id = [0; N];
+        getrandom::fill(&mut id).map_err(|err| {
+            tonic::Status::internal(format!("failed to generate OTLP span ID: {err}"))
         })?;
-
-        let path = http::uri::PathAndQuery::from_static(EXPORT_PATH);
-        let codec = tonic_prost::ProstCodec::default();
-
-        let _response: tonic::Response<ExportTraceServiceResponse> =
-            grpc.unary(request.map(|m| m), path, codec).await?;
-
-        Ok(())
+        if id.iter().any(|byte| *byte != 0) {
+            return Ok(id.to_vec());
+        }
     }
 }
 
@@ -236,20 +248,22 @@ impl ConnectionAnalytics {
 /// [`crate::metrics_capture`] subscribers and DataFusion's `metrics()`) but
 /// skips the `PostHog` OTLP send at drop time.
 ///
-/// `metrics` is the plan's [`QueryMetrics`], shared with `SegmentStreamExec`.
-/// It's the single source of truth for fetch counters: the
-/// `PendingInner::Drop` path reads it via [`build_query_snapshot`] to
-/// construct the OTLP span attribute set.
+/// Constructs the query's [`QueryMetrics`] from `query_info` and owns it —
+/// retrieve the shared handle via [`PendingQueryAnalytics::metrics`]. It's the
+/// single source of truth for fetch counters: the `PendingInner::Drop` path
+/// reads it via [`build_query_snapshot`] to construct the OTLP span attribute
+/// set, and `SegmentStreamExec` reads it for the snapshot path and
+/// `EXPLAIN ANALYZE`.
 pub fn begin_query(
     connection: Option<ConnectionAnalytics>,
-    metrics: Arc<QueryMetrics>,
+    query_info: QueryInfo,
     scan_start: Instant,
     scan_start_wall: SystemTime,
 ) -> PendingQueryAnalytics {
     PendingQueryAnalytics {
         inner: Arc::new(PendingInner {
             connection,
-            metrics,
+            metrics: Arc::new(QueryMetrics::new(query_info)),
             scan_start,
             scan_start_wall,
             time_to_first_chunk: OnceLock::new(),
@@ -416,10 +430,11 @@ pub(crate) struct PendingInner {
     /// `metrics()`) but the drop-time OTLP send is skipped.
     connection: Option<ConnectionAnalytics>,
 
-    /// Shared with `SegmentStreamExec`. IO tasks `fetch_add` into the atomics
-    /// during execution; `Drop` reads them via [`build_query_snapshot`] to
-    /// build the OTLP span. Single source of truth — there is no parallel
-    /// accumulator. The embedded `query_info` carries plan-time scalars.
+    /// The query's fetch counters + embedded plan-time `QueryInfo`. IO tasks
+    /// `fetch_add` into the atomics during execution; `Drop` reads them via
+    /// [`build_query_snapshot`] to build the OTLP span. Single source of
+    /// truth — there is no parallel accumulator; `SegmentStreamExec` reaches
+    /// it through [`PendingQueryAnalytics::metrics`].
     metrics: Arc<QueryMetrics>,
 
     /// Monotonic start time of the query, for computing elapsed durations.
@@ -511,6 +526,13 @@ impl DirectFetchFailureReason {
 }
 
 impl PendingQueryAnalytics {
+    /// The shared per-query [`QueryMetrics`] handle — the single source of
+    /// truth for fetch counters and the plan-time `QueryInfo`. Also read by
+    /// `SegmentStreamExec` for the snapshot path and `EXPLAIN ANALYZE`.
+    pub(crate) fn metrics(&self) -> &Arc<QueryMetrics> {
+        &self.inner.metrics
+    }
+
     /// Record that the first result chunk has been returned to the user.
     /// Only the first call has any effect.
     #[cfg_attr(target_arch = "wasm32", expect(dead_code))]
@@ -569,18 +591,16 @@ impl PendingQueryAnalytics {
 ///
 /// Each outer fetch task owns one of these and mutates it without
 /// synchronization. At the end of the task it is folded into the plan's
-/// shared [`QueryMetrics`] via [`TaskFetchStats::flush_into`], which is the
-/// only place the shared cache line is touched.
+/// shared [`QueryMetrics`] via [`TaskFetchStats::flush_into`]. Issued-request
+/// counters are updated directly at the transport boundary so cancellation
+/// cannot discard calls that already reached the network.
 ///
-/// This avoids cross-core cache-line ping-pong on the shared atomics during the
-/// hot fetch/retry loops, where worst-case contention would otherwise be
-/// `inner_concurrency × outer_concurrency × num_partitions`.
+/// Buffering the remaining counters avoids cross-core cache-line ping-pong
+/// during retry-heavy fetch loops.
 #[derive(Default)]
 #[must_use]
 pub(crate) struct TaskFetchStats {
-    grpc_requests: u64,
     grpc_bytes: u64,
-    direct_requests: u64,
     direct_bytes: u64,
     direct_retries_total: u64,
     direct_requests_retried: u64,
@@ -592,15 +612,11 @@ pub(crate) struct TaskFetchStats {
 
 #[cfg_attr(target_arch = "wasm32", expect(dead_code))]
 impl TaskFetchStats {
-    /// Record a gRPC fetch.
-    pub fn record_grpc_fetch(&mut self, bytes: u64) {
-        self.grpc_requests += 1;
+    pub fn record_grpc_bytes(&mut self, bytes: u64) {
         self.grpc_bytes += bytes;
     }
 
-    /// Record a direct (HTTP) fetch.
-    pub fn record_direct_fetch(&mut self, bytes: u64) {
-        self.direct_requests += 1;
+    pub fn record_direct_bytes(&mut self, bytes: u64) {
         self.direct_bytes += bytes;
     }
 
@@ -633,9 +649,7 @@ impl TaskFetchStats {
     )]
     pub fn merge_from(&mut self, other: Self) {
         let Self {
-            grpc_requests,
             grpc_bytes,
-            direct_requests,
             direct_bytes,
             direct_retries_total,
             direct_requests_retried,
@@ -644,9 +658,7 @@ impl TaskFetchStats {
             direct_original_ranges,
             direct_merged_ranges,
         } = other;
-        self.grpc_requests += grpc_requests;
         self.grpc_bytes += grpc_bytes;
-        self.direct_requests += direct_requests;
         self.direct_bytes += direct_bytes;
         self.direct_retries_total += direct_retries_total;
         self.direct_requests_retried += direct_requests_retried;
@@ -663,9 +675,7 @@ impl TaskFetchStats {
     /// max rather than a sum.
     pub fn flush_into(self, metrics: &QueryMetrics) {
         let Self {
-            grpc_requests,
             grpc_bytes,
-            direct_requests,
             direct_bytes,
             direct_retries_total,
             direct_requests_retried,
@@ -677,20 +687,10 @@ impl TaskFetchStats {
 
         // Zero-valued fields are skipped so totally-idle tasks don't touch the
         // shared cache line at all.
-        if grpc_requests != 0 {
-            metrics
-                .fetch_grpc_requests
-                .fetch_add(grpc_requests, Ordering::Relaxed);
-        }
         if grpc_bytes != 0 {
             metrics
                 .fetch_grpc_bytes
                 .fetch_add(grpc_bytes, Ordering::Relaxed);
-        }
-        if direct_requests != 0 {
-            metrics
-                .fetch_direct_requests
-                .fetch_add(direct_requests, Ordering::Relaxed);
         }
         if direct_bytes != 0 {
             metrics
@@ -729,15 +729,14 @@ impl TaskFetchStats {
         }
     }
 
-    /// Flush this buffer into `metrics`, also recording an error (if any) onto
-    /// `analytics`.
+    /// Flush this buffer into `analytics`' shared [`QueryMetrics`], also
+    /// recording an error (if any) onto `analytics`.
     pub fn try_flush_into(
         self,
         analytics: &PendingQueryAnalytics,
-        metrics: &QueryMetrics,
         result: Result<(), QueryErrorKind>,
     ) {
-        self.flush_into(metrics);
+        self.flush_into(analytics.metrics());
         if let Err(err) = result {
             analytics.record_error(err);
         }
@@ -799,6 +798,18 @@ pub(crate) fn build_metrics_set_for_explain(
     global("fetch_direct_max_attempt").add(load(&metrics.fetch_direct_max_attempt));
     global("fetch_direct_original_ranges").add(load(&metrics.fetch_direct_original_ranges));
     global("fetch_direct_merged_ranges").add(load(&metrics.fetch_direct_merged_ranges));
+    global("planned_fetch_batches").add(load(&metrics.planned_fetch_batches));
+    global("planned_segment_waves").add(load(&metrics.planned_segment_waves));
+    global("segment_admission_limit").add(load(&metrics.segment_admission_limit));
+    global("max_segments_per_fetch_batch").add(load(&metrics.max_segments_per_fetch_batch));
+    global("max_segments_per_wave").add(load(&metrics.max_segments_per_wave));
+    global("peak_active_segments").add(load(&metrics.peak_active_segments));
+    global("pipeline_budget_bytes").add(load(&metrics.pipeline_budget_bytes));
+    global("pipeline_peak_decoded_bytes").add(load(&metrics.pipeline_peak_decoded_bytes));
+    global("pipeline_byte_waits").add(load(&metrics.pipeline_byte_waits));
+    global("segment_admission_waits").add(load(&metrics.segment_admission_waits));
+    global("pipeline_stall_breaker_activations")
+        .add(load(&metrics.pipeline_stall_breaker_activations));
 
     if let Some(ttfr) = time_to_first_chunk {
         MetricBuilder::new(&set)
@@ -865,7 +876,7 @@ fn build_query_span(snap: &QuerySnapshot, wall_clock_range: Range<SystemTime>) -
                 query_type,
                 primary_index_name,
                 time_to_first_chunk_info,
-                trace_id,
+                trace_id: _,
                 filters_pushed_down,
                 filters_applied_client_side,
                 entity_path_narrowing_applied,
@@ -889,6 +900,17 @@ fn build_query_span(snap: &QuerySnapshot, wall_clock_range: Range<SystemTime>) -
         fetch_direct_max_attempt,
         fetch_direct_original_ranges,
         fetch_direct_merged_ranges,
+        planned_fetch_batches,
+        planned_segment_waves,
+        segment_admission_limit,
+        max_segments_per_fetch_batch,
+        max_segments_per_wave,
+        peak_active_segments,
+        pipeline_budget_bytes,
+        pipeline_peak_decoded_bytes,
+        pipeline_byte_waits,
+        segment_admission_waits,
+        pipeline_stall_breaker_activations,
     } = snap;
 
     #[expect(
@@ -942,6 +964,26 @@ fn build_query_span(snap: &QuerySnapshot, wall_clock_range: Range<SystemTime>) -
         kv_int(
             "fetch_direct_merged_ranges",
             *fetch_direct_merged_ranges as i64,
+        ),
+        kv_int("planned_fetch_batches", *planned_fetch_batches as i64),
+        kv_int("planned_segment_waves", *planned_segment_waves as i64),
+        kv_int("segment_admission_limit", *segment_admission_limit as i64),
+        kv_int(
+            "max_segments_per_fetch_batch",
+            *max_segments_per_fetch_batch as i64,
+        ),
+        kv_int("max_segments_per_wave", *max_segments_per_wave as i64),
+        kv_int("peak_active_segments", *peak_active_segments as i64),
+        kv_int("pipeline_budget_bytes", *pipeline_budget_bytes as i64),
+        kv_int(
+            "pipeline_peak_decoded_bytes",
+            *pipeline_peak_decoded_bytes as i64,
+        ),
+        kv_int("pipeline_byte_waits", *pipeline_byte_waits as i64),
+        kv_int("segment_admission_waits", *segment_admission_waits as i64),
+        kv_int(
+            "pipeline_stall_breaker_activations",
+            *pipeline_stall_breaker_activations as i64,
         ),
         kv_int("filters_pushed_down", *filters_pushed_down as i64),
         kv_int(
@@ -1002,22 +1044,12 @@ fn build_query_span(snap: &QuerySnapshot, wall_clock_range: Range<SystemTime>) -
         attributes.push(kv_string("error_kind", kind));
     }
 
-    let links = trace_id
-        .map(|id| {
-            vec![Link {
-                trace_id: id.to_bytes().to_vec(),
-                ..Default::default()
-            }]
-        })
-        .unwrap_or_default();
-
     Span {
         name: "cloud_query_dataset".to_owned(),
         kind: SpanKind::Client.into(),
         start_time_unix_nano,
         end_time_unix_nano,
         attributes,
-        links,
         ..Default::default()
     }
 }
@@ -1292,7 +1324,9 @@ impl PendingTableQueryAnalytics {
     /// span before the [`Drop`] impl runs.
     #[cfg(test)]
     pub(crate) fn build_span_for_test(&self) -> Span {
-        self.inner.build_span()
+        let mut span = self.inner.build_span();
+        assign_span_identity(&mut span, self.inner.trace_id.get().copied()).unwrap();
+        span
     }
 }
 
@@ -1341,7 +1375,7 @@ pub(crate) fn build_table_query_span(
     total_duration: Duration,
     time_to_first_response: Option<Duration>,
     time_to_first_batch: Option<Duration>,
-    trace_id: Option<opentelemetry::TraceId>,
+    _trace_id: Option<opentelemetry::TraceId>,
     error_kind: Option<&'static str>,
 ) -> Span {
     let TableQueryInfo {
@@ -1413,22 +1447,12 @@ pub(crate) fn build_table_query_span(
         attributes.push(kv_string("filters_signatures", filters_signatures));
     }
 
-    let links = trace_id
-        .map(|id| {
-            vec![Link {
-                trace_id: id.to_bytes().to_vec(),
-                ..Default::default()
-            }]
-        })
-        .unwrap_or_default();
-
     Span {
         name: "cloud_scan_table".to_owned(),
         kind: SpanKind::Client.into(),
         start_time_unix_nano,
         end_time_unix_nano,
         attributes,
-        links,
         ..Default::default()
     }
 }
@@ -1447,6 +1471,7 @@ fn kv_string(key: &str, value: &str) -> KeyValue {
         value: Some(AnyValue {
             value: Some(Value::StringValue(value.to_owned())),
         }),
+        key_strindex: 0,
     }
 }
 
@@ -1456,6 +1481,7 @@ fn kv_int(key: &str, value: impl Into<i64>) -> KeyValue {
         value: Some(AnyValue {
             value: Some(Value::IntValue(value.into())),
         }),
+        key_strindex: 0,
     }
 }
 
@@ -1465,6 +1491,7 @@ fn kv_bool(key: &str, value: bool) -> KeyValue {
         value: Some(AnyValue {
             value: Some(Value::BoolValue(value)),
         }),
+        key_strindex: 0,
     }
 }
 
@@ -1474,6 +1501,7 @@ fn kv_double(key: &str, value: f64) -> KeyValue {
         value: Some(AnyValue {
             value: Some(Value::DoubleValue(value)),
         }),
+        key_strindex: 0,
     }
 }
 
@@ -1508,6 +1536,30 @@ mod tests {
             filters_signatures_inexact: String::new(),
             filters_signatures_unsupported: String::new(),
         }
+    }
+
+    #[test]
+    fn assign_span_identity_uses_correlated_trace_id() {
+        let trace_id = opentelemetry::TraceId::from_bytes([7; 16]);
+        let mut span = Span::default();
+
+        assign_span_identity(&mut span, Some(trace_id)).unwrap();
+
+        assert_eq!(span.trace_id, trace_id.to_bytes());
+        assert_eq!(span.span_id.len(), 8);
+        assert!(span.span_id.iter().any(|byte| *byte != 0));
+    }
+
+    #[test]
+    fn assign_span_identity_generates_trace_id_without_correlation() {
+        let mut span = Span::default();
+
+        assign_span_identity(&mut span, None).unwrap();
+
+        assert_eq!(span.trace_id.len(), 16);
+        assert!(span.trace_id.iter().any(|byte| *byte != 0));
+        assert_eq!(span.span_id.len(), 8);
+        assert!(span.span_id.iter().any(|byte| *byte != 0));
     }
 
     fn attribute_keys(span: &Span) -> HashSet<&str> {
@@ -1586,6 +1638,17 @@ mod tests {
         "fetch_direct_max_attempt",
         "fetch_direct_original_ranges",
         "fetch_direct_merged_ranges",
+        "planned_fetch_batches",
+        "planned_segment_waves",
+        "segment_admission_limit",
+        "max_segments_per_fetch_batch",
+        "max_segments_per_wave",
+        "peak_active_segments",
+        "pipeline_budget_bytes",
+        "pipeline_peak_decoded_bytes",
+        "pipeline_byte_waits",
+        "segment_admission_waits",
+        "pipeline_stall_breaker_activations",
         "filters_pushed_down",
         "filters_applied_client_side",
         "entity_path_narrowing_applied",
@@ -1611,6 +1674,17 @@ mod tests {
             fetch_direct_max_attempt: 0,
             fetch_direct_original_ranges: 0,
             fetch_direct_merged_ranges: 0,
+            planned_fetch_batches: 0,
+            planned_segment_waves: 0,
+            segment_admission_limit: 0,
+            max_segments_per_fetch_batch: 0,
+            max_segments_per_wave: 0,
+            peak_active_segments: 0,
+            pipeline_budget_bytes: 0,
+            pipeline_peak_decoded_bytes: 0,
+            pipeline_byte_waits: 0,
+            segment_admission_waits: 0,
+            pipeline_stall_breaker_activations: 0,
         }
     }
 
@@ -1658,17 +1732,28 @@ mod tests {
     fn build_query_span_records_fetch_stats() {
         let qi = dummy_query_info();
         let mut snap = snapshot_from_info(qi);
-        snap.total_duration = Duration::from_micros(1_000);
+        snap.total_duration = Duration::from_millis(1);
         snap.fetch_grpc_requests = 2;
         snap.fetch_grpc_bytes = 5_000;
         snap.fetch_direct_requests = 1;
         snap.fetch_direct_bytes = 10_000;
         snap.fetch_direct_retries = 2;
         snap.fetch_direct_requests_retried = 1;
-        snap.fetch_direct_retry_sleep = Duration::from_micros(12_000);
+        snap.fetch_direct_retry_sleep = Duration::from_millis(12);
         snap.fetch_direct_max_attempt = 3;
         snap.fetch_direct_original_ranges = 8;
         snap.fetch_direct_merged_ranges = 4;
+        snap.planned_fetch_batches = 16;
+        snap.planned_segment_waves = 1_332;
+        snap.segment_admission_limit = 3;
+        snap.max_segments_per_fetch_batch = 3;
+        snap.max_segments_per_wave = 3;
+        snap.peak_active_segments = 3;
+        snap.pipeline_budget_bytes = 4 * 1024 * 1024 * 1024;
+        snap.pipeline_peak_decoded_bytes = 96 * 1024 * 1024;
+        snap.pipeline_byte_waits = 2;
+        snap.segment_admission_waits = 1_329;
+        snap.pipeline_stall_breaker_activations = 1;
 
         let span = build_query_span(
             &snap,
@@ -1685,6 +1770,26 @@ mod tests {
         assert_eq!(find_int(&span, "fetch_direct_max_attempt"), Some(3));
         assert_eq!(find_int(&span, "fetch_direct_original_ranges"), Some(8));
         assert_eq!(find_int(&span, "fetch_direct_merged_ranges"), Some(4));
+        assert_eq!(find_int(&span, "planned_fetch_batches"), Some(16));
+        assert_eq!(find_int(&span, "planned_segment_waves"), Some(1_332));
+        assert_eq!(find_int(&span, "segment_admission_limit"), Some(3));
+        assert_eq!(find_int(&span, "max_segments_per_fetch_batch"), Some(3));
+        assert_eq!(find_int(&span, "max_segments_per_wave"), Some(3));
+        assert_eq!(find_int(&span, "peak_active_segments"), Some(3));
+        assert_eq!(
+            find_int(&span, "pipeline_budget_bytes"),
+            Some(4 * 1024 * 1024 * 1024)
+        );
+        assert_eq!(
+            find_int(&span, "pipeline_peak_decoded_bytes"),
+            Some(96 * 1024 * 1024)
+        );
+        assert_eq!(find_int(&span, "pipeline_byte_waits"), Some(2));
+        assert_eq!(find_int(&span, "segment_admission_waits"), Some(1_329));
+        assert_eq!(
+            find_int(&span, "pipeline_stall_breaker_activations"),
+            Some(1)
+        );
     }
 
     #[test]
@@ -1730,10 +1835,7 @@ mod tests {
             Some("http_5xx")
         );
         assert_eq!(find_string(&span, "error_kind"), Some("direct_fetch"));
-
-        // Trace id flows into span.links.
-        assert_eq!(span.links.len(), 1);
-        assert_eq!(span.links[0].trace_id, trace_id.to_bytes().to_vec());
+        assert!(span.links.is_empty());
     }
 
     /// Confirms the planning-phase metrics that `EXPLAIN ANALYZE` reads are
@@ -1770,7 +1872,7 @@ mod tests {
     fn build_query_span_uses_wall_clock_range() {
         let qi = dummy_query_info();
         let snap = snapshot_from_info(qi);
-        let start = SystemTime::UNIX_EPOCH + Duration::from_millis(2_000);
+        let start = SystemTime::UNIX_EPOCH + Duration::from_secs(2);
         let end = SystemTime::UNIX_EPOCH + Duration::from_millis(2_500);
 
         let span = build_query_span(&snap, start..end);
@@ -1933,7 +2035,7 @@ mod table_query_tests {
             &info,
             stats,
             SystemTime::UNIX_EPOCH..SystemTime::UNIX_EPOCH + Duration::from_secs(1),
-            Duration::from_micros(2_000),
+            Duration::from_millis(2),
             None,
             None,
             None,
@@ -1957,7 +2059,7 @@ mod table_query_tests {
             &info,
             empty_stats(),
             SystemTime::UNIX_EPOCH..SystemTime::UNIX_EPOCH + Duration::from_secs(1),
-            Duration::from_micros(1_000),
+            Duration::from_millis(1),
             Some(Duration::from_micros(50)),
             Some(Duration::from_micros(75)),
             Some(trace_id),
@@ -1983,16 +2085,13 @@ mod table_query_tests {
         assert_eq!(find_int(&span, "time_to_first_response_us"), Some(50));
         assert_eq!(find_int(&span, "time_to_first_batch_us"), Some(75));
         assert_eq!(find_string(&span, "error_kind"), Some("decode"));
-
-        // Trace id flows into span.links.
-        assert_eq!(span.links.len(), 1);
-        assert_eq!(span.links[0].trace_id, trace_id.to_bytes().to_vec());
+        assert!(span.links.is_empty());
     }
 
     #[test]
     fn build_table_query_span_uses_wall_clock_range() {
         let info = dummy_table_query_info();
-        let start = SystemTime::UNIX_EPOCH + Duration::from_millis(2_000);
+        let start = SystemTime::UNIX_EPOCH + Duration::from_secs(2);
         let end = SystemTime::UNIX_EPOCH + Duration::from_millis(2_500);
 
         let span = build_table_query_span(
@@ -2117,8 +2216,7 @@ mod table_query_tests {
 
     fn make_pending() -> PendingTableQueryAnalytics {
         let origin: Origin = "rerun+http://localhost:51234".parse().unwrap();
-        let client = re_redap_client::ConnectionClient::new_disconnected();
-        let analytics = ConnectionAnalytics::new(origin, &client);
+        let analytics = ConnectionAnalytics::disabled_for_test(origin);
         analytics.begin_table_query(dummy_table_query_info(), Instant::now())
     }
 
@@ -2206,7 +2304,7 @@ mod explain_metrics_set_tests {
             query_chunks_per_segment_mean: 2.5,
             query_type: QueryType::LatestAt,
             primary_index_name: Some("log_time".to_owned()),
-            time_to_first_chunk_info: Some(Duration::from_micros(2_000)),
+            time_to_first_chunk_info: Some(Duration::from_millis(2)),
             trace_id: None,
             filters_pushed_down,
             filters_applied_client_side,
@@ -2290,6 +2388,35 @@ mod explain_metrics_set_tests {
         metrics
             .fetch_direct_max_attempt
             .fetch_max(2, Ordering::Relaxed);
+        metrics
+            .planned_fetch_batches
+            .fetch_add(16, Ordering::Relaxed);
+        metrics
+            .planned_segment_waves
+            .fetch_add(1_332, Ordering::Relaxed);
+        metrics
+            .segment_admission_limit
+            .fetch_max(3, Ordering::Relaxed);
+        metrics
+            .max_segments_per_fetch_batch
+            .fetch_max(2, Ordering::Relaxed);
+        metrics
+            .max_segments_per_wave
+            .fetch_max(3, Ordering::Relaxed);
+        metrics.peak_active_segments.fetch_max(3, Ordering::Relaxed);
+        metrics
+            .pipeline_budget_bytes
+            .store(4 * 1024 * 1024 * 1024, Ordering::Relaxed);
+        metrics
+            .pipeline_peak_decoded_bytes
+            .fetch_max(96 * 1024 * 1024, Ordering::Relaxed);
+        metrics.pipeline_byte_waits.fetch_add(4, Ordering::Relaxed);
+        metrics
+            .segment_admission_waits
+            .fetch_add(20, Ordering::Relaxed);
+        metrics
+            .pipeline_stall_breaker_activations
+            .fetch_add(1, Ordering::Relaxed);
 
         let set = build_metrics_set_for_explain(&metrics, 4, None);
 
@@ -2300,6 +2427,41 @@ mod explain_metrics_set_tests {
             Some(5),
         );
         assert_eq!(metric_value_by_name(&set, "num_partitions"), Some(4));
+        assert_eq!(
+            metric_value_by_name(&set, "planned_fetch_batches"),
+            Some(16)
+        );
+        assert_eq!(
+            metric_value_by_name(&set, "planned_segment_waves"),
+            Some(1_332)
+        );
+        assert_eq!(
+            metric_value_by_name(&set, "segment_admission_limit"),
+            Some(3)
+        );
+        assert_eq!(
+            metric_value_by_name(&set, "max_segments_per_fetch_batch"),
+            Some(2)
+        );
+        assert_eq!(metric_value_by_name(&set, "max_segments_per_wave"), Some(3));
+        assert_eq!(metric_value_by_name(&set, "peak_active_segments"), Some(3));
+        assert_eq!(
+            metric_value_by_name(&set, "pipeline_budget_bytes"),
+            Some(4 * 1024 * 1024 * 1024)
+        );
+        assert_eq!(
+            metric_value_by_name(&set, "pipeline_peak_decoded_bytes"),
+            Some(96 * 1024 * 1024)
+        );
+        assert_eq!(metric_value_by_name(&set, "pipeline_byte_waits"), Some(4));
+        assert_eq!(
+            metric_value_by_name(&set, "segment_admission_waits"),
+            Some(20)
+        );
+        assert_eq!(
+            metric_value_by_name(&set, "pipeline_stall_breaker_activations"),
+            Some(1)
+        );
     }
 }
 

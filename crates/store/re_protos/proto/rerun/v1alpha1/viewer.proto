@@ -1,0 +1,137 @@
+syntax = "proto3";
+
+package rerun.sdk_comms.v1alpha1;
+
+import "rerun/v1alpha1/common.proto";
+
+service ViewerControlService {
+  rpc SaveScreenshot(SaveScreenshotRequest) returns (SaveScreenshotResponse) {}
+
+  // Move the time cursor (timeline position) of a recording in the viewer.
+  rpc SetTimeCursor(SetTimeCursorRequest) returns (SetTimeCursorResponse) {}
+
+  // Open a URL in the viewer (a recording/blueprint file, a `rerun://` dataset URI, a redap
+  // server/catalog URL, or an intra-recording link).
+  rpc OpenUrl(OpenUrlRequest) returns (OpenUrlResponse) {}
+
+  // One `egui_inspection` request/response exchange, used by `re_viewer_mcp` to control the viewer ui.
+  rpc Inspect(InspectRequest) returns (InspectResponse) {}
+
+  // Returns info about what the viewer is currently showing, so the agent can orient itself via `re_viewer_mcp`
+  rpc GetViewerState(GetViewerStateRequest) returns (GetViewerStateResponse) {}
+}
+
+// SaveScreenshot
+
+message SaveScreenshotRequest {
+  // Optional view ID to screenshot. If omitted, screenshots the entire viewer.
+  optional string view_id = 1;
+
+  // Path at which the screenshot will be saved.
+  // This path is relative to the current working directory of the viewer process.
+  string file_path = 2;
+}
+
+message SaveScreenshotResponse {}
+
+// SetTimeCursor
+
+message SetTimeCursorRequest {
+  // Recording to seek. If omitted, the active recording is used.
+  optional rerun.common.v1alpha1.StoreId store_id = 1;
+
+  // Timeline to seek on. If omitted, the active timeline is used.
+  optional common.v1alpha1.Timeline timeline = 2;
+
+  // Time value to seek to: a sequence index for sequence timelines, or nanoseconds for
+  // temporal timelines (see `GetViewerState` for each timeline's type and range).
+  rerun.common.v1alpha1.TimelineTime time = 3;
+
+  // If true, start playing the recording from the new position. If false, pause the recording.
+  bool play = 4;
+}
+
+message SetTimeCursorResponse {
+  // The recording the cursor was moved in (resolved from the request, or the active recording).
+  rerun.common.v1alpha1.StoreId store_id = 1;
+
+  // The timeline the cursor was moved on (resolved from the request, or the active/first timeline).
+  rerun.common.v1alpha1.Timeline timeline = 2;
+
+  // Timeline type, e.g. `"timestamp"`, `"duration"`, or `"sequence"`.
+  rerun.common.v1alpha1.TimeType time_type = 3;
+
+  // The time the cursor was moved to.
+  rerun.common.v1alpha1.TimelineTime time = 4;
+}
+
+// OpenUrl
+
+message OpenUrlRequest {
+  // The URL to open in the viewer. This can be a recording/blueprint file URL, a `rerun://`
+  // dataset URI, a redap server/catalog URL, or an intra-recording link.
+  string url = 1;
+}
+
+message OpenUrlResponse {}
+
+// Inspect
+
+message InspectRequest {
+  // `egui_inspection` request.
+  bytes request = 1;
+}
+
+message InspectResponse {
+  // `egui_inspection` response.
+  bytes response = 1;
+}
+
+// GetViewerState
+
+message GetViewerStateRequest {}
+
+message GetViewerStateResponse {
+  // The current viewer page/route (e.g. which recording or hub page is shown).
+  string url = 1;
+
+  // The active recording, if any.
+  optional rerun.common.v1alpha1.StoreId active_store_id = 2;
+
+  // Every open recording.
+  repeated ViewerRecording recordings = 3;
+}
+
+// One open recording in the viewer.
+message ViewerRecording {
+  // Store id of the recording.
+  rerun.common.v1alpha1.StoreId store_id = 1;
+
+  // The recording's timelines with their time ranges.
+  repeated ViewerTimeline timelines = 2;
+
+  // The recording's current time cursor.
+  TimeCursor current_time = 3;
+}
+
+// A timeline of a recording, with its time range.
+message ViewerTimeline {
+  rerun.common.v1alpha1.Timeline timeline = 1;
+
+  // Timeline type, e.g. `"timestamp"`, `"duration"`, or `"sequence"`.
+  rerun.common.v1alpha1.TimeType time_type = 2;
+
+  // The inclusive range of time values present on this timeline. Absent if the timeline has no data yet.
+  optional rerun.common.v1alpha1.TimeRange time_range = 3;
+}
+
+// A position on a timeline.
+message TimeCursor {
+  rerun.common.v1alpha1.Timeline timeline = 1;
+
+  // Timeline type. May be absent if the recording is still loading.
+  optional rerun.common.v1alpha1.TimeType time_type = 2;
+
+  // Current time on the timeline. Absent if the cursor is not set.
+  optional rerun.common.v1alpha1.TimelineTime time = 3;
+}

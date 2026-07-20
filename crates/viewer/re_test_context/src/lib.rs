@@ -60,6 +60,11 @@ pub struct TestContext {
     pub store_hub: Mutex<StoreHub>,
     pub view_class_registry: ViewClassRegistry,
 
+    /// App-level caches for data that is not tied to any particular store.
+    ///
+    /// See [`AppContext::app_caches`].
+    pub app_caches: re_viewer_context::AppCaches,
+
     // Mutex is needed, so we can update these from the `run` method
     pub selection_state: Mutex<ApplicationSelectionState>,
     pub focused_item: Mutex<Option<re_viewer_context::FocusTarget>>,
@@ -317,6 +322,7 @@ impl TestContext {
             called_setup_kittest_for_rendering: AtomicBool::new(false),
 
             store_hub: Mutex::new(store_hub),
+            app_caches: Default::default(),
         }
     }
 
@@ -350,8 +356,10 @@ fn create_egui_renderstate() -> egui_wgpu::RenderState {
         .into(),
 
         // None of these matter for tests as we're not going to draw to a surfaces.
-        present_mode: wgpu::PresentMode::Immediate,
-        desired_maximum_frame_latency: None,
+        surface: egui_wgpu::SurfaceConfig {
+            present_mode: wgpu::PresentMode::Immediate,
+            desired_maximum_frame_latency: None,
+        },
         on_surface_status: Arc::new(|_| {
             unreachable!("tests aren't expected to draw to surfaces");
         }),
@@ -608,6 +616,7 @@ impl TestContext {
 
         let mut store_hub = self.store_hub.lock();
         store_hub.begin_frame_caches(Some(&self.recording_store_id));
+        self.app_caches.begin_frame();
 
         let db = store_hub.entity_db_mut(&self.recording_store_id).unwrap();
         if db.can_fetch_chunks_from_redap() {
@@ -631,7 +640,8 @@ impl TestContext {
         let route = Route::LocalRecording {
             recording_id: self.recording_store_id.clone(),
         };
-        let (storage_context, store_context) = store_hub.read_context(&route);
+        let active_time_ctrl = self.time_ctrl.read();
+        let (storage_context, store_context) = store_hub.read_context(&route, &active_time_ctrl);
         let store_context = store_context
             .expect("a `Route::LocalRecording` must always have an active store context");
 
@@ -672,6 +682,7 @@ impl TestContext {
 
                 storage_context: &storage_context,
                 active_store_context: Some(&store_context),
+                app_caches: &self.app_caches,
 
                 component_ui_registry: &self.component_ui_registry,
                 view_class_registry: &self.view_class_registry,
@@ -684,13 +695,11 @@ impl TestContext {
                 selection_state: &selection_state,
                 focused_item: &focused_item,
                 drag_and_drop_manager: &drag_and_drop_manager,
-                active_time_ctrl: Some(&self.time_ctrl.read()),
                 connected_receivers: &Default::default(),
                 auth_context: None,
                 login_enabled: false,
                 login_signed_in_url: None,
             },
-            connected_receivers: &Default::default(),
             store_context: &store_context,
             visualizable_entities_per_visualizer: &visualizable_entities_per_visualizer,
             indicated_entities_per_visualizer: &indicated_entities_per_visualizer,
@@ -737,7 +746,7 @@ impl TestContext {
         mut func: impl FnMut(&ViewerContext<'_>, &mut egui::Ui),
     ) {
         egui::__run_test_ui(|ui| {
-            egui::CentralPanel::default().show_inside(ui, |ui| {
+            egui::CentralPanel::default().show(ui, |ui| {
                 let egui_ctx = ui.ctx().clone();
 
                 self.run(&egui_ctx, |ctx| {
@@ -773,7 +782,7 @@ impl TestContext {
         let mut result = None;
 
         egui::__run_test_ui(|ui| {
-            egui::CentralPanel::default().show_inside(ui, |ui| {
+            egui::CentralPanel::default().show(ui, |ui| {
                 let egui_ctx = ui.ctx().clone();
 
                 self.run(&egui_ctx, |ctx| {
@@ -924,8 +933,12 @@ impl TestContext {
                 | SystemCommand::ClearActiveBlueprint
                 | SystemCommand::ClearActiveBlueprintAndEnableHeuristics
                 | SystemCommand::AddRedapServer { .. }
+                | SystemCommand::RefreshRedapServer(_)
+                | SystemCommand::RefreshRedapEntry { .. }
                 | SystemCommand::RemoveRedapServer(_)
                 | SystemCommand::EditRedapServerModal { .. }
+                | SystemCommand::RedapServer(_)
+                | SystemCommand::Table(_)
                 | SystemCommand::UndoBlueprint { .. }
                 | SystemCommand::RedoBlueprint { .. }
                 | SystemCommand::CloseAllEntries
@@ -944,7 +957,7 @@ impl TestContext {
             }
 
             if !handled {
-                eprintln!("Ignored system command: {command_name:?}",);
+                eprintln!("Ignored system command: {command_name:?}");
             }
         }
     }

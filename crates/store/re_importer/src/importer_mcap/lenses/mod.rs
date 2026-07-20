@@ -11,6 +11,12 @@ use re_mcap::{DecoderIdentifier, SelectedDecoders};
 
 const ROS2MSG_DECODER_IDENTIFIER: &str = "ros2msg";
 
+/// Suffix appended to frame IDs for image planes.
+///
+/// This is required to match the Rerun model for named pinhole frames, where the image plane has its own frame ID
+/// different from the pinhole frame. In ROS/Foxglove, both image and camera info share the same frame ID.
+const IMAGE_PLANE_SUFFIX: &str = "_image_plane";
+
 pub fn mcap_lenses(
     selected_decoders: &SelectedDecoders,
     time_type: TimeType,

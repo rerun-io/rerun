@@ -54,10 +54,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: 3.11
 
@@ -88,18 +88,18 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
           token: ${{ secrets.RERUN_BOT_TOKEN }}
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
-          node-version: "22.x"
+          node-version: "24.x"
 
-      - uses: prefix-dev/setup-pixi@v0.9.4
+      - uses: prefix-dev/setup-pixi@v0.10.0
         with:
-          pixi-version: v0.55.0
+          pixi-version: v0.71.3
 
       - name: Update crate versions
         id: versioning
@@ -222,6 +222,7 @@ jobs:
                 - [ ] pip install: does it install and run?
                 - [ ] cargo install of cli tool: does it install and run?
                 - [ ] C++ SDK zip: does it contain rerun_c for all platforms?
+                - [ ] Web Viewer: does it run and connect to Rerun Hub servers?
               - [ ] Edit and publish the GitHub release:
                 - Do NOT create a GitHub release draft yourself! Let the release job do it.
                 - Populate the release with the changelog and a nice header video/picture
@@ -231,7 +232,7 @@ jobs:
               - [ ] Update the [google colab notebooks](https://colab.research.google.com/drive/1R9I7s4o6wydQC_zkybqaSRFTtlEaked_) to install this version and re-execute the notebook.
               - [ ] Verify the auto-triggered [gradio-rerun-viewer release workflow](https://github.com/rerun-io/gradio-rerun-viewer/actions/workflows/auto_release_on_rerun.yml) succeeded (dispatched from `on_gh_release.yml` for final releases)
               - [ ] Create a new branch from the prepare-release branch, rebase that one on main and sync it to reality so it can be merged.
-              - [ ] (A few hours later) Check on the [conda feedstock PR](https://github.com/conda-forge/rerun-sdk-feedstock/pulls) (ping Antoine, Nick and/or Jeremy in necessary)
+              - [ ] (A few hours later) Check on the [conda feedstock PR](https://github.com/conda-forge/rerun-sdk-feedstock/pulls) (ping Antoine and/or Nick if necessary)
 
           - [ ] Tests
             - [ ] Windows
@@ -254,13 +255,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ needs.version.outputs.release-commit }}
 
-      - uses: prefix-dev/setup-pixi@v0.9.4
+      - uses: prefix-dev/setup-pixi@v0.10.0
         with:
-          pixi-version: v0.55.0
+          pixi-version: v0.71.3
 
       - name: Check uv.lock is up-to-date
         run: pixi run uv-lock-check
@@ -320,9 +321,18 @@ jobs:
       release-commit: ${{ needs.version.outputs.release-commit }}
     secrets: inherit
 
+  web-test:
+    name: "Web tests"
+    needs: [version]
+    uses: ./.github/workflows/reusable_web_test.yml
+    with:
+      CONCURRENCY: ${{ github.ref_name }}
+      REF: ${{ needs.version.outputs.release-commit }}
+    secrets: inherit
+
   publish-web:
     name: "Build and Publish Web"
-    needs: [version, publish-wheels]
+    needs: [version, publish-wheels, web-test]
     uses: ./.github/workflows/reusable_publish_web.yml
     with:
       release-version: ${{ needs.version.outputs.current }}
@@ -361,7 +371,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
           token: ${{ secrets.RERUN_BOT_TOKEN }}
@@ -393,7 +403,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
           token: ${{ secrets.RERUN_BOT_TOKEN }}
@@ -462,18 +472,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
           token: ${{ secrets.RERUN_BOT_TOKEN }}
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
-          node-version: "22.x"
+          node-version: "24.x"
 
-      - uses: prefix-dev/setup-pixi@v0.9.4
+      - uses: prefix-dev/setup-pixi@v0.10.0
         with:
-          pixi-version: v0.55.0
+          pixi-version: v0.71.3
 
       - name: git config
         run: |
@@ -528,7 +538,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
           token: ${{ secrets.RERUN_BOT_TOKEN }}

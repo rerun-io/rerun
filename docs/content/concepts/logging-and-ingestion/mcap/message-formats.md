@@ -30,6 +30,7 @@ We are continually adding support for more standard message types.
 | Text | `std_msgs/String` | - | [TextDocument](../../../reference/types/archetypes/text_document.md) |
 | Log messages | `rcl_interfaces/Log` | `Log` | [TextLog](../../../reference/types/archetypes/text_log.md) |
 | 2D grid map | `nav_msgs/OccupancyGrid` | - | [GridMap](../../../reference/types/archetypes/grid_map.md) |
+| 3D voxel grid map | `nav2_msgs/VoxelGrid` | `VoxelGrid` | [VoxelGridMap](../../../reference/types/archetypes/voxel_grid_map.md) |
 
 ### Timelines
 

@@ -20,7 +20,7 @@ from datafusion import col
 from rerun._tracing import attach_parent_carrier, current_trace_carrier, tracing_scope, with_tracing
 from rerun.catalog import CatalogClient
 
-from ._sample_index import _ns_to_datetime64
+from ._sample_index import _ns_to_datetime64, _ns_to_timedelta64
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -39,7 +39,7 @@ class Target:
     """One sample to produce."""
 
     segment: SegmentMetadata
-    index_value: int | np.datetime64
+    index_value: int | np.datetime64 | np.timedelta64
     anchors: dict[str, int]
 
 
@@ -318,7 +318,7 @@ def _decode_iter(
 
 
 def _field_index_range(
-    idx_val: int | np.datetime64,
+    idx_val: int | np.datetime64 | np.timedelta64,
     field: Field,
     decoder: ColumnDecoder,
     *,
@@ -332,7 +332,14 @@ def _field_index_range(
     if field.window is not None:
         return idx_val + field.window[0], idx_val + field.window[1]
     if prior_keyframe is not None:
-        lo: Any = _ns_to_datetime64(prior_keyframe) if isinstance(idx_val, np.datetime64) else prior_keyframe
+        # `lo` must match `idx_val`'s type, or the pyarrow window mask in
+        # `_decode_iter` has no kernel (e.g. `greater_equal(duration, int64)`).
+        if isinstance(idx_val, np.datetime64):
+            lo: Any = _ns_to_datetime64(prior_keyframe)
+        elif isinstance(idx_val, np.timedelta64):
+            lo = _ns_to_timedelta64(prior_keyframe)
+        else:
+            lo = prior_keyframe
         return lo, idx_val
     return decoder.context_range(idx_val)
 
@@ -343,15 +350,20 @@ def _build_query_indices(
     decoders: dict[str, ColumnDecoder],
     *,
     sample_index: SampleIndex,
-) -> dict[str, np.ndarray]:
+) -> dict[str, np.ndarray | pa.Array]:
     """
     Group `targets` by segment, expanded with each field's window and decoder context.
 
     Returns a `{segment_id: index_values}` dict ready for
-    `reader(using_index_values=...)`. Values are `int64` for integer
-    indices and `datetime64[ns]` for timestamp timelines.
+    `reader(using_index_values=...)`. Values are an `int64` ndarray for
+    integer indices, a `pa.timestamp("ns")` array for timestamp
+    timelines, and a `pa.duration("ns")` array for duration timelines.
+    The Rust `IndexValuesLike` binding only accepts `datetime64`
+    ndarrays among the temporal numpy dtypes, so temporal values cross
+    the binding as pyarrow arrays — matching the convention used by
+    `TimeColumn` in `_send_columns.py`.
     """
-    is_timestamp = sample_index.is_timestamp
+    ns_dtype = sample_index.ns_dtype
     groups: dict[str, set[int]] = defaultdict(set)
 
     for target in targets:
@@ -372,12 +384,15 @@ def _build_query_indices(
             if anchor is not None:
                 groups[segment_id].add(anchor)
 
-    result: dict[str, np.ndarray] = {}
+    result: dict[str, np.ndarray | pa.Array] = {}
     for segment_id, vals in groups.items():
         arr = np.array(sorted(vals), dtype=np.int64)
-        if is_timestamp:
-            arr = arr.view("datetime64[ns]")
-        result[segment_id] = arr
+        if ns_dtype == "datetime64[ns]":
+            result[segment_id] = pa.array(arr, type=pa.timestamp("ns"))
+        elif ns_dtype == "timedelta64[ns]":
+            result[segment_id] = pa.array(arr, type=pa.duration("ns"))
+        else:
+            result[segment_id] = arr
     return result
 
 
@@ -388,7 +403,7 @@ def _fetch_prior_keyframes(
     index: str,
     fields: dict[str, Field],
     decoders: dict[str, ColumnDecoder],
-    located: list[tuple[SegmentMetadata, int | np.datetime64]],
+    located: list[tuple[SegmentMetadata, int | np.datetime64 | np.timedelta64]],
     sample_index: SampleIndex,
 ) -> dict[str, dict[str, np.ndarray]]:
     """
@@ -402,7 +417,8 @@ def _fetch_prior_keyframes(
     Works whether `is_keyframe` is logged sparsely (only `true` on keyframes)
     or densely (`true`/`false` on every row). The result maps
     `field_key -> {segment_id: sorted_int64_keyframes}`; values are `int`
-    (ns-since-epoch for timestamp timelines). The caller bisects via
+    (ns-since-epoch for timestamp timelines, ns count for duration timelines).
+    The caller bisects via
     [`_prior_keyframe`][rerun.experimental.dataloader._utils._prior_keyframe].
     """
     keyframe_fields: dict[str, str] = {}
@@ -422,8 +438,6 @@ def _fetch_prior_keyframes(
     if not keyframe_fields:
         return {}
 
-    is_timestamp = sample_index.is_timestamp
-
     # Per-segment max target across all anchor-using fields.
     max_per_segment: dict[str, int] = {}
     for seg, idx_val in located:
@@ -434,7 +448,13 @@ def _fetch_prior_keyframes(
     unique_paths = list(dict.fromkeys(keyframe_fields.values()))
 
     def idx_lit(value: int) -> Any:
-        return np.datetime64(value, "ns") if is_timestamp else value
+        # The literal must match the index column type, or DataFusion fails to
+        # coerce the comparison (`Duration(ns) <= Int64`).
+        if sample_index.is_timestamp:
+            return np.datetime64(value, "ns")
+        if sample_index.is_duration:
+            return np.timedelta64(value, "ns")
+        return value
 
     # Filter to keyframes at or before the largest target across all segments, in a
     # single predicate. A per-segment OR (`(seg==A & idx<=tA) | (seg==B & idx<=tB) | …`)

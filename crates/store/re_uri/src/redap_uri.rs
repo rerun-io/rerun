@@ -54,11 +54,11 @@ impl RedapUri {
 impl std::fmt::Display for RedapUri {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Catalog(uri) => write!(f, "{uri}",),
-            Self::Entry(uri) => write!(f, "{uri}",),
-            Self::Folder(uri) => write!(f, "{uri}",),
-            Self::DatasetData(uri) => write!(f, "{uri}",),
-            Self::Proxy(uri) => write!(f, "{uri}",),
+            Self::Catalog(uri) => write!(f, "{uri}"),
+            Self::Entry(uri) => write!(f, "{uri}"),
+            Self::Folder(uri) => write!(f, "{uri}"),
+            Self::DatasetData(uri) => write!(f, "{uri}"),
+            Self::Proxy(uri) => write!(f, "{uri}"),
         }
     }
 }

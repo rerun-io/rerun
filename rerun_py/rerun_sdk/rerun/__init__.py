@@ -9,8 +9,8 @@ from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 import numpy as np
 
-__version__ = "0.34.0-alpha.1+dev"
-__version_info__ = (0, 34, 0, "alpha.1")
+__version__ = "0.35.0-alpha.1+dev"
+__version_info__ = (0, 35, 0, "alpha.1")
 
 if sys.version_info < (3, 10):  # noqa: UP036
     raise RuntimeError("Rerun SDK requires Python 3.10 or later.")
@@ -74,6 +74,7 @@ from ._send_columns import (
     send_columns as send_columns,
 )
 from ._send_dataframe import (
+    AUTO_INDEX as AUTO_INDEX,
     RECORDING_PROPERTIES_PATH as RECORDING_PROPERTIES_PATH,
     RERUN_KIND as RERUN_KIND,
     RERUN_KIND_CONTROL as RERUN_KIND_CONTROL,
@@ -146,6 +147,7 @@ from .archetypes import (
     VideoFrameReference as VideoFrameReference,
     VideoStream as VideoStream,
     ViewCoordinates as ViewCoordinates,
+    VoxelGridMap as VoxelGridMap,
 )
 from .archetypes.boxes2d_ext import (
     Box2DFormat as Box2DFormat,

@@ -20,7 +20,7 @@ jobs:
       contents: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           lfs: true
           # We can't use the workflow token since that would prevent our commit to cause further workflows.

@@ -38,6 +38,7 @@ if TYPE_CHECKING:
         IndexValuesLike,
         RegistrationHandle,
         Schema,
+        UnregistrationHandle,
     )
 
 
@@ -254,6 +255,86 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         ds = self._internal.blueprint_dataset()
         return None if ds is None else DatasetEntry(ds)
 
+    def assets(self) -> list[str]:
+        """Lists all assets currently registered with this dataset."""
+
+        asset_dataset = self.asset_dataset()
+        if asset_dataset is None:
+            return []
+        else:
+            return asset_dataset.segment_ids()
+
+    def register_asset(self, uri: str) -> str:
+        """
+        Register an existing .rrd visible to the server as an asset.
+
+        Asset datasets hold a small set of static blobs shared across a dataset's segments,
+        so they are kept deliberately small. The server enforces a few limits on the .rrd you register:
+
+        * it must contain only static data, temporal chunks are rejected,
+        * each asset segment must stay under a per-segment size limit,
+        * the asset dataset may only hold a limited number of segments.
+
+        Parameters
+        ----------
+        uri:
+            The URI of the .rrd file to register. It must be visible to the server.
+
+        Returns
+        -------
+        str
+            The segment id of the registered asset.
+
+        """
+
+        asset_dataset = self.asset_dataset()
+
+        if asset_dataset is None:
+            # Datasets created before asset datasets were introduced don't have one until their
+            # entry is next updated, so ask the server to create it.
+            self._internal._ensure_asset_dataset()
+            asset_dataset = self.asset_dataset()
+
+        if asset_dataset is None:
+            raise LookupError("an asset dataset is not configured for this dataset")
+
+        return asset_dataset.register([uri], on_duplicate=OnDuplicateSegmentLayer.REPLACE).wait().segment_ids[0]
+
+    def unregister_asset(self, segment_id: str) -> None:
+        """
+        Unregister a previously registered asset.
+
+        Since assets are shared across all of a dataset's segments, there is no way to scope
+        an asset to a subset of them, so removing one means unregistering it here.
+
+        Unregistering an asset that doesn't exist is a no-op.
+
+        Parameters
+        ----------
+        segment_id:
+            The segment id of the asset to unregister, as returned by [`register_asset`][rerun.catalog.DatasetEntry.register_asset].
+
+        """
+
+        asset_dataset = self.asset_dataset()
+
+        if asset_dataset is None:
+            # No asset dataset means no assets were ever registered, so there is nothing to drop.
+            return
+
+        asset_dataset.unregister(segments_to_drop=[segment_id], layers_to_drop=[])
+
+    def asset_dataset(self) -> DatasetEntry | None:
+        """
+        The associated asset dataset, if any.
+
+        The associated asset dataset is owned by this dataset for lifecycle purposes.
+        Deleting this dataset also deletes the associated asset dataset and its storage.
+        """
+
+        ds = self._internal.asset_dataset()
+        return None if ds is None else DatasetEntry(ds)
+
     def schema(self) -> Schema:
         """Return the schema of the data contained in the dataset."""
         from ._schema import Schema
@@ -316,6 +397,10 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         return segment_table_df
 
+    @deprecated(
+        "DatasetEntry.manifest() is deprecated and will be removed in a future release. "
+        "It was intended for internal and debugging use only."
+    )
     def manifest(self, include_diagnostic_data: bool = False) -> datafusion.DataFrame:
         """
         Return the dataset manifest as a DataFusion DataFrame.
@@ -331,6 +416,11 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
                 Diagnostic data is subject to change in any release and should not be relied on for production.
 
         """
+
+        return self._manifest(include_diagnostic_data=include_diagnostic_data)
+
+    def _manifest(self, include_diagnostic_data: bool = False) -> datafusion.DataFrame:
+        """Return the dataset manifest as a DataFusion DataFrame. Intended for internal and debugging use only."""
 
         from datafusion import col
 
@@ -453,67 +543,6 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
             self._internal.register(recording_uris, recording_layers=layer_names, on_duplicate=on_duplicate)
         )
 
-    @with_tracing("DatasetEntry._register_asset_layer")
-    def _register_asset_layer(
-        self,
-        *,
-        recording_uri: str,
-        layer_name: str,
-        on_duplicate: OnDuplicateSegmentLayer = OnDuplicateSegmentLayer.ERROR,
-    ) -> RegistrationHandle:
-        """
-        Register a single RRD as an asset layer shared across all segments in the dataset.
-
-        Unlike segment layers (one recording per segment), an asset layer is a single recording
-        shared by every segment in the dataset.
-        This is useful for common assets such as robot URDFs or environment meshes that would
-        otherwise be duplicated in every segment.
-
-        !!! warning "Experimental"
-            This API is experimental and may change or be removed in future versions without
-            going through the normal deprecation cycle.
-
-        Parameters
-        ----------
-        layer_name:
-            The name for this asset layer.
-
-        recording_uri:
-            The URI of the RRD to register as the asset.
-
-        on_duplicate:
-            How to handle the case where the layer already exists.
-            Defaults to `OnDuplicateSegmentLayer.ERROR`.
-
-        Returns
-        -------
-        RegistrationHandle
-            A handle to track and wait on the registration task.
-
-        Examples
-        --------
-        ```python
-        handle = dataset._register_asset_layer(layer_name="robot_urdf", recording_uri="s3://my-bucket/robot.rrd")
-        handle.wait()
-        ```
-
-        """
-        import warnings
-
-        # TODO(RR-4797): remove experimental status
-        warnings.warn(
-            "_register_asset_layer is experimental and may change or be removed in future versions.",
-            stacklevel=2,
-        )
-
-        from ._registration_handle import RegistrationHandle
-
-        return RegistrationHandle(
-            self._internal._register_asset_layer(
-                recording_uri=recording_uri, layer_name=layer_name, on_duplicate=on_duplicate
-            )
-        )
-
     @with_tracing("DatasetEntry.unregister")
     def unregister(
         self,
@@ -521,7 +550,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         segments_to_drop: str | Sequence[str],
         layers_to_drop: str | Sequence[str],
         force: bool = False,
-    ) -> None:
+    ) -> UnregistrationHandle:
         """
         Unregisters segments and layers from the dataset.
 
@@ -561,7 +590,11 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         else:
             layers_to_drop = list(layers_to_drop)
 
-        self._internal.unregister(segments_to_drop=segments_to_drop, layers_to_drop=layers_to_drop, force=force)
+        from ._unregistration_handle import UnregistrationHandle
+
+        return UnregistrationHandle(
+            self._internal.unregister(segments_to_drop=segments_to_drop, layers_to_drop=layers_to_drop, force=force)
+        )
 
     def register_prefix(
         self,

@@ -99,11 +99,11 @@ Of course, this will only take us so far. In the future we plan on caching queri
 Here is an overview of the crates included in the project:
 
 <picture>
-  <img src="https://static.rerun.io/architecture_diagram/04173a9eadc959975e0d7969869ef40e8daf75b2/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/architecture_diagram/04173a9eadc959975e0d7969869ef40e8daf75b2/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/architecture_diagram/04173a9eadc959975e0d7969869ef40e8daf75b2/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/architecture_diagram/04173a9eadc959975e0d7969869ef40e8daf75b2/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/architecture_diagram/04173a9eadc959975e0d7969869ef40e8daf75b2/1200w.png">
+  <img src="https://static.rerun.io/architecture_diagram/ab6062b1b48f8edcd64922547aad6b493616d3f4/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/architecture_diagram/ab6062b1b48f8edcd64922547aad6b493616d3f4/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/architecture_diagram/ab6062b1b48f8edcd64922547aad6b493616d3f4/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/architecture_diagram/ab6062b1b48f8edcd64922547aad6b493616d3f4/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/architecture_diagram/ab6062b1b48f8edcd64922547aad6b493616d3f4/1200w.png">
 </picture>
 
 <!-- !!! IMPORTANT!!!
@@ -134,14 +134,14 @@ Update instructions:
 ##### UI crates
 
 | Crate                  | Description                                                                                                |
-| ---------------------- | ---------------------------------------------------------------------------------------------------------- |
+| ---------------------- |------------------------------------------------------------------------------------------------------------|
 | re_arrow_ui            | Show arrow data in a tree of rerun list_items and format arrow with syntax highlighting.                   |
 | re_blueprint_tree      | The UI for the blueprint tree in the left panel.                                                           |
 | re_chunk_store_ui      | A chunk store browser UI.                                                                                  |
 | re_component_fallbacks | Provides default fallbacks for Rerun components in the fallback provider registry.                         |
 | re_component_ui        | Provides UI editors for Rerun component data for registration with the Rerun Viewer component UI registry. |
 | re_dataframe_ui        | Rich table widget over DataFusion.                                                                         |
-| re_gamepad             | Gamepad input handling for the Rerun viewer.                                                              |
+| re_gamepad             | Gamepad input handling for the Rerun viewer.                                                               |
 | re_memory_view         | Flamegraph visualization for memory usage trees                                                            |
 | re_plot                | Plot ui components shared between time series and bar chart view.                                          |
 | re_recording_panel     | The UI for the recording panel.                                                                            |
@@ -161,6 +161,7 @@ Update instructions:
 | re_view_text_log       | A View that shows text entries in a table and scrolls with the active time.                                |
 | re_view_time_series    | A View that shows plots over Rerun timelines.                                                              |
 | re_viewer              | The Rerun Viewer                                                                                           |
+| re_viewer_mcp          | MCP server that allows agents to interact with the viewer.                                                 |
 | re_viewport            | The central viewport panel of the Rerun viewer.                                                            |
 
 ##### UI support crates

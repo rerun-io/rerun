@@ -36,6 +36,9 @@ pub struct Spatial2DView {
     /// Somethings outside of these bounds may also be visible due to letterboxing.
     pub visual_bounds: crate::blueprint::archetypes::VisualBounds2D,
 
+    /// Configuration of spatial information shown in the view.
+    pub spatial_information: crate::blueprint::archetypes::SpatialInformation,
+
     /// Configures which range on each timeline is shown by this view (unless specified differently per entity).
     ///
     /// If not specified, the default is to show the latest state of each component.
@@ -46,7 +49,7 @@ pub struct Spatial2DView {
 impl ::re_types_core::View for Spatial2DView {
     #[inline]
     fn identifier() -> ::re_types_core::ViewClassIdentifier {
-        ::re_types_core::external::re_string_interner::intern_static!(
+        ::re_types_core::external::re_string_interner::intern_static_nonempty!(
             ::re_types_core::ViewClassIdentifier,
             "2D"
         )

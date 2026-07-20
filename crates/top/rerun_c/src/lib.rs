@@ -26,8 +26,8 @@ use re_sdk::external::re_log_types::TimelineName;
 use re_sdk::log::{Chunk, ChunkId, PendingRow, TimeColumn};
 use re_sdk::time::TimeType;
 use re_sdk::{
-    ComponentDescriptor, EntityPath, RecordingStream, RecordingStreamBuilder, StoreKind, TimeCell,
-    TimePoint, Timeline,
+    ArchetypeName, ComponentDescriptor, ComponentIdentifier, ComponentType, EntityPath,
+    RecordingStream, RecordingStreamBuilder, StoreKind, TimeCell, TimePoint, Timeline,
 };
 use recording_streams::{RECORDING_STREAMS, recording_stream};
 
@@ -308,7 +308,8 @@ impl TryFrom<CTimeline> for Timeline {
     type Error = CError;
 
     fn try_from(timeline: CTimeline) -> Result<Self, CError> {
-        let name = timeline.name.as_nonempty_str("timeline.name")?;
+        let name = TimelineName::try_new(timeline.name.as_nonempty_str("timeline.name")?)
+            .map_err(|err| CError::new(CErrorCode::InvalidStringArgument, &err.to_string()))?;
         let typ = match timeline.typ {
             CTimeType::Sequence => TimeType::Sequence,
             CTimeType::Duration => TimeType::DurationNs,
@@ -493,9 +494,10 @@ fn rr_register_component_type_impl(
         component_type_descr.as_optional_str("component_type.descriptor.component_type")?;
 
     let component_descr = ComponentDescriptor {
-        archetype: archetype_name.map(Into::into),
-        component: component.into(),
-        component_type: component_type_descr.map(Into::into),
+        archetype: archetype_name.and_then(|s| ArchetypeName::try_new(s).ok()),
+        component: ComponentIdentifier::try_new(component)
+            .map_err(|err| CError::new(CErrorCode::InvalidStringArgument, &err.to_string()))?,
+        component_type: component_type_descr.and_then(|s| ComponentType::try_new(s).ok()),
     };
 
     let field = arrow::datatypes::Field::try_from(&component_type.schema).map_err(|err| {
@@ -964,7 +966,8 @@ fn rr_recording_stream_set_time_impl(
     time_type: CTimeType,
     value: i64,
 ) -> Result<(), CError> {
-    let timeline = timeline_name.as_nonempty_str("timeline_name")?;
+    let timeline = TimelineName::try_new(timeline_name.as_nonempty_str("timeline_name")?)
+        .map_err(|err| CError::new(CErrorCode::InvalidStringArgument, &err.to_string()))?;
     let stream = recording_stream(stream)?;
     let time_type = match time_type {
         CTimeType::Sequence => TimeType::Sequence,
@@ -994,7 +997,8 @@ fn rr_recording_stream_disable_timeline_impl(
     stream: CRecordingStream,
     timeline_name: CStringView,
 ) -> Result<(), CError> {
-    let timeline = timeline_name.as_nonempty_str("timeline_name")?;
+    let timeline = TimelineName::try_new(timeline_name.as_nonempty_str("timeline_name")?)
+        .map_err(|err| CError::new(CErrorCode::InvalidStringArgument, &err.to_string()))?;
     recording_stream(stream)?.disable_timeline(timeline);
     Ok(())
 }

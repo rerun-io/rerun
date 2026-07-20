@@ -160,7 +160,7 @@ impl SorbetColumnDescriptors {
                 }
 
                 ColumnKind::Component => ColumnDescriptor::Component(
-                    ComponentColumnDescriptor::from_arrow_field(chunk_entity_path, field),
+                    ComponentColumnDescriptor::from_arrow_field(chunk_entity_path, field)?,
                 ),
             };
 

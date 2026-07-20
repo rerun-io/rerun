@@ -23,7 +23,7 @@ all-features = true
 default = []
 
 ## Enable loading data from an .rrd file.
-decoder = ["dep:bytes", "dep:tokio", "dep:tokio-stream"]
+decoder = ["dep:bytes"]
 
 ## Enable encoding of log messages to an .rrd file/stream.
 encoder = []
@@ -57,7 +57,9 @@ re_types_core.workspace = true
 
 # External:
 arrow = { workspace = true, features = ["ipc"] }
+async-trait.workspace = true
 crossbeam.workspace = true
+futures.workspace = true
 itertools.workspace = true
 lz4_flex = { workspace = true }
 parking_lot.workspace = true
@@ -69,8 +71,6 @@ xxhash-rust.workspace = true
 # Optional external dependencies:
 bytes = { workspace = true, optional = true }
 ehttp = { workspace = true, optional = true, features = ["streaming"] }
-tokio = { workspace = true, optional = true, features = ["io-util"] }
-tokio-stream = { workspace = true, optional = true }
 web-time = { workspace = true, optional = true }
 
 # Web dependencies:

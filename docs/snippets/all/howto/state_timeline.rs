@@ -23,17 +23,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // the previous state implicitly ends. The `/door` lane uses the `StateConfiguration`
     // above, while `/window` gets default styling (raw value as label, hashed color).
     rec.set_time_sequence("step", 0);
-    rec.log("door", &rerun::StateChange::new().with_state("open"))?;
-    rec.log("window", &rerun::StateChange::new().with_state("closed"))?;
+    rec.log("door", &rerun::StateChange::single("open"))?;
+    rec.log("window", &rerun::StateChange::single("closed"))?;
 
     rec.set_time_sequence("step", 1);
-    rec.log("door", &rerun::StateChange::new().with_state("closed"))?;
+    rec.log("door", &rerun::StateChange::single("closed"))?;
 
     rec.set_time_sequence("step", 3);
-    rec.log("window", &rerun::StateChange::new().with_state("open"))?;
+    rec.log("window", &rerun::StateChange::single("open"))?;
 
     rec.set_time_sequence("step", 4);
-    rec.log("door", &rerun::StateChange::new().with_state("open"))?;
+    rec.log("door", &rerun::StateChange::single("open"))?;
     // endregion: log_changes
 
     Ok(())

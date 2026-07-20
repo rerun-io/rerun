@@ -11,6 +11,7 @@ mod design_tokens;
 pub mod drag_and_drop;
 pub mod egui_ext;
 pub mod filter_widget;
+mod fuzzy;
 mod help;
 mod hot_reload_design_tokens;
 mod icon_text;
@@ -44,11 +45,22 @@ use re_log::debug_assert;
 
 pub use self::button::*;
 pub use self::combo_item::*;
-pub use self::command::{UICommand, UICommandSender};
-pub use self::command_palette::{CommandPalette, CommandPaletteAction, CommandPaletteUrl};
+pub use self::command::{
+    CommandEnvironment, RecordingCommand, RecordingCommandKind, RecordingCommandSender,
+    RedapServerCommand, RedapServerCommandKind, RedapServerCommandSender, ResolvedCommand,
+    SetPlaybackSpeed, TableCommand, TableCommandKind, TableCommandSender, UICommand,
+    UICommandSender, consume_timeline_shortcut, listen_for_kb_shortcuts, refresh_shortcuts,
+};
+pub use self::command_palette::{
+    CmdRow, CommandPalette, CommandPaletteProvider, MatchGroup, MatchedCmd, RowState,
+    paint_command_row,
+};
 pub use self::context_ext::ContextExt;
-pub use self::design_tokens::{DesignTokens, TableStyle, WindowFrameConfig};
+pub use self::design_tokens::{
+    AlertVisuals, ButtonVisuals, DesignTokens, TableStyle, WindowFrameConfig,
+};
 pub use self::egui_ext::widget_ext::*;
+pub use self::fuzzy::{FuzzyMatch, FuzzyQuery};
 pub use self::help::*;
 pub use self::hot_reload_design_tokens::design_tokens_of;
 pub use self::icon_text::*;
@@ -88,8 +100,8 @@ pub fn supports_custom_decorations(os: egui::os::OperatingSystem) -> bool {
 /// to drawing server-side decorations. Everywhere else (and on probe failure)
 /// we return `true`. The result is cached for the lifetime of the process.
 pub fn custom_window_decorations_default() -> bool {
-    cfg_if::cfg_if! {
-        if #[cfg(target_os = "linux")] {
+    cfg_select! {
+        target_os = "linux" => {
             // Skip the probe entirely on non-Wayland sessions.
             if std::env::var_os("WAYLAND_DISPLAY").is_none()
                 && std::env::var_os("WAYLAND_SOCKET").is_none()
@@ -100,13 +112,16 @@ pub fn custom_window_decorations_default() -> bool {
             use std::sync::OnceLock;
             static CACHE: OnceLock<bool> = OnceLock::new();
             *CACHE.get_or_init(wayland::should_draw_own_decorations)
-        } else if #[cfg(target_os = "windows")] {
+        }
+        target_os = "windows" => {
             // On Windows we always draw decorations ourselves, but egui will still enable drop shadows etc.
             true
-        } else if #[cfg(target_os = "macos")] {
+        }
+        target_os = "macos" => {
             // On MacOS we use native decorations but draw inside the title bar, so not fully custom.
             false
-        } else {
+        }
+        _ => {
             // On unknown platforms we should stick with what they provide.
             false
         }

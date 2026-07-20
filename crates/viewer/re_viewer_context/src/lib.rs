@@ -72,9 +72,10 @@ pub use self::blueprint_id::{
     BlueprintId, BlueprintIdRegistry, ContainerId, GLOBAL_VIEW_ID, ViewId,
 };
 pub use self::cache::{
-    Cache, CacheEntryAccess, ImageDecodeCache, ImageHistogramCache, ImageStatsCache, Memoizers,
-    Rgb8Histogram, SharablePlayableVideoStream, StoreCache, TensorStatsAccessor, TensorStatsCache,
-    TransformDatabaseStoreCache, VideoAssetCache, VideoStreamCache, VideoStreamProcessingError,
+    AppCaches, Cache, CacheEntryAccess, EncodedDepthImageStatsCache, ImageDecodeCache,
+    ImageHistogramCache, ImageStatsCache, Memoizers, Rgb8Histogram, SharablePlayableVideoStream,
+    StoreCache, TensorStatsAccessor, TensorStatsCache, TransformDatabaseStoreCache,
+    VideoAssetCache, VideoStoreSource, VideoStreamCache, VideoStreamProcessingError,
 };
 pub use self::collapsed_id::{CollapseItem, CollapseScope, CollapsedId};
 pub use self::command_sender::{
@@ -153,7 +154,7 @@ pub mod external {
     pub use tokio;
     pub use {
         nohash_hasher, re_chunk_store, re_entity_db, re_log_types, re_query, re_string_interner,
-        re_ui,
+        re_tf, re_ui,
     };
 }
 
@@ -214,6 +215,9 @@ pub struct ScreenshotInfo {
 
     /// Where to put the screenshot.
     pub target: ScreenshotTarget,
+
+    /// Whether to show a user-facing notification (info toast) when the screenshot is done.
+    pub notify: bool,
 }
 
 /// Where to put the screenshot.

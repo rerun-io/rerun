@@ -225,7 +225,6 @@ fn test_receive_set() {
 
     let (tx_file, rx_file) = log_channel(LogSource::File {
         path: "path".into(),
-        follow: false,
     });
     let (tx_sdk, rx_sdk) = log_channel(LogSource::Sdk);
 
@@ -243,7 +242,6 @@ fn test_receive_set() {
         set.sources(),
         vec![Arc::new(LogSource::File {
             path: "path".into(),
-            follow: false
         })]
     );
 
@@ -256,7 +254,6 @@ fn test_receive_set() {
         vec![
             Arc::new(LogSource::File {
                 path: "path".into(),
-                follow: false
             }),
             Arc::new(LogSource::Sdk)
         ]
@@ -284,7 +281,6 @@ fn test_receive_set() {
         set.sources(),
         vec![Arc::new(LogSource::File {
             path: "path".into(),
-            follow: false
         })]
     );
 

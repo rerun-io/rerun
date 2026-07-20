@@ -204,7 +204,7 @@ impl AssetVideo {
 impl ::re_types_core::Archetype for AssetVideo {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        ::re_types_core::external::re_string_interner::intern_static!(
+        ::re_types_core::external::re_string_interner::intern_static_nonempty!(
             ::re_types_core::ArchetypeName,
             "rerun.archetypes.AssetVideo"
         )

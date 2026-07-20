@@ -44,9 +44,6 @@ pub struct ViewerContext<'a> {
     /// The blueprint query used for resolving blueprint in this frame
     pub blueprint_query: &'a LatestAtQuery,
 
-    /// Where we are getting our data from.
-    pub connected_receivers: &'a re_log_channel::LogReceiverSet,
-
     /// The active recording and blueprint.
     pub store_context: &'a ActiveStoreContext<'a>,
 }
@@ -142,7 +139,7 @@ impl<'a> ViewerContext<'a> {
             app_ctx: &self.app_ctx,
             db: self.store_context.blueprint,
             time_ctrl: self.blueprint_time_ctrl,
-            caches: self.store_context.caches, // TODO(RR-3033): what cache to use here?
+            caches: self.store_context.caches,
         }
     }
 

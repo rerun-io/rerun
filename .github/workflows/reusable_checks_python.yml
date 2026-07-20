@@ -30,13 +30,13 @@ jobs:
     timeout-minutes: 60
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-      - uses: prefix-dev/setup-pixi@v0.9.4
+      - uses: prefix-dev/setup-pixi@v0.10.0
         with:
-          pixi-version: v0.55.0
+          pixi-version: v0.71.3
 
       - name: Python format check
         run: pixi run py-fmt-check
@@ -54,13 +54,13 @@ jobs:
     timeout-minutes: 10
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-      - uses: prefix-dev/setup-pixi@v0.9.4
+      - uses: prefix-dev/setup-pixi@v0.10.0
         with:
-          pixi-version: v0.55.0
+          pixi-version: v0.71.3
 
       - name: Run notebook tests
         run: pixi run py-test-notebook
@@ -72,13 +72,13 @@ jobs:
     timeout-minutes: 60
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-      - uses: prefix-dev/setup-pixi@v0.9.4
+      - uses: prefix-dev/setup-pixi@v0.10.0
         with:
-          pixi-version: v0.55.0
+          pixi-version: v0.71.3
 
       - name: Build via mkdocs
         run: |

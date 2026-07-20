@@ -122,11 +122,6 @@ pub struct ImporterSettings {
     /// At what time(s) should the data be logged to?
     pub timepoint: Option<TimePoint>,
 
-    /// If `true`, keep reading `.rrd` files past EOF, tailing new data as it arrives.
-    ///
-    /// Defaults to `false`.
-    pub follow: bool,
-
     /// If set, an offset in nanoseconds to add to all `TimestampNs` time columns.
     pub timestamp_offset_ns: Option<i64>,
 
@@ -148,7 +143,6 @@ impl ImporterSettings {
             force_store_info: false,
             entity_path_prefix: None,
             timepoint: None,
-            follow: false,
             timestamp_offset_ns: None,
             timeline_type: re_log_types::TimeType::TimestampNs,
         }
@@ -181,7 +175,6 @@ impl ImporterSettings {
             force_store_info: _,
             entity_path_prefix,
             timepoint,
-            follow: _,
             timestamp_offset_ns: _,
             timeline_type: _,
         } = self;

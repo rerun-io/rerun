@@ -7,7 +7,7 @@ use std::net::SocketAddr;
 use std::pin::Pin;
 
 use re_byte_size::{MemUsageNode, MemUsageTree, SizeBytes};
-use re_log_channel::{DataSourceMessage, DataSourceUiCommand, SaveScreenshotError};
+use re_log_channel::{DataSourceMessage, DataSourceUiCommand};
 use re_log_encoding::{ToApplication as _, ToTransport as _};
 use re_log_types::TableMsg;
 use re_protos::common::v1alpha1::{
@@ -16,8 +16,8 @@ use re_protos::common::v1alpha1::{
 use re_protos::log_msg::v1alpha1::LogMsg as LogMsgProto;
 use re_protos::sdk_comms::v1alpha1::{
     ReadMessagesRequest, ReadMessagesResponse, ReadTablesRequest, ReadTablesResponse,
-    SaveScreenshotRequest, SaveScreenshotResponse, WriteMessagesRequest, WriteMessagesResponse,
-    WriteTableRequest, WriteTableResponse, message_proxy_service_server,
+    WriteMessagesRequest, WriteMessagesResponse, WriteTableRequest, WriteTableResponse,
+    message_proxy_service_server,
 };
 use re_quota_channel::{async_broadcast_channel, async_mpsc_channel};
 use std::task::{Context, Poll};
@@ -31,6 +31,9 @@ use tower_http::cors::{AllowOrigin, CorsLayer};
 use crate::priority_stream::PriorityMerge;
 
 mod priority_stream;
+mod viewer_control;
+
+pub use viewer_control::ViewerControl;
 
 pub use re_memory::MemoryLimit;
 
@@ -178,6 +181,61 @@ pub fn cors_layer(extra_allowed_origins: &[String]) -> CorsLayer {
     ))
 }
 
+/// Interceptor that rejects any request whose peer is not on the local machine.
+#[derive(Clone, Copy, Default)]
+pub struct LoopbackOnly;
+
+impl tonic::service::Interceptor for LoopbackOnly {
+    fn call(&mut self, request: tonic::Request<()>) -> tonic::Result<tonic::Request<()>> {
+        if request
+            .remote_addr()
+            .is_some_and(|addr| addr.ip().is_loopback())
+        {
+            Ok(request)
+        } else {
+            Err(tonic::Status::permission_denied(
+                "Only connections from the local machine are allowed",
+            ))
+        }
+    }
+}
+
+/// gRPC services to serve alongside the proxy, each restricted to connections from the local machine.
+///
+/// Pass to [`spawn_with_recv_and_services`]. Every added service is wrapped with [`LoopbackOnly`].
+#[derive(Default)]
+pub struct LoopbackServices {
+    builder: tonic::service::RoutesBuilder,
+}
+
+impl LoopbackServices {
+    /// Add a gRPC service that may only be reached from the local machine.
+    pub fn add_service<S>(&mut self, svc: S) -> &mut Self
+    where
+        S: tonic::codegen::Service<
+                tonic::codegen::http::Request<tonic::body::Body>,
+                Response = tonic::codegen::http::Response<tonic::body::Body>,
+                Error = std::convert::Infallible,
+            > + tonic::server::NamedService
+            + Clone
+            + Send
+            + Sync
+            + 'static,
+        S::Future: Send + 'static,
+    {
+        self.builder
+            .add_service(tonic::service::interceptor::InterceptedService::new(
+                svc,
+                LoopbackOnly,
+            ));
+        self
+    }
+
+    fn into_routes(self) -> tonic::service::Routes {
+        self.builder.routes()
+    }
+}
+
 // TODO(jan): Refactor `serve`/`spawn` variants into a builder?
 
 /// Start a Rerun server, listening on `addr`.
@@ -202,7 +260,14 @@ pub async fn serve(
     shutdown: shutdown::Shutdown,
 ) -> anyhow::Result<()> {
     let message_proxy = MessageProxy::new(options.clone());
-    serve_impl(addr, options, message_proxy, shutdown).await
+    serve_impl(
+        addr,
+        options,
+        message_proxy,
+        shutdown,
+        tonic::service::Routes::default(),
+    )
+    .await
 }
 
 async fn serve_impl(
@@ -210,6 +275,7 @@ async fn serve_impl(
     options: ServerOptions,
     message_proxy: MessageProxy,
     shutdown: shutdown::Shutdown,
+    extra_services: tonic::service::Routes,
 ) -> anyhow::Result<()> {
     // TODO(rust-lang/rust#130668): When listening on `::` we want to listen to both ipv6 `::` and ipv4 `0.0.0.0`
     // On Mac & Linux this happens automatically since all sockets are dual-stack by default.
@@ -263,17 +329,13 @@ async fn serve_impl(
     let cors = cors_layer(&options.cors_allowed_origins);
     let grpc_web = tonic_web::GrpcWebLayer::new();
 
-    let routes = {
-        let mut routes_builder = tonic::service::Routes::builder();
-        routes_builder.add_service(
-            re_protos::sdk_comms::v1alpha1::message_proxy_service_server::MessageProxyServiceServer::new(
-                message_proxy,
-            )
-            .max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE)
-            .max_encoding_message_size(MAX_ENCODING_MESSAGE_SIZE),
-        );
-        routes_builder.routes()
-    };
+    let routes = extra_services.add_service(
+        re_protos::sdk_comms::v1alpha1::message_proxy_service_server::MessageProxyServiceServer::new(
+            message_proxy,
+        )
+        .max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE)
+        .max_encoding_message_size(MAX_ENCODING_MESSAGE_SIZE),
+    );
 
     Server::builder()
         .accept_http1(true) // Support `grpc-web` clients
@@ -358,7 +420,15 @@ pub async fn serve_from_channel(
         }
     });
 
-    if let Err(err) = serve_impl(addr, options, message_proxy, shutdown).await {
+    if let Err(err) = serve_impl(
+        addr,
+        options,
+        message_proxy,
+        shutdown,
+        tonic::service::Routes::default(),
+    )
+    .await
+    {
         re_log::error!("message proxy server crashed: {err}");
     }
 }
@@ -382,7 +452,15 @@ pub fn spawn_from_rx_set(
     let event_tx = handle.event_tx.clone();
 
     tokio::spawn(async move {
-        if let Err(err) = serve_impl(addr, options, message_proxy, shutdown).await {
+        if let Err(err) = serve_impl(
+            addr,
+            options,
+            message_proxy,
+            shutdown,
+            tonic::service::Routes::default(),
+        )
+        .await
+        {
             re_log::error!("message proxy server crashed: {err}");
         }
     });
@@ -466,6 +544,19 @@ pub fn spawn_with_recv(
     options: ServerOptions,
     shutdown: shutdown::Shutdown,
 ) -> (re_log_channel::LogReceiver, MessageProxyHandle) {
+    spawn_with_recv_and_services(addr, options, shutdown, LoopbackServices::default())
+}
+
+/// Like [`spawn_with_recv`], but additionally serves `extra_services` on the same port.
+///
+/// The extra services are restricted to connections from the local machine (see
+/// [`LoopbackServices`]). The message proxy remains reachable according to the bound address.
+pub fn spawn_with_recv_and_services(
+    addr: SocketAddr,
+    options: ServerOptions,
+    shutdown: shutdown::Shutdown,
+    mut loopback_services: LoopbackServices,
+) -> (re_log_channel::LogReceiver, MessageProxyHandle) {
     let uri = re_uri::ProxyUri::new(re_uri::Origin::from_scheme_and_socket_addr(
         re_uri::Scheme::RerunHttp,
         addr,
@@ -477,8 +568,26 @@ pub fn spawn_with_recv(
     let (message_proxy, mut broadcast_log_rx) = MessageProxy::new_with_recv(options.clone());
     let handle = message_proxy.handle();
 
+    // Serve the viewer-control service alongside the proxy, restricted to loopback connections:
+    // it drives the local viewer (e.g. from the MCP server), which only ever connects over 127.0.0.1.
+    loopback_services.add_service(
+        re_protos::sdk_comms::v1alpha1::viewer_control_service_server::ViewerControlServiceServer::new(
+            message_proxy.viewer_control(),
+        )
+        .max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE)
+        .max_encoding_message_size(MAX_ENCODING_MESSAGE_SIZE),
+    );
+
     tokio::spawn(async move {
-        if let Err(err) = serve_impl(addr, options, message_proxy, shutdown).await {
+        if let Err(err) = serve_impl(
+            addr,
+            options,
+            message_proxy,
+            shutdown,
+            loopback_services.into_routes(),
+        )
+        .await
+        {
             re_log::error!("message proxy server crashed: {err}");
         }
     });
@@ -1023,6 +1132,12 @@ impl MessageProxy {
         }
     }
 
+    pub fn viewer_control(&self) -> ViewerControl {
+        ViewerControl {
+            event_tx: self.event_tx.clone(),
+        }
+    }
+
     async fn push_message(&self, message: impl Into<LogOrTableMsgProto>) {
         let message = message.into();
         self.event_tx.send(Event::Message(message)).await.ok();
@@ -1196,35 +1311,6 @@ impl message_proxy_service_server::MessageProxyService for MessageProxy {
     ) -> tonic::Result<tonic::Response<Self::ReadTablesStream>> {
         Ok(tonic::Response::new(self.new_client_table_stream().await))
     }
-
-    async fn save_screenshot(
-        &self,
-        request: tonic::Request<SaveScreenshotRequest>,
-    ) -> tonic::Result<tonic::Response<SaveScreenshotResponse>> {
-        let SaveScreenshotRequest { view_id, file_path } = request.into_inner();
-        let (done_tx, mut done_rx) =
-            futures::channel::mpsc::unbounded::<Result<(), SaveScreenshotError>>();
-        self.push_message(DataSourceUiCommand::SaveScreenshot {
-            file_path: file_path.into(),
-            view_id,
-            on_done: Some(done_tx),
-        })
-        .await;
-
-        match done_rx.next().await {
-            Some(Ok(())) => Ok(tonic::Response::new(SaveScreenshotResponse {})),
-            Some(Err(err @ SaveScreenshotError::InvalidViewId { .. })) => {
-                Err(tonic::Status::invalid_argument(err.to_string()))
-            }
-            Some(Err(
-                err @ (SaveScreenshotError::InvalidImageData
-                | SaveScreenshotError::SaveToPathFailed { .. }),
-            )) => Err(tonic::Status::internal(err.to_string())),
-            None => Err(tonic::Status::internal(
-                "Screenshot completion signal was dropped before the screenshot was taken",
-            )),
-        }
-    }
 }
 
 #[cfg(test)]
@@ -1246,6 +1332,48 @@ mod tests {
     use tonic::transport::{Channel, Endpoint};
 
     use super::*;
+
+    #[test]
+    fn loopback_only_rejects_non_loopback_peers() {
+        use tonic::service::Interceptor as _;
+        use tonic::transport::server::TcpConnectInfo;
+
+        fn request_from(remote_addr: Option<SocketAddr>) -> tonic::Request<()> {
+            let mut request = tonic::Request::new(());
+            if let Some(remote_addr) = remote_addr {
+                request.extensions_mut().insert(TcpConnectInfo {
+                    local_addr: None,
+                    remote_addr: Some(remote_addr),
+                });
+            }
+            request
+        }
+
+        let mut interceptor = LoopbackOnly;
+
+        assert!(
+            interceptor
+                .call(request_from(Some("127.0.0.1:5000".parse().unwrap())))
+                .is_ok()
+        );
+        assert!(
+            interceptor
+                .call(request_from(Some("[::1]:5000".parse().unwrap())))
+                .is_ok()
+        );
+
+        assert_eq!(
+            interceptor
+                .call(request_from(Some("10.0.0.1:5000".parse().unwrap())))
+                .unwrap_err()
+                .code(),
+            tonic::Code::PermissionDenied
+        );
+        assert_eq!(
+            interceptor.call(request_from(None)).unwrap_err().code(),
+            tonic::Code::PermissionDenied
+        );
+    }
 
     #[derive(Clone)]
     struct Completion(Arc<CancellationToken>);

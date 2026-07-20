@@ -31,3 +31,4 @@ Float32
 * [`Opacity`](../components/opacity.md)
 * [`Radius`](../components/radius.md)
 * [`StrokeWidth`](../components/stroke_width.md)
+* [`VoxelValue`](../components/voxel_value.md)

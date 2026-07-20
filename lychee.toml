@@ -102,7 +102,7 @@ exclude = [
 
   # Local links that require further setup.
   '/examples', # Relative link to our examples gallery.
-  'http://0.0.0.0:51234',
+  'http://0.0.0.0',
   'http://127.0.0.1',
   'http://localhost',
   're_viewer.js', # Build artifact that html is linking to.
@@ -131,6 +131,7 @@ exclude = [
   'file://somehost/file/path.rrd',
   'http://foo.*',
   'http://x/',
+  'https://x/',
   'https://foo.*',
   'https://link.to',
   'https://rerun.rs',
@@ -161,6 +162,7 @@ exclude = [
   'https://claude.site/artifacts/*', # Giving a 500, but only from CI
   'https://fifteen-thirtyeight.rerun.io/script.js', # Gives 403 forbidden on CI.
   'https://github.com/user-attachments/assets/.*', # Gives Not Found on CI, but works locally.
+  'https://git.sr.ht/*', # Bot protection returns 418 I'm a teapot on CI.
   'https://lib.rs/*', # Gives 403 forbidden on CI.
   'https://math.stackexchange.com/*', # Gives 403 forbidden on CI.
   'https://pixabay.com/photos/brother-sister-girl-family-boy-977170/', # Gives 403 forbidden on CI.

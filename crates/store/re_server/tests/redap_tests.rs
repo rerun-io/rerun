@@ -2,7 +2,8 @@
 
 use re_server::{RerunCloudHandler, RerunCloudHandlerBuilder};
 
-#[expect(clippy::unused_async)] // needed by the macro
+// The lint fires locally but not on CI, so we use `allow` instead of `expect`:
+#[allow(clippy::unused_async, clippy::allow_attributes)] // needed by the macro
 async fn build() -> RerunCloudHandler {
     RerunCloudHandlerBuilder::new().build()
 }

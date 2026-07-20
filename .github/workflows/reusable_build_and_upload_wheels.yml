@@ -89,7 +89,7 @@ jobs:
       COMPAT: ${{ steps.set-config.outputs.compat }}
     steps:
       - name: Login to GHCR (with retries)
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
           timeout_seconds: 10
           max_attempts: 12
@@ -103,14 +103,14 @@ jobs:
             linux-arm64)
                 runner="ubuntu-arm-16-core"
                 target="aarch64-unknown-linux-gnu"
-                container="'ghcr.io/rerun-io/ci_docker:0.17.0'" # Required to be manylinux compatible
+                container="'ghcr.io/rerun-io/ci_docker:0.18.0'" # Required to be manylinux compatible
                 compat="manylinux_2_28"
                 ;;
             linux-x64)
               runner="ubuntu-latest-16-cores"
               target="x86_64-unknown-linux-gnu"
               compat="manylinux_2_28"
-              container="'ghcr.io/rerun-io/ci_docker:0.17.0'" # Required to be manylinux compatible
+              container="'ghcr.io/rerun-io/ci_docker:0.18.0'" # Required to be manylinux compatible
               ;;
             windows-x64)
               runner="windows-latest-32-cores"
@@ -159,7 +159,7 @@ jobs:
           JOB_CONTEXT: ${{ toJson(job) }}
           INPUTS_CONTEXT: ${{ toJson(inputs) }}
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.RELEASE_COMMIT || ((github.event_name == 'pull_request' && github.event.pull_request.head.ref) || '') }}
 
@@ -173,9 +173,9 @@ jobs:
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
           targets: ${{ needs.set-config.outputs.TARGET }}
 
-      - uses: prefix-dev/setup-pixi@v0.9.4
+      - uses: prefix-dev/setup-pixi@v0.10.0
         with:
-          pixi-version: v0.55.0
+          pixi-version: v0.71.3
 
       - name: Get sha
         id: get-sha
@@ -212,7 +212,7 @@ jobs:
 
       - name: Save wheel artifact
         if: ${{ inputs.WHEEL_ARTIFACT_NAME != '' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{inputs.WHEEL_ARTIFACT_NAME}}
           path: dist/${{ needs.set-config.outputs.TARGET }}
@@ -232,7 +232,7 @@ jobs:
 
       - name: Save rerun_notebook wheel artifact
         if: ${{ (inputs.MODE == 'pypi' || inputs.MODE == 'extra') && inputs.PLATFORM == 'linux-x64' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: rerun_notebook_wheel
           path: dist

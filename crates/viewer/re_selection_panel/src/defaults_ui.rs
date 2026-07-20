@@ -238,13 +238,18 @@ fn active_defaults(
 
     engine
         .store()
-        .all_components_on_timeline(&blueprint_timeline(), &view.defaults_path)
+        .all_components_on_timeline(Some(&blueprint_timeline()), &view.defaults_path)
         .unwrap_or_default()
         .into_iter()
         .filter_map(|component| {
             let data = engine
                 .cache()
-                .latest_at(blueprint_query, &view.defaults_path, [component])
+                .latest_at(
+                    re_chunk_store::ChunkTrackingMode::Report,
+                    blueprint_query,
+                    &view.defaults_path,
+                    [component],
+                )
                 .component_batch_raw(component)?;
             (!data.is_empty()).then_some((component, data))
         })

@@ -5,6 +5,7 @@ use std::sync::Arc;
 
 use re_log_encoding::RrdManifest;
 use re_log_types::{LogMsg, StoreId, TableMsg, impl_into_enum};
+use re_protos::sdk_comms::v1alpha1::{GetViewerStateResponse, SetTimeCursorResponse};
 
 /// Message from a data source.
 ///
@@ -29,6 +30,7 @@ pub enum DataSourceMessage {
     /// A UI command that has to be ordered relative to [`LogMsg`]s.
     ///
     /// Non-ui receivers can safely ignore these.
+    // TODO(RR-5073): Remove ui commands from DataSourceMessage
     UiCommand(DataSourceUiCommand),
 }
 
@@ -86,9 +88,61 @@ pub enum DataSourceUiCommand {
         view_id: Option<String>,
 
         /// Optional completion signal, sent once the screenshot has been written (or failed).
-        ///
-        /// This is not a oneshot so it can be cloned.
         on_done: Option<futures::channel::mpsc::UnboundedSender<Result<(), SaveScreenshotError>>>,
+    },
+
+    /// Run one `egui_inspection` request against the viewer and return its response.
+    Inspect {
+        /// MessagePack-encoded `egui_inspection::protocol::Request`.
+        request: Vec<u8>,
+
+        /// Channel the viewer sends the MessagePack-encoded `egui_inspection::protocol::Response`
+        /// back on, or an [`InspectError`] if the request could not be decoded or the response
+        /// could not be encoded.
+        on_done: futures::channel::mpsc::UnboundedSender<Result<Vec<u8>, InspectError>>,
+    },
+
+    /// Snapshot the current viewer state (open recordings, route, timelines + ranges,
+    /// the active recording's time cursor).
+    ///
+    /// Used by `re_viewer_mcp`'s `GetViewerState` gRPC method to give an agent context.
+    GetViewerState {
+        /// Channel the viewer sends the state back on.
+        on_done: futures::channel::mpsc::UnboundedSender<GetViewerStateResponse>,
+    },
+
+    /// Open a URL in the viewer (a recording/blueprint file, a `rerun://` dataset URI, a redap
+    /// server/catalog URL, or an intra-recording link).
+    ///
+    /// Used by `re_viewer_mcp`'s `OpenUrl` gRPC method.
+    OpenUrl {
+        /// The URL to open.
+        url: String,
+
+        /// Channel the viewer reports back on: `Ok(())` once the URL was opened, or `Err(message)`
+        /// if it could not be parsed.
+        on_done: futures::channel::mpsc::UnboundedSender<Result<(), String>>,
+    },
+
+    /// Move the time cursor (timeline position) of a recording.
+    ///
+    /// Used by `re_viewer_mcp`'s `SetTimeCursor` gRPC method.
+    SetTimeCursor {
+        /// `[StoreId]` of recording to seek, or `None` for the active recording.
+        store_id: Option<StoreId>,
+
+        /// Timeline name to seek on, or `None` for the active timeline.
+        timeline: Option<String>,
+
+        /// Time value: a sequence index for sequence timelines, or nanoseconds otherwise.
+        time: i64,
+
+        /// If true, start playing from the new time cursor instead of staying paused.
+        play: bool,
+
+        /// Channel the viewer reports back on: `Ok(response)` describing what was applied, or
+        /// `Err(message)` if the recording/timeline could not be resolved.
+        on_done: futures::channel::mpsc::UnboundedSender<Result<SetTimeCursorResponse, String>>,
     },
 }
 
@@ -108,6 +162,18 @@ pub enum SaveScreenshotError {
     SaveToPathFailed { path: String, reason: String },
 }
 
+/// Why a [`DataSourceUiCommand::Inspect`] request could not be serviced.
+#[derive(thiserror::Error, Debug)]
+pub enum InspectError {
+    /// The request bytes could not be decoded as an `egui_inspection` request.
+    #[error("Failed to decode inspect request: {0}")]
+    DecodeRequest(String),
+
+    /// The `egui_inspection` response could not be encoded.
+    #[error("Failed to encode inspect response: {0}")]
+    EncodeResponse(String),
+}
+
 impl re_byte_size::SizeBytes for DataSourceUiCommand {
     fn heap_size_bytes(&self) -> u64 {
         match self {
@@ -119,6 +185,18 @@ impl re_byte_size::SizeBytes for DataSourceUiCommand {
                 view_id,
                 on_done: _,
             } => file_path.capacity() as u64 + view_id.heap_size_bytes(),
+
+            Self::Inspect { request, .. } => request.len() as u64,
+
+            Self::GetViewerState { on_done: _ } => 0,
+            Self::OpenUrl { url, on_done: _ } => url.heap_size_bytes(),
+            Self::SetTimeCursor {
+                store_id: recording_id,
+                timeline,
+                time: _,
+                play: _,
+                on_done: _,
+            } => recording_id.heap_size_bytes() + timeline.heap_size_bytes(),
         }
     }
 }

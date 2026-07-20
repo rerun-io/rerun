@@ -317,6 +317,7 @@ mod tests {
     };
     use re_dataframe::external::re_log_types::example_components::{MyPoint, MyPoints};
     use re_dataframe::external::re_log_types::{EntityPath, StoreId, StoreKind, TimeInt, Timeline};
+    use re_log_types::TimelineName;
 
     fn new_store() -> ChunkStoreHandle {
         let store_id = StoreId::random(StoreKind::Recording, "test-app");
@@ -474,7 +475,9 @@ mod tests {
         let query = QueryExpression {
             filtered_index: Some("t".into()),
             include_static_columns: StaticColumnSelection::Both,
-            selection: Some(vec![ColumnSelector::Time(TimeColumnSelector::from("t"))]),
+            selection: Some(vec![ColumnSelector::Time(TimeColumnSelector::from(
+                TimelineName::from("t"),
+            ))]),
             ..Default::default()
         };
         let provider = LocalChunkStoreTableProvider::try_new(store, query).unwrap();

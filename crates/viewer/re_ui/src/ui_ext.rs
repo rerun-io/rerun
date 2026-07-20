@@ -1,5 +1,3 @@
-use std::hash::Hash;
-
 use egui::emath::GuiRounding as _;
 use egui::{
     CollapsingResponse, Color32, IntoAtoms, NumExt as _, Rangef, Rect, StrokeKind, Widget as _,
@@ -9,7 +7,7 @@ use egui::{
 use crate::alert::Alert;
 use crate::button::ReButton;
 use crate::list_item::{self, LabelContent};
-use crate::{ContextExt as _, DesignTokens, Icon, LabelStyle, icons};
+use crate::{ContextExt as _, DesignTokens, Icon, LabelStyle, Size, Variant, icons};
 
 static FULL_SPAN_TAG: &str = "rerun_full_span";
 
@@ -649,7 +647,7 @@ pub trait UiExt {
     #[inline]
     fn list_item_scope<R>(
         &mut self,
-        id_salt: impl std::hash::Hash,
+        id_salt: impl egui::AsId,
         content: impl FnOnce(&mut egui::Ui) -> R,
     ) -> egui::InnerResponse<R> {
         list_item::list_item_scope(self.ui_mut(), id_salt, content)
@@ -714,186 +712,39 @@ pub trait UiExt {
         selected: bool,
         style: LabelStyle,
     ) -> egui::Response {
+        let mut text = text.into();
         let ui = self.ui_mut();
-        let tokens = ui.tokens();
-        let button_padding = ui.spacing().button_padding;
-        let total_extra = button_padding + button_padding;
-
-        let available_rect = ui.available_rect_before_wrap();
-
-        let view_rect = egui::Rect::from_min_max(
-            available_rect.min,
-            egui::pos2(
-                available_rect
-                    .max
-                    .x
-                    .min(ui.clip_rect().max.x - ui.spacing().window_margin.rightf()),
-                available_rect.max.y,
-            ),
-        )
-        .round_to_pixels(ui.pixels_per_point());
-
-        let icon_width_plus_padding = tokens.small_icon_size.x + tokens.text_to_icon_padding();
-
-        let wrap_width = view_rect.width() - icon_width_plus_padding - total_extra.x;
-
-        let mut text: egui::WidgetText = text.into();
-        let raw_text = text.text().to_owned();
+        let text_color = ui.visuals().text_color();
         match style {
             LabelStyle::Normal => {}
             LabelStyle::Unnamed => {
                 // TODO(ab): use design tokens
-                text = text.italics();
+                let text_color = text_color.gamma_multiply(0.5);
+                text = text.italics().color(text_color);
             }
         }
+        let raw_text = text.text().to_owned();
 
-        let galley = text.into_galley(
-            ui,
-            Some(egui::TextWrapMode::Truncate),
-            wrap_width,
-            egui::TextStyle::Button,
-        );
-
-        // 1 icons + padding.
-        let mut desired_size =
-            total_extra + galley.size() + egui::vec2(icon_width_plus_padding, 0.0);
-
-        desired_size.y = desired_size
-            .y
-            .at_least(ui.spacing().interact_size.y)
-            .at_least(tokens.small_icon_size.y);
-
-        let show_copy_button = {
-            /// The text character length at which the copy button will
-            /// always be there. (unless the ui is disabled)
-            const MIN_COPY_LEN: usize = 5;
-            let enough_space = view_rect.width() > desired_size.x + icon_width_plus_padding;
-
-            let long_enough_text = raw_text.chars().count() >= MIN_COPY_LEN;
-
-            let id = ui.next_auto_id();
-            let contains_pointer = ui.read_response(id).is_some_and(|last_response| {
-                ui.rect_contains_pointer(
-                    last_response
-                        .interact_rect
-                        .expand2(ui.spacing().item_spacing),
-                )
-            });
-
-            ui.is_enabled() && (enough_space || long_enough_text) && contains_pointer
+        let button = || {
+            ReButton::from_button(egui::Button::new((icon, text.clone())).selected(selected))
+                .size(Size::Tiny)
+                .variant(Variant::Ghost)
         };
 
-        if show_copy_button {
-            desired_size.x = (desired_size.x + icon_width_plus_padding).at_most(view_rect.width());
+        /// The text character length below which we don't bother showing the copy button.
+        const MIN_COPY_LEN: usize = 5;
+
+        if raw_text.chars().count() < MIN_COPY_LEN {
+            return button().atom_ui(ui).response;
         }
 
-        let (rect, response) = ui.allocate_at_least(desired_size, egui::Sense::click());
-        response.widget_info(|| {
-            egui::WidgetInfo::selected(
-                egui::WidgetType::SelectableLabel,
-                ui.is_enabled(),
-                selected,
-                galley.text(),
-            )
-        });
-
-        if ui.is_rect_visible(rect) {
-            let visuals = ui.style().interact_selectable(&response, selected);
-
-            // Draw background on interaction.
-            if selected || (response.hovered() || response.highlighted() || response.has_focus()) {
-                let rect = rect.expand(visuals.expansion);
-
-                ui.painter().rect(
-                    rect,
-                    visuals.corner_radius,
-                    visuals.weak_bg_fill,
-                    visuals.bg_stroke,
-                    egui::StrokeKind::Inside,
-                );
-            }
-
-            // Draw icon
-            let image_size = tokens.small_icon_size;
-            let image_rect = egui::Rect::from_min_size(
-                egui::pos2(
-                    rect.min.x.ceil(),
-                    (rect.center().y - 0.5 * tokens.small_icon_size.y).ceil(),
-                )
-                .round_to_pixels(ui.pixels_per_point()),
-                image_size,
-            );
-
-            // TODO(emilk, andreas): change color and size on hover
-            let icon_tint = if selected {
-                if response.hovered() {
-                    ui.tokens().icon_color_on_primary_hovered
-                } else {
-                    ui.tokens().icon_color_on_primary
-                }
-            } else {
-                visuals.fg_stroke.color
-            };
-            icon.as_image().tint(icon_tint).paint_at(ui, image_rect);
-
-            // Draw text next to the icon.
-            let mut text_rect = rect;
-            text_rect.min.x = image_rect.max.x + tokens.text_to_icon_padding();
-            let text_pos = egui::Align2([egui::Align::Min, ui.layout().vertical_align()])
-                .align_size_within_rect(galley.size(), text_rect)
-                .min;
-
-            let mut text_color = visuals.text_color();
-            match style {
-                LabelStyle::Normal => {}
-                LabelStyle::Unnamed => {
-                    // TODO(ab): use design tokens
-                    text_color = text_color.gamma_multiply(0.5);
-                }
-            }
-
-            ui.painter()
-                .galley_with_override_text_color(text_pos, galley, text_color);
-
-            if show_copy_button {
-                let copy_rect = egui::Rect::from_min_size(
-                    egui::pos2(rect.max.x - tokens.small_icon_size.x, image_rect.min.y)
-                        .round_to_pixels(ui.pixels_per_point()),
-                    tokens.small_icon_size,
-                );
-
-                let shape_idx = ui.painter().add(egui::Shape::Noop);
-                let copy_response = ui.place(
-                    copy_rect,
-                    ui.small_icon_button_widget(&icons::COPY, "Copy")
-                        .frame(false),
-                );
-
-                let copy_visuals = ui.style().interact(&copy_response);
-
-                let color = if copy_response.contains_pointer() {
-                    copy_visuals.weak_bg_fill
-                } else {
-                    visuals.weak_bg_fill
-                };
-
-                ui.painter().set(
-                    shape_idx,
-                    egui::Shape::rect_filled(
-                        copy_response.rect.expand(copy_visuals.expansion),
-                        visuals.corner_radius,
-                        color,
-                    ),
-                );
-
-                if copy_response.clicked() {
-                    re_log::info!("Copied {raw_text:?}");
-                    ui.copy_text(raw_text);
-                }
-            }
+        let (response, copy_response) =
+            ReButton::with_hover_icon_button(ui, ReButton::icon(icons::COPY), button);
+        if copy_response.is_some_and(|resp| resp.clicked()) {
+            re_log::info!("Copied {raw_text:?}");
+            ui.copy_text(raw_text);
         }
-
-        response
+        response.response
     }
 
     fn loading_screen_ui<R>(
@@ -995,7 +846,7 @@ pub trait UiExt {
     /// The `add_contents` closure is executed in the context of a vertical layout.
     fn center<R>(
         &mut self,
-        id_salt: impl Hash,
+        id_salt: impl egui::AsIdSalt,
         add_contents: impl FnOnce(&mut egui::Ui) -> R,
     ) -> R {
         // Strategy:
@@ -1340,7 +1191,7 @@ pub trait UiExt {
     /// Use this instead of using [`egui::ComboBox`] directly.
     fn drop_down_menu(
         &mut self,
-        id_salt: impl std::hash::Hash,
+        id_salt: impl egui::AsIdSalt,
         selected_text: String,
         content: impl FnOnce(&mut egui::Ui),
     ) -> egui::Response {

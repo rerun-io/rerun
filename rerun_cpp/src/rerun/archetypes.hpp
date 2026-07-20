@@ -51,3 +51,4 @@
 #include "archetypes/video_frame_reference.hpp"
 #include "archetypes/video_stream.hpp"
 #include "archetypes/view_coordinates.hpp"
+#include "archetypes/voxel_grid_map.hpp"

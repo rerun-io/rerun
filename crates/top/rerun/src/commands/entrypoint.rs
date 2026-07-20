@@ -257,14 +257,6 @@ When persisted, the state will be stored at the following locations:
     #[clap(long)]
     expect_data_soon: bool,
 
-    /// Tail .rrd files, waiting for new data to be appended after reaching EOF.
-    ///
-    /// Without this flag, .rrd files are read once and the viewer stops loading when EOF is reached.
-    /// With this flag, the viewer will keep watching for new data, which is useful for live streaming
-    /// from a writer process.
-    #[clap(long)]
-    follow: bool,
-
     /// The number of compute threads to use.
     ///
     /// If zero, the same number of threads as the number of cores will be used.
@@ -623,6 +615,30 @@ enum Command {
     #[command(subcommand)]
     Mcap(McapCommands),
 
+    /// Run an MCP server that controls a running Rerun Viewer.
+    ///
+    /// See the [mcp docs](https://rerun.io/docs/reference/viewer/mcp) for more info about using
+    /// `rerun viewer-mcp`.
+    ///
+    /// Use the following to commands to register the mcp with your agent:
+    /// - `claude mcp add rerun -- rerun viewer-mcp`
+    /// - `codex mcp add rerun -- rerun viewer-mcp`
+    ///
+    /// Or add a mcp.json with the following content:
+    /// ```json
+    /// {
+    ///   "mcpServers": {
+    ///     "rerun": {
+    ///       "command": "rerun",
+    ///       "args": ["viewer-mcp"],
+    ///     }
+    ///   }
+    /// }
+    /// ```
+    #[cfg(feature = "native_viewer")]
+    #[command(name = "viewer-mcp")]
+    ViewerMcp,
+
     /// Reset the memory of the Rerun Viewer.
     ///
     /// Only run this if you're having trouble with the Viewer,
@@ -745,6 +761,9 @@ where
 
             #[cfg(feature = "importers")]
             Command::Mcap(mcap) => mcap.run(),
+
+            #[cfg(feature = "native_viewer")]
+            Command::ViewerMcp => tokio_runtime.block_on(re_viewer_mcp::serve()),
 
             #[cfg(feature = "native_viewer")]
             Command::Reset => re_viewer::reset_viewer_persistence(),
@@ -880,7 +899,6 @@ fn run_impl(
             &UrlParamProcessingConfig::convert_everything_to_data_sources(),
             &connection_registry,
             None,
-            args.follow,
         )?;
         save_or_test_receive(
             args.save,
@@ -891,14 +909,13 @@ fn run_impl(
             server_options,
         )
     } else if args.serve_grpc {
-        cfg_if::cfg_if! {
-            if #[cfg(feature = "server")] {
+        cfg_select! {
+            feature = "server" => {
                 let receivers = ReceiversFromUrlParams::new(
                     url_or_paths,
                     &UrlParamProcessingConfig::convert_everything_to_data_sources(),
                     &connection_registry,
                     None,
-                    args.follow,
                 )?;
                 serve_grpc(
                     receivers,
@@ -906,23 +923,20 @@ fn run_impl(
                     server_addr,
                     server_options,
                 )
-            } else {
-                Err(anyhow::anyhow!(
-                    "rerun-cli must be compiled with the 'server' feature enabled"
-                ))
             }
+            _ => Err(anyhow::anyhow!(
+                "rerun-cli must be compiled with the 'server' feature enabled"
+            )),
         }
     } else if args.serve_web {
-        cfg_if::cfg_if! {
-            if #[cfg(not(feature = "server"))] {
-                Err(anyhow::anyhow!(
-                    "Can't host server - rerun was not compiled with the 'server' feature"
-                ))
-            } else if #[cfg(not(feature = "web_viewer"))] {
-                Err(anyhow::anyhow!(
-                    "Can't host web-viewer - rerun was not compiled with the 'web_viewer' feature"
-                ))
-            } else {
+        cfg_select! {
+            not(feature = "server") => Err(anyhow::anyhow!(
+                "Can't host server - rerun was not compiled with the 'server' feature"
+            )),
+            not(feature = "web_viewer") => Err(anyhow::anyhow!(
+                "Can't host web-viewer - rerun was not compiled with the 'web_viewer' feature"
+            )),
+            _ => {
                 // We always host the web-viewer in case the users wants it,
                 // but we only open a browser automatically with the `--web-viewer` flag.
                 let open_browser = args.web_viewer;
@@ -932,7 +946,6 @@ fn run_impl(
                     &UrlParamProcessingConfig::grpc_server_and_web_viewer(),
                     &connection_registry,
                     None,
-                    args.follow,
                 )?;
                 #[cfg(all(feature = "server", feature = "web_viewer"))]
                 serve_web(
@@ -953,31 +966,27 @@ fn run_impl(
             &UrlParamProcessingConfig::convert_everything_to_data_sources(),
             &connection_registry,
             None,
-            args.follow,
         )?;
         connect_to_existing_server(receivers, server_addr)
     } else {
-        cfg_if::cfg_if! {
-            if #[cfg(feature = "native_viewer")] {
-                start_native_viewer(
-                    &args,
-                    url_or_paths,
-                    _main_thread_token,
-                    _build_info,
-                    _call_source,
-                    tokio_runtime_handle,
-                    profiler,
-                    connection_registry,
-                    #[cfg(feature = "server")]
-                    server_addr,
-                    #[cfg(feature = "server")]
-                    server_options,
-                )
-            } else {
-                Err(anyhow::anyhow!(
-                    "Can't start viewer - rerun was compiled without the 'native_viewer' feature"
-                ))
-            }
+        cfg_select! {
+            feature = "native_viewer" => start_native_viewer(
+                &args,
+                url_or_paths,
+                _main_thread_token,
+                _build_info,
+                _call_source,
+                tokio_runtime_handle,
+                profiler,
+                connection_registry,
+                #[cfg(feature = "server")]
+                server_addr,
+                #[cfg(feature = "server")]
+                server_options,
+            ),
+            _ => Err(anyhow::anyhow!(
+                "Can't start viewer - rerun was compiled without the 'native_viewer' feature"
+            )),
         }
     }
 }
@@ -1003,7 +1012,6 @@ fn start_native_viewer(
     let startup_options = native_startup_options_from_args(args)?;
 
     let connect = args.connect.is_some();
-    let follow = args.follow;
     let renderer = args.renderer.as_deref();
     let memory_limit = args
         .memory_limit
@@ -1036,7 +1044,6 @@ fn start_native_viewer(
         &UrlParamProcessingConfig::native_viewer(),
         &connection_registry,
         Some(auth_error_handler),
-        follow,
     )?;
 
     let create_app = move |cc: &eframe::CreationContext<'_>| -> re_viewer::App {
@@ -1070,6 +1077,25 @@ fn start_native_viewer(
             (command_tx, command_rx),
         );
 
+        // The internal catalog is served (loopback-only) on the proxy server's port below, and
+        // also reached in-process by the viewer.
+        #[cfg(all(
+            feature = "server",
+            feature = "oss_server",
+            not(target_arch = "wasm32")
+        ))]
+        let internal_catalog = (!connect && app.app_options().experimental.use_internal_catalog)
+            .then(|| re_viewer::internal_catalog::build(server_addr));
+
+        #[cfg(all(
+            feature = "server",
+            feature = "oss_server",
+            not(target_arch = "wasm32")
+        ))]
+        if let Some(catalog) = &internal_catalog {
+            connection_registry.set_internal((catalog.origin.clone(), catalog.connection.clone()));
+        }
+
         if let Some(memory_limit) = memory_limit {
             app.app_options_mut().memory_limit = memory_limit;
         }
@@ -1077,10 +1103,22 @@ fn start_native_viewer(
         // If we're **not** connecting to an existing server, we spawn a new one and add it to the list of receivers.
         #[cfg(feature = "server")]
         if !connect {
-            let (log_receiver, grpc_server_handle) = re_grpc_server::spawn_with_recv(
+            #[cfg_attr(
+                not(all(feature = "oss_server", not(target_arch = "wasm32"))),
+                expect(unused_mut)
+            )]
+            let mut extra_services = re_grpc_server::LoopbackServices::default();
+
+            #[cfg(all(feature = "oss_server", not(target_arch = "wasm32")))]
+            if let Some(catalog) = &internal_catalog {
+                extra_services.add_service(catalog.grpc_service());
+            }
+
+            let (log_receiver, grpc_server_handle) = re_grpc_server::spawn_with_recv_and_services(
                 server_addr,
                 server_options,
                 re_grpc_server::shutdown::never(),
+                extra_services,
             );
 
             log_receivers.push(log_receiver);
@@ -1679,7 +1717,6 @@ impl ReceiversFromUrlParams {
         config: &UrlParamProcessingConfig,
         connection_registry: &re_redap_client::ConnectionRegistryHandle,
         auth_error_handler: Option<AuthErrorHandler>,
-        follow: bool,
     ) -> anyhow::Result<Self> {
         let mut data_sources = Vec::new();
         let mut urls_to_pass_on_to_viewer = Vec::new();
@@ -1689,7 +1726,6 @@ impl ReceiversFromUrlParams {
                 re_log_types::FileSource::Cli,
                 &url,
                 &re_data_source::FromUriOptions {
-                    follow,
                     accept_extensionless_http: true,
                 },
             ) {
@@ -1781,7 +1817,6 @@ fn record_cli_command_analytics(args: &Args) {
         detach_process,
 
         // Not logged
-        follow: _,
         threads: _,
         url_or_paths: _,
         version: _,
@@ -1831,6 +1866,9 @@ fn record_cli_command_analytics(args: &Args) {
             // TODO(RR-4073): Re-enable analytics for MCAP commands.
             return;
         }
+
+        #[cfg(feature = "native_viewer")]
+        Some(Command::ViewerMcp) => ("viewer-mcp", None),
 
         Some(Command::Download(_)) => ("download", None),
 

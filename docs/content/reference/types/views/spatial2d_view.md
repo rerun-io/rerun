@@ -18,6 +18,12 @@ The visible parts of the scene, in the coordinate space of the scene.
 
 Everything within these bounds are guaranteed to be visible.
 Somethings outside of these bounds may also be visible due to letterboxing.
+### `spatial_information`
+Configuration of spatial information shown in the view.
+
+* `target_frame`: The target reference frame for all transformations.
+* `show_axes`: Whether axes should be shown at the origin.
+* `show_bounding_box`: Whether the bounding box should be shown.
 ### `time_ranges`
 Configures which range on each timeline is shown by this view (unless specified differently per entity).
 

@@ -128,24 +128,31 @@ pub async fn preview_table() {
         ..Default::default()
     });
 
-    // Step until every preview recording has been loaded into the store hub. Rendering the
+    // Step until every preview recording has actually streamed in its point data. Rendering the
     // preview column is what triggers the background loads, so this also exercises the column.
     let preview_uris: Vec<re_uri::DatasetSegmentUri> = segment_uris
         .iter()
         .map(|uri| uri.clone().without_fragment())
         .collect();
+    let preview_entity = re_log_types::EntityPath::from("test_entity");
     viewer_test_utils::step_until(
         "All preview recordings loaded",
         &mut harness,
         |harness| {
             let uris = preview_uris.clone();
+            let entity = preview_entity.clone();
             harness.run_with_app_context(move |app_context| {
                 uris.iter().all(|uri| {
                     app_context
                         .storage_context
                         .hub
                         .find_recording_by_uri(uri)
-                        .is_some()
+                        .is_some_and(|db| {
+                            // Not only needs the recording be loaded, we also need the data to arrive.
+                            db.storage_engine()
+                                .store()
+                                .entity_has_physical_static_data(&entity)
+                        })
                 })
             })
         },

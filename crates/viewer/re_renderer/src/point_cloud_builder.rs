@@ -71,7 +71,10 @@ impl<'ctx> PointCloudBuilder<'ctx> {
             ..PointCloudBatchInfo::default()
         });
 
-        PointCloudBatchBuilder(self)
+        PointCloudBatchBuilder {
+            builder: self,
+            object_space_bounding_box_is_complete: false,
+        }
     }
 
     #[inline]
@@ -79,9 +82,13 @@ impl<'ctx> PointCloudBuilder<'ctx> {
         &mut self,
         info: PointCloudBatchInfo,
     ) -> PointCloudBatchBuilder<'_, 'ctx> {
+        let bounds_are_complete = !info.object_space_bounding_box.is_nothing();
         self.batches.push(info);
 
-        PointCloudBatchBuilder(self)
+        PointCloudBatchBuilder {
+            builder: self,
+            object_space_bounding_box_is_complete: bounds_are_complete,
+        }
     }
 
     /// Finalizes the builder and returns a point cloud draw data with all the points added so far.
@@ -90,13 +97,16 @@ impl<'ctx> PointCloudBuilder<'ctx> {
     }
 }
 
-pub struct PointCloudBatchBuilder<'a, 'ctx>(&'a mut PointCloudBuilder<'ctx>);
+pub struct PointCloudBatchBuilder<'a, 'ctx> {
+    builder: &'a mut PointCloudBuilder<'ctx>,
+    object_space_bounding_box_is_complete: bool,
+}
 
 impl Drop for PointCloudBatchBuilder<'_, '_> {
     fn drop(&mut self) {
         // Remove batch again if it wasn't actually used.
-        if self.0.batches.last().unwrap().point_count == 0 {
-            self.0.batches.pop();
+        if self.builder.batches.last().unwrap().point_count == 0 {
+            self.builder.batches.pop();
         }
     }
 }
@@ -104,7 +114,7 @@ impl Drop for PointCloudBatchBuilder<'_, '_> {
 impl PointCloudBatchBuilder<'_, '_> {
     #[inline]
     fn batch_mut(&mut self) -> &mut PointCloudBatchInfo {
-        self.0
+        self.builder
             .batches
             .last_mut()
             .expect("batch should have been added on PointCloudBatchBuilder creation")
@@ -114,6 +124,19 @@ impl PointCloudBatchBuilder<'_, '_> {
     #[inline]
     pub fn world_from_obj(mut self, world_from_obj: glam::Affine3A) -> Self {
         self.batch_mut().world_from_obj = world_from_obj;
+        self
+    }
+
+    /// Provides the complete object-space bounds for the batch.
+    ///
+    /// This avoids recomputing them while adding points.
+    #[inline]
+    pub fn object_space_bounding_box(
+        mut self,
+        object_space_bounding_box: macaw::BoundingBox,
+    ) -> Self {
+        self.batch_mut().object_space_bounding_box = object_space_bounding_box;
+        self.object_space_bounding_box_is_complete = true;
         self
     }
 
@@ -171,12 +194,12 @@ impl PointCloudBatchBuilder<'_, '_> {
         re_tracing::profile_function!();
 
         debug_assert_eq!(
-            self.0.position_radius_buffer.len(),
-            self.0.color_buffer.len()
+            self.builder.position_radius_buffer.len(),
+            self.builder.color_buffer.len()
         );
         debug_assert_eq!(
-            self.0.position_radius_buffer.len(),
-            self.0.picking_instance_ids_buffer.len()
+            self.builder.position_radius_buffer.len(),
+            self.builder.picking_instance_ids_buffer.len()
         );
 
         let num_points = positions_and_radii.len();
@@ -184,7 +207,7 @@ impl PointCloudBatchBuilder<'_, '_> {
         // Do a reserve ahead of time, to check whether we're hitting the data texture limit.
         // The limit is the same for all data textures, so we only need to check one.
         let Some(num_available_points) = self
-            .0
+            .builder
             .position_radius_buffer
             .reserve(num_points)
             .ok_or_log_error()
@@ -195,7 +218,7 @@ impl PointCloudBatchBuilder<'_, '_> {
         let num_points = if num_points > num_available_points {
             re_log::error_once!(
                 "Reached maximum number of points for point cloud of {}. Ignoring all excess points.",
-                self.0.position_radius_buffer.len() + num_available_points
+                self.builder.position_radius_buffer.len() + num_available_points
             );
             num_available_points
         } else {
@@ -212,11 +235,36 @@ impl PointCloudBatchBuilder<'_, '_> {
         let colors = &colors[0..num_points.min(colors.len())];
         let picking_ids = &picking_ids[0..num_points.min(picking_ids.len())];
 
-        self.batch_mut().point_count += num_points as u32;
+        let bounds_are_complete = self.object_space_bounding_box_is_complete;
+        let batch = self.batch_mut();
+        batch.point_count += num_points as u32;
+
+        if !bounds_are_complete {
+            batch.object_space_bounding_box =
+                batch
+                    .object_space_bounding_box
+                    .union(crate::util::bounding_box_from_points(
+                        positions_and_radii.iter().map(|point| point.pos),
+                    ));
+        }
+
+        // Retain object-space positions for transparent batches that opted into back-to-front
+        // sorting by supplying a cache (see [`Self::sort_order`]). Coplanar clouds (e.g. 2D points)
+        // skip this and just alpha-blend in insertion order.
+        // Only the flag/cache set *before* adding points is honored.
+        let wants_sorting = batch
+            .flags
+            .contains(PointCloudBatchFlags::FLAG_PREMULTIPLIED_ALPHA)
+            && batch.sort_order_cache.is_some();
+        if wants_sorting {
+            re_tracing::profile_scope!("sort_positions");
+            let sort_positions = self.batch_mut().sort_positions.get_or_insert_with(Vec::new);
+            sort_positions.extend(positions_and_radii.iter().map(|pr| pr.pos));
+        }
 
         {
             re_tracing::profile_scope!("positions_and_radii");
-            self.0
+            self.builder
                 .position_radius_buffer
                 .extend_from_slice(positions_and_radii)
                 .ok_or_log_error();
@@ -224,11 +272,11 @@ impl PointCloudBatchBuilder<'_, '_> {
         {
             re_tracing::profile_scope!("colors");
 
-            self.0
+            self.builder
                 .color_buffer
                 .extend_from_slice(colors)
                 .ok_or_log_error();
-            self.0
+            self.builder
                 .color_buffer
                 .add_n(Color32::WHITE, num_points.saturating_sub(colors.len())) // TODO(emilk): don't use a hard-coded default color here
                 .ok_or_log_error();
@@ -236,11 +284,11 @@ impl PointCloudBatchBuilder<'_, '_> {
         {
             re_tracing::profile_scope!("picking_ids");
 
-            self.0
+            self.builder
                 .picking_instance_ids_buffer
                 .extend_from_slice(picking_ids)
                 .ok_or_log_error();
-            self.0
+            self.builder
                 .picking_instance_ids_buffer
                 .add_n(
                     PickingLayerInstanceId::default(),
@@ -286,10 +334,46 @@ impl PointCloudBatchBuilder<'_, '_> {
         self
     }
 
+    /// Renders this batch with premultiplied-alpha blending in the transparent draw phase.
+    ///
+    /// Enable this when the batch contains any semi-transparent points.
+    /// Opaque batches should leave this off so they can use the faster alpha-to-coverage path
+    /// and write depth.
+    ///
+    /// Alpha blending does not enable per-point sorting.
+    /// Call [`Self::sort_order`] before adding points to opt in; batches such as coplanar 2D points
+    /// can instead preserve insertion order.
+    /// See <https://github.com/rerun-io/rerun/issues/1611> for remaining ordering limitations.
+    #[inline]
+    pub fn enable_alpha_blending(mut self, enabled: bool) -> Self {
+        self.batch_mut()
+            .flags
+            .set(PointCloudBatchFlags::FLAG_PREMULTIPLIED_ALPHA, enabled);
+        self
+    }
+
     /// Sets the picking object id for the current batch.
     #[inline]
     pub fn picking_object_id(mut self, picking_object_id: PickingLayerObjectId) -> Self {
         self.batch_mut().picking_object_id = picking_object_id;
+        self
+    }
+
+    /// Opts into per-frame back-to-front sorting with a caller-owned cache.
+    ///
+    /// Sorting is independent of alpha blending because some alpha-blended batches already have a
+    /// suitable insertion order.
+    ///
+    /// The cache must be unique among concurrently-drawn clouds.
+    /// It keeps independent ordering per view when draw data is shared across views.
+    /// The caller owns its lifetime and invalidation, and must enable alpha blending and provide
+    /// the cache before adding points.
+    #[inline]
+    pub fn sort_order(
+        mut self,
+        sort_order_cache: crate::renderer::PointCloudSortOrderCache,
+    ) -> Self {
+        self.batch_mut().sort_order_cache = Some(sort_order_cache);
         self
     }
 

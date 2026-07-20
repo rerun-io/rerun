@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use re_chunk::Chunk;
+use re_log::ResultExt as _;
 use re_log_encoding::RrdManifest;
 use re_log_types::StoreId;
 
@@ -449,15 +450,16 @@ impl ChunkStoreDiffVirtualAddition {
                 re_sorbet::ColumnKind::try_from(f.as_ref()).ok()
                     == Some(re_sorbet::ColumnKind::Component)
             })
-            .map(|field| {
+            .filter_map(|field| {
                 let inner_arrow_datatype = match field.data_type() {
                     arrow::datatypes::DataType::List(inner)
                     | arrow::datatypes::DataType::LargeList(inner) => inner.data_type().clone(),
                     other => other.clone(),
                 };
 
-                let descriptor = re_sdk_types::ComponentDescriptor::from((**field).clone());
-                (
+                let descriptor = re_sdk_types::ComponentDescriptor::try_from((**field).clone())
+                    .ok_or_log_error_once()?;
+                Some((
                     descriptor.component,
                     ChunkComponentMeta {
                         descriptor,
@@ -466,7 +468,7 @@ impl ChunkStoreDiffVirtualAddition {
                         has_data: false,
                         is_static: false,
                     },
-                )
+                ))
             })
             .collect();
 

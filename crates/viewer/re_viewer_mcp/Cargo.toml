@@ -1,0 +1,39 @@
+[package]
+authors.workspace = true
+description = "MCP server that allows llm agents to use the Rerun Viewer."
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+include.workspace = true
+name = "re_viewer_mcp"
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "re-viewer-mcp"
+path = "src/main.rs"
+
+[dependencies]
+egui_inspection.workspace = true
+egui_mcp.workspace = true
+re_log = { workspace = true, features = ["setup"] }
+re_protos.workspace = true
+
+anyhow.workspace = true
+parking_lot.workspace = true
+rmcp = { version = "1.7", features = ["server", "macros", "transport-io", "schemars"] }
+schemars = "1.0"
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+tokio = { workspace = true, features = ["rt-multi-thread", "io-std", "macros", "sync"] }
+tonic = { workspace = true, features = ["transport"] }
+
+
+[dev-dependencies]
+insta.workspace = true

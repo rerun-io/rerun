@@ -116,6 +116,8 @@ pub struct LineStrips3D {
     pub radii: Option<SerializedComponentBatch>,
 
     /// Optional colors for the line strips.
+    ///
+    /// The alpha channel is ignored.
     pub colors: Option<SerializedComponentBatch>,
 
     /// Optional text labels for the line strips.
@@ -262,7 +264,7 @@ impl LineStrips3D {
 impl ::re_types_core::Archetype for LineStrips3D {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        ::re_types_core::external::re_string_interner::intern_static!(
+        ::re_types_core::external::re_string_interner::intern_static_nonempty!(
             ::re_types_core::ArchetypeName,
             "rerun.archetypes.LineStrips3D"
         )
@@ -501,6 +503,8 @@ impl LineStrips3D {
     }
 
     /// Optional colors for the line strips.
+    ///
+    /// The alpha channel is ignored.
     #[inline]
     pub fn with_colors(
         mut self,

@@ -27,6 +27,9 @@ class McapReader:
         decoders: Sequence[str] | None = None,
         include_topic_regex: Sequence[str] | None = None,
         exclude_topic_regex: Sequence[str] | None = None,
+        start_time_ns: int | None = None,
+        end_time_ns: int | None = None,
+        recover: bool = False,
     ) -> None:
         """
         Construct a new MCAP reader.
@@ -52,6 +55,21 @@ class McapReader:
         exclude_topic_regex:
             Optional list of regex patterns. Topics matching any pattern are
             skipped. Applied after includes. Same syntax as `include_topic_regex`.
+        start_time_ns:
+            Optional inclusive lower bound on the raw MCAP `log_time` (nanoseconds).
+            Messages before this time are skipped. `None` leaves the range open at the start.
+        end_time_ns:
+            Optional exclusive upper bound on the raw MCAP `log_time` (nanoseconds).
+            Messages at or after this time are skipped. `None` leaves the range open
+            at the end.
+        recover:
+            Whether to recover a missing or invalid MCAP summary in memory. Our reader normally
+            requires the summary + chunk index that live at the end of the file, so an interrupted
+            recording (valid start, truncated tail, no footer/summary) fails to read. When `recover`
+            is set, the summary is reconstructed from a front-to-back scan instead: the incomplete
+            tail chunk/record is dropped with a warning, and any channel declared only in the
+            dropped tail is lost. The recovered statistics only count the channels and messages that
+            could be recovered. Healthy files are unaffected.
 
         """
         self._internal = McapReaderInternal(
@@ -61,11 +79,33 @@ class McapReader:
             decoders=list(decoders) if decoders is not None else None,
             include_topic_regex=list(include_topic_regex) if include_topic_regex is not None else None,
             exclude_topic_regex=list(exclude_topic_regex) if exclude_topic_regex is not None else None,
+            start_time_ns=start_time_ns,
+            end_time_ns=end_time_ns,
+            recover=recover,
         )
 
-    def stream(self) -> LazyChunkStream:
-        """Return a lazy stream over all chunks in the MCAP file."""
-        return LazyChunkStream(self._internal.stream())
+    def stream(
+        self,
+        *,
+        start_time_ns: int | None = None,
+        end_time_ns: int | None = None,
+    ) -> LazyChunkStream:
+        """
+        Return a lazy stream over the chunks in the MCAP file.
+
+        `start_time_ns` and `end_time_ns` override the values passed to the constructor, for this
+        scan only. If either `start_time_ns` or `end_time_ns` are provided both are reset.
+        """
+        return LazyChunkStream(
+            self._internal.stream(
+                start_time_ns=start_time_ns,
+                end_time_ns=end_time_ns,
+            )
+        )
+
+    def time_bounds(self) -> tuple[int, int]:
+        """Return the `(min, max)` MCAP `log_time` bounds (nanoseconds, inclusive)."""
+        return self._internal.time_bounds()
 
     @property
     def path(self) -> Path:

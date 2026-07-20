@@ -18,6 +18,7 @@ use web_time::Instant;
 
 use super::{Time, Timescale};
 use crate::nalu::AnnexBStreamWriteError;
+use crate::player::GetVideoSource;
 use crate::{
     Chunk, StableIndexDeque, TrackId, TrackKind, write_avc_chunk_to_annexb,
     write_hevc_chunk_to_annexb,
@@ -710,7 +711,7 @@ impl VideoDataDescription {
 
     /// `num_frames / duration`.
     ///
-    /// Note that the video could have a variable framerate!
+    /// Note that the video could have a variable frame rate!
     #[inline]
     pub fn average_fps(&self) -> Option<f32> {
         self.duration().map(|duration| {
@@ -720,6 +721,37 @@ impl VideoDataDescription {
             // so we don't have a fence-post problem here!
             num_frames as f32 / duration.as_secs_f32()
         })
+    }
+
+    /// Average bitrate in bits per second.
+    ///
+    /// Computed over the samples whose byte size is currently known (i.e. those with a
+    /// [`VideoSource::Span`] source). For a fully loaded video asset this is the bitrate of the
+    /// whole video; for a partially downloaded video it is the average bitrate over the portion
+    /// that has arrived so far.
+    ///
+    /// Returns `None` if no sample sizes are known (e.g. video streams whose bytes live in
+    /// external chunks) or if the covered duration is zero.
+    pub fn average_bitrate(&self) -> Option<f64> {
+        let timescale = self.timescale?;
+
+        let mut total_bytes: u64 = 0;
+        let mut total_secs = 0.0;
+        for state in self.samples.iter() {
+            let Some(sample) = state.sample() else {
+                continue;
+            };
+            let VideoSource::Span(span) = sample.source else {
+                continue;
+            };
+            let Some(duration) = sample.duration else {
+                continue;
+            };
+            total_bytes += span.len;
+            total_secs += duration.into_secs(timescale);
+        }
+
+        (total_secs > 0.0).then(|| total_bytes as f64 * 8.0 / total_secs)
     }
 
     /// Determines the video timestamps of all present frames inside a video, returning raw time values.
@@ -1058,7 +1090,7 @@ impl SampleMetadataState {
 pub enum VideoSource {
     /// The bytes occupy this byte range within a single source buffer the user
     /// already knows about. Used for e.g. mp4 assets.
-    Span(#[size_bytes(ignore)] /* pod without size bytes impl */ Span<u32>),
+    Span(#[size_bytes(ignore)] /* pod without size bytes impl */ Span<u64>),
 
     /// An identifier pair the host resolves to the sample's bytes.
     ///
@@ -1162,12 +1194,8 @@ impl SampleMetadata {
     ///
     /// Returns `None` if the sample is out of bounds, which can only happen
     /// if `data` is not the original video data.
-    pub fn get<'a>(
-        &self,
-        get_video_chunk: &dyn Fn(VideoSource) -> &'a [u8],
-        sample_idx: SampleIndex,
-    ) -> Option<Chunk> {
-        let bytes = get_video_chunk(self.source);
+    pub fn get(&self, video_source: &dyn GetVideoSource, sample_idx: SampleIndex) -> Option<Chunk> {
+        let bytes = video_source.get_video_chunk(self.source);
 
         if bytes.is_empty() {
             return None;
@@ -1275,7 +1303,7 @@ impl std::fmt::Debug for VideoDataDescription {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::nalu::ANNEXB_NAL_START_CODE;
+    use crate::{nalu::ANNEXB_NAL_START_CODE, player::VideoSliceSource};
 
     #[test]
     fn test_latest_sample_index_at_presentation_timestamp() {
@@ -1399,13 +1427,17 @@ mod tests {
         data.windows(4).any(|w| w == ANNEXB_NAL_START_CODE)
     }
 
-    fn video_test_file_mp4(codec: &VideoCodec, need_dts_equal_pts: bool) -> std::path::PathBuf {
-        let workspace_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+    fn workspace_dir() -> std::path::PathBuf {
+        std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .parent()
             .and_then(|p| p.parent())
             .and_then(|p| p.parent())
             .unwrap()
-            .to_path_buf();
+            .to_path_buf()
+    }
+
+    fn video_test_file_mp4(codec: &VideoCodec, need_dts_equal_pts: bool) -> std::path::PathBuf {
+        let workspace_dir = workspace_dir();
 
         let codec_str = match codec {
             VideoCodec::H264 => "h264",
@@ -1446,13 +1478,7 @@ mod tests {
             let chunk = sample
                 .sample()
                 .unwrap()
-                .get(
-                    &|source| match source {
-                        VideoSource::Span(span) => &data[span.range_usize()],
-                        VideoSource::Id { .. } => &[],
-                    },
-                    sample_idx,
-                )
+                .get(&VideoSliceSource(&data), sample_idx)
                 .unwrap();
             let converted = video_data.sample_data_in_stream_format(&chunk).unwrap();
 
@@ -1493,6 +1519,22 @@ mod tests {
             VideoCodec::VP9,
         ] {
             test_video_codec_sampling(&codec, false);
+        }
+    }
+
+    #[test]
+    fn test_unsupported_codec_reports_codec_not_missing_track() {
+        // A video file whose track uses a codec we don't support, such as MPEG-4 Part 2,
+        // should report the unsupported codec rather than claim the file has no video track.
+        let data =
+            std::fs::read(workspace_dir().join("tests/assets/video/mpeg4_part2.mp4")).unwrap();
+
+        match VideoDataDescription::load_from_bytes(&data, "video/mp4", "mpeg4_part2") {
+            Err(VideoLoadError::UnsupportedCodec(fourcc)) => {
+                assert_eq!(fourcc, re_mp4::FourCC::from(*b"mp4v"));
+            }
+            Err(other) => panic!("expected UnsupportedCodec, got {other:?}"),
+            Ok(_) => panic!("expected loading MPEG-4 Part 2 to fail"),
         }
     }
 

@@ -228,7 +228,7 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
                 }
 
                 // Only add the center to the bounding box - the lines may be dependent on the bounding box, causing a feedback loop otherwise.
-                data.add_bounding_box(
+                data.add_bounding_box_3d(
                     data_result.entity_path.hash(),
                     macaw::BoundingBox::ZERO,
                     *world_from_obj,
@@ -254,6 +254,7 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
                     *world_from_obj,
                     Some(&data_result.entity_path),
                     axis_length,
+                    Axes::Xyz,
                     outline_mask,
                     instance_index as u64,
                 );
@@ -266,12 +267,20 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
     }
 }
 
+/// Which axes to draw.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Axes {
+    Xy,
+    Xyz,
+}
+
 pub fn add_axis_arrows(
     tokens: &re_ui::DesignTokens,
     line_builder: &mut re_renderer::LineDrawableBuilder<'_>,
     world_from_obj: glam::Affine3A,
     ent_path: Option<&EntityPath>,
     axis_length: f32,
+    axes: Axes,
     outline_mask_ids: re_renderer::OutlineMaskPreference,
     instance_index: u64,
 ) {
@@ -310,13 +319,15 @@ pub fn add_axis_arrows(
                 | LineStripFlags::STRIP_FLAG_CAP_START_ROUND,
         )
         .picking_instance_id(picking_instance_id);
-    line_batch
-        .add_segment(glam::Vec3::ZERO, glam::Vec3::Z * axis_length)
-        .radius(line_radius)
-        .color(tokens.axis_color_z)
-        .flags(
-            LineStripFlags::STRIP_FLAG_CAP_END_TRIANGLE
-                | LineStripFlags::STRIP_FLAG_CAP_START_ROUND,
-        )
-        .picking_instance_id(picking_instance_id);
+    if axes == Axes::Xyz {
+        line_batch
+            .add_segment(glam::Vec3::ZERO, glam::Vec3::Z * axis_length)
+            .radius(line_radius)
+            .color(tokens.axis_color_z)
+            .flags(
+                LineStripFlags::STRIP_FLAG_CAP_END_TRIANGLE
+                    | LineStripFlags::STRIP_FLAG_CAP_START_ROUND,
+            )
+            .picking_instance_id(picking_instance_id);
+    }
 }

@@ -7,7 +7,9 @@ use egui::ScrollArea;
 use egui::containers::menu;
 use egui::containers::menu::{MenuButton, MenuConfig};
 use re_ui::menu::menu_style;
-use re_ui::{UICommand, UICommandSender as _, UiExt as _, icons};
+use re_ui::{
+    RecordingCommand, RecordingCommandKind, UICommand, UICommandSender as _, UiExt as _, icons,
+};
 use re_viewer_context::ActiveStoreContext;
 
 use crate::App;
@@ -83,8 +85,10 @@ impl App {
 
         ui.add_space(SPACING);
 
-        UICommand::Undo.menu_button_ui(ui, &self.command_sender); // TODO(emilk): only enabled if there is something to undo
-        UICommand::Redo.menu_button_ui(ui, &self.command_sender); // TODO(emilk): only enabled if there is something to redo
+        let recording_id = _store_context.map(|ctx| ctx.recording_store_id());
+
+        RecordingCommandKind::Undo.menu_button_ui(ui, recording_id, &self.command_sender); // TODO(emilk): only enabled if there is something to undo
+        RecordingCommandKind::Redo.menu_button_ui(ui, recording_id, &self.command_sender); // TODO(emilk): only enabled if there is something to redo
 
         UICommand::ToggleCommandPalette.menu_button_ui(ui, &self.command_sender);
 
@@ -97,12 +101,8 @@ impl App {
 
         self.save_buttons_ui(ui, _store_context);
 
-        UICommand::SaveBlueprint.menu_button_ui(ui, &self.command_sender);
-
-        let has_recording = _store_context.is_some();
-        ui.add_enabled_ui(has_recording, |ui| {
-            UICommand::CloseCurrentRecording.menu_button_ui(ui, &self.command_sender);
-        });
+        RecordingCommandKind::SaveBlueprint.menu_button_ui(ui, recording_id, &self.command_sender);
+        RecordingCommandKind::Close.menu_button_ui(ui, recording_id, &self.command_sender);
 
         ui.add_space(SPACING);
 
@@ -134,7 +134,11 @@ impl App {
             UICommand::OpenProfiler.menu_button_ui(ui, &self.command_sender);
 
             UICommand::ToggleDevPanel.menu_button_ui(ui, &self.command_sender);
-            UICommand::ToggleChunkStoreBrowser.menu_button_ui(ui, &self.command_sender);
+            RecordingCommandKind::ToggleChunkStoreBrowser.menu_button_ui(
+                ui,
+                recording_id,
+                &self.command_sender,
+            );
 
             #[cfg(debug_assertions)]
             UICommand::ToggleEguiDebugPanel.menu_button_ui(ui, &self.command_sender);
@@ -156,7 +160,12 @@ impl App {
             )
             .ui(ui, |ui| {
                 ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
-                debug_menu_options_ui(ui, &mut self.state.app_options, &self.command_sender);
+                debug_menu_options_ui(
+                    ui,
+                    &mut self.state.app_options,
+                    recording_id,
+                    &self.command_sender,
+                );
 
                 ui.label("egui debug options:");
                 ui.weak(format!("pixels_per_point: {:?}", ui.pixels_per_point()));
@@ -177,12 +186,12 @@ impl App {
     }
 
     fn save_buttons_ui(&self, ui: &mut egui::Ui, store_ctx: Option<&ActiveStoreContext<'_>>) {
-        use re_ui::UICommandSender as _;
+        use re_ui::RecordingCommandSender as _;
 
         let file_save_in_progress = self.background_tasks.is_file_save_in_progress();
 
-        let save_recording_button = UICommand::SaveRecording.menu_button(ui.ctx());
-        let save_selection_button = UICommand::SaveRecordingSelection.menu_button(ui.ctx());
+        let save_recording_button = RecordingCommandKind::Save.menu_button(ui.ctx());
+        let save_selection_button = RecordingCommandKind::SaveTimeSelection.menu_button(ui.ctx());
 
         if file_save_in_progress {
             ui.add_enabled_ui(false, |ui| {
@@ -196,23 +205,29 @@ impl App {
                 });
             });
         } else {
-            let entity_db_is_nonempty =
-                store_ctx.is_some_and(|ctx| 0 < ctx.recording.num_physical_chunks());
-            ui.add_enabled_ui(entity_db_is_nonempty, |ui| {
+            let recording_id = store_ctx
+                .filter(|ctx| 0 < ctx.recording.num_physical_chunks())
+                .map(|ctx| ctx.recording.store_id());
+            ui.add_enabled_ui(recording_id.is_some(), |ui| {
                 if ui
                     .add(save_recording_button)
                     .on_hover_text("Save all data to a Rerun data file (.rrd)")
                     .clicked()
+                    && let Some(recording_id) = recording_id
                 {
                     ui.close();
-                    self.command_sender.send_ui(UICommand::SaveRecording);
+                    self.command_sender
+                        .send_recording_command(RecordingCommand {
+                            recording_id: recording_id.clone(),
+                            kind: RecordingCommandKind::Save,
+                        });
                 }
 
                 // We need to know the loop selection _before_ we can even display the
                 // button, as this will determine whether its grayed out or not!
                 // TODO(cmc): In practice the loop (green) selection is always there
                 // at the moment so…
-                let loop_selection = self.state.loop_selection(store_ctx);
+                let loop_selection = store_ctx.and_then(|ctx| ctx.loop_selection());
 
                 if ui
                     .add_enabled(loop_selection.is_some(), save_selection_button)
@@ -220,10 +235,14 @@ impl App {
                         "Save data for the current loop selection to a Rerun data file (.rrd)",
                     )
                     .clicked()
+                    && let Some(recording_id) = recording_id
                 {
                     ui.close();
                     self.command_sender
-                        .send_ui(UICommand::SaveRecordingSelection);
+                        .send_recording_command(RecordingCommand {
+                            recording_id: recording_id.clone(),
+                            kind: RecordingCommandKind::SaveTimeSelection,
+                        });
                 }
             });
         }
@@ -495,6 +514,7 @@ use re_viewer_context::CommandSender;
 fn debug_menu_options_ui(
     ui: &mut egui::Ui,
     app_options: &mut re_viewer_context::AppOptions,
+    active_recording_id: Option<&re_log_types::StoreId>,
     command_sender: &CommandSender,
 ) {
     use re_ui::UiExt as _;
@@ -519,7 +539,11 @@ fn debug_menu_options_ui(
         re_log::info!("Logging some info");
     }
 
-    UICommand::ToggleBlueprintInspectionPanel.menu_button_ui(ui, command_sender);
+    RecordingCommandKind::ToggleBlueprintInspectionPanel.menu_button_ui(
+        ui,
+        active_recording_id,
+        command_sender,
+    );
 
     ui.horizontal(|ui| {
         ui.label("Blueprint GC:");

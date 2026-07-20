@@ -58,8 +58,8 @@ impl Ros2MessageParser for ImuMessageParser {
 
 impl MessageParser for ImuMessageParser {
     fn append(&mut self, ctx: &mut ParserContext, msg: &mcap::Message<'_>) -> anyhow::Result<()> {
-        let imu = cdr::try_decode_message::<sensor_msgs::Imu>(msg.data.as_ref())
-            .map_err(|err| Error::Other(anyhow::anyhow!(err)))?;
+        let imu =
+            cdr::try_decode_message::<sensor_msgs::Imu>(msg.data.as_ref()).map_err(Error::other)?;
 
         // add the sensor timestamp to the context, `log_time` and `publish_time` are added automatically
         ctx.add_timestamp_cell(crate::util::TimestampCell::from_nanos_ros2(

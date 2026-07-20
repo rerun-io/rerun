@@ -45,22 +45,41 @@ working set stays bounded.
 
 1. `SegmentStreamExec::execute` is the DataFusion entry point. For each output
    partition it spawns:
-   - one **CPU worker** task (`chunk_store_cpu_worker_thread`)
-   - one **IO loop** task (`chunk_stream_io_loop`)
+   - one **CPU worker** task (`chunk_store_cpu_worker_thread`), onto the process-global CPU runtime (see [threading model](#threading-model-the-shared-cpu-runtime))
+   - one **IO loop** task (`chunk_stream_io_loop`), onto the ambient runtime that first polls the output stream
    connected by a single bounded `tokio::mpsc` channel carrying `CpuWorkerMsg`.
 
-2. The IO loop iterates the partition's `chunk_info` rows
-   (already grouped by segment), groups fetches into target-sized batches
-   (`create_request_batches`), and dispatches them via `buffer_unordered`.
+2. The IO loop iterates the partition's `chunk_info` rows (already grouped by segment), groups fetches into target-sized batches (`create_request_batches`), and assigns those batches to segment waves of at most `MAX_CONCURRENT_SEGMENTS` segments.
 
-3. Each fetch task reserves bytes from the shared `PipelineBudget` *before*
-   the actual fetch starts, then commits the post-decode delta via
-   `ReservationGuard::commit` and pushes decoded chunks downstream.
+3. Before a wave can allocate CPU-worker state or enter the fetch buffer, the IO loop admits that wave through `PipelineBudget`'s segment-count gate with a zero-byte reservation.
+   Within the admitted wave, each fetch task reserves bytes from the shared `PipelineBudget` *before* the actual fetch starts, then commits the post-decode delta via `ReservationGuard::commit` and pushes decoded chunks downstream.
 
 4. The CPU worker keys a `HashMap<SegmentId, CurrentStores>` and routes
    incoming chunks to the right per-segment in-memory `ChunkStore`. After
    every chunk insert it runs `flush_incremental` to emit any rows the safe
    horizon now allows and GC any chunks the horizon has passed.
+
+## Threading model: the shared CPU runtime
+
+The two tasks above run on different Tokio runtimes, and the split is deliberate:
+
+- The **IO loop** runs on the ambient runtime — whichever runtime drives the output stream (captured via `Handle::current()` on first poll).
+- The **CPU worker** runs on a dedicated multi-threaded runtime shared by the whole process (`CpuRuntime` in `dataframe_query_provider.rs`).
+
+`CpuRuntime::try_get` creates the runtime lazily on first use and holds it in a `static`.
+It is never dropped, so its worker threads (named `datafusion_cpu_worker`) persist for the lifetime of the process.
+Every `SegmentStreamExec` — across concurrent queries, sessions, and scan leaves — spawns its `cpu_worker` tasks onto this one pool.
+This is the canonical "one dedicated CPU executor per process" design (DataFusion's `thread_pools` example, derived from InfluxDB IOx), and it buys two properties:
+
+1. **IO stays responsive under CPU load.**
+   The worker's store inserts, horizon-driven emits, and GC are CPU-bound; running them on the ambient runtime would starve gRPC polling and stream consumers.
+2. **Total CPU threads are bounded per process.**
+   A query's `target_partitions` only governs how many `cpu_worker` *tasks* it spawns; the tasks queue onto the fixed-size pool, so N concurrent queries share threads instead of multiplying them.
+
+### Sizing
+
+The pool gets one thread per available core, overridable via the `RERUN_SDK_NUM_CPUS` environment variable (parsed, clamped to `[1, available cores]`, and cached at first read — see `cpu_count.rs`).
+The same variable also sets `datafusion.execution.target_partitions` for Python catalog sessions (`catalog_client.rs` in `rerun_py`), so one knob scales plan fan-out and pool width together.
 
 ## Per-segment lifecycle
 
@@ -147,10 +166,9 @@ reasons:
    across the worker still scales with the number of open segments times
    each manifest's size. A bounded segment count caps that aggregate.
 
-The cap is admitted **atomically with the byte reservation** under the
-`active_segments` lock in `PipelineBudget::try_admit`. Admitting only a
-representative segment_id would let a multi-segment fetch from
-`create_request_batches` stealth-open additional segments past the cap.
+The cap is admitted under the `active_segments` lock in `PipelineBudget::try_admit` before a segment wave is allowed to allocate CPU-worker state or enter the fetch buffer.
+Fetches inside an admitted wave still reserve bytes before decode, but they no longer use the fetch-concurrency buffer to wait for not-yet-admissible future segments.
+Admitting only a representative segment_id would let a multi-segment fetch from `create_request_batches` stealth-open additional segments past the cap.
 
 ### 4. Do not add a CPU-side `publish_segment_started` path back
 
@@ -181,13 +199,10 @@ reservation. Concrete failure:
    is now advisory; the per-segment HashMap + manifest cost the cap
    exists to bound can blow up unboundedly.
 
-The fix is to fire the signal on the IO side, atomically with the
-byte reservation, under the same `active_segments` lock that admits
-the bytes. `PipelineBudget::try_admit` takes `(segment_ids, bytes)`
-together: either both gates clear and the slots + bytes are taken,
-or neither is and the caller parks. The IO side already knows which
-segments a batch covers (from `create_request_batches`), so it has
-everything it needs at admission time.
+The fix is to fire the signal on the IO side, under the same `active_segments` lock that admits byte reservations.
+`PipelineBudget::try_admit` takes `(segment_ids, bytes)` together: either both gates clear and the slots + bytes are taken, or neither is and the caller parks.
+The segment-wave scheduler uses the same path with a zero-byte reservation before it sends CPU metadata or starts fetches for that wave.
+The IO side already knows which segments a batch covers (from `create_request_batches`), so it has everything it needs at admission time.
 
 `publish_segment_finalized` is the symmetric counterpart but lives on
 the *CPU* side, and that asymmetry is deliberate. Finalization

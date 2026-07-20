@@ -54,7 +54,7 @@ impl SelectionPanel {
         viewport: &ViewportBlueprint,
         view_states: &mut ViewStates,
         ui: &mut egui::Ui,
-        expanded: bool,
+        expanded: &mut bool,
     ) {
         let screen_width = ui.content_rect().width();
 
@@ -74,7 +74,7 @@ impl SelectionPanel {
                 ..Default::default()
             });
 
-        panel.show_animated_inside(ui, expanded, |ui: &mut egui::Ui| {
+        panel.show_collapsible(ui, expanded, |ui: &mut egui::Ui| {
             ui.panel_content(|ui| {
                 let hover = "The selection view contains information and options about \
                     the currently selected object(s)";
@@ -379,20 +379,18 @@ impl SelectionPanel {
                 self.view_selection_ui(ctx, ui, viewport, view_id, view_states);
             }
 
-            Item::DataResult(data_result) => {
-                if data_result.instance_path.is_all() {
-                    entity_selection_ui(
-                        ctx,
-                        ui,
-                        &data_result.instance_path.entity_path,
-                        viewport,
-                        &data_result.view_id,
-                        view_states,
-                    );
-                } else {
-                    // NOTE: not implemented when a single instance is selected
-                }
+            Item::DataResult(data_result) if data_result.instance_path.is_all() => {
+                // NOTE: not implemented when a single instance is selected
+                entity_selection_ui(
+                    ctx,
+                    ui,
+                    &data_result.instance_path.entity_path,
+                    viewport,
+                    &data_result.view_id,
+                    view_states,
+                );
             }
+
             _ => {}
         }
     }
@@ -819,9 +817,10 @@ To learn more about coordinate frames, see the [Spaces & Transforms](https://rer
         });
 
     if frame_id_before.is_empty() {
-        ui.warning_label(
-            "Transform relation can't be resolved due to empty coordinate frame name.",
-        );
+        ui.warning_label(format!(
+            "CoordinateFrame has an empty frame ID; falling back to the implicit frame {:?}.",
+            TransformFrameId::from_entity_path(&data_result.entity_path).as_str(),
+        ));
     }
 
     if frame_id_before != frame_id {
@@ -1020,8 +1019,9 @@ fn entity_path_filter_ui(
     }
     if query.num_matching_entities != 0 && query.num_visualized_entities == 0 {
         // TODO(andreas): Talk about this root bit only if it's a spatial view.
+        // `NOLINT`: `EntityPath`'s debug impl doesn't quote the result.
         ui.warning_label(
-            format!("This view is not able to visualize any of the matched entities using the current root \"{origin:?}\"."),
+            format!("This view is not able to visualize any of the matched entities using the current root \"{origin:?}\"."), // NOLINT
         );
     }
 
@@ -1829,7 +1829,7 @@ mod tests {
     }
 
     /// Helper to set the active timeline on the time control.
-    fn set_active_timeline(test_context: &TestContext, timeline_name: &str) {
+    fn set_active_timeline(test_context: &TestContext, timeline_name: &'static str) {
         let store_id = test_context.active_store_id();
         test_context.send_time_commands(
             store_id,

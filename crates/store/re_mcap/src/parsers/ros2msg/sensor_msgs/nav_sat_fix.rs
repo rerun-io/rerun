@@ -3,7 +3,7 @@ use arrow::array::{FixedSizeListArray, FixedSizeListBuilder, Float64Builder};
 use re_chunk::{Chunk, ChunkId};
 use re_sdk_types::archetypes::{CoordinateFrame, GeoPoints};
 use re_sdk_types::components::LatLon;
-use re_sdk_types::{ComponentDescriptor, SerializedComponentColumn};
+use re_sdk_types::{ComponentDescriptor, ComponentIdentifier, SerializedComponentColumn};
 
 use super::super::Ros2MessageParser;
 use crate::parsers::cdr;
@@ -20,7 +20,10 @@ pub struct NavSatFixMessageParser {
 impl NavSatFixMessageParser {
     const ARCHETYPE_NAME: &str = "sensor_msgs.msg.NavSatFix";
 
-    fn create_metadata_column(name: &str, array: FixedSizeListArray) -> SerializedComponentColumn {
+    fn create_metadata_column(
+        name: impl Into<ComponentIdentifier>,
+        array: FixedSizeListArray,
+    ) -> SerializedComponentColumn {
         SerializedComponentColumn {
             list_array: array.into(),
             descriptor: ComponentDescriptor::partial(name)

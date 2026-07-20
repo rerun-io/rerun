@@ -1,6 +1,13 @@
+use std::sync::Arc;
+
 use re_chunk::{Chunk, ChunkBuilder};
+use re_log_types::external::arrow::array::{Array, Float64Array, StringArray, StructArray};
+use re_log_types::external::arrow::datatypes::{DataType, Field};
 use re_log_types::{EntityPath, TimeInt, TimePoint, Timeline};
 use re_sdk_types::blueprint::{archetypes::PlotLegend, components::Corner2D};
+use re_sdk_types::{
+    Component as _, ComponentDescriptor, DynamicArchetype, RowId, SerializedComponentBatch,
+};
 use re_test_context::TestContext;
 use re_test_context::external::egui_kittest::SnapshotResults;
 use re_test_viewport::TestContextExt as _;
@@ -102,6 +109,101 @@ fn test_clear_series_points_and_line_impl(
                 ""
             }
         ),
+        egui::vec2(300.0, 300.0),
+        None,
+    ));
+}
+
+/// A single entity carrying multiple `Float64` channels (`a`, `b`, `c`) is auto-spawned as
+/// one visualizer instruction per channel, and the channels should render with distinct colors.
+#[test]
+fn test_multi_channel_scalars_per_entity() {
+    let mut test_context = TestContext::new_with_view_class::<TimeSeriesView>();
+
+    let timeline = Timeline::log_tick();
+
+    for i in 0..32 {
+        let t = i as f64 / 5.0;
+        test_context.log_entity("channels", |builder| {
+            builder.with_archetype_auto_row(
+                [(timeline, i)],
+                &DynamicArchetype::new("channels")
+                    .with_component_from_data("a", Arc::new(Float64Array::from(vec![t.sin()])))
+                    .with_component_from_data(
+                        "b",
+                        Arc::new(Float64Array::from(vec![t.cos() + 2.0])),
+                    )
+                    .with_component_from_data(
+                        "c",
+                        Arc::new(Float64Array::from(vec![(t * 0.5).sin() - 2.0])),
+                    ),
+            )
+        });
+    }
+
+    test_context.set_active_timeline(*timeline.name());
+
+    let view_id = setup_blueprint(&mut test_context);
+    let mut snapshot_results = SnapshotResults::new();
+    snapshot_results.add(test_context.run_view_ui_and_save_snapshot(
+        view_id,
+        "multi_channel_scalars_per_entity",
+        egui::vec2(400.0, 300.0),
+        None,
+    ));
+}
+
+#[test]
+fn test_custom_scalar_component_identifier() {
+    let mut test_context = TestContext::new_with_view_class::<TimeSeriesView>();
+
+    let timeline = Timeline::log_tick();
+
+    for i in 0..32 {
+        let t = i as f64 / 5.0;
+        test_context.log_entity("custom_scalar", |builder| {
+            builder.with_archetype_auto_row(
+                [(timeline, i)],
+                &DynamicArchetype::new("custom")
+                    .with_component::<re_sdk_types::components::Scalar>("custom_scalar", [t.sin()]),
+            )
+        });
+
+        let struct_array = StructArray::from(vec![
+            (
+                Arc::new(Field::new("sin", DataType::Float64, false)),
+                Arc::new(Float64Array::from(vec![t.sin() - 2.0])) as Arc<dyn Array>,
+            ),
+            (
+                Arc::new(Field::new("cos", DataType::Float64, false)),
+                Arc::new(Float64Array::from(vec![t.cos() - 4.0])) as Arc<dyn Array>,
+            ),
+            (
+                Arc::new(Field::new("label", DataType::Utf8, false)),
+                Arc::new(StringArray::from(vec!["not plottable"])) as Arc<dyn Array>,
+            ),
+        ]);
+        test_context.log_entity("custom_struct_scalar", |builder| {
+            builder.with_serialized_batch(
+                RowId::new(),
+                [(timeline, i)],
+                SerializedComponentBatch {
+                    descriptor: ComponentDescriptor::partial("custom_struct")
+                        .with_archetype("CustomArchetype".into())
+                        .with_component_type(re_sdk_types::components::Scalar::name()),
+                    array: Arc::new(struct_array),
+                },
+            )
+        });
+    }
+
+    test_context.set_active_timeline(*timeline.name());
+
+    let view_id = setup_blueprint(&mut test_context);
+    let mut snapshot_results = SnapshotResults::new();
+    snapshot_results.add(test_context.run_view_ui_and_save_snapshot(
+        view_id,
+        "custom_scalar_component_identifier",
         egui::vec2(300.0, 300.0),
         None,
     ));
@@ -447,6 +549,55 @@ fn test_non_finite_islands() {
     ));
 }
 
+#[test]
+fn test_series_lines_single_logged_point() {
+    let mut test_context = TestContext::new_with_view_class::<TimeSeriesView>();
+    let timeline = Timeline::log_tick();
+
+    test_context.log_entity("plots/line", |builder| {
+        builder.with_archetype_auto_row(
+            TimePoint::default(),
+            &re_sdk_types::archetypes::SeriesLines::new().with_widths([8.0]),
+        )
+    });
+    test_context.log_entity("plots/line", |builder| {
+        builder.with_archetype_auto_row(
+            [(timeline, 10)],
+            &re_sdk_types::archetypes::Scalars::single(1.0),
+        )
+    });
+
+    test_context.set_active_timeline(*timeline.name());
+
+    let view_id = test_context.setup_viewport_blueprint(|ctx, blueprint| {
+        let view = ViewBlueprint::new_with_root_wildcard(TimeSeriesView::identifier());
+
+        ViewProperty::from_archetype::<re_sdk_types::blueprint::archetypes::TimeAxis>(
+            ctx.blueprint_db(),
+            ctx.blueprint_query,
+            view.id,
+        )
+        .save_blueprint_component(
+            ctx,
+            &re_sdk_types::blueprint::archetypes::TimeAxis::descriptor_view_range(),
+            &re_sdk_types::datatypes::TimeRange {
+                start: re_sdk_types::datatypes::TimeRangeBoundary::Absolute(0.into()),
+                end: re_sdk_types::datatypes::TimeRangeBoundary::Absolute(20.into()),
+            },
+        );
+
+        blueprint.add_view_at_root(view)
+    });
+
+    let mut snapshot_results = SnapshotResults::new();
+    snapshot_results.add(test_context.run_view_ui_and_save_snapshot(
+        view_id,
+        "series_lines_single_logged_point",
+        egui::vec2(300.0, 300.0),
+        None,
+    ));
+}
+
 /// Series containing only `±inf` values (no finite data).
 ///
 /// The viewer must not crash and should fall back to a sane y-range.
@@ -610,9 +761,8 @@ fn temporal_anchor_between_sequence_steps() {
 
     let chunks = &mut time_series_chunks(timeline);
 
-    // Add the first two (ticks 0 and 10). A single point would trip
-    // `line_visualizer_system.rs`'s debug-assert via util's single-point
-    // Scatter fallback, so we need at least two.
+    // Add the first two ticks so the initial snapshot has a visible segment before the
+    // anchored cursor.
     test_context.add_chunks(chunks.take(2));
     test_context.set_active_timeline(*timeline.name());
 

@@ -84,6 +84,7 @@ impl ViewportBlueprint {
         let blueprint_engine = blueprint_db.storage_engine();
 
         let results = blueprint_engine.cache().latest_at(
+            re_chunk_store::ChunkTrackingMode::Report,
             query,
             &VIEWPORT_PATH.into(),
             blueprint_archetypes::ViewportBlueprint::all_component_identifiers(),

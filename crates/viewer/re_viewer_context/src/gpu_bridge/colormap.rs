@@ -62,6 +62,7 @@ fn colormap_preview_ui(
         rect,
         colormapped_texture,
         egui::TextureOptions::LINEAR,
+        re_renderer::ViewBuilderId::new(response.id.value()),
         debug_name.into(),
     )?;
 
@@ -98,7 +99,7 @@ fn colormap_variant_ui(
 }
 
 fn colormap_category_ui(
-    ctx: &crate::StoreViewContext<'_>,
+    ctx: &crate::AppContext<'_>,
     ui: &mut egui::Ui,
     category: ColormapCategory,
     selected: &mut re_sdk_types::components::Colormap,
@@ -124,7 +125,7 @@ fn colormap_category_ui(
         .iter()
         .filter(|&&colormap| colormap.category() == category)
     {
-        response |= colormap_variant_ui(ctx.render_ctx(), ui, option, selected);
+        response |= colormap_variant_ui(ctx.render_ctx, ui, option, selected);
     }
 
     response
@@ -132,7 +133,7 @@ fn colormap_category_ui(
 
 /// Show the colormap editor/viewer with the given selection of colormap categories.
 pub fn colormap_edit_or_view_ui_with_selection(
-    ctx: &crate::StoreViewContext<'_>,
+    ctx: &crate::AppContext<'_>,
     ui: &mut egui::Ui,
     map: &mut MaybeMutRef<'_, re_sdk_types::components::Colormap>,
     selection: ColormapSelection,
@@ -167,7 +168,7 @@ pub fn colormap_edit_or_view_ui_with_selection(
     } else {
         let map: re_sdk_types::components::Colormap = **map;
         let colormap_response = {
-            let result = colormap_preview_ui(ctx.render_ctx(), ui, map);
+            let result = colormap_preview_ui(ctx.render_ctx, ui, map);
             if let Err(err) = &result {
                 re_log::error_once!("Failed to paint colormap preview: {err}");
             }
@@ -185,7 +186,7 @@ pub fn colormap_edit_or_view_ui_with_selection(
 
 /// Show the colormap editor/viewer with the standard set of colormap categories.
 pub fn colormap_edit_or_view_ui(
-    ctx: &crate::StoreViewContext<'_>,
+    ctx: &crate::AppContext<'_>,
     ui: &mut egui::Ui,
     map: &mut MaybeMutRef<'_, re_sdk_types::components::Colormap>,
 ) -> egui::Response {

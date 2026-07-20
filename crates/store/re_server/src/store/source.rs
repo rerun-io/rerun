@@ -86,7 +86,7 @@ impl Source {
     /// The unit differs by backing store and the two values are **not directly comparable**:
     ///
     /// - **Eager** layers report the in-memory heap size of the materialized chunks.
-    /// - **Lazy** layers report the on-disk IPC byte length from the RRD footer, including
+    /// - **Lazy** layers report the RRD-encoded IPC byte length from the manifest, including
     ///   each chunk's message header. Chunks are not materialized.
     ///
     /// Treat this as a rough load indicator, not a precise accounting.
@@ -109,6 +109,11 @@ impl Source {
         }
     }
 
+    /// Whether this layer holds any temporal data rather than only static data.
+    pub fn has_temporal_chunks(&self) -> bool {
+        !self.index_ranges().is_empty()
+    }
+
     pub fn schema(&self) -> Schema {
         let fields = self
             .resolved
@@ -122,8 +127,8 @@ impl Source {
         re_log_encoding::RawRrdManifest::compute_sorbet_schema_sha256(&self.schema())
     }
 
-    pub fn compute_properties(&self) -> Result<RecordBatch, super::Error> {
-        self.resolved.extract_properties()
+    pub async fn compute_properties(&self) -> Result<RecordBatch, super::Error> {
+        self.resolved.extract_properties().await
     }
 
     /// Produce a [`RawRrdManifest`] for this layer, with a `chunk_key` column already populated.
@@ -272,7 +277,7 @@ fn append_chunk_key_column(
     Ok(())
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(target_arch = "wasm32")))]
 mod tests {
     use std::collections::BTreeSet;
     use std::path::Path;
@@ -289,6 +294,7 @@ mod tests {
         example_components::{MyPoint, MyPoints},
     };
     use re_types_core::ChunkId;
+    use tokio_util::compat::TokioAsyncReadCompatExt as _;
 
     use super::*;
     use crate::store::{ChunkKey, ResolvedStore};
@@ -313,7 +319,7 @@ mod tests {
                         [(MyPoints::descriptor_points(), Some(&points as _))],
                     )
                     .build()
-                    .unwrap();
+                    .expect("test chunk should be valid");
                 chunks.push(Arc::new(chunk));
             }
         }
@@ -325,20 +331,24 @@ mod tests {
             row_id: *re_chunk::RowId::ZERO,
             info: StoreInfo::new(store_id.clone(), StoreSource::Unknown),
         });
-        let mut file = std::fs::File::create(path).unwrap();
+        let mut file = std::fs::File::create(path).expect("failed to create test RRD file");
         let mut encoder = re_log_encoding::Encoder::new_eager(
             re_log_encoding::CrateVersion::LOCAL,
             EncodingOptions::PROTOBUF_COMPRESSED,
             &mut file,
         )
-        .unwrap();
-        encoder.append(&set_store_info).unwrap();
+        .expect("failed to create test RRD encoder");
+        encoder
+            .append(&set_store_info)
+            .expect("failed to write test store info");
         for chunk in chunks {
-            let arrow_msg = chunk.to_arrow_msg().unwrap();
+            let arrow_msg = chunk
+                .to_arrow_msg()
+                .expect("test chunk should encode as arrow");
             let msg = LogMsg::ArrowMsg(store_id.clone(), arrow_msg);
-            encoder.append(&msg).unwrap();
+            encoder.append(&msg).expect("failed to write test chunk");
         }
-        encoder.finish().unwrap();
+        encoder.finish().expect("failed to finish test RRD");
     }
 
     /// Single-layer equivalence: a Lazy-backed layer and an Eager-backed layer holding the same
@@ -346,9 +356,9 @@ mod tests {
     /// IDs, entity paths, staticness, row counts, schema shape, decodable `chunk_key`s).
     ///
     /// Byte-size/offset columns are intentionally NOT compared: per the `RawRrdManifest`
-    /// docstring, Lazy reports on-disk IPC sizes while Eager reports heap sizes.
-    #[test]
-    fn rrd_manifest_lazy_and_eager_produce_equivalent_output() {
+    /// docstring, Lazy reports RRD-encoded IPC sizes while Eager reports heap sizes.
+    #[tokio::test]
+    async fn rrd_manifest_lazy_and_eager_produce_equivalent_output() {
         let (store_id, chunks) = build_chunks();
 
         // Eager backend: in-memory `ChunkStore`. `ALL_DISABLED` matches `LazyStore`'s internal
@@ -356,11 +366,12 @@ mod tests {
         // merge them and the manifests would no longer be row-wise comparable).
         let mut eager_store = ChunkStore::new(store_id.clone(), ChunkStoreConfig::ALL_DISABLED);
         for chunk in &chunks {
-            eager_store.insert_chunk(chunk).unwrap();
+            eager_store
+                .insert_chunk(chunk)
+                .expect("failed to insert test chunk");
         }
         let test_layer_info = Arc::new(LayerInfo {
             name: re_types_core::LayerName::base(),
-            layer_class: re_types_core::LayerClass::Segment,
         });
         let eager_layer = Source::new(
             StoreSlotId::new(),
@@ -370,18 +381,27 @@ mod tests {
         );
 
         // Lazy backend: same chunks, written to an RRD file with footer, then loaded lazily.
-        let dir = tempfile::tempdir().unwrap();
+        let dir = tempfile::tempdir().expect("failed to create temp dir");
         let rrd_path = dir.path().join("test.rrd");
         write_rrd(&rrd_path, &store_id, &chunks);
 
-        let mut footer_file = std::fs::File::open(&rrd_path).unwrap();
+        let mut footer_file = tokio::fs::File::open(&rrd_path)
+            .await
+            .expect("failed to open test RRD")
+            .compat();
         let footer = re_log_encoding::read_rrd_footer(&mut footer_file)
-            .unwrap()
-            .unwrap();
+            .await
+            .expect("failed to read test RRD footer")
+            .expect("test RRD should have a footer");
         let raw_manifest = Arc::new(footer.manifests[&store_id].clone());
-        let store_file = std::fs::File::open(&rrd_path).unwrap();
-        let provider =
-            Arc::new(RrdChunkProvider::try_from_file(store_file, &rrd_path, raw_manifest).unwrap());
+        let store_file = tokio::fs::File::open(&rrd_path)
+            .await
+            .expect("failed to open test RRD")
+            .compat();
+        let provider = Arc::new(
+            RrdChunkProvider::from_reader(store_file, rrd_path.display().to_string(), raw_manifest)
+                .expect("failed to create test RRD chunk provider"),
+        );
         let lazy = Arc::new(LazyStore::new(provider));
         let lazy_layer = Source::new(
             StoreSlotId::new(),
@@ -390,8 +410,12 @@ mod tests {
             test_layer_info,
         );
 
-        let lazy_manifest = lazy_layer.rrd_manifest().unwrap();
-        let eager_manifest = eager_layer.rrd_manifest().unwrap();
+        let lazy_manifest = lazy_layer
+            .rrd_manifest()
+            .expect("lazy layer should produce a manifest");
+        let eager_manifest = eager_layer
+            .rrd_manifest()
+            .expect("eager layer should produce a manifest");
 
         // Row counts match.
         assert_eq!(
@@ -401,27 +425,48 @@ mod tests {
         );
 
         // Chunk IDs match as sets (per-row order is not part of the contract).
-        let lazy_ids: BTreeSet<ChunkId> = lazy_manifest.col_chunk_id().unwrap().collect();
-        let eager_ids: BTreeSet<ChunkId> = eager_manifest.col_chunk_id().unwrap().collect();
+        let lazy_ids: BTreeSet<ChunkId> = lazy_manifest
+            .col_chunk_id()
+            .expect("lazy manifest should contain chunk IDs")
+            .collect();
+        let eager_ids: BTreeSet<ChunkId> = eager_manifest
+            .col_chunk_id()
+            .expect("eager manifest should contain chunk IDs")
+            .collect();
         assert_eq!(lazy_ids, eager_ids, "chunk IDs differ");
 
         // Compare per-chunk metadata. Both manifests may list chunks in different orders, so
         // sort by chunk_id first.
         let sort_by_chunk_id = |manifest: &RawRrdManifest| -> Vec<usize> {
-            let mut indexed: Vec<(usize, ChunkId)> =
-                manifest.col_chunk_id().unwrap().enumerate().collect();
+            let mut indexed: Vec<(usize, ChunkId)> = manifest
+                .col_chunk_id()
+                .expect("manifest should contain chunk IDs")
+                .enumerate()
+                .collect();
             indexed.sort_by_key(|(_, id)| *id);
             indexed.into_iter().map(|(i, _)| i).collect()
         };
         let lazy_order = sort_by_chunk_id(&lazy_manifest);
         let eager_order = sort_by_chunk_id(&eager_manifest);
 
-        let lazy_entity_paths = lazy_manifest.col_chunk_entity_path_raw().unwrap();
-        let eager_entity_paths = eager_manifest.col_chunk_entity_path_raw().unwrap();
-        let lazy_is_static = lazy_manifest.col_chunk_is_static_raw().unwrap();
-        let eager_is_static = eager_manifest.col_chunk_is_static_raw().unwrap();
-        let lazy_num_rows = lazy_manifest.col_chunk_num_rows_raw().unwrap();
-        let eager_num_rows = eager_manifest.col_chunk_num_rows_raw().unwrap();
+        let lazy_entity_paths = lazy_manifest
+            .col_chunk_entity_path_raw()
+            .expect("lazy manifest should contain entity paths");
+        let eager_entity_paths = eager_manifest
+            .col_chunk_entity_path_raw()
+            .expect("eager manifest should contain entity paths");
+        let lazy_is_static = lazy_manifest
+            .col_chunk_is_static_raw()
+            .expect("lazy manifest should contain static flags");
+        let eager_is_static = eager_manifest
+            .col_chunk_is_static_raw()
+            .expect("eager manifest should contain static flags");
+        let lazy_num_rows = lazy_manifest
+            .col_chunk_num_rows_raw()
+            .expect("lazy manifest should contain row counts");
+        let eager_num_rows = eager_manifest
+            .col_chunk_num_rows_raw()
+            .expect("eager manifest should contain row counts");
 
         for (li, ei) in std::iter::zip(&lazy_order, &eager_order) {
             assert_eq!(
@@ -463,9 +508,13 @@ mod tests {
                 .column_by_name(RawRrdManifest::FIELD_CHUNK_KEY)
                 .expect("chunk_key column missing")
                 .downcast_array_ref::<BinaryArray>()
-                .unwrap();
+                .expect("chunk_key column should be binary");
             (0..keys.len())
-                .map(|i| ChunkKey::decode(keys.value(i)).unwrap().chunk_id)
+                .map(|i| {
+                    ChunkKey::decode(keys.value(i))
+                        .expect("chunk_key should decode")
+                        .chunk_id
+                })
                 .collect()
         };
         assert_eq!(decode_keys(&lazy_manifest), lazy_ids);

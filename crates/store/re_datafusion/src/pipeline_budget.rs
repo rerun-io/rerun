@@ -58,14 +58,16 @@
 //!
 //! ## Runtime overrides
 //!
-//! The three sizing parameters can be tuned without a rebuild via
-//! environment variables:
+//! The budget sizing parameters — plus the direct-fetch concurrency cap
+//! this module also owns (see [`direct_fetch_semaphore`]) — can be tuned
+//! without a rebuild via environment variables:
 //!
-//! | Variable                          | Type   | Accepted range | Default |
-//! |-----------------------------------|--------|----------------|---------|
-//! | `RERUN_PIPELINE_BUDGET_MIN`       | size   | `> 0`          | `4GiB`  |
-//! | `RERUN_PIPELINE_BUDGET_MAX`       | size   | `> 0`          | `1TiB`  |
-//! | `RERUN_PIPELINE_BUDGET_FRACTION`  | float  | `(0.0, 1.0]`   | 1.0     |
+//! | Variable                             | Type  | Accepted range | Default |
+//! |--------------------------------------|-------|----------------|---------|
+//! | `RERUN_PIPELINE_BUDGET_MIN`          | size  | `> 0`          | `4GiB`  |
+//! | `RERUN_PIPELINE_BUDGET_MAX`          | size  | `> 0`          | `1TiB`  |
+//! | `RERUN_PIPELINE_BUDGET_FRACTION`     | float | `(0.0, 1.0]`   | 1.0     |
+//! | `RERUN_DIRECT_FETCH_MAX_CONCURRENCY` | int   | `>= 1`         | 128     |
 //!
 //! Sizes accept either a SI/IEC suffix (`64MB`, `1GiB`, `512KiB`) or a
 //! bare positive integer interpreted as bytes. Values are trimmed of
@@ -102,22 +104,28 @@
 //!
 //! # Protocol
 //!
-//! 1. **Before fetch:** IO task calls [`PipelineBudget::reserve`] with the
-//!    chunk's uncompressed size. If the budget is full, the call blocks until
-//!    budget space frees up. A parked reserver wakes when any of:
+//! 1. **Before fetch:** IO task calls [`PipelineBudget::reserve_with_priority`]
+//!    with the chunk's uncompressed size, a priority key (`task_time_min`,
+//!    earliest-first), and the distinct `segment_ids` the fetch touches.
+//!    Admission is gated on both available bytes *and* the segment-count gate
+//!    ([`MAX_CONCURRENT_SEGMENTS`]). If either is full, the call blocks. A
+//!    parked reserver wakes when any of:
 //!    - [`PipelineBudget::release`] runs on the CPU thread,
+//!    - [`PipelineBudget::publish_segment_finalized`] frees a segment slot,
 //!    - [`PipelineBudget::adjust_reservation`] shrinks an earlier reservation,
-//!    - another `reserve` succeeds with remaining headroom and cascade-wakes
-//!      the next waiter.
+//!    - another `reserve_with_priority` succeeds with remaining headroom and
+//!      cascade-wakes the next admittable waiter.
 //! 2. **After fetch:** IO task calls [`PipelineBudget::adjust_reservation`] to
 //!    correct the estimate to the actual decoded Arrow heap size.
 //! 3. **After segment finalization:** CPU thread calls
-//!    [`PipelineBudget::release`] to return freed bytes to the budget, waking
-//!    any blocked IO tasks.
+//!    [`PipelineBudget::release`] to return the segment's freed bytes and
+//!    [`PipelineBudget::publish_segment_finalized`] to vacate its slot in the
+//!    segment-count gate. Both wake blocked IO tasks; the two are independent
+//!    (bytes may be refunded incrementally, the slot only at finalization).
 //!
 //! # Exhaustion behavior
 //!
-//! When `current >= budget` and a new [`PipelineBudget::reserve`] arrives, the
+//! When `current >= budget` and a new [`PipelineBudget::reserve_with_priority`] arrives, the
 //! pipeline transitions from network-rate-limited to release-rate-limited
 //! throughput. The sequence:
 //!
@@ -137,19 +145,24 @@
 //!    out spuriously (the "thundering herd" pattern of a naive
 //!    `fetch_add → check → fetch_sub` design).
 //! 3. **Park.** On failure the task allocates a [`tokio::sync::Notify`],
-//!    pushes it onto a FIFO `wait_queue`, then **rechecks** `try_acquire` once
+//!    pushes it onto the priority `wait_queue` (a `BinaryHeap` keyed by
+//!    `task_time_min`, earliest-first), then **rechecks** `try_admit` once
 //!    more before awaiting. The recheck closes a lost-wakeup race: if a
-//!    [`PipelineBudget::release`] / [`PipelineBudget::adjust_reservation`]
-//!    fires between the initial fast-path miss and the enqueue, the recheck
-//!    observes the freed budget and the task proceeds without ever awaiting.
+//!    [`PipelineBudget::release`] / [`PipelineBudget::adjust_reservation`] /
+//!    [`PipelineBudget::publish_segment_finalized`] fires between the initial
+//!    fast-path miss and the enqueue, the recheck observes the freed budget
+//!    and the task proceeds without ever awaiting.
 //!    The first park and every tenth re-park emit an info-level backpressure
 //!    log so the condition is visible in production without needing
 //!    `RUST_LOG=debug`.
 //!
-//! Parked reservers wake from any of three sources:
+//! Parked reservers wake from any of four sources:
 //!
-//! - [`PipelineBudget::release`] (CPU thread, at segment finalization) —
+//! - [`PipelineBudget::release`] (CPU thread, as a segment's bytes free up) —
 //!   the dominant source under steady-state load.
+//! - [`PipelineBudget::publish_segment_finalized`] (CPU thread, at segment
+//!   finalization) — vacates a segment-count-gate slot for a waiter that was
+//!   blocked on the gate rather than on bytes.
 //! - [`PipelineBudget::adjust_reservation`] when `actual < reserved` (IO
 //!   thread, on fetch completion that under-ran its reservation) — refunds
 //!   the sliver between the multiplier-scaled estimate and the measured
@@ -158,9 +171,13 @@
 //!   headroom, ensuring a chain of small reservations doesn't strand a
 //!   single large waiter at the head of the queue.
 //!
-//! Wake-up order is strict FIFO via `VecDeque::pop_front`. A woken task
-//! re-enters the acquire loop from the top: a successful claim returns; a
-//! still-insufficient claim re-enqueues a fresh `Notify` and re-parks.
+//! Wake-up order is by priority: [`PipelineBudget::wake_next`] pops the
+//! lowest-`task_time_min` *admittable* waiter from the `BinaryHeap`, skipping
+//! cancelled entries and waiters still blocked on the segment-count gate so a
+//! freed budget isn't wasted on a higher-priority waiter that can't yet use
+//! it. A woken task re-enters the acquire loop from the top: a successful
+//! claim returns; a still-insufficient claim re-enqueues a fresh `Notify` and
+//! re-parks.
 //!
 //! While parked, the IO task holds its slot in the upstream
 //! `buffer_unordered` stage, so backpressure naturally propagates: the
@@ -195,11 +212,20 @@
 //!
 //! [`ChunkStore`]: re_dataframe::external::re_chunk_store::ChunkStore
 
-use std::collections::VecDeque;
+use std::cmp::Reverse;
+use std::collections::{BinaryHeap, HashSet};
 use std::sync::Arc;
+use std::sync::atomic::{
+    AtomicBool, AtomicU32, AtomicU64, AtomicUsize,
+    Ordering::{AcqRel, Acquire, Relaxed, Release},
+};
+
+use re_log_types::TimeInt;
 
 use parking_lot::Mutex;
 use tokio::sync::Notify;
+
+use crate::metrics_capture::QueryMetrics;
 
 // ---------------------------------------------------------------------------
 // Defaults are intentionally tuned to leave the budget effectively disengaged.
@@ -288,6 +314,144 @@ const MIN_ESTIMATE_MULTIPLIER: f64 = 1.0;
 /// future reservation.
 const MAX_ESTIMATE_MULTIPLIER: f64 = 3.0;
 
+/// Cap on the number of distinct segments that may be in-flight on the
+/// IO side simultaneously. Independent of the byte budget — even if
+/// bytes are available, only this many segments can have a parked
+/// fetch reservation at once. The cap keeps the CPU worker's `HashMap`
+/// of open `CurrentStores` from growing without bound under high
+/// network concurrency, which directly bounds the cross-segment
+/// reorder pressure a single safe-horizon advance has to resolve.
+///
+/// `create_request_batches` reads this constant to cap the distinct
+/// segments per merged fetch batch — without that, a small-segment
+/// workload would merge many segments into a single 8 MB fetch and
+/// every such fetch with `new_segments > MAX_CONCURRENT_SEGMENTS`
+/// would deadlock on the gate (the gate can never admit it).
+pub(crate) const MAX_CONCURRENT_SEGMENTS: usize = 3;
+
+/// Default process-wide ceiling on concurrent in-flight direct-URL fetch
+/// requests, enforced by [`direct_fetch_semaphore`].
+///
+/// The direct-fetch path has two independent `buffer_unordered` layers —
+/// `IO_PIPELINE_BUFFER` batches in flight, each fanning out to the
+/// per-batch adaptive concurrency (`calculate_adaptive_concurrency`, up to
+/// 130). Their product (~3000) is unbounded by either layer alone, and a
+/// burst that large storms the OS DNS resolver (`getaddrinfo` returns
+/// spurious `EAI_NONAME`), failing whole queries at large
+/// `--segment-batch-size`. This ceiling composes the two layers into one
+/// bound. 128 ≈ the per-batch adaptive ceiling, so a lone batch is
+/// essentially unaffected; the cap only bites when multiple batches would
+/// otherwise multiply. Overridable via [`ENV_DIRECT_FETCH_MAX_CONCURRENCY`].
+const DEFAULT_DIRECT_FETCH_MAX_CONCURRENCY: usize = 128;
+
+/// Env override for [`DEFAULT_DIRECT_FETCH_MAX_CONCURRENCY`]. A positive
+/// integer; invalid/≤0 values log an error and fall back to the default,
+/// which is then floored at 1.
+const ENV_DIRECT_FETCH_MAX_CONCURRENCY: &str = "RERUN_DIRECT_FETCH_MAX_CONCURRENCY";
+
+/// Number of consecutive `flush_incremental` calls that observed zero
+/// emittable rows while the budget was near-saturated before
+/// [`PipelineBudget`] sets `force_overcommit`. The threshold is high
+/// enough that ordinary "horizon hasn't moved yet" stalls don't trip
+/// it, but low enough that a real deadlock is broken within a few
+/// hundred ms on realistic workloads.
+const STALL_EMPTY_EMIT_THRESHOLD: u32 = 20;
+
+/// Fraction of the budget that must be in use before the stall
+/// detector even considers tripping the breaker. Without this gate, a
+/// query that genuinely has nothing to emit (waiting on slow IO with
+/// the budget mostly empty) would falsely trigger.
+const STALL_SATURATION_THRESHOLD: f64 = 0.95;
+
+/// Waiter parked on the budget's wait queue. Ordered by
+/// `task_time_min` ascending (earliest first), tie-broken by `seq`
+/// (enqueue order) so two reservers for the same `task_time_min`
+/// preserve FIFO semantics.
+///
+/// Priority is meaningful only for queries with a temporal
+/// `filtered_index`: when the CPU worker is waiting for the
+/// horizon-advancing chunk to clear the budget, that chunk's IO task
+/// has the lowest `task_time_min` and should be woken first. Static
+/// queries pass `TimeInt::MAX` to put their waiters at the back of
+/// the heap.
+struct PriorityWaiter {
+    task_time_min: TimeInt,
+    seq: u64,
+    notify: Arc<Notify>,
+
+    /// Set to `true` by the reserver when the second `try_admit`
+    /// (post-enqueue race-recovery) succeeds and the reserver returns
+    /// without ever awaiting `notify`. [`PipelineBudget::wake_next`]
+    /// drains cancelled entries on its way to a real waiter so the
+    /// "lowest-`task_time_min` orphan sits at the top of the heap and
+    /// captures every wake" failure mode of the priority queue does
+    /// not steal wake events from genuine parked waiters.
+    cancelled: Arc<AtomicBool>,
+
+    /// Reservation size and distinct segment set this waiter is parked
+    /// for. Read by [`PipelineBudget::wake_next`] to test whether the
+    /// waiter could actually be admitted right now, so a freed budget
+    /// is handed to a waiter that can use it rather than wasted on a
+    /// higher-priority waiter still blocked on the segment-count gate.
+    reserved_bytes: usize,
+    segment_ids: Vec<String>,
+}
+
+impl PartialEq for PriorityWaiter {
+    fn eq(&self, other: &Self) -> bool {
+        self.task_time_min == other.task_time_min && self.seq == other.seq
+    }
+}
+
+impl Eq for PriorityWaiter {}
+
+impl PartialOrd for PriorityWaiter {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for PriorityWaiter {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.task_time_min
+            .cmp(&other.task_time_min)
+            .then_with(|| self.seq.cmp(&other.seq))
+    }
+}
+
+/// Tracks the segments currently holding a reservation against the
+/// budget, plus the subset that was admitted past
+/// [`MAX_CONCURRENT_SEGMENTS`] via the stall-breaker `force_overcommit`
+/// bypass. Wrapped in a single [`Mutex`] so the cap check (which reads
+/// both fields) is atomic with the membership update.
+#[derive(Default)]
+struct SegmentGate {
+    /// Every segment that currently has at least one reservation
+    /// outstanding against the byte budget.
+    all: HashSet<String>,
+
+    /// Subset of `all` that was admitted while
+    /// [`PipelineBudget::force_overcommit`] was set. These segments do
+    /// NOT consume a slot of [`MAX_CONCURRENT_SEGMENTS`] for future
+    /// admissions — they are over-cap by design, and the cap contract
+    /// is restored as soon as they finalize.
+    bypass: HashSet<String>,
+}
+
+impl SegmentGate {
+    /// Effective in-flight count for cap enforcement: total in-flight
+    /// segments minus the bypass-admitted overflow.
+    fn effective_len(&self) -> usize {
+        self.all.len().saturating_sub(self.bypass.len())
+    }
+}
+
+#[derive(Clone, Copy)]
+struct AdmissionBlockers {
+    bytes: bool,
+    segments: bool,
+}
+
 /// Tracks total decoded bytes in the pipeline and enforces a memory budget.
 ///
 /// See the [module-level documentation](self) for the full design.
@@ -296,11 +460,62 @@ pub(crate) struct PipelineBudget {
     budget: usize,
 
     /// Current decoded bytes in the pipeline (IO buffers + channel + `ChunkStore`).
-    current: std::sync::atomic::AtomicUsize,
+    current: AtomicUsize,
 
-    /// FIFO queue of parked reserve-waiters. `release` and
-    /// `adjust_reservation` wake the oldest waiter first.
-    wait_queue: Mutex<VecDeque<Arc<Notify>>>,
+    /// Priority queue of parked reserve-waiters. `release` /
+    /// `adjust_reservation` / `publish_segment_finalized` wake the
+    /// **earliest-time** waiter first so the chunk that would advance
+    /// the CPU side's safe horizon preempts later-time chunks under
+    /// saturation. Ties broken by enqueue order via
+    /// [`PriorityWaiter::seq`].
+    wait_queue: Mutex<BinaryHeap<Reverse<PriorityWaiter>>>,
+
+    /// Monotonically incremented per `reserve` call to break
+    /// `task_time_min` ties in the priority heap with FIFO semantics.
+    wait_seq: AtomicU64,
+
+    /// Set of segments that currently hold a reservation against the
+    /// budget. A new `reserve` only succeeds if its full set of
+    /// `segment_ids` would not push the union past
+    /// [`MAX_CONCURRENT_SEGMENTS`]. Cleared on
+    /// [`Self::publish_segment_finalized`] (called from
+    /// `Drop for CurrentStores`) — never on `release`, because byte
+    /// release happens before the CPU worker is done with the
+    /// segment.
+    ///
+    /// `bypass` is the subset of `all` that was admitted past the cap
+    /// via [`Self::force_overcommit`]. For cap accounting,
+    /// `effective_len = all.len() - bypass.len()` — i.e.,
+    /// bypass-admitted segments do not consume a slot of the cap. This
+    /// is what restores the cap contract after the stall breaker
+    /// fires: without the bypass set, post-recovery `try_admit` calls
+    /// would block on the inflated `all.len()` until enough segments
+    /// finalize, silently breaking the cap.
+    active_segments: Mutex<SegmentGate>,
+
+    /// Consecutive `flush_incremental` calls that emitted zero rows
+    /// while the budget was near-saturated. Reset on
+    /// [`Self::notify_row_emitted`] or [`Self::release`].
+    empty_emit_count: AtomicU32,
+
+    /// Stall-detector escape hatch. When set, `reserve` bypasses both
+    /// the byte budget and the segment-count gate so a parked
+    /// horizon-advancing fetch can break out of an out-of-order
+    /// deadlock. Cleared on the next real progress signal.
+    ///
+    /// Deliberately a separate latch rather than derived from
+    /// `empty_emit_count >= STALL_EMPTY_EMIT_THRESHOLD`: the counter is
+    /// a *measurement* that [`Self::notify_empty_emit`] resets to zero
+    /// on any unsaturated empty emit, while the latch must stay armed
+    /// until *real progress* ([`Self::release`],
+    /// [`Self::notify_row_emitted`], or a shrink in
+    /// [`Self::adjust_reservation`]) disarms it. If the breaker were
+    /// derived from the counter, an unsaturated empty emit between the
+    /// stall-breaker wake and the woken waiter's `try_admit` recheck
+    /// would disarm it mid-recovery — the waiter re-parks, the stall
+    /// resumes, and the counter has to climb through the full
+    /// threshold again before the next attempt.
+    force_overcommit: AtomicBool,
 
     /// Learned multiplier applied to `reserve` estimates so reservations
     /// track true decoded size rather than the raw (often low)
@@ -310,19 +525,23 @@ pub(crate) struct PipelineBudget {
     /// and converges via EMA toward the dataset's actual
     /// `actual / estimated` ratio, clamped to
     /// `[MIN_ESTIMATE_MULTIPLIER, MAX_ESTIMATE_MULTIPLIER]`.
-    estimate_multiplier: std::sync::atomic::AtomicU64,
+    estimate_multiplier: AtomicU64,
 
     /// Highest value `current` ever reached during the lifetime of
     /// this budget. Used in the lifecycle summary emitted on `Drop`.
-    peak_current: std::sync::atomic::AtomicUsize,
+    peak_current: AtomicUsize,
+
+    /// Query-level metrics updated at admission boundaries.
+    /// Tests that construct an isolated budget leave this unset.
+    metrics: Option<Arc<QueryMetrics>>,
 
     /// Cumulative bytes ever passed to [`Self::release`]. Lifecycle
     /// summary diagnostic only.
-    total_released_bytes: std::sync::atomic::AtomicUsize,
+    total_released_bytes: AtomicUsize,
 
     /// Number of [`Self::release`] calls. Lifecycle summary
     /// diagnostic only.
-    total_releases: std::sync::atomic::AtomicU64,
+    total_releases: AtomicU64,
 
     /// Test-only seam exposing the otherwise-unobservable gap inside
     /// `reserve` between enqueuing the wait notify and the recheck
@@ -418,6 +637,25 @@ fn parse_fraction_or_default(key: &str, raw: &str, default: f64) -> f64 {
     }
 }
 
+/// Parse a positive `usize` from a pre-trimmed string, falling back to
+/// `default` when unparsable or ≤ 0.
+fn parse_usize_or_default(key: &str, raw: &str, default: usize) -> usize {
+    match raw.parse::<i64>() {
+        Ok(n) if n > 0 => n as usize,
+        Ok(_) => {
+            re_log::error!("{key}={raw:?} must be > 0; falling back to default {default}");
+            default
+        }
+        Err(err) => {
+            re_log::error!(
+                "{key}={raw:?} could not be parsed as a positive integer ({err}); \
+                 falling back to default {default}",
+            );
+            default
+        }
+    }
+}
+
 /// Resolve a byte-size environment variable, falling back to the
 /// default (in bytes) when unset, empty, unparsable, or ≤ 0. Accepts
 /// either a SI/IEC suffix (`64MB`, `1GiB`) or a bare positive integer
@@ -439,6 +677,36 @@ fn read_env_fraction(key: &str, default: f64) -> f64 {
     }
 }
 
+/// Resolve a positive-integer environment variable, falling back to the
+/// default when unset, empty, unparsable, or ≤ 0.
+fn read_env_usize(key: &str, default: usize) -> usize {
+    match read_env_trimmed(key) {
+        Some(raw) => parse_usize_or_default(key, &raw, default),
+        None => default,
+    }
+}
+
+/// Process-wide ceiling on concurrent in-flight direct-URL fetch requests.
+///
+/// See [`DEFAULT_DIRECT_FETCH_MAX_CONCURRENCY`] for why this bound exists.
+/// Resolved once from [`ENV_DIRECT_FETCH_MAX_CONCURRENCY`] on first use and
+/// shared process-wide (the exhausted resource — the DNS resolver,
+/// ephemeral ports, local socket stack — is per-process, and the fetch
+/// client is per-query, so a per-query cap would not bound co-tenant
+/// queries).
+pub(crate) fn direct_fetch_semaphore() -> &'static tokio::sync::Semaphore {
+    static SEM: std::sync::OnceLock<tokio::sync::Semaphore> = std::sync::OnceLock::new();
+    SEM.get_or_init(|| {
+        let permits = read_env_usize(
+            ENV_DIRECT_FETCH_MAX_CONCURRENCY,
+            DEFAULT_DIRECT_FETCH_MAX_CONCURRENCY,
+        )
+        .max(1);
+        re_log::debug!("direct-fetch concurrency cap = {permits}");
+        tokio::sync::Semaphore::new(permits)
+    })
+}
+
 impl PipelineBudget {
     /// Create a new budget derived from `total_uncompressed_estimate`
     /// (clamped per-partition to `[MIN_BUDGET_PER_PARTITION, MAX_BUDGET_PER_PARTITION]`,
@@ -449,7 +717,24 @@ impl PipelineBudget {
     /// [`ENV_BUDGET_FRACTION`]. Invalid values are logged at error
     /// level and the affected parameter falls back to its compile-time
     /// default.
+    #[cfg(test)]
     pub(crate) fn new(total_uncompressed_estimate: usize, num_partitions: usize) -> Self {
+        Self::new_impl(total_uncompressed_estimate, num_partitions, None)
+    }
+
+    pub(crate) fn new_with_metrics(
+        total_uncompressed_estimate: usize,
+        num_partitions: usize,
+        metrics: Arc<QueryMetrics>,
+    ) -> Self {
+        Self::new_impl(total_uncompressed_estimate, num_partitions, Some(metrics))
+    }
+
+    fn new_impl(
+        total_uncompressed_estimate: usize,
+        num_partitions: usize,
+        metrics: Option<Arc<QueryMetrics>>,
+    ) -> Self {
         let fraction = read_env_fraction(ENV_BUDGET_FRACTION, BUDGET_FRACTION);
         let mut min_per_partition = read_env_bytes(ENV_BUDGET_MIN, MIN_BUDGET_PER_PARTITION);
         let mut max_per_partition = read_env_bytes(ENV_BUDGET_MAX, MAX_BUDGET_PER_PARTITION);
@@ -472,16 +757,40 @@ impl PipelineBudget {
 
         re_log::debug!("Pipeline budget: {}MB", budget / (1024 * 1024));
 
+        Self::with_exact_budget_and_metrics(budget, metrics)
+    }
+
+    /// Construct a budget of exactly `budget` bytes with all counters
+    /// zeroed. [`Self::new`] derives its `budget` from the adaptive
+    /// sizing rules first; tests call this directly to bypass the
+    /// env-var lookup and the `MIN_BUDGET_PER_PARTITION` clamp and pin
+    /// the budget to a small known value (e.g. for stall-detector
+    /// saturation tests where `budget = 100` matters exactly).
+    #[cfg(test)]
+    fn with_exact_budget(budget: usize) -> Self {
+        Self::with_exact_budget_and_metrics(budget, None)
+    }
+
+    fn with_exact_budget_and_metrics(budget: usize, metrics: Option<Arc<QueryMetrics>>) -> Self {
+        if let Some(metrics) = &metrics {
+            metrics
+                .pipeline_budget_bytes
+                .fetch_max(u64::try_from(budget).unwrap_or(u64::MAX), Relaxed);
+        }
+
         Self {
             budget,
-            current: std::sync::atomic::AtomicUsize::new(0),
-            wait_queue: Mutex::new(VecDeque::new()),
-            estimate_multiplier: std::sync::atomic::AtomicU64::new(
-                INITIAL_ESTIMATE_MULTIPLIER.to_bits(),
-            ),
-            peak_current: std::sync::atomic::AtomicUsize::new(0),
-            total_released_bytes: std::sync::atomic::AtomicUsize::new(0),
-            total_releases: std::sync::atomic::AtomicU64::new(0),
+            current: AtomicUsize::new(0),
+            wait_queue: Mutex::new(BinaryHeap::new()),
+            wait_seq: AtomicU64::new(0),
+            active_segments: Mutex::new(SegmentGate::default()),
+            empty_emit_count: AtomicU32::new(0),
+            force_overcommit: AtomicBool::new(false),
+            estimate_multiplier: AtomicU64::new(INITIAL_ESTIMATE_MULTIPLIER.to_bits()),
+            peak_current: AtomicUsize::new(0),
+            metrics,
+            total_released_bytes: AtomicUsize::new(0),
+            total_releases: AtomicU64::new(0),
             #[cfg(test)]
             test_pause_hook: parking_lot::Mutex::new(None),
         }
@@ -492,17 +801,13 @@ impl PipelineBudget {
     /// independent of how many bytes flowed.
     #[cfg(test)]
     pub(crate) fn total_releases(&self) -> u64 {
-        self.total_releases
-            .load(std::sync::atomic::Ordering::Acquire)
+        self.total_releases.load(Acquire)
     }
 
     /// Current learned multiplier. Applied to `estimated_bytes` in
     /// `reserve` to derive the reservation size.
     fn current_multiplier(&self) -> f64 {
-        f64::from_bits(
-            self.estimate_multiplier
-                .load(std::sync::atomic::Ordering::Acquire),
-        )
+        f64::from_bits(self.estimate_multiplier.load(Acquire))
     }
 
     /// Test-only: pin the learned multiplier to a specific value so
@@ -516,11 +821,11 @@ impl PipelineBudget {
     #[cfg(test)]
     fn set_multiplier(&self, multiplier: f64) {
         self.estimate_multiplier
-            .store(multiplier.to_bits(), std::sync::atomic::Ordering::Release);
+            .store(multiplier.to_bits(), Release);
     }
 
     /// Test-only: install a pause hook that traps `reserve` between its
-    /// rollback `fetch_sub` and `wait_queue.push_back`. Returns the hook
+    /// rollback `fetch_sub` and `wait_queue.push`. Returns the hook
     /// so the test can await `arrived` (reserver reached the trap) and
     /// later fire `resume` (let it continue).
     #[cfg(test)]
@@ -538,7 +843,6 @@ impl PipelineBudget {
     /// are clamped before entering the EMA so a single outlier can't
     /// skew the learned value.
     fn record_actual_sample(&self, estimated: usize, actual: usize) {
-        use std::sync::atomic::Ordering::{AcqRel, Acquire};
         if estimated == 0 {
             return;
         }
@@ -554,11 +858,187 @@ impl PipelineBudget {
             .expect("closure always returns Some");
     }
 
-    /// Wake the oldest parked waiter.
+    /// Wake the highest-priority parked waiter that can *actually* be
+    /// admitted under the current budget + segment-gate state (ties
+    /// broken by FIFO).
+    ///
+    /// Iterating in priority order, this skips two kinds of waiter:
+    ///
+    /// * [`PriorityWaiter::cancelled`] orphans — reservers that already
+    ///   acquired via the post-enqueue `try_admit` race-recovery branch
+    ///   and dropped their `notify`. Drained so a cancelled low-time
+    ///   orphan doesn't sit at the top of the heap and swallow every
+    ///   wake.
+    /// * Waiters that are **not currently admittable** — e.g. a
+    ///   low-`task_time_min` waiter parked on a full segment-count gate.
+    ///   Without this check that waiter would swallow every byte
+    ///   `release` wake it can't use, fail its recheck, and re-park
+    ///   *without re-delegating* (the wait-loop's fail path does not
+    ///   re-wake), stranding the freed bytes until an unrelated wake
+    ///   fired — a priority inversion that leans on the stall-breaker to
+    ///   recover. Waking the highest-priority *admittable* waiter keeps
+    ///   the freed resource flowing while the blocked waiter stays parked
+    ///   until its own gate (a [`Self::publish_segment_finalized`]) frees.
+    ///
+    /// When `force_overcommit` is set every waiter is trivially
+    /// admittable, so this degenerates to "wake the strict
+    /// highest-priority waiter" — exactly what the stall-breaker wants.
+    ///
+    /// Admissibility is only a hint: the woken waiter re-validates under
+    /// lock in [`Self::try_admit`], so a lost race here costs one extra
+    /// park, never correctness.
     fn wake_next(&self) {
-        if let Some(notify) = self.wait_queue.lock().pop_front() {
-            notify.notify_one();
+        let mut queue = self.wait_queue.lock();
+        let segments = self.active_segments.lock();
+        let force = self.force_overcommit.load(Acquire);
+        let current = self.current.load(Acquire);
+
+        // Pop in priority order; wake the first admittable non-cancelled
+        // waiter, hold the rest aside, then restore them. A woken waiter
+        // is removed (it re-pushes a fresh entry when it retries), so it
+        // is not restored — matching the old pop-and-return contract.
+        let mut held: Vec<Reverse<PriorityWaiter>> = Vec::new();
+        let mut woke = false;
+        while let Some(Reverse(waiter)) = queue.pop() {
+            if waiter.cancelled.load(Acquire) {
+                continue;
+            }
+            if !woke && self.waiter_admittable(&waiter, force, current, &segments) {
+                waiter.notify.notify_one();
+                woke = true;
+                continue;
+            }
+            held.push(Reverse(waiter));
         }
+        for h in held {
+            queue.push(h);
+        }
+    }
+
+    /// Whether `waiter` would pass [`Self::try_admit`] given a snapshot
+    /// of `force_overcommit`, `current`, and the segment gate. Mirrors
+    /// the gate logic in `try_admit` exactly so [`Self::wake_next`]
+    /// doesn't waste a wake on a waiter that would immediately re-park.
+    fn waiter_admittable(
+        &self,
+        waiter: &PriorityWaiter,
+        force: bool,
+        current: usize,
+        segments: &SegmentGate,
+    ) -> bool {
+        if force {
+            return true;
+        }
+        let new_segments = waiter
+            .segment_ids
+            .iter()
+            .filter(|s| !segments.all.contains(s.as_str()))
+            .count();
+        if segments.effective_len() + new_segments > MAX_CONCURRENT_SEGMENTS {
+            return false;
+        }
+        current + waiter.reserved_bytes <= self.budget
+    }
+
+    fn record_peak_active_segments(&self, segments: &SegmentGate) {
+        if let Some(metrics) = &self.metrics {
+            metrics
+                .peak_active_segments
+                .fetch_max(segments.all.len() as u64, Relaxed);
+        }
+    }
+
+    fn record_peak_decoded_bytes(&self, current: usize) {
+        self.peak_current.fetch_max(current, AcqRel);
+        if let Some(metrics) = &self.metrics {
+            metrics
+                .pipeline_peak_decoded_bytes
+                .fetch_max(u64::try_from(current).unwrap_or(u64::MAX), Relaxed);
+        }
+    }
+
+    fn record_initial_wait(&self, blockers: AdmissionBlockers) {
+        let Some(metrics) = &self.metrics else {
+            return;
+        };
+        if blockers.bytes {
+            metrics.pipeline_byte_waits.fetch_add(1, Relaxed);
+        }
+        if blockers.segments {
+            metrics.segment_admission_waits.fetch_add(1, Relaxed);
+        }
+    }
+
+    /// Combined byte + segment-count gate. Returns the new current byte count
+    /// when both gates admit `reserved_bytes` AND every segment in
+    /// `segment_ids` either already holds a reservation or pushing the
+    /// *effective* in-flight count to include them stays within
+    /// [`MAX_CONCURRENT_SEGMENTS`].
+    ///
+    /// Holds the `active_segments` mutex across the byte CAS so the
+    /// two gates admit atomically — admitting only the byte gate would
+    /// let a fetch stealth-open extra segments past the cap, and
+    /// admitting only the segment gate would over-commit bytes.
+    ///
+    /// Bypassed when `force_overcommit` is set (stall-detection
+    /// recovery path). Bypass-admitted segments are tracked in
+    /// [`SegmentGate::bypass`] so they don't count against the cap for
+    /// future admissions — the cap "self-heals" as soon as those
+    /// segments finalize rather than blocking every new admission
+    /// until enough segments drain to bring `all.len()` back below
+    /// `MAX_CONCURRENT_SEGMENTS`.
+    fn try_admit(
+        &self,
+        reserved_bytes: usize,
+        segment_ids: &[String],
+    ) -> Result<usize, AdmissionBlockers> {
+        let mut segments = self.active_segments.lock();
+
+        if self.force_overcommit.load(Acquire) {
+            let new_cur = self.current.fetch_add(reserved_bytes, AcqRel) + reserved_bytes;
+            self.record_peak_decoded_bytes(new_cur);
+            for s in segment_ids {
+                // A segment that's *already* tracked (normal or prior
+                // bypass) doesn't add to the bypass overflow. A truly
+                // new segment goes into both `all` and `bypass` so
+                // future normal admissions can ignore it against the
+                // cap.
+                if segments.all.insert(s.clone()) {
+                    segments.bypass.insert(s.clone());
+                }
+            }
+            self.record_peak_active_segments(&segments);
+            return Ok(new_cur);
+        }
+
+        // How many *new* segments would this admission introduce?
+        // Treat the bypass set as if it weren't there — a chunk for a
+        // bypass-tracked segment isn't new for cap purposes (the slot
+        // is already over-cap and accounted for), but it also doesn't
+        // free a normal slot.
+        let new_segments = segment_ids
+            .iter()
+            .filter(|s| !segments.all.contains(s.as_str()))
+            .count();
+        let segments_blocked = segments.effective_len() + new_segments > MAX_CONCURRENT_SEGMENTS;
+        if segments_blocked {
+            let bytes_blocked =
+                self.current.load(Acquire).saturating_add(reserved_bytes) > self.budget;
+            return Err(AdmissionBlockers {
+                bytes: bytes_blocked,
+                segments: true,
+            });
+        }
+
+        let new_cur = self.try_acquire(reserved_bytes).ok_or(AdmissionBlockers {
+            bytes: true,
+            segments: false,
+        })?;
+        // Bytes admitted; add the new segments. Existing entries
+        // (already in the set) re-insert as no-ops.
+        segments.all.extend(segment_ids.iter().cloned());
+        self.record_peak_active_segments(&segments);
+        Ok(new_cur)
     }
 
     /// Try to atomically claim `reserved_bytes` of budget without
@@ -572,36 +1052,59 @@ impl PipelineBudget {
     /// and bail out spuriously (the "thundering herd" pattern of the
     /// older `fetch_add → check → fetch_sub` design).
     fn try_acquire(&self, reserved_bytes: usize) -> Option<usize> {
-        use std::sync::atomic::Ordering::{AcqRel, Acquire};
-        let mut cur = self.current.load(Acquire);
-        loop {
-            let next = cur + reserved_bytes;
-            if next > self.budget {
-                return None;
-            }
-            match self
-                .current
-                .compare_exchange_weak(cur, next, AcqRel, Acquire)
-            {
-                Ok(_) => {
-                    self.peak_current.fetch_max(next, AcqRel);
-                    return Some(next);
-                }
-                Err(actual) => cur = actual,
-            }
-        }
+        let previous = self
+            .current
+            .try_update(AcqRel, Acquire, |cur| {
+                let next = cur + reserved_bytes;
+                (next <= self.budget).then_some(next)
+            })
+            .ok()?;
+        let current = previous + reserved_bytes;
+
+        self.record_peak_decoded_bytes(current);
+        Some(current)
+    }
+
+    /// Single-arg wrapper kept for backward compatibility with the
+    /// internal tests that pre-date the priority/gate work. New code
+    /// must use [`Self::reserve_with_priority`] so the parked waiter
+    /// gets a meaningful priority and the segment-count gate is fed.
+    #[cfg(test)]
+    pub(crate) async fn reserve(&self, estimated_bytes: usize) -> usize {
+        self.reserve_with_priority(estimated_bytes, TimeInt::MAX, &[])
+            .await
     }
 
     /// Atomically reserve budget space before fetching, sized from
     /// `estimated_bytes` scaled by the learned estimate→actual multiplier.
-    /// Blocks if the budget would be exceeded. Returns the actual
-    /// reserved byte count so the caller can pass it back into
-    /// [`adjust_reservation`](Self::adjust_reservation) alongside the
-    /// measured decoded size.
+    /// Blocks if the byte budget *or* the segment-count gate would be
+    /// exceeded.
+    ///
+    /// `task_time_min` is the smallest `time_min` across the chunks
+    /// this reservation is acquiring bytes for, on the query's
+    /// `filtered_index` timeline. It controls the parked-waiter
+    /// priority: earlier-time fetches wake first, so when the CPU
+    /// worker's safe horizon is gated on a slow-arriving early chunk
+    /// that fetch preempts later-time fetches contending for the same
+    /// budget. Pass [`TimeInt::MAX`] for fetches with no temporal
+    /// info (static-only, old server) to put them at the back of the
+    /// heap.
+    ///
+    /// `segment_ids` is the set of distinct `segment_id`s this fetch
+    /// produces chunks for. Admitted atomically with the byte
+    /// reservation so the segment-count gate cannot be bypassed by
+    /// the multi-segment batches `create_request_batches` emits.
+    ///
+    /// Returns the actual reserved byte count so the caller can pass
+    /// it back into [`adjust_reservation`](Self::adjust_reservation)
+    /// alongside the measured decoded size.
     #[expect(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-    pub(crate) async fn reserve(&self, estimated_bytes: usize) -> usize {
-        use std::sync::atomic::Ordering::AcqRel;
-
+    pub(crate) async fn reserve_with_priority(
+        &self,
+        estimated_bytes: usize,
+        task_time_min: TimeInt,
+        segment_ids: &[String],
+    ) -> usize {
         let reserved_bytes = ((estimated_bytes as f64) * self.current_multiplier()) as usize;
 
         if reserved_bytes > self.budget {
@@ -614,14 +1117,51 @@ impl PipelineBudget {
                 self.budget / (1024 * 1024),
             );
             let new_cur = self.current.fetch_add(reserved_bytes, AcqRel) + reserved_bytes;
-            self.peak_current.fetch_max(new_cur, AcqRel);
+            self.record_peak_decoded_bytes(new_cur);
+            // This is a deadlock-avoidance escape hatch — the fetch's
+            // segments are intentionally admitted past the cap, same
+            // as the `force_overcommit` bypass. Track them as bypass
+            // so the cap self-heals on finalization.
+            let mut segments = self.active_segments.lock();
+            for s in segment_ids {
+                if segments.all.insert(s.clone()) {
+                    segments.bypass.insert(s.clone());
+                }
+            }
+            self.record_peak_active_segments(&segments);
+            return reserved_bytes;
+        }
+
+        re_log::debug_assert!(
+            segment_ids
+                .iter()
+                .enumerate()
+                .all(|(idx, segment_id)| !segment_ids[..idx].contains(segment_id)),
+            "segment_ids must be distinct"
+        );
+        let distinct_segments = segment_ids.len();
+        if distinct_segments > MAX_CONCURRENT_SEGMENTS {
+            re_log::warn_once!(
+                "Single fetch reservation spans {distinct_segments} distinct segments, \
+                 exceeding the concurrent-segment cap ({MAX_CONCURRENT_SEGMENTS}) — allowing \
+                 it through to avoid deadlock.",
+            );
+            let new_cur = self.current.fetch_add(reserved_bytes, AcqRel) + reserved_bytes;
+            self.record_peak_decoded_bytes(new_cur);
+            let mut segments = self.active_segments.lock();
+            for s in segment_ids {
+                if segments.all.insert(s.clone()) {
+                    segments.bypass.insert(s.clone());
+                }
+            }
+            self.record_peak_active_segments(&segments);
             return reserved_bytes;
         }
 
         let mut wait_count: u32 = 0;
         loop {
-            // Fast path: try to reserve without ever inflating `current`.
-            if let Some(new_cur) = self.try_acquire(reserved_bytes) {
+            // Fast path: combined byte + segment-count gate.
+            if let Ok(new_cur) = self.try_admit(reserved_bytes, segment_ids) {
                 if new_cur < self.budget {
                     self.wake_next();
                 }
@@ -637,17 +1177,27 @@ impl PipelineBudget {
                 return reserved_bytes;
             }
 
-            // Slow path: park. Enqueue the notify *before* awaiting and
-            // re-try the acquire after enqueuing. This closes the
-            // lost-wakeup race: if `release` / `adjust_reservation` runs
-            // between our initial `try_acquire` failure and the
-            // `push_back`, the second `try_acquire` observes the freed
-            // budget and we proceed without ever awaiting; if the
-            // release runs after `push_back` instead, it pops our
-            // notify and stores the permit, so the subsequent
+            // Slow path: park. Enqueue the priority waiter *before*
+            // awaiting and re-try `try_admit` after enqueuing. This
+            // closes the lost-wakeup race: if `release` /
+            // `adjust_reservation` /
+            // `publish_segment_finalized` runs between our initial
+            // failure and the `push`, the second `try_admit`
+            // observes the freed slot and we proceed without ever
+            // awaiting; otherwise the release pops our notify and
+            // stores the permit, so the subsequent
             // `notified().await` returns immediately.
             let notify = Arc::new(Notify::new());
-            self.wait_queue.lock().push_back(Arc::clone(&notify));
+            let cancelled = Arc::new(AtomicBool::new(false));
+            let seq = self.wait_seq.fetch_add(1, AcqRel);
+            self.wait_queue.lock().push(Reverse(PriorityWaiter {
+                task_time_min,
+                seq,
+                notify: Arc::clone(&notify),
+                cancelled: Arc::clone(&cancelled),
+                reserved_bytes,
+                segment_ids: segment_ids.to_vec(),
+            }));
 
             #[cfg(test)]
             {
@@ -658,26 +1208,40 @@ impl PipelineBudget {
                 }
             }
 
-            if let Some(new_cur) = self.try_acquire(reserved_bytes) {
-                // Acquired between our wait decision and enqueue. Any
-                // future `wake_next` may pop our orphan notify and fire
-                // `notify_one` into the dropped Arc — harmless.
-                if new_cur < self.budget {
-                    self.wake_next();
+            let blockers = match self.try_admit(reserved_bytes, segment_ids) {
+                Ok(new_cur) => {
+                    // Acquired between our wait decision and enqueue. Mark
+                    // the just-pushed waiter cancelled so `wake_next`
+                    // drains it instead of wasting a wake on our dropped
+                    // Arc — otherwise a low-`task_time_min` orphan sitting
+                    // at the top of the priority heap would steal wake
+                    // events from genuine parked waiters with higher
+                    // `task_time_min`.
+                    cancelled.store(true, Release);
+                    if new_cur < self.budget {
+                        self.wake_next();
+                    }
+                    return reserved_bytes;
                 }
-                return reserved_bytes;
-            }
+                Err(blockers) => blockers,
+            };
 
+            if wait_count == 0 {
+                self.record_initial_wait(blockers);
+            }
             wait_count += 1;
             if wait_count == 1 || wait_count.is_multiple_of(10) {
                 // info-level so it's visible for tuning MAX_BUDGET_PER_PARTITION
                 // without needing a RUST_LOG=debug setup.
+                let segments = self.active_segments.lock();
                 re_log::info!(
                     "Budget backpressure (wait #{wait_count}): want {}MB, \
-                     current {}MB / {}MB budget",
+                     current {}MB / {}MB budget, active_segments={} (bypass={})",
                     reserved_bytes / (1024 * 1024),
-                    self.current.load(std::sync::atomic::Ordering::Acquire) / (1024 * 1024),
+                    self.current.load(Acquire) / (1024 * 1024),
                     self.budget / (1024 * 1024),
+                    segments.all.len(),
+                    segments.bypass.len(),
                 );
             }
 
@@ -687,27 +1251,38 @@ impl PipelineBudget {
 
     /// Adjust a prior reservation to reflect the actual decoded size.
     /// Call after fetch completes. `reserved` is the value returned by
-    /// [`reserve`](Self::reserve); `estimated` is the raw uncompressed size
+    /// [`reserve_with_priority`](Self::reserve_with_priority); `estimated` is the raw uncompressed size
     /// that was passed in (used to train the multiplier). If `actual >
     /// reserved` this adds the delta to current; if `actual < reserved`
     /// this subtracts (saturating to avoid underflow from concurrent
     /// [`release`](Self::release) calls) and wakes a waiter.
     ///
+    /// A shrink also resets the stall detector — `current` dropping
+    /// without a corresponding [`Self::release`] would otherwise leave
+    /// `force_overcommit` stale-armed across a now-unsaturated
+    /// window, and the next `reserve` would bypass both gates with no
+    /// real stall to break. Reset matches what [`Self::release`] does
+    /// on every byte-freeing path.
+    ///
     /// Also folds the `(estimated, actual)` observation into the learned
     /// estimate→actual multiplier via EMA so subsequent reservations
     /// size closer to the true decoded footprint.
     pub(crate) fn adjust_reservation(&self, estimated: usize, reserved: usize, actual: usize) {
-        use std::sync::atomic::Ordering::{AcqRel, Acquire};
         if actual > reserved {
             let new_cur = self.current.fetch_add(actual - reserved, AcqRel) + (actual - reserved);
-            self.peak_current.fetch_max(new_cur, AcqRel);
+            self.record_peak_decoded_bytes(new_cur);
         } else if reserved > actual {
             self.current
                 .fetch_update(AcqRel, Acquire, |current| {
                     Some(current.saturating_sub(reserved - actual))
                 })
                 .expect("closure always returns Some");
-            // Freed budget space — wake a waiter.
+            // Budget bytes were just freed — same progress signal as
+            // `release`. Clear the stall detector so a now-stale
+            // `force_overcommit` can't make the next `reserve`
+            // wrongly bypass both gates.
+            self.empty_emit_count.store(0, Release);
+            self.force_overcommit.store(false, Release);
             self.wake_next();
         }
         self.record_actual_sample(estimated, actual);
@@ -722,7 +1297,6 @@ impl PipelineBudget {
     /// Uses `fetch_update` with `saturating_sub` to avoid underflow when concurrent
     /// operations have already reduced `current` below `bytes`.
     pub(crate) fn release(&self, bytes: usize) {
-        use std::sync::atomic::Ordering::{AcqRel, Acquire};
         let prev = self
             .current
             .fetch_update(AcqRel, Acquire, |current| {
@@ -731,6 +1305,10 @@ impl PipelineBudget {
             .expect("closure always returns Some");
         self.total_released_bytes.fetch_add(bytes, AcqRel);
         self.total_releases.fetch_add(1, AcqRel);
+        // Real progress: budget bytes were just freed, so the stall
+        // detector should reset.
+        self.empty_emit_count.store(0, Release);
+        self.force_overcommit.store(false, Release);
         // Per-call detail at debug level only — high-throughput queries
         // emit one of these per segment per partition. The aggregate
         // peak / cumulative-released numbers used for tuning live in
@@ -743,8 +1321,92 @@ impl PipelineBudget {
             prev.saturating_sub(bytes) / (1024 * 1024),
             self.budget / (1024 * 1024),
         );
-        // Wake the oldest waiter so it can retry.
+        // Wake the highest-priority waiter so it can retry.
         self.wake_next();
+    }
+
+    /// Remove `segment_id` from the segment-count gate and wake the
+    /// highest-priority parked waiter. Called from
+    /// `Drop for CurrentStores` once the CPU worker is fully done
+    /// with a segment.
+    ///
+    /// Decoupled from [`Self::release`] because byte release happens
+    /// incrementally (via `gc_up_to_horizon` as the safe horizon
+    /// advances) while the segment's "slot" in the segment-count
+    /// gate is held until the CPU worker fully drops the segment.
+    pub(crate) fn publish_segment_finalized(&self, segment_id: &str) {
+        let mut segments = self.active_segments.lock();
+        // Remove from `bypass` too so the effective_len reflects the
+        // departure correctly. The two cases:
+        //   * Normal segment: `bypass.remove` is a no-op, `all.len()`
+        //     drops by 1, effective_len drops by 1 → a real slot frees
+        //     and a parked normal waiter can advance.
+        //   * Bypass segment: `all.len()` and `bypass.len()` both drop
+        //     by 1, effective_len unchanged → no extra slot opens,
+        //     but the bypass overflow shrinks toward zero so the cap
+        //     contract heals.
+        let was_bypass = segments.bypass.remove(segment_id);
+        let removed = segments.all.remove(segment_id);
+        drop(segments);
+        if removed || was_bypass {
+            self.wake_next();
+        }
+    }
+
+    /// Count a `flush_incremental` call that produced no emittable
+    /// rows. When the count crosses [`STALL_EMPTY_EMIT_THRESHOLD`]
+    /// *consecutive* saturated empty emits, sets `force_overcommit`
+    /// so the next `reserve` bypasses both gates. The bypass lets a
+    /// parked horizon-advancing fetch land on the CPU side and free
+    /// real work; once that fetch's decoded bytes land and a real
+    /// `release` follows, the detector resets.
+    ///
+    /// Saturation is checked *first* and the counter is reset to zero
+    /// whenever the budget is below [`STALL_SATURATION_THRESHOLD`]:
+    /// without that gate, empty emits during slow-manifest startup
+    /// (budget empty, nothing to flush) would pump the counter past
+    /// threshold so the very first saturated cycle would trip the
+    /// breaker — a false positive, not a real stall.
+    pub(crate) fn notify_empty_emit(&self) {
+        #[expect(clippy::cast_precision_loss)]
+        let saturation = (self.current.load(Acquire) as f64) / (self.budget.max(1) as f64);
+        if saturation < STALL_SATURATION_THRESHOLD {
+            // Unsaturated: not a stall candidate. Reset so the counter
+            // strictly measures *consecutive saturated* empty emits.
+            self.empty_emit_count.store(0, Release);
+            return;
+        }
+        let count = self.empty_emit_count.fetch_add(1, AcqRel) + 1;
+        // CAS so exactly one caller arms the breaker (and logs / wakes)
+        // when several CPU workers sharing the budget cross the
+        // threshold together.
+        if count >= STALL_EMPTY_EMIT_THRESHOLD
+            && self
+                .force_overcommit
+                .compare_exchange(false, true, AcqRel, Relaxed)
+                .is_ok()
+        {
+            if let Some(metrics) = &self.metrics {
+                metrics
+                    .pipeline_stall_breaker_activations
+                    .fetch_add(1, Relaxed);
+            }
+            re_log::info!(
+                "PipelineBudget stall detected: {count} consecutive empty emits with \
+                 budget {:.0}% saturated — enabling force_overcommit until next progress",
+                saturation * 100.0,
+            );
+            // Wake whoever's at the front so they can break out
+            // through the bypass.
+            self.wake_next();
+        }
+    }
+
+    /// Reset the stall detector on real CPU-side progress. Called by
+    /// the worker each time a `RecordBatch` is actually emitted.
+    pub(crate) fn notify_row_emitted(&self) {
+        self.empty_emit_count.store(0, Release);
+        self.force_overcommit.store(false, Release);
     }
 
     /// Return a reservation to the budget without recording an EMA sample.
@@ -754,7 +1416,6 @@ impl PipelineBudget {
     /// nothing meaningful to teach the EMA. Saturates on underflow to
     /// match [`Self::release`].
     fn refund_reservation(&self, reserved: usize) {
-        use std::sync::atomic::Ordering::{AcqRel, Acquire};
         if reserved == 0 {
             return;
         }
@@ -776,12 +1437,26 @@ impl PipelineBudget {
     /// decoded-size measurement: an early return on those paths would
     /// otherwise leak the reservation and permanently reduce headroom for
     /// other partitions sharing the same budget.
+    #[cfg(test)]
     pub(crate) async fn reserve_guarded(&self, estimated: usize) -> ReservationGuard<'_> {
-        let reserved = self.reserve(estimated).await;
+        self.reserve_guarded_with_priority(estimated, TimeInt::MAX, Vec::new())
+            .await
+    }
+
+    pub(crate) async fn reserve_guarded_with_priority(
+        &self,
+        estimated: usize,
+        task_time_min: TimeInt,
+        segment_ids: Vec<String>,
+    ) -> ReservationGuard<'_> {
+        let reserved = self
+            .reserve_with_priority(estimated, task_time_min, &segment_ids)
+            .await;
         ReservationGuard {
             budget: self,
             estimated,
             reserved,
+            segment_ids,
             committed: false,
         }
     }
@@ -789,17 +1464,31 @@ impl PipelineBudget {
 
 /// RAII guard for a [`PipelineBudget`] reservation.
 ///
-/// Returned by [`PipelineBudget::reserve_guarded`]. Call [`Self::commit`]
+/// Returned by [`PipelineBudget::reserve_guarded_with_priority`]. Call [`Self::commit`]
 /// with the actual decoded byte count once known to fold the observation
 /// into the budget's EMA. Dropping without committing returns the entire
-/// reservation as if the fetch produced zero bytes — used to recover
-/// headroom on error / early-return paths.
-#[must_use = "ReservationGuard returns its bytes to the budget on drop; \
+/// reservation — both the reserved bytes AND the segment-count gate slots
+/// this fetch admitted — as if the fetch produced zero chunks. Used to
+/// recover headroom on error / early-return paths.
+///
+/// The segment slots matter as much as the bytes: a failed fetch's
+/// segments never reach the CPU worker, so the `Drop for CurrentStores`
+/// path that normally calls [`PipelineBudget::publish_segment_finalized`]
+/// never runs for them. Without vacating here they leak permanently, and
+/// since the segment-count gate stays engaged even when the byte budget
+/// is sized wide open, a handful of failed fetches on distinct segments
+/// can wedge the gate shut for every later reservation.
+#[must_use = "ReservationGuard returns its bytes and segment slots to the budget on drop; \
               call .commit(actual) once the decoded size is known"]
 pub(crate) struct ReservationGuard<'a> {
     budget: &'a PipelineBudget,
     estimated: usize,
     reserved: usize,
+
+    /// Distinct segments this reservation admitted into the gate. Vacated
+    /// on uncommitted drop; on commit the segments stay active until the
+    /// CPU worker finalizes them via `publish_segment_finalized`.
+    segment_ids: Vec<String>,
     committed: bool,
 }
 
@@ -823,6 +1512,14 @@ impl Drop for ReservationGuard<'_> {
             // observed nothing about decode ratios and shouldn't drag
             // the learned multiplier toward zero.
             self.budget.refund_reservation(self.reserved);
+            // Vacate the segment-count gate slots too. These segments
+            // never reached the CPU worker, so the `CurrentStores` drop
+            // that normally finalizes them won't run — without this they
+            // leak from the gate forever. `publish_segment_finalized` is
+            // a no-op for any segment a concurrent owner already removed.
+            for segment_id in &self.segment_ids {
+                self.budget.publish_segment_finalized(segment_id);
+            }
         }
     }
 }
@@ -833,7 +1530,6 @@ impl Drop for PipelineBudget {
     /// Skipped when the budget was never used (e.g. construction-only
     /// in tests) to keep test output quiet.
     fn drop(&mut self) {
-        use std::sync::atomic::Ordering::Acquire;
         let n_releases = self.total_releases.load(Acquire);
         if n_releases == 0 {
             return;
@@ -862,504 +1558,10 @@ impl std::fmt::Debug for PipelineBudget {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("PipelineBudget")
             .field("budget", &self.budget)
-            .field(
-                "current",
-                &self.current.load(std::sync::atomic::Ordering::Relaxed),
-            )
+            .field("current", &self.current.load(Relaxed))
             .finish_non_exhaustive()
     }
 }
 
 #[cfg(test)]
-mod tests {
-    use std::sync::Arc;
-
-    use super::*;
-
-    // Default constants are tuned to leave the budget effectively
-    // disengaged (FRACTION=1.0, MIN=4 GiB, MAX=1 TiB). The tests below
-    // assert the clamp logic still selects the right bound at the
-    // extremes — not that the budget meaningfully restricts in-flight
-    // bytes at typical data sizes. Once the CPU-worker streaming-release
-    // refactor lands and the constants come back down (FRACTION=0.25,
-    // MIN=64 MiB, MAX=1 GiB), tighten these to also assert proportional
-    // sizing in the small/medium ranges.
-
-    #[test]
-    fn test_budget_clamps_to_min() {
-        // 10 MB total, 1 partition → 100% = 10 MB, clamped to MIN_BUDGET_PER_PARTITION (4 GiB)
-        let budget = PipelineBudget::new(10 * 1024 * 1024, 1);
-        assert_eq!(budget.budget, MIN_BUDGET_PER_PARTITION);
-    }
-
-    #[test]
-    fn test_budget_clamps_to_max() {
-        // 8 PiB total, 1 partition → 100% = 8 PiB, clamped to MAX_BUDGET_PER_PARTITION (1 TiB)
-        let budget = PipelineBudget::new(8 * 1024 * 1024 * 1024 * 1024 * 1024, 1);
-        assert_eq!(budget.budget, MAX_BUDGET_PER_PARTITION);
-    }
-
-    #[test]
-    fn test_budget_scales_with_partitions() {
-        // 64 PiB total, 14 partitions → 100% / 14 ≈ 4.6 PiB per partition,
-        // clamped to MAX_BUDGET_PER_PARTITION (1 TiB) each.
-        let budget = PipelineBudget::new(64 * 1024 * 1024 * 1024 * 1024 * 1024, 14);
-        assert_eq!(budget.budget, MAX_BUDGET_PER_PARTITION * 14);
-    }
-
-    #[test]
-    fn test_budget_small_data_many_partitions() {
-        // 100 MB total, 4 partitions → 100% / 4 = 25 MB per partition,
-        // clamped to MIN_BUDGET_PER_PARTITION (4 GiB) each.
-        let budget = PipelineBudget::new(100 * 1024 * 1024, 4);
-        assert_eq!(budget.budget, MIN_BUDGET_PER_PARTITION * 4);
-    }
-
-    #[tokio::test]
-    async fn test_reserve_blocks_when_budget_exhausted() {
-        let budget = Arc::new(PipelineBudget::new(0, 1)); // MIN_BUDGET = 64 MB
-        budget.set_multiplier(1.0);
-        let half = budget.budget / 2;
-
-        // First reserve should succeed immediately
-        budget.reserve(half).await;
-        assert_eq!(
-            budget.current.load(std::sync::atomic::Ordering::Acquire),
-            half
-        );
-
-        // Second reserve should also succeed (half + half = budget)
-        budget.reserve(half).await;
-        assert_eq!(
-            budget.current.load(std::sync::atomic::Ordering::Acquire),
-            half * 2
-        );
-
-        // Third reserve should block because budget is full.
-        let budget_clone = Arc::clone(&budget);
-        let handle = tokio::spawn(async move {
-            budget_clone.reserve(half).await;
-        });
-
-        // Give the task a chance to run (it should be blocked)
-        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
-        assert!(
-            !handle.is_finished(),
-            "reserve should block when budget is exhausted"
-        );
-
-        // Release enough to unblock
-        budget.release(half);
-
-        // Now the spawned task should complete
-        tokio::time::timeout(std::time::Duration::from_secs(1), handle)
-            .await
-            .expect("reserve should unblock after release")
-            .expect("task should not panic");
-    }
-
-    #[tokio::test]
-    async fn test_adjust_reservation_corrects_estimate() {
-        let budget = Arc::new(PipelineBudget::new(0, 1)); // MIN_BUDGET = 64 MB
-        budget.set_multiplier(1.0);
-
-        let estimated = 1000;
-        let actual = 600;
-
-        let reserved = budget.reserve(estimated).await;
-        assert_eq!(reserved, estimated);
-        assert_eq!(
-            budget.current.load(std::sync::atomic::Ordering::Acquire),
-            estimated
-        );
-
-        budget.adjust_reservation(estimated, reserved, actual);
-        assert_eq!(
-            budget.current.load(std::sync::atomic::Ordering::Acquire),
-            actual
-        );
-    }
-
-    #[tokio::test]
-    async fn test_estimate_multiplier_adapts_over_time() {
-        // With the 1.5x bootstrap, a task estimating 1000 bytes initially
-        // reserves 1500. As we feed back samples showing actual is 2x the
-        // raw estimate, the learned multiplier climbs toward 2.0 and
-        // subsequent reserves size accordingly.
-        let budget = Arc::new(PipelineBudget::new(0, 1));
-        assert_eq!(budget.current_multiplier(), INITIAL_ESTIMATE_MULTIPLIER);
-
-        let estimated = 1000;
-        let actual = 2000; // true ratio = 2.0
-
-        // First sample: reserve under bootstrap, then teach the EMA.
-        let reserved1 = budget.reserve(estimated).await;
-        assert_eq!(reserved1, 1500);
-        budget.adjust_reservation(estimated, reserved1, actual);
-        budget.release(actual);
-
-        // Multiplier has nudged toward 2.0 but isn't there yet
-        // (EMA: 0.2 * 2.0 + 0.8 * 1.5 = 1.6).
-        assert!((budget.current_multiplier() - 1.6).abs() < 1e-9);
-
-        // After many samples at ratio=2.0 the multiplier converges.
-        for _ in 0..40 {
-            let reserved = budget.reserve(estimated).await;
-            budget.adjust_reservation(estimated, reserved, actual);
-            budget.release(actual);
-        }
-        assert!(
-            (budget.current_multiplier() - 2.0).abs() < 0.01,
-            "multiplier should converge toward 2.0, got {}",
-            budget.current_multiplier()
-        );
-    }
-
-    #[tokio::test]
-    async fn test_estimate_multiplier_is_clamped() {
-        // A pathological 10x expansion should not blow out the multiplier;
-        // it saturates at MAX_ESTIMATE_MULTIPLIER. Raw samples are clamped
-        // before entering the EMA, so the EMA itself converges toward the
-        // clamped value (3.0) rather than the raw ratio (10.0).
-        let budget = Arc::new(PipelineBudget::new(0, 1));
-        for _ in 0..100 {
-            budget.record_actual_sample(100, 1000); // raw ratio = 10
-        }
-        assert!(
-            (budget.current_multiplier() - MAX_ESTIMATE_MULTIPLIER).abs() < 1e-4,
-            "multiplier should converge to MAX, got {}",
-            budget.current_multiplier()
-        );
-
-        // And undersized actual (ratio < 1) floors at MIN_ESTIMATE_MULTIPLIER.
-        for _ in 0..100 {
-            budget.record_actual_sample(1000, 100); // raw ratio = 0.1
-        }
-        assert!(
-            (budget.current_multiplier() - MIN_ESTIMATE_MULTIPLIER).abs() < 1e-4,
-            "multiplier should converge to MIN, got {}",
-            budget.current_multiplier()
-        );
-    }
-
-    #[tokio::test]
-    async fn test_peak_current_tracks_high_water_mark() {
-        let budget = Arc::new(PipelineBudget::new(0, 1));
-        budget.set_multiplier(1.0);
-
-        // Reserve, release, reserve smaller — peak should reflect the
-        // larger of the two in-flight values, not the latest.
-        let r1 = budget.reserve(10 * 1024 * 1024).await;
-        let r2 = budget.reserve(5 * 1024 * 1024).await;
-        let peak_before = budget
-            .peak_current
-            .load(std::sync::atomic::Ordering::Acquire);
-        assert_eq!(peak_before, r1 + r2);
-
-        budget.release(r1 + r2);
-        let r3 = budget.reserve(1024 * 1024).await;
-        let peak_after = budget
-            .peak_current
-            .load(std::sync::atomic::Ordering::Acquire);
-        assert_eq!(
-            peak_after, peak_before,
-            "peak should not regress after releases",
-        );
-
-        budget.release(r3);
-    }
-
-    // Stress test for the CAS-based fast path: launches many concurrent
-    // reservers whose combined ask fits exactly into the budget. Under
-    // the previous `fetch_add → check → fetch_sub` design these would
-    // spuriously inflate `current` past the cap and bounce off each
-    // other. With CAS, only the actually-committed reservations move
-    // `current`, so all tasks complete on the fast path with `current`
-    // landing exactly at `budget`.
-    #[tokio::test]
-    async fn test_reserve_no_thundering_herd_under_contention() {
-        let budget = Arc::new(PipelineBudget::new(0, 1));
-        budget.set_multiplier(1.0);
-        let full = budget.budget;
-        let n: usize = 32;
-        let per_task = full / n;
-        assert!(per_task > 0, "budget too small for {n}-way contention test");
-
-        let mut handles = Vec::with_capacity(n);
-        for _ in 0..n {
-            let budget = Arc::clone(&budget);
-            handles.push(tokio::spawn(async move { budget.reserve(per_task).await }));
-        }
-
-        for handle in handles {
-            tokio::time::timeout(std::time::Duration::from_secs(5), handle)
-                .await
-                .expect("reserve hung under contention")
-                .expect("task panicked");
-        }
-
-        // All `n` reservations should have committed exactly once each.
-        assert_eq!(
-            budget.current.load(std::sync::atomic::Ordering::Acquire),
-            per_task * n,
-        );
-    }
-
-    // Regression test for the lost-wakeup race in `reserve`'s wait
-    // path:
-    //
-    //   reserve():  try_acquire    -> fail (over budget)
-    //               wait_queue.push_back(notify)
-    //                   ↓  ← if release runs here, must either be seen
-    //                        on the second try_acquire below OR pop the
-    //                        notify we just enqueued. Either path keeps
-    //                        the reserver from awaiting forever.
-    //               try_acquire    -> retry / await
-    //               notify.notified().await
-    //
-    // The test deterministically opens the post-enqueue window with
-    // the pause hook, fires a `release` while the reserver is parked,
-    // and asserts the reserver still wakes promptly (either via the
-    // recheck observing freed budget, or via the queued notify).
-    #[tokio::test]
-    async fn test_reserve_no_lost_wakeup_in_wait_path() {
-        let budget = Arc::new(PipelineBudget::new(0, 1));
-        budget.set_multiplier(1.0);
-        let full = budget.budget;
-
-        // Saturate the budget so the next reserve is forced into rollback.
-        budget.reserve(full).await;
-
-        // Arm pause; the spawned reserver will signal `arrived` after
-        // its rollback and then wait on `resume` before enqueuing.
-        let pause = budget.arm_pause_hook();
-
-        let reserver = {
-            let budget = Arc::clone(&budget);
-            tokio::spawn(async move { budget.reserve(1).await })
-        };
-
-        // Wait until the reserver is parked between rollback and enqueue.
-        pause.arrived.notified().await;
-
-        // Disarm the hook so any *future* reserve call (post-fix, when
-        // the reserver retries) is not also trapped.
-        *budget.test_pause_hook.lock() = None;
-
-        // Release everything. The wait queue is empty here, so
-        // `wake_next` is a no-op — this is the lost-wakeup window.
-        budget.release(full);
-
-        // Let the reserver continue past the pause. With the bug it now
-        // pushes onto the wait queue and awaits a notify that will
-        // never come; with the fix it must observe the freed budget and
-        // succeed.
-        pause.resume.notify_one();
-
-        tokio::time::timeout(std::time::Duration::from_secs(1), reserver)
-            .await
-            .expect("reserve hung — lost-wakeup race in rollback→enqueue gap")
-            .expect("reserver task panicked");
-    }
-
-    // --- ReservationGuard --------------------------------------------------
-
-    #[tokio::test]
-    async fn test_reservation_guard_commit_records_actual() {
-        let budget = Arc::new(PipelineBudget::new(0, 1));
-        budget.set_multiplier(1.0);
-
-        let estimated = 1000;
-        let actual = 800;
-        let guard = budget.reserve_guarded(estimated).await;
-        guard.commit(actual);
-
-        // After commit, current should reflect the actual decoded size,
-        // not the (1.0x) reserved amount.
-        assert_eq!(
-            budget.current.load(std::sync::atomic::Ordering::Acquire),
-            actual,
-            "commit should reduce current to the actual decoded size",
-        );
-    }
-
-    #[tokio::test]
-    async fn test_reservation_guard_drop_refunds_reservation() {
-        let budget = Arc::new(PipelineBudget::new(0, 1));
-        budget.set_multiplier(1.0);
-
-        let estimated = 1000;
-        let multiplier_before = f64::from_bits(
-            budget
-                .estimate_multiplier
-                .load(std::sync::atomic::Ordering::Acquire),
-        );
-
-        // Drop without commit (simulates an early-return error path).
-        {
-            let _guard = budget.reserve_guarded(estimated).await;
-            assert_eq!(
-                budget.current.load(std::sync::atomic::Ordering::Acquire),
-                estimated,
-            );
-        }
-
-        assert_eq!(
-            budget.current.load(std::sync::atomic::Ordering::Acquire),
-            0,
-            "dropped guard should refund the entire reservation",
-        );
-
-        // Multiplier must NOT shift toward zero on a refund — a failed
-        // fetch observed nothing about decode ratios.
-        let multiplier_after = f64::from_bits(
-            budget
-                .estimate_multiplier
-                .load(std::sync::atomic::Ordering::Acquire),
-        );
-        assert!(
-            (multiplier_after - multiplier_before).abs() < 1e-9,
-            "guard drop must not fold a (estimated, 0) sample into the EMA \
-             (before={multiplier_before}, after={multiplier_after})",
-        );
-    }
-
-    #[tokio::test]
-    async fn test_reservation_guard_drop_wakes_waiter() {
-        let budget = Arc::new(PipelineBudget::new(0, 1));
-        budget.set_multiplier(1.0);
-        let full = budget.budget;
-
-        // First reservation saturates the budget but is held by a guard.
-        let blocking_guard = budget.reserve_guarded(full).await;
-        assert_eq!(
-            budget.current.load(std::sync::atomic::Ordering::Acquire),
-            full,
-        );
-
-        // Spawn a waiter that wants 1 byte — should be parked.
-        let budget_clone = Arc::clone(&budget);
-        let waiter = tokio::spawn(async move { budget_clone.reserve(1).await });
-
-        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
-        assert!(!waiter.is_finished(), "second reserve should be parked");
-
-        // Drop the guard without commit; the refund must wake the waiter.
-        drop(blocking_guard);
-
-        tokio::time::timeout(std::time::Duration::from_secs(1), waiter)
-            .await
-            .expect("guard drop did not wake parked reserver")
-            .expect("waiter task panicked");
-    }
-
-    // --- env-var parsing helpers -------------------------------------------
-
-    const DEFAULT_BYTES: usize = 64 * 1024 * 1024;
-
-    #[test]
-    fn test_parse_bytes_accepts_iec_suffix() {
-        assert_eq!(
-            parse_bytes_or_default("TEST", "128MiB", DEFAULT_BYTES),
-            128 * 1024 * 1024,
-        );
-        assert_eq!(
-            parse_bytes_or_default("TEST", "1GiB", DEFAULT_BYTES),
-            1024 * 1024 * 1024,
-        );
-        assert_eq!(
-            parse_bytes_or_default("TEST", "512KiB", DEFAULT_BYTES),
-            512 * 1024,
-        );
-    }
-
-    #[test]
-    fn test_parse_bytes_accepts_si_suffix() {
-        assert_eq!(
-            parse_bytes_or_default("TEST", "100MB", DEFAULT_BYTES),
-            100_000_000,
-        );
-        assert_eq!(
-            parse_bytes_or_default("TEST", "2GB", DEFAULT_BYTES),
-            2_000_000_000,
-        );
-    }
-
-    #[test]
-    fn test_parse_bytes_accepts_bare_integer_as_bytes() {
-        assert_eq!(
-            parse_bytes_or_default("TEST", "67108864", DEFAULT_BYTES),
-            64 * 1024 * 1024,
-        );
-    }
-
-    #[test]
-    fn test_parse_bytes_rejects_zero() {
-        assert_eq!(
-            parse_bytes_or_default("TEST", "0", DEFAULT_BYTES),
-            DEFAULT_BYTES,
-        );
-    }
-
-    #[test]
-    fn test_parse_bytes_rejects_negative() {
-        assert_eq!(
-            parse_bytes_or_default("TEST", "-1", DEFAULT_BYTES),
-            DEFAULT_BYTES,
-        );
-        assert_eq!(
-            parse_bytes_or_default("TEST", "-1MB", DEFAULT_BYTES),
-            DEFAULT_BYTES,
-        );
-    }
-
-    #[test]
-    fn test_parse_bytes_rejects_non_numeric() {
-        assert_eq!(
-            parse_bytes_or_default("TEST", "not-a-number", DEFAULT_BYTES),
-            DEFAULT_BYTES,
-        );
-    }
-
-    #[test]
-    fn test_parse_bytes_rejects_unknown_suffix() {
-        // Mb (megabit) is intentionally not a valid byte suffix.
-        assert_eq!(
-            parse_bytes_or_default("TEST", "10Mb", DEFAULT_BYTES),
-            DEFAULT_BYTES,
-        );
-    }
-
-    #[test]
-    fn test_parse_fraction_accepts_valid_range() {
-        assert!((parse_fraction_or_default("TEST", "0.5", 0.25) - 0.5).abs() < 1e-12);
-        assert!((parse_fraction_or_default("TEST", "1.0", 0.25) - 1.0).abs() < 1e-12);
-        assert!((parse_fraction_or_default("TEST", "0.0001", 0.25) - 0.0001).abs() < 1e-12);
-    }
-
-    #[test]
-    fn test_parse_fraction_rejects_zero() {
-        assert!((parse_fraction_or_default("TEST", "0.0", 0.25) - 0.25).abs() < 1e-12);
-    }
-
-    #[test]
-    fn test_parse_fraction_rejects_above_one() {
-        assert!((parse_fraction_or_default("TEST", "1.5", 0.25) - 0.25).abs() < 1e-12);
-    }
-
-    #[test]
-    fn test_parse_fraction_rejects_negative() {
-        assert!((parse_fraction_or_default("TEST", "-0.5", 0.25) - 0.25).abs() < 1e-12);
-    }
-
-    #[test]
-    fn test_parse_fraction_rejects_nan_and_inf() {
-        assert!((parse_fraction_or_default("TEST", "NaN", 0.25) - 0.25).abs() < 1e-12);
-        assert!((parse_fraction_or_default("TEST", "inf", 0.25) - 0.25).abs() < 1e-12);
-    }
-
-    #[test]
-    fn test_parse_fraction_rejects_non_numeric() {
-        assert!((parse_fraction_or_default("TEST", "bogus", 0.25) - 0.25).abs() < 1e-12);
-    }
-}
+mod tests;

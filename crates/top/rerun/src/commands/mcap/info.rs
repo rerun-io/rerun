@@ -223,11 +223,11 @@ fn collect_by_topic_raw(bytes: &[u8], summary: &mcap::Summary) -> anyhow::Result
                 .or_default()
                 .push_pairs([
                     (
-                        TimelineName::new("message_log_time"),
+                        TimelineName::from("message_log_time"),
                         msg.log_time.cast_signed(),
                     ),
                     (
-                        TimelineName::new("message_publish_time"),
+                        TimelineName::from("message_publish_time"),
                         msg.publish_time.cast_signed(),
                     ),
                 ]);

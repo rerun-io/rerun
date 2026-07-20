@@ -128,7 +128,16 @@ pub fn rebatch_video_chunks_to_gops(
                 // Leave its chunks alone; a warning was already logged.
             }
             Err(err) => {
-                return Err(err.context(format!("VideoStream '{entity_path}'")));
+                // Don't abort the whole optimize because a single entity can't be
+                // rebatched — leave its chunks untouched and carry on. Causes range
+                // from mechanical (different chunks carry different timelines, so
+                // their GoPs can't be concatenated) to bad user data (the error
+                // explains how to fix it, e.g. setting `fix_keyframe`).
+                re_log::warn!(
+                    entity = %entity_path,
+                    error = %err,
+                    "skipping GoP rebatching of video entity, leaving it un-optimized"
+                );
             }
         }
     }
@@ -220,12 +229,7 @@ fn rebatch_video_entity(
     re_tracing::profile_function!();
 
     for chunk in sample_chunks.values() {
-        let unsorted_timelines: Vec<_> = chunk
-            .timelines()
-            .iter()
-            .filter(|(_, tc)| !tc.is_sorted())
-            .map(|(name, _)| name)
-            .collect();
+        let unsorted_timelines = chunk.unsorted_timelines();
         if !unsorted_timelines.is_empty() {
             // We could try pick one of the timelines _are_ sorted (w/ relation to RowId),
             // but let's be better safe than sorry for now. Video playback on these

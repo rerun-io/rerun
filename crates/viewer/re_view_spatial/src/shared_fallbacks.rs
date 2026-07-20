@@ -52,6 +52,12 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
             .register_fallback_provider(component, |_ctx| components::Radius::new_ui_points(0.5));
     }
 
+    // VideoReference
+    system_registry.register_fallback_provider(
+        archetypes::VideoFrameReference::descriptor_video_reference().component,
+        |ctx| components::EntityPath::from(ctx.target_entity_path),
+    );
+
     // Pinhole
     system_registry.register_fallback_provider(
         archetypes::Pinhole::descriptor_image_plane_distance().component,
@@ -181,9 +187,11 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
                         None,
                     );
 
+                // Note: an empty coordinate frame is treated as invalid and falls through to the implicit frame.
                 if let Some(frame_id) = results.get_mono::<components::TransformFrameId>(
                     archetypes::CoordinateFrame::descriptor_frame().component,
-                ) {
+                ) && !frame_id.as_str().is_empty()
+                {
                     return frame_id;
                 }
             }
@@ -226,6 +234,8 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
                         .get_mono::<components::TransformFrameId>(
                             archetypes::CoordinateFrame::descriptor_frame().component,
                         )
+                        // Empty coordinate frames fall back to implicit frames in transform retrieval and therefore provide no explicit root candidate.
+                        .filter(|frame| !frame.as_str().is_empty())
                         .and_then(|frame| {
                             transform_forest
                                 .root_from_frame(re_tf::TransformFrameIdHash::new(&frame))

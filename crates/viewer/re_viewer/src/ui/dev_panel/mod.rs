@@ -3,18 +3,22 @@ mod memory_history;
 mod plot_utils;
 mod server_streaming_tab;
 mod streaming_history;
+mod transform_cache_ui;
 
+use ahash::HashMap;
+use egui_plot::HoverPosition;
 use plot_utils::history_to_plot;
 use re_chunk_store::{ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreStats};
 use re_entity_db::StoreBundle;
 use re_format::{format_bytes, format_uint};
+use re_log_types::StoreId;
 use re_memory::MemoryLimit;
 use re_memory::util::sec_since_start;
 use re_query::{QueryCacheStats, QueryCachesStats};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_ui::UiExt as _;
-use re_viewer_context::StorageContext;
 use re_viewer_context::store_hub::StoreHubStats;
+use re_viewer_context::{ActiveStoreContext, StorageContext, TimeControl};
 
 use crate::env_vars::RERUN_TRACK_ALLOCATIONS;
 use memory_history::MemoryHistory;
@@ -37,6 +41,8 @@ enum DevPanelTab {
     AllocationTracking,
 
     Gpu,
+
+    TransformCache,
 }
 
 impl DevPanelTab {
@@ -48,6 +54,7 @@ impl DevPanelTab {
             Self::Streaming => "Server streaming",
             Self::AllocationTracking => "Allocation tracking",
             Self::Gpu => "GPU",
+            Self::TransformCache => "Transform cache",
         }
     }
 }
@@ -59,11 +66,13 @@ pub struct DevPanel {
     memory_purge_times: Vec<f64>,
     selected_tab: DevPanelTab,
     include_rss_in_flamegraph: bool,
+    transform_cache_state: transform_cache_ui::TransformCacheUiState,
 }
 
 #[derive(Default)]
 pub struct DevPanelResponse {
     pub close_requested: bool,
+    pub repaint_requested: bool,
 }
 
 impl DevPanel {
@@ -99,12 +108,15 @@ impl DevPanel {
         external_trees: &[re_byte_size::NamedMemUsageTree],
         gpu_resource_stats: &WgpuResourcePoolStatistics,
         store_stats: Option<&StoreHubStats>,
+        store_context: Option<&ActiveStoreContext<'_>>,
+        time_controls: &HashMap<StoreId, TimeControl>,
         storage_context: &StorageContext<'_>,
     ) -> DevPanelResponse {
         re_tracing::profile_function!();
 
         // We show realtime stats, so keep showing the latest!
-        ui.request_repaint();
+        // Specific dev panel tabs can opt-out of this below, for resource efficiency if it's not necessary.
+        let mut request_repaint = true;
 
         ui.add_space(4.0);
 
@@ -145,6 +157,12 @@ impl DevPanel {
                         Self::store_stats_ui(ui, store_stats);
                     });
             }
+            DevPanelTab::TransformCache => {
+                self.transform_cache_ui(ui, store_context, time_controls, storage_context);
+                // Normal repaint behavior of the viewer is enough for the transform debugger,
+                // no need to constantly trigger an expensive repaint.
+                request_repaint = false;
+            }
             DevPanelTab::Streaming => {
                 server_streaming_tab::server_streaming_tab_ui(
                     ui,
@@ -170,7 +188,42 @@ impl DevPanel {
 
         DevPanelResponse {
             close_requested: close_clicked,
+            repaint_requested: request_repaint,
         }
+    }
+
+    fn transform_cache_ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        store_context: Option<&ActiveStoreContext<'_>>,
+        time_controls: &HashMap<StoreId, TimeControl>,
+        storage_context: &StorageContext<'_>,
+    ) {
+        // Keep the tab from reporting a tiny content height when it only has a warning label,
+        // without imposing a fixed minimum size on the resizable dev panel.
+        ui.set_min_height(ui.available_height());
+
+        let Some(store_context) = store_context else {
+            ui.warning_label("No active recording selected for the transform cache.");
+            return;
+        };
+
+        let query = time_controls
+            .get(store_context.recording.store_id())
+            .and_then(|time_ctrl| {
+                // Pending timelines do not have resolved timeline metadata yet, so avoid issuing a
+                // query that cannot match the viewer's current timepoint.
+                time_ctrl.timeline()?;
+                Some(time_ctrl.current_query())
+            });
+
+        transform_cache_ui::ui(
+            ui,
+            store_context.recording,
+            storage_context,
+            query,
+            &mut self.transform_cache_state,
+        );
     }
 
     fn store_stats_ui(ui: &mut egui::Ui, store_stats: Option<&StoreHubStats>) {
@@ -178,6 +231,11 @@ impl DevPanel {
             for (store_id, store_stats) in &store_stats.store_stats {
                 let title = format!("{} {}", store_id.kind(), store_id.recording_id());
                 ui.collapsing_header(&title, false, |ui| {
+                    if let Some(data_source) = &store_stats.store_source {
+                        ui.weak(format!("Source: {data_source}"));
+
+                        ui.separator();
+                    }
                     ui.collapsing("Datastore Resources", |ui| {
                         Self::chunk_store_stats(
                             ui,
@@ -492,7 +550,14 @@ impl DevPanel {
 
         egui_plot::Plot::new("mem_history_plot")
             .min_size(egui::Vec2::splat(200.0))
-            .label_formatter(|name, value| format!("{name}: {}", format_bytes(value.y)))
+            .label_formatter(|hover_position| match hover_position {
+                HoverPosition::NearDataPoint {
+                    plot_name,
+                    position,
+                    ..
+                } => Some(format!("{plot_name}: {}", format_bytes(position.y))),
+                HoverPosition::Elsewhere { position } => Some(format_bytes(position.y)),
+            })
             .x_axis_formatter(|time, _| format!("{} s", time.value))
             .y_axis_formatter(|bytes, _| format_bytes(bytes.value))
             .show_x(false)

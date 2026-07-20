@@ -27,15 +27,17 @@ channels = ["conda-forge"]
 description = "Log images, point clouds, etc, and visualize them effortlessly"
 homepage = "https://rerun.io"
 license = "MIT OR Apache-2.0"
-platforms = ["linux-64", "linux-aarch64", "osx-arm64", "osx-64", "win-64"]
+platforms = [
+  { name = "linux-64-glibc-2-28", platform = "linux-64", glibc = "2.28" },
+  { name = "linux-aarch64-glibc-2-28", platform = "linux-aarch64", glibc = "2.28" },
+  { name = "osx-arm64-macos-11", platform = "osx-arm64", macos = "11.0" },
+  { name = "osx-64-macos-11", platform = "osx-64", macos = "11.0" },
+  "win-64",
+]
 readme = "README.md"
 repository = "https://github.com/rerun-io/rerun"
 version = "0.1.0" # TODO(emilk): sync version with `Cargo.toml` with help from `crates.py`
-requires-pixi = ">=0.55.0" # Make sure to keep this in sync with the version on our CI jobs!
-
-[system-requirements]
-macos = "11.0" # needed for some reason otherwise fails to resolve mediapipe package
-libc = "2.28"
+requires-pixi = ">=0.71.3" # Make sure to keep this in sync with the version on our CI jobs!
 
 
 # These should be kept empty as their content is pulled in every single environment. For the "standard" stuff,
@@ -146,6 +148,13 @@ man = "RERUN_DISABLE_WEB_VIEWER_SERVER=1 cargo run --package rerun-cli --all-fea
 # You can also give an argument for what to view (e.g. an .rrd file).
 rerun = "cargo run --package rerun-cli --no-default-features --features release_no_web_viewer --"
 
+# Compile and run the rerun cli tool, without any viewer.
+#
+# This avoid recompiling the viewer when you just want to run a quick command.
+#
+# You can also give an argument for what to view (e.g. an .rrd file).
+rerun-cli = "cargo run --package rerun-cli --no-default-features --"
+
 # Compile and run the rerun viewer, with performance telemetry including Tracy profiler.
 #
 # You can also give an argument for what to view (e.g. an .rrd file).
@@ -179,6 +188,7 @@ rerun-build-native-and-web-release = { cmd = "cargo build --package rerun-cli --
 ] }
 
 rerun-build-native-and-pending-web-release = { cmd = "cargo build --package rerun-cli --no-default-features --features release_full --release --", env = { RERUN_TRAILING_WEB_VIEWER = "1" } }
+rerun-build-native-and-pending-web-release-zig = { cmd = "cargo zigbuild --locked --package rerun-cli --no-default-features --features release_full --release --target x86_64-unknown-linux-gnu.2.28", env = { RERUN_TRAILING_WEB_VIEWER = "1" } }
 
 # Compile and run the web-viewer via rerun-cli.
 #
@@ -224,6 +234,9 @@ rs-check = "python scripts/ci/rust_checks.py"
 # See tests/assets/rrd/README.md for more.
 # Note that we run with `--check-footers=false`: it is expected that these RRDs do not have proper footers (they predate them).
 check-backwards-compatibility = { cmd = "find tests/assets/rrd -name '*.rrd' -type f -print0 | xargs -0 cargo run --package rerun-cli --no-default-features rrd verify --check-footers=false" }
+web-test = { cmd = "wasm-pack test --headless --{{ browser }} crates/store/re_server --all-targets", args = [
+  { arg = "browser", default = "firefox" },
+] }
 
 # `cargo fmt --all` only sees files reachable from each crate's lib.rs/main.rs.
 # Snippets in `docs/snippets/all/*.rs` are copied into the crate by `build.rs`,
@@ -477,6 +490,7 @@ py-build-notebook-js = { cmd = "npm --prefix rerun_notebook run build", depends-
 
 # Build an installable SDK-only wheel. IMPORTANT: unlike the officially published wheels, the wheel produced by this command does NOT include the viewer.
 py-build-wheels-sdk-only = { cmd = "RERUN_ALLOW_MISSING_BIN=1 python scripts/ci/build_and_upload_wheels.py --mode pr --dir ''" }
+py-build-wheels-sdk-only-zig = { cmd = "RERUN_ALLOW_MISSING_BIN=1 python scripts/ci/build_and_upload_wheels.py --mode pr --dir '' --compat manylinux_2_28 --zig" }
 
 # Helper alias to run the python interpreter in the context of the python environment
 rrpy = "uvpy"
@@ -609,6 +623,7 @@ tqdm = ">=4.66.2,<4.67" # For displaying progress in various utility scripts.
 ty = "==0.0.31"
 typing_extensions = ">4.5"
 typos = ">=1.45.1"
+wasm-pack = "0.15.*"
 urllib3 = "<2.6.0" # TODO(googleapis/google-resumable-media-python#491)
 gh = ">=2.79.0,<3"
 binaryen = "117.*" # for `wasm-opt`
@@ -629,15 +644,19 @@ rerun-pixi-env = { path = "rerun_pixi_env", editable = true }
 uv = "==0.9.17"
 
 [target.linux-64.dependencies]
+cargo-zigbuild = "0.20.*"
 libudev = "257.4.*" # for `gilrs` Linux backend
 patchelf = ">=0.17"
 pkgconf = ">=2" # Provides `pkg-config` for `gilrs` Linux backend.
 meilisearch = "1.5.1.*" # not available for linux-aarch64
 buf = "1.*" # not available for linux-aarch64
+zig = "0.13.0.*"
 
 [target.linux-aarch64.dependencies]
+cargo-zigbuild = "0.20.*"
 libudev = "257.4.*" # for `gilrs` Linux backend
 pkgconf = ">=2" # Provides `pkg-config` for `gilrs` Linux backend.
+zig = "0.13.0.*"
 
 [target.osx-arm64.dependencies]
 buf = "1.*" # not available for linux-aarch64

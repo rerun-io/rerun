@@ -53,6 +53,9 @@ mod v1alpha1 {
 
     #[path = "./rerun.cloud.v1alpha1.ext.chunk_key.rs"]
     pub mod rerun_cloud_v1alpha1_ext_chunk_key;
+
+    #[path = "./rerun.cloud.v1alpha1.ext.schemas.rs"]
+    pub mod rerun_cloud_v1alpha1_ext_schemas;
 }
 
 pub mod common {
@@ -76,6 +79,7 @@ pub mod cloud {
         pub mod ext {
             pub use crate::v1alpha1::rerun_cloud_v1alpha1_ext::*;
             pub use crate::v1alpha1::rerun_cloud_v1alpha1_ext_chunk_key::*;
+            pub use crate::v1alpha1::rerun_cloud_v1alpha1_ext_schemas::*;
         }
 
         /// Server-supported feature flags advertised via `VersionResponse.features`.
@@ -140,6 +144,9 @@ pub enum TypeConversionError {
 
     #[error("invalid entry name: {0}")]
     InvalidEntryName(#[from] InvalidEntryNameError),
+
+    #[error("invalid timeline name: {0}")]
+    InvalidTimelineName(#[from] re_types_core::InvalidTimelineNameError),
 
     #[error("failed to parse timestamp: {0}")]
     InvalidTime(#[from] jiff::Error),

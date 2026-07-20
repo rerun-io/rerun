@@ -105,6 +105,7 @@ A powerful mechanism that is built into visualizers is the option to source comp
 Within a view, a visualizer can pick up any component that has the same datatype as the builtin type that it expects.
 For example, the `SeriesLines` and `SeriesPoints` visualizers can pick up any numerical data for their [`Scalar`](../../reference/types/components/scalar.md) component.
 The same holds for String-like components that can be selected for [`Name`](../../reference/types/components/name.md).
+Likewise, the state timeline view's visualizer can source its `StateChange:state` input from any string, boolean, or numeric component (see [Visualize state changes](../../howto/visualization/state-timeline.md)).
 
 Such data often comes from MCAP data that has user-defined message types, or from components that were flexibly logged via [`AnyValues`](https://ref.rerun.io/docs/python/main/common/custom_data/#rerun.AnyValues) or [`DynamicArchetype`](https://ref.rerun.io/docs/python/main/common/custom_data/#rerun.DynamicArchetype).
 The Viewer can even look for data with compatible datatypes in nested fields of Arrow [`StructArrays`](https://docs.rs/arrow/latest/arrow/array/struct.StructArray.html).
@@ -118,7 +119,7 @@ Suitable components show up in the source dropdown:
 
 
 <!-- TODO(#12661): adjust docs once ticket is closed -->
-> #12661: Currently, only the time series view allows remapping of required components (scalars). All other visualizers require matching Rerun semantics (correct archetype & type metadata) for their required fields.
+> #12661: Currently, only the time series view (scalars) and the state timeline view (state values) allow remapping of required components. All other visualizers require matching Rerun semantics (correct archetype & type metadata) for their required fields.
 
 As always, component mappings can be set via the blueprint APIs:
 

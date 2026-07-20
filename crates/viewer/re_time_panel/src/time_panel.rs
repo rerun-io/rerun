@@ -1,10 +1,8 @@
-use std::sync::Arc;
-
 use egui::emath::Rangef;
 use egui::scroll_area::ScrollSource;
 use egui::{
-    Color32, CursorIcon, Modifiers, NumExt as _, Painter, PointerButton, Rect, Response, RichText,
-    Shape, Ui, Vec2, WidgetInfo, WidgetType, pos2,
+    CursorIcon, Modifiers, NumExt as _, Painter, PointerButton, Rect, Response, RichText, Ui, Vec2,
+    WidgetInfo, WidgetType,
 };
 use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item_with_context};
 use re_data_ui::DataUi as _;
@@ -193,6 +191,13 @@ impl TimePanel {
         self.filter_state.activate(query);
     }
 
+    /// Show the time panel.
+    ///
+    /// When `can_collapse_to_bar` is `true`, the panel has three states (hidden,
+    /// a collapsed bar, and fully expanded) and dragging it closed collapses it
+    /// to the bar. When `false` (used for the blueprint inspection panel) there
+    /// is no collapsed bar: dragging it closed flips `*is_expanded` to `false`,
+    /// hiding it entirely.
     pub fn show_panel(
         &mut self,
         viewer_ctx: &ViewerContext<'_>,
@@ -200,7 +205,10 @@ impl TimePanel {
         viewport_blueprint: &ViewportBlueprint,
         ui: &mut egui::Ui,
         state: PanelState,
+        // Flipped when the user drags the panel closed/open:
+        is_expanded: &mut bool,
         mut panel_frame: egui::Frame,
+        can_collapse_to_bar: bool,
     ) {
         if state.is_hidden() {
             return;
@@ -235,12 +243,6 @@ impl TimePanel {
 
         let id: egui::Id = self.source.into();
 
-        let collapsed = egui::Panel::bottom(id.with("time_panel_collapsed"))
-            .resizable(false)
-            .show_separator_line(false)
-            .frame(panel_frame)
-            .default_size(44.0);
-
         let min_height = 150.0;
         let min_top_space = 150.0 + screen_header_height;
         let expanded = egui::Panel::bottom(id.with("time_panel_expanded"))
@@ -251,29 +253,48 @@ impl TimePanel {
             .max_size((window_height - min_top_space).at_least(min_height).round())
             .default_size((0.25 * window_height).clamp(min_height, 250.0).round());
 
-        egui::Panel::show_animated_between_inside(
-            ui,
-            state.is_expanded(),
-            collapsed,
-            expanded,
-            |ui: &mut egui::Ui, how_expanded: f32| {
-                if how_expanded > 0.0 {
-                    self.show_expanded_with_header(
-                        viewer_ctx,
-                        store_ctx,
-                        viewport_blueprint,
-                        ui,
-                        &mut time_commands,
-                    );
-                } else {
-                    ui.horizontal(|ui| {
-                        ui.spacing_mut().interact_size = Vec2::splat(tokens.top_bar_height());
-                        ui.visuals_mut().button_frame = true;
-                        self.collapsed_ui(store_ctx, viewer_ctx, ui, &mut time_commands);
-                    });
-                }
-            },
-        );
+        if can_collapse_to_bar {
+            let collapsed = egui::Panel::bottom(id.with("time_panel_collapsed"))
+                .resizable(true)
+                .show_separator_line(false)
+                .frame(panel_frame)
+                .exact_size(32.0);
+
+            egui::Panel::show_switched(
+                ui,
+                is_expanded,
+                collapsed,
+                expanded,
+                |ui: &mut egui::Ui, expanded: bool| {
+                    if expanded {
+                        self.show_expanded_with_header(
+                            viewer_ctx,
+                            store_ctx,
+                            viewport_blueprint,
+                            ui,
+                            &mut time_commands,
+                        );
+                    } else {
+                        ui.horizontal(|ui| {
+                            ui.spacing_mut().interact_size = Vec2::splat(tokens.top_bar_height());
+                            ui.visuals_mut().button_frame = true;
+                            self.collapsed_ui(store_ctx, viewer_ctx, ui, &mut time_commands);
+                        });
+                    }
+                },
+            );
+        } else {
+            // No collapsed bar: dragging the panel closed hides it entirely.
+            expanded.show_collapsible(ui, is_expanded, |ui: &mut egui::Ui| {
+                self.show_expanded_with_header(
+                    viewer_ctx,
+                    store_ctx,
+                    viewport_blueprint,
+                    ui,
+                    &mut time_commands,
+                );
+            });
+        }
 
         if !time_commands.is_empty() {
             viewer_ctx
@@ -632,7 +653,7 @@ impl TimePanel {
                 store_ctx.app_options().timestamp_format,
             );
         }
-        paint_time_ranges_gaps(
+        re_time_ruler::paint_time_ranges_gaps(
             &self.time_ranges_ui,
             ui,
             &time_bg_area_painter,
@@ -751,6 +772,27 @@ impl TimePanel {
                         &filter_matcher,
                     );
 
+                // If an item is focused, expand every node leading to it so it becomes visible
+                // (the actual scroll happens in `show_entity`). We do this up-front, because a
+                // collapsed node's children aren't drawn at all, so expanding inline while drawing
+                // would only reveal one level per frame for a deeply-nested target.
+                if let Some(focused) = store_ctx.focused_item()
+                    && let Some(focused_entity_path) = focused.item.entity_path()
+                {
+                    let collapse_scope = self.collapse_scope();
+
+                    // If the focus is a component, also expand its entity so the component row
+                    // (drawn as a child of the entity) is revealed; if it's an entity, we only
+                    // need to expand its ancestors.
+                    let expand_target_itself = matches!(focused.item, Item::ComponentPath(_));
+
+                    for node in EntityPath::incremental_walk(None, focused_entity_path) {
+                        if expand_target_itself || &node != focused_entity_path {
+                            collapse_scope.entity(node).set_open(ui.ctx(), true);
+                        }
+                    }
+                }
+
                 for child in &streams_tree_data.children {
                     self.show_entity(
                         store_ctx,
@@ -793,18 +835,11 @@ impl TimePanel {
 
         let collapse_scope = self.collapse_scope();
 
-        // Expand if one of the children is focused
+        // Nodes leading to a focused item are expanded up-front in `tree_ui`; here we only need
+        // to scroll to the focused entity once it's drawn (see below).
         let focused_entity_path = store_ctx
             .focused_item()
             .and_then(|item| item.item.entity_path());
-
-        if focused_entity_path
-            .is_some_and(|focused_entity_path| focused_entity_path.is_descendant_of(entity_path))
-        {
-            collapse_scope
-                .entity(entity_path.clone())
-                .set_open(ui.ctx(), true);
-        }
 
         // Globally unique id that is dependent on the "nature" of the tree (recording or blueprint,
         // in a filter session or not)
@@ -1083,7 +1118,7 @@ impl TimePanel {
                 if is_visible {
                     let component_has_data_in_current_timeline = store
                         .entity_has_component_on_timeline(
-                            &store_ctx.timeline_name(),
+                            Some(&store_ctx.timeline_name()),
                             entity_path,
                             component,
                         );
@@ -1231,7 +1266,7 @@ impl TimePanel {
                     store.collect_physical_descendents_of(&info.id, &mut descendents_scratch);
 
                     for chunk in descendents_scratch.drain(..) {
-                        store.use_chunk_or_report_missing(&chunk);
+                        store.use_transient_chunk_or_report_missing(&chunk);
                     }
                 }
             }
@@ -1770,152 +1805,6 @@ fn view_everything(x_range: &Rangef, timeline_axis: &TimelineAxis) -> TimeView {
     TimeView {
         min: min_valid_data_time.into(),
         time_spanned,
-    }
-}
-
-/// Visually separate the different time segments
-fn paint_time_ranges_gaps(
-    time_ranges_ui: &TimeRangesUi,
-    ui: &egui::Ui,
-    painter: &egui::Painter,
-    y_range: Rangef,
-) {
-    re_tracing::profile_function!();
-
-    // For each gap we are painting this:
-    //
-    //             zig width
-    //             |
-    //            <->
-    //    \         /  ^
-    //     \       /   | zig height
-    //      \     /    v
-    //      /     \
-    //     /       \
-    //    /         \
-    //    \         /
-    //     \       /
-    //      \     /
-    //      /     \
-    //     /       \
-    //    /         \
-    //
-    //    <--------->
-    //     gap width
-    //
-    // Filled with a dark color, plus a stroke and a small drop shadow to the left.
-
-    use itertools::Itertools as _;
-
-    let Rangef {
-        min: top,
-        max: bottom,
-    } = y_range;
-
-    let fill_color = ui.visuals().widgets.noninteractive.bg_fill;
-    let stroke = ui.visuals().widgets.noninteractive.bg_stroke;
-
-    let paint_time_gap = |gap_left: f32, gap_right: f32| {
-        let gap_width = gap_right - gap_left;
-        let zig_width = 4.0_f32.at_most(gap_width / 3.0).at_least(1.0);
-        let zig_height = zig_width;
-        let shadow_width = 12.0;
-
-        let mut y = top;
-        let mut row = 0; // 0 = start wide, 1 = start narrow
-
-        let mut mesh = egui::Mesh::default();
-        let mut shadow_mesh = egui::Mesh::default();
-        let mut left_line_strip = vec![];
-        let mut right_line_strip = vec![];
-
-        while y - zig_height <= bottom {
-            let (left, right) = if row % 2 == 0 {
-                // full width
-                (gap_left, gap_right)
-            } else {
-                // contracted
-                (gap_left + zig_width, gap_right - zig_width)
-            };
-
-            let left_pos = pos2(left, y);
-            let right_pos = pos2(right, y);
-
-            if !mesh.is_empty() {
-                let next_left_vidx = mesh.vertices.len() as u32;
-                let next_right_vidx = next_left_vidx + 1;
-                let prev_left_vidx = next_left_vidx - 2;
-                let prev_right_vidx = next_right_vidx - 2;
-
-                mesh.add_triangle(prev_left_vidx, next_left_vidx, prev_right_vidx);
-                mesh.add_triangle(next_left_vidx, prev_right_vidx, next_right_vidx);
-            }
-
-            mesh.colored_vertex(left_pos, fill_color);
-            mesh.colored_vertex(right_pos, fill_color);
-
-            shadow_mesh.colored_vertex(pos2(right - shadow_width, y), Color32::TRANSPARENT);
-            shadow_mesh.colored_vertex(right_pos, ui.tokens().shadow_gradient_dark_start);
-
-            left_line_strip.push(left_pos);
-            right_line_strip.push(right_pos);
-
-            y += zig_height;
-            row += 1;
-        }
-
-        // Regular & shadow mesh have the same topology!
-        shadow_mesh.indices.clone_from(&mesh.indices);
-
-        painter.add(Shape::Mesh(Arc::new(mesh)));
-        painter.add(Shape::Mesh(Arc::new(shadow_mesh)));
-        painter.add(Shape::line(left_line_strip, stroke));
-        painter.add(Shape::line(right_line_strip, stroke));
-    };
-
-    let zig_zag_first_and_last_edges = true;
-
-    // Margin for the (left or right) end of a gap.
-    // Don't use an arbitrarily large value since it can cause platform-specific rendering issues.
-    const GAP_END_MARGIN: f32 = 100.0;
-
-    if let Some(segment) = time_ranges_ui.segments.first() {
-        let gap_edge = *segment.x.start() as f32;
-        let gap_edge_left_side = ui.content_rect().left() - GAP_END_MARGIN;
-
-        if zig_zag_first_and_last_edges {
-            // Left side of first segment - paint as a very wide gap that we only see the right side of
-            paint_time_gap(gap_edge_left_side, gap_edge);
-        } else {
-            // Careful with subtracting a too large number here. Nvidia @ Windows was observed not drawing the rect correctly for -100_000.0
-            painter.rect_filled(
-                Rect::from_min_max(pos2(gap_edge - 10_000.0, top), pos2(gap_edge, bottom)),
-                0.0,
-                fill_color,
-            );
-            painter.vline(gap_edge, y_range, stroke);
-        }
-    }
-
-    for (a, b) in time_ranges_ui.segments.iter().tuple_windows() {
-        paint_time_gap(*a.x.end() as f32, *b.x.start() as f32);
-    }
-
-    if let Some(segment) = time_ranges_ui.segments.last() {
-        let gap_edge = *segment.x.end() as f32;
-        let gap_edge_right_side = ui.content_rect().right() + GAP_END_MARGIN;
-
-        if zig_zag_first_and_last_edges {
-            // Right side of last segment - paint as a very wide gap that we only see the left side of
-            paint_time_gap(gap_edge, gap_edge_right_side);
-        } else {
-            painter.rect_filled(
-                Rect::from_min_max(pos2(gap_edge, top), pos2(gap_edge_right_side, bottom)),
-                0.0,
-                fill_color,
-            );
-            painter.vline(gap_edge, y_range, stroke);
-        }
     }
 }
 

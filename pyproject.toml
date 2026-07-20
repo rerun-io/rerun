@@ -25,7 +25,7 @@ dev = [
   # with editable installs by adding rerun_py/rerun_sdk to the Python path.
   "rerun-dev-fixup",
   "opentelemetry-exporter-otlp-proto-grpc==1.39.0",
-  "maturin>=1.0.0",
+  "maturin>=1.14.1",
   "ruff==0.15.7",
   "mypy==1.19.1",
   "nbqa==1.9.1",
@@ -72,12 +72,11 @@ dev = [
   "polars>=1.0",
   "datafusion>=53.0",
   "jupyter>=1.0",
-  "types-protobuf", # Needed by mcap-protobuf-support
   # Needed for pretty-printing tables in `fetch_patch_candidates.py`
   "tabulate>=0.9.0",
   "types-tabulate>=0.9.0",
 ]
-snippets = ["rerun-sdk[dataloader]", "av", "pandas", "mcap-protobuf-support"]
+snippets = ["rerun-sdk[dataloader]", "av", "pandas"]
 examples = [
   # External deps used by examples
   "polars>=0.12.0",
@@ -85,9 +84,9 @@ examples = [
   "segment-anything @ git+https://github.com/facebookresearch/segment-anything.git",
   "torch>=2.5.1", # require at least 2.5.1 for some examples
   "torchvision>=0.20.1", # require at least 0.20.1 for some examples
-  # lerobot and rerun_export are not listed here to avoid override-dependencies
-  # conflicts during normal uv sync. Use `uv sync --package rerun_export` to
-  # install rerun_export with its lerobot dependency.
+  # lerobot (used by the dataloader example) is not listed here because it
+  # requires Python >=3.12 while this workspace supports 3.10+. The dataloader
+  # is an isolated uv project — sync it from its own directory.
   # Example packages from workspace
   "air_traffic_data",
   "animated_urdf",
@@ -158,9 +157,9 @@ docs = [
 [tool.uv]
 package = false
 
-# Override lerobot's dependency on rerun-sdk to use the workspace version
-# TODO(RR-3548): Figure out how to have lerobot as a workspace member without causing dependency issues.
-# override-dependencies = ["rerun-sdk"]
+# pyarrow 24.0.0 ships an incomplete `py.typed` that breaks mypy on `pyarrow.compute.*`.
+# 23.x has no type stubs (so mypy leaves it untyped) and clears RUSTSEC/GHSA pyarrow alert >= 23.0.1.
+constraint-dependencies = ["pyarrow>=23.0.1,<24"]
 
 [tool.uv.sources]
 rerun-sdk = { workspace = true }
@@ -203,8 +202,7 @@ objectron = { workspace = true }
 open_photogrammetry_format = { workspace = true }
 openstreetmap_data = { workspace = true }
 # TODO(RR-3548): Figure out a way to include this, without lerobot causing dependency issues.
-# rerun_export = { workspace = true }
-# dataloader = { workspace = true }  # Excluded: same RR-3548 reason (lerobot pins old rerun-sdk).
+# dataloader = { workspace = true }  # Excluded: lerobot requires Python >=3.12.
 plots = { workspace = true }
 raw_mesh = { workspace = true }
 rgbd = { workspace = true }
@@ -213,6 +211,7 @@ rrt_star = { workspace = true }
 segment_anything_model = { workspace = true }
 server_tables = { workspace = true }
 shared_recording = { workspace = true }
+state_timeline = { workspace = true }
 stdio = { workspace = true }
 structure_from_motion = { workspace = true }
 using_index_values = { workspace = true }
@@ -261,8 +260,7 @@ members = [
   # "examples/python/ocr",  # Excluded: paddleclas has incompatible opencv requirements
   "examples/python/open_photogrammetry_format",
   "examples/python/openstreetmap_data",
-  # "examples/python/rerun_export" # Excluded: causes dependency issues,
-  # "examples/python/dataloader" # Excluded: same RR-3548 reason (lerobot).
+  # "examples/python/dataloader" # Excluded: RR-3548 (lerobot requires Python >=3.12).
   "examples/python/plots",
   "examples/python/raw_mesh",
   "examples/python/rgbd",
@@ -271,6 +269,7 @@ members = [
   "examples/python/segment_anything_model",
   "examples/python/server_tables",
   "examples/python/shared_recording",
+  "examples/python/state_timeline",
   "examples/python/stdio",
   "examples/python/structure_from_motion",
   "examples/python/table_blueprints",

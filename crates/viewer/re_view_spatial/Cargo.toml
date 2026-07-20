@@ -25,7 +25,6 @@ nasm = ["re_video/nasm"]
 
 [dependencies]
 
-re_arrow_util.workspace = true
 re_byte_size = { workspace = true, features = ["ecolor", "egui", "glam", "macaw"] }
 re_chunk_store.workspace = true
 re_data_ui.workspace = true
@@ -67,6 +66,7 @@ itertools.workspace = true
 macaw = { workspace = true, features = ["serde"] }
 nohash-hasher.workspace = true
 ordered-float.workspace = true
+parking_lot.workspace = true
 saturating_cast.workspace = true
 serde.workspace = true
 smallvec = { workspace = true, features = ["serde"] }

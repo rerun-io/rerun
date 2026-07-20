@@ -100,7 +100,7 @@ pub async fn layered_segment(service: impl RerunCloudService) {
     .unwrap();
 
     service
-        .unregister_from_dataset_name(dataset_name, &[], &["base"])
+        .unregister_from_dataset_name_blocking(dataset_name, &[], &["base"])
         .await
         .unwrap();
 
@@ -114,7 +114,7 @@ pub async fn layered_segment(service: impl RerunCloudService) {
     .unwrap();
 
     service
-        .unregister_from_dataset_name(dataset_name, &[], &["extra"])
+        .unregister_from_dataset_name_blocking(dataset_name, &[], &["extra"])
         .await
         .unwrap();
 
@@ -188,7 +188,7 @@ pub async fn layered_segment_stress(service: impl RerunCloudService) {
         for layer in ["base", "nasty", "extra"] {
             let layer = format!("{layer}{i}");
             service
-                .unregister_from_dataset_name(dataset_name, &[], &[&layer])
+                .unregister_from_dataset_name_blocking(dataset_name, &[], &[&layer])
                 .await
                 .unwrap();
 
@@ -197,7 +197,7 @@ pub async fn layered_segment_stress(service: impl RerunCloudService) {
 
                 let responses: Vec<_> = service
                     .scan_segment_table(
-                        tonic::Request::new(ScanSegmentTableRequest { columns: vec![] })
+                        tonic::Request::new(ScanSegmentTableRequest::all())
                             .with_entry_name(entry_name(dataset_name)),
                     )
                     .await
@@ -257,7 +257,7 @@ pub async fn unregistered_segment(service: impl RerunCloudService) {
         .await;
 
     service
-        .unregister_from_dataset_name(dataset_name, &["my_segment_id"], &[])
+        .unregister_from_dataset_name_blocking(dataset_name, &["my_segment_id"], &[])
         .await
         .unwrap();
 

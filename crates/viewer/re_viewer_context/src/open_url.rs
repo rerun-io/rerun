@@ -250,11 +250,6 @@ pub fn base_url(url: &Url) -> Url {
 
 #[derive(Debug, Clone, Copy)]
 pub struct OpenUrlOptions {
-    /// Follow live HTTP or file paths.
-    //
-    // TODO(emilk): consider making this part of `ViewerOpenUrl::RrdHttpUrl/FilePath` instead
-    pub follow: bool,
-
     pub recording_open_behavior: RecordingOpenBehavior,
 
     /// Shows the loading screen.
@@ -264,7 +259,6 @@ pub struct OpenUrlOptions {
 impl Default for OpenUrlOptions {
     fn default() -> Self {
         Self {
-            follow: false,
             recording_open_behavior: RecordingOpenBehavior::Open,
             show_loader: false,
         }
@@ -544,13 +538,9 @@ impl ViewerOpenUrl {
 
             Self::HttpUrl(url) => Some(LogSource::HttpStream {
                 url: url.to_string(),
-                follow: false,
             }),
             #[cfg(not(target_arch = "wasm32"))]
-            Self::FilePath(path) => Some(LogSource::File {
-                path: path.clone(),
-                follow: false,
-            }),
+            Self::FilePath(path) => Some(LogSource::File { path: path.clone() }),
             Self::RedapDatasetSegment(uri) => Some(LogSource::RedapGrpcStream {
                 uri: uri.clone(),
                 open_behavior: RecordingOpenBehavior::Background,
@@ -601,7 +591,6 @@ impl ViewerOpenUrl {
             Self::HttpUrl(url) => {
                 command_sender.send_system(SystemCommand::LoadDataSource(LogDataSource::HttpUrl {
                     url,
-                    follow: options.follow,
                 }));
             }
             #[cfg(not(target_arch = "wasm32"))]
@@ -610,7 +599,6 @@ impl ViewerOpenUrl {
                     LogDataSource::FilePath {
                         file_source: re_log_types::FileSource::Uri,
                         path,
-                        follow: options.follow,
                     },
                 ));
             }
@@ -633,18 +621,24 @@ impl ViewerOpenUrl {
             }
             Self::RedapCatalog(uri) => {
                 command_sender.send_system(SystemCommand::AddRedapServer(uri.origin.clone()));
+                command_sender.send_system(SystemCommand::RefreshRedapServer(uri.origin.clone()));
                 let item = Item::RedapServer(uri.origin);
                 command_sender.send_system(SystemCommand::set_selection(item.clone()));
                 command_sender.send_system(SystemCommand::SetFocus(item.into()));
             }
             Self::RedapEntry(uri) => {
                 command_sender.send_system(SystemCommand::AddRedapServer(uri.origin.clone()));
+                command_sender.send_system(SystemCommand::RefreshRedapEntry {
+                    origin: uri.origin.clone(),
+                    entry_id: uri.entry_id,
+                });
                 let item = Item::from(uri);
                 command_sender.send_system(SystemCommand::set_selection(item.clone()));
                 command_sender.send_system(SystemCommand::SetFocus(item.into()));
             }
             Self::RedapFolder(uri) => {
                 command_sender.send_system(SystemCommand::AddRedapServer(uri.origin.clone()));
+                command_sender.send_system(SystemCommand::RefreshRedapServer(uri.origin.clone()));
                 let item = Item::RedapEntry {
                     origin: uri.origin,
                     kind: crate::RedapEntryKind::Folder(uri.path),
@@ -1048,6 +1042,9 @@ mod tests {
             "",
             "   ",
             "aaaaaaaaaaa",
+            // The filesystem root exists, but should not be treated as an openable path
+            // (a leading `/` is how the user searches for an entity path in the command palette):
+            "/",
         ];
 
         for url in invalid_urls {
@@ -1108,7 +1105,7 @@ mod tests {
             ViewerOpenUrl::from_route(
                 &store_hub,
                 &Route::Settings {
-                    previous: Box::new(dummy_mode.clone())
+                    return_route: Box::new(dummy_mode.clone())
                 }
             )
             .unwrap(),
@@ -1121,7 +1118,7 @@ mod tests {
                 &Route::ChunkStoreBrowser {
                     store_id: Some(StoreId::empty_recording()),
                     selected_chunk: None,
-                    previous: Box::new(dummy_mode),
+                    return_route: Box::new(dummy_mode),
                 }
             )
             .unwrap(),
@@ -1151,7 +1148,6 @@ mod tests {
             &mut store_hub,
             Some(LogSource::File {
                 path: std::path::PathBuf::from("/path/to/test.rrd"),
-                follow: false,
             }),
         );
         assert_eq!(
@@ -1165,7 +1161,6 @@ mod tests {
             &mut store_hub,
             Some(LogSource::HttpStream {
                 url: "https://example.com/recording.rrd".to_owned(),
-                follow: false,
             }),
         );
         assert_eq!(
@@ -1240,7 +1235,7 @@ mod tests {
                 component: None,
             }),
             when: Some((
-                re_chunk::TimelineName::new("test"),
+                re_chunk::TimelineName::from("test"),
                 re_log_types::TimeCell {
                     typ: re_log_types::TimeType::DurationNs,
                     value: re_log_types::NonMinI64::ONE,

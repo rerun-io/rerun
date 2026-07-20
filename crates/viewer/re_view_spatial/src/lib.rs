@@ -38,17 +38,14 @@ pub use view_2d::SpatialView2D;
 pub use view_3d::SpatialView3D;
 
 // Export some other types that are useful for extensions.
-pub use contexts::TransformTreeContext;
+pub use contexts::{EntityDepthOffsets, TransformTreeContext};
 
-mod view_kind {
-    /// Whether a spatial visualizer prefers 2D or 3D views.
-    ///
-    /// Used by heuristics to determine which entities belong to which spatial view kind.
-    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-    pub enum SpatialViewKind {
-        TwoD,
-        ThreeD,
-    }
+/// Whether a space is 2D or 3D.
+/// Also used for subspaces, e.g. 2D pinhole subspace in 3D.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SpaceKind {
+    TwoD,
+    ThreeD,
 }
 
 pub fn configure_background(

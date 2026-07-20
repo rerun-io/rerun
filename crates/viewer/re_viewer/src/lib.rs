@@ -31,6 +31,7 @@ mod app;
 mod app_blueprint;
 mod app_state;
 mod background_tasks;
+mod command_palette;
 mod default_views;
 mod docker_detection;
 pub mod env_vars;
@@ -53,6 +54,9 @@ mod viewer_analytics;
 #[cfg(feature = "testing")]
 #[cfg(not(target_arch = "wasm32"))]
 pub mod viewer_test_utils;
+
+#[cfg(feature = "internal_catalog")]
+pub mod internal_catalog;
 
 #[cfg(not(target_arch = "wasm32"))]
 mod loading;
@@ -238,9 +242,13 @@ pub(crate) fn wgpu_options(force_wgpu_backend: Option<&str>) -> egui_wgpu::WgpuC
             ..egui_wgpu::WgpuSetupCreateNew::without_display_handle()
         }),
 
-        // Explicitly stick with wgpu's latency default which is more optimized for high throughput than
-        // what egui may have in mind.
-        desired_maximum_frame_latency: None,
+        surface: egui_wgpu::SurfaceConfig {
+            // Explicitly stick with wgpu's latency default which is more optimized for high throughput than
+            // what egui may have in mind.
+            desired_maximum_frame_latency: None,
+
+            ..egui_wgpu::SurfaceConfig::HIGH_THROUGHPUT
+        },
 
         ..Default::default()
     }

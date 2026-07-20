@@ -23,6 +23,7 @@ use parking_lot::RwLock;
 use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
 use re_chunk::{ArrowArray as _, ChunkId};
 use re_video::VideoDataDescription;
+use re_video::player::VideoSliceSource;
 use serde::{Deserialize, Serialize};
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
@@ -465,7 +466,7 @@ impl LeRobotDatasetV3 {
                     // this always refers to the subtask description in the dataset metadata.
                     chunks.extend(self.log_episode_subtask(&timeline, &data)?);
                 }
-                DType::Int16 | DType::Int64 | DType::Bool | DType::String => {
+                DType::Int16 | DType::Int64 | DType::Bool | DType::String | DType::Language => {
                     re_log::warn_once!(
                         "Loading LeRobot feature ({feature_key}) of dtype `{:?}` into Rerun is not yet implemented",
                         feature.dtype
@@ -641,13 +642,7 @@ impl LeRobotDatasetV3 {
             }
 
             let chunk = sample_meta
-                .get(
-                    &|source| match source {
-                        re_video::VideoSource::Span(span) => &video_bytes[span.range_usize()],
-                        re_video::VideoSource::Id { .. } => &[],
-                    },
-                    sample_idx,
-                )
+                .get(&VideoSliceSource(video_bytes), sample_idx)
                 .ok_or_else(|| {
                     anyhow!("Sample {sample_idx} out of bounds for feature '{observation}'")
                 })?;

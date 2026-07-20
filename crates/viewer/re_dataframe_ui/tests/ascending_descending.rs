@@ -2,8 +2,8 @@ mod common;
 
 use std::sync::Arc;
 
-use arrow::array::{RecordBatch, StringArray};
-use arrow::datatypes::{DataType, Field, Schema};
+use arrow::array::{Array as _, ListArray, RecordBatch, StringBuilder};
+use arrow::datatypes::{Field, Schema};
 use datafusion::prelude::SessionContext;
 use egui::accesskit::Role;
 use egui_kittest::kittest::Queryable as _;
@@ -26,7 +26,7 @@ async fn test_no_sort() {
                 DataFusionTableWidget::new(Arc::clone(&session_context), table_ref)
                     .title("No sort")
                     .show(
-                        ctx,
+                        ctx.app_ctx,
                         &runtime_handle,
                         ui,
                         &mut test_context.view_states.lock(),
@@ -55,7 +55,7 @@ async fn test_ascending() {
                         ..Default::default()
                     })
                     .show(
-                        ctx,
+                        ctx.app_ctx,
                         &runtime_handle,
                         ui,
                         &mut test_context.view_states.lock(),
@@ -84,7 +84,7 @@ async fn test_descending() {
                         ..Default::default()
                     })
                     .show(
-                        ctx,
+                        ctx.app_ctx,
                         &runtime_handle,
                         ui,
                         &mut test_context.view_states.lock(),
@@ -109,7 +109,7 @@ async fn test_column_menu_button() {
                 DataFusionTableWidget::new(Arc::clone(&session_context), table_ref)
                     .title("Column menu button")
                     .show(
-                        ctx,
+                        ctx.app_ctx,
                         &runtime_handle,
                         ui,
                         &mut test_context.view_states.lock(),
@@ -130,14 +130,23 @@ async fn test_column_menu_button() {
 // ---
 
 fn prepare_session_context() -> (Arc<SessionContext>, &'static str) {
-    // create a record batch with a single string column
+    // create a record batch with a single string list column
+    let column = ListArray::from_nested_iter::<StringBuilder, _, _, _>(vec![
+        Some(vec![Some("b")]),
+        None,
+        Some(vec![Some("a")]),
+        Some(vec![None]),
+        Some(vec![]),
+        Some(vec![Some("c")]),
+    ]);
+
     let schema = Arc::new(Schema::new_with_metadata(
-        vec![Field::new("col", DataType::Utf8, false)],
+        vec![Field::new("col", column.data_type().clone(), true)],
         Default::default(),
     ));
     let batch = RecordBatch::try_new_with_options(
         schema.clone(),
-        vec![Arc::new(StringArray::from(vec!["b", "a", "c"]))],
+        vec![Arc::new(column)],
         &Default::default(),
     )
     .expect("Failed to create a record batch");

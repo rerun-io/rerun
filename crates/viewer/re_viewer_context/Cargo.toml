@@ -41,6 +41,7 @@ re_query.workspace = true
 re_quota_channel.workspace = true
 re_redap_client.workspace = true
 re_renderer.workspace = true
+re_rvl.workspace = true
 re_string_interner.workspace = true
 re_tf.workspace = true
 re_tracing.workspace = true

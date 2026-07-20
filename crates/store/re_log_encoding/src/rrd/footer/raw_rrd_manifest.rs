@@ -12,7 +12,7 @@ use re_chunk::external::nohash_hasher::IntMap;
 use re_chunk::external::re_byte_size;
 use re_chunk::{ArchetypeName, ChunkError, ChunkId, ComponentIdentifier, ComponentType, Timeline};
 use re_log_types::external::re_tuid::Tuid;
-use re_log_types::{AbsoluteTimeRange, EntityPath, StoreId, TimeType};
+use re_log_types::{AbsoluteTimeRange, EntityPath, StoreId, TimeType, TimelineName};
 use re_types_core::ComponentDescriptor;
 
 use crate::{CodecError, CodecResult, Decodable as _, StreamFooterEntry, ToApplication as _};
@@ -508,7 +508,11 @@ impl RawRrdManifest {
                         ),
                     }));
                 };
-                let component = ComponentIdentifier::new(component);
+                let component = ComponentIdentifier::try_new(component).map_err(|err| {
+                    CodecError::from(ChunkError::Malformed {
+                        reason: err.to_string(),
+                    })
+                })?;
 
                 let per_component = per_entity.entry(entity_path.clone()).or_default();
 
@@ -662,8 +666,12 @@ impl RawRrdManifest {
                     continue;
                 }
 
-                let component = ComponentIdentifier::new(component);
-                let timeline = Timeline::new(*index, *time_type);
+                let component = ComponentIdentifier::try_new(component).map_err(|err| {
+                    CodecError::from(ChunkError::Malformed {
+                        reason: err.to_string(),
+                    })
+                })?;
+                let timeline = Timeline::new(TimelineName::try_new(*index)?, *time_type);
 
                 let per_timeline = per_entity.entry(entity_path.clone()).or_default();
                 let per_component = per_timeline.entry(timeline).or_default();
@@ -1135,11 +1143,17 @@ impl RawRrdManifest {
                     }));
                 };
                 let descr = ComponentDescriptor {
-                    archetype: md.get("rerun:archetype").map(|s| ArchetypeName::new(s)),
-                    component: ComponentIdentifier::new(component),
+                    archetype: md
+                        .get("rerun:archetype")
+                        .and_then(|s| ArchetypeName::try_new(s).ok()),
+                    component: ComponentIdentifier::try_new(component).map_err(|err| {
+                        CodecError::from(ChunkError::Malformed {
+                            reason: err.to_string(),
+                        })
+                    })?,
                     component_type: md
                         .get("rerun:component_type")
-                        .map(|s| ComponentType::new(s)),
+                        .and_then(|s| ComponentType::try_new(s).ok()),
                 };
                 let column_name = Self::compute_column_name(
                     None,
@@ -1211,11 +1225,17 @@ impl RawRrdManifest {
                     }));
                 };
                 let descr = ComponentDescriptor {
-                    archetype: md.get("rerun:archetype").map(|s| ArchetypeName::new(s)),
-                    component: ComponentIdentifier::new(component),
+                    archetype: md
+                        .get("rerun:archetype")
+                        .and_then(|s| ArchetypeName::try_new(s).ok()),
+                    component: ComponentIdentifier::try_new(component).map_err(|err| {
+                        CodecError::from(ChunkError::Malformed {
+                            reason: err.to_string(),
+                        })
+                    })?,
                     component_type: md
                         .get("rerun:component_type")
-                        .map(|s| ComponentType::new(s)),
+                        .and_then(|s| ComponentType::try_new(s).ok()),
                 };
 
                 for suffix in ["start", "end"] {

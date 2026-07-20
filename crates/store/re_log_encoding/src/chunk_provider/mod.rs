@@ -5,14 +5,12 @@ use re_chunk::{Chunk, ChunkId};
 use crate::{RawRrdManifest, RrdManifest};
 
 #[cfg(feature = "decoder")]
-#[cfg(not(target_arch = "wasm32"))]
 mod rrd;
 
 #[cfg(feature = "decoder")]
-#[cfg(not(target_arch = "wasm32"))]
 pub use self::rrd::RrdChunkProvider;
 
-/// Synchronous backend that exposes an indexed chunk source.
+/// Backend that exposes an indexed chunk source.
 ///
 /// A provider serves both the **index** (which chunks exist and their metadata) and the **bytes**
 /// (the chunks themselves).
@@ -24,6 +22,7 @@ pub use self::rrd::RrdChunkProvider;
 /// - The returned `Vec<Arc<Chunk>>` may be in any order; callers must not rely on input ordering.
 /// - [`Self::manifest`] and [`Self::raw_manifest`] are stable for the lifetime of the provider —
 ///   they never change once constructed.
+#[async_trait::async_trait]
 pub trait ChunkProvider: Send + Sync {
     /// The validated, indexed manifest of chunks this provider serves.
     fn manifest(&self) -> &Arc<RrdManifest>;
@@ -37,7 +36,7 @@ pub trait ChunkProvider: Send + Sync {
     fn source(&self) -> String;
 
     /// Load chunks by id.
-    fn load_chunks(&self, ids: &[ChunkId]) -> Result<Vec<Arc<Chunk>>, ChunkProviderError>;
+    async fn load_chunks(&self, ids: &[ChunkId]) -> Result<Vec<Arc<Chunk>>, ChunkProviderError>;
 }
 
 /// Provider-level error.

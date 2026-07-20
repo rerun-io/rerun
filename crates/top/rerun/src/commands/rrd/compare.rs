@@ -56,8 +56,8 @@ impl CompareCommand {
 
         let ignore_timelines: Vec<re_chunk::TimelineName> = ignore_timelines
             .iter()
-            .map(|name| name.as_str().into())
-            .collect();
+            .map(re_chunk::TimelineName::try_new)
+            .collect::<Result<_, _>>()?;
 
         re_log::debug!("Comparing {path_to_rrd1:?} to {path_to_rrd2:?}…");
 

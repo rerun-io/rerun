@@ -4,7 +4,7 @@ use std::sync::Arc;
 use pyo3::exceptions::{PyFileNotFoundError, PyValueError};
 use pyo3::prelude::*;
 use re_chunk::{Chunk, EntityPath};
-use re_log_types::TimeType;
+use re_log_types::{TimeType, TimelineName};
 use re_mp4_reader::{Mode, Mp4Config};
 
 use super::error::ChunkPipelineError;
@@ -34,22 +34,20 @@ impl PyMp4ReaderInternal {
             chunk_by_gop = true,
             timeline_name = "video",
             timeline_type = "duration",
-            allow_b_frames = false,
+            ffmpeg_override = None,
             entity_path = None,
         ),
-        text_signature = "(self, path, mode='stream', chunk_by_gop=True, timeline_name='video', timeline_type='duration', allow_b_frames=False, entity_path=None)"
+        text_signature = "(self, path, mode='stream', chunk_by_gop=True, timeline_name='video', timeline_type='duration', ffmpeg_override=None, entity_path=None)"
     )]
-    #[expect(clippy::fn_params_excessive_bools)]
     fn new(
-        path: &str,
+        path: PathBuf,
         mode: &str,
         chunk_by_gop: bool,
         timeline_name: &str,
         timeline_type: &str,
-        allow_b_frames: bool,
+        ffmpeg_override: Option<PathBuf>,
         entity_path: Option<String>,
     ) -> PyResult<Self> {
-        let path = PathBuf::from(path);
         if !path.exists() {
             return Err(PyFileNotFoundError::new_err(format!(
                 "MP4 file not found: {}",
@@ -74,19 +72,11 @@ impl PyMp4ReaderInternal {
                         "`chunk_by_gop=False` is only valid with `mode=\"stream\"`",
                     ));
                 }
-                if allow_b_frames {
-                    return Err(PyValueError::new_err(
-                        "`allow_b_frames=True` is only valid with `mode=\"stream\"`",
-                    ));
-                }
                 Mode::Asset {
                     timepoint: re_chunk::TimePoint::default(),
                 }
             }
-            "stream" => Mode::Stream {
-                chunk_by_gop,
-                allow_b_frames,
-            },
+            "stream" => Mode::Stream { chunk_by_gop },
             other => {
                 return Err(PyValueError::new_err(format!(
                     "Invalid mode: {other:?}. Expected \"asset\" or \"stream\""
@@ -96,8 +86,10 @@ impl PyMp4ReaderInternal {
 
         let config = Mp4Config {
             mode,
-            timeline_name: timeline_name.into(),
+            timeline_name: TimelineName::try_new(timeline_name)
+                .map_err(|err| PyValueError::new_err(err.to_string()))?,
             timeline_type,
+            ffmpeg_override,
         };
 
         let entity_path = match entity_path {

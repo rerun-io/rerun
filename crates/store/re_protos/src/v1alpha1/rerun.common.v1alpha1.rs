@@ -53,6 +53,22 @@ impl ::prost::Name for Timeline {
         "/rerun.common.v1alpha1.Timeline".into()
     }
 }
+/// A point in time on a timeline: a sequence index for sequence timelines, or nanoseconds for temporal timelines.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct TimelineTime {
+    #[prost(int64, tag = "1")]
+    pub time: i64,
+}
+impl ::prost::Name for TimelineTime {
+    const NAME: &'static str = "TimelineTime";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v1alpha1.TimelineTime".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v1alpha1.TimelineTime".into()
+    }
+}
 /// A time range between start and end time points. Each 64 bit number can represent different time point data
 /// depending on the timeline it is associated with. Time range is inclusive for both start and end time points.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
@@ -210,15 +226,21 @@ impl ::prost::Name for EntryId {
         "/rerun.common.v1alpha1.EntryId".into()
     }
 }
-/// Entry point for all ManifestRegistryService APIs
+/// Entry point for all ManifestWriterService APIs
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct DatasetHandle {
     /// Unique entry identifier (for debug purposes)
     #[prost(message, optional, tag = "1")]
     pub entry_id: ::core::option::Option<EntryId>,
     /// The kind of dataset this handle refers to.
+    ///
+    /// Deprecated: use `dataset_kind` instead.
+    #[deprecated]
     #[prost(enumeration = "StoreKind", tag = "3")]
     pub store_kind: i32,
+    /// The kind of dataset this handle refers to.
+    #[prost(enumeration = "DatasetKind", tag = "4")]
+    pub dataset_kind: i32,
     /// Path to Dataset backing storage (e.g. s3://bucket/file or file:///path/to/file)
     #[prost(string, optional, tag = "2")]
     pub dataset_url: ::core::option::Option<::prost::alloc::string::String>,
@@ -563,6 +585,42 @@ impl EncoderVersion {
         }
     }
 }
+/// The type of a timeline's time values. Mirrors `re_log_types::TimeType`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum TimeType {
+    Unspecified = 0,
+    /// Used e.g. for frames in a film.
+    Sequence = 1,
+    /// Duration measured in nanoseconds.
+    DurationNs = 2,
+    /// Nanoseconds since unix epoch (1970-01-01 00:00:00 UTC).
+    TimestampNs = 3,
+}
+impl TimeType {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "TIME_TYPE_UNSPECIFIED",
+            Self::Sequence => "TIME_TYPE_SEQUENCE",
+            Self::DurationNs => "TIME_TYPE_DURATION_NS",
+            Self::TimestampNs => "TIME_TYPE_TIMESTAMP_NS",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "TIME_TYPE_UNSPECIFIED" => Some(Self::Unspecified),
+            "TIME_TYPE_SEQUENCE" => Some(Self::Sequence),
+            "TIME_TYPE_DURATION_NS" => Some(Self::DurationNs),
+            "TIME_TYPE_TIMESTAMP_NS" => Some(Self::TimestampNs),
+            _ => None,
+        }
+    }
+}
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum StoreKind {
@@ -588,6 +646,42 @@ impl StoreKind {
             "STORE_KIND_UNSPECIFIED" => Some(Self::Unspecified),
             "STORE_KIND_RECORDING" => Some(Self::Recording),
             "STORE_KIND_BLUEPRINT" => Some(Self::Blueprint),
+            _ => None,
+        }
+    }
+}
+/// What type of dataset.
+///
+/// This affects limits on what can be registered to the dataset.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum DatasetKind {
+    /// Always reserve unspecified as default value
+    Unspecified = 0,
+    Recording = 1,
+    Blueprint = 2,
+    Asset = 3,
+}
+impl DatasetKind {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "DATASET_KIND_UNSPECIFIED",
+            Self::Recording => "DATASET_KIND_RECORDING",
+            Self::Blueprint => "DATASET_KIND_BLUEPRINT",
+            Self::Asset => "DATASET_KIND_ASSET",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "DATASET_KIND_UNSPECIFIED" => Some(Self::Unspecified),
+            "DATASET_KIND_RECORDING" => Some(Self::Recording),
+            "DATASET_KIND_BLUEPRINT" => Some(Self::Blueprint),
+            "DATASET_KIND_ASSET" => Some(Self::Asset),
             _ => None,
         }
     }

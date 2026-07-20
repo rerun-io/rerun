@@ -37,7 +37,7 @@ pub struct BarChartView {
 impl ::re_types_core::View for BarChartView {
     #[inline]
     fn identifier() -> ::re_types_core::ViewClassIdentifier {
-        ::re_types_core::external::re_string_interner::intern_static!(
+        ::re_types_core::external::re_string_interner::intern_static_nonempty!(
             ::re_types_core::ViewClassIdentifier,
             "BarChart"
         )

@@ -8,14 +8,16 @@ use arrow::array::{
 use arrow::buffer::OffsetBuffer as ArrowOffsetBuffer;
 use arrow::datatypes::Field as ArrowField;
 use arrow::pyarrow::PyArrowType;
-use pyo3::exceptions::PyRuntimeError;
+use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::types::{PyAnyMethods as _, PyDict, PyDictMethods as _, PyString};
 use pyo3::{Bound, PyAny, PyResult};
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::{Chunk, ChunkError, ChunkId, PendingRow, RowId, TimeColumn, TimelineName};
 use re_log_types::TimePoint;
 use re_sdk::external::nohash_hasher::IntMap;
-use re_sdk::{ComponentDescriptor, EntityPath, Timeline};
+use re_sdk::{
+    ArchetypeName, ComponentDescriptor, ComponentIdentifier, ComponentType, EntityPath, Timeline,
+};
 
 /// Perform Python-to-Rust conversion for a `ComponentDescriptor`.
 pub fn descriptor_to_rust(component_descr: &Bound<'_, PyAny>) -> PyResult<ComponentDescriptor> {
@@ -39,9 +41,10 @@ pub fn descriptor_to_rust(component_descr: &Bound<'_, PyAny>) -> PyResult<Compon
     let component: Cow<'_, str> = component.extract()?;
 
     let descr = ComponentDescriptor {
-        archetype: archetype.map(|s| s.as_ref().into()),
-        component: component.as_ref().into(),
-        component_type: component_type.map(|s| s.as_ref().into()),
+        archetype: archetype.and_then(|s| ArchetypeName::try_new(s.as_ref()).ok()),
+        component: ComponentIdentifier::try_new(component.as_ref())
+            .map_err(|err| PyRuntimeError::new_err(err.to_string()))?,
+        component_type: component_type.and_then(|s| ComponentType::try_new(s.as_ref()).ok()),
     };
     descr.sanity_check();
     Ok(descr)
@@ -94,7 +97,8 @@ pub fn build_chunk_from_components(
             timelines.iter().map(|(name, array)| {
                 let py_name = name.cast::<PyString>()?;
                 let name: std::borrow::Cow<'_, str> = py_name.extract()?;
-                let timeline_name: TimelineName = name.as_ref().into();
+                let timeline_name = TimelineName::try_new(name.as_ref())
+                    .map_err(|err| PyValueError::new_err(err.to_string()))?;
                 array_to_rust(&array).map(|array| (array, timeline_name))
             }),
             |iter| iter.unzip(),

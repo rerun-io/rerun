@@ -79,3 +79,14 @@ impl AsRef<str> for SegmentId {
         self.as_str()
     }
 }
+
+/// Allows `&str` lookups in maps keyed by [`SegmentId`].
+///
+/// Sound because the derived `Eq`/`Ord`/`Hash` all delegate to the inner `String`,
+/// matching `str` semantics — same contract as `String: Borrow<str>`.
+impl std::borrow::Borrow<str> for SegmentId {
+    #[inline]
+    fn borrow(&self) -> &str {
+        self.as_str()
+    }
+}

@@ -4,8 +4,10 @@ use re_test_context::TestContext;
 use re_test_context::external::egui_kittest::SnapshotResults;
 use re_test_viewport::TestContextExt as _;
 use re_view_state_timeline::StateTimelineView;
-use re_viewer_context::{TimeControlCommand, ViewClass as _, ViewId};
-use re_viewport_blueprint::ViewBlueprint;
+use re_viewer_context::{
+    BlueprintContext as _, GLOBAL_VIEW_ID, TimeControlCommand, ViewClass as _, ViewId,
+};
+use re_viewport_blueprint::{ViewBlueprint, ViewProperty};
 
 fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
     test_context.setup_viewport_blueprint(|_ctx, blueprint| {
@@ -15,7 +17,222 @@ fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
     })
 }
 
-// TODO(RR-4254): Add a test for multiple state change instances.
+/// Log a `StateChange` whose state array can contain nulls (per-instance resets).
+fn log_multi_state(
+    test_context: &mut TestContext,
+    entity: &str,
+    timeline: Timeline,
+    tick: i64,
+    states: &[Option<&str>],
+) {
+    let state_change =
+        re_sdk_types::archetypes::StateChange::new().with_state_opt(states.iter().copied());
+    test_context.log_entity(entity, |builder| {
+        builder.with_archetype(
+            RowId::new(),
+            TimePoint::from([(timeline, tick)]),
+            &state_change,
+        )
+    });
+}
+
+/// A `StateChange` row can carry multiple instances (e.g. the buttons of a joystick). Each
+/// instance gets its own lane, grouped under a single entity label. Every row is a full
+/// assignment of the state array: a null instance resets its lane (gap), and so does being
+/// omitted from a shorter row.
+#[test]
+fn test_state_timeline_multi_instance() {
+    let mut test_context = TestContext::new_with_view_class::<StateTimelineView>();
+
+    let timeline = Timeline::log_tick();
+    let entity = "state/buttons";
+
+    // (tick, states per instance); `None` = reset (gap for that instance). The shorter row
+    // at tick 10 resets the omitted instance 2 the same way.
+    let multi_data: Vec<(i64, Vec<Option<&str>>)> = vec![
+        (0, vec![Some("Idle"), Some("Idle"), Some("Idle")]),
+        (10, vec![Some("Idle"), Some("Pressed")]),
+        (20, vec![Some("Pressed"), None, Some("Pressed")]),
+        (30, vec![Some("Idle"), Some("Idle"), Some("Idle")]),
+    ];
+    for (tick, states) in &multi_data {
+        log_multi_state(&mut test_context, entity, timeline, *tick, states);
+    }
+
+    // A single-instance lane next to the group, to contrast the two layouts.
+    for (tick, state) in [(0, "On"), (25, "Off")] {
+        test_context.log_entity("state/power", |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                TimePoint::from([(timeline, tick)]),
+                &re_sdk_types::archetypes::StateChange::single(state),
+            )
+        });
+    }
+
+    test_context.set_active_timeline(*timeline.name());
+
+    let view_id = setup_blueprint(&mut test_context);
+    test_context
+        .run_view_ui_and_save_snapshot(
+            view_id,
+            "state_timeline_multi_instance",
+            egui::vec2(500.0, 250.0),
+            None,
+        )
+        .unwrap();
+}
+
+/// Bootstrapping a window whose left edge falls past a row that is narrower than the group:
+/// every row is a full assignment, so the narrow row resets the instances it omits. The
+/// single latest row before the window is always a sufficient bootstrap.
+#[test]
+fn test_state_timeline_multi_instance_bootstrap() {
+    use re_sdk_types::blueprint;
+
+    let mut snapshot_results = SnapshotResults::new();
+    let mut test_context = TestContext::new_with_view_class::<StateTimelineView>();
+
+    let timeline = Timeline::new_sequence("tick");
+    let entity = "state/buttons";
+
+    // The narrow row at tick 10 sets instance 0 and resets instances 1 and 2. With the
+    // window starting at tick 12, lane 0 must carry "A2" at the left edge while lanes 1
+    // and 2 stay empty until the full row at tick 20.
+    let multi_data: Vec<(i64, Vec<Option<&str>>)> = vec![
+        (0, vec![Some("A"), Some("B"), Some("C")]),
+        (10, vec![Some("A2")]),
+        (20, vec![Some("A3"), Some("B3"), Some("C3")]),
+    ];
+    for (tick, states) in &multi_data {
+        log_multi_state(&mut test_context, entity, timeline, *tick, states);
+    }
+
+    test_context.set_active_timeline(*timeline.name());
+
+    // Pin the visible window to [12, 30] via the global time axis link — deterministic,
+    // unlike emulating pan/zoom scroll events.
+    let view_id = test_context.setup_viewport_blueprint(|ctx, blueprint_ctx| {
+        let view = ViewBlueprint::new_with_root_wildcard(StateTimelineView::identifier());
+        let time_axis = ViewProperty::from_archetype::<blueprint::archetypes::TimeAxis>(
+            ctx.blueprint_db(),
+            ctx.blueprint_query,
+            view.id,
+        );
+        time_axis.save_blueprint_component(
+            ctx,
+            &blueprint::archetypes::TimeAxis::descriptor_link(),
+            &blueprint::components::LinkAxis::LinkToGlobal,
+        );
+        let global_time_axis = ViewProperty::from_archetype::<blueprint::archetypes::TimeAxis>(
+            ctx.blueprint_db(),
+            ctx.blueprint_query,
+            GLOBAL_VIEW_ID,
+        );
+        global_time_axis.save_blueprint_component(
+            ctx,
+            &blueprint::archetypes::TimeAxis::descriptor_view_range(),
+            &blueprint::components::TimeRange(re_sdk_types::datatypes::TimeRange {
+                start: re_sdk_types::datatypes::TimeRangeBoundary::Absolute(
+                    re_sdk_types::datatypes::TimeInt(12),
+                ),
+                end: re_sdk_types::datatypes::TimeRangeBoundary::Absolute(
+                    re_sdk_types::datatypes::TimeInt(30),
+                ),
+            }),
+        );
+        blueprint_ctx.add_view_at_root(view)
+    });
+
+    snapshot_results.add(test_context.run_view_ui_and_save_snapshot(
+        view_id,
+        "state_timeline_multi_instance_bootstrap",
+        egui::vec2(500.0, 150.0),
+        None,
+    ));
+}
+
+/// The lane count is derived from the whole timeline, not the visible window: with the
+/// window panned entirely past a narrowing row and no wider row after it, the omitted
+/// instances must keep their (empty) lanes instead of disappearing — otherwise the group's
+/// height changes while panning.
+#[test]
+fn test_state_timeline_multi_instance_stable_lane_count() {
+    use re_sdk_types::blueprint;
+
+    let mut snapshot_results = SnapshotResults::new();
+    let mut test_context = TestContext::new_with_view_class::<StateTimelineView>();
+
+    let timeline = Timeline::new_sequence("tick");
+    let entity = "state/buttons";
+
+    // The row at tick 10 narrows the group to one instance, and no later row widens it
+    // again. With the window at [12, 30], only the narrow row is bootstrapped — the
+    // three-lane layout must come from the full-timeline width probe.
+    let multi_data: Vec<(i64, Vec<Option<&str>>)> = vec![
+        (0, vec![Some("A"), Some("B"), Some("C")]),
+        (10, vec![Some("A2")]),
+    ];
+    for (tick, states) in &multi_data {
+        log_multi_state(&mut test_context, entity, timeline, *tick, states);
+    }
+
+    // A second entity extends the timeline to tick 30, so the buttons' open-ended last
+    // phase stretches across the window. Its lane's vertical position also pins the
+    // buttons group's height in the snapshot.
+    for (tick, state) in [(0, "On"), (25, "Off")] {
+        test_context.log_entity("state/power", |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                TimePoint::from([(timeline, tick)]),
+                &re_sdk_types::archetypes::StateChange::single(state),
+            )
+        });
+    }
+
+    test_context.set_active_timeline(*timeline.name());
+
+    // Pin the visible window to [12, 30] via the global time axis link — deterministic,
+    // unlike emulating pan/zoom scroll events.
+    let view_id = test_context.setup_viewport_blueprint(|ctx, blueprint_ctx| {
+        let view = ViewBlueprint::new_with_root_wildcard(StateTimelineView::identifier());
+        let time_axis = ViewProperty::from_archetype::<blueprint::archetypes::TimeAxis>(
+            ctx.blueprint_db(),
+            ctx.blueprint_query,
+            view.id,
+        );
+        time_axis.save_blueprint_component(
+            ctx,
+            &blueprint::archetypes::TimeAxis::descriptor_link(),
+            &blueprint::components::LinkAxis::LinkToGlobal,
+        );
+        let global_time_axis = ViewProperty::from_archetype::<blueprint::archetypes::TimeAxis>(
+            ctx.blueprint_db(),
+            ctx.blueprint_query,
+            GLOBAL_VIEW_ID,
+        );
+        global_time_axis.save_blueprint_component(
+            ctx,
+            &blueprint::archetypes::TimeAxis::descriptor_view_range(),
+            &blueprint::components::TimeRange(re_sdk_types::datatypes::TimeRange {
+                start: re_sdk_types::datatypes::TimeRangeBoundary::Absolute(
+                    re_sdk_types::datatypes::TimeInt(12),
+                ),
+                end: re_sdk_types::datatypes::TimeRangeBoundary::Absolute(
+                    re_sdk_types::datatypes::TimeInt(30),
+                ),
+            }),
+        );
+        blueprint_ctx.add_view_at_root(view)
+    });
+
+    snapshot_results.add(test_context.run_view_ui_and_save_snapshot(
+        view_id,
+        "state_timeline_multi_instance_stable_lane_count",
+        egui::vec2(500.0, 150.0),
+        None,
+    ));
+}
 
 #[test]
 fn test_state_timeline_basic() {
@@ -45,7 +262,7 @@ fn test_state_timeline_basic() {
             builder.with_archetype(
                 RowId::new(),
                 timepoint,
-                &re_sdk_types::archetypes::StateChange::new().with_state(*state),
+                &re_sdk_types::archetypes::StateChange::single(*state),
             )
         });
     }
@@ -91,7 +308,7 @@ fn test_state_timeline_time_cursor() {
             builder.with_archetype(
                 RowId::new(),
                 timepoint,
-                &re_sdk_types::archetypes::StateChange::new().with_state(*state),
+                &re_sdk_types::archetypes::StateChange::single(*state),
             )
         });
     }
@@ -119,37 +336,27 @@ fn test_state_timeline_time_cursor() {
         .unwrap();
 }
 
-/// A null state is a fallthrough: it must not terminate the preceding phase.
+/// A null state is a reset: it must end the preceding phase and leave a gap until the
+/// next non-null state.
 #[test]
-fn test_state_timeline_null_is_fallthrough() {
+fn test_state_timeline_null_is_reset() {
     let mut test_context = TestContext::new_with_view_class::<StateTimelineView>();
 
     let timeline = Timeline::log_tick();
 
     // Log a state, then a null in the middle, then another state.
-    // The null should be ignored so that the first phase extends all the way
-    // until the next non-null state.
+    // The null should end the first phase, leaving a gap until the next state.
     let timepoint_0 = TimePoint::from([(timeline, 0)]);
     test_context.log_entity("state/mode", |builder| {
         builder.with_archetype(
             RowId::new(),
             timepoint_0,
-            &re_sdk_types::archetypes::StateChange::new().with_state("Idle"),
+            &re_sdk_types::archetypes::StateChange::single("Idle"),
         )
     });
 
     let timepoint_20 = TimePoint::from([(timeline, 20)]);
-    let null_state_array =
-        <re_sdk_types::components::Text as re_sdk_types::external::re_types_core::Loggable>::to_arrow_opt(
-            [None::<re_sdk_types::components::Text>],
-        )
-        .expect("serializing a single null text should not fail");
-    let null_state = re_sdk_types::archetypes::StateChange {
-        state: Some(re_sdk_types::SerializedComponentBatch::new(
-            null_state_array,
-            re_sdk_types::archetypes::StateChange::descriptor_state(),
-        )),
-    };
+    let null_state = re_sdk_types::archetypes::StateChange::new().with_state_opt([None::<&str>]);
     test_context.log_entity("state/mode", |builder| {
         builder.with_archetype(RowId::new(), timepoint_20, &null_state)
     });
@@ -159,14 +366,13 @@ fn test_state_timeline_null_is_fallthrough() {
         builder.with_archetype(
             RowId::new(),
             timepoint_40,
-            &re_sdk_types::archetypes::StateChange::new().with_state("Active"),
+            &re_sdk_types::archetypes::StateChange::single("Active"),
         )
     });
 
     test_context.set_active_timeline(*timeline.name());
 
-    // Place the cursor in the null region to confirm the previous phase
-    // visibly extends through the null.
+    // Place the cursor in the null region to confirm the gap left by the reset.
     let store_id = test_context.active_store_id();
     test_context.send_time_commands(
         store_id,
@@ -180,7 +386,7 @@ fn test_state_timeline_null_is_fallthrough() {
     test_context
         .run_view_ui_and_save_snapshot(
             view_id,
-            "state_timeline_null_is_fallthrough",
+            "state_timeline_null_is_reset",
             egui::vec2(400.0, 120.0),
             None,
         )
@@ -205,7 +411,7 @@ fn test_state_timeline_empty_and_clear() {
             builder.with_archetype(
                 RowId::new(),
                 timepoint,
-                &re_sdk_types::archetypes::StateChange::new().with_state(*state),
+                &re_sdk_types::archetypes::StateChange::single(*state),
             )
         });
     }
@@ -215,7 +421,7 @@ fn test_state_timeline_empty_and_clear() {
         builder.with_archetype(
             RowId::new(),
             TimePoint::from([(timeline, 0)]),
-            &re_sdk_types::archetypes::StateChange::new().with_state("Running"),
+            &re_sdk_types::archetypes::StateChange::single("Running"),
         )
     });
     test_context.log_entity("cleared", |builder| {
@@ -229,7 +435,7 @@ fn test_state_timeline_empty_and_clear() {
         builder.with_archetype(
             RowId::new(),
             TimePoint::from([(timeline, 30)]),
-            &re_sdk_types::archetypes::StateChange::new().with_state("Running"),
+            &re_sdk_types::archetypes::StateChange::single("Running"),
         )
     });
 
@@ -264,7 +470,7 @@ fn test_state_timeline_recursive_clear() {
             builder.with_archetype(
                 RowId::new(),
                 timepoint,
-                &re_sdk_types::archetypes::StateChange::new().with_state(*state),
+                &re_sdk_types::archetypes::StateChange::single(*state),
             )
         });
     }
@@ -322,7 +528,7 @@ fn test_state_timeline_timeline_switch() {
             builder.with_archetype(
                 RowId::new(),
                 timepoint,
-                &re_sdk_types::archetypes::StateChange::new().with_state(*state),
+                &re_sdk_types::archetypes::StateChange::single(*state),
             )
         });
     }
@@ -382,7 +588,7 @@ fn test_state_configuration() {
             builder.with_archetype(
                 RowId::new(),
                 timepoint,
-                &re_sdk_types::archetypes::StateChange::new().with_state(*state),
+                &re_sdk_types::archetypes::StateChange::single(*state),
             )
         });
     }
@@ -432,7 +638,7 @@ fn test_state_timeline_merge_small_phases() {
             builder.with_archetype(
                 RowId::new(),
                 timepoint,
-                &re_sdk_types::archetypes::StateChange::new().with_state(state),
+                &re_sdk_types::archetypes::StateChange::single(state),
             )
         });
     }
@@ -445,7 +651,7 @@ fn test_state_timeline_merge_small_phases() {
             builder.with_archetype(
                 RowId::new(),
                 timepoint,
-                &re_sdk_types::archetypes::StateChange::new().with_state(*state),
+                &re_sdk_types::archetypes::StateChange::single(*state),
             )
         });
     }
@@ -491,7 +697,7 @@ fn test_state_timeline_zoom() {
             builder.with_archetype(
                 RowId::new(),
                 timepoint,
-                &re_sdk_types::archetypes::StateChange::new().with_state(*state),
+                &re_sdk_types::archetypes::StateChange::single(*state),
             )
         });
     }
@@ -528,6 +734,127 @@ fn test_state_timeline_zoom() {
     snapshot_results.add(harness.try_snapshot("state_timeline_zoom_after"));
 }
 
+/// Regression test for RR-4294: after panning so that every logged state change lies to the
+/// *left* of the visible window, the lane must still render — showing the state active at the
+/// window start (the last change before the range) — rather than disappearing entirely.
+#[test]
+fn test_state_timeline_pan_past_data() {
+    let mut snapshot_results = SnapshotResults::new();
+    let mut test_context = TestContext::new_with_view_class::<StateTimelineView>();
+
+    let timeline = Timeline::new_sequence("tick");
+
+    // All state changes happen early (ticks 0..=40); we then pan the window far past them.
+    // "Idle" at tick 40 is the last state, so it must fill the whole panned-past window.
+    let state_data: Vec<(i64, &str, &str)> = vec![
+        (0, "state/robot_mode", "Idle"),
+        (10, "state/robot_mode", "Moving"),
+        (25, "state/robot_mode", "Working"),
+        (40, "state/robot_mode", "Idle"),
+    ];
+    for (tick, entity, state) in &state_data {
+        let timepoint = TimePoint::from([(timeline, *tick)]);
+        test_context.log_entity(*entity, |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                timepoint,
+                &re_sdk_types::archetypes::StateChange::single(*state),
+            )
+        });
+    }
+
+    test_context.set_active_timeline(*timeline.name());
+
+    let view_id = setup_blueprint(&mut test_context);
+
+    let size = egui::vec2(800.0, 150.0);
+    let mut harness = test_context
+        .setup_kittest_for_rendering_3d(size)
+        .build_ui(|ui| {
+            test_context.run_with_single_view(ui, view_id);
+        });
+
+    // Let the view auto-fit to the data.
+    harness.run();
+
+    // Pan far to the right so the whole [0, 40] data range scrolls off the left edge.
+    // The view pans on horizontal scroll while the pointer hovers over it.
+    // Smooth scrolling keeps the ui repainting, so step a fixed number of frames rather than
+    // `run()` (which bails out once it sees continuous repaints).
+    let center = egui::pos2(size.x * 0.5, size.y * 0.5);
+    harness.hover_at(center);
+    for _ in 0..8 {
+        harness.event(egui::Event::MouseWheel {
+            unit: egui::MouseWheelUnit::Point,
+            delta: egui::vec2(-2000.0, 0.0),
+            phase: egui::TouchPhase::Move,
+            modifiers: egui::Modifiers::NONE,
+        });
+        harness.step();
+    }
+
+    snapshot_results.add(harness.try_snapshot("state_timeline_pan_past_data"));
+}
+
+/// Panning the view entirely *before* the first state change must keep the lane visible (as an
+/// empty row) rather than letting it vanish. Even with no data in the window — and nothing before
+/// it to bootstrap — the visualizer probes the entity's state type so the lane keeps its identity.
+#[test]
+fn test_state_timeline_pan_before_data() {
+    let mut snapshot_results = SnapshotResults::new();
+    let mut test_context = TestContext::new_with_view_class::<StateTimelineView>();
+
+    let timeline = Timeline::new_sequence("tick");
+
+    // All state changes happen at ticks 0..=40; we then pan the window far to the left of them.
+    let state_data: Vec<(i64, &str, &str)> = vec![
+        (0, "state/robot_mode", "Idle"),
+        (10, "state/robot_mode", "Moving"),
+        (25, "state/robot_mode", "Working"),
+        (40, "state/robot_mode", "Idle"),
+    ];
+    for (tick, entity, state) in &state_data {
+        let timepoint = TimePoint::from([(timeline, *tick)]);
+        test_context.log_entity(*entity, |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                timepoint,
+                &re_sdk_types::archetypes::StateChange::single(*state),
+            )
+        });
+    }
+
+    test_context.set_active_timeline(*timeline.name());
+
+    let view_id = setup_blueprint(&mut test_context);
+
+    let size = egui::vec2(800.0, 150.0);
+    let mut harness = test_context
+        .setup_kittest_for_rendering_3d(size)
+        .build_ui(|ui| {
+            test_context.run_with_single_view(ui, view_id);
+        });
+
+    // Let the view auto-fit to the data.
+    harness.run();
+
+    // Pan far to the left so the whole [0, 40] data range scrolls off the right edge, leaving the
+    // window entirely before the data. Positive horizontal scroll moves the window left.
+    let center = egui::pos2(size.x * 0.5, size.y * 0.5);
+    harness.hover_at(center);
+    for _ in 0..8 {
+        harness.event(egui::Event::MouseWheel {
+            unit: egui::MouseWheelUnit::Point,
+            delta: egui::vec2(2000.0, 0.0),
+            phase: egui::TouchPhase::Move,
+            modifiers: egui::Modifiers::NONE,
+        });
+        harness.step();
+    }
+
+    snapshot_results.add(harness.try_snapshot("state_timeline_pan_before_data"));
+}
+
 /// Exercises every awkward shape the state slot can take in one lane:
 ///
 /// ```text
@@ -535,15 +862,15 @@ fn test_state_timeline_zoom() {
 /// -----+-------------------+-------------
 ///  1   | ["hi!"]           | (not logged)
 ///  2   | (not logged)      | [1]          // no state update at this tick
-///  3   | []                | [2]          // empty list (clear_fields) — no inner items, no event
-///  5   | [""]              | [1, 2, 3]    // explicit empty → gap
+///  3   | []                | [2]          // empty list (clear_fields) — reset → gap
+///  5   | [""]              | [1, 2, 3]    // explicit empty → gap (collapses into the open one)
 ///  6   | ["bye!"]          | (not logged)
-///  7   | [null]            | [4]          // null *inside* the list — fallthrough
-///  12  | ["end"]           | (not logged) // trailing state so the gap is clearly visible
+///  7   | [null]            | [4]          // null *inside* the list — reset → gap
+///  12  | ["end"]           | (not logged) // trailing state so the gaps are clearly visible
 /// ```
 ///
-/// Expected lane: `hi!` (1..5), gap (5..6), `bye!` (6..12), `end` (12..). The degenerate
-/// inputs at ticks 2, 3, 7 must not break the lane.
+/// Expected lane: `hi!` (1..3), gap (3..6), `bye!` (6..7), gap (7..12), `end` (12..). The
+/// degenerate input at tick 2 must not break the lane.
 #[test]
 fn test_state_timeline_edge_cases() {
     let mut test_context = TestContext::new_with_view_class::<StateTimelineView>();
@@ -556,7 +883,7 @@ fn test_state_timeline_edge_cases() {
     test_context.log_entity(entity, |builder| {
         builder.with_archetype_auto_row(
             TimePoint::from([(timeline, 1)]),
-            &re_sdk_types::archetypes::StateChange::new().with_state("hi!"),
+            &re_sdk_types::archetypes::StateChange::single("hi!"),
         )
     });
 
@@ -568,7 +895,7 @@ fn test_state_timeline_edge_cases() {
         )
     });
 
-    // tick 3: `clear_fields` serializes state as an empty list; scalars co-logged.
+    // tick 3: `clear_fields` serializes state as an empty list — a reset; scalars co-logged.
     test_context.log_entity(entity, |builder| {
         builder.with_archetype_auto_row(
             TimePoint::from([(timeline, 3)]),
@@ -586,7 +913,7 @@ fn test_state_timeline_edge_cases() {
     test_context.log_entity(entity, |builder| {
         builder.with_archetype_auto_row(
             TimePoint::from([(timeline, 5)]),
-            &re_sdk_types::archetypes::StateChange::new().with_state(""),
+            &re_sdk_types::archetypes::StateChange::single(""),
         )
     });
     test_context.log_entity(entity, |builder| {
@@ -600,22 +927,12 @@ fn test_state_timeline_edge_cases() {
     test_context.log_entity(entity, |builder| {
         builder.with_archetype_auto_row(
             TimePoint::from([(timeline, 6)]),
-            &re_sdk_types::archetypes::StateChange::new().with_state("bye!"),
+            &re_sdk_types::archetypes::StateChange::single("bye!"),
         )
     });
 
-    // tick 7: single null `Text` inside the list — must be treated as fallthrough.
-    let null_state_array =
-        <re_sdk_types::components::Text as re_sdk_types::external::re_types_core::Loggable>::to_arrow_opt(
-            [None::<re_sdk_types::components::Text>],
-        )
-        .expect("serializing a single null text should not fail");
-    let null_state = re_sdk_types::archetypes::StateChange {
-        state: Some(re_sdk_types::SerializedComponentBatch::new(
-            null_state_array,
-            re_sdk_types::archetypes::StateChange::descriptor_state(),
-        )),
-    };
+    // tick 7: single null `Text` inside the list — a reset, opening a gap until tick 12.
+    let null_state = re_sdk_types::archetypes::StateChange::new().with_state_opt([None::<&str>]);
     test_context.log_entity(entity, |builder| {
         builder.with_archetype_auto_row(TimePoint::from([(timeline, 7)]), &null_state)
     });
@@ -631,7 +948,7 @@ fn test_state_timeline_edge_cases() {
     test_context.log_entity(entity, |builder| {
         builder.with_archetype_auto_row(
             TimePoint::from([(timeline, 12)]),
-            &re_sdk_types::archetypes::StateChange::new().with_state("end"),
+            &re_sdk_types::archetypes::StateChange::single("end"),
         )
     });
 
@@ -646,4 +963,114 @@ fn test_state_timeline_edge_cases() {
             None,
         )
         .unwrap();
+}
+
+/// When the time axis is linked to global, the state timeline view must drive its pan/zoom
+/// window from the shared global blueprint view range — and write pan/zoom back to it,
+/// so it stays in sync with other plots (e.g. time series views) linked to the same range.
+#[test]
+fn test_state_timeline_link_to_global() {
+    use re_sdk_types::blueprint;
+
+    let mut test_context = TestContext::new_with_view_class::<StateTimelineView>();
+
+    let timeline = Timeline::new_sequence("tick");
+
+    let state_data: Vec<(i64, &str, &str)> = vec![
+        (0, "state/robot_mode", "Idle"),
+        (10, "state/robot_mode", "Moving"),
+        (25, "state/robot_mode", "Working"),
+        (40, "state/robot_mode", "Idle"),
+    ];
+    for (tick, entity, state) in &state_data {
+        let timepoint = TimePoint::from([(timeline, *tick)]);
+        test_context.log_entity(*entity, |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                timepoint,
+                &re_sdk_types::archetypes::StateChange::single(*state),
+            )
+        });
+    }
+
+    test_context.set_active_timeline(*timeline.name());
+
+    // Create the view and link its time axis to global.
+    let view_id = test_context.setup_viewport_blueprint(|ctx, blueprint_ctx| {
+        let view = ViewBlueprint::new_with_root_wildcard(StateTimelineView::identifier());
+        let time_axis = ViewProperty::from_archetype::<blueprint::archetypes::TimeAxis>(
+            ctx.blueprint_db(),
+            ctx.blueprint_query,
+            view.id,
+        );
+        time_axis.save_blueprint_component(
+            ctx,
+            &blueprint::archetypes::TimeAxis::descriptor_link(),
+            &blueprint::components::LinkAxis::LinkToGlobal,
+        );
+        blueprint_ctx.add_view_at_root(view)
+    });
+
+    let read_global_range = |test_context: &TestContext| {
+        test_context.with_blueprint_ctx(|ctx, _store_hub| {
+            ViewProperty::from_archetype::<blueprint::archetypes::TimeAxis>(
+                ctx.current_blueprint(),
+                ctx.blueprint_query(),
+                GLOBAL_VIEW_ID,
+            )
+            .component_or_empty::<blueprint::components::TimeRange>(
+                blueprint::archetypes::TimeAxis::descriptor_view_range().component,
+            )
+            .expect("failed to read global time range")
+        })
+    };
+
+    // The global range starts out unset (the view falls back to the full timeline range).
+    assert!(
+        read_global_range(&test_context).is_none(),
+        "global view range should be unset before any interaction"
+    );
+
+    let size = egui::vec2(800.0, 150.0);
+    let mut harness = test_context
+        .setup_kittest_for_rendering_3d(size)
+        .build_ui(|ui| {
+            test_context.run_with_single_view(ui, view_id);
+        });
+
+    // Let the linked view settle (reads the global range, falling back to the full range).
+    harness.run();
+
+    // Pan the view; in linked mode this must persist the new window to the global range.
+    // Smooth scrolling keeps the ui repainting, so step a fixed number of frames rather than
+    // `run()` (which bails out once it sees continuous repaints).
+    let center = egui::pos2(size.x * 0.5, size.y * 0.5);
+    harness.hover_at(center);
+    for _ in 0..4 {
+        harness.event(egui::Event::MouseWheel {
+            unit: egui::MouseWheelUnit::Point,
+            delta: egui::vec2(-200.0, 0.0),
+            phase: egui::TouchPhase::Move,
+            modifiers: egui::Modifiers::NONE,
+        });
+        harness.step();
+    }
+    // Let the scroll momentum decay so the view (and the written range) settles.
+    for _ in 0..10 {
+        harness.step();
+    }
+
+    // The pan should have written an explicit, finite range to the global view.
+    let global_range = read_global_range(&test_context)
+        .expect("panning a linked view must write the global view range");
+    assert!(
+        matches!(
+            global_range.start,
+            re_sdk_types::datatypes::TimeRangeBoundary::Absolute(_)
+        ) && matches!(
+            global_range.end,
+            re_sdk_types::datatypes::TimeRangeBoundary::Absolute(_)
+        ),
+        "linked pan should write an absolute range, got {global_range:?}"
+    );
 }

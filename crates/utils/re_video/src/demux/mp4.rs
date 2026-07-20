@@ -46,11 +46,26 @@ impl VideoDataDescription {
 
         let mp4_tracks = mp4.tracks().iter().map(|(k, t)| (*k, t.kind)).collect();
 
-        let track = mp4
+        let Some(track) = mp4
             .tracks()
             .values()
             .find(|t| t.kind == Some(re_mp4::TrackKind::Video))
-            .ok_or(VideoLoadError::NoVideoTrack)?;
+        else {
+            // No track has a codec we recognize as video. An unsupported video codec such as
+            // MPEG-4 Part 2, which uses the `mp4v` fourcc, is left as `Unknown` by `re_mp4` and
+            // so never tagged as a video track. Fall back to the media handler type so we can
+            // report the actual unsupported codec instead of the misleading "no video tracks".
+            let video_track = mp4.tracks().values().find(|t| {
+                matches!(
+                    re_mp4::TrackKind::try_from(&t.trak(&mp4).mdia.hdlr.handler_type),
+                    Ok(re_mp4::TrackKind::Video)
+                )
+            });
+            return Err(match video_track {
+                Some(track) => VideoLoadError::UnsupportedCodec(unknown_codec_fourcc(&mp4, track)),
+                None => VideoLoadError::NoVideoTrack,
+            });
+        };
 
         let stsd = track.trak(&mp4).mdia.minf.stbl.stsd.clone();
 
@@ -87,7 +102,7 @@ impl VideoDataDescription {
                 let presentation_timestamp = Time::new(sample.composition_timestamp);
                 let duration = Time::new(sample.duration.saturating_cast());
 
-                let byte_span = Span::from_start_len(sample.offset as u32, sample.size as u32);
+                let byte_span = Span::from_start_len(sample.offset, sample.size);
 
                 samples.push_back(SampleMetadataState::Present(SampleMetadata {
                     is_sync: sample.is_sync,

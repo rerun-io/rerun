@@ -14,6 +14,7 @@ use datafusion_ffi::udf::FFI_ScalarUDF;
 use pyo3::types::PyCapsule;
 use pyo3::{Bound, PyResult, Python, pyclass, pymethods};
 
+use re_log::ResultExt as _;
 use re_log_types::{
     AbsoluteTimeRange, DataPath, NonMinI64, TimeCell, TimeType, Timeline, TimelineName,
 };
@@ -280,7 +281,8 @@ impl ScalarUDFImpl for SegmentUrlUdf {
                     .value(row);
                 let time_cell = TimeCell::new(*time_type, NonMinI64::try_from(i64_val).ok()?);
                 let tl_name = timeline_name.as_deref()?;
-                Some((TimelineName::new(tl_name), time_cell))
+                let tl_name = TimelineName::try_new(tl_name).ok_or_log_error_once()?;
+                Some((tl_name, time_cell))
             });
 
             let time_selection =
@@ -299,6 +301,7 @@ impl ScalarUDFImpl for SegmentUrlUdf {
                         let start = NonMinI64::try_from(start_val).ok()?;
                         let end = NonMinI64::try_from(end_val).ok()?;
                         let tl_name = timeline_name.as_deref()?;
+                        let tl_name = TimelineName::try_new(tl_name).ok_or_log_error_once()?;
                         let timeline = Timeline::new(tl_name, *time_type);
                         let range = AbsoluteTimeRange::new(start, end);
                         Some(TimeSelection { timeline, range })

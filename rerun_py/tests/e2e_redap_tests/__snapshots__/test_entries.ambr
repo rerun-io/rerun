@@ -1,20 +1,4 @@
 # serializer version: 1
-# name: test_entry_names_without_hidden
-  list([
-    'test_dataset',
-  ])
-# ---
-# name: test_entry_names_without_hidden.1
-  list([
-    'test_table',
-  ])
-# ---
-# name: test_entry_names_without_hidden.2
-  list([
-    'test_dataset',
-    'test_table',
-  ])
-# ---
 # name: test_entries_without_hidden
   list([
     'test_dataset',
@@ -26,6 +10,22 @@
   ])
 # ---
 # name: test_entries_without_hidden.2
+  list([
+    'test_dataset',
+    'test_table',
+  ])
+# ---
+# name: test_entry_names_without_hidden
+  list([
+    'test_dataset',
+  ])
+# ---
+# name: test_entry_names_without_hidden.1
+  list([
+    'test_table',
+  ])
+# ---
+# name: test_entry_names_without_hidden.2
   list([
     'test_dataset',
     'test_table',

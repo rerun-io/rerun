@@ -390,7 +390,7 @@ fn cache_with_unordered_chunks() {
         chunks.iter().any(|chunk| {
             chunk
                 .timelines()
-                .get(&re_chunk::TimelineName::new(TIMELINE_NAME))
+                .get(&re_chunk::TimelineName::from(TIMELINE_NAME))
                 .is_some_and(|t| !t.is_sorted())
         }),
         "We are testing unsorted chunks, at least one should end up unsorted"
@@ -460,7 +460,7 @@ fn cache_with_out_of_order_chunk_arrival() {
             .entries
             .contains_key(&crate::cache::video_stream_cache::VideoStreamKey {
                 entity_path: re_chunk::EntityPath::from(STREAM_ENTITY).hash(),
-                timeline: re_chunk::TimelineName::new(TIMELINE_NAME),
+                timeline: re_chunk::TimelineName::from(TIMELINE_NAME),
                 sample_component: VideoStream::descriptor_sample().component,
             }),
         "Cache entry should survive delta re-merge"
@@ -578,7 +578,7 @@ fn cache_out_of_order_arrival_with_compaction() {
             .entries
             .contains_key(&crate::cache::video_stream_cache::VideoStreamKey {
                 entity_path: re_chunk::EntityPath::from(STREAM_ENTITY).hash(),
-                timeline: re_chunk::TimelineName::new(TIMELINE_NAME),
+                timeline: re_chunk::TimelineName::from(TIMELINE_NAME),
                 sample_component: VideoStream::descriptor_sample().component,
             }),
         "The video stream cache entry should still exist after delta re-merge"
@@ -674,7 +674,7 @@ fn cache_with_manifest_load_resulting_in_incomplete_gop() {
             .entries
             .contains_key(&crate::cache::video_stream_cache::VideoStreamKey {
                 entity_path: re_chunk::EntityPath::from(STREAM_ENTITY).hash(),
-                timeline: re_chunk::TimelineName::new(TIMELINE_NAME),
+                timeline: re_chunk::TimelineName::from(TIMELINE_NAME),
                 sample_component: VideoStream::descriptor_sample().component,
             }),
         "Cache entry should survive delta re-merge"
@@ -732,7 +732,7 @@ fn cache_with_manifest_skips_conflicting_chunk_keyframe() {
             .entries
             .contains_key(&crate::cache::video_stream_cache::VideoStreamKey {
                 entity_path: re_chunk::EntityPath::from(STREAM_ENTITY).hash(),
-                timeline: re_chunk::TimelineName::new(TIMELINE_NAME),
+                timeline: re_chunk::TimelineName::from(TIMELINE_NAME),
                 sample_component: VideoStream::descriptor_sample().component,
             }),
         "Cache entry should survive delta re-merge"

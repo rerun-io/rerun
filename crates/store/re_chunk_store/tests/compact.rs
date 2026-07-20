@@ -438,6 +438,31 @@ fn count_false_keyframes(store: &ChunkStore) -> u64 {
         .count() as u64
 }
 
+/// Run `f`, returning its result alongside every `WARN`+ log message emitted
+/// while it ran (message plus its structured fields, rendered to a string).
+///
+/// Used to assert that a skipped entity is *reported* — we don't want optimize
+/// to silently swallow a problem, only to not abort the whole recording over it.
+fn with_captured_warnings<R>(f: impl FnOnce() -> R) -> (R, Vec<String>) {
+    re_log::setup_logging();
+    let rx = re_log::add_log_msg_receiver(re_log::LevelFilter::WARN);
+    let result = f();
+    let warnings = rx
+        .try_iter()
+        .filter(|msg| msg.level == re_log::Level::WARN)
+        .map(|msg| {
+            let fields = msg
+                .fields
+                .iter()
+                .map(|(key, value)| format!("{key}={value}"))
+                .collect::<Vec<_>>()
+                .join(" ");
+            format!("{} {fields}", msg.message)
+        })
+        .collect();
+    (result, warnings)
+}
+
 /// Canonical input: user logged the codec's keyframes in a dedicated pure
 /// chunk with no `false` rows. The keyframe chunk must be preserved by ID,
 /// but the sample chunks must still get GoP-rebatched (those two concerns
@@ -500,11 +525,12 @@ fn optimize_preserves_canonical_keyframes_while_rebatching_samples() {
 }
 
 /// User-supplied labels whose `true`-set matches the codec, but with extra
-/// `is_keyframe=false` rows on non-keyframes. No `false` should remain after
-/// optimize, so the input is rejected — the user must explicitly set
-/// `fix_keyframe` to drop them.
+/// `is_keyframe=false` rows on non-keyframes. No `false` should remain after a
+/// successful optimize (the user must set `fix_keyframe` to drop them), so this
+/// entity can't be rebatched. That must not abort the whole optimize: the entity
+/// is skipped and left un-optimized, retaining the user's original labels.
 #[test]
-fn optimize_errors_on_false_rows() {
+fn optimize_skips_entity_with_false_rows() {
     let num_samples: i64 = 20;
     let period: i64 = 5;
     let mut store = indexed_video_store("/video", num_samples);
@@ -515,18 +541,29 @@ fn optimize_errors_on_false_rows() {
         (0..num_samples).map(|i| (i, i % period == 0)),
     );
 
-    let err = store
-        .compacted(&indexed_options(period, false))
-        .expect_err("`false` rows must error");
-    let msg = format!("{err:#}");
+    let (compacted, warnings) = with_captured_warnings(|| {
+        store
+            .compacted(&indexed_options(period, false))
+            .expect("a single un-rebatchable entity must not fail the whole optimize")
+    });
+
+    // The skip must be reported, and the warning must still explain the problem
+    // (the `false` rows) and how to handle it (`fix_keyframe`).
     assert!(
-        msg.contains("is_keyframe=false"),
-        "error must mention is_keyframe=false, got: {msg}"
+        warnings
+            .iter()
+            .any(|w| w.contains("skipping GoP rebatching")
+                && w.contains("is_keyframe=false")
+                && w.contains("fix_keyframe")),
+        "expected a warning explaining the skipped entity, got: {warnings:?}"
     );
-    assert!(
-        msg.contains("fix_keyframe"),
-        "error must mention the `fix_keyframe` override, got: {msg}"
-    );
+
+    // The entity is left untouched: the user's labels survive verbatim, including
+    // the `false` rows that prevented rebatching.
+    let expected_true = (0..num_samples).filter(|i| i % period == 0).count() as u64;
+    let expected_false = num_samples as u64 - expected_true;
+    assert_eq!(count_true_keyframes(&compacted), expected_true);
+    assert_eq!(count_false_keyframes(&compacted), expected_false);
 }
 
 /// Same setup as `optimize_errors_on_false_rows`, but with `fix_keyframe=true`
@@ -558,10 +595,11 @@ fn optimize_fix_keyframe_strips_false_rows() {
 }
 
 /// User labels frame 1 (a non-keyframe) as `is_keyframe=true` *and* leaves
-/// frames 10/15 (codec keyframes) unlabeled. Optimize bails with one error
-/// that names both the missing and the extra labels.
+/// frames 10/15 (codec keyframes) unlabeled. The labels disagree with the codec,
+/// so the entity can't be rebatched — but that must not abort the whole optimize.
+/// The entity is skipped and left un-optimized, retaining the user's labels.
 #[test]
-fn optimize_errors_on_mismatched_keyframe_labels() {
+fn optimize_skips_entity_with_mismatched_keyframe_labels() {
     let num_samples: i64 = 20;
     let period: i64 = 5;
     let mut store = indexed_video_store("/video", num_samples);
@@ -569,18 +607,27 @@ fn optimize_errors_on_mismatched_keyframe_labels() {
     // 1 incorrectly, and skip 10 and 15.
     insert_dedicated_keyframe_chunk(&mut store, "/video", [(0, true), (1, true), (5, true)]);
 
-    let err = store
-        .compacted(&indexed_options(period, false))
-        .expect_err("mismatched labels must error");
-    let msg = format!("{err:#}");
+    let (compacted, warnings) = with_captured_warnings(|| {
+        store
+            .compacted(&indexed_options(period, false))
+            .expect("a single un-rebatchable entity must not fail the whole optimize")
+    });
+
+    // The skip must be reported, and the warning must still call out both the
+    // missing labels (frames 10, 15) and the extra one (frame 1).
     assert!(
-        msg.contains("missing"),
-        "error must call out missing labels (frames 10, 15), got: {msg}"
+        warnings
+            .iter()
+            .any(|w| w.contains("skipping GoP rebatching")
+                && w.contains("missing")
+                && w.contains("not codec keyframes")),
+        "expected a warning explaining the skipped entity, got: {warnings:?}"
     );
-    assert!(
-        msg.contains("not codec keyframes"),
-        "error must call out the extra label (frame 1), got: {msg}"
-    );
+
+    // The entity is left untouched: the user's three `true` labels survive, and
+    // no `false` rows are invented.
+    assert_eq!(count_true_keyframes(&compacted), 3);
+    assert_eq!(count_false_keyframes(&compacted), 0);
 }
 
 /// With `fix_keyframe`, optimize ignores user labels and re-derives from the
@@ -756,4 +803,147 @@ fn optimize_strips_user_supplied_is_keyframe_from_sample_chunks() {
     }
     assert_eq!(count_true_keyframes(&compacted), 6);
     assert_eq!(count_false_keyframes(&compacted), 0);
+}
+
+// --- Timeline-map iteration order ---
+
+/// Rebuild `chunk`'s timeline map by inserting the timelines in `order`.
+///
+/// Insertion order affects iteration order when keys collide — mimics one video entity mixing
+/// chunks whose maps were built by different code paths (deserialization, slicing, prior
+/// concatenations).
+fn with_reinserted_timelines(chunk: &Chunk, order: &[re_log_types::TimelineName]) -> Chunk {
+    let mut timelines = nohash_hasher::IntMap::default();
+    for name in order {
+        timelines.insert(*name, chunk.timelines()[name].clone());
+    }
+    Chunk::from_native_row_ids(
+        chunk.id(),
+        chunk.entity_path().clone(),
+        None,
+        chunk.row_ids_slice(),
+        timelines,
+        chunk.components().clone(),
+    )
+    .expect("rebuild chunk with reordered timeline map")
+}
+
+/// GoP rebatching must not be defeated by timeline-map iteration order.
+///
+/// Regression test for "skipping GoP rebatching … cannot concatenate chunks with different
+/// timelines" where both printed timeline sets are identical.
+#[test]
+fn rebatching_is_insensitive_to_timeline_map_iteration_order() {
+    use itertools::Itertools as _;
+    use re_log_types::TimelineName;
+
+    // Find names whose map iteration order depends on insertion order. Deterministic
+    // (fixed-seed hashes); panics if map internals change and nothing diverges anymore.
+    let iteration_order = |insertion_order: &[TimelineName]| {
+        let mut set = nohash_hasher::IntSet::<TimelineName>::default();
+        for name in insertion_order {
+            set.insert(*name);
+        }
+        set.iter().copied().collect::<Vec<_>>()
+    };
+    let (order1, order2) = 'search: {
+        for i in 0..100 {
+            let names = ["a", "b", "c"]
+                .map(|s| TimelineName::try_new(format!("timeline_{s}_{i}")).unwrap());
+            let reference = iteration_order(&names);
+            for perm in names.iter().copied().permutations(names.len()) {
+                if iteration_order(&perm) != reference {
+                    break 'search (names.to_vec(), perm);
+                }
+            }
+        }
+        panic!(
+            "no timeline-name set found whose map iteration order depends on insertion order; \
+             did the hasher or hash-map internals change?"
+        );
+    };
+
+    let num_samples: i64 = 12;
+    let period: i64 = 4;
+
+    let store_id = re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "video_test");
+    let mut store = ChunkStore::new(store_id, ChunkStoreConfig::ALL_DISABLED);
+    let entity_path: EntityPath = "/video".into();
+
+    let codec_chunk = Chunk::builder(entity_path.clone())
+        .with_component(
+            RowId::new(),
+            TimePoint::default(),
+            VideoStream::descriptor_codec(),
+            &VideoCodec::H264,
+        )
+        .expect("build codec chunk")
+        .build()
+        .expect("finalize codec chunk");
+    store
+        .insert_chunk(&Arc::new(codec_chunk))
+        .expect("insert codec");
+
+    // One sample chunk per frame over the three searched timelines; alternate the timeline-map
+    // insertion order per frame so adjacent chunks' maps iterate differently.
+    for i in 0..num_samples {
+        let timepoint: TimePoint = std::iter::zip(order1.iter(), 1i64..)
+            .map(|(name, timeline_index)| {
+                (Timeline::new_sequence(*name), 1000 * timeline_index + i)
+            })
+            .collect();
+        let sample = VideoSample::from(vec![0u8; 4]);
+        let chunk = Chunk::builder(entity_path.clone())
+            .with_component(
+                RowId::new(),
+                timepoint,
+                VideoStream::descriptor_sample(),
+                &sample,
+            )
+            .expect("build sample chunk")
+            .build()
+            .expect("finalize sample chunk");
+        let order = if i % 2 == 0 { &order1 } else { &order2 };
+        let chunk = with_reinserted_timelines(&chunk, order);
+        assert_eq!(
+            chunk
+                .timelines()
+                .keys()
+                .copied()
+                .collect::<std::collections::BTreeSet<_>>(),
+            order1
+                .iter()
+                .copied()
+                .collect::<std::collections::BTreeSet<_>>(),
+            "rebuilt chunk must keep the same timeline set"
+        );
+        store.insert_chunk(&Arc::new(chunk)).expect("insert sample");
+    }
+
+    let sample_chunk_count = |store: &ChunkStore| {
+        store
+            .iter_physical_chunks()
+            .filter(|c| chunk_has_component(c, "VideoStream:sample"))
+            .count()
+    };
+    let before = sample_chunk_count(&store);
+
+    let (compacted, warnings) = with_captured_warnings(|| {
+        store
+            .compacted(&video_options(num_samples, period))
+            .expect("optimize must succeed")
+    });
+
+    assert!(
+        !warnings
+            .iter()
+            .any(|w| w.contains("skipping GoP rebatching") || w.contains("cannot concatenate")),
+        "no chunk should have been refused concatenation over map iteration order: {warnings:#?}"
+    );
+    assert!(
+        sample_chunk_count(&compacted) < before,
+        "GoP rebatching must actually merge the per-frame sample chunks \
+         ({before} chunks before, {} after)",
+        sample_chunk_count(&compacted)
+    );
 }

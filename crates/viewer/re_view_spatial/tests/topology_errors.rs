@@ -1,7 +1,7 @@
 //! Ensures that 2D/3D visualizer report errors on incompatible topology.
 
-use re_chunk_store::external::re_chunk::external::crossbeam::atomic::AtomicCell;
-use re_log_types::TimePoint;
+use re_chunk_store::{LatestAtQuery, external::re_chunk::external::crossbeam::atomic::AtomicCell};
+use re_log_types::{EntityPath, TimePoint, TimelineName};
 use re_sdk_types::{
     ViewClassIdentifier, archetypes, blueprint::archetypes as blueprint_archetypes,
 };
@@ -256,18 +256,67 @@ fn test_topology_errors() {
 }
 
 #[test]
-fn test_topology_error_for_empty_coordinate_frame_name() {
+fn test_topology_errors_for_nested_pinholes() {
     let mut test_context = TestContext::new();
-    test_context.register_view_class::<re_view_spatial::SpatialView3D>();
+    test_context.register_view_class::<re_view_spatial::SpatialView2D>();
 
-    test_context.log_entity("transforms", |builder| {
+    test_context.log_entity("outer_pinhole_entity", |builder| {
         builder.with_archetype_auto_row(
             TimePoint::STATIC,
-            &archetypes::Transform3D::new()
-                .with_child_frame("points3d")
+            &archetypes::Pinhole::from_focal_length_and_resolution([1.0, 1.0], [100.0, 100.0])
+                .with_child_frame("outer_pinhole")
                 .with_parent_frame("world"),
         )
     });
+    test_context.log_entity("inner_pinhole_entity", |builder| {
+        builder.with_archetype_auto_row(
+            TimePoint::STATIC,
+            &archetypes::Pinhole::from_focal_length_and_resolution([1.0, 1.0], [100.0, 100.0])
+                .with_child_frame("inner_pinhole")
+                .with_parent_frame("outer_pinhole"),
+        )
+    });
+    test_context.log_entity("points2d_entity", |builder| {
+        builder
+            .with_archetype_auto_row(TimePoint::STATIC, &archetypes::Points2D::new([[1.0, 1.0]]))
+            .with_archetype_auto_row(
+                TimePoint::STATIC,
+                &archetypes::CoordinateFrame::new("outer_pinhole"),
+            )
+    });
+
+    let view_id = test_context.setup_viewport_blueprint(|ctx, blueprint| {
+        let view_blueprint = ViewBlueprint::new(
+            re_view_spatial::SpatialView2D::identifier(),
+            RecommendedView::root(),
+        );
+        let view_id = view_blueprint.id;
+
+        ViewProperty::from_archetype::<blueprint_archetypes::SpatialInformation>(
+            ctx.blueprint_db(),
+            ctx.blueprint_query,
+            view_id,
+        )
+        .save_blueprint_component(
+            ctx,
+            &blueprint_archetypes::SpatialInformation::descriptor_target_frame(),
+            &re_tf::TransformFrameId::new("inner_pinhole"),
+        );
+
+        blueprint.add_views(std::iter::once(view_blueprint), None, None);
+        view_id
+    });
+
+    insta::assert_snapshot!(
+        "2d_view_at_inner_pinhole_with_nested_pinhole",
+        snapshot_visualizer_errors(&test_context, view_id)
+    );
+}
+
+#[test]
+fn test_empty_coordinate_frame_name_falls_back_to_implicit_frame() {
+    let mut test_context = TestContext::new();
+    test_context.register_view_class::<re_view_spatial::SpatialView3D>();
 
     test_context.log_entity("points3d_entity", |builder| {
         builder
@@ -277,6 +326,19 @@ fn test_topology_error_for_empty_coordinate_frame_name() {
             )
             .with_archetype_auto_row(TimePoint::STATIC, &archetypes::CoordinateFrame::new(""))
     });
+
+    let stored_frame = test_context
+        .store_hub
+        .lock()
+        .entity_db(&test_context.recording_store_id)
+        .unwrap()
+        .latest_at_component::<re_tf::TransformFrameId>(
+            &EntityPath::from("points3d_entity"),
+            &LatestAtQuery::latest(TimelineName::log_tick()),
+            archetypes::CoordinateFrame::descriptor_frame().component,
+        )
+        .map(|(_, frame)| frame);
+    assert_eq!(stored_frame, Some(re_tf::TransformFrameId::new("")));
 
     let view_id = test_context.setup_viewport_blueprint(|ctx, blueprint| {
         let view_blueprint = ViewBlueprint::new(
@@ -293,7 +355,7 @@ fn test_topology_error_for_empty_coordinate_frame_name() {
         .save_blueprint_component(
             ctx,
             &blueprint_archetypes::SpatialInformation::descriptor_target_frame(),
-            &re_tf::TransformFrameId::new("world"),
+            &re_tf::TransformFrameId::new("tf#/"),
         );
 
         blueprint.add_views(std::iter::once(view_blueprint), None, None);
@@ -301,7 +363,7 @@ fn test_topology_error_for_empty_coordinate_frame_name() {
     });
 
     insta::assert_snapshot!(
-        "topology_error_empty_coordinate_frame_name",
+        "empty_coordinate_frame_name_falls_back_to_implicit_frame",
         snapshot_visualizer_errors(&test_context, view_id)
     );
 }

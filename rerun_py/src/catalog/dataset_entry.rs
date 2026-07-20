@@ -18,9 +18,10 @@ use super::registration_handle::PyRegistrationHandleInternal;
 use super::{PyCatalogClientInternal, PyEntryDetails, PyTableProviderAdapterInternal, to_py_err};
 use crate::catalog::PySchemaInternal;
 use crate::catalog::entry::set_entry_name;
+use crate::catalog::unregistration_handle::PyUnregistrationHandleInternal;
 use crate::chunk_stream::lazy_store::PyLazyStoreInternal;
 use crate::trace_context::read_trace_context_from_python;
-use crate::utils::{get_tokio_runtime, wait_for_future};
+use crate::utils::wait_for_future;
 
 /// A dataset entry in the catalog.
 #[pyclass(
@@ -112,6 +113,42 @@ impl PyDatasetEntryInternal {
         let dataset_entry = connection.read_dataset(py, blueprint_dataset_entry_id)?;
 
         Some(Py::new(py, Self::new(client, dataset_entry))).transpose()
+    }
+
+    /// The associated asset dataset, if any.
+    fn asset_dataset(self_: PyRef<'_, Self>, py: Python<'_>) -> PyResult<Option<Py<Self>>> {
+        let _span = read_trace_context_from_python(py, "DatasetEntry.asset_dataset").entered();
+        let Some(asset_dataset_entry_id) = self_.dataset_details.asset_dataset else {
+            return Ok(None);
+        };
+
+        let client = self_.client.clone_ref(py);
+        let connection = self_.client.borrow(py).connection().clone();
+
+        let dataset_entry = connection.read_dataset(py, asset_dataset_entry_id)?;
+
+        Some(Py::new(py, Self::new(client, dataset_entry))).transpose()
+    }
+
+    /// Ask the server to create a missing asset dataset.
+    ///
+    /// Datasets created before asset datasets were introduced don't have one until their entry
+    /// is next updated, so send the server an update carrying the current details.
+    fn _ensure_asset_dataset(mut self_: PyRefMut<'_, Self>, py: Python<'_>) -> PyResult<()> {
+        let _span =
+            read_trace_context_from_python(py, "DatasetEntry._ensure_asset_dataset").entered();
+        if self_.dataset_details.asset_dataset.is_some() {
+            return Ok(());
+        }
+
+        let connection = self_.client.borrow(py).connection().clone();
+
+        let result =
+            connection.update_dataset(py, self_.entry_details.id, self_.dataset_details.clone())?;
+
+        self_.dataset_details = result.dataset_details;
+
+        Ok(())
     }
 
     /// The default blueprint segment ID for this dataset, if any.
@@ -308,6 +345,13 @@ impl PyDatasetEntryInternal {
             .map(|e| py_object_to_time_cell(py, e))
             .transpose()?;
 
+        let timeline = timeline
+            .map(|timeline| {
+                re_chunk::TimelineName::try_new(timeline)
+                    .map_err(|err| PyValueError::new_err(err.to_string()))
+            })
+            .transpose()?;
+
         Ok(re_uri::DatasetSegmentUri {
             origin: connection.origin().clone(),
             dataset_id: self_.entry_details.id.id,
@@ -316,7 +360,7 @@ impl PyDatasetEntryInternal {
                 selection: None,
                 when: timeline.map(|timeline| {
                     (
-                        re_chunk::TimelineName::new(timeline),
+                        timeline,
                         start_cell.unwrap_or_else(|| {
                             re_sdk::TimeCell::new(
                                 re_log_types::TimeType::TimestampNs,
@@ -417,14 +461,14 @@ impl PyDatasetEntryInternal {
         segments_to_drop: Vec<String>,
         layers_to_drop: Vec<String>,
         force: bool,
-    ) -> PyResult<()> {
+    ) -> PyResult<PyUnregistrationHandleInternal> {
         let py = self_.py();
         let _span = read_trace_context_from_python(py, "DatasetEntry.unregister").entered();
         let connection = self_.client.borrow(py).connection().clone();
 
         let segments_to_drop = segments_to_drop.into_iter().map(SegmentId::new).collect();
         let layers_to_drop = layers_to_drop.into_iter().map(LayerName::new).collect();
-        let _results = connection.unregister_from_dataset(
+        let (request_trace_id, task_ids) = connection.unregister_from_dataset(
             py,
             self_.entry_details.id,
             segments_to_drop,
@@ -432,7 +476,11 @@ impl PyDatasetEntryInternal {
             force,
         )?;
 
-        Ok(())
+        Ok(PyUnregistrationHandleInternal::new(
+            self_.client.clone_ref(py),
+            task_ids,
+            request_trace_id,
+        ))
     }
 
     /// Register all RRDs under a given prefix to the dataset and return a handle to the tasks.
@@ -482,57 +530,6 @@ impl PyDatasetEntryInternal {
         ))
     }
 
-    /// Register a single RRD URI as an asset layer (shared across all segments in the dataset).
-    ///
-    /// Unlike segment layers (one recording per segment), an asset layer is a single recording
-    /// that is shared across all segments. This is useful for deduplicating common assets such
-    /// as robot URDFs or environment meshes.
-    ///
-    /// !!! warning
-    ///     This is an incomplete, experimental API and may change or be removed in future versions without
-    ///     going through the normal deprecation cycle.
-    ///
-    /// Parameters
-    /// ----------
-    /// layer_name: str
-    ///     The name of the asset layer.
-    ///
-    /// recording_uri: str
-    ///     The URI of the RRD recording to register as the asset.
-    ///
-    /// on_duplicate: str
-    ///     How to handle the case where the layer already exists. One of "error", "skip", or "replace".
-    #[pyo3(name = "_register_asset_layer")]
-    #[pyo3(signature = (*, layer_name, recording_uri, on_duplicate))]
-    #[pyo3(text_signature = "(self, /, *, layer_name, recording_uri, on_duplicate)")]
-    fn register_asset_layer(
-        self_: PyRef<'_, Self>,
-        layer_name: String,
-        recording_uri: String,
-        on_duplicate: &str,
-    ) -> PyResult<PyRegistrationHandleInternal> {
-        let py = self_.py();
-        let _span =
-            // TODO(RR-4797): remove experimental status
-            read_trace_context_from_python(py, "DatasetEntry._register_asset_layer").entered();
-        let connection = self_.client.borrow(py).connection().clone();
-        let on_duplicate = parse_on_duplicate(on_duplicate)?;
-
-        let (request_trace_id, results) = connection.register_asset_layer(
-            py,
-            self_.entry_details.id,
-            recording_uri,
-            LayerName::new(layer_name),
-            on_duplicate,
-        )?;
-
-        Ok(PyRegistrationHandleInternal::new(
-            self_.client.clone_ref(py),
-            results,
-            request_trace_id,
-        ))
-    }
-
     /// Open a remote segment as a [`LazyStore`][rerun.experimental.LazyStore].
     ///
     /// One round-trip on construction (the manifest); chunks are fetched on
@@ -546,7 +543,6 @@ impl PyDatasetEntryInternal {
 
         let provider = wait_for_future(py, async {
             SegmentChunkProvider::try_new(
-                get_tokio_runtime().handle().clone(),
                 connection.connection_registry().clone(),
                 connection.origin().clone(),
                 dataset_id,

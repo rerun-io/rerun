@@ -7,7 +7,9 @@
 use std::sync::Arc;
 
 use crate::importer_mcap::lenses::helpers::get_field_as;
-use arrow::array::builder::{FixedSizeListBuilder, Float32Builder, ListBuilder, UInt32Builder};
+use arrow::array::builder::{
+    FixedSizeListBuilder, Float32Builder, Int32Builder, ListBuilder, UInt32Builder,
+};
 use arrow::array::{
     Array as _, ArrayRef, BinaryArray, Int32Array, ListArray, StringArray, StructArray, UInt32Array,
 };
@@ -236,9 +238,105 @@ pub(crate) fn extract_positions(
     Ok(Some(Arc::new(builder.finish()) as ArrayRef))
 }
 
-/// Extracts RGBA color data from point cloud messages as a `List<UInt32>`.
-pub(crate) fn extract_colors(
+/// Extracts voxel indices from dense voxel grid messages as a `List<FixedSizeList<Int32, 3>>`.
+pub(crate) fn extract_voxel_indices(
     source: &ArrayRef,
+) -> Result<Option<ArrayRef>, re_lenses_core::combinators::Error> {
+    re_tracing::profile_function!();
+
+    let source = source
+        .as_any()
+        .downcast_ref::<StructArray>()
+        .ok_or_else(|| re_lenses_core::combinators::Error::TypeMismatch {
+            expected: "StructArray".to_owned(),
+            actual: source.data_type().clone(),
+            context: "extract_voxel_indices input".to_owned(),
+        })?;
+
+    let row_count_array = get_field_as::<UInt32Array>(source, "row_count")?;
+    let column_count_array = get_field_as::<UInt32Array>(source, "column_count")?;
+    let slice_stride_array = get_field_as::<UInt32Array>(source, "slice_stride")?;
+    let row_stride_array = get_field_as::<UInt32Array>(source, "row_stride")?;
+    let cell_stride_array = get_field_as::<UInt32Array>(source, "cell_stride")?;
+    let data_array = get_field_as::<BinaryArray>(source, "data")?;
+
+    let mut builder = ListBuilder::new(
+        FixedSizeListBuilder::new(Int32Builder::new(), 3).with_field(Field::new(
+            "item",
+            DataType::Int32,
+            false,
+        )),
+    );
+
+    for i in 0..source.len() {
+        if source.is_null(i) || data_array.is_null(i) {
+            builder.append_null();
+            continue;
+        }
+
+        let row_count = row_count_array.value(i) as usize;
+        let column_count = column_count_array.value(i) as usize;
+        let slice_stride = slice_stride_array.value(i) as usize;
+        let row_stride = row_stride_array.value(i) as usize;
+        let cell_stride = cell_stride_array.value(i) as usize;
+        let data = data_array.value(i);
+
+        if row_count == 0
+            || column_count == 0
+            || slice_stride == 0
+            || row_stride == 0
+            || cell_stride == 0
+        {
+            builder.append_null();
+            continue;
+        }
+
+        let depth_count = data.len() / slice_stride;
+        let indices_builder = builder.values();
+        for z in 0..depth_count {
+            let z_index = i32::try_from(z).map_err(|err| {
+                re_lenses_core::combinators::Error::Other(format!(
+                    "voxel grid depth exceeds i32 range: {err}"
+                ))
+            })?;
+            for y in 0..row_count {
+                let y_index = i32::try_from(y).map_err(|err| {
+                    re_lenses_core::combinators::Error::Other(format!(
+                        "voxel grid row count exceeds i32 range: {err}"
+                    ))
+                })?;
+                for x in 0..column_count {
+                    let byte_offset = z * slice_stride + y * row_stride + x * cell_stride;
+                    if byte_offset + cell_stride <= data.len() {
+                        let x_index = i32::try_from(x).map_err(|err| {
+                            re_lenses_core::combinators::Error::Other(format!(
+                                "voxel grid column count exceeds i32 range: {err}"
+                            ))
+                        })?;
+                        indices_builder.values().append_value(x_index);
+                        indices_builder.values().append_value(y_index);
+                        indices_builder.values().append_value(z_index);
+                        indices_builder.append(true);
+                    }
+                }
+            }
+        }
+        builder.append(true);
+    }
+
+    Ok(Some(Arc::new(builder.finish()) as ArrayRef))
+}
+
+/// Extracts RGBA color data from packed element messages as a `List<UInt32>`.
+pub(crate) fn extract_colors(
+    stride_field_name: &'static str,
+) -> impl Fn(&ArrayRef) -> Result<Option<ArrayRef>, re_lenses_core::combinators::Error> {
+    move |source| extract_colors_with_stride(source, stride_field_name)
+}
+
+fn extract_colors_with_stride(
+    source: &ArrayRef,
+    stride_field_name: &'static str,
 ) -> Result<Option<ArrayRef>, re_lenses_core::combinators::Error> {
     re_tracing::profile_function!();
 
@@ -251,7 +349,7 @@ pub(crate) fn extract_colors(
             context: "extract_colors input".to_owned(),
         })?;
 
-    let point_stride_array = get_field_as::<UInt32Array>(source, "point_stride")?;
+    let stride_array = get_field_as::<UInt32Array>(source, stride_field_name)?;
     let fields_array = get_field_as::<ListArray>(source, "fields")?;
     let data_array = get_field_as::<BinaryArray>(source, "data")?;
 
@@ -263,7 +361,7 @@ pub(crate) fn extract_colors(
             continue;
         }
 
-        let point_stride = point_stride_array.value(i) as usize;
+        let stride = stride_array.value(i) as usize;
         let data = data_array.value(i);
         let fields_value = fields_array.value(i);
         let fields_struct = fields_value
@@ -280,12 +378,12 @@ pub(crate) fn extract_colors(
 
         if let (Some(r_desc), Some(g_desc), Some(b_desc)) =
             (&descriptors[0], &descriptors[1], &descriptors[2])
-            && point_stride > 0
+            && stride > 0
         {
             let alpha_desc = &descriptors[3];
-            let num_points = data.len() / point_stride;
-            for p in 0..num_points {
-                let base = p * point_stride;
+            let num_elements = data.len() / stride;
+            for p in 0..num_elements {
+                let base = p * stride;
                 let r = r_desc
                     .numeric_type
                     .read_as_u8(data, base + r_desc.byte_offset);

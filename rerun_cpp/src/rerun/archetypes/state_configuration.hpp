@@ -53,18 +53,15 @@ namespace rerun::archetypes {
     ///     );
     ///
     ///     rec.set_time_sequence("step", 0);
-    ///     rec.log("door", rerun::StateChange().with_state("open"));
+    ///     rec.log("door", rerun::StateChange().with_state({"open"}));
     ///
     ///     rec.set_time_sequence("step", 1);
-    ///     rec.log("door", rerun::StateChange().with_state("closed"));
+    ///     rec.log("door", rerun::StateChange().with_state({"closed"}));
     ///
     ///     rec.set_time_sequence("step", 2);
-    ///     rec.log("door", rerun::StateChange().with_state("open"));
+    ///     rec.log("door", rerun::StateChange().with_state({"open"}));
     /// }
     /// ```
-    ///
-    /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-    ///
     struct StateConfiguration {
         /// The raw state values that this configuration applies to.
         ///

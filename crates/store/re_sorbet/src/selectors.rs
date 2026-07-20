@@ -1,5 +1,5 @@
 use re_log_types::{EntityPath, Timeline, TimelineName};
-use re_types_core::ComponentDescriptor;
+use re_types_core::{ComponentDescriptor, ComponentIdentifier};
 
 use crate::{ColumnDescriptor, ComponentColumnDescriptor, IndexColumnDescriptor};
 
@@ -69,24 +69,6 @@ impl From<Timeline> for TimeColumnSelector {
     }
 }
 
-impl From<&str> for TimeColumnSelector {
-    #[inline]
-    fn from(timeline: &str) -> Self {
-        Self {
-            timeline: timeline.into(),
-        }
-    }
-}
-
-impl From<String> for TimeColumnSelector {
-    #[inline]
-    fn from(timeline: String) -> Self {
-        Self {
-            timeline: timeline.into(),
-        }
-    }
-}
-
 impl From<IndexColumnDescriptor> for TimeColumnSelector {
     #[inline]
     fn from(desc: IndexColumnDescriptor) -> Self {
@@ -126,6 +108,15 @@ impl ComponentColumnSelector {
 
     pub fn column_name(&self) -> String {
         format!("{}:{}", self.entity_path, self.component)
+    }
+
+    /// The [`ComponentIdentifier`] this selector refers to.
+    ///
+    /// Fails if the stored component string is invalid (e.g. empty).
+    pub fn component_identifier(
+        &self,
+    ) -> Result<ComponentIdentifier, re_types_core::InvalidComponentIdentifierError> {
+        ComponentIdentifier::try_new(&self.component)
     }
 }
 

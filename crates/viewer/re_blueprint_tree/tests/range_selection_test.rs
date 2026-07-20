@@ -38,7 +38,7 @@ fn test_range_selection_in_blueprint_tree() {
             // `list_item::LabelContent`'s sizing behave differently there.
             egui::Panel::left("blueprint_tree")
                 .default_size(400.0)
-                .show_inside(ui, |ui| {
+                .show(ui, |ui| {
                     test_context.run(&ui.ctx().clone(), |viewer_ctx| {
                         let blueprint = ViewportBlueprint::from_db(
                             viewer_ctx.store_context.blueprint,

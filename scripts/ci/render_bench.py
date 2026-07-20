@@ -105,7 +105,7 @@ class BenchmarkEntry:
 Benchmarks = dict[str, list[BenchmarkEntry]]
 
 
-FORMAT_BENCHER_RE = re.compile(r"test\s+(\S+).*bench:\s+(\d+)\s+ns\/iter")
+FORMAT_BENCHER_RE = re.compile(r"test\s+(\S+).*bench:\s+([\d,]+)\s+ns\/iter")
 
 
 def parse_bencher_line(data: str) -> Measurement:
@@ -113,7 +113,7 @@ def parse_bencher_line(data: str) -> Measurement:
     if match is None:
         raise ValueError(f"invalid bencher line: {data}")
     name, ns_iter = match.groups()
-    return Measurement(name, float(ns_iter), "ns/iter")
+    return Measurement(name, float(ns_iter.replace(",", "")), "ns/iter")
 
 
 def parse_bencher_text(data: str) -> list[Measurement]:

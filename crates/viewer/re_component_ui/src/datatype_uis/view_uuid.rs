@@ -3,7 +3,7 @@ use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_viewer_context::{MaybeMutRef, UiLayout};
 
 pub fn view_uuid(
-    _ctx: &re_viewer_context::StoreViewContext<'_>,
+    _ctx: &re_viewer_context::AppContext<'_>,
     ui: &mut egui::Ui,
     value: &mut MaybeMutRef<'_, impl std::ops::DerefMut<Target = Uuid>>,
 ) -> egui::Response {

@@ -59,6 +59,8 @@ plugins:
             inherited_members: true
             members_order: source # The order of class members
             merge_init_into_class: false # Not compatible with `inherited_members`
+            separate_signature: true # Render signature via griffe (needed for signature_crossrefs)
+            show_signature_annotations: true # Show type annotations (incl. return types) in the signature
             show_if_no_docstring: false # We intentionally hide archetype fields
             show_source: no
             extra:

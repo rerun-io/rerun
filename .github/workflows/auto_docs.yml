@@ -22,7 +22,7 @@ jobs:
     outputs:
       result: ${{ steps.find-pr.outputs.result }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
         with:
           # ref - not set, because we want to end up on the merge commit
           fetch-depth: 0 # don't perform a shallow clone
@@ -52,7 +52,7 @@ jobs:
     if: needs.has-label.outputs.result == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           token: ${{ secrets.RERUN_BOT_TOKEN }}

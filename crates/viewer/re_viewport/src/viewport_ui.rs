@@ -16,8 +16,7 @@ use re_ui::{
 use re_viewer_context::{
     Contents, DataResultInteractionAddress, DragAndDropFeedback, DragAndDropPayload, Item,
     MissingChunkReporter, PublishedViewInfo, SystemCommand, SystemCommandSender as _,
-    SystemExecutionOutput, ViewId, ViewQuery, ViewStates, ViewerContext, VisualizerReportSeverity,
-    icon_for_container_kind,
+    SystemExecutionOutput, ViewId, ViewQuery, ViewStates, ViewerContext, icon_for_container_kind,
 };
 use re_viewport_blueprint::{
     ViewBlueprint, ViewportBlueprint, ViewportCommand, create_entity_add_info,
@@ -25,9 +24,19 @@ use re_viewport_blueprint::{
 
 use crate::system_execution::{execute_systems_for_all_views, execute_systems_for_view};
 
-/// Toggle the currently selected view to be maximized or not.
+/// Shortcut for maximizing a view.
+///
+/// Use [`is_toggle_maximize_view_pressed`] to check for this shortcut!
 // NOTE: we use CTRL and not COMMAND, because ⌘+M minimizes the whole window on macOS.
 const TOGGLE_MAXIMIZE_VIEW: KeyboardShortcut = KeyboardShortcut::new(Modifiers::CTRL, Key::M);
+
+/// Checks if the keyboard shortcut for maximizing a view is pressed,
+/// avoiding clashes with other similar shortcuts.
+fn is_toggle_maximize_view_pressed(input: &mut egui::InputState) -> bool {
+    // Check if CTRL+SHIFT+M is pressed instead, which is used to open the dev panel.
+    // `consume_shortcut` intentionally ignores extra Shift and Alt modifiers.
+    !input.modifiers.shift && input.consume_shortcut(&TOGGLE_MAXIMIZE_VIEW)
+}
 
 /// Defines the UI and layout of the Viewport.
 pub struct ViewportUi {
@@ -482,10 +491,14 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
             .on_hover_cursor(egui::CursorIcon::Grab);
 
         let label = tab_widget.label.take();
+        let active = tab_state.active;
         response.widget_info(|| {
-            let mut info = egui::WidgetInfo::new(egui::WidgetType::Label);
-            info.label = label.clone();
-            info
+            egui::WidgetInfo::selected(
+                egui::WidgetType::SelectableLabel,
+                true,
+                active,
+                label.clone().unwrap_or_default(),
+            )
         });
 
         // Show a gap when dragged
@@ -588,7 +601,7 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
                         .ui(ui);
                 })
                 .clicked()
-                || ui.input_mut(|input| input.consume_shortcut(&TOGGLE_MAXIMIZE_VIEW))
+                || ui.input_mut(is_toggle_maximize_view_pressed)
             {
                 *self.maximized = None;
                 MaximizeAnimationState::restore_view(ui.ctx(), view_id);
@@ -597,8 +610,7 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
             // Show maximize-button:
             let is_view_the_only_selected =
                 self.ctx.selection().is_view_the_only_selected(&view_id);
-            let toggle = is_view_the_only_selected
-                && ui.input_mut(|input| input.consume_shortcut(&TOGGLE_MAXIMIZE_VIEW));
+            let toggle = is_view_the_only_selected && ui.input_mut(is_toggle_maximize_view_pressed);
             if ui
                 .small_icon_button(&re_ui::icons::MAXIMIZE, "Maximize view")
                 .on_hover_ui(|ui| {
@@ -759,7 +771,9 @@ impl TilesDelegate<'_, '_> {
                             });
                             for instruction_report in report.reports_for(instruction_id) {
                                 // Only show a button for errors and warnings.
-                                if instruction_report.severity != VisualizerReportSeverity::Info {
+                                if instruction_report.severity
+                                    != re_viewer_context::VisualizerReportSeverity::Info
+                                {
                                     grouped_reports
                                         .entry(item.clone())
                                         .or_default()
@@ -865,8 +879,8 @@ impl TilesDelegate<'_, '_> {
                             }
                             re_viewer_context::VisualizerReportSeverity::Warning => {
                                 (&icons::WARNING, ui.tokens().alert_warning.icon)
-                            },
-                            re_viewer_context::VisualizerReportSeverity::Info => continue
+                            }
+                            re_viewer_context::VisualizerReportSeverity::Info => continue,
                         };
 
                         ui.horizontal_top(|ui| {

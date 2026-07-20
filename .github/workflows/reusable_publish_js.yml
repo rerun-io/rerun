@@ -47,13 +47,13 @@ jobs:
     runs-on: ubuntu-latest-16-cores
     needs: [get-commit-sha]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.release-commit }}
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
-          node-version: "22.x"
+          node-version: "24.x"
           registry-url: "https://registry.npmjs.org"
 
       - name: Install Yarn
@@ -67,9 +67,9 @@ jobs:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
-      - uses: prefix-dev/setup-pixi@v0.9.4
+      - uses: prefix-dev/setup-pixi@v0.10.0
         with:
-          pixi-version: v0.55.0
+          pixi-version: v0.71.3
 
       - name: Publish packages
         env:

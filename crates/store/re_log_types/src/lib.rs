@@ -37,7 +37,7 @@ use arrow::array::RecordBatch as ArrowRecordBatch;
 use re_build_info::CrateVersion;
 
 use re_types_core::SegmentId;
-pub use re_types_core::TimelineName;
+pub use re_types_core::{InvalidTimelineNameError, TimelineName};
 
 pub use self::arrow_msg::{ArrowMsg, ArrowRecordBatchReleaseCallback};
 pub use self::entry_id::{EntryId, EntryIdOrName};

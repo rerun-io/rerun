@@ -1,13 +1,11 @@
 use crate::analytics::{QueryInfo, QueryType, expr_filter_signature};
 use crate::batch_coalescer::coalesce_exec::SizedCoalesceBatchesExec;
 use crate::batch_coalescer::coalescer::CoalescerOptions;
-use crate::metrics_capture::QueryMetrics;
 use crate::pushdown_expressions::{apply_filter_expr_to_queries, filter_expr_is_supported};
 use ahash::{HashMap, HashMapExt as _, HashSet};
 use arrow::array::{
-    Array as _, ArrayRef, DurationNanosecondArray, FixedSizeBinaryArray, Int64Array, RecordBatch,
-    StringArray, TimestampMicrosecondArray, TimestampMillisecondArray, TimestampNanosecondArray,
-    TimestampSecondArray, UInt32Array,
+    ArrayRef, DurationNanosecondArray, Int64Array, RecordBatch, TimestampMicrosecondArray,
+    TimestampMillisecondArray, TimestampNanosecondArray, TimestampSecondArray, UInt32Array,
 };
 use arrow::compute::concat_batches;
 use arrow::datatypes::{DataType, Field, Int64Type, Schema, SchemaRef, TimeUnit};
@@ -24,9 +22,10 @@ use parking_lot::Mutex;
 use re_dataframe::external::re_chunk_store::ChunkStore;
 use re_dataframe::{Index, IndexValue, QueryExpression, SparseFillStrategy};
 use re_log_types::{EntityPath, EntryId};
+use re_protos::cloud::v1alpha1::ext::QueryDatasetDataframe;
+use re_protos::cloud::v1alpha1::ext::ScanSegmentTableDataframe;
 use re_protos::cloud::v1alpha1::{
     FetchChunksRequest, GetDatasetSchemaRequest, GetDatasetSchemaResponse, QueryDatasetResponse,
-    ScanSegmentTableResponse,
 };
 use re_protos::common::v1alpha1::ext::ScanParameters;
 use re_protos::headers::RerunHeadersInjectorExt as _;
@@ -138,10 +137,11 @@ struct FilterCapture {
 }
 
 /// This trait provides the specific methods used when interacting with the
-/// gRPC services for the datafusion client services. By implementing this
-/// as a trait we can provide an alternative implementation in our testing
-/// facility to remove all gRPC layers and test the server responses
-/// more directly.
+/// gRPC services for the datafusion client services.
+///
+/// By implementing this as a trait we can provide an alternative implementation
+/// in our testing facility to remove all gRPC layers and test the server
+/// responses more directly.
 #[async_trait]
 pub trait DataframeClientAPI: std::fmt::Debug + Clone + Send + Sync + Unpin + 'static {
     async fn get_dataset_schema(
@@ -198,7 +198,7 @@ impl DataframeQueryTableProvider<ConnectionClient> {
     #[tracing::instrument(level = "info", skip_all)]
     pub async fn new(
         origin: Origin,
-        connection: ConnectionRegistryHandle,
+        connection_registry: ConnectionRegistryHandle,
         dataset_id: EntryId,
         query_expression: &QueryExpression,
         segment_ids: &[impl AsRef<str> + Sync],
@@ -207,10 +207,10 @@ impl DataframeQueryTableProvider<ConnectionClient> {
         #[cfg(not(target_arch = "wasm32"))] trace_headers: Option<crate::TraceHeaders>,
         metrics_collectors: Vec<crate::MetricsCollector>,
     ) -> ApiResult<Self> {
-        let client = connection.client(origin.clone()).await?;
+        let connection = connection_registry.connection(origin.clone()).await?;
 
         let mut provider = Self::new_from_client(
-            client,
+            connection.client,
             dataset_id,
             query_expression,
             segment_ids,
@@ -222,8 +222,7 @@ impl DataframeQueryTableProvider<ConnectionClient> {
         )
         .await?;
 
-        let analytics = crate::ConnectionAnalytics::new(origin, &provider.client);
-        provider.analytics = Some(analytics);
+        provider.analytics = connection.analytics.map(crate::ConnectionAnalytics::new);
 
         Ok(provider)
     }
@@ -320,7 +319,7 @@ impl<T: DataframeClientAPI> DataframeQueryTableProvider<T> {
 
         let schema = Arc::new(prepend_string_column_schema(
             &schema,
-            ScanSegmentTableResponse::FIELD_SEGMENT_ID,
+            ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME,
         ));
 
         Ok(Self {
@@ -539,14 +538,28 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
             for dataset_query in dataset_queries {
                 let query_start = Instant::now();
 
-                let request =
-                    tonic::Request::new(dataset_query.into()).with_entry_id(self.dataset_id);
-                let response = self
-                    .client
-                    .clone()
-                    .query_dataset(request)
+                // Build the proto request once, then clone it per retry attempt (`tonic::Request`
+                // isn't `Clone`). The server rejects `QueryDataset` with `ResourceExhausted`
+                // fail-fast (before any work) when its stream-concurrency limiter is saturated, so
+                // retrying the open is idempotent. Map tonic → `ApiError` *inside* the retry so the
+                // predicate sees `ResourcesExhausted`, and to `DataFusionError` *outside*.
+                let proto_request: re_protos::cloud::v1alpha1::QueryDatasetRequest =
+                    dataset_query.into();
+                let dataset_id = self.dataset_id;
+                let response =
+                    re_redap_client::with_retry_resource_exhausted("query_dataset", || {
+                        let mut client = self.client.clone();
+                        let request =
+                            tonic::Request::new(proto_request.clone()).with_entry_id(dataset_id);
+                        async move {
+                            client
+                                .query_dataset(request)
+                                .await
+                                .map_err(|err| ApiError::tonic(err, "query_dataset"))
+                        }
+                    })
                     .await
-                    .map_err(|err| ApiError::tonic(err, "query_dataset").into_df_error())?;
+                    .map_err(|err| err.into_df_error())?;
 
                 // Capture the server-side trace-id from response metadata.
                 if trace_id.is_none() {
@@ -617,20 +630,17 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
                 filters_signatures_unsupported,
             };
 
-            // Construct the plan's `QueryMetrics` here so it can be shared by
-            // both the analytics struct (for PostHog Drop-time span building)
-            // and `SegmentStreamExec` (for fetch counters + ad-hoc
-            // `EXPLAIN ANALYZE` MetricsSet). Single source of truth: there is
-            // no parallel `MetricsSet` accumulator.
-            let metrics = Arc::new(QueryMetrics::new(query_info));
-
-            // Begin analytics tracking. The PostHog OTLP send is gated by
-            // `self.analytics.is_some()`; the resulting struct is always
+            // Begin analytics tracking. This also constructs the plan's
+            // `QueryMetrics` (fetch counters + ad-hoc `EXPLAIN ANALYZE`
+            // MetricsSet), owned by the analytics struct as the single source
+            // of truth — `SegmentStreamExec` reads it through
+            // `PendingQueryAnalytics::metrics`. The PostHog OTLP send is gated
+            // by `self.analytics.is_some()`; the resulting struct is always
             // returned so the `metrics_capture` subscribers and DataFusion
             // `metrics()` see the same data.
             let pending_analytics = crate::analytics::begin_query(
                 self.analytics.clone(),
-                Arc::clone(&metrics),
+                query_info,
                 scan_start,
                 scan_start_wall,
             );
@@ -668,7 +678,6 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
                 #[cfg(not(target_arch = "wasm32"))]
                 trace_id,
                 pending_analytics,
-                metrics,
                 self.metrics_collectors.clone(),
             )
             .map(Arc::new)
@@ -931,6 +940,18 @@ pub(crate) fn prepend_string_column_schema(schema: &Schema, column_name: &str) -
     Schema::new_with_metadata(fields, schema.metadata.clone())
 }
 
+/// Hash a segment id for DataFusion partition routing.
+///
+/// Hashes the underlying string with DataFusion's `HashValue` so the result
+/// matches `RepartitionExec`'s hashing of the segment-id string column.
+pub(crate) fn segment_partition_hash(
+    segment_id: &SegmentId,
+    random_state: &ahash::RandomState,
+) -> u64 {
+    use datafusion::common::hash_utils::HashValue as _;
+    segment_id.as_str().hash_one(random_state)
+}
+
 /// We need to create `num_partitions` of DataFusion partition stream outputs, each of
 /// which will be fed from multiple `rerun_segment_id` sources. The partitioning
 /// output is a hash of the `rerun_segment_id`. We will reuse some of the
@@ -943,34 +964,18 @@ pub(crate) fn prepend_string_column_schema(schema: &Schema, column_name: &str) -
 #[tracing::instrument(level = "trace", skip_all)]
 pub(crate) fn group_chunk_infos_by_segment_id(
     chunk_info_batches: &[RecordBatch],
-) -> Result<Arc<BTreeMap<String, Vec<RecordBatch>>>, DataFusionError> {
-    let mut results: BTreeMap<String, Vec<RecordBatch>> = BTreeMap::new();
+) -> Result<Arc<BTreeMap<SegmentId, Vec<RecordBatch>>>, DataFusionError> {
+    let mut results: BTreeMap<SegmentId, Vec<RecordBatch>> = BTreeMap::new();
 
     for batch in chunk_info_batches {
-        let segment_ids = batch
-            .column_by_name(QueryDatasetResponse::FIELD_CHUNK_SEGMENT_ID)
-            .ok_or(exec_datafusion_err!(
-                "Unable to find {} column",
-                QueryDatasetResponse::FIELD_CHUNK_SEGMENT_ID
-            ))?
-            .as_any()
-            .downcast_ref::<StringArray>()
-            .ok_or(exec_datafusion_err!(
-                "{} must be string type",
-                QueryDatasetResponse::FIELD_CHUNK_SEGMENT_ID
-            ))?;
+        let segment_ids = QueryDatasetDataframe::COLUMN_CHUNK_SEGMENT_ID
+            .extract(batch)
+            .map_err(|err| exec_datafusion_err!("{err}"))?;
 
         // group rows by segment ID
-        let mut segment_rows: BTreeMap<String, Vec<usize>> = BTreeMap::new();
-        for (row_idx, segment_id) in segment_ids.iter().enumerate() {
-            let sid = segment_id.ok_or(exec_datafusion_err!(
-                "Found null segment id in {} column at row {row_idx}",
-                QueryDatasetResponse::FIELD_CHUNK_SEGMENT_ID
-            ))?;
-            segment_rows
-                .entry(sid.to_owned())
-                .or_default()
-                .push(row_idx);
+        let mut segment_rows: BTreeMap<SegmentId, Vec<usize>> = BTreeMap::new();
+        for (row_idx, segment_id) in segment_ids.into_iter_owned().enumerate() {
+            segment_rows.entry(segment_id).or_default().push(row_idx);
         }
 
         for (segment_id, row_indices) in segment_rows {
@@ -1067,33 +1072,23 @@ pub(crate) struct ChunkInfoAggregates {
 }
 
 pub(crate) fn compute_chunk_info_aggregates(batch: &RecordBatch) -> ChunkInfoAggregates {
-    use arrow::array::UInt64Array;
-
     let chunks = batch.num_rows();
 
-    /// Downcasts `column_name` to array type `T` and iterates over its non-null values.
-    fn iter_column_values<'a, T: Any>(
-        batch: &'a RecordBatch,
-        column_name: &str,
-    ) -> Option<std::iter::Flatten<<&'a T as IntoIterator>::IntoIter>>
-    where
-        &'a T: IntoIterator<Item: IntoIterator>,
-    {
-        let arr = batch
-            .column_by_name(column_name)?
-            .as_any()
-            .downcast_ref::<T>()?;
-        Some(arr.into_iter().flatten())
-    }
+    // Lenient: these are analytics aggregates — a missing or mistyped column yields zeros.
+    let segment_ids = QueryDatasetDataframe::COLUMN_CHUNK_SEGMENT_ID
+        .extract(batch)
+        .ok();
+    let layer_names = QueryDatasetDataframe::COLUMN_RERUN_SEGMENT_LAYER
+        .extract(batch)
+        .ok();
+    let byte_lens = QueryDatasetDataframe::COLUMN_CHUNK_BYTE_LEN
+        .extract(batch)
+        .ok();
 
     // Segment count + per-segment histogram in one pass
     let mut per_segment: HashMap<&str, u32> = HashMap::new();
-    if let Some(items) =
-        iter_column_values::<StringArray>(batch, QueryDatasetResponse::FIELD_CHUNK_SEGMENT_ID)
-    {
-        for v in items {
-            *per_segment.entry(v).or_default() += 1;
-        }
+    for v in segment_ids.iter().flatten() {
+        *per_segment.entry(v).or_default() += 1;
     }
     let segments = per_segment.len();
     let (chunks_per_segment_min, chunks_per_segment_max) = per_segment
@@ -1112,14 +1107,9 @@ pub(crate) fn compute_chunk_info_aggregates(batch: &RecordBatch) -> ChunkInfoAgg
         chunks as f32 / segments as f32
     };
 
-    let layers =
-        iter_column_values::<StringArray>(batch, QueryDatasetResponse::FIELD_CHUNK_LAYER_NAME)
-            .map(|iter| iter.collect::<HashSet<_>>().len())
-            .unwrap_or(0);
+    let layers = layer_names.map_or(0, |col| col.iter().collect::<HashSet<_>>().len());
 
-    let bytes: u64 =
-        iter_column_values::<UInt64Array>(batch, QueryDatasetResponse::FIELD_CHUNK_BYTE_LENGTH)
-            .map_or(0, Iterator::sum);
+    let bytes: u64 = byte_lens.map_or(0, |col| col.iter().sum());
 
     ChunkInfoAggregates {
         chunks,
@@ -1220,7 +1210,7 @@ pub fn query_from_query_expression(
     } else if synthesize_latest_at {
         query_expression
             .min_latest_at()
-            .map(|latest_at| QueryLatestAt::global(Some(latest_at.timeline()), latest_at.at()))
+            .map(|latest_at| QueryLatestAt::global(latest_at.timeline(), latest_at.at()))
     } else {
         None
     };
@@ -1251,26 +1241,15 @@ fn compute_unique_chunk_info_ids(
     let combined = concat_batches(&schema, &chunk_info_batches)?;
     drop(chunk_info_batches);
 
-    // Find the chunk_id column
-    let chunk_id_col = combined
-        .column_by_name(QueryDatasetResponse::FIELD_CHUNK_ID)
-        .ok_or(exec_datafusion_err!("chunk_id column not found"))?;
-
-    let chunk_id_array = chunk_id_col
-        .as_any()
-        .downcast_ref::<FixedSizeBinaryArray>()
-        .ok_or(exec_datafusion_err!("chunk_id is not FixedSizeBinary"))?;
+    let chunk_ids = QueryDatasetDataframe::COLUMN_CHUNK_ID
+        .extract(&combined)
+        .map_err(|err| exec_datafusion_err!("{err}"))?;
 
     let mut indices_to_keep = Vec::new();
     let mut seen: HashSet<[u8; 16]> = HashSet::default();
 
-    for row_idx in 0..combined.num_rows() {
-        let chunk_id = chunk_id_array.value(row_idx);
-        let chunk_id_fixed: [u8; 16] = chunk_id
-            .try_into()
-            .expect("chunk_id should be exactly 16 bytes");
-
-        if seen.insert(chunk_id_fixed) {
+    for (row_idx, chunk_id) in chunk_ids.iter().enumerate() {
+        if seen.insert(*chunk_id) {
             indices_to_keep.push(row_idx as u32);
         }
     }
@@ -1290,7 +1269,8 @@ fn compute_unique_chunk_info_ids(
 mod tests {
     use std::{collections::HashMap, iter::once};
 
-    use arrow::array::{Array as _, FixedSizeBinaryArray, FixedSizeBinaryBuilder};
+    use arrow::array::{FixedSizeBinaryBuilder, StringArray};
+    use re_protos::cloud::v1alpha1::ext;
 
     use super::*;
 
@@ -1337,7 +1317,7 @@ mod tests {
 
         let seg = |s: &str| SegmentId::from(s);
         let at = IndexValue::new_temporal;
-        let timeline = Index::new("my_index");
+        let timeline = Index::from("my_index");
 
         // Three scoped segments, each sampled at specific index values, as set by
         // `filter_segments([…]).reader(using_index_values={…})`.
@@ -1423,7 +1403,7 @@ mod tests {
     #[test]
     fn pushdown_is_noop_unless_scoped_temporal() {
         let seg = |s: &str| SegmentId::from(s);
-        let timeline = Index::new("my_index");
+        let timeline = Index::from("my_index");
         let values: IndexValuesMap = Some(Arc::new(
             once((seg("a"), BTreeSet::from([IndexValue::new_temporal(10)]))).collect(),
         ));
@@ -1475,8 +1455,8 @@ mod tests {
     fn test_batches_grouping() {
         let schema = Arc::new(Schema::new_with_metadata(
             vec![
-                QueryDatasetResponse::field_chunk_segment_id(),
-                QueryDatasetResponse::field_chunk_id(),
+                Arc::new(ext::QueryDatasetDataframe::COLUMN_CHUNK_SEGMENT_ID.arrow_field()),
+                Arc::new(ext::QueryDatasetDataframe::COLUMN_CHUNK_ID.arrow_field()),
             ],
             HashMap::default(),
         ));
@@ -1527,66 +1507,48 @@ mod tests {
 
         assert_eq!(grouped.len(), 4);
 
+        fn chunk_ids_of(batch: &RecordBatch) -> Vec<re_types_core::ChunkId> {
+            QueryDatasetDataframe::COLUMN_CHUNK_ID
+                .extract(batch)
+                .unwrap()
+                .to_vec()
+        }
+
         let group_a = grouped.get("A").unwrap();
         assert_eq!(group_a.len(), 1);
-        let chunk_ids_a = group_a[0]
-            .column_by_name(QueryDatasetResponse::FIELD_CHUNK_ID)
-            .unwrap()
-            .as_any()
-            .downcast_ref::<FixedSizeBinaryArray>()
-            .unwrap();
-        assert_eq!(chunk_ids_a.len(), 2);
-        assert_eq!(chunk_ids_a.value(0), [0u8; 16]);
-        assert_eq!(chunk_ids_a.value(1), [2u8; 16]);
+        assert_eq!(
+            chunk_ids_of(&group_a[0]),
+            [[0u8; 16], [2u8; 16]].map(re_types_core::ChunkId::from)
+        );
 
         let group_b = grouped.get("B").unwrap();
         assert_eq!(group_b.len(), 2);
-        let chunk_ids_b1 = group_b[0]
-            .column_by_name(QueryDatasetResponse::FIELD_CHUNK_ID)
-            .unwrap()
-            .as_any()
-            .downcast_ref::<FixedSizeBinaryArray>()
-            .unwrap();
-        assert_eq!(chunk_ids_b1.len(), 1);
-        assert_eq!(chunk_ids_b1.value(0), [1u8; 16]);
-        let chunk_ids_b2 = group_b[1]
-            .column_by_name(QueryDatasetResponse::FIELD_CHUNK_ID)
-            .unwrap()
-            .as_any()
-            .downcast_ref::<FixedSizeBinaryArray>()
-            .unwrap();
-        assert_eq!(chunk_ids_b2.len(), 1);
-        assert_eq!(chunk_ids_b2.value(0), [4u8; 16]);
+        assert_eq!(
+            chunk_ids_of(&group_b[0]),
+            [[1u8; 16]].map(re_types_core::ChunkId::from)
+        );
+        assert_eq!(
+            chunk_ids_of(&group_b[1]),
+            [[4u8; 16]].map(re_types_core::ChunkId::from)
+        );
 
         let group_c = grouped.get("C").unwrap();
         assert_eq!(group_c.len(), 2);
-        let chunk_ids_c1 = group_c[0]
-            .column_by_name(QueryDatasetResponse::FIELD_CHUNK_ID)
-            .unwrap()
-            .as_any()
-            .downcast_ref::<FixedSizeBinaryArray>()
-            .unwrap();
-        assert_eq!(chunk_ids_c1.len(), 1);
-        assert_eq!(chunk_ids_c1.value(0), [3u8; 16]);
-        let chunk_ids_c2 = group_c[1]
-            .column_by_name(QueryDatasetResponse::FIELD_CHUNK_ID)
-            .unwrap()
-            .as_any()
-            .downcast_ref::<FixedSizeBinaryArray>()
-            .unwrap();
-        assert_eq!(chunk_ids_c2.len(), 1);
-        assert_eq!(chunk_ids_c2.value(0), [5u8; 16]);
+        assert_eq!(
+            chunk_ids_of(&group_c[0]),
+            [[3u8; 16]].map(re_types_core::ChunkId::from)
+        );
+        assert_eq!(
+            chunk_ids_of(&group_c[1]),
+            [[5u8; 16]].map(re_types_core::ChunkId::from)
+        );
 
         let group_d = grouped.get("D").unwrap();
         assert_eq!(group_d.len(), 1);
-        let chunk_ids_d = group_d[0]
-            .column_by_name(QueryDatasetResponse::FIELD_CHUNK_ID)
-            .unwrap()
-            .as_any()
-            .downcast_ref::<FixedSizeBinaryArray>()
-            .unwrap();
-        assert_eq!(chunk_ids_d.len(), 1);
-        assert_eq!(chunk_ids_d.value(0), [6u8; 16]);
+        assert_eq!(
+            chunk_ids_of(&group_d[0]),
+            [[6u8; 16]].map(re_types_core::ChunkId::from)
+        );
     }
 
     // ==================== Entity path projection pushdown tests ====================
@@ -2014,9 +1976,9 @@ mod tests {
 
         let schema = Arc::new(Schema::new_with_metadata(
             vec![
-                QueryDatasetResponse::field_chunk_segment_id(),
-                QueryDatasetResponse::field_chunk_layer_name(),
-                QueryDatasetResponse::field_chunk_byte_len(),
+                Arc::new(ext::QueryDatasetDataframe::COLUMN_CHUNK_SEGMENT_ID.arrow_field()),
+                Arc::new(ext::QueryDatasetDataframe::COLUMN_RERUN_SEGMENT_LAYER.arrow_field()),
+                Arc::new(ext::QueryDatasetDataframe::COLUMN_CHUNK_BYTE_LEN.arrow_field()),
             ],
             HashMap::default(),
         ));

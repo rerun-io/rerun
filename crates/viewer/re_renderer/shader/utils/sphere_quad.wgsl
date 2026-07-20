@@ -108,3 +108,13 @@ fn sphere_quad_coverage(world_position: vec3f, radius: f32, sphere_center: vec3f
     // Note that we have signed distances to the sphere surface.
     return saturate(0.5 - distance_to_surface_in_pixels);
 }
+
+/// Computes coverage of a camera-facing circle from the fragment offset relative to the point center.
+///
+/// 2D primitives are always facing the camera - the difference to sphere_quad_coverage is that
+/// perspective projection is not taken into account.
+fn circle_quad_coverage(offset_from_center: vec3f, radius: f32) -> f32 {
+    let circle_distance = length(offset_from_center);
+    let feathering_radius = fwidth(circle_distance) * 0.5;
+    return smoothstep(radius + feathering_radius, radius - feathering_radius, circle_distance);
+}

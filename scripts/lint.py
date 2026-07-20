@@ -46,7 +46,8 @@ thiserror_multiple_unnamed = re.compile(r"#\[error\(.*\{1")
 wasm_caps = re.compile(r"\bWASM\b")
 nb_prefix = re.compile(r"nb_")
 else_return = re.compile(r"else\s*{\s*return;?\s*};")
-explicit_quotes = re.compile(r'[^(]\\"\{\w*\}\\"')  # looks for: \"{foo}\"
+# Looks for: \"{foo}\" (manual quotes), including \"{foo:?}\" (excess quotes).
+explicit_quotes = re.compile(r'[^(]\\"\{[^}]*\}\\"')
 ellipsis = re.compile(r"[^.]\.\.\.([^\-.0-9a-zA-Z]|$)")
 ellipsis_expression = re.compile(r"[\[\]\(\)<>\{\}]?.*\.\.\..*[\[\]\(\)<>\{\}]")
 ellipsis_import = re.compile(r"from \.\.\.")
@@ -315,7 +316,10 @@ def lint_line(
         return "Don't use nb_things - use num_things or thing_count instead"
 
     if explicit_quotes.search(line):
-        return "Prefer using {:?} - it will also escape newlines etc"
+        return (
+            "Prefer using {:?} over explicit quotes - it will also escape newlines etc. "
+            "See: https://github.com/rerun-io/rerun/blob/main/CODE_STYLE.md#misc"
+        )
 
     if m := re.search(r'"([^"]*)"', line):
         if err := check_string(m.group(1)):

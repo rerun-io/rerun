@@ -1,9 +1,9 @@
 use re_ui::UiLayout;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
-use re_viewer_context::{MaybeMutRef, StoreViewContext};
+use re_viewer_context::{AppContext, MaybeMutRef};
 
 pub fn edit_or_view_image_format(
-    _ctx: &StoreViewContext<'_>,
+    _ctx: &AppContext<'_>,
     ui: &mut egui::Ui,
     format: &mut MaybeMutRef<'_, re_sdk_types::components::ImageFormat>,
 ) -> egui::Response {

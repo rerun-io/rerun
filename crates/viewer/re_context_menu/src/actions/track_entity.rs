@@ -1,4 +1,3 @@
-use re_sdk_types::ViewClassIdentifier;
 use re_sdk_types::blueprint::archetypes::EyeControls3D;
 use re_viewer_context::{Item, ViewId};
 use re_viewport_blueprint::ViewProperty;
@@ -61,5 +60,5 @@ fn is_3d_view(ctx: &ContextMenuContext<'_>, view_id: &ViewId) -> bool {
         .views
         .iter()
         .filter(|view| view.0 == view_id)
-        .any(|current_view| current_view.1.class_identifier() == ViewClassIdentifier::new("3D"))
+        .any(|current_view| current_view.1.class_identifier() == "3D")
 }

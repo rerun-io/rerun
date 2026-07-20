@@ -103,7 +103,11 @@ impl Boxes2DVisualizer {
                 }
             }
 
-            view_data.add_bounding_box(entity_path.hash(), obj_space_bounding_box, world_from_obj);
+            view_data.add_bounding_box_2d(
+                entity_path.hash(),
+                obj_space_bounding_box,
+                world_from_obj,
+            );
 
             view_data.ui_labels.extend(process_labels(
                 LabeledBatch {

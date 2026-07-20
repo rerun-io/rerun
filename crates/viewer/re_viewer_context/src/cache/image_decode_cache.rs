@@ -112,6 +112,23 @@ fn decode_color_image(
     image_bytes: &[u8],
     media_type: &str,
 ) -> Result<ImageInfo, ImageLoadError> {
+    decode_image(
+        blob_row_id,
+        blob_component,
+        image_bytes,
+        media_type,
+        ImageKind::Color,
+    )
+}
+
+/// Decode image data supported by the `image` crate (e.g. PNG or JPEG) into an [`ImageInfo`].
+pub(crate) fn decode_image(
+    blob_row_id: RowId,
+    blob_component: ComponentIdentifier,
+    image_bytes: &[u8],
+    media_type: &str,
+    kind: ImageKind,
+) -> Result<ImageInfo, ImageLoadError> {
     re_tracing::profile_function!(media_type);
 
     let mut reader = image::ImageReader::new(std::io::Cursor::new(image_bytes));
@@ -131,7 +148,7 @@ fn decode_color_image(
         blob_component,
         buffer.0,
         format.0,
-        ImageKind::Color,
+        kind,
     ))
 }
 

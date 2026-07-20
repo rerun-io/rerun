@@ -1,4 +1,4 @@
-use re_lenses::{Lens, LensBuilderError, op};
+use re_lenses::{CastTo, Lens, LensBuilderError, op};
 use re_lenses_core::Selector;
 use re_log_types::TimeType;
 use re_sdk_types::archetypes::{CoordinateFrame, InstancePoses3D, Points3D};
@@ -38,18 +38,20 @@ pub fn point_cloud(time_type: TimeType) -> Result<Lens, LensBuilderError> {
             // `extract_colors` returns a `List<UInt32>`. The `.[]` flatten
             // unwraps this extra list level so the component column contains
             // the colors directly.
-            Selector::parse(".")?.pipe(extract_colors).pipe(flatten),
+            Selector::parse(".")?
+                .pipe(extract_colors("point_stride"))
+                .pipe(flatten),
         )
         // The pose field is optional.
-        .to_component(
+        .to_component_with_cast(
             InstancePoses3D::descriptor_translations(),
-            Selector::parse(".pose.position!")?
-                .pipe(op::struct_to_fixed_size_list_f32(["x", "y", "z"])),
+            Selector::parse(".pose.position! | pack(.x!, .y!, .z!)")?,
+            CastTo::Auto,
         )
-        .to_component(
+        .to_component_with_cast(
             InstancePoses3D::descriptor_quaternions(),
-            Selector::parse(".pose.orientation!")?
-                .pipe(op::struct_to_fixed_size_list_f32(["x", "y", "z", "w"])),
+            Selector::parse(".pose.orientation! | pack(.x!, .y!, .z!, .w!)")?,
+            CastTo::Auto,
         )
         .build()
 }

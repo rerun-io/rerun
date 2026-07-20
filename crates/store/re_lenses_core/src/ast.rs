@@ -4,13 +4,28 @@
 //! we should not leak these elements into the public API. This allows us to
 //! evolve the definition of lenses over time, if requirements change.
 
+use arrow::datatypes::DataType;
+use vec1::Vec1;
+
 use re_chunk::{Chunk, ComponentIdentifier, EntityPath, TimelineName};
 use re_log_types::{ResolvedEntityPathFilter, TimeType};
 use re_sdk_types::ComponentDescriptor;
-use vec1::Vec1;
 
 use crate::builder::{DeriveLensBuilder, MutateLensBuilder};
 use crate::{DynExpr, Selector};
+
+/// How to cast a derive lens output column to match its target component.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum CastTo {
+    /// Cast to the canonical Arrow datatype of the output component, looked up via
+    /// reflection from the component descriptor.
+    ///
+    /// Errors if the descriptor carries no known component type to derive the target from.
+    Auto,
+
+    /// Cast to an explicit Arrow element datatype.
+    Type(DataType),
+}
 
 /// A component output.
 ///
@@ -20,6 +35,7 @@ use crate::{DynExpr, Selector};
 pub struct ComponentOutput {
     pub component_descr: ComponentDescriptor,
     pub selector: Selector<DynExpr>,
+    pub cast: Option<CastTo>,
 }
 
 /// A time extraction output.
@@ -216,7 +232,8 @@ impl Lenses {
         &'a self,
         // TODO(grtlr): Let's take ownership here.
         chunk: &'a Chunk,
+        runtime: &'a crate::Runtime,
     ) -> impl Iterator<Item = Result<Chunk, crate::LensError>> + 'a {
-        crate::execute::execute(self, chunk)
+        crate::execute::execute(self, chunk, runtime)
     }
 }

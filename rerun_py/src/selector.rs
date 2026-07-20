@@ -70,9 +70,8 @@ impl PySelectorInternal {
     /// Execute this selector against a pyarrow array.
     fn execute(&self, py: Python<'_>, source: PyArrowType<ArrayData>) -> PyResult<Py<PyAny>> {
         let array: ArrayRef = make_array(source.0);
-        let result = self
-            .selector
-            .execute(array)
+        let result = re_lenses::default_runtime()
+            .execute(&self.selector, array)
             .map_err(|err| PyRuntimeError::new_err(format!("Selector execution failed: {err}")))?;
         match result {
             Some(arr) => arr.to_data().to_pyarrow(py).map(|obj| obj.unbind()),
@@ -92,9 +91,8 @@ impl PySelectorInternal {
         let list_array = array.as_any().downcast_ref::<ListArray>().ok_or_else(|| {
             PyTypeError::new_err(format!("expected a ListArray, got {:?}", array.data_type()))
         })?;
-        let result = self
-            .selector
-            .execute_per_row(list_array)
+        let result = re_lenses::default_runtime()
+            .execute_per_row(&self.selector, list_array)
             .map_err(|err| PyRuntimeError::new_err(format!("Selector execution failed: {err}")))?;
         match result {
             Some(arr) => arr.to_data().to_pyarrow(py).map(|obj| obj.unbind()),

@@ -1,7 +1,6 @@
 //! MCAP file importer implementation.
 
 use std::collections::HashMap;
-use std::io::Cursor;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -34,6 +33,8 @@ pub struct McapImporter {
     // TODO(RR-3491): We don't need the fallback logic anymore; use `OutputMode` instead.
     raw_fallback_enabled: bool,
     topic_filter: TopicFilter,
+    time_range: Option<(u64, u64)>,
+    recover: bool,
     lenses_by_time_type: HashMap<re_log_types::TimeType, Arc<Lenses>>,
 }
 
@@ -60,6 +61,8 @@ impl McapImporter {
             selected_decoders: selected_decoders.clone(),
             raw_fallback_enabled: true,
             topic_filter: TopicFilter::default(),
+            time_range: None,
+            recover: false,
             lenses_by_time_type,
         }
     }
@@ -75,6 +78,29 @@ impl McapImporter {
     /// See [`TopicFilter`] for matching semantics.
     pub fn with_topic_filter(mut self, topic_filter: TopicFilter) -> Self {
         self.topic_filter = topic_filter;
+        self
+    }
+
+    /// Restricts decoding to messages whose MCAP `log_time` falls in `[start, end)` (nanoseconds).
+    ///
+    /// This filters on the raw MCAP `log_time`, i.e. *before* any `timestamp_offset_ns` is applied
+    /// and before content-derived timelines. Chunks whose index bounds fall entirely outside the
+    /// range are skipped before decompression, so this bounds peak memory as well as output.
+    /// `None` clears the filter.
+    pub fn with_time_range(mut self, time_range: Option<(u64, u64)>) -> Self {
+        self.time_range = time_range;
+        self
+    }
+
+    /// Enables recovery of truncated / summary-less MCAP files.
+    ///
+    /// When set, [`Self::emit_chunks`] reconstructs a [`re_mcap::Summary`] in memory (via
+    /// [`re_mcap::read_or_reconstruct_summary`]) if the file has no valid summary — the incomplete tail
+    /// chunk/record is dropped with a warning, and channels declared only in the dropped tail are
+    /// lost. The recovered statistics therefore only count the channels and messages that could be
+    /// recovered.
+    pub fn with_recover(mut self, recover: bool) -> Self {
+        self.recover = recover;
         self
     }
 
@@ -114,7 +140,36 @@ impl McapImporter {
         timestamp_offset_ns: Option<i64>,
         emit_chunk: &(dyn Fn(re_chunk::Chunk) + Send + Sync),
     ) -> Result<(), ImporterError> {
-        re_tracing::profile_function!();
+        let summary = re_mcap::read_or_reconstruct_summary(mcap, self.recover)
+            .map_err(anyhow::Error::from)?;
+        self.emit_chunks_with_summary(
+            mcap,
+            &summary,
+            timeline_type,
+            timestamp_offset_ns,
+            emit_chunk,
+        )
+    }
+
+    /// Like [`Self::emit_chunks`], but reuses an already-read [`re_mcap::Summary`] rather than
+    /// parsing it from `mcap` again. The summary must be the one for `mcap`.
+    ///
+    /// Parsing the summary walks every chunk index, so for large files it is a real cost. When a
+    /// single file is scanned repeatedly (e.g. windowed reads), read the summary once and pass it
+    /// in here to avoid re-parsing it on every scan.
+    pub fn emit_chunks_with_summary(
+        &self,
+        mcap: &[u8],
+        summary: &re_mcap::Summary,
+        timeline_type: re_log_types::TimeType,
+        timestamp_offset_ns: Option<i64>,
+        emit_chunk: &(dyn Fn(re_chunk::Chunk) + Send + Sync),
+    ) -> Result<(), ImporterError> {
+        // Tag the scope with the time range so each window of a windowed read is a distinct span.
+        re_tracing::profile_function!(match self.time_range {
+            Some((start, end)) => format!("log_time [{start}, {end})"),
+            None => "full".to_owned(),
+        });
 
         let lenses = self.lenses_for(timeline_type);
 
@@ -132,7 +187,7 @@ impl McapImporter {
 
         let on_chunk_with_transforms = |chunk: re_chunk::Chunk| {
             if let Some(ref lenses) = lenses {
-                for result in lenses.apply(&chunk) {
+                for result in lenses.apply(&chunk, &re_lenses::default_runtime()) {
                     match result {
                         Ok(chunk) => emit_final_chunk(chunk),
                         Err(partial) => {
@@ -150,22 +205,20 @@ impl McapImporter {
             }
         };
 
-        let reader = Cursor::new(&mcap);
-        let summary = re_mcap::read_summary(reader)?
-            .ok_or_else(|| anyhow::anyhow!("MCAP file does not contain a summary"))?;
-
         DecoderRegistry::all_builtin(self.raw_fallback_enabled)
             .select(&self.selected_decoders)
-            .plan(mcap, &summary, &self.topic_filter)?
-            .run(mcap, &summary, timeline_type, &on_chunk_with_transforms)?;
+            .plan(mcap, summary, &self.topic_filter)?
+            .with_time_range(self.time_range)
+            .run(mcap, summary, timeline_type, &on_chunk_with_transforms)?;
 
         if self
             .selected_decoders
             .contains(&DecoderIdentifier::from(URDF_DECODER_IDENTIFIER))
             && let Err(err) = super::robot_description::extract_urdf_from_robot_descriptions(
                 mcap,
-                &summary,
+                summary,
                 &self.topic_filter,
+                self.recover,
                 &on_chunk_with_transforms,
             )
         {
@@ -252,10 +305,11 @@ impl Importer for McapImporter {
         // `load` will spawn a bunch of importers on the common rayon thread pool and wait for
         // their response via channels: we cannot be waiting for these responses on the
         // common rayon thread pool.
-        cfg_if::cfg_if! {
-            if #[cfg(target_arch = "wasm32")] {
+        cfg_select! {
+            target_arch = "wasm32" => {
                 loader.load_and_send(&contents, &settings, &tx)?;
-            } else {
+            }
+            _ => {
                 std::thread::Builder::new()
                     .name(format!("load_mcap({filepath:?})"))
                     .spawn(move || {

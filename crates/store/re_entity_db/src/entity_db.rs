@@ -542,10 +542,12 @@ impl EntityDb {
         entity_path: &EntityPath,
         components: impl IntoIterator<Item = ComponentIdentifier>,
     ) -> re_query::LatestAtResults {
-        self.storage_engine
-            .read()
-            .cache()
-            .latest_at(query, entity_path, components)
+        self.storage_engine.read().cache().latest_at(
+            re_chunk_store::ChunkTrackingMode::Report,
+            query,
+            entity_path,
+            components,
+        )
     }
 
     /// Get the latest index and value for a given dense [`re_types_core::Component`].
@@ -626,9 +628,13 @@ impl EntityDb {
         component: ComponentIdentifier,
         query: &LatestAtQuery,
     ) -> bool {
+        let Some(timeline) = query.timeline() else {
+            return true; // Static-only query: there are no temporal chunks to load.
+        };
+
         !self
             .rrd_manifest_index()
-            .unloaded_temporal_entries_for(&query.timeline(), entity_path, Some(component))
+            .unloaded_temporal_entries_for(&timeline, entity_path, Some(component))
             .any(|chunk| chunk.time_range.contains(query.at()))
     }
 

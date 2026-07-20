@@ -12,7 +12,7 @@ pub use write::Client;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod write_table;
 
-const MAX_DECODING_MESSAGE_SIZE: usize = u32::MAX as usize;
+pub const MAX_DECODING_MESSAGE_SIZE: usize = u32::MAX as usize;
 
 /// Wrapper with a nicer error message
 #[derive(Debug)]

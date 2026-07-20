@@ -10,6 +10,8 @@ mod box3d;
 mod clear;
 mod depth_image;
 mod dynamic_archetype;
+#[cfg(feature = "testing")]
+mod fixed_size_enum_array;
 mod image;
 mod line_strips2d;
 mod line_strips3d;
@@ -21,6 +23,7 @@ mod tensor;
 mod text_document;
 mod transform3d;
 mod view_coordinates;
+mod voxel_grid_map;
 
 // Tests of other things
 

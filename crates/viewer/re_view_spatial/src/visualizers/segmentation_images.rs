@@ -10,7 +10,7 @@ use re_viewer_context::{
 
 use super::SpatialViewVisualizerData;
 use crate::visualizers::textured_rect_from_image;
-use crate::{PickableRectSourceData, PickableTexturedRect};
+use crate::{PickableRectSourceData, PickableTexturedRect, SpaceKind};
 
 #[derive(Default)]
 pub struct SegmentationImageVisualizer;
@@ -127,7 +127,7 @@ impl VisualizerSystem for SegmentationImageVisualizer {
                                         depth_meter: None,
                                     },
                                 },
-                                spatial_ctx.view_class_identifier,
+                                SpaceKind::TwoD,
                             );
                         }
                         Err(err) => {

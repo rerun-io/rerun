@@ -146,6 +146,21 @@ impl FrameIdRegistry {
         self.frame_id_lookup_table.iter()
     }
 
+    /// Iterates over frame id pairs formed by implicit parent-child entity path relationships,
+    /// where each pair represents an edge in a transform tree.
+    ///
+    /// Doesn't include explicit (named) frame ids.
+    pub fn iter_entity_path_hierarchy_edges(
+        &self,
+    ) -> impl Iterator<Item = (TransformFrameIdHash, TransformFrameIdHash)> + '_ {
+        self.frame_id_lookup_table
+            .iter()
+            .filter_map(|(child, frame_id)| {
+                let parent = frame_id.as_entity_path()?.parent()?;
+                Some((TransformFrameIdHash::from_entity_path(&parent), *child))
+            })
+    }
+
     /// Iterates over all known entities with child frame components.
     pub fn iter_entities_with_child_frames(
         &self,

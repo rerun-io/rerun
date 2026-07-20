@@ -113,6 +113,7 @@ impl framework::Example for Render2D {
                 pixels_per_point,
                 ..Default::default()
             },
+            re_renderer::ViewBuilderId::new(0),
         )?;
         let command_buffer = view_builder
             .queue_draw(re_ctx, RectangleDrawData::new(re_ctx, &rectangles)?)

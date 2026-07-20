@@ -1,4 +1,4 @@
-use re_lenses::{Lens, LensBuilderError, op};
+use re_lenses::{CastTo, Lens, LensBuilderError, op};
 use re_lenses_core::Selector;
 use re_log_types::TimeType;
 use re_sdk_types::archetypes::Pinhole;
@@ -21,9 +21,10 @@ pub fn camera_calibration(time_type: TimeType) -> Result<Lens, LensBuilderError>
             Pinhole::descriptor_child_frame(),
             Selector::parse(".frame_id")?.pipe(op::string_suffix_nonempty(IMAGE_PLANE_SUFFIX)),
         )
-        .to_component(
+        .to_component_with_cast(
             Pinhole::descriptor_resolution(),
-            Selector::parse(".")?.pipe(op::struct_to_fixed_size_list_f32(["width", "height"])),
+            Selector::parse("pack(.width!, .height!)")?,
+            CastTo::Auto,
         )
         .to_component(
             Pinhole::descriptor_image_from_camera(),

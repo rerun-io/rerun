@@ -1,7 +1,7 @@
 """CI helpers for isolated Python example projects.
 
 An "isolated" example is one that has its own uv project (separate pyproject.toml and uv.lock)
-because its dependency closure conflicts with the workspace .venv (e.g. LeRobot pinning an incompatible rerun-sdk).
+because its dependency closure conflicts with the workspace .venv (e.g. LeRobot requiring Python >=3.12).
 Each such example opts in by setting `[tool.rerun-example] isolated = true` in its pyproject.toml.
 
 Fails on the first non-zero exit.

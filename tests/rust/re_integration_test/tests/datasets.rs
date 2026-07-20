@@ -5,7 +5,10 @@ use egui_kittest::kittest::Queryable as _;
 use re_integration_test::{HarnessExt as _, TestServer};
 use re_sdk::{
     TimeCell, Timeline,
-    external::{re_log_types::AbsoluteTimeRange, re_tuid},
+    external::{
+        re_log_types::{AbsoluteTimeRange, EntityPath},
+        re_tuid,
+    },
 };
 use re_viewer::{
     external::{
@@ -110,7 +113,7 @@ pub async fn start_with_segment_fragment_url() {
 
     let dataset_id =
         re_tuid::Tuid::from_str("187b552b95a5c2f73f37894708825ba5").expect("Failed to parse TUID");
-    let url = ViewerOpenUrl::RedapDatasetSegment(re_uri::DatasetSegmentUri {
+    let segment_uri = re_uri::DatasetSegmentUri {
         origin: re_uri::Origin {
             scheme: re_uri::Scheme::RerunHttp,
             host: re_uri::external::url::Host::Domain("localhost".to_owned()),
@@ -121,7 +124,7 @@ pub async fn start_with_segment_fragment_url() {
         fragment: re_uri::Fragment {
             selection: None,
             when: Some((
-                TimelineName::new("test_time"),
+                TimelineName::from("test_time"),
                 TimeCell::new(re_sdk::time::TimeType::Sequence, 10),
             )),
             time_selection: Some(re_uri::TimeSelection {
@@ -129,7 +132,9 @@ pub async fn start_with_segment_fragment_url() {
                 range: AbsoluteTimeRange::new(2, 8),
             }),
         },
-    });
+    };
+    let recording_uri = segment_uri.clone().without_fragment();
+    let url = ViewerOpenUrl::RedapDatasetSegment(segment_uri);
 
     let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions {
         startup_url: Some(url.sharable_url(None).expect("Should be a sharable url")),
@@ -139,30 +144,36 @@ pub async fn start_with_segment_fragment_url() {
         ..Default::default()
     });
 
+    let preview_entity = EntityPath::from("test_entity");
+    let timeline = TimelineName::from("test_time");
     viewer_test_utils::step_until(
-        "Redap recording id appears",
+        "Recording opened, source tree populated, and point data arrived",
         &mut harness,
         |harness| {
+            let uri = recording_uri.clone();
+            let entity = preview_entity.clone();
             harness.query_by_label_contains("Streams").is_some()
                 && harness.query_by_label("Loading entries…").is_none()
+                && harness.query_by_label_contains("my_dataset").is_some()
+                && harness.query_all_by_label("new_recording_id").count() == 2
+                && harness.run_with_app_context(move |app_context| {
+                    app_context
+                        .storage_context
+                        .hub
+                        .find_recording_by_uri(&uri)
+                        .is_some_and(|db| {
+                            // Not only needs the recording be loaded, we also need the data to arrive.
+                            db.storage_engine()
+                                .store()
+                                .entity_has_physical_temporal_data_on_timeline(&entity, &timeline)
+                        })
+                })
         },
         Duration::from_millis(100),
         Duration::from_secs(5),
     );
 
     harness.set_selection_panel_opened(false);
-
-    // Redact the loading bar, since it is racy
-    harness.mask(egui::Rect::from_x_y_ranges(
-        egui::Rangef::new(190.0, 1024.0),
-        egui::Rangef::new(604.0, 606.0),
-    ));
-
-    // Redact timeline data because we have no way to consistently wait for it to arrive
-    harness.mask(egui::Rect::from_x_y_ranges(
-        egui::Rangef::new(190.0, 1024.0),
-        egui::Rangef::new(650.0, 690.0),
-    ));
 
     harness.snapshot("start_with_segment_fragment_url");
 }

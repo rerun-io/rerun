@@ -12,6 +12,7 @@ use re_datafusion::DataframeQueryTableProvider;
 use re_log_types::{EntityPath, TimeInt, TimeType};
 use re_protos::cloud::v1alpha1::ext;
 use re_protos::cloud::v1alpha1::ext::DatasetEntry;
+use re_protos::cloud::v1alpha1::ext::QueryDatasetDataframe;
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_types_core::SegmentId;
 
@@ -119,7 +120,6 @@ async fn per_segment_chunk_id_set<T: RerunCloudService>(
     dataset_name: &str,
     request: ext::QueryDatasetRequest,
 ) -> BTreeSet<re_chunk::ChunkId> {
-    use arrow::array::{Array as _, AsArray as _};
     use re_protos::cloud::v1alpha1::QueryDatasetResponse;
     use re_protos::headers::RerunHeadersInjectorExt as _;
 
@@ -138,19 +138,10 @@ async fn per_segment_chunk_id_set<T: RerunCloudService>(
         let resp: QueryDatasetResponse = resp.unwrap();
         if let Some(part) = resp.data {
             let batch: arrow::array::RecordBatch = part.try_into().unwrap();
-            let id_col = batch
-                .column_by_name(re_protos::cloud::v1alpha1::QueryDatasetResponse::FIELD_CHUNK_ID)
-                .expect("response missing chunk_id column");
-            let id_arr = id_col
-                .as_fixed_size_binary_opt()
-                .expect("chunk_id column has wrong type");
-            for i in 0..id_arr.len() {
-                let bytes: [u8; 16] = id_arr
-                    .value(i)
-                    .try_into()
-                    .expect("chunk_id must be 16 bytes");
-                ids.insert(re_chunk::ChunkId::from_u128(u128::from_be_bytes(bytes)));
-            }
+            let id_col = QueryDatasetDataframe::COLUMN_CHUNK_ID
+                .extract(&batch)
+                .expect("bad chunk_id column in response");
+            ids.extend(id_col.iter_owned());
         }
     }
     ids
@@ -802,7 +793,7 @@ pub async fn query_dataset_per_segment_values_validation_rejected(service: impl 
 ///
 /// * the OSS server's per-row filter (`requested_chunk_ids.contains(…)`)
 ///   in `rerun_cloud.rs` honors the intersection, and
-/// * the Rerun Hub's set-intersection in `manifest_registry.rs` does too.
+/// * the Rerun Hub's set-intersection in `manifest_writer` does too.
 ///
 /// **Backend-conditional**: the OSS server currently returns
 /// `Unimplemented` whenever `chunk_ids` is non-empty (see
@@ -924,18 +915,11 @@ async fn query_dataset_per_segment_values_with_chunk_ids_intersects_by_time_type
     while let Some(resp) = stream.next().await {
         let resp: QueryDatasetResponse = resp.unwrap();
         if let Some(part) = resp.data {
-            use arrow::array::{Array as _, AsArray as _};
             let batch: arrow::array::RecordBatch = part.try_into().unwrap();
-            let id_col = batch
-                .column_by_name(re_protos::cloud::v1alpha1::QueryDatasetResponse::FIELD_CHUNK_ID)
-                .expect("response missing chunk_id column");
-            let id_arr = id_col
-                .as_fixed_size_binary_opt()
-                .expect("chunk_id column has wrong type");
-            for i in 0..id_arr.len() {
-                let bytes: [u8; 16] = id_arr.value(i).try_into().expect("chunk_id is 16 bytes");
-                intersected_ids.insert(re_chunk::ChunkId::from_u128(u128::from_be_bytes(bytes)));
-            }
+            let id_col = QueryDatasetDataframe::COLUMN_CHUNK_ID
+                .extract(&batch)
+                .expect("bad chunk_id column in response");
+            intersected_ids.extend(id_col.iter_owned());
         }
     }
 

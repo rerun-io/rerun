@@ -524,7 +524,7 @@ mod tests {
     }
 
     fn comp(s: &str) -> ComponentIdentifier {
-        ComponentIdentifier::new(s)
+        ComponentIdentifier::try_new(s).expect("valid component identifier")
     }
 
     #[test]
@@ -551,16 +551,16 @@ mod tests {
     #[test]
     fn test_merge_same_timeline() {
         let a = StructuredFilter {
-            has_timeline: Some(TimelineName::new("frame")),
+            has_timeline: Some(TimelineName::from("frame")),
             ..Default::default()
         };
         let b = StructuredFilter {
-            has_timeline: Some(TimelineName::new("frame")),
+            has_timeline: Some(TimelineName::from("frame")),
             ..Default::default()
         };
         match a.try_merge(&b) {
             MergeResult::Merged(m) => {
-                assert_eq!(m.has_timeline, Some(TimelineName::new("frame")));
+                assert_eq!(m.has_timeline, Some(TimelineName::from("frame")));
             }
             other => panic!("expected Merged, got {other:?}"),
         }
@@ -569,11 +569,11 @@ mod tests {
     #[test]
     fn test_merge_different_timeline() {
         let a = StructuredFilter {
-            has_timeline: Some(TimelineName::new("frame")),
+            has_timeline: Some(TimelineName::from("frame")),
             ..Default::default()
         };
         let b = StructuredFilter {
-            has_timeline: Some(TimelineName::new("log_time")),
+            has_timeline: Some(TimelineName::from("log_time")),
             ..Default::default()
         };
         match a.try_merge(&b) {
@@ -705,7 +705,7 @@ mod tests {
         );
         assert!(
             !StructuredFilter {
-                has_timeline: Some(TimelineName::new("frame")),
+                has_timeline: Some(TimelineName::from("frame")),
                 ..Default::default()
             }
             .is_noop()

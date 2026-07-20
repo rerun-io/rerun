@@ -54,21 +54,22 @@ async-trait.workspace = true
 datafusion.workspace = true
 futures.workspace = true
 futures-util.workspace = true
-http.workspace = true
+getrandom = { workspace = true, features = ["wasm_js"] }
 itertools.workspace = true
 opentelemetry.workspace = true
 opentelemetry-proto = { workspace = true, features = ["gen-tonic-messages", "trace"] }
 parking_lot.workspace = true
+quiver.workspace = true
 tokio.workspace = true
 jiff.workspace = true
 tokio-stream.workspace = true
 tonic.workspace = true
-tonic-prost.workspace = true
 tracing.workspace = true
 web-time.workspace = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 re_perf_telemetry.workspace = true
+bytes.workspace = true
 reqwest.workspace = true
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
@@ -77,9 +78,7 @@ wasm-bindgen-futures.workspace = true
 
 # These are used by Datafusion but the required features are not set for wasm build.
 chrono = { workspace = true, features = ["wasmbind"] }
-getrandom = { workspace = true, features = ["wasm_js"] }
 
 
 [dev-dependencies]
-re_redap_client = { workspace = true, features = ["test_utils"] }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "signal"] }

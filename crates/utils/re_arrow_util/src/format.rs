@@ -134,7 +134,7 @@ impl std::fmt::Display for DisplayMetadata {
                         (false, true) => trim_name(value),
                         (false, false) => value,
                     };
-                    format!("{prefix}{key}: {value}",)
+                    format!("{prefix}{key}: {value}")
                 })
                 .collect_vec()
                 .join("\n"),

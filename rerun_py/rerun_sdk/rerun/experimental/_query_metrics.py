@@ -83,10 +83,8 @@ class QueryMetrics:
       The corresponding `_min` / `_max` integer fields are surfaced in all
       three transports.
 
-    Note: `fetch_direct_max_attempt` is the per-partition max summed across
-    partitions (rather than the cross-partition true max), because
-    DataFusion's `MetricsSet::Count` lacks a `fetch_max` aggregation. For
-    single-partition queries the two are identical.
+    `fetch_direct_max_attempt` is the true maximum attempt number across all
+    partitions.
     """
 
     # Plan-time
@@ -124,6 +122,19 @@ class QueryMetrics:
     fetch_direct_max_attempt: int
     fetch_direct_original_ranges: int
     fetch_direct_merged_ranges: int
+
+    # Scheduling and admission counters
+    planned_fetch_batches: int
+    planned_segment_waves: int
+    segment_admission_limit: int
+    max_segments_per_fetch_batch: int
+    max_segments_per_wave: int
+    peak_active_segments: int
+    pipeline_budget_bytes: int
+    pipeline_peak_decoded_bytes: int
+    pipeline_byte_waits: int
+    segment_admission_waits: int
+    pipeline_stall_breaker_activations: int
 
     @property
     def fetch_requests(self) -> int:
@@ -169,6 +180,17 @@ def _from_rust(m: object) -> QueryMetrics:
         fetch_direct_max_attempt=m.fetch_direct_max_attempt,  # type: ignore[attr-defined]
         fetch_direct_original_ranges=m.fetch_direct_original_ranges,  # type: ignore[attr-defined]
         fetch_direct_merged_ranges=m.fetch_direct_merged_ranges,  # type: ignore[attr-defined]
+        planned_fetch_batches=m.planned_fetch_batches,  # type: ignore[attr-defined]
+        planned_segment_waves=m.planned_segment_waves,  # type: ignore[attr-defined]
+        segment_admission_limit=m.segment_admission_limit,  # type: ignore[attr-defined]
+        max_segments_per_fetch_batch=m.max_segments_per_fetch_batch,  # type: ignore[attr-defined]
+        max_segments_per_wave=m.max_segments_per_wave,  # type: ignore[attr-defined]
+        peak_active_segments=m.peak_active_segments,  # type: ignore[attr-defined]
+        pipeline_budget_bytes=m.pipeline_budget_bytes,  # type: ignore[attr-defined]
+        pipeline_peak_decoded_bytes=m.pipeline_peak_decoded_bytes,  # type: ignore[attr-defined]
+        pipeline_byte_waits=m.pipeline_byte_waits,  # type: ignore[attr-defined]
+        segment_admission_waits=m.segment_admission_waits,  # type: ignore[attr-defined]
+        pipeline_stall_breaker_activations=m.pipeline_stall_breaker_activations,  # type: ignore[attr-defined]
     )
 
 

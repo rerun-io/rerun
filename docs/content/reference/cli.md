@@ -23,6 +23,7 @@ The Rerun command-line interface:
 * `download`: Download recordings and save them as .rrd files.
 * `man`: Generates the Rerun CLI manual (markdown).
 * `mcap`: Manipulate the contents of .mcap files.
+* `viewer-mcp`: Run an MCP server that controls a running Rerun Viewer.
 * `reset`: Reset the memory of the Rerun Viewer.
 * `rrd`: Manipulate the contents of .rrd and .rbl files.
 * `server`: In-memory Rerun data server.
@@ -137,13 +138,6 @@ The Rerun command-line interface:
 > This is set by the `spawn()` method in our logging SDK.
 >
 > The viewer will respond by fading in the welcome screen, instead of showing it directly. This ensures that it won't blink for a few frames before switching to the recording.
->
-> [Default: `false`]
-
-* `--follow <FOLLOW>`
-> Tail .rrd files, waiting for new data to be appended after reaching EOF.
->
-> Without this flag, .rrd files are read once and the viewer stops loading when EOF is reached. With this flag, the viewer will keep watching for new data, which is useful for live streaming from a writer process.
 >
 > [Default: `false`]
 

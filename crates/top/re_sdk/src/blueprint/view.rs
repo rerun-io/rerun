@@ -510,6 +510,63 @@ impl GraphView {
     }
 }
 
+/// Text log view, for use with [`re_sdk_types::archetypes::TextLog`].
+pub struct TextLogView(pub(crate) View);
+
+impl TextLogView {
+    /// Create a new text log view.
+    pub fn new(name: impl Into<String>) -> Self {
+        Self(View {
+            class_identifier: "TextLog".into(),
+            name: Some(name.into()),
+            ..Default::default()
+        })
+    }
+
+    /// Set the origin entity path.
+    pub fn with_origin(mut self, origin: impl Into<EntityPath>) -> Self {
+        self.0.origin = origin.into();
+        self
+    }
+
+    /// Set the contents query expressions.
+    pub fn with_contents(mut self, queries: impl IntoIterator<Item = impl Into<String>>) -> Self {
+        self.0.contents = queries.into_iter().map(Into::into).collect();
+        self
+    }
+
+    /// Set visibility.
+    pub fn with_visible(mut self, visible: bool) -> Self {
+        self.0.visible = Some(visible);
+        self
+    }
+
+    /// Add a default archetype that applies to all entities in the view.
+    pub fn with_defaults(mut self, archetype: &dyn AsComponents) -> Self {
+        self.0.add_defaults(archetype);
+        self
+    }
+
+    /// Add a visualizer override for a specific entity.
+    pub fn with_override(
+        self,
+        entity_path: impl Into<EntityPath>,
+        visualizers: impl Into<Visualizer>,
+    ) -> Self {
+        self.with_overrides(entity_path, [visualizers])
+    }
+
+    /// Add visualizer overrides for a specific entity.
+    pub fn with_overrides(
+        mut self,
+        entity_path: impl Into<EntityPath>,
+        visualizers: impl IntoIterator<Item = impl Into<Visualizer>>,
+    ) -> Self {
+        self.0.add_overrides(entity_path, visualizers);
+        self
+    }
+}
+
 /// Text document view for markdown rendering.
 pub struct TextDocumentView(pub(crate) View);
 
@@ -518,6 +575,234 @@ impl TextDocumentView {
     pub fn new(name: impl Into<String>) -> Self {
         Self(View {
             class_identifier: "TextDocument".into(),
+            name: Some(name.into()),
+            ..Default::default()
+        })
+    }
+
+    /// Set the origin entity path.
+    pub fn with_origin(mut self, origin: impl Into<EntityPath>) -> Self {
+        self.0.origin = origin.into();
+        self
+    }
+
+    /// Set the contents query expressions.
+    pub fn with_contents(mut self, queries: impl IntoIterator<Item = impl Into<String>>) -> Self {
+        self.0.contents = queries.into_iter().map(Into::into).collect();
+        self
+    }
+
+    /// Set visibility.
+    pub fn with_visible(mut self, visible: bool) -> Self {
+        self.0.visible = Some(visible);
+        self
+    }
+
+    /// Add a default archetype that applies to all entities in the view.
+    pub fn with_defaults(mut self, archetype: &dyn AsComponents) -> Self {
+        self.0.add_defaults(archetype);
+        self
+    }
+
+    /// Add a visualizer override for a specific entity.
+    pub fn with_override(
+        self,
+        entity_path: impl Into<EntityPath>,
+        visualizers: impl Into<Visualizer>,
+    ) -> Self {
+        self.with_overrides(entity_path, [visualizers])
+    }
+
+    /// Add visualizer overrides for a specific entity.
+    pub fn with_overrides(
+        mut self,
+        entity_path: impl Into<EntityPath>,
+        visualizers: impl IntoIterator<Item = impl Into<Visualizer>>,
+    ) -> Self {
+        self.0.add_overrides(entity_path, visualizers);
+        self
+    }
+}
+
+/// Bar chart view, for use with [`re_sdk_types::archetypes::BarChart`].
+pub struct BarChartView(pub(crate) View);
+
+impl BarChartView {
+    /// Create a new bar chart view.
+    pub fn new(name: impl Into<String>) -> Self {
+        Self(View {
+            class_identifier: "BarChart".into(),
+            name: Some(name.into()),
+            ..Default::default()
+        })
+    }
+
+    /// Set the origin entity path.
+    pub fn with_origin(mut self, origin: impl Into<EntityPath>) -> Self {
+        self.0.origin = origin.into();
+        self
+    }
+
+    /// Set the contents query expressions.
+    pub fn with_contents(mut self, queries: impl IntoIterator<Item = impl Into<String>>) -> Self {
+        self.0.contents = queries.into_iter().map(Into::into).collect();
+        self
+    }
+
+    /// Set visibility.
+    pub fn with_visible(mut self, visible: bool) -> Self {
+        self.0.visible = Some(visible);
+        self
+    }
+
+    /// Add a default archetype that applies to all entities in the view.
+    pub fn with_defaults(mut self, archetype: &dyn AsComponents) -> Self {
+        self.0.add_defaults(archetype);
+        self
+    }
+
+    /// Add a visualizer override for a specific entity.
+    pub fn with_override(
+        self,
+        entity_path: impl Into<EntityPath>,
+        visualizers: impl Into<Visualizer>,
+    ) -> Self {
+        self.with_overrides(entity_path, [visualizers])
+    }
+
+    /// Add visualizer overrides for a specific entity.
+    pub fn with_overrides(
+        mut self,
+        entity_path: impl Into<EntityPath>,
+        visualizers: impl IntoIterator<Item = impl Into<Visualizer>>,
+    ) -> Self {
+        self.0.add_overrides(entity_path, visualizers);
+        self
+    }
+}
+
+/// Dataframe view, for displaying entities in a tabular form.
+pub struct DataframeView(pub(crate) View);
+
+impl DataframeView {
+    /// Create a new dataframe view.
+    pub fn new(name: impl Into<String>) -> Self {
+        Self(View {
+            class_identifier: "Dataframe".into(),
+            name: Some(name.into()),
+            ..Default::default()
+        })
+    }
+
+    /// Set the origin entity path.
+    pub fn with_origin(mut self, origin: impl Into<EntityPath>) -> Self {
+        self.0.origin = origin.into();
+        self
+    }
+
+    /// Set the contents query expressions.
+    pub fn with_contents(mut self, queries: impl IntoIterator<Item = impl Into<String>>) -> Self {
+        self.0.contents = queries.into_iter().map(Into::into).collect();
+        self
+    }
+
+    /// Set visibility.
+    pub fn with_visible(mut self, visible: bool) -> Self {
+        self.0.visible = Some(visible);
+        self
+    }
+
+    /// Add a default archetype that applies to all entities in the view.
+    pub fn with_defaults(mut self, archetype: &dyn AsComponents) -> Self {
+        self.0.add_defaults(archetype);
+        self
+    }
+
+    /// Add a visualizer override for a specific entity.
+    pub fn with_override(
+        self,
+        entity_path: impl Into<EntityPath>,
+        visualizers: impl Into<Visualizer>,
+    ) -> Self {
+        self.with_overrides(entity_path, [visualizers])
+    }
+
+    /// Add visualizer overrides for a specific entity.
+    pub fn with_overrides(
+        mut self,
+        entity_path: impl Into<EntityPath>,
+        visualizers: impl IntoIterator<Item = impl Into<Visualizer>>,
+    ) -> Self {
+        self.0.add_overrides(entity_path, visualizers);
+        self
+    }
+}
+
+/// State timeline view, for visualizing discrete state changes over time.
+pub struct StateTimelineView(pub(crate) View);
+
+impl StateTimelineView {
+    /// Create a new state timeline view.
+    pub fn new(name: impl Into<String>) -> Self {
+        Self(View {
+            class_identifier: "StateTimeline".into(),
+            name: Some(name.into()),
+            ..Default::default()
+        })
+    }
+
+    /// Set the origin entity path.
+    pub fn with_origin(mut self, origin: impl Into<EntityPath>) -> Self {
+        self.0.origin = origin.into();
+        self
+    }
+
+    /// Set the contents query expressions.
+    pub fn with_contents(mut self, queries: impl IntoIterator<Item = impl Into<String>>) -> Self {
+        self.0.contents = queries.into_iter().map(Into::into).collect();
+        self
+    }
+
+    /// Set visibility.
+    pub fn with_visible(mut self, visible: bool) -> Self {
+        self.0.visible = Some(visible);
+        self
+    }
+
+    /// Add a default archetype that applies to all entities in the view.
+    pub fn with_defaults(mut self, archetype: &dyn AsComponents) -> Self {
+        self.0.add_defaults(archetype);
+        self
+    }
+
+    /// Add a visualizer override for a specific entity.
+    pub fn with_override(
+        self,
+        entity_path: impl Into<EntityPath>,
+        visualizers: impl Into<Visualizer>,
+    ) -> Self {
+        self.with_overrides(entity_path, [visualizers])
+    }
+
+    /// Add visualizer overrides for a specific entity.
+    pub fn with_overrides(
+        mut self,
+        entity_path: impl Into<EntityPath>,
+        visualizers: impl IntoIterator<Item = impl Into<Visualizer>>,
+    ) -> Self {
+        self.0.add_overrides(entity_path, visualizers);
+        self
+    }
+}
+
+/// Tensor view, for use with [`re_sdk_types::archetypes::Tensor`].
+pub struct TensorView(pub(crate) View);
+
+impl TensorView {
+    /// Create a new tensor view.
+    pub fn new(name: impl Into<String>) -> Self {
+        Self(View {
+            class_identifier: "Tensor".into(),
             name: Some(name.into()),
             ..Default::default()
         })

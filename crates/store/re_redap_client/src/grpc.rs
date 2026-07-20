@@ -19,8 +19,8 @@ use re_uri::Origin;
 use tokio_stream::StreamExt as _;
 
 use crate::{
-    ApiError, ApiErrorKind, ApiResult, ConnectionClient, MAX_DECODING_MESSAGE_SIZE,
-    SegmentQueryParams,
+    ApiError, ApiErrorKind, ApiResult, BoxedRedapClientStack, ConnectionClient,
+    MAX_DECODING_MESSAGE_SIZE, SegmentQueryParams,
 };
 
 #[cfg(target_arch = "wasm32")]
@@ -34,7 +34,7 @@ pub async fn channel(origin: Origin) -> ApiResult<tonic_web_wasm_client::Client>
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-pub async fn channel(origin: Origin) -> ApiResult<tonic::transport::Channel> {
+pub async fn channel(origin: Origin) -> ApiResult<PoolChannel> {
     use std::net::Ipv4Addr;
 
     use tonic::transport::Endpoint;
@@ -67,38 +67,40 @@ pub async fn channel(origin: Origin) -> ApiResult<tonic::transport::Channel> {
             .assume_http2(true)
     };
 
-    let endpoint = {
-        let mut endpoint = Endpoint::new(http_url)
-            .and_then(|ep| ep.tls_config(tls_config))
-            .map_err(|err| ApiError::connection_with_source(None, err, "connecting to server"))?
-            .http2_adaptive_window(true) // Optimize for throughput
-            .connect_timeout(std::time::Duration::from_secs(10))
-            // Send HTTP/2 PINGs every 30s to keep connections alive across NATs / cloud LBs
-            // that silently drop idle TCP. Without a client-side keep-alive, idle long-lived
-            // channels were torn down only when one side's keep-alive eventually fired,
-            // surfacing as confusing "slow" requests on the next call.
-            .http2_keep_alive_interval(std::time::Duration::from_secs(30))
-            .keep_alive_timeout(std::time::Duration::from_secs(20))
-            .keep_alive_while_idle(true)
-            .tcp_keepalive(Some(std::time::Duration::from_secs(30)));
+    let mut endpoint = Endpoint::new(http_url)
+        .and_then(|ep| ep.tls_config(tls_config))
+        .map_err(|err| ApiError::connection_with_source(None, err, "connecting to server"))?
+        .http2_adaptive_window(true) // Optimize for throughput
+        .connect_timeout(std::time::Duration::from_secs(10))
+        // Send HTTP/2 PINGs every 30s to keep connections alive across NATs / cloud LBs
+        // that silently drop idle TCP. Without a client-side keep-alive, idle long-lived
+        // channels were torn down only when one side's keep-alive eventually fired,
+        // surfacing as confusing "slow" requests on the next call.
+        .http2_keep_alive_interval(std::time::Duration::from_secs(30))
+        .keep_alive_timeout(std::time::Duration::from_secs(20))
+        .keep_alive_while_idle(true)
+        .tcp_keepalive(Some(std::time::Duration::from_secs(30)));
 
-        if false {
-            // NOTE: Tried it, had no noticeable effects in any of my benchmarks.
-            endpoint = endpoint.initial_stream_window_size(Some(4 * 1024 * 1024));
-            endpoint = endpoint.initial_connection_window_size(Some(16 * 1024 * 1024));
-        }
+    if false {
+        // NOTE: Tried it, had no noticeable effects in any of my benchmarks.
+        endpoint = endpoint.initial_stream_window_size(Some(4 * 1024 * 1024));
+        endpoint = endpoint.initial_connection_window_size(Some(16 * 1024 * 1024));
+    }
 
-        endpoint.connect().await.map_err(|err| {
-            ApiError::connection_with_source(
-                None,
-                err,
-                format!("failed to connect to server at {origin}"),
-            )
-        })
-    };
+    // Connect a single channel up front. This validates connectivity (so the localhost probe
+    // below can run on failure) and surfaces connection errors through the `with_retry` wrapper.
+    let connect_result = endpoint.connect().await.map_err(|err| {
+        ApiError::connection_with_source(
+            None,
+            err,
+            format!("failed to connect to server at {origin}"),
+        )
+    });
 
-    match endpoint {
-        Ok(channel) => Ok(channel),
+    match connect_result {
+        // Spread requests across a small pool of connections to the same origin (see
+        // `PoolChannel`). For a single-connection pool this is just the validated channel.
+        Ok(channel) => Ok(build_pool(channel, &endpoint)),
         Err(original_err) => {
             if ![
                 url::Host::Domain("localhost".to_owned()),
@@ -129,8 +131,179 @@ pub async fn channel(origin: Origin) -> ApiResult<tonic::transport::Channel> {
     }
 }
 
+/// Default number of HTTP/2 connections opened per origin (see [`connection_pool_size`]).
+///
+/// `4` by default. The viewer fans out many concurrent `FetchChunks` streams, and a single HTTP/2
+/// connection serves them slowly: the server's HTTP/2 stack under-polls the multiplexed streams.
+/// Spreading them across `4` connections keeps each one lightly loaded. `4` is the measured
+/// sweet spot on a 80 MiB / s connection. Connections are opened lazily, so light usage still only
+/// ever touches the first one.
+#[cfg(not(target_arch = "wasm32"))]
+const DEFAULT_CONNECTION_POOL_SIZE: usize = 4;
+
+/// How many HTTP/2 connections to open per origin, for load-balancing concurrent requests.
+///
+/// Defaults to [`DEFAULT_CONNECTION_POOL_SIZE`]. Override with `RERUN_REDAP_CONNECTION_POOL_SIZE`.
+///
+/// Set it to `1` to disable pooling.
+#[cfg(not(target_arch = "wasm32"))]
+fn connection_pool_size() -> usize {
+    std::env::var("RERUN_REDAP_CONNECTION_POOL_SIZE")
+        .ok()
+        .and_then(|s| s.parse::<usize>().ok())
+        .unwrap_or(DEFAULT_CONNECTION_POOL_SIZE)
+        .max(1)
+}
+
+/// Build a [`PoolChannel`] of `connection_pool_size()` connections to the same origin.
+///
+/// `validated` is the connection we already opened and checked above; it becomes the first pool
+/// member. Any further connections are opened lazily, so they only cost a connect once the pool
+/// actually routes a request to them. For a single-connection pool this is just `validated`.
+#[cfg(not(target_arch = "wasm32"))]
+fn build_pool(
+    validated: tonic::transport::Channel,
+    endpoint: &tonic::transport::Endpoint,
+) -> PoolChannel {
+    let pool_size = connection_pool_size();
+    let mut connections = Vec::with_capacity(pool_size);
+    connections.push(validated);
+    for _ in 1..pool_size {
+        connections.push(endpoint.connect_lazy());
+    }
+    PoolChannel::new(connections)
+}
+
+/// A pool of HTTP/2 connections to a single origin, dispatching each request to the least-loaded
+/// connection.
+///
+/// Channels are lazily opened, so under light usage only one connection is used.
+#[cfg(not(target_arch = "wasm32"))]
+#[derive(Clone, Debug)]
+pub struct PoolChannel {
+    connections: Arc<[tonic::transport::Channel]>,
+
+    /// Number of requests on each connection whose response body has not yet finished streaming.
+    in_flight: Arc<[std::sync::atomic::AtomicU64]>,
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl PoolChannel {
+    fn new(connections: Vec<tonic::transport::Channel>) -> Self {
+        let in_flight = connections
+            .iter()
+            .map(|_| std::sync::atomic::AtomicU64::new(0))
+            .collect::<Vec<_>>();
+        Self {
+            connections: connections.into(),
+            in_flight: in_flight.into(),
+        }
+    }
+
+    /// Index of the connection with the fewest requests in flight.
+    fn least_loaded(&self) -> usize {
+        use std::sync::atomic::Ordering;
+        self.in_flight
+            .iter()
+            .enumerate()
+            .min_by_key(|(_, n)| n.load(Ordering::Relaxed))
+            .map_or(0, |(i, _)| i)
+    }
+}
+
+/// Decrements a connection's in-flight count when dropped, i.e. once its response body is done
+/// streaming.
+#[cfg(not(target_arch = "wasm32"))]
+struct InFlightGuard {
+    in_flight: Arc<[std::sync::atomic::AtomicU64]>,
+    idx: usize,
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl Drop for InFlightGuard {
+    fn drop(&mut self) {
+        self.in_flight[self.idx].fetch_sub(1, std::sync::atomic::Ordering::Relaxed);
+    }
+}
+
+/// Wraps a response body to keep its request counted as in-flight until the body finishes streaming.
+///
+/// The guard is dropped when this body is fully drained or dropped, at which point the connection's
+/// in-flight count is decremented (see [`InFlightGuard`]).
+#[cfg(not(target_arch = "wasm32"))]
+struct TrackedBody {
+    inner: tonic::body::Body,
+    _guard: InFlightGuard,
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl http_body::Body for TrackedBody {
+    type Data = tonic::codegen::Bytes;
+    type Error = tonic::Status;
+
+    fn poll_frame(
+        self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Option<Result<http_body::Frame<Self::Data>, Self::Error>>> {
+        std::pin::Pin::new(&mut self.get_mut().inner).poll_frame(cx)
+    }
+
+    fn is_end_stream(&self) -> bool {
+        self.inner.is_end_stream()
+    }
+
+    fn size_hint(&self) -> http_body::SizeHint {
+        self.inner.size_hint()
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl tower::Service<tonic::codegen::http::Request<tonic::body::Body>> for PoolChannel {
+    type Response = tonic::codegen::http::Response<tonic::body::Body>;
+    type Error = tonic::transport::Error;
+    type Future = std::pin::Pin<
+        Box<dyn std::future::Future<Output = Result<Self::Response, Self::Error>> + Send>,
+    >;
+
+    fn poll_ready(
+        &mut self,
+        _cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Result<(), Self::Error>> {
+        // We don't apply backpressure here: the chosen connection is driven to readiness inside the
+        // returned future, and each connection does its own internal buffering.
+        std::task::Poll::Ready(Ok(()))
+    }
+
+    fn call(&mut self, req: tonic::codegen::http::Request<tonic::body::Body>) -> Self::Future {
+        use std::sync::atomic::Ordering;
+
+        let idx = self.least_loaded();
+        self.in_flight[idx].fetch_add(1, Ordering::Relaxed);
+        let guard = InFlightGuard {
+            in_flight: self.in_flight.clone(),
+            idx,
+        };
+        let mut connection = self.connections[idx].clone();
+
+        Box::pin(async move {
+            std::future::poll_fn(|cx| connection.poll_ready(cx)).await?;
+            let response = connection.call(req).await?;
+            // Hand the in-flight guard to the response body so the request stays counted until the
+            // body is fully streamed (or dropped), not just until the headers arrive. This keeps the
+            // load metric tracking the bandwidth-bound download work, which is what actually needs
+            // balancing across connections.
+            Ok(response.map(|inner| {
+                tonic::body::Body::new(TrackedBody {
+                    inner,
+                    _guard: guard,
+                })
+            }))
+        })
+    }
+}
+
 #[cfg(target_arch = "wasm32")]
-pub type RedapClientInner = re_auth::client::AuthService<
+pub type RedapClientStack = re_auth::client::AuthService<
     tonic::service::interceptor::InterceptedService<
         re_protos::headers::PropagateHeaders<tonic_web_wasm_client::Client>,
         re_protos::headers::RerunVersionInterceptor,
@@ -138,48 +311,43 @@ pub type RedapClientInner = re_auth::client::AuthService<
 >;
 
 /// Apply the standard SDK-side layer stack on top of an already-built channel
-/// and return the high-level `RedapClient` plus the layered service backing it.
-///
-/// Pulled out of [`client`] so [`crate::ConnectionClient::new_disconnected`]
-/// (and any future test fixture) can build a fully-typed client over a
-/// never-connecting channel without going through `with_retry`.
+/// and return the generated [`RawRedapClient`] plus the layered service backing it.
 #[cfg(target_arch = "wasm32")]
-pub(crate) fn assemble_client(
+pub(crate) fn assemble_grpc_client(
     channel: tonic_web_wasm_client::Client,
     credentials: Option<Arc<dyn re_auth::credentials::CredentialsProvider + Send + Sync + 'static>>,
-) -> (RedapClient, RedapClientInner) {
+) -> (RawRedapClient, RedapClientStack) {
     let middlewares = tower::ServiceBuilder::new()
         .layer(AuthDecorator::new(credentials))
         .layer(re_protos::headers::new_rerun_client_headers_layer());
 
-    let svc: RedapClientInner = tower::ServiceBuilder::new()
+    let client_stack: RedapClientStack = tower::ServiceBuilder::new()
         .layer(middlewares.into_inner())
         .service(channel);
 
-    let client = RerunCloudServiceClient::new(svc.clone())
-        .max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE);
-    (client, svc)
+    let client = redap_grpc_client(client_stack.clone());
+    (client, client_stack)
 }
 
 #[cfg(target_arch = "wasm32")]
-pub(crate) async fn client(
+pub(crate) async fn connect_grpc_client(
     origin: Origin,
     credentials: Option<Arc<dyn re_auth::credentials::CredentialsProvider + Send + Sync + 'static>>,
-) -> ApiResult<(RedapClient, RedapClientInner)> {
+) -> ApiResult<(RawRedapClient, RedapClientStack)> {
     let channel = crate::with_retry("redap_connection", || async {
         channel(origin.clone()).await
     })
     .await?;
-    Ok(assemble_client(channel, credentials))
+    Ok(assemble_grpc_client(channel, credentials))
 }
 
 #[cfg(all(not(target_arch = "wasm32"), feature = "perf_telemetry"))]
-pub type RedapClientInner = re_auth::client::AuthService<
+pub type RedapClientStack = re_auth::client::AuthService<
     tonic::service::interceptor::InterceptedService<
         re_protos::headers::PropagateHeaders<
             re_perf_telemetry::external::tower_http::trace::Trace<
                 tonic::service::interceptor::InterceptedService<
-                    tonic::transport::Channel,
+                    PoolChannel,
                     re_perf_telemetry::TracingInjectorInterceptor,
                 >,
                 re_perf_telemetry::external::tower_http::classify::SharedClassifier<
@@ -195,26 +363,44 @@ pub type RedapClientInner = re_auth::client::AuthService<
 >;
 
 #[cfg(all(not(target_arch = "wasm32"), not(feature = "perf_telemetry")))]
-pub type RedapClientInner = re_auth::client::AuthService<
+pub type RedapClientStack = re_auth::client::AuthService<
     tonic::service::interceptor::InterceptedService<
-        re_protos::headers::PropagateHeaders<tonic::transport::Channel>,
+        re_protos::headers::PropagateHeaders<PoolChannel>,
         re_protos::headers::RerunVersionInterceptor,
     >,
 >;
 
-pub type RedapClient = RerunCloudServiceClient<RedapClientInner>;
+pub(crate) type RawRedapClient = RerunCloudServiceClient<RedapClientStack>;
+
+fn redap_grpc_client(client_stack: RedapClientStack) -> RawRedapClient {
+    RerunCloudServiceClient::new(client_stack).max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE)
+}
+
+pub(crate) fn boxed_redap_grpc_client(
+    client_stack: RedapClientStack,
+) -> RerunCloudServiceClient<BoxedRedapClientStack> {
+    use tower::ServiceExt as _;
+
+    // Map the layered stack's `Box<dyn Error + Send + Sync>` error to a concrete `tonic::Status`
+    // before boxing. Keeping the boxed service's error type concrete avoids HRTB lifetime variance
+    // issues that otherwise prevent `Send` futures from being inferred at consumer sites (e.g.
+    // `re_datafusion`'s `make_future_send`).
+    let client_stack = tower::util::BoxCloneSyncService::new(
+        client_stack
+            .map_response(|response| response.map(tonic::body::Body::new))
+            .map_err(tonic::Status::from_error),
+    );
+
+    RerunCloudServiceClient::new(client_stack).max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE)
+}
 
 /// Apply the standard SDK-side layer stack on top of an already-built channel
-/// and return the high-level `RedapClient` plus the layered service backing it.
-///
-/// Pulled out of [`client`] so [`crate::ConnectionClient::new_disconnected`]
-/// (and any future test fixture) can build a fully-typed client over a
-/// never-connecting channel without going through `with_retry`.
+/// and return the generated [`RawRedapClient`] plus the layered service backing it.
 #[cfg(not(target_arch = "wasm32"))]
-pub(crate) fn assemble_client(
-    channel: tonic::transport::Channel,
+pub(crate) fn assemble_grpc_client(
+    channel: PoolChannel,
     credentials: Option<Arc<dyn re_auth::credentials::CredentialsProvider + Send + Sync + 'static>>,
-) -> (RedapClient, RedapClientInner) {
+) -> (RawRedapClient, RedapClientStack) {
     let middlewares = tower::ServiceBuilder::new()
         .layer(AuthDecorator::new(credentials))
         .layer(re_protos::headers::new_rerun_client_headers_layer());
@@ -222,25 +408,24 @@ pub(crate) fn assemble_client(
     #[cfg(feature = "perf_telemetry")]
     let middlewares = middlewares.layer(re_perf_telemetry::new_client_telemetry_layer());
 
-    let svc: RedapClientInner = tower::ServiceBuilder::new()
+    let client_stack: RedapClientStack = tower::ServiceBuilder::new()
         .layer(middlewares.into_inner())
         .service(channel);
 
-    let client = RerunCloudServiceClient::new(svc.clone())
-        .max_decoding_message_size(MAX_DECODING_MESSAGE_SIZE);
-    (client, svc)
+    let client = redap_grpc_client(client_stack.clone());
+    (client, client_stack)
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-pub(crate) async fn client(
+pub(crate) async fn connect_grpc_client(
     origin: Origin,
     credentials: Option<Arc<dyn re_auth::credentials::CredentialsProvider + Send + Sync + 'static>>,
-) -> ApiResult<(RedapClient, RedapClientInner)> {
+) -> ApiResult<(RawRedapClient, RedapClientStack)> {
     let channel = crate::with_retry("redap_connection", || async {
         channel(origin.clone()).await
     })
     .await?;
-    Ok(assemble_client(channel, credentials))
+    Ok(assemble_grpc_client(channel, credentials))
 }
 
 /// Converts a `FetchChunksStream` stream into a stream of `Chunk`s.
@@ -376,6 +561,26 @@ pub fn fetch_chunks_response_to_chunk_and_segment_id(
 /// `total_bytes_expected` may be `None` if the total size is not known.
 pub type ProgressCallback = std::sync::Arc<dyn Fn(u64, Option<u64>) + Send + Sync>;
 
+bitflags::bitflags! {
+    /// Which parts of a segment to stream from the server.
+    ///
+    /// A segment on the server may have an associated default blueprint.
+    /// This controls whether we download that blueprint, the segment data, or both.
+    ///
+    /// Defaults to downloading all parts.
+    #[derive(Clone, Copy, PartialEq, Eq, Debug)]
+    pub struct SegmentDownload: u8 {
+        const SEGMENT = 0b1;
+        const BLUEPRINT = 0b10;
+    }
+}
+
+impl Default for SegmentDownload {
+    fn default() -> Self {
+        Self::all()
+    }
+}
+
 /// Options that control how segment data is streamed from the server.
 #[derive(Clone, Default)]
 pub struct StreamingOptions {
@@ -385,6 +590,9 @@ pub struct StreamingOptions {
     /// This is useful for downloading a full recording to disk.
     pub force_full_download: bool,
 
+    /// Which parts of the segment to download.
+    pub download: SegmentDownload,
+
     /// Optional callback invoked as chunks are downloaded.
     pub on_progress: Option<ProgressCallback>,
 }
@@ -393,6 +601,7 @@ impl std::fmt::Debug for StreamingOptions {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("StreamingOptions")
             .field("force_full_download", &self.force_full_download)
+            .field("download", &self.download)
             .field("on_progress", &self.on_progress.as_ref().map(|_| "…"))
             .finish()
     }
@@ -507,48 +716,52 @@ pub async fn stream_blueprint_and_segment_from_server(
 ) -> ApiResult {
     re_log::debug!("Loading {uri}…");
 
-    let dataset_entry = client.read_dataset_entry(uri.dataset_id.into()).await?;
-
     let recording_store_id = uri.store_id();
 
-    if let Some((blueprint_dataset, blueprint_segment)) =
-        dataset_entry.dataset_details.default_blueprint()
-    {
-        re_log::debug!("Streaming blueprint dataset {blueprint_dataset}");
+    if options.download.contains(SegmentDownload::BLUEPRINT) {
+        let dataset_entry = client.read_dataset_entry(uri.dataset_id.into()).await?;
 
-        let blueprint_store_id = StoreId::random(
-            StoreKind::Blueprint,
-            recording_store_id.application_id().clone(),
-        );
-        if stream_blueprint_segment(
-            &mut client,
-            &tx,
-            blueprint_store_id.clone(),
-            blueprint_dataset,
-            blueprint_segment,
-        )
-        .await?
-        .is_break()
+        if let Some((blueprint_dataset, blueprint_segment)) =
+            dataset_entry.dataset_details.default_blueprint()
         {
-            return Ok(());
-        }
+            re_log::debug!("Streaming blueprint dataset {blueprint_dataset}");
 
-        if tx
-            .send(
-                LogMsg::BlueprintActivationCommand(BlueprintActivationCommand {
-                    blueprint_id: blueprint_store_id,
-                    make_active: false,
-                    make_default: true,
-                })
-                .into(),
+            // For blueprint, we can use a random recording ID
+            let blueprint_store_id = StoreId::random(
+                StoreKind::Blueprint,
+                recording_store_id.application_id().clone(),
+            );
+
+            if stream_blueprint_segment(
+                &mut client,
+                &tx,
+                blueprint_store_id.clone(),
+                blueprint_dataset,
+                blueprint_segment,
             )
-            .is_err()
-        {
-            re_log::debug!("Receiver disconnected");
-            return Ok(());
+            .await?
+            .is_break()
+            {
+                return Ok(());
+            }
+
+            if tx
+                .send(
+                    LogMsg::BlueprintActivationCommand(BlueprintActivationCommand {
+                        blueprint_id: blueprint_store_id,
+                        make_active: false,
+                        make_default: true,
+                    })
+                    .into(),
+                )
+                .is_err()
+            {
+                re_log::debug!("Receiver disconnected");
+                return Ok(());
+            }
+        } else {
+            re_log::debug!("No blueprint dataset found for {uri}");
         }
-    } else {
-        re_log::debug!("No blueprint dataset found for {uri}");
     }
 
     let re_uri::DatasetSegmentUri {
@@ -558,26 +771,28 @@ pub async fn stream_blueprint_and_segment_from_server(
         fragment,
     } = uri;
 
-    let store_info = StoreInfo {
-        store_id: recording_store_id,
-        cloned_from: None,
-        store_source: StoreSource::Unknown,
-        store_version: None,
-    };
+    if options.download.contains(SegmentDownload::SEGMENT) {
+        let store_info = StoreInfo {
+            store_id: recording_store_id,
+            cloned_from: None,
+            store_source: StoreSource::Unknown,
+            store_version: None,
+        };
 
-    if stream_segment_from_server(
-        &mut client,
-        store_info,
-        &tx,
-        dataset_id.into(),
-        segment_id,
-        fragment,
-        &options,
-    )
-    .await?
-    .is_break()
-    {
-        return Ok(());
+        if stream_segment_from_server(
+            &mut client,
+            store_info,
+            &tx,
+            dataset_id.into(),
+            segment_id,
+            fragment,
+            &options,
+        )
+        .await?
+        .is_break()
+        {
+            return Ok(());
+        }
     }
 
     Ok(())

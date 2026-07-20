@@ -16,6 +16,7 @@ use super::stream::{ChunkPredicateView, LazyChunkStream, StructuredFilter};
 use super::summary::{SummaryRow, format_summary};
 use super::{ChunkStream, ChunkStreamFactory};
 use crate::catalog::PySchemaInternal;
+use crate::utils::wait_for_future;
 
 /// An index-based, lazily-loaded chunk store.
 ///
@@ -334,13 +335,11 @@ impl ChunkStream for IndexedChunkStream {
 
             let end = self.next_batch_end();
             let ids = &self.chunk_ids[self.next_id..end];
-            let chunks =
-                self.lazy
-                    .load_chunks(ids)
-                    .map_err(|err| ChunkPipelineError::IndexedLoad {
-                        from: self.lazy.source(),
-                        reason: err.to_string(),
-                    })?;
+            let chunks = Python::attach(|py| wait_for_future(py, self.lazy.load_chunks(ids)))
+                .map_err(|err| ChunkPipelineError::IndexedLoad {
+                    from: self.lazy.source(),
+                    reason: err.to_string(),
+                })?;
             self.next_id = end;
             self.buffer = chunks.into();
         }
@@ -487,13 +486,15 @@ mod pushdown_tests {
         }
         encoder.finish().unwrap();
 
-        let mut file = File::open(path).unwrap();
-        let footer = re_log_encoding::read_rrd_footer(&mut file)
+        let mut reader = futures::io::AllowStdIo::new(File::open(path).unwrap());
+        let footer = futures::executor::block_on(re_log_encoding::read_rrd_footer(&mut reader))
             .unwrap()
             .unwrap();
         let raw = Arc::new(footer.manifests[&store_id].clone());
-        let file = File::open(path).unwrap();
-        let provider = Arc::new(RrdChunkProvider::try_from_file(file, path, raw).unwrap());
+        let reader = futures::io::AllowStdIo::new(File::open(path).unwrap());
+        let provider = Arc::new(
+            RrdChunkProvider::from_reader(reader, path.display().to_string(), raw).unwrap(),
+        );
         Arc::new(LazyStore::new(provider))
     }
 
@@ -591,7 +592,7 @@ mod pushdown_tests {
         ]);
 
         let filter = StructuredFilter {
-            has_timeline: Some(TimelineName::new("frame")),
+            has_timeline: Some(TimelineName::from("frame")),
             ..Default::default()
         };
         let (matching, _) = evaluate_filter_on_manifest(&filter, store.manifest());
@@ -602,7 +603,7 @@ mod pushdown_tests {
 
         // A non-existent timeline should match nothing.
         let filter = StructuredFilter {
-            has_timeline: Some(TimelineName::new("never_logged")),
+            has_timeline: Some(TimelineName::from("never_logged")),
             ..Default::default()
         };
         let (matching, _) = evaluate_filter_on_manifest(&filter, store.manifest());

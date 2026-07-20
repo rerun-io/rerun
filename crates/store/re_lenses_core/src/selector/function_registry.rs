@@ -51,6 +51,12 @@ impl re_byte_size::SizeBytes for FunctionRegistry {
     }
 }
 
+impl Default for FunctionRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl FunctionRegistry {
     pub fn new() -> Self {
         Self {
@@ -93,12 +99,6 @@ impl FunctionRegistry {
         constructor(args).ok_or_else(|| FunctionRegistryError::WrongArguments {
             name: name.to_owned(),
         })
-    }
-}
-
-impl Default for FunctionRegistry {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

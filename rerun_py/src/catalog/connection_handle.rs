@@ -13,16 +13,16 @@ use re_log::external::log::warn;
 use re_log_types::{EntryId, EntryName};
 use re_protos::cloud::v1alpha1::ext as cloud_ext;
 use re_protos::cloud::v1alpha1::ext::{
-    DataSource, DatasetDetails, DatasetEntry, EntryDetails, QueryDatasetRequest,
-    QueryTasksDataframe, RegisterWithDatasetTaskDescriptor, TableDetails, TableEntry,
-    VersionResponse,
+    DataSource, DatasetDetails, DatasetEntry, EntryDetails, QueryDatasetDataframe,
+    QueryDatasetRequest, QueryTasksDataframe, RegisterWithDatasetTaskDescriptor, TableDetails,
+    TableEntry, VersionResponse,
 };
-use re_protos::cloud::v1alpha1::{EntryFilter, QueryDatasetResponse, QueryTasksResponse};
+use re_protos::cloud::v1alpha1::{EntryFilter, QueryTasksResponse};
 use re_protos::common::v1alpha1::TaskId;
 use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, ScanParameters, SegmentId};
 use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_protos::missing_field;
-use re_redap_client::{ApiError, ConnectionClient, ConnectionRegistryHandle, TraceId};
+use re_redap_client::{ApiError, Connection, ConnectionClient, ConnectionRegistryHandle, TraceId};
 use re_types_core::LayerName;
 
 use crate::catalog::table_entry::PyTableInsertModeInternal;
@@ -45,11 +45,15 @@ impl ConnectionHandle {
         }
     }
 
-    pub async fn client(&self) -> PyResult<ConnectionClient> {
+    pub async fn connection(&self) -> PyResult<Connection> {
         self.connection_registry
-            .client(self.origin.clone())
+            .connection(self.origin.clone())
             .await
             .map_err(to_py_err)
+    }
+
+    pub async fn client(&self) -> PyResult<ConnectionClient> {
+        Ok(self.connection().await?.client)
     }
 
     pub fn origin(&self) -> &re_uri::Origin {
@@ -335,11 +339,7 @@ impl ConnectionHandle {
 
     /// Unregisters segments and layers from the dataset.
     ///
-    /// Excluding IO errors, this will always succeed as long the target dataset exists.
-    /// Corollary: unregistering data that doesn't exist is a no-op.
-    ///
-    /// This always returns a subset of the data from `ScanDatasetManifest`, and therefore the data will
-    /// also follow the schema returned by [`Self::get_dataset_manifest_schema`].
+    /// This is an asynchronous operation, and returns a list of task ids.
     ///
     /// This method acts as a *product* filter:
     /// * empty `segments_to_drop` + empty `layers_to_drop`: invalid argument error
@@ -359,7 +359,7 @@ impl ConnectionHandle {
         segments_to_drop: Vec<SegmentId>,
         layers_to_drop: Vec<LayerName>,
         force: bool,
-    ) -> PyResult<Vec<RecordBatch>> {
+    ) -> PyResult<(Option<TraceId>, Vec<TaskId>)> {
         wait_for_future(py, async {
             self.client()
                 .await?
@@ -391,29 +391,6 @@ impl ConnectionHandle {
             self.client()
                 .await?
                 .register_with_dataset(dataset_id, data_sources, on_duplicate)
-                .await
-                .map_err(to_py_err)
-        })
-    }
-
-    /// Initiate registration of a single recording as an asset layer (shared across all segments)
-    /// and return the corresponding task descriptors.
-    #[tracing::instrument(level = "info", skip_all)]
-    pub fn register_asset_layer(
-        &self,
-        py: Python<'_>,
-        dataset_id: EntryId,
-        recording_uri: String,
-        layer_name: LayerName,
-        on_duplicate: IfDuplicateBehavior,
-    ) -> PyResult<(Option<TraceId>, Vec<RegisterWithDatasetTaskDescriptor>)> {
-        let data_source =
-            DataSource::new_rrd_asset_layer(layer_name, recording_uri.parse().map_err(to_py_err)?);
-
-        wait_for_future(py, async {
-            self.client()
-                .await?
-                .register_with_dataset(dataset_id, vec![data_source], on_duplicate)
                 .await
                 .map_err(to_py_err)
         })
@@ -612,8 +589,8 @@ impl ConnectionHandle {
             query: Some(query),
             scan_parameters: Some(ScanParameters {
                 columns: vec![
-                    QueryDatasetResponse::FIELD_CHUNK_SEGMENT_ID.to_owned(),
-                    QueryDatasetResponse::FIELD_CHUNK_ID.to_owned(),
+                    QueryDatasetDataframe::COLUMN_CHUNK_SEGMENT_ID_NAME.to_owned(),
+                    QueryDatasetDataframe::COLUMN_CHUNK_ID_NAME.to_owned(),
                 ],
                 ..Default::default()
             }),

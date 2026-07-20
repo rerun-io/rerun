@@ -6,7 +6,7 @@ use re_sdk_types::components::{
     CellSize, Colormap, ImageBuffer, ImageFormat, Opacity, RotationAxisAngle, RotationQuat,
     Translation3D,
 };
-use re_sdk_types::datatypes::{ColorModel, Quaternion};
+use re_sdk_types::datatypes::ColorModel;
 use re_sdk_types::image::ImageKind;
 use re_sdk_types::reflection::Enum as _;
 use re_viewer_context::{
@@ -19,7 +19,7 @@ use re_viewer_context::{
 use super::SpatialViewVisualizerData;
 use super::entity_iterator::process_archetype;
 use crate::contexts::SpatialSceneVisualizerInstructionContext;
-use crate::{PickableRectSourceData, PickableTexturedRect};
+use crate::{PickableRectSourceData, PickableTexturedRect, SpaceKind};
 
 #[derive(Default)]
 pub struct GridMapVisualizer;
@@ -198,7 +198,7 @@ impl GridMapVisualizer {
                 component_data,
                 &color_mode,
             ) {
-                data.add_bounding_box(
+                data.add_bounding_box_3d(
                     entity_path.hash(),
                     textured_rect.bounding_box(),
                     glam::Affine3A::IDENTITY,
@@ -212,7 +212,7 @@ impl GridMapVisualizer {
                             depth_meter: None,
                         },
                     },
-                    spatial_ctx.view_class_identifier,
+                    SpaceKind::ThreeD, // The bounding box is flat, but this is distinctively a 3D object in a 3D space!
                 );
             }
         }
@@ -274,67 +274,17 @@ impl GridMapVisualizer {
             .single_transform_required_for_entity(entity_path, GridMap::name())
             .as_affine3a();
 
-        let translation = if let Some(translation) = translation {
-            translation.into()
-        } else {
-            glam::Affine3A::IDENTITY
-        };
-
-        let rotation = match (quaternion, rotation_axis_angle) {
-            (Some(quaternion), Some(rotation_axis_angle))
-                if quaternion.0 != Quaternion::IDENTITY
-                    && rotation_axis_angle != RotationAxisAngle::IDENTITY =>
-            {
-                // Match the behavior documented in the archetype definition:
-                // if both are set, the quaternion takes precedence.
-                results.report_for_component(
-                    GridMap::descriptor_quaternion().component,
-                    VisualizerReportSeverity::Warning,
-                    format!(
-                        "GridMap {entity_path} has both quaternion and rotation_axis_angle set; using quaternion."
-                    ),
-                );
-
-                if let Ok(rotation) = glam::Affine3A::try_from(quaternion) {
-                    rotation
-                } else {
-                    results.report_for_component(
-                        GridMap::descriptor_quaternion().component,
-                        VisualizerReportSeverity::Error,
-                        "invalid rotation quaternion",
-                    );
-                    return None;
-                }
-            }
-            (Some(quaternion), _) => {
-                if let Ok(rotation) = glam::Affine3A::try_from(quaternion) {
-                    rotation
-                } else {
-                    results.report_for_component(
-                        GridMap::descriptor_quaternion().component,
-                        VisualizerReportSeverity::Error,
-                        "invalid rotation quaternion",
-                    );
-                    return None;
-                }
-            }
-            (_, Some(rotation_axis_angle)) => {
-                if let Ok(rotation) = glam::Affine3A::try_from(rotation_axis_angle) {
-                    rotation
-                } else {
-                    results.report_for_component(
-                        GridMap::descriptor_rotation_axis_angle().component,
-                        VisualizerReportSeverity::Error,
-                        "invalid rotation axis-angle",
-                    );
-                    return None;
-                }
-            }
-            (None, None) => glam::Affine3A::IDENTITY,
-        };
-
-        let grid_from_entity = translation * rotation;
-        let world_from_grid = world_from_entity * grid_from_entity;
+        let entity_from_grid = super::entity_from_grid_transform(
+            results,
+            entity_path,
+            "GridMap",
+            translation,
+            rotation_axis_angle,
+            quaternion,
+            GridMap::descriptor_quaternion().component,
+            GridMap::descriptor_rotation_axis_angle().component,
+        )?;
+        let world_from_grid = world_from_entity * entity_from_grid;
 
         let [width, height] = image.width_height_f32();
         let extent_u = world_from_grid.transform_vector3(Vec3::X * width * cell_size);

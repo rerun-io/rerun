@@ -126,6 +126,7 @@ impl RenderDepthClouds {
                 pixels_per_point,
                 ..Default::default()
             },
+            re_renderer::ViewBuilderId::new(0),
         )?;
 
         let command_buffer = view_builder
@@ -207,6 +208,7 @@ impl RenderDepthClouds {
                 pixels_per_point,
                 ..Default::default()
             },
+            re_renderer::ViewBuilderId::new(1),
         )?;
 
         let command_buffer = view_builder

@@ -1,6 +1,6 @@
 use std::str::FromStr as _;
 
-use re_chunk_store::LatestAtQuery;
+use re_chunk_store::{ChunkTrackingMode, LatestAtQuery};
 use re_entity_db::EntityDb;
 use re_log_types::{EntityPath, EntryId};
 use re_sdk_types::blueprint::{
@@ -152,6 +152,7 @@ impl TableBlueprint {
         let blueprint_query = LatestAtQuery::latest(blueprint_timeline());
         let engine = blueprint_db.storage_engine();
         let results = engine.cache().latest_at(
+            ChunkTrackingMode::Report,
             &blueprint_query,
             &"/table".into(),
             TableBlueprintArchetype::all_component_identifiers(),
@@ -322,6 +323,9 @@ impl ColumnBlueprint {
     }
 
     /// Set the alternate UI to use for this column
+    ///
+    /// `variant_ui` must be a valid [`VariantName`] (i.e. non-empty); passing an empty
+    /// string literal/const will panic.
     pub fn variant_ui(self, variant_ui: impl Into<VariantName>) -> Self {
         Self {
             variant_ui: Some(variant_ui.into()),

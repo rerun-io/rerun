@@ -198,7 +198,12 @@ class ChunkInternal:
     def to_record_batch(self) -> pa.RecordBatch: ...
     def with_entity_path(self, entity_path: str) -> ChunkInternal: ...
     @staticmethod
-    def from_record_batch(record_batch: pa.RecordBatch) -> ChunkInternal: ...
+    def from_record_batch(
+        record_batch: pa.RecordBatch,
+        index_mode: str,
+        index_columns: list[str],
+        entity_path: str | None,
+    ) -> list[ChunkInternal]: ...
     @staticmethod
     def from_columns(
         entity_path: str,
@@ -950,6 +955,7 @@ class EntryKind:
     TABLE: EntryKind
     TABLE_VIEW: EntryKind
     BLUEPRINT_DATASET: EntryKind
+    ASSET_DATASET: EntryKind
 
     def __str__(self, /) -> str:
         """Return str(self)."""
@@ -985,6 +991,8 @@ class DatasetEntryInternal:
     # ---
 
     def blueprint_dataset(self) -> DatasetEntryInternal | None: ...
+    def asset_dataset(self) -> DatasetEntryInternal | None: ...
+    def _ensure_asset_dataset(self) -> None: ...
     def default_blueprint_segment_id(self) -> str | None: ...
     def set_default_blueprint_segment_id(self, segment_id: str | None) -> None: ...
     def default_segment_table_blueprint_segment_id(self) -> str | None: ...
@@ -1016,16 +1024,13 @@ class DatasetEntryInternal:
     def register_prefix(
         self, recordings_prefix: str, layer_name: str, on_duplicate: str
     ) -> RegistrationHandleInternal: ...
-    def _register_asset_layer(
-        self, *, layer_name: str, recording_uri: str, on_duplicate: str
-    ) -> RegistrationHandleInternal: ...
     def unregister(
         self,
         *,
         segments_to_drop: list[str],
         layers_to_drop: list[str],
         force: bool = False,
-    ) -> None: ...
+    ) -> UnregistrationHandleInternal: ...
 
     # ---
 
@@ -1272,6 +1277,10 @@ class RegistrationHandleInternal:
     def wait(self, timeout_secs: int | None = None) -> list[str]: ...
     def cancel(self) -> None: ...
 
+class UnregistrationHandleInternal:
+    def wait(self, timeout_secs: int | None = None) -> None: ...
+    def cancel(self) -> None: ...
+
 #####################################################################################################################
 ## VIEWER_CLIENT                                                                                                   ##
 #####################################################################################################################
@@ -1306,7 +1315,12 @@ class DeriveLensInternal:
         output_entity: str | None = None,
         scatter: bool = False,
     ) -> None: ...
-    def to_component(self, component: ComponentDescriptor, selector: SelectorInternal) -> DeriveLensInternal: ...
+    def to_component(
+        self,
+        component: ComponentDescriptor,
+        selector: SelectorInternal,
+        cast_to: pa.DataType | Literal["auto"] | None = None,
+    ) -> DeriveLensInternal: ...
     def to_timeline(self, timeline_name: str, timeline_type: str, selector: SelectorInternal) -> DeriveLensInternal: ...
 
 class MutateLensInternal:
@@ -1540,8 +1554,17 @@ class McapReaderInternal:
         decoders: list[str] | None,
         include_topic_regex: list[str] | None,
         exclude_topic_regex: list[str] | None,
+        start_time_ns: int | None,
+        end_time_ns: int | None,
+        recover: bool,
     ) -> None: ...
-    def stream(self) -> LazyChunkStreamInternal: ...
+    def stream(
+        self,
+        *,
+        start_time_ns: int | None = None,
+        end_time_ns: int | None = None,
+    ) -> LazyChunkStreamInternal: ...
+    def time_bounds(self) -> tuple[int, int]: ...
     @property
     def path(self) -> Path: ...
     @staticmethod
@@ -1552,12 +1575,12 @@ class Mp4ReaderInternal:
 
     def __init__(
         self,
-        path: str,
+        path: Path,
         mode: Literal["asset", "stream"] = "stream",
         chunk_by_gop: bool = True,
         timeline_name: str = "video",
         timeline_type: Literal["duration", "timestamp"] = "duration",
-        allow_b_frames: bool = False,
+        ffmpeg_override: Path | None = None,
         entity_path: str | None = None,
     ) -> None: ...
     def stream(self) -> LazyChunkStreamInternal: ...
@@ -1579,7 +1602,6 @@ class ParquetReaderInternal:
         use_structs: bool = True,
         static_columns: list[str] | None = None,
         index_columns: list[tuple[str, str, str | None]] | None = None,
-        column_rules: list[Any] | None = None,
     ) -> None: ...
     def stream(self) -> LazyChunkStreamInternal: ...
     @property
@@ -1745,7 +1767,7 @@ class _QueryMetrics:
     """Number of direct (HTTP Range) fetches the scanner issued. Counts each merged request once, regardless of byte ranges or retry attempts."""
 
     fetch_direct_bytes: int
-    """Sum of `chunk_byte_length` (catalog metadata, compressed on-disk size) over chunks fetched via direct HTTP. Does **not** count filler bytes that range-merging pulls between adjacent chunks, so actual wire traffic can exceed this value."""
+    """Sum of `chunk_byte_length` (catalog metadata, compressed on-disk size) over chunks fetched via direct HTTP. Does **not** count filler bytes that range-merging pulls between adjacent chunks, so actual wire traffic can exceed this value. Includes successful merged-range fetches even when a sibling range makes the overall batch fail."""
 
     fetch_direct_retries: int
     """Total number of direct-fetch retry *attempts* across all requests. A request retried 3 times contributes 3 here."""
@@ -1757,13 +1779,46 @@ class _QueryMetrics:
     """Total backoff time slept across all direct-fetch retries."""
 
     fetch_direct_max_attempt: int
-    """Sum of per-partition max attempts. For a single-partition query this is the true max; for multi-partition queries it is an upper bound on the true max — `MetricsSet::Count` has no `fetch_max` operation, so cross-partition aggregation sums."""
+    """True maximum attempt number across all partitions."""
 
     fetch_direct_original_ranges: int
     """Number of byte ranges the planner *wanted* to fetch directly, before adjacent ranges were coalesced. With `fetch_direct_merged_ranges`, gives the range-merging ratio."""
 
     fetch_direct_merged_ranges: int
-    """Number of byte ranges actually issued after merging adjacent ranges into combined HTTP Range requests. Equals `fetch_direct_requests` for a single-range-per-request scanner."""
+    """Number of combined HTTP Range requests produced by merging adjacent byte ranges. Normally equals `fetch_direct_requests` after a completed scan, but can differ when cancellation stops only part of the planned work from being issued."""
+
+    planned_fetch_batches: int
+    """Transport batches planned before splitting direct and gRPC work."""
+
+    planned_segment_waves: int
+    """Segment waves produced by the current admission scheduler."""
+
+    segment_admission_limit: int
+    """Maximum concurrently admitted segments configured for this query."""
+
+    max_segments_per_fetch_batch: int
+    """Largest distinct-segment count in a planned transport batch."""
+
+    max_segments_per_wave: int
+    """Largest distinct-segment count in a planned admission wave."""
+
+    peak_active_segments: int
+    """Highest observed number of active admitted segments. May exceed `segment_admission_limit` when the stall breaker admits bypass segments."""
+
+    pipeline_budget_bytes: int
+    """Total decoded-byte capacity shared across all query partitions."""
+
+    pipeline_peak_decoded_bytes: int
+    """Highest observed number of decoded bytes charged to the pipeline budget."""
+
+    pipeline_byte_waits: int
+    """Reservations that first parked because decoded-byte capacity was full."""
+
+    segment_admission_waits: int
+    """Reservations that first parked because segment admission was full."""
+
+    pipeline_stall_breaker_activations: int
+    """Number of saturated-pipeline stall-breaker activations."""
 
 class _MetricsCollectorHandle:
     """Opaque handle held by the `query_metrics()` context manager."""

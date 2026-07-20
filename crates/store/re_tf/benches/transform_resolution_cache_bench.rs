@@ -25,7 +25,12 @@ fn setup_store() -> (EntityDb, Vec<ChunkStoreEvent>) {
     ));
 
     let timelines = (0..NUM_TIMELINES)
-        .map(|i| Timeline::new(format!("timeline{i}"), re_log_types::TimeType::Sequence))
+        .map(|i| {
+            Timeline::new(
+                TimelineName::try_new(format!("timeline{i}")).unwrap(),
+                re_log_types::TimeType::Sequence,
+            )
+        })
         .collect_vec();
 
     let mut events = Vec::new();
@@ -67,7 +72,7 @@ fn transform_resolution_cache_query(c: &mut Criterion) {
         for i in 0..NUM_TIMELINES {
             cache.ensure_timeline_is_initialized(
                 chunk_store,
-                TimelineName::new(&format!("timeline{i}")),
+                TimelineName::try_new(format!("timeline{i}")).unwrap(),
             );
         }
         cache
@@ -81,7 +86,7 @@ fn transform_resolution_cache_query(c: &mut Criterion) {
         b.iter(create_cache_with_all_timelines);
     });
 
-    let query = re_chunk_store::LatestAtQuery::new(TimelineName::new("timeline2"), 123);
+    let query = re_chunk_store::LatestAtQuery::new(TimelineName::from("timeline2"), 123);
     let queried_frame = TransformFrameIdHash::from_entity_path(&EntityPath::from("entity2"));
 
     c.bench_function("query_uncached_frame", |b| {
@@ -128,7 +133,7 @@ fn transform_resolution_cache_query(c: &mut Criterion) {
         b.iter_batched(
             || {
                 let mut cache = TransformResolutionCache::new(&entity_db);
-                cache.ensure_timeline_is_initialized(chunk_store, query.timeline());
+                cache.ensure_timeline_is_initialized(chunk_store, query.timeline().unwrap());
                 cache
             },
             |mut cache| {

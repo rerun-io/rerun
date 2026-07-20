@@ -102,8 +102,8 @@ impl LazyStore {
     /// The inner [`ChunkStore`] is **not** mutated — it stays purely virtual for the lifetime of
     /// this store. The caller owns the returned `Vec<Arc<Chunk>>`; dropping it frees the memory.
     /// Returns an error if any chunk ID is not in the manifest.
-    pub fn load_chunks(&self, chunk_ids: &[ChunkId]) -> ChunkStoreResult<Vec<Arc<Chunk>>> {
-        let chunks = self.provider.load_chunks(chunk_ids)?;
+    pub async fn load_chunks(&self, chunk_ids: &[ChunkId]) -> ChunkStoreResult<Vec<Arc<Chunk>>> {
+        let chunks = self.provider.load_chunks(chunk_ids).await?;
         self.chunks_loaded
             .fetch_add(chunks.len() as u64, Ordering::Relaxed);
         Ok(chunks)
@@ -119,8 +119,8 @@ impl LazyStore {
     /// Load every chunk in the manifest and return them in a single [`Vec`].
     ///
     /// Memory cost scales with the full RRD — consider streaming for large stores.
-    pub fn load_all_chunks(&self) -> ChunkStoreResult<Vec<Arc<Chunk>>> {
-        self.load_chunks(self.manifest().col_chunk_ids())
+    pub async fn load_all_chunks(&self) -> ChunkStoreResult<Vec<Arc<Chunk>>> {
+        self.load_chunks(self.manifest().col_chunk_ids()).await
     }
 
     /// The store's schema, populated from the manifest (available without loading chunks).
@@ -184,7 +184,9 @@ impl LazyStore {
 
     /// Extract properties in a single pass: query the virtual index for required property
     /// chunks, load them from the provider, and run the extraction.
-    pub fn extract_properties(&self) -> Result<arrow::array::RecordBatch, ExtractPropertiesError> {
+    pub async fn extract_properties(
+        &self,
+    ) -> Result<arrow::array::RecordBatch, ExtractPropertiesError> {
         let per_entity = self.store.read().property_entities_query_results();
 
         let ids: Vec<ChunkId> = per_entity
@@ -199,6 +201,7 @@ impl LazyStore {
 
         let chunks = self
             .load_chunks(&ids)
+            .await
             .map_err(|err| ExtractPropertiesError::Internal(err.to_string()))?;
 
         extract_properties_from_chunks(&per_entity, &chunks)
@@ -265,7 +268,7 @@ mod tests {
         path: &Path,
         num_entities: usize,
         num_frames: usize,
-    ) -> (File, StoreId, Vec<Arc<Chunk>>) {
+    ) -> (futures::io::AllowStdIo<File>, StoreId, Vec<Arc<Chunk>>) {
         let store_id = StoreId::random(StoreKind::Recording, "test");
         let store_info = StoreInfo::new(store_id.clone(), StoreSource::Unknown);
         let timeline = Timeline::new_sequence("frame");
@@ -311,23 +314,33 @@ mod tests {
 
         // Re-open for reading.
         let file = File::open(path).unwrap();
-        (file, store_id, chunks)
+        (futures::io::AllowStdIo::new(file), store_id, chunks)
     }
 
-    fn read_raw_manifest(file: &mut File, store_id: &StoreId) -> Arc<RawRrdManifest> {
-        let footer = re_log_encoding::read_rrd_footer(file).unwrap().unwrap();
+    async fn read_raw_manifest(
+        file: &mut futures::io::AllowStdIo<File>,
+        store_id: &StoreId,
+    ) -> Arc<RawRrdManifest> {
+        let footer = re_log_encoding::read_rrd_footer(file)
+            .await
+            .unwrap()
+            .unwrap();
         Arc::new(footer.manifests[store_id].clone())
     }
 
     /// Construct a `LazyStore` from an open RRD file, via `RrdChunkProvider`.
     fn build_test_lazy_store(
         path: &Path,
-        file: File,
+        file: futures::io::AllowStdIo<File>,
         raw_manifest: Arc<RawRrdManifest>,
     ) -> LazyStore {
         let provider = Arc::new(
-            re_log_encoding::RrdChunkProvider::try_from_file(file, path, raw_manifest)
-                .expect("test rrd provider"),
+            re_log_encoding::RrdChunkProvider::from_reader(
+                file,
+                path.display().to_string(),
+                raw_manifest,
+            )
+            .expect("test rrd provider"),
         );
         LazyStore::new(provider)
     }
@@ -337,7 +350,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("test.rrd");
         let (mut file, store_id, chunks) = create_test_rrd(&path, 2, 3);
-        let raw = read_raw_manifest(&mut file, &store_id);
+        let raw = futures::executor::block_on(read_raw_manifest(&mut file, &store_id));
 
         let lazy = build_test_lazy_store(&path, file, raw);
 
@@ -354,7 +367,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("test.rrd");
         let (mut file, store_id, _) = create_test_rrd(&path, 3, 2);
-        let raw = read_raw_manifest(&mut file, &store_id);
+        let raw = futures::executor::block_on(read_raw_manifest(&mut file, &store_id));
 
         let lazy = build_test_lazy_store(&path, file, raw);
         let entity_tree = lazy.entity_tree();
@@ -374,10 +387,10 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("test.rrd");
         let (mut file, store_id, chunks) = create_test_rrd(&path, 2, 3);
-        let raw = read_raw_manifest(&mut file, &store_id);
+        let raw = futures::executor::block_on(read_raw_manifest(&mut file, &store_id));
 
         let lazy = build_test_lazy_store(&path, file, raw);
-        let loaded = lazy.load_all_chunks().unwrap();
+        let loaded = futures::executor::block_on(lazy.load_all_chunks()).unwrap();
         assert_eq!(loaded.len(), chunks.len());
     }
 
@@ -386,11 +399,11 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("test.rrd");
         let (mut file, store_id, chunks) = create_test_rrd(&path, 2, 3);
-        let raw = read_raw_manifest(&mut file, &store_id);
+        let raw = futures::executor::block_on(read_raw_manifest(&mut file, &store_id));
 
         let lazy = build_test_lazy_store(&path, file, raw);
         let first_chunk_id = lazy.manifest().col_chunk_ids()[0];
-        let loaded = lazy.load_chunks(&[first_chunk_id]).unwrap();
+        let loaded = futures::executor::block_on(lazy.load_chunks(&[first_chunk_id])).unwrap();
 
         assert_eq!(loaded.len(), 1);
         assert_eq!(loaded[0].id(), first_chunk_id);
@@ -405,15 +418,15 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("test.rrd");
         let (mut file, store_id, _) = create_test_rrd(&path, 1, 3);
-        let raw = read_raw_manifest(&mut file, &store_id);
+        let raw = futures::executor::block_on(read_raw_manifest(&mut file, &store_id));
 
         let lazy = build_test_lazy_store(&path, file, raw);
 
         // Calling `load_chunks` twice with the same IDs yields equivalent results, and neither
         // call retains chunks in the inner store — guard against anyone sneaking a cache back in.
         let ids = lazy.manifest().col_chunk_ids();
-        let first = lazy.load_chunks(ids).unwrap();
-        let second = lazy.load_chunks(ids).unwrap();
+        let first = futures::executor::block_on(lazy.load_chunks(ids)).unwrap();
+        let second = futures::executor::block_on(lazy.load_chunks(ids)).unwrap();
 
         assert_eq!(first.len(), second.len());
         let mut first_ids: Vec<_> = first.iter().map(|c| c.id()).collect();
@@ -434,11 +447,11 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("test.rrd");
         let (mut file, store_id, _) = create_test_rrd(&path, 2, 3);
-        let raw = read_raw_manifest(&mut file, &store_id);
+        let raw = futures::executor::block_on(read_raw_manifest(&mut file, &store_id));
 
         let lazy = build_test_lazy_store(&path, file, raw);
         let first_chunk_id = lazy.manifest().col_chunk_ids()[0];
-        let loaded = lazy.load_chunks(&[first_chunk_id]).unwrap();
+        let loaded = futures::executor::block_on(lazy.load_chunks(&[first_chunk_id])).unwrap();
         assert_eq!(loaded.len(), 1);
 
         drop(loaded);
@@ -491,11 +504,11 @@ mod tests {
             .unwrap();
         encoder.finish().unwrap();
 
-        let mut file = File::open(&path).unwrap();
-        let raw = read_raw_manifest(&mut file, &store_id);
+        let mut file = futures::io::AllowStdIo::new(File::open(&path).unwrap());
+        let raw = futures::executor::block_on(read_raw_manifest(&mut file, &store_id));
 
         let lazy = build_test_lazy_store(&path, file, raw);
-        let batch = lazy.extract_properties().unwrap();
+        let batch = futures::executor::block_on(lazy.extract_properties()).unwrap();
         assert!(
             batch.num_columns() > 0,
             "properties record batch should contain the property column"
@@ -512,7 +525,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("test.rrd");
         let (mut file, store_id, _) = create_test_rrd(&path, 2, 3);
-        let raw = read_raw_manifest(&mut file, &store_id);
+        let raw = futures::executor::block_on(read_raw_manifest(&mut file, &store_id));
 
         let lazy = build_test_lazy_store(&path, file, raw);
         let schema = lazy.schema();
@@ -536,15 +549,16 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("test.rrd");
         let (mut file, store_id, _) = create_test_rrd(&path, 2, 3);
-        let raw = read_raw_manifest(&mut file, &store_id);
+        let raw = futures::executor::block_on(read_raw_manifest(&mut file, &store_id));
 
         // Lazy path: create lazy store, load all chunks via the no-cache API.
         let lazy = build_test_lazy_store(&path, file, raw);
-        let lazy_chunks = lazy.load_all_chunks().unwrap();
+        let lazy_chunks = futures::executor::block_on(lazy.load_all_chunks()).unwrap();
 
         // Eager path: load the same file fully.
+        let mut eager_file = File::open(&path).unwrap();
         let eager_stores =
-            ChunkStore::from_rrd_filepath(&ChunkStoreConfig::ALL_DISABLED, &path).unwrap();
+            ChunkStore::from_rrd_reader(&ChunkStoreConfig::ALL_DISABLED, &mut eager_file).unwrap();
         let eager_store = eager_stores.into_values().next().unwrap();
 
         let collect_entities = |tree: &crate::EntityTree| {

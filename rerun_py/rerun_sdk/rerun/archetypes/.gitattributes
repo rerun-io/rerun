@@ -51,3 +51,4 @@ transform_axes3d.py linguist-generated=true
 video_frame_reference.py linguist-generated=true
 video_stream.py linguist-generated=true
 view_coordinates.py linguist-generated=true
+voxel_grid_map.py linguist-generated=true

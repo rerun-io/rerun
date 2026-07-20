@@ -10,7 +10,7 @@ use re_view::AnnotationSceneContext;
 use re_viewer_context::{Annotations, ImageInfo, StoreViewContext, ViewQuery, gpu_bridge};
 
 use crate::PickableRectSourceData;
-use crate::view_kind::SpatialViewKind;
+use crate::SpaceKind;
 
 pub struct PickedPixelInfo {
     pub source_data: PickableRectSourceData,
@@ -23,7 +23,7 @@ pub fn textured_rect_hover_ui(
     ui: &mut egui::Ui,
     instance_path: &re_entity_db::InstancePath,
     query: &ViewQuery<'_>,
-    spatial_kind: SpatialViewKind,
+    spatial_kind: SpaceKind,
     ui_pan_and_zoom_from_ui: egui::emath::RectTransform,
     annotations: &AnnotationSceneContext,
     picked_pixel_info: PickedPixelInfo,
@@ -54,7 +54,7 @@ pub fn textured_rect_hover_ui(
         let [w, h] = texture.width_height();
         let (w, h) = (w as f32, h as f32);
 
-        if spatial_kind == SpatialViewKind::TwoD {
+        if spatial_kind == SpaceKind::TwoD {
             let rect = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(w, h));
 
             show_zoomed_image_region_area_outline(
@@ -157,6 +157,13 @@ impl TextureInteractionId<'_> {
     pub fn gpu_readback_id(&self) -> re_renderer::GpuReadbackIdentifier {
         re_log_types::hash::Hash64::hash((self.entity_path, self.interaction_idx)).hash64()
     }
+
+    fn render_view_id(&self, topic: &str) -> re_renderer::ViewBuilderId {
+        re_renderer::ViewBuilderId::new(
+            re_log_types::hash::Hash64::hash((self.entity_path, self.interaction_idx, topic))
+                .hash64(),
+        )
+    }
 }
 
 /// `meter`: iff this is a depth map, how long is one meter?
@@ -223,6 +230,7 @@ fn try_show_zoomed_image_region(
             image_rect_on_screen,
             colormapped_texture.clone(),
             egui::TextureOptions::NEAREST,
+            interaction_id.render_view_id("zoomed_region"),
             interaction_id.debug_label("zoomed_region"),
         )?;
     }
@@ -282,6 +290,7 @@ fn try_show_zoomed_image_region(
                 image_rect_on_screen,
                 colormapped_texture,
                 egui::TextureOptions::NEAREST,
+                interaction_id.render_view_id("single_pixel"),
                 interaction_id.debug_label("single_pixel"),
             )
         })

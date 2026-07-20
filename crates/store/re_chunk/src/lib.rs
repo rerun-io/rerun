@@ -38,7 +38,8 @@ pub use self::chunk::{
     Chunk, ChunkComponents, ChunkError, ChunkResult, TimeColumn, TimeColumnError,
 };
 pub use self::iter::{
-    ChunkComponentIter, ChunkComponentIterItem, ChunkComponentSlicer, ChunkIndicesIter,
+    BoolOptSliceIter, ChunkComponentIter, ChunkComponentIterItem, ChunkComponentSlicer,
+    ChunkIndicesIter, NativeOptSliceIter, StringOptSliceIter,
 };
 pub use self::latest_at::LatestAtQuery;
 pub use self::range::{RangeQuery, RangeQueryOptions};

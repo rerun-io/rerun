@@ -95,7 +95,8 @@ mod ffmpeg_cli;
 pub use ffmpeg_cli::FFmpegCliDecoder;
 #[cfg(with_ffmpeg)]
 pub use ffmpeg_cli::{
-    Error as FFmpegError, FFmpegVersion, FFmpegVersionParseError, ffmpeg_download_url,
+    Error as FFmpegError, FFmpegVersion, FFmpegVersionParseError, TranscodedMp4,
+    ffmpeg_download_url, transcode_mp4_drop_b_frames,
 };
 
 #[cfg(target_arch = "wasm32")]
@@ -189,7 +190,7 @@ impl DecodeError {
 
     pub fn severity(&self) -> VideoPlaybackIssueSeverity {
         match self {
-            Self::WaitingForCodecDetails => VideoPlaybackIssueSeverity::Loading,
+            Self::WaitingForCodecDetails => VideoPlaybackIssueSeverity::Informational,
             #[cfg(with_dav1d)]
             Self::Dav1d(err) => match err {
                 dav1d::Error::Again => VideoPlaybackIssueSeverity::Loading,

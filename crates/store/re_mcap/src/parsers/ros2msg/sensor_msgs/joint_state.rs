@@ -36,7 +36,7 @@ impl MessageParser for JointStateMessageParser {
             velocity,
             effort,
         } = cdr::try_decode_message::<sensor_msgs::JointState>(msg.data.as_ref())
-            .map_err(|err| Error::Other(anyhow::anyhow!(err)))?;
+            .map_err(Error::other)?;
 
         // add the sensor timestamp to the context, `log_time` and `publish_time` are added automatically
         ctx.add_timestamp_cell(crate::util::TimestampCell::from_nanos_ros2(

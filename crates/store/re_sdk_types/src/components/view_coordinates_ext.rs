@@ -114,7 +114,7 @@ impl ViewCoordinates {
         let x_long = ViewDir::try_from(x).map(|x| x.long()).unwrap_or("?");
         let y_long = ViewDir::try_from(y).map(|y| y.long()).unwrap_or("?");
         let z_long = ViewDir::try_from(z).map(|z| z.long()).unwrap_or("?");
-        format!("{x_short}{y_short}{z_short} (X={x_long}, Y={y_long}, Z={z_long})",)
+        format!("{x_short}{y_short}{z_short} (X={x_long}, Y={y_long}, Z={z_long})")
     }
 
     /// Returns a matrix that transforms from another coordinate system to this (self) one.

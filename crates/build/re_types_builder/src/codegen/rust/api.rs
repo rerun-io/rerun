@@ -822,7 +822,8 @@ fn quote_trait_impls_for_datatype_or_component(
 
     let datatype = type_registry.get(fqname);
 
-    let optimize_for_buffer_slice = should_optimize_buffer_slice_deserialize(obj, type_registry);
+    let optimize_for_buffer_slice =
+        should_optimize_buffer_slice_deserialize(objects, obj, type_registry);
 
     let is_forwarded_type = obj.is_arrow_transparent()
         && !obj.fields[0].is_nullable
@@ -1163,7 +1164,7 @@ fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenSt
         impl ::re_types_core::Archetype for #name {
             #[inline]
             fn name() -> ::re_types_core::ArchetypeName {
-                ::re_types_core::external::re_string_interner::intern_static!(
+                ::re_types_core::external::re_string_interner::intern_static_nonempty!(
                     ::re_types_core::ArchetypeName,
                     #fqname
                 )
@@ -1243,7 +1244,7 @@ fn quote_trait_impls_for_view(reporter: &Reporter, obj: &Object) -> TokenStream 
         impl ::re_types_core::View for #name {
             #[inline]
             fn identifier() -> ::re_types_core::ViewClassIdentifier {
-                ::re_types_core::external::re_string_interner::intern_static!(
+                ::re_types_core::external::re_string_interner::intern_static_nonempty!(
                     ::re_types_core::ViewClassIdentifier,
                     #identifier
                 )

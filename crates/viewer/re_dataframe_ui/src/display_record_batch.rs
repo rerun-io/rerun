@@ -20,7 +20,7 @@ use re_sdk_types::components::{Blob, MediaType};
 use re_sorbet::ColumnDescriptorRef;
 use re_types_core::{Component as _, DeserializationError, Loggable as _, RowId};
 use re_ui::UiExt as _;
-use re_viewer_context::{StoreViewContext, UiLayout, VariantName};
+use re_viewer_context::{AppContext, UiLayout, VariantName};
 
 use crate::table_blueprint::ColumnBlueprint;
 
@@ -216,7 +216,7 @@ impl DisplayComponentColumn {
 
     fn data_ui(
         &self,
-        ctx: &StoreViewContext<'_>,
+        ctx: &AppContext<'_>,
         ui: &mut egui::Ui,
         row_index: usize,
         instance_index: Option<u64>,
@@ -255,7 +255,7 @@ impl DisplayComponentColumn {
             if let Some(blob) = blob.as_ref().and_then(|b| b.first())
                 && Self::is_blob_image(blob)
             {
-                variant_name = Some(VariantName::from(REDAP_THUMBNAIL_VARIANT));
+                variant_name = Some(VariantName::from_static_str(REDAP_THUMBNAIL_VARIANT));
 
                 // TODO(ab): we should find an alternative to using content-hashing to generate cache
                 // keys.
@@ -277,7 +277,7 @@ impl DisplayComponentColumn {
             }
 
             if let Some(variant_name) = variant_name {
-                ctx.component_ui_registry().variant_ui_raw(
+                ctx.component_ui_registry.variant_ui_raw(
                     ctx,
                     ui,
                     ui_layout,
@@ -287,7 +287,7 @@ impl DisplayComponentColumn {
                     data_to_display.as_ref(),
                 );
             } else {
-                ctx.component_ui_registry().component_ui_raw(
+                ctx.component_ui_registry.component_ui_raw(
                     ctx,
                     ui,
                     ui_layout,
@@ -374,7 +374,7 @@ impl DisplayColumn {
     ///   [`Self::instance_count`]), nothing is displayed.
     pub fn data_ui(
         &self,
-        ctx: &StoreViewContext<'_>,
+        ctx: &AppContext<'_>,
         ui: &mut egui::Ui,
         row_index: usize,
         instance_index: Option<u64>,
@@ -416,7 +416,7 @@ impl DisplayColumn {
                             ui.label(
                                 timeline
                                     .typ()
-                                    .format(timestamp, ctx.app_options().timestamp_format),
+                                    .format(timestamp, ctx.app_options.timestamp_format),
                             );
                         }
                         Err(err) => {

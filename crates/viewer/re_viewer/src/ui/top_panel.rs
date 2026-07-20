@@ -82,9 +82,10 @@ pub fn top_panel(
     // On MacOS, we show the close/minimize/maximize buttons in the top panel.
     // We _always_ want to show the top panel in that case, and only hide its content.
     if native_window_bar {
-        panel.show_animated_inside(ui, is_expanded, |ui| content(ui, is_expanded));
+        let mut panel_expanded = is_expanded; // Note: can't resize top panel, or drag-to-close it.
+        panel.show_collapsible(ui, &mut panel_expanded, |ui| content(ui, is_expanded));
     } else {
-        panel.show_inside(ui, |ui| content(ui, is_expanded));
+        panel.show(ui, |ui| content(ui, is_expanded));
     }
 }
 
@@ -409,7 +410,7 @@ fn panel_buttons_r2l(
                     "Time panel toggle",
                     &mut app_blueprint.time_panel_state().is_expanded(),
                 )
-                .on_hover_ui(|ui| UICommand::ToggleTimePanel.tooltip_ui(ui))
+                .on_hover_ui(|ui| re_ui::RecordingCommandKind::ToggleTimePanel.tooltip_ui(ui))
                 .clicked()
             {
                 app_blueprint.toggle_time_panel(&app.command_sender);
@@ -716,7 +717,7 @@ fn latency_details_ui(ui: &mut egui::Ui, latency: re_entity_db::LatencySnapshot)
 
     let e2e_hover_text = "End-to-end latency from when the data was logged by the SDK to when it is shown in the viewer.\n\
     This includes time for encoding, network latency, and decoding.\n\
-    It is also affected by the framerate of the viewer.\n\
+    It is also affected by the frame rate of the viewer.\n\
     This latency is inaccurate if the logging was done on a different machine, since it is clock-based.";
 
     let re_entity_db::LatencySnapshot { secs_since_log } = latency;

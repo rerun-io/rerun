@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use re_chunk::RowId;
 use re_chunk_store::external::re_chunk::Chunk;
-use re_chunk_store::{ChunkStore, ChunkStoreSubscriber as _, LatestAtQuery};
+use re_chunk_store::{ChunkStore, ChunkStoreSubscriber as _, ChunkTrackingMode, LatestAtQuery};
 use re_log_types::example_components::{MyColor, MyPoint, MyPoints};
 use re_log_types::{EntityPath, TimeInt, TimePoint, build_frame_nr};
 use re_query::QueryCache;
@@ -100,6 +100,7 @@ fn simple_query_with_differently_tagged_components() {
 
     // Check that we can also reach the other re-tagged component.
     let cached = caches.latest_at(
+        ChunkTrackingMode::PanicOnMissing,
         &query,
         &entity_path.into(),
         [points2_serialized.descriptor.component],
@@ -165,11 +166,11 @@ fn invalidation() {
                              past_data_timepoint: TimePoint,
                              future_data_timepoint: TimePoint| {
         let past_timestamp = past_data_timepoint
-            .get(&query.timeline())
+            .get(&query.timeline().unwrap())
             .map(TimeInt::from)
             .unwrap_or(TimeInt::STATIC);
         let present_timestamp = present_data_timepoint
-            .get(&query.timeline())
+            .get(&query.timeline().unwrap())
             .map(TimeInt::from)
             .unwrap_or(TimeInt::STATIC);
 
@@ -706,7 +707,12 @@ fn query_and_compare(
     let component_colors = MyPoints::descriptor_colors().component;
 
     for _ in 0..3 {
-        let cached = caches.latest_at(query, entity_path, [component_points, component_colors]);
+        let cached = caches.latest_at(
+            ChunkTrackingMode::PanicOnMissing,
+            query,
+            entity_path,
+            [component_points, component_colors],
+        );
 
         let cached_points = cached.component_batch::<MyPoint>(component_points).unwrap();
         let cached_colors = cached

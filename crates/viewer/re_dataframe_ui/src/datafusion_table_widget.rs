@@ -18,9 +18,7 @@ use re_sorbet::{ColumnDescriptorRef, SorbetSchema};
 use re_ui::egui_ext::response_ext::ResponseExt as _;
 use re_ui::menu::menu_style;
 use re_ui::{UiExt as _, UiLayout, icons};
-use re_viewer_context::{
-    AsyncRuntimeHandle, StoreViewContext, SystemCommand, SystemCommandSender as _,
-};
+use re_viewer_context::{AppContext, AsyncRuntimeHandle, SystemCommand, SystemCommandSender as _};
 
 use crate::StreamingCacheTableProvider;
 use crate::datafusion_adapter::{DataFusionAdapter, DataFusionQueryResult};
@@ -376,7 +374,7 @@ impl<'a> DataFusionTableWidget<'a> {
     /// Display the table.
     pub fn show(
         self,
-        viewer_ctx: &StoreViewContext<'_>,
+        app_ctx: &AppContext<'_>,
         runtime: &AsyncRuntimeHandle,
         ui: &mut egui::Ui,
         view_states: &mut re_viewer_context::ViewStates,
@@ -460,7 +458,7 @@ impl<'a> DataFusionTableWidget<'a> {
         };
 
         let output = self.table_ui(
-            viewer_ctx,
+            app_ctx,
             runtime,
             ui,
             table_state.blueprint(),
@@ -485,7 +483,7 @@ impl<'a> DataFusionTableWidget<'a> {
                 && let Some(flag_column_field) = &output.flag_column_field
             {
                 upsert_flag_changes(
-                    viewer_ctx,
+                    app_ctx,
                     runtime,
                     entry_uri.clone(),
                     results,
@@ -517,7 +515,7 @@ impl<'a> DataFusionTableWidget<'a> {
     /// Actual UI code to render a table.
     fn table_ui(
         &self,
-        ctx: &StoreViewContext<'_>,
+        ctx: &AppContext<'_>,
         runtime: &AsyncRuntimeHandle,
         ui: &mut egui::Ui,
         table_blueprint: &TableBlueprint,
@@ -583,7 +581,7 @@ impl<'a> DataFusionTableWidget<'a> {
         let redap_uri = self.readp_uri();
 
         let table_cards_and_blueprints_enabled =
-            ctx.app_options().experimental.table_cards_and_blueprints;
+            ctx.app_options.experimental.table_cards_and_blueprints;
 
         let view_renderer = if table_cards_and_blueprints_enabled {
             let blueprint_db = self.registered_table_blueprint.or_else(|| {
@@ -635,7 +633,7 @@ impl<'a> DataFusionTableWidget<'a> {
             );
         }
 
-        filter_state.filter_bar_ui(ui, ctx.app_options().timestamp_format, &mut new_blueprint);
+        filter_state.filter_bar_ui(ui, ctx.app_options.timestamp_format, &mut new_blueprint);
 
         let table_style = re_ui::TableStyle::Spacious;
 
@@ -671,7 +669,7 @@ impl<'a> DataFusionTableWidget<'a> {
             &columns,
             &query_result.original_schema,
             entry_uri,
-            ctx.app_ctx.connection_registry,
+            ctx.connection_registry,
         );
         if show_segment_previews {
             // Ensure rows are tall enough for the segment preview.
@@ -766,7 +764,7 @@ impl<'a> DataFusionTableWidget<'a> {
 
     fn bottom_bar_ui(
         ui: &mut Ui,
-        ctx: &StoreViewContext<'_>,
+        ctx: &AppContext<'_>,
         session_id: Id,
         total_rows: u64,
         visible_columns: usize,
@@ -781,7 +779,7 @@ impl<'a> DataFusionTableWidget<'a> {
         Panel::bottom(session_id.with("bottom_bar"))
             .frame(frame)
             .show_separator_line(false)
-            .show_inside(ui, |ui| {
+            .show(ui, |ui| {
                 let height = 24.0;
                 ui.set_height(height);
                 ui.horizontal_centered(|ui| {
@@ -808,8 +806,15 @@ impl<'a> DataFusionTableWidget<'a> {
                         },
                         |ui| {
                             ui.set_height(height);
+                            let refresh_tooltip = match re_ui::TableCommandKind::Refresh
+                                .formatted_kb_shortcut(ui.ctx())
+                            {
+                                Some(shortcut) => format!("Refresh table ({shortcut})"),
+                                None => "Refresh table".to_owned(),
+                            };
                             if ui
                                 .small_icon_button(&icons::RESET, "Refresh table")
+                                .on_hover_text(refresh_tooltip)
                                 .clicked()
                             {
                                 action = Some(BottomBarAction::Refresh);
@@ -818,7 +823,7 @@ impl<'a> DataFusionTableWidget<'a> {
                             re_ui::time::short_duration_ui(
                                 ui,
                                 queried_at,
-                                ctx.app_options().timestamp_format,
+                                ctx.app_options.timestamp_format,
                                 Ui::strong,
                             );
                             ui.label("Last updated:");
@@ -840,7 +845,7 @@ fn id_from_session_context_and_table(
 
 fn title_ui(
     ui: &mut egui::Ui,
-    ctx: &StoreViewContext<'_>,
+    ctx: &AppContext<'_>,
     table_config: Option<&mut TableConfig>,
     title: &str,
     url: Option<&str>,
@@ -968,7 +973,7 @@ pub fn bool_value_at(
 ///
 /// Shared between the table view's `cell_ui` and the grid view.
 pub fn resolve_recording_for_row<'a>(
-    ctx: &'a StoreViewContext<'a>,
+    ctx: &'a AppContext<'a>,
     segment_preview_column: &str,
     columns: &Columns<'_>,
     display_record_batches: &[DisplayRecordBatch],
@@ -1028,7 +1033,7 @@ fn table_index_column_index(schema: &arrow::datatypes::Schema) -> Option<usize> 
 ///
 /// This is fire-and-forget: errors are logged but don't block the UI.
 fn upsert_flag_changes(
-    ctx: &StoreViewContext<'_>,
+    ctx: &AppContext<'_>,
     runtime: &AsyncRuntimeHandle,
     remote: re_uri::EntryUri,
     results: &crate::datafusion_adapter::DataFusionQueryResult,
@@ -1083,7 +1088,7 @@ fn upsert_flag_changes(
         return;
     };
 
-    let connection_registry = ctx.app_ctx.connection_registry.clone();
+    let connection_registry = ctx.connection_registry.clone();
     runtime.spawn_future(async move {
         let result = async {
             let mut client = connection_registry.client(remote.origin).await?;
@@ -1114,7 +1119,7 @@ enum BottomBarAction {
 
 struct DataFusionTableDelegate<'a> {
     session_id: Id,
-    ctx: &'a StoreViewContext<'a>,
+    ctx: &'a AppContext<'a>,
     table_style: re_ui::TableStyle,
     query_result: &'a DataFusionQueryResult,
     migrated_fields: &'a Vec<Field>,
@@ -1311,7 +1316,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
                 == Some(cell.row_nr);
 
             renderer.show_preview(
-                self.ctx.app_ctx,
+                self.ctx,
                 ui,
                 cell.row_nr,
                 row_hovered,

@@ -21,7 +21,10 @@ use crate::{LatestAtCache, RangeCache};
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, re_byte_size::SizeBytes)]
 pub struct QueryCacheKey {
     pub entity_path: EntityPath,
-    pub timeline_name: TimelineName,
+
+    /// `None` for a static-only query, where no timeline is relevant.
+    pub timeline_name: Option<TimelineName>,
+
     pub component: ComponentIdentifier,
 }
 
@@ -33,9 +36,14 @@ impl std::fmt::Debug for QueryCacheKey {
             timeline_name,
             component: component_identifier,
         } = self;
-        f.write_fmt(format_args!(
-            "{entity_path}:{component_identifier} on '{timeline_name}'"
-        ))
+        match timeline_name {
+            Some(timeline_name) => f.write_fmt(format_args!(
+                "{entity_path}:{component_identifier} on '{timeline_name}'"
+            )),
+            None => f.write_fmt(format_args!(
+                "{entity_path}:{component_identifier} (static)"
+            )),
+        }
     }
 }
 
@@ -43,7 +51,7 @@ impl QueryCacheKey {
     #[inline]
     pub fn new(
         entity_path: impl Into<EntityPath>,
-        timeline: impl Into<TimelineName>,
+        timeline: impl Into<Option<TimelineName>>,
         component_identifier: ComponentIdentifier,
     ) -> Self {
         Self {
@@ -217,10 +225,10 @@ impl std::fmt::Debug for QueryCache {
                     "  [{cache_key:?} (pending_invalidation_min={:?})]",
                     cache.pending_invalidations.first().map(|&t| {
                         let range = AbsoluteTimeRange::new(t, TimeInt::MAX);
-                        if let Some(time_type) = store
-                            .read()
-                            .schema()
-                            .time_column_type(&cache_key.timeline_name)
+                        if let Some(time_type) =
+                            cache_key.timeline_name.as_ref().and_then(|timeline_name| {
+                                store.read().schema().time_column_type(timeline_name)
+                            })
                         {
                             time_type.format_range_utc(range)
                         } else {

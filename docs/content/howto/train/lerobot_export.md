@@ -8,30 +8,14 @@ This guide demonstrates how to use the OSS Rerun server to query recordings, ali
 
 ## Prerequisites
 
-Sparse-checkout just the example directory, without the rest of the Rerun repo:
+The conversion code lives in the [`rerun-lerobot`](https://github.com/rerun-io/rerun-lerobot) package.
+Install it from PyPI:
 
 ```bash
-git clone --filter=blob:none --sparse https://github.com/rerun-io/rerun.git
-cd rerun
-git sparse-checkout set examples/python/rerun_export
-cd examples/python/rerun_export
+pip install rerun-lerobot
 ```
 
-The example has its own `uv` project because LeRobot pins an incompatible `rerun-sdk`.
-The additional arguments to `uv sync` allow you to run just this example without the full repo setup.
-
-```bash
-uv sync --no-sources --no-dev
-```
-
-If you have the full Rerun monorepo checked out and want to develop against your local Rerun build, run instead:
-
-```bash
-RERUN_ALLOW_MISSING_BIN=1 uv sync
-uv pip install ../../../rerun_py/rerun_dev_fixup
-```
-
-Then either `source .venv/bin/activate` or prefix subsequent commands with `uv run`.
+See the [`rerun-lerobot` repository](https://github.com/rerun-io/rerun-lerobot) for source and development instructions.
 
 ## Time alignment and resampling
 
@@ -120,10 +104,10 @@ dataset.push_to_hub(repo_id="your-username/your-dataset-name")
 
 ## Command-line interface
 
-The `rerun_export` package includes a CLI that implements this workflow for batch processing:
+The `rerun-lerobot` package includes a CLI that implements this workflow for batch processing:
 
 ```bash
-rerun_export \
+rerun-lerobot \
   --rrd-dir ./tests/assets/rrd/sample_5 \
   --output ./lerobot_dataset \
   --dataset-name rerun-example-droid \
@@ -136,4 +120,4 @@ rerun_export \
   --video wrist:/camera/wrist:VideoStream:sample
 ```
 
-See the [rerun_export example](https://rerun.io/examples/python/rerun_export) for the complete implementation.
+See the [`rerun-lerobot` repository](https://github.com/rerun-io/rerun-lerobot) for the complete implementation.

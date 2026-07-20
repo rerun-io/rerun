@@ -24,7 +24,7 @@ async fn test_text_truncation() {
                 DataFusionTableWidget::new(Arc::clone(&session_context), table_ref)
                     .title("Text truncation")
                     .show(
-                        ctx,
+                        ctx.app_ctx,
                         &runtime_handle,
                         ui,
                         &mut test_context.view_states.lock(),

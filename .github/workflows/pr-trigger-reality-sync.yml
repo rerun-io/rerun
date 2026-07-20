@@ -12,7 +12,10 @@ jobs:
     if: |
       github.event_name == 'issue_comment' &&
       github.event.issue.pull_request &&
-      contains(github.event.comment.body, '@rerun-bot reality-sync') &&
+      (
+        contains(github.event.comment.body, '@rerun-bot reality-sync') ||
+        contains(github.event.comment.body, '@rerun-bot sync-reality')
+      ) &&
       github.event.comment.user.type != 'Bot' &&
       github.event.comment.author_association != 'OWNER' &&
       github.event.comment.author_association != 'MEMBER'
@@ -20,7 +23,7 @@ jobs:
     steps:
       - name: Create GitHub App token
         id: app-token
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@v3
         with:
           app-id: ${{ vars.SYNC_APP_ID }}
           private-key: ${{ secrets.SYNC_APP_PRIVATE_KEY }}
@@ -36,13 +39,16 @@ jobs:
             --body "Sorry, only organization members can trigger reality-sync."
 
   trigger-import:
-    # For issue_comment: org members (OWNER/MEMBER) can trigger with '@rerun-bot reality-sync'
+    # For issue_comment: org members (OWNER/MEMBER) can trigger with '@rerun-bot reality-sync' or '@rerun-bot sync-reality'
     # For pull_request_target: only auto-sync non-fork PRs (fork PRs require explicit comment trigger)
     if: |
       (
         github.event_name == 'issue_comment' &&
         github.event.issue.pull_request &&
-        contains(github.event.comment.body, '@rerun-bot reality-sync') &&
+        (
+          contains(github.event.comment.body, '@rerun-bot reality-sync') ||
+          contains(github.event.comment.body, '@rerun-bot sync-reality')
+        ) &&
         github.event.comment.user.type != 'Bot' &&
         (
           github.event.comment.author_association == 'OWNER' ||
@@ -59,7 +65,7 @@ jobs:
     steps:
       - name: Create GitHub App token
         id: app-token
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@v3
         with:
           app-id: ${{ vars.SYNC_APP_ID }}
           private-key: ${{ secrets.SYNC_APP_PRIVATE_KEY }}

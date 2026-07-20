@@ -165,7 +165,12 @@ impl PyChunkStoreInternal {
             } else {
                 StaticColumnSelection::Both
             },
-            filtered_index: index.map(Into::into),
+            filtered_index: index
+                .map(|index| {
+                    re_chunk::TimelineName::try_new(index)
+                        .map_err(|err| pyo3::exceptions::PyValueError::new_err(err.to_string()))
+                })
+                .transpose()?,
             filtered_index_range: None,
             filtered_index_values: None,
             using_index_values,

@@ -11,6 +11,18 @@ from .affix_fuzzer20 import AffixFuzzer20, AffixFuzzer20ArrayLike, AffixFuzzer20
 from .affix_fuzzer21 import AffixFuzzer21, AffixFuzzer21ArrayLike, AffixFuzzer21Batch, AffixFuzzer21Like
 from .affix_fuzzer22 import AffixFuzzer22, AffixFuzzer22ArrayLike, AffixFuzzer22Batch, AffixFuzzer22Like
 from .enum_test import EnumTest, EnumTestArrayLike, EnumTestBatch, EnumTestLike
+from .fixed_size_enum_array import (
+    FixedSizeEnumArray,
+    FixedSizeEnumArrayArrayLike,
+    FixedSizeEnumArrayBatch,
+    FixedSizeEnumArrayLike,
+)
+from .fixed_size_wide_enum_array import (
+    FixedSizeWideEnumArray,
+    FixedSizeWideEnumArrayArrayLike,
+    FixedSizeWideEnumArrayBatch,
+    FixedSizeWideEnumArrayLike,
+)
 from .flattened_scalar import FlattenedScalar, FlattenedScalarArrayLike, FlattenedScalarBatch, FlattenedScalarLike
 from .multi_enum import MultiEnum, MultiEnumArrayLike, MultiEnumBatch, MultiEnumLike
 from .primitive_component import (
@@ -21,6 +33,7 @@ from .primitive_component import (
 )
 from .string_component import StringComponent, StringComponentArrayLike, StringComponentBatch, StringComponentLike
 from .valued_enum import ValuedEnum, ValuedEnumArrayLike, ValuedEnumBatch, ValuedEnumLike
+from .wide_enum import WideEnum, WideEnumArrayLike, WideEnumBatch, WideEnumLike
 
 __all__ = [
     "AffixFuzzer1",
@@ -59,6 +72,14 @@ __all__ = [
     "EnumTestArrayLike",
     "EnumTestBatch",
     "EnumTestLike",
+    "FixedSizeEnumArray",
+    "FixedSizeEnumArrayArrayLike",
+    "FixedSizeEnumArrayBatch",
+    "FixedSizeEnumArrayLike",
+    "FixedSizeWideEnumArray",
+    "FixedSizeWideEnumArrayArrayLike",
+    "FixedSizeWideEnumArrayBatch",
+    "FixedSizeWideEnumArrayLike",
     "FlattenedScalar",
     "FlattenedScalarArrayLike",
     "FlattenedScalarBatch",
@@ -79,4 +100,8 @@ __all__ = [
     "ValuedEnumArrayLike",
     "ValuedEnumBatch",
     "ValuedEnumLike",
+    "WideEnum",
+    "WideEnumArrayLike",
+    "WideEnumBatch",
+    "WideEnumLike",
 ]

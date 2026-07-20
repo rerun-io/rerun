@@ -21,7 +21,7 @@ use super::entity_iterator::process_archetype;
 use super::{SpatialViewVisualizerData, textured_rect_from_image};
 use crate::contexts::{SpatialSceneVisualizerInstructionContext, TransformTreeContext};
 use crate::visualizers::first_copied;
-use crate::{PickableRectSourceData, PickableTexturedRect, SpatialView3D};
+use crate::{PickableRectSourceData, PickableTexturedRect, SpaceKind, SpatialView3D};
 use re_sdk_types::reflection::Enum as _;
 
 pub struct DepthImageProcessResult {
@@ -135,7 +135,7 @@ pub fn process_depth_image_data(
                 fill_ratio,
                 &textured_rect.colormapped_texture,
             );
-            data_store.add_bounding_box(
+            data_store.add_bounding_box_3d(
                 entity_path.hash(),
                 cloud.world_space_bbox(),
                 glam::Affine3A::IDENTITY,
@@ -165,7 +165,7 @@ pub fn process_depth_image_data(
                     depth_meter: Some(depth_meter),
                 },
             },
-            ent_context.view_class_identifier,
+            SpaceKind::TwoD,
         );
     }
 }
@@ -188,6 +188,8 @@ fn process_entity_view_as_depth_cloud(
 
     let dimensions = glam::UVec2::from_array(depth_texture.texture.width_height());
 
+    // Depth meter defines how many texture units we need for a single world unit.
+    // Therefore, the scaling factor for texture depth -> world depth is the inverse of that:
     let world_depth_from_texture_depth = 1.0 / *depth_meter.0;
 
     // We want point radius to be defined in a scale where the radius of a point

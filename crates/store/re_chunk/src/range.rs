@@ -1,4 +1,4 @@
-use re_log_types::{AbsoluteTimeRange, TimeInt, TimelineName};
+use re_log_types::{AbsoluteTimeRange, TimelineName};
 use re_types_core::ComponentIdentifier;
 
 use crate::Chunk;
@@ -112,7 +112,7 @@ impl std::fmt::Debug for RangeQuery {
 }
 
 impl RangeQuery {
-    /// The returned query is guaranteed to never include [`TimeInt::STATIC`].
+    /// The returned query is guaranteed to never include [`TimeInt::STATIC`](re_log_types::TimeInt::STATIC).
     #[inline]
     pub const fn new(timeline: TimelineName, range: AbsoluteTimeRange) -> Self {
         Self {
@@ -122,7 +122,7 @@ impl RangeQuery {
         }
     }
 
-    /// The returned query is guaranteed to never include [`TimeInt::STATIC`].
+    /// The returned query is guaranteed to never include [`TimeInt::STATIC`](re_log_types::TimeInt::STATIC).
     ///
     /// Keeps all extra timelines and components around.
     #[inline]
@@ -238,10 +238,7 @@ impl Chunk {
             // NOTE: A given component for a given entity can only have one static entry associated
             // with it, and this entry overrides everything else, which means it is functionally
             // equivalent to just running a latest-at query.
-            if let Some(unit) = chunk.latest_at(
-                &crate::LatestAtQuery::new(*query.timeline(), TimeInt::MAX),
-                component,
-            ) {
+            if let Some(unit) = chunk.latest_at(&crate::LatestAtQuery::new_static(), component) {
                 std::sync::Arc::unwrap_or_clone(unit.into_chunk())
             } else {
                 chunk.emptied()

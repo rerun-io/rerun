@@ -139,6 +139,26 @@ impl Item {
         }
     }
 
+    /// Does validating this item require a viewport blueprint?
+    ///
+    /// `View`, `Container`, and `DataResult` only exist within a viewport blueprint, so without one
+    /// they can neither be validated nor make sense as a selection. All other items (recordings,
+    /// redap entries/servers, tables, …) are independent of the blueprint.
+    pub fn requires_blueprint(&self) -> bool {
+        match self {
+            Self::View(_) | Self::Container(_) | Self::DataResult(_) => true,
+
+            Self::AppId(_)
+            | Self::DataSource(_)
+            | Self::StoreId(_)
+            | Self::TableId(_)
+            | Self::InstancePath(_)
+            | Self::ComponentPath(_)
+            | Self::RedapEntry { .. }
+            | Self::RedapServer(_) => false,
+        }
+    }
+
     pub fn entity_path(&self) -> Option<&EntityPath> {
         match self {
             Self::AppId(_)
@@ -386,7 +406,7 @@ pub fn resolve_mono_instance_path(
         // NOTE: While we normally frown upon direct queries to the datastore, `all_components` is fine.
         let Some(components) = engine
             .store()
-            .all_components_on_timeline(&query.timeline(), &instance.entity_path)
+            .all_components_on_timeline(query.timeline().as_ref(), &instance.entity_path)
         else {
             // No components at all, return unindexed entity.
             return re_entity_db::InstancePath::entity_all(instance.entity_path.clone());
@@ -396,7 +416,12 @@ pub fn resolve_mono_instance_path(
         for component in components {
             if let Some(array) = engine
                 .cache()
-                .latest_at(query, &instance.entity_path, [component])
+                .latest_at(
+                    re_chunk_store::ChunkTrackingMode::ReportTransient,
+                    query,
+                    &instance.entity_path,
+                    [component],
+                )
                 .component_batch_raw(component)
                 && array.len() > 1
             {

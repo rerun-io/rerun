@@ -98,6 +98,7 @@ class Spatial2DView(View):
         | blueprint_components.BackgroundKindLike
         | None = None,
         visual_bounds: blueprint_archetypes.VisualBounds2D | None = None,
+        spatial_information: blueprint_archetypes.SpatialInformation | None = None,
         time_ranges: blueprint_archetypes.VisibleTimeRanges
         | datatypes.VisibleTimeRangeLike
         | Sequence[datatypes.VisibleTimeRangeLike]
@@ -147,6 +148,8 @@ class Spatial2DView(View):
 
             Everything within these bounds are guaranteed to be visible.
             Somethings outside of these bounds may also be visible due to letterboxing.
+        spatial_information:
+            Configuration of spatial information shown in the view.
         time_ranges:
             Configures which range on each timeline is shown by this view (unless specified differently per entity).
 
@@ -165,6 +168,11 @@ class Spatial2DView(View):
             if not isinstance(visual_bounds, blueprint_archetypes.VisualBounds2D):
                 visual_bounds = blueprint_archetypes.VisualBounds2D(visual_bounds)
             properties["VisualBounds2D"] = visual_bounds
+
+        if spatial_information is not None:
+            if not isinstance(spatial_information, blueprint_archetypes.SpatialInformation):
+                spatial_information = blueprint_archetypes.SpatialInformation(spatial_information)
+            properties["SpatialInformation"] = spatial_information
 
         if time_ranges is not None:
             if not isinstance(time_ranges, blueprint_archetypes.VisibleTimeRanges):

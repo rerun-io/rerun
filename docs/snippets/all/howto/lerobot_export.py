@@ -17,9 +17,9 @@ from pathlib import Path
 from lerobot.datasets.lerobot_dataset import (
     LeRobotDataset,  # type: ignore[import-untyped,import-not-found]
 )
-from rerun_export.lerobot.converter import convert_dataframe_to_episode
-from rerun_export.lerobot.feature_inference import infer_features
-from rerun_export.lerobot.types import LeRobotConversionConfig, VideoSpec
+from rerun_lerobot.converter import convert_dataframe_to_episode
+from rerun_lerobot.feature_inference import infer_features
+from rerun_lerobot.types import LeRobotConversionConfig, VideoSpec
 
 import rerun as rr
 
@@ -75,7 +75,7 @@ videos = [
 # Configure the conversion parameters
 # This maps Rerun's flexible data model to LeRobot's standardized format
 config = LeRobotConversionConfig(
-    fps=15,  # Target framerate for the dataset
+    fps=15,  # Target frame rate for the dataset
     index_column="real_time",  # Timeline to use for alignment
     # Fully qualified action column
     action="/action/joint_positions:Scalars:scalars",
@@ -109,7 +109,7 @@ lerobot_dataset = LeRobotDataset.create(
 
 # region: export_episode
 # Convert the recording to a LeRobot episode
-# This aligns all time series to the target framerate, extracts video frames,
+# This aligns all time series to the target frame rate, extracts video frames,
 # and writes the episode data in LeRobot's Parquet format
 print("Creating episode")
 

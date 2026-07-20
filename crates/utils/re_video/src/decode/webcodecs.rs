@@ -94,7 +94,7 @@ pub enum WebError {
 impl WebError {
     pub fn severity(&self) -> VideoPlaybackIssueSeverity {
         match self {
-            Self::NotEnoughCodecInformation => VideoPlaybackIssueSeverity::Loading,
+            Self::NotEnoughCodecInformation => VideoPlaybackIssueSeverity::Informational,
             _ => VideoPlaybackIssueSeverity::Error,
         }
     }

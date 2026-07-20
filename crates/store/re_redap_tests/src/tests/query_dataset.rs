@@ -1,11 +1,8 @@
-use arrow::array::{
-    Array as _, FixedSizeBinaryArray, RecordBatch, RecordBatchOptions, UInt32Array, UInt64Array,
-};
+use arrow::array::{RecordBatch, RecordBatchOptions, UInt32Array};
 use futures::StreamExt as _;
 use re_log_types::{AbsoluteTimeRange, TimeInt, TimeType};
-use re_protos::cloud::v1alpha1::QueryDatasetResponse;
 use re_protos::cloud::v1alpha1::ext::{
-    DataSource, Query, QueryDatasetRequest, QueryLatestAt, QueryRange,
+    DataSource, Query, QueryDatasetDataframe, QueryDatasetRequest, QueryLatestAt, QueryRange,
 };
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::headers::RerunHeadersInjectorExt as _;
@@ -222,7 +219,7 @@ pub async fn query_dataset_should_fail(service: impl RerunCloudService) {
 
         match response {
             Ok(_) => {
-                panic!("expected failure with code {expected_code}, but got success ({descr})",);
+                panic!("expected failure with code {expected_code}, but got success ({descr})");
             }
             Err(err) => {
                 assert_eq!(
@@ -415,24 +412,13 @@ pub async fn query_dataset_has_uncompressed_sizes(service: impl RerunCloudServic
         "query should return at least one chunk"
     );
 
-    let uncompressed_col = merged
-        .column_by_name(QueryDatasetResponse::FIELD_CHUNK_BYTE_LENGTH_UNCOMPRESSED)
+    let uncompressed = QueryDatasetDataframe::COLUMN_CHUNK_BYTE_SIZE_UNCOMPRESSED
+        .extract(&merged)
         .expect("chunk_byte_size_uncompressed column must be present");
 
-    let uncompressed = uncompressed_col
-        .as_any()
-        .downcast_ref::<UInt64Array>()
-        .expect("chunk_byte_size_uncompressed must be UInt64Array");
-
-    for i in 0..merged.num_rows() {
-        assert!(
-            !uncompressed.is_null(i),
-            "row {i}: uncompressed size must not be null"
-        );
-        assert!(
-            uncompressed.value(i) > 0,
-            "row {i}: uncompressed size must be > 0"
-        );
+    for (i, size) in uncompressed.iter().enumerate() {
+        let size = size.unwrap_or_else(|| panic!("row {i}: uncompressed size must not be null"));
+        assert!(0 < size, "row {i}: uncompressed size must be > 0");
     }
 }
 
@@ -543,7 +529,7 @@ async fn query_dataset_snapshot(
         remove_rows_containing_chunk_id(&merged_chunk_info, chunk_ids_to_remove);
 
     // these are the only columns guaranteed to be returned by `query_dataset`
-    let required_field = QueryDatasetResponse::fields();
+    let required_field = QueryDatasetDataframe::min_schema().fields().to_vec();
 
     assert!(
         merged_chunk_info
@@ -569,9 +555,9 @@ async fn query_dataset_snapshot(
     // these columns are not stable, so we cannot snapshot them
     let filtered_chunk_info = required_chunk_info
         .remove_columns(&[
-            QueryDatasetResponse::FIELD_CHUNK_KEY,
-            QueryDatasetResponse::FIELD_CHUNK_BYTE_LENGTH,
-            QueryDatasetResponse::FIELD_CHUNK_BYTE_LENGTH_UNCOMPRESSED,
+            QueryDatasetDataframe::COLUMN_CHUNK_KEY_NAME,
+            QueryDatasetDataframe::COLUMN_CHUNK_BYTE_LEN_NAME,
+            QueryDatasetDataframe::COLUMN_CHUNK_BYTE_SIZE_UNCOMPRESSED_NAME,
         ])
         .auto_sort_rows()
         .unwrap();
@@ -591,21 +577,14 @@ fn remove_rows_containing_chunk_id(
     rb: &RecordBatch,
     chunk_ids: &[re_types_core::ChunkId],
 ) -> RecordBatch {
-    let chunk_id_col = rb
-        .column_by_name(QueryDatasetResponse::FIELD_CHUNK_ID)
-        .expect("Missing column chunk_id");
-
-    let chunk_id_array = chunk_id_col
-        .as_any()
-        .downcast_ref::<FixedSizeBinaryArray>()
-        .expect("chunk_id is not FixedSizeBinary");
-    let chunk_id_slice = re_types_core::ChunkId::try_slice_from_arrow(chunk_id_array)
-        .expect("chunk_id column should be convertible to ChunkId slice");
+    let chunk_id_col = QueryDatasetDataframe::COLUMN_CHUNK_ID
+        .extract(rb)
+        .expect("bad chunk_id column");
 
     let mut indices_to_keep = Vec::new();
 
-    for (row_idx, chunk_id) in chunk_id_slice.iter().enumerate() {
-        if !chunk_ids.contains(chunk_id) {
+    for (row_idx, chunk_id) in chunk_id_col.iter_owned().enumerate() {
+        if !chunk_ids.contains(&chunk_id) {
             indices_to_keep.push(row_idx as u32);
         }
     }

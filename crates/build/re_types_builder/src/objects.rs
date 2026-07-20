@@ -1681,6 +1681,16 @@ impl ElementType {
         }
     }
 
+    /// `Some(Object)` if this is an enum object.
+    pub fn enum_obj<'a>(&self, objects: &'a Objects) -> Option<&'a Object> {
+        let Self::Object { fqname } = self else {
+            return None;
+        };
+
+        let obj = &objects[fqname];
+        obj.is_enum().then_some(obj)
+    }
+
     /// Is the destructor trivial/default (i.e. is this simple data with no allocations)?
     pub fn has_default_destructor(&self, objects: &Objects) -> bool {
         match self {

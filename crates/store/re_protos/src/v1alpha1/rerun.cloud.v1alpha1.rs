@@ -120,6 +120,117 @@ impl ::prost::Name for DoBandwidthTestResponse {
         "/rerun.cloud.v1alpha1.DoBandwidthTestResponse".into()
     }
 }
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct WatchEventsRequest {
+    /// Which kinds of events to subscribe to.
+    ///
+    /// If empty, the server subscribes to all event kinds.
+    #[prost(message, repeated, tag = "1")]
+    pub kinds: ::prost::alloc::vec::Vec<EventKind>,
+}
+impl ::prost::Name for WatchEventsRequest {
+    const NAME: &'static str = "WatchEventsRequest";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.WatchEventsRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.WatchEventsRequest".into()
+    }
+}
+/// Selects a category of events to subscribe to in `WatchEvents`.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct EventKind {
+    #[prost(oneof = "event_kind::Kind", tags = "1")]
+    pub kind: ::core::option::Option<event_kind::Kind>,
+}
+/// Nested message and enum types in `EventKind`.
+pub mod event_kind {
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Oneof)]
+    pub enum Kind {
+        /// Catalog entry lifecycle events (created, deleted).
+        #[prost(message, tag = "1")]
+        Entry(super::EntryEvents),
+    }
+}
+impl ::prost::Name for EventKind {
+    const NAME: &'static str = "EventKind";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.EventKind".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.EventKind".into()
+    }
+}
+/// Subscribe to all catalog entry lifecycle events.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct EntryEvents {}
+impl ::prost::Name for EntryEvents {
+    const NAME: &'static str = "EntryEvents";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.EntryEvents".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.EntryEvents".into()
+    }
+}
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct WatchEventsResponse {
+    #[prost(oneof = "watch_events_response::Kind", tags = "1, 2")]
+    pub kind: ::core::option::Option<watch_events_response::Kind>,
+}
+/// Nested message and enum types in `WatchEventsResponse`.
+pub mod watch_events_response {
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Oneof)]
+    pub enum Kind {
+        #[prost(message, tag = "1")]
+        EntryCreated(super::EntryCreatedEvent),
+        #[prost(message, tag = "2")]
+        EntryDeleted(super::EntryDeletedEvent),
+    }
+}
+impl ::prost::Name for WatchEventsResponse {
+    const NAME: &'static str = "WatchEventsResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.WatchEventsResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.WatchEventsResponse".into()
+    }
+}
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct EntryCreatedEvent {
+    #[prost(message, optional, tag = "1")]
+    pub id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
+}
+impl ::prost::Name for EntryCreatedEvent {
+    const NAME: &'static str = "EntryCreatedEvent";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.EntryCreatedEvent".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.EntryCreatedEvent".into()
+    }
+}
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct EntryDeletedEvent {
+    #[prost(message, optional, tag = "1")]
+    pub id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
+}
+impl ::prost::Name for EntryDeletedEvent {
+    const NAME: &'static str = "EntryDeletedEvent";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.EntryDeletedEvent".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.EntryDeletedEvent".into()
+    }
+}
 /// Application level error - used as `details` in the `google.rpc.Status` message
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct Error {
@@ -161,12 +272,6 @@ pub struct DataSource {
     /// What kind of data is it (e.g. rrd, mcap, Lance, etc)?
     #[prost(enumeration = "DataSourceKind", tag = "2")]
     pub typ: i32,
-    /// ⚠️ UNSTABLE: Is this an asset layer (shared across all segments) or a segment layer (one recording per segment)?
-    /// Defaults to LAYER_CLASS_SEGMENT if unspecified.
-    ///
-    /// TODO(RR-4797): remove unstable-warning
-    #[prost(enumeration = "LayerClass", tag = "5")]
-    pub layer_class: i32,
 }
 impl ::prost::Name for DataSource {
     const NAME: &'static str = "DataSource";
@@ -251,12 +356,13 @@ impl ::prost::Name for UnregisterFromDatasetRequest {
 }
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct UnregisterFromDatasetResponse {
-    /// This contains all the information about the segments and layers that were actually removed.
-    ///
-    /// This dataframe is always guaranteed to be a subset of the one found in `ScanDatasetManifestResponse`.
-    /// They share the same semantics, schemas, etc.
+    /// This dataframe is always empty. It remains here for format compatibility with older SDKs.
+    /// TODO(ilya): remove this once the clients are all new enough
     #[prost(message, optional, tag = "1")]
     pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
+    /// Id of the task that performs the unregistration. The data is not deleted until the task completes.
+    #[prost(message, optional, tag = "2")]
+    pub task_id: ::core::option::Option<super::super::common::v1alpha1::TaskId>,
 }
 impl ::prost::Name for UnregisterFromDatasetResponse {
     const NAME: &'static str = "UnregisterFromDatasetResponse";
@@ -335,6 +441,16 @@ pub struct ScanSegmentTableRequest {
     /// an `InvalidArgument` error.
     #[prost(string, repeated, tag = "1")]
     pub columns: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    /// An optional best-effort filter hint, expressed as a SQL boolean expression over the
+    /// segment-table columns (e.g. `rerun_segment_id = 'abc'`).
+    ///
+    /// If empty, no filter hint is provided.
+    /// Column names use the public (segment) terminology.
+    /// Servers may apply this filter, ignore it, or reject malformed/unsupported filters with an
+    /// `InvalidArgument` error.
+    /// Clients must re-apply filters locally if correctness depends on them.
+    #[prost(string, tag = "2")]
+    pub sql_filter: ::prost::alloc::string::String,
 }
 impl ::prost::Name for ScanSegmentTableRequest {
     const NAME: &'static str = "ScanSegmentTableRequest";
@@ -402,6 +518,16 @@ pub struct ScanDatasetManifestRequest {
     /// an `InvalidArgument` error.
     #[prost(string, repeated, tag = "3")]
     pub columns: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    /// An optional best-effort filter hint, expressed as a SQL boolean expression over the
+    /// dataset-manifest columns (e.g. `rerun_segment_id = 'abc'`).
+    ///
+    /// If empty, no filter hint is provided.
+    /// Column names use the public (segment) terminology.
+    /// Servers may apply this filter, ignore it, or reject malformed/unsupported filters with an
+    /// `InvalidArgument` error.
+    /// Clients must re-apply filters locally if correctness depends on them.
+    #[prost(string, tag = "4")]
+    pub sql_filter: ::prost::alloc::string::String,
 }
 impl ::prost::Name for ScanDatasetManifestRequest {
     const NAME: &'static str = "ScanDatasetManifestRequest";
@@ -484,6 +610,37 @@ impl ::prost::Name for GetRrdManifestResponse {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.cloud.v1alpha1.GetRrdManifestResponse".into()
+    }
+}
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct GetAssetsForSegmentRequest {}
+impl ::prost::Name for GetAssetsForSegmentRequest {
+    const NAME: &'static str = "GetAssetsForSegmentRequest";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.GetAssetsForSegmentRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.GetAssetsForSegmentRequest".into()
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetAssetsForSegmentResponse {
+    /// The asset dataset. Set on every response in the stream.
+    #[prost(message, optional, tag = "1")]
+    pub assets_entry: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
+    /// The segments of the asset dataset. Concatenate across all responses in the stream.
+    #[prost(message, repeated, tag = "2")]
+    pub asset_segment_ids: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::SegmentId>,
+}
+impl ::prost::Name for GetAssetsForSegmentResponse {
+    const NAME: &'static str = "GetAssetsForSegmentResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.GetAssetsForSegmentResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.GetAssetsForSegmentResponse".into()
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -1401,8 +1558,18 @@ pub struct EntryFilter {
     pub id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
     #[prost(string, optional, tag = "2")]
     pub name: ::core::option::Option<::prost::alloc::string::String>,
+    /// Deprecated: use `entry_kinds` instead. Ignored by servers when `entry_kinds` is non-empty.
     #[prost(enumeration = "EntryKind", optional, tag = "3")]
     pub entry_kind: ::core::option::Option<i32>,
+    /// The entry kinds to include. If non-empty, the server returns exactly entries of these kinds
+    /// (ENTRY_KIND_UNSPECIFIED is rejected with an `invalid_argument` error).
+    ///
+    /// It is recommended to always explicitly ask for a set of entry kinds.
+    /// When unset the server returns a default set of kinds to ensure backwards compatibility with
+    /// old clients that did not set this. This behavior may be dropped in future releases.
+    /// (condition: after rerun-sdk 0.34 is out of its support cycle)
+    #[prost(enumeration = "EntryKind", repeated, tag = "4")]
+    pub entry_kinds: ::prost::alloc::vec::Vec<i32>,
 }
 impl ::prost::Name for EntryFilter {
     const NAME: &'static str = "EntryFilter";
@@ -1473,6 +1640,10 @@ pub struct DatasetDetails {
     #[prost(message, optional, tag = "6")]
     pub default_segment_table_blueprint_segment:
         ::core::option::Option<super::super::common::v1alpha1::SegmentId>,
+    /// The asset dataset associated with this dataset (if any).
+    /// This association is owned for lifecycle purposes: deleting this dataset also deletes the associated asset dataset.
+    #[prost(message, optional, tag = "7")]
+    pub asset_dataset: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
 }
 impl ::prost::Name for DatasetDetails {
     const NAME: &'static str = "DatasetDetails";
@@ -1728,40 +1899,6 @@ impl DataSourceKind {
         }
     }
 }
-/// ⚠️ UNSTABLE: Describes the class of a dataset layer.
-///
-/// TODO(RR-4797): remove unstable-warning.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
-#[repr(i32)]
-pub enum LayerClass {
-    Unspecified = 0,
-    /// Asset layer: a single source (recording) shared across all segments in the layer.
-    Asset = 1,
-    /// Segment layer: one (or zero) sources (recordings) per segment in the layer.
-    Segment = 2,
-}
-impl LayerClass {
-    /// String value of the enum field names used in the ProtoBuf definition.
-    ///
-    /// The values are not transformed in any way and thus are considered stable
-    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
-    pub fn as_str_name(&self) -> &'static str {
-        match self {
-            Self::Unspecified => "LAYER_CLASS_UNSPECIFIED",
-            Self::Asset => "LAYER_CLASS_ASSET",
-            Self::Segment => "LAYER_CLASS_SEGMENT",
-        }
-    }
-    /// Creates an enum from field names used in the ProtoBuf definition.
-    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
-        match value {
-            "LAYER_CLASS_UNSPECIFIED" => Some(Self::Unspecified),
-            "LAYER_CLASS_ASSET" => Some(Self::Asset),
-            "LAYER_CLASS_SEGMENT" => Some(Self::Segment),
-            _ => None,
-        }
-    }
-}
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum TableInsertMode {
@@ -1817,6 +1954,7 @@ pub enum EntryKind {
     Table = 3,
     TableView = 4,
     BlueprintDataset = 5,
+    AssetDataset = 6,
 }
 impl EntryKind {
     /// String value of the enum field names used in the ProtoBuf definition.
@@ -1831,6 +1969,7 @@ impl EntryKind {
             Self::Table => "ENTRY_KIND_TABLE",
             Self::TableView => "ENTRY_KIND_TABLE_VIEW",
             Self::BlueprintDataset => "ENTRY_KIND_BLUEPRINT_DATASET",
+            Self::AssetDataset => "ENTRY_KIND_ASSET_DATASET",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
@@ -1842,6 +1981,7 @@ impl EntryKind {
             "ENTRY_KIND_TABLE" => Some(Self::Table),
             "ENTRY_KIND_TABLE_VIEW" => Some(Self::TableView),
             "ENTRY_KIND_BLUEPRINT_DATASET" => Some(Self::BlueprintDataset),
+            "ENTRY_KIND_ASSET_DATASET" => Some(Self::AssetDataset),
             _ => None,
         }
     }
@@ -2036,6 +2176,27 @@ pub mod rerun_cloud_service_client {
             req.extensions_mut().insert(GrpcMethod::new(
                 "rerun.cloud.v1alpha1.RerunCloudService",
                 "DoBandwidthTest",
+            ));
+            self.inner.server_streaming(req, path, codec).await
+        }
+        pub async fn watch_events(
+            &mut self,
+            request: impl tonic::IntoRequest<super::WatchEventsRequest>,
+        ) -> std::result::Result<
+            tonic::Response<tonic::codec::Streaming<super::WatchEventsResponse>>,
+            tonic::Status,
+        > {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic_prost::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.cloud.v1alpha1.RerunCloudService/WatchEvents",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.cloud.v1alpha1.RerunCloudService",
+                "WatchEvents",
             ));
             self.inner.server_streaming(req, path, codec).await
         }
@@ -2237,11 +2398,8 @@ pub mod rerun_cloud_service_client {
         }
         /// Unregisters segments and layers from the Dataset.
         ///
-        /// Excluding IO errors, this will always succeed as long the target dataset exists.
-        /// Corollary: unregistering data that doesn't exist is a no-op.
-        ///
-        /// This always returns a subset of the data from `ScanDatasetManifest`, and therefore the data will
-        /// also follow the schema returned by `GetDatasetManifestSchema`.
+        /// This is an asynchronous operation, and returns a list of task ids.
+        /// The response is a stream only for historical reasons.
         ///
         /// This endpoint requires the standard dataset headers.
         pub async fn unregister_from_dataset(
@@ -2446,6 +2604,33 @@ pub mod rerun_cloud_service_client {
             req.extensions_mut().insert(GrpcMethod::new(
                 "rerun.cloud.v1alpha1.RerunCloudService",
                 "GetRrdManifest",
+            ));
+            self.inner.server_streaming(req, path, codec).await
+        }
+        /// Get the assets that apply to this dataset.
+        ///
+        /// Returns the dataset's asset dataset and the asset segments within it.
+        /// The asset segment ids may be spread over multiple responses, at the discretion of the server.
+        ///
+        /// This endpoint requires the standard dataset headers.
+        pub async fn get_assets_for_segment(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetAssetsForSegmentRequest>,
+        ) -> std::result::Result<
+            tonic::Response<tonic::codec::Streaming<super::GetAssetsForSegmentResponse>>,
+            tonic::Status,
+        > {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic_prost::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.cloud.v1alpha1.RerunCloudService/GetAssetsForSegment",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.cloud.v1alpha1.RerunCloudService",
+                "GetAssetsForSegment",
             ));
             self.inner.server_streaming(req, path, codec).await
         }
@@ -2754,6 +2939,15 @@ pub mod rerun_cloud_service_server {
             &self,
             request: tonic::Request<super::DoBandwidthTestRequest>,
         ) -> std::result::Result<tonic::Response<Self::DoBandwidthTestStream>, tonic::Status>;
+        /// Server streaming response type for the WatchEvents method.
+        type WatchEventsStream: tonic::codegen::tokio_stream::Stream<
+                Item = std::result::Result<super::WatchEventsResponse, tonic::Status>,
+            > + std::marker::Send
+            + 'static;
+        async fn watch_events(
+            &self,
+            request: tonic::Request<super::WatchEventsRequest>,
+        ) -> std::result::Result<tonic::Response<Self::WatchEventsStream>, tonic::Status>;
         async fn find_entries(
             &self,
             request: tonic::Request<super::FindEntriesRequest>,
@@ -2807,11 +3001,8 @@ pub mod rerun_cloud_service_server {
             + 'static;
         /// Unregisters segments and layers from the Dataset.
         ///
-        /// Excluding IO errors, this will always succeed as long the target dataset exists.
-        /// Corollary: unregistering data that doesn't exist is a no-op.
-        ///
-        /// This always returns a subset of the data from `ScanDatasetManifest`, and therefore the data will
-        /// also follow the schema returned by `GetDatasetManifestSchema`.
+        /// This is an asynchronous operation, and returns a list of task ids.
+        /// The response is a stream only for historical reasons.
         ///
         /// This endpoint requires the standard dataset headers.
         async fn unregister_from_dataset(
@@ -2907,6 +3098,21 @@ pub mod rerun_cloud_service_server {
             &self,
             request: tonic::Request<super::GetRrdManifestRequest>,
         ) -> std::result::Result<tonic::Response<Self::GetRrdManifestStream>, tonic::Status>;
+        /// Server streaming response type for the GetAssetsForSegment method.
+        type GetAssetsForSegmentStream: tonic::codegen::tokio_stream::Stream<
+                Item = std::result::Result<super::GetAssetsForSegmentResponse, tonic::Status>,
+            > + std::marker::Send
+            + 'static;
+        /// Get the assets that apply to this dataset.
+        ///
+        /// Returns the dataset's asset dataset and the asset segments within it.
+        /// The asset segment ids may be spread over multiple responses, at the discretion of the server.
+        ///
+        /// This endpoint requires the standard dataset headers.
+        async fn get_assets_for_segment(
+            &self,
+            request: tonic::Request<super::GetAssetsForSegmentRequest>,
+        ) -> std::result::Result<tonic::Response<Self::GetAssetsForSegmentStream>, tonic::Status>;
         /// Server streaming response type for the QueryDataset method.
         type QueryDatasetStream: tonic::codegen::tokio_stream::Stream<
                 Item = std::result::Result<super::QueryDatasetResponse, tonic::Status>,
@@ -3207,6 +3413,50 @@ pub mod rerun_cloud_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = DoBandwidthTestSvc(inner);
+                        let codec = tonic_prost::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.server_streaming(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.cloud.v1alpha1.RerunCloudService/WatchEvents" => {
+                    #[allow(non_camel_case_types)]
+                    struct WatchEventsSvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
+                        tonic::server::ServerStreamingService<super::WatchEventsRequest>
+                        for WatchEventsSvc<T>
+                    {
+                        type Response = super::WatchEventsResponse;
+                        type ResponseStream = T::WatchEventsStream;
+                        type Future =
+                            BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::WatchEventsRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as RerunCloudService>::watch_events(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = WatchEventsSvc(inner);
                         let codec = tonic_prost::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
@@ -3980,6 +4230,51 @@ pub mod rerun_cloud_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = GetRrdManifestSvc(inner);
+                        let codec = tonic_prost::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.server_streaming(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.cloud.v1alpha1.RerunCloudService/GetAssetsForSegment" => {
+                    #[allow(non_camel_case_types)]
+                    struct GetAssetsForSegmentSvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
+                        tonic::server::ServerStreamingService<super::GetAssetsForSegmentRequest>
+                        for GetAssetsForSegmentSvc<T>
+                    {
+                        type Response = super::GetAssetsForSegmentResponse;
+                        type ResponseStream = T::GetAssetsForSegmentStream;
+                        type Future =
+                            BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::GetAssetsForSegmentRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as RerunCloudService>::get_assets_for_segment(&inner, request)
+                                    .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = GetAssetsForSegmentSvc(inner);
                         let codec = tonic_prost::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

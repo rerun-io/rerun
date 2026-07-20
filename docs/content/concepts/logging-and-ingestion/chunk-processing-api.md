@@ -58,15 +58,24 @@ Also, it unlocks performance speed-ups by only loading chunks that are relevant 
 On the other hand, `ChunkStore` is fully materialized: its memory footprint scales with the recording size.
 This is a major exception in the chunk processing API, which generally leans on lazy loading and streaming execution to allow processing large datasets with bounded memory.
 
-One common reason to materialize a `ChunkStore` is to run chunk optimization; see [Optimize chunk count](../../howto/logging-and-ingestion/optimize-chunks.md#compacting-chunks-with-the-chunk-processing-api) for details.
-
-> [!NOTE]
-> In the future, `ChunkStore` will be extended to allow running [dataframe queries](../query-and-transform/dataframe-queries.md) directly against it.
-
 Both kinds of stores share a common API surface, including:
 - extracting the underlying [`Schema`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.Schema) of the store;
 - turning the store back into a pipeline with `.stream()`;
 - exposing various statistics and content summaries.
+
+
+One common reason to materialize a `ChunkStore` is to run chunk optimization; see [Optimize chunk count](../../howto/logging-and-ingestion/optimize-chunks.md#compacting-chunks-with-the-chunk-processing-api) for details.
+
+A materialized `ChunkStore` can also be queried directly as a dataframe with [`ChunkStore.reader`](https://ref.rerun.io/docs/python/stable/experimental/#rerun.experimental.ChunkStore.reader), without spinning up a catalog server.
+The returned [DataFusion](https://datafusion.apache.org/) dataframe is data-equivalent to loading the same chunks into a dataset and calling its `reader()`, so the full [dataframe query API](../query-and-transform/dataframe-queries.md) applies — modulo the `rerun_segment_id` column (see the [catalog object model](../query-and-transform/catalog-object-model.md) for more information about datasets and segments).
+
+For example, first materialize a store (here built a single chunk, for illustration):
+
+snippet: concepts/chunk_processing_query[build_store]
+
+Then the `ChunkStore` can be queried directly:
+
+snippet: concepts/chunk_processing_query[query]
 
 
 ### Lazy stream
@@ -181,6 +190,8 @@ The two are interoperable:
   > This roundtrip-via-file will be smoothed out in the future for better ergonomics and performance.
 - **Chunk processing → logging:** `rerun.experimental.send_chunks(chunks, recording=...)` feeds chunks into an active `RecordingStream` (useful for streaming to a viewer, for example).
 - **Building chunks by hand:** `Chunk.from_columns` mirrors `rr.send_columns` and accepts the same `rr.<Archetype>.columns(...)` helpers, so any data that can be logged with `rr.send_columns` can also be packaged as a `Chunk` and injected into a processing pipeline.
+  Likewise, `Chunk.from_record_batch` (for a single `RecordBatch`) and `Chunk.from_dataframe` (a multi-batch `Table`, `RecordBatchReader`, or `datafusion.DataFrame`) mirrors `rr.send_record_batch` and `rr.send_dataframe`.
+  See [Chunks](chunks.md) for details.
 
 
 ## See also

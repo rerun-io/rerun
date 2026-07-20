@@ -96,6 +96,7 @@ impl MemoryHistory {
 
             for (store_id, stats) in store_stats {
                 let StoreStats {
+                    store_source: _,
                     store_config: _,
                     store_stats,
                     query_cache_stats,

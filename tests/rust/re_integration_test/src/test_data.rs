@@ -47,7 +47,7 @@ pub async fn load_test_data_with_name(
 
     // Make sure that we have an entries table.
     let entries_table = client
-        .find_entries(EntryFilter::default().with_entry_kind(EntryKind::Table))
+        .find_entries(EntryFilter::default().with_entry_kinds([EntryKind::Table]))
         .await?;
     assert_eq!(entries_table.len(), 1);
     assert_eq!(entries_table[0].name, re_protos::EntryName::entries_table());
@@ -124,7 +124,7 @@ fn recording_rrd(
 
     log_data(&stream);
 
-    stream.flush_with_timeout(Duration::from_secs(60))?;
+    stream.flush_with_timeout(Duration::from_mins(1))?;
 
     Ok(path)
 }
@@ -162,6 +162,7 @@ async fn register_rrds(
     let mut task_ids = Vec::with_capacity(items.len());
     for item in items {
         let cloud_ext::RegisterWithDatasetTaskDescriptor {
+            layer_name: _,
             segment_id,
             segment_type: _,
             storage_url: _,

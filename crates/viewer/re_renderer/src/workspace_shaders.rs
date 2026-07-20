@@ -218,6 +218,12 @@ pub fn init() {
     }
 
     {
+        let virtpath = Path::new("shader/voxel_grid.wgsl");
+        let content = include_str!("../shader/voxel_grid.wgsl").into();
+        fs.create_file(virtpath, content).unwrap();
+    }
+
+    {
         let virtpath = Path::new("shader/world_grid.wgsl");
         let content = include_str!("../shader/world_grid.wgsl").into();
         fs.create_file(virtpath, content).unwrap();

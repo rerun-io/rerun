@@ -36,7 +36,7 @@ jobs:
       protobuf_changes: ${{ steps.filter.outputs.protobuf_changes }}
       web_changes: ${{ steps.filter.outputs.web_changes }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
       - uses: dorny/paths-filter@v3
@@ -201,6 +201,15 @@ jobs:
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
       CHANNEL: main
+    secrets: inherit
+
+  web-test:
+    name: "Web tests"
+    needs: [paths-filter]
+    if: github.event.pull_request.head.repo.owner.login == 'rerun-io' && needs.paths-filter.outputs.web_changes == 'true'
+    uses: ./.github/workflows/reusable_web_test.yml
+    with:
+      CONCURRENCY: pr-${{ github.event.pull_request.number }}
     secrets: inherit
 
   upload-web:

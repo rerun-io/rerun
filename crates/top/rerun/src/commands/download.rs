@@ -41,7 +41,6 @@ impl DownloadCommand {
                 re_log_types::FileSource::Cli,
                 url,
                 &FromUriOptions {
-                    follow: false,
                     accept_extensionless_http: true,
                 },
             );
@@ -70,6 +69,7 @@ impl DownloadCommand {
 
             let streaming_options = re_redap_client::StreamingOptions {
                 force_full_download: true,
+                download: re_redap_client::SegmentDownload::default(),
                 on_progress: Some(Arc::new(move |bytes_downloaded, total_bytes| {
                     downloaded_for_progress.store(bytes_downloaded, Ordering::Relaxed);
                     match total_bytes {
@@ -87,7 +87,7 @@ impl DownloadCommand {
                             );
                         }
                         None => {
-                            eprint!("\r  {}", re_format::format_bytes(bytes_downloaded as _),);
+                            eprint!("\r  {}", re_format::format_bytes(bytes_downloaded as _));
                         }
                     }
                 })),

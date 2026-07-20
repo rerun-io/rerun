@@ -12,9 +12,9 @@ use re_viewer_context::{
 };
 
 use super::SpatialViewVisualizerData;
+use crate::SpaceKind;
 use crate::contexts::TransformTreeContext;
 use crate::pinhole_wrapper::PinholeWrapper;
-use crate::view_kind::SpatialViewKind;
 use crate::visualizers::process_radius;
 use crate::visualizers::utilities::spatial_view_kind_from_view_class;
 
@@ -53,7 +53,7 @@ impl CamerasVisualizer {
         transforms: &TransformTreeContext,
         pinhole_properties: &CameraComponentDataWithFallbacks,
         entity_highlight: &ViewOutlineMasks,
-        view_kind: SpatialViewKind,
+        view_kind: SpaceKind,
     ) -> Result<(), String> {
         let instance = Instance::from(0);
         let ent_path = ctx.target_entity_path;
@@ -112,8 +112,7 @@ impl CamerasVisualizer {
         };
 
         // If the camera is the target frame of a 2D view, there is nothing for us to display.
-        if transforms.target_frame() == pinhole_child_frame_id && view_kind == SpatialViewKind::TwoD
-        {
+        if transforms.target_frame() == pinhole_child_frame_id && view_kind == SpaceKind::TwoD {
             pinhole_cameras.push(PinholeWrapper {
                 ent_path: ent_path.clone(),
                 pinhole_view_coordinates: pinhole_properties.camera_xyz,
@@ -220,7 +219,7 @@ impl CamerasVisualizer {
         }
 
         // world_from_camera is the transform to the pinhole origin.
-        data.add_bounding_box(ent_path.hash(), macaw::BoundingBox::ZERO, world_from_camera);
+        data.add_bounding_box_3d(ent_path.hash(), macaw::BoundingBox::ZERO, world_from_camera);
 
         Ok(())
     }

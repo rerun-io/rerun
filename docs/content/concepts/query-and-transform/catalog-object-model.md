@@ -18,8 +18,30 @@ Entries share a few common properties:
 - **id**: a globally unique identifier
 - **name**: a user-provided name, which must be unique within the catalog
 
-The id is immutable, but the name can be changed provided it remains unique.
+### Renaming a catalog entry
 
+The id of a catalog entry is immutable, but the name can be changed provided it remains unique.
+In Python, call `set_name()` on an entry to rename it on the catalog server, for example:
+
+```python
+client = rr.catalog.CatalogClient(…)
+dataset = client.get_dataset("old_name")
+dataset.set_name("new_name")
+```
+
+### Structuring datasets
+
+When working with larger amounts of data, it can be useful to organize catalog entries in a directory-like structure.
+This can be done by using `.` delimiters in the names.
+The screenshot below is an example of a dot-delimited dataset name showing up as a directory tree in the viewer's data source browser:
+
+<picture>
+  <img src="https://static.rerun.io/catalog_dirs/1a7f0c9a24f418857c94b46fa7fa39381155a91b/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/catalog_dirs/1a7f0c9a24f418857c94b46fa7fa39381155a91b/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/catalog_dirs/1a7f0c9a24f418857c94b46fa7fa39381155a91b/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/catalog_dirs/1a7f0c9a24f418857c94b46fa7fa39381155a91b/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/catalog_dirs/1a7f0c9a24f418857c94b46fa7fa39381155a91b/1200w.png">
+</picture>
 
 ## Table entries
 

@@ -4,7 +4,7 @@ namespace rerun.archetypes;
 ///
 /// Useful for representing discrete state machines, mode transitions, or
 /// state changes over time. Each logged [archetypes.StateChange] marks a new state
-/// at the given time. A `null` state is ignored by the state timeline view.
+/// at the given time. A `null` state resets the state, showing a gap in the state timeline view.
 ///
 /// The state timeline view displays these as horizontal colored lanes over time.
 ///
@@ -12,15 +12,18 @@ namespace rerun.archetypes;
 table StateChange (
   "attr.docs.category": "Plotting",
   "attr.docs.view_types": "StateTimelineView",
-  "attr.rerun.state": "unstable",
+  "attr.rerun.state": "stable",
   "attr.rerun.visualizer": "StateVisualizer",
   "attr.rust.derive": "PartialEq"
 ) {
   // --- Required ---
 
-  /// The new state value.
+  /// The new state values; each instance gets its own lane in the state timeline view.
   ///
-  /// A `null` state is ignored, it can be used to partially update a multi-instance state array.
-  /// An empty string is treated as state reset, and a gap is shown in the state timeline view.
-  state: rerun.components.Text ("attr.rerun.component_required", nullable, order: 100);
+  /// A reset ends the previous state and shows a gap in the state timeline view until the
+  /// next state. An empty string, a null array entry, and an empty state array (e.g. from
+  /// clearing the field) all act as resets.
+  ///
+  /// The length of the state array should not change over time.
+  state: [rerun.components.Text] ("attr.rerun.component_required", nullable, order: 100);
 }

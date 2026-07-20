@@ -1,6 +1,5 @@
 # Contributing to Rerun
-This guide is for anyone who wants to contribute to the Rerun repository.
-
+This guide is for anyone who wants to contribute to the Rerun repository, for employees and outside contributors alike.
 
 ## See also
 * [`ARCHITECTURE.md`](ARCHITECTURE.md)
@@ -30,15 +29,47 @@ You can discuss these changes by:
 
 > [!NOTE]
 > PRs containing large undiscussed changes may be closed without comment.
+> The same applies to issues and PRs opened by bot accounts (e.g. OpenClaw) or that are clearly agent-generated without human review — see [Agents](#agents).
 
 ## Pull requests
 We use [Trunk Based Development](https://trunkbaseddevelopment.com/), which means we encourage small, short-lived branches.
 
-* Open draft PRs early to get feedback before a full review.
 * Don't PR from your own `main` branch — it makes it hard for reviewers to add fixes.
-* Add improvements as new commits rather than rebasing, so reviewers can follow progress (add images if possible!).
+* Add improvements as new commits rather than rebasing, so reviewers can follow progress.
 * All PRs are merged with [`Squash and Merge`](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/incorporating-changes-from-a-pull-request/about-pull-request-merges#squash-and-merge-your-commits), so you don't need a clean commit history on feature branches. Prefer new commits over rebasing — force-pushing discourages collaboration.
 
+### PR draft
+It can be useful to open a PR in _draft_ mode first. On reason is to get CI to run on it.
+
+Another reason is to ask for early feedback on e.g. the user interaction or the overall design of the PR.
+This can be a great way to discuss architectural ideas before doing the full work of implementing it.
+If you want such early feedback, ask for it explicitly (e.g. ping someone relevant).
+
+Do not un-draft until you have read all your code and _you_ think it is ready to merge.
+
+An un-drafted PR means "ready for review".
+
+### PR description
+- Make sure the PR description is _inviting_ - not too long, not too short
+- Write it yourself
+- Describe _why_ you made this change (and link to any relevant issue/PR)
+- If it makes sense, include an image or a video
+- Describe what you want reviewed, e.g.
+  - The UX — does this feature feel nice to use?
+  - The architecture / design — explain the proposed design in the PR description, and keep the PR in draft mode
+  - The code
+- Express your own confidence in your work
+  - Is this a simple fix for something you understand well, or maybe something well outside your domain that an agent wrote for you?
+
+### Agents
+Coding agents are powerful tools, but like any tool should be used wisely.
+
+If you use an agent to prototype some feature, then the PR should be in draft mode, and you should ask for feedback on the _effect_ of the PR, rather than its contents.
+
+If you use an agent to implement a solution, then you should be able to understand that solution.
+Asking the agent to walk you through the code can help, but doesn't replace reading it yourself.
+
+### Other
 Our CI will [record binary sizes](https://build.rerun.io/graphs/sizes.html) and run [benchmarks](https://build.rerun.io/graphs/crates.html) on each merged PR.
 
 Pull requests from external contributors require approval for CI runs. Click the `Approve and run` button:

@@ -1,7 +1,7 @@
 use egui::RichText;
 use itertools::Itertools as _;
 use re_capabilities::MainThreadToken;
-use re_chunk_store::UnitChunkShared;
+use re_chunk_store::{ChunkTrackingMode, UnitChunkShared};
 use re_entity_db::InstancePath;
 use re_format::format_plural_s;
 use re_log_types::ComponentPath;
@@ -34,7 +34,7 @@ impl DataUi for InstancePath {
             .db
             .storage_engine()
             .store()
-            .all_components_on_timeline(&ctx.timeline_name(), entity_path);
+            .all_components_on_timeline(Some(&ctx.timeline_name()), entity_path);
 
         let Some(unordered_components) = components else {
             // This is fine - e.g. we're looking at `/world` and the user has only logged to `/world/car`.
@@ -64,6 +64,7 @@ impl DataUi for InstancePath {
         );
 
         let query_results = ctx.db.storage_engine().cache().latest_all(
+            ChunkTrackingMode::ReportTransient,
             &ctx.query(),
             entity_path,
             unordered_components.iter().copied(),

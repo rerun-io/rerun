@@ -107,6 +107,7 @@ pub fn render_image(
     image_rect_on_screen: egui::Rect,
     colormapped_texture: ColormappedTexture,
     texture_options: egui::TextureOptions,
+    view_id: re_renderer::ViewBuilderId,
     debug_name: re_renderer::Label,
 ) -> anyhow::Result<()> {
     re_tracing::profile_function!();
@@ -173,7 +174,7 @@ pub fn render_image(
         ..Default::default()
     };
 
-    let mut view_builder = ViewBuilder::new(render_ctx, target_config)?;
+    let mut view_builder = ViewBuilder::new(render_ctx, target_config, view_id)?;
 
     view_builder.queue_draw(
         render_ctx,

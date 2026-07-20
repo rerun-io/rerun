@@ -141,6 +141,7 @@ impl ViewBlueprint {
         re_tracing::profile_function!();
 
         let results = blueprint_db.storage_engine().cache().latest_at(
+            re_chunk_store::ChunkTrackingMode::Report,
             query,
             &id.as_entity_path(),
             blueprint_archetypes::ViewBlueprint::all_component_identifiers(),
@@ -148,7 +149,8 @@ impl ViewBlueprint {
 
         // This is a required component. Note that when loading views we crawl the subtree and so
         // cleared empty views paths may exist transiently. The fact that they have an empty class_identifier
-        // is the marker that the have been cleared and not an error.
+        // is the marker that the have been cleared and not an error: an empty string is not a valid
+        // `ViewClassIdentifier`, so the `try_new` below turns it into a `None` and we skip the view.
         let class_identifier = results.component_mono::<blueprint_components::ViewClass>(
             blueprint_archetypes::ViewBlueprint::descriptor_class_identifier().component,
         )?;
@@ -163,7 +165,7 @@ impl ViewBlueprint {
         );
 
         let space_origin = space_origin.map_or_else(EntityPath::root, |origin| origin.0.into());
-        let class_identifier: ViewClassIdentifier = class_identifier.0.as_str().into();
+        let class_identifier = ViewClassIdentifier::try_new(class_identifier.0.as_str()).ok()?;
         let display_name = display_name.map(|v| v.0.to_string());
 
         let space_env = EntityPathSubs::new_with_origin(&space_origin);
@@ -262,7 +264,7 @@ impl ViewBlueprint {
                         store_context.blueprint_timepoint_for_writes(),
                         blueprint_engine
                             .store()
-                            .all_components_on_timeline(&query.timeline(), path)
+                            .all_components_on_timeline(query.timeline().as_ref(), path)
                             .into_iter()
                             .flat_map(|v| v.into_iter())
                             // It's important that we don't include the ViewBlueprint's components
@@ -275,7 +277,7 @@ impl ViewBlueprint {
                             .filter_map(|component| {
                                 let array = blueprint_engine
                                     .cache()
-                                    .latest_at(query, path, [component])
+                                    .latest_at(re_chunk_store::ChunkTrackingMode::Report, query, path, [component])
                                     .component_batch_raw(component)?;
                                 let descriptor = blueprint_engine.schema().entity_component_descriptor(path, component)?;
                                 Some((descriptor, array))

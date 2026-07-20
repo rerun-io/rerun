@@ -4,9 +4,7 @@ use std::sync::Arc;
 use pyo3::exceptions::{PyFileNotFoundError, PyValueError};
 use pyo3::prelude::*;
 use re_chunk::{Chunk, EntityPath};
-use re_parquet::{
-    ColumnGrouping, ColumnMapping, ColumnRule, IndexColumn, IndexType, ParquetConfig, TimeUnit,
-};
+use re_parquet::{ColumnGrouping, IndexColumn, IndexType, ParquetConfig, TimeUnit};
 
 use super::error::ChunkPipelineError;
 use super::py_stream::PyLazyChunkStreamInternal;
@@ -38,9 +36,8 @@ impl PyParquetReaderInternal {
             use_structs = true,
             static_columns = None,
             index_columns = None,
-            column_rules = None,
         ),
-        text_signature = "(self, path, entity_path_prefix=None, column_grouping='prefix', delimiter='_', prefixes=None, use_structs=True, static_columns=None, index_columns=None, column_rules=None)"
+        text_signature = "(self, path, entity_path_prefix=None, column_grouping='prefix', delimiter='_', prefixes=None, use_structs=True, static_columns=None, index_columns=None)"
     )]
     fn new(
         path: &str,
@@ -51,7 +48,6 @@ impl PyParquetReaderInternal {
         use_structs: bool,
         static_columns: Option<Vec<String>>,
         index_columns: Option<Vec<(String, String, Option<String>)>>,
-        column_rules: Option<Vec<Bound<'_, pyo3::types::PyAny>>>,
     ) -> PyResult<Self> {
         let path = PathBuf::from(path);
         if !path.exists() {
@@ -103,12 +99,6 @@ impl PyParquetReaderInternal {
             }
         };
 
-        let rules: Vec<ColumnRule> = if let Some(rules) = column_rules {
-            parse_column_rules(rules)?
-        } else {
-            Vec::new()
-        };
-
         let index_cols: Vec<IndexColumn> = index_columns
             .unwrap_or_default()
             .into_iter()
@@ -142,7 +132,6 @@ impl PyParquetReaderInternal {
             column_grouping: grouping,
             index_columns: index_cols,
             static_columns: static_columns.unwrap_or_default(),
-            column_rules: rules,
         };
 
         let prefix = entity_path_prefix
@@ -240,47 +229,4 @@ impl ChunkStream for ParquetStream {
             Err(crossbeam::channel::RecvError) => Ok(None), // channel closed — loading finished
         }
     }
-}
-
-/// Parse `column_rules` from Python `ColumnRule` dataclass instances.
-fn parse_column_rules(rules: Vec<Bound<'_, pyo3::types::PyAny>>) -> PyResult<Vec<ColumnRule>> {
-    rules
-        .into_iter()
-        .map(|item| {
-            let suffixes: Vec<String> = item.getattr("suffixes")?.extract()?;
-            let target: String = item.getattr("target")?.extract()?;
-            let names: Option<Vec<String>> = item.getattr("names")?.extract()?;
-            let field_name_override: Option<String> =
-                item.getattr("field_name_override")?.extract()?;
-
-            let rotation_suffixes: Option<Vec<String>> =
-                item.getattr("rotation_suffixes")?.extract()?;
-
-            let mapping = match target.as_str() {
-                "Translation3D" => ColumnMapping::translation3d(),
-                "RotationQuat" => ColumnMapping::rotation_quat(),
-                "RotationAxisAngle" => ColumnMapping::rotation_axis_angle(),
-                "Scale3D" => ColumnMapping::scale3d(),
-                "Scalars" => ColumnMapping::Scalars {
-                    names: names
-                        .ok_or_else(|| PyValueError::new_err("Scalars target requires 'names'"))?,
-                },
-                "Transform" => ColumnMapping::transform(rotation_suffixes.ok_or_else(|| {
-                    PyValueError::new_err("Transform target requires 'rotation_suffixes'")
-                })?),
-                other => {
-                    return Err(PyValueError::new_err(format!(
-                        "Unknown target: '{other}'. Valid targets: Translation3D, RotationQuat, \
-                         RotationAxisAngle, Scale3D, Scalars, Transform."
-                    )));
-                }
-            };
-
-            Ok(ColumnRule {
-                suffixes,
-                mapping,
-                field_name_override,
-            })
-        })
-        .collect()
 }

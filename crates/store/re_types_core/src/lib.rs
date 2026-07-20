@@ -29,7 +29,6 @@ mod chunk_id;
 mod component_batch;
 mod component_descriptor;
 mod dynamic_archetype;
-mod layer_class;
 mod layer_name;
 mod loggable;
 pub mod reflection;
@@ -43,6 +42,7 @@ mod wrapper_component;
 
 pub use self::archetype::{
     Archetype, ArchetypeName, ArchetypeReflectionMarker, ComponentIdentifier,
+    InvalidComponentIdentifierError,
 };
 pub use self::arrow_string::ArrowString;
 pub use self::as_components::AsComponents;
@@ -55,11 +55,8 @@ pub use self::component_descriptor::{
     FIELD_METADATA_KEY_COMPONENT_TYPE,
 };
 pub use self::dynamic_archetype::DynamicArchetype;
-pub use self::layer_class::LayerClass;
 pub use self::layer_name::LayerName;
-pub use self::loggable::{
-    Component, ComponentSet, ComponentType, DatatypeName, Loggable, UnorderedComponentSet,
-};
+pub use self::loggable::{Component, ComponentSet, ComponentType, Loggable, UnorderedComponentSet};
 pub use self::result::{
     _Backtrace, DeserializationError, DeserializationResult, ResultExt, SerializationError,
     SerializationResult,
@@ -69,7 +66,7 @@ pub use self::segment_id::SegmentId;
 pub use self::tuid::tuids_to_arrow;
 pub use self::view::{View, ViewClassIdentifier};
 pub use self::wrapper_component::WrapperComponent;
-pub use timeline_name::TimelineName;
+pub use timeline_name::{InvalidTimelineNameError, TimelineName};
 
 /// Fundamental [`Archetype`]s that are implemented in `re_types_core` directly for convenience and
 /// dependency optimization.

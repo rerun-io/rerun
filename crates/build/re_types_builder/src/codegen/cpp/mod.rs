@@ -2104,6 +2104,9 @@ fn quote_append_field_to_builder(
         if !field.is_nullable
             && matches!(field.typ, Type::Array { .. })
             && elem_type.has_default_destructor(objects)
+            && !elem_type
+                .fqname()
+                .is_some_and(|fqname| objects[fqname].is_enum())
         {
             // Optimize common case: Trivial batch of transparent fixed size elements.
             let field_accessor = quote!(elements[0].#field_name);

@@ -38,7 +38,7 @@ jobs:
     outputs:
       MATRIX: ${{ steps.set-matrix.outputs.matrix }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
       - name: Load C++ test matrix
@@ -56,15 +56,15 @@ jobs:
       # Skipping the entire step would apparently require a separate job, not doing that here.
       # Instead we keep checking for the `matrix.pr_ci` flag.
       # See https://stackoverflow.com/questions/77186893/how-can-i-skip-the-whole-job-for-a-matrix-match-in-github-action
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         if: ${{ github.event_name != 'pull_request' || matrix.pr_ci != false }}
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-      - uses: prefix-dev/setup-pixi@v0.9.4
+      - uses: prefix-dev/setup-pixi@v0.10.0
         if: ${{ github.event_name != 'pull_request' || matrix.pr_ci != false }}
         with:
-          pixi-version: v0.55.0
+          pixi-version: v0.71.3
           environments: cpp
 
       - name: Set up Rust
@@ -109,13 +109,13 @@ jobs:
     name: C++ formatting check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-      - uses: prefix-dev/setup-pixi@v0.9.4
+      - uses: prefix-dev/setup-pixi@v0.10.0
         with:
-          pixi-version: v0.55.0
+          pixi-version: v0.71.3
           environments: cpp
 
       - name: Run clang format on all relevant files

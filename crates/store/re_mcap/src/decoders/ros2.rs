@@ -4,11 +4,10 @@ use super::MessageDecoder;
 use crate::parsers::MessageParser;
 use crate::parsers::ros2msg::Ros2MessageParser;
 use crate::parsers::ros2msg::sensor_msgs::{
-    BatteryStateMessageParser, CameraInfoMessageParser, CompressedImageMessageParser,
-    FluidPressureMessageParser, IlluminanceMessageParser, ImageMessageParser, ImuMessageParser,
-    JointStateMessageParser, JoyMessageParser, MagneticFieldMessageParser, NavSatFixMessageParser,
-    PointCloud2MessageParser, RangeMessageParser, RelativeHumidityMessageParser,
-    TemperatureMessageParser,
+    BatteryStateMessageParser, CompressedImageMessageParser, FluidPressureMessageParser,
+    IlluminanceMessageParser, ImageMessageParser, ImuMessageParser, JointStateMessageParser,
+    JoyMessageParser, NavSatFixMessageParser, PointCloud2MessageParser, RangeMessageParser,
+    RelativeHumidityMessageParser, TemperatureMessageParser,
 };
 use crate::parsers::ros2msg::std_msgs::{
     Float64ArrayMessageParser, Float64MultiArrayMessageParser,
@@ -36,7 +35,6 @@ impl McapRos2Decoder {
         Self::empty()
             // sensor_msgs
             .register_parser::<BatteryStateMessageParser>("sensor_msgs/msg/BatteryState")
-            .register_parser::<CameraInfoMessageParser>("sensor_msgs/msg/CameraInfo")
             .register_parser::<CompressedImageMessageParser>("sensor_msgs/msg/CompressedImage")
             .register_parser::<FluidPressureMessageParser>("sensor_msgs/msg/FluidPressure")
             .register_parser::<IlluminanceMessageParser>("sensor_msgs/msg/Illuminance")
@@ -44,7 +42,6 @@ impl McapRos2Decoder {
             .register_parser::<ImuMessageParser>("sensor_msgs/msg/Imu")
             .register_parser::<JoyMessageParser>("sensor_msgs/msg/Joy")
             .register_parser::<JointStateMessageParser>("sensor_msgs/msg/JointState")
-            .register_parser::<MagneticFieldMessageParser>("sensor_msgs/msg/MagneticField")
             .register_parser::<NavSatFixMessageParser>("sensor_msgs/msg/NavSatFix")
             .register_parser::<PointCloud2MessageParser>("sensor_msgs/msg/PointCloud2")
             .register_parser::<RangeMessageParser>("sensor_msgs/msg/Range")

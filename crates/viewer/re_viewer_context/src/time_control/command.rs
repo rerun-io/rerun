@@ -104,6 +104,9 @@ pub enum TimeControlCommand {
     /// The view will instead fall back to the default which is
     /// showing all received data.
     ResetTimeView,
+
+    /// Causes the time control to buffer next frame, used for the video visualizer.
+    Buffer,
 }
 
 impl TimeControlCommand {
@@ -463,7 +466,6 @@ impl TimeControl {
                 state.time = clamped_time;
 
                 self.exit_follow_mode(db, blueprint_ctx);
-                self.start_buffering();
                 self.just_interacted = true;
 
                 if repaint {
@@ -482,7 +484,6 @@ impl TimeControl {
                 // current data range, which is exactly the case we're trying
                 // to preserve. Set the time *after* that runs.
                 self.exit_follow_mode(db, blueprint_ctx);
-                self.start_buffering();
 
                 let state = self
                     .states
@@ -515,6 +516,11 @@ impl TimeControl {
                 } else {
                     NeedsRepaint::No
                 }
+            }
+            TimeControlCommand::Buffer => {
+                self.buffer_next_frame = true;
+
+                NeedsRepaint::No
             }
         }
     }

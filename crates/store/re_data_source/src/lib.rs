@@ -28,14 +28,14 @@ pub use self::data_source::{
 // TODO(#4554): drag-n-drop streaming support
 #[derive(Clone, PartialEq, Eq)]
 pub struct FileContents {
-    pub name: String,
+    pub path: std::path::PathBuf,
     pub bytes: std::sync::Arc<[u8]>,
 }
 
 impl std::fmt::Debug for FileContents {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("FileContents")
-            .field("name", &self.name)
+            .field("path", &self.path)
             .field("bytes", &format_args!("{} bytes", self.bytes.len()))
             .finish()
     }

@@ -153,6 +153,7 @@ pub enum DType {
     Int16,
     Int64,
     String,
+    Language,
 }
 
 /// Name metadata for a feature in the `LeRobot` dataset.
@@ -474,6 +475,15 @@ mod tests {
                 .to_string()
                 .contains("Cannot mix flat strings and nested lists")
         );
+    }
+
+    #[test]
+    fn test_deserialize_feature_with_language_dtype() {
+        // Regression: `"language"` features must deserialize rather than
+        // aborting the whole import (previously an unknown-variant error).
+        let json = r#"{ "dtype": "language", "shape": [1], "names": null }"#;
+        let feature: Feature = serde_json::from_str(json).unwrap();
+        assert_eq!(feature.dtype, DType::Language);
     }
 
     #[test]

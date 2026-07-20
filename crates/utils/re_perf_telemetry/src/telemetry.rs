@@ -191,13 +191,13 @@ where
     }
 
     fn shutdown_with_timeout(
-        &mut self,
+        &self,
         timeout: std::time::Duration,
     ) -> opentelemetry_sdk::error::OTelSdkResult {
         self.inner.shutdown_with_timeout(timeout)
     }
 
-    fn force_flush(&mut self) -> opentelemetry_sdk::error::OTelSdkResult {
+    fn force_flush(&self) -> opentelemetry_sdk::error::OTelSdkResult {
         self.inner.force_flush()
     }
 
@@ -894,13 +894,43 @@ impl Telemetry {
                         }
                     });
 
+                // Drive the periodic export on the Tokio runtime rather than via
+                // `with_periodic_exporter`. That convenience method installs the
+                // thread-based `PeriodicReader`, which spawns a bare std thread and drives
+                // each export with `futures_executor::block_on`. The OTLP HTTP exporter uses
+                // a hyper client whose `tokio::time::timeout` panics ("there is no reactor
+                // running") when polled off a Tokio runtime, and with `panic = "abort"` that
+                // takes down the whole process. The async-runtime reader instead spawns its
+                // ticker via `tokio::spawn` (when the meter provider is built below), so
+                // exports run on the runtime's workers, which have a reactor. The interval
+                // still honors `OTEL_METRIC_EXPORT_INTERVAL` (read by the builder).
+                //
+                // This means the reader requires an ambient Tokio runtime at init time.
+                // Every caller initializes telemetry within one (services via
+                // `#[tokio::main]`, the Python SDK via `runtime.block_on`), but we guard
+                // explicitly: telemetry must never abort the host process. With no runtime
+                // we skip OTLP push metrics and fall back to the always-installed
+                // `SharedManualReader` (the Prometheus scrape path is unaffected).
                 if !metric_endpoint.is_empty() {
-                    // OTLP exporter for push-based metrics
-                    let otlp_exporter = opentelemetry_otlp::MetricExporter::builder()
-                        .with_temporality(opentelemetry_sdk::metrics::Temporality::Cumulative)
-                        .with_http()
-                        .build()?;
-                    builder = builder.with_periodic_exporter(otlp_exporter);
+                    if tokio::runtime::Handle::try_current().is_ok() {
+                        let otlp_exporter = opentelemetry_otlp::MetricExporter::builder()
+                            .with_temporality(opentelemetry_sdk::metrics::Temporality::Cumulative)
+                            .with_http()
+                            .build()?;
+
+                        let reader = opentelemetry_sdk::metrics::periodic_reader_with_async_runtime::PeriodicReader::builder(
+                            otlp_exporter,
+                            opentelemetry_sdk::runtime::Tokio,
+                        )
+                        .build();
+                        builder = builder.with_reader(reader);
+                    } else {
+                        tracing::warn!(
+                            "OTLP metrics endpoint is set but telemetry was initialized outside a Tokio runtime; \
+                             skipping push-based metric export. Metrics are still available via the Prometheus \
+                             scrape listener if one is configured."
+                        );
+                    }
                 }
 
                 // Always add a ManualReader for potential metrics listener

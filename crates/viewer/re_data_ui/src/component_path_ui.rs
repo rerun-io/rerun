@@ -1,3 +1,4 @@
+use re_chunk_store::ChunkTrackingMode;
 use re_log_types::{ComponentPath, Instance};
 use re_ui::UiExt as _;
 use re_viewer_context::{StoreViewContext, UiLayout};
@@ -16,7 +17,12 @@ impl DataUi for ComponentPath {
         let engine = ctx.db.storage_engine();
         let query = ctx.query();
 
-        let results = engine.cache().latest_all(&query, &entity_path, [component]);
+        let results = engine.cache().latest_all(
+            ChunkTrackingMode::ReportTransient,
+            &query,
+            &entity_path,
+            [component],
+        );
 
         if let Some(hits) = results.components.get(&component) {
             LatestAllInstanceResult {
@@ -33,7 +39,7 @@ impl DataUi for ComponentPath {
             if any_missing_chunks && ctx.db.can_fetch_chunks_from_redap() {
                 ui.loading_indicator("Fetching chunks from redap");
             } else if engine.store().entity_has_component_on_timeline(
-                &ctx.timeline_name(),
+                Some(&ctx.timeline_name()),
                 &entity_path,
                 component,
             ) {

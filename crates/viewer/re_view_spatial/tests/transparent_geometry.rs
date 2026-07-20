@@ -17,26 +17,40 @@ fn test_transparent_geometry<A: AsComponents>(
     name: &str,
     archetype_builder: impl Fn(f32, Color32) -> A,
 ) {
+    run_transparency_snapshot_test(name, |test_context| {
+        // Log a bunch of transparent geometry.
+        for (i, color) in [
+            Color32::from_rgba_unmultiplied(255, 128, 128, 20),
+            Color32::from_rgba_unmultiplied(128, 255, 128, 20),
+            Color32::from_rgba_unmultiplied(128, 128, 255, 20),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let y = i as f32 * 2.0 - 2.0;
+            test_context.log_entity(format!("geom_{i}"), |builder| {
+                builder.with_archetype(
+                    RowId::new(),
+                    TimePoint::default(),
+                    &archetype_builder(y, color),
+                )
+            });
+        }
+    });
+}
+
+/// Logs transparent geometry via `log`, then snapshots the scene from two opposite camera
+/// orientations to make sure back-to-front sorting works regardless of view direction.
+fn run_transparency_snapshot_test(name: &str, log: impl Fn(&mut TestContext)) {
     let mut test_context = TestContext::new_with_view_class::<SpatialView3D>();
 
-    // Log a bunch of transparent meshes.
-    for (i, color) in [
-        Color32::from_rgba_unmultiplied(255, 128, 128, 20),
-        Color32::from_rgba_unmultiplied(128, 255, 128, 20),
-        Color32::from_rgba_unmultiplied(128, 128, 255, 20),
-    ]
-    .into_iter()
-    .enumerate()
-    {
-        let y = i as f32 * 2.0 - 2.0;
-        test_context.log_entity(format!("geom_{i}"), |builder| {
-            builder.with_archetype(
-                RowId::new(),
-                TimePoint::default(),
-                &archetype_builder(y, color),
-            )
-        });
-    }
+    // Point cloud transparency is opt-in; enable it so the points test exercises it.
+    test_context
+        .app_options
+        .experimental
+        .point_cloud_transparency = true;
+
+    log(&mut test_context);
 
     let view_id = test_context.setup_viewport_blueprint(|ctx, blueprint| {
         let view_blueprint =
@@ -157,5 +171,38 @@ pub fn test_transparent_capsules3d() {
             .with_translations([[0.0, y, 0.0]])
             .with_fill_mode(FillMode::Solid)
             .with_colors([color])
+    });
+}
+
+#[test]
+pub fn test_transparent_points3d() {
+    // A single point cloud (one batch) with several large, heavily-overlapping transparent points
+    // stacked along the axis the camera flips around. This exercises the per-cloud back-to-front
+    // sorting: which color ends up on top must depend on the view direction.
+    run_transparency_snapshot_test("points3d", |test_context| {
+        let positions = [
+            [0.0, -1.0, 0.0],
+            [0.0, -0.5, 0.0],
+            [0.0, 0.0, 0.0],
+            [0.0, 0.5, 0.0],
+            [0.0, 1.0, 0.0],
+        ];
+        let colors = [
+            Color32::from_rgba_unmultiplied(255, 64, 64, 80),
+            Color32::from_rgba_unmultiplied(64, 255, 64, 80),
+            Color32::from_rgba_unmultiplied(64, 64, 255, 80),
+            Color32::from_rgba_unmultiplied(255, 255, 64, 80),
+            Color32::from_rgba_unmultiplied(64, 255, 255, 80),
+        ];
+
+        test_context.log_entity("points", |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                TimePoint::default(),
+                &archetypes::Points3D::new(positions)
+                    .with_colors(colors)
+                    .with_radii([0.8]),
+            )
+        });
     });
 }

@@ -42,6 +42,8 @@ service RerunCloudService {
 
   // --- Catalog ---
 
+  rpc WatchEvents(WatchEventsRequest) returns (stream WatchEventsResponse) {}
+
   rpc FindEntries(FindEntriesRequest) returns (FindEntriesResponse) {}
 
   rpc DeleteEntry(DeleteEntryRequest) returns (DeleteEntryResponse) {}
@@ -74,11 +76,8 @@ service RerunCloudService {
 
   // Unregisters segments and layers from the Dataset.
   //
-  // Excluding IO errors, this will always succeed as long the target dataset exists.
-  // Corollary: unregistering data that doesn't exist is a no-op.
-  //
-  // This always returns a subset of the data from `ScanDatasetManifest`, and therefore the data will
-  // also follow the schema returned by `GetDatasetManifestSchema`.
+  // This is an asynchronous operation, and returns a list of task ids.
+  // The response is a stream only for historical reasons.
   //
   // This endpoint requires the standard dataset headers.
   rpc UnregisterFromDataset(UnregisterFromDatasetRequest) returns (stream UnregisterFromDatasetResponse) {}
@@ -141,6 +140,14 @@ service RerunCloudService {
   // identical Sorbet schema hashes too).
   // That means it is always semantically valid to concatenate the data from these RRD manifests.
   rpc GetRrdManifest(GetRrdManifestRequest) returns (stream GetRrdManifestResponse) {}
+
+  // Get the assets that apply to this dataset.
+  //
+  // Returns the dataset's asset dataset and the asset segments within it.
+  // The asset segment ids may be spread over multiple responses, at the discretion of the server.
+  //
+  // This endpoint requires the standard dataset headers.
+  rpc GetAssetsForSegment(GetAssetsForSegmentRequest) returns (stream GetAssetsForSegmentResponse) {}
 
   /* Indexing */
 
@@ -281,6 +288,44 @@ message DoBandwidthTestResponse {
   bytes payload = 1;
 }
 
+// WatchEvents
+
+message WatchEventsRequest {
+  // Which kinds of events to subscribe to.
+  //
+  // If empty, the server subscribes to all event kinds.
+  repeated EventKind kinds = 1;
+}
+
+// Selects a category of events to subscribe to in `WatchEvents`.
+message EventKind {
+  oneof kind {
+    // Catalog entry lifecycle events (created, deleted).
+    EntryEvents entry = 1;
+
+    // TODO(RR-4853): RegistrationEvents registration = 2;
+  }
+}
+
+// Subscribe to all catalog entry lifecycle events.
+message EntryEvents {}
+
+message WatchEventsResponse {
+  oneof kind {
+    EntryCreatedEvent entry_created = 1;
+    EntryDeletedEvent entry_deleted = 2;
+
+    // TODO(RR-4853): Add register events here too.
+  }
+}
+
+message EntryCreatedEvent {
+  rerun.common.v1alpha1.EntryId id = 1;
+}
+message EntryDeletedEvent {
+  rerun.common.v1alpha1.EntryId id = 1;
+}
+
 // Application level error - used as `details` in the `google.rpc.Status` message
 message Error {
   // error code
@@ -327,29 +372,14 @@ message DataSource {
   // What kind of data is it (e.g. rrd, mcap, Lance, etc)?
   DataSourceKind typ = 2;
 
-  // ⚠️ UNSTABLE: Is this an asset layer (shared across all segments) or a segment layer (one recording per segment)?
-  // Defaults to LAYER_CLASS_SEGMENT if unspecified.
-  //
-  // TODO(RR-4797): remove unstable-warning
-  LayerClass layer_class = 5;
+  // Removed experimental field.
+  reserved 5;
+  reserved "layer_class";
 }
 
 enum DataSourceKind {
   DATA_SOURCE_KIND_UNSPECIFIED = 0;
   DATA_SOURCE_KIND_RRD = 1;
-}
-
-// ⚠️ UNSTABLE: Describes the class of a dataset layer.
-//
-// TODO(RR-4797): remove unstable-warning.
-enum LayerClass {
-  LAYER_CLASS_UNSPECIFIED = 0;
-
-  // Asset layer: a single source (recording) shared across all segments in the layer.
-  LAYER_CLASS_ASSET = 1;
-
-  // Segment layer: one (or zero) sources (recordings) per segment in the layer.
-  LAYER_CLASS_SEGMENT = 2;
 }
 
 message RegisterWithDatasetRequest {
@@ -390,11 +420,11 @@ message UnregisterFromDatasetRequest {
 }
 
 message UnregisterFromDatasetResponse {
-  // This contains all the information about the segments and layers that were actually removed.
-  //
-  // This dataframe is always guaranteed to be a subset of the one found in `ScanDatasetManifestResponse`.
-  // They share the same semantics, schemas, etc.
+  // This dataframe is always empty. It remains here for format compatibility with older SDKs.
+  // TODO(ilya): remove this once the clients are all new enough
   rerun.common.v1alpha1.DataframePart data = 1;
+  // Id of the task that performs the unregistration. The data is not deleted until the task completes.
+  rerun.common.v1alpha1.TaskId task_id = 2;
 }
 
 message WriteChunksRequest {
@@ -422,6 +452,16 @@ message ScanSegmentTableRequest {
   // If a projected column does not exist, or is projected more than once, the `ScanSegmentTable` call will fail with
   // an `InvalidArgument` error.
   repeated string columns = 1;
+
+  // An optional best-effort filter hint, expressed as a SQL boolean expression over the
+  // segment-table columns (e.g. `rerun_segment_id = 'abc'`).
+  //
+  // If empty, no filter hint is provided.
+  // Column names use the public (segment) terminology.
+  // Servers may apply this filter, ignore it, or reject malformed/unsupported filters with an
+  // `InvalidArgument` error.
+  // Clients must re-apply filters locally if correctness depends on them.
+  string sql_filter = 2;
 }
 
 message ScanSegmentTableResponse {
@@ -446,6 +486,16 @@ message ScanDatasetManifestRequest {
   // If a projected column does not exist, or is projected more than once, the `ScanDatasetManifest` call will fail with
   // an `InvalidArgument` error.
   repeated string columns = 3;
+
+  // An optional best-effort filter hint, expressed as a SQL boolean expression over the
+  // dataset-manifest columns (e.g. `rerun_segment_id = 'abc'`).
+  //
+  // If empty, no filter hint is provided.
+  // Column names use the public (segment) terminology.
+  // Servers may apply this filter, ignore it, or reject malformed/unsupported filters with an
+  // `InvalidArgument` error.
+  // Clients must re-apply filters locally if correctness depends on them.
+  string sql_filter = 4;
 }
 
 message ScanDatasetManifestResponse {
@@ -468,6 +518,16 @@ message GetRrdManifestRequest {
 
 message GetRrdManifestResponse {
   rerun.log_msg.v1alpha1.RrdManifest rrd_manifest = 1;
+}
+
+message GetAssetsForSegmentRequest {}
+
+message GetAssetsForSegmentResponse {
+  // The asset dataset. Set on every response in the stream.
+  rerun.common.v1alpha1.EntryId assets_entry = 1;
+
+  // The segments of the asset dataset. Concatenate across all responses in the stream.
+  repeated rerun.common.v1alpha1.SegmentId asset_segment_ids = 2;
 }
 
 /* Indexing */
@@ -986,7 +1046,18 @@ message UpdateTableEntryResponse {
 message EntryFilter {
   optional rerun.common.v1alpha1.EntryId id = 1;
   optional string name = 2;
+
+  // Deprecated: use `entry_kinds` instead. Ignored by servers when `entry_kinds` is non-empty.
   optional EntryKind entry_kind = 3;
+
+  // The entry kinds to include. If non-empty, the server returns exactly entries of these kinds
+  // (ENTRY_KIND_UNSPECIFIED is rejected with an `invalid_argument` error).
+  //
+  // It is recommended to always explicitly ask for a set of entry kinds.
+  // When unset the server returns a default set of kinds to ensure backwards compatibility with
+  // old clients that did not set this. This behavior may be dropped in future releases.
+  // (condition: after rerun-sdk 0.34 is out of its support cycle)
+  repeated EntryKind entry_kinds = 4;
 }
 
 // What type of entry. This has strong implication on which APIs are available for this entry.
@@ -1004,6 +1075,8 @@ enum EntryKind {
   ENTRY_KIND_TABLE_VIEW = 4;
 
   ENTRY_KIND_BLUEPRINT_DATASET = 5;
+
+  ENTRY_KIND_ASSET_DATASET = 6;
 }
 
 // Minimal info about an Entry for high-level catalog summary
@@ -1038,6 +1111,10 @@ message DatasetDetails {
   // The segment of the blueprint dataset corresponding to the default blueprint for this dataset's
   // segment table (if any).
   optional rerun.common.v1alpha1.SegmentId default_segment_table_blueprint_segment = 6;
+
+  // The asset dataset associated with this dataset (if any).
+  // This association is owned for lifecycle purposes: deleting this dataset also deletes the associated asset dataset.
+  optional rerun.common.v1alpha1.EntryId asset_dataset = 7;
 
   reserved 4;
   reserved "default_blueprint";

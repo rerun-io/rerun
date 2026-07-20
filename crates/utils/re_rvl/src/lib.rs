@@ -11,6 +11,13 @@ use thiserror::Error;
 const CONFIG_HEADER_SIZE: usize = size_of::<i32>() + size_of::<[f32; 2]>();
 const RESOLUTION_HEADER_SIZE: usize = size_of::<[u32; 2]>();
 
+/// Maximum number of pixels we're willing to decode (64 Mpx, 128 MiB as `u16`).
+///
+/// RVL has no magic bytes, so garbage data (e.g. a mislabeled blob) can parse as a huge
+/// resolution and make the decoder attempt an absurd allocation. Real payloads are camera
+/// images, which are orders of magnitude smaller than this.
+const MAX_DECODED_PIXELS: u64 = 1 << 26;
+
 /// Metadata extracted from a ROS2 `compressedDepth` RVL payload.
 ///
 /// We haven't found any other documentation on this other than the implementation itself.
@@ -38,6 +45,17 @@ impl RosRvlMetadata {
         self.num_pixels
     }
 
+    /// Whether the payload carries inverse-depth quantization parameters,
+    /// meaning it decodes to floating point depth in meters rather than raw `u16` values.
+    ///
+    /// ROS2's `compressed_depth_image_transport` sets the quantization parameters only for
+    /// `32FC1` images; for `16UC1` they are zero.
+    /// <https://github.com/ros-perception/image_transport_plugins/blob/8aa39fe13a812273066bbef9b3c330508bd21618/compressed_depth_image_transport/src/codec.cpp#L263>
+    #[inline]
+    pub fn has_quantization(&self) -> bool {
+        self.depth_quant_a != 0.0
+    }
+
     /// Parses RVL metadata from the start of a RVL payload.
     pub fn parse(data: &[u8]) -> Result<Self, RvlDecodeError> {
         if data.len() <= CONFIG_HEADER_SIZE {
@@ -62,7 +80,11 @@ impl RosRvlMetadata {
         let payload_offset = CONFIG_HEADER_SIZE + RESOLUTION_HEADER_SIZE;
         let num_pixels = (width as u64)
             .checked_mul(height as u64)
-            .ok_or(RvlDecodeError::ResolutionOverflow)? as usize;
+            .ok_or(RvlDecodeError::ResolutionOverflow)?;
+        if num_pixels > MAX_DECODED_PIXELS {
+            return Err(RvlDecodeError::ResolutionTooLarge { width, height });
+        }
+        let num_pixels = num_pixels as usize;
 
         if data.len() < payload_offset {
             return Err(RvlDecodeError::PayloadLengthMismatch { width, height });
@@ -92,6 +114,9 @@ pub enum RvlDecodeError {
 
     #[error("RVL image resolution would overflow")]
     ResolutionOverflow,
+
+    #[error("RVL payload reports an implausibly large resolution {width}x{height}")]
+    ResolutionTooLarge { width: u32, height: u32 },
 
     #[error("RVL payload shorter than expected for resolution {width}x{height}")]
     PayloadLengthMismatch { width: u32, height: u32 },
@@ -133,12 +158,8 @@ pub fn decode_rvl_with_quantization(
     let disparity = decode_rvl_without_quantization(data, metadata)?;
     let mut depth = Vec::with_capacity(disparity.len());
 
-    // ROS2's compressed_depth_image_transport sets inverse depth quantization parameters only for 32FC1 images.
-    // For 16UC1, depth_quant_a/b are zero and zeros in the disparity map represent zero depth.
-    // https://github.com/ros-perception/image_transport_plugins/blob/8aa39fe13a812273066bbef9b3c330508bd21618/compressed_depth_image_transport/src/codec.cpp#L263
-    let has_quantization = metadata.depth_quant_a != 0.0;
-
-    if has_quantization {
+    // For 16UC1 (no quantization), zeros in the disparity map represent zero depth.
+    if metadata.has_quantization() {
         for value in disparity {
             if value == 0 {
                 depth.push(f32::NAN);
@@ -280,6 +301,51 @@ mod tests {
         let metadata = RosRvlMetadata::parse(&data).unwrap();
         let decoded = decode_rvl_without_quantization(&data, &metadata).unwrap();
         assert_eq!(decoded, disparity);
+    }
+
+    /// RVL has no magic bytes, so garbage data can parse as a huge resolution;
+    /// this must be rejected instead of making the decoder attempt an absurd allocation.
+    #[test]
+    fn rejects_implausibly_large_resolution() {
+        let disparity = [0u16; 4];
+        let data = build_depth_message([2, 2], &disparity, (0.0, 0.0));
+        let resolution_offset = CONFIG_HEADER_SIZE;
+
+        // An absurd width must be rejected.
+        let mut absurd = data.clone();
+        absurd[resolution_offset..resolution_offset + 4].copy_from_slice(&u32::MAX.to_le_bytes());
+        assert!(matches!(
+            RosRvlMetadata::parse(&absurd),
+            Err(RvlDecodeError::ResolutionTooLarge { .. })
+        ));
+
+        // A large-but-sane single axis is fine — the limit is on the total pixel count.
+        // (The ROS codec stores rows/columns as uint32, so axes may exceed u16.)
+        let mut wide = data;
+        wide[resolution_offset..resolution_offset + 4].copy_from_slice(&100_000u32.to_le_bytes());
+        wide[resolution_offset + 4..resolution_offset + 8].copy_from_slice(&1u32.to_le_bytes());
+        let metadata = RosRvlMetadata::parse(&wide).unwrap();
+        assert_eq!(metadata.width, 100_000);
+        assert_eq!(metadata.num_pixels(), 100_000);
+    }
+
+    #[test]
+    fn detects_quantization() {
+        let disparity = [5u16, 0, 10];
+
+        let quantized = build_depth_message([3, 1], &disparity, (10.0, 1.0));
+        assert!(
+            RosRvlMetadata::parse(&quantized)
+                .unwrap()
+                .has_quantization()
+        );
+
+        let unquantized = build_depth_message([3, 1], &disparity, (0.0, 0.0));
+        assert!(
+            !RosRvlMetadata::parse(&unquantized)
+                .unwrap()
+                .has_quantization()
+        );
     }
 
     #[test]

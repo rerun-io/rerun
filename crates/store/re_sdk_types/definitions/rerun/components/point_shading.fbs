@@ -4,9 +4,7 @@ namespace rerun.components;
 // ---
 
 /// Defines how points are shaded.
-enum PointShading: ubyte (
-  "attr.docs.unreleased"
-) {
+enum PointShading: ubyte {
   /// Invalid value. Won't show up in generated types.
   Invalid = 0,
 

@@ -12,9 +12,8 @@ use re_ui::menu::menu_style;
 use re_ui::notifications::NotificationUi;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_ui::{
-    ComboItem, ComboItemHeader, CommandPalette, CommandPaletteAction, CommandPaletteUrl,
-    ContextExt as _, DesignTokens, Help, IconText, OnResponseExt as _, UICommand, UICommandSender,
-    UiExt as _, WindowFrameConfig, icons, list_item,
+    ComboItem, ComboItemHeader, ContextExt as _, DesignTokens, Help, IconText, OnResponseExt as _,
+    UICommand, UICommandSender, UiExt as _, WindowFrameConfig, icons, list_item,
 };
 
 /// Sender that queues up the execution of a command.
@@ -99,8 +98,6 @@ pub struct ExampleApp {
 
     filter_state: FilterState,
 
-    cmd_palette: CommandPalette,
-
     /// Commands to run at the end of the frame.
     pub command_sender: CommandSender,
     command_receiver: CommandReceiver,
@@ -135,7 +132,6 @@ impl ExampleApp {
 
             filter_state: FilterState::default(),
 
-            cmd_palette: CommandPalette::default(),
             command_sender,
             command_receiver,
             latest_cmd: Default::default(),
@@ -172,11 +168,14 @@ impl eframe::App for ExampleApp {
 
         let window_frame = self.window_frame_config(ui.ctx());
 
+        let mut show_bottom_panel = self.show_bottom_panel;
         egui::Panel::bottom("bottom_panel")
             .frame(ui.tokens().bottom_panel_frame(window_frame))
-            .show_animated_inside(ui, self.show_bottom_panel, |ui| {
+            .show_collapsible(ui, &mut show_bottom_panel, |ui| {
                 ui.strong("Bottom panel");
             });
+        // `show_collapsible` flips the bool when the user drags the panel closed/open:
+        self.show_bottom_panel = show_bottom_panel;
 
         // LEFT PANEL
 
@@ -316,13 +315,14 @@ impl eframe::App for ExampleApp {
         };
 
         // UI code
+        let mut show_left_panel = self.show_left_panel;
         egui::Panel::left("left_panel")
             .default_size(500.0)
             .frame(egui::Frame {
                 fill: ui.global_style().visuals.panel_fill,
                 ..Default::default()
             })
-            .show_animated_inside(ui, self.show_left_panel, |ui| {
+            .show_collapsible(ui, &mut show_left_panel, |ui| {
                 let y_spacing = ui.spacing().item_spacing.y;
 
                 list_item::list_item_scope(ui, "left_panel", |ui| {
@@ -334,7 +334,7 @@ impl eframe::App for ExampleApp {
                             inner_margin: egui::Margin::symmetric(tokens.view_padding(), 0),
                             ..Default::default()
                         })
-                        .show_inside(ui, left_panel_top_section_ui);
+                        .show(ui, left_panel_top_section_ui);
                     ui.selectable_label_with_icon(
                         &icons::ADD,
                         "foo/bar/baz",
@@ -353,6 +353,8 @@ impl eframe::App for ExampleApp {
                         });
                 });
             });
+        // `show_collapsible` flips the bool when the user drags the panel closed/open:
+        self.show_left_panel = show_left_panel;
 
         // RIGHT PANEL
         //
@@ -371,33 +373,28 @@ impl eframe::App for ExampleApp {
             ..Default::default()
         };
 
+        let mut show_right_panel = self.show_right_panel;
         egui::Panel::right("right_panel")
             .frame(panel_frame)
             .min_size(0.0)
-            .show_animated_inside(ui, self.show_right_panel, |ui| {
+            .show_collapsible(ui, &mut show_right_panel, |ui| {
                 ui.spacing_mut().item_spacing.y = 0.0;
                 ScrollArea::vertical().show(ui, |ui| {
                     self.right_panel.ui(ui);
                 });
             });
+        // `show_collapsible` flips the bool when the user drags the panel closed/open:
+        self.show_right_panel = show_right_panel;
 
         egui::CentralPanel::default()
             .frame(egui::Frame {
                 fill: ui.global_style().visuals.panel_fill,
                 ..Default::default()
             })
-            .show_inside(ui, |ui| {
+            .show(ui, |ui| {
                 tabs_ui(ui, &mut self.tree);
             });
 
-        if let Some(cmd) = self.cmd_palette.show(ui, &parse_url) {
-            match cmd {
-                CommandPaletteAction::UiCommand(cmd) => self.command_sender.send_ui(cmd),
-                CommandPaletteAction::OpenUrl(url) => {
-                    ui.open_url(egui::OpenUrl::new_tab(url.url));
-                }
-            }
-        }
         if let Some(cmd) = re_ui::UICommand::listen_for_kb_shortcut(ui) {
             self.command_sender.send_ui(cmd);
         }
@@ -406,7 +403,6 @@ impl eframe::App for ExampleApp {
             self.latest_cmd = cmd.text().to_owned();
 
             match cmd {
-                UICommand::ToggleCommandPalette => self.cmd_palette.toggle(),
                 UICommand::ZoomIn => {
                     let mut zoom_factor = ui.zoom_factor();
                     zoom_factor += 0.1;
@@ -424,13 +420,6 @@ impl eframe::App for ExampleApp {
             }
         }
     }
-}
-
-fn parse_url(url: &str) -> Option<CommandPaletteUrl> {
-    url.starts_with("http").then(|| CommandPaletteUrl {
-        url: url.to_owned(),
-        command_text: "Open http(s) URL".to_owned(),
-    })
 }
 
 impl ExampleApp {
@@ -454,7 +443,7 @@ impl ExampleApp {
         egui::Panel::top("top_bar")
             .frame(ui.tokens().top_panel_frame(window_frame))
             .exact_size(top_bar_style.height)
-            .show_inside(ui, |ui| {
+            .show(ui, |ui| {
                 #[cfg(not(target_arch = "wasm32"))]
                 if !self.use_custom_decorations {
                     // Interact with background first, so that buttons in the top bar gets input priority
@@ -519,8 +508,6 @@ impl ExampleApp {
 }
 
 fn file_menu(ui: &mut egui::Ui, command_sender: &CommandSender) {
-    UICommand::SaveRecording.menu_button_ui(ui, command_sender);
-    UICommand::SaveRecordingSelection.menu_button_ui(ui, command_sender);
     UICommand::Open.menu_button_ui(ui, command_sender);
     UICommand::Quit.menu_button_ui(ui, command_sender);
 }

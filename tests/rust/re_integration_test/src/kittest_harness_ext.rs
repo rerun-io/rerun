@@ -174,6 +174,11 @@ pub trait HarnessExt<'h> {
         self.section("_streams_tree")
     }
 
+    // The viewer section whose root node is the recording panel (the "Sources" panel).
+    fn recording_panel<'a>(&'a mut self) -> ViewerSection<'a, 'h> {
+        self.section("_recording_panel")
+    }
+
     // The viewer section whose root node is the selection panel.
     fn selection_panel<'a>(&'a mut self) -> ViewerSection<'a, 'h> {
         self.section("_selection_panel")

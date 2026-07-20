@@ -19,17 +19,19 @@ use re_sdk_types::components::Timestamp;
 
 use crate::{
     ActiveStoreContext, BlueprintUndoState, RecordingOrTable, Route, StorageContext, StoreCache,
-    TableStore, TableStores, ViewClassRegistry,
+    TableStore, TableStores, TimeControl, ViewClassRegistry,
 };
 
 // ---
 
 /// Per-frame usage tracking for an [`EntityDb`].
 ///
-/// Tracks two states giving context to how it's used:
+/// Tracks a few states giving context to how it's used:
 /// - `was_preview`: If the entity db was used the render a preview last frame.
 /// - `opened`: If the entity db was explicitly opened by the user and should be
 ///   shown in the recording list. This is not tracked per frame.
+/// - `blueprint_pending`: If the recording was streamed without its server blueprint
+///   (as previews are), and we still owe a blueprint fetch should it be opened for real.
 pub struct EntityDbUsages {
     /// Whether this store was rendered as a preview cell in the previous frame.
     prev_preview: bool,
@@ -42,6 +44,13 @@ pub struct EntityDbUsages {
     /// Unlike the frame-based preview flag, this persists across frames
     /// and is not reset by [`Self::update`].
     pub opened: bool,
+
+    /// True if this recording was streamed without its server blueprint, and we
+    /// haven't fetched that blueprint since.
+    ///
+    /// Previews skip the blueprint download, so a recording that was only ever a
+    /// preview carries this debt until it is opened for real.
+    pub blueprint_pending: bool,
 }
 
 impl Clone for EntityDbUsages {
@@ -50,6 +59,7 @@ impl Clone for EntityDbUsages {
             prev_preview: self.prev_preview,
             new_preview: std::sync::atomic::AtomicBool::new(false),
             opened: self.opened,
+            blueprint_pending: self.blueprint_pending,
         }
     }
 }
@@ -60,6 +70,7 @@ impl EntityDbUsages {
             prev_preview: false,
             new_preview: std::sync::atomic::AtomicBool::new(false),
             opened: false,
+            blueprint_pending: false,
         }
     }
 
@@ -180,6 +191,7 @@ pub struct BlueprintPersistence {
 ///
 /// This is per [`StoreId`], which could be either a recording or a blueprint.
 pub struct StoreStats {
+    pub store_source: Option<LogSource>,
     pub store_config: ChunkStoreConfig,
     pub store_stats: ChunkStoreStats,
 
@@ -314,6 +326,21 @@ impl StoreHub {
         self.store_usages.get(store_id).is_some_and(|u| u.opened)
     }
 
+    /// Set or clear the [`EntityDbUsages::blueprint_pending`] flag for a store.
+    pub fn set_blueprint_pending(&mut self, store_id: &StoreId, pending: bool) {
+        self.store_usages
+            .entry(store_id.clone())
+            .or_insert_with(EntityDbUsages::new)
+            .blueprint_pending = pending;
+    }
+
+    /// Whether this recording was streamed without its server blueprint and still owes a fetch.
+    pub fn is_blueprint_pending(&self, store_id: &StoreId) -> bool {
+        self.store_usages
+            .get(store_id)
+            .is_some_and(|u| u.blueprint_pending)
+    }
+
     // ---------------------
     // Accessors
 
@@ -336,10 +363,15 @@ impl StoreHub {
     ///
     /// When returned, all of the references to blueprints and recordings will
     /// have a matching [`ApplicationId`].
-    pub fn read_context(
-        &mut self,
+    ///
+    /// The caller must provide the `active_time_ctrl` for the route's recording (if any).
+    /// It's only used to populate [`ActiveStoreContext::time_ctrl`] when a context is returned;
+    /// for routes without a recording it's ignored, so passing a default is fine there.
+    pub fn read_context<'a>(
+        &'a mut self,
         route: &Route,
-    ) -> (StorageContext<'_>, Option<ActiveStoreContext<'_>>) {
+        active_time_ctrl: &'a TimeControl,
+    ) -> (StorageContext<'a>, Option<ActiveStoreContext<'a>>) {
         // Used as stand-ins within the `Some` branch when only parts of a
         // context are available (e.g. we have a blueprint but no recording).
         static EMPTY_RECORDING: LazyLock<EntityDb> =
@@ -356,6 +388,14 @@ impl StoreHub {
             let Some(app_id) = route.app_id() else {
                 break 'ctx None;
             };
+
+            // The welcome/example screen has an app-id and a blueprint, but no
+            // real recording. It must never surface as an active store context,
+            // or downstream UI (menus, panels, …) will treat it as if a
+            // recording is active.
+            if app_id == Self::welcome_screen_app_id() {
+                break 'ctx None;
+            }
 
             self.ensure_active_blueprint_for_app(app_id);
             let should_enable_heuristics = self.should_enable_heuristics_by_app_id.remove(app_id);
@@ -391,6 +431,7 @@ impl StoreHub {
                 default_blueprint,
                 recording: recording.unwrap_or(&EMPTY_RECORDING),
                 caches,
+                time_ctrl: active_time_ctrl,
                 should_enable_heuristics,
             })
         };
@@ -608,8 +649,7 @@ impl StoreHub {
     ///
     /// Ignores any blueprint stores.
     ///
-    /// If the data source is a grpc uri, it will ignore any fragments.
-    /// If the data source is a http url, it will ignore the follow flag.
+    /// If the data source is a grpc or HTTP URI, it will ignore any fragments.
     pub fn find_recording_store_by_source(
         &self,
         data_source: &re_log_channel::LogSource,
@@ -718,7 +758,6 @@ impl StoreHub {
     /// Ensure caches and blueprints are set up for the given recording.
     ///
     /// Call this when a recording becomes active (e.g. via [`Route::LocalRecording`]).
-    // TODO(RR-3033): get rid of this?
     pub fn load_blueprint_and_caches(
         &mut self,
         recording_id: &StoreId,
@@ -1373,9 +1412,11 @@ impl StoreHub {
                 .get(store_id)
                 .map(|cache| cache.vram_usage())
                 .unwrap_or_default();
+
             store_stats.insert(
                 store_id.clone(),
                 StoreStats {
+                    store_source: store.data_source.clone(),
                     store_config: engine.store().config().clone(),
                     store_stats: engine.store().stats(),
                     query_cache_stats: engine.cache().stats(),

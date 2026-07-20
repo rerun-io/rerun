@@ -13,7 +13,7 @@ use re_log_types::{
 use re_ui::{ContextExt as _, text_edit::autocomplete_text_edit};
 use re_ui::{UiExt as _, list_item};
 use re_viewer_context::external::re_entity_db::EntityDb;
-use re_viewer_context::{ActiveStoreContext, RedapEntryKind, Route, StorageContext};
+use re_viewer_context::{Route, StorageContext, SystemCommand, SystemCommandSender as _};
 
 use crate::chunk_list_mode::{ChunkListMode, ChunkListQueryMode};
 use crate::chunk_ui::ChunkUi;
@@ -149,18 +149,6 @@ impl Default for DatastoreUi {
     }
 }
 
-pub struct DatastoreUiResult {
-    pub keep_open: bool,
-
-    /// The effective recording shown by the chunk browser.
-    ///
-    /// This may differ from the route's input recording because the chunk browser
-    /// can switch recordings locally via its recording selector.
-    pub recording_id: Option<StoreId>,
-
-    pub selected_chunk: Option<ChunkId>,
-}
-
 impl DatastoreUi {
     fn reset_ui_state(&mut self) {
         self.store_kind = StoreKind::Recording;
@@ -178,17 +166,15 @@ impl DatastoreUi {
     /// Syncs the local focused chunk UI with the chunk selected in navigation.
     ///
     /// Falls back to the chunk list if that chunk is no longer available.
-    fn sync_focused_chunk(&mut self, chunk_store: &ChunkStore, selected_chunk: Option<ChunkId>) {
+    fn sync_focused_chunk(&mut self, chunk_store: &ChunkStore, selected_chunk: Option<&ChunkId>) {
         match selected_chunk {
             Some(selected_chunk)
                 if self
                     .focused_chunk
                     .as_ref()
-                    .is_some_and(|chunk_ui| chunk_ui.chunk_id() == selected_chunk) => {}
+                    .is_some_and(|chunk_ui| &chunk_ui.chunk_id() == selected_chunk) => {}
             Some(selected_chunk) => {
-                self.focused_chunk = chunk_store
-                    .physical_chunk(&selected_chunk)
-                    .map(ChunkUi::new);
+                self.focused_chunk = chunk_store.physical_chunk(selected_chunk).map(ChunkUi::new);
             }
             None => {
                 self.focused_chunk = None;
@@ -202,79 +188,54 @@ impl DatastoreUi {
     /// or `true` if the datastore UI should remain open.
     pub fn ui(
         &mut self,
-        ctx: Option<&ActiveStoreContext<'_>>,
-        storage_context: &StorageContext<'_>,
         ui: &mut egui::Ui,
+        storage_context: &StorageContext<'_>,
         timestamp_format: TimestampFormat,
-        selected_chunk: Option<ChunkId>,
-        previous_route: &Route,
-    ) -> DatastoreUiResult {
+        selected_store_id: Option<&StoreId>,
+        selected_chunk: Option<&ChunkId>,
+        return_route: &Route,
+        command_sender: &re_viewer_context::CommandSender,
+    ) {
         let mut datastore_ui_active = true;
-        let route_recording_id = ctx.map(|ctx| ctx.recording.store_id().clone());
 
-        // If we just came from a displayed store, show it!
-        let previous_recording_id = match previous_route {
-            Route::LocalRecording { recording_id } => Some(recording_id),
-            Route::RedapEntry {
-                origin,
-                kind: RedapEntryKind::Entry(entry_id),
-            } => storage_context
-                .bundle
-                .recordings()
-                .find(|db| {
-                    db.redap_uri()
-                        .is_some_and(|uri| &uri.origin == origin && uri.dataset_id == entry_id.id)
-                })
-                .map(|db| db.store_id()),
-            _ => None,
+        let storage_engine = if let Some(selected_store_id) = selected_store_id {
+            let store = storage_context.bundle.get(selected_store_id);
+            if let Some(store) = store {
+                match store.store_kind() {
+                    StoreKind::Recording => {
+                        self.store_kind = StoreKind::Recording;
+                        self.selected_recording_id = Some(selected_store_id.clone());
+                    }
+                    StoreKind::Blueprint => {
+                        self.store_kind = StoreKind::Blueprint;
+                        self.selected_blueprint_id = Some(selected_store_id.clone());
+                    }
+                }
+
+                self.sync_focused_chunk(store.storage_engine().store(), selected_chunk);
+                Some(store.storage_engine())
+            } else {
+                re_log::debug_warn_once!(
+                    "Selected recording not found in storage context: {selected_store_id:?}. \
+                        This can happen if the recording was removed from the storage context, or if the chunk browser state got out of sync with the navigation route."
+                );
+                self.focused_chunk = None;
+                None
+            }
+        } else {
+            None
         };
-        if let Some(rec_id) = previous_recording_id {
-            self.selected_blueprint_id = Some(rec_id.clone());
-            self.store_kind = StoreKind::Recording;
-        }
-
-        let selected_store_id = match self.store_kind {
-            StoreKind::Recording => self.selected_recording_id.clone(),
-            StoreKind::Blueprint => self.selected_blueprint_id.clone(),
-        };
-
-        let Some(selected_store_id) = selected_store_id else {
-            ui.label("No recording selected");
-            return DatastoreUiResult {
-                keep_open: true,
-                recording_id: None,
-                selected_chunk: None,
-            };
-        };
-
-        let Some(storage_engine) = storage_context
-            .bundle
-            .get(&selected_store_id)
-            .map(|rec| rec.storage_engine())
-        else {
-            re_log::debug_warn_once!(
-                "Selected recording not found in storage context: {selected_store_id:?}. \
-                    This can happen if the recording was removed from the storage context, or if the chunk browser state got out of sync with the navigation route. \
-                    Route recording ID: {:?}",
-                route_recording_id,
-            );
-            return DatastoreUiResult {
-                keep_open: true,
-                recording_id: None,
-                selected_chunk: None,
-            };
-        };
-        let chunk_store = storage_engine.store();
-
-        self.sync_focused_chunk(chunk_store, selected_chunk);
-        let mut selected_chunk = self.focused_chunk.as_ref().map(ChunkUi::chunk_id);
 
         egui::Frame {
             inner_margin: egui::Margin::same(5),
             ..Default::default()
         }
         .show(ui, |ui| {
-            let should_close_datastore_ui = if let Some(focused_chunk) = &mut self.focused_chunk {
+            let chunk_store = storage_engine.as_ref().map(|engine| engine.store());
+
+            let should_close_datastore_ui = if let (Some(chunk_store), Some(focused_chunk)) =
+                (chunk_store, self.focused_chunk.as_mut())
+            {
                 focused_chunk.ui(
                     ui,
                     timestamp_format,
@@ -288,7 +249,6 @@ impl DatastoreUi {
                     storage_context,
                     &mut datastore_ui_active,
                     timestamp_format,
-                    &mut selected_chunk,
                 );
 
                 false
@@ -297,50 +257,65 @@ impl DatastoreUi {
             if should_close_datastore_ui {
                 datastore_ui_active = false;
                 self.selected_recording_id = None;
+                self.selected_blueprint_id = None;
                 self.focused_chunk = None;
-                selected_chunk = None;
             }
         });
 
         if ui.input(|i| i.key_pressed(egui::Key::Escape)) && !egui::Popup::is_any_open(ui.ctx()) {
             datastore_ui_active = false;
             self.selected_recording_id = None;
+            self.selected_blueprint_id = None;
             self.focused_chunk = None;
-            selected_chunk = None;
         }
 
-        DatastoreUiResult {
-            keep_open: datastore_ui_active,
-            recording_id: Some(selected_store_id),
-            selected_chunk,
+        if !datastore_ui_active {
+            command_sender.send_system(SystemCommand::SetRoute(return_route.clone()));
+        } else {
+            let new_selected_store_id = match self.store_kind {
+                StoreKind::Recording => self.selected_recording_id.clone(),
+                StoreKind::Blueprint => self.selected_blueprint_id.clone(),
+            };
+            let new_focused_chunk = self
+                .focused_chunk
+                .as_ref()
+                .map(|chunk_ui| chunk_ui.chunk_id());
+
+            // New store/chunk selections are persisted as a new route.
+            if new_selected_store_id.as_ref() != selected_store_id
+                || new_focused_chunk.as_ref() != selected_chunk
+            {
+                command_sender.send_system(SystemCommand::SetRoute(Route::ChunkStoreBrowser {
+                    store_id: new_selected_store_id,
+                    selected_chunk: new_focused_chunk,
+                    // Preserve return route for when closing.
+                    return_route: Box::new(return_route.clone()),
+                }));
+            }
         }
     }
 
     fn chunk_store_ui(
         &mut self,
         ui: &mut egui::Ui,
-        chunk_store: &ChunkStore,
+        chunk_store: Option<&ChunkStore>,
         storage_context: &StorageContext<'_>,
         datastore_ui_active: &mut bool,
         timestamp_format: TimestampFormat,
-        selected_chunk: &mut Option<ChunkId>,
     ) {
         let tokens = ui.tokens();
         let mut content_margin = tokens.panel_margin();
         content_margin.top = content_margin.top.max(6);
 
         let should_copy_chunk = egui::Panel::top("chunk_store_top_controls_panel")
-            .show_inside(ui, |ui| {
-                let should_copy_chunk = self.chunk_store_info_ui(
-                    ui,
-                    chunk_store,
-                    storage_context,
-                    datastore_ui_active,
-                    selected_chunk,
-                );
-                let _ = self
-                    .chunk_list_mode
-                    .query_ui(ui, chunk_store, timestamp_format);
+            .show(ui, |ui| {
+                let should_copy_chunk =
+                    self.chunk_store_info_ui(ui, chunk_store, storage_context, datastore_ui_active);
+                if let Some(chunk_store) = chunk_store {
+                    let _ = self
+                        .chunk_list_mode
+                        .query_ui(ui, chunk_store, timestamp_format);
+                }
                 should_copy_chunk
             })
             .inner;
@@ -350,6 +325,11 @@ impl DatastoreUi {
             ..Default::default()
         }
         .show(ui, |ui| {
+            let Some(chunk_store) = chunk_store else {
+                ui.label("No recording selected");
+                return;
+            };
+
             self.chunk_store_details_ui(ui, chunk_store);
             if self.show_details_panels {
                 ui.separator();
@@ -422,7 +402,7 @@ impl DatastoreUi {
 
                         row.col(|ui| {
                             if ui.button(chunk.id().to_string()).clicked() {
-                                *selected_chunk = Some(chunk.id());
+                                self.focused_chunk = Some(ChunkUi::new(chunk));
                             }
                         });
 
@@ -655,10 +635,9 @@ impl DatastoreUi {
     fn chunk_store_info_ui(
         &mut self,
         ui: &mut egui::Ui,
-        chunk_store: &ChunkStore,
+        chunk_store: Option<&ChunkStore>,
         storage_context: &StorageContext<'_>,
         datastore_ui_active: &mut bool,
-        selected_chunk: &mut Option<ChunkId>,
     ) -> bool {
         let store_kind_before = self.store_kind;
         let selected_recording_before = self.selected_recording_id.clone();
@@ -674,54 +653,60 @@ impl DatastoreUi {
 
                 ui.separator();
 
-                let _ = self.chunk_list_mode.selector_ui(ui, chunk_store);
+                // The controls below only make sense when there is an actual store to operate on.
+                let mut should_copy_chunks = false;
+                if let Some(chunk_store) = chunk_store {
+                    let _ = self.chunk_list_mode.selector_ui(ui, chunk_store);
 
-                info_toggle_button_ui(
-                    ui,
-                    "Toggle info panels",
-                    "Show/hide info and config sections",
-                    &mut self.show_details_panels,
-                );
+                    info_toggle_button_ui(
+                        ui,
+                        "Toggle info panels",
+                        "Show/hide info and config sections",
+                        &mut self.show_details_panels,
+                    );
 
-                let should_copy_chunks = copy_button_ui(
-                    ui,
-                    "Copy chunks",
-                    "Copy the currently listed chunks as text",
-                );
+                    should_copy_chunks = copy_button_ui(
+                        ui,
+                        "Copy chunks",
+                        "Copy the currently listed chunks as text",
+                    );
 
-                let reset_clicked =
-                    reset_button_ui(ui, "Reset chunk browser", "Reset chunk browser state");
+                    let reset_clicked =
+                        reset_button_ui(ui, "Reset chunk browser", "Reset chunk browser state");
 
-                ui.selectable_toggle(|ui| {
-                    ui.selectable_value(&mut self.static_filter, StaticOrTemporal::All, "All")
-                        .on_hover_text("Show all chunks regardless of static/temporal status");
-                    ui.selectable_value(
-                        &mut self.static_filter,
-                        StaticOrTemporal::Static,
-                        "Static",
-                    )
-                    .on_hover_text("Show only static chunks");
-                    ui.selectable_value(
-                        &mut self.static_filter,
-                        StaticOrTemporal::Temporal,
-                        "Temporal",
-                    )
-                    .on_hover_text("Show only non-static chunks");
-                });
+                    ui.selectable_toggle(|ui| {
+                        ui.selectable_value(&mut self.static_filter, StaticOrTemporal::All, "All")
+                            .on_hover_text("Show all chunks regardless of static/temporal status");
+                        ui.selectable_value(
+                            &mut self.static_filter,
+                            StaticOrTemporal::Static,
+                            "Static",
+                        )
+                        .on_hover_text("Show only static chunks");
+                        ui.selectable_value(
+                            &mut self.static_filter,
+                            StaticOrTemporal::Temporal,
+                            "Temporal",
+                        )
+                        .on_hover_text("Show only non-static chunks");
+                    });
 
-                ui.separator();
-                match self.store_kind {
-                    StoreKind::Recording => {
-                        self.switch_recording_ui(ui, chunk_store, storage_context);
+                    if reset_clicked {
+                        self.reset_ui_state();
                     }
-                    StoreKind::Blueprint => {
-                        self.switch_blueprint_ui(ui, chunk_store, storage_context);
-                    }
+
+                    ui.separator();
                 }
 
-                if reset_clicked {
-                    self.reset_ui_state();
-                    *selected_chunk = None;
+                // Always show the store selector so a (different) store can be picked,
+                // even when no store is currently selected.
+                match self.store_kind {
+                    StoreKind::Recording => {
+                        self.switch_recording_ui(ui, storage_context);
+                    }
+                    StoreKind::Blueprint => {
+                        self.switch_blueprint_ui(ui, storage_context);
+                    }
                 }
 
                 let close_clicked = close_button_right_ui(
@@ -736,7 +721,6 @@ impl DatastoreUi {
                     // to avoid confusion when reopening it again from a different recording.
                     self.selected_recording_id = None;
                     self.selected_blueprint_id = None;
-                    *selected_chunk = None;
                 }
 
                 should_copy_chunks
@@ -747,7 +731,6 @@ impl DatastoreUi {
             || self.selected_recording_id != selected_recording_before
         {
             self.focused_chunk = None;
-            *selected_chunk = None;
         }
 
         should_copy_chunks
@@ -828,14 +811,10 @@ impl DatastoreUi {
         }
     }
 
-    fn switch_recording_ui(
-        &mut self,
-        ui: &mut egui::Ui,
-        chunk_store: &ChunkStore,
-        storage_context: &StorageContext<'_>,
-    ) {
+    fn switch_recording_ui(&mut self, ui: &mut egui::Ui, storage_context: &StorageContext<'_>) {
         let recordings: Vec<&EntityDb> = storage_context.bundle.recordings().collect();
         if recordings.is_empty() {
+            ui.label("No recordings available");
             return;
         }
 
@@ -849,19 +828,14 @@ impl DatastoreUi {
 
         store_selector_combo_ui(
             ui,
-            chunk_store,
             "recording_selector",
+            "Select a recording…",
             recordings.into_iter(),
             &mut self.selected_recording_id,
         );
     }
 
-    fn switch_blueprint_ui(
-        &mut self,
-        ui: &mut egui::Ui,
-        chunk_store: &ChunkStore,
-        storage_context: &StorageContext<'_>,
-    ) {
+    fn switch_blueprint_ui(&mut self, ui: &mut egui::Ui, storage_context: &StorageContext<'_>) {
         // Collect all blueprint stores (active blueprint + table blueprints).
         let blueprints: Vec<&EntityDb> = storage_context
             .bundle
@@ -878,8 +852,8 @@ impl DatastoreUi {
 
         store_selector_combo_ui(
             ui,
-            chunk_store,
             "blueprint_selector",
+            "Select a blueprint…",
             blueprints.into_iter(),
             &mut self.selected_blueprint_id,
         );
@@ -888,16 +862,20 @@ impl DatastoreUi {
 
 fn store_selector_combo_ui<'a>(
     ui: &mut egui::Ui,
-    chunk_store: &ChunkStore,
     combo_id: &str,
+    placeholder: &str,
     stores: impl Iterator<Item = &'a EntityDb>,
     selected_id: &mut Option<StoreId>,
 ) {
-    let current_store_id = chunk_store.id();
-    let selected_text = format!(
-        "{} ({})",
-        current_store_id.application_id(),
-        current_store_id.recording_id(),
+    let selected_text = selected_id.as_ref().map_or_else(
+        || placeholder.to_owned(),
+        |store_id| {
+            format!(
+                "{} ({})",
+                store_id.application_id(),
+                store_id.recording_id(),
+            )
+        },
     );
 
     egui::ComboBox::new(combo_id, "")
@@ -910,7 +888,7 @@ fn store_selector_combo_ui<'a>(
                     store_id.application_id(),
                     store_id.recording_id(),
                 );
-                let is_selected = *store_id == current_store_id;
+                let is_selected = selected_id.as_ref() == Some(store_id);
                 if ui
                     .add(re_ui::ComboItem::new(label).selected(is_selected))
                     .clicked()

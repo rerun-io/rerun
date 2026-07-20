@@ -66,7 +66,7 @@ impl ChunkUi {
 
         let table_style = re_ui::TableStyle::Dense;
         let should_exit = egui::Panel::top("chunk_detail_top_controls_panel")
-            .show_inside(ui, |ui| self.chunk_top_controls_ui(ui, show_details_panels))
+            .show(ui, |ui| self.chunk_top_controls_ui(ui, show_details_panels))
             .inner;
 
         egui::Frame {

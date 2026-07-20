@@ -51,7 +51,7 @@ fn start_puffin_viewer() {
         .spawn();
 
     if let Err(err) = child {
-        let cmd = format!("cargo install puffin_viewer && puffin_viewer --url {url}",);
+        let cmd = format!("cargo install puffin_viewer && puffin_viewer --url {url}");
         re_log::warn!("Failed to start puffin_viewer: {err}. Try connecting manually with:  {cmd}");
 
         rfd::MessageDialog::new()

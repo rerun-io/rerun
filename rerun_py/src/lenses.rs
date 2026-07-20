@@ -1,10 +1,12 @@
+use arrow::datatypes::DataType;
+use arrow::pyarrow::PyArrowType;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyModule;
 use pyo3::{Borrowed, FromPyObject};
 
-use re_lenses_core::{DynExpr, Lens, OutputMode, Selector};
-use re_types_core::{ComponentDescriptor, ComponentIdentifier};
+use re_lenses_core::{CastTo, DynExpr, Lens, OutputMode, Selector};
+use re_types_core::{ComponentDescriptor, ComponentIdentifier, TimelineName};
 
 use crate::python_bridge::PyComponentDescriptor;
 use crate::selector::PySelectorInternal;
@@ -25,7 +27,7 @@ pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     module = "rerun_bindings.rerun_bindings"
 )]
 pub struct PyDeriveLensInternal {
-    components: Vec<(ComponentDescriptor, Selector<DynExpr>)>,
+    components: Vec<(ComponentDescriptor, Selector<DynExpr>, Option<CastTo>)>,
     times: Vec<(String, re_log_types::TimeType, Selector<DynExpr>)>,
     input_component: ComponentIdentifier,
     output_entity: Option<String>,
@@ -39,31 +41,38 @@ impl PyDeriveLensInternal {
         signature = (input_component, *, output_entity = None, scatter = false),
         text_signature = "(self, input_component, *, output_entity=None, scatter=False)"
     )]
-    fn new(input_component: &str, output_entity: Option<String>, scatter: bool) -> Self {
-        Self {
+    fn new(input_component: &str, output_entity: Option<String>, scatter: bool) -> PyResult<Self> {
+        Ok(Self {
             components: Vec::new(),
             times: Vec::new(),
-            input_component: input_component.into(),
+            input_component: ComponentIdentifier::try_new(input_component)
+                .map_err(|err| PyValueError::new_err(err.to_string()))?,
             output_entity,
             scatter,
-        }
+        })
     }
 
     /// Add a component output column. Returns a new instance with the component added.
+    ///
+    /// `cast_to` is `None` (no cast), the string `"auto"` (cast to the component's
+    /// canonical type), or a pyarrow `DataType` (cast to that explicit type).
+    #[pyo3(signature = (component, selector, cast_to = None))]
     fn to_component(
         &self,
         component: PyComponentDescriptor,
         selector: &PySelectorInternal,
-    ) -> Self {
+        cast_to: Option<Bound<'_, PyAny>>,
+    ) -> PyResult<Self> {
+        let cast = parse_cast_to(cast_to)?;
         let mut components = self.components.clone();
-        components.push((component.0, selector.selector().clone()));
-        Self {
+        components.push((component.0, selector.selector().clone(), cast));
+        Ok(Self {
             components,
             times: self.times.clone(),
             input_component: self.input_component,
             output_entity: self.output_entity.clone(),
             scatter: self.scatter,
-        }
+        })
     }
 
     /// Add a time extraction column. Returns a new instance with the time added.
@@ -101,11 +110,18 @@ impl PyDeriveLensInternal {
         if let Some(ref entity) = self.output_entity {
             builder = builder.output_entity(entity.as_str());
         }
-        for (descr, selector) in &self.components {
-            builder = builder.to_component(descr.clone(), selector.clone());
+        for (descr, selector, cast) in &self.components {
+            builder = match cast {
+                Some(cast) => {
+                    builder.to_component_with_cast(descr.clone(), selector.clone(), cast.clone())
+                }
+                None => builder.to_component(descr.clone(), selector.clone()),
+            };
         }
         for (name, timeline_type, selector) in &self.times {
-            builder = builder.to_timeline(name.as_str(), *timeline_type, selector.clone());
+            let timeline_name = TimelineName::try_new(name.as_str())
+                .map_err(|err| PyValueError::new_err(err.to_string()))?;
+            builder = builder.to_timeline(timeline_name, *timeline_type, selector.clone());
         }
         builder
             .build()
@@ -132,12 +148,17 @@ impl PyMutateLensInternal {
         signature = (input_component, selector, *, keep_row_ids = false),
         text_signature = "(self, input_component, selector, *, keep_row_ids=False)"
     )]
-    fn new(input_component: &str, selector: &PySelectorInternal, keep_row_ids: bool) -> Self {
-        Self {
-            input_component: input_component.into(),
+    fn new(
+        input_component: &str,
+        selector: &PySelectorInternal,
+        keep_row_ids: bool,
+    ) -> PyResult<Self> {
+        Ok(Self {
+            input_component: ComponentIdentifier::try_new(input_component)
+                .map_err(|err| PyValueError::new_err(err.to_string()))?,
             selector: selector.selector().clone(),
             keep_row_ids,
-        }
+        })
     }
 }
 
@@ -181,6 +202,23 @@ impl<'py> FromPyObject<'_, 'py> for PyLens {
             ))
         }
     }
+}
+
+/// Parse the Python `cast_to` argument: `None`, the string `"auto"`, or a pyarrow `DataType`.
+fn parse_cast_to(cast_to: Option<Bound<'_, PyAny>>) -> PyResult<Option<CastTo>> {
+    let Some(obj) = cast_to else {
+        return Ok(None);
+    };
+    if let Ok(s) = obj.extract::<String>() {
+        return match s.as_str() {
+            "auto" => Ok(Some(CastTo::Auto)),
+            other => Err(PyValueError::new_err(format!(
+                "Unknown cast_to '{other}', expected 'auto' or a pyarrow DataType"
+            ))),
+        };
+    }
+    let PyArrowType(datatype) = obj.extract::<PyArrowType<DataType>>()?;
+    Ok(Some(CastTo::Type(datatype)))
 }
 
 fn parse_timeline_type(s: &str) -> PyResult<re_log_types::TimeType> {

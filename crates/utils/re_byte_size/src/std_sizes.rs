@@ -2,7 +2,6 @@
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet, VecDeque};
 use std::mem::size_of;
-use std::ops::RangeInclusive;
 use std::sync::{Arc, Weak};
 
 use crate::SizeBytes;
@@ -293,9 +292,16 @@ impl<T: SizeBytes + ?Sized> SizeBytes for Box<T> {
     }
 }
 
-impl<T: SizeBytes> SizeBytes for RangeInclusive<T> {
+impl<T: SizeBytes> SizeBytes for std::ops::RangeInclusive<T> {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.start().heap_size_bytes() + self.end().heap_size_bytes()
+    }
+}
+
+impl<T: SizeBytes> SizeBytes for core::range::RangeInclusive<T> {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.start.heap_size_bytes() + self.last.heap_size_bytes()
     }
 }

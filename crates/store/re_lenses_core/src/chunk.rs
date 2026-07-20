@@ -1,7 +1,7 @@
 use itertools::Itertools as _;
 use re_chunk::{Chunk, ComponentIdentifier};
 
-use crate::{DynExpr, Lens, LensError, LensRuntimeError, Lenses, OutputMode, Selector};
+use crate::{DynExpr, Lens, LensError, LensRuntimeError, Lenses, OutputMode, Runtime, Selector};
 
 /// Extension methods for applying lenses to a [`Chunk`].
 pub trait ChunkExt {
@@ -13,7 +13,7 @@ pub trait ChunkExt {
     ///
     /// If no lens matches the chunk (including when an empty slice is passed),
     /// the original chunk is returned unchanged.
-    fn apply_lenses(&self, lenses: &[Lens]) -> Result<Vec<Chunk>, LensError>;
+    fn apply_lenses(&self, lenses: &[Lens], runtime: &Runtime) -> Result<Vec<Chunk>, LensError>;
 
     /// Apply a selector to a single component, returning a new chunk with the
     /// component transformed in-place.
@@ -27,23 +27,25 @@ pub trait ChunkExt {
         &self,
         source: ComponentIdentifier,
         selector: &Selector<DynExpr>,
+        runtime: &Runtime,
     ) -> Result<Chunk, LensRuntimeError>;
 }
 
 impl ChunkExt for Chunk {
-    fn apply_lenses(&self, lenses: &[Lens]) -> Result<Vec<Chunk>, LensError> {
+    fn apply_lenses(&self, lenses: &[Lens], runtime: &Runtime) -> Result<Vec<Chunk>, LensError> {
         let mut collection = Lenses::new(OutputMode::ForwardUnmatched);
         for lens in lenses {
             collection = collection.add_lens(lens.clone());
         }
 
-        collection.apply(self).try_collect()
+        collection.apply(self, runtime).try_collect()
     }
 
     fn apply_selector(
         &self,
         source: ComponentIdentifier,
         selector: &Selector<DynExpr>,
+        runtime: &Runtime,
     ) -> Result<Chunk, LensRuntimeError> {
         if !self.components().contains_component(source) {
             return Err(LensRuntimeError::ComponentNotFound {
@@ -56,14 +58,14 @@ impl ChunkExt for Chunk {
         let selector = selector.clone();
 
         self.with_mapped_component(source, None, |list_array| {
-            let result = selector.execute_per_row(&list_array).map_err(|err| {
-                LensRuntimeError::ComponentOperationFailed {
+            let result = runtime
+                .execute_per_row(&selector, &list_array)
+                .map_err(|err| LensRuntimeError::ComponentOperationFailed {
                     target_entity: entity_path.clone(),
                     input_component: source,
                     component: source,
                     source: Box::new(err),
-                }
-            })?;
+                })?;
 
             result.ok_or_else(|| LensRuntimeError::NoOutputColumnsProduced {
                 input_component: source,

@@ -93,6 +93,6 @@ impl From<glam::UVec3> for UVec3D {
 
 impl std::fmt::Display for UVec3D {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "[{}, {}, {}]", self.x(), self.y(), self.z(),)
+        write!(f, "[{}, {}, {}]", self.x(), self.y(), self.z())
     }
 }

@@ -33,11 +33,9 @@ class StateChange(Archetype, VisualizableArchetype):
 
     Useful for representing discrete state machines, mode transitions, or
     state changes over time. Each logged [`archetypes.StateChange`][rerun.archetypes.StateChange] marks a new state
-    at the given time. A `null` state is ignored by the state timeline view.
+    at the given time. A `null` state resets the state, showing a gap in the state timeline view.
 
     The state timeline view displays these as horizontal colored lanes over time.
-
-    ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 
     Example
     -------
@@ -72,17 +70,20 @@ class StateChange(Archetype, VisualizableArchetype):
 
     NAME: ClassVar[str] = "rerun.archetypes.StateChange"
 
-    def __init__(self: Any, *, state: datatypes.Utf8Like | None = None) -> None:
+    def __init__(self: Any, *, state: datatypes.Utf8ArrayLike | None = None) -> None:
         """
         Create a new instance of the StateChange archetype.
 
         Parameters
         ----------
         state:
-            The new state value.
+            The new state values; each instance gets its own lane in the state timeline view.
 
-            A `null` state is ignored, it can be used to partially update a multi-instance state array.
-            An empty string is treated as state reset, and a gap is shown in the state timeline view.
+            A reset ends the previous state and shows a gap in the state timeline view until the
+            next state. An empty string, a null array entry, and an empty state array (e.g. from
+            clearing the field) all act as resets.
+
+            The length of the state array should not change over time.
 
         """
 
@@ -110,7 +111,7 @@ class StateChange(Archetype, VisualizableArchetype):
         cls,
         *,
         clear_unset: bool = False,
-        state: datatypes.Utf8Like | None = None,
+        state: datatypes.Utf8ArrayLike | None = None,
     ) -> StateChange:
         """
         Update only some specific fields of a `StateChange`.
@@ -120,10 +121,13 @@ class StateChange(Archetype, VisualizableArchetype):
         clear_unset:
             If true, all unspecified fields will be explicitly cleared.
         state:
-            The new state value.
+            The new state values; each instance gets its own lane in the state timeline view.
 
-            A `null` state is ignored, it can be used to partially update a multi-instance state array.
-            An empty string is treated as state reset, and a gap is shown in the state timeline view.
+            A reset ends the previous state and shows a gap in the state timeline view until the
+            next state. An empty string, a null array entry, and an empty state array (e.g. from
+            clearing the field) all act as resets.
+
+            The length of the state array should not change over time.
 
         """
 
@@ -172,10 +176,13 @@ class StateChange(Archetype, VisualizableArchetype):
         Parameters
         ----------
         state:
-            The new state value.
+            The new state values; each instance gets its own lane in the state timeline view.
 
-            A `null` state is ignored, it can be used to partially update a multi-instance state array.
-            An empty string is treated as state reset, and a gap is shown in the state timeline view.
+            A reset ends the previous state and shows a gap in the state timeline view until the
+            next state. An empty string, a null array entry, and an empty state array (e.g. from
+            clearing the field) all act as resets.
+
+            The length of the state array should not change over time.
 
         """
 
@@ -228,10 +235,13 @@ class StateChange(Archetype, VisualizableArchetype):
         default=None,
         converter=components.TextBatch._converter,  # type: ignore[misc]
     )
-    # The new state value.
+    # The new state values; each instance gets its own lane in the state timeline view.
     #
-    # A `null` state is ignored, it can be used to partially update a multi-instance state array.
-    # An empty string is treated as state reset, and a gap is shown in the state timeline view.
+    # A reset ends the previous state and shows a gap in the state timeline view until the
+    # next state. An empty string, a null array entry, and an empty state array (e.g. from
+    # clearing the field) all act as resets.
+    #
+    # The length of the state array should not change over time.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

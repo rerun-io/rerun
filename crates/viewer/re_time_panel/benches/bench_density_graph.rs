@@ -15,7 +15,7 @@ use re_time_panel::__bench::{
 
 fn run(b: &mut Bencher<'_, WallTime>, config: DensityGraphBuilderConfig, entry: ChunkEntry) {
     egui::__run_test_ui(|ui| {
-        egui::CentralPanel::default().show_inside(ui, |ui| {
+        egui::CentralPanel::default().show(ui, |ui| {
             let row_rect = ui.max_rect();
             assert!(row_rect.width() > 100.0 && row_rect.height() > 100.0);
 

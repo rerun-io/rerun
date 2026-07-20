@@ -97,7 +97,7 @@ impl Default for VerificationOptions {
     fn default() -> Self {
         Self {
             // 5 minutes to prevent clock skew
-            leeway: Some(Duration::from_secs(5 * 60)),
+            leeway: Some(Duration::from_mins(5)),
         }
     }
 }

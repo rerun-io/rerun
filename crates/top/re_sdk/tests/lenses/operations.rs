@@ -6,7 +6,7 @@ use arrow::array::{AsArray as _, Int32Builder, ListArray, ListBuilder};
 use arrow::datatypes::{DataType, Field};
 use itertools::Itertools as _;
 use re_chunk::{ArrowArray as _, Chunk, ChunkId, TimeColumn, TimelineName};
-use re_sdk::lenses::{Lens, Lenses, OutputMode, Selector, op};
+use re_sdk::lenses::{CastTo, Lens, Lenses, OutputMode, Selector};
 use re_sdk_types::ComponentDescriptor;
 use re_sdk_types::archetypes::Scalars;
 
@@ -120,7 +120,7 @@ fn nullability_chunk() -> Chunk {
     Chunk::from_auto_row_ids(
         ChunkId::new(),
         "nullability".into(),
-        std::iter::once((TimelineName::new("tick"), time_column)).collect(),
+        std::iter::once((TimelineName::from("tick"), time_column)).collect(),
         components.collect(),
     )
     .unwrap()
@@ -133,11 +133,10 @@ fn test_destructure_cast() {
 
     let destructure = Lens::derive("structs")
         .output_entity("nullability/a")
-        .to_component(
+        .to_component_with_cast(
             Scalars::descriptor_scalars(),
-            Selector::parse(".a")
-                .unwrap()
-                .pipe(op::cast(DataType::Float64)),
+            Selector::parse(".a").unwrap(),
+            CastTo::Auto,
         )
         .build()
         .unwrap();
@@ -147,7 +146,10 @@ fn test_destructure_cast() {
         destructure,
     );
 
-    let res: Vec<re_chunk::Chunk> = lenses.apply(&original_chunk).try_collect().unwrap();
+    let res: Vec<re_chunk::Chunk> = lenses
+        .apply(&original_chunk, &re_lenses::default_runtime())
+        .try_collect()
+        .unwrap();
 
     assert_eq!(res.len(), 1);
 
@@ -174,7 +176,10 @@ fn test_destructure() {
         destructure,
     );
 
-    let res: Vec<re_chunk::Chunk> = lenses.apply(&original_chunk).try_collect().unwrap();
+    let res: Vec<re_chunk::Chunk> = lenses
+        .apply(&original_chunk, &re_lenses::default_runtime())
+        .try_collect()
+        .unwrap();
     assert_eq!(res.len(), 1);
 
     let chunk = &res[0];
@@ -216,7 +221,7 @@ fn test_time_column_extraction() {
     let original_chunk = Chunk::from_auto_row_ids(
         ChunkId::new(),
         "timestamped".into(),
-        std::iter::once((TimelineName::new("tick"), time_column)).collect(),
+        std::iter::once((TimelineName::from("tick"), time_column)).collect(),
         components.collect(),
     )
     .unwrap();
@@ -242,24 +247,27 @@ fn test_time_column_extraction() {
         time_lens,
     );
 
-    let res: Vec<Chunk> = lenses.apply(&original_chunk).try_collect().unwrap();
+    let res: Vec<Chunk> = lenses
+        .apply(&original_chunk, &re_lenses::default_runtime())
+        .try_collect()
+        .unwrap();
     assert_eq!(res.len(), 1);
 
     let chunk = &res[0];
     println!("{chunk}");
 
     // Verify the chunk has both the original timeline and the new custom timeline
-    assert!(chunk.timelines().contains_key(&TimelineName::new("tick")));
+    assert!(chunk.timelines().contains_key(&TimelineName::from("tick")));
     assert!(
         chunk
             .timelines()
-            .contains_key(&TimelineName::new("my_timeline"))
+            .contains_key(&TimelineName::from("my_timeline"))
     );
 
     // Verify the custom timeline has the correct values
     let my_timeline = chunk
         .timelines()
-        .get(&TimelineName::new("my_timeline"))
+        .get(&TimelineName::from("my_timeline"))
         .unwrap();
     assert_eq!(my_timeline.times_raw().len(), 5);
     assert_eq!(my_timeline.times_raw()[0], 100);
@@ -370,7 +378,10 @@ fn test_scatter_columns() {
 
     let lenses = Lenses::new(OutputMode::DropUnmatched).add_lens(scatter_lens);
 
-    let res: Vec<Chunk> = lenses.apply(&original_chunk).try_collect().unwrap();
+    let res: Vec<Chunk> = lenses
+        .apply(&original_chunk, &re_lenses::default_runtime())
+        .try_collect()
+        .unwrap();
     assert_eq!(res.len(), 1);
 
     let chunk = &res[0];
@@ -388,7 +399,7 @@ fn test_scatter_columns() {
     // Verify tick timeline is replicated correctly
     // Original tick: [1, 2, 3]
     // Scattered tick: [1, 1, 1, 2, 3] (row 0 scatters into 3 rows)
-    let tick_timeline = chunk.timelines().get(&TimelineName::new("tick")).unwrap();
+    let tick_timeline = chunk.timelines().get(&TimelineName::from("tick")).unwrap();
     assert_eq!(tick_timeline.times_raw().len(), 5);
     assert_eq!(tick_timeline.times_raw()[0], 1);
     assert_eq!(tick_timeline.times_raw()[1], 1);
@@ -401,7 +412,7 @@ fn test_scatter_columns() {
     // After scattering: [1, 2, 3, 4, 5]
     let event_timeline = chunk
         .timelines()
-        .get(&TimelineName::new("my_timestamp"))
+        .get(&TimelineName::from("my_timestamp"))
         .unwrap();
     assert_eq!(event_timeline.times_raw().len(), 5);
     assert_eq!(event_timeline.times_raw()[0], 1);
@@ -451,7 +462,10 @@ fn test_scatter_columns_static() {
 
     let lenses = Lenses::new(OutputMode::DropUnmatched).add_lens(scatter_lens);
 
-    let res: Vec<Chunk> = lenses.apply(&original_chunk).try_collect().unwrap();
+    let res: Vec<Chunk> = lenses
+        .apply(&original_chunk, &re_lenses::default_runtime())
+        .try_collect()
+        .unwrap();
     assert_eq!(res.len(), 1);
 
     let chunk = &res[0];
@@ -475,7 +489,7 @@ fn test_scatter_columns_static() {
     // After scattering: [1, 2, 3, 4, 5]
     let event_timeline = chunk
         .timelines()
-        .get(&TimelineName::new("my_timestamp"))
+        .get(&TimelineName::from("my_timestamp"))
         .unwrap();
     assert_eq!(event_timeline.times_raw().len(), 5);
     assert_eq!(event_timeline.times_raw()[0], 1);
@@ -523,7 +537,7 @@ fn test_output_overwrites_same_named_component() {
         ChunkId::new(),
         "collision".into(),
         std::iter::once((
-            TimelineName::new("tick"),
+            TimelineName::from("tick"),
             TimeColumn::new_sequence("tick", 0..2),
         ))
         .collect(),
@@ -541,7 +555,9 @@ fn test_output_overwrites_same_named_component() {
 
     let lenses = Lenses::new(OutputMode::DropUnmatched).add_lens(lens);
 
-    let results: Vec<_> = lenses.apply(&original_chunk).collect();
+    let results: Vec<_> = lenses
+        .apply(&original_chunk, &re_lenses::default_runtime())
+        .collect();
     assert_eq!(results.len(), 1);
 
     let chunk = results.into_iter().next().unwrap().unwrap();

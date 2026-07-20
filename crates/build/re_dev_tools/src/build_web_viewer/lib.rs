@@ -82,6 +82,7 @@ pub fn build(
     build_dir: &Utf8Path,
     no_default_features: bool,
     features: &String,
+    timings: bool,
 ) -> anyhow::Result<()> {
     std::env::set_current_dir(workspace_root())?;
 
@@ -133,6 +134,9 @@ pub fn build(
         }
         if profile == Profile::WebRelease {
             cmd.arg("--profile=web-release");
+        }
+        if timings {
+            cmd.arg("--timings");
         }
 
         // Note that we can't use RUSTFLAGS here directly since having more than one flag on set via

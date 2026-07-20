@@ -37,8 +37,6 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// The underlying data needs to be logged to the same entity path using [`archetypes::StateChange`][crate::archetypes::StateChange].
 ///
-/// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-///
 /// ## Example
 ///
 /// ### State changes with a custom style
@@ -58,13 +56,13 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///     )?;
 ///
 ///     rec.set_time_sequence("step", 0);
-///     rec.log("door", &rerun::StateChange::new().with_state("open"))?;
+///     rec.log("door", &rerun::StateChange::single("open"))?;
 ///
 ///     rec.set_time_sequence("step", 1);
-///     rec.log("door", &rerun::StateChange::new().with_state("closed"))?;
+///     rec.log("door", &rerun::StateChange::single("closed"))?;
 ///
 ///     rec.set_time_sequence("step", 2);
-///     rec.log("door", &rerun::StateChange::new().with_state("open"))?;
+///     rec.log("door", &rerun::StateChange::single("open"))?;
 ///
 ///     Ok(())
 /// }
@@ -188,7 +186,7 @@ impl StateConfiguration {
 impl ::re_types_core::Archetype for StateConfiguration {
     #[inline]
     fn name() -> ::re_types_core::ArchetypeName {
-        ::re_types_core::external::re_string_interner::intern_static!(
+        ::re_types_core::external::re_string_interner::intern_static_nonempty!(
             ::re_types_core::ArchetypeName,
             "rerun.archetypes.StateConfiguration"
         )

@@ -1,10 +1,11 @@
-use egui::emath::OrderedFloat;
 use egui::text::TextWrapping;
 use egui::{NumExt as _, WidgetText};
+use egui::{emath::OrderedFloat, epaint::text::ByteRangeExt as _, text::ByteRange};
 use macaw::BoundingBox;
 use re_format::format_f32;
 use re_sdk_types::blueprint::archetypes::EyeControls3D;
 use re_sdk_types::blueprint::components::VisualBounds2D;
+use re_sdk_types::components::Radius;
 use re_sdk_types::image::ImageKind;
 use re_ui::UiExt as _;
 use re_viewer_context::{
@@ -15,11 +16,11 @@ use re_viewport_blueprint::ViewProperty;
 use super::eye::Eye;
 use super::ui_3d::View3DState;
 use crate::Pinhole;
+use crate::SpaceKind;
 use crate::pickable_textured_rect::PickableRectSourceData;
 use crate::picking::{PickableUiRect, PickingResult};
 use crate::scene_bounding_boxes::SceneBoundingBoxes;
-use crate::view_kind::SpatialViewKind;
-use crate::visualizers::{UiLabel, UiLabelStyle, UiLabelTarget, iter_spatial_data};
+use crate::visualizers::{Axes, UiLabel, UiLabelStyle, UiLabelTarget, iter_spatial_data};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum AutoSizeUnit {
@@ -50,6 +51,10 @@ pub struct ImageCounts {
 #[derive(Clone, Default, re_byte_size::SizeBytes)]
 pub struct SpatialViewState {
     pub bounding_boxes: SceneBoundingBoxes,
+    pub show_bounding_box: bool,
+
+    pub show_smoothed_bbox: bool,
+    pub show_per_entity_bbox: bool,
 
     /// Number of images per image kind processed last frame.
     pub image_counts_last_frame: ImageCounts,
@@ -85,7 +90,7 @@ impl SpatialViewState {
         &mut self,
         ui: &egui::Ui,
         system_output: &re_viewer_context::SystemExecutionOutput,
-        space_kind: SpatialViewKind,
+        space_kind: SpaceKind,
     ) {
         re_tracing::profile_function!();
 
@@ -94,7 +99,7 @@ impl SpatialViewState {
         // Reset the counts and start over.
         self.image_counts_last_frame = Default::default();
 
-        for (_affinity, data) in iter_spatial_data(system_output) {
+        for data in iter_spatial_data(system_output) {
             for pickable_rect in &data.pickable_rects {
                 match &pickable_rect.source_data {
                     PickableRectSourceData::Image {
@@ -114,7 +119,7 @@ impl SpatialViewState {
         }
     }
 
-    pub fn bounding_box_ui(&self, ui: &mut egui::Ui, spatial_kind: SpatialViewKind) {
+    pub fn bounding_box_ui(&self, ui: &mut egui::Ui, spatial_kind: SpaceKind) {
         ui.grid_left_hand_label("Bounding box")
             .on_hover_text("The bounding box encompassing all Entities in the view right now");
         ui.vertical(|ui| {
@@ -124,10 +129,10 @@ impl SpatialViewState {
             if self.bounding_boxes.current.is_nothing() {
                 ui.label(egui::RichText::new("empty").italics());
             } else {
-                ui.label(format!("x [{} - {}]", format_f32(min.x), format_f32(max.x),));
-                ui.label(format!("y [{} - {}]", format_f32(min.y), format_f32(max.y),));
-                if spatial_kind == SpatialViewKind::ThreeD {
-                    ui.label(format!("z [{} - {}]", format_f32(min.z), format_f32(max.z),));
+                ui.label(format!("x [{} - {}]", format_f32(min.x), format_f32(max.x)));
+                ui.label(format!("y [{} - {}]", format_f32(min.y), format_f32(max.y)));
+                if spatial_kind == SpaceKind::ThreeD {
+                    ui.label(format!("z [{} - {}]", format_f32(min.z), format_f32(max.z)));
                 }
             }
         });
@@ -201,7 +206,7 @@ pub fn create_labels(
     eye3d: &Eye,
     parent_ui: &egui::Ui,
     highlights: &ViewHighlights,
-    spatial_kind: SpatialViewKind,
+    spatial_kind: SpaceKind,
 ) -> (Vec<egui::Shape>, Vec<PickableUiRect>) {
     re_tracing::profile_function!();
 
@@ -241,7 +246,7 @@ pub fn create_labels(
                 fonts.layout_job(egui::text::LayoutJob {
                     sections: vec![egui::text::LayoutSection {
                         leading_space: 0.0,
-                        byte_range: 0..text.len(),
+                        byte_range: ByteRange::full(text),
                         format: format.clone(),
                     }],
                     text: text.to_owned(),
@@ -360,7 +365,7 @@ fn resolve_label_positions(
     labels: &[UiLabel],
     ui_from_scene: &egui::emath::RectTransform,
     ui_from_world_3d: &glam::Mat4,
-    spatial_kind: SpatialViewKind,
+    spatial_kind: SpaceKind,
 ) -> Vec<(UiLabel, f32, egui::Pos2)> {
     let viewport = ui_from_scene.to().expand(100.0);
 
@@ -368,7 +373,7 @@ fn resolve_label_positions(
     for label in labels {
         let (wrap_width, text_anchor_pos) = match label.target {
             UiLabelTarget::Rect(rect) => {
-                if spatial_kind == SpatialViewKind::ThreeD {
+                if spatial_kind == SpaceKind::ThreeD {
                     continue; // TODO(#1640): 2D labels are not visible in 3D for now.
                 }
                 let rect_in_ui = ui_from_scene.transform_rect(rect);
@@ -378,14 +383,14 @@ fn resolve_label_positions(
                 )
             }
             UiLabelTarget::Point2D(pos) => {
-                if spatial_kind == SpatialViewKind::ThreeD {
+                if spatial_kind == SpaceKind::ThreeD {
                     continue; // TODO(#1640): 2D labels are not visible in 3D for now.
                 }
                 let pos_in_ui = ui_from_scene.transform_pos(pos);
                 (f32::INFINITY, pos_in_ui)
             }
             UiLabelTarget::Position3D(pos) => {
-                if spatial_kind == SpatialViewKind::TwoD {
+                if spatial_kind == SpaceKind::TwoD {
                     continue; // TODO(#1640): 3D labels are not visible in 2D for now.
                 }
                 let pos_in_ui = *ui_from_world_3d * pos.extend(1.0);
@@ -457,7 +462,7 @@ pub fn paint_loading_indicators(
 
     let ui_from_world_3d = eye3d.ui_from_world(*ui_from_scene.to());
 
-    for (_affinity, data) in iter_spatial_data(system_output) {
+    for data in iter_spatial_data(system_output) {
         for crate::visualizers::LoadingIndicator {
             center,
             half_extent_u,
@@ -506,6 +511,74 @@ pub fn paint_loading_indicators(
                 None,
                 reason,
             );
+        }
+    }
+}
+
+/// UI for the debug-build-only bounding box controls.
+#[cfg(debug_assertions)]
+pub fn bbox_debug_ui(ui: &mut egui::Ui, state: &mut SpatialViewState) {
+    ui.re_checkbox(&mut state.show_smoothed_bbox, "Smoothed bbox");
+    ui.re_checkbox(&mut state.show_per_entity_bbox, "Per-entity bboxes");
+}
+
+/// Draws the origin axes gizmo of a spatial view.
+pub fn draw_origin_axes(
+    tokens: &re_ui::DesignTokens,
+    line_builder: &mut re_renderer::LineDrawableBuilder<'_>,
+    state: &mut SpatialViewState,
+    axes: Axes,
+) {
+    let axis_length = 1.0; // The axes are also a measuring stick
+    crate::visualizers::add_axis_arrows(
+        tokens,
+        line_builder,
+        glam::Affine3A::IDENTITY,
+        None,
+        axis_length,
+        axes,
+        re_renderer::OutlineMaskPreference::NONE,
+        re_log_types::Instance::ALL.get(),
+    );
+
+    // If we are showing the axes for the space, then add the space origin to the region of interest, but not the scene bounding box.
+    state
+        .bounding_boxes
+        .region_of_interest_current
+        .extend(glam::Vec3::ZERO);
+}
+
+/// Draws the enabled bounding boxes for a spatial view.
+pub fn draw_bounding_boxes(
+    tokens: &re_ui::DesignTokens,
+    line_builder: &mut re_renderer::LineDrawableBuilder<'_>,
+    state: &SpatialViewState,
+) {
+    // TODO(andreas): Make configurable. Could pick up default radius for this view?
+    let box_line_radius = re_renderer::Size(*Radius::default().0);
+
+    // TODO(andreas): Make this an enum so the user can choose between showing
+    // the bounding box (all entities), the region of interest, or per-entity bounding boxes.
+    if state.show_bounding_box {
+        line_builder
+            .batch("scene_bbox_current")
+            .add_box_outline(&state.bounding_boxes.current)
+            .map(|lines| lines.radius(box_line_radius).color(tokens.frustum_color));
+    }
+
+    if state.show_smoothed_bbox {
+        line_builder
+            .batch("scene_region_of_interest_smoothed")
+            .add_box_outline(&state.bounding_boxes.region_of_interest_smoothed)
+            .map(|lines| lines.radius(box_line_radius).color(tokens.frustum_color));
+    }
+
+    if state.show_per_entity_bbox {
+        let mut batch = line_builder.batch("per_entity_regions_of_interest");
+        for region_of_interest in state.bounding_boxes.region_of_interest_per_entity.values() {
+            batch
+                .add_box_outline(region_of_interest)
+                .map(|lines| lines.radius(box_line_radius).color(egui::Color32::YELLOW));
         }
     }
 }

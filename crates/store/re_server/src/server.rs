@@ -10,7 +10,7 @@ use tokio_stream::StreamExt as _;
 use tonic::service::{Routes, RoutesBuilder};
 use tracing::{error, info};
 
-use crate::error_layer::InjectedErrors;
+use crate::layers::{BandwidthLayer, ErrorInjectionLayer, InjectedErrors, LatencyLayer};
 
 // ---
 
@@ -141,8 +141,8 @@ impl Server {
                     re_protos::headers::new_rerun_headers_layer(name, version, is_client)
                 })
                 .layer(re_grpc_server::cors_layer(&cors_allowed_origins))
-                .layer(crate::latency_layer::LatencyLayer::new(artificial_latency))
-                .layer(crate::bandwidth_layer::BandwidthLayer::new(bandwidth_limit))
+                .layer(LatencyLayer::new(artificial_latency))
+                .layer(BandwidthLayer::new(bandwidth_limit))
                 .layer(re_protos::trace_id_layer::TraceIdLayer::new(
                     std::sync::Arc::new(|| {
                         // We inject a dummy trace-id here so that our e2e integration tests
@@ -152,9 +152,7 @@ impl Server {
                         Some(opentelemetry::TraceId::from(DUMMY_TRACE_ID))
                     }),
                 ))
-                .layer(crate::error_layer::ErrorInjectionLayer::new(
-                    injected_errors.clone(),
-                ))
+                .layer(ErrorInjectionLayer::new(injected_errors.clone()))
                 // NOTE: GrpcWebLayer is applied directly to gRPC routes in ServerBuilder::build()
                 // to avoid rejecting regular HTTP requests
                 .into_inner();

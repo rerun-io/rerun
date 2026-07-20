@@ -8,6 +8,7 @@ mod plane_clustering;
 mod point_cloud;
 mod rectangles;
 mod test_triangle;
+mod voxel_grid;
 mod world_grid;
 
 pub use debug_overlay::{DebugOverlayDrawData, DebugOverlayError, DebugOverlayRenderer};
@@ -16,12 +17,14 @@ pub use lines::{LineBatchInfo, LineDrawData, LineDrawDataError, LineStripFlags};
 pub use mesh_renderer::{GpuMeshInstance, MeshDrawData};
 pub use point_cloud::{
     PointCloudBatchFlags, PointCloudBatchInfo, PointCloudDrawData, PointCloudDrawDataError,
+    PointCloudSortOrderCache,
 };
 pub use rectangles::{
     ColorMapper, ColormappedTexture, RectangleDrawData, RectangleOptions, ShaderDecoding,
     TextureAlpha, TextureFilterMag, TextureFilterMin, TexturedRect,
 };
 pub use test_triangle::TestTriangleDrawData;
+pub use voxel_grid::{VoxelGridDrawData, VoxelGridInstance, VoxelGridOptions};
 pub use world_grid::{WorldGridConfiguration, WorldGridDrawData, WorldGridRenderer};
 
 pub use self::depth_cloud::{DepthCloud, DepthCloudDrawData, DepthCloudRenderer, DepthClouds};
@@ -106,6 +109,9 @@ impl DrawDataDrawable {
 
 /// Information about the view for which can be taken into account when collecting drawables.
 pub struct DrawableCollectionViewInfo {
+    /// Stable identity of the view collecting the drawables.
+    pub view_id: crate::ViewBuilderId,
+
     /// The position of the camera in world space.
     pub camera_world_position: glam::Vec3A,
 }

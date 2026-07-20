@@ -127,12 +127,6 @@ features = [
       "howto/send_table",
     ],
   ],
-  [
-    "Convert custom MCAP Protobuf",
-    [
-      "howto/convert_mcap_protobuf",
-    ],
-  ],
 ]
 
 # --------------------------------------------------------------------------------------------------
@@ -142,12 +136,12 @@ backwards_check = [
   "archetypes/image_advanced", # Uses Pillow to encode a PNG; Pillow encodes differently on different OSes, so the bytes in the RRD won't match the checked-in reference.
   "archetypes/video_stream_synthetic", # Video encodes differently on CI :(
   "concepts/build_chunk", # Python-only experimental API; no reference RRD checked in
+  "concepts/build_chunk_from_record_batch", # Python-only experimental API; builds and prints chunks, generates no rrd
   "concepts/explicit_recording", # The file path differs locally and on CI
   "concepts/send_dataframe", # Python-only API; no reference RRD checked in
-  "howto/convert_mcap_protobuf", # Processes video from MCAP, non-deterministic encoding
-  "howto/convert_mcap_protobuf_send_column",
   "concepts/chunk_processing", # Python-only experimental API; output rrd may shift across versions
   "concepts/chunk_processing_intro", # Python-only experimental API; output rrd may shift across versions
+  "concepts/chunk_processing_query", # Python-only experimental API; queries in-process, generates no rrd
   "concepts/rrd_format", # Python-only experimental API; output rrd may shift across versions
   "howto/optimize_chunks", # Compacts a video-bearing MCAP; chunk layout may shift across optimizer versions
   # Catalog server examples don't generate rrds
@@ -189,11 +183,19 @@ backwards_check = [
   "cpp",
   "rust",
 ]
+"concepts/build_chunk_from_record_batch" = [ # Python-only experimental API
+  "cpp",
+  "rust",
+]
 "concepts/chunk_processing" = [ # `rerun.experimental` is Python-only
   "cpp",
   "rust",
 ]
 "concepts/chunk_processing_intro" = [ # `rerun.experimental` is Python-only
+  "cpp",
+  "rust",
+]
+"concepts/chunk_processing_query" = [ # `rerun.experimental` is Python-only
   "cpp",
   "rust",
 ]
@@ -282,16 +284,12 @@ backwards_check = [
   "cpp", # TODO(#2353): Doesn't exist
   "rust", # Runs indefinitely.
 ]
-"howto/convert_mcap_protobuf" = [
-  "cpp", # Not implemented
-  "rust", # Not implemented
-]
-"howto/convert_mcap_protobuf_send_column" = [
-  "cpp", # Not implemented
-  "rust", # Not implemented
-]
 "howto/component_mapping" = [
   "cpp", # Not implemented
+]
+"howto/state_remapping" = [
+  "cpp", # Blueprint component-mapping API is Python-only
+  "rust", # Blueprint component-mapping API is Python-only
 ]
 "howto/dataframe_operations" = [
   "cpp", # Not implemented
@@ -606,22 +604,17 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "py",
   "rust",
 ]
-"howto/convert_mcap_protobuf" = [ # Uses external MCAP file, depends on mcap_protobuf package
-  "cpp",
-  "py",
-  "rust",
-]
-"howto/convert_mcap_protobuf_send_column" = [ # Uses external MCAP file, depends on mcap_protobuf package
-  "cpp",
-  "py",
-  "rust",
-]
 "concepts/chunk_processing" = [ # Python-only; nothing to compare across languages
   "cpp",
   "py",
   "rust",
 ]
 "concepts/chunk_processing_intro" = [ # Python-only; nothing to compare across languages
+  "cpp",
+  "py",
+  "rust",
+]
+"concepts/chunk_processing_query" = [ # Python-only; nothing to compare across languages
   "cpp",
   "py",
   "rust",
@@ -706,7 +699,3 @@ quick_start = [ # These examples don't have exactly the same implementation.
 ]
 "archetypes/video_manual_frames" = ["$config_dir/../../tests/assets/video/Sintel_1080_10s_av1.mp4"]
 "howto/load_mcap" = ["$config_dir/../../tests/assets/mcap/r2b_galileo.mcap"]
-"howto/convert_mcap_protobuf" = ["$config_dir/../../tests/assets/mcap/trossen_transfer_cube.mcap"]
-"howto/convert_mcap_protobuf_send_column" = [
-  "$config_dir/../../tests/assets/mcap/trossen_transfer_cube.mcap",
-]

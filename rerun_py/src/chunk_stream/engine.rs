@@ -553,7 +553,7 @@ impl ChunkStream for LensesStream {
             }
 
             // Apply lenses — may produce 0..N output chunks.
-            for result in self.lenses.apply(&chunk) {
+            for result in self.lenses.apply(&chunk, &re_lenses::default_runtime()) {
                 match result {
                     Ok(out) => self.buffer.push_back(Arc::new(out)),
                     Err(partial) => {

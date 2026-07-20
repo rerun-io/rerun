@@ -44,7 +44,10 @@ pub use {
 };
 
 #[cfg(with_ffmpeg)]
-pub use self::decode::{FFmpegError, FFmpegVersion, FFmpegVersionParseError, ffmpeg_download_url};
+pub use self::decode::{
+    FFmpegError, FFmpegVersion, FFmpegVersionParseError, TranscodedMp4, ffmpeg_download_url,
+    transcode_mp4_drop_b_frames,
+};
 
 pub fn enabled_features() -> &'static [&'static str] {
     &[

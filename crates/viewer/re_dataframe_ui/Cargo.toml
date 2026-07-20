@@ -46,7 +46,6 @@ re_viewport.workspace = true
 ahash.workspace = true
 arrow.workspace = true
 async-trait.workspace = true
-cfg-if.workspace = true
 crossbeam.workspace = true
 datafusion.workspace = true
 egui.workspace = true

@@ -3,11 +3,14 @@ use std::sync::Arc;
 use arrow::array::{
     Array as ArrowArray, ArrayRef as ArrowArrayRef, ArrowPrimitiveType, BinaryArray,
     BooleanArray as ArrowBooleanArray, FixedSizeListArray as ArrowFixedSizeListArray,
-    LargeBinaryArray, ListArray as ArrowListArray, PrimitiveArray as ArrowPrimitiveArray,
-    StringArray as ArrowStringArray, StructArray as ArrowStructArray,
+    GenericStringArray as ArrowGenericStringArray, LargeBinaryArray,
+    LargeStringArray as ArrowLargeStringArray, ListArray as ArrowListArray, OffsetSizeTrait,
+    PrimitiveArray as ArrowPrimitiveArray, StringArray as ArrowStringArray,
+    StructArray as ArrowStructArray,
 };
 use arrow::buffer::{
-    BooleanBuffer as ArrowBooleanBuffer, Buffer, ScalarBuffer as ArrowScalarBuffer,
+    BooleanBuffer as ArrowBooleanBuffer, Buffer, NullBuffer as ArrowNullBuffer,
+    ScalarBuffer as ArrowScalarBuffer,
 };
 use arrow::datatypes::ArrowNativeType;
 use itertools::{Either, Itertools as _, izip};
@@ -133,18 +136,18 @@ impl Chunk {
     /// * [`Self::iter_component_timepoints`].
     #[inline]
     pub fn iter_timepoints(&self) -> impl Iterator<Item = TimePoint> + '_ {
-        let mut timelines = self
+        let timelines = self
             .timelines
             .values()
-            .map(|time_column| (time_column.timeline, time_column.times()))
+            .map(|time_column| (time_column.timeline, time_column.times_raw()))
             .collect_vec();
 
-        std::iter::from_fn(move || {
+        (0..self.num_rows()).map(move |row| {
             let mut timepoint = TimePoint::default();
-            for (timeline, times) in &mut timelines {
-                timepoint.insert(*timeline, times.next()?);
+            for (timeline, times) in &timelines {
+                timepoint.insert(*timeline, TimeInt::new_temporal(times[row]));
             }
-            Some(timepoint)
+            timepoint
         })
     }
 
@@ -162,44 +165,25 @@ impl Chunk {
             return Either::Left(std::iter::empty());
         };
 
-        if let Some(validity) = list_array.nulls() {
-            let mut timelines = self
-                .timelines
-                .values()
-                .map(|time_column| {
-                    (
-                        time_column.timeline,
-                        time_column
-                            .times()
-                            .enumerate()
-                            .filter(|(i, _)| validity.is_valid(*i))
-                            .map(|(_, time)| time),
-                    )
-                })
-                .collect_vec();
+        let timelines = self
+            .timelines
+            .values()
+            .map(|time_column| (time_column.timeline, time_column.times_raw()))
+            .collect_vec();
 
-            Either::Right(Either::Left(std::iter::from_fn(move || {
-                let mut timepoint = TimePoint::default();
-                for (timeline, times) in &mut timelines {
-                    timepoint.insert(*timeline, times.next()?);
-                }
-                Some(timepoint)
-            })))
-        } else {
-            let mut timelines = self
-                .timelines
-                .values()
-                .map(|time_column| (time_column.timeline, time_column.times()))
-                .collect_vec();
+        let validity = list_array.nulls();
 
-            Either::Right(Either::Right(std::iter::from_fn(move || {
-                let mut timepoint = TimePoint::default();
-                for (timeline, times) in &mut timelines {
-                    timepoint.insert(*timeline, times.next()?);
-                }
-                Some(timepoint)
-            })))
-        }
+        Either::Right(
+            (0..self.num_rows())
+                .filter(move |&row| validity.is_none_or(|validity| validity.is_valid(row)))
+                .map(move |row| {
+                    let mut timepoint = TimePoint::default();
+                    for (timeline, times) in &timelines {
+                        timepoint.insert(*timeline, TimeInt::new_temporal(times[row]));
+                    }
+                    timepoint
+                }),
+        )
     }
 
     /// Returns an iterator over the offsets & lengths of component arrays within [`Chunk`], for a given
@@ -383,6 +367,101 @@ impl_native_type!(arrow::array::types::Int64Type, i64);
 impl_native_type!(arrow::array::types::Float16Type, half::f16);
 impl_native_type!(arrow::array::types::Float32Type, f32);
 impl_native_type!(arrow::array::types::Float64Type, f64);
+
+/// Lazily yields `Option<T>` for one component batch (span) of a primitive column:
+/// `None` for null slots, `Some(value)` otherwise.
+///
+/// Yielded by `slice::<Option<T>>()`, which is like `slice::<T>()` but distinguishes
+/// null entries.
+pub struct NativeOptSliceIter<'a, T: ArrowNativeType> {
+    values: &'a [T],
+    nulls: Option<&'a ArrowNullBuffer>,
+    range: std::ops::Range<usize>,
+}
+
+impl<T: ArrowNativeType> Iterator for NativeOptSliceIter<'_, T> {
+    type Item = Option<T>;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        let i = self.range.next()?;
+        Some(if self.nulls.is_some_and(|nulls| !nulls.is_valid(i)) {
+            None
+        } else {
+            Some(self.values[i])
+        })
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.range.size_hint()
+    }
+}
+
+impl<T: ArrowNativeType> ExactSizeIterator for NativeOptSliceIter<'_, T> {}
+
+/// Like [`slice_as_native`] but yields `None` for null entries. Use this variant instead whenever
+/// null entries carry meaning (e.g. a state reset).
+///
+/// The [`slice_as_native`] function reads the raw values buffer without consulting the null
+/// bitmap, e.g. `[1.5, null, 2.5]` comes back as `[1.5, 0.0, 2.5]`, silently fabricating a value.
+fn slice_as_native_opt<'a, P, T>(
+    component: ComponentIdentifier,
+    array: &'a dyn ArrowArray,
+    component_spans: impl Iterator<Item = Span<usize>> + 'a,
+) -> impl Iterator<Item = NativeOptSliceIter<'a, T>> + 'a
+where
+    P: ArrowPrimitiveType<Native = T>,
+    T: ArrowNativeType,
+{
+    let Some(primitive_array) = array.downcast_array_ref::<ArrowPrimitiveArray<P>>() else {
+        error_on_downcast_failure(component, "ArrowPrimitiveArray<T>", array.data_type());
+        return Either::Left(std::iter::empty());
+    };
+    let values = primitive_array.values().as_ref();
+    let nulls = primitive_array.nulls();
+
+    Either::Right(component_spans.map(move |span| NativeOptSliceIter {
+        values,
+        nulls,
+        range: span.range(),
+    }))
+}
+
+// We use a macro instead of a blanket impl because this violates orphan rules.
+macro_rules! impl_option_native_type {
+    ($arrow_primitive_type:ty, $native_type:ty) => {
+        /// Like the plain native slicer but distinguishes null entries: `None` for null,
+        /// `Some(value)` otherwise.
+        impl ChunkComponentSlicer for Option<$native_type> {
+            type Item<'a> = NativeOptSliceIter<'a, $native_type>;
+
+            fn slice<'a>(
+                component: ComponentIdentifier,
+                array: &'a dyn ArrowArray,
+                component_spans: impl Iterator<Item = Span<usize>> + 'a,
+            ) -> impl Iterator<Item = Self::Item<'a>> {
+                slice_as_native_opt::<$arrow_primitive_type, $native_type>(
+                    component,
+                    array,
+                    component_spans,
+                )
+            }
+        }
+    };
+}
+
+impl_option_native_type!(arrow::array::types::UInt8Type, u8);
+impl_option_native_type!(arrow::array::types::UInt16Type, u16);
+impl_option_native_type!(arrow::array::types::UInt32Type, u32);
+impl_option_native_type!(arrow::array::types::UInt64Type, u64);
+impl_option_native_type!(arrow::array::types::Int8Type, i8);
+impl_option_native_type!(arrow::array::types::Int16Type, i16);
+impl_option_native_type!(arrow::array::types::Int32Type, i32);
+impl_option_native_type!(arrow::array::types::Int64Type, i64);
+impl_option_native_type!(arrow::array::types::Float16Type, half::f16);
+impl_option_native_type!(arrow::array::types::Float32Type, f32);
+impl_option_native_type!(arrow::array::types::Float64Type, f64);
 
 /// The actual implementation of `impl_array_native_type!`, so that we don't have to work in a macro.
 fn slice_as_array_native<'a, const N: usize, P, T>(
@@ -726,41 +805,120 @@ impl ChunkComponentSlicer for String {
 
 /// Like `slice::<String>()` but distinguishes between null and empty strings:
 /// `None` for null entries, `Some("")` for an explicitly-empty string.
-// TODO(RR-4740): if null ends up meaning reset, remove this slicer.
+///
+/// Prefer this over `slice::<String>()` when null carries meaning (e.g. a state reset):
+/// the Arrow spec allows null slots to span arbitrary garbage bytes, so a plain values-buffer
+/// slice is not guaranteed to yield an empty string for them.
+///
+/// NOTE: If null and `""` are treated the same by every caller, this slicer is removable in
+/// practice: known writers (arrow-rs, pyarrow, C++) emit zero-length null slots, so
+/// `slice::<String>()` yields `""` for them. But chunks come from the wire, so a writer that
+/// exploits the spec's leeway would silently turn resets into phantom garbage values.
 impl ChunkComponentSlicer for Option<String> {
-    type Item<'a> = Vec<Option<ArrowString>>;
+    type Item<'a> = StringOptSliceIter<'a>;
 
     fn slice<'a>(
         component: ComponentIdentifier,
         array: &'a dyn ArrowArray,
         component_spans: impl Iterator<Item = Span<usize>> + 'a,
-    ) -> impl Iterator<Item = Vec<Option<ArrowString>>> {
-        let Some(utf8_array) = array.downcast_array_ref::<ArrowStringArray>() else {
-            error_on_downcast_failure(component, "ArrowStringArray", array.data_type());
-            return Either::Left(std::iter::empty());
-        };
-
-        let values = utf8_array.values().clone();
-        let offsets = utf8_array.offsets().clone();
-        let lengths = offsets.lengths().collect_vec();
-        let nulls = utf8_array.nulls().cloned();
-
-        Either::Right(component_spans.map(move |range| {
-            let span = range.range();
-            let offsets = &offsets[span.clone()];
-            let lengths = &lengths[span.clone()];
-            izip!(span, offsets, lengths)
-                .map(|(i, &idx, &len)| {
-                    if nulls.as_ref().is_some_and(|n| !n.is_valid(i)) {
-                        None
-                    } else {
-                        Some(ArrowString::from(values.slice_with_length(idx as _, len)))
-                    }
-                })
-                .collect_vec()
-        }))
+    ) -> impl Iterator<Item = Self::Item<'a>> {
+        if let Some(utf8_array) = array.downcast_array_ref::<ArrowStringArray>() {
+            Either::Right(Either::Left(
+                slice_as_opt_string(utf8_array, component_spans)
+                    .map(|batch| StringOptSliceIter(Either::Left(batch))),
+            ))
+        } else if let Some(large_utf8_array) = array.downcast_array_ref::<ArrowLargeStringArray>() {
+            Either::Right(Either::Right(
+                slice_as_opt_string(large_utf8_array, component_spans)
+                    .map(|batch| StringOptSliceIter(Either::Right(batch))),
+            ))
+        } else {
+            error_on_downcast_failure(
+                component,
+                "ArrowStringArray or ArrowLargeStringArray",
+                array.data_type(),
+            );
+            Either::Left(std::iter::empty())
+        }
     }
 }
+
+/// The shared implementation of `slice::<Option<String>>()` for `Utf8` and `LargeUtf8` arrays.
+fn slice_as_opt_string<'a, O: OffsetSizeTrait>(
+    string_array: &'a ArrowGenericStringArray<O>,
+    component_spans: impl Iterator<Item = Span<usize>> + 'a,
+) -> impl Iterator<Item = GenericStringOptSliceIter<'a, O>> + 'a {
+    let values = string_array.values();
+    let offsets: &[O] = string_array.offsets();
+    let nulls = string_array.nulls();
+
+    component_spans.map(move |span| GenericStringOptSliceIter {
+        values,
+        offsets,
+        nulls,
+        range: span.range(),
+    })
+}
+
+/// The offset-width-generic implementation behind [`StringOptSliceIter`].
+struct GenericStringOptSliceIter<'a, O: OffsetSizeTrait> {
+    values: &'a Buffer,
+
+    /// The array's offsets, `len + 1` entries: element `i` spans `offsets[i]..offsets[i + 1]`.
+    offsets: &'a [O],
+    nulls: Option<&'a ArrowNullBuffer>,
+    range: std::ops::Range<usize>,
+}
+
+impl<O: OffsetSizeTrait> Iterator for GenericStringOptSliceIter<'_, O> {
+    type Item = Option<ArrowString>;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        let i = self.range.next()?;
+        Some(if self.nulls.is_some_and(|nulls| !nulls.is_valid(i)) {
+            None
+        } else {
+            let start = self.offsets[i].as_usize();
+            let end = self.offsets[i + 1].as_usize();
+            Some(ArrowString::from(
+                self.values.slice_with_length(start, end - start),
+            ))
+        })
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.range.size_hint()
+    }
+}
+
+impl<O: OffsetSizeTrait> ExactSizeIterator for GenericStringOptSliceIter<'_, O> {}
+
+/// Lazily yields `Option<ArrowString>` for one component batch (span) of a string column:
+/// `None` for null slots, `Some(string)` otherwise (including `Some("")` for explicitly-empty
+/// strings).
+///
+/// Yielded by `slice::<Option<String>>()`. Wraps both offset widths (`Utf8` and `LargeUtf8`).
+pub struct StringOptSliceIter<'a>(
+    Either<GenericStringOptSliceIter<'a, i32>, GenericStringOptSliceIter<'a, i64>>,
+);
+
+impl Iterator for StringOptSliceIter<'_> {
+    type Item = Option<ArrowString>;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next()
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
+    }
+}
+
+impl ExactSizeIterator for StringOptSliceIter<'_> {}
 
 impl ChunkComponentSlicer for bool {
     type Item<'a> = ArrowBooleanBuffer;
@@ -780,6 +938,64 @@ impl ChunkComponentSlicer for bool {
         Either::Right(
             component_spans.map(move |Span { start, len }| values.clone().slice(start, len)),
         )
+    }
+}
+
+/// Lazily yields `Option<bool>` for one component batch (span) of a boolean column:
+/// `None` for null slots, `Some(value)` otherwise.
+///
+/// Yielded by `slice::<Option<bool>>()`, which is like `slice::<bool>()` but distinguishes
+/// null entries.
+///
+/// Note: for booleans, we can't use [`NativeOptSliceIter`] because it reads values through a
+/// `&[T]` slice view, but an Arrow `BooleanArray` is bit-packed (8 per byte).
+pub struct BoolOptSliceIter<'a> {
+    values: &'a ArrowBooleanBuffer,
+    nulls: Option<&'a ArrowNullBuffer>,
+    range: std::ops::Range<usize>,
+}
+
+impl Iterator for BoolOptSliceIter<'_> {
+    type Item = Option<bool>;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        let i = self.range.next()?;
+        Some(if self.nulls.is_some_and(|nulls| !nulls.is_valid(i)) {
+            None
+        } else {
+            Some(self.values.value(i))
+        })
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.range.size_hint()
+    }
+}
+
+impl ExactSizeIterator for BoolOptSliceIter<'_> {}
+
+impl ChunkComponentSlicer for Option<bool> {
+    type Item<'a> = BoolOptSliceIter<'a>;
+
+    fn slice<'a>(
+        component: ComponentIdentifier,
+        array: &'a dyn ArrowArray,
+        component_spans: impl Iterator<Item = Span<usize>> + 'a,
+    ) -> impl Iterator<Item = Self::Item<'a>> {
+        let Some(boolean_array) = array.downcast_array_ref::<ArrowBooleanArray>() else {
+            error_on_downcast_failure(component, "ArrowBooleanArray", array.data_type());
+            return Either::Left(std::iter::empty());
+        };
+        let values = boolean_array.values();
+        let nulls = boolean_array.nulls();
+
+        Either::Right(component_spans.map(move |span| BoolOptSliceIter {
+            values,
+            nulls,
+            range: span.range(),
+        }))
     }
 }
 
@@ -983,11 +1199,34 @@ impl Chunk {
 mod tests {
     use std::sync::Arc;
 
+    use arrow::array::{BooleanArray, Float64Array, LargeStringArray, StringArray};
     use itertools::{Itertools as _, izip};
     use re_log_types::example_components::{MyPoint, MyPoints};
     use re_log_types::{EntityPath, TimeInt, TimePoint};
+    use re_span::Span;
+    use re_types_core::{ArrowString, ComponentIdentifier};
 
+    use super::ChunkComponentSlicer;
     use crate::{Chunk, RowId, Timeline};
+
+    /// Builds a chunk with one `MyPoints::points` row per `(timepoint, has_component)` entry.
+    ///
+    /// Rows with `has_component == false` leave the component null, making the array nullable.
+    fn timepoint_chunk(rows: impl IntoIterator<Item = (TimePoint, bool)>) -> Chunk {
+        let mut builder = Chunk::builder("this/that");
+        for (i, (timepoint, has_component)) in rows.into_iter().enumerate() {
+            let points = [MyPoint::new(i as f32, i as f32)];
+            builder = builder.with_sparse_component_batches(
+                RowId::new(),
+                timepoint,
+                [(
+                    MyPoints::descriptor_points(),
+                    has_component.then_some(&points as _),
+                )],
+            );
+        }
+        builder.build().expect("valid chunk")
+    }
 
     #[test]
     fn iter_indices_temporal() -> anyhow::Result<()> {
@@ -1064,6 +1303,116 @@ mod tests {
     }
 
     #[test]
+    fn iter_component_timepoints_temporal() {
+        let timeline_frame = Timeline::new_sequence("frame");
+        let timeline_other = Timeline::new_sequence("other");
+
+        let timepoint1 = TimePoint::from([(timeline_frame, 10), (timeline_other, 1)]);
+        let timepoint2 = TimePoint::from([(timeline_frame, 20), (timeline_other, 2)]);
+        let timepoint3 = TimePoint::from([(timeline_frame, 30), (timeline_other, 3)]);
+
+        let chunk = timepoint_chunk([
+            (timepoint1.clone(), true),
+            (timepoint2.clone(), true),
+            (timepoint3.clone(), true),
+        ]);
+        let expected = vec![timepoint1, timepoint2, timepoint3];
+        similar_asserts::assert_eq!(
+            expected,
+            chunk
+                .iter_component_timepoints(MyPoints::descriptor_points().component)
+                .collect_vec()
+        );
+    }
+
+    #[test]
+    fn iter_component_timepoints_temporal_sparse() {
+        let timeline_frame = Timeline::new_sequence("frame");
+        let timeline_other = Timeline::new_sequence("other");
+
+        let timepoint1 = TimePoint::from([(timeline_frame, 10), (timeline_other, 1)]);
+        let timepoint2 = TimePoint::from([(timeline_frame, 20), (timeline_other, 2)]);
+        let timepoint3 = TimePoint::from([(timeline_frame, 30), (timeline_other, 3)]);
+
+        let chunk = timepoint_chunk([
+            (timepoint1.clone(), true),
+            (timepoint2, false),
+            (timepoint3.clone(), true),
+        ]);
+        let expected = vec![timepoint1, timepoint3];
+        similar_asserts::assert_eq!(
+            expected,
+            chunk
+                .iter_component_timepoints(MyPoints::descriptor_points().component)
+                .collect_vec()
+        );
+    }
+
+    #[test]
+    fn iter_component_timepoints_static() {
+        let chunk = timepoint_chunk((0..3).map(|_| (TimePoint::default(), true)));
+        assert!(chunk.is_static());
+        let expected = vec![TimePoint::default(); 3];
+        similar_asserts::assert_eq!(
+            expected,
+            chunk
+                .iter_component_timepoints(MyPoints::descriptor_points().component)
+                .collect_vec()
+        );
+    }
+
+    #[test]
+    fn iter_component_timepoints_static_sparse() {
+        let chunk = timepoint_chunk([
+            (TimePoint::default(), true),
+            (TimePoint::default(), false),
+            (TimePoint::default(), true),
+        ]);
+        assert!(chunk.is_static());
+        let expected = vec![TimePoint::default(); 2];
+        similar_asserts::assert_eq!(
+            expected,
+            chunk
+                .iter_component_timepoints(MyPoints::descriptor_points().component)
+                .collect_vec()
+        );
+    }
+
+    #[test]
+    fn iter_component_timepoints_missing_component() {
+        let timepoint = TimePoint::from([
+            (Timeline::new_sequence("frame"), 10),
+            (Timeline::new_sequence("other"), 1),
+        ]);
+        let chunk = timepoint_chunk([(timepoint, true)]);
+        let got = chunk
+            .iter_component_timepoints("non_existing_component".into())
+            .collect_vec();
+        assert!(got.is_empty());
+    }
+
+    #[test]
+    fn iter_timepoints_temporal() {
+        let timeline_frame = Timeline::new_sequence("frame");
+        let timeline_other = Timeline::new_sequence("other");
+
+        let timepoint1 = TimePoint::from([(timeline_frame, 10), (timeline_other, 1)]);
+        let timepoint2 = TimePoint::from([(timeline_frame, 20), (timeline_other, 2)]);
+
+        let chunk = timepoint_chunk([(timepoint1.clone(), true), (timepoint2.clone(), true)]);
+        let expected = vec![timepoint1, timepoint2];
+        similar_asserts::assert_eq!(expected, chunk.iter_timepoints().collect_vec());
+    }
+
+    #[test]
+    fn iter_timepoints_static() {
+        let chunk = timepoint_chunk((0..3).map(|_| (TimePoint::default(), true)));
+        assert!(chunk.is_static());
+        let expected = vec![TimePoint::default(); 3];
+        similar_asserts::assert_eq!(expected, chunk.iter_timepoints().collect_vec());
+    }
+
+    #[test]
     fn iter_indices_static() -> anyhow::Result<()> {
         let entity_path = EntityPath::from("this/that");
 
@@ -1121,5 +1470,92 @@ mod tests {
         }
 
         Ok(())
+    }
+
+    // The `Option<T>` slicer tests: element-level validity must be preserved —
+    // including across multi-element spans and on sliced arrays with a nonzero offset.
+
+    /// Materializes each per-span batch into a `Vec` so tests can assert on plain values,
+    /// regardless of whether the slicer yields lazy iterators or collected containers.
+    fn slice_all<'a, S: ChunkComponentSlicer>(
+        array: &'a dyn arrow::array::Array,
+        spans: impl IntoIterator<Item = Span<usize>> + 'a,
+    ) -> Vec<Vec<<S::Item<'a> as IntoIterator>::Item>>
+    where
+        S::Item<'a>: IntoIterator,
+    {
+        S::slice(ComponentIdentifier::from("test"), array, spans.into_iter())
+            .map(|batch| batch.into_iter().collect())
+            .collect()
+    }
+
+    #[test]
+    fn option_f64() {
+        let array = Float64Array::from(vec![Some(1.0), None, Some(3.0), Some(4.0), None]);
+        let spans = [Span { start: 0, len: 2 }, Span { start: 2, len: 3 }];
+        assert_eq!(
+            slice_all::<Option<f64>>(&array, spans),
+            vec![vec![Some(1.0), None], vec![Some(3.0), Some(4.0), None],]
+        );
+
+        // Nonzero-offset slice: logical elements [None, 3.0, 4.0].
+        let sliced = array.slice(1, 3);
+        assert_eq!(
+            slice_all::<Option<f64>>(&sliced, [Span { start: 0, len: 3 }]),
+            vec![vec![None, Some(3.0), Some(4.0)]]
+        );
+    }
+
+    #[test]
+    fn option_bool() {
+        let array = BooleanArray::from(vec![Some(true), None, Some(false), None]);
+        let spans = [Span { start: 0, len: 2 }, Span { start: 2, len: 2 }];
+        assert_eq!(
+            slice_all::<Option<bool>>(&array, spans),
+            vec![vec![Some(true), None], vec![Some(false), None]]
+        );
+
+        let sliced = array.slice(1, 3);
+        assert_eq!(
+            slice_all::<Option<bool>>(&sliced, [Span { start: 0, len: 3 }]),
+            vec![vec![None, Some(false), None]]
+        );
+    }
+
+    #[test]
+    fn option_string_distinguishes_null_and_empty() {
+        let array = StringArray::from(vec![Some("a"), None, Some(""), Some("d")]);
+        let spans = [Span { start: 0, len: 2 }, Span { start: 2, len: 2 }];
+        assert_eq!(
+            slice_all::<Option<String>>(&array, spans),
+            vec![
+                vec![Some(ArrowString::from("a")), None],
+                vec![Some(ArrowString::from("")), Some(ArrowString::from("d"))],
+            ]
+        );
+
+        // Nonzero-offset slice: logical elements [None, "", "d"].
+        let sliced = array.slice(1, 3);
+        assert_eq!(
+            slice_all::<Option<String>>(&sliced, [Span { start: 0, len: 3 }]),
+            vec![vec![
+                None,
+                Some(ArrowString::from("")),
+                Some(ArrowString::from("d"))
+            ]]
+        );
+    }
+
+    #[test]
+    fn option_large_string() {
+        let array = LargeStringArray::from(vec![Some("a"), None, Some("c")]);
+        assert_eq!(
+            slice_all::<Option<String>>(&array, [Span { start: 0, len: 3 }]),
+            vec![vec![
+                Some(ArrowString::from("a")),
+                None,
+                Some(ArrowString::from("c"))
+            ]]
+        );
     }
 }

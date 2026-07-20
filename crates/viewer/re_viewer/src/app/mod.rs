@@ -12,7 +12,7 @@ use re_log_channel::{LogReceiverSet, RecordingOpenBehavior, SaveScreenshotError}
 use re_log_types::{ApplicationId, FileSource, RecordingId, StoreId};
 use re_redap_client::ConnectionRegistryHandle;
 use re_sdk_types::blueprint::components::PlayState;
-use re_ui::{UICommand, UICommandSender as _, notifications};
+use re_ui::{ContextExt as _, UICommand, UICommandSender as _, notifications};
 use re_viewer_context::open_url::{OpenUrlOptions, ViewerOpenUrl};
 use re_viewer_context::store_hub::{BlueprintPersistence, StoreHub};
 use re_viewer_context::{
@@ -22,12 +22,12 @@ use re_viewer_context::{
     ViewClassRegistry, ViewClassRegistryError, command_channel,
 };
 
-use crate::AppState;
 use crate::app_blueprint::{AppBlueprint, PanelStateOverrides};
 use crate::background_tasks::BackgroundTasks;
 use crate::event::ViewerEventDispatcher;
 use crate::latency_tracker::ServerLatencyTrackers;
 use crate::startup_options::StartupOptions;
+use crate::{AppState, command_palette::CommandPaletteAction};
 
 mod add_data_source;
 mod command_handling;
@@ -42,6 +42,16 @@ mod ui;
 const RERUN_VERSION_KEY: &str = "rerun.version";
 
 const REDAP_TOKEN_KEY: &str = "rerun.redap_token";
+
+/// The egui temp-data key under which the `on_begin_pass` hook stashes the timeline
+/// keyboard shortcut it consumed this frame.
+///
+/// The hook (which only has an [`egui::Context`]) consumes these keys early, but `App::ui`
+/// pairs the stashed command with the *live* active recording and dispatches it — so it can
+/// never target a stale recording.
+fn pending_timeline_shortcut_key() -> egui::Id {
+    egui::Id::new("rerun_pending_timeline_shortcut")
+}
 
 #[cfg(target_arch = "wasm32")]
 struct PendingFilePromise {
@@ -123,6 +133,9 @@ pub struct App {
     /// Measures how long a frame takes to paint
     pub(crate) frame_time_history: egui::util::History<f32>,
 
+    /// The last theme we pushed to the OS window (via [`egui::ViewportCommand::SetTheme`]).
+    last_window_theme: Option<egui::SystemTheme>,
+
     /// Commands to run at the end of the frame.
     pub command_sender: CommandSender,
     command_receiver: CommandReceiver,
@@ -191,6 +204,8 @@ impl App {
 
         let is_test = app_env.is_test();
 
+        #[cfg_attr(not(feature = "internal_catalog"), expect(unused_variables))]
+        let connection_registry_was_provided = connection_registry.is_some();
         let connection_registry = connection_registry
             .unwrap_or_else(re_redap_client::ConnectionRegistry::new_with_stored_credentials);
 
@@ -275,9 +290,30 @@ impl App {
             state.app_options.video.hw_acceleration = video_decoder_hw_acceleration;
         }
 
-        if app_env.is_test() {
+        if is_test {
+            creation_context.egui_ctx.mark_as_test();
             state.app_options = AppOptions::test();
         }
+
+        #[cfg(feature = "internal_catalog")]
+        let connection_registry = {
+            if state.app_options.experimental.use_internal_catalog
+                && (!connection_registry_was_provided || cfg!(target_arch = "wasm32"))
+                && connection_registry.internal_origin().is_none()
+            {
+                #[cfg(not(target_arch = "wasm32"))]
+                let catalog = crate::internal_catalog::build(std::net::SocketAddr::from((
+                    std::net::Ipv4Addr::LOCALHOST,
+                    re_uri::DEFAULT_PROXY_PORT,
+                )));
+                #[cfg(target_arch = "wasm32")]
+                let catalog = crate::internal_catalog::build();
+
+                connection_registry.with_internal((catalog.origin, catalog.connection))
+            } else {
+                connection_registry
+            }
+        };
 
         let reflection = re_sdk_types::reflection::generate_reflection().unwrap_or_else(|err| {
             re_log::error!(
@@ -380,7 +416,6 @@ impl App {
             // Egui's built in behavior is to interact with focus, and we don't want that.
             // TODO(emilk/egui#7899): allow consuming events before egui uses them to move keyboard focus.
             // TODO(emilk/egui#7659): allow disabling certain egui shortcuts.
-            let command_sender = command_sender.clone();
             creation_context.egui_ctx.on_begin_pass(
                 "rerun-kb-shortcuts",
                 Arc::new(move |ctx| {
@@ -397,9 +432,14 @@ impl App {
                         });
                     }
 
-                    // Consumes the used shortcut (including the "space" key):
-                    if let Some(cmd) = UICommand::listen_for_kb_shortcut(ctx) {
-                        command_sender.send_ui(cmd);
+                    // Consume the timeline shortcuts (space/arrows/home/end) here, before egui
+                    // uses them for focus/scroll. We only stash which command was pressed; it is
+                    // paired with the live active recording and dispatched later, in `App::ui`, so
+                    // it can never target a stale recording.
+                    if let Some(kind) = re_ui::consume_timeline_shortcut(ctx) {
+                        ctx.data_mut(|data| {
+                            data.insert_temp(pending_timeline_shortcut_key(), kind);
+                        });
                     }
                 }),
             );
@@ -456,6 +496,7 @@ impl App {
             latest_latency_interest: None,
 
             frame_time_history: egui::util::History::new(1..100, 0.5),
+            last_window_theme: None,
 
             command_sender,
             command_receiver,
@@ -526,20 +567,28 @@ impl App {
         self.state.active_recording_id()
     }
 
+    /// Select `item` and navigate the viewer to it (if it maps to a route).
+    fn select_and_navigate_to(&self, item: &Item) {
+        self.command_sender
+            .send_system(SystemCommand::set_selection(item.clone()));
+        if let Some(route) = Route::from_item(item) {
+            self.command_sender
+                .send_system(SystemCommand::SetRoute(route));
+        }
+    }
+
     /// Open a content URL in the viewer.
     pub fn open_url_or_file(&self, url: &str) {
         match ViewerOpenUrl::parse_with_options(
             url,
             &re_data_source::FromUriOptions {
                 accept_extensionless_http: true,
-                ..Default::default()
             },
         ) {
             Ok(url) => {
                 url.open(
                     &self.egui_ctx,
                     &OpenUrlOptions {
-                        follow: false,
                         recording_open_behavior: RecordingOpenBehavior::OpenAndSelect,
                         show_loader: true,
                     },
@@ -634,7 +683,7 @@ impl App {
                     timeline_change: _,
                     time_change: _,
                 } = self.state.blueprint_time_control.update(
-                    bp_ctx.current_blueprint,
+                    blueprint,
                     &re_viewer_context::TimeControlUpdateParams {
                         stable_dt,
                         more_data_is_streaming_in: true,
@@ -892,6 +941,16 @@ impl App {
         store_hub.entity_db(recording_id)
     }
 
+    /// Returns a [`re_chunk_store::LatestAtQuery`] for the active recording's current timeline
+    /// position, suitable for querying frame data from [`Self::recording_db`].
+    pub fn current_query(&self) -> Option<re_chunk_store::LatestAtQuery> {
+        let store_id = self.active_recording_id()?;
+        self.state
+            .time_controls
+            .get(store_id)
+            .map(|tc| tc.current_query())
+    }
+
     // NOTE: Relying on `self` is dangerous, as this is called during a time where some internal
     // fields may have been temporarily `take()`n out. Keep this a static method.
     fn handle_dropping_files(
@@ -914,6 +973,13 @@ impl App {
         let mut force_store_info = false;
 
         for file in dropped_files {
+            // egui gives an optional filesystem `path` plus a display `name` (only `name` is set on
+            // web); reconcile them once so the fallback isn't reproduced at each use below.
+            let file_path = file
+                .path
+                .clone()
+                .unwrap_or_else(|| std::path::PathBuf::from(&file.name));
+
             let active_store_id = route
                 .recording_id()
                 .cloned()
@@ -926,11 +992,7 @@ impl App {
 
                     // If we don't have any application ID to recommend (which means we are on the welcome screen),
                     // then we use the file path as the application ID or the file name if there is no path (on web builds).
-                    let application_id = file
-                        .path
-                        .clone()
-                        .map(|p| ApplicationId::from(p.display().to_string()))
-                        .unwrap_or_else(|| ApplicationId::from(file.name.clone()));
+                    let application_id = ApplicationId::from(file_path.display().to_string());
 
                     // NOTE: We don't override blueprints' store IDs anyhow, so it is sound to assume that
                     // this can only be a recording.
@@ -952,7 +1014,7 @@ impl App {
                             force_store_info,
                         },
                         FileContents {
-                            name: file.name.clone(),
+                            path: file_path,
                             bytes: bytes.clone(),
                         },
                     ),
@@ -970,7 +1032,6 @@ impl App {
                             force_store_info,
                         },
                         path,
-                        follow: false,
                     },
                 ));
             }
@@ -995,7 +1056,12 @@ impl App {
                 pixels_per_point,
                 name,
                 target,
+                notify,
             } = (*info).clone();
+
+            // Only used in the native `SaveToPath` branch below.
+            #[cfg(target_arch = "wasm32")]
+            let _ = notify;
 
             let rgba = if let Some(ui_rect) = ui_rect {
                 Arc::new(image.region(&ui_rect, Some(pixels_per_point)))
@@ -1056,7 +1122,12 @@ impl App {
 
                         let result = match rgb_image.save(&file_path) {
                             Ok(()) => {
-                                re_log::info!("Saved screenshot to {file_path:?}");
+                                // Only show a user-facing toast for user-initiated screenshots.
+                                if notify {
+                                    re_log::info!("Saved screenshot to {file_path:?}");
+                                } else {
+                                    re_log::debug!("Saved screenshot to {file_path:?}");
+                                }
                                 Ok(())
                             }
                             Err(err) => {
@@ -1084,7 +1155,14 @@ impl App {
             }
         } else {
             #[cfg(not(target_arch = "wasm32"))] // no full-app screenshotting on web
-            self.screenshotter.save(&self.egui_ctx, image);
+            if user_data
+                .data
+                .as_ref()
+                .is_some_and(|data| data.is::<crate::screenshotter::FullAppScreenshot>())
+            {
+                self.screenshotter.save(&self.egui_ctx, image);
+            }
+            // Ignore any other screenshot requests
         }
     }
 }
@@ -1276,6 +1354,7 @@ impl eframe::App for App {
             // IMPORTANT: only call this once per FRAME even if we run multiple passes.
             // Otherwise we might incorrectly evict something that was invisible in the first (discarded) pass.
             store_hub.begin_frame_caches(self.active_recording_id()); // Call AFTER `purge_memory_if_needed`
+            self.state.app_caches.begin_frame();
         }
 
         ui::file_saver_progress_ui(ui, &mut self.background_tasks); // toasts for background file saver
@@ -1347,8 +1426,16 @@ impl eframe::App for App {
         }
 
         {
+            let active_route = self.state.navigation.current();
+
+            // Read-only copy of time control state (to avoid borrow checker issues with mutable state access).
+            let active_time_ctrl = active_route
+                .recording_id()
+                .and_then(|id| self.state.time_controls.get(id).cloned())
+                .unwrap_or_default();
+
             let (storage_context, store_context) =
-                store_hub.read_context(self.state.navigation.current());
+                store_hub.read_context(active_route, &active_time_ctrl);
 
             let blueprint = store_context.as_ref().map(|ctx| ctx.blueprint);
             let blueprint_query = self.state.blueprint_query_for_viewer(blueprint);
@@ -1376,27 +1463,132 @@ impl eframe::App for App {
                 ui::paint_custom_window_frame(ui);
             }
 
-            if let Some(cmd) = self
-                .cmd_palette
-                .show(ui, &crate::open_url_description::command_palette_parse_url)
+            let selected_redap_server = if let Some(Item::RedapServer(origin)) =
+                self.state.selection_state.selected_items().single_item()
             {
+                Some(origin.clone())
+            } else {
+                None
+            };
+
+            let active_recording_id = store_context
+                .as_ref()
+                .map(|ctx| ctx.recording_store_id().clone());
+
+            // The Redap entry currently being viewed (if any), so its commands (e.g. refresh)
+            // are offered in the command palette.
+            let current_redap_entry = match self.state.navigation.current() {
+                Route::RedapEntry { origin, kind } => {
+                    kind.entry_id().map(|entry_id| (origin.clone(), entry_id))
+                }
+                _ => None,
+            };
+
+            let cmd_env = re_ui::CommandEnvironment {
+                recording: active_recording_id.clone(),
+                has_editable_redap_server: selected_redap_server
+                    .as_ref()
+                    .is_some_and(|origin| !self.state.redap_servers.is_internal_server(origin)),
+                redap_server: selected_redap_server,
+                redap_entry: current_redap_entry,
+            };
+
+            // Handle keyboard shortcuts, now that we have a live `CommandEnvironment`:
+            {
+                use re_ui::{
+                    RecordingCommandSender as _, RedapServerCommandSender as _,
+                    TableCommandSender as _,
+                };
+
+                // Non-timeline shortcuts, resolved against the current environment:
+                if let Some(resolved) = re_ui::listen_for_kb_shortcuts(ui.ctx(), &cmd_env) {
+                    match resolved {
+                        re_ui::ResolvedCommand::Ui(cmd) => self.command_sender.send_ui(cmd),
+                        re_ui::ResolvedCommand::Recording(cmd) => {
+                            self.command_sender.send_recording_command(cmd);
+                        }
+                        re_ui::ResolvedCommand::RedapServer(cmd) => {
+                            self.command_sender.send_redap_server_command(cmd);
+                        }
+                        re_ui::ResolvedCommand::Table(cmd) => {
+                            self.command_sender.send_table_command(cmd);
+                        }
+                    }
+                }
+
+                // Timeline shortcuts (space/arrows/home/end) were consumed early in
+                // `on_begin_pass` and stashed; pair them with the live recording here:
+                let pending_timeline = ui.ctx().data_mut(|data| {
+                    let key = pending_timeline_shortcut_key();
+                    let kind = data.get_temp::<re_ui::RecordingCommandKind>(key);
+                    data.remove::<re_ui::RecordingCommandKind>(key);
+                    kind
+                });
+                if let Some(cmd) = pending_timeline.and_then(|kind| kind.for_environment(&cmd_env))
+                {
+                    self.command_sender.send_recording_command(cmd);
+                }
+            }
+
+            let mut cmd_palette_provider = crate::command_palette::CommandPaletteProviderImpl {
+                recording: store_context.as_ref().map(|ctx| ctx.recording()),
+                redap_servers: &self.state.redap_servers,
+                cmd_env,
+            };
+            if let Some(cmd) = self.cmd_palette.show(ui.ctx(), &mut cmd_palette_provider) {
                 match cmd {
-                    re_ui::CommandPaletteAction::UiCommand(cmd) => {
+                    CommandPaletteAction::UiCommand(cmd) => {
                         self.command_sender.send_ui(cmd);
                     }
-                    re_ui::CommandPaletteAction::OpenUrl(url_desc) => {
+                    CommandPaletteAction::RecordingCommand(cmd) => {
+                        use re_ui::RecordingCommandSender as _;
+                        self.command_sender.send_recording_command(cmd);
+                    }
+                    CommandPaletteAction::RedapServerCommand(cmd) => {
+                        use re_ui::RedapServerCommandSender as _;
+                        self.command_sender.send_redap_server_command(cmd);
+                    }
+                    CommandPaletteAction::SelectEntityPath(entity_path) => {
+                        self.command_sender
+                            .send_system(SystemCommand::set_selection(Item::from(
+                                entity_path.clone(),
+                            )));
+                        self.command_sender
+                            .send_system(SystemCommand::SetFocus(entity_path.into()));
+                    }
+                    CommandPaletteAction::SelectComponentPath(component_path) => {
+                        let item = Item::from(component_path);
+                        self.command_sender
+                            .send_system(SystemCommand::set_selection(item.clone()));
+                        self.command_sender
+                            .send_system(SystemCommand::SetFocus(item.into()));
+                    }
+                    CommandPaletteAction::SelectRedapServer(origin) => {
+                        self.select_and_navigate_to(&Item::RedapServer(origin));
+                    }
+                    CommandPaletteAction::SelectRedapEntry {
+                        origin, entry_id, ..
+                    } => {
+                        self.select_and_navigate_to(&Item::RedapEntry {
+                            origin,
+                            kind: re_viewer_context::RedapEntryKind::Entry(entry_id),
+                        });
+                    }
+                    CommandPaletteAction::TableCommand(cmd) => {
+                        use re_ui::TableCommandSender as _;
+                        self.command_sender.send_table_command(cmd);
+                    }
+                    CommandPaletteAction::OpenUrl(url) => {
                         match ViewerOpenUrl::parse_with_options(
-                            &url_desc.url,
+                            url.as_str(),
                             &re_data_source::FromUriOptions {
                                 accept_extensionless_http: true,
-                                ..Default::default()
                             },
                         ) {
                             Ok(url) => {
                                 url.open(
                                     ui,
                                     &OpenUrlOptions {
-                                        follow: false,
                                         recording_open_behavior:
                                             RecordingOpenBehavior::OpenAndSelect,
                                         show_loader: true,
@@ -1426,6 +1618,12 @@ impl eframe::App for App {
                 &storage_context,
                 store_context.as_ref(),
                 &route,
+            );
+            self.run_pending_recording_commands(
+                ui,
+                &app_blueprint,
+                &storage_context,
+                store_context.as_ref(),
             );
         }
         self.run_pending_system_commands(&mut store_hub, ui);

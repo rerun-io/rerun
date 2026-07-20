@@ -108,7 +108,9 @@ pub use shape_builder::ShapeBuilder;
 pub use size::Size;
 pub use texture_info::Texture2DBufferInfo;
 pub use transform::RectTransform;
-pub use view_builder::{BlendWithBackground, RenderMode, ViewBuilder, ViewPickingConfiguration};
+pub use view_builder::{
+    BlendWithBackground, RenderMode, ViewBuilder, ViewBuilderId, ViewPickingConfiguration,
+};
 pub use wgpu_resources::{
     BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
     GpuPipelineLayoutPool, GpuRenderPipelineHandle, GpuRenderPipelinePool,

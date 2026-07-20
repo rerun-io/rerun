@@ -21,7 +21,6 @@ mod drop_time_range;
 pub mod entity_tree;
 mod events;
 mod gc;
-#[cfg(not(target_arch = "wasm32"))]
 mod lazy_store;
 mod lineage;
 mod missing_chunk_reporter;
@@ -74,7 +73,6 @@ pub use self::subscribers::{
     ChunkStoreSubscriber, ChunkStoreSubscriberHandle, PerStoreChunkSubscriber,
 };
 
-#[cfg(not(target_arch = "wasm32"))]
 pub use self::lazy_store::LazyStore;
 
 pub(crate) use self::store::ColumnMetadataState;
@@ -117,13 +115,27 @@ pub enum ChunkStoreError {
 pub type ChunkStoreResult<T> = ::std::result::Result<T, ChunkStoreError>;
 
 /// What to do when a virtual chunk is missing from the store.
+///
+/// The default for queries should be [`ChunkTrackingMode::Report`], which signals
+/// that the chunk should be downloaded/protected from GC. And similar chunks (same
+/// entity & components) should be prefetched.
+///
+/// When a query is driven by something short-lived, [`ChunkTrackingMode::ReportTransient`]
+/// should be used. That does download/protect the given chunk, but ignores similar chunks.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ChunkTrackingMode {
     /// Ignore missing & used chunks, and return partial results.
     Ignore,
 
     /// Remember the missing & used chunk ID in [`ChunkStore::take_tracked_chunk_ids`].
+    ///
+    /// This signals to the prefetcher that this, and similar chunks should be fetched.
     Report,
+
+    /// Like [`ChunkTrackingMode::Report`], but doesn't speculate by prefetching similar chunks.
+    ///
+    /// This should be used for short-lived things like queries on-hover ui.
+    ReportTransient,
 
     /// Panic when a chunk is missing.
     ///

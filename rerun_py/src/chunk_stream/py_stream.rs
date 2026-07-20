@@ -5,6 +5,7 @@ use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
 
+use re_log::ResultExt as _;
 use re_log_types::{
     EntityPathFilter, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource,
 };
@@ -84,7 +85,7 @@ impl PyLazyChunkStreamInternal {
         components: Option<Vec<String>>,
     ) -> PyResult<Self> {
         let stream = self.take_inner()?;
-        let f = build_structured_filter(content, has_timeline, is_static, components);
+        let f = build_structured_filter(content, has_timeline, is_static, components)?;
         Ok(Self::new(stream.filter(f)))
     }
 
@@ -98,7 +99,7 @@ impl PyLazyChunkStreamInternal {
         components: Option<Vec<String>>,
     ) -> PyResult<Self> {
         let stream = self.take_inner()?;
-        let f = build_structured_filter(content, has_timeline, is_static, components);
+        let f = build_structured_filter(content, has_timeline, is_static, components)?;
         Ok(Self::new(stream.drop_matching(f)))
     }
 
@@ -112,7 +113,7 @@ impl PyLazyChunkStreamInternal {
         components: Option<Vec<String>>,
     ) -> PyResult<(Self, Self)> {
         let stream = self.take_inner()?;
-        let f = build_structured_filter(content, has_timeline, is_static, components);
+        let f = build_structured_filter(content, has_timeline, is_static, components)?;
         let (a, b) = stream.split(f);
         Ok((Self::new(a), Self::new(b)))
     }
@@ -365,26 +366,31 @@ fn build_structured_filter(
     has_timeline: Option<String>,
     is_static: Option<bool>,
     components: Option<Vec<String>>,
-) -> StructuredFilter {
+) -> PyResult<StructuredFilter> {
     let content = content.map(|exprs| {
         let rules = exprs.join(" ");
         EntityPathFilter::parse_forgiving(&rules).resolve_without_substitutions()
     });
 
-    let has_timeline = has_timeline.map(|s| re_types_core::TimelineName::from(s.as_str()));
+    let has_timeline = has_timeline
+        .map(|s| {
+            re_types_core::TimelineName::try_new(s)
+                .map_err(|err| pyo3::exceptions::PyValueError::new_err(err.to_string()))
+        })
+        .transpose()?;
 
     let components = components.map(|cs| {
         cs.iter()
-            .map(|s| ComponentIdentifier::from(s.as_str()))
+            .filter_map(|s| ComponentIdentifier::try_new(s.as_str()).ok_or_log_error_once())
             .collect()
     });
 
-    StructuredFilter {
+    Ok(StructuredFilter {
         content,
         has_timeline,
         is_static,
         components,
-    }
+    })
 }
 
 /// Write all chunks from a pre-compiled [`ChunkStream`] to an RRD file.
