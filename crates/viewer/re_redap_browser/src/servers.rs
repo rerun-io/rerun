@@ -256,6 +256,12 @@ impl Server {
 
                 blueprint = blueprint.sort_key(column_sort_key);
 
+                // The link column renders a button with the resolved entry name, so the raw
+                // `name` column is redundant — hide it by default.
+                if desc.display_name().as_str() == "name" {
+                    blueprint = blueprint.default_visibility(false);
+                }
+
                 if desc.display_name().as_str() == ENTRY_LINK_COLUMN_NAME {
                     blueprint = blueprint.variant_ui(re_component_ui::REDAP_URI_BUTTON_VARIANT);
                 }
@@ -372,11 +378,7 @@ impl Server {
                 // Property columns are visible by default
                 true
             } else {
-                matches!(
-                    desc.display_name().as_str(),
-                    RECORDING_LINK_COLUMN_NAME
-                        | ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME
-                )
+                desc.display_name().as_str() == RECORDING_LINK_COLUMN_NAME
             };
 
             let column_sort_key = match desc.display_name().as_str() {
@@ -847,6 +849,27 @@ impl RedapServers {
                 TableReference::bare(entry.name().to_string()),
             );
         }
+    }
+
+    /// Snapshot of `(origin, entry_id) → name + icon` for all currently-loaded catalog entries.
+    ///
+    /// Used to resolve built-in Rerun URLs to rich `LinkButtons` (see
+    /// [`re_viewer_context::make_url_decorator`]). Entries that haven't finished loading yet are
+    /// simply absent, so callers fall back to a placeholder.
+    pub fn build_url_lookup(&self) -> re_viewer_context::UrlNameLookup {
+        let mut lookup = re_viewer_context::UrlNameLookup::default();
+        for server in self.iter_servers() {
+            for entry in server.entries().iter_loaded() {
+                lookup.insert(
+                    (server.origin().clone(), entry.id()),
+                    re_viewer_context::ResolvedEntry {
+                        name: entry.name().clone(),
+                        kind: entry.link_kind(),
+                    },
+                );
+            }
+        }
+        lookup
     }
 
     pub fn is_authenticated(&self, origin: &re_uri::Origin) -> bool {

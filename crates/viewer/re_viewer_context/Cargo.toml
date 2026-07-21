@@ -97,4 +97,7 @@ wasm-bindgen-futures.workspace = true
 web-sys = { workspace = true, features = ["Window"] }
 
 [dev-dependencies]
+re_ui = { workspace = true, features = ["testing"] }
+
+egui_kittest.workspace = true
 rand = { workspace = true, features = ["std_rng"] }

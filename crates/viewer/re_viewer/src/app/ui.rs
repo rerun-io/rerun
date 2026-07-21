@@ -133,6 +133,18 @@ impl App {
                             self.startup_options.login_enabled(),
                             &self.command_sender,
                         );
+
+                        // Install our url decorator so links render nicely. This is done every frame
+                        // so the data stays up-to-date.
+                        let url_name_lookup =
+                            std::sync::Arc::new(self.state.redap_servers.build_url_lookup());
+                        re_ui::UrlDecorator::set(
+                            &self.egui_ctx,
+                            re_viewer_context::make_url_decorator(
+                                url_name_lookup,
+                                self.egui_ctx.theme(),
+                            ),
+                        );
                     }
 
                     self.texture_readback.poll_and_save_texture_readbacks(

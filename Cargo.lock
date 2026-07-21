@@ -10905,6 +10905,7 @@ dependencies = [
  "directories",
  "egui",
  "egui-wgpu",
+ "egui_kittest",
  "egui_tiles",
  "emath",
  "glam",

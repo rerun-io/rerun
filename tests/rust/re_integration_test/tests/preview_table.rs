@@ -162,13 +162,11 @@ pub async fn preview_table() {
 
     // Let the 3D views' camera framing settle before snapshotting.
     harness.run_ok();
-    mask_recording_uris(&mut harness);
     harness.snapshot("preview_table");
 
     // Switch to grid view and snapshot the same previews as cards.
     harness.get_by_label("Grid view").click();
     harness.run_ok();
-    mask_recording_uris(&mut harness);
     harness.snapshot("preview_table_grid");
 
     // Clicking the first card opens its recording, navigating away from the table.
@@ -227,20 +225,6 @@ pub async fn preview_table() {
     harness.set_selection_panel_opened(false);
     harness.mask_dates();
     harness.snapshot("preview_table_opened_recording");
-}
-
-/// Mask any cell that renders a recording URI, since it embeds the server's random port.
-fn mask_recording_uris(harness: &mut egui_kittest::Harness<'_, re_viewer::App>) {
-    let uri_rects: Vec<egui::Rect> = harness
-        .query_all_by(|node| {
-            node.label().is_some_and(|l| l.contains("rerun+http"))
-                || node.value().is_some_and(|v| v.contains("rerun+http"))
-        })
-        .map(|node| node.rect())
-        .collect();
-    for rect in uri_rects {
-        harness.mask(rect);
-    }
 }
 
 /// Build a `.rbl` blueprint file holding a `Spatial3DView` over `/test_entity` plus a

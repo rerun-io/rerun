@@ -490,10 +490,10 @@
     "stroke": { "color": "{Gray.750}", "width": 1 },
   },
   "button_opened": {
-    "fill": { "color": "{Blue.150}" },
-    "fill_hovered": { "color": "{Blue.200}" },
-    "fill_pressed": { "color": "{Blue.250}" },
-    "text": { "color": "{Gray.750}" },
+    "fill": { "color": "{Blue.500}", "alpha": 100 },
+    "fill_hovered": { "color": "{Blue.500}", "alpha": 150 },
+    "fill_pressed": { "color": "{Blue.500}", "alpha": 200 },
+    "text": { "color": "{Gray.850}" },
   },
 
   "Global": {

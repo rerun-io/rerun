@@ -16,6 +16,7 @@ mod help;
 mod hot_reload_design_tokens;
 mod icon_text;
 pub mod icons;
+mod link_button;
 pub mod list_item;
 pub mod loading_indicator;
 mod markdown_utils;
@@ -30,6 +31,7 @@ pub mod time;
 mod time_drag_value;
 mod ui_ext;
 mod ui_layout;
+mod url_decorator;
 
 #[cfg(target_os = "linux")]
 mod wayland;
@@ -65,6 +67,7 @@ pub use self::help::*;
 pub use self::hot_reload_design_tokens::design_tokens_of;
 pub use self::icon_text::*;
 pub use self::icons::Icon;
+pub use self::link_button::LinkButton;
 pub use self::markdown_utils::*;
 pub use self::notifications::Link;
 pub use self::relative_time_range::{
@@ -75,6 +78,7 @@ pub use self::syntax_highlighting::SyntaxHighlighting;
 pub use self::time_drag_value::TimeDragValue;
 pub use self::ui_ext::UiExt;
 pub use self::ui_layout::UiLayout;
+pub use self::url_decorator::{UrlDecorator, UrlDecoratorFn};
 
 // ---------------------------------------------------------------------------
 

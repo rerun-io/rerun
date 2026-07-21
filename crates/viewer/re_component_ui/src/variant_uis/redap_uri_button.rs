@@ -1,9 +1,10 @@
 use std::error::Error;
 use std::str::FromStr as _;
 
-use egui::{Align, Layout, Link, Ui, UiBuilder};
+use egui::{Align2, AtomKind, Id, IntoAtoms as _, Ui};
 use re_types_core::{ComponentIdentifier, RowId};
-use re_ui::UiExt as _;
+use re_ui::loading_indicator::paint_loading_indicator_inside;
+use re_ui::{ReButton, Size, UiExt as _, Variant, icons};
 use re_uri::RedapUri;
 use re_viewer_context::open_url::ViewerOpenUrl;
 use re_viewer_context::{AppContext, RecordingOrTable, SystemCommand, SystemCommandSender as _};
@@ -49,83 +50,131 @@ pub fn redap_uri_button(
             .any(|source| source.stripped_redap_uri().as_ref() == Some(&uri));
 
     let uri_clone = uri.clone();
-    // Show the link left aligned and justified so the whole cell is clickable.
-    //
-    // And add a button to copy the link.
-    let link_with_copy = |ui: &mut Ui, link| {
-        let rect = ui.max_rect();
-        let contains_pointer = ui.rect_contains_pointer(rect);
-        egui::Sides::new()
-            .shrink_left()
-            .height(ui.max_rect().height())
-            .show(
-                ui,
-                |ui| {
-                    ui.scope_builder(
-                        UiBuilder::new().max_rect(ui.max_rect()).layout(
-                            Layout::left_to_right(Align::Center)
-                                .with_main_justify(false)
-                                .with_cross_justify(true)
-                                .with_main_align(Align::Min),
-                        ),
-                        |ui| ui.add(link),
-                    )
-                    .inner
-                },
-                |ui| {
-                    if contains_pointer
-                        && ui
-                            .small_icon_button(&re_ui::icons::COPY, "Copy link")
-                            .clicked()
-                    {
-                        if let Ok(url) = ViewerOpenUrl::from(uri_clone).sharable_url(None) {
-                            ctx.command_sender
-                                .send_system(SystemCommand::CopyViewerUrl(url));
-                        } else {
-                            re_log::error!("Failed to create a sharable url for recording");
-                        }
-                    }
-                },
-            )
-            .0
-    };
 
-    ui.horizontal(|ui| {
+    let (open, loading, tooltip, opened_store_id) =
         if let Some(loaded_recording_info) = loaded_recording_info {
-            let is_opened = ctx.store_hub().is_opened(&loaded_recording_info.store_id);
-            let label = if is_opened { "Switch to" } else { "Open" };
-            let hover = if is_opened {
+            let open = ctx.store_hub().is_opened(&loaded_recording_info.store_id);
+            let opened_store_id = open.then(|| loaded_recording_info.store_id.clone());
+            let tooltip = Some(if open {
                 "This recording is already open. Click to switch to it."
             } else {
                 "This recording is loaded. Click to open it."
-            };
-            let response = link_with_copy(ui, Link::new(label)).on_hover_text(hover);
-            if response.clicked() {
-                ctx.command_sender.send_system(SystemCommand::SetRoute(
-                    RecordingOrTable::Recording {
-                        store_id: loaded_recording_info.store_id.clone(),
-                    }
-                    .route(),
-                ));
-            }
+            });
+            (open, false, tooltip, opened_store_id)
         } else if is_loading {
-            ui.loading_indicator("Loading redap recording");
+            (true, true, None, None)
+        } else {
+            (false, false, None, None)
+        };
 
-            if ui
-                .small_icon_button(&re_ui::icons::CLOSE_SMALL, "Cancel loading the recording")
-                .on_hover_text("Cancel")
-                .clicked()
-            {
+    let mut atoms = match &uri {
+        RedapUri::DatasetData(dataset)
+            if ctx.active_redap_entry() == Some(dataset.dataset_id.into()) =>
+        {
+            // A segment is a recording within the active dataset; show just the segment button.
+            re_viewer_context::segment_button_atoms(dataset.segment_id.as_str(), ui.ctx().theme())
+        }
+        _ => re_ui::UrlDecorator::get(ui.ctx())
+            .and_then(|decorator| decorator(url_str))
+            .map(|link| link.into_atoms())
+            .unwrap_or_else(|| url_str.into_atoms()),
+    };
+
+    let spinner_id = Id::new("loading_spinner");
+
+    if loading {
+        let mut mapped_icon = false;
+        atoms.map_atoms(|mut atom| {
+            if !mapped_icon && matches!(atom.kind, AtomKind::Image(..)) {
+                atom.kind = AtomKind::Empty;
+                atom.size = Some(ui.tokens().small_icon_size);
+                atom.id = Some(spinner_id);
+                mapped_icon = true;
+            }
+            atom
+        });
+    }
+
+    let size = Size::Tiny;
+    let default_variant = Variant::Ghost;
+
+    let button = || {
+        ReButton::new(atoms.clone())
+            .size(size)
+            .variant(if open {
+                Variant::Opened
+            } else {
+                default_variant
+            })
+            // Some icons have blue arrows, so we can't tint them.
+            .image_tint_follows_text_color(false)
+    };
+
+    let count = if open { 2.0 } else { 1.0 };
+    let icon_button_width = count * size.height() + ui.spacing().item_spacing.x * (count - 1.0);
+
+    let (mut response, icon_responses) =
+        ReButton::with_hover_icon_buttons(ui, button, icon_button_width, |ui| {
+            (
+                ui.add(
+                    ReButton::icon(icons::COPY)
+                        .size(size)
+                        .variant(default_variant),
+                )
+                .clicked(),
+                if open {
+                    ui.add(
+                        ReButton::icon(icons::CLOSE_SMALL)
+                            .size(size)
+                            .variant(default_variant),
+                    )
+                    .on_hover_text(if loading { "Cancel" } else { "Close" })
+                    .clicked()
+                } else {
+                    false
+                },
+            )
+        });
+
+    if let Some(tooltip) = tooltip {
+        response.response = response.response.on_hover_text(tooltip);
+    }
+
+    if let Some(rect) = response.rect(spinner_id) {
+        paint_loading_indicator_inside(
+            ui,
+            Align2::CENTER_CENTER,
+            rect,
+            1.0,
+            None,
+            "Loading recording",
+        );
+    }
+
+    handle_open_full_recording_link(ui, uri.clone(), &response);
+
+    if let Some((copy_clicked, close_clicked)) = icon_responses {
+        if copy_clicked {
+            if let Ok(url) = ViewerOpenUrl::from(uri_clone.clone()).sharable_url(None) {
+                ctx.command_sender
+                    .send_system(SystemCommand::CopyViewerUrl(url));
+            } else {
+                re_log::error!("Failed to create a sharable url for recording");
+            }
+        }
+        if close_clicked {
+            if let Some(store_id) = opened_store_id {
+                // The recording is already loaded — close it and free its memory.
+                ctx.command_sender
+                    .send_system(SystemCommand::CloseRecordingOrTable(
+                        RecordingOrTable::Recording { store_id },
+                    ));
+            } else {
+                // Still loading — cancel the connected receiver.
                 ctx.connected_receivers.remove_by_uri(&uri.to_string());
             }
-        } else {
-            let response = link_with_copy(ui, Link::new("Open")).on_hover_ui(|ui| {
-                ui.label(uri.to_string());
-            });
-
-            handle_open_full_recording_link(ui, uri, &response);
         }
-    });
+    }
 
     Ok(())
 }

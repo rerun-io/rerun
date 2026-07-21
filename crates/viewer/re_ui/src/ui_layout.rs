@@ -121,7 +121,7 @@ impl UiLayout {
         self.data_label_impl(ui, data.into().to_job(ui.style()))
     }
 
-    fn decorate_url(ui: &mut egui::Ui, mut widget_text: WidgetText) -> egui::Response {
+    fn decorate_url(self, ui: &mut egui::Ui, mut widget_text: WidgetText) -> egui::Response {
         ui.sanity_check();
 
         if let WidgetText::Galley(galley) = &mut widget_text
@@ -150,6 +150,19 @@ impl UiLayout {
         if text.contains("://") {
             // Syntax highlighting may add quotes around strings.
             let stripped = text.trim_matches(SyntaxHighlightedBuilder::QUOTE_CHAR);
+
+            // Show builtin url types nicely formatted as a button:
+            if let Some(decorator) = crate::UrlDecorator::get(ui.ctx())
+                && let Some(link) = decorator(stripped)
+            {
+                let wrap_mode = if self.is_single_line() && !ui.is_sizing_pass() {
+                    egui::TextWrapMode::Truncate
+                } else {
+                    egui::TextWrapMode::Extend
+                };
+                return ui.add(link.wrap_mode(wrap_mode));
+            }
+
             if url::Url::parse(stripped).is_ok() {
                 // This is a general link and should not open a new tab unless desired by the user.
                 return ui.re_hyperlink(widget_text.clone(), stripped, false);
@@ -165,7 +178,7 @@ impl UiLayout {
             // To correctly allow wrapping in horizontal_wrapped uis, we must let the label itself create the galley
             layout_job.wrap =
                 TextWrapping::from_wrap_mode_and_width(ui.wrap_mode(), ui.available_width());
-            return Self::decorate_url(ui, layout_job.into());
+            return self.decorate_url(ui, layout_job.into());
         }
         let mut wrap_width = ui.available_width();
 
@@ -218,6 +231,6 @@ impl UiLayout {
 
         let galley = ui.fonts_mut(|f| f.layout_job(layout_job)); // We control the text layout; not the label
 
-        Self::decorate_url(ui, galley.into())
+        self.decorate_url(ui, galley.into())
     }
 }

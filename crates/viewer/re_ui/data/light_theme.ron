@@ -483,9 +483,9 @@
     "stroke": { "color": "{Gray.250}", "width": 1 },
   },
   "button_opened": {
-    "fill": { "color": "#e8f0fc" },
-    "fill_hovered": { "color": "#d1e1f8" },
-    "fill_pressed": { "color": "#bad2f5" },
+    "fill": { "color": "{Blue.500}", "alpha": 40 },
+    "fill_hovered": { "color": "{Blue.500}", "alpha": 70 },
+    "fill_pressed": { "color": "{Blue.500}", "alpha": 100 },
     "text": { "color": "{Gray.250}" },
   },
 

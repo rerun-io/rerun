@@ -109,6 +109,18 @@ impl Entry {
         }
     }
 
+    /// Which icon this entry should use.
+    pub fn link_kind(&self) -> re_viewer_context::LinkKind {
+        match &self.details.kind {
+            EntryKind::Table | EntryKind::TableView => re_viewer_context::LinkKind::Table,
+            EntryKind::Dataset
+            | EntryKind::DatasetView
+            | EntryKind::BlueprintDataset
+            | EntryKind::AssetDataset
+            | EntryKind::Unspecified => re_viewer_context::LinkKind::Dataset,
+        }
+    }
+
     pub fn inner(&self) -> &EntryResult<EntryInner> {
         &self.inner
     }
@@ -175,6 +187,15 @@ impl Entries {
 
     pub fn find_entry(&self, entry_id: EntryId) -> Option<&Entry> {
         self.entries.try_as_ref()?.as_ref().ok()?.get(&entry_id)
+    }
+
+    /// Iterate over all loaded entries (empty while still loading or on error).
+    pub fn iter_loaded(&self) -> impl Iterator<Item = &Entry> {
+        self.entries
+            .try_as_ref()
+            .and_then(|result| result.as_ref().ok())
+            .into_iter()
+            .flat_map(|entries| entries.values())
     }
 
     pub fn state(&self) -> Poll<Result<&HashMap<EntryId, Entry>, &ApiError>> {

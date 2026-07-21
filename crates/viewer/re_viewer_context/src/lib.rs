@@ -32,6 +32,7 @@ mod heuristics;
 mod image_info;
 mod item;
 mod item_collection;
+mod link_button;
 mod maybe_mut_ref;
 pub mod open_url;
 mod query_context;
@@ -101,6 +102,9 @@ pub use self::item::{
     resolve_mono_instance_path_item,
 };
 pub use self::item_collection::{ItemCollection, ItemContext};
+pub use self::link_button::{
+    LinkKind, ResolvedEntry, UrlNameLookup, make_url_decorator, segment_button_atoms, url_atoms,
+};
 pub use self::maybe_mut_ref::MaybeMutRef;
 pub use self::query_context::{
     DataQueryResult, DataResultHandle, DataResultNode, DataResultTree, QueryContext,
