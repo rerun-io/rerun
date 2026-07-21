@@ -2,7 +2,6 @@ use egui::emath::RectTransform;
 use egui::{Align2, Pos2, Rect, Shape, Vec2, pos2, vec2};
 use macaw::IsoTransform;
 use re_chunk_store::MissingChunkReporter;
-use re_entity_db::EntityPath;
 use re_log::ResultExt as _;
 use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
 use re_renderer::{LineDrawableBuilder, ViewPickingConfiguration};
@@ -11,6 +10,7 @@ use re_sdk_types::blueprint::archetypes::{
 };
 use re_sdk_types::blueprint::components::{self as blueprint_components, Enabled};
 use re_sdk_types::{Archetype as _, archetypes};
+use re_tf::TransformFrameIdHash;
 use re_ui::{ContextExt as _, Help, MouseButtonText, icons};
 use re_view::controls::DRAG_PAN2D_BUTTON;
 use re_viewer_context::{
@@ -222,31 +222,33 @@ impl SpatialView2D {
         let transforms = system_output
             .context_systems
             .get_and_report_missing::<TransformTreeContext>(missing_chunk_reporter)?;
-        state.pinhole_at_origin = transforms
-            .pinhole_tree_root_info(transforms.target_frame())
-            .map(|pinhole_at_root| {
-                let pinhole = &pinhole_at_root.pinhole_projection;
+        let view_target_frame = transforms.target_frame();
+        state.pinhole_at_origin =
+            transforms
+                .pinhole_tree_root_info(view_target_frame)
+                .map(|pinhole_at_root| {
+                    let pinhole = &pinhole_at_root.pinhole_projection;
 
-                let query_ctx = QueryContext {
-                    view_ctx: &view_ctx,
-                    target_entity_path: query.space_origin,
-                    instruction_id: None,
-                    archetype_name: Some(archetypes::Pinhole::name()),
-                    query: query.latest_at_query(),
-                };
-                Pinhole {
-                    image_from_camera: pinhole.image_from_camera.0.into(),
-                    resolution: pinhole
-                        .resolution
-                        .unwrap_or_else(|| {
-                            typed_fallback_for(
-                                &query_ctx,
-                                archetypes::Pinhole::descriptor_resolution().component,
-                            )
-                        })
-                        .into(),
-                }
-            });
+                    let query_ctx = QueryContext {
+                        view_ctx: &view_ctx,
+                        target_entity_path: query.space_origin,
+                        instruction_id: None,
+                        archetype_name: Some(archetypes::Pinhole::name()),
+                        query: query.latest_at_query(),
+                    };
+                    Pinhole {
+                        image_from_camera: pinhole.image_from_camera.0.into(),
+                        resolution: pinhole
+                            .resolution
+                            .unwrap_or_else(|| {
+                                typed_fallback_for(
+                                    &query_ctx,
+                                    archetypes::Pinhole::descriptor_resolution().component,
+                                )
+                            })
+                            .into(),
+                    }
+                });
 
         let (response, painter) =
             ui.allocate_painter(ui.available_size(), egui::Sense::click_and_drag());
@@ -405,7 +407,7 @@ impl SpatialView2D {
         for selected_context in ctx.selection_state().selection_item_contexts() {
             painter.extend(show_projections_from_3d_space(
                 ui,
-                query.space_origin,
+                view_target_frame,
                 &ui_from_scene,
                 selected_context,
                 ui.selection_stroke().color,
@@ -414,7 +416,7 @@ impl SpatialView2D {
         if let Some(hovered_context) = ctx.selection_state().hovered_item_context() {
             painter.extend(show_projections_from_3d_space(
                 ui,
-                query.space_origin,
+                view_target_frame,
                 &ui_from_scene,
                 hovered_context,
                 ui.hover_stroke().color,
@@ -548,19 +550,18 @@ fn re_render_rect_from_egui_rect(rect: egui::Rect) -> re_renderer::RectF32 {
 
 fn show_projections_from_3d_space(
     ui: &egui::Ui,
-    space: &EntityPath,
+    target_frame: TransformFrameIdHash,
     ui_from_scene: &RectTransform,
     item_context: &ItemContext,
     circle_fill_color: egui::Color32,
 ) -> Vec<Shape> {
     let mut shapes = Vec::new();
     if let ItemContext::ThreeD {
-        point_in_space_cameras: target_spaces,
-        ..
+        point_in_2d_spaces, ..
     } = item_context
     {
-        for (space_2d, pos_2d) in target_spaces {
-            if space_2d == space
+        for (space_2d_root, pos_2d) in point_in_2d_spaces {
+            if *space_2d_root == target_frame
                 && let Some(pos_2d) = pos_2d
             {
                 // User is hovering a 2D point inside a 3D view.
