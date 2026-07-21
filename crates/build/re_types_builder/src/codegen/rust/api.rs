@@ -763,6 +763,10 @@ impl quote::ToTokens for &ElementType {
             ElementType::Binary => quote!(::arrow::buffer::Buffer),
             ElementType::String => quote!(::re_types_core::ArrowString),
             ElementType::Object { fqname } => quote_fqname_as_type_path(fqname),
+            ElementType::Array { elem_type, length } => {
+                let elem_type = &**elem_type;
+                quote!([#elem_type; #length])
+            }
         }
         .to_tokens(tokens);
     }

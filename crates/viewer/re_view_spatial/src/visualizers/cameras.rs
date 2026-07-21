@@ -114,6 +114,7 @@ impl CamerasVisualizer {
         // If the camera is the target frame of a 2D view, there is nothing for us to display.
         if transforms.target_frame() == pinhole_child_frame_id && view_kind == SpaceKind::TwoD {
             pinhole_cameras.push(PinholeWrapper {
+                pinhole_child_frame_id,
                 ent_path: ent_path.clone(),
                 pinhole_view_coordinates: pinhole_properties.camera_xyz,
                 world_from_camera: macaw::IsoTransform::IDENTITY,
@@ -138,6 +139,7 @@ impl CamerasVisualizer {
         re_log::debug_assert!(world_from_camera_iso.is_finite());
 
         pinhole_cameras.push(PinholeWrapper {
+            pinhole_child_frame_id,
             ent_path: ent_path.clone(),
             pinhole_view_coordinates: pinhole_properties.camera_xyz,
             world_from_camera: world_from_camera_iso,

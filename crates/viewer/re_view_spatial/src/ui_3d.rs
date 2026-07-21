@@ -583,8 +583,14 @@ fn show_projections_from_2d_space(
     ray_color: egui::Color32,
 ) {
     match item_context {
-        ItemContext::TwoD { space_2d, pos } => {
-            if let Some(cam) = cameras.iter().find(|cam| &cam.ent_path == space_2d) {
+        ItemContext::TwoD {
+            space_2d_target_frame,
+            pos,
+        } => {
+            if let Some(cam) = cameras
+                .iter()
+                .find(|cam| &cam.pinhole_child_frame_id == space_2d_target_frame)
+            {
                 // Render a thick line to the actual z value if any and a weaker one as an extension
                 // If we don't have a z value, we only render the thick one.
                 let depth = if 0.0 < pos.z && pos.z.is_finite() {

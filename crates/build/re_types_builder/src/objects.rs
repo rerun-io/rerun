@@ -182,8 +182,27 @@ impl Objects {
                             ..
                         } = target_obj.fields.pop().unwrap();
 
-                        field.typ = typ;
-                        field.datatype = datatype;
+                        match &mut field.typ {
+                            // An array/vector of a transparent object: fold the target's
+                            // type into the element type, e.g. an array of a transparent
+                            // wrapper over `[float: 3]` becomes an array of `[f32; 3]`.
+                            Type::Array { elem_type, .. } | Type::Vector { elem_type } => {
+                                *elem_type = typ.to_element_type().unwrap_or_else(|| {
+                                    panic!(
+                                        "field '{}' is an array/vector of transparent object '{}' \
+                                         whose inner type {typ:?} cannot be used as an element type",
+                                        field.fqname, target_obj.fqname,
+                                    )
+                                });
+                                field.datatype = None;
+                            }
+
+                            // A direct object field: replace the field's type wholesale.
+                            _ => {
+                                field.typ = typ;
+                                field.datatype = datatype;
+                            }
+                        }
 
                         // TODO(cmc): might want to do something smarter at some point regarding attrs.
 
@@ -1275,6 +1294,10 @@ impl From<ElementType> for Type {
             ElementType::Binary => Self::Binary,
             ElementType::String => Self::String,
             ElementType::Object { fqname } => Self::Object { fqname },
+            ElementType::Array { elem_type, length } => Self::Array {
+                elem_type: *elem_type,
+                length,
+            },
         }
     }
 }
@@ -1380,6 +1403,38 @@ impl Type {
 
             // NOTE: `FbsBaseType` isn't actually an enum, it's just a bunch of constants…
             _ => unreachable!("{typ:#?}"),
+        }
+    }
+
+    /// The inverse of `From<ElementType> for Type`: the element type that this type
+    /// corresponds to when used as an array/vector element.
+    ///
+    /// Returns `None` for types that cannot be element types (`Unit`, vectors).
+    pub fn to_element_type(&self) -> Option<ElementType> {
+        match self {
+            Self::UInt8 => Some(ElementType::UInt8),
+            Self::UInt16 => Some(ElementType::UInt16),
+            Self::UInt32 => Some(ElementType::UInt32),
+            Self::UInt64 => Some(ElementType::UInt64),
+            Self::Int8 => Some(ElementType::Int8),
+            Self::Int16 => Some(ElementType::Int16),
+            Self::Int32 => Some(ElementType::Int32),
+            Self::Int64 => Some(ElementType::Int64),
+            Self::Bool => Some(ElementType::Bool),
+            Self::Float16 => Some(ElementType::Float16),
+            Self::Float32 => Some(ElementType::Float32),
+            Self::Float64 => Some(ElementType::Float64),
+            Self::Binary => Some(ElementType::Binary),
+            Self::String => Some(ElementType::String),
+            Self::Object { fqname } => Some(ElementType::Object {
+                fqname: fqname.clone(),
+            }),
+            Self::Array { elem_type, length } => Some(ElementType::Array {
+                elem_type: Box::new(elem_type.clone()),
+                length: *length,
+            }),
+
+            Self::Unit | Self::Vector { .. } => None,
         }
     }
 
@@ -1608,6 +1663,16 @@ pub enum ElementType {
     Object {
         fqname: String,
     },
+
+    /// A nested fixed-size array.
+    ///
+    /// This cannot be expressed directly in the flatbuffers IDL (arrays cannot nest);
+    /// it is produced by the semantic pass when a `transparent` struct wrapping a
+    /// fixed-size array is used as the element type of an array/vector.
+    Array {
+        elem_type: Box<Self>,
+        length: usize,
+    },
 }
 
 impl ElementType {
@@ -1681,6 +1746,16 @@ impl ElementType {
         }
     }
 
+    /// Recursively resolves nested arrays to their innermost element type.
+    ///
+    /// Returns `self` for everything but [`Self::Array`].
+    pub fn innermost_element_type(&self) -> &Self {
+        match self {
+            Self::Array { elem_type, .. } => elem_type.innermost_element_type(),
+            _ => self,
+        }
+    }
+
     /// `Some(Object)` if this is an enum object.
     pub fn enum_obj<'a>(&self, objects: &'a Objects) -> Option<&'a Object> {
         let Self::Object { fqname } = self else {
@@ -1710,6 +1785,8 @@ impl ElementType {
             Self::Binary | Self::String => false,
 
             Self::Object { fqname } => objects[fqname].has_default_destructor(objects),
+
+            Self::Array { elem_type, .. } => elem_type.has_default_destructor(objects),
         }
     }
 
@@ -1729,7 +1806,9 @@ impl ElementType {
             | Self::Float16
             | Self::Float32
             | Self::Float64 => true,
-            Self::Bool | Self::Binary | Self::String | Self::Object { .. } => false,
+            Self::Bool | Self::Binary | Self::String | Self::Object { .. } | Self::Array { .. } => {
+                false
+            }
         }
     }
 

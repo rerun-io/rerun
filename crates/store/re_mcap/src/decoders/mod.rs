@@ -1260,6 +1260,36 @@ mod tests {
         assert_eq!(assignment.decoder.to_string(), "raw");
     }
 
+    /// Tests that standard ROS 2 schemas prefer semantic decoding by default and support reflection-only selection.
+    #[test]
+    fn standard_ros2_schema_respects_decoder_selection() {
+        let (summary, buffer) = ros2_summary_with_message_encoding(
+            "sensor_msgs/msg/Imu",
+            "imu_topic",
+            "cdr",
+            &[0, 1, 0, 0],
+        );
+
+        // In the default set of decoders, `sensor_msgs/msgs/Imu` is assigned to the semantic `ros2msg`.
+        let default_plan = DecoderRegistry::all_with_raw_fallback()
+            .plan(&buffer, &summary, &TopicFilter::default())
+            .expect("failed to plan");
+        assert_eq!(default_plan.assignments[0].decoder.to_string(), "ros2msg");
+
+        // If only `ros2_reflection` is selected, it shall run reflection for _all_ ROS messages including
+        // ones supported by `ros2msg` (i.e. also the IMU message here), and not fall back to `raw`.
+        let selected =
+            SelectedDecoders::Subset(BTreeSet::from([DecoderIdentifier::from("ros2_reflection")]));
+        let reflection_plan = DecoderRegistry::all_with_raw_fallback()
+            .select(&selected)
+            .plan(&buffer, &summary, &TopicFilter::default())
+            .expect("failed to plan");
+        assert_eq!(
+            reflection_plan.assignments[0].decoder.to_string(),
+            "ros2_reflection"
+        );
+    }
+
     #[test]
     fn topic_filter_matches() {
         // Empty filter accepts everything.

@@ -203,7 +203,7 @@ impl ::re_types_core::Loggable for UVec2D {
                     })
                     .with_context("rerun.datatypes.UVec2D#xy")?;
                 let arrow_data_inner = &**arrow_data.values();
-                bytemuck::cast_slice::<_, [_; 2usize]>(
+                bytemuck::cast_slice::<_, [u32; 2usize]>(
                     arrow_data_inner
                         .as_any()
                         .downcast_ref::<UInt32Array>()

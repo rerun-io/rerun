@@ -14,6 +14,7 @@
 #include "datatypes/fixed_size_enum_array.hpp"
 #include "datatypes/fixed_size_wide_enum_array.hpp"
 #include "datatypes/flattened_scalar.hpp"
+#include "datatypes/many_vec3.hpp"
 #include "datatypes/multi_enum.hpp"
 #include "datatypes/primitive_component.hpp"
 #include "datatypes/string_component.hpp"

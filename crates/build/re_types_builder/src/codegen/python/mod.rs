@@ -1897,8 +1897,46 @@ fn quote_field_type_from_field(
         Type::Array {
             elem_type,
             length: _,
+        } => match elem_type {
+            ElementType::Binary | ElementType::String => unimplemented!(
+                "fixed-size arrays of {elem_type:?} are not supported by the Python codegen"
+            ),
+            _ => quote_plural_field_type_from_element_type(elem_type, unwrap, &mut unwrapped),
+        },
+        Type::Vector { elem_type } => match elem_type {
+            ElementType::Binary => "list[bytes]".to_owned(),
+            ElementType::String => "list[str]".to_owned(),
+            _ => quote_plural_field_type_from_element_type(elem_type, unwrap, &mut unwrapped),
+        },
+        Type::Object { fqname } => quote_type_from_element_type(&ElementType::Object {
+            fqname: fqname.clone(),
+        }),
+    };
+
+    (typ, unwrapped)
+}
+
+/// The Python type of an array/vector field over the given element type
+/// (excluding `Binary`/`String` elements, whose spelling differs between the two).
+fn quote_plural_field_type_from_element_type(
+    elem_type: &ElementType,
+    unwrap: bool,
+    unwrapped: &mut bool,
+) -> String {
+    match elem_type {
+        ElementType::Object { .. } => {
+            let typ = quote_type_from_element_type(elem_type);
+            if unwrap {
+                *unwrapped = true;
+                typ
+            } else {
+                format!("list[{typ}]")
+            }
         }
-        | Type::Vector { elem_type } => match elem_type {
+
+        // Scalars and nested fixed-size arrays map to a (multi-dimensional)
+        // numpy array of the innermost element type.
+        _ => match elem_type.innermost_element_type() {
             ElementType::UInt8 => "npt.NDArray[np.uint8]".to_owned(),
             ElementType::UInt16 => "npt.NDArray[np.uint16]".to_owned(),
             ElementType::UInt32 => "npt.NDArray[np.uint32]".to_owned(),
@@ -1911,24 +1949,15 @@ fn quote_field_type_from_field(
             ElementType::Float16 => "npt.NDArray[np.float16]".to_owned(),
             ElementType::Float32 => "npt.NDArray[np.float32]".to_owned(),
             ElementType::Float64 => "npt.NDArray[np.float64]".to_owned(),
-            ElementType::Binary => "list[bytes]".to_owned(),
-            ElementType::String => "list[str]".to_owned(),
-            ElementType::Object { .. } => {
-                let typ = quote_type_from_element_type(elem_type);
-                if unwrap {
-                    unwrapped = true;
-                    typ
-                } else {
-                    format!("list[{typ}]")
-                }
+            innermost
+            @ (ElementType::Binary | ElementType::String | ElementType::Object { .. }) => {
+                unimplemented!(
+                    "nested fixed-size arrays over {innermost:?} are not supported by the Python codegen"
+                )
             }
+            ElementType::Array { .. } => unreachable!("innermost cannot be an array"),
         },
-        Type::Object { fqname } => quote_type_from_element_type(&ElementType::Object {
-            fqname: fqname.clone(),
-        }),
-    };
-
-    (typ, unwrapped)
+    }
 }
 
 /// Returns a default converter function for the given field.
@@ -2065,7 +2094,9 @@ fn quote_field_converter_from_field(
 
 // Returns the name of the NumPy array conversion method for the given element type or empty string if not applicable.
 fn lookup_np_array_conversion_method(elem_type: &ElementType) -> String {
-    match elem_type {
+    // Nested fixed-size arrays convert like their innermost element type:
+    // the numpy conversion preserves the multi-dimensional shape.
+    match elem_type.innermost_element_type() {
         ElementType::UInt8 => "to_np_uint8".to_owned(),
         ElementType::UInt16 => "to_np_uint16".to_owned(),
         ElementType::UInt32 => "to_np_uint32".to_owned(),
@@ -2078,7 +2109,11 @@ fn lookup_np_array_conversion_method(elem_type: &ElementType) -> String {
         ElementType::Float16 => "to_np_float16".to_owned(),
         ElementType::Float32 => "to_np_float32".to_owned(),
         ElementType::Float64 => "to_np_float64".to_owned(),
-        _ => String::new(),
+
+        // No numpy conversion for these; the field keeps its native representation.
+        ElementType::Binary | ElementType::String | ElementType::Object { .. } => String::new(),
+
+        ElementType::Array { .. } => unreachable!("innermost cannot be an array"),
     }
 }
 

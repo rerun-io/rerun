@@ -197,7 +197,7 @@ impl ::re_types_core::Loggable for Uuid {
                     })
                     .with_context("rerun.datatypes.Uuid#bytes")?;
                 let arrow_data_inner = &**arrow_data.values();
-                bytemuck::cast_slice::<_, [_; 16usize]>(
+                bytemuck::cast_slice::<_, [u8; 16usize]>(
                     arrow_data_inner
                         .as_any()
                         .downcast_ref::<UInt8Array>()

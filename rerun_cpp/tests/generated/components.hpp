@@ -25,3 +25,4 @@
 #include "components/affix_fuzzer7.hpp"
 #include "components/affix_fuzzer8.hpp"
 #include "components/affix_fuzzer9.hpp"
+#include "components/many_vec3.hpp"

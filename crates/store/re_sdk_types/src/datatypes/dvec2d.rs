@@ -201,7 +201,7 @@ impl ::re_types_core::Loggable for DVec2D {
                     })
                     .with_context("rerun.datatypes.DVec2D#xy")?;
                 let arrow_data_inner = &**arrow_data.values();
-                bytemuck::cast_slice::<_, [_; 2usize]>(
+                bytemuck::cast_slice::<_, [f64; 2usize]>(
                     arrow_data_inner
                         .as_any()
                         .downcast_ref::<Float64Array>()

@@ -201,7 +201,7 @@ impl ::re_types_core::Loggable for Vec3D {
                     })
                     .with_context("rerun.datatypes.Vec3D#xyz")?;
                 let arrow_data_inner = &**arrow_data.values();
-                bytemuck::cast_slice::<_, [_; 3usize]>(
+                bytemuck::cast_slice::<_, [f32; 3usize]>(
                     arrow_data_inner
                         .as_any()
                         .downcast_ref::<Float32Array>()

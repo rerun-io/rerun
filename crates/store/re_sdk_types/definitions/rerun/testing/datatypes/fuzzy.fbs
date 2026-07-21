@@ -99,3 +99,23 @@ struct AffixFuzzer22 (
 ) {
   fixed_sized_native: [ubyte: 4] (order: 100);
 }
+
+/// A transparent triple: the element type of [datatypes.ManyVec3].
+///
+/// This struct only exists in the flatbuffers IDL: fixed-size arrays cannot be nested
+/// directly (`[[float: 3]: 2]` doesn't parse), so the inner array must be wrapped in a
+/// named struct. Being `transparent`, the wrapper type (and its field) are folded away during the semantic
+/// pass and never appears in the Arrow schema nor in any of the generated SDKs.
+struct Vec3 (transparent) {
+  xyz: [float: 3] (order: 100);
+}
+
+/// A fixed-size array of arrays — exercises nested fixed-size lists in Arrow.
+struct ManyVec3 (
+  "attr.arrow.transparent",
+  "attr.rust.derive": "Default, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable",
+  "attr.rust.repr": "C",
+  "attr.rust.tuple_struct"
+) {
+  triples: [rerun.testing.datatypes.Vec3: 2] (transparent, order: 100);
+}
