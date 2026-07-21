@@ -620,7 +620,7 @@ debug-assertions = false
 ## Release
 
 [profile.release]
-# debug = true # good for profilers
+# debug = true # defaults to false, don't enable unless you really need it, and definitely don't enable for CI builds since it will cause considerable slowdown.
 panic = "abort" # This leads to better optimizations and smaller binaries (and is the default in Wasm anyways).
 lto = "thin" # This leads to smaller binaries, but slower compile times.
 codegen-units = 1 # Smaller binaries (but slower compile time)
