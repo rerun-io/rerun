@@ -576,6 +576,11 @@ impl MessageDecoder for McapRos2ReflectionDecoder {
         Ok(())
     }
 
+    /// Claims _any_ ROS 2 channel that is supported by reflection.
+    ///
+    /// Note: if semantic parsing is enabled, [`crate::decoders::DecoderRegistry::plan`]
+    /// takes care of selecting [`crate::decoders::ros2::McapRos2Decoder`] instead for
+    /// schemas supported by semantic parsing.
     fn supports_channel(&self, channel: &mcap::Channel<'_>) -> bool {
         let Some(schema) = channel.schema.as_ref() else {
             return false;
@@ -585,19 +590,12 @@ impl MessageDecoder for McapRos2ReflectionDecoder {
             return false;
         }
 
-        // Only support channels if the semantic decoder doesn't support them
         // First check if we have parsed the schema successfully
         if !self.schemas_per_topic.contains_key(&channel.topic) {
             return false;
         }
 
-        if !supports_ros2_cdr_channel(channel) {
-            return false;
-        }
-
-        // Check if the semantic decoder would handle this message type
-        let semantic_decoder = super::McapRos2Decoder::new();
-        !semantic_decoder.supports_channel(channel)
+        supports_ros2_cdr_channel(channel)
     }
 
     fn message_parser(
