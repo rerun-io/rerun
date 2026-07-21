@@ -204,7 +204,7 @@ impl ::re_types_core::Loggable for Mat4x4 {
                     })
                     .with_context("rerun.datatypes.Mat4x4#flat_columns")?;
                 let arrow_data_inner = &**arrow_data.values();
-                bytemuck::cast_slice::<_, [_; 16usize]>(
+                bytemuck::cast_slice::<_, [f32; 16usize]>(
                     arrow_data_inner
                         .as_any()
                         .downcast_ref::<Float32Array>()

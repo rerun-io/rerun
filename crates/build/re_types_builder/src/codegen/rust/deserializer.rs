@@ -974,6 +974,7 @@ fn quote_iterator_transparency(
     } else {
         None
     };
+
     let inner_is_arrow_transparent = inner_obj.is_some_and(|obj| obj.datatype.is_none());
 
     if inner_is_arrow_transparent {
@@ -1147,7 +1148,7 @@ fn quote_arrow_field_deserializer_buffer_slice(
             }
         }
 
-        DataType::FixedSizeList(inner, length) => {
+        DataType::FixedSizeList(inner, _) => {
             let data_src_inner = format_ident!("{data_src}_inner");
             let quoted_inner = quote_arrow_field_deserializer_buffer_slice(
                 inner.data_type(),
@@ -1166,14 +1167,47 @@ fn quote_arrow_field_deserializer_buffer_slice(
                 )
             };
 
+            // Fully spell out the target type of the cast: type inference fails for
+            // nested fixed-size lists, where only the outermost type is pinned down.
+            let quoted_elem_type = quote_buffer_slice_element_type(datatype);
+
             quote! {{
                 let #data_src = #quoted_downcast?;
 
                 let #data_src_inner = &**#data_src.values();
-                bytemuck::cast_slice::<_, [_; #length]>(#quoted_inner)
+                bytemuck::cast_slice::<_, #quoted_elem_type>(#quoted_inner)
             }}
         }
 
+        _ => unimplemented!("{datatype:#?}"),
+    }
+}
+
+/// The native Rust type of a buffer-slice-deserialized element, fully spelled out
+/// (e.g. `[[half::f16; 3]; 15]`), so that the generated `bytemuck` casts don't have
+/// to rely on type inference.
+fn quote_buffer_slice_element_type(datatype: &DataType) -> TokenStream {
+    match datatype.to_logical_type() {
+        DataType::Atomic(atomic) => match atomic {
+            AtomicDataType::UInt8 => quote!(u8),
+            AtomicDataType::UInt16 => quote!(u16),
+            AtomicDataType::UInt32 => quote!(u32),
+            AtomicDataType::UInt64 => quote!(u64),
+            AtomicDataType::Int8 => quote!(i8),
+            AtomicDataType::Int16 => quote!(i16),
+            AtomicDataType::Int32 => quote!(i32),
+            AtomicDataType::Int64 => quote!(i64),
+            AtomicDataType::Float16 => quote!(half::f16),
+            AtomicDataType::Float32 => quote!(f32),
+            AtomicDataType::Float64 => quote!(f64),
+            AtomicDataType::Null | AtomicDataType::Boolean => {
+                unimplemented!("{atomic:#?} not supported by the buffer-slice fast path")
+            }
+        },
+        DataType::FixedSizeList(inner, length) => {
+            let quoted_inner = quote_buffer_slice_element_type(inner.data_type());
+            quote!([#quoted_inner; #length])
+        }
         _ => unimplemented!("{datatype:#?}"),
     }
 }
@@ -1215,7 +1249,10 @@ fn should_optimize_buffer_slice_deserialize_datatype(objects: &Objects, typ: &Da
                 && should_optimize_buffer_slice_deserialize_datatype(objects, datatype)
         }
         DataType::FixedSizeList(field, _) => {
-            should_optimize_buffer_slice_deserialize_datatype(objects, field.data_type())
+            // A wrapper-object element would break the generated `bytemuck` casts, which
+            // produce bare nested arrays rather than wrapper structs.
+            !matches!(field.data_type(), DataType::Object { .. })
+                && should_optimize_buffer_slice_deserialize_datatype(objects, field.data_type())
         }
         _ => false,
     }

@@ -216,7 +216,7 @@ impl ::re_types_core::Loggable for ViewCoordinates {
                     })
                     .with_context("rerun.datatypes.ViewCoordinates#coordinates")?;
                 let arrow_data_inner = &**arrow_data.values();
-                bytemuck::cast_slice::<_, [_; 3usize]>(
+                bytemuck::cast_slice::<_, [u8; 3usize]>(
                     arrow_data_inner
                         .as_any()
                         .downcast_ref::<UInt8Array>()

@@ -213,7 +213,7 @@ impl ::re_types_core::Loggable for Mat3x3 {
                     })
                     .with_context("rerun.datatypes.Mat3x3#flat_columns")?;
                 let arrow_data_inner = &**arrow_data.values();
-                bytemuck::cast_slice::<_, [_; 9usize]>(
+                bytemuck::cast_slice::<_, [f32; 9usize]>(
                     arrow_data_inner
                         .as_any()
                         .downcast_ref::<Float32Array>()

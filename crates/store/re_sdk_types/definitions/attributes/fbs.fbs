@@ -23,6 +23,10 @@ attribute "order";
 /// * When applied to a table's field that is itself a table, this removes the extra table
 ///   layer during the semantic pass, leaving just the inner field's type in its stead.
 ///
+/// * When applied to an array/vector field whose element type is a transparent-wrapped
+///   fixed-size array, the wrapper is folded into the element type, yielding a nested
+///   fixed-size array (e.g. an array of a wrapped `[float: 3]` becomes `[[f32; 3]; N]`).
+///
 /// * When applied to a table object, this indicates that the object is only ever used as a
 ///   field type, and thus should not generate any standalone code for itself.
 ///
@@ -30,8 +34,8 @@ attribute "order";
 /// that the extra layer ever existed in the first place.
 ///
 /// This allows to bypass all of Flatbuffers artificial limitations (have to wrap scalars in a
-/// table when defining a union, cannot put arrays (as opposed to vectors) into tables, etc) that
-/// do not apply in our case.
+/// table when defining a union, cannot put arrays (as opposed to vectors) into tables, nesting
+/// of fixed-size arrays, etc) that do not apply in our case.
 attribute "transparent";
 
 /// If specified on a field, the field becomes nullable, which affects both its native as well as

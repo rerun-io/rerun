@@ -330,3 +330,40 @@ fn roundtrip() {
         similar_asserts::assert_eq!(arch, deserialized);
     }
 }
+
+/// Fixed-size array of structs, i.e. a nested Arrow `FixedSizeList<FixedSizeList<Float32, 3>, 2>`.
+#[test]
+fn roundtrip_fixed_size_array_of_structs() {
+    use re_types_core::Loggable as _;
+
+    let expected_datatype = arrow::datatypes::DataType::FixedSizeList(
+        std::sync::Arc::new(arrow::datatypes::Field::new(
+            "item",
+            arrow::datatypes::DataType::FixedSizeList(
+                std::sync::Arc::new(arrow::datatypes::Field::new(
+                    "item",
+                    arrow::datatypes::DataType::Float32,
+                    false,
+                )),
+                3,
+            ),
+            false,
+        )),
+        2,
+    );
+    // Slightly more readable than the above:
+    assert_eq!(
+        expected_datatype.to_string(),
+        "FixedSizeList(2 x non-null FixedSizeList(3 x non-null Float32))",
+    );
+    assert_eq!(datatypes::ManyVec3::arrow_datatype(), expected_datatype);
+
+    let data = vec![
+        components::ManyVec3(datatypes::ManyVec3([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])),
+        components::ManyVec3(datatypes::ManyVec3([[7.0, 8.0, 9.0], [10.0, 11.0, 12.0]])),
+    ];
+
+    let serialized = components::ManyVec3::to_arrow(data.clone()).unwrap();
+    let deserialized = components::ManyVec3::from_arrow(serialized.as_ref()).unwrap();
+    similar_asserts::assert_eq!(data, deserialized);
+}

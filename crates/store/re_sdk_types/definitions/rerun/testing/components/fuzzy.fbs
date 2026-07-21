@@ -142,6 +142,14 @@ table AffixFuzzer23 (
   multi_enum: rerun.testing.datatypes.MultiEnum (order: 120, nullable);
 }
 
+struct ManyVec3 (
+  "attr.rust.derive": "Default, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable",
+  "attr.rust.repr": "transparent",
+  "attr.rust.tuple_struct"
+) {
+  nested_array_of_structs: rerun.testing.datatypes.ManyVec3 (order: 120);
+}
+
 
 // TODO(cmc): the ugly bug we need to take care of at some point
 // table AffixFuzzer14 (

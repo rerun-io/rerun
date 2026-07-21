@@ -209,7 +209,7 @@ impl ::re_types_core::Loggable for Plane3D {
                     })
                     .with_context("rerun.datatypes.Plane3D#xyzd")?;
                 let arrow_data_inner = &**arrow_data.values();
-                bytemuck::cast_slice::<_, [_; 4usize]>(
+                bytemuck::cast_slice::<_, [f32; 4usize]>(
                     arrow_data_inner
                         .as_any()
                         .downcast_ref::<Float32Array>()

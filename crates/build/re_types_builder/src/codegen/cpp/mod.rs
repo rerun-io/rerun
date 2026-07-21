@@ -2010,7 +2010,7 @@ fn quote_fill_arrow_array_builder(
                                     ElementType::Float64 => Some("DoubleBuilder"),
                                     ElementType::Binary => Some("BinaryBuilder"),
                                     ElementType::String => Some("StringBuilder"),
-                                    ElementType::Object{..} => None,
+                                    ElementType::Object{..} | ElementType::Array{..} => None,
                                 };
 
                                 if let Some(type_builder_name) = type_builder_name {
@@ -2043,7 +2043,7 @@ fn quote_fill_arrow_array_builder(
                         }
                     } else {
                         let variant_accessor = quote!(union_instance.get_union_data());
-                        quote_append_single_field_to_builder(variant, &variant_builder, &variant_accessor, includes)
+                        quote_append_single_field_to_builder(objects, variant, &variant_builder, &variant_accessor, includes)
                     };
 
                     quote! {
@@ -2111,15 +2111,52 @@ fn quote_append_field_to_builder(
             // Optimize common case: Trivial batch of transparent fixed size elements.
             let field_accessor = quote!(elements[0].#field_name);
             let num_items_per_value = quote_num_items_per_value(&field.typ, &field_accessor);
-            quote! {
+            let setup = quote! {
                 auto #value_builder = static_cast<arrow::#value_builder_type*>(#builder->value_builder());
                 #NEWLINE_TOKEN #NEWLINE_TOKEN
                 ARROW_RETURN_NOT_OK(#builder->AppendValues(static_cast<int64_t>(num_elements)));
                 static_assert(sizeof(elements[0].#field_name) == sizeof(elements[0]));
-                ARROW_RETURN_NOT_OK(#value_builder->AppendValues(
-                    #field_accessor.data(),
-                    static_cast<int64_t>(num_elements * #num_items_per_value), nullptr)
+            };
+            if let ElementType::Object { fqname } = elem_type {
+                // Elements are structs: delegate the contiguous value range to the
+                // element type's own `fill_arrow_array_builder`.
+                let fqname = quote_fqname_as_type_path(includes, fqname);
+                quote! {
+                    #setup
+                    RR_RETURN_NOT_OK(Loggable<#fqname>::fill_arrow_array_builder(
+                        #value_builder,
+                        #field_accessor.data(),
+                        num_elements * #num_items_per_value)
+                    );
+                }
+            } else if matches!(elem_type, ElementType::Array { .. }) {
+                // Elements are nested fixed-size arrays (e.g. `[[float; 3]; 2]`).
+                let append_contents = quote_append_nested_array_contents(
+                    objects,
+                    includes,
+                    elem_type,
+                    &value_builder,
+                    &quote!(#field_accessor.data()),
+                    &quote!(num_elements * #num_items_per_value),
                 );
+                quote! {
+                    #setup
+                    #append_contents
+                }
+            } else {
+                // `rerun::half` needs a cast because arrow takes it as `uint16_t`.
+                let value_ptr_accessor = if *elem_type == ElementType::Float16 {
+                    quote!(reinterpret_cast<const uint16_t*>(#field_accessor.data()))
+                } else {
+                    quote!(#field_accessor.data())
+                };
+                quote! {
+                    #setup
+                    ARROW_RETURN_NOT_OK(#value_builder->AppendValues(
+                        #value_ptr_accessor,
+                        static_cast<int64_t>(num_elements * #num_items_per_value), nullptr)
+                    );
+                }
             }
         } else {
             let value_reserve_factor = match &field.typ {
@@ -2149,6 +2186,7 @@ fn quote_append_field_to_builder(
             };
 
             let append_value = quote_append_single_value_to_builder(
+                objects,
                 &field.typ,
                 &value_builder,
                 &value_accessor,
@@ -2189,8 +2227,13 @@ fn quote_append_field_to_builder(
         }
     } else {
         let element_accessor = quote!(elements[elem_idx]);
-        let single_append =
-            quote_append_single_field_to_builder(field, builder, &element_accessor, includes);
+        let single_append = quote_append_single_field_to_builder(
+            objects,
+            field,
+            builder,
+            &element_accessor,
+            includes,
+        );
         quote! {
             ARROW_RETURN_NOT_OK(#builder->Reserve(static_cast<int64_t>(num_elements)));
             for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
@@ -2201,6 +2244,7 @@ fn quote_append_field_to_builder(
 }
 
 fn quote_append_single_field_to_builder(
+    objects: &Objects,
     field: &ObjectField,
     builder: &Ident,
     element_accessor: &TokenStream,
@@ -2214,7 +2258,7 @@ fn quote_append_single_field_to_builder(
     };
 
     let append_value =
-        quote_append_single_value_to_builder(&field.typ, builder, &value_access, includes);
+        quote_append_single_value_to_builder(objects, &field.typ, builder, &value_access, includes);
 
     if field.is_nullable {
         quote! {
@@ -2237,6 +2281,7 @@ fn quote_append_single_field_to_builder(
 /// If the value is an array/vector, it will try to append the batch in one go.
 /// Note that in that case this does *not* take care of the array/vector builder itself, just the underlying value builder.
 fn quote_append_single_value_to_builder(
+    objects: &Objects,
     typ: &Type,
     value_builder: &Ident,
     value_access: &TokenStream,
@@ -2328,6 +2373,14 @@ fn quote_append_single_value_to_builder(
                         }
                     }
                 }
+                ElementType::Array { .. } => quote_append_nested_array_contents(
+                    objects,
+                    includes,
+                    elem_type,
+                    value_builder,
+                    &quote!(#value_access.data()),
+                    &num_items_per_element,
+                ),
             }
         }
         Type::Object { fqname } => {
@@ -2335,6 +2388,72 @@ fn quote_append_single_value_to_builder(
             quote!(RR_RETURN_NOT_OK(Loggable<#fqname>::fill_arrow_array_builder(#value_builder, &#value_access, 1));)
         }
     }
+}
+
+/// Generates code that appends the contents of (possibly nested) fixed-size-array values
+/// to `builder`, the builder for the elements of the outermost array/vector.
+///
+/// The intermediate list slots of each nesting level are appended in bulk, then all
+/// innermost scalars in one go — the data is contiguous in memory.
+///
+/// `elem_type` is the `ElementType::Array` element type of the outermost array/vector,
+/// `num_items` the total number of such elements being appended, and `data_ptr` a
+/// pointer to the first one.
+fn quote_append_nested_array_contents(
+    objects: &Objects,
+    includes: &mut Includes,
+    elem_type: &ElementType,
+    builder: &Ident,
+    data_ptr: &TokenStream,
+    num_items: &TokenStream,
+) -> TokenStream {
+    let mut chain = TokenStream::new();
+    let mut parent_builder = builder.clone();
+    let mut num_items = num_items.clone();
+    let mut elem_type = elem_type;
+    let mut level: usize = 0;
+
+    while let ElementType::Array {
+        elem_type: inner, ..
+    } = elem_type
+    {
+        let ElementType::Array { length, .. } = elem_type else {
+            unreachable!();
+        };
+
+        level += 1;
+        let child_builder = format_ident!("value_builder_inner{level}");
+        let child_builder_type = arrow_array_builder_type(&(**inner).clone().into(), objects);
+        chain.extend(quote! {
+            ARROW_RETURN_NOT_OK(#parent_builder->AppendValues(static_cast<int64_t>(#num_items)));
+            auto #child_builder = static_cast<arrow::#child_builder_type*>(#parent_builder->value_builder());
+        });
+
+        let length = quote_integer(*length);
+        num_items = quote!(#num_items * #length);
+        parent_builder = child_builder;
+        elem_type = inner;
+    }
+
+    // The innermost data pointer needs a cast: `data_ptr` points at `std::array`s,
+    // and `rerun::half`/`bool` are taken as `uint16_t`/`uint8_t` by arrow.
+    let cast_type = match elem_type {
+        ElementType::Float16 => quote!(uint16_t),
+        ElementType::Bool => quote!(uint8_t),
+        ElementType::Object { .. } | ElementType::String | ElementType::Binary => unimplemented!(
+            "nested fixed-size arrays over {elem_type:?} are not supported by the C++ codegen"
+        ),
+        _ => quote_element_type(includes, elem_type),
+    };
+
+    chain.extend(quote! {
+        ARROW_RETURN_NOT_OK(#parent_builder->AppendValues(
+            reinterpret_cast<const #cast_type*>(#data_ptr),
+            static_cast<int64_t>(#num_items), nullptr)
+        );
+    });
+
+    chain
 }
 
 fn quote_num_items_per_value(typ: &Type, value_accessor: &TokenStream) -> TokenStream {
@@ -2540,6 +2659,12 @@ fn quote_element_type(includes: &mut Includes, typ: &ElementType) -> TokenStream
             quote! { std::string }
         }
         ElementType::Object { fqname } => quote_fqname_as_type_path(includes, fqname),
+        ElementType::Array { elem_type, length } => {
+            includes.insert_system("array");
+            let elem_type = quote_element_type(includes, elem_type);
+            let length = Literal::usize_unsuffixed(*length);
+            quote! { std::array<#elem_type, #length> }
+        }
     }
 }
 

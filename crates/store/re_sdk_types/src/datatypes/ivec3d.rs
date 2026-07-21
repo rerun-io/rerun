@@ -203,7 +203,7 @@ impl ::re_types_core::Loggable for IVec3D {
                     })
                     .with_context("rerun.datatypes.IVec3D#xyz")?;
                 let arrow_data_inner = &**arrow_data.values();
-                bytemuck::cast_slice::<_, [_; 3usize]>(
+                bytemuck::cast_slice::<_, [i32; 3usize]>(
                     arrow_data_inner
                         .as_any()
                         .downcast_ref::<Int32Array>()

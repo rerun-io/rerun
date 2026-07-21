@@ -24,6 +24,7 @@ from .fixed_size_wide_enum_array import (
     FixedSizeWideEnumArrayLike,
 )
 from .flattened_scalar import FlattenedScalar, FlattenedScalarArrayLike, FlattenedScalarBatch, FlattenedScalarLike
+from .many_vec3 import ManyVec3, ManyVec3ArrayLike, ManyVec3Batch, ManyVec3Like
 from .multi_enum import MultiEnum, MultiEnumArrayLike, MultiEnumBatch, MultiEnumLike
 from .primitive_component import (
     PrimitiveComponent,
@@ -84,6 +85,10 @@ __all__ = [
     "FlattenedScalarArrayLike",
     "FlattenedScalarBatch",
     "FlattenedScalarLike",
+    "ManyVec3",
+    "ManyVec3ArrayLike",
+    "ManyVec3Batch",
+    "ManyVec3Like",
     "MultiEnum",
     "MultiEnumArrayLike",
     "MultiEnumBatch",

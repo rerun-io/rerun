@@ -538,6 +538,93 @@ impl_array_native_type!(arrow::array::types::Float16Type, half::f16);
 impl_array_native_type!(arrow::array::types::Float32Type, f32);
 impl_array_native_type!(arrow::array::types::Float64Type, f64);
 
+/// The actual implementation of `impl_array2d_native_type!`, so that we don't have to work in a macro.
+///
+/// Slices doubly-nested fixed-size lists, i.e. `FixedSizeList<FixedSizeList<T, M>, N>`.
+fn slice_as_array2d_native<'a, const N: usize, const M: usize, P, T>(
+    component: ComponentIdentifier,
+    array: &'a dyn ArrowArray,
+    component_spans: impl Iterator<Item = Span<usize>> + 'a,
+) -> impl Iterator<Item = &'a [[[T; M]; N]]> + 'a
+where
+    [[T; M]; N]: bytemuck::Pod,
+    P: ArrowPrimitiveType<Native = T>,
+    T: ArrowNativeType + bytemuck::Pod,
+{
+    let Some(outer_list_array) = array.downcast_array_ref::<ArrowFixedSizeListArray>() else {
+        error_on_downcast_failure(component, "ArrowFixedSizeListArray", array.data_type());
+        return Either::Left(std::iter::empty());
+    };
+
+    let Some(inner_list_array) = outer_list_array
+        .values()
+        .downcast_array_ref::<ArrowFixedSizeListArray>()
+    else {
+        error_on_downcast_failure(
+            component,
+            "ArrowFixedSizeListArray",
+            outer_list_array.data_type(),
+        );
+        return Either::Left(std::iter::empty());
+    };
+
+    let Some(values) = inner_list_array
+        .values()
+        .downcast_array_ref::<ArrowPrimitiveArray<P>>()
+    else {
+        error_on_downcast_failure(
+            component,
+            "ArrowPrimitiveArray<P>",
+            inner_list_array.data_type(),
+        );
+        return Either::Left(std::iter::empty());
+    };
+
+    let size = outer_list_array.value_length() as usize * inner_list_array.value_length() as usize;
+    let values = values.values().as_ref();
+
+    // NOTE: No need for validity checks here, `component_spans` already takes care of that.
+    Either::Right(
+        component_spans.map(move |span| bytemuck::cast_slice(&values[(span * size).range()])),
+    )
+}
+
+// We use a macro instead of a blanket impl because this violates orphan rules.
+macro_rules! impl_array2d_native_type {
+    ($arrow_primitive_type:ty, $native_type:ty) => {
+        impl<const N: usize, const M: usize> ChunkComponentSlicer for [[$native_type; M]; N]
+        where
+            [[$native_type; M]; N]: bytemuck::Pod,
+        {
+            type Item<'a> = &'a [[[$native_type; M]; N]];
+
+            fn slice<'a>(
+                component: ComponentIdentifier,
+                array: &'a dyn ArrowArray,
+                component_spans: impl Iterator<Item = Span<usize>> + 'a,
+            ) -> impl Iterator<Item = Self::Item<'a>> {
+                slice_as_array2d_native::<N, M, $arrow_primitive_type, $native_type>(
+                    component,
+                    array,
+                    component_spans,
+                )
+            }
+        }
+    };
+}
+
+impl_array2d_native_type!(arrow::array::types::UInt8Type, u8);
+impl_array2d_native_type!(arrow::array::types::UInt16Type, u16);
+impl_array2d_native_type!(arrow::array::types::UInt32Type, u32);
+impl_array2d_native_type!(arrow::array::types::UInt64Type, u64);
+impl_array2d_native_type!(arrow::array::types::Int8Type, i8);
+impl_array2d_native_type!(arrow::array::types::Int16Type, i16);
+impl_array2d_native_type!(arrow::array::types::Int32Type, i32);
+impl_array2d_native_type!(arrow::array::types::Int64Type, i64);
+impl_array2d_native_type!(arrow::array::types::Float16Type, half::f16);
+impl_array2d_native_type!(arrow::array::types::Float32Type, f32);
+impl_array2d_native_type!(arrow::array::types::Float64Type, f64);
+
 /// The actual implementation of `impl_buffer_native_type!`, so that we don't have to work in a macro.
 fn slice_as_buffer_native<'a, P, T>(
     component: ComponentIdentifier,
@@ -1557,5 +1644,40 @@ mod tests {
                 Some(ArrowString::from("c"))
             ]]
         );
+    }
+
+    /// Slicing a doubly-nested fixed-size list, i.e. `FixedSizeList<FixedSizeList<f32, 2>, 3>`.
+    #[test]
+    #[expect(clippy::cast_possible_wrap, reason = "tiny compile-time constants")]
+    fn slice_array2d() {
+        use arrow::array::{FixedSizeListArray, Float32Array};
+        use arrow::datatypes::{DataType, Field};
+
+        use super::{ChunkComponentSlicer as _, Span};
+
+        const NUM_COMPONENTS: usize = 2;
+        const N: usize = 3;
+        const M: usize = 2;
+
+        let values =
+            Float32Array::from_iter_values((0..(NUM_COMPONENTS * N * M)).map(|i| i as f32));
+        let inner_field = Arc::new(Field::new("item", DataType::Float32, false));
+        let inner = FixedSizeListArray::new(inner_field.clone(), M as i32, Arc::new(values), None);
+        let outer_field = Arc::new(Field::new(
+            "item",
+            DataType::FixedSizeList(inner_field, M as i32),
+            false,
+        ));
+        let outer = FixedSizeListArray::new(outer_field, N as i32, Arc::new(inner), None);
+
+        let spans = [Span { start: 0, len: 1 }, Span { start: 1, len: 1 }];
+        let got = <[[f32; M]; N]>::slice("test_component".into(), &outer, spans.into_iter())
+            .collect_vec();
+
+        let expected: Vec<&[[[f32; M]; N]]> = vec![
+            &[[[0.0, 1.0], [2.0, 3.0], [4.0, 5.0]]],
+            &[[[6.0, 7.0], [8.0, 9.0], [10.0, 11.0]]],
+        ];
+        similar_asserts::assert_eq!(expected, got);
     }
 }
