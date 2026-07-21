@@ -1,22 +1,15 @@
-use re_lenses::{CastTo, Lens, LensBuilderError, op};
+use re_lenses::{CastTo, Lens, LensBuilderError};
 use re_lenses_core::Selector;
-use re_log_types::TimeType;
 use re_sdk_types::archetypes::{CoordinateFrame, GridMap};
 use re_sdk_types::components::Colormap;
 
-use super::ROS2_TIMESTAMP;
 use super::ros_map_helpers::{
     default_ros_map_colormap, map_buffer_to_image_buffer, map_dimensions_to_l8_image_format,
 };
 
 /// Creates a lens for `nav_msgs/msg/OccupancyGrid` messages.
-pub fn occupancy_grid(time_type: TimeType) -> Result<Lens, LensBuilderError> {
+pub fn occupancy_grid() -> Result<Lens, LensBuilderError> {
     Lens::derive("nav_msgs.msg.OccupancyGrid:message")
-        .to_timeline(
-            ROS2_TIMESTAMP,
-            time_type,
-            Selector::parse(".header.stamp")?.pipe(op::timespec_to_nanos()),
-        )
         .to_component(
             CoordinateFrame::descriptor_frame(),
             Selector::parse(".header.frame_id")?,

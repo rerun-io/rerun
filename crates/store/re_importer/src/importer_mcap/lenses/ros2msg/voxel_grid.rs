@@ -3,17 +3,14 @@ use std::sync::Arc;
 use arrow::array::builder::{FixedSizeListBuilder, Int32Builder, ListBuilder, UInt32Builder};
 use arrow::array::{Array as _, ArrayRef, Float32Builder, ListArray, StructArray, UInt32Array};
 use arrow::datatypes::{DataType, Field};
-use re_lenses::{CastTo, Lens, LensBuilderError, op};
+use re_lenses::{CastTo, Lens, LensBuilderError};
 use re_lenses_core::Selector;
 use re_lenses_core::combinators::Error;
-use re_log_types::TimeType;
 use re_sdk_types::Loggable as _;
 use re_sdk_types::archetypes::{CoordinateFrame, VoxelGridMap};
 use re_sdk_types::components::Opacity;
 
 use crate::importer_mcap::lenses::helpers::get_field_as;
-
-use super::ROS2_TIMESTAMP;
 
 const MARKED_COLOR: u32 = 0xFF0000FF;
 const FREE_COLOR: u32 = 0x00FF00FF;
@@ -25,15 +22,10 @@ const DEFAULT_VOXEL_OPACITY: f32 = 0.5;
 ///
 /// Marked voxels are colored red, free voxels are colored green,
 /// and unknown voxels are omitted in the output [`VoxelGridMap`].
-pub fn voxel_grid(time_type: TimeType) -> Result<Lens, LensBuilderError> {
+pub fn voxel_grid() -> Result<Lens, LensBuilderError> {
     let flatten = Selector::parse(".[]")?;
 
     Lens::derive("nav2_msgs.msg.VoxelGrid:message")
-        .to_timeline(
-            ROS2_TIMESTAMP,
-            time_type,
-            Selector::parse(".header.stamp")?.pipe(op::timespec_to_nanos()),
-        )
         .to_component(
             CoordinateFrame::descriptor_frame(),
             Selector::parse(".header.frame_id")?,

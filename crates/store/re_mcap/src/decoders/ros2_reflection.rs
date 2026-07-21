@@ -121,7 +121,7 @@ impl Ros2ReflectionMessageParser {
 }
 
 impl MessageParser for Ros2ReflectionMessageParser {
-    fn append(&mut self, _ctx: &mut ParserContext, msg: &mcap::Message<'_>) -> anyhow::Result<()> {
+    fn append(&mut self, ctx: &mut ParserContext, msg: &mcap::Message<'_>) -> anyhow::Result<()> {
         re_tracing::profile_function!();
 
         let value = decode_bytes(&self.message_schema, msg.data.as_ref()).map_err(|err| {
@@ -133,6 +133,17 @@ impl MessageParser for Ros2ReflectionMessageParser {
         })?;
 
         if let Value::Message(message_fields) = value {
+            // If the message carries a header/top-level stamp, also index it on the `ros2_timestamp`
+            // timeline (on top of the automatic `log_time`/`publish_time`).
+            // We do this here in reflection so that _all_ ROS messages, including custom ones,
+            // appear on this timeline (see also: RR-3365).
+            if let Some(nanos) = message_stamp_nanos(&message_fields) {
+                let time_type = ctx.time_type();
+                ctx.add_timestamp_cell(crate::util::TimestampCell::from_nanos_ros2(
+                    nanos, time_type,
+                ));
+            }
+
             let message_struct_builder = self.builder.values();
             let spec = &message_struct_builder.spec;
 
@@ -189,6 +200,27 @@ impl MessageParser for Ros2ReflectionMessageParser {
 
         Ok(vec![message_chunk])
     }
+}
+
+/// The message's stamp as nanoseconds: From a `std_msgs/Header` `stamp`, or a top-level
+/// `builtin_interfaces/Time` `stamp` field (e.g. `rcl_interfaces/Log`). `None` if the message
+/// carries neither.
+fn message_stamp_nanos(fields: &std::collections::BTreeMap<String, Value>) -> Option<u64> {
+    let stamp = match fields.get("header") {
+        Some(Value::Message(header)) => header.get("stamp"),
+        _ => fields.get("stamp"),
+    };
+    let Some(Value::Message(stamp)) = stamp else {
+        return None;
+    };
+    // `builtin_interfaces/Time` is fixed as `int32 sec` / `uint32 nanosec`.
+    let Value::I32(sec) = stamp.get("sec")? else {
+        return None;
+    };
+    let Value::U32(nanosec) = stamp.get("nanosec")? else {
+        return None;
+    };
+    u64::try_from(i64::from(*sec) * 1_000_000_000 + i64::from(*nanosec)).ok()
 }
 
 fn downcast_builder<T: std::any::Any>(
@@ -695,6 +727,34 @@ int8 BAR=1
             datatype_from_type(&schema.spec, &mode.ty, &schema.dependencies).unwrap(),
             DataType::Int8
         );
+    }
+
+    /// A `std_msgs/Header` stamp or a bare top-level stamp becomes nanoseconds; a message with
+    /// neither returns `None`.
+    #[test]
+    fn lifts_message_stamp_to_nanos() {
+        use std::collections::BTreeMap;
+
+        let stamp = || {
+            Value::Message(BTreeMap::from([
+                ("sec".to_owned(), Value::I32(2)),
+                ("nanosec".to_owned(), Value::U32(500_000_000)),
+            ]))
+        };
+
+        let header = Value::Message(BTreeMap::from([
+            ("stamp".to_owned(), stamp()),
+            ("frame_id".to_owned(), Value::String("base".to_owned())),
+        ]));
+        let with_header = BTreeMap::from([("header".to_owned(), header)]);
+        assert_eq!(message_stamp_nanos(&with_header), Some(2_500_000_000));
+
+        // `rcl_interfaces/Log`-shaped: a bare `builtin_interfaces/Time` stamp, no header.
+        let bare_stamp = BTreeMap::from([("stamp".to_owned(), stamp())]);
+        assert_eq!(message_stamp_nanos(&bare_stamp), Some(2_500_000_000));
+
+        let stampless = BTreeMap::from([("voltage".to_owned(), Value::F32(1.0))]);
+        assert_eq!(message_stamp_nanos(&stampless), None);
     }
 
     #[test]

@@ -1,28 +1,20 @@
 use std::sync::Arc;
 
 use arrow::array::{Array as _, ArrayRef, StringArray, StructArray, UInt8Array, UInt32Array};
-use re_lenses::{Lens, LensBuilderError, op};
+use re_lenses::{Lens, LensBuilderError};
 use re_lenses_core::Selector;
 use re_lenses_core::combinators::Error;
-use re_log_types::TimeType;
 use re_sdk_types::ComponentDescriptor;
 use re_sdk_types::archetypes::TextLog;
 use re_sdk_types::datatypes::Rgba32;
 
 use crate::importer_mcap::lenses::helpers::get_field_as;
 
-use super::ROS2_TIMESTAMP;
-
 const LOG_ARCHETYPE: &str = "rcl_interfaces.msg.Log";
 
 /// Creates a lens for `rcl_interfaces/msg/Log` messages.
-pub fn log(time_type: TimeType) -> Result<Lens, LensBuilderError> {
+pub fn log() -> Result<Lens, LensBuilderError> {
     Lens::derive("rcl_interfaces.msg.Log:message")
-        .to_timeline(
-            ROS2_TIMESTAMP,
-            time_type,
-            Selector::parse(".stamp")?.pipe(op::timespec_to_nanos()),
-        )
         .to_component(
             TextLog::descriptor_text(),
             Selector::parse(".")?.pipe(ros2_log_text()),

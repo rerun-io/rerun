@@ -10,7 +10,6 @@ mod string;
 mod voxel_grid;
 
 use re_lenses::{LensBuilderError, Lenses, OutputMode};
-use re_log_types::TimeType;
 
 use super::IMAGE_PLANE_SUFFIX;
 
@@ -22,21 +21,17 @@ pub use pose_stamped::pose_stamped;
 pub use string::string;
 pub use voxel_grid::voxel_grid;
 
-/// Name of the header-derived ROS 2 timeline.
-const ROS2_TIMESTAMP: &str = "ros2_timestamp";
-
 /// Adds all ROS 2 message lenses to an existing collection.
-pub fn add_ros2msg_lenses(
-    lenses: &mut Lenses,
-    time_type: TimeType,
-) -> Result<(), LensBuilderError> {
+///
+/// The `ros2_timestamp` timeline comes from the reflection decoder's generic stamp handling.
+pub fn add_ros2msg_lenses(lenses: &mut Lenses) -> Result<(), LensBuilderError> {
     *lenses = std::mem::replace(lenses, Lenses::new(OutputMode::ForwardUnmatched))
-        .add_lens(camera_info(time_type)?)
-        .add_lens(log(time_type)?)
-        .add_lens(magnetic_field(time_type)?)
-        .add_lens(occupancy_grid(time_type)?)
-        .add_lens(pose_stamped(time_type)?)
-        .add_lens(string(time_type)?)
-        .add_lens(voxel_grid(time_type)?);
+        .add_lens(camera_info()?)
+        .add_lens(log()?)
+        .add_lens(magnetic_field()?)
+        .add_lens(occupancy_grid()?)
+        .add_lens(pose_stamped()?)
+        .add_lens(string()?)
+        .add_lens(voxel_grid()?);
     Ok(())
 }

@@ -34,7 +34,7 @@ pub fn mcap_lenses(
 
     let has_ros2msg_lenses =
         if selected_decoders.contains(&DecoderIdentifier::from(ROS2MSG_DECODER_IDENTIFIER)) {
-            ros2msg::add_ros2msg_lenses(&mut lenses, time_type)?;
+            ros2msg::add_ros2msg_lenses(&mut lenses)?;
             true
         } else {
             false
