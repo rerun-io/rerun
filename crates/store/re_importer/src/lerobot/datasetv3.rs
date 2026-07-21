@@ -14,9 +14,12 @@ use std::sync::Arc;
 
 use ahash::HashMap;
 use anyhow::{Context as _, anyhow};
-use arrow::array::{Float64Array, Int64Array, RecordBatch, StringArray};
+use arrow::array::{
+    ArrayRef, Float64Array, Int64Array, ListArray, RecordBatch, StringArray, StructArray,
+};
 use arrow::buffer::ScalarBuffer;
-use arrow::compute::concat_batches;
+use arrow::compute::{cast, concat_batches};
+use arrow::datatypes::DataType;
 use crossbeam::channel::Sender;
 use itertools::Itertools as _;
 use parking_lot::RwLock;
@@ -27,7 +30,7 @@ use re_video::player::VideoSliceSource;
 use serde::{Deserialize, Serialize};
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
-use re_chunk::{Chunk, RowId, TimeColumn, TimePoint, Timeline};
+use re_chunk::{Chunk, EntityPath, RowId, TimeColumn, TimePoint, Timeline};
 use re_log_types::ApplicationId;
 use re_sdk_types::archetypes::{TextDocument, VideoStream};
 
@@ -103,6 +106,23 @@ struct VideoBlobCache {
 struct EpisodeRowRange {
     start_row: usize,
     end_row: usize,
+}
+
+/// Read the string at index `i`, returning `None` if the array is absent or the value is null.
+fn value_at(array: Option<&StringArray>, i: usize) -> Option<&str> {
+    let a = array?;
+    a.is_valid(i).then(|| a.value(i))
+}
+
+/// Render the elements of a single `tool_calls` list to text, one element per line.
+fn tool_calls_to_text(elements: &dyn arrow::array::Array) -> Option<String> {
+    use arrow::util::display::{ArrayFormatter, FormatOptions};
+    let formatter = ArrayFormatter::try_new(elements, &FormatOptions::default()).ok()?;
+    let joined = (0..elements.len())
+        .map(|i| formatter.value(i).to_string())
+        .collect::<Vec<_>>()
+        .join("\n");
+    (!joined.is_empty()).then_some(joined)
 }
 
 impl LeRobotDatasetV3 {
@@ -466,7 +486,10 @@ impl LeRobotDatasetV3 {
                     // this always refers to the subtask description in the dataset metadata.
                     chunks.extend(self.log_episode_subtask(&timeline, &data)?);
                 }
-                DType::Int16 | DType::Int64 | DType::Bool | DType::String | DType::Language => {
+                DType::Language => {
+                    chunks.extend(Self::log_episode_language(feature_key, &timeline, &data)?);
+                }
+                DType::Int16 | DType::Int64 | DType::Bool | DType::String => {
                     re_log::warn_once!(
                         "Loading LeRobot feature ({feature_key}) of dtype `{:?}` into Rerun is not yet implemented",
                         feature.dtype
@@ -549,6 +572,192 @@ impl LeRobotDatasetV3 {
         }
 
         Ok(std::iter::once(chunk.build()?))
+    }
+
+    /// Log a `LeRobot` v0.6.0+ language feature (`language_persistent` or `language_events`).
+    ///
+    /// The two columns follow different temporal conventions
+    /// ([spec](https://huggingface.co/docs/lerobot/en/language_and_recipes)):
+    /// - **Persistent** (`subtask`, `plan`, …): broadcast to every frame. Placed on the frame matching
+    ///   the row's `timestamp`; latest-at keeps them active until replaced.
+    /// - **Event** (`interjection`, `vqa`): placed on the exact frame they occur.
+    ///
+    /// Each row becomes a [`TextDocument`] at `{feature}/{style}[/{role}][/{camera}]`; `tool_calls`
+    /// go on a `…/tool_calls` sub-entity. Empty columns (e.g. an unused `language_events`) are skipped.
+    fn log_episode_language(
+        feature_key: &str,
+        timeline: &Timeline,
+        data: &RecordBatch,
+    ) -> Result<Vec<Chunk>, ImporterError> {
+        let Some(list) = data
+            .column_by_name(feature_key)
+            .and_then(|c| c.downcast_array_ref::<ListArray>())
+        else {
+            return Ok(vec![]);
+        };
+
+        // First frame carrying rows: an all-empty column stops here, and for a persistent column
+        // this frame holds the full broadcast row set.
+        let Some(representative_idx) = (0..list.len()).find(|&i| list.value_length(i) > 0) else {
+            return Ok(vec![]);
+        };
+
+        let representative_rows = list.value(representative_idx);
+        let Some(representative_rows) = representative_rows.downcast_array_ref::<StructArray>()
+        else {
+            re_log::warn_once!(
+                "LeRobot language feature `{feature_key}` is not a list of annotation rows; skipping"
+            );
+            return Ok(vec![]);
+        };
+
+        // Per the spec there are exactly two language columns, so the column name fixes the
+        // convention: `language_persistent` broadcasts across every frame, `language_events` sits on
+        // the emitting frame. See https://huggingface.co/docs/lerobot/en/language_and_recipes
+        let is_persistent = feature_key == "language_persistent";
+
+        // Entity path -> (frame, content) pairs, collected across the relevant frames.
+        let mut by_entity: HashMap<String, Vec<(i64, String)>> = HashMap::default();
+
+        if is_persistent {
+            // Persistent rows are broadcast identically onto every frame, so the representative frame
+            // already holds the full set. Place each on the frame matching its emission `timestamp` —
+            // the first frame at or after it — so the text lands on the shared episode timeline.
+            let row_timestamps =
+                Self::timestamps_as_f64(representative_rows.column_by_name("timestamp"));
+            let frame_timestamps = Self::timestamps_as_f64(data.column_by_name("timestamp"));
+            // A timestamp past the episode's end (or a missing frame-`timestamp` column) falls back to
+            // the last frame rather than frame 0: latest-at would otherwise broadcast an end-of-episode
+            // annotation across the whole episode.
+            let last_frame = i64::try_from(list.len().saturating_sub(1)).unwrap_or(0);
+            let frame_for_timestamp = |ts: f64| -> i64 {
+                frame_timestamps
+                    .as_ref()
+                    .and_then(|frames| frames.values().iter().position(|&t| t >= ts))
+                    .and_then(|frame| i64::try_from(frame).ok())
+                    .unwrap_or_else(|| {
+                        re_log::warn_once!(
+                            "No frame at or after language timestamp {ts}s in `{feature_key}`; placing on last frame"
+                        );
+                        last_frame
+                    })
+            };
+            Self::collect_language_rows(feature_key, representative_rows, &mut by_entity, |i| {
+                // A persistent row without its own timestamp is anchored to frame 0.
+                row_timestamps
+                    .as_ref()
+                    .filter(|ts| ts.is_valid(i))
+                    .map_or(0, |ts| frame_for_timestamp(ts.value(i)))
+            });
+        } else {
+            // Events live on their exact frame, so place each row on the frame it occupies.
+            for frame in 0..list.len() {
+                if list.value_length(frame) == 0 {
+                    continue;
+                }
+                let rows = list.value(frame);
+                let Some(rows) = rows.downcast_array_ref::<StructArray>() else {
+                    continue;
+                };
+                let frame = i64::try_from(frame).unwrap_or(0);
+                Self::collect_language_rows(feature_key, rows, &mut by_entity, |_| frame);
+            }
+        }
+
+        let mut chunks = Vec::with_capacity(by_entity.len());
+        for (entity_path, mut annotations) in by_entity {
+            annotations.sort_by_key(|(frame, _)| *frame);
+
+            let mut chunk = Chunk::builder(EntityPath::parse_forgiving(&entity_path));
+            let mut row_id = RowId::new();
+            for (frame, content) in annotations {
+                let timepoint = TimePoint::default().with(*timeline, frame);
+                chunk = chunk.with_archetype(row_id, timepoint, &TextDocument::new(content));
+                row_id = row_id.next();
+            }
+            chunks.push(chunk.build()?);
+        }
+
+        Ok(chunks)
+    }
+
+    /// Read a `timestamp` column as `f64`.
+    ///
+    /// `LeRobot` types both frame and language-row `timestamp`s as `float32`, but some datasets store
+    /// `float64`; casting to a common `f64` lets either load. Returns `None` if the column is absent
+    /// or not castable.
+    fn timestamps_as_f64(column: Option<&ArrayRef>) -> Option<Float64Array> {
+        let casted = cast(column?, &DataType::Float64).ok()?;
+        casted.downcast_array_ref::<Float64Array>().cloned()
+    }
+
+    /// Collect language annotation rows into per-entity `(frame, content)` pairs.
+    ///
+    /// Each row is routed to an entity path of `{feature}/{style}[/{role}][/{camera}]` and placed on
+    /// the frame returned by `frame_of_row` (its emission frame for persistent rows, or the frame it
+    /// occupies for events). Rows with neither `content` nor `tool_calls` produce nothing.
+    fn collect_language_rows(
+        feature_key: &str,
+        rows: &StructArray,
+        by_entity: &mut HashMap<String, Vec<(i64, String)>>,
+        frame_of_row: impl Fn(usize) -> i64,
+    ) {
+        let styles = rows
+            .column_by_name("style")
+            .and_then(|c| c.downcast_array_ref::<StringArray>());
+        let contents = rows
+            .column_by_name("content")
+            .and_then(|c| c.downcast_array_ref::<StringArray>());
+        let roles = rows
+            .column_by_name("role")
+            .and_then(|c| c.downcast_array_ref::<StringArray>());
+        let cameras = rows
+            .column_by_name("camera")
+            .and_then(|c| c.downcast_array_ref::<StringArray>());
+        // `tool_calls` is a `list<struct>` of OpenAI-style function calls (real on-disk shape:
+        // `list<struct<type, function<name, arguments<…>>>>`); we render each element generically.
+        let tool_calls = rows
+            .column_by_name("tool_calls")
+            .and_then(|c| c.downcast_array_ref::<ListArray>());
+
+        for i in 0..rows.len() {
+            // Key by the present distinguishing fields, in resolver order (style, role, camera).
+            // `style` and `camera` are nullable (e.g. `say` speech rows have no style), so we simply
+            // omit any absent segment rather than inventing a placeholder.
+            let mut entity_path = feature_key.to_owned();
+            for segment in [
+                value_at(styles, i),
+                value_at(roles, i),
+                value_at(cameras, i),
+            ]
+            .into_iter()
+            .flatten()
+            {
+                entity_path.push('/');
+                entity_path.push_str(segment);
+            }
+
+            let frame = frame_of_row(i);
+
+            // Tool calls (if any) go on a `…/tool_calls` sub-entity.
+            if let Some(tool_calls) = tool_calls
+                && tool_calls.is_valid(i)
+                && tool_calls.value_length(i) > 0
+                && let Some(text) = tool_calls_to_text(tool_calls.value(i).as_ref())
+            {
+                by_entity
+                    .entry(format!("{entity_path}/tool_calls"))
+                    .or_default()
+                    .push((frame, text));
+            }
+
+            if let Some(content) = value_at(contents, i) {
+                by_entity
+                    .entry(entity_path)
+                    .or_default()
+                    .push((frame, content.to_owned()));
+            }
+        }
     }
 
     /// Extract feature-specific timestamp metadata for a given episode and observation.
@@ -1225,4 +1434,477 @@ pub fn load_and_stream(
     loader_name: &str,
 ) {
     load_and_stream_versioned(dataset, application_id, tx, loader_name);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use arrow::array::{Float32Array, ListArray, RecordBatchOptions};
+    use arrow::buffer::OffsetBuffer;
+    use arrow::datatypes::{DataType, Field, Fields, Schema};
+    use std::sync::Arc;
+
+    /// Build a single `RecordBatch` from fields and columns, using the metadata/options-aware
+    /// constructors our clippy config mandates.
+    fn test_batch(fields: Vec<Field>, columns: Vec<ArrayRef>) -> RecordBatch {
+        let schema = Schema::new_with_metadata(fields, Default::default());
+        RecordBatch::try_new_with_options(Arc::new(schema), columns, &RecordBatchOptions::default())
+            .unwrap()
+    }
+
+    /// A single `LeRobot` language annotation row, used to build synthetic test data.
+    struct Row {
+        style: Option<&'static str>,
+        content: Option<&'static str>,
+        role: Option<&'static str>,
+        camera: Option<&'static str>,
+        timestamp: Option<f64>,
+        tool_calls: Option<Vec<&'static str>>,
+    }
+
+    /// Build a `list<struct>` language column from per-frame rows.
+    fn language_column(frames: &[Vec<Row>]) -> ListArray {
+        let all: Vec<&Row> = frames.iter().flatten().collect();
+
+        // Build `tool_calls` in its real on-disk shape — an OpenAI-style function-call struct,
+        // `list<struct<function<name, arguments<text>>, type>>` — rather than flattening it to a
+        // list of strings, so the test drives the importer's generic struct rendering. Each call is
+        // a `say` function (the catalog's canonical/default tool) whose `arguments.text` is the
+        // spoken utterance. See https://huggingface.co/docs/lerobot/en/tools
+        let say_texts: Vec<&str> = all
+            .iter()
+            .flat_map(|r| r.tool_calls.clone().unwrap_or_default())
+            .collect();
+        let arguments_fields = Fields::from(vec![Field::new("text", DataType::Utf8, true)]);
+        let function_fields = Fields::from(vec![
+            Field::new(
+                "arguments",
+                DataType::Struct(arguments_fields.clone()),
+                true,
+            ),
+            Field::new("name", DataType::Utf8, true),
+        ]);
+        let tool_call_fields = Fields::from(vec![
+            Field::new("function", DataType::Struct(function_fields.clone()), true),
+            Field::new("type", DataType::Utf8, true),
+        ]);
+        let arguments = StructArray::new(
+            arguments_fields,
+            vec![Arc::new(
+                say_texts.iter().map(|t| Some(*t)).collect::<StringArray>(),
+            )],
+            None,
+        );
+        let function = StructArray::new(
+            function_fields,
+            vec![
+                Arc::new(arguments),
+                Arc::new(
+                    say_texts
+                        .iter()
+                        .map(|_| Some("say"))
+                        .collect::<StringArray>(),
+                ),
+            ],
+            None,
+        );
+        let tool_call_values = StructArray::new(
+            tool_call_fields.clone(),
+            vec![
+                Arc::new(function),
+                Arc::new(
+                    say_texts
+                        .iter()
+                        .map(|_| Some("function"))
+                        .collect::<StringArray>(),
+                ),
+            ],
+            None,
+        );
+        let tool_calls_item = Field::new("item", DataType::Struct(tool_call_fields), true);
+        let tool_calls = ListArray::new(
+            Arc::new(tool_calls_item.clone()),
+            OffsetBuffer::from_lengths(
+                all.iter()
+                    .map(|r| r.tool_calls.as_ref().map_or(0, Vec::len)),
+            ),
+            Arc::new(tool_call_values),
+            None,
+        );
+
+        // `timestamp` is `float32` in the source schema (some datasets store `float64`) — use
+        // `float32` here so the importer's float32→f64 handling is exercised.
+        let struct_fields = Fields::from(vec![
+            Field::new("style", DataType::Utf8, true),
+            Field::new("content", DataType::Utf8, true),
+            Field::new("role", DataType::Utf8, true),
+            Field::new("camera", DataType::Utf8, true),
+            Field::new("timestamp", DataType::Float32, true),
+            Field::new(
+                "tool_calls",
+                DataType::List(Arc::new(tool_calls_item)),
+                true,
+            ),
+        ]);
+        let values = StructArray::new(
+            struct_fields.clone(),
+            vec![
+                Arc::new(all.iter().map(|r| r.style).collect::<StringArray>()),
+                Arc::new(all.iter().map(|r| r.content).collect::<StringArray>()),
+                Arc::new(all.iter().map(|r| r.role).collect::<StringArray>()),
+                Arc::new(all.iter().map(|r| r.camera).collect::<StringArray>()),
+                Arc::new(
+                    all.iter()
+                        .map(|r| r.timestamp.map(|t| t as f32))
+                        .collect::<Float32Array>(),
+                ),
+                Arc::new(tool_calls),
+            ],
+            None,
+        );
+        let offsets = OffsetBuffer::from_lengths(frames.iter().map(Vec::len));
+        let item = Field::new("item", DataType::Struct(struct_fields), true);
+        ListArray::new(Arc::new(item), offsets, Arc::new(values), None)
+    }
+
+    fn entity_paths(chunks: &[Chunk]) -> Vec<String> {
+        let mut paths: Vec<_> = chunks.iter().map(|c| c.entity_path().to_string()).collect();
+        paths.sort();
+        paths
+    }
+
+    fn chunk<'a>(chunks: &'a [Chunk], entity_path: &str) -> &'a Chunk {
+        chunks
+            .iter()
+            .find(|c| c.entity_path().to_string() == entity_path)
+            .unwrap_or_else(|| panic!("missing chunk for `{entity_path}`"))
+    }
+
+    /// Render every logged component value in a chunk to text (for asserting on document contents).
+    fn rendered_text(chunk: &Chunk) -> String {
+        use arrow::util::display::{ArrayFormatter, FormatOptions};
+        chunk
+            .components()
+            .values()
+            .flat_map(|col| {
+                let formatter =
+                    ArrayFormatter::try_new(&col.list_array, &FormatOptions::default()).unwrap();
+                (0..col.list_array.len())
+                    .map(|i| formatter.value(i).to_string())
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>()
+            .join(" ")
+    }
+
+    /// Persistent rows carry a timestamp, are broadcast to every frame, and are placed on the frame
+    /// matching their emission timestamp. View-dependent (`camera`) and role-paired rows must not
+    /// collapse onto the same entity.
+    #[test]
+    fn language_persistent_broadcast_and_keying() {
+        // Three frames, each broadcasting the same three persistent rows.
+        let rows = || {
+            vec![
+                Row {
+                    style: Some("subtask"),
+                    content: Some("pick"),
+                    role: Some("assistant"),
+                    camera: None,
+                    timestamp: Some(0.0),
+                    tool_calls: None,
+                },
+                Row {
+                    style: Some("subtask"),
+                    content: Some("place"),
+                    role: Some("assistant"),
+                    camera: None,
+                    timestamp: Some(2.0),
+                    tool_calls: None,
+                },
+                Row {
+                    style: Some("vqa"),
+                    content: Some("what is it?"),
+                    role: Some("user"),
+                    camera: Some("observation.images.top"),
+                    timestamp: Some(1.0),
+                    tool_calls: None,
+                },
+            ]
+        };
+        let frames = vec![rows(), rows(), rows()];
+
+        let batch = test_batch(
+            vec![
+                Field::new("timestamp", DataType::Float32, false),
+                Field::new(
+                    "language_persistent",
+                    language_column(&frames).data_type().clone(),
+                    true,
+                ),
+            ],
+            vec![
+                Arc::new(Float32Array::from(vec![0.0, 1.0, 2.0])),
+                Arc::new(language_column(&frames)),
+            ],
+        );
+
+        let timeline = Timeline::new_sequence("frame_index");
+        let chunks =
+            LeRobotDatasetV3::log_episode_language("language_persistent", &timeline, &batch)
+                .unwrap();
+
+        assert_eq!(
+            entity_paths(&chunks),
+            vec![
+                "/language_persistent/subtask/assistant".to_owned(),
+                "/language_persistent/vqa/user/observation.images.top".to_owned(),
+            ]
+        );
+        // Two subtasks placed at frames 0 (ts 0.0) and 2 (ts 2.0).
+        assert_eq!(
+            chunk(&chunks, "/language_persistent/subtask/assistant").num_rows(),
+            2
+        );
+        // One vqa query at frame 1 (ts 1.0), kept separate by role + camera.
+        assert_eq!(
+            chunk(
+                &chunks,
+                "/language_persistent/vqa/user/observation.images.top"
+            )
+            .num_rows(),
+            1
+        );
+    }
+
+    /// Event rows omit the timestamp and exist only on the exact frame they were emitted on, so each
+    /// must be placed on the frame it occupies rather than broadcast.
+    #[test]
+    fn language_events_placed_per_frame() {
+        let frames = vec![
+            vec![],
+            vec![Row {
+                style: Some("interjection"),
+                content: Some("stop!"),
+                role: Some("assistant"),
+                camera: None,
+                timestamp: None,
+                tool_calls: None,
+            }],
+            vec![],
+        ];
+
+        let batch = test_batch(
+            vec![
+                Field::new("timestamp", DataType::Float32, false),
+                Field::new(
+                    "language_events",
+                    language_column(&frames).data_type().clone(),
+                    true,
+                ),
+            ],
+            vec![
+                Arc::new(Float32Array::from(vec![0.0, 1.0, 2.0])),
+                Arc::new(language_column(&frames)),
+            ],
+        );
+
+        let timeline = Timeline::new_sequence("frame_index");
+        let chunks =
+            LeRobotDatasetV3::log_episode_language("language_events", &timeline, &batch).unwrap();
+
+        assert_eq!(
+            entity_paths(&chunks),
+            vec!["/language_events/interjection/assistant".to_owned()]
+        );
+        assert_eq!(
+            chunk(&chunks, "/language_events/interjection/assistant").num_rows(),
+            1
+        );
+    }
+
+    /// A pure tool-call event row (null `content`, non-empty `tool_calls`) is not dropped: its calls
+    /// are captured as text on a `…/tool_calls` sub-entity.
+    #[test]
+    fn language_tool_calls_captured_on_sub_entity() {
+        let frames = vec![
+            vec![],
+            vec![Row {
+                style: None, // speech rows carry no style
+                content: None,
+                role: Some("assistant"),
+                camera: None,
+                timestamp: None,
+                tool_calls: Some(vec!["hello there"]), // the `say` text
+            }],
+        ];
+
+        let batch = test_batch(
+            vec![
+                Field::new("timestamp", DataType::Float32, false),
+                Field::new(
+                    "language_events",
+                    language_column(&frames).data_type().clone(),
+                    true,
+                ),
+            ],
+            vec![
+                Arc::new(Float32Array::from(vec![0.0, 1.0])),
+                Arc::new(language_column(&frames)),
+            ],
+        );
+
+        let timeline = Timeline::new_sequence("frame_index");
+        let chunks =
+            LeRobotDatasetV3::log_episode_language("language_events", &timeline, &batch).unwrap();
+
+        // No content entity (content was null), only the tool-call sub-entity. Style is null (speech
+        // rows carry none), so the path omits the style segment rather than inventing a placeholder.
+        assert_eq!(
+            entity_paths(&chunks),
+            vec!["/language_events/assistant/tool_calls".to_owned()]
+        );
+        let tool_call_chunk = chunk(&chunks, "/language_events/assistant/tool_calls");
+        assert_eq!(tool_call_chunk.num_rows(), 1);
+        // The generic struct render keeps the `say` text, even if it's buried in the struct dump.
+        assert!(
+            rendered_text(tool_call_chunk).contains("hello there"),
+            "rendered tool call should retain the say text, got: {}",
+            rendered_text(tool_call_chunk)
+        );
+    }
+
+    /// An all-null / empty language column (e.g. an unused `language_events`) yields no chunks.
+    #[test]
+    fn language_empty_column_is_skipped() {
+        let frames: Vec<Vec<Row>> = vec![vec![], vec![], vec![]];
+        let batch = test_batch(
+            vec![Field::new(
+                "language_events",
+                language_column(&frames).data_type().clone(),
+                true,
+            )],
+            vec![Arc::new(language_column(&frames))],
+        );
+
+        let timeline = Timeline::new_sequence("frame_index");
+        let chunks =
+            LeRobotDatasetV3::log_episode_language("language_events", &timeline, &batch).unwrap();
+        assert!(chunks.is_empty());
+    }
+
+    /// The `style`/`role`/`camera` path segments are dataset-authored strings we don't control, so
+    /// they can be empty or contain characters (`/`, spaces, `!`) that are meaningful in an entity
+    /// path. `EntityPath::parse_forgiving` must absorb these without panicking, and degrade sanely:
+    /// empty segments collapse (dropped duplicate slash), an embedded `/` just nests deeper, and
+    /// other characters get escaped.
+    #[test]
+    fn language_edge_case_path_segments_are_forgiving() {
+        let frames = vec![
+            vec![],
+            vec![
+                // Empty style: the `//` it would produce collapses to a single separator.
+                Row {
+                    style: Some(""),
+                    content: Some("empty style"),
+                    role: Some("assistant"),
+                    camera: None,
+                    timestamp: None,
+                    tool_calls: None,
+                },
+                // A `/` inside a segment splits into extra path parts rather than erroring.
+                Row {
+                    style: Some("vqa"),
+                    content: Some("slashy camera"),
+                    role: Some("user"),
+                    camera: Some("observation/images/top"),
+                    timestamp: None,
+                    tool_calls: None,
+                },
+                // Spaces and `!` are escaped, not rejected.
+                Row {
+                    style: Some("pick up!"),
+                    content: Some("special chars"),
+                    role: None,
+                    camera: None,
+                    timestamp: None,
+                    tool_calls: None,
+                },
+            ],
+        ];
+
+        let batch = test_batch(
+            vec![
+                Field::new("timestamp", DataType::Float32, false),
+                Field::new(
+                    "language_events",
+                    language_column(&frames).data_type().clone(),
+                    true,
+                ),
+            ],
+            vec![
+                Arc::new(Float32Array::from(vec![0.0, 1.0])),
+                Arc::new(language_column(&frames)),
+            ],
+        );
+
+        let timeline = Timeline::new_sequence("frame_index");
+        // Must not panic on any of the awkward segments.
+        let chunks =
+            LeRobotDatasetV3::log_episode_language("language_events", &timeline, &batch).unwrap();
+
+        let paths = entity_paths(&chunks);
+        // Empty style drops the duplicate slash; the `/` in the camera nests deeper; the special
+        // characters survive (escaped) rather than breaking the path. Three distinct entities.
+        assert_eq!(
+            paths,
+            vec![
+                "/language_events/assistant".to_owned(),
+                "/language_events/pick\\ up\\!".to_owned(),
+                "/language_events/vqa/user/observation/images/top".to_owned(),
+            ]
+        );
+    }
+
+    /// Manual verification against a real `LeRobot` v0.6.0 dataset parquet (e.g.
+    /// `pepijn223/human_new_35_annotated`). Ignored by default; run with:
+    ///   `LEROBOT_LANG_PARQUET=/path/to/file-000.parquet cargo test -p re_importer --all-features
+    ///   verify_real_language_parquet -- --ignored --nocapture`
+    #[test]
+    #[ignore = "requires a local LeRobot v0.6.0 parquet via LEROBOT_LANG_PARQUET"]
+    fn verify_real_language_parquet() {
+        use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
+
+        let path = std::env::var("LEROBOT_LANG_PARQUET").expect("set LEROBOT_LANG_PARQUET");
+        let file = std::fs::File::open(&path).unwrap();
+        let reader = ParquetRecordBatchReaderBuilder::try_new(file)
+            .unwrap()
+            .build()
+            .unwrap();
+        let batches: Vec<RecordBatch> = reader.map(Result::unwrap).collect();
+        let batch = concat_batches(&batches[0].schema(), &batches).unwrap();
+
+        let timeline = Timeline::new_sequence("frame_index");
+        for feature in ["language_persistent", "language_events"] {
+            if batch.schema().index_of(feature).is_err() {
+                println!("\n===== {feature}: not present =====");
+                continue;
+            }
+            let chunks =
+                LeRobotDatasetV3::log_episode_language(feature, &timeline, &batch).unwrap();
+            println!("\n===== {feature}: {} entities =====", chunks.len());
+            for c in &chunks {
+                let preview: String = rendered_text(c)
+                    .replace('\n', " ")
+                    .chars()
+                    .take(160)
+                    .collect();
+                println!(
+                    "  {} ({} rows)\n      {preview}",
+                    c.entity_path(),
+                    c.num_rows()
+                );
+            }
+        }
+    }
 }
