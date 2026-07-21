@@ -410,7 +410,11 @@ impl PyDatasetEntryInternal {
         let on_duplicate = parse_on_duplicate(on_duplicate)?;
         let _span = read_trace_context_from_python(py, "DatasetEntry.register").entered();
 
-        let recording_layers = recording_layers.into_iter().map(LayerName::new).collect();
+        let recording_layers = recording_layers
+            .into_iter()
+            .map(LayerName::try_new)
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(to_py_err)?;
         let (request_trace_id, results) = connection.register_with_dataset(
             py,
             self_.entry_details.id,
@@ -467,7 +471,11 @@ impl PyDatasetEntryInternal {
         let connection = self_.client.borrow(py).connection().clone();
 
         let segments_to_drop = segments_to_drop.into_iter().map(SegmentId::new).collect();
-        let layers_to_drop = layers_to_drop.into_iter().map(LayerName::new).collect();
+        let layers_to_drop = layers_to_drop
+            .into_iter()
+            .map(LayerName::try_new)
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(to_py_err)?;
         let (request_trace_id, task_ids) = connection.unregister_from_dataset(
             py,
             self_.entry_details.id,
@@ -519,7 +527,7 @@ impl PyDatasetEntryInternal {
             py,
             self_.entry_details.id,
             recordings_prefix,
-            LayerName::new(layer_name),
+            LayerName::try_new(layer_name).map_err(to_py_err)?,
             on_duplicate,
         )?;
 

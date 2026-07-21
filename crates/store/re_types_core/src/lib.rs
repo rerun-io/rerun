@@ -55,7 +55,7 @@ pub use self::component_descriptor::{
     FIELD_METADATA_KEY_COMPONENT_TYPE,
 };
 pub use self::dynamic_archetype::DynamicArchetype;
-pub use self::layer_name::LayerName;
+pub use self::layer_name::{InvalidLayerNameError, LayerName};
 pub use self::loggable::{Component, ComponentSet, ComponentType, Loggable, UnorderedComponentSet};
 pub use self::result::{
     _Backtrace, DeserializationError, DeserializationResult, ResultExt, SerializationError,

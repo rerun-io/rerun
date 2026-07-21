@@ -16,7 +16,7 @@ use re_protos::common::v1alpha1::TaskId;
 use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
 use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_protos::{EntryName, common::v1alpha1::ext::SegmentId};
-use re_types_core::AsComponents;
+use re_types_core::{AsComponents, LayerName};
 use tonic::async_trait;
 use url::Url;
 
@@ -155,7 +155,11 @@ impl<T: RerunCloudService> RerunCloudServiceExt for T {
                 .iter()
                 .map(|id| (*id).to_owned().into())
                 .collect(),
-            layers_to_drop: layers_to_drop.iter().copied().map(Into::into).collect(),
+            layers_to_drop: layers_to_drop
+                .iter()
+                .copied()
+                .map(|layer| LayerName::try_new(layer).unwrap())
+                .collect(),
             force: false,
         };
 
@@ -697,9 +701,11 @@ impl DataSourcesDefinition {
                 let url = Url::from_file_path(path.as_path()).unwrap();
                 match layer_name {
                     None => cloud_ext::DataSource::new_rrd_url(url),
-                    Some(layer) => {
-                        cloud_ext::DataSource::new_rrd_layer(layer, url.as_str()).unwrap()
-                    }
+                    Some(layer) => cloud_ext::DataSource::new_rrd_layer(
+                        LayerName::try_new(layer).unwrap(),
+                        url.as_str(),
+                    )
+                    .unwrap(),
                 }
             })
             .collect()

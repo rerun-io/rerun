@@ -180,7 +180,10 @@ impl TryFrom<crate::cloud::v1alpha1::UnregisterFromDatasetRequest>
                 .into_iter()
                 .map(TryInto::try_into)
                 .try_collect()?,
-            layers_to_drop: layers_to_drop.into_iter().map(LayerName::from).collect(),
+            layers_to_drop: layers_to_drop
+                .into_iter()
+                .map(LayerName::try_new)
+                .try_collect()?,
             force,
         })
     }
@@ -2281,25 +2284,25 @@ impl DataSource {
     }
 
     pub fn new_rrd_layer(
-        layer: impl AsRef<str>,
+        layer: impl Into<LayerName>,
         storage_url: impl AsRef<str>,
     ) -> Result<Self, url::ParseError> {
         Ok(Self {
             storage_url: storage_url.as_ref().parse()?,
             is_prefix: false,
-            layer: LayerName::new(layer.as_ref()),
+            layer: layer.into(),
             kind: DataSourceKind::Rrd,
         })
     }
 
     pub fn new_rrd_layer_prefix(
-        layer: impl AsRef<str>,
+        layer: impl Into<LayerName>,
         storage_url: impl AsRef<str>,
     ) -> Result<Self, url::ParseError> {
         Ok(Self {
             storage_url: storage_url.as_ref().parse()?,
             is_prefix: true,
-            layer: LayerName::new(layer.as_ref()),
+            layer: layer.into(),
             kind: DataSourceKind::Rrd,
         })
     }
@@ -2343,9 +2346,12 @@ impl TryFrom<crate::cloud::v1alpha1::DataSource> for DataSource {
             .ok_or_else(|| missing_field!(crate::cloud::v1alpha1::DataSource, "storage_url"))?
             .parse()?;
 
+        // An empty layer name is treated as absent, for backwards compatibility.
         let layer = data_source
             .layer
-            .map(LayerName::from)
+            .filter(|layer| !layer.is_empty())
+            .map(LayerName::try_new)
+            .transpose()?
             .unwrap_or_else(LayerName::base);
 
         let kind = DataSourceKind::try_from(data_source.typ)?;
@@ -2359,6 +2365,26 @@ impl TryFrom<crate::cloud::v1alpha1::DataSource> for DataSource {
             kind,
         })
     }
+}
+
+#[test]
+fn datasource_layer_from_proto() {
+    let proto = |layer: Option<&str>| crate::cloud::v1alpha1::DataSource {
+        storage_url: Some("s3://bucket/file.rrd".to_owned()),
+        prefix: false,
+        layer: layer.map(ToOwned::to_owned),
+        typ: crate::cloud::v1alpha1::DataSourceKind::Rrd as i32,
+    };
+
+    let data_source = DataSource::try_from(proto(None)).unwrap();
+    assert_eq!(data_source.layer, LayerName::base());
+
+    // An empty layer name is treated as absent, for backwards compatibility.
+    let data_source = DataSource::try_from(proto(Some(""))).unwrap();
+    assert_eq!(data_source.layer, LayerName::base());
+
+    let data_source = DataSource::try_from(proto(Some("my_layer"))).unwrap();
+    assert_eq!(data_source.layer, "my_layer");
 }
 
 // --- Tasks ---
