@@ -30,6 +30,9 @@ _deps
 /target_ra
 /target_wasm
 
+# Test coverage output (`pixi run rs-coverage`). HTML lives under /target (already ignored).
+/lcov.info
+
 # Python virtual environment:
 **/venv*
 **/.venv*

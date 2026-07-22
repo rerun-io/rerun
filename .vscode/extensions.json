@@ -22,5 +22,6 @@
     "wayou.vscode-todo-highlight",
     "webfreak.debug",
     "xaver.clang-format", // C++ formatter
+    "ryanluker.vscode-coverage-gutters", // Renders line coverage from `pixi run rs-coverage` (lcov.info) as inline gutters.
   ]
 }

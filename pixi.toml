@@ -119,6 +119,11 @@ default = ["base"]
 # in which you want to do viewer builds.
 cpp = ["base", "cpp"]
 
+# Test coverage tooling (cargo-llvm-cov + cargo-nextest). Kept out of the default
+# environment so normal dev/CI installs don't pull these tools, and so CI's own pinned
+# nextest (installed via taiki-e/install-action) isn't shadowed. Used by `rs-coverage`.
+coverage = ["base", "coverage"]
+
 ################################################################################
 # TASKS
 ################################################################################
@@ -524,6 +529,23 @@ RUSTFLAGS = "-Z threads=0"
 cmd = "target/dev-fast/viewer"
 depends-on = ["rerun-build-fast"]
 
+# ------------------------------------------------------------------------------------------
+# Test coverage (cargo-llvm-cov + nextest) — see scripts/rs_coverage.sh for details.
+#
+# Lives in the dedicated `coverage` environment (see [environments]) so the default env
+# and CI stay lean. `pixi run rs-coverage` auto-selects that environment since the task
+# exists only there.
+#
+# Runs the test suite under source-based coverage instrumentation and writes lcov.info
+# (for the "Coverage Gutters" VS Code extension), a browsable HTML report, and a per-file
+# summary table in the terminal.
+#
+# With no argument it covers the whole workspace; pass a crate to scope it, e.g.
+#   pixi run rs-coverage re_dataframe
+[feature.coverage.tasks.rs-coverage]
+args = [{ arg = "crate", default = "--workspace" }]
+cmd = "bash scripts/rs_coverage.sh {{ crate }}"
+
 [feature.cpp.tasks]
 # All the cpp-* tasks can be configured with environment variables, e.g.: RERUN_WERROR=ON CXX=clang++
 # We export a compilation database (compile_commands.json) in the CMake configure step (-DCMAKE_EXPORT_COMPILE_COMMANDS=ON),
@@ -642,6 +664,14 @@ pygithub = "==2.6.1" # Among others for `sync_release_assets.py`.
 requests = ">=2.31,<3" # For `thumbnails.py` & `upload_image.py`
 rerun-pixi-env = { path = "rerun_pixi_env", editable = true }
 uv = "==0.9.17"
+
+# Test coverage tooling, isolated in the `coverage` environment (see [environments]).
+# Available on all supported platforms. `cargo-nextest` lives here rather than in `base`
+# on purpose: CI installs its own pinned nextest, and a second copy in the default env
+# would shadow it. Used only by the `rs-coverage` task.
+[feature.coverage.dependencies]
+cargo-nextest = ">=0.9.140" # Test runner driven by cargo-llvm-cov
+cargo-llvm-cov = ">=0.8.7" # Source-based Rust test coverage
 
 [target.linux-64.dependencies]
 cargo-zigbuild = "0.20.*"
