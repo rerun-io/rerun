@@ -16,7 +16,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 import rerun as rr
-from rerun.experimental import Chunk, DeriveLens, LazyChunkStream, ParquetReader, StreamingReader
+from rerun.experimental import Chunk, DeriveLens, IndexColumn, LazyChunkStream, ParquetReader, StreamingReader
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -88,7 +88,7 @@ def test_prefix_grouping(parquet_writer: ParquetWriter) -> None:
         "camera_depth": pa.array([40.0, 50.0, 60.0]),
         "speed": pa.array([100.0, 200.0, 300.0]),
     })
-    chunks = _data_chunks(ParquetReader(path, index_columns=[("frame_index", "sequence")]))
+    chunks = _data_chunks(ParquetReader(path, index_columns=[IndexColumn.sequence("frame_index")]))
 
     assert {c.entity_path for c in chunks} == {"/A", "/obs", "/camera", "/speed"}
 
@@ -127,7 +127,7 @@ def test_individual_grouping(parquet_writer: ParquetWriter) -> None:
         "camera_depth": pa.array([4.0, 5.0, 6.0]),
     })
     chunks = _data_chunks(
-        ParquetReader(path, column_grouping="individual", index_columns=[("frame_index", "sequence")])
+        ParquetReader(path, column_grouping="individual", index_columns=[IndexColumn.sequence("frame_index")])
     )
     assert {c.entity_path for c in chunks} == {"/camera_rgb", "/camera_depth"}
     for c in chunks:
@@ -158,7 +158,7 @@ def test_explicit_prefixes(parquet_writer: ParquetWriter) -> None:
 def test_index_sequence(parquet_writer: ParquetWriter) -> None:
     path = parquet_writer({"frame_index": pa.array([0, 1, 2], pa.int64()), "value": pa.array([10.0, 20.0, 30.0])})
     chunk = _by_entity(
-        _data_chunks(ParquetReader(path, index_columns=[("frame_index", "sequence")])),
+        _data_chunks(ParquetReader(path, index_columns=[IndexColumn.sequence("frame_index")])),
         "/value",
     )
     rb = chunk.to_record_batch()
@@ -170,7 +170,7 @@ def test_index_timestamp_unit_scaling(parquet_writer: ParquetWriter) -> None:
     """A `ms` timestamp index is scaled to nanoseconds and typed `timestamp[ns]`."""
     path = parquet_writer({"ts_ms": pa.array([1, 2, 3], pa.int64()), "value": pa.array([1.0, 2.0, 3.0])})
     chunk = _by_entity(
-        _data_chunks(ParquetReader(path, index_columns=[("ts_ms", "timestamp", "ms")])),
+        _data_chunks(ParquetReader(path, index_columns=[IndexColumn.timestamp("ts_ms", input_unit="ms")])),
         "/value",
     )
     rb = chunk.to_record_batch()
@@ -182,7 +182,7 @@ def test_index_duration_unit_scaling(parquet_writer: ParquetWriter) -> None:
     """A `us` duration index is scaled to nanoseconds and typed `duration[ns]`."""
     path = parquet_writer({"elapsed_us": pa.array([100, 200, 300], pa.int64()), "value": pa.array([1.0, 2.0, 3.0])})
     chunk = _by_entity(
-        _data_chunks(ParquetReader(path, index_columns=[("elapsed_us", "duration", "us")])),
+        _data_chunks(ParquetReader(path, index_columns=[IndexColumn.duration("elapsed_us", input_unit="us")])),
         "/value",
     )
     rb = chunk.to_record_batch()
@@ -207,7 +207,7 @@ def test_static_columns(parquet_writer: ParquetWriter) -> None:
         ParquetReader(
             path,
             column_grouping="individual",
-            index_columns=[("frame_index", "sequence")],
+            index_columns=[IndexColumn.sequence("frame_index")],
             static_columns=["suite", "agg"],
         )
     )
@@ -255,7 +255,7 @@ def test_prefixes_without_explicit_grouping_is_error(parquet_writer: ParquetWrit
 def test_missing_index_column_is_error(parquet_writer: ParquetWriter) -> None:
     path = parquet_writer({"x": pa.array([1.0])})
     with pytest.raises(Exception, match="not found"):
-        ParquetReader(path, index_columns=[("missing", "sequence")]).stream().to_chunks()
+        ParquetReader(path, index_columns=[IndexColumn.sequence("missing")]).stream().to_chunks()
 
 
 # ---------------------------------------------------------------------------
@@ -290,7 +290,7 @@ def test_transform3d_via_lenses(parquet_writer: ParquetWriter) -> None:
     )
 
     chunks = (
-        ParquetReader(path, index_columns=[("frame_index", "sequence")])
+        ParquetReader(path, index_columns=[IndexColumn.sequence("frame_index")])
         .stream()
         .lenses([lens], content="/A", output_mode="drop_unmatched")
         .to_chunks()
@@ -325,7 +325,7 @@ def test_to_packed_component_generic(parquet_writer: ParquetWriter) -> None:
     )
 
     chunks = (
-        ParquetReader(path, index_columns=[("frame_index", "sequence")])
+        ParquetReader(path, index_columns=[IndexColumn.sequence("frame_index")])
         .stream()
         .lenses([lens], content="/p", output_mode="drop_unmatched")
         .to_chunks()
@@ -350,7 +350,7 @@ def test_to_rotation_axis_angle(parquet_writer: ParquetWriter) -> None:
     lens = DeriveLens("data", output_entity="/rot").to_rotation_axis_angle("ax", "ay", "az", "angle")
 
     chunks = (
-        ParquetReader(path, index_columns=[("frame_index", "sequence")])
+        ParquetReader(path, index_columns=[IndexColumn.sequence("frame_index")])
         .stream()
         .lenses([lens], content="/r", output_mode="drop_unmatched")
         .to_chunks()
@@ -377,7 +377,7 @@ def test_to_scalars(parquet_writer: ParquetWriter) -> None:
     lens = DeriveLens("data", output_entity="/obs").to_scalars("vx", "vy", "vz")
 
     chunks = (
-        ParquetReader(path, index_columns=[("frame_index", "sequence")])
+        ParquetReader(path, index_columns=[IndexColumn.sequence("frame_index")])
         .stream()
         .lenses([lens], content="/obs", output_mode="drop_unmatched")
         .to_chunks()
@@ -401,7 +401,7 @@ def test_to_scalars_single_field_is_plain_scalar(parquet_writer: ParquetWriter) 
     lens = DeriveLens("data", output_entity="/obs").to_scalars("vx")
 
     chunks = (
-        ParquetReader(path, index_columns=[("frame_index", "sequence")])
+        ParquetReader(path, index_columns=[IndexColumn.sequence("frame_index")])
         .stream()
         .lenses([lens], content="/obs", output_mode="drop_unmatched")
         .to_chunks()
@@ -430,7 +430,7 @@ def test_named_scalar_series_via_lenses(parquet_writer: ParquetWriter) -> None:
 
     lens = DeriveLens("data", output_entity="/obs").to_scalars("vx", "vy", "vz")
     reader_stream = (
-        ParquetReader(path, index_columns=[("t", "sequence")])
+        ParquetReader(path, index_columns=[IndexColumn.sequence("t")])
         .stream()
         .lenses([lens], content="/obs", output_mode="drop_unmatched")
     )

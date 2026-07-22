@@ -41,6 +41,21 @@ No action needed.
 No action needed.
 `rerun::StateChange().with_state("open")` keeps working, and `with_state({"idle", "pressed"})` is now supported for multiple lanes.
 
+## `ParquetReader` index columns now use `IndexColumn`
+
+The experimental `ParquetReader`'s `index_columns` argument no longer takes `(name, type[, unit])` tuples.
+Pass [`IndexColumn`](https://rerun.io/docs/reference/python/latest/rerun/experimental#rerun.experimental.IndexColumn?speculative-link) values instead, built with the `timestamp`/`duration`/`sequence` constructors (the timeline kind is the constructor you pick, and `unit` is now the keyword-only `input_unit`):
+
+```python
+# 0.34
+ParquetReader(path, index_columns=[("frame", "sequence"), ("ts", "timestamp", "ms")])
+
+# 0.35
+from rerun.experimental import IndexColumn
+
+ParquetReader(path, index_columns=[IndexColumn.sequence("frame"), IndexColumn.timestamp("ts", input_unit="ms")])
+```
+
 ## `--follow` has been removed
 
 Rerun no longer supports tailing `.rrd`.

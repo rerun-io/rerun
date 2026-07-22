@@ -11,6 +11,8 @@ from ._lazy_chunk_stream import LazyChunkStream
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from ._index_column import IndexColumn
+
 
 class ParquetReader:
     """
@@ -25,10 +27,10 @@ class ParquetReader:
     Example
     -------
     ```python
-    from rerun.experimental import ParquetReader, DeriveLens
+    from rerun.experimental import ParquetReader, DeriveLens, IndexColumn
 
     store = (
-        ParquetReader(path, index_columns=[("frame_index", "sequence")])
+        ParquetReader(path, index_columns=[IndexColumn.sequence("frame_index")])
         .stream()
         .lenses(
             [
@@ -56,7 +58,7 @@ class ParquetReader:
         prefixes: list[str] | None = None,
         use_structs: bool = True,
         static_columns: list[str] | None = None,
-        index_columns: list[tuple[str, str] | tuple[str, str, str]] | None = None,
+        index_columns: list[IndexColumn] | None = None,
     ) -> None:
         """
         Load a parquet file with configurable column grouping.
@@ -91,30 +93,15 @@ class ParquetReader:
             emitted once as timeless/static data. An error is raised if a
             listed column contains varying values.
         index_columns:
-            List of columns to use as timeline indices. Each entry is a tuple:
-            `(name, type)` or `(name, type, unit)`.
-
-            The `type` specifies the timeline kind:
-
-            - `"timestamp"`: time since epoch
-            - `"duration"`: elapsed time
-            - `"sequence"`: ordinal integer index
-
-            The `unit` describes what the raw integer values in the column
-            represent (not a desired output unit). Rerun stores all timestamps
-            in nanoseconds internally, so values are scaled accordingly.
-            Supported: `"ns"` (default), `"us"`, `"ms"`, `"s"`.
-            Ignored for `"sequence"` type.
+            Columns to use as timeline indices, each built with
+            [`IndexColumn`][rerun.experimental.IndexColumn], e.g.
+            `IndexColumn.timestamp("ts", input_unit="ms")` or
+            `IndexColumn.sequence("frame_index")`.
 
             When omitted, a synthetic `row_index` sequence timeline is
             generated automatically (one entry per row).
 
         """
-        # Normalize index_columns: pad 2-tuples to 3-tuples with None for the unit
-        normalized_index = (
-            [(t[0], t[1], t[2] if len(t) > 2 else None) for t in index_columns] if index_columns is not None else None
-        )
-
         self._internal = ParquetReaderInternal(
             str(path),
             entity_path_prefix=entity_path_prefix,
@@ -123,7 +110,7 @@ class ParquetReader:
             prefixes=prefixes,
             use_structs=use_structs,
             static_columns=static_columns,
-            index_columns=normalized_index,
+            index_columns=([ic._as_internal_tuple() for ic in index_columns] if index_columns is not None else None),
         )
 
     def stream(self) -> LazyChunkStream:
