@@ -63,6 +63,11 @@ pub enum Error {
     #[error("Bad video data: {0}")]
     BadVideoData(String),
 
+    #[error(
+        "This FFmpeg build has no usable encoder for {codec:?}. Install a build with the matching encoder (e.g. libvpx for VP8/VP9, libsvtav1/libaom for AV1) or choose a different output codec."
+    )]
+    NoEncoderForCodec { codec: crate::VideoCodec },
+
     #[error("FFmpeg error: {0}")]
     Ffmpeg(String),
 

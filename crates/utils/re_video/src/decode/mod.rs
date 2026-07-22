@@ -96,7 +96,7 @@ pub use ffmpeg_cli::FFmpegCliDecoder;
 #[cfg(with_ffmpeg)]
 pub use ffmpeg_cli::{
     Error as FFmpegError, FFmpegVersion, FFmpegVersionParseError, TranscodedMp4,
-    ffmpeg_download_url, transcode_mp4_drop_b_frames,
+    ffmpeg_download_url, transcode_mp4,
 };
 
 #[cfg(target_arch = "wasm32")]

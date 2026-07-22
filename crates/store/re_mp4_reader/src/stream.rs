@@ -11,7 +11,6 @@
 
 use std::io::{Read, Seek, SeekFrom};
 use std::ops::Range;
-use std::path::Path;
 
 use itertools::Either;
 
@@ -20,7 +19,9 @@ use re_log_types::{TimeType, Timeline, TimelineName};
 use re_sdk_types::archetypes::VideoStream;
 use re_sdk_types::components::VideoCodec;
 use re_video::player::GetVideoSource;
-use re_video::{SampleIndex, SampleMetadataState, VideoDataDescription, VideoSource};
+use re_video::{
+    Mp4TranscodeOptions, SampleIndex, SampleMetadataState, VideoDataDescription, VideoSource,
+};
 
 use crate::Mp4Error;
 
@@ -74,7 +75,7 @@ pub(crate) fn iter_chunks(
     timeline_name: TimelineName,
     chunk_by_gop: bool,
     timeline_type: TimeType,
-    ffmpeg_override: Option<&Path>,
+    transcode: &Mp4TranscodeOptions,
     debug_name: &str,
 ) -> Result<ChunkIter, Mp4Error> {
     re_tracing::profile_function!();
@@ -84,51 +85,56 @@ pub(crate) fn iter_chunks(
     reader.seek(SeekFrom::Start(0))?;
     let desc = VideoDataDescription::load_mp4_from_reader(&mut reader, size, debug_name)?;
 
-    // ffmpeg keeps the source codec, so this is the emitted `VideoStream` codec
-    // whether or not we transcode.
-    let mapped_codec = VideoCodec::try_from(desc.codec.clone())
-        .map_err(|_err| Mp4Error::ImageSequenceInStreamMode)?;
+    // Reject an image-sequence *source*: `Mode::Stream` can't represent it.
+    // (`components::VideoCodec` has exactly the five real codecs; `try_from` errors
+    // only for image sequences.)
+    VideoCodec::try_from(desc.codec.clone()).map_err(|_err| Mp4Error::ImageSequenceInStreamMode)?;
 
-    let segments: Box<dyn Iterator<Item = Result<Segment, Mp4Error>>> =
-        if desc.samples_statistics.dts_always_equal_pts {
-            // No container-level reordering. Covers both B-frame-free H.26x and codecs
-            // that reorder *in-band* (AV1 `show_existing_frame`, VP9 superframes), which
-            // keep DTS == PTS at the container. One segment, read directly from the source
-            // (sample bytes are fetched on demand, so the whole file is never resident).
-            Box::new(std::iter::once(Segment::new(reader, desc)))
-        } else {
-            // Container-level B-frame reordering (DTS != PTS). `VideoStream` can't model
-            // this yet (#10090). In practice only H.264/H.265 express reordering this way,
-            // and only those can be re-encoded with `-bf 0`, so reject any other codec here
-            // with a clear message rather than letting the encoder mapping fail deep inside
-            // the ffmpeg call.
-            if !matches!(mapped_codec, VideoCodec::H264 | VideoCodec::H265) {
-                return Err(Mp4Error::BFramesUnsupportedCodec {
-                    codec: mapped_codec,
-                });
-            }
+    // The emitted `VideoStream` codec follows the *output* codec — the requested
+    // `output_codec`, or the source codec when none is requested. This also rejects
+    // an image-sequence *target*.
+    let target_codec = transcode
+        .output_codec
+        .clone()
+        .unwrap_or_else(|| desc.codec.clone());
+    let output_mapped_codec =
+        VideoCodec::try_from(target_codec).map_err(|_err| Mp4Error::ImageSequenceInStreamMode)?;
 
-            // ffmpeg re-encodes and streams back a fragmented mp4, one
-            // segment per GOP fragment.
-            drop(reader);
-            #[cfg(not(target_arch = "wasm32"))]
-            {
-                Box::new(transcoded_segments(
-                    input,
-                    desc.codec.clone(),
-                    ffmpeg_override,
-                    debug_name,
-                )?)
-            }
-            #[cfg(target_arch = "wasm32")]
-            {
-                let _ = (input, ffmpeg_override);
-                return Err(Mp4Error::BFramesRequireFfmpeg);
-            }
-        };
+    // Transcode when the source has container-level B-frame reordering (which only
+    // H.264/H.265 produce, and which `VideoStream` can't model — #10090) OR when a
+    // transform (a *different* output codec, or a GOP size) was requested.
+    // Requesting the output codec the source already uses is a
+    // no-op and stays on the direct path.
+    let needs_decoder_reordering = !desc.samples_statistics.dts_always_equal_pts;
+    let wants_transcode = needs_decoder_reordering || transcode.requests_transform(&desc.codec);
+
+    let segments: Box<dyn Iterator<Item = Result<Segment, Mp4Error>>> = if !wants_transcode {
+        // Direct path: no container reordering and no requested transform — read the
+        // source in place (sample bytes are fetched on demand, so the whole file is
+        // never resident).
+        Box::new(std::iter::once(Segment::new(reader, desc)))
+    } else {
+        // ffmpeg re-encodes and streams back a fragmented mp4, one segment per GOP
+        // fragment. Only one GOP is resident at a time.
+        drop(reader);
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            Box::new(transcoded_segments(
+                input,
+                desc.codec.clone(),
+                transcode,
+                debug_name,
+            )?)
+        }
+        #[cfg(target_arch = "wasm32")]
+        {
+            let _ = (input, transcode);
+            return Err(Mp4Error::TranscodeRequiresFfmpeg);
+        }
+    };
 
     let entity_path = entity_path.clone();
-    let codec_chunk = build_codec_chunk(&entity_path, mapped_codec);
+    let codec_chunk = build_codec_chunk(&entity_path, output_mapped_codec);
     let gop_chunks = segments.flat_map(move |segment| {
         gop_chunks(
             segment,
@@ -219,18 +225,17 @@ fn gop_chunks(
 fn transcoded_segments(
     input: StreamInput,
     source_codec: re_video::VideoCodec,
-    ffmpeg_override: Option<&Path>,
+    transcode: &Mp4TranscodeOptions,
     debug_name: &str,
 ) -> Result<impl Iterator<Item = Result<Segment, Mp4Error>> + use<>, Mp4Error> {
     // ffmpeg needs a seekable file (an mp4's `moov` can trail its `mdat`, so a
     // pipe can't be demuxed). Only the file-path input can offer that.
     let StreamInput::Path(path) = input else {
-        return Err(Mp4Error::BFramesFromInMemoryBytes);
+        return Err(Mp4Error::TranscodeRequiresSeekableFile);
     };
 
-    let chunks =
-        re_video::transcode_mp4_drop_b_frames(&path, source_codec, ffmpeg_override, debug_name)
-            .map_err(|err| map_ffmpeg_err(&err))?;
+    let chunks = re_video::transcode_mp4(&path, source_codec, transcode, debug_name)
+        .map_err(|err| map_ffmpeg_err(&err))?;
     let scanner = FragmentScanner::new(ChunkReader::new(chunks), debug_name)?;
 
     let debug_name = debug_name.to_owned();
@@ -249,6 +254,14 @@ fn transcoded_segments(
 /// message and appending a download hint when the executable is missing.
 #[cfg(not(target_arch = "wasm32"))]
 fn map_ffmpeg_err(err: &re_video::FFmpegError) -> Mp4Error {
+    // A missing encoder for the requested output codec gets its own actionable
+    // error rather than being flattened into the generic transcode message.
+    if let re_video::FFmpegError::NoEncoderForCodec { codec } = err {
+        return Mp4Error::NoEncoderAvailable {
+            codec: codec.clone(),
+        };
+    }
+
     let mut msg = err.to_string();
     if matches!(err, re_video::FFmpegError::FFmpegNotInstalled)
         && let Some(url) = re_video::ffmpeg_download_url()

@@ -20,6 +20,7 @@ mod stream;
 
 pub use config::{Mode, Mp4Config};
 pub use error::Mp4Error;
+pub use re_video::{HwAccel, Mp4TranscodeOptions, VideoCodec};
 
 use itertools::Either;
 
@@ -50,14 +51,17 @@ pub fn load_mp4(
             timepoint.clone(),
         )?)),
 
-        Mode::Stream { chunk_by_gop } => {
+        Mode::Stream {
+            chunk_by_gop,
+            transcode,
+        } => {
             let iter = stream::iter_chunks(
                 stream::StreamInput::Path(path.to_path_buf()),
                 entity_path,
                 config.timeline_name,
                 *chunk_by_gop,
                 config.timeline_type,
-                config.ffmpeg_override.as_deref(),
+                transcode,
                 &debug_name,
             )?;
             Ok(Either::Right(iter))
@@ -95,14 +99,17 @@ pub fn load_mp4_from_bytes(
             timepoint.clone(),
         )?)),
 
-        Mode::Stream { chunk_by_gop } => {
+        Mode::Stream {
+            chunk_by_gop,
+            transcode,
+        } => {
             let iter = stream::iter_chunks(
                 stream::StreamInput::Bytes(bytes),
                 entity_path,
                 config.timeline_name,
                 *chunk_by_gop,
                 config.timeline_type,
-                config.ffmpeg_override.as_deref(),
+                transcode,
                 debug_name,
             )?;
             Ok(Either::Right(iter))

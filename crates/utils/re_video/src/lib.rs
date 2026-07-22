@@ -10,6 +10,7 @@ mod nalu;
 pub mod player;
 mod stable_index_deque;
 mod time;
+mod transcode_options;
 mod vp8;
 mod vp9;
 
@@ -43,10 +44,12 @@ pub use {
     time::{Time, Timescale},
 };
 
+pub use self::transcode_options::{HwAccel, Mp4TranscodeOptions};
+
 #[cfg(with_ffmpeg)]
 pub use self::decode::{
     FFmpegError, FFmpegVersion, FFmpegVersionParseError, TranscodedMp4, ffmpeg_download_url,
-    transcode_mp4_drop_b_frames,
+    transcode_mp4,
 };
 
 pub fn enabled_features() -> &'static [&'static str] {

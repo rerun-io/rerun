@@ -6,7 +6,8 @@ import shutil
 from pathlib import Path
 
 import pytest
-from rerun.experimental import Chunk, Mp4Reader, StreamingReader
+from rerun.components import VideoCodec
+from rerun.experimental import Chunk, Mp4Reader, Mp4TranscodeOptions, StreamingReader
 
 VIDEO_ASSETS_DIR = Path(__file__).resolve().parents[3] / "tests" / "assets" / "video"
 
@@ -156,7 +157,12 @@ def test_b_frames_without_ffmpeg_reports_missing_ffmpeg() -> None:
     with pytest.raises(RuntimeError, match="Couldn't find an installation of the FFmpeg executable"):
         # The error is raised eagerly inside the loader thread; we surface it on
         # the first pull, so iterating is enough to trigger it.
-        list(Mp4Reader(H264_WITH_BFRAMES, ffmpeg_override="/definitely/not/a/real/ffmpeg").stream())
+        list(
+            Mp4Reader(
+                H264_WITH_BFRAMES,
+                transcode=Mp4TranscodeOptions(ffmpeg_override="/definitely/not/a/real/ffmpeg"),
+            ).stream()
+        )
 
 
 def test_b_frames_in_asset_mode_are_fine() -> None:
@@ -241,6 +247,78 @@ def test_b_frames_are_transcoded_into_a_video_stream() -> None:
     assert len(temporal_chunks) > 0
     for c in temporal_chunks:
         assert c.timeline_names == ["video"]
+
+
+# ---------------------------------------------------------------------------
+# Transcode transforms — output_codec / gop_size (stream mode only)
+# ---------------------------------------------------------------------------
+
+
+def _to_chunks_or_skip(reader: Mp4Reader) -> list[Chunk]:
+    """Materialize a transcoding stream, skipping when the encoder is unavailable."""
+    try:
+        return reader.stream().to_chunks()
+    except RuntimeError as err:
+        if "encoder" in str(err) or "FFmpeg" in str(err):
+            pytest.skip(f"ffmpeg/encoder not available: {err}")
+        raise
+
+
+def test_output_codec_same_as_source_stays_on_the_direct_path() -> None:
+    chunks = (
+        Mp4Reader(
+            H264_NO_BFRAMES,
+            transcode=Mp4TranscodeOptions(
+                output_codec=VideoCodec.H264,
+                ffmpeg_override="/definitely/not/a/real/ffmpeg",
+            ),
+        )
+        .stream()
+        .to_chunks()
+    )
+    assert len([c for c in chunks if c.is_static]) == 1
+    assert any(not c.is_static for c in chunks)
+
+
+def test_invalid_output_codec_rejected() -> None:
+    with pytest.raises(TypeError, match="VideoCodec"):
+        Mp4TranscodeOptions(output_codec="av1")  # type: ignore[arg-type]
+
+
+def test_transcode_rejected_in_asset_mode() -> None:
+    """`transcode` is stream-only — passing it for asset mode is a user error."""
+    with pytest.raises(ValueError, match="transcode"):
+        Mp4Reader(H264_NO_BFRAMES, mode="asset", transcode=Mp4TranscodeOptions(output_codec=VideoCodec.AV1))  # type: ignore[call-overload]
+
+
+@pytest.mark.skipif(not _HAS_FFMPEG, reason="ffmpeg not installed")
+@pytest.mark.parametrize("output_codec", [VideoCodec.AV1, VideoCodec.VP9, VideoCodec.H265])
+def test_output_codec_transcodes_to_requested_codec(output_codec: VideoCodec) -> None:
+    """Re-encoding a clean H.264 source to another codec yields a normal `VideoStream`."""
+    chunks = _to_chunks_or_skip(Mp4Reader(H264_NO_BFRAMES, transcode=Mp4TranscodeOptions(output_codec=output_codec)))
+    static_chunks = [c for c in chunks if c.is_static]
+    temporal_chunks = [c for c in chunks if not c.is_static]
+    assert len(static_chunks) == 1
+    assert len(temporal_chunks) > 0
+    for c in temporal_chunks:
+        assert c.timeline_names == ["video"]
+
+
+@pytest.mark.skipif(not _HAS_FFMPEG, reason="ffmpeg not installed")
+def test_gop_size_forces_keyframe_spacing() -> None:
+    """
+    `gop_size=N` forces a keyframe every N frames.
+
+    With `chunk_by_gop=True` that means one temporal chunk per GOP, so every GOP
+    chunk but the last holds exactly N samples.
+    """
+    gop = 10
+    chunks = _to_chunks_or_skip(Mp4Reader(H264_NO_BFRAMES, transcode=Mp4TranscodeOptions(gop_size=gop)))
+    gop_sizes = [c.num_rows for c in chunks if not c.is_static]
+    assert len(gop_sizes) >= 2, f"gop_size={gop} should force multiple GOPs, got {gop_sizes}"
+    for n in gop_sizes[:-1]:
+        assert n == gop, f"every GOP but the last should hold {gop} samples, got {gop_sizes}"
+    assert 1 <= gop_sizes[-1] <= gop
 
 
 # ---------------------------------------------------------------------------

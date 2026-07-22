@@ -1570,6 +1570,17 @@ class McapReaderInternal:
     @staticmethod
     def available_decoders() -> list[str]: ...
 
+class Mp4TranscodeOptionsInternal:
+    """Internal implementation. Use Mp4TranscodeOptions from rerun.experimental instead."""
+
+    def __init__(
+        self,
+        gop_size: int | None = None,
+        output_codec: int | None = None,
+        try_gpu: bool = False,
+        ffmpeg_override: Path | None = None,
+    ) -> None: ...
+
 class Mp4ReaderInternal:
     """Internal implementation. Use Mp4Reader from rerun.experimental instead."""
 
@@ -1580,7 +1591,7 @@ class Mp4ReaderInternal:
         chunk_by_gop: bool = True,
         timeline_name: str = "video",
         timeline_type: Literal["duration", "timestamp"] = "duration",
-        ffmpeg_override: Path | None = None,
+        transcode: Mp4TranscodeOptionsInternal | None = None,
         entity_path: str | None = None,
     ) -> None: ...
     def stream(self) -> LazyChunkStreamInternal: ...
