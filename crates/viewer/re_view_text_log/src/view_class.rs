@@ -204,23 +204,10 @@ Filter message types and toggle column visibility in a selection panel.",
         let text =
             system_output.visualizer_data_or_default::<Vec<Entry>>(TextLogSystem::identifier())?;
 
-        let columns_property = ViewProperty::from_archetype::<TextLogColumns>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query,
-            query.view_id,
-        );
-        let rows_property = ViewProperty::from_archetype::<TextLogRows>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query,
-            query.view_id,
-        );
-        let format_property = ViewProperty::from_archetype::<TextLogFormat>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query,
-            query.view_id,
-        );
-
         let view_ctx = self.view_context(ctx, query.view_id, state, query.space_origin);
+        let columns_property = ViewProperty::from_archetype::<TextLogColumns>(&view_ctx);
+        let rows_property = ViewProperty::from_archetype::<TextLogRows>(&view_ctx);
+        let format_property = ViewProperty::from_archetype::<TextLogFormat>(&view_ctx);
 
         let monospace_body = format_property.component_or_fallback::<Enabled>(
             &view_ctx,
@@ -506,11 +493,7 @@ fn column_name_ui(ui: &mut egui::Ui, column: &bp_datatypes::TextLogColumnKind) -
 ///
 /// This could potentially be avoided if we could add component ui's from this crate.
 fn view_property_ui_rows(ctx: &ViewContext<'_>, ui: &mut egui::Ui) {
-    let property = ViewProperty::from_archetype::<TextLogRows>(
-        ctx.blueprint_db(),
-        ctx.blueprint_query(),
-        ctx.view_id,
-    );
+    let property = ViewProperty::from_archetype::<TextLogRows>(ctx);
 
     let reflection = ctx.viewer_ctx.reflection();
     let Some(reflection) = reflection.archetypes.get(&property.archetype_name) else {

@@ -141,11 +141,8 @@ impl ViewClass for ColorCoordinatesView {
             )?;
         // Read the same blueprint property that the selection UI edits.
         let view_ctx = self.view_context(ctx, query.view_id, state, query.space_origin);
-        let color_coordinates = ViewProperty::from_archetype::<ColorCoordinatesConfiguration>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query,
-            query.view_id,
-        );
+        let color_coordinates =
+            ViewProperty::from_archetype::<ColorCoordinatesConfiguration>(&view_ctx);
         let mode = color_coordinates.component_or_fallback::<ColorCoordinatesMode>(
             &view_ctx,
             ColorCoordinatesConfiguration::descriptor_mode().component,

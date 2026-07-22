@@ -10,9 +10,7 @@ use re_viewer::external::re_sdk_types::{
     datatypes::ColorModel,
 };
 use re_viewer::external::re_view_spatial;
-use re_viewer::external::re_viewer_context::{
-    BlueprintContext as _, RecommendedView, ViewClass as _,
-};
+use re_viewer::external::re_viewer_context::{RecommendedView, ViewClass as _};
 use re_viewer::viewer_test_utils::{self, HarnessOptions};
 use re_viewport_blueprint::{ViewBlueprint, ViewProperty};
 
@@ -64,11 +62,8 @@ fn run_test(use_named_transforms: bool) {
 
         blueprint.add_views([view_2d, view_3d].into_iter(), Some(root_container), None);
 
-        let eye_property = ViewProperty::from_archetype::<EyeControls3D>(
-            viewer_context.current_blueprint(),
-            viewer_context.blueprint_query(),
-            view_3d_id,
-        );
+        let eye_property =
+            ViewProperty::from_archetype_for_view::<EyeControls3D>(viewer_context, view_3d_id);
         eye_property.save_blueprint_component(
             viewer_context,
             &EyeControls3D::descriptor_position(),

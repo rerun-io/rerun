@@ -232,17 +232,9 @@ impl ViewClass for MapView {
         system_output: SystemExecutionOutput,
     ) -> Result<(), ViewSystemExecutionError> {
         let state = state.downcast_mut::<MapViewState>()?;
-        let map_background = ViewProperty::from_archetype::<MapBackground>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query,
-            query.view_id,
-        );
-
-        let map_zoom = ViewProperty::from_archetype::<MapZoom>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query,
-            query.view_id,
-        );
+        let view_ctx = self.view_context(ctx, query.view_id, state, query.space_origin);
+        let map_background = ViewProperty::from_archetype::<MapBackground>(&view_ctx);
+        let map_zoom = ViewProperty::from_archetype::<MapZoom>(&view_ctx);
 
         let geo_points_visualizer = system_output
             .visualizer_data_or_default::<GeoPointsOutput>(GeoPointsVisualizer::identifier())?;
@@ -255,7 +247,6 @@ impl ViewClass for MapView {
         // Map Provider
         //
 
-        let view_ctx = self.view_context(ctx, query.view_id, state, query.space_origin);
         let map_provider = map_background
             .component_or_fallback(&view_ctx, MapBackground::descriptor_provider().component)?;
         if state.selected_provider != map_provider {

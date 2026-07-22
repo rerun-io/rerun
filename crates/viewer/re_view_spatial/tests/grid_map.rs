@@ -9,7 +9,7 @@ use re_sdk_types::{
 };
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
-use re_viewer_context::{BlueprintContext as _, ViewClass as _};
+use re_viewer_context::ViewClass as _;
 use re_viewport_blueprint::{ViewBlueprint, ViewProperty};
 
 /// Verifies that grid map texels are rendered accurately using a tiny source image.
@@ -77,11 +77,7 @@ fn test_grid_map_texel_accuracy() {
 
     test_context.with_blueprint_ctx(|ctx, _| {
         // Configure world grid to match the cell size.
-        let grid_property = ViewProperty::from_archetype::<LineGrid3D>(
-            ctx.current_blueprint(),
-            ctx.blueprint_query(),
-            view_id,
-        );
+        let grid_property = ViewProperty::from_archetype_for_view::<LineGrid3D>(&ctx, view_id);
         grid_property.save_blueprint_component(
             &ctx,
             &LineGrid3D::descriptor_spacing(),
@@ -89,11 +85,7 @@ fn test_grid_map_texel_accuracy() {
         );
 
         // Configure top down eye view.
-        let eye_property = ViewProperty::from_archetype::<EyeControls3D>(
-            ctx.current_blueprint(),
-            ctx.blueprint_query(),
-            view_id,
-        );
+        let eye_property = ViewProperty::from_archetype_for_view::<EyeControls3D>(&ctx, view_id);
         eye_property.save_blueprint_component(
             &ctx,
             &EyeControls3D::descriptor_position(),
@@ -106,11 +98,8 @@ fn test_grid_map_texel_accuracy() {
         );
 
         // Show spatial origin.
-        let spatial_info_property = ViewProperty::from_archetype::<SpatialInformation>(
-            ctx.current_blueprint(),
-            ctx.blueprint_query(),
-            view_id,
-        );
+        let spatial_info_property =
+            ViewProperty::from_archetype_for_view::<SpatialInformation>(&ctx, view_id);
         spatial_info_property.save_blueprint_component(
             &ctx,
             &SpatialInformation::descriptor_show_axes(),
@@ -176,11 +165,7 @@ fn run_grid_map_colormap_snapshot(name: &str, colormap: Colormap) {
         let eye_y = height as f32 * cell_size * 0.5;
         let eye_z = width as f32 * cell_size * 0.25;
 
-        let eye_property = ViewProperty::from_archetype::<EyeControls3D>(
-            ctx.current_blueprint(),
-            ctx.blueprint_query(),
-            view_id,
-        );
+        let eye_property = ViewProperty::from_archetype_for_view::<EyeControls3D>(&ctx, view_id);
         eye_property.save_blueprint_component(
             &ctx,
             &EyeControls3D::descriptor_position(),

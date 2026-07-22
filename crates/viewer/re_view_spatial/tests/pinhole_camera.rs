@@ -5,7 +5,7 @@ use re_sdk_types::blueprint::archetypes::EyeControls3D;
 use re_sdk_types::components::{Color, Position3D, Radius};
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
-use re_viewer_context::{BlueprintContext as _, ViewClass as _, ViewId};
+use re_viewer_context::{ViewClass as _, ViewId};
 use re_viewport_blueprint::{ViewBlueprint, ViewProperty};
 
 #[test]
@@ -39,16 +39,12 @@ fn run_view_ui_and_save_snapshot(test_context: &TestContext, view_id: ViewId, si
         });
 
     test_context.with_blueprint_ctx(|ctx, _| {
-        ViewProperty::from_archetype::<EyeControls3D>(
-            ctx.current_blueprint(),
-            ctx.blueprint_query(),
-            view_id,
-        )
-        .save_blueprint_component(
-            &ctx,
-            &EyeControls3D::descriptor_position(),
-            &Position3D::new(1.0, 1.0, 1.0),
-        );
+        ViewProperty::from_archetype_for_view::<EyeControls3D>(&ctx, view_id)
+            .save_blueprint_component(
+                &ctx,
+                &EyeControls3D::descriptor_position(),
+                &Position3D::new(1.0, 1.0, 1.0),
+            );
     });
     harness.run_steps(10);
 

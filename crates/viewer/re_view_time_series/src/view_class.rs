@@ -230,12 +230,8 @@ impl ViewClass for TimeSeriesView {
             view_property_ui::<PlotBackground>(&ctx, ui);
             view_property_ui::<PlotLegend>(&ctx, ui);
 
-            let link_x_axis = ViewProperty::from_archetype::<TimeAxis>(
-                ctx.blueprint_db(),
-                ctx.blueprint_query(),
-                view_id,
-            )
-            .component_or_fallback::<LinkAxis>(&ctx, TimeAxis::descriptor_link().component)?;
+            let link_x_axis = ViewProperty::from_archetype::<TimeAxis>(&ctx)
+                .component_or_fallback::<LinkAxis>(&ctx, TimeAxis::descriptor_link().component)?;
 
             match link_x_axis {
                 LinkAxis::Independent => {
@@ -582,15 +578,10 @@ impl ViewClass for TimeSeriesView {
             }
         }
 
-        let blueprint_db = ctx.blueprint_db();
         let view_id = query.view_id;
 
         let view_ctx = self.view_context(ctx, view_id, state, query.space_origin);
-        let background = ViewProperty::from_archetype::<PlotBackground>(
-            blueprint_db,
-            ctx.blueprint_query,
-            view_id,
-        );
+        let background = ViewProperty::from_archetype::<PlotBackground>(&view_ctx);
         let background_color = background.component_or_fallback::<Color>(
             &view_ctx,
             PlotBackground::descriptor_color().component,
@@ -600,8 +591,7 @@ impl ViewClass for TimeSeriesView {
             PlotBackground::descriptor_show_grid().component,
         )?;
 
-        let plot_legend =
-            ViewProperty::from_archetype::<PlotLegend>(blueprint_db, ctx.blueprint_query, view_id);
+        let plot_legend = ViewProperty::from_archetype::<PlotLegend>(&view_ctx);
         let legend_visible = plot_legend.component_or_fallback::<Visible>(
             &view_ctx,
             PlotLegend::descriptor_visible().component,
@@ -611,8 +601,7 @@ impl ViewClass for TimeSeriesView {
             PlotLegend::descriptor_corner().component,
         )?;
 
-        let time_axis =
-            ViewProperty::from_archetype::<TimeAxis>(blueprint_db, ctx.blueprint_query, view_id);
+        let time_axis = ViewProperty::from_archetype::<TimeAxis>(&view_ctx);
 
         let link_x_axis = time_axis
             .component_or_fallback::<LinkAxis>(&view_ctx, TimeAxis::descriptor_link().component)?;
@@ -632,9 +621,8 @@ impl ViewClass for TimeSeriesView {
                 query_result = re_viewer_context::DataQueryResult::default();
 
                 (
-                    &ViewProperty::from_archetype::<TimeAxis>(
-                        ctx.blueprint_db(),
-                        ctx.blueprint_query,
+                    &ViewProperty::from_archetype_for_view::<TimeAxis>(
+                        ctx,
                         re_viewer_context::GLOBAL_VIEW_ID,
                     ),
                     &re_viewer_context::ViewContext {
@@ -682,8 +670,7 @@ impl ViewClass for TimeSeriesView {
 
         let x_range = resolve_time_range(&view_time_range);
 
-        let scalar_axis =
-            ViewProperty::from_archetype::<ScalarAxis>(blueprint_db, ctx.blueprint_query, view_id);
+        let scalar_axis = ViewProperty::from_archetype::<ScalarAxis>(&view_ctx);
         let y_range = scalar_axis.component_or_fallback::<Range1D>(
             &view_ctx,
             ScalarAxis::descriptor_range().component,

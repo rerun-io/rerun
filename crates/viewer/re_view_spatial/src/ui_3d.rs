@@ -148,11 +148,8 @@ impl SpatialView3D {
 
         let view_context = self.view_context(ctx, query.view_id, state, query.space_origin);
 
-        let information_property = ViewProperty::from_archetype::<SpatialInformation>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query,
-            query.view_id,
-        );
+        let information_property =
+            ViewProperty::from_archetype::<SpatialInformation>(&view_context);
 
         let show_axes = **information_property.component_or_fallback::<Enabled>(
             &view_context,
@@ -272,11 +269,8 @@ impl SpatialView3D {
             query.view_id.render_view_id(),
         )?;
 
-        let eye_property = ViewProperty::from_archetype::<EyeControls3D>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query,
-            query.view_id,
-        );
+        let eye_property =
+            ViewProperty::from_archetype_for_view::<EyeControls3D>(ctx, query.view_id);
 
         // Track focused entity if any.
         if let Some(focused_item) = ctx.focused_item() {
@@ -390,11 +384,7 @@ impl SpatialView3D {
         let view_ctx = self.view_context(ctx, query.view_id, state, query.space_origin);
 
         // Optional 3D line grid.
-        let grid_config = ViewProperty::from_archetype::<LineGrid3D>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query,
-            query.view_id,
-        );
+        let grid_config = ViewProperty::from_archetype::<LineGrid3D>(&view_ctx);
         if let Some(draw_data) = Self::setup_grid_3d(&view_ctx, &grid_config)? {
             view_builder.queue_draw(ctx.render_ctx(), draw_data);
         }
@@ -402,11 +392,7 @@ impl SpatialView3D {
         // Commit ui induced lines.
         view_builder.queue_draw(ctx.render_ctx(), line_builder.into_draw_data()?);
 
-        let background = ViewProperty::from_archetype::<Background>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query,
-            query.view_id,
-        );
+        let background = ViewProperty::from_archetype::<Background>(&view_ctx);
         let (background_drawable, clear_color) =
             crate::configure_background(&view_ctx, &background)?;
         if let Some(background_drawable) = background_drawable {

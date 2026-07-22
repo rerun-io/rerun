@@ -186,11 +186,7 @@ fn text_document_ui(
     text_entries: &[TextDocumentEntry],
 ) -> Result<(), ViewSystemExecutionError> {
     let view_ctx = TextDocumentView.view_context(ctx, query.view_id, state, query.space_origin);
-    let format_property = ViewProperty::from_archetype::<TextDocumentFormat>(
-        ctx.blueprint_db(),
-        ctx.blueprint_query,
-        query.view_id,
-    );
+    let format_property = ViewProperty::from_archetype::<TextDocumentFormat>(&view_ctx);
     let monospace = format_property.component_or_fallback::<Enabled>(
         &view_ctx,
         TextDocumentFormat::descriptor_monospace().component,

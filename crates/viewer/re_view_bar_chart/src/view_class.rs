@@ -166,7 +166,6 @@ impl ViewClass for BarChartView {
 
         let state = state.downcast_mut::<()>()?;
 
-        let blueprint_db = ctx.blueprint_db();
         let view_id = query.view_id;
 
         let charts = system_output
@@ -175,11 +174,7 @@ impl ViewClass for BarChartView {
             )?;
 
         let ctx = self.view_context(ctx, view_id, state, query.space_origin);
-        let background = ViewProperty::from_archetype::<PlotBackground>(
-            blueprint_db,
-            ctx.blueprint_query(),
-            view_id,
-        );
+        let background = ViewProperty::from_archetype::<PlotBackground>(&ctx);
         let background_color = background
             .component_or_fallback::<Color>(&ctx, PlotBackground::descriptor_color().component)?;
         let show_grid = background.component_or_fallback::<Enabled>(
@@ -187,11 +182,7 @@ impl ViewClass for BarChartView {
             PlotBackground::descriptor_show_grid().component,
         )?;
 
-        let plot_legend = ViewProperty::from_archetype::<PlotLegend>(
-            blueprint_db,
-            ctx.blueprint_query(),
-            view_id,
-        );
+        let plot_legend = ViewProperty::from_archetype::<PlotLegend>(&ctx);
         let legend_visible: Visible =
             plot_legend.component_or_fallback(&ctx, PlotLegend::descriptor_visible().component)?;
         let legend_corner: Corner2D =

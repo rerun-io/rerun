@@ -155,9 +155,9 @@ Set the displayed dimensions in a selection panel.",
 
         // TODO(#6075): Listitemify
         if let Some(TensorVisualization { tensor, .. }) = &state.tensor {
-            let slice_property = ViewProperty::from_archetype::<
+            let slice_property = ViewProperty::from_archetype_for_view::<
                 re_sdk_types::blueprint::archetypes::TensorSliceSelection,
-            >(ctx.blueprint_db(), ctx.blueprint_query, view_id);
+            >(ctx, view_id);
             let slice_selection = TensorSliceSelection::load_and_make_valid(
                 &slice_property,
                 &TensorDimension::from_tensor_data(tensor),
@@ -284,9 +284,9 @@ impl TensorView {
     ) -> Result<(), ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        let slice_property = ViewProperty::from_archetype::<
+        let slice_property = ViewProperty::from_archetype_for_view::<
             re_sdk_types::blueprint::archetypes::TensorSliceSelection,
-        >(ctx.blueprint_db(), ctx.blueprint_query, view_id);
+        >(ctx, view_id);
         let slice_selection = TensorSliceSelection::load_and_make_valid(
             &slice_property,
             &TensorDimension::from_tensor_data(tensor),
@@ -377,11 +377,7 @@ impl TensorView {
             data_range,
         } = &tensor_view;
 
-        let scalar_mapping = ViewProperty::from_archetype::<TensorScalarMapping>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query(),
-            ctx.view_id,
-        );
+        let scalar_mapping = ViewProperty::from_archetype::<TensorScalarMapping>(ctx);
         let colormap: Colormap = scalar_mapping
             .component_or_fallback(ctx, TensorScalarMapping::descriptor_colormap().component)?;
         let gamma: GammaCorrection = scalar_mapping
@@ -403,12 +399,8 @@ impl TensorView {
         )?;
         let [width, height] = colormapped_texture.width_height();
 
-        let view_fit: ViewFit = ViewProperty::from_archetype::<TensorViewFit>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query(),
-            ctx.view_id,
-        )
-        .component_or_fallback(ctx, TensorViewFit::descriptor_scaling().component)?;
+        let view_fit: ViewFit = ViewProperty::from_archetype::<TensorViewFit>(ctx)
+            .component_or_fallback(ctx, TensorViewFit::descriptor_scaling().component)?;
 
         let img_size = egui::vec2(width as _, height as _);
         let img_size = Vec2::max(Vec2::splat(1.0), img_size); // better safe than sorry

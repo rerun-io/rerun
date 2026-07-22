@@ -75,20 +75,15 @@ pub fn determine_query_range(
         .time_int()
         .unwrap_or(re_log_types::TimeInt::ZERO);
 
-    let time_axis = ViewProperty::from_archetype::<TimeAxis>(
-        ctx.viewer_ctx.blueprint_db(),
-        ctx.viewer_ctx.blueprint_query,
-        ctx.view_id,
-    );
+    let time_axis = ViewProperty::from_archetype::<TimeAxis>(ctx);
 
     let link_x_axis =
         time_axis.component_or_fallback::<LinkAxis>(ctx, TimeAxis::descriptor_link().component)?;
 
     let time_range_property = match link_x_axis {
         LinkAxis::Independent => &time_axis,
-        LinkAxis::LinkToGlobal => &ViewProperty::from_archetype::<TimeAxis>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query(),
+        LinkAxis::LinkToGlobal => &ViewProperty::from_archetype_for_view::<TimeAxis>(
+            ctx.viewer_ctx,
             re_viewer_context::GLOBAL_VIEW_ID,
         ),
     };

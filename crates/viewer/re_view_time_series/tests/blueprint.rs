@@ -218,9 +218,9 @@ fn setup_blueprint(
         );
 
         if let Some(time_axis_view) = time_axis_view {
-            let time_axis = re_viewport_blueprint::ViewProperty::from_archetype::<
+            let time_axis = re_viewport_blueprint::ViewProperty::from_archetype_for_view::<
                 blueprint::archetypes::TimeAxis,
-            >(ctx.blueprint_db(), ctx.blueprint_query, view.id);
+            >(ctx, view.id);
 
             time_axis.save_blueprint_component(
                 ctx,
@@ -230,11 +230,9 @@ fn setup_blueprint(
         }
 
         if let Some(visible_time_range) = visible_time_range {
-            let property = re_viewport_blueprint::ViewProperty::from_archetype::<VisibleTimeRanges>(
-                ctx.blueprint_db(),
-                ctx.blueprint_query,
-                view.id,
-            );
+            let property = re_viewport_blueprint::ViewProperty::from_archetype_for_view::<
+                VisibleTimeRanges,
+            >(ctx, view.id);
 
             property.save_blueprint_component(
                 ctx,

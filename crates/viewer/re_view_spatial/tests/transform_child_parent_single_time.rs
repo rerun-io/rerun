@@ -68,11 +68,7 @@ fn log_boxes(test_context: &mut TestContext, time: &TimePoint) {
 }
 
 fn setup_camera(ctx: &re_viewer_context::ViewerContext<'_>, view_id: ViewId) {
-    let property = ViewProperty::from_archetype::<EyeControls3D>(
-        ctx.blueprint_db(),
-        ctx.blueprint_query(),
-        view_id,
-    );
+    let property = ViewProperty::from_archetype_for_view::<EyeControls3D>(ctx, view_id);
     property.save_blueprint_component(
         ctx,
         &EyeControls3D::descriptor_position(),

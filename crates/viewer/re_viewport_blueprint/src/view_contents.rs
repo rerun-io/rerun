@@ -120,7 +120,7 @@ impl ViewContents {
         view_class_identifier: ViewClassIdentifier,
         subst_env: &EntityPathSubs,
     ) -> Self {
-        let property = ViewProperty::from_archetype::<blueprint_archetypes::ViewContents>(
+        let property = ViewProperty::from_archetype_with_db::<blueprint_archetypes::ViewContents>(
             blueprint_db,
             query,
             view_id,
@@ -239,9 +239,8 @@ impl ViewContents {
 
     /// Save the entity path filter.
     fn save_entity_path_filter_to_blueprint(&self, ctx: &ViewerContext<'_>) {
-        ViewProperty::from_archetype::<blueprint_archetypes::ViewContents>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query,
+        ViewProperty::from_archetype_for_view::<blueprint_archetypes::ViewContents>(
+            ctx,
             self.view_id,
         )
         .save_blueprint_component(

@@ -141,11 +141,7 @@ impl SpatialViewState {
 
     // Say the name out loud. It is fun!
     pub fn view_eye_ui(&mut self, ui: &mut egui::Ui, ctx: &ViewerContext<'_>, view_id: ViewId) {
-        let eye_property = ViewProperty::from_archetype::<EyeControls3D>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query,
-            view_id,
-        );
+        let eye_property = ViewProperty::from_archetype_for_view::<EyeControls3D>(ctx, view_id);
 
         if ui
             .button("Reset")

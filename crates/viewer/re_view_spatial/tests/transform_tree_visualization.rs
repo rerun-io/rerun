@@ -9,7 +9,7 @@ use re_sdk_types::{archetypes, components};
 use re_test_context::TestContext;
 use re_test_context::VisualizerBlueprintContext as _;
 use re_test_viewport::TestContextExt as _;
-use re_viewer_context::{BlueprintContext as _, TimeControlCommand, ViewClass as _, ViewId};
+use re_viewer_context::{TimeControlCommand, ViewClass as _, ViewId};
 use re_viewport_blueprint::{ViewBlueprint, ViewProperty};
 
 fn log_transform_tree(test_context: &mut TestContext, time: &TimePoint) {
@@ -44,11 +44,7 @@ fn log_transform_tree(test_context: &mut TestContext, time: &TimePoint) {
 }
 
 fn setup_camera(ctx: &re_viewer_context::ViewerContext<'_>, view_id: ViewId) {
-    let property = ViewProperty::from_archetype::<EyeControls3D>(
-        ctx.blueprint_db(),
-        ctx.blueprint_query(),
-        view_id,
-    );
+    let property = ViewProperty::from_archetype_for_view::<EyeControls3D>(ctx, view_id);
     property.save_blueprint_component(
         ctx,
         &EyeControls3D::descriptor_position(),

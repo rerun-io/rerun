@@ -527,12 +527,7 @@ fn test_non_finite_islands() {
     // Move the legend to the top right corner to avoid covering any of the data.
     let view_id = test_context.setup_viewport_blueprint(|ctx, blueprint| {
         let view = ViewBlueprint::new_with_root_wildcard(TimeSeriesView::identifier());
-        ViewProperty::from_archetype::<PlotLegend>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query,
-            view.id,
-        )
-        .save_blueprint_component(
+        ViewProperty::from_archetype_for_view::<PlotLegend>(ctx, view.id).save_blueprint_component(
             ctx,
             &PlotLegend::descriptor_corner(),
             &[Corner2D::RightTop],
@@ -572,10 +567,8 @@ fn test_series_lines_single_logged_point() {
     let view_id = test_context.setup_viewport_blueprint(|ctx, blueprint| {
         let view = ViewBlueprint::new_with_root_wildcard(TimeSeriesView::identifier());
 
-        ViewProperty::from_archetype::<re_sdk_types::blueprint::archetypes::TimeAxis>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query,
-            view.id,
+        ViewProperty::from_archetype_for_view::<re_sdk_types::blueprint::archetypes::TimeAxis>(
+            ctx, view.id,
         )
         .save_blueprint_component(
             ctx,

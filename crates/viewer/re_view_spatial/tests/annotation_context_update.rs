@@ -7,7 +7,7 @@ use re_sdk_types::components::Position3D;
 use re_test_context::TestContext;
 use re_test_context::external::egui_kittest::SnapshotResults;
 use re_test_viewport::TestContextExt as _;
-use re_viewer_context::{BlueprintContext as _, TimeControlCommand, ViewClass as _, ViewId};
+use re_viewer_context::{TimeControlCommand, ViewClass as _, ViewId};
 use re_viewport_blueprint::{ViewBlueprint, ViewProperty};
 
 /// Log a point cloud with `class_ids`, and an annotation context that changes color between two frames.
@@ -93,11 +93,7 @@ fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
         blueprint.add_views(std::iter::once(view_blueprint), None, None);
 
         // Set eye position so both points are clearly visible.
-        let property = ViewProperty::from_archetype::<EyeControls3D>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query(),
-            view_id,
-        );
+        let property = ViewProperty::from_archetype_for_view::<EyeControls3D>(ctx, view_id);
         property.save_blueprint_component(
             ctx,
             &EyeControls3D::descriptor_position(),

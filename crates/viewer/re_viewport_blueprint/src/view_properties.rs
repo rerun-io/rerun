@@ -10,7 +10,7 @@ use re_sdk_types::{
 };
 use re_viewer_context::{
     BlueprintContext, ComponentFallbackError, QueryContext, ViewContext, ViewId,
-    ViewSystemExecutionError, ViewerContext,
+    ViewSystemExecutionError,
 };
 
 #[derive(thiserror::Error, Debug)]
@@ -52,8 +52,21 @@ pub struct ViewProperty {
 }
 
 impl ViewProperty {
+    /// Query a specific view property for a view context.
+    pub fn from_archetype<A: Archetype>(ctx: &ViewContext<'_>) -> Self {
+        Self::from_archetype_for_view::<A>(ctx.viewer_ctx, ctx.view_id)
+    }
+
     /// Query a specific view property for a given view.
-    pub fn from_archetype<A: Archetype>(
+    pub fn from_archetype_for_view<A: Archetype>(
+        ctx: &impl BlueprintContext,
+        view_id: ViewId,
+    ) -> Self {
+        Self::from_archetype_with_db::<A>(ctx.current_blueprint(), ctx.blueprint_query(), view_id)
+    }
+
+    /// Query a specific view property from a blueprint database and query.
+    pub(crate) fn from_archetype_with_db<A: Archetype>(
         blueprint_db: &EntityDb,
         blueprint_query: &LatestAtQuery,
         view_id: ViewId,
@@ -163,7 +176,7 @@ impl ViewProperty {
     }
 
     /// Returns `None` for empty arrays, which are written by
-    /// [`ViewerContext::clear_blueprint_component`] to represent an unset value.
+    /// [`BlueprintContext::clear_blueprint_component`] to represent an unset value.
     pub fn component_raw(&self, component: ComponentIdentifier) -> Option<arrow::array::ArrayRef> {
         self.query_results
             .get(component)?
@@ -217,7 +230,7 @@ impl ViewProperty {
     /// Clears a blueprint component.
     pub fn clear_blueprint_component(
         &self,
-        ctx: &ViewerContext<'_>,
+        ctx: &impl BlueprintContext,
         component_descr: ComponentDescriptor,
     ) {
         ctx.clear_blueprint_component(self.blueprint_store_path.clone(), component_descr);
@@ -226,14 +239,14 @@ impl ViewProperty {
     /// Resets a blueprint component to the value it had in the default blueprint.
     pub fn reset_blueprint_component(
         &self,
-        ctx: &ViewerContext<'_>,
+        ctx: &impl BlueprintContext,
         component_descr: ComponentDescriptor,
     ) {
         ctx.reset_blueprint_component(self.blueprint_store_path.clone(), component_descr);
     }
 
     /// Resets all components to the values they had in the default blueprint.
-    pub fn reset_all_components(&self, ctx: &ViewerContext<'_>) {
+    pub fn reset_all_components(&self, ctx: &impl BlueprintContext) {
         // Don't use `self.query_results.components.keys()` since it may already have some components missing since they didn't show up in the query.
         for component_descr in self.component_descrs.iter().cloned() {
             ctx.reset_blueprint_component(self.blueprint_store_path.clone(), component_descr);
@@ -241,8 +254,8 @@ impl ViewProperty {
     }
 
     /// Resets all components to empty values, i.e. the fallback.
-    pub fn reset_all_components_to_empty(&self, ctx: &ViewerContext<'_>) {
-        let blueprint_storage_engine = ctx.blueprint_db().storage_engine();
+    pub fn reset_all_components_to_empty(&self, ctx: &impl BlueprintContext) {
+        let blueprint_storage_engine = ctx.current_blueprint().storage_engine();
         let blueprint_store = blueprint_storage_engine.store();
         for component in self.query_results.components.keys().copied() {
             if let Some(component_descr) = blueprint_store

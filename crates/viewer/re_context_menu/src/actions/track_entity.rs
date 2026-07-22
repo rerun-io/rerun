@@ -41,11 +41,8 @@ impl ContextMenuAction for TrackEntity {
         view_id: &ViewId,
         instance_path: &re_entity_db::InstancePath,
     ) {
-        let eye_property = ViewProperty::from_archetype::<EyeControls3D>(
-            ctx.viewer_context.blueprint_db(),
-            ctx.viewer_context.blueprint_query,
-            *view_id,
-        );
+        let eye_property =
+            ViewProperty::from_archetype_for_view::<EyeControls3D>(ctx.viewer_context, *view_id);
 
         eye_property.save_blueprint_component(
             ctx.viewer_context,

@@ -4,9 +4,7 @@ use re_test_context::TestContext;
 use re_test_context::external::egui_kittest::SnapshotResults;
 use re_test_viewport::TestContextExt as _;
 use re_view_state_timeline::StateTimelineView;
-use re_viewer_context::{
-    BlueprintContext as _, GLOBAL_VIEW_ID, TimeControlCommand, ViewClass as _, ViewId,
-};
+use re_viewer_context::{GLOBAL_VIEW_ID, TimeControlCommand, ViewClass as _, ViewId};
 use re_viewport_blueprint::{ViewBlueprint, ViewProperty};
 
 fn setup_blueprint(test_context: &mut TestContext) -> ViewId {
@@ -114,21 +112,16 @@ fn test_state_timeline_multi_instance_bootstrap() {
     // unlike emulating pan/zoom scroll events.
     let view_id = test_context.setup_viewport_blueprint(|ctx, blueprint_ctx| {
         let view = ViewBlueprint::new_with_root_wildcard(StateTimelineView::identifier());
-        let time_axis = ViewProperty::from_archetype::<blueprint::archetypes::TimeAxis>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query,
-            view.id,
-        );
+        let time_axis =
+            ViewProperty::from_archetype_for_view::<blueprint::archetypes::TimeAxis>(ctx, view.id);
         time_axis.save_blueprint_component(
             ctx,
             &blueprint::archetypes::TimeAxis::descriptor_link(),
             &blueprint::components::LinkAxis::LinkToGlobal,
         );
-        let global_time_axis = ViewProperty::from_archetype::<blueprint::archetypes::TimeAxis>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query,
-            GLOBAL_VIEW_ID,
-        );
+        let global_time_axis = ViewProperty::from_archetype_for_view::<
+            blueprint::archetypes::TimeAxis,
+        >(ctx, GLOBAL_VIEW_ID);
         global_time_axis.save_blueprint_component(
             ctx,
             &blueprint::archetypes::TimeAxis::descriptor_view_range(),
@@ -196,21 +189,16 @@ fn test_state_timeline_multi_instance_stable_lane_count() {
     // unlike emulating pan/zoom scroll events.
     let view_id = test_context.setup_viewport_blueprint(|ctx, blueprint_ctx| {
         let view = ViewBlueprint::new_with_root_wildcard(StateTimelineView::identifier());
-        let time_axis = ViewProperty::from_archetype::<blueprint::archetypes::TimeAxis>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query,
-            view.id,
-        );
+        let time_axis =
+            ViewProperty::from_archetype_for_view::<blueprint::archetypes::TimeAxis>(ctx, view.id);
         time_axis.save_blueprint_component(
             ctx,
             &blueprint::archetypes::TimeAxis::descriptor_link(),
             &blueprint::components::LinkAxis::LinkToGlobal,
         );
-        let global_time_axis = ViewProperty::from_archetype::<blueprint::archetypes::TimeAxis>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query,
-            GLOBAL_VIEW_ID,
-        );
+        let global_time_axis = ViewProperty::from_archetype_for_view::<
+            blueprint::archetypes::TimeAxis,
+        >(ctx, GLOBAL_VIEW_ID);
         global_time_axis.save_blueprint_component(
             ctx,
             &blueprint::archetypes::TimeAxis::descriptor_view_range(),
@@ -998,11 +986,8 @@ fn test_state_timeline_link_to_global() {
     // Create the view and link its time axis to global.
     let view_id = test_context.setup_viewport_blueprint(|ctx, blueprint_ctx| {
         let view = ViewBlueprint::new_with_root_wildcard(StateTimelineView::identifier());
-        let time_axis = ViewProperty::from_archetype::<blueprint::archetypes::TimeAxis>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query,
-            view.id,
-        );
+        let time_axis =
+            ViewProperty::from_archetype_for_view::<blueprint::archetypes::TimeAxis>(ctx, view.id);
         time_axis.save_blueprint_component(
             ctx,
             &blueprint::archetypes::TimeAxis::descriptor_link(),
@@ -1013,9 +998,8 @@ fn test_state_timeline_link_to_global() {
 
     let read_global_range = |test_context: &TestContext| {
         test_context.with_blueprint_ctx(|ctx, _store_hub| {
-            ViewProperty::from_archetype::<blueprint::archetypes::TimeAxis>(
-                ctx.current_blueprint(),
-                ctx.blueprint_query(),
+            ViewProperty::from_archetype_for_view::<blueprint::archetypes::TimeAxis>(
+                &ctx,
                 GLOBAL_VIEW_ID,
             )
             .component_or_empty::<blueprint::components::TimeRange>(

@@ -68,11 +68,8 @@ fn test_spatial_information_2d() {
             }),
         );
 
-        let spatial_information = ViewProperty::from_archetype::<SpatialInformation>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query,
-            view.id,
-        );
+        let spatial_information =
+            ViewProperty::from_archetype_for_view::<SpatialInformation>(ctx, view.id);
         spatial_information.save_blueprint_component(
             ctx,
             &SpatialInformation::descriptor_show_axes(),

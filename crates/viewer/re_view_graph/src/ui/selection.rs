@@ -12,8 +12,7 @@ pub fn view_property_force_ui<A: Archetype + ArchetypeReflectionMarker>(
     ctx: &ViewContext<'_>,
     ui: &mut egui::Ui,
 ) {
-    let property =
-        ViewProperty::from_archetype::<A>(ctx.blueprint_db(), ctx.blueprint_query(), ctx.view_id);
+    let property = ViewProperty::from_archetype::<A>(ctx);
 
     let reflection = ctx.viewer_ctx.reflection();
     let Some(reflection) = reflection.archetypes.get(&property.archetype_name) else {

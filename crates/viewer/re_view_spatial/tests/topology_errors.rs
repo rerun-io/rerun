@@ -233,10 +233,8 @@ fn test_topology_errors() {
             let view_blueprint = ViewBlueprint::new(scenario.view_class, RecommendedView::root());
             let view_id = view_blueprint.id;
 
-            ViewProperty::from_archetype::<blueprint_archetypes::SpatialInformation>(
-                ctx.blueprint_db(),
-                ctx.blueprint_query,
-                view_id,
+            ViewProperty::from_archetype_for_view::<blueprint_archetypes::SpatialInformation>(
+                ctx, view_id,
             )
             .save_blueprint_component(
                 ctx,
@@ -292,10 +290,8 @@ fn test_topology_errors_for_nested_pinholes() {
         );
         let view_id = view_blueprint.id;
 
-        ViewProperty::from_archetype::<blueprint_archetypes::SpatialInformation>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query,
-            view_id,
+        ViewProperty::from_archetype_for_view::<blueprint_archetypes::SpatialInformation>(
+            ctx, view_id,
         )
         .save_blueprint_component(
             ctx,
@@ -347,10 +343,8 @@ fn test_empty_coordinate_frame_name_falls_back_to_implicit_frame() {
         );
         let view_id = view_blueprint.id;
 
-        ViewProperty::from_archetype::<blueprint_archetypes::SpatialInformation>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query,
-            view_id,
+        ViewProperty::from_archetype_for_view::<blueprint_archetypes::SpatialInformation>(
+            ctx, view_id,
         )
         .save_blueprint_component(
             ctx,

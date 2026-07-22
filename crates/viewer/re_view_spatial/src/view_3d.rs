@@ -107,11 +107,7 @@ impl ViewClass for SpatialView3D {
         );
 
         fn eye_property(ctx: &QueryContext<'_>) -> ViewProperty {
-            ViewProperty::from_archetype::<EyeControls3D>(
-                ctx.view_ctx.blueprint_db(),
-                ctx.view_ctx.blueprint_query(),
-                ctx.view_ctx.view_id,
-            )
+            ViewProperty::from_archetype::<EyeControls3D>(ctx.view_ctx)
         }
 
         system_registry.register_fallback_provider(
@@ -557,11 +553,7 @@ impl ViewClass for SpatialView3D {
 // is suitable for the most part. However, as of writing the alpha color picker doesn't handle alpha
 // which we need here.
 fn view_property_ui_grid3d(ctx: &ViewContext<'_>, ui: &mut egui::Ui) {
-    let property = ViewProperty::from_archetype::<LineGrid3D>(
-        ctx.blueprint_db(),
-        ctx.blueprint_query(),
-        ctx.view_id,
-    );
+    let property = ViewProperty::from_archetype::<LineGrid3D>(ctx);
     let reflection = ctx.viewer_ctx.reflection();
     let Some(reflection) = reflection.archetypes.get(&property.archetype_name) else {
         ui.error_label(format!(

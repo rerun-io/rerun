@@ -111,12 +111,8 @@ impl StateTimelineView {
         view_id: ViewId,
         space_origin: &EntityPath,
     ) -> Result<LinkAxis, ViewSystemExecutionError> {
-        let time_axis = ViewProperty::from_archetype::<TimeAxis>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query,
-            view_id,
-        );
         let view_ctx = self.view_context(ctx, view_id, state, space_origin);
+        let time_axis = ViewProperty::from_archetype::<TimeAxis>(&view_ctx);
         Ok(time_axis
             .component_or_fallback::<LinkAxis>(&view_ctx, TimeAxis::descriptor_link().component)?)
     }
@@ -208,11 +204,7 @@ impl ViewClass for StateTimelineView {
     ) -> Result<(), ViewSystemExecutionError> {
         list_item::list_item_scope(ui, "state_timeline_selection_ui", |ui| {
             let ctx = self.view_context(viewer_ctx, view_id, state, space_origin);
-            let time_axis = ViewProperty::from_archetype::<TimeAxis>(
-                ctx.blueprint_db(),
-                ctx.blueprint_query(),
-                view_id,
-            );
+            let time_axis = ViewProperty::from_archetype::<TimeAxis>(&ctx);
             let link = time_axis
                 .component_or_fallback::<LinkAxis>(&ctx, TimeAxis::descriptor_link().component)?;
 
@@ -239,9 +231,8 @@ impl ViewClass for StateTimelineView {
                     .reflection()
                     .field_reflection(&TimeAxis::descriptor_view_range())
             {
-                let global_time_axis = ViewProperty::from_archetype::<TimeAxis>(
-                    ctx.blueprint_db(),
-                    ctx.blueprint_query(),
+                let global_time_axis = ViewProperty::from_archetype_for_view::<TimeAxis>(
+                    ctx.viewer_ctx,
                     GLOBAL_VIEW_ID,
                 );
                 let global_ctx = ViewContext {
@@ -335,13 +326,8 @@ impl ViewClass for StateTimelineView {
         // shared with all other plots (e.g. time series views) via the global blueprint view,
         // rather than kept local to this view.
         let link = self.time_axis_link(ctx, state, query.view_id, query.space_origin)?;
-        let global_time_axis = (link == LinkAxis::LinkToGlobal).then(|| {
-            ViewProperty::from_archetype::<TimeAxis>(
-                ctx.blueprint_db(),
-                ctx.blueprint_query,
-                GLOBAL_VIEW_ID,
-            )
-        });
+        let global_time_axis = (link == LinkAxis::LinkToGlobal)
+            .then(|| ViewProperty::from_archetype_for_view::<TimeAxis>(ctx, GLOBAL_VIEW_ID));
 
         let data_span = (data_max - data_min).max(1.0);
 

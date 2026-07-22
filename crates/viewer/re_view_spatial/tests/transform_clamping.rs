@@ -5,7 +5,7 @@ use re_sdk_types::components::Position3D;
 use re_test_context::TestContext;
 use re_test_context::external::egui_kittest::SnapshotResults;
 use re_test_viewport::TestContextExt as _;
-use re_viewer_context::{BlueprintContext as _, RecommendedView, ViewClass as _, ViewId};
+use re_viewer_context::{RecommendedView, ViewClass as _, ViewId};
 use re_viewport_blueprint::{ViewBlueprint, ViewProperty};
 
 /// Whether everything is affected by a base-transform and how it is expressed.
@@ -350,11 +350,8 @@ fn run_view_ui_and_save_snapshot(
 
             let name = format!("{name}_{target}");
             test_context.with_blueprint_ctx(|ctx, _| {
-                let property = ViewProperty::from_archetype::<EyeControls3D>(
-                    ctx.current_blueprint(),
-                    ctx.blueprint_query(),
-                    view_id,
-                );
+                let property =
+                    ViewProperty::from_archetype_for_view::<EyeControls3D>(&ctx, view_id);
                 property.save_blueprint_component(
                     &ctx,
                     &EyeControls3D::descriptor_position(),
@@ -388,11 +385,8 @@ fn run_view_ui_and_save_snapshot(
 
         let name = format!("{name}_points");
         test_context.with_blueprint_ctx(|ctx, _| {
-            let property = ViewProperty::from_archetype::<EyeControls3D>(
-                ctx.current_blueprint(),
-                ctx.blueprint_query(),
-                view_id_points,
-            );
+            let property =
+                ViewProperty::from_archetype_for_view::<EyeControls3D>(&ctx, view_id_points);
             property.save_blueprint_component(
                 &ctx,
                 &EyeControls3D::descriptor_position(),
@@ -424,9 +418,8 @@ fn run_view_ui_and_save_snapshot(
 
         let name = format!("{name}_transform_axes");
         test_context.with_blueprint_ctx(|ctx, _| {
-            let property = ViewProperty::from_archetype::<EyeControls3D>(
-                ctx.current_blueprint(),
-                ctx.blueprint_query(),
+            let property = ViewProperty::from_archetype_for_view::<EyeControls3D>(
+                &ctx,
                 view_id_transform_axes,
             );
             property.save_blueprint_component(

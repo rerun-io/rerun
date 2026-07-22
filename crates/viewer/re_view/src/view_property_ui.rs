@@ -15,8 +15,7 @@ pub fn view_property_ui<A: Archetype + ArchetypeReflectionMarker>(
     ctx: &ViewContext<'_>,
     ui: &mut egui::Ui,
 ) {
-    let view_property =
-        ViewProperty::from_archetype::<A>(ctx.blueprint_db(), ctx.blueprint_query(), ctx.view_id);
+    let view_property = ViewProperty::from_archetype::<A>(ctx);
     view_property_ui_impl(ctx, ui, &view_property, None);
 }
 
@@ -30,8 +29,7 @@ pub fn view_property_ui_with_redirect<A: Archetype + ArchetypeReflectionMarker>(
     redirect_component: ComponentIdentifier,
     redirect_with_view_id: re_viewer_context::ViewId,
 ) {
-    let view_property =
-        ViewProperty::from_archetype::<A>(ctx.blueprint_db(), ctx.blueprint_query(), ctx.view_id);
+    let view_property = ViewProperty::from_archetype::<A>(ctx);
     view_property_ui_impl(
         ctx,
         ui,
@@ -46,9 +44,8 @@ pub fn view_property_ui_with_redirect<A: Archetype + ArchetypeReflectionMarker>(
                 view_state: ctx.view_state,
                 query_result: &re_viewer_context::DataQueryResult::default(),
             },
-            view_property: ViewProperty::from_archetype::<A>(
-                ctx.blueprint_db(),
-                ctx.blueprint_query(),
+            view_property: ViewProperty::from_archetype_for_view::<A>(
+                ctx.viewer_ctx,
                 redirect_with_view_id,
             ),
         }),

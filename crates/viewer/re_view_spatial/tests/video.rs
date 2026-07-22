@@ -295,9 +295,9 @@ fn test_video(video_type: VideoType, codec: &VideoCodec) {
         ));
 
         // Set a background color other than black so we can see the effect of transparency on errors & lack thereof on the video.
-        let property = ViewProperty::from_archetype::<
+        let property = ViewProperty::from_archetype_for_view::<
             re_sdk_types::blueprint::archetypes::Background,
-        >(ctx.blueprint_db(), ctx.blueprint_query, view_id);
+        >(ctx, view_id);
         property.save_blueprint_component(
             ctx,
             &re_sdk_types::blueprint::archetypes::Background::descriptor_kind(),

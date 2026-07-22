@@ -252,11 +252,8 @@ impl ViewContextSystem for TransformTreeContext {
         self.target_frame = {
             re_tracing::profile_scope!("target_frame");
 
-            let spatial_info_prop = ViewProperty::from_archetype::<
-                blueprint::archetypes::SpatialInformation,
-            >(
-                ctx.blueprint_db(), ctx.blueprint_query(), ctx.view_id
-            );
+            let spatial_info_prop =
+                ViewProperty::from_archetype::<blueprint::archetypes::SpatialInformation>(ctx);
 
             let target_frame_component = spatial_info_prop
                 .component_or_fallback::<TransformFrameId>(
@@ -819,9 +816,9 @@ mod tests {
             let view_id =
                 blueprint.add_view_at_root(ViewBlueprint::new(class_id, RecommendedView::root()));
 
-            let property = ViewProperty::from_archetype::<
+            let property = ViewProperty::from_archetype_for_view::<
                 re_sdk_types::blueprint::archetypes::SpatialInformation,
-            >(ctx.blueprint_db(), ctx.blueprint_query(), view_id);
+            >(ctx, view_id);
             property.save_blueprint_component(
                 ctx,
                 &re_sdk_types::blueprint::archetypes::SpatialInformation::descriptor_target_frame(),
@@ -921,9 +918,9 @@ mod tests {
             let view_id =
                 blueprint.add_view_at_root(ViewBlueprint::new(class_id, RecommendedView::root()));
 
-            let property = ViewProperty::from_archetype::<
+            let property = ViewProperty::from_archetype_for_view::<
                 re_sdk_types::blueprint::archetypes::SpatialInformation,
-            >(ctx.blueprint_db(), ctx.blueprint_query(), view_id);
+            >(ctx, view_id);
             property.save_blueprint_component(
                 ctx,
                 &re_sdk_types::blueprint::archetypes::SpatialInformation::descriptor_target_frame(),

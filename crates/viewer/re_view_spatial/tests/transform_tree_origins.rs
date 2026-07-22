@@ -176,16 +176,12 @@ fn setup_blueprint(test_context: &mut TestContext, origin: &str) -> ViewId {
             },
         ));
 
-        ViewProperty::from_archetype::<SpatialInformation>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query,
-            view_id,
-        )
-        .save_blueprint_component(
-            ctx,
-            &SpatialInformation::descriptor_show_axes(),
-            &Enabled::from(true),
-        );
+        ViewProperty::from_archetype_for_view::<SpatialInformation>(ctx, view_id)
+            .save_blueprint_component(
+                ctx,
+                &SpatialInformation::descriptor_show_axes(),
+                &Enabled::from(true),
+            );
 
         view_id
     })

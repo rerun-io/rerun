@@ -14,8 +14,8 @@ use re_tf::TransformFrameIdHash;
 use re_ui::{ContextExt as _, Help, MouseButtonText, icons};
 use re_view::controls::DRAG_PAN2D_BUTTON;
 use re_viewer_context::{
-    ItemContext, QueryContext, ViewClass as _, ViewClassExt as _, ViewContext, ViewQuery,
-    ViewSystemExecutionError, ViewerContext, gpu_bridge, typed_fallback_for,
+    ItemContext, QueryContext, ViewClassExt as _, ViewContext, ViewQuery, ViewSystemExecutionError,
+    ViewerContext, gpu_bridge, typed_fallback_for,
 };
 use re_viewport_blueprint::ViewProperty;
 
@@ -208,16 +208,6 @@ impl SpatialView2D {
             return Ok(());
         }
 
-        // TODO(andreas): Why don't we have this already?
-        let view_ctx = ViewContext {
-            viewer_ctx: ctx,
-            view_id: query.view_id,
-            view_class_identifier: Self::identifier(),
-            space_origin: query.space_origin,
-            view_state: state,
-            query_result: ctx.lookup_query_result(query.view_id),
-        };
-
         // TODO(emilk): some way to visualize the resolution rectangle of the pinhole camera (in case there is no image logged).
         let transforms = system_output
             .context_systems
@@ -229,6 +219,7 @@ impl SpatialView2D {
                 .map(|pinhole_at_root| {
                     let pinhole = &pinhole_at_root.pinhole_projection;
 
+                    let view_ctx = self.view_context(ctx, query.view_id, state, query.space_origin);
                     let query_ctx = QueryContext {
                         view_ctx: &view_ctx,
                         target_entity_path: query.space_origin,
@@ -254,23 +245,16 @@ impl SpatialView2D {
             ui.allocate_painter(ui.available_size(), egui::Sense::click_and_drag());
         let ui_rect = response.rect;
 
-        let bounds_property = ViewProperty::from_archetype::<VisualBounds2D>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query,
-            query.view_id,
-        );
-        let clip_property = ViewProperty::from_archetype::<NearClipPlane>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query,
-            query.view_id,
-        );
+        let view_ctx = self.view_context(ctx, query.view_id, state, query.space_origin);
+        let bounds_property = ViewProperty::from_archetype::<VisualBounds2D>(&view_ctx);
+        let clip_property = ViewProperty::from_archetype::<NearClipPlane>(&view_ctx);
 
         // Convert ui coordinates to/from scene coordinates.
         let ui_from_scene = {
-            let view_ctx = self.view_context(ctx, query.view_id, state, query.space_origin);
             let mut new_state = state.clone();
             let ui_from_scene =
                 ui_from_scene(&view_ctx, &response, &mut new_state, &bounds_property);
+
             *state = new_state;
 
             ui_from_scene
@@ -352,11 +336,8 @@ impl SpatialView2D {
 
         let (show_axes, show_bounding_box) = {
             let view_ctx = self.view_context(ctx, query.view_id, state, query.space_origin);
-            let information_property = ViewProperty::from_archetype::<SpatialInformation>(
-                ctx.blueprint_db(),
-                ctx.blueprint_query,
-                query.view_id,
-            );
+            let information_property =
+                ViewProperty::from_archetype::<SpatialInformation>(&view_ctx);
             let show_axes = **information_property.component_or_fallback::<Enabled>(
                 &view_ctx,
                 SpatialInformation::descriptor_show_axes().component,
@@ -382,11 +363,7 @@ impl SpatialView2D {
         view_builder.queue_draw(ctx.render_ctx(), line_builder.into_draw_data()?);
 
         let view_ctx = self.view_context(ctx, query.view_id, state, query.space_origin);
-        let background = ViewProperty::from_archetype::<Background>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query,
-            query.view_id,
-        );
+        let background = ViewProperty::from_archetype::<Background>(&view_ctx);
         let (background_drawable, clear_color) =
             crate::configure_background(&view_ctx, &background)?;
         if let Some(background_drawable) = background_drawable {

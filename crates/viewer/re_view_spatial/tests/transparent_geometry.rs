@@ -10,7 +10,7 @@ use re_test_context::TestContext;
 use re_test_context::external::egui_kittest::OsThreshold;
 use re_test_viewport::TestContextExt as _;
 use re_view_spatial::SpatialView3D;
-use re_viewer_context::{BlueprintContext as _, RecommendedView, ViewClass as _};
+use re_viewer_context::{RecommendedView, ViewClass as _};
 use re_viewport_blueprint::{ViewBlueprint, ViewProperty};
 
 fn test_transparent_geometry<A: AsComponents>(
@@ -58,11 +58,7 @@ fn run_transparency_snapshot_test(name: &str, log: impl Fn(&mut TestContext)) {
         let view_id = view_blueprint.id;
         blueprint.add_views(std::iter::once(view_blueprint), None, None);
 
-        let eye_property = ViewProperty::from_archetype::<EyeControls3D>(
-            ctx.blueprint_db(),
-            ctx.blueprint_query,
-            view_id,
-        );
+        let eye_property = ViewProperty::from_archetype_for_view::<EyeControls3D>(ctx, view_id);
 
         eye_property.save_blueprint_component(
             ctx,
@@ -95,11 +91,8 @@ fn run_transparency_snapshot_test(name: &str, log: impl Fn(&mut TestContext)) {
         // Flip the camera orientation to ensure sorting works as expected.
 
         test_context.with_blueprint_ctx(|ctx, _| {
-            let eye_property = ViewProperty::from_archetype::<EyeControls3D>(
-                ctx.current_blueprint(),
-                ctx.blueprint_query(),
-                view_id,
-            );
+            let eye_property =
+                ViewProperty::from_archetype_for_view::<EyeControls3D>(&ctx, view_id);
 
             let len = 3.5;
             let dir = Vec3::new(0.25, orientation_y, 0.25).normalize();
