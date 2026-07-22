@@ -1077,25 +1077,6 @@ fn start_native_viewer(
             (command_tx, command_rx),
         );
 
-        // The internal catalog is served (loopback-only) on the proxy server's port below, and
-        // also reached in-process by the viewer.
-        #[cfg(all(
-            feature = "server",
-            feature = "oss_server",
-            not(target_arch = "wasm32")
-        ))]
-        let internal_catalog = (!connect && app.app_options().experimental.use_internal_catalog)
-            .then(|| re_viewer::internal_catalog::build(server_addr));
-
-        #[cfg(all(
-            feature = "server",
-            feature = "oss_server",
-            not(target_arch = "wasm32")
-        ))]
-        if let Some(catalog) = &internal_catalog {
-            connection_registry.set_internal((catalog.origin.clone(), catalog.connection.clone()));
-        }
-
         if let Some(memory_limit) = memory_limit {
             app.app_options_mut().memory_limit = memory_limit;
         }
@@ -1103,16 +1084,21 @@ fn start_native_viewer(
         // If we're **not** connecting to an existing server, we spawn a new one and add it to the list of receivers.
         #[cfg(feature = "server")]
         if !connect {
-            #[cfg_attr(
-                not(all(feature = "oss_server", not(target_arch = "wasm32"))),
-                expect(unused_mut)
-            )]
+            // The internal catalog is served (loopback-only) on the proxy server's port below, and
+            // also reached in-process by the viewer.
+            #[cfg(not(target_arch = "wasm32"))]
+            let internal_catalog = re_viewer::internal_catalog::build(server_addr);
+            #[cfg(not(target_arch = "wasm32"))]
+            connection_registry.set_internal((
+                internal_catalog.origin.clone(),
+                internal_catalog.connection.clone(),
+            ));
+
+            #[cfg_attr(target_arch = "wasm32", expect(unused_mut))]
             let mut extra_services = re_grpc_server::LoopbackServices::default();
 
-            #[cfg(all(feature = "oss_server", not(target_arch = "wasm32")))]
-            if let Some(catalog) = &internal_catalog {
-                extra_services.add_service(catalog.grpc_service());
-            }
+            #[cfg(not(target_arch = "wasm32"))]
+            extra_services.add_service(internal_catalog.grpc_service());
 
             let (log_receiver, grpc_server_handle) = re_grpc_server::spawn_with_recv_and_services(
                 server_addr,

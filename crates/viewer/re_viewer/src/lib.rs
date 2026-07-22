@@ -55,7 +55,6 @@ mod viewer_analytics;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod viewer_test_utils;
 
-#[cfg(feature = "internal_catalog")]
 pub mod internal_catalog;
 
 #[cfg(not(target_arch = "wasm32"))]

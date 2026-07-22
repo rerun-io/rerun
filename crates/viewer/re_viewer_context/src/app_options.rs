@@ -207,14 +207,11 @@ pub struct ExperimentalAppOptions {
     /// slow for large clouds. Opaque point clouds render much faster.
     pub point_cloud_transparency: bool,
 
-    /// Host an in-process "internal catalog" `re_server` and load `.rrd` files through it instead
-    /// of importing them directly into the viewer.
+    /// Load `.rrd` files through the Viewer's in-process catalog instead of importing them
+    /// as a live recording.
     ///
-    /// Read from persisted state at app startup; changes to this setting require a restart to
-    /// take effect. When enabled, opened `.rrd` files are registered with the catalog and surfaced
-    /// as redap datasets under an internal server in the recording panel. When disabled, files are
-    /// imported directly into the viewer as plain recordings.
-    ///
-    /// Ignored unless the viewer was built with internal catalog support.
+    /// When enabled, opened `.rrd` files are registered with the catalog and surfaced as redap
+    /// datasets under an internal server in the recording panel. When disabled, files are imported
+    /// directly into the viewer as plain recordings.
     pub use_internal_catalog: bool,
 }

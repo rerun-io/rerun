@@ -48,17 +48,12 @@ pub fn viewer_harness(options: &HarnessOptions) -> Harness<'static, App> {
         customize_eframe_and_setup_renderer(cc).expect("Failed to customize eframe");
         let connection_registry =
             re_redap_client::ConnectionRegistry::new_without_stored_credentials();
-        #[cfg(all(feature = "internal_catalog", not(target_arch = "wasm32")))]
-        {
-            // Tests don't spawn a proxy server, so the catalog is only reached in-process; the
-            // origin's port is just a label here.
-            let addr = std::net::SocketAddr::from((
-                std::net::Ipv4Addr::LOCALHOST,
-                re_uri::DEFAULT_PROXY_PORT,
-            ));
-            let catalog = crate::internal_catalog::build(addr);
-            connection_registry.set_internal((catalog.origin, catalog.connection));
-        }
+        // Tests don't spawn a proxy server, so the catalog is only reached in-process; the
+        // origin's port is just a label here.
+        let addr =
+            std::net::SocketAddr::from((std::net::Ipv4Addr::LOCALHOST, re_uri::DEFAULT_PROXY_PORT));
+        let catalog = crate::internal_catalog::build(addr);
+        connection_registry.set_internal((catalog.origin, catalog.connection));
         let mut app = App::new(
             MainThreadToken::i_promise_i_am_only_using_this_for_a_test(),
             build_info!(),

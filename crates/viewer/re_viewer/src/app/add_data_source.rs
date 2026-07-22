@@ -6,15 +6,14 @@ use re_viewer_context::{StoreHub, SystemCommand, SystemCommandSender as _};
 
 use super::App;
 
-#[cfg(all(feature = "internal_catalog", not(target_arch = "wasm32")))]
+#[cfg(not(target_arch = "wasm32"))]
 use std::path::Path;
-#[cfg(all(feature = "internal_catalog", not(target_arch = "wasm32")))]
+
+use anyhow::Context as _;
+use re_protos::cloud::v1alpha1::ext::DataSource;
+use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
+#[cfg(not(target_arch = "wasm32"))]
 use tokio_util::compat::TokioAsyncReadCompatExt as _;
-#[cfg(feature = "internal_catalog")]
-use {
-    anyhow::Context as _, re_protos::cloud::v1alpha1::ext::DataSource,
-    re_protos::common::v1alpha1::ext::IfDuplicateBehavior,
-};
 
 impl App {
     #[expect(clippy::needless_pass_by_ref_mut)]
@@ -104,41 +103,38 @@ impl App {
 
             #[cfg(not(target_arch = "wasm32"))]
             LogDataSource::FilePath { path, .. } => {
-                #[cfg(all(feature = "internal_catalog", not(target_arch = "wasm32")))]
+                // If the internal catalog is enabled, route `.rrd` files through it.
+                if path.extension().is_some_and(|ext| ext == "rrd")
+                    && self.app_options().experimental.use_internal_catalog
+                    && self.connection_registry.internal_origin().is_some()
                 {
-                    // If the internal catalog is enabled, route `.rrd` files through it.
-                    if path.extension().is_some_and(|ext| ext == "rrd")
-                        && self.app_options().experimental.use_internal_catalog
-                        && self.connection_registry.internal_origin().is_some()
-                    {
-                        let path = path.clone();
-                        let connection_registry = self.connection_registry.clone();
-                        let sender = self.command_sender.clone();
-                        self.async_runtime.spawn_future(async move {
-                            match register_local_file(&connection_registry, &path).await {
-                                Ok(uri) => {
-                                    // Refresh the dataset if its open
-                                    sender.send_system(SystemCommand::RefreshRedapEntry {
-                                        origin: uri.origin.clone(),
-                                        entry_id: uri.dataset_id.into(),
-                                    });
-                                    sender.send_system(SystemCommand::LoadDataSource(
-                                        LogDataSource::RedapDatasetSegment {
-                                            uri,
-                                            open_behavior: RecordingOpenBehavior::OpenAndSelect,
-                                        },
-                                    ));
-                                }
-                                Err(err) => {
-                                    re_log::error!(
-                                        "Failed to load file via the Viewer catalog: {err}\nFile path: {}",
-                                        path.display(),
-                                    );
-                                }
+                    let path = path.clone();
+                    let connection_registry = self.connection_registry.clone();
+                    let sender = self.command_sender.clone();
+                    self.async_runtime.spawn_future(async move {
+                        match register_local_file(&connection_registry, &path).await {
+                            Ok(uri) => {
+                                // Refresh the dataset if its open
+                                sender.send_system(SystemCommand::RefreshRedapEntry {
+                                    origin: uri.origin.clone(),
+                                    entry_id: uri.dataset_id.into(),
+                                });
+                                sender.send_system(SystemCommand::LoadDataSource(
+                                    LogDataSource::RedapDatasetSegment {
+                                        uri,
+                                        open_behavior: RecordingOpenBehavior::OpenAndSelect,
+                                    },
+                                ));
                             }
-                        });
-                        return;
-                    }
+                            Err(err) => {
+                                re_log::error!(
+                                    "Failed to load file via the Viewer catalog: {err}\nFile path: {}",
+                                    path.display(),
+                                );
+                            }
+                        }
+                    });
+                    return;
                 }
 
                 let new_source = LogSource::File { path: path.clone() };
@@ -306,7 +302,7 @@ impl App {
     /// in-process catalog and open the resulting segment, returning [`ControlFlow::Break`] when it
     /// took ownership of the load. Other builds have nothing to route through and return
     /// [`ControlFlow::Continue`].
-    #[cfg(all(feature = "internal_catalog", target_arch = "wasm32"))]
+    #[cfg(target_arch = "wasm32")]
     fn try_register_via_internal_catalog(
         &self,
         file_contents: &re_data_source::FileContents,
@@ -354,7 +350,7 @@ impl App {
         ControlFlow::Break(())
     }
 
-    #[cfg(not(all(feature = "internal_catalog", target_arch = "wasm32")))]
+    #[cfg(not(target_arch = "wasm32"))]
     #[expect(clippy::unused_self)]
     fn try_register_via_internal_catalog(
         &self,
@@ -365,7 +361,7 @@ impl App {
 }
 
 /// Register a local `.rrd` file with the catalog server.
-#[cfg(all(feature = "internal_catalog", not(target_arch = "wasm32")))]
+#[cfg(not(target_arch = "wasm32"))]
 async fn register_local_file(
     connection_registry: &re_redap_client::ConnectionRegistryHandle,
     path: &Path,
@@ -411,7 +407,7 @@ async fn register_local_file(
     register_file(connection_registry, dataset_name, file_url).await
 }
 
-#[cfg(all(feature = "internal_catalog", target_arch = "wasm32"))]
+#[cfg(target_arch = "wasm32")]
 async fn register_opfs_file(
     connection_registry: &re_redap_client::ConnectionRegistryHandle,
     file_contents: &re_data_source::FileContents,
@@ -464,7 +460,6 @@ async fn register_opfs_file(
     register_file(connection_registry, dataset_name, file_url).await
 }
 
-#[cfg(feature = "internal_catalog")]
 async fn register_file(
     connection_registry: &re_redap_client::ConnectionRegistryHandle,
     dataset_name: String,
@@ -492,7 +487,6 @@ async fn register_file(
     })
 }
 
-#[cfg(feature = "internal_catalog")]
 async fn rrd_dataset_name(
     reader: &mut impl re_log_encoding::AsyncReadAt,
 ) -> anyhow::Result<String> {

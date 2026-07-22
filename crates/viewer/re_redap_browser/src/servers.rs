@@ -619,6 +619,12 @@ fn warning_with_edit_button(
 pub struct RedapServers {
     servers: BTreeMap<re_uri::Origin, Server>,
 
+    /// Whether the built-in internal catalog server is shown in the UI.
+    ///
+    /// It starts hidden and is revealed for the rest of the session once the user enables the
+    /// internal catalog or a catalog event arrives. Remote servers are always shown.
+    internal_catalog_revealed: bool,
+
     /// When deserializing we can't construct the [`Server`]s right away
     /// so they get queued here.
     pending_servers: Vec<re_uri::Origin>,
@@ -674,6 +680,7 @@ impl Default for RedapServers {
 
         Self {
             servers: Default::default(),
+            internal_catalog_revealed: false,
             pending_servers: Default::default(),
             command_sender,
             command_receiver,
@@ -753,7 +760,7 @@ impl std::fmt::Debug for Command {
 
 impl RedapServers {
     pub fn is_empty(&self) -> bool {
-        self.servers.is_empty() && self.pending_servers.is_empty()
+        self.iter_servers().next().is_none() && self.pending_servers.is_empty()
     }
 
     /// Whether we already know about a given server (or have it queued to be added).
@@ -825,8 +832,16 @@ impl RedapServers {
         );
     }
 
+    /// Reveal the internal catalog for the rest of the session.
+    pub fn reveal_internal_catalog(&mut self) {
+        self.internal_catalog_revealed = true;
+    }
+
     pub fn iter_servers(&self) -> impl Iterator<Item = &Server> {
-        self.servers.values()
+        let revealed = self.internal_catalog_revealed;
+        self.servers
+            .values()
+            .filter(move |server| revealed || !server.is_internal())
     }
 
     /// Refresh the dataframe contents of a single entry (dataset or table).
@@ -858,7 +873,9 @@ impl RedapServers {
     /// simply absent, so callers fall back to a placeholder.
     pub fn build_url_lookup(&self) -> re_viewer_context::UrlNameLookup {
         let mut lookup = re_viewer_context::UrlNameLookup::default();
-        for server in self.iter_servers() {
+        // Resolve names for every known server, including a hidden internal one: this is a
+        // reachability lookup, not a listing, so it must not use the visibility-filtered iterator.
+        for server in self.servers.values() {
             for entry in server.entries().iter_loaded() {
                 lookup.insert(
                     (server.origin().clone(), entry.id()),
@@ -1016,6 +1033,10 @@ impl RedapServers {
             }
 
             Command::RefreshCollection(origin) => {
+                // A catalog event on the internal server means it has content worth showing.
+                if self.is_internal_server(&origin) {
+                    self.reveal_internal_catalog();
+                }
                 if let Some(server) = self.servers.remove(&origin) {
                     self.servers.insert(
                         origin,

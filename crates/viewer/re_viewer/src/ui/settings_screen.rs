@@ -186,19 +186,11 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
                 "Alpha-blend semi-transparent point clouds, sorting them back-to-front.\n\n\
                  Sorting happens on the CPU every frame, so this is very slow for large point clouds.",
             );
-        #[cfg(feature = "internal_catalog")]
-        ui.re_checkbox(
-            use_internal_catalog,
-            "Load files via Viewer catalog (restart required)",
-        )
-        .on_hover_text(
-            "Open .rrd files through the Viewer catalog instead of importing them directly \
-                     into the viewer.\n\n\
-                     Takes effect for files opened after enabling; the catalog starts at launch \
-                     when this is on.",
-        );
-        #[cfg(not(feature = "internal_catalog"))]
-        let _ = use_internal_catalog;
+        ui.re_checkbox(use_internal_catalog, "Load files via Viewer catalog")
+            .on_hover_text(
+                "Load .rrd files through the Viewer catalog instead of importing them as a live \
+                 recording. Takes effect for files opened after enabling.",
+            );
         #[cfg(not(target_arch = "wasm32"))]
         {
             let gamepad_navigation_response = ui

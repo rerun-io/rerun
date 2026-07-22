@@ -113,17 +113,17 @@ impl App {
                     let is_start_of_new_frame = ui.current_pass_index() == 0;
 
                     if is_start_of_new_frame {
-                        #[cfg(feature = "internal_catalog")]
-                        if self.app_options().experimental.use_internal_catalog
-                            && let Some(origin) = self.connection_registry.internal_origin()
-                        {
+                        if let Some(origin) = self.connection_registry.internal_origin() {
                             self.state.redap_servers.add_internal_server(
-                                origin,
+                                origin.clone(),
                                 &self.connection_registry,
                                 &self.async_runtime,
                                 &self.egui_ctx,
                                 self.command_sender.clone(),
                             );
+                            if self.app_options().experimental.use_internal_catalog {
+                                self.state.redap_servers.reveal_internal_catalog();
+                            }
                         }
 
                         self.state.redap_servers.on_frame_start(

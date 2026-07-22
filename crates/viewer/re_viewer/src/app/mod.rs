@@ -204,7 +204,6 @@ impl App {
 
         let is_test = app_env.is_test();
 
-        #[cfg_attr(not(feature = "internal_catalog"), expect(unused_variables))]
         let connection_registry_was_provided = connection_registry.is_some();
         let connection_registry = connection_registry
             .unwrap_or_else(re_redap_client::ConnectionRegistry::new_with_stored_credentials);
@@ -295,10 +294,8 @@ impl App {
             state.app_options = AppOptions::test();
         }
 
-        #[cfg(feature = "internal_catalog")]
         let connection_registry = {
-            if state.app_options.experimental.use_internal_catalog
-                && (!connection_registry_was_provided || cfg!(target_arch = "wasm32"))
+            if (!connection_registry_was_provided || cfg!(target_arch = "wasm32"))
                 && connection_registry.internal_origin().is_none()
             {
                 #[cfg(not(target_arch = "wasm32"))]

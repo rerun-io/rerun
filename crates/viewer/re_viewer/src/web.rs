@@ -112,7 +112,6 @@ impl WebHandle {
         // `re_server` constructors (`RerunCloudHandlerBuilder` + `create_dataset_entry` /
         // `register_with_dataset`, as exercised in `re_server/tests/opfs.rs`) so reloads no longer
         // discard uploaded data.
-        #[cfg(feature = "internal_catalog")]
         if let Err(err) = re_server::opfs::remove_dir_all("/uploads").await {
             re_log::warn!("Failed to clear OPFS uploads directory: {err}");
         }
