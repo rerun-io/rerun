@@ -240,8 +240,10 @@ impl AsyncDecoder for WebVideoDecoder {
             return Err(DecodeError::WebDecoder(WebError::UnexpectedShutdown));
         }
 
-        // Setup chunk for the WebCodec decoder to decode.
-        let web_chunk = EncodedVideoChunkInit::new(&data, web_timestamp_us as _, type_);
+        // The generated constructor accepts only an i32 even though WebCodecs timestamps are i64.
+        // Set the timestamp as an f64 to preserve microsecond timestamps beyond 36 minutes.
+        let web_chunk = EncodedVideoChunkInit::new(&data, 0, type_);
+        web_chunk.set_timestamp_f64(web_timestamp_us as f64);
 
         // Empirically, decoders don't care about the presence of the duration field.
         // The spec also marks it as entirely optional, but does not specify whether it may affect the decoding itself.
