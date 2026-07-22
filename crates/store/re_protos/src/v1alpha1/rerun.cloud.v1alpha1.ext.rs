@@ -476,7 +476,7 @@ impl ScanSegmentTableRequest {
     pub fn all() -> Self {
         Self {
             columns: Vec::new(),
-            sql_filter: String::new(),
+            segment_id_filter: None,
         }
     }
 
@@ -484,7 +484,7 @@ impl ScanSegmentTableRequest {
     pub fn with_columns(columns: impl IntoIterator<Item = impl Into<String>>) -> Self {
         Self {
             columns: columns.into_iter().map(Into::into).collect(),
-            sql_filter: String::new(),
+            segment_id_filter: None,
         }
     }
 }
@@ -494,7 +494,7 @@ impl ScanDatasetManifestRequest {
     pub fn all() -> Self {
         Self {
             columns: Vec::new(),
-            sql_filter: String::new(),
+            segment_id_filter: None,
         }
     }
 
@@ -502,7 +502,7 @@ impl ScanDatasetManifestRequest {
     pub fn with_columns(columns: impl IntoIterator<Item = impl Into<String>>) -> Self {
         Self {
             columns: columns.into_iter().map(Into::into).collect(),
-            sql_filter: String::new(),
+            segment_id_filter: None,
         }
     }
 }

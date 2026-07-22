@@ -441,7 +441,26 @@ message GetSegmentTableSchemaResponse {
   rerun.common.v1alpha1.Schema schema = 1;
 }
 
+message SegmentIdList {
+  repeated string segment_ids = 1;
+}
+
+message SegmentIdFilter {
+  oneof strategy {
+    // Scan only manifest rows belonging to these segment IDs.
+    // An empty list scans no segment rows.
+    SegmentIdList scan_only = 1;
+
+    // Scan all manifest rows except those belonging to these segment IDs.
+    // An empty list skips no segment rows.
+    SegmentIdList skip = 2;
+  }
+}
+
 message ScanSegmentTableRequest {
+  reserved 2;
+  reserved "sql_filter";
+
   // A list of column names to be projected server-side.
   //
   // If empty, all columns are returned.
@@ -453,15 +472,11 @@ message ScanSegmentTableRequest {
   // an `InvalidArgument` error.
   repeated string columns = 1;
 
-  // An optional best-effort filter hint, expressed as a SQL boolean expression over the
-  // segment-table columns (e.g. `rerun_segment_id = 'abc'`).
+  // An optional best-effort hint for pruning segment IDs from the server-side scan.
   //
-  // If empty, no filter hint is provided.
-  // Column names use the public (segment) terminology.
-  // Servers may apply this filter, ignore it, or reject malformed/unsupported filters with an
-  // `InvalidArgument` error.
+  // Servers may apply or ignore this filter.
   // Clients must re-apply filters locally if correctness depends on them.
-  string sql_filter = 2;
+  SegmentIdFilter segment_id_filter = 3;
 }
 
 message ScanSegmentTableResponse {
@@ -476,6 +491,9 @@ message GetDatasetManifestSchemaResponse {
 }
 
 message ScanDatasetManifestRequest {
+  reserved 4;
+  reserved "sql_filter";
+
   // A list of column names to be projected server-side.
   //
   // If empty, all columns are returned.
@@ -487,15 +505,11 @@ message ScanDatasetManifestRequest {
   // an `InvalidArgument` error.
   repeated string columns = 3;
 
-  // An optional best-effort filter hint, expressed as a SQL boolean expression over the
-  // dataset-manifest columns (e.g. `rerun_segment_id = 'abc'`).
+  // An optional best-effort hint for pruning segment IDs from the server-side scan.
   //
-  // If empty, no filter hint is provided.
-  // Column names use the public (segment) terminology.
-  // Servers may apply this filter, ignore it, or reject malformed/unsupported filters with an
-  // `InvalidArgument` error.
+  // Servers may apply or ignore this filter.
   // Clients must re-apply filters locally if correctness depends on them.
-  string sql_filter = 4;
+  SegmentIdFilter segment_id_filter = 5;
 }
 
 message ScanDatasetManifestResponse {

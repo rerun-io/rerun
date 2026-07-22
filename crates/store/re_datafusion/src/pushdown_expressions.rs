@@ -1,136 +1,159 @@
-use arrow::datatypes::{DataType, Schema, SchemaRef};
+use arrow::datatypes::SchemaRef;
 use datafusion::common::{DataFusionError, ScalarValue, exec_err};
 use datafusion::logical_expr::{BinaryExpr, Expr, Operator, TableProviderFilterPushDown};
 use itertools::Itertools as _;
 use re_log_types::{AbsoluteTimeRange, TimeInt, TimelineName};
 use re_protos::cloud::v1alpha1::ext::{Query, QueryDatasetRequest, QueryLatestAt, QueryRange};
+use re_protos::cloud::v1alpha1::{SegmentIdFilter, SegmentIdList, segment_id_filter};
 use re_sorbet::metadata::RERUN_KIND;
 use re_types_core::SegmentId;
 use std::collections::HashSet;
 use std::ops::Not as _;
 
-/// True if every column `expr` references is in `supported_columns`.
-///
-/// Used to decide whether a filter can be serialized for server-side pushdown — we only push
-/// filters that reference columns the server knows how to parse.
-pub(crate) fn expr_columns_supported(expr: &Expr, supported_columns: &HashSet<String>) -> bool {
-    expr.column_refs()
-        .iter()
-        .all(|col| supported_columns.contains(col.name.as_str()))
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum SegmentIdSelection {
+    ScanOnly(HashSet<String>),
+    Skip(HashSet<String>),
 }
 
-/// True when `expr` only uses constructs that survive the SQL round trip to any server: plain
-/// column/literal comparisons, boolean logic, `IN` lists, `BETWEEN`, `LIKE`, casts, and the like.
-///
-/// Anything else is rejected — most notably scalar functions, which may be client-only UDFs the
-/// server cannot parse. The server rejects a filter it can't parse with `InvalidArgument`, which
-/// would fail the whole scan; keeping such filters client-side keeps pushdown a pure optimization.
-fn expr_shape_supports_pushdown(expr: &Expr) -> bool {
-    use datafusion::common::tree_node::{TreeNode as _, TreeNodeRecursion};
-
-    let mut supported = true;
-    let walked = expr.apply(|expr| match expr {
-        Expr::Alias(_)
-        | Expr::Column(_)
-        | Expr::Literal(..)
-        | Expr::BinaryExpr(_)
-        | Expr::Like(_)
-        | Expr::Not(_)
-        | Expr::IsNotNull(_)
-        | Expr::IsNull(_)
-        | Expr::IsTrue(_)
-        | Expr::IsFalse(_)
-        | Expr::IsUnknown(_)
-        | Expr::IsNotTrue(_)
-        | Expr::IsNotFalse(_)
-        | Expr::IsNotUnknown(_)
-        | Expr::Negative(_)
-        | Expr::Between(_)
-        | Expr::Case(_)
-        | Expr::Cast(_)
-        | Expr::TryCast(_)
-        | Expr::InList(_) => Ok(TreeNodeRecursion::Continue),
-
-        _ => {
-            supported = false;
-            Ok(TreeNodeRecursion::Stop)
+impl SegmentIdSelection {
+    fn and(self, other: Self) -> Self {
+        match (self, other) {
+            (Self::ScanOnly(left), Self::ScanOnly(right)) => Self::ScanOnly(&left & &right),
+            (Self::ScanOnly(left), Self::Skip(right))
+            | (Self::Skip(right), Self::ScanOnly(left)) => Self::ScanOnly(&left - &right),
+            (Self::Skip(left), Self::Skip(right)) => Self::Skip(&left | &right),
         }
-    });
-    walked.is_ok() && supported
+    }
+
+    fn or(self, other: Self) -> Self {
+        match (self, other) {
+            (Self::ScanOnly(left), Self::ScanOnly(right)) => Self::ScanOnly(&left | &right),
+            (Self::ScanOnly(left), Self::Skip(right)) => Self::Skip(&right - &left),
+            (Self::Skip(left), Self::ScanOnly(right)) => Self::Skip(&left - &right),
+            (Self::Skip(left), Self::Skip(right)) => Self::Skip(&left & &right),
+        }
+    }
+
+    fn negate(self) -> Self {
+        match self {
+            Self::ScanOnly(ids) => Self::Skip(ids),
+            Self::Skip(ids) => Self::ScanOnly(ids),
+        }
+    }
+
+    fn into_proto(self) -> SegmentIdFilter {
+        let strategy = match self {
+            Self::ScanOnly(ids) => segment_id_filter::Strategy::ScanOnly(SegmentIdList {
+                segment_ids: sorted(ids),
+            }),
+            Self::Skip(ids) => segment_id_filter::Strategy::Skip(SegmentIdList {
+                segment_ids: sorted(ids),
+            }),
+        };
+        SegmentIdFilter {
+            strategy: Some(strategy),
+        }
+    }
 }
 
-/// True when `filter` can be offered to the server: every referenced column is supported *and*
-/// the expression shape survives the SQL round trip.
-pub(crate) fn expr_supports_pushdown(expr: &Expr, supported_columns: &HashSet<String>) -> bool {
-    expr_columns_supported(expr, supported_columns) && expr_shape_supports_pushdown(expr)
+fn sorted(ids: HashSet<String>) -> Vec<String> {
+    ids.into_iter().sorted().collect()
 }
 
-/// Classify `filters` for [`TableProvider::supports_filters_pushdown`]: pushdown-eligible filters
-/// are [`TableProviderFilterPushDown::Inexact`] (serialized for the server but re-applied by
-/// DataFusion, so the server pushdown stays a pure optimization), the rest
-/// [`TableProviderFilterPushDown::Unsupported`].
-///
-/// [`TableProvider::supports_filters_pushdown`]: datafusion::catalog::TableProvider::supports_filters_pushdown
-pub(crate) fn classify_filters_for_pushdown(
+fn segment_id_literal(expr: &Expr) -> Option<String> {
+    match expr {
+        Expr::Literal(
+            ScalarValue::Utf8(Some(value))
+            | ScalarValue::Utf8View(Some(value))
+            | ScalarValue::LargeUtf8(Some(value)),
+            _,
+        ) => Some(value.clone()),
+        _ => None,
+    }
+}
+
+fn is_segment_id_column(expr: &Expr, column_name: &str) -> bool {
+    matches!(expr, Expr::Column(column) if column.name == column_name)
+}
+
+fn segment_id_selection(expr: &Expr, column_name: &str) -> Option<SegmentIdSelection> {
+    match expr {
+        Expr::BinaryExpr(binary) if matches!(binary.op, Operator::Eq | Operator::NotEq) => {
+            let value = if is_segment_id_column(&binary.left, column_name) {
+                segment_id_literal(&binary.right)
+            } else if is_segment_id_column(&binary.right, column_name) {
+                segment_id_literal(&binary.left)
+            } else {
+                None
+            }?;
+            let ids = HashSet::from([value]);
+            Some(if binary.op == Operator::Eq {
+                SegmentIdSelection::ScanOnly(ids)
+            } else {
+                SegmentIdSelection::Skip(ids)
+            })
+        }
+
+        Expr::BinaryExpr(binary) if matches!(binary.op, Operator::And | Operator::Or) => {
+            let left = segment_id_selection(&binary.left, column_name)?;
+            let right = segment_id_selection(&binary.right, column_name)?;
+            Some(if binary.op == Operator::And {
+                left.and(right)
+            } else {
+                left.or(right)
+            })
+        }
+
+        Expr::InList(in_list) if is_segment_id_column(&in_list.expr, column_name) => {
+            let ids = in_list
+                .list
+                .iter()
+                .map(segment_id_literal)
+                .collect::<Option<HashSet<_>>>()?;
+            Some(if in_list.negated {
+                SegmentIdSelection::Skip(ids)
+            } else {
+                SegmentIdSelection::ScanOnly(ids)
+            })
+        }
+
+        Expr::Not(inner) => Some(segment_id_selection(inner, column_name)?.negate()),
+
+        _ => None,
+    }
+}
+
+/// Convert all representable segment-ID filters into one best-effort server-side scan hint.
+pub(crate) fn segment_id_filter_from_filters(
+    filters: &[Expr],
+    column_name: &str,
+) -> Option<SegmentIdFilter> {
+    filters
+        .iter()
+        .filter_map(|filter| segment_id_selection(filter, column_name))
+        .reduce(SegmentIdSelection::and)
+        .map(SegmentIdSelection::into_proto)
+}
+
+/// Classify filters that can be represented by [`SegmentIdFilter`].
+pub(crate) fn classify_segment_id_filters_for_pushdown(
     filters: &[&Expr],
-    supported_columns: &HashSet<String>,
+    column_name: &str,
 ) -> Vec<TableProviderFilterPushDown> {
     filters
         .iter()
         .map(|filter| {
-            if expr_supports_pushdown(filter, supported_columns) {
+            if segment_id_selection(filter, column_name).is_some() {
+                // Keep this Inexact while clients can connect to servers that predate
+                // `SegmentIdFilter` and silently ignore its unknown protobuf field. This can become
+                // Exact after capability negotiation or the compatibility window ends.
                 TableProviderFilterPushDown::Inexact
             } else {
                 TableProviderFilterPushDown::Unsupported
             }
         })
         .collect()
-}
-
-/// The columns of `schema` whose Arrow types are safe candidates for filter pushdown.
-///
-/// List and binary-like columns are excluded because their SQL literal representation is not
-/// currently supported.
-pub(crate) fn pushdown_filterable_columns(schema: &Schema) -> HashSet<String> {
-    schema
-        .fields()
-        .iter()
-        .filter(|field| {
-            !matches!(
-                field.data_type(),
-                DataType::List(_)
-                    | DataType::LargeList(_)
-                    | DataType::ListView(_)
-                    | DataType::LargeListView(_)
-                    | DataType::FixedSizeList(..)
-                    | DataType::Binary
-                    | DataType::LargeBinary
-                    | DataType::FixedSizeBinary(_)
-            )
-        })
-        .map(|field| field.name().clone())
-        .collect()
-}
-
-/// Combine the pushdown-eligible `filters` (see [`expr_supports_pushdown`]) into a single SQL
-/// boolean expression string for a server-side `filter` request field.
-///
-/// Returns `None` when no filter is eligible or the combined expression can't be unparsed to SQL.
-/// Callers should report these filters as [`TableProviderFilterPushDown::Inexact`] so DataFusion
-/// re-applies them regardless of what the server does.
-pub(crate) fn filters_to_pushdown_sql(
-    filters: &[Expr],
-    supported_columns: &HashSet<String>,
-) -> Option<String> {
-    let combined = filters
-        .iter()
-        .filter(|filter| expr_supports_pushdown(filter, supported_columns))
-        .cloned()
-        .reduce(|acc, filter| acc.and(filter))?;
-
-    datafusion::sql::unparser::expr_to_sql(&combined)
-        .ok()
-        .map(|sql| sql.to_string())
 }
 
 fn arrange_binary_expr_as_col_on_left(expr: &BinaryExpr) -> BinaryExpr {
@@ -650,158 +673,95 @@ mod tests {
     use std::collections::HashMap;
     use std::sync::Arc;
 
-    fn supported() -> HashSet<String> {
-        ["rerun_segment_id".to_owned(), "rerun_layer_name".to_owned()]
-            .into_iter()
-            .collect()
+    const SEGMENT_ID: &str = "rerun_segment_id";
+
+    fn strategy(expr: Expr) -> segment_id_filter::Strategy {
+        segment_id_filter_from_filters(&[expr], SEGMENT_ID)
+            .unwrap()
+            .strategy
+            .unwrap()
     }
 
     #[test]
-    fn pushdown_sql_serializes_supported_filters() {
-        let filters = vec![col("rerun_segment_id").eq(lit("abc"))];
-        let sql = filters_to_pushdown_sql(&filters, &supported()).unwrap();
-        assert!(sql.contains("rerun_segment_id"), "got: {sql}");
-        assert!(sql.contains("abc"), "got: {sql}");
-    }
-
-    #[test]
-    fn pushdown_sql_and_multiple_supported_filters() {
-        let filters = vec![
-            col("rerun_segment_id").eq(lit("abc")),
-            col("rerun_layer_name").eq(lit("base")),
-        ];
-        let sql = filters_to_pushdown_sql(&filters, &supported()).unwrap();
-        assert!(sql.contains("rerun_segment_id"), "got: {sql}");
-        assert!(sql.contains("rerun_layer_name"), "got: {sql}");
-        assert!(sql.to_uppercase().contains("AND"), "got: {sql}");
-    }
-
-    #[test]
-    fn pushdown_sql_skips_unsupported_columns() {
-        // Only the supported filter is serialized; the unsupported one is dropped.
-        let filters = vec![
-            col("rerun_segment_id").eq(lit("abc")),
-            col("rerun_num_chunks").gt(lit(5i64)),
-        ];
-        let sql = filters_to_pushdown_sql(&filters, &supported()).unwrap();
-        assert!(sql.contains("rerun_segment_id"), "got: {sql}");
-        assert!(!sql.contains("rerun_num_chunks"), "got: {sql}");
-    }
-
-    #[test]
-    fn pushdown_sql_none_when_nothing_supported() {
-        let filters = vec![col("rerun_num_chunks").gt(lit(5i64))];
-        assert!(filters_to_pushdown_sql(&filters, &supported()).is_none());
-    }
-
-    #[test]
-    fn columns_supported_checks_all_refs() {
-        assert!(expr_columns_supported(
-            &col("rerun_segment_id").eq(lit("a")),
-            &supported()
-        ));
-        assert!(!expr_columns_supported(
-            &col("rerun_segment_id").eq(col("rerun_num_chunks")),
-            &supported()
-        ));
-    }
-
-    #[test]
-    fn pushdown_rejects_scalar_functions() {
-        // A scalar function may be a client-only UDF the server can't parse — pushing it would
-        // fail the whole scan with `InvalidArgument`, so it must stay client-side.
-        let expr = datafusion::functions::expr_fn::lower(col("rerun_segment_id")).eq(lit("abc"));
-        assert!(!expr_supports_pushdown(&expr, &supported()));
-        assert!(filters_to_pushdown_sql(std::slice::from_ref(&expr), &supported()).is_none());
-    }
-
-    #[test]
-    fn pushdown_accepts_plain_shapes() {
-        for expr in [
-            col("rerun_segment_id").eq(lit("a")),
-            col("rerun_segment_id").in_list(vec![lit("a"), lit("b")], false),
-            col("rerun_segment_id").is_not_null(),
-            col("rerun_segment_id").like(lit("a%")),
-            col("rerun_segment_id").between(lit("a"), lit("b")),
-        ] {
-            assert!(
-                expr_supports_pushdown(&expr, &supported()),
-                "expected pushdown support for: {expr:?}"
+    fn segment_id_equality_becomes_scan_only() {
+        for expr in [col(SEGMENT_ID).eq(lit("a")), lit("a").eq(col(SEGMENT_ID))] {
+            assert_eq!(
+                strategy(expr),
+                segment_id_filter::Strategy::ScanOnly(SegmentIdList {
+                    segment_ids: vec!["a".to_owned()],
+                })
             );
+        }
+        assert_eq!(
+            strategy(col(SEGMENT_ID).in_list(vec![lit("a"), lit("b")], false)),
+            segment_id_filter::Strategy::ScanOnly(SegmentIdList {
+                segment_ids: vec!["a".to_owned(), "b".to_owned()],
+            })
+        );
+    }
+
+    #[test]
+    fn segment_id_exclusion_becomes_skip() {
+        assert_eq!(
+            strategy(col(SEGMENT_ID).not_eq(lit("a"))),
+            segment_id_filter::Strategy::Skip(SegmentIdList {
+                segment_ids: vec!["a".to_owned()],
+            })
+        );
+        assert_eq!(
+            strategy(col(SEGMENT_ID).in_list(vec![lit("a"), lit("b")], true)),
+            segment_id_filter::Strategy::Skip(SegmentIdList {
+                segment_ids: vec!["a".to_owned(), "b".to_owned()],
+            })
+        );
+    }
+
+    #[test]
+    fn segment_id_boolean_expressions_are_normalized() {
+        let expr = col(SEGMENT_ID)
+            .in_list(vec![lit("a"), lit("b"), lit("c")], false)
+            .and(col(SEGMENT_ID).not_eq(lit("b")));
+        assert_eq!(
+            strategy(expr),
+            segment_id_filter::Strategy::ScanOnly(SegmentIdList {
+                segment_ids: vec!["a".to_owned(), "c".to_owned()],
+            })
+        );
+
+        let expr = col(SEGMENT_ID)
+            .eq(lit("a"))
+            .or(col(SEGMENT_ID).eq(lit("b")));
+        assert_eq!(
+            strategy(expr),
+            segment_id_filter::Strategy::ScanOnly(SegmentIdList {
+                segment_ids: vec!["a".to_owned(), "b".to_owned()],
+            })
+        );
+    }
+
+    #[test]
+    fn unsupported_segment_id_expressions_stay_client_side() {
+        for expr in [
+            col("rerun_num_chunks").gt(lit(5i64)),
+            col(SEGMENT_ID).gt(lit("a")),
+            datafusion::functions::expr_fn::lower(col(SEGMENT_ID)).eq(lit("a")),
+            col(SEGMENT_ID).eq(Expr::Literal(ScalarValue::Utf8(None), None)),
+        ] {
+            assert!(segment_id_filter_from_filters(&[expr], SEGMENT_ID).is_none());
         }
     }
 
     #[test]
-    fn classify_filters_maps_to_inexact_or_unsupported() {
-        let pushable = col("rerun_segment_id").eq(lit("a"));
-        let unsupported_column = col("rerun_num_chunks").gt(lit(5i64));
-        let unsupported_shape =
-            datafusion::functions::expr_fn::lower(col("rerun_segment_id")).eq(lit("a"));
-
+    fn classify_segment_id_filters_as_inexact() {
+        let pushable = col(SEGMENT_ID).eq(lit("a"));
+        let unsupported = col("rerun_num_chunks").gt(lit(5i64));
         assert_eq!(
-            classify_filters_for_pushdown(
-                &[&pushable, &unsupported_column, &unsupported_shape],
-                &supported()
-            ),
+            classify_segment_id_filters_for_pushdown(&[&pushable, &unsupported], SEGMENT_ID),
             vec![
                 TableProviderFilterPushDown::Inexact,
                 TableProviderFilterPushDown::Unsupported,
-                TableProviderFilterPushDown::Unsupported,
             ]
         );
-    }
-
-    #[test]
-    fn filterable_columns_exclude_lists_and_binaries() {
-        use arrow::datatypes::Field;
-
-        let schema = Schema::new_with_metadata(
-            vec![
-                Field::new("id", arrow::datatypes::DataType::Utf8, false),
-                Field::new("count", arrow::datatypes::DataType::UInt64, false),
-                Field::new(
-                    "names",
-                    arrow::datatypes::DataType::List(Arc::new(Field::new(
-                        "item",
-                        arrow::datatypes::DataType::Utf8,
-                        true,
-                    ))),
-                    false,
-                ),
-                Field::new(
-                    "view_names",
-                    arrow::datatypes::DataType::ListView(Arc::new(Field::new(
-                        "item",
-                        arrow::datatypes::DataType::Utf8,
-                        true,
-                    ))),
-                    false,
-                ),
-                Field::new(
-                    "large_view_names",
-                    arrow::datatypes::DataType::LargeListView(Arc::new(Field::new(
-                        "item",
-                        arrow::datatypes::DataType::Utf8,
-                        true,
-                    ))),
-                    false,
-                ),
-                Field::new(
-                    "sha",
-                    arrow::datatypes::DataType::FixedSizeBinary(32),
-                    false,
-                ),
-            ],
-            HashMap::default(),
-        );
-
-        let columns = pushdown_filterable_columns(&schema);
-        assert!(columns.contains("id"));
-        assert!(columns.contains("count"));
-        assert!(!columns.contains("names"));
-        assert!(!columns.contains("view_names"));
-        assert!(!columns.contains("large_view_names"));
-        assert!(!columns.contains("sha"));
     }
 
     fn make_schema_with_index(index_name: &str) -> SchemaRef {

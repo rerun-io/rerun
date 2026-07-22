@@ -1,6 +1,4 @@
-use std::collections::HashSet;
 use std::sync::Arc;
-use std::sync::OnceLock;
 
 use arrow::array::RecordBatch;
 use arrow::datatypes::SchemaRef;
@@ -18,16 +16,9 @@ use tracing::instrument;
 
 use crate::grpc_streaming_provider::{GrpcStreamProvider, GrpcStreamToTable, ScanParams};
 use crate::pushdown_expressions::{
-    classify_filters_for_pushdown, filters_to_pushdown_sql, pushdown_filterable_columns,
+    classify_segment_id_filters_for_pushdown, segment_id_filter_from_filters,
 };
 use crate::wasm_compat::make_future_send;
-
-/// Public segment-table columns the server can filter on: the base scalar columns. List columns
-/// (`rerun_layer_names`, `rerun_storage_urls`) and dynamic `property:*` columns aren't supported.
-fn supported_filter_columns() -> &'static HashSet<String> {
-    static COLUMNS: OnceLock<HashSet<String>> = OnceLock::new();
-    COLUMNS.get_or_init(|| pushdown_filterable_columns(&ScanSegmentTableDataframe::min_schema()))
-}
 
 //TODO(ab): deduplicate from DatasetManifestProvider
 #[derive(Clone)]
@@ -85,12 +76,14 @@ impl GrpcStreamToTable for SegmentTableProvider {
         &mut self,
         params: &ScanParams,
     ) -> ApiResult<re_redap_client::ApiResponseStream<Self::GrpcStreamData>> {
-        let sql_filter = filters_to_pushdown_sql(&params.filters, supported_filter_columns())
-            .unwrap_or_default();
+        let segment_id_filter = segment_id_filter_from_filters(
+            &params.filters,
+            ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME,
+        );
 
         let request = tonic::Request::new(ScanSegmentTableRequest {
             columns: vec![], // all of them
-            sql_filter,
+            segment_id_filter,
         })
         .with_entry_id(self.dataset_id);
 
@@ -115,9 +108,9 @@ impl GrpcStreamToTable for SegmentTableProvider {
         &self,
         filters: &[&Expr],
     ) -> DataFusionResult<Vec<TableProviderFilterPushDown>> {
-        Ok(classify_filters_for_pushdown(
+        Ok(classify_segment_id_filters_for_pushdown(
             filters,
-            supported_filter_columns(),
+            ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME,
         ))
     }
 

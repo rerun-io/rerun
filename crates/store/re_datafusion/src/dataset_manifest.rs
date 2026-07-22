@@ -1,6 +1,4 @@
-use std::collections::HashSet;
 use std::sync::Arc;
-use std::sync::OnceLock;
 
 use arrow::array::RecordBatch;
 use arrow::datatypes::SchemaRef;
@@ -18,26 +16,9 @@ use tracing::instrument;
 
 use crate::grpc_streaming_provider::{GrpcStreamProvider, GrpcStreamToTable, ScanParams};
 use crate::pushdown_expressions::{
-    classify_filters_for_pushdown, filters_to_pushdown_sql, pushdown_filterable_columns,
+    classify_segment_id_filters_for_pushdown, segment_id_filter_from_filters,
 };
 use crate::wasm_compat::make_future_send;
-
-/// Public column names the server can currently filter on server-side: the scalar base columns of
-/// the dataset-manifest schema.
-///
-/// Excluded: dynamic `property:*` columns (not supported by the server yet), binary columns like
-/// `rerun_schema_sha256` (their literals don't survive the SQL round trip), and
-/// `rerun_last_updated_at` — its public value is backfilled from `rerun_registration_time` for
-/// legacy rows whose stored value is null, so a filter pushed to the raw server-side column would
-/// wrongly drop those rows.
-fn supported_filter_columns() -> &'static HashSet<String> {
-    static COLUMNS: OnceLock<HashSet<String>> = OnceLock::new();
-    COLUMNS.get_or_init(|| {
-        let mut columns = pushdown_filterable_columns(&ScanDatasetManifestDataframe::min_schema());
-        columns.remove(ScanDatasetManifestDataframe::COLUMN_RERUN_LAST_UPDATED_AT_NAME);
-        columns
-    })
-}
 
 //TODO(ab): deduplicate from SegmentTableProvider
 #[derive(Clone)]
@@ -95,12 +76,14 @@ impl GrpcStreamToTable for DatasetManifestProvider {
         &mut self,
         params: &ScanParams,
     ) -> ApiResult<re_redap_client::ApiResponseStream<Self::GrpcStreamData>> {
-        let sql_filter = filters_to_pushdown_sql(&params.filters, supported_filter_columns())
-            .unwrap_or_default();
+        let segment_id_filter = segment_id_filter_from_filters(
+            &params.filters,
+            ScanDatasetManifestDataframe::COLUMN_RERUN_SEGMENT_ID_NAME,
+        );
 
         let request = tonic::Request::new(ScanDatasetManifestRequest {
             columns: vec![], // all of them
-            sql_filter,
+            segment_id_filter,
         })
         .with_entry_id(self.dataset_id);
 
@@ -125,9 +108,9 @@ impl GrpcStreamToTable for DatasetManifestProvider {
         &self,
         filters: &[&Expr],
     ) -> DataFusionResult<Vec<TableProviderFilterPushDown>> {
-        Ok(classify_filters_for_pushdown(
+        Ok(classify_segment_id_filters_for_pushdown(
             filters,
-            supported_filter_columns(),
+            ScanDatasetManifestDataframe::COLUMN_RERUN_SEGMENT_ID_NAME,
         ))
     }
 

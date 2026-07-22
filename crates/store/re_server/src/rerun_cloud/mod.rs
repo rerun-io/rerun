@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use arrow::array::BinaryArray;
+use arrow::array::{BinaryArray, BooleanArray, StringArray};
 use arrow::record_batch::RecordBatch;
 use datafusion::prelude::SessionContext;
 use futures::StreamExt as _;
@@ -21,7 +21,7 @@ use re_log_types::{AbsoluteTimeRange, EntityPath, EntryId, StoreId, StoreKind, T
 use re_protos::cloud::v1alpha1::ext::{CreateTableEntryResponse, ProviderDetails};
 use re_protos::cloud::v1alpha1::ext::{
     QueryDatasetDataframe, QueryTasksDataframe, RegisterWithDatasetDataframe,
-    ScanDatasetManifestDataframe,
+    ScanDatasetManifestDataframe, ScanSegmentTableDataframe,
 };
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::cloud::v1alpha1::{
@@ -31,8 +31,8 @@ use re_protos::cloud::v1alpha1::{
     GetRrdManifestResponse, GetSegmentTableSchemaResponse, QueryDatasetResponse,
     QueryTasksOnCompletionRequest, QueryTasksOnCompletionResponse, QueryTasksRequest,
     QueryTasksResponse, RegisterTableRequest, RegisterTableResponse, ScanDatasetManifestRequest,
-    ScanDatasetManifestResponse, ScanSegmentTableResponse, ScanTableResponse, WatchEventsResponse,
-    watch_events_response,
+    ScanDatasetManifestResponse, ScanSegmentTableResponse, ScanTableResponse, SegmentIdFilter,
+    WatchEventsResponse, segment_id_filter, watch_events_response,
 };
 use re_protos::common::v1alpha1::ext::{DatasetKind, IfDuplicateBehavior, SegmentId};
 use re_protos::headers::RerunHeadersExtractorExt as _;
@@ -85,49 +85,35 @@ fn create_data_dir() -> Result<tempfile::TempDir, crate::store::Error> {
     Ok(tempfile::Builder::new().prefix("rerun-data-").tempdir()?)
 }
 
-/// Apply a client-supplied SQL boolean `filter` to an in-memory `RecordBatch`.
-///
-/// The SQL references the batch's own (public) column names. An empty filter is a no-op. Used to
-/// serve the `filter` field of `ScanSegmentTable` / `ScanDatasetManifest`.
-fn apply_sql_filter(batch: RecordBatch, filter_sql: &str) -> tonic::Result<RecordBatch> {
-    if filter_sql.is_empty() {
+fn apply_segment_id_filter(
+    batch: RecordBatch,
+    filter: Option<&SegmentIdFilter>,
+) -> tonic::Result<RecordBatch> {
+    let Some(filter) = filter else {
         return Ok(batch);
-    }
+    };
+    let Some(strategy) = filter.strategy.as_ref() else {
+        return Ok(batch);
+    };
+    let (ids, scan_only) = match strategy {
+        segment_id_filter::Strategy::ScanOnly(ids) => (&ids.segment_ids, true),
+        segment_id_filter::Strategy::Skip(ids) => (&ids.segment_ids, false),
+    };
+    let ids = ids.iter().map(String::as_str).collect::<HashSet<_>>();
 
-    let df_schema = datafusion::common::DFSchema::try_from(batch.schema().as_ref().clone())
-        .map_err(|err| Status::internal(format!("Unable to build filter schema: {err:#}")))?;
-
-    let expr = SessionContext::new()
-        .parse_sql_expr(filter_sql, &df_schema)
-        .map_err(|err| {
-            Status::invalid_argument(format!("Unable to parse filter SQL {filter_sql:?}: {err}"))
-        })?;
-
-    // Neither `parse_sql_expr` nor `create_physical_expr` applies type coercion, so an untyped
-    // SQL literal keeps its parsed type and e.g. `uint64_col > 100` (Int64 literal) would fail
-    // at evaluation time with a type mismatch. Coerce against the schema here.
-    let expr = datafusion::optimizer::simplify_expressions::ExprSimplifier::new(
-        datafusion::logical_expr::simplify::SimplifyContext::default(),
-    )
-    .coerce(expr, &df_schema)
-    .map_err(|err| Status::invalid_argument(format!("Unable to coerce filter: {err}")))?;
-
-    let physical =
-        datafusion::physical_expr::create_physical_expr(&expr, &df_schema, &Default::default())
-            .map_err(|err| Status::invalid_argument(format!("Unable to plan filter: {err}")))?;
-
-    let evaluated = physical
-        .evaluate(&batch)
-        .and_then(|value| value.into_array(batch.num_rows()))
-        .map_err(|err| Status::invalid_argument(format!("Unable to evaluate filter: {err:#}")))?;
-
-    let mask = evaluated
+    let segment_ids = batch
+        .column_by_name(ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME)
+        .ok_or_else(|| Status::internal("segment ID column is missing"))?
         .as_any()
-        .downcast_ref::<arrow::array::BooleanArray>()
-        .ok_or_else(|| Status::invalid_argument("filter expression is not a boolean"))?;
+        .downcast_ref::<StringArray>()
+        .ok_or_else(|| Status::internal("segment ID column is not UTF-8"))?;
+    let mask = segment_ids
+        .iter()
+        .map(|segment_id| segment_id.map(|segment_id| ids.contains(segment_id) == scan_only))
+        .collect::<BooleanArray>();
 
-    arrow::compute::filter_record_batch(&batch, mask)
-        .map_err(|err| Status::internal(format!("Unable to apply filter: {err:#}")))
+    arrow::compute::filter_record_batch(&batch, &mask)
+        .map_err(|err| Status::internal(format!("Unable to apply segment ID filter: {err:#}")))
 }
 
 #[derive(Default)]
@@ -1261,8 +1247,7 @@ impl RerunCloudService for RerunCloudHandler {
             (record_batch, request.into_inner())
         };
 
-        // Filter before projection so the filter can reference columns that aren't projected out.
-        record_batch = apply_sql_filter(record_batch, &request.sql_filter)?;
+        record_batch = apply_segment_id_filter(record_batch, request.segment_id_filter.as_ref())?;
 
         // project columns
         if !request.columns.is_empty() {
@@ -1323,8 +1308,7 @@ impl RerunCloudService for RerunCloudHandler {
             (record_batch, request.into_inner())
         };
 
-        // Filter before projection so the filter can reference columns that aren't projected out.
-        record_batch = apply_sql_filter(record_batch, &request.sql_filter)?;
+        record_batch = apply_segment_id_filter(record_batch, request.segment_id_filter.as_ref())?;
 
         // project columns
         if !request.columns.is_empty() {
