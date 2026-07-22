@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pickle
 from fractions import Fraction
+from typing import cast
 
 import av
 import numpy as np
@@ -13,73 +14,20 @@ import torch
 from rerun.experimental.dataloader import Field
 from rerun.experimental.dataloader._decoders import (
     VideoFrameDecoder,
-    _avcc_to_annex_b,
     _flatten_blob,
-    _h264_annex_b_has_idr,
-    _hevc_annex_b_has_irap,
-    _is_annex_b,
-    _is_av1_keyframe_packet,
     _starts_with,
     _unwrap_to_numpy,
 )
 from rerun.experimental.dataloader._utils import _field_index_range, _prior_keyframe
 
 
-@pytest.mark.parametrize(
-    ("data", "expected"),
-    [
-        (b"\x00\x00\x00\x01\xab\xcd", True),  # 4-byte start code
-        (b"\x00\x00\x01\xab\xcd", True),  # 3-byte short start code
-        (b"\x00\x00\x00\x01", True),  # exactly the start code
-        (b"\x00\x00\x01", True),  # exactly the short start code
-        (b"\x00\x00\x02\xab", False),
-        (b"\xab\xcd\xef\x01", False),
-        (b"", False),
-        (b"\x00", False),
-        (b"\x00\x00", False),
-    ],
-)
-def test_is_annex_b(data: bytes, expected: bool) -> None:
-    assert _is_annex_b(data) is expected
-
-
-def _make_obu_header(obu_type: int) -> int:
-    """Return a byte whose OBU-type field (bits [3:6]) matches *obu_type*."""
-    return (obu_type & 0xF) << 3
-
-
-@pytest.mark.parametrize(
-    ("obu_type", "expected"),
-    [
-        (1, True),  # OBU_SEQUENCE_HEADER
-        (2, True),  # OBU_TEMPORAL_DELIMITER
-        (3, False),  # OBU_FRAME_HEADER
-        (6, False),  # OBU_FRAME
-        (0, False),
-        (15, False),
-    ],
-)
-def test_is_av1_keyframe_packet(obu_type: int, expected: bool) -> None:
-    sample = bytes([_make_obu_header(obu_type), 0x00, 0x00])
-    assert _is_av1_keyframe_packet(sample) is expected
-
-
-def test_is_av1_keyframe_packet_empty() -> None:
-    assert _is_av1_keyframe_packet(b"") is False
-
-
-def test_is_av1_keyframe_packet_ignores_low_bits() -> None:
-    # Low three bits (extension/has-size/reserved) must not affect detection.
-    header = _make_obu_header(1) | 0b111
-    assert _is_av1_keyframe_packet(bytes([header])) is True
-
-
-def _avcc_encode(nal_units: list[bytes], nal_length_size: int = 4) -> bytes:
-    out = bytearray()
-    for unit in nal_units:
-        out.extend(len(unit).to_bytes(nal_length_size, "big"))
-        out.extend(unit)
-    return bytes(out)
+def _encoder_available(name: str) -> bool:
+    """True if this PyAV build can encode with *name*."""
+    try:
+        av.codec.Codec(name, "w")
+    except Exception:
+        return False
+    return True
 
 
 def _h264_annex_b(nal_units: list[tuple[int, bytes]], use_4byte: bool = True) -> bytes:
@@ -92,116 +40,6 @@ def _h264_annex_b(nal_units: list[tuple[int, bytes]], use_4byte: bool = True) ->
         out.append((3 << 5) | (nal_type & 0x1F))
         out.extend(payload)
     return bytes(out)
-
-
-def _hevc_annex_b(nal_units: list[tuple[int, bytes]], use_4byte: bool = True) -> bytes:
-    """Build an Annex B HEVC stream from `(nal_unit_type, payload)` pairs."""
-    start = b"\x00\x00\x00\x01" if use_4byte else b"\x00\x00\x01"
-    out = bytearray()
-    for nal_type, payload in nal_units:
-        out.extend(start)
-        # forbidden_zero_bit=0, layer_id=0, temporal_id_plus1=1
-        out.append((nal_type & 0x3F) << 1)
-        out.append(0x01)
-        out.extend(payload)
-    return bytes(out)
-
-
-@pytest.mark.parametrize("use_4byte", [True, False])
-def test_h264_annex_b_has_idr_simple(use_4byte: bool) -> None:
-    sample = _h264_annex_b([(5, b"\xaa\xbb\xcc")], use_4byte=use_4byte)
-    assert _h264_annex_b_has_idr(sample) is True
-
-
-def test_h264_annex_b_has_idr_after_sps_pps() -> None:
-    sample = _h264_annex_b([
-        (7, b"\x42\xc0\x1f"),  # SPS
-        (8, b"\xce\x38\x80"),  # PPS
-        (5, b"\x88\x84"),  # IDR
-    ])
-    assert _h264_annex_b_has_idr(sample) is True
-
-
-def test_h264_annex_b_has_idr_after_aud_sei() -> None:
-    sample = _h264_annex_b([
-        (9, b"\x10"),  # AUD
-        (6, b"\x01\x80"),  # SEI
-        (5, b"\x88"),  # IDR
-    ])
-    assert _h264_annex_b_has_idr(sample) is True
-
-
-def test_h264_annex_b_has_idr_p_slice_only() -> None:
-    sample = _h264_annex_b([(1, b"\xab\xcd\xef")])
-    assert _h264_annex_b_has_idr(sample) is False
-
-
-def test_h264_annex_b_has_idr_empty() -> None:
-    assert _h264_annex_b_has_idr(b"") is False
-
-
-@pytest.mark.parametrize("use_4byte", [True, False])
-def test_hevc_annex_b_has_irap_simple(use_4byte: bool) -> None:
-    sample = _hevc_annex_b([(19, b"\xaa\xbb\xcc")], use_4byte=use_4byte)
-    assert _hevc_annex_b_has_irap(sample) is True
-
-
-@pytest.mark.parametrize("nal_type", [16, 17, 18, 19, 20, 21, 22, 23])
-def test_hevc_annex_b_has_irap_all_irap_types(nal_type: int) -> None:
-    sample = _hevc_annex_b([(nal_type, b"\xaa")])
-    assert _hevc_annex_b_has_irap(sample) is True
-
-
-@pytest.mark.parametrize("nal_type", [1, 15, 24, 32, 35])  # TRAIL_R, RSV_VCL_*, just-out-of-IRAP, VPS, AUD
-def test_hevc_annex_b_has_irap_non_irap_types(nal_type: int) -> None:
-    sample = _hevc_annex_b([(nal_type, b"\xaa")])
-    assert _hevc_annex_b_has_irap(sample) is False
-
-
-def test_hevc_annex_b_has_irap_after_vps_sps_pps() -> None:
-    sample = _hevc_annex_b([
-        (32, b"\xaa"),  # VPS
-        (33, b"\xbb"),  # SPS
-        (34, b"\xcc"),  # PPS
-        (19, b"\xdd"),  # IDR_W_RADL
-    ])
-    assert _hevc_annex_b_has_irap(sample) is True
-
-
-def test_hevc_annex_b_has_irap_empty() -> None:
-    assert _hevc_annex_b_has_irap(b"") is False
-
-
-def test_avcc_to_annex_b_single_unit() -> None:
-    unit = b"\x67\x42\xc0\x1f"
-    result = _avcc_to_annex_b(_avcc_encode([unit]))
-    assert result == b"\x00\x00\x00\x01" + unit
-
-
-def test_avcc_to_annex_b_multiple_units() -> None:
-    units = [b"\x67\x42\xc0\x1f", b"\x68\xce\x38\x80", b"\x65\x88\x84"]
-    result = _avcc_to_annex_b(_avcc_encode(units))
-    expected = b"".join(b"\x00\x00\x00\x01" + u for u in units)
-    assert result == expected
-
-
-def test_avcc_to_annex_b_length_size_2() -> None:
-    units = [b"\xaa\xbb", b"\xcc\xdd\xee"]
-    result = _avcc_to_annex_b(_avcc_encode(units, nal_length_size=2), nal_length_size=2)
-    expected = b"".join(b"\x00\x00\x00\x01" + u for u in units)
-    assert result == expected
-
-
-def test_avcc_to_annex_b_truncated_stops_early() -> None:
-    # Well-formed first unit, then a length that claims more data than is left.
-    first = b"\x67\x42\xc0"
-    buf = len(first).to_bytes(4, "big") + first + (0xFF).to_bytes(4, "big") + b"\x00\x01"
-    result = _avcc_to_annex_b(buf)
-    assert result == b"\x00\x00\x00\x01" + first
-
-
-def test_avcc_to_annex_b_empty() -> None:
-    assert _avcc_to_annex_b(b"") == b""
 
 
 def test_unwrap_plain_numeric() -> None:
@@ -281,38 +119,50 @@ def test_video_frame_decoder_returns_none_without_keyframe() -> None:
 
 
 def test_video_frame_decoder_is_keyframe_h264() -> None:
-    p_slice = _h264_annex_b([(1, b"\xab\xcd")])
-    idr = _h264_annex_b([(5, b"\x88")])
+    gop = 4
+    samples = _encode_h264(num_frames=8, gop=gop)
     decoder = VideoFrameDecoder(codec="h264")
-    assert decoder._is_keyframe(p_slice) is False
-    assert decoder._is_keyframe(idr) is True
+    assert decoder._is_keyframe(samples[0]) is True
+    assert decoder._is_keyframe(samples[1]) is False
+    assert decoder._is_keyframe(samples[gop]) is True
 
 
+def test_video_frame_decoder_is_keyframe_h264_idr_without_sps() -> None:
+    # An IDR NAL alone can't bootstrap a decoder (no SPS): not a keyframe.
+    idr_only = _h264_annex_b([(5, b"\x88")])
+    assert VideoFrameDecoder(codec="h264")._is_keyframe(idr_only) is False
+
+
+@pytest.mark.skipif(not _encoder_available("libx265"), reason="PyAV build lacks the libx265 encoder")
 def test_video_frame_decoder_is_keyframe_hevc() -> None:
-    non_irap = _hevc_annex_b([(1, b"\xaa")])
-    irap = _hevc_annex_b([(19, b"\xaa")])
+    samples = _encode_hevc(num_frames=4, gop=4)
     decoder = VideoFrameDecoder(codec="hevc")
-    assert decoder._is_keyframe(non_irap) is False
-    assert decoder._is_keyframe(irap) is True
+    assert decoder._is_keyframe(samples[0]) is True
+    assert decoder._is_keyframe(samples[1]) is False
 
 
-def test_video_frame_decoder_is_keyframe_unknown_codec_returns_none() -> None:
-    assert VideoFrameDecoder(codec="vp9")._is_keyframe(b"\x00") is None
+def test_video_frame_decoder_is_keyframe_undetectable_codec_returns_none() -> None:
+    assert VideoFrameDecoder(codec="mjpeg")._is_keyframe(b"\x00") is None
+
+
+def test_video_frame_decoder_is_keyframe_vp9_classifies_garbage() -> None:
+    # vp9 has a detector, so garbage is classified rather than passed through as None.
+    assert VideoFrameDecoder(codec="vp9")._is_keyframe(b"\x00") is False
 
 
 def test_video_frame_decoder_has_keyframe_h264() -> None:
-    p_slice = _h264_annex_b([(1, b"\xab\xcd")])
-    idr = _h264_annex_b([(7, b"\x42\xc0\x1f"), (8, b"\xce\x38"), (5, b"\x88")])
+    samples = _encode_h264(num_frames=4, gop=4)
+    keyframe, p_slice = samples[0], samples[1]
     decoder = VideoFrameDecoder(codec="h264")
     assert decoder._has_keyframe([]) is False
     assert decoder._has_keyframe([p_slice]) is False
-    assert decoder._has_keyframe([p_slice, idr]) is True
+    assert decoder._has_keyframe([p_slice, keyframe]) is True
 
 
-def test_video_frame_decoder_has_keyframe_unknown_codec_trusts_decoder() -> None:
-    # Unknown codec: `_is_keyframe` returns None and `_has_keyframe` returns True so
+def test_video_frame_decoder_has_keyframe_undetectable_codec_trusts_decoder() -> None:
+    # Undetectable codec: `_is_keyframe` returns None and `_has_keyframe` returns True so
     # failures surface from the decoder rather than being swallowed as cold-start.
-    assert VideoFrameDecoder(codec="vp9")._has_keyframe([b"\x00"]) is True
+    assert VideoFrameDecoder(codec="mjpeg")._has_keyframe([b"\x00"]) is True
 
 
 def test_video_frame_decoder_derives_keyframe_path() -> None:
@@ -412,6 +262,28 @@ def _encode_h264(num_frames: int, gop: int, b_frames: int = 0) -> list[bytes]:
         pixels[:, :, 0] = ((np.arange(64) + i) % 256)[np.newaxis, :]
         pixels[:, :, 1] = ((np.arange(64) + i * 3) % 256)[:, np.newaxis]
         pixels[:, :, 2] = (i * 7) % 256
+        frame = av.VideoFrame.from_ndarray(pixels, format="rgb24").reformat(format="yuv420p")
+        frame.pts = i
+        samples.extend(bytes(p) for p in encoder.encode(frame))
+    samples.extend(bytes(p) for p in encoder.encode(None))
+    assert len(samples) == num_frames
+    return samples
+
+
+def _encode_hevc(num_frames: int, gop: int) -> list[bytes]:
+    """One Annex B HEVC sample per frame, keyframes every *gop* frames, headers repeated on each keyframe."""
+    # The PyAV stubs' video-codec-name literal doesn't know libx265, so the overload needs help.
+    encoder = cast("av.VideoCodecContext", av.CodecContext.create("libx265", "w"))
+    encoder.width, encoder.height = 64, 64
+    encoder.pix_fmt = "yuv420p"
+    encoder.time_base = Fraction(1, 30)
+    encoder.framerate = Fraction(30, 1)
+    encoder.options = {
+        "x265-params": f"keyint={gop}:min-keyint={gop}:bframes=0:repeat-headers=1:log-level=none",
+    }
+    samples: list[bytes] = []
+    for i in range(num_frames):
+        pixels = np.full((64, 64, 3), (i * 31) % 256, dtype=np.uint8)
         frame = av.VideoFrame.from_ndarray(pixels, format="rgb24").reformat(format="yuv420p")
         frame.pts = i
         samples.extend(bytes(p) for p in encoder.encode(frame))

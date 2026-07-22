@@ -33,7 +33,9 @@ pub use gop_detection::{
 // AnnexB conversions are useful for testing.
 pub use h264::{write_avc_chunk_to_annexb, write_avc_chunk_to_nalu_stream};
 pub use h265::{write_hevc_chunk_to_annexb, write_hevc_chunk_to_nalu_stream};
-pub use nalu::AnnexBStreamState;
+pub use nalu::{
+    AnnexBStreamState, AnnexBStreamWriteError, write_length_prefixed_nalus_to_annexb_stream,
+};
 // Re-export:
 #[doc(no_inline)]
 pub use {

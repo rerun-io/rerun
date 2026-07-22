@@ -7,6 +7,7 @@ going through the normal deprecation cycle.
 
 from __future__ import annotations
 
+from . import video as video
 from ._chunk import Chunk as Chunk
 from ._chunk_store import ChunkStore as ChunkStore
 from ._hdf5_reader import DatasetInfo as DatasetInfo, Hdf5Reader as Hdf5Reader

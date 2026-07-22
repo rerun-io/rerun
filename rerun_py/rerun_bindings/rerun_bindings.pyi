@@ -931,6 +931,17 @@ def asset_video_read_frame_timestamps_nanos(video_bytes_arrow_array: Any, media_
     So instead, we pass the arrow array directly.
     """
 
+def video_detect_gop_start(sample: bytes, codec_fourcc: int) -> bool:
+    """
+    Detect whether a video sample starts a group of pictures, i.e. is a keyframe.
+
+    H.264/H.265 samples must be in Annex B format.
+    `codec_fourcc` is a `rerun.components.VideoCodec` enum value.
+    """
+
+def video_length_prefixed_to_annex_b(sample: bytes, length_prefix_size: int = 4) -> bytes:
+    """Convert a length-prefixed (AVCC-style) NAL unit sample to Annex B (start-code-prefixed)."""
+
 #####################################################################################################################
 ## CATALOG                                                                                                         ##
 #####################################################################################################################

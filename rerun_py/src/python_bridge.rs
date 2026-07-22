@@ -309,6 +309,13 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
         m
     )?)?;
 
+    // video stream utilities
+    m.add_function(wrap_pyfunction!(crate::video::video_detect_gop_start, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        crate::video::video_length_prefixed_to_annex_b,
+        m
+    )?)?;
+
     // chunk
     crate::chunk::register(m)?;
 

@@ -1,9 +1,53 @@
-use pyo3::exceptions::PyRuntimeError;
-use pyo3::{Bound, PyAny, PyResult, pyfunction};
+use pyo3::exceptions::{PyRuntimeError, PyValueError};
+use pyo3::types::PyBytes;
+use pyo3::{Bound, PyAny, PyResult, Python, pyfunction};
 use re_arrow_util::ArrowArrayDowncastRef as _;
+use re_sdk_types::components::VideoCodec;
 use re_video::VideoLoadError;
 
 use crate::arrow::array_to_rust;
+
+/// `fourcc` is a `rerun.components.VideoCodec` enum value from Python;
+/// reuse the canonical fourcc→codec conversion rather than re-mapping here.
+fn codec_from_fourcc(fourcc: u32) -> PyResult<re_video::VideoCodec> {
+    Ok(VideoCodec::try_from_u32(fourcc)
+        .ok_or_else(|| {
+            PyValueError::new_err(format!("Unknown video codec fourcc: {fourcc:#010x}"))
+        })?
+        .into())
+}
+
+/// Detect whether a video sample starts a group of pictures, i.e. is a keyframe.
+///
+/// H.264/H.265 samples must be in Annex B format.
+/// `codec_fourcc` is a `rerun.components.VideoCodec` enum value.
+#[pyfunction]
+#[pyo3(signature = (sample, codec_fourcc))]
+pub fn video_detect_gop_start(sample: &[u8], codec_fourcc: u32) -> PyResult<bool> {
+    match re_video::detect_gop_start(sample, codec_from_fourcc(codec_fourcc)?) {
+        Ok(re_video::GopStartDetection::StartOfGop(_)) => Ok(true),
+        Ok(re_video::GopStartDetection::NotStartOfGop) => Ok(false),
+        Err(err) => Err(PyValueError::new_err(err.to_string())),
+    }
+}
+
+/// Convert a length-prefixed (AVCC-style) NAL unit sample to Annex B (start-code-prefixed).
+#[pyfunction]
+#[pyo3(signature = (sample, length_prefix_size = 4))]
+pub fn video_length_prefixed_to_annex_b<'py>(
+    py: Python<'py>,
+    sample: &[u8],
+    length_prefix_size: usize,
+) -> PyResult<Bound<'py, PyBytes>> {
+    let mut annex_b = Vec::with_capacity(sample.len() + 16);
+    re_video::write_length_prefixed_nalus_to_annexb_stream(
+        &mut annex_b,
+        sample,
+        length_prefix_size,
+    )
+    .map_err(|err| PyValueError::new_err(err.to_string()))?;
+    Ok(PyBytes::new(py, &annex_b))
+}
 
 /// Reads the timestamps of all frames in a video asset.
 ///
