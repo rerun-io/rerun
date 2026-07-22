@@ -21,6 +21,17 @@ use crate::{CachingApplicationIdInjector, RrdFooter, ToApplication as _};
 pub async fn read_rrd_footer<R: AsyncReadAt>(
     reader: &mut R,
 ) -> Result<Option<RrdFooter>, CodecError> {
+    let Some(payload) = read_rrd_footer_payload(reader).await? else {
+        return Ok(None);
+    };
+
+    let transport_footer = re_protos::log_msg::v1alpha1::RrdFooter::from_rrd_bytes(&payload)?;
+    Ok(Some(transport_footer.to_application(())?))
+}
+
+pub(super) async fn read_rrd_footer_payload<R: AsyncReadAt>(
+    reader: &mut R,
+) -> Result<Option<Vec<u8>>, CodecError> {
     let file_len = reader.seek(SeekFrom::End(0)).await?;
 
     // 1. Validate the StreamHeader to confirm this is actually an RRD file.
@@ -82,11 +93,7 @@ pub async fn read_rrd_footer<R: AsyncReadAt>(
         });
     }
 
-    // 5. Decode protobuf RrdFooter → application-level RrdFooter.
-    let transport_footer = re_protos::log_msg::v1alpha1::RrdFooter::from_rrd_bytes(&payload_buf)?;
-    let rrd_footer = transport_footer.to_application(())?;
-
-    Ok(Some(rrd_footer))
+    Ok(Some(payload_buf))
 }
 
 /// Enumerate all [`StoreId`]s present in an RRD file, without reading chunk data.

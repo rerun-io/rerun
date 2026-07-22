@@ -412,14 +412,26 @@ async fn register_opfs_file(
     connection_registry: &re_redap_client::ConnectionRegistryHandle,
     file_contents: &re_data_source::FileContents,
 ) -> anyhow::Result<re_uri::DatasetSegmentUri> {
-    let dataset_name = rrd_dataset_name(&mut futures::io::Cursor::new(file_contents.bytes.clone()))
+    let mut reader = futures::io::Cursor::new(file_contents.bytes.clone());
+    let dataset_name = rrd_dataset_name(&mut reader).await.with_context(|| {
+        format!(
+            "failed to read application id from RRD\nFile path: {}",
+            file_contents.path.display(),
+        )
+    })?;
+    let fingerprint = re_log_encoding::RrdFingerprint::compute_for_rrd(&mut reader)
         .await
         .with_context(|| {
             format!(
-                "failed to read application id from RRD\nFile path: {}",
+                "failed to fingerprint RRD\nFile path: {}",
                 file_contents.path.display(),
             )
         })?;
+    let fingerprint = fingerprint
+        .as_bytes()
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect::<String>();
 
     let file_name = file_contents
         .path
@@ -429,25 +441,35 @@ async fn register_opfs_file(
         .to_str()
         .context("OPFS upload file name is not UTF-8")?;
 
-    // The web file picker yields only a base name, so uploads routinely collide on `file_name`.
-    // Key the OPFS location on a content hash so that distinct bytes never share a path (which would
-    // truncate-overwrite the earlier upload); identical re-uploads dedupe to the same path.
-    let content_hash = format!(
-        "{:016x}",
-        re_log_types::hash::Hash64::hash(file_contents.bytes.as_ref()).hash64()
-    );
+    // The web file picker yields only a base name, so key uploads on the RRD fingerprint to avoid
+    // path collisions. Identical re-uploads deduplicate to the same path.
     let path = std::path::PathBuf::from("/uploads")
-        .join(&content_hash)
+        .join(&fingerprint)
         .join(file_name);
 
-    re_server::opfs::write(&path, file_contents.bytes.clone())
-        .await
-        .with_context(|| {
-            format!(
-                "failed to write OPFS upload file\nFile path: {}",
-                path.display()
-            )
-        })?;
+    let file_exists = match re_server::opfs::metadata(&path).await {
+        Ok(metadata) => metadata.is_file(),
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => false,
+        Err(err) => {
+            return Err(err).with_context(|| {
+                format!(
+                    "failed to inspect OPFS upload file\nFile path: {}",
+                    path.display()
+                )
+            });
+        }
+    };
+
+    if !file_exists {
+        re_server::opfs::write(&path, file_contents.bytes.clone())
+            .await
+            .with_context(|| {
+                format!(
+                    "failed to write OPFS upload file\nFile path: {}",
+                    path.display()
+                )
+            })?;
+    }
 
     // `Url::from_file_path` is unavailable on `wasm32-unknown-unknown`, so build the `file://` URL
     // for the same on-disk location by hand. Both fallible steps are infallible for a known base.
@@ -455,7 +477,7 @@ async fn register_opfs_file(
     file_url
         .path_segments_mut()
         .expect("`file:///` is a base URL")
-        .extend(["uploads", content_hash.as_str(), file_name]);
+        .extend(["uploads", fingerprint.as_str(), file_name]);
 
     register_file(connection_registry, dataset_name, file_url).await
 }
