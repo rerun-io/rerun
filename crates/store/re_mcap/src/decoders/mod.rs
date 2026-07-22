@@ -597,6 +597,11 @@ impl ExecutionPlan {
         }
 
         let time_range = self.time_range;
+        if let Some((start, end)) = time_range {
+            re_log::info!(
+                "Filtering MCAP messages to log_time range [{start}, {end}) (nanoseconds)"
+            );
+        }
         for runner in &mut self.runners {
             runner.process(mcap_bytes, summary, time_type, time_range, emit)?;
         }

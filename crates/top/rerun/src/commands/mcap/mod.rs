@@ -7,7 +7,7 @@ use std::io::BufWriter;
 use clap::Subcommand;
 use clap::builder::TypedValueParser as _;
 use re_log_encoding::Encoder;
-use re_log_types::{LogMsg, RecordingId, TimeType};
+use re_log_types::{Duration, LogMsg, RecordingId, TimeType, Timestamp};
 use re_mcap::{DecoderIdentifier, SelectedDecoders, TopicFilter};
 use re_sdk::external::re_importer::{McapImporter, supported_mcap_decoder_identifiers};
 use re_sdk::{ApplicationId, ImportedData, Importer, ImporterSettings};
@@ -98,6 +98,30 @@ pub struct ConvertCommand {
     /// (or no includes are set) AND matches no exclude.
     #[clap(short = 'n', long = "exclude-topic-regex")]
     exclude_topic_regex: Vec<String>,
+
+    /// Inclusive lower bound on the raw MCAP `log_time`.
+    ///
+    /// Accepts Unix timestamps with a unit suffix (`ns`, `ms`, `s`, …), or an RFC 3339 timestamp.
+    /// Bare integers are interpreted as nanoseconds.
+    ///
+    /// If set, only data within this time range gets converted.
+    #[clap(long = "start-time", value_name = "TIME", value_parser = parse_time)]
+    start_time: Option<u64>,
+
+    /// Exclusive upper bound on the raw MCAP `log_time`.
+    ///
+    /// Accepts Unix timestamps with a unit suffix (`ns`, `ms`, `s`, …), or an RFC 3339 timestamp.
+    /// Bare integers are interpreted as nanoseconds.
+    ///
+    /// If set, only data within this time range gets converted.
+    #[clap(long = "end-time", value_name = "TIME", value_parser = parse_time)]
+    end_time: Option<u64>,
+
+    /// Recover a missing or invalid MCAP summary in memory.
+    ///
+    /// This allows conversion of MCAP files that lack a footer (e.g. corrupted recordings).
+    #[clap(long = "recover")]
+    recover: bool,
 }
 
 fn compile_topic_filter(include: &[String], exclude: &[String]) -> anyhow::Result<TopicFilter> {
@@ -118,6 +142,46 @@ fn compile_topic_filter(include: &[String], exclude: &[String]) -> anyhow::Resul
         .map_err(|err| anyhow::anyhow!("Invalid topic regex in include/exclude filters: {err}"))
 }
 
+fn parse_time(value: &str) -> Result<u64, String> {
+    if let Ok(nanos) = value.parse::<u64>() {
+        return Ok(nanos);
+    }
+
+    // `Duration` only provides unit-aware parsing here; the result remains an absolute offset from
+    // the Unix epoch, not an offset relative to the start of the MCAP file.
+    if let Ok(duration) = value.parse::<Duration>() {
+        return u64::try_from(duration.as_nanos())
+            .map_err(|_err| "Time cannot be negative".to_owned());
+    }
+
+    if let Ok(timestamp) = value.parse::<Timestamp>() {
+        return u64::try_from(timestamp.nanos_since_epoch())
+            .map_err(|_err| "Time cannot be before the Unix epoch".to_owned());
+    }
+
+    Err(format!(
+        "invalid time {value:?}; expected nanoseconds, a Unix timestamp with a unit suffix, or an RFC 3339 timestamp"
+    ))
+}
+
+fn compile_time_range(
+    start_time: Option<u64>,
+    end_time: Option<u64>,
+) -> anyhow::Result<Option<(u64, u64)>> {
+    if start_time.is_none() && end_time.is_none() {
+        return Ok(None);
+    }
+
+    let start = start_time.unwrap_or(0);
+    let end = end_time.unwrap_or(u64::MAX);
+    anyhow::ensure!(
+        start < end,
+        "start-time ({start}) must be less than end-time ({end}); the range is half-open [start, end)"
+    );
+
+    Ok(Some((start, end)))
+}
+
 impl ConvertCommand {
     fn run(&self) -> anyhow::Result<()> {
         let Self {
@@ -131,9 +195,13 @@ impl ConvertCommand {
             timeline_type,
             include_topic_regex,
             exclude_topic_regex,
+            start_time,
+            end_time,
+            recover,
         } = self;
 
         let topic_filter = compile_topic_filter(include_topic_regex, exclude_topic_regex)?;
+        let time_range = compile_time_range(*start_time, *end_time)?;
 
         let start_time = std::time::Instant::now();
 
@@ -161,7 +229,9 @@ impl ConvertCommand {
 
         let importer: &dyn Importer = &McapImporter::new(&selected_decoders)
             .with_raw_fallback(!*disable_raw_fallback)
-            .with_topic_filter(topic_filter);
+            .with_topic_filter(topic_filter)
+            .with_time_range(time_range)
+            .with_recover(*recover);
 
         // TODO(#10862): This currently loads the entire file into memory.
         let (tx, rx) = crossbeam::channel::bounded::<ImportedData>(1024);

@@ -423,6 +423,27 @@ Convert an .mcap file to an .rrd.
 >
 > Applied after includes: a topic is kept only if it matches an include (or no includes are set) AND matches no exclude.
 
+* `--start-time <TIME>`
+> Inclusive lower bound on the raw MCAP `log_time`.
+>
+> Accepts Unix timestamps with a unit suffix (`ns`, `ms`, `s`, …), or an RFC 3339 timestamp. Bare integers are interpreted as nanoseconds.
+>
+> If set, only data within this time range gets converted.
+
+* `--end-time <TIME>`
+> Exclusive upper bound on the raw MCAP `log_time`.
+>
+> Accepts Unix timestamps with a unit suffix (`ns`, `ms`, `s`, …), or an RFC 3339 timestamp. Bare integers are interpreted as nanoseconds.
+>
+> If set, only data within this time range gets converted.
+
+* `--recover <RECOVER>`
+> Recover a missing or invalid MCAP summary in memory.
+>
+> This allows conversion of MCAP files that lack a footer (e.g. corrupted recordings).
+>
+> [Default: `false`]
+
 ## rerun mcap info
 
 Print timeline / sortedness diagnostics for an .mcap file.
