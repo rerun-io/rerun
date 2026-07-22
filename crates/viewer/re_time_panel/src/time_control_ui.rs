@@ -253,7 +253,14 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
                         .on_hover_text("Looping entire recording")
                         .clicked()
                     {
-                        time_commands.push(TimeControlCommand::SetLoopMode(LoopMode::Selection));
+                        // Only go to the selection time selection mode if there's already a selection.
+                        // (otherwise, we'd create a selection as a fail-safe, but that's rather confusing!)
+                        if time_ctrl.time_selection().is_some() {
+                            time_commands
+                                .push(TimeControlCommand::SetLoopMode(LoopMode::Selection));
+                        } else {
+                            time_commands.push(TimeControlCommand::SetLoopMode(LoopMode::Off));
+                        }
                     }
                 }
                 LoopMode::Selection => {
