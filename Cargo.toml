@@ -43,8 +43,6 @@ ignored = [
   "re_protos_builder",
   "re_renderer_examples",
 
-  "re_hdf5", # Note: removed in follow-up PR #2771
-
   # used for specific targets or features
   "home",
   "profiling",

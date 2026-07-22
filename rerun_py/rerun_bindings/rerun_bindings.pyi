@@ -1600,6 +1600,23 @@ class Mp4ReaderInternal:
     @property
     def entity_path(self) -> str: ...
 
+class Hdf5ReaderInternal:
+    """Internal implementation. Use Hdf5Reader from rerun.experimental instead."""
+
+    def __init__(self, path: str) -> None: ...
+    def stream(
+        self,
+        entity_path_prefix: str | None = None,
+        index_column: tuple[str, str, str | None] | None = None,
+        ignore_datasets: list[str] | None = None,
+        use_structs: bool = True,
+    ) -> LazyChunkStreamInternal: ...
+    def groups(self, path: str = "/") -> list[str]: ...
+    def datasets(self, path: str = "/") -> list[tuple[str, list[int], str]]: ...
+    def attributes(self, path: str = "/") -> dict[str, int | float | str | bytes | list[int | float | str]]: ...
+    @property
+    def path(self) -> Path: ...
+
 class ParquetReaderInternal:
     """Internal implementation. Use ParquetReader from rerun.experimental instead."""
 

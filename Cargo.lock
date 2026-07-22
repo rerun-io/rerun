@@ -11425,6 +11425,7 @@ dependencies = [
  "re_format",
  "re_grpc_client",
  "re_grpc_server",
+ "re_hdf5",
  "re_importer",
  "re_lenses",
  "re_lenses_core",

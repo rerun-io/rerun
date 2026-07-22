@@ -20,6 +20,7 @@
 pub mod chunk_store;
 mod engine;
 pub mod error;
+mod hdf5_reader;
 pub mod lazy_store;
 mod mcap_reader;
 mod mp4_reader;
@@ -43,6 +44,7 @@ pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<rrd_reader::PyStoreEntryInternal>()?;
     m.add_class::<mcap_reader::PyMcapReaderInternal>()?;
     m.add_class::<mp4_reader::PyMp4ReaderInternal>()?;
+    m.add_class::<hdf5_reader::PyHdf5ReaderInternal>()?;
     m.add_class::<mp4_reader::PyMp4TranscodeOptions>()?;
     m.add_class::<parquet_reader::PyParquetReaderInternal>()?;
     m.add_class::<py_stream::PyLazyChunkStreamInternal>()?;

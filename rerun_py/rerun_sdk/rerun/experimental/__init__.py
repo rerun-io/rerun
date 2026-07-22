@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from ._chunk import Chunk as Chunk
 from ._chunk_store import ChunkStore as ChunkStore
+from ._hdf5_reader import DatasetInfo as DatasetInfo, Hdf5Reader as Hdf5Reader
+from ._index_column import IndexColumn as IndexColumn
 from ._indexed_reader import IndexedReader as IndexedReader
 from ._lazy_chunk_stream import LazyChunkStream as LazyChunkStream
 from ._lazy_store import LazyStore as LazyStore

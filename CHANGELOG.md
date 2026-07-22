@@ -1,5 +1,21 @@
 # Rerun changelog
 
+## 0.35.0
+
+### ✨ Overview & highlights
+
+#### Import HDF5 data using the chunk processing API
+
+This release introduces `Hdf5Reader`, which reads an HDF5 file into a lazy stream of chunks — each group becomes an entity, each dataset a component:
+
+```python
+from rerun.experimental import Hdf5Reader, IndexColumn
+
+reader = Hdf5Reader("episode.h5")
+store = reader.stream(index_column=IndexColumn.timestamp("/time", input_unit="s")).collect()
+```
+
+
 ## [0.34.1](https://github.com/rerun-io/rerun/compare/0.34.0...0.34.1) - 2026-07-07
 
 ### 🔎 Details

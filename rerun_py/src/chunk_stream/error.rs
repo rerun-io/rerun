@@ -66,6 +66,9 @@ pub enum ChunkPipelineError {
     #[error("MP4 error: {reason}")]
     Mp4 { reason: String },
 
+    #[error("HDF5 error: {reason}")]
+    Hdf5 { reason: String },
+
     #[error("Parquet error: {reason}")]
     Parquet { reason: String },
 
@@ -105,6 +108,7 @@ impl From<ChunkPipelineError> for pyo3::PyErr {
             | ChunkPipelineError::RrdNoManifest { .. }
             | ChunkPipelineError::Mcap { .. }
             | ChunkPipelineError::Mp4 { .. }
+            | ChunkPipelineError::Hdf5 { .. }
             | ChunkPipelineError::Parquet { .. }
             | ChunkPipelineError::Urdf { .. }
             | ChunkPipelineError::ChunkStoreInsert { .. }
