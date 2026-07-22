@@ -99,11 +99,11 @@ Of course, this will only take us so far. In the future we plan on caching queri
 Here is an overview of the crates included in the project:
 
 <picture>
-  <img src="https://static.rerun.io/architecture_diagram/ab6062b1b48f8edcd64922547aad6b493616d3f4/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/architecture_diagram/ab6062b1b48f8edcd64922547aad6b493616d3f4/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/architecture_diagram/ab6062b1b48f8edcd64922547aad6b493616d3f4/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/architecture_diagram/ab6062b1b48f8edcd64922547aad6b493616d3f4/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/architecture_diagram/ab6062b1b48f8edcd64922547aad6b493616d3f4/1200w.png">
+  <img src="https://static.rerun.io/architecture_diagram/c5147aa4d640dfdd57063eee3359249e2487b475/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/architecture_diagram/c5147aa4d640dfdd57063eee3359249e2487b475/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/architecture_diagram/c5147aa4d640dfdd57063eee3359249e2487b475/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/architecture_diagram/c5147aa4d640dfdd57063eee3359249e2487b475/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/architecture_diagram/c5147aa4d640dfdd57063eee3359249e2487b475/1200w.png">
 </picture>
 
 <!-- !!! IMPORTANT!!!
@@ -208,6 +208,7 @@ Update instructions:
 | re_redap_tests       | Official test suite for the Rerun Data Protocol                   |
 | re_importer          | Handles importing of Rerun data from file using importer plugins  |
 | re_parquet           | Parquet file loading with configurable column grouping            |
+| re_hdf5              | HDF5 file loading into Rerun chunks                               |
 | re_mp4_reader        | Mp4 video file loading into Rerun chunks                          |
 | re_data_source       | Handles loading of Rerun data from different sources              |
 | re_grpc_client       | Client for the legacy StoreHub API                                |

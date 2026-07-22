@@ -4497,6 +4497,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "hdf5-pure"
+version = "0.21.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4c36cb09ddc5a5a0d10680cf7fe4b82173b1d15c2b2277b868005add93186682"
+dependencies = [
+ "byteorder",
+ "flate2",
+]
+
+[[package]]
 name = "heck"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -9164,6 +9174,22 @@ dependencies = [
  "tonic-web",
  "tower-http",
  "wildmatch",
+]
+
+[[package]]
+name = "re_hdf5"
+version = "0.35.0-alpha.1+dev"
+dependencies = [
+ "arrow",
+ "hdf5-pure",
+ "itertools 0.14.0",
+ "re_chunk",
+ "re_log",
+ "re_log_types",
+ "re_sdk_types",
+ "re_tracing",
+ "tempfile",
+ "thiserror 2.0.18",
 ]
 
 [[package]]
