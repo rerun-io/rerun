@@ -68,6 +68,8 @@ If you use an agent to prototype some feature, then the PR should be in draft mo
 
 If you use an agent to implement a solution, then you should be able to understand that solution.
 Asking the agent to walk you through the code can help, but doesn't replace reading it yourself.
+LLMs make it easy to produce code quickly, while understanding takes longer.
+Please disclose the level of confidence that you have in your solution.
 
 ### Other
 Our CI will [record binary sizes](https://build.rerun.io/graphs/sizes.html) and run [benchmarks](https://build.rerun.io/graphs/crates.html) on each merged PR.

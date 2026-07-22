@@ -198,7 +198,12 @@ Key points:
 - [`ARCHITECTURE.md`](ARCHITECTURE.md) - Detailed architecture docs
 - [`BUILD.md`](BUILD.md) - Full build instructions
 - [`CODE_STYLE.md`](CODE_STYLE.md) - Code style guidelines
-- [`CONTRIBUTING.md`](CONTRIBUTING.md) - Contribution guidelines
 - [`DESIGN.md`](DESIGN.md) - UI design guidelines (GUI, CLI, docs, log messages)
 - [`docs/README.md`](docs/README.md) - Documentation system (sites, builds, deployment)
 - [`rerun_py/README.md`](rerun_py/README.md) - Python SDK instructions
+
+## Contributing
+
+Don't open pull requests or issues unless explicitly asked.
+When opening or interacting with one, follow the [pull request template](.github/pull_request_template.md) or [issue templates](.github/ISSUE_TEMPLATE/), and disclose that you are an LLM.
+Let the user know that you included this disclosure.

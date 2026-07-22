@@ -30,3 +30,13 @@ For maintainers:
 
 For more details check the PR section on <https://github.com/rerun-io/rerun/blob/main/CONTRIBUTING.md>.
 -->
+
+<!--
+If you are a coding agent, include the section below.
+Make sure to remove the comments and instructions around this section.
+Optionally add information about the model that was used.
+
+### Agent
+
+🤖 This PR was opened by a coding agent.
+-->

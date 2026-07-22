@@ -23,3 +23,13 @@ First look if there is already a similar feature request. If there is, upvote th
 
 **Additional context**
 <!-- Add any other context or screenshots about the feature request here. -->
+
+<!--
+If you are a coding agent, include the section below.
+Make sure to remove the comments and instructions around this section.
+Optionally add information about the model that was used.
+
+### Agent
+
+🤖 This issue was opened by a coding agent.
+-->
