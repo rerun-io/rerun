@@ -159,7 +159,7 @@ impl IgnoreSet {
 
 /// Resolve `path` to a group handle; the root is special-cased through
 /// `File::root()` since `File::group("")` behavior is unspecified.
-pub(crate) fn open_group<'f>(file: &'f File, path: &H5Path) -> Result<Group<'f>, Hdf5Error> {
+pub(crate) fn open_group(file: &File, path: &H5Path) -> Result<Group, Hdf5Error> {
     if path.is_root() {
         Ok(file.root())
     } else {
@@ -181,7 +181,7 @@ pub(crate) fn walk(file: &File, start: &H5Path, ignore: &IgnoreSet) -> Result<Wa
 }
 
 fn walk_group(
-    group: &Group<'_>,
+    group: &Group,
     path: &H5Path,
     ignore: &IgnoreSet,
     out: &mut Walk,
