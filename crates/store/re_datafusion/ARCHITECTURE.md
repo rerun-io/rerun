@@ -81,6 +81,34 @@ This is the canonical "one dedicated CPU executor per process" design (DataFusio
 The pool gets one thread per available core, overridable via the `RERUN_SDK_NUM_CPUS` environment variable (parsed, clamped to `[1, available cores]`, and cached at first read — see `cpu_count.rs`).
 The same variable also sets `datafusion.execution.target_partitions` for Python catalog sessions (`catalog_client.rs` in `rerun_py`), so one knob scales plan fan-out and pool width together.
 
+## Network concurrency: the `query_dataset` fan-out
+
+Before any of the streaming machinery runs, a scan has to learn *which* chunks
+to read. `DataframeQueryTableProvider::scan` issues `QueryDatasetRequest`s and
+collects the `chunk_info` rows the IO loop later iterates (step 2 of the
+dataflow). Filter pushdown can expand one scan into many requests — an `OR` of
+index ranges yields one request per branch (see `apply_filter_expr_to_queries`)
+— so a scattered read fans out into tens or hundreds of independent
+`query_dataset` streams.
+
+These run concurrently, bounded two ways:
+
+- **Per scan:** a `buffer_unordered` whose width is `query_dataset_max_concurrency`
+  (`pipeline_budget.rs`). Responses are collected out of order and deduplicated
+  by chunk id, so ordering is not relied upon.
+- **Per process:** each in-flight request also holds a permit from the
+  process-wide `query_dataset_semaphore`. This is the same "the limited resource
+  is per-process, the client is per-query" reasoning as the shared CPU runtime
+  above and the direct-fetch cap (`direct_fetch_semaphore`): a per-scan width
+  alone can't stop N co-tenant scans from together opening N × width streams and
+  tripping the server's `QueryDataset` stream-concurrency limiter (which
+  fail-fasts with `ResourceExhausted`, retried per request).
+
+The width and the permit count are the same number
+(`DEFAULT_QUERY_DATASET_MAX_CONCURRENCY = 16`, overridable via
+`RERUN_QUERY_DATASET_MAX_CONCURRENCY`), so a lone scan never blocks on its own
+permits — the semaphore only bites under co-tenancy.
+
 ## Per-segment lifecycle
 
 Per segment the worker tracks:

@@ -237,6 +237,10 @@ pub(crate) fn filter_expr_is_supported(
 
 /// Apply a filter expression to a dataset query.
 ///
+/// An `OR` (or `IN`) of index ranges expands into several queries — one per
+/// disjoint branch — which the scan issues as separate, concurrent
+/// `query_dataset` requests; `AND` intersects branches rather than adding them.
+///
 /// `synthesize_latest_at` controls whether time-index pushdown pairs each
 /// `range` with a synthesized `latest_at`. Pass `true` when the caller wants
 /// sparse-fill semantics ([`re_dataframe::SparseFillStrategy::LatestAtGlobal`]); pass
