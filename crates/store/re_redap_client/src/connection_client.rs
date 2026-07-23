@@ -1172,6 +1172,7 @@ where
                         retrain_indexes,
                         compact_fragments,
                         cleanup_before,
+                        gc_object_store: false,
                         unsafe_allow_recent_cleanup,
                     }
                     .into(),

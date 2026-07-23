@@ -537,6 +537,7 @@ pub struct DoMaintenanceRequest {
     pub retrain_indexes: bool,
     pub compact_fragments: bool,
     pub cleanup_before: Option<jiff::Timestamp>,
+    pub gc_object_store: bool,
     pub unsafe_allow_recent_cleanup: bool,
 }
 
@@ -554,6 +555,7 @@ impl TryFrom<crate::cloud::v1alpha1::DoMaintenanceRequest> for DoMaintenanceRequ
             retrain_indexes: value.retrain_indexes,
             compact_fragments: value.compact_fragments,
             cleanup_before,
+            gc_object_store: value.gc_object_store,
             unsafe_allow_recent_cleanup: value.unsafe_allow_recent_cleanup,
         })
     }
@@ -569,6 +571,7 @@ impl From<DoMaintenanceRequest> for crate::cloud::v1alpha1::DoMaintenanceRequest
                 seconds: ts.as_second(),
                 nanos: ts.subsec_nanosecond(),
             }),
+            gc_object_store: value.gc_object_store,
             unsafe_allow_recent_cleanup: value.unsafe_allow_recent_cleanup,
         }
     }

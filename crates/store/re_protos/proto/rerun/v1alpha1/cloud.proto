@@ -827,6 +827,12 @@ message DoMaintenanceRequest {
   // and https://docs.rs/lance/latest/lance/dataset/cleanup/fn.cleanup_old_versions.html
   google.protobuf.Timestamp cleanup_before = 4;
 
+  // List the replicated dataset in its object store, such as S3, and remove objects that are no
+  // longer present in the local dataset.
+  // This performs a full remote reconciliation, unlike normal cleanup, which only removes replica
+  // objects corresponding to local files deleted during that cleanup.
+  bool gc_object_store = 7;
+
   // Override default platform behavior and allow cleanup of recent files. This will respect
   // the value of `cleanup_before` timestamp even if it's more recent than 1 hour.
   //

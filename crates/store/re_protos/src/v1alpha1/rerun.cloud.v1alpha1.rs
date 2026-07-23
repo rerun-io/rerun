@@ -1059,6 +1059,12 @@ pub struct DoMaintenanceRequest {
     /// and <https://docs.rs/lance/latest/lance/dataset/cleanup/fn.cleanup_old_versions.html>
     #[prost(message, optional, tag = "4")]
     pub cleanup_before: ::core::option::Option<::prost_types::Timestamp>,
+    /// List the replicated dataset in its object store, such as S3, and remove objects that are no
+    /// longer present in the local dataset.
+    /// This performs a full remote reconciliation, unlike normal cleanup, which only removes replica
+    /// objects corresponding to local files deleted during that cleanup.
+    #[prost(bool, tag = "7")]
+    pub gc_object_store: bool,
     /// Override default platform behavior and allow cleanup of recent files. This will respect
     /// the value of `cleanup_before` timestamp even if it's more recent than 1 hour.
     ///
