@@ -210,7 +210,7 @@ requires-dist = [
     { name = "qdrant-client" },
     { name = "rerun-sdk", extras = ["catalog", "dataloader"], editable = "../../../rerun_py" },
     { name = "tqdm" },
-    { name = "transformers", specifier = ">=5.13.0" },
+    { name = "transformers", specifier = ">=5.13.1" },
 ]
 
 [package.metadata.requires-dev]
