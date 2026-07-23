@@ -1,9 +1,432 @@
 use std::collections::BTreeSet;
 
-use ply_rs_bw::ply::{Property, PropertyAccess};
+use super::{Points2D, Points3D};
+use crate::components::{Color, Position2D, Position3D, Radius, Text};
 
-use super::Points3D;
-use crate::components::{Color, Position3D, Radius, Text};
+// Gaussian splatting using models from e.g. https://poly.cam/tools/gaussian-splatting
+const PROP_SCALE_X: &str = "scale_0";
+const PROP_SCALE_Y: &str = "scale_1";
+const PROP_SCALE_Z: &str = "scale_2";
+const PROP_SH_DC_0: &str = "f_dc_0";
+const PROP_SH_DC_1: &str = "f_dc_1";
+const PROP_SH_DC_2: &str = "f_dc_2";
+const PROP_OPACITY: &str = "opacity";
+
+const SEEN_X: u16 = 1 << 0;
+const SEEN_Y: u16 = 1 << 1;
+const SEEN_Z: u16 = 1 << 2;
+const SEEN_RED: u16 = 1 << 3;
+const SEEN_GREEN: u16 = 1 << 4;
+const SEEN_BLUE: u16 = 1 << 5;
+const SEEN_ALPHA: u16 = 1 << 6;
+const SEEN_RADIUS: u16 = 1 << 7;
+const SEEN_LABEL: u16 = 1 << 8;
+const SEEN_SCALE_X: u16 = 1 << 9;
+const SEEN_SCALE_Y: u16 = 1 << 10;
+const SEEN_SCALE_Z: u16 = 1 << 11;
+const SEEN_SH_DC_0: u16 = 1 << 12;
+const SEEN_SH_DC_1: u16 = 1 << 13;
+const SEEN_SH_DC_2: u16 = 1 << 14;
+const SEEN_OPACITY: u16 = 1 << 15;
+
+const SEEN_COLORS: u16 = SEEN_RED | SEEN_GREEN | SEEN_BLUE | SEEN_ALPHA;
+const SEEN_GAUSSIAN: u16 = SEEN_SCALE_X
+    | SEEN_SCALE_Y
+    | SEEN_SCALE_Z
+    | SEEN_SH_DC_0
+    | SEEN_SH_DC_1
+    | SEEN_SH_DC_2
+    | SEEN_OPACITY;
+const SEEN_ALL_KNOWN_PROPS: u16 =
+    SEEN_X | SEEN_Y | SEEN_Z | SEEN_COLORS | SEEN_RADIUS | SEEN_LABEL | SEEN_GAUSSIAN;
+
+struct Vertex2D {
+    position: Position2D,
+    color: Option<Color>,
+    radius: Option<Radius>,
+    label: Option<Text>,
+}
+
+struct Vertex3D {
+    position: Position3D,
+    color: Option<Color>,
+    radius: Option<Radius>,
+    label: Option<Text>,
+}
+
+#[derive(Default)]
+struct ParsedVertex {
+    x: Option<f32>,
+    y: Option<f32>,
+    z: Option<f32>,
+    red: Option<u8>,
+    green: Option<u8>,
+    blue: Option<u8>,
+    alpha: Option<u8>,
+    radius: Option<f32>,
+    label: Option<Text>,
+    sh_dc_0: Option<f32>,
+    sh_dc_1: Option<f32>,
+    sh_dc_2: Option<f32>,
+    scale_x: Option<f32>,
+    scale_y: Option<f32>,
+    scale_z: Option<f32>,
+    opacity: Option<f32>,
+    seen_props: u16,
+}
+
+impl ParsedVertex {
+    fn note_ignored_props_for(seen_props: u16, ignored_props: &mut BTreeSet<String>, mask: u16) {
+        for (name, bit) in [
+            (re_ply::PROP_X, SEEN_X),
+            (re_ply::PROP_Y, SEEN_Y),
+            (re_ply::PROP_Z, SEEN_Z),
+            (re_ply::PROP_RED, SEEN_RED),
+            (re_ply::PROP_GREEN, SEEN_GREEN),
+            (re_ply::PROP_BLUE, SEEN_BLUE),
+            (re_ply::PROP_ALPHA, SEEN_ALPHA),
+            (re_ply::PROP_RADIUS, SEEN_RADIUS),
+            (re_ply::PROP_LABEL, SEEN_LABEL),
+            (PROP_SCALE_X, SEEN_SCALE_X),
+            (PROP_SCALE_Y, SEEN_SCALE_Y),
+            (PROP_SCALE_Z, SEEN_SCALE_Z),
+            (PROP_SH_DC_0, SEEN_SH_DC_0),
+            (PROP_SH_DC_1, SEEN_SH_DC_1),
+            (PROP_SH_DC_2, SEEN_SH_DC_2),
+            (PROP_OPACITY, SEEN_OPACITY),
+        ] {
+            if seen_props & mask & bit != 0 {
+                ignored_props.insert(name.to_owned());
+            }
+        }
+    }
+
+    fn into_vertex2d(self, ignored_props: &mut BTreeSet<String>) -> Option<Vertex2D> {
+        let Self {
+            x,
+            y,
+            z,
+            red,
+            green,
+            blue,
+            alpha,
+            radius,
+            label,
+            sh_dc_0: _,
+            sh_dc_1: _,
+            sh_dc_2: _,
+            scale_x: _,
+            scale_y: _,
+            scale_z: _,
+            opacity: _,
+            seen_props,
+        } = self;
+
+        Self::note_ignored_props_for(seen_props, ignored_props, SEEN_GAUSSIAN);
+
+        let (Some(x), Some(y)) = (x, y) else {
+            // All points must have positions.
+            Self::note_ignored_props_for(seen_props, ignored_props, SEEN_ALL_KNOWN_PROPS);
+            return None;
+        };
+
+        if z.is_some() {
+            Self::note_ignored_props_for(seen_props, ignored_props, SEEN_Z);
+        }
+
+        let color = if let (Some(r), Some(g), Some(b)) = (red, green, blue) {
+            Some(Color::new((r, g, b, alpha.unwrap_or(255))))
+        } else {
+            Self::note_ignored_props_for(seen_props, ignored_props, SEEN_COLORS);
+            None
+        };
+
+        if radius.is_none() {
+            Self::note_ignored_props_for(seen_props, ignored_props, SEEN_RADIUS);
+        }
+
+        if label.is_none() {
+            Self::note_ignored_props_for(seen_props, ignored_props, SEEN_LABEL);
+        }
+
+        Some(Vertex2D {
+            position: Position2D::new(x, y),
+            color,
+            radius: radius.map(Radius::from),
+            label,
+        })
+    }
+
+    fn into_vertex3d(self, ignored_props: &mut BTreeSet<String>) -> Option<Vertex3D> {
+        let Self {
+            x,
+            y,
+            z,
+            red,
+            green,
+            blue,
+            alpha,
+            radius,
+            label,
+            sh_dc_0,
+            sh_dc_1,
+            sh_dc_2,
+            scale_x,
+            scale_y,
+            scale_z,
+            opacity,
+            seen_props,
+        } = self;
+
+        let (Some(x), Some(y), Some(z)) = (x, y, z) else {
+            // All points must have positions.
+            Self::note_ignored_props_for(seen_props, ignored_props, SEEN_ALL_KNOWN_PROPS);
+            return None;
+        };
+
+        let color = if let (Some(r_dc), Some(g_dc), Some(b_dc)) = (sh_dc_0, sh_dc_1, sh_dc_2) {
+            fn to_u8(value: f32) -> u8 {
+                (value * 255.0 + 0.5) as u8
+            }
+
+            // See http://en.wikipedia.org/wiki/Table_of_spherical_harmonics
+            let sh_c0 = 0.5 * (1.0 / std::f32::consts::PI).sqrt();
+            let alpha = opacity.map_or(255, |value| to_u8(1.0 / (1.0 + (-value).exp())));
+            Some(Color::new((
+                to_u8(0.5 + sh_c0 * r_dc),
+                to_u8(0.5 + sh_c0 * g_dc),
+                to_u8(0.5 + sh_c0 * b_dc),
+                alpha,
+            )))
+        } else if let (Some(r), Some(g), Some(b)) = (red, green, blue) {
+            Self::note_ignored_props_for(seen_props, ignored_props, SEEN_GAUSSIAN);
+            Some(Color::new((r, g, b, alpha.unwrap_or(255))))
+        } else {
+            Self::note_ignored_props_for(
+                seen_props,
+                ignored_props,
+                SEEN_COLORS | SEEN_SH_DC_0 | SEEN_SH_DC_1 | SEEN_SH_DC_2 | SEEN_OPACITY,
+            );
+            None
+        };
+
+        let radius = if let (Some(x), Some(y), Some(z)) = (scale_x, scale_y, scale_z) {
+            let (x, y, z) = (x.exp(), y.exp(), z.exp());
+            Some(Radius::from((x * y * z).cbrt()))
+        } else {
+            Self::note_ignored_props_for(
+                seen_props,
+                ignored_props,
+                SEEN_SCALE_X | SEEN_SCALE_Y | SEEN_SCALE_Z,
+            );
+            radius.map(Radius::from)
+        };
+
+        if radius.is_none() {
+            Self::note_ignored_props_for(seen_props, ignored_props, SEEN_RADIUS);
+        }
+
+        if label.is_none() {
+            Self::note_ignored_props_for(seen_props, ignored_props, SEEN_LABEL);
+        }
+
+        Some(Vertex3D {
+            position: Position3D::new(x, y, z),
+            color,
+            radius,
+            label,
+        })
+    }
+}
+
+fn set_f32(
+    property: &ply_rs_bw::ply::Property,
+    seen_props: &mut u16,
+    seen_bit: u16,
+    target: &mut Option<f32>,
+) -> ply_rs_bw::ply::PropertyAccessResult {
+    *seen_props |= seen_bit;
+    if let Some(value) = property.to_f32_lossy() {
+        *target = Some(value);
+        ply_rs_bw::ply::PropertyAccessResult::Set
+    } else {
+        ply_rs_bw::ply::PropertyAccessResult::Ignored
+    }
+}
+
+impl ply_rs_bw::ply::PropertyAccess for ParsedVertex {
+    fn new() -> Self {
+        Self::default()
+    }
+
+    fn set_property(
+        &mut self,
+        property_name: &str,
+        property: ply_rs_bw::ply::Property,
+    ) -> ply_rs_bw::ply::PropertyAccessResult {
+        use ply_rs_bw::ply::PropertyAccessResult;
+
+        match property_name {
+            re_ply::PROP_X => {
+                if let Some(value) = property.to_f32_lossy() {
+                    self.seen_props |= SEEN_X;
+                    self.x = Some(value);
+                    PropertyAccessResult::Set
+                } else {
+                    PropertyAccessResult::UnsupportedType
+                }
+            }
+            re_ply::PROP_Y => {
+                if let Some(value) = property.to_f32_lossy() {
+                    self.seen_props |= SEEN_Y;
+                    self.y = Some(value);
+                    PropertyAccessResult::Set
+                } else {
+                    PropertyAccessResult::UnsupportedType
+                }
+            }
+            re_ply::PROP_Z => {
+                if let Some(value) = property.to_f32_lossy() {
+                    self.seen_props |= SEEN_Z;
+                    self.z = Some(value);
+                    PropertyAccessResult::Set
+                } else {
+                    PropertyAccessResult::UnsupportedType
+                }
+            }
+            re_ply::PROP_RED => {
+                self.seen_props |= SEEN_RED;
+
+                if let Some(value) = property.to_u8_color_lossy() {
+                    self.red = Some(value);
+                    PropertyAccessResult::Set
+                } else {
+                    PropertyAccessResult::Ignored
+                }
+            }
+            re_ply::PROP_GREEN => {
+                self.seen_props |= SEEN_GREEN;
+
+                if let Some(value) = property.to_u8_color_lossy() {
+                    self.green = Some(value);
+                    PropertyAccessResult::Set
+                } else {
+                    PropertyAccessResult::Ignored
+                }
+            }
+            re_ply::PROP_BLUE => {
+                self.seen_props |= SEEN_BLUE;
+
+                if let Some(value) = property.to_u8_color_lossy() {
+                    self.blue = Some(value);
+                    PropertyAccessResult::Set
+                } else {
+                    PropertyAccessResult::Ignored
+                }
+            }
+            re_ply::PROP_ALPHA => {
+                self.seen_props |= SEEN_ALPHA;
+
+                if let Some(value) = property.to_u8_color_lossy() {
+                    self.alpha = Some(value);
+                    PropertyAccessResult::Set
+                } else {
+                    PropertyAccessResult::Ignored
+                }
+            }
+            re_ply::PROP_RADIUS => {
+                self.seen_props |= SEEN_RADIUS;
+
+                if let Some(value) = property.to_f32_lossy() {
+                    self.radius = Some(value);
+                    PropertyAccessResult::Set
+                } else {
+                    PropertyAccessResult::Ignored
+                }
+            }
+            re_ply::PROP_LABEL => {
+                self.seen_props |= SEEN_LABEL;
+
+                if let Some(value) = property_to_text(&property) {
+                    self.label = Some(value);
+                    PropertyAccessResult::Set
+                } else {
+                    PropertyAccessResult::Ignored
+                }
+            }
+            PROP_SCALE_X => set_f32(
+                &property,
+                &mut self.seen_props,
+                SEEN_SCALE_X,
+                &mut self.scale_x,
+            ),
+            PROP_SCALE_Y => set_f32(
+                &property,
+                &mut self.seen_props,
+                SEEN_SCALE_Y,
+                &mut self.scale_y,
+            ),
+            PROP_SCALE_Z => set_f32(
+                &property,
+                &mut self.seen_props,
+                SEEN_SCALE_Z,
+                &mut self.scale_z,
+            ),
+            PROP_SH_DC_0 => set_f32(
+                &property,
+                &mut self.seen_props,
+                SEEN_SH_DC_0,
+                &mut self.sh_dc_0,
+            ),
+            PROP_SH_DC_1 => set_f32(
+                &property,
+                &mut self.seen_props,
+                SEEN_SH_DC_1,
+                &mut self.sh_dc_1,
+            ),
+            PROP_SH_DC_2 => set_f32(
+                &property,
+                &mut self.seen_props,
+                SEEN_SH_DC_2,
+                &mut self.sh_dc_2,
+            ),
+            PROP_OPACITY => set_f32(
+                &property,
+                &mut self.seen_props,
+                SEEN_OPACITY,
+                &mut self.opacity,
+            ),
+            _ => PropertyAccessResult::Ignored,
+        }
+    }
+}
+
+impl Points2D {
+    /// Creates a new [`Points2D`] from a `.ply` file.
+    ///
+    /// ## Supported properties
+    ///
+    /// This expects the following property names:
+    /// - (Required) Positions of the points: `"x"` & `"y"` with no `"z"` property.
+    /// - (Optional) Colors of the points: `"red"`, `"green"` & `"blue"`.
+    /// - (Optional) Radii of the points: `"radius"`.
+    /// - (Optional) Labels of the points: `"label"`.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn from_file_path(filepath: &std::path::Path) -> std::io::Result<Self> {
+        re_tracing::profile_function!(filepath.to_string_lossy());
+
+        let file = std::fs::File::open(filepath)?;
+        let mut file = std::io::BufReader::new(file);
+        from_ply_reader_2d(&mut file)
+    }
+
+    /// Creates a new [`Points2D`] from the contents of a `.ply` file.
+    pub fn from_file_contents(contents: &[u8]) -> std::io::Result<Self> {
+        re_tracing::profile_function!();
+        let mut contents = std::io::Cursor::new(contents);
+        from_ply_reader_2d(&mut contents)
+    }
+}
 
 impl Points3D {
     /// Creates a new [`Points3D`] from a `.ply` file.
@@ -23,277 +446,139 @@ impl Points3D {
 
         let file = std::fs::File::open(filepath)?;
         let mut file = std::io::BufReader::new(file);
-        read_ply(&mut file)
+        from_ply_reader_3d(&mut file)
     }
 
     /// Creates a new [`Points3D`] from the contents of a `.ply` file.
-    ///
-    /// If unspecified, he media type will be inferred from the contents.
     pub fn from_file_contents(contents: &[u8]) -> std::io::Result<Self> {
         re_tracing::profile_function!();
         let mut contents = std::io::Cursor::new(contents);
-        read_ply(&mut contents)
+        from_ply_reader_3d(&mut contents)
     }
 }
 
-fn f32(prop: &Property) -> Option<f32> {
-    match *prop {
-        Property::Short(v) => Some(v as f32),
-        Property::UShort(v) => Some(v as f32),
-        Property::Int(v) => Some(v as f32),
-        Property::UInt(v) => Some(v as f32),
-        Property::Float(v) => Some(v),
-        Property::Double(v) => Some(v as f32),
-        Property::Char(_)
-        | Property::UChar(_)
-        | Property::ListChar(_)
-        | Property::ListUChar(_)
-        | Property::ListShort(_)
-        | Property::ListUShort(_)
-        | Property::ListInt(_)
-        | Property::ListUInt(_)
-        | Property::ListFloat(_)
-        | Property::ListDouble(_) => None,
-    }
+fn property_to_text(property: &ply_rs_bw::ply::Property) -> Option<Text> {
+    property
+        .as_list_uchar()
+        .map(|chars| Text(String::from_utf8_lossy(chars).to_string().into()))
 }
 
-fn u8(prop: &Property) -> Option<u8> {
-    match *prop {
-        Property::Short(v) => Some(v as u8),
-        Property::UShort(v) => Some(v as u8),
-        Property::Int(v) => Some(v as u8),
-        Property::UInt(v) => Some(v as u8),
-        Property::Float(v) => Some((v * 255.0) as u8),
-        Property::Double(v) => Some((v * 255.0) as u8),
-        Property::Char(v) => Some(v as u8),
-        Property::UChar(v) => Some(v),
-        Property::ListChar(_)
-        | Property::ListUChar(_)
-        | Property::ListShort(_)
-        | Property::ListUShort(_)
-        | Property::ListInt(_)
-        | Property::ListUInt(_)
-        | Property::ListFloat(_)
-        | Property::ListDouble(_) => None,
-    }
+struct ParsedPly {
+    vertex_layout: re_ply::PlyVertexLayout,
+    vertices: Vec<ParsedVertex>,
+    ignored_props: BTreeSet<String>,
 }
 
-fn string(prop: &Property) -> Option<String> {
-    match prop {
-        Property::ListUChar(chars) => Some(String::from_utf8_lossy(chars).into_owned()),
-        Property::ListChar(_)
-        | Property::ListShort(_)
-        | Property::ListUShort(_)
-        | Property::ListInt(_)
-        | Property::ListUInt(_)
-        | Property::ListFloat(_)
-        | Property::ListDouble(_)
-        | Property::Char(_)
-        | Property::UChar(_)
-        | Property::Short(_)
-        | Property::UShort(_)
-        | Property::Int(_)
-        | Property::UInt(_)
-        | Property::Float(_)
-        | Property::Double(_) => None,
-    }
-}
-
-// NOTE: Empirical evidence points to these being de-facto standard…
-const PROP_X: &str = "x";
-const PROP_Y: &str = "y";
-const PROP_Z: &str = "z";
-const PROP_RED: &str = "red";
-const PROP_GREEN: &str = "green";
-const PROP_BLUE: &str = "blue";
-const PROP_ALPHA: &str = "alpha";
-const PROP_RADIUS: &str = "radius";
-const PROP_LABEL: &str = "label";
-
-// Gaussian splatting using models from e.g. https://poly.cam/tools/gaussian-splatting
-const PROP_SCALE_X: &str = "scale_0";
-const PROP_SCALE_Y: &str = "scale_1";
-const PROP_SCALE_Z: &str = "scale_2";
-const PROP_SH_DC_0: &str = "f_dc_0";
-const PROP_SH_DC_1: &str = "f_dc_1";
-const PROP_SH_DC_2: &str = "f_dc_2";
-const PROP_OPACITY: &str = "opacity";
-
-/// A single vertex, parsed in-place by the PLY parser.
-///
-/// Implementing [`PropertyAccess`] lets `ply-rs-bw` write each property directly into the relevant
-/// field, avoiding the per-vertex `HashMap<String, Property>` allocation of its `DefaultElement`
-/// (which is otherwise extremely slow for large point clouds).
-#[derive(Default)]
-struct Vertex {
-    x: f32,
-    y: f32,
-    z: f32,
-    red: Option<u8>,
-    green: Option<u8>,
-    blue: Option<u8>,
-    alpha: Option<u8>,
-    radius: Option<f32>,
-    label: Option<String>,
-
-    // Gaussian splatting:
-    sh_dc_0: Option<f32>,
-    sh_dc_1: Option<f32>,
-    sh_dc_2: Option<f32>,
-    scale_x: Option<f32>,
-    scale_y: Option<f32>,
-    scale_z: Option<f32>,
-    opacity: Option<f32>,
-}
-
-impl PropertyAccess for Vertex {
-    fn new() -> Self {
-        Self::default()
-    }
-
-    fn set_property(&mut self, key: &str, property: Property) {
-        // Unrecognized properties are ignored here; we warn about them once, up-front,
-        // based on the header (see `read_ply`).
-        match key {
-            PROP_X => self.x = f32(&property).unwrap_or(0.0),
-            PROP_Y => self.y = f32(&property).unwrap_or(0.0),
-            PROP_Z => self.z = f32(&property).unwrap_or(0.0),
-            PROP_RED => self.red = u8(&property),
-            PROP_GREEN => self.green = u8(&property),
-            PROP_BLUE => self.blue = u8(&property),
-            PROP_ALPHA => self.alpha = u8(&property),
-            PROP_RADIUS => self.radius = f32(&property),
-            PROP_LABEL => self.label = string(&property),
-            PROP_SH_DC_0 => self.sh_dc_0 = f32(&property),
-            PROP_SH_DC_1 => self.sh_dc_1 = f32(&property),
-            PROP_SH_DC_2 => self.sh_dc_2 = f32(&property),
-            PROP_SCALE_X => self.scale_x = f32(&property),
-            PROP_SCALE_Y => self.scale_y = f32(&property),
-            PROP_SCALE_Z => self.scale_z = f32(&property),
-            PROP_OPACITY => self.opacity = f32(&property),
-            _ => {}
-        }
-    }
-}
-
-impl Vertex {
-    fn position(&self) -> Position3D {
-        Position3D::new(self.x, self.y, self.z)
-    }
-
-    fn color(&self) -> Option<Color> {
-        // Gaussian splat spherical-harmonic DC coefficients take precedence over plain RGB.
-        if let (Some(r_dc), Some(g_dc), Some(b_dc)) = (self.sh_dc_0, self.sh_dc_1, self.sh_dc_2) {
-            fn to_u8(f: f32) -> u8 {
-                (f * 255.0 + 0.5) as u8
-            }
-
-            // See http://en.wikipedia.org/wiki/Table_of_spherical_harmonics
-            let sp_c0 = 0.5 * (1.0 / std::f32::consts::PI).sqrt();
-
-            // Evaluate the zero-degree Spherical Harmonic to get the ambient RGB:
-            let r = to_u8(0.5 + sp_c0 * r_dc);
-            let g = to_u8(0.5 + sp_c0 * g_dc);
-            let b = to_u8(0.5 + sp_c0 * b_dc);
-
-            // Gaussian splat opacity is stored as a logit; convert it to alpha via the sigmoid.
-            let a = self
-                .opacity
-                .map_or(255, |opacity| to_u8(1.0 / (1.0 + (-opacity).exp())));
-
-            Some(Color::new((r, g, b, a)))
-        } else if let (Some(r), Some(g), Some(b)) = (self.red, self.green, self.blue) {
-            Some(Color::new((r, g, b, self.alpha.unwrap_or(255))))
-        } else {
-            None
-        }
-    }
-
-    fn radius(&self) -> Option<Radius> {
-        // Gaussian splat scales take precedence over an explicit radius.
-        if let (Some(x), Some(y), Some(z)) = (self.scale_x, self.scale_y, self.scale_z) {
-            let (x, y, z) = (x.exp(), y.exp(), z.exp());
-            // Estimate gaussian with a custom radius sphere:
-            Some(Radius::from((x * y * z).cbrt()))
-        } else {
-            self.radius.map(Radius::from)
-        }
-    }
-}
-
-fn read_ply(reader: &mut impl std::io::BufRead) -> std::io::Result<Points3D> {
+fn parse_ply_vertices<T: std::io::BufRead>(reader: &mut T) -> std::io::Result<ParsedPly> {
     re_tracing::profile_function!();
 
-    let parser = ply_rs_bw::parser::Parser::<Vertex>::new();
+    let ignored_element_parser = ply_rs_bw::parser::Parser::<re_ply::IgnoredElement>::new();
+    let vertex_parser = ply_rs_bw::parser::Parser::<ParsedVertex>::new();
 
-    let header = {
-        re_tracing::profile_scope!("read_header");
-        parser.read_header(reader)?
+    let (vertex_layout, vertex_unknown_props, header, mut payload_reader) = {
+        re_tracing::profile_scope!("read_ply_header");
+
+        let mut payload_reader = ply_rs_bw::parser::Reader::new(reader);
+        let header = ignored_element_parser
+            .read_header(&mut payload_reader)
+            .map_err(std::io::Error::from)?;
+        let vertex_layout = header
+            .elements
+            .get(re_ply::ELEMENT_VERTEX)
+            .map(re_ply::classify_vertex_layout)
+            .unwrap_or(re_ply::PlyVertexLayout::Other);
+        let vertex_unknown_props = header
+            .elements
+            .get(re_ply::ELEMENT_VERTEX)
+            .map(|element_def| {
+                element_def
+                    .properties
+                    .keys()
+                    .filter(|name| {
+                        !re_ply::is_point_vertex_property(name.as_str())
+                            && !matches!(
+                                name.as_str(),
+                                PROP_SCALE_X
+                                    | PROP_SCALE_Y
+                                    | PROP_SCALE_Z
+                                    | PROP_SH_DC_0
+                                    | PROP_SH_DC_1
+                                    | PROP_SH_DC_2
+                                    | PROP_OPACITY
+                            )
+                    })
+                    .cloned()
+                    .collect::<BTreeSet<_>>()
+            })
+            .unwrap_or_default();
+
+        (vertex_layout, vertex_unknown_props, header, payload_reader)
     };
 
-    const KNOWN_PROPS: &[&str] = &[
-        PROP_X,
-        PROP_Y,
-        PROP_Z,
-        PROP_RED,
-        PROP_GREEN,
-        PROP_BLUE,
-        PROP_ALPHA,
-        PROP_RADIUS,
-        PROP_LABEL,
-        PROP_SCALE_X,
-        PROP_SCALE_Y,
-        PROP_SCALE_Z,
-        PROP_SH_DC_0,
-        PROP_SH_DC_1,
-        PROP_SH_DC_2,
-        PROP_OPACITY,
-    ];
+    let mut ply = ParsedPly {
+        vertex_layout,
+        vertices: Vec::new(),
+        ignored_props: BTreeSet::new(),
+    };
+
+    re_tracing::profile_scope!("read_ply_payload");
+
+    for (_key, element_def) in &header.elements {
+        if element_def.name == re_ply::ELEMENT_VERTEX {
+            let vertices = vertex_parser
+                .read_payload_for_element(&mut payload_reader, element_def, &header)
+                .map_err(std::io::Error::from)?;
+
+            if !vertices.is_empty() {
+                ply.ignored_props
+                    .extend(vertex_unknown_props.iter().cloned());
+            }
+
+            ply.vertices = vertices;
+        } else {
+            re_log::warn!("Ignoring {:?} in .ply file", element_def.name);
+            let _ignored = ignored_element_parser
+                .read_payload_for_element(&mut payload_reader, element_def, &header)
+                .map_err(std::io::Error::from)?;
+        }
+    }
+
+    Ok(ply)
+}
+
+fn from_ply_reader_2d<T: std::io::BufRead>(reader: &mut T) -> std::io::Result<Points2D> {
+    re_tracing::profile_function!();
+
+    let ParsedPly {
+        vertex_layout,
+        vertices,
+        mut ignored_props,
+    } = parse_ply_vertices(reader)?;
+
+    if vertex_layout != re_ply::PlyVertexLayout::Xy {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            "expected .ply vertex properties \"x\" and \"y\" without \"z\"",
+        ));
+    }
 
     let mut positions = Vec::new();
     let mut colors = Vec::new();
     let mut radii = Vec::new();
     let mut labels = Vec::new();
 
-    let mut ignored_props = BTreeSet::new();
-
-    for (key, element) in &header.elements {
-        if key == "vertex" {
-            let has_positions = [PROP_X, PROP_Y, PROP_Z]
-                .iter()
-                .all(|p| element.properties.contains_key(*p));
-            if !has_positions {
-                // All points must have positions; without them there is nothing to read.
-                for prop_name in element.properties.keys() {
-                    ignored_props.insert(prop_name.clone());
-                }
-                continue;
-            }
-
-            for prop_name in element.properties.keys() {
-                if !KNOWN_PROPS.contains(&prop_name.as_str()) {
-                    ignored_props.insert(prop_name.clone());
-                }
-            }
-
-            let vertices = {
-                re_tracing::profile_scope!("read_payload");
-                parser.read_payload_for_element(reader, element, &header)?
-            };
-
-            positions.reserve(vertices.len());
-            colors.reserve(vertices.len());
-            radii.reserve(vertices.len());
-            labels.reserve(vertices.len());
-
-            for vertex in vertices {
-                positions.push(vertex.position());
-                colors.push(vertex.color());
-                radii.push(vertex.radius());
-                labels.push(vertex.label.map(|l| Text(l.into())));
-            }
-        } else {
-            re_log::warn!("Ignoring {key:?} in .ply file");
+    for parsed in vertices {
+        if let Some(vertex) = parsed.into_vertex2d(&mut ignored_props) {
+            let Vertex2D {
+                position,
+                color,
+                radius,
+                label,
+            } = vertex;
+            positions.push(position);
+            colors.push(color); // opt
+            radii.push(radius); // opt
+            labels.push(label); // opt
         }
     }
 
@@ -303,7 +588,73 @@ fn read_ply(reader: &mut impl std::io::BufRead) -> std::io::Result<Points3D> {
 
     re_tracing::profile_scope!("fill-in");
 
-    let mut arch = Points3D::new(positions);
+    colors.truncate(positions.len());
+    radii.truncate(positions.len());
+    labels.truncate(positions.len());
+
+    let mut arch = crate::archetypes::Points2D::new(positions);
+    if colors.iter().any(|opt| opt.is_some()) {
+        let colors = colors
+            .into_iter()
+            .map(|opt| opt.unwrap_or_else(|| Color::from_rgb(255, 255, 255)));
+        arch = arch.with_colors(colors);
+    }
+    if radii.iter().any(|opt| opt.is_some()) {
+        let radii = radii
+            .into_iter()
+            .map(|opt| opt.unwrap_or_else(|| Radius::from(1.0)));
+        arch = arch.with_radii(radii);
+    }
+    if labels.iter().any(|opt| opt.is_some()) {
+        let labels = labels
+            .into_iter()
+            .map(|opt| opt.unwrap_or(Text("undef".into())));
+        arch = arch.with_labels(labels);
+    }
+
+    Ok(arch)
+}
+
+fn from_ply_reader_3d<T: std::io::BufRead>(reader: &mut T) -> std::io::Result<Points3D> {
+    re_tracing::profile_function!();
+
+    let ParsedPly {
+        vertex_layout: _,
+        vertices,
+        mut ignored_props,
+    } = parse_ply_vertices(reader)?;
+
+    let mut positions = Vec::new();
+    let mut colors = Vec::new();
+    let mut radii = Vec::new();
+    let mut labels = Vec::new();
+
+    for parsed in vertices {
+        if let Some(vertex) = parsed.into_vertex3d(&mut ignored_props) {
+            let Vertex3D {
+                position,
+                color,
+                radius,
+                label,
+            } = vertex;
+            positions.push(position);
+            colors.push(color); // opt
+            radii.push(radius); // opt
+            labels.push(label); // opt
+        }
+    }
+
+    if !ignored_props.is_empty() {
+        re_log::warn!("Ignored properties of .ply file: {ignored_props:?}");
+    }
+
+    re_tracing::profile_scope!("fill-in");
+
+    colors.truncate(positions.len());
+    radii.truncate(positions.len());
+    labels.truncate(positions.len());
+
+    let mut arch = crate::archetypes::Points3D::new(positions);
     if colors.iter().any(|opt| opt.is_some()) {
         // If some colors have been specified but not others, default the unspecified ones to white.
         let colors = colors
@@ -327,198 +678,4 @@ fn read_ply(reader: &mut impl std::io::BufRead) -> std::io::Result<Points3D> {
     }
 
     Ok(arch)
-}
-
-#[cfg(test)]
-mod tests {
-    use re_types_core::Loggable as _;
-
-    use super::Points3D;
-    use crate::components::{Color, Position3D, Radius, Text};
-
-    fn positions(p: &Points3D) -> Vec<Position3D> {
-        p.positions
-            .as_ref()
-            .map(|c| Position3D::from_arrow(&c.array).unwrap())
-            .unwrap_or_default()
-    }
-
-    fn colors(p: &Points3D) -> Vec<Color> {
-        p.colors
-            .as_ref()
-            .map(|c| Color::from_arrow(&c.array).unwrap())
-            .unwrap_or_default()
-    }
-
-    fn radii(p: &Points3D) -> Vec<Radius> {
-        p.radii
-            .as_ref()
-            .map(|c| Radius::from_arrow(&c.array).unwrap())
-            .unwrap_or_default()
-    }
-
-    fn labels(p: &Points3D) -> Vec<Text> {
-        p.labels
-            .as_ref()
-            .map(|c| Text::from_arrow(&c.array).unwrap())
-            .unwrap_or_default()
-    }
-
-    #[test]
-    fn positions_only() {
-        let ply = "\
-ply
-format ascii 1.0
-element vertex 2
-property float x
-property float y
-property float z
-end_header
-1 2 3
-4 5 6
-";
-        let p = Points3D::from_file_contents(ply.as_bytes()).unwrap();
-        assert_eq!(
-            positions(&p),
-            vec![
-                Position3D::new(1.0, 2.0, 3.0),
-                Position3D::new(4.0, 5.0, 6.0)
-            ]
-        );
-        assert!(colors(&p).is_empty());
-        assert!(radii(&p).is_empty());
-        assert!(labels(&p).is_empty());
-    }
-
-    #[test]
-    fn colors_with_alpha_radius_and_ignored_props() {
-        // `nx` is an unrecognized property and must be ignored without affecting `x`/`y`/`z`.
-        let ply = "\
-ply
-format ascii 1.0
-element vertex 2
-property float x
-property float y
-property float z
-property float nx
-property uchar red
-property uchar green
-property uchar blue
-property uchar alpha
-property float radius
-end_header
-0 0 0 9 255 0 0 128 0.5
-1 1 1 9 0 255 0 64 2.0
-";
-        let p = Points3D::from_file_contents(ply.as_bytes()).unwrap();
-        assert_eq!(
-            positions(&p),
-            vec![
-                Position3D::new(0.0, 0.0, 0.0),
-                Position3D::new(1.0, 1.0, 1.0)
-            ]
-        );
-        assert_eq!(
-            colors(&p),
-            vec![Color::new((255, 0, 0, 128)), Color::new((0, 255, 0, 64))]
-        );
-        assert_eq!(radii(&p), vec![Radius::from(0.5), Radius::from(2.0)]);
-    }
-
-    #[test]
-    fn rgb_without_alpha_defaults_to_opaque() {
-        let ply = "\
-ply
-format ascii 1.0
-element vertex 1
-property float x
-property float y
-property float z
-property uchar red
-property uchar green
-property uchar blue
-end_header
-0 0 0 10 20 30
-";
-        let p = Points3D::from_file_contents(ply.as_bytes()).unwrap();
-        assert_eq!(colors(&p), vec![Color::new((10, 20, 30, 255))]);
-    }
-
-    #[test]
-    fn radii_and_list_labels() {
-        // First vertex fully specified, second vertex omits color/radius/label.
-        let ply = concat!(
-            "ply\n",
-            "format ascii 1.0\n",
-            "element vertex 2\n",
-            "property float x\n",
-            "property float y\n",
-            "property float z\n",
-            "property uchar red\n",
-            "property uchar green\n",
-            "property uchar blue\n",
-            "property float radius\n",
-            "property list uchar uchar label\n", // NOLINT
-            "end_header\n",
-            "0 0 0 1 2 3 0.5 1 65\n",
-            "1 1 1 0 0 0 0.0 0\n",
-        );
-        let p = Points3D::from_file_contents(ply.as_bytes()).unwrap();
-        // Second vertex has color (0,0,0) explicitly — both have colors, so no defaulting.
-        assert_eq!(
-            colors(&p),
-            vec![Color::new((1, 2, 3, 255)), Color::new((0, 0, 0, 255))]
-        );
-        assert_eq!(radii(&p), vec![Radius::from(0.5), Radius::from(0.0)]);
-        // Label "A" (65) on first, empty list on second → empty string (the list is present).
-        assert_eq!(labels(&p), vec![Text("A".into()), Text("".into())]);
-    }
-
-    #[test]
-    fn sh_color_takes_precedence_over_rgb_and_scale_over_radius() {
-        let ply = "\
-ply
-format ascii 1.0
-element vertex 1
-property float x
-property float y
-property float z
-property uchar red
-property uchar green
-property uchar blue
-property float radius
-property float f_dc_0
-property float f_dc_1
-property float f_dc_2
-property float scale_0
-property float scale_1
-property float scale_2
-end_header
-0 0 0 10 20 30 9.0 0 0 0 0 0 0
-";
-        let p = Points3D::from_file_contents(ply.as_bytes()).unwrap();
-        // SH (128,128,128,255) wins over rgb (10,20,30).
-        assert_eq!(colors(&p), vec![Color::new((128, 128, 128, 255))]);
-        // scale (→1.0) wins over radius (9.0).
-        assert_eq!(radii(&p), vec![Radius::from(1.0)]);
-    }
-
-    #[test]
-    fn binary_little_endian() {
-        let mut ply = b"\
-ply
-format binary_little_endian 1.0
-element vertex 1
-property float x
-property float y
-property float z
-end_header
-"
-        .to_vec();
-        ply.extend_from_slice(&1.0f32.to_le_bytes());
-        ply.extend_from_slice(&2.0f32.to_le_bytes());
-        ply.extend_from_slice(&3.0f32.to_le_bytes());
-        let p = Points3D::from_file_contents(&ply).unwrap();
-        assert_eq!(positions(&p), vec![Position3D::new(1.0, 2.0, 3.0)]);
-    }
 }

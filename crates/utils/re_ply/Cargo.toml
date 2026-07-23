@@ -1,0 +1,23 @@
+[package]
+name = "re_ply"
+authors.workspace = true
+description = "Shared helpers for PLY file classification."
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+license.workspace = true
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+
+
+[dependencies]
+ply-rs-bw.workspace = true

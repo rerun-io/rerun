@@ -21,9 +21,10 @@ The following data types have built-in support in the Rerun Viewer and SDK:
 -   Native Rerun files: `rrd`
 -   3D models: `gltf`, `glb`, `obj`, `stl`
 -   Images: `avif`, `bmp`, `dds`, `exr`, `farbfeld`, `ff`, `gif`, `hdr`, `ico`, `jpeg`, `jpg`, `pam`, `pbm`, `pgm`, `png`, `ppm`, `tga`, `tif`, `tiff`, `webp`
--   Point clouds: `ply`
+-   Geometry in PLY format: `ply`
 -   Text files: `md`, `txt`
 -   [LeRobot](https://huggingface.co/docs/lerobot/index) datasets: `directory`
+-   `.ply` files (can contain mesh or point cloud). For 2D data, z component is optional.
 
 With the exception of `rrd` files that can be streamed from an HTTP URL (e.g. `rerun https://demo.rerun.io/version/latest/examples/dna/data.rrd`), we only support loading files from the local filesystem for now, with [plans to make this generic over any URI and protocol in the future](https://github.com/rerun-io/rerun/issues/4525).
 

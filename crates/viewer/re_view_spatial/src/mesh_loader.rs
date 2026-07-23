@@ -84,6 +84,9 @@ impl LoadedMesh {
                 re_renderer::importer::gltf::load_gltf_from_buffer(&name, bytes, render_ctx)?
             }
             MediaType::OBJ => re_renderer::importer::obj::load_obj_from_buffer(bytes, render_ctx)?,
+            MediaType::PLY => {
+                re_renderer::importer::ply::load_ply_from_buffer(&name, bytes, render_ctx)?
+            }
             MediaType::STL => re_renderer::importer::stl::load_stl_from_buffer(bytes, render_ctx)?,
             _ => anyhow::bail!("{media_type} files are not supported"),
         };
