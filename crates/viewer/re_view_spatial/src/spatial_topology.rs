@@ -143,6 +143,8 @@ impl re_byte_size::MemUsageTreeCapture for SpatialTopologyStoreSubscriber {
     fn capture_mem_usage_tree(&self) -> re_byte_size::MemUsageTree {
         use re_byte_size::SizeBytes as _;
         let mut node = re_byte_size::MemUsageNode::new();
+        #[expect(clippy::iter_over_hash_type)]
+        // Ordering for usage tree isn't generally all that important.
         for (store_id, topology) in &self.topologies {
             let name = format!(
                 "{}/{}",
@@ -444,6 +446,7 @@ impl SpatialTopology {
         split_subspace.child_spaces.insert(new_space_origin.clone());
 
         // Patch parents of the child spaces that were moved to the new space.
+        #[expect(clippy::iter_over_hash_type)] // Same value written to disjoint keys.
         for child_origin in &new_space.child_spaces {
             let child_space = self
                 .subspaces

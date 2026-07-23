@@ -1,5 +1,7 @@
 //! The UI for the recording panel.
 
+#![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
+
 #[cfg(feature = "testing")]
 pub mod data;
 

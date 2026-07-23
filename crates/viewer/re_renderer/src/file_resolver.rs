@@ -177,6 +177,7 @@
 // TODO(cmc): might want to support implicitly dropping file suffixes at some point, e.g.
 // `#import <my_shader>` which works with "my_shader.wgsl"
 
+use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
@@ -473,7 +474,7 @@ pub fn new_recommended() -> RecommendedFileResolver {
 #[derive(Clone, Debug, Default)]
 pub struct InterpolatedFile {
     pub contents: String,
-    pub imports: HashSet<PathBuf>,
+    pub imports: BTreeSet<PathBuf>,
 }
 
 /// The `FileResolver` handles both resolving import clauses and doing the actual string
@@ -535,7 +536,7 @@ impl<Fs: FileSystem> FileResolver<Fs> {
             let contents = this.fs.read_to_string(&path)?;
 
             // Using implicit Vec<Result> -> Result<Vec> collection.
-            let mut imports = HashSet::new();
+            let mut imports = BTreeSet::new();
             let children: Result<Vec<_>, _> = contents
                 .lines()
                 .map(|line| {
