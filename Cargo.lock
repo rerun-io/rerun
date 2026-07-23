@@ -9232,6 +9232,7 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.18",
  "urdf-rs",
+ "ureq 3.3.0",
  "walkdir",
 ]
 

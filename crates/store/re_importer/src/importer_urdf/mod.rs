@@ -445,6 +445,7 @@ fn load_ros_resource(
         match scheme {
             "file" => std::fs::read(path).with_context(|| format!("Failed to read file: {path}")),
             "package" => read_ros_package_resource(root_dir, path),
+            "http" | "https" => fetch_http_resource(resource_path),
             _ => {
                 bail!("Unknown resource scheme: {scheme:?} in {resource_path}");
             }
@@ -461,6 +462,47 @@ fn load_ros_resource(
     }
 }
 
+/// Out-of-memory guard: loaders buffer the whole mesh, so cap what a single fetch can allocate.
+#[cfg(not(target_arch = "wasm32"))]
+const MAX_MESH_DOWNLOAD_SIZE: u64 = 512 * 1024 * 1024;
+
+/// Fetch a mesh resource over HTTP or HTTPS.
+#[cfg(not(target_arch = "wasm32"))]
+fn fetch_http_resource(url: &str) -> anyhow::Result<Vec<u8>> {
+    re_log::debug!("Fetching mesh resource from {url}");
+
+    let agent = ureq::Agent::new_with_config(
+        ureq::config::Config::builder()
+            // Connect-only: a global timeout would abort large meshes mid-download.
+            .timeout_connect(Some(std::time::Duration::from_secs(30)))
+            .build(),
+    );
+
+    let mut response = agent
+        .get(url)
+        .call()
+        .with_context(|| format!("Failed to fetch mesh resource from {url}"))?;
+
+    let bytes = response
+        .body_mut()
+        .with_config()
+        .limit(MAX_MESH_DOWNLOAD_SIZE)
+        .read_to_vec()
+        .with_context(|| {
+            format!(
+                "Failed to read mesh resource from {url} (limit is {})",
+                re_format::format_bytes(MAX_MESH_DOWNLOAD_SIZE as f64)
+            )
+        })?;
+
+    re_log::debug!(
+        "Fetched {} from {url}",
+        re_format::format_bytes(bytes.len() as f64)
+    );
+
+    Ok(bytes)
+}
+
 fn emit_geometry(
     emit: &mut dyn FnMut(Chunk),
     urdf_tree: &UrdfTree,
@@ -474,8 +516,12 @@ fn emit_geometry(
             use re_sdk_types::components::MediaType;
 
             let mesh_bytes = load_ros_resource(urdf_tree.urdf_dir.as_ref(), filename)?;
-            let mut asset3d =
-                Asset3D::from_file_contents(mesh_bytes, MediaType::guess_from_path(filename));
+            // Drop any URL query/fragment so extension detection works on presigned URLs.
+            let media_type_hint = filename.split(['?', '#']).next().unwrap_or(filename);
+            let mut asset3d = Asset3D::from_file_contents(
+                mesh_bytes,
+                MediaType::guess_from_path(media_type_hint),
+            );
 
             if let Some(albedo_factor) = material_albedo_factor(material) {
                 asset3d = asset3d.with_albedo_factor(albedo_factor);

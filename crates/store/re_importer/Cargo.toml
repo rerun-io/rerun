@@ -61,6 +61,7 @@ walkdir.workspace = true
 [target.'cfg(not(any(target_arch = "wasm32")))'.dependencies]
 parquet = { workspace = true, features = ["arrow", "snap", "zstd"] }
 re_parquet.workspace = true
+ureq.workspace = true
 
 [dev-dependencies]
 re_chunk_store.workspace = true
