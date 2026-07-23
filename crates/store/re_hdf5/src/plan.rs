@@ -72,33 +72,57 @@ pub(crate) fn build_plan(
 ) -> Result<Hdf5Plan, Hdf5Error> {
     re_tracing::profile_function!();
 
-    let ignore = IgnoreSet::new(&config.ignore_datasets);
-    let walked = walk::walk(file, &H5Path::root(), &ignore)?;
+    let root = resolve_root_group(file, config)?;
+    let ignore = IgnoreSet::new(&root, &config.ignore_datasets);
+    let walked = walk::walk(file, &root, &ignore)?;
     warn_unsupported(&walked);
 
-    let resolution = resolve_rows(&walked, config)?;
-    check_alignment(&walked, &resolution)?;
+    let resolution = resolve_rows(&walked, config, &root)?;
+    check_alignment(&walked, &resolution, &root)?;
 
     let timeline = build_timeline(file, config, &resolution)?;
-    let units = build_units(walked, &resolution, &config.entity_path_prefix);
+    let units = build_units(walked, &resolution, &root, &config.entity_path_prefix);
 
     Ok(Hdf5Plan { units, timeline })
 }
 
 /// Metadata-only structural validation (no data reads, no timeline build).
-///
-/// Shares `walk` + `resolve_rows` + `check_alignment` with [`build_plan`]; the
-/// eager call at reader construction turns bad configuration into a prompt error.
 pub(crate) fn validate_with_file(
     file: &hdf5_pure::File,
     config: &Hdf5Config,
 ) -> Result<(), Hdf5Error> {
     re_tracing::profile_function!();
 
-    let ignore = IgnoreSet::new(&config.ignore_datasets);
-    let walked = walk::walk(file, &H5Path::root(), &ignore)?;
-    let resolution = resolve_rows(&walked, config)?;
-    check_alignment(&walked, &resolution)
+    let root = resolve_root_group(file, config)?;
+    let ignore = IgnoreSet::new(&root, &config.ignore_datasets);
+    let walked = walk::walk(file, &root, &ignore)?;
+    let resolution = resolve_rows(&walked, config, &root)?;
+    check_alignment(&walked, &resolution, &root)
+}
+
+/// Resolve `config.root_group` — the group everything is scoped to, as if it
+/// were the file root — validating that it exists and is a group.
+fn resolve_root_group(file: &hdf5_pure::File, config: &Hdf5Config) -> Result<H5Path, Hdf5Error> {
+    let Some(root_group) = &config.root_group else {
+        return Ok(H5Path::root());
+    };
+    let root = H5Path::parse(root_group);
+    if root.is_root() {
+        return Ok(root);
+    }
+
+    // Discriminate group vs dataset the same way `read_attributes` does:
+    // `File::dataset` succeeds only for datasets and fails with `NotADataset`
+    // for a resolvable non-dataset object (i.e. a group).
+    match file.dataset(&root.as_hdf5()) {
+        Ok(_) => Err(Hdf5Error::RootGroupNotAGroup {
+            path: root_group.clone(),
+        }),
+        Err(hdf5_pure::Error::NotADataset(_)) => Ok(root),
+        Err(_) => Err(Hdf5Error::RootGroupNotFound {
+            path: root_group.clone(),
+        }),
+    }
 }
 
 fn warn_unsupported(walked: &Walk) {
@@ -123,9 +147,13 @@ fn is_aligned_data(dataset: &DatasetDesc, index_path: Option<&H5Path>) -> bool {
 }
 
 /// Resolve the file-wide row count (metadata only).
-fn resolve_rows(walked: &Walk, config: &Hdf5Config) -> Result<RowResolution, Hdf5Error> {
+fn resolve_rows(
+    walked: &Walk,
+    config: &Hdf5Config,
+    root: &H5Path,
+) -> Result<RowResolution, Hdf5Error> {
     if let Some(index) = &config.index_column {
-        let target = H5Path::parse(&index.path);
+        let target = root.join(&H5Path::parse(&index.path));
         let desc = walked
             .datasets
             .iter()
@@ -169,7 +197,11 @@ fn resolve_rows(walked: &Walk, config: &Hdf5Config) -> Result<RowResolution, Hdf
 }
 
 /// Every loaded, non-scalar, non-index dataset must have `shape[0] == row_count`.
-fn check_alignment(walked: &Walk, resolution: &RowResolution) -> Result<(), Hdf5Error> {
+fn check_alignment(
+    walked: &Walk,
+    resolution: &RowResolution,
+    root: &H5Path,
+) -> Result<(), Hdf5Error> {
     let Some(expected) = resolution.row_count else {
         return Ok(());
     };
@@ -179,7 +211,14 @@ fn check_alignment(walked: &Walk, resolution: &RowResolution) -> Result<(), Hdf5
         .iter()
         .filter(|dataset| is_aligned_data(dataset, resolution.index_path.as_ref()))
         .filter(|dataset| dataset.shape[0] != expected)
-        .map(|dataset| format!("{} (shape {:?})", dataset.path, dataset.shape))
+        .map(|dataset| {
+            // Root-relative, so an offender can be pasted into `ignore_datasets` as-is.
+            let path = dataset
+                .path
+                .relative_to(root)
+                .expect("walked paths are under the root group");
+            format!("{} (shape {:?})", path, dataset.shape)
+        })
         .join(", ");
 
     if offenders.is_empty() {
@@ -232,16 +271,24 @@ fn build_timeline(
 /// Assemble emission units: attributes first, then per group its timed
 /// (`Data`) and static-scalar datasets. The consumed index dataset and
 /// unsupported dtypes are dropped; empty units are skipped.
+///
+/// Entity paths are relative to `root` (the root group acts as `/`).
 fn build_units(
     walked: Walk,
     resolution: &RowResolution,
+    root: &H5Path,
     entity_path_prefix: &EntityPath,
 ) -> Vec<EmitUnit> {
+    let relative = |path: &H5Path| {
+        path.relative_to(root)
+            .expect("walked paths are under the root group")
+    };
+
     let mut units = Vec::new();
 
     for attr in walked.attrs {
         units.push(EmitUnit::Attributes {
-            entity: props_entity(entity_path_prefix, &attr.path),
+            entity: props_entity(entity_path_prefix, &relative(&attr.path)),
             attrs: attr.attrs,
         });
     }
@@ -257,7 +304,7 @@ fn build_units(
             .filter(|dataset| Some(&dataset.path) != resolution.index_path.as_ref())
             .partition(|dataset| dataset.shape.is_empty());
 
-        let entity = entity_for(entity_path_prefix, &group_path);
+        let entity = entity_for(entity_path_prefix, &relative(&group_path));
         if !data.is_empty() {
             units.push(EmitUnit::Data {
                 entity: entity.clone(),

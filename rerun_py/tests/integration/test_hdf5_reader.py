@@ -164,6 +164,54 @@ def test_ignore_datasets() -> None:
     assert "qpos" in rb.schema.names
 
 
+def test_root_group() -> None:
+    chunks = Hdf5Reader(TEST_DATA).stream(root_group="/observations").to_chunks()
+
+    # Entities are relative to the root group; siblings/ancestors are excluded.
+    assert {c.entity_path for c in chunks} == {
+        "/",  # qpos + qvel, packed into a struct
+        "/images",  # cam0
+        "/__hdf5_properties",  # /observations' own attributes
+        "/__hdf5_properties/qpos",
+    }
+
+    # /observations' own attributes act as the root attributes…
+    props = _by_entity(chunks, "/__hdf5_properties")
+    rb = props.to_record_batch()
+    assert rb.column("frequency").to_pylist() == [[30.0]]
+    # …while the file-level attributes (description, version) are not emitted.
+    assert "version" not in rb.schema.names
+
+
+def test_root_group_relative_config() -> None:
+    # `index_column` and `ignore_datasets` are interpreted relative to `root_group`.
+    chunks = (
+        Hdf5Reader(TEST_DATA)
+        .stream(
+            root_group="/observations",
+            index_column=IndexColumn.sequence("qvel"),
+            ignore_datasets=["images"],
+        )
+        .to_chunks()
+    )
+
+    root = _by_entity(chunks, "/")
+    rb = root.to_record_batch()
+    assert "qpos" in rb.schema.names  # qvel consumed as index → bare component
+    assert rb.column("qvel").to_pylist() == [0, 1, 2, 3, 4]
+    assert not any(c.entity_path == "/images" for c in chunks)
+
+
+def test_bad_root_group_raises_value_error() -> None:
+    reader = Hdf5Reader(TEST_DATA)
+
+    with pytest.raises(ValueError, match="not found"):
+        reader.stream(root_group="/missing")
+
+    with pytest.raises(ValueError, match="not a group"):
+        reader.stream(root_group="/time")
+
+
 # ---------------------------------------------------------------------------
 # metadata accessors
 # ---------------------------------------------------------------------------

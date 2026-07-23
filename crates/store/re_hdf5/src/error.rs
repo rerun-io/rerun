@@ -39,6 +39,12 @@ pub enum Hdf5Error {
         offenders: String,
     },
 
+    #[error("Root group {path:?} not found in the file")]
+    RootGroupNotFound { path: String },
+
+    #[error("Root group {path:?} is a dataset, not a group")]
+    RootGroupNotAGroup { path: String },
+
     #[error("Index dataset {path:?} not found in the file")]
     IndexNotFound { path: String },
 
@@ -123,6 +129,8 @@ impl Hdf5Error {
     pub fn is_config_error(&self) -> bool {
         match self {
             Self::RowAlignment { .. }
+            | Self::RootGroupNotFound { .. }
+            | Self::RootGroupNotAGroup { .. }
             | Self::IndexNotFound { .. }
             | Self::IndexNotOneDimensional { .. }
             | Self::IndexNotNumeric { .. } => true,

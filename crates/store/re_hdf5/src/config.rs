@@ -5,12 +5,21 @@ use re_chunk::EntityPath;
 /// Configuration for HDF5 loading.
 #[derive(Debug, Clone)]
 pub struct Hdf5Config {
+    /// The group to treat as the file root (`None` → the whole file).
+    ///
+    /// Everything is scoped to this subtree as if it were the root: only its
+    /// datasets are loaded and aligned, and all other paths in this config —
+    /// as well as the emitted entity paths — are interpreted relative to it.
+    pub root_group: Option<String>,
+
     /// The single file-wide timeline index.
     ///
     /// `None` → synthesize a `row_index` sequence timeline instead.
+    /// Interpreted relative to [`Self::root_group`].
     pub index_column: Option<IndexColumn>,
 
     /// Dataset or group paths to exclude entirely (a group path excludes its whole subtree).
+    /// Interpreted relative to [`Self::root_group`].
     pub ignore_datasets: Vec<String>,
 
     /// Pack each group's row-aligned datasets into a single struct component (default)
@@ -24,6 +33,7 @@ pub struct Hdf5Config {
 impl Default for Hdf5Config {
     fn default() -> Self {
         Self {
+            root_group: None,
             index_column: None,
             ignore_datasets: Vec::new(),
             use_structs: true,

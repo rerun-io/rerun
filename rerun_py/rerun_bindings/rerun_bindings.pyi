@@ -1617,6 +1617,7 @@ class Hdf5ReaderInternal:
     def __init__(self, path: str) -> None: ...
     def stream(
         self,
+        root_group: str | None = None,
         entity_path_prefix: str | None = None,
         index_column: tuple[str, str, str | None] | None = None,
         ignore_datasets: list[str] | None = None,

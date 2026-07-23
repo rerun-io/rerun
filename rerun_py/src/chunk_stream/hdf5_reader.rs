@@ -67,6 +67,7 @@ impl PyHdf5ReaderInternal {
     /// The layout is validated against `config` up front (metadata only), so bad
     /// configuration fails here rather than mid-stream.
     #[pyo3(signature = (
+        root_group = None,
         entity_path_prefix = None,
         index_column = None,
         ignore_datasets = None,
@@ -74,6 +75,7 @@ impl PyHdf5ReaderInternal {
     ))]
     fn stream(
         &self,
+        root_group: Option<String>,
         entity_path_prefix: Option<String>,
         index_column: Option<(String, String, Option<String>)>,
         ignore_datasets: Option<Vec<String>>,
@@ -110,6 +112,7 @@ impl PyHdf5ReaderInternal {
             .transpose()?;
 
         let config = Hdf5Config {
+            root_group,
             index_column,
             ignore_datasets: ignore_datasets.unwrap_or_default(),
             use_structs,

@@ -69,6 +69,21 @@ impl H5Path {
             && self.segments[..ancestor.segments.len()] == ancestor.segments[..]
     }
 
+    /// `self` extended by `other`'s segments.
+    pub fn join(&self, other: &Self) -> Self {
+        let mut segments = self.segments.clone();
+        segments.extend(other.segments.iter().cloned());
+        Self { segments }
+    }
+
+    /// The path of `self` relative to `ancestor` (`None` if `self` is not
+    /// [under it](Self::is_or_under)).
+    pub fn relative_to(&self, ancestor: &Self) -> Option<Self> {
+        self.is_or_under(ancestor).then(|| Self {
+            segments: self.segments[ancestor.segments.len()..].to_vec(),
+        })
+    }
+
     /// Slash-joined relative form as accepted by `hdf5_pure::File::group`/`dataset`.
     pub fn as_hdf5(&self) -> String {
         self.segments.join("/")
@@ -121,11 +136,12 @@ pub(crate) struct IgnoreSet {
 }
 
 impl IgnoreSet {
-    pub fn new(ignore_paths: &[String]) -> Self {
+    /// The entries are interpreted relative to `root` (the stream's root group).
+    pub fn new(root: &H5Path, ignore_paths: &[String]) -> Self {
         Self {
             entries: ignore_paths
                 .iter()
-                .map(|path| H5Path::parse(path))
+                .map(|path| root.join(&H5Path::parse(path)))
                 .collect(),
         }
     }

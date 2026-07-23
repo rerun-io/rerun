@@ -375,6 +375,131 @@ fn small_dataset_is_a_single_chunk() {
 }
 
 // ---------------------------------------------------------------------------
+// Root group
+// ---------------------------------------------------------------------------
+
+/// A LIBERO-shaped file: sibling episode groups with *different* row counts,
+/// plus file-level attributes above them.
+fn write_two_episode_file() -> (tempfile::TempDir, std::path::PathBuf) {
+    write_h5(|b| {
+        b.set_attr("convention", AttrValue::String("opengl".into()));
+
+        let mut demo_0 = b.create_group("demo_0");
+        demo_0.set_attr("num_samples", AttrValue::I64(3));
+        demo_0.create_dataset("t").with_i64_data(&[10, 20, 30]);
+        let mut obs = demo_0.create_group("obs");
+        obs.create_dataset("qpos")
+            .with_f64_data(&[0.0, 0.1, 1.0, 1.1, 2.0, 2.1])
+            .with_shape(&[3, 2]);
+        demo_0.add_group(obs.finish());
+        b.add_group(demo_0.finish());
+
+        let mut demo_1 = b.create_group("demo_1");
+        demo_1.create_dataset("t").with_i64_data(&[1, 2, 3, 4, 5]);
+        b.add_group(demo_1.finish());
+    })
+}
+
+#[test]
+fn root_group_scopes_to_subtree() {
+    let (_dir, path) = write_two_episode_file();
+
+    // The whole file cannot be loaded: the sibling episodes disagree on rows.
+    let err = re_hdf5::load_hdf5(&path, &Hdf5Config::default())
+        .err()
+        .unwrap();
+    assert!(matches!(err, Hdf5Error::RowAlignment { .. }), "{err}");
+
+    // Scoped to one episode it loads, with the index resolved *relative* to
+    // the root group and entity paths relative to it as well.
+    let config = Hdf5Config {
+        root_group: Some("/demo_0".into()),
+        index_column: Some(IndexColumn {
+            path: "t".into(),
+            index_type: IndexType::Sequence,
+        }),
+        ..Default::default()
+    };
+    let chunks = load_chunks(&path, &config);
+
+    // demo_0's own attributes act as root attributes; the file-level
+    // `convention` attribute lives *above* the root group and is not emitted.
+    let props = find_chunk(&chunks, "/__hdf5_properties");
+    assert!(props.components().get_array("num_samples".into()).is_some());
+    assert!(
+        !chunks
+            .iter()
+            .any(|chunk| chunk.components().get_array("convention".into()).is_some())
+    );
+
+    // `/demo_0/obs/qpos` emits at `/obs`, timed by the consumed `t` index.
+    let obs = find_chunk(&chunks, "/obs");
+    assert_eq!(obs.num_rows(), 3);
+    assert!(obs.components().get_array("qpos".into()).is_some());
+    let time_column = obs.timelines().get(&"t".into()).unwrap();
+    assert_eq!(time_column.times_raw(), &[10, 20, 30]);
+
+    assert_eq!(chunks.len(), 2);
+}
+
+#[test]
+fn root_group_relative_ignore_and_prefix() {
+    let (_dir, path) = write_two_episode_file();
+
+    // `ignore_datasets` is root-relative, and `entity_path_prefix` still
+    // applies on top (the multiplex-into-one-recording pattern).
+    let config = Hdf5Config {
+        root_group: Some("/demo_0".into()),
+        ignore_datasets: vec!["obs".into()],
+        entity_path_prefix: EntityPath::from("/demo_0"),
+        ..Default::default()
+    };
+    let chunks = load_chunks(&path, &config);
+
+    assert!(
+        chunks
+            .iter()
+            .all(|chunk| chunk.entity_path().to_string().starts_with("/demo_0"))
+    );
+    let data = find_chunk(&chunks, "/demo_0");
+    assert_eq!(data.num_rows(), 3);
+    assert!(data.components().get_array("t".into()).is_some());
+    assert!(
+        !chunks
+            .iter()
+            .any(|chunk| { chunk.entity_path() == &EntityPath::from("/demo_0/obs") })
+    );
+}
+
+#[test]
+fn root_group_validation_errors() {
+    let (_dir, path) = write_two_episode_file();
+
+    let with_root = |root: &str| Hdf5Config {
+        root_group: Some(root.into()),
+        ..Default::default()
+    };
+
+    let err = re_hdf5::validate_layout(&path, &with_root("/nope"))
+        .err()
+        .unwrap();
+    assert!(matches!(err, Hdf5Error::RootGroupNotFound { .. }), "{err}");
+    assert!(err.is_config_error());
+
+    let err = re_hdf5::validate_layout(&path, &with_root("/demo_0/t"))
+        .err()
+        .unwrap();
+    assert!(matches!(err, Hdf5Error::RootGroupNotAGroup { .. }), "{err}");
+    assert!(err.is_config_error());
+
+    // An explicit `/` root group behaves exactly like `None`.
+    let err = re_hdf5::validate_layout(&path, &with_root("/"))
+        .err()
+        .unwrap();
+    assert!(matches!(err, Hdf5Error::RowAlignment { .. }), "{err}");
+}
+
+// ---------------------------------------------------------------------------
 // Alignment & ignore rules
 // ---------------------------------------------------------------------------
 

@@ -71,6 +71,7 @@ class Hdf5Reader:
     def stream(
         self,
         *,
+        root_group: str | None = None,
         entity_path_prefix: str | None = None,
         index_column: IndexColumn | None = None,
         ignore_datasets: list[str] | None = None,
@@ -121,21 +122,31 @@ class Hdf5Reader:
 
         Parameters
         ----------
+        root_group:
+            The group to treat as the file root (default: the whole file). Only its
+            subtree is loaded and aligned, its own attributes act as the root
+            attributes, and every other path — `index_column`, `ignore_datasets`,
+            and the emitted entity paths — is interpreted relative to it.
+
+            Attributes on groups *above* `root_group` are not emitted; read them with
+            [`attributes`][rerun.experimental.Hdf5Reader.attributes] instead.
         entity_path_prefix:
             Optional prefix prepended to every entity path (for example `"/world"`).
         index_column:
             Dataset to use as the file-wide timeline index, built with
             [`IndexColumn`][rerun.experimental.IndexColumn], e.g.
             `IndexColumn.timestamp("/time", input_unit="s")` or
-            `IndexColumn.sequence("/frame_id")`.
+            `IndexColumn.sequence("/frame_id")`. Interpreted relative to
+            `root_group`.
 
             The referenced dataset must be 1-dimensional. When omitted, a single
             `row_index` sequence timeline (0, 1, …) is generated for the whole file
             and every loaded dataset must align to it (see Row alignment).
         ignore_datasets:
             Datasets or groups to exclude entirely. Each entry is a dataset path or
-            a group path (which excludes the whole subtree). Ignored datasets are
-            neither loaded nor considered for row alignment.
+            a group path (which excludes the whole subtree), interpreted relative to
+            `root_group`. Ignored datasets are neither loaded nor considered for row
+            alignment.
         use_structs:
             When `True` (default), all columns of an entity are packed into a single
             Arrow `Struct` component, with one field per dataset named after that
@@ -151,13 +162,15 @@ class Hdf5Reader:
             when no `index_column` is set). Resolve by adding the offending dataset
             to `ignore_datasets` or by choosing a compatible `index_column`.
 
-            Also raised when the file exists but cannot be parsed as HDF5: the
-            layout is validated eagerly here, so such failures surface at
-            `stream()` rather than lazily mid-iteration.
+            Also raised when `root_group` does not exist or is not a group, and
+            when the file exists but cannot be parsed as HDF5: the layout is
+            validated eagerly here, so such failures surface at `stream()` rather
+            than lazily mid-iteration.
 
         """
         return LazyChunkStream(
             self._internal.stream(
+                root_group=root_group,
                 entity_path_prefix=entity_path_prefix,
                 index_column=index_column._as_internal_tuple() if index_column is not None else None,
                 ignore_datasets=ignore_datasets,
