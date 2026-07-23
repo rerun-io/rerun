@@ -13,8 +13,7 @@ use re_viewer_context::{
     SystemCommand, open_url::combine_with_base_url,
 };
 use re_viewer_context::{
-    MoveDirection, MoveSpeed, RecordingOrTable, SystemCommandSender as _, TimeControlCommand,
-    sanitize_file_name,
+    RecordingOrTable, SystemCommandSender as _, TimeControlCommand, sanitize_file_name,
 };
 use std::sync::Arc;
 
@@ -1297,7 +1296,6 @@ impl App {
             }
 
             RecordingCommandKind::PlaybackTogglePlayPause
-            | RecordingCommandKind::PlaybackFollow
             | RecordingCommandKind::PlaybackStepBack
             | RecordingCommandKind::PlaybackStepForward
             | RecordingCommandKind::PlaybackBack
@@ -1305,10 +1303,9 @@ impl App {
             | RecordingCommandKind::PlaybackBackFast
             | RecordingCommandKind::PlaybackForwardFast
             | RecordingCommandKind::PlaybackBeginning
-            | RecordingCommandKind::PlaybackEnd
-            | RecordingCommandKind::PlaybackRestart
+            | RecordingCommandKind::PlaybackEndAndFollow
             | RecordingCommandKind::PlaybackSpeed(_) => {
-                if let Some(time_command) = playback_time_command(kind) {
+                if let Some(time_command) = TimeControlCommand::from_recording_command(kind) {
                     self.command_sender
                         .send_system(SystemCommand::TimeControlCommands {
                             store_id: recording_id,
@@ -1754,42 +1751,6 @@ async fn async_open_rrd_dialog() -> Vec<re_data_source::FileContents> {
     }
 
     file_contents
-}
-
-/// The time-control command a playback [`re_ui::RecordingCommandKind`] maps to.
-///
-/// Returns `None` for non-playback kinds.
-fn playback_time_command(kind: re_ui::RecordingCommandKind) -> Option<TimeControlCommand> {
-    use re_ui::RecordingCommandKind;
-    Some(match kind {
-        RecordingCommandKind::PlaybackTogglePlayPause => TimeControlCommand::TogglePlayPause,
-        RecordingCommandKind::PlaybackFollow => {
-            TimeControlCommand::SetPlayState(PlayState::Following)
-        }
-        RecordingCommandKind::PlaybackStepBack => TimeControlCommand::StepTimeBack,
-        RecordingCommandKind::PlaybackStepForward => TimeControlCommand::StepTimeForward,
-        RecordingCommandKind::PlaybackBack => TimeControlCommand::Move {
-            direction: MoveDirection::Back,
-            speed: MoveSpeed::Normal,
-        },
-        RecordingCommandKind::PlaybackForward => TimeControlCommand::Move {
-            direction: MoveDirection::Forward,
-            speed: MoveSpeed::Normal,
-        },
-        RecordingCommandKind::PlaybackBackFast => TimeControlCommand::Move {
-            direction: MoveDirection::Back,
-            speed: MoveSpeed::Fast,
-        },
-        RecordingCommandKind::PlaybackForwardFast => TimeControlCommand::Move {
-            direction: MoveDirection::Forward,
-            speed: MoveSpeed::Fast,
-        },
-        RecordingCommandKind::PlaybackBeginning => TimeControlCommand::MoveBeginning,
-        RecordingCommandKind::PlaybackEnd => TimeControlCommand::MoveEnd,
-        RecordingCommandKind::PlaybackRestart => TimeControlCommand::Restart,
-        RecordingCommandKind::PlaybackSpeed(speed) => TimeControlCommand::SetSpeed(speed.0.0),
-        _ => return None,
-    })
 }
 
 fn save_active_recording(

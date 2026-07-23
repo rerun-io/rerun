@@ -242,7 +242,6 @@ pub struct DesignTokens {
     pub plot_grid_fade: f32,
     pub extreme_bg_color: Color32,
     pub extreme_fg_color: Color32,
-    pub widget_inactive_bg_fill: Color32,
     pub widget_hovered_color: Color32,
     pub widget_noninteractive_bg_stroke: Color32,
     pub text_subdued: Color32,
@@ -454,7 +453,6 @@ impl DesignTokens {
             plot_grid_fade: get_scalar("plot_grid_fade")?,
             extreme_bg_color: get_color("extreme_bg_color"),
             extreme_fg_color: get_color("extreme_fg_color"),
-            widget_inactive_bg_fill: get_color("widget_inactive_bg_fill"),
             widget_hovered_color: get_color("widget_hovered_color"),
             widget_noninteractive_bg_stroke: get_color("widget_noninteractive_bg_stroke"),
             text_subdued: get_color("text_subdued"),
@@ -701,7 +699,7 @@ impl DesignTokens {
         egui_style.visuals.widgets.inactive.weak_bg_fill = Default::default(); // Buttons have no background color when inactive
 
         // Fill of unchecked radio buttons, checkboxes, etc. Must be brighter than the background floating_color.
-        egui_style.visuals.widgets.inactive.bg_fill = self.widget_inactive_bg_fill;
+        egui_style.visuals.widgets.inactive.bg_fill = self.button_secondary.fill;
 
         {
             // Background colors for buttons (menu buttons, blueprint buttons, etc) when hovered or clicked:

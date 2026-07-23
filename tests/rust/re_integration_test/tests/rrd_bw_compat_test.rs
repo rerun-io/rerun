@@ -279,7 +279,7 @@ async fn test_old_rrds_in_current_viewer() {
         let on_log_time = harness.run_with_app_context(|ctx| {
             ctx.send_time_commands_to_active_recording(vec![
                 TimeControlCommand::Pause,
-                TimeControlCommand::MoveEnd,
+                TimeControlCommand::MoveEndAndFollow,
             ]);
             ctx.active_time_ctrl()
                 .is_some_and(|time_ctrl| *time_ctrl.timeline_name() == TimelineName::log_time())

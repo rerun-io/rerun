@@ -73,7 +73,6 @@ pub enum RecordingCommandKind {
 
     // Playback:
     PlaybackTogglePlayPause,
-    PlaybackFollow,
     PlaybackStepBack,
     PlaybackStepForward,
     PlaybackBack,
@@ -81,8 +80,7 @@ pub enum RecordingCommandKind {
     PlaybackBackFast,
     PlaybackForwardFast,
     PlaybackBeginning,
-    PlaybackEnd,
-    PlaybackRestart,
+    PlaybackEndAndFollow,
     PlaybackSpeed(SetPlaybackSpeed),
 
     // Dev-tools:
@@ -128,7 +126,6 @@ impl RecordingCommandKind {
         matches!(
             self,
             Self::PlaybackTogglePlayPause
-                | Self::PlaybackFollow
                 | Self::PlaybackStepBack
                 | Self::PlaybackStepForward
                 | Self::PlaybackBack
@@ -136,8 +133,7 @@ impl RecordingCommandKind {
                 | Self::PlaybackBackFast
                 | Self::PlaybackForwardFast
                 | Self::PlaybackBeginning
-                | Self::PlaybackEnd
-                | Self::PlaybackRestart
+                | Self::PlaybackEndAndFollow
                 | Self::PlaybackSpeed(_)
         )
     }
@@ -216,7 +212,6 @@ impl RecordingCommandKind {
             ),
 
             Self::PlaybackTogglePlayPause => ("Toggle play/pause", "Either play or pause the time"),
-            Self::PlaybackFollow => ("Follow", "Follow on from end of timeline"),
             Self::PlaybackStepBack => (
                 "Step backwards",
                 "Move the time marker back to the previous point in time with any data",
@@ -225,25 +220,17 @@ impl RecordingCommandKind {
                 "Step forwards",
                 "Move the time marker to the next point in time with any data",
             ),
-            Self::PlaybackBack => (
-                "Move backwards",
-                "Move the time marker backward by 0.1 seconds",
+            Self::PlaybackBack => ("Backward 1", "Move the time marker backward by 1 second"),
+            Self::PlaybackForward => ("Forward 1", "Move the time marker forward by 0.1 seconds"),
+            Self::PlaybackBackFast => ("Backward 10", "Move the time marker backwards by 1 second"),
+            Self::PlaybackForwardFast => {
+                ("Forward 10", "Move the time marker forwards by 0.1 seconds")
+            }
+            Self::PlaybackBeginning => ("Start of timeline", "Go to beginning of timeline"),
+            Self::PlaybackEndAndFollow => (
+                "End of timeline",
+                "Go to end of timeline and follow the latest data as it streams in",
             ),
-            Self::PlaybackForward => (
-                "Move forwards",
-                "Move the time marker forward by 0.1 seconds",
-            ),
-            Self::PlaybackBackFast => (
-                "Move backwards fast",
-                "Move the time marker backwards by 1 second",
-            ),
-            Self::PlaybackForwardFast => (
-                "Move forwards fast",
-                "Move the time marker forwards by 1 second",
-            ),
-            Self::PlaybackBeginning => ("Go to beginning", "Go to beginning of timeline"),
-            Self::PlaybackEnd => ("Go to end", "Go to end of timeline"),
-            Self::PlaybackRestart => ("Restart", "Restart from beginning of timeline"),
 
             Self::PlaybackSpeed(_) => (
                 "Set playback speed",
@@ -338,7 +325,6 @@ impl RecordingCommandKind {
             Self::ToggleBlueprintInspectionPanel => smallvec![ctrl_shift(Key::I)],
 
             Self::PlaybackTogglePlayPause => smallvec![key(Key::Space)],
-            Self::PlaybackFollow => smallvec![alt(Key::ArrowRight)],
             Self::PlaybackStepBack => smallvec![cmd(Key::ArrowLeft)],
             Self::PlaybackStepForward => smallvec![cmd(Key::ArrowRight)],
             Self::PlaybackBack => smallvec![key(Key::ArrowLeft)],
@@ -346,8 +332,7 @@ impl RecordingCommandKind {
             Self::PlaybackBackFast => smallvec![shift(Key::ArrowLeft)],
             Self::PlaybackForwardFast => smallvec![shift(Key::ArrowRight)],
             Self::PlaybackBeginning => smallvec![key(Key::Home)],
-            Self::PlaybackEnd => smallvec![key(Key::End)],
-            Self::PlaybackRestart => smallvec![alt(Key::ArrowLeft)],
+            Self::PlaybackEndAndFollow => smallvec![key(Key::End), alt(Key::ArrowRight)],
 
             Self::PlaybackSpeed(_) => {
                 // This is a chord, so no single shortcut.

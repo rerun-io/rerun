@@ -2,6 +2,7 @@ use re_chunk::TimelineName;
 use re_entity_db::EntityDb;
 use re_log_types::{AbsoluteTimeRange, AbsoluteTimeRangeF, TimeReal, TimeType};
 use re_sdk_types::blueprint::components::{LoopMode, PlayState};
+use re_ui::RecordingCommandKind;
 
 use crate::NeedsRepaint;
 use crate::blueprint_helpers::BlueprintContext;
@@ -53,12 +54,7 @@ pub enum TimeControlCommand {
         speed: MoveSpeed,
     },
     MoveBeginning,
-    MoveEnd,
-
-    /// Restart the time cursor to the start.
-    ///
-    /// Stops any ongoing following.
-    Restart,
+    MoveEndAndFollow,
 
     /// Set playback speed.
     SetSpeed(f32),
@@ -130,6 +126,37 @@ impl TimeControlCommand {
         }
 
         time_commands
+    }
+
+    /// The time-control command a playback [`re_ui::RecordingCommandKind`] maps to.
+    ///
+    /// Returns `None` for non-playback kinds.
+    pub fn from_recording_command(command: RecordingCommandKind) -> Option<Self> {
+        Some(match command {
+            RecordingCommandKind::PlaybackTogglePlayPause => Self::TogglePlayPause,
+            RecordingCommandKind::PlaybackEndAndFollow => Self::MoveEndAndFollow,
+            RecordingCommandKind::PlaybackStepBack => Self::StepTimeBack,
+            RecordingCommandKind::PlaybackStepForward => Self::StepTimeForward,
+            RecordingCommandKind::PlaybackBack => Self::Move {
+                direction: MoveDirection::Back,
+                speed: MoveSpeed::Normal,
+            },
+            RecordingCommandKind::PlaybackForward => Self::Move {
+                direction: MoveDirection::Forward,
+                speed: MoveSpeed::Normal,
+            },
+            RecordingCommandKind::PlaybackBackFast => Self::Move {
+                direction: MoveDirection::Back,
+                speed: MoveSpeed::Fast,
+            },
+            RecordingCommandKind::PlaybackForwardFast => Self::Move {
+                direction: MoveDirection::Forward,
+                speed: MoveSpeed::Fast,
+            },
+            RecordingCommandKind::PlaybackBeginning => Self::MoveBeginning,
+            RecordingCommandKind::PlaybackSpeed(speed) => Self::SetSpeed(speed.0.0),
+            _ => return None,
+        })
     }
 }
 
@@ -302,6 +329,9 @@ impl TimeControl {
             }
             TimeControlCommand::MoveBeginning => {
                 if let Some(full_range) = db.time_range_for(self.timeline_name()) {
+                    // Jumping anywhere but the end leaves follow mode.
+                    self.exit_follow_mode(db, blueprint_ctx);
+
                     self.states
                         .entry(*self.timeline_name())
                         .or_insert_with(|| TimeState::new(full_range.min))
@@ -314,35 +344,11 @@ impl TimeControl {
                     NeedsRepaint::No
                 }
             }
-            TimeControlCommand::MoveEnd => {
-                if let Some(full_range) = db.time_range_for(self.timeline_name()) {
-                    self.states
-                        .entry(*self.timeline_name())
-                        .or_insert_with(|| TimeState::new(full_range.max))
-                        .time = full_range.max.into();
-
-                    self.just_interacted = true;
-
-                    NeedsRepaint::Yes
-                } else {
-                    NeedsRepaint::No
-                }
-            }
-            TimeControlCommand::Restart => {
-                if let Some(full_range) = db.time_range_for(self.timeline_name()) {
-                    self.following = false;
-
-                    if let Some(state) = self.states.get_mut(self.timeline.name()) {
-                        state.time = full_range.min.into();
-                    }
-
-                    self.just_interacted = true;
-
-                    NeedsRepaint::Yes
-                } else {
-                    NeedsRepaint::No
-                }
-            }
+            TimeControlCommand::MoveEndAndFollow => self.handle_time_command(
+                blueprint_ctx,
+                db,
+                &TimeControlCommand::SetPlayState(PlayState::Following),
+            ),
             TimeControlCommand::SetSpeed(speed) => {
                 if *speed == self.speed {
                     NeedsRepaint::No
