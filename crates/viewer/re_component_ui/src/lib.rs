@@ -3,8 +3,6 @@
 //! The only entry point is [`create_component_ui_registry`], which registers all editors in the component UI registry.
 //! This should be called by `re_viewer` on startup.
 
-#![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
-
 mod color;
 pub mod color_swatch;
 mod datatype_uis;

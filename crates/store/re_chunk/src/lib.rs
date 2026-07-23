@@ -1,3 +1,5 @@
+#![allow(clippy::iter_over_hash_type)]
+
 //! A chunk of Rerun data, encoded using Arrow. Used for logging, transport, storage and compute.
 //!
 //! ## Feature flags

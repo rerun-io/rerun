@@ -1,3 +1,5 @@
+#![allow(clippy::iter_over_hash_type)]
+
 //! The Rerun chunk store, implemented on top of [Apache Arrow](https://arrow.apache.org/)
 //! using the [`arrow`] crate.
 //!

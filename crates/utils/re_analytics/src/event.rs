@@ -121,6 +121,7 @@ impl Properties for Identify {
         event.insert_opt("rust_version", rust_version);
         event.insert_opt("llvm_version", llvm_version);
         event.insert_opt("python_version", python_version);
+        #[expect(clippy::iter_over_hash_type)] // Insertion order is irrelevant.
         for (name, value) in opt_in_metadata {
             event.insert(name, value);
         }

@@ -2,8 +2,6 @@
 //!
 //! This crate provides the central panel that contains all views.
 
-#![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
-
 mod system_execution;
 mod view_highlights;
 mod view_loading_indicator;

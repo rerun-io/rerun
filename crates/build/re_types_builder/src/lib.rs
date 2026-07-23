@@ -1,3 +1,5 @@
+#![allow(clippy::iter_over_hash_type)]
+
 //! This crate implements Rerun's code generation tools.
 //!
 //! These tools translate language-agnostic IDL definitions (flatbuffers) into code.

@@ -918,6 +918,7 @@ impl ResolvedEntityPathRule {
         // unclear if we want to do this here, push this down into `EntityPath::parse`,
         // or even supported deferred evaluation on the `EntityPath` itself.
         let mut expression_sub = rule.0.clone();
+        #[expect(clippy::iter_over_hash_type)] // Only contains the origin.
         for (key, value) in &subst_env.0 {
             expression_sub = expression_sub.replace(format!("${key}").as_str(), value);
             expression_sub = expression_sub.replace(format!("${{{key}}}").as_str(), value);

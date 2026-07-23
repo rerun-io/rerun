@@ -1,3 +1,5 @@
+#![allow(clippy::iter_over_hash_type)]
+
 //! A Rerun server implementation backed by an in-memory store.
 
 #[cfg(not(target_arch = "wasm32"))]

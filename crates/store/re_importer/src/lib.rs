@@ -1,3 +1,5 @@
+#![allow(clippy::iter_over_hash_type)]
+
 //! Handles importing of Rerun data from file using importer plugins.
 
 use std::collections::BTreeSet;
