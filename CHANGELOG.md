@@ -19,7 +19,7 @@ catalog or dataset.
 
 The Viewer now includes an experimental built-in catalog for working with local recordings without starting a separate catalog server.
 For now, it has to be activated through the settings menu since there's still some rough edges.
-The main advantage of this is that it allows you two stream arbitrary large rrd files from disk with ease!
+The main advantage of this is that it allows you to stream arbitrary large rrd files from disk with ease!
 
 The internal Viewer catalog implements the entire functionality of the OSS redap server protocol and can be connected to via the Python SDK.
 For security reasons, we limit this to connections from the same machine.
