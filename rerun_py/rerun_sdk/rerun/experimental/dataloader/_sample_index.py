@@ -125,6 +125,11 @@ class SampleIndex:
         """Total number of samples across all segments."""
         return int(self._cumulative_sizes[-1])
 
+    @property
+    def segment_offsets(self) -> np.ndarray:
+        """Cumulative offsets: `segments[i]` covers global indices `[segment_offsets[i], segment_offsets[i + 1])`."""
+        return self._cumulative_sizes
+
     def global_to_local(self, idx: int) -> tuple[SegmentMetadata, int | np.datetime64 | np.timedelta64]:
         """
         Map a global index `[0, total_samples)` to `(segment, concrete_idx_value)`.

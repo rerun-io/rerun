@@ -102,6 +102,40 @@ snippet: howto/dataloader[dataloader]
 
 For DDP, the iterable dataset partitions the index list across ranks automatically. With the map dataset, swap in `sampler=DistributedSampler(ds)` and call `sampler.set_epoch(epoch)` each epoch.
 
+### Shuffling and fetch locality
+
+`RerunIterableDataset` takes a `shuffle_strategy` argument that controls the order samples are *fetched* in:
+
+- `SampleShuffle()` (the default): every sample lands at an independent random position.
+  Batches are maximally decorrelated, but every fetch scatters across all segments, so the server re-reads shared storage (e.g. video [GOPs](https://en.wikipedia.org/wiki/Group_of_pictures)) on every fetch.
+- `BlockShuffle(block_size=…)`: cuts the sample space into blocks of consecutive samples (never crossing a segment boundary) and shuffles the block order plus the sample order within each block.
+  Each fetch then reads one contiguous span, so the server reads each storage chunk about once per epoch instead of once per fetch.
+  `block_size` defaults to the dataset's `fetch_size`.
+- `NoShuffle()`: natural order, maximal fetch locality, no randomness.
+
+For video-heavy datasets, `BlockShuffle` can speed up epochs by an order of magnitude, because decoding one frame requires fetching its whole GOP: with scattered fetches the same GOP chunks are re-fetched over and over.
+
+The trade-off of `BlockShuffle` is that consecutive samples now come from the same contiguous block, so batches are correlated.
+The `shuffle_buffer_size` argument is the second half of that strategy: decoded samples pass through a shuffle buffer of that size and leave it in random order, mixing samples from many blocks (and thus many segments) into each batch without changing which data is fetched when.
+Randomization improves smoothly with buffer size: the residual chance that two samples in a batch come from the same block falls off roughly as `block_size / buffer_size`, so every doubling of the buffer halves the correlation.
+A buffer of a few times `block_size × batch_size` already gets batches close to what a full per-sample shuffle would produce, and returns diminish from there.
+There is no downside beyond resources, though: if you have the RAM, a bigger buffer only mixes better.
+The costs are holding that many decoded samples in memory per DataLoader worker, and startup latency: emission starts once the buffer is half full and the buffer keeps filling while training runs, so a large buffer delays the first batch by half its size rather than all of it.
+
+The shuffle buffer only makes sense together with `BlockShuffle`.
+With `SampleShuffle` the fetch order is already fully random, so re-shuffling it on emission adds memory cost without any benefit.
+With `NoShuffle` the buffer only jumbles nearby samples, which typically means reordering within a single segment, nowhere near the cross-segment mixing training needs.
+
+```python
+ds = RerunIterableDataset(
+    source=source,
+    index="frame_index",
+    fields=fields,
+    shuffle_strategy=BlockShuffle(),
+    shuffle_buffer_size=4096,
+)
+```
+
 ### Train
 
 From there, the training loop is standard PyTorch:

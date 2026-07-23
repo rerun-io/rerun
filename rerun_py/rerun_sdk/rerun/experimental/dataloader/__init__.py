@@ -12,6 +12,7 @@ from ._sample_index import (
     SampleIndex,
     SegmentMetadata,
 )
+from ._shuffle import BlockShuffle, NoShuffle, SampleShuffle, ShuffleStrategy
 
 if TYPE_CHECKING:
     from ._decoders import ColumnDecoder, ImageDecoder, NumericDecoder, VideoFrameDecoder
@@ -19,16 +20,20 @@ if TYPE_CHECKING:
     from ._map_dataset import RerunMapDataset
 
 __all__ = [
+    "BlockShuffle",
     "ColumnDecoder",
     "DataSource",
     "Field",
     "FixedRateSampling",
     "ImageDecoder",
+    "NoShuffle",
     "NumericDecoder",
     "RerunIterableDataset",
     "RerunMapDataset",
     "SampleIndex",
+    "SampleShuffle",
     "SegmentMetadata",
+    "ShuffleStrategy",
     "VideoFrameDecoder",
     "tracing_scope",
     "with_tracing",
