@@ -370,6 +370,42 @@ impl SpatialView3D {
             );
         }
 
+        // TODO(andreas): Make configurable. Could pick up default radius for this view?
+        let box_line_radius = Size(*re_sdk_types::components::Radius::default().0);
+
+        // TODO(andreas): Make this an enum so the user can choose between showing
+        // the bounding box (all entities), the region of interest, or per-entity bounding boxes.
+        if show_bounding_box {
+            line_builder
+                .batch("scene_bbox_current")
+                .add_box_outline(&state.bounding_boxes.current)
+                .map(|lines| {
+                    lines
+                        .radius(box_line_radius)
+                        .color(ui.tokens().frustum_color)
+                });
+        }
+        if state.state_3d.show_smoothed_bbox {
+            line_builder
+                .batch("scene_region_of_interest_smoothed")
+                .add_box_outline(&state.bounding_boxes.region_of_interest_smoothed)
+                .map(|lines| {
+                    lines
+                        .radius(box_line_radius)
+                        .color(ctx.tokens().frustum_color)
+                });
+        }
+        if state.state_3d.show_per_entity_bbox {
+            let mut batch = line_builder.batch("per_entity_regions_of_interest");
+            #[expect(clippy::iter_over_hash_type)]
+            // Debug bounding boxes; all same color, depth-buffered.
+            for region_of_interest in state.bounding_boxes.region_of_interest_per_entity.values() {
+                batch
+                    .add_box_outline(region_of_interest)
+                    .map(|lines| lines.radius(box_line_radius).color(egui::Color32::YELLOW));
+            }
+        }
+
         show_orbit_eye_center(
             ui.ctx(),
             &mut state.state_3d,

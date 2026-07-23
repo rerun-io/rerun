@@ -1,4 +1,7 @@
 //! Show arrow data as a tree of rerun `list_items` or as a nicely formatted label with syntax highlighting.
+
+#![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
+
 mod arrow_node;
 mod arrow_ui;
 mod datatype_ui;
