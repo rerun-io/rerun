@@ -72,8 +72,6 @@ jobs:
           pixi-version: v0.71.3
 
       - name: Publish packages
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           pixi run node rerun_js/scripts/publish.mjs
 

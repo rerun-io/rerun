@@ -1,8 +1,8 @@
 # Rerun changelog
 
-## [0.35.0](https://github.com/rerun-io/rerun/compare/0.34.1...0.35.0?speculative-link) - 2026-07-23
+## [0.35.0](https://github.com/rerun-io/rerun/compare/0.34.1...0.35.0) - 2026-07-23
 
-🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-35?speculative-link
+🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-35
 
 ### ✨ Overview & highlights
 
@@ -84,7 +84,7 @@ Now this is supported for any ROS message that goes through [schema reflection](
 - **CLI**: The `--follow` mode for tailing `.rrd` files has been removed.
   For live workflows, log to the Viewer and an `.rrd` file with multiple sinks instead.
 
-🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-35?speculative-link
+🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-35
 
 ### 🔎 Details
 
@@ -98,6 +98,12 @@ Now this is supported for any ROS message that goes through [schema reflection](
 - Add ability to split source MCAP in time [1fff2ee](https://github.com/rerun-io/rerun/commit/1fff2eeeb99a17b2c6bfb4131872fdb4e26e24e9)
 - dataloader: incremental video decoding for sequential reads [fb0d551](https://github.com/rerun-io/rerun/commit/fb0d5513de1b1c59bc8ca309b9fc2a5fd2c4042f)
 - Fix dimension check of Python `BarChart` [05c087c](https://github.com/rerun-io/rerun/commit/05c087c808074b3cfd59883837b6eeb35afd9c3f)
+- Introduce `re_hdf5` [378ecb1](https://github.com/rerun-io/rerun/commit/378ecb1f2489335b0f5c5e30b6b9eaddd460f032)
+- Provide more FFMPEG sidecar knobs to MP4Reader [cccbdb3](https://github.com/rerun-io/rerun/commit/cccbdb3b73922b9e0b89e0a991b3d0f789324e65)
+- Introduce `Hdf5Reader` [fe43874](https://github.com/rerun-io/rerun/commit/fe43874158c7158ba1c64d99db3793b4871a028f)
+- Expose `re_video` utilities to Python [494d5c1](https://github.com/rerun-io/rerun/commit/494d5c17f1dd61d6c87d8bc9a887b274a4f1da62)
+- Use `IndexColumn` dataclass in `ParquetReader` [a7bac45](https://github.com/rerun-io/rerun/commit/a7bac45c5ca7449906c42dc97b95ded21c7f6ba3)
+
 
 #### 🦀 Rust API
 - Use a single process-wide CPU runtime for dataframe queries [9ee95cc](https://github.com/rerun-io/rerun/commit/9ee95cc325a6ceae7a3d5f800e444a6f3fbf5b0c)
@@ -117,6 +123,8 @@ Now this is supported for any ROS message that goes through [schema reflection](
 - Fix reflection-only decoding of standard ROS2 messages [7dc7b31](https://github.com/rerun-io/rerun/commit/7dc7b31db8f7944a008fb3aa12983c63e35703a0)
 - Show camera rays (when hovering 2d) & reprojected points (when hovering in 3d) for named transforms [f6beeba](https://github.com/rerun-io/rerun/commit/f6beeba4944c494d3ad49e5a5d77010f0ef80301)
 - Fix drag & dropping component not picking correct selector if one is required [6724d08](https://github.com/rerun-io/rerun/commit/6724d08d5c49148e8bf1dbd7bd1c1fffa3c9da42)
+- Fix web video decoding issues with large timesstamps [2bc9f4e](https://github.com/rerun-io/rerun/commit/2bc9f4e93bc3b92e3b3f40a6f070979444c4ba0c)
+- Fix missing button hover effect in light mode [fe43242](https://github.com/rerun-io/rerun/commit/fe432428780665bb8a91d8f44679abac7a9bed41)
 
 #### 🌁 Viewer improvements
 - Add experimental Viewer catalog server [d945e0e](https://github.com/rerun-io/rerun/commit/d945e0e88770b81a988b8060b106f9acaa1f4ee6)
@@ -127,12 +135,15 @@ Now this is supported for any ROS message that goes through [schema reflection](
 - State timeline's range ends are drawn like on the timeline panel [586ebe9](https://github.com/rerun-io/rerun/commit/586ebe9925a91de7a56d8e5dc0b53650140d4d0f)
 - Remove file-tailing (`--follow`) mode [14f4d32](https://github.com/rerun-io/rerun/commit/14f4d3284307926008ffe0237854ce34ad030b9b)
 - Add `SpatialInformation` blueprint controls to 2D view [5797b85](https://github.com/rerun-io/rerun/commit/5797b85efd4eb4dd6f5961be7100608ea9715feb)
-
 - Fixes nested components not showing up on state timeline [354714a](https://github.com/rerun-io/rerun/commit/354714a2df0e14ce4763738ebe0987737e7554fe)
 - State timeline can display arrays of states [4151615](https://github.com/rerun-io/rerun/commit/41516159aec74069151e73524463fd0fbeabb95a)
 - Fixes EncodedDepthImage depth_range fallback [e84ad0a](https://github.com/rerun-io/rerun/commit/e84ad0affa4dcfa79903329bac05abf6ef7a2160)
 - Load `.rrds` (eagerly) into the internal catalog on Wasm [33cbf85](https://github.com/rerun-io/rerun/commit/33cbf85c4e39c844ca6a75ba5cf410e9c5851b4b)
 - Fall back to `tf#/<entity>` for `""` frame IDs in transform retrieval [507732f](https://github.com/rerun-io/rerun/commit/507732f7e2994d582c22695370f25b6e0d4d45c0)
+- Always spawn an internal Viewer catalog (experimental) [add2412](https://github.com/rerun-io/rerun/commit/add24129ba825b3bb36acf1add9e2b4c08f60829)
+- Loop mode button no longer goes into time selection loop unless there's a time selection [55c3fe4](https://github.com/rerun-io/rerun/commit/55c3fe42022adf8b55f684b37e1b1d2af25e1e66)
+- Add `RrdFingerprint` as a way to uniquely identify recordings [ab5f279](https://github.com/rerun-io/rerun/commit/ab5f279975359b33c1d3a022984f9ae9fb56273c)
+- Give a clear error when a glTF/GLB requires an unsupported extension [#12858](https://github.com/rerun-io/rerun/pull/12858) (thanks [@wuisabel-gif](https://github.com/wuisabel-gif)!)
 
 #### 🗄️ OSS server
 - Add asset datasets, which can be used to store shared data between segments in a dataset [6fbbc8f](https://github.com/rerun-io/rerun/commit/6fbbc8fbdad02f362dd805642ec795d67b5e2c54)
@@ -159,6 +170,7 @@ Now this is supported for any ROS message that goes through [schema reflection](
 - MCAP: port `sensor_msgs/CameraInfo` to lens and remove superfluous `CoordinateFrame` [745647b](https://github.com/rerun-io/rerun/commit/745647b76f9312112ac8182fcab27b9521b39d4d)
 - Add ability to convert from corrupted MCAP without running recover [9bd243a](https://github.com/rerun-io/rerun/commit/9bd243a6371d5e784f49a219fed54758a0ba6bd7)
 - Move ROS2 stamp handling from lenses to the reflection decoder [c944a28](https://github.com/rerun-io/rerun/commit/c944a2827961c514c2753c5bed594a1740773020)
+- MCAP: add CLI args for recovery and time range [909766a](https://github.com/rerun-io/rerun/commit/909766a9f31e572291852451c1eb8ec43801ce8d)
 
 #### 📈 Analytics
 - Improve `query_metrics()` accuracy [d66340d](https://github.com/rerun-io/rerun/commit/d66340d8a75a86a010360151cba7b3faafb14d5b)

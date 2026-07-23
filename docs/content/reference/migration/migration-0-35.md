@@ -44,7 +44,7 @@ No action needed.
 ## `ParquetReader` index columns now use `IndexColumn`
 
 The experimental `ParquetReader`'s `index_columns` argument no longer takes `(name, type[, unit])` tuples.
-Pass [`IndexColumn`](https://rerun.io/docs/reference/python/latest/rerun/experimental#rerun.experimental.IndexColumn?speculative-link) values instead, built with the `timestamp`/`duration`/`sequence` constructors (the timeline kind is the constructor you pick, and `unit` is now the keyword-only `input_unit`):
+Pass [`IndexColumn`](https://ref.rerun.io/docs/python/stable/experimental/#rerun.experimental.IndexColumn) values instead, built with the `timestamp`/`duration`/`sequence` constructors (the timeline kind is the constructor you pick, and `unit` is now the keyword-only `input_unit`):
 
 ```python
 # 0.34
