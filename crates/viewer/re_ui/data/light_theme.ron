@@ -241,7 +241,7 @@
       "color": "#FF7A0C"
     },
     "widget_hovered_color": {
-      "color": "{Gray.900}"
+      "color": "{Gray.750}"
     },
     "popup_shadow_color": {
       "color": "#00000020"
