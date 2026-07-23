@@ -125,6 +125,7 @@ pub const RERUN_LOGO: Icon = icon_from_path!("../data/icons/rerun_logo.png");
 pub const HELP: Icon = icon_from_path!("../data/icons/help.svg");
 
 pub const PLAY: Icon = icon_from_path!("../data/icons/play.svg");
+pub const PLAYHEAD_NAV: Icon = icon_from_path!("../data/icons/playhead_nav.svg");
 pub const FOLLOW: Icon = icon_from_path!("../data/icons/follow.svg");
 pub const PAUSE: Icon = icon_from_path!("../data/icons/pause.svg");
 pub const CHEVRON: Icon = icon_from_path!("../data/icons/chevron.svg");

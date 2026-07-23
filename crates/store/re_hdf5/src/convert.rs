@@ -179,7 +179,7 @@ pub(crate) fn read_row_values(
 
 /// Read a dataset's raw values into a flat (row-major) Arrow array.
 fn read_flat_values(
-    dataset: &hdf5_pure::Dataset<'_>,
+    dataset: &hdf5_pure::Dataset,
     dtype: &DType,
     path: &H5Path,
 ) -> Result<ArrayRef, Hdf5Error> {

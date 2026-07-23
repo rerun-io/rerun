@@ -219,9 +219,6 @@
     "extreme_fg_color": {
       "color": "{Gray.0}"
     },
-    "widget_inactive_bg_fill": {
-      "color": "{Gray.800}"
-    },
     "widget_noninteractive_bg_stroke": {
       "color": "{Gray.800}"
     },
@@ -464,9 +461,9 @@
     "text": { "color": "{Gray.1000}" },
   },
   "button_secondary": {
-    "fill": { "color": "{Gray.650}" },
-    "fill_hovered": { "color": "{Gray.800}" },
-    "fill_pressed": { "color": "{Gray.850}" },
+    "fill": { "color": "{Gray.800}" },
+    "fill_hovered": { "color": "{Gray.700}" },
+    "fill_pressed": { "color": "{Gray.650}" },
     "text": { "color": "{Gray.250}" },
   },
   "button_ghost": {

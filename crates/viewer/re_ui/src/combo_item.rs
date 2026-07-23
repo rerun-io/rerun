@@ -3,6 +3,7 @@ use crate::egui_ext::boxed_widget::{BoxedWidget, BoxedWidgetExt as _};
 use crate::{DesignTokens, UiExt as _, icons};
 use eframe::emath::Align;
 use eframe::epaint::FontFamily;
+use eframe::epaint::text::TextWrapMode;
 use egui::{
     Atom, AtomExt as _, AtomLayout, Atoms, Button, FontId, Frame, Id, Layout, Margin, Pos2, Rect,
     Response, Sense, TextStyle, Ui, UiBuilder, Vec2, Widget, WidgetText,
@@ -108,7 +109,9 @@ impl Widget for ComboItem<'_> {
         // spacing (2px space + 2px gap = 4px)
         atoms.push_right(Atom::default().atom_size(Vec2::new(2.0, 0.0)));
 
-        let response = Button::new(atoms).atom_ui(ui);
+        let response = Button::new(atoms)
+            .wrap_mode(TextWrapMode::Extend)
+            .atom_ui(ui);
 
         // Paint the error icon and tooltip
         if let Some(rect) = response.rect(error_id) {

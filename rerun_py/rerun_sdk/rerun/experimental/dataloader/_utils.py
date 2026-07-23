@@ -225,17 +225,27 @@ def _read_groups(
     """
     Partition `fields` into read groups, each fetched by one server query.
 
-    Grouped by `(ColumnDecoder.fill_latest_at, is keyframe-anchored)`, since
-    `fill_latest_at` is a per-query argument and anchored fields need their own
-    `[keyframe, target]` index values rather than the shared window union.
+    A group's query fetches every field at the union of the group's index
+    values, so fields may only share a group when they need the same rows.
+    Fields are split on three properties:
+
+    - `fill_latest_at`: a per-query argument, not a per-column one.
+    - keyframe-anchored: anchored fields (video) fetch a `[keyframe, target]`
+      range per sample; no other field wants those rows.
+    - `Field.window`: a windowed field fetches its whole window per sample. An
+      unwindowed field (e.g. an image) sharing its query would be shipped at
+      every index value in that window instead of once per sample.
+
     Returns `(fill_latest_at, group_fields)` pairs.
     """
-    groups: dict[tuple[bool, bool], dict[str, Field]] = defaultdict(dict)
+    groups: dict[tuple[bool, bool, tuple[int, int] | None], dict[str, Field]] = defaultdict(dict)
     for key, field in fields.items():
         decoder = decoders[key]
-        anchored = decoder.prior_keyframe_path(field.path) is not None
-        groups[(decoder.fill_latest_at, anchored)][key] = field
-    return [(fill_latest_at, group_fields) for (fill_latest_at, _anchored), group_fields in groups.items()]
+        # A field with an explicit window is never anchored, even when its
+        # decoder wants keyframes (`_fetch_prior_keyframes` skips it).
+        anchored = field.window is None and decoder.prior_keyframe_path(field.path) is not None
+        groups[(decoder.fill_latest_at, anchored, field.window)][key] = field
+    return [(fill_latest_at, group_fields) for (fill_latest_at, _anchored, _window), group_fields in groups.items()]
 
 
 def _fetch_group(
@@ -249,8 +259,13 @@ def _fetch_group(
     fill_latest_at: bool,
 ) -> dict[str, pa.Table]:
     """Run one server query over the index values one read group needs, split per segment."""
-    anchored = any(decoders[key].prior_keyframe_path(field.path) is not None for key, field in fields.items())
-    group = f"{'anchored' if anchored else 'windowed'},{'fill' if fill_latest_at else 'exact'}"
+    anchored = any(
+        field.window is None and decoders[key].prior_keyframe_path(field.path) is not None
+        for key, field in fields.items()
+    )
+    windowed = any(field.window is not None for field in fields.values())
+    kind = "anchored" if anchored else ("windowed" if windowed else "unwindowed")
+    group = f"{kind},{'fill' if fill_latest_at else 'exact'}"
     with tracing_scope(f"RerunDataset._fetch_group[{group}]"):
         query_indices = _build_query_indices(targets, fields, decoders, sample_index=sample_index)
 

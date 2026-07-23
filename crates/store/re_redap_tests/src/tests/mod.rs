@@ -128,6 +128,7 @@ define_redap_tests! {
     query_dataset::query_empty_dataset,
     query_dataset::query_simple_dataset,
     query_dataset::query_simple_dataset_with_layers,
+    query_filter::query_dataset_or_of_ranges_fans_out,
     query_filter::query_dataset_range_filter_with_and_without_latest_at_fill,
     query_filter::query_dataset_simple_filter,
     query_filter::query_dataset_with_limit,

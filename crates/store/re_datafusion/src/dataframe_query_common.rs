@@ -72,6 +72,30 @@ pub(crate) fn force_grpc() -> bool {
     false
 }
 
+/// How many of a scan's `query_dataset` requests run concurrently.
+///
+/// A scan may issue several; this bounds how many are in flight at
+/// once. On native the width is `pipeline_budget::query_dataset_max_concurrency`,
+/// and each request also takes a permit from the process-wide
+/// `pipeline_budget::query_dataset_semaphore` so co-tenant scans share one
+/// ceiling. On wasm `pipeline_budget` isn't compiled in and there's no env, so
+/// the width is a small fixed constant.
+fn query_dataset_fanout() -> usize {
+    /// gRPC-web requests overlap usefully even though wasm is single-threaded;
+    /// kept modest since there's no process-wide limiter to back it up.
+    #[cfg(target_arch = "wasm32")]
+    const WASM_QUERY_DATASET_FANOUT: usize = 8;
+
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        crate::pipeline_budget::query_dataset_max_concurrency()
+    }
+    #[cfg(target_arch = "wasm32")]
+    {
+        WASM_QUERY_DATASET_FANOUT
+    }
+}
+
 /// Sets the size for output record batches in rows. The last batch will likely be smaller.
 /// The default for Data Fusion is 8192, which leads to a 256Kb record batch on average for
 /// rows with 32b of data. We are setting this lower as a reasonable first guess to avoid
@@ -535,63 +559,100 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
 
             let mut trace_id: Option<opentelemetry::TraceId> = None;
 
-            for dataset_query in dataset_queries {
-                let query_start = Instant::now();
+            // These are independent read-only queries, so fan them out with
+            // bounded concurrency (`query_dataset_fanout`). Order doesn't
+            // matter: the batches are concatenated and deduplicated by chunk id
+            // below.
+            let queries_start = Instant::now();
+            let mut response_futures = futures::stream::iter(dataset_queries)
+                .map(|dataset_query| {
+                    let client = self.client.clone();
+                    let dataset_id = self.dataset_id;
+                    async move {
+                        // Hold a process-wide permit for the whole open+drain so
+                        // co-tenant queries share one ceiling on concurrent
+                        // `query_dataset` streams (the fan-out width alone only
+                        // bounds a single scan). Dropped when this task ends.
+                        #[cfg(not(target_arch = "wasm32"))]
+                        let _permit = crate::pipeline_budget::query_dataset_semaphore()
+                            .acquire()
+                            .await
+                            .expect("query_dataset semaphore is never closed");
 
-                // Build the proto request once, then clone it per retry attempt (`tonic::Request`
-                // isn't `Clone`). The server rejects `QueryDataset` with `ResourceExhausted`
-                // fail-fast (before any work) when its stream-concurrency limiter is saturated, so
-                // retrying the open is idempotent. Map tonic → `ApiError` *inside* the retry so the
-                // predicate sees `ResourcesExhausted`, and to `DataFusionError` *outside*.
-                let proto_request: re_protos::cloud::v1alpha1::QueryDatasetRequest =
-                    dataset_query.into();
-                let dataset_id = self.dataset_id;
-                let response =
-                    re_redap_client::with_retry_resource_exhausted("query_dataset", || {
-                        let mut client = self.client.clone();
-                        let request =
-                            tonic::Request::new(proto_request.clone()).with_entry_id(dataset_id);
-                        async move {
-                            client
-                                .query_dataset(request)
-                                .await
-                                .map_err(|err| ApiError::tonic(err, "query_dataset"))
+                        // Build the proto request once, then clone it per retry attempt
+                        // (`tonic::Request` isn't `Clone`). The server rejects `QueryDataset`
+                        // with `ResourceExhausted` fail-fast (before any work) when its
+                        // stream-concurrency limiter is saturated, so retrying the open is
+                        // idempotent. Map tonic → `ApiError` *inside* the retry so the predicate
+                        // sees `ResourcesExhausted`, and to `DataFusionError` *outside*.
+                        let proto_request: re_protos::cloud::v1alpha1::QueryDatasetRequest =
+                            dataset_query.into();
+                        let response =
+                            re_redap_client::with_retry_resource_exhausted("query_dataset", || {
+                                let mut client = client.clone();
+                                let request = tonic::Request::new(proto_request.clone())
+                                    .with_entry_id(dataset_id);
+                                async move {
+                                    client
+                                        .query_dataset(request)
+                                        .await
+                                        .map_err(|err| ApiError::tonic(err, "query_dataset"))
+                                }
+                            })
+                            .await
+                            .map_err(|err| err.into_df_error())?;
+
+                        // Capture the server-side trace-id from response metadata.
+                        let trace_id = re_redap_client::extract_trace_id(response.metadata());
+
+                        let mut response_stream = response.into_inner();
+                        let mut batches = Vec::new();
+                        let mut time_to_first: Option<Duration> = None;
+
+                        while let Some(response) = response_stream.next().await {
+                            if time_to_first.is_none() {
+                                time_to_first = Some(queries_start.elapsed());
+                            }
+
+                            let response = response.map_err(|err| {
+                                ApiError::tonic(err, "query_dataset response stream")
+                                    .with_trace_id(trace_id)
+                                    .into_df_error()
+                            })?;
+                            let Some(dataframe_part) = response.data else {
+                                continue;
+                            };
+                            let batch: RecordBatch = dataframe_part.try_into().map_err(|err| {
+                                ApiError::deserialization_with_source(
+                                    trace_id,
+                                    err,
+                                    "decoding query_dataset response batch",
+                                )
+                                .into_df_error()
+                            })?;
+
+                            batches.push(batch);
                         }
-                    })
-                    .await
-                    .map_err(|err| err.into_df_error())?;
 
-                // Capture the server-side trace-id from response metadata.
-                if trace_id.is_none() {
-                    trace_id = re_redap_client::extract_trace_id(response.metadata());
-                }
-
-                let mut response_stream = response.into_inner();
-
-                while let Some(response) = response_stream.next().await {
-                    if time_to_first_chunk_info.is_none() {
-                        time_to_first_chunk_info = Some(query_start.elapsed());
+                        Ok::<_, DataFusionError>((batches, time_to_first, trace_id))
                     }
+                })
+                .buffer_unordered(query_dataset_fanout());
 
-                    let response = response.map_err(|err| {
-                        ApiError::tonic(err, "query_dataset response stream")
-                            .with_trace_id(trace_id)
-                            .into_df_error()
-                    })?;
-                    let Some(dataframe_part) = response.data else {
-                        continue;
-                    };
-                    let batch: RecordBatch = dataframe_part.try_into().map_err(|err| {
-                        ApiError::deserialization_with_source(
-                            trace_id,
-                            err,
-                            "decoding query_dataset response batch",
-                        )
-                        .into_df_error()
-                    })?;
+            while let Some(result) = response_futures.next().await {
+                let (batches, time_to_first, response_trace_id) = result?;
 
-                    chunk_info_batches.push(batch);
+                if trace_id.is_none() {
+                    trace_id = response_trace_id;
                 }
+                // Time to first chunk info is the earliest first-response across
+                // all concurrent queries, measured from the shared fan-out start.
+                time_to_first_chunk_info = match (time_to_first_chunk_info, time_to_first) {
+                    (Some(current), Some(candidate)) => Some(current.min(candidate)),
+                    (existing, candidate) => existing.or(candidate),
+                };
+
+                chunk_info_batches.extend(batches);
             }
             let chunk_info_batches = compute_unique_chunk_info_ids(chunk_info_batches)?;
 

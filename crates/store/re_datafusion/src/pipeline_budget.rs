@@ -707,6 +707,49 @@ pub(crate) fn direct_fetch_semaphore() -> &'static tokio::sync::Semaphore {
     })
 }
 
+/// Default process-wide ceiling on concurrent in-flight `query_dataset` streams.
+///
+/// A scan runs its `query_dataset` requests concurrently. Each open stream is a
+/// socket against the server's `QueryDataset` stream-concurrency limiter, so
+/// this is bounded *process-wide* rather than
+/// per-query. Overridable via [`ENV_QUERY_DATASET_MAX_CONCURRENCY`].
+const DEFAULT_QUERY_DATASET_MAX_CONCURRENCY: usize = 16;
+
+/// Env override for [`DEFAULT_QUERY_DATASET_MAX_CONCURRENCY`]. A positive
+/// integer; invalid/≤0 values fall back to the default, then floored at 1.
+const ENV_QUERY_DATASET_MAX_CONCURRENCY: &str = "RERUN_QUERY_DATASET_MAX_CONCURRENCY";
+
+/// Resolved process-wide `query_dataset` concurrency ceiling.
+///
+/// Doubles as the local `buffer_unordered` fan-out width in the scan loop, so a
+/// single query buffers exactly as many requests as can ever hold a permit
+/// (the semaphore only bites once a second co-tenant query contends for slots).
+/// Resolved once from [`ENV_QUERY_DATASET_MAX_CONCURRENCY`] on first use.
+pub(crate) fn query_dataset_max_concurrency() -> usize {
+    static N: std::sync::OnceLock<usize> = std::sync::OnceLock::new();
+    *N.get_or_init(|| {
+        read_env_usize(
+            ENV_QUERY_DATASET_MAX_CONCURRENCY,
+            DEFAULT_QUERY_DATASET_MAX_CONCURRENCY,
+        )
+        .max(1)
+    })
+}
+
+/// Process-wide ceiling on concurrent in-flight `query_dataset` streams.
+///
+/// See [`DEFAULT_QUERY_DATASET_MAX_CONCURRENCY`] for why this is bounded
+/// process-wide rather than per-query. Sized from
+/// [`query_dataset_max_concurrency`] and shared across all scans in the process.
+pub(crate) fn query_dataset_semaphore() -> &'static tokio::sync::Semaphore {
+    static SEM: std::sync::OnceLock<tokio::sync::Semaphore> = std::sync::OnceLock::new();
+    SEM.get_or_init(|| {
+        let permits = query_dataset_max_concurrency();
+        re_log::debug!("query_dataset concurrency cap = {permits}");
+        tokio::sync::Semaphore::new(permits)
+    })
+}
+
 impl PipelineBudget {
     /// Create a new budget derived from `total_uncompressed_estimate`
     /// (clamped per-partition to `[MIN_BUDGET_PER_PARTITION, MAX_BUDGET_PER_PARTITION]`,

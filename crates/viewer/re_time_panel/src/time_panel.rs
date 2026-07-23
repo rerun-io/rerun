@@ -1,8 +1,8 @@
 use egui::emath::Rangef;
 use egui::scroll_area::ScrollSource;
 use egui::{
-    CursorIcon, Modifiers, NumExt as _, Painter, PointerButton, Rect, Response, RichText, Ui, Vec2,
-    WidgetInfo, WidgetType,
+    Align, CursorIcon, Modifiers, NumExt as _, Painter, PointerButton, Rect, Response, RichText,
+    TextEdit, Ui, Vec2, WidgetInfo, WidgetType,
 };
 use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item_with_context};
 use re_data_ui::DataUi as _;
@@ -17,7 +17,8 @@ use re_sdk_types::blueprint::components::PanelState;
 use re_sdk_types::reflection::ComponentDescriptorExt as _;
 use re_ui::filter_widget::format_matching_text;
 use re_ui::{
-    ContextExt as _, DesignTokens, Help, IconText, UiExt as _, filter_widget, icons, list_item,
+    ContextExt as _, DesignTokens, Help, IconText, ReButton, Size, UiExt as _, Variant,
+    filter_widget, icons, list_item,
 };
 use re_viewer_context::open_url::ViewerOpenUrl;
 use re_viewer_context::{
@@ -1618,9 +1619,15 @@ impl TimePanel {
                 time_type.format_opt(time_int, app_options.timestamp_format, subsecond_decimals)
             });
 
-            ui.style_mut().spacing.text_edit_width = 200.0;
+            let text_edit_width = 200.0.at_most(ui.available_width());
 
-            let response = ui.text_edit_singleline(&mut time_str);
+            let response = ReButton::wrap_widget(ui, Variant::Secondary, Size::Tiny, false, |ui| {
+                // `TextEdit::min_size` is ignored for some reason so we need add_sized
+                ui.add_sized(
+                    Vec2::new(text_edit_width, Size::Tiny.height()),
+                    TextEdit::singleline(&mut time_str).vertical_align(Align::Center),
+                )
+            });
             if response.changed() {
                 self.time_edit_string = Some(time_str.clone());
             }
