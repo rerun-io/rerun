@@ -33,7 +33,7 @@ impl BackgroundTasks {
         let name = name.into();
 
         if self.promises.contains_key(&name) {
-            anyhow::bail!("there's already a promise {name:?} running!");
+            anyhow::bail!("there's already a background task {name:?} running!");
         }
 
         let f = move || Box::new(f()) as Box<dyn Any + Send>; // erase it
@@ -49,6 +49,10 @@ impl BackgroundTasks {
     where
         F: FnOnce() -> anyhow::Result<PathBuf> + Send + 'static,
     {
+        if self.is_file_save_in_progress() {
+            anyhow::bail!("another save operation is already in progress");
+        }
+
         self.spawn_threaded_promise(FILE_SAVER_PROMISE, f)
     }
 
