@@ -124,6 +124,7 @@ Now this is supported for any ROS message that goes through [schema reflection](
 - Show camera rays (when hovering 2d) & reprojected points (when hovering in 3d) for named transforms [f6beeba](https://github.com/rerun-io/rerun/commit/f6beeba4944c494d3ad49e5a5d77010f0ef80301)
 - Fix drag & dropping component not picking correct selector if one is required [6724d08](https://github.com/rerun-io/rerun/commit/6724d08d5c49148e8bf1dbd7bd1c1fffa3c9da42)
 - Fix web video decoding issues with large timesstamps [2bc9f4e](https://github.com/rerun-io/rerun/commit/2bc9f4e93bc3b92e3b3f40a6f070979444c4ba0c)
+- Fix missing button hover effect in light mode [fe43242](https://github.com/rerun-io/rerun/commit/fe432428780665bb8a91d8f44679abac7a9bed41)
 
 #### 🌁 Viewer improvements
 - Add experimental Viewer catalog server [d945e0e](https://github.com/rerun-io/rerun/commit/d945e0e88770b81a988b8060b106f9acaa1f4ee6)
@@ -142,6 +143,7 @@ Now this is supported for any ROS message that goes through [schema reflection](
 - Always spawn an internal Viewer catalog (experimental) [add2412](https://github.com/rerun-io/rerun/commit/add24129ba825b3bb36acf1add9e2b4c08f60829)
 - Loop mode button no longer goes into time selection loop unless there's a time selection [55c3fe4](https://github.com/rerun-io/rerun/commit/55c3fe42022adf8b55f684b37e1b1d2af25e1e66)
 - Add `RrdFingerprint` as a way to uniquely identify recordings [ab5f279](https://github.com/rerun-io/rerun/commit/ab5f279975359b33c1d3a022984f9ae9fb56273c)
+- Give a clear error when a glTF/GLB requires an unsupported extension [#12858](https://github.com/rerun-io/rerun/pull/12858) (thanks [@wuisabel-gif](https://github.com/wuisabel-gif)!)
 
 #### 🗄️ OSS server
 - Add asset datasets, which can be used to store shared data between segments in a dataset [6fbbc8f](https://github.com/rerun-io/rerun/commit/6fbbc8fbdad02f362dd805642ec795d67b5e2c54)
