@@ -212,15 +212,10 @@ mod file_server_impl {
                     .with_context(|| format!("couldn't resolve imports for file at {path:?}"))?
                     .imports;
 
-                #[expect(clippy::iter_over_hash_type)]
-                // Each import path is watched independently; errors are logged, not propagated.
                 for path in imports {
-                    if let Err(err) = self
-                        .watcher
+                    self.watcher
                         .watch(path.as_ref(), RecursiveMode::NonRecursive)
-                    {
-                        re_log::error!(%err, ?path, "couldn't watch imported dependency");
-                    }
+                        .with_context(|| format!("couldn't watch file at {path:?}"))?;
                 }
             }
 
