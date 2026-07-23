@@ -1,8 +1,8 @@
 # Rerun changelog
 
-## [0.35.0](https://github.com/rerun-io/rerun/compare/0.34.1...0.35.0?speculative-link) - 2026-07-23
+## [0.35.0](https://github.com/rerun-io/rerun/compare/0.34.1...0.35.0) - 2026-07-23
 
-🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-35?speculative-link
+🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-35
 
 ### ✨ Overview & highlights
 
@@ -84,7 +84,7 @@ Now this is supported for any ROS message that goes through [schema reflection](
 - **CLI**: The `--follow` mode for tailing `.rrd` files has been removed.
   For live workflows, log to the Viewer and an `.rrd` file with multiple sinks instead.
 
-🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-35?speculative-link
+🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-35
 
 ### 🔎 Details
 
