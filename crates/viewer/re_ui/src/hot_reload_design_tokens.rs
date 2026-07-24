@@ -1,5 +1,17 @@
 use crate::DesignTokens;
 
+/// Returned by [`crate::try_set_design_tokens`] when the design tokens have already been initialized.
+#[derive(Clone, Copy, Debug)]
+pub struct DesignTokensAlreadyInitializedError;
+
+impl std::fmt::Display for DesignTokensAlreadyInitializedError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("Design tokens have already been initialized")
+    }
+}
+
+impl std::error::Error for DesignTokensAlreadyInitializedError {}
+
 struct DesignTokensPerTheme {
     dark: DesignTokens,
     light: DesignTokens,
@@ -40,12 +52,28 @@ impl DesignTokensPerTheme {
 mod design_token_access {
     use std::sync::OnceLock;
 
-    use super::DesignTokensPerTheme;
+    use crate::DesignTokens;
+
+    use super::{DesignTokensAlreadyInitializedError, DesignTokensPerTheme};
+
+    static DESIGN_TOKENS: OnceLock<DesignTokensPerTheme> = OnceLock::new();
 
     pub fn design_tokens_per_theme() -> &'static DesignTokensPerTheme {
-        static DESIGN_TOKENS: OnceLock<DesignTokensPerTheme> = OnceLock::new();
         DESIGN_TOKENS
             .get_or_init(|| DesignTokensPerTheme::load().expect("Failed to load design tokens"))
+    }
+
+    pub fn try_set_design_tokens(
+        dark: DesignTokens,
+        light: DesignTokens,
+    ) -> Result<(), DesignTokensAlreadyInitializedError> {
+        if DESIGN_TOKENS
+            .set(DesignTokensPerTheme { dark, light })
+            .is_err()
+        {
+            return Err(DesignTokensAlreadyInitializedError);
+        }
+        Ok(())
     }
 }
 
@@ -57,7 +85,9 @@ mod design_token_access {
     use notify::{Event, RecommendedWatcher, RecursiveMode, Watcher};
     use parking_lot::{Mutex, RwLock};
 
-    use super::DesignTokensPerTheme;
+    use crate::DesignTokens;
+
+    use super::{DesignTokensAlreadyInitializedError, DesignTokensPerTheme};
 
     static CURRENT_TOKENS: OnceLock<RwLock<&'static DesignTokensPerTheme>> = OnceLock::new();
 
@@ -153,6 +183,22 @@ mod design_token_access {
 
         *current.read()
     }
+
+    pub fn try_set_design_tokens(
+        dark: DesignTokens,
+        light: DesignTokens,
+    ) -> Result<(), DesignTokensAlreadyInitializedError> {
+        // Mirrors the OnceLock-based variant: only succeed if the static is not yet initialized.
+        // In hot-reload mode the file watcher may overwrite this later — that's intentional, as
+        // this build flavor is only enabled inside the rerun workspace, where the file watcher
+        // already leaks on every reload.
+        let leaked: &'static DesignTokensPerTheme =
+            Box::leak(Box::new(DesignTokensPerTheme { dark, light }));
+        if CURRENT_TOKENS.set(RwLock::new(leaked)).is_err() {
+            return Err(DesignTokensAlreadyInitializedError);
+        }
+        Ok(())
+    }
 }
 
 pub fn design_tokens_of(theme: egui::Theme) -> &'static DesignTokens {
@@ -161,6 +207,8 @@ pub fn design_tokens_of(theme: egui::Theme) -> &'static DesignTokens {
         egui::Theme::Light => &design_token_access::design_tokens_per_theme().light,
     }
 }
+
+pub(crate) use design_token_access::try_set_design_tokens;
 
 #[cfg(hot_reload_design_tokens)]
 pub use design_token_access::{hot_reload_design_tokens, install_hot_reload};
