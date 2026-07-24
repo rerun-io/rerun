@@ -971,8 +971,8 @@ fn compute_merged_breakdown(
         }
 
         let mut p = phase_idx;
-        while p < phases.len() {
-            let phase_start = phases[p].start_time as f64;
+        while let Some(phase) = phases.get(p) {
+            let phase_start = phase.start_time as f64;
             if phase_start >= bucket_t1 {
                 break;
             }
