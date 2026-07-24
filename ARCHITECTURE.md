@@ -224,6 +224,7 @@ Update instructions:
 | re_dev_tools      | Various tools for Rerun development. Each tool has a subcommand. |
 | re_protos_builder | Generates code for Rerun remote store gRPC API                   |
 | re_types_builder  | Generates code for Rerun's SDKs from flatbuffers definitions.    |
+| re_web_tests      | Discovers and runs browser-based Wasm tests.                     |
 
 ### Utilities
 

@@ -332,7 +332,7 @@ where
     Err(last_retryable_err.expect("bug: this should not be None if we reach here"))
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(target_arch = "wasm32")))]
 mod retry_tests {
     use super::*;
     use std::sync::atomic::{AtomicUsize, Ordering};

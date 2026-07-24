@@ -28,6 +28,9 @@ workspace = true
 [package.metadata.docs.rs]
 all-features = true
 
+[package.metadata.rerun.web-test]
+redap-server = true
+
 
 [dependencies]
 re_arrow_util.workspace = true
@@ -79,3 +82,8 @@ tonic = { workspace = true, default-features = false, features = ["transport", "
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 tonic-web-wasm-client.workspace = true
 tonic = { workspace = true, default-features = false }
+
+[target.'cfg(target_arch = "wasm32")'.dev-dependencies]
+re_log = { workspace = true, features = ["setup"] }
+wasm-bindgen-test.workspace = true
+web-sys = { workspace = true, features = ["Location", "Window"] }

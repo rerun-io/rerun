@@ -9802,6 +9802,8 @@ dependencies = [
  "tower",
  "tracing",
  "url",
+ "wasm-bindgen-test",
+ "web-sys",
  "web-time",
 ]
 
@@ -11063,6 +11065,18 @@ dependencies = [
  "slotmap",
  "smallvec",
  "thiserror 2.0.18",
+]
+
+[[package]]
+name = "re_web_tests"
+version = "0.36.0-alpha.1+dev"
+dependencies = [
+ "anyhow",
+ "argh",
+ "cargo_metadata",
+ "re_server",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]
