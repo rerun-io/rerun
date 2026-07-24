@@ -165,9 +165,13 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
                 }
             }
 
-            // Early exit if there's nothing to do.
+            // Nothing to draw for this entity (e.g. its transform frame can't be
+            // resolved to the view's target frame). Skip just this entity — a
+            // `return` here would exit the whole visualizer, abandoning every
+            // remaining entity's axes and the draw data attached after the loop,
+            // blanking the entire view when one frame is unresolvable.
             if transforms_to_draw.is_empty() {
-                return Ok(output);
+                continue;
             }
 
             let axis_length_identifier = TransformAxes3D::descriptor_axis_length().component;
