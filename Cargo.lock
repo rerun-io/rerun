@@ -9233,6 +9233,7 @@ dependencies = [
  "serde_json",
  "tempfile",
  "thiserror 2.0.18",
+ "tobj",
  "urdf-rs",
  "ureq 3.3.0",
  "walkdir",
