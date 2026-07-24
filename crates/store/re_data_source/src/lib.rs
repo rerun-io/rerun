@@ -21,17 +21,35 @@ pub use self::data_source::{
 
 // ----------------------------------------------------------------------------
 
-/// The contents of a file.
-///
-/// This is what you get when loading a file on Web, or when using drag-n-drop.
+/// The contents of a dropped file.
 //
 // TODO(#4554): drag-n-drop streaming support
+#[cfg(target_arch = "wasm32")]
 #[derive(Clone, PartialEq, Eq)]
 pub struct FileContents {
     pub path: std::path::PathBuf,
     pub bytes: std::sync::Arc<[u8]>,
 }
 
+#[cfg(target_arch = "wasm32")]
+impl FileContents {
+    // TODO(RR-5263): Remove again once we stream to OPFS.
+    pub async fn from_file(file: web_sys::File) -> anyhow::Result<Self> {
+        let path = std::path::PathBuf::from(file.name());
+        let buffer = file
+            .array_buffer()
+            .await
+            // NOLINT: `JsValue` error formatting will be fixed in a follow-up PR using `re_web`.
+            .map_err(|err| anyhow::anyhow!("failed to read file: {err:?}"))?;
+
+        Ok(Self {
+            path,
+            bytes: js_sys::Uint8Array::new(&buffer).to_vec().into(),
+        })
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
 impl std::fmt::Debug for FileContents {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("FileContents")

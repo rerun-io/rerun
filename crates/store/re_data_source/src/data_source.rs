@@ -6,6 +6,7 @@ use re_log_channel::{LogReceiver, LogSource, RecordingOpenBehavior};
 use re_log_types::RecordingId;
 use re_redap_client::ConnectionRegistryHandle;
 
+#[cfg(target_arch = "wasm32")]
 use crate::FileContents;
 use crate::stream_rrd_from_http::stream_from_http_to_channel;
 
@@ -14,7 +15,10 @@ pub type AuthErrorHandler =
 
 /// Somewhere we can get Rerun logging data from.
 // TODO(emilk): there is a lot of overlap between this and `ViewerOpenUrl`
-#[derive(Clone, Debug, PartialEq, Eq)]
+// TODO(RR-5034): Once all loading goes to the internal catalog unconditionally,
+// we can get rid of some of the variants here.
+#[derive(Clone, Debug)]
+#[cfg_attr(not(target_arch = "wasm32"), derive(PartialEq, Eq))]
 pub enum LogDataSource {
     /// A remote file, served over http.
     ///
@@ -34,10 +38,16 @@ pub enum LogDataSource {
         path: std::path::PathBuf,
     },
 
-    /// The contents of a file.
-    ///
-    /// This is what you get when loading a file on Web, or when using drag-n-drop.
+    /// The contents of a dropped file.
+    #[cfg(target_arch = "wasm32")]
     FileContents(re_log_types::FileSource, FileContents),
+
+    /// A file selected through the web file dialog.
+    #[cfg(target_arch = "wasm32")]
+    FileHandle {
+        file_source: re_log_types::FileSource,
+        file: web_sys::File,
+    },
 
     // RRD data streaming in from standard input.
     #[cfg(not(target_arch = "wasm32"))]
@@ -281,7 +291,7 @@ impl LogDataSource {
                 Ok(rx)
             }
 
-            // When loading a file on Web, or when using drag-n-drop.
+            #[cfg(target_arch = "wasm32")]
             Self::FileContents(file_source, file_contents) => {
                 let (tx, rx) = re_log_channel::log_channel(LogSource::File {
                     path: file_contents.path.clone(),
@@ -303,6 +313,47 @@ impl LogDataSource {
                     std::borrow::Cow::Borrowed(&file_contents.bytes),
                     &tx,
                 )?;
+
+                Ok(rx)
+            }
+
+            #[cfg(target_arch = "wasm32")]
+            Self::FileHandle { file_source, file } => {
+                let path = std::path::PathBuf::from(file.name());
+                let (tx, rx) = re_log_channel::log_channel(LogSource::File { path: path.clone() });
+
+                spawn_future(async move {
+                    re_log::debug!("Reading {}…", path.display());
+                    let file_contents = match FileContents::from_file(file).await {
+                        Ok(file_contents) => file_contents,
+                        Err(err) => {
+                            tx.quit(Some(Box::new(std::io::Error::other(err.to_string()))))
+                                .ok();
+                            return;
+                        }
+                    };
+                    re_log::debug!(
+                        "{} was {}",
+                        path.display(),
+                        re_format::format_bytes(file_contents.bytes.len() as _)
+                    );
+
+                    let shared_recording_id = RecordingId::random();
+                    let settings = re_importer::ImporterSettings {
+                        opened_store_id: file_source.recommended_store_id().cloned(),
+                        force_store_info: file_source.force_store_info(),
+                        ..re_importer::ImporterSettings::recommended(shared_recording_id)
+                    };
+                    if let Err(err) = re_importer::import_from_file_contents(
+                        &settings,
+                        file_source,
+                        &path,
+                        std::borrow::Cow::Borrowed(&file_contents.bytes),
+                        &tx,
+                    ) {
+                        tx.quit(Some(Box::new(err))).ok();
+                    }
+                });
 
                 Ok(rx)
             }
@@ -384,6 +435,7 @@ impl LogDataSource {
                 }
             }
 
+            #[cfg(target_arch = "wasm32")]
             Self::FileContents(file_src, file_contents) => {
                 let file_extension = file_contents
                     .path
@@ -394,6 +446,20 @@ impl LogDataSource {
                     source_type: "file_contents",
                     file_extension,
                     file_source: Some(Self::file_source_to_analytics_str(file_src)),
+                }
+            }
+
+            #[cfg(target_arch = "wasm32")]
+            Self::FileHandle { file_source, file } => {
+                let file_name = file.name();
+                let file_extension = std::path::Path::new(&file_name)
+                    .extension()
+                    .and_then(|e| e.to_str())
+                    .map(|s| s.to_lowercase());
+                LogDataSourceAnalytics {
+                    source_type: "file_dialog",
+                    file_extension,
+                    file_source: Some(Self::file_source_to_analytics_str(file_source)),
                 }
             }
 
@@ -429,13 +495,18 @@ impl LogDataSource {
         }
     }
 
-    /// Concert the data source to a URI string, if possible.
+    /// Convert the data source to a URI string, if possible.
+    #[cfg_attr(
+        not(target_arch = "wasm32"),
+        expect(clippy::unnecessary_wraps, reason = "Wasm data sources may lack a URI")
+    )]
     pub fn as_uri(&self) -> Option<String> {
         match self {
             Self::HttpUrl { url, .. } => Some(url.to_string()),
             #[cfg(not(target_arch = "wasm32"))]
             Self::FilePath { path, .. } => Some(format!("file://{}", path.display())),
-            Self::FileContents { .. } => None,
+            #[cfg(target_arch = "wasm32")]
+            Self::FileContents { .. } | Self::FileHandle { .. } => None,
             #[cfg(not(target_arch = "wasm32"))]
             Self::Stdin => Some("-".to_owned()),
             Self::RedapDatasetSegment { uri, .. } => Some(uri.to_string()),

@@ -838,9 +838,9 @@ impl App {
                 let egui_ctx = egui_ctx.clone();
 
                 let promise = poll_promise::Promise::spawn_local(async move {
-                    let file = async_open_rrd_dialog().await;
+                    let files = async_open_rrd_dialog().await;
                     egui_ctx.request_repaint(); // Wake ui thread
-                    file
+                    files
                 });
 
                 self.open_files_promise = Some(super::PendingFilePromise {
@@ -870,9 +870,9 @@ impl App {
                 let egui_ctx = egui_ctx.clone();
 
                 let promise = poll_promise::Promise::spawn_local(async move {
-                    let file = async_open_rrd_dialog().await;
+                    let files = async_open_rrd_dialog().await;
                     egui_ctx.request_repaint(); // Wake ui thread
-                    file
+                    files
                 });
 
                 self.open_files_promise = Some(super::PendingFilePromise {
@@ -1725,32 +1725,17 @@ fn open_file_dialog_native(_: crate::MainThreadToken) -> Vec<std::path::PathBuf>
 }
 
 #[cfg(target_arch = "wasm32")]
-async fn async_open_rrd_dialog() -> Vec<re_data_source::FileContents> {
+async fn async_open_rrd_dialog() -> Vec<web_sys::File> {
     let supported: Vec<_> = re_importer::supported_extensions().collect();
 
-    let files = rfd::AsyncFileDialog::new()
+    rfd::AsyncFileDialog::new()
         .add_filter("Supported files", &supported)
         .pick_files()
         .await
-        .unwrap_or_default();
-
-    let mut file_contents = Vec::with_capacity(files.len());
-
-    for file in files {
-        let file_name = file.file_name();
-        re_log::debug!("Reading {file_name}…");
-        let bytes = file.read().await;
-        re_log::debug!(
-            "{file_name} was {}",
-            re_format::format_bytes(bytes.len() as _)
-        );
-        file_contents.push(re_data_source::FileContents {
-            path: std::path::PathBuf::from(file_name),
-            bytes: bytes.into(),
-        });
-    }
-
-    file_contents
+        .unwrap_or_default()
+        .into_iter()
+        .map(|file_handle| file_handle.inner().clone())
+        .collect()
 }
 
 fn save_active_recording(

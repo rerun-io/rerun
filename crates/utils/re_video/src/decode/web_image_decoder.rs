@@ -124,14 +124,12 @@ async fn decode_image_with_browser(chunk: &Chunk, mime_type: &str) -> Result<Fra
         )))
     })?;
 
-    let bitmap_js = wasm_bindgen_futures::JsFuture::from(promise)
-        .await
-        .map_err(|err| {
-            DecodeError::WebDecoder(super::webcodecs::WebError::Decoding(format!(
-                "createImageBitmap rejected: {}",
-                string_from_js_value(&err)
-            )))
-        })?;
+    let bitmap_js = promise.await.map_err(|err| {
+        DecodeError::WebDecoder(super::webcodecs::WebError::Decoding(format!(
+            "createImageBitmap rejected: {}",
+            string_from_js_value(&err)
+        )))
+    })?;
 
     let bitmap: web_sys::ImageBitmap = bitmap_js.dyn_into().map_err(|_js_err| {
         DecodeError::WebDecoder(super::webcodecs::WebError::Decoding(

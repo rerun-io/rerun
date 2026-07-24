@@ -10,7 +10,6 @@ use std::path::{Component, Path};
 use std::sync::Arc;
 
 use wasm_bindgen::{JsCast, JsValue};
-use wasm_bindgen_futures::JsFuture;
 use web_sys::{
     DomException, FileSystemDirectoryHandle, FileSystemFileHandle, FileSystemWritableFileStream,
 };
@@ -71,7 +70,7 @@ pub async fn write(path: impl AsRef<Path>, contents: Arc<[u8]>) -> io::Result<()
             // Discard the partially-written file so a later read fails cleanly rather than
             // returning truncated contents (e.g. when the quota is exceeded mid-write).
             let writable_stream: &web_sys::WritableStream = writer.as_ref();
-            JsFuture::from(writable_stream.abort()).await.ok();
+            writable_stream.abort().await.ok();
             return Err(err);
         }
 
@@ -192,19 +191,18 @@ fn opfs_components(path: &Path) -> io::Result<Vec<String>> {
     Ok(components)
 }
 
-/// Converts a [`js_sys::Promise`] to a Rust `future`.
 async fn await_js<T>(promise: js_sys::Promise) -> io::Result<T>
 where
     T: JsCast,
 {
-    JsFuture::from(promise)
+    promise
         .await
         .map_err(|err| js_to_io_error(&err))?
         .dyn_into()
         .map_err(|err| js_to_io_error(&err))
 }
 
-/// `tonic` service futures are `Send`, while `JsFuture` is not.
+/// `tonic` service futures are `Send`, while JS-backed futures are not.
 /// Run browser API work on the local Wasm executor and await only the `Send` oneshot receiver.
 fn run_local<T>(
     future: impl std::future::Future<Output = io::Result<T>> + 'static,

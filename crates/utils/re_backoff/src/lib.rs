@@ -79,7 +79,7 @@ where
 async fn sleep(duration: Duration) {
     let millis = duration.as_millis() as i32;
 
-    // The `setTimeout` + `JsFuture` dance is `!Send`; `run_local` bridges it to a `Send` future.
+    // The `setTimeout` promise is `!Send`; `run_local` bridges it to a `Send` future.
     run_local(async move {
         let mut cb = |resolve: js_sys::Function, _reject: js_sys::Function| {
             web_sys::window()
@@ -87,8 +87,7 @@ async fn sleep(duration: Duration) {
                 .set_timeout_with_callback_and_timeout_and_arguments_0(&resolve, millis)
                 .expect("Failed to call set_timeout");
         };
-        let p = js_sys::Promise::new(&mut cb);
-        wasm_bindgen_futures::JsFuture::from(p)
+        js_sys::Promise::new(&mut cb)
             .await
             .expect("Failed to await sleep promise");
     })

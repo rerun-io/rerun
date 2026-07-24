@@ -358,7 +358,7 @@ impl AsyncDecoder for WebVideoDecoder {
 
         // If we don't handle potential flush errors, we'll get a lot of spam in the console.
         wasm_bindgen_futures::spawn_local(async move {
-            let flush_result = wasm_bindgen_futures::JsFuture::from(flush_promise).await;
+            let flush_result = flush_promise.await;
             if let Err(err) = flush_result {
                 if let Some(dom_exception) = err.dyn_ref::<web_sys::DomException>()
                     && dom_exception.code() == web_sys::DomException::ABORT_ERR

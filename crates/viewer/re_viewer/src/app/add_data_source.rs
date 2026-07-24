@@ -145,15 +145,34 @@ impl App {
                 }
             }
 
+            // TODO(RR-5239): Right now this is still used for dropped files. Ideally,
+            // we'd switch that over to `FileHandle` too.
+            #[cfg(target_arch = "wasm32")]
             LogDataSource::FileContents(_file_source, file_contents) => {
+                let file_contents = file_contents.clone();
+                let path = file_contents.path.clone();
                 if self
-                    .try_register_via_internal_catalog(file_contents)
+                    .try_register_via_internal_catalog(&path, std::future::ready(Ok(file_contents)))
                     .is_break()
                 {
                     return;
                 }
 
                 // For raw file contents we currently can't determine whether we're already receiving them.
+            }
+
+            #[cfg(target_arch = "wasm32")]
+            LogDataSource::FileHandle { file, .. } => {
+                let path = std::path::PathBuf::from(file.name());
+                if self
+                    .try_register_via_internal_catalog(
+                        &path,
+                        re_data_source::FileContents::from_file(file.clone()),
+                    )
+                    .is_break()
+                {
+                    return;
+                }
             }
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -300,17 +319,17 @@ impl App {
 
     /// On Wasm with the internal catalog enabled, register a dropped `.rrd`'s contents with the
     /// in-process catalog and open the resulting segment, returning [`ControlFlow::Break`] when it
-    /// took ownership of the load. Other builds have nothing to route through and return
-    /// [`ControlFlow::Continue`].
+    /// took ownership of the load.
     #[cfg(target_arch = "wasm32")]
     fn try_register_via_internal_catalog(
         &self,
-        file_contents: &re_data_source::FileContents,
+        path: &std::path::Path,
+        file_contents: impl std::future::Future<Output = anyhow::Result<re_data_source::FileContents>>
+        + 'static,
     ) -> std::ops::ControlFlow<()> {
         use std::ops::ControlFlow;
 
-        let is_rrd = file_contents
-            .path
+        let is_rrd = path
             .extension()
             .and_then(|ext| ext.to_str())
             .is_some_and(|ext| ext.eq_ignore_ascii_case("rrd"));
@@ -321,10 +340,17 @@ impl App {
             return ControlFlow::Continue(());
         }
 
-        let file_contents = file_contents.clone();
         let connection_registry = self.connection_registry.clone();
         let sender = self.command_sender.clone();
+        let path = path.to_owned();
         self.async_runtime.spawn_future(async move {
+            let file_contents = match file_contents.await {
+                Ok(file_contents) => file_contents,
+                Err(err) => {
+                    re_log::error!("Failed to read file: {err}\nFile path: {}", path.display());
+                    return;
+                }
+            };
             match register_opfs_file(&connection_registry, &file_contents).await {
                 Ok(uri) => {
                     sender.send_system(SystemCommand::RefreshRedapEntry {
@@ -348,15 +374,6 @@ impl App {
         });
 
         ControlFlow::Break(())
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    #[expect(clippy::unused_self)]
-    fn try_register_via_internal_catalog(
-        &self,
-        _file_contents: &re_data_source::FileContents,
-    ) -> std::ops::ControlFlow<()> {
-        std::ops::ControlFlow::Continue(())
     }
 }
 

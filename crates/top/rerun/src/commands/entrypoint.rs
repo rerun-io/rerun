@@ -1740,7 +1740,7 @@ impl ReceiversFromUrlParams {
                         }
                     }
 
-                    LogDataSource::FileContents(..) | LogDataSource::Stdin => {
+                    LogDataSource::Stdin => {
                         data_sources.push(data_source);
                     }
                 }

@@ -8843,6 +8843,7 @@ dependencies = [
  "anyhow",
  "ehttp",
  "itertools 0.14.0",
+ "js-sys",
  "rayon",
  "re_format",
  "re_grpc_client",
@@ -8857,6 +8858,7 @@ dependencies = [
  "tokio",
  "url",
  "wasm-bindgen-futures",
+ "web-sys",
 ]
 
 [[package]]

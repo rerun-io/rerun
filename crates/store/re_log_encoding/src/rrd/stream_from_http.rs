@@ -214,8 +214,7 @@ pub mod web_decode {
                 .set_timeout_with_callback_and_timeout_and_arguments_0(&resolve, millis)
                 .expect("Failed to call set_timeout");
         };
-        let p = js_sys::Promise::new(&mut cb);
-        wasm_bindgen_futures::JsFuture::from(p).await.unwrap();
+        js_sys::Promise::new(&mut cb).await.unwrap();
     }
 }
 

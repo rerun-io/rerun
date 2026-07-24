@@ -5,7 +5,9 @@ use re_auth::credentials::CredentialsProvider as _;
 use re_build_info::CrateVersion;
 use re_byte_size::{MemUsageTree, MemUsageTreeCapture};
 use re_capabilities::MainThreadToken;
-use re_data_source::{AuthErrorHandler, FileContents, LogDataSource};
+#[cfg(target_arch = "wasm32")]
+use re_data_source::FileContents;
+use re_data_source::{AuthErrorHandler, LogDataSource};
 use re_entity_db::InstancePath;
 use re_entity_db::entity_db::EntityDb;
 use re_log_channel::{LogReceiverSet, RecordingOpenBehavior, SaveScreenshotError};
@@ -57,7 +59,7 @@ fn pending_timeline_shortcut_key() -> egui::Id {
 struct PendingFilePromise {
     recommended_store_id: Option<StoreId>,
     force_store_info: bool,
-    promise: poll_promise::Promise<Vec<re_data_source::FileContents>>,
+    promise: poll_promise::Promise<Vec<web_sys::File>>,
 }
 
 /// The Rerun Viewer as an [`eframe`] application.
@@ -1002,8 +1004,8 @@ impl App {
                     StoreId::recording(application_id, recording_id)
                 });
 
+            #[cfg(target_arch = "wasm32")]
             if let Some(bytes) = file.bytes {
-                // This is what we get on Web.
                 command_sender.send_system(SystemCommand::LoadDataSource(
                     LogDataSource::FileContents(
                         FileSource::DragAndDrop {
@@ -1298,13 +1300,13 @@ impl eframe::App for App {
         {
             for file in files {
                 self.command_sender
-                    .send_system(SystemCommand::LoadDataSource(LogDataSource::FileContents(
-                        FileSource::FileDialog {
+                    .send_system(SystemCommand::LoadDataSource(LogDataSource::FileHandle {
+                        file_source: FileSource::FileDialog {
                             recommended_store_id: recommended_store_id.clone(),
                             force_store_info: *force_store_info,
                         },
-                        file.clone(),
-                    )));
+                        file: file.clone(),
+                    }));
             }
             self.open_files_promise = None;
         }
