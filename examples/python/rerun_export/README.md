@@ -1,5 +1,6 @@
 <!--[metadata]
 title = "LeRobot dataset from RRD"
+description = "Convert RRD robot recordings into LeRobot v3 training datasets using the OSS Rerun server, with video remuxing."
 source = "https://github.com/rerun-io/rerun-lerobot"
 tags = ["Robotics", "MCAP", "LeRobot", "Dataset", "Server"]
 thumbnail = "https://static.rerun.io/rerun_export/f3b727db8bbe3ecf6894707ac7770d3d8fc8bf1f/480w.png"

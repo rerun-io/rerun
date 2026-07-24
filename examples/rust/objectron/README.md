@@ -1,5 +1,6 @@
 <!--[metadata]
 title = "Objectron"
+description = "Visualize Google Research's Objectron: per-frame images, camera poses, sparse point clouds, planes, and 3D boxes."
 tags = ["2D", "3D", "Object detection", "Pinhole camera"]
 thumbnail = "https://static.rerun.io/objectron/b645ef3c8eff33fbeaefa6d37e0f9711be15b202/480w.png"
 thumbnail_dimensions = [480, 480]

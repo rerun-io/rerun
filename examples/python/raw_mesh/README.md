@@ -1,5 +1,6 @@
 <!--[metadata]
 title = "Raw mesh"
+description = "Log raw 3D mesh data (\"triangle soups\") with simple material properties and a transform hierarchy via `Mesh3D`."
 tags = ["Mesh"]
 thumbnail = "https://static.rerun.io/raw-mesh/7731418dda47e15dbfc0f9a2c32673909071cb40/480w.png"
 thumbnail_dimensions = [480, 480]

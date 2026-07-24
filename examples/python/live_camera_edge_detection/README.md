@@ -1,5 +1,6 @@
 <!--[metadata]
 title = "Live camera edge detection"
+description = "Run OpenCV's Canny edge detector on a live webcam stream, logging RGB, grayscale, and edge images side by side."
 tags = ["2D", "Canny", "Live", "OpenCV"]
 thumbnail = "https://static.rerun.io/live-camera-edge-detection/f747bcf9ff3039c895f0bf0290e2dea0a72631ea/480w.png"
 thumbnail_dimensions = [480, 480]

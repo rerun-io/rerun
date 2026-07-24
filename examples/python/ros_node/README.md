@@ -1,5 +1,6 @@
 <!--[metadata]
 title = "ROS node"
+description = "A minimal ROS 2 Python node that forwards pose, images, scans, point clouds, and velocities into Rerun."
 tags = ["2D", "3D", "Pinhole camera", "ROS", "Time series", "URDF"]
 thumbnail = "https://static.rerun.io/ros_node_example_new/e15b81b183ccafd8ee2994a6abf0b06cbdf22741/480w.png"
 thumbnail_dimensions = [480, 318]

@@ -1,5 +1,6 @@
 <!--[metadata]
 title = "Detect and track objects"
+description = "Object detection from Hugging Face Transformers plus OpenCV optical-flow tracking, aligned to the source video."
 tags = ["2D", "Hugging face", "Object detection", "Object tracking", "OpenCV"]
 thumbnail = "https://static.rerun.io/detect-and-track-objects/63d7684ab1504c86a5375cb5db0fc515af433e08/480w.png"
 thumbnail_dimensions = [480, 480]

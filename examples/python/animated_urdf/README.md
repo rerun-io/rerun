@@ -1,5 +1,6 @@
 <!--[metadata]
 title = "URDF"
+description = "Load a URDF file and animate its joints over time with the `UrdfTree` helper, which resolves frame names and origins per joint."
 tags = ["3D", "Mesh", "URDF", "Animation"]
 channel = "main"
 include_in_manifest = true

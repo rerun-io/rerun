@@ -1,7 +1,7 @@
 <!--[metadata]
 title = "IMU signals"
 tags = ["Plots"]
-description = "Log multi dimensional signals under a single entity."
+description = "Log multi-dimensional IMU signals from the TUM VI Benchmark using the columnar `send_columns()` API."
 thumbnail = "https://static.rerun.io/imu_signals/64f773d238a0456a0f233abeea7e521cfb871b67/480w.jpg"
 thumbnail_dimensions = [480, 480]
 channel = "main"

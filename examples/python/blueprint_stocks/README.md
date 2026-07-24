@@ -1,5 +1,6 @@
 <!--[metadata]
 title = "Stock charts"
+description = "Fetch the last five days of stock data and present it through several different Rerun blueprints: same data, many shapes."
 tags = ["Time series", "Blueprint"]
 thumbnail = "https://static.rerun.io/blueprint_stocks/8bfe6f16963acdceb2debb9de9a206dc2eb9b280/480w.png"
 thumbnail_dimensions = [480, 270]

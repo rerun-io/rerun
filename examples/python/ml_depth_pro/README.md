@@ -1,5 +1,6 @@
 <!--[metadata]
 title = "DepthPro"
+description = "Visual walkthrough of Apple's \"Depth Pro\": fast zero-shot monocular metric depth without needing camera intrinsics."
 tags = ["2D", "3D", "HuggingFace", "Pinhole camera", "Depth"]
 source = "https://github.com/rerun-io/hf-example-ml-depth-pro"
 thumbnail = "https://static.rerun.io/ml_depth_pro/e29c5afc5e4d4a36656abe0e4559a952a5a2fa68/480w.png"

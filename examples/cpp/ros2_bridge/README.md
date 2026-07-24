@@ -1,5 +1,6 @@
 <!--[metadata]
 title = "ROS 2 bridge"
+description = "A C++ ROS 2 bridge that subscribes to all supported topics and logs the messages into Rerun, with topic remapping."
 source = "https://github.com/rerun-io/cpp-example-ros2-bridge"
 tags = ["2D", "3D", "Pinhole camera", "ROS", "Time series", "C++"]
 thumbnail = "https://static.rerun.io/carla_thumbnail/8ec07c28f8eb901b8246afdd0b6d2b97ff75fb8d/480w.png"

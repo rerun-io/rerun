@@ -1,5 +1,6 @@
 <!--[metadata]
 title = "Any scalar"
+description = "Log structured data once and plot any nested field with `jq`-style selectors. Shown on PID telemetry and live stock data."
 tags = ["Any scalar", "Plotting", "DynamicArchetype"]
 thumbnail = "https://static.rerun.io/any_scalar_example_market/4076a99f7fd5912af93258aa0c6c775a96f8b8e7/480w.png"
 thumbnail_dimensions = [480, 259]

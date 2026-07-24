@@ -1,5 +1,6 @@
 <!--[metadata]
 title = "ROS TF"
+description = "Map ROS 2 tf2 frames to Rerun's named transforms, including how to spot misconfigured transform trees."
 tags = ["ROS", "TF", "Transform", "Coordinate Frame", "ROS 2"]
 source = "https://github.com/rerun-io/ros_tf_example"
 thumbnail = "https://static.rerun.io/ros_tf_example/6fd0961787faa8ed6428769d7cbe37d136915535/480w.png"

@@ -1,5 +1,6 @@
 <!--[metadata]
 title = "Lidar"
+description = "Visualize LiDAR data from the nuScenes self-driving dataset, focused on the point cloud side of the recording."
 tags = ["Lidar", "3D"]
 thumbnail = "https://static.rerun.io/lidar/caaf3b9531e50285442d17f0bc925eb7c8e12246/480w.png"
 thumbnail_dimensions = [480, 480]

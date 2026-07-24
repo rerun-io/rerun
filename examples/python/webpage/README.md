@@ -1,5 +1,6 @@
 <!--[metadata]
 title = "Webpage"
+description = "Embed the Rerun viewer in a static webpage so visitors can scrub the 3D scene and timeline themselves."
 tags = ["Webpage", "Javascript", "Web-viewer", "Tutorial"]
 source = "https://github.com/rerun-io/webpage_example"
 thumbnail = "https://static.rerun.io/webpage_example/72208c632c0f641070b7c1647dbe2abf076f576a/480w.png"

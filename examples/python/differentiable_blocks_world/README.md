@@ -1,5 +1,6 @@
 <!--[metadata]
 title = "Differentiable blocks world: qualitative 3D decomposition by rendering primitives"
+description = "Visual walkthrough of \"Differentiable Block Worlds\", which reconstructs a textured 3D scene by differentiable rendering of superquadrics."
 source = "https://github.com/rerun-io/differentiable-blocksworld"
 tags = ["3D", "Mesh", "Pinhole camera", "Paper walkthrough"]
 thumbnail = "https://static.rerun.io/differentiable-blocks/42f3a5481162a0e75f1c52ef1a12d4fedb35389e/480w.png"

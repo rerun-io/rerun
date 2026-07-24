@@ -1,5 +1,6 @@
 <!--[metadata]
 title = "Log file"
+description = "How to log any file from the SDK using the Importer machinery, a one-call path for assets the viewer understands."
 tags = ["API example", "Loader"]
 thumbnail = "https://static.rerun.io/log_file/d86e525cce547cd2dde8e2d7619c01bd3bbc861a/480w.png"
 thumbnail_dimensions = [480, 480]

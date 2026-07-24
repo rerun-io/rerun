@@ -1,5 +1,6 @@
 <!--[metadata]
 title = "Point-E and Shap-E"
+description = "Visual comparison of two OpenAI text-to-3D models: Point-E (point clouds) and Shap-E (implicit NeRF weights)."
 source = "https://github.com/rerun-io/point-shap-e"
 tags = ["3D", "Diffusion", "Point", "Mesh", "Paper walkthrough"]
 thumbnail = "https://static.rerun.io/point-e/5b5beb36dce77d2dac7123b197b825421afcaec0/480w.png"

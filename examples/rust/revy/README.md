@@ -1,5 +1,6 @@
 <!--[metadata]
 title = "Revy - Rerun integration for Bevy"
+description = "Revy is a time-travel debugger for Bevy: each frame's database is snapshot into Rerun for scrubbable engine state."
 source = "https://github.com/rerun-io/revy"
 tags = ["2D", "3D", "Gamedev", "Bevy"]
 thumbnail = "https://static.rerun.io/revy/d451ab9e75a1bcdf140f592feaf15e0cf0041259/480w.png"

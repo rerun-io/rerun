@@ -1,5 +1,6 @@
 <!--[metadata]
 title = "GLOMAP"
+description = "GLOMAP is a global structure-from-motion pipeline. The video shows its joint global triangulation and camera-position step."
 tags = ["3D", "Point cloud", "GLOMAP"]
 source = "https://github.com/rerun-io/glomap"
 thumbnail = "https://static.rerun.io/glomap-thumbnail/d0052fe6083b1e1d5698792ed0efec4d9cfd2f75/480w.png"

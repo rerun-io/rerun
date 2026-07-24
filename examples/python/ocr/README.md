@@ -1,5 +1,6 @@
 <!--[metadata]
 title = "PaddleOCR"
+description = "Run PaddleOCR layout analysis and text detection on documents: regions, detected text, and recovered output in one view."
 tags = ["Text", "OCR", "2D", "Blueprint"]
 thumbnail = "https://static.rerun.io/ocr1/54b3a9d0706fd4a3a3dcbf878046ae34a7a6feec/480w.png"
 thumbnail_dimensions = [480, 259]

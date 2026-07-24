@@ -1,5 +1,6 @@
 <!--[metadata]
 title = "RRT*"
+description = "Visualize the RRT* sampling-based path planner: watch the tree expand and re-wire toward an optimal route."
 tags = ["2D"]
 thumbnail= "https://static.rerun.io/rrt-star/fbbda33bdbbfa469ec95c905178ac3653920473a/480w.png"
 thumbnail_dimensions = [480, 480]

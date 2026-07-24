@@ -1,5 +1,6 @@
 <!--[metadata]
 title = "SAM 3D body: robust Full-Body human mesh recovery"
+description = "SAM 3D Body recovers 3D human meshes from in-the-wild images, with the recovered body shown alongside the input."
 tags = ["3D", "Human mesh", "Body tracking", "Single-view"]
 source = "https://github.com/rerun-io/sam3d-body-rerun"
 thumbnail = "https://static.rerun.io/sam3d-body/b8477f902c4fcdfd1168286193d2dc20e4ad9d20/480w.png"

@@ -1,7 +1,7 @@
 <!--[metadata]
 title = "Air traffic data"
 tags = ["2D", "3D", "map", "crs"]
-description = "Display aircraft traffic data"
+description = "Display live air traffic data from INVOLI on a geospatial map view, with pyproj reprojection and GeoPandas-backed loading."
 thumbnail = "https://static.rerun.io/air_traffic_data/348dd2def3a55fd0bf481a35a0765eeacfa20b6f/480w.png"
 thumbnail_dimensions = [480, 480]
 channel = "nightly"

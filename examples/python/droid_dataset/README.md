@@ -1,5 +1,6 @@
 <!--[metadata]
 title = "DROID"
+description = "Visualize the DROID robot manipulation dataset: joint states, wrist and side-view stereo cameras, and teleoperator actions."
 source = "https://github.com/rerun-io/python-example-droid-dataset"
 tags = ["2D", "3D", "Depth", "Pinhole camera", "Blueprint"]
 thumbnail = "https://static.rerun.io/droid-screenshot-thumbnail.png/87462a48d06a3c2fcc9225ac86df617048c262e6/480w.png"

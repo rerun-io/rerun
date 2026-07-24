@@ -1,5 +1,6 @@
 <!--[metadata]
 title = "Robby fischer"
+description = "Robby Fischer is an autonomous chess-playing robot arm that detects human moves with per-square camera masks."
 tags = ["3D", "URDF", "Blueprint"]
 source = "https://github.com/02alexander/robby-fischer/tree/urdf-vis"
 thumbnail = "https://static.rerun.io/robby_thumbnail/71d2d57e9720e7a96e35a43467b5d2c45aa716d9/480w.png"

@@ -1,5 +1,6 @@
 <!--[metadata]
 title = "Eye control"
+description = "Programmatically configure and animate the 3D view camera with the Rerun Blueprint API. Useful for cinematic walkthroughs."
 tags = ["Eye control", "3D", "Pinhole camera"]
 source = "https://github.com/rerun-io/eye_control_example"
 thumbnail = "https://static.rerun.io/eye_control_example/01288e2cd92ec68715258e281104701fc8908c37/480w.png"
