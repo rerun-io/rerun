@@ -10,7 +10,6 @@
 //     VideoLoadError: Send + Sync,
 // but that slows compilation down by a ton
 #![recursion_limit = "256"]
-#![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
 
 mod active_store_context;
 mod annotations;

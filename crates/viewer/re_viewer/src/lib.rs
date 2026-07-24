@@ -25,8 +25,6 @@
 //!
 //! See [`re_viewer_context::VisualizerInstructionReport`] for how these break down further.
 
-#![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
-
 mod app;
 mod app_blueprint;
 mod app_state;

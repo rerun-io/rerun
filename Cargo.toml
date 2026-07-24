@@ -906,7 +906,7 @@ too_many_arguments = "allow" # yes, we should avoid too many arguments, but enfo
 # TODO(emilk): enable more of these lints:
 cast_possible_truncation = "allow" # Moo much noise, sadly
 clone_on_ref_ptr = "allow" # Might be too much with this enabled
-iter_over_hash_type = "allow"
+iter_over_hash_type = "warn"
 let_underscore_untyped = "allow"
 missing_assert_message = "allow"
 missing_errors_doc = "allow"

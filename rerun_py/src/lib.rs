@@ -1,3 +1,5 @@
+#![allow(clippy::iter_over_hash_type)]
+
 //! The Rerun Python Log SDK.
 //!
 //! This provides bindings between Python and Rust.

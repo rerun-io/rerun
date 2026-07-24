@@ -1,3 +1,5 @@
+#![allow(clippy::iter_over_hash_type)]
+
 //! Library providing utilities to load MCAP files with Rerun.
 
 pub mod decoders;

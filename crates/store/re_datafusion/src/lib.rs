@@ -1,3 +1,5 @@
+#![allow(clippy::iter_over_hash_type)]
+
 //! The Rerun public data APIs. Access `DataFusion` `TableProviders`.
 
 mod analytics;

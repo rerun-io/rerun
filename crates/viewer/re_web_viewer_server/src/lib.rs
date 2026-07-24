@@ -6,7 +6,6 @@
 
 #![forbid(unsafe_code)]
 #![warn(clippy::all, rust_2018_idioms)]
-#![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
 
 use std::fmt::Display;
 use std::str::FromStr;

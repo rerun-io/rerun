@@ -1,7 +1,5 @@
 //! Support crate for context menu and actions.
 
-#![warn(clippy::iter_over_hash_type)] //  TODO(#6198): enable everywhere
-
 use std::sync::OnceLock;
 
 use egui::Popup;
