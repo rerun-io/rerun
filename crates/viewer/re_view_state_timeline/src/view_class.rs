@@ -966,7 +966,7 @@ fn compute_merged_breakdown(
         let bucket_t1 = start_time as f64 + span * ((b + 1) as f64 / num_buckets as f64);
         let bucket_span = (bucket_t1 - bucket_t0).max(f64::EPSILON);
 
-        while phase_idx + 1 < phases.len() && phases[phase_idx + 1].start_time as f64 <= bucket_t0 {
+        while let Some(phase) = phases.get(phase_idx + 1) && phase.start_time as f64 <= bucket_t0 {
             phase_idx += 1;
         }
 
