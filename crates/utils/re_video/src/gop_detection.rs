@@ -226,6 +226,9 @@ fn jpeg_meta(data: &[u8]) -> Result<ImageMeta, ImageSizeError> {
             *data.get(i).ok_or_else(invalid_data)?,
             *data.get(i + 1).ok_or_else(invalid_data)?,
         ]) as usize;
+        if len < 2 {
+            return Err(invalid_data());
+        }
         i += 2;
 
         // Start of Frame markers: SOF0-SOF3, SOF5-SOF7, SOF9-SOF11, SOF13-SOF15
@@ -274,4 +277,21 @@ fn rvl_meta(sample_data: &[u8]) -> Result<ImageMeta, ImageSizeError> {
         bit_depth: Some(16),
         chroma_subsampling: ChromaSubsamplingModes::Monochrome,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn jpeg_rejects_segment_length_below_two() {
+        let jpeg_with_zero_length_segment = [0xff, 0xd8, 0xff, 0xe0, 0, 1];
+        assert!(matches!(
+            detect_gop_start(
+                &jpeg_with_zero_length_segment,
+                VideoCodec::ImageSequence(Some("image/jpeg".to_owned())),
+            ),
+            Err(DetectGopStartError::FailedToExtractEncodingDetails(_))
+        ));
+    }
 }

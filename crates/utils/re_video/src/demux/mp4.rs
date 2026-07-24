@@ -16,7 +16,7 @@ use crate::demux::{
 use crate::h264::encoding_details_from_h264_sps;
 use crate::h265::encoding_details_from_h265_sps;
 use crate::nalu::ANNEXB_NAL_START_CODE;
-use crate::{StableIndexDeque, Time, Timescale};
+use crate::{FrameNumber, StableIndexDeque, Time, Timescale};
 
 impl VideoDataDescription {
     pub fn load_mp4(bytes: &[u8], debug_name: &str) -> Result<Self, VideoLoadError> {
@@ -122,15 +122,18 @@ impl VideoDataDescription {
             re_tracing::profile_scope!("fix vp8/vp9 sync flags");
             keyframe_indices.clear();
             let mut data = Vec::new();
-            for (idx, sample_state) in samples.iter_mut().enumerate() {
+            for (idx, sample_state) in samples.iter_indexed_mut() {
                 if let Some(sample) = sample_state.sample_mut() {
-                    let span = match sample.source {
+                    let byte_range = match sample.source {
                         crate::VideoSource::Span(span) => span,
                         crate::VideoSource::Id { .. } => unreachable!(),
                     };
-                    let byte_range = span.range_usize();
-                    reader.seek(std::io::SeekFrom::Start(byte_range.start as u64))?;
-                    data.resize(byte_range.len(), 0);
+                    reader.seek(std::io::SeekFrom::Start(byte_range.start))?;
+                    data.resize(
+                        usize::try_from(byte_range.len)
+                            .map_err(|_err| VideoLoadError::InvalidSamples)?,
+                        0,
+                    );
                     reader.read_exact(&mut data)?;
                     let bitstream_is_sync = match codec {
                         crate::VideoCodec::VP8 => crate::vp8::vp8_is_keyframe(&data),
@@ -190,7 +193,7 @@ impl VideoDataDescription {
                 .collect::<Vec<_>>();
             samples_sorted_by_pts.sort_by_key(|s| s.presentation_timestamp);
             for (frame_nr, sample) in samples_sorted_by_pts.into_iter().enumerate() {
-                sample.frame_nr = frame_nr as u32;
+                sample.frame_nr = frame_nr as FrameNumber;
             }
         }
 

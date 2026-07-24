@@ -575,9 +575,11 @@ fn build_gop_chunk(
             fn indicate_video_source(&self, _source: VideoSource) {}
         }
 
-        let byte_range = span.range_usize();
-        reader.seek(SeekFrom::Start(byte_range.start as u64))?;
-        sample_bytes.resize(byte_range.len(), 0);
+        let sample_len = usize::try_from(span.len).map_err(|_err| {
+            Mp4Error::SampleConversion(format!("sample {sample_idx} is too large to read"))
+        })?;
+        reader.seek(SeekFrom::Start(span.start))?;
+        sample_bytes.resize(sample_len, 0);
         reader.read_exact(&mut sample_bytes)?;
 
         let chunk = meta

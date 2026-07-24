@@ -23,9 +23,9 @@ pub use decode::{
     Result as DecodeResult, YuvMatrixCoefficients, YuvPixelLayout, YuvRange, new_decoder,
 };
 pub use demux::{
-    ChromaSubsamplingModes, KeyframeIndex, SampleIndex, SampleMetadata, SampleMetadataState,
-    SamplesStatistics, VideoCodec, VideoDataDescription, VideoDeliveryMethod, VideoEncodingDetails,
-    VideoLoadError, VideoSource,
+    ChromaSubsamplingModes, FrameNumber, KeyframeIndex, SampleIndex, SampleMetadata,
+    SampleMetadataState, SamplesStatistics, VideoCodec, VideoDataDescription, VideoDeliveryMethod,
+    VideoEncodingDetails, VideoLoadError, VideoSource,
 };
 pub use gop_detection::{
     DetectGopStartError, GopStartDetection, detect_gop_start, is_start_of_gop,

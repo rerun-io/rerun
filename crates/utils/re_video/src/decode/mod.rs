@@ -109,7 +109,9 @@ pub use webcodecs::WebVideoFrame;
 
 mod rvl_decoder;
 
-use crate::{SampleIndex, Time, VideoDataDescription, player::VideoPlaybackIssueSeverity};
+use crate::{
+    FrameNumber, SampleIndex, Time, VideoDataDescription, player::VideoPlaybackIssueSeverity,
+};
 
 #[derive(thiserror::Error, Debug, Clone, re_byte_size::SizeBytes)]
 pub enum DecodeError {
@@ -378,7 +380,7 @@ pub struct Chunk {
     ///
     /// This is the order of which the samples appear in the container,
     /// which is usually ordered by [`Self::decode_timestamp`].
-    pub sample_idx: usize,
+    pub sample_idx: SampleIndex,
 
     /// Which frame does this chunk belong to?
     ///
@@ -389,7 +391,7 @@ pub struct Chunk {
     ///
     /// Do *not* use this to index into the video data description!
     /// Use [`Self::sample_idx`] instead.
-    pub frame_nr: u32,
+    pub frame_nr: FrameNumber,
 
     /// Decode timestamp of this sample.
     /// Chunks are expected to be submitted in the order of decode timestamp.
@@ -502,7 +504,7 @@ pub struct FrameInfo {
     /// This is the index of frames ordered by [`Self::presentation_timestamp`].
     ///
     /// None = unknown.
-    pub frame_nr: Option<u32>,
+    pub frame_nr: Option<FrameNumber>,
 
     /// Time at which this frame appears in the frame stream, in time units.
     ///
