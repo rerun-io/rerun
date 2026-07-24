@@ -1572,15 +1572,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "clang-format"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "696283b40e1a39d208ee614b92e5f6521d16962edeb47c48372585ec92419943"
-dependencies = [
- "thiserror 1.0.69",
-]
-
-[[package]]
 name = "clap"
 version = "4.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -10394,7 +10385,6 @@ version = "0.36.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "camino",
- "clang-format",
  "colored",
  "crossbeam",
  "flatbuffers",
