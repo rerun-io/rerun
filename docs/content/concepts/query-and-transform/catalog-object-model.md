@@ -1,6 +1,7 @@
 ---
 title: Catalog object model
 order: 100
+description: How the catalog organizes datasets, segments, and entries
 ---
 
 This page covers the catalog server's object model. For logging and recording basics, see [Recordings](../logging-and-ingestion/recordings.md). For API details, see the [Catalog SDK reference](https://ref.rerun.io/docs/python/stable/common/catalog/).

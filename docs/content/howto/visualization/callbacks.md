@@ -1,6 +1,7 @@
 ---
 title: React to events in the Viewer
 order: 400
+description: Register callbacks for Viewer events in web, Jupyter, or Rust
 ---
 
 We support registering callbacks to Viewer events in these environments:

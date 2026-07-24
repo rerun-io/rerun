@@ -1,8 +1,8 @@
 ---
 title: Query and Transform
 order: 300
+description: Recipes for querying recordings and shaping them into dataframes
+index: true
 ---
 
 How-to guides for querying and transforming data in Rerun.
-
-<!-- TODO(ab): it would be nice to auto-generate a TOC here -->

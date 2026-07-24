@@ -1,6 +1,7 @@
 ---
 title: Query data out of Rerun
 order: 100
+description: Load Rerun data into Pandas, Polars, or DuckDB
 ---
 
 Rerun comes with the ability to get data out of Rerun from code. This page provides an overview of the API, as well as recipes to load the data in popular packages such as [Pandas](https://pandas.pydata.org), [Polars](https://pola.rs), and [DuckDB](https://duckdb.org).

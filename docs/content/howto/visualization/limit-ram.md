@@ -1,7 +1,7 @@
 ---
 title: Limit the viewer's memory usage
 order: 0
-description: How to limit the memory used by the Rerun Viewer so that it doesn't run out of RAM.
+description: Keep the Viewer from running out of memory
 ---
 
 ### --memory-limit

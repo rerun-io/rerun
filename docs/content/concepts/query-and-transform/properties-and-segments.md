@@ -1,6 +1,7 @@
 ---
 title: Properties and segment tables
 order: 200
+description: Recording-level metadata that filters and sorts segments
 ---
 
 Properties are recording-level metadata that relates to an entire segment.

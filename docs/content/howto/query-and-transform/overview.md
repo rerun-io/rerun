@@ -1,6 +1,7 @@
 ---
 title: Overview
 order: 10
+description: A quick tour of the SDK and catalog server
 ---
 
 Rerun is the Unified Data Layer for Physical AI.

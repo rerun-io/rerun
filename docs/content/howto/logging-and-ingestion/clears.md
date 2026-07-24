@@ -1,7 +1,7 @@
 ---
 title: Clear out data using tombstones
 order: 600
-description: How to log data that isn't valid for the whole recording
+description: Mark data invalid after a point in time
 ---
 In order to create coherent views of streaming data, the Rerun Viewer shows the latest values for each visible entity at the current timepoint. But some data may not be valid for the entire recording even if there are no updated values. How do you tell Rerun that something you've logged should no longer be shown?
 

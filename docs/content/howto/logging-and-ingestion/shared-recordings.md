@@ -1,6 +1,7 @@
 ---
 title: Share recordings across multiple processes
 order: 400
+description: Log to a single recording from multiple processes
 ---
 
 A common need is to log data from multiple processes and then visualize all of that data as part of a single shared recording.

@@ -1,6 +1,7 @@
 ---
 title: Lenses
 order: 400
+description: Extract, reshape, and reroute component data on the fly
 ---
 
 > [!NOTE]

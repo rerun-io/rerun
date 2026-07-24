@@ -1,7 +1,7 @@
 ---
 title: Send partial updates over time
 order: 250
-description: How to use the Rerun SDK to send partial data updates over time
+description: Update only the components that change between frames
 ---
 
 Rerun allows you to log only the data that has changed in-between frames (or whatever atomic unit [your timeline](../../concepts/logging-and-ingestion/timelines.md) is using), i.e. you can think of this as a sort of diffs or delta encodings.

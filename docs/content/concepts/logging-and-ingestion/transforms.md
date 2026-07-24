@@ -1,6 +1,7 @@
 ---
 title: Transforms & Coordinate Frames
 order: 400
+description: Coordinate frames and how transforms relate them
 ---
 
 <!-- Figma file for diagrams in this article: https://www.figma.com/board/PTwJKgi9kQOqG7ZgzdhrDL/Transforms-doc-page-graphs?t=fWkOGxxn6mZkkCON-1 -->

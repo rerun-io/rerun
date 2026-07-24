@@ -1,6 +1,7 @@
 ---
 title: Building blueprints programmatically
 order: 500
+description: Configure the Viewer in code using the Python Blueprint API
 ---
 
 For maximum control and automation, you can define [Blueprints](../../concepts/visualization/blueprints.md) in code using the Python Blueprint API. This is ideal for:

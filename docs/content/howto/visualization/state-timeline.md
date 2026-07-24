@@ -1,6 +1,7 @@
 ---
 title: Visualize state changes
 order: 700
+description: Show entities transitioning between discrete states over time
 ---
 
 The [StateTimelineView](../../reference/types/views/state_timeline_view.md) shows how entities transition between discrete states over time. Each entity becomes a horizontal lane, and each logged state is rendered as a colored band that runs until the next change. This is a good fit for state machines, mode transitions, sensor health, or any other piece of data that's better described as "what state am I in right now?" than as a numerical value.

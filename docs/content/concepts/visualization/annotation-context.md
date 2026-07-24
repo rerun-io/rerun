@@ -1,6 +1,7 @@
 ---
 title: Annotation Context
 order: 300
+description: Shared styling and labels across an entity tree
 ---
 
 ## Overview

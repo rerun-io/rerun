@@ -1,6 +1,7 @@
 ---
 title: Optimize chunk count
 order: 800
+description: Reduce chunk count to improve ingest and query performance
 ---
 
 

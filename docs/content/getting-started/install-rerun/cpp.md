@@ -1,6 +1,7 @@
 ---
 title: C++ SDK
 order: 200
+description: Setting up the C++ SDK
 ---
 
 If you're using CMake you can add the SDK to your project using `FetchContent`:

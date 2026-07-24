@@ -1,6 +1,7 @@
 ---
 title: Rust SDK
 order: 300
+description: Setting up the Rust SDK
 ---
 
 Add the [Rerun crate](https://crates.io/crates/rerun) using `cargo add rerun`.

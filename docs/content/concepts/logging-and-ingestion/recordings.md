@@ -1,6 +1,7 @@
 ---
 title: Recordings
 order: 100
+description: How recordings are identified and grouped by application ID
 ---
 
 

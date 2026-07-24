@@ -1,6 +1,7 @@
 ---
 title: Component Batches
 order: 900
+description: Efficiently log collections by batching component values
 ---
 
 In the Rerun data model, the value of a given component at a given point in time is always itself a list — or a _batch_ — of values.

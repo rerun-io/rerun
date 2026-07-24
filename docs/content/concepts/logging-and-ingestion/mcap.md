@@ -1,6 +1,7 @@
 ---
 title: MCAP files
 order: 850
+description: How Rerun reads and interprets MCAP files
 ---
 
 Working with MCAP files in Rerun:

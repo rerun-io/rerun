@@ -1,7 +1,7 @@
 ---
 title: Send tables to Rerun
 order: 300
-description: Shows how to send tables as dataframes to the Rerun viewer.
+description: Send tables as dataframes to the Rerun Viewer
 ---
 
 > [!NOTE]

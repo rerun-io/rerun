@@ -1,6 +1,7 @@
 ---
 title: Troubleshooting
 order: 500
+description: Common installation issues and how to fix them
 ---
 
 You can set `RUST_LOG=debug` before running to get some verbose logging output.

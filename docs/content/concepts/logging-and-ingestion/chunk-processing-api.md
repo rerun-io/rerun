@@ -1,6 +1,7 @@
 ---
 title: Chunk Processing API
 order: 750
+description: Pipelines for ingesting, transforming, and converting chunks (experimental)
 ---
 
 The Chunk Processing API is a flexible, [chunk](chunks.md)-centric API for data ingestion, transformation, and conversion pipelines.

@@ -1,6 +1,7 @@
 ---
 title: Customize views
 order: 200
+description: Visualizers, overrides, and per-entity customization in views
 ---
 
 This section explains the process by which logged data is used to produce a visualization and how it can be customized via the user interface or code.

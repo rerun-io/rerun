@@ -1,6 +1,7 @@
 ---
 title: RRD format
 order: 725
+description: How chunks are framed and serialized in .rrd files
 ---
 
 An RRD is the file format Rerun uses to persist recordings and blueprints. At the lowest level it is a linear sequence of framed messages — store announcements and chunks of data — optionally followed by a footer index that makes random access cheap. This page covers the envelope around chunks and how they are serialized; the chunk data model itself is described in [Chunks](chunks.md).

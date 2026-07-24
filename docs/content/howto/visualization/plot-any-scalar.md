@@ -1,6 +1,7 @@
 ---
 title: Plot any scalar
 order: 600
+description: Plot numerical data that wasn't logged with Rerun semantics
 ---
 
 Rerun can plot numerical data as a time series, even data that wasn't logged with Rerun semantics.

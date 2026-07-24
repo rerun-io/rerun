@@ -1,6 +1,7 @@
 ---
 title: Python SDK
 order: 100
+description: Setting up the Python SDK
 ---
 
 The Python SDK includes both the SDK and the Viewer, so you're ready to go with a single install:
