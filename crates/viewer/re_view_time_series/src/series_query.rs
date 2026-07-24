@@ -1,5 +1,7 @@
 //! Shared functionality for querying time series data.
 
+use std::iter::zip;
+
 use itertools::Itertools as _;
 
 use re_chunk_store::RangeQuery;
@@ -11,7 +13,6 @@ use re_sdk_types::external::arrow::datatypes::DataType as ArrowDatatype;
 use re_sdk_types::{ComponentDescriptor, Loggable as _, RowId, archetypes, components};
 use re_view::clamped_or_nothing;
 use re_viewer_context::{ViewQuery, VisualizerReportSeverity};
-use std::iter::zip;
 
 use crate::{MAX_NUM_SERIES_FOR_REMAPPED_SCALARS, PlotPoint, PlotSeriesKind};
 
@@ -139,7 +140,7 @@ pub fn allocate_plot_points(
 
 /// Allocates scalars per series into pre-allocated plot points.
 ///
-/// Warns once if any row's `values.len()` differs from `points_per_series.len()`.
+/// Warns once if non-empty rows have different widths.
 pub fn collect_scalars(
     all_scalar_chunks: &re_view::ChunksWithComponent<'_>,
     results: &re_view::VisualizerInstructionQueryResults<'_>,
@@ -148,12 +149,14 @@ pub fn collect_scalars(
     re_tracing::profile_function!(format!("points_per_series={}", points_per_series.len()));
 
     let num_series = points_per_series.len();
+    let mut expected_width = None;
     let mut width_mismatch = false;
 
     // `i` is the time index.
     for (i, values) in iter_scalar_slices(all_scalar_chunks).enumerate() {
-        if !values.is_empty() && values.len() != num_series {
-            width_mismatch = true;
+        if !values.is_empty() {
+            let expected_width = *expected_width.get_or_insert(values.len());
+            width_mismatch |= values.len() != expected_width;
         }
 
         if num_series == 1 {
