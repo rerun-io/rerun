@@ -51,4 +51,5 @@
 #include "datatypes/vec4d.hpp"
 #include "datatypes/video_timestamp.hpp"
 #include "datatypes/view_coordinates.hpp"
+#include "datatypes/view_dir.hpp"
 #include "datatypes/visible_time_range.hpp"

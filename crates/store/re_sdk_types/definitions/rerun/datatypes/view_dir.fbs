@@ -1,0 +1,30 @@
+namespace rerun.datatypes;
+
+/// The six cardinal directions for 3D view-space.
+///
+/// Note that these are abstract directions and do on their own not correspond to any specific
+/// coordinate system or numerical values.
+enum ViewDir: ubyte (
+  "attr.docs.unreleased"
+) {
+  /// Invalid value. Won't show up in generated types.
+  Invalid = 0,
+
+  /// Up.
+  Up = 1,
+
+  /// Down.
+  Down = 2,
+
+  /// Right.
+  Right = 3,
+
+  /// Left.
+  Left = 4,
+
+  /// Forward.
+  Forward = 5,
+
+  /// Back.
+  Back = 6,
+}

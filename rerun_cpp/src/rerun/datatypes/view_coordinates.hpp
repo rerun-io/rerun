@@ -4,6 +4,7 @@
 #pragma once
 
 #include "../result.hpp"
+#include "view_dir.hpp"
 
 #include <array>
 #include <cstdint>
@@ -27,23 +28,25 @@ namespace rerun::datatypes {
     ///
     /// ⚠ [Rerun does not yet support left-handed coordinate systems](https://github.com/rerun-io/rerun/issues/5032).
     ///
-    /// The following constants are used to represent the different directions:
-    ///  * Up = 1
-    ///  * Down = 2
-    ///  * Right = 3
-    ///  * Left = 4
-    ///  * Forward = 5
-    ///  * Back = 6
-    ///
     /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     ///
     struct ViewCoordinates {
         /// The directions of the [x, y, z] axes.
-        std::array<uint8_t, 3> coordinates;
+        std::array<rerun::datatypes::ViewDir, 3> coordinates;
 
       public: // START of extensions from view_coordinates_ext.cpp:
-        /// Construct Vec3D from x/y/z values.
+        /// Construct `ViewCoordinates` from x/y/z values.
         explicit constexpr ViewCoordinates(uint8_t axis0, uint8_t axis1, uint8_t axis2)
+            : coordinates{
+                  static_cast<rerun::datatypes::ViewDir>(axis0),
+                  static_cast<rerun::datatypes::ViewDir>(axis1),
+                  static_cast<rerun::datatypes::ViewDir>(axis2)} {}
+
+        /// Construct `ViewCoordinates` from x/y/z enum values.
+        explicit constexpr ViewCoordinates(
+            rerun::datatypes::ViewDir axis0, rerun::datatypes::ViewDir axis1,
+            rerun::datatypes::ViewDir axis2
+        )
             : coordinates{axis0, axis1, axis2} {}
 
         // END of extensions from view_coordinates_ext.cpp, start of generated code:
@@ -51,9 +54,10 @@ namespace rerun::datatypes {
       public:
         ViewCoordinates() = default;
 
-        ViewCoordinates(std::array<uint8_t, 3> coordinates_) : coordinates(coordinates_) {}
+        ViewCoordinates(std::array<rerun::datatypes::ViewDir, 3> coordinates_)
+            : coordinates(coordinates_) {}
 
-        ViewCoordinates& operator=(std::array<uint8_t, 3> coordinates_) {
+        ViewCoordinates& operator=(std::array<rerun::datatypes::ViewDir, 3> coordinates_) {
             coordinates = coordinates_;
             return *this;
         }

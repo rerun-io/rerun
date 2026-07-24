@@ -15,14 +15,6 @@ down, and the Z axis points forward.
 
 ⚠ [Rerun does not yet support left-handed coordinate systems](https://github.com/rerun-io/rerun/issues/5032).
 
-The following constants are used to represent the different directions:
- * Up = 1
- * Down = 2
- * Right = 3
- * Left = 4
- * Forward = 5
- * Back = 6
-
 ## Rerun datatype
 [`ViewCoordinates`](../datatypes/view_coordinates.md)
 

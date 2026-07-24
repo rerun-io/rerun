@@ -25,26 +25,35 @@ __all__ = [
 ]
 
 
-def _fixed_size_wide_enum_array__values__special_field_converter_override(x: Any) -> list[datatypes.WideEnum]:
+def _fixed_size_wide_enum_array__values__special_field_converter_override(
+    x: FixedSizeWideEnumArrayLike,
+) -> list[datatypes.WideEnum]:
+    from operator import index
+    from typing import SupportsIndex
+
     from .. import datatypes
 
     if isinstance(x, datatypes.FixedSizeWideEnumArray):
         return x.values
 
+    def convert_value(value: object) -> datatypes.WideEnum:
+        if isinstance(value, (datatypes.WideEnum, str)):
+            return datatypes.WideEnum.auto(value)
+        if isinstance(value, SupportsIndex):
+            return datatypes.WideEnum.auto(index(value))
+        raise ValueError("values must contain WideEnum values, names, or integers")
+
     try:
-        values = list(x)
+        input_values = iter(x)  # type: ignore[arg-type]
     except TypeError as err:
         raise ValueError("values must be an iterable of WideEnum values") from err
+
+    values = [convert_value(value) for value in input_values]
 
     if len(values) != 2:
         raise ValueError(f"values must be a 2-element array. Got: {len(values)}")
 
-    def convert_value(value: Any) -> datatypes.WideEnum:
-        if isinstance(value, (datatypes.WideEnum, str)):
-            return datatypes.WideEnum.auto(value)
-        return datatypes.WideEnum.auto(int(value))
-
-    return [convert_value(value) for value in values]
+    return values
 
 
 @define(init=False)
@@ -89,17 +98,14 @@ class FixedSizeWideEnumArrayBatch(BaseBatch[FixedSizeWideEnumArrayArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: FixedSizeWideEnumArrayArrayLike, data_type: pa.DataType) -> pa.Array:
-        from typing import cast
-
         if isinstance(data, FixedSizeWideEnumArray):
             typed_data = [data.values]
         else:
-            data = cast("FixedSizeWideEnumArrayArrayLike", data)
             try:
                 typed_data = [FixedSizeWideEnumArray(data).values]  # type: ignore[arg-type]
             except (AttributeError, TypeError, ValueError):
                 typed_data = [
-                    datum.values if isinstance(datum, FixedSizeWideEnumArray) else FixedSizeWideEnumArray(datum).values
+                    datum.values if isinstance(datum, FixedSizeWideEnumArray) else FixedSizeWideEnumArray(datum).values  # type: ignore[arg-type, redundant-expr]
                     for datum in data  # type: ignore[union-attr]  # ty: ignore[not-iterable]
                 ]
 

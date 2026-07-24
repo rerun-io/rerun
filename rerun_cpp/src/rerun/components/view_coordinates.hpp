@@ -4,6 +4,7 @@
 #pragma once
 
 #include "../datatypes/view_coordinates.hpp"
+#include "../datatypes/view_dir.hpp"
 #include "../rerun_sdk_export.hpp"
 #include "../result.hpp"
 
@@ -22,14 +23,6 @@ namespace rerun::components {
     ///
     /// ⚠ [Rerun does not yet support left-handed coordinate systems](https://github.com/rerun-io/rerun/issues/5032).
     ///
-    /// The following constants are used to represent the different directions:
-    ///  * Up = 1
-    ///  * Down = 2
-    ///  * Right = 3
-    ///  * Left = 4
-    ///  * Forward = 5
-    ///  * Back = 6
-    ///
     /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     ///
     struct ViewCoordinates {
@@ -37,21 +30,11 @@ namespace rerun::components {
         rerun::datatypes::ViewCoordinates coordinates;
 
       public: // START of extensions from view_coordinates_ext.cpp:
-        enum ViewDir : uint8_t {
-            Up = 1,
-            Down = 2,
-            Right = 3,
-            Left = 4,
-            Forward = 5,
-            Back = 6,
-        };
-
-        /// Construct Vec3D from x/y/z values.
-        constexpr ViewCoordinates(uint8_t axis0, uint8_t axis1, uint8_t axis2)
-            : coordinates(axis0, axis1, axis2) {}
-
-        /// Construct Vec3D from x/y/z enum values.
-        constexpr ViewCoordinates(ViewDir axis0, ViewDir axis1, ViewDir axis2)
+        /// Construct `ViewCoordinates` from x/y/z enum values.
+        constexpr ViewCoordinates(
+            rerun::datatypes::ViewDir axis0, rerun::datatypes::ViewDir axis1,
+            rerun::datatypes::ViewDir axis2
+        )
             : coordinates(axis0, axis1, axis2) {}
 
         // <BEGIN_GENERATED:declarations>

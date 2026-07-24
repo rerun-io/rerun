@@ -33,22 +33,12 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// ⚠ [Rerun does not yet support left-handed coordinate systems](https://github.com/rerun-io/rerun/issues/5032).
 ///
-/// The following constants are used to represent the different directions:
-///  * Up = 1
-///  * Down = 2
-///  * Right = 3
-///  * Left = 4
-///  * Forward = 5
-///  * Back = 6
-///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
-#[derive(
-    Clone, Debug, Copy, PartialEq, Eq, bytemuck::Pod, bytemuck::Zeroable, ::re_byte_size::SizeBytes,
-)]
+#[derive(Clone, Debug, Copy, PartialEq, Eq, ::re_byte_size::SizeBytes)]
 #[repr(transparent)]
 pub struct ViewCoordinates(
     /// The directions of the [x, y, z] axes.
-    pub [u8; 3usize],
+    pub [crate::datatypes::ViewDir; 3usize],
 );
 
 ::re_types_core::macros::impl_into_cow!(ViewCoordinates);
@@ -58,7 +48,11 @@ impl ::re_types_core::Loggable for ViewCoordinates {
     fn arrow_datatype() -> arrow::datatypes::DataType {
         use arrow::datatypes::*;
         DataType::FixedSizeList(
-            std::sync::Arc::new(Field::new("item", DataType::UInt8, false)),
+            std::sync::Arc::new(Field::new(
+                "item",
+                <crate::datatypes::ViewDir>::arrow_datatype(),
+                false,
+            )),
             3,
         )
     }
@@ -90,10 +84,14 @@ impl ::re_types_core::Loggable for ViewCoordinates {
                     .into_iter()
                     .flat_map(|v| match v {
                         Some(v) => itertools::Either::Left(v.into_iter()),
-                        None => itertools::Either::Right(std::iter::repeat_n(
-                            Default::default(),
-                            3usize,
-                        )),
+                        None => {
+                            itertools::Either::Right(
+                                std::iter::repeat_n(
+                                    <crate::datatypes::ViewDir as ::re_types_core::reflection::Enum>::variants()[0],
+                                    3usize,
+                                ),
+                            )
+                        }
                     })
                     .collect();
                 let data0_inner_validity: Option<arrow::buffer::NullBuffer> =
@@ -106,12 +104,18 @@ impl ::re_types_core::Loggable for ViewCoordinates {
                             .into()
                     });
                 as_array_ref(FixedSizeListArray::new(
-                    std::sync::Arc::new(Field::new("item", DataType::UInt8, false)),
-                    3,
-                    as_array_ref(PrimitiveArray::<UInt8Type>::new(
-                        ScalarBuffer::from(data0_inner_data.into_iter().collect::<Vec<_>>()),
-                        data0_inner_validity,
+                    std::sync::Arc::new(Field::new(
+                        "item",
+                        <crate::datatypes::ViewDir>::arrow_datatype(),
+                        false,
                     )),
+                    3,
+                    {
+                        _ = data0_inner_validity;
+                        crate::datatypes::ViewDir::to_arrow_opt(
+                            data0_inner_data.into_iter().map(Some),
+                        )?
+                    },
                     data0_validity,
                 ))
             }
@@ -126,125 +130,106 @@ impl ::re_types_core::Loggable for ViewCoordinates {
     {
         use ::re_types_core::{Loggable as _, ResultExt as _, arrow_zip_validity::ZipValidity};
         use arrow::{array::*, buffer::*, datatypes::*};
-        Ok({
-            let arrow_data = arrow_data
-                .as_any()
-                .downcast_ref::<arrow::array::FixedSizeListArray>()
-                .ok_or_else(|| {
-                    let expected = Self::arrow_datatype();
-                    let actual = arrow_data.data_type().clone();
-                    DeserializationError::datatype_mismatch(expected, actual)
-                })
-                .with_context("rerun.datatypes.ViewCoordinates#coordinates")?;
-            if arrow_data.is_empty() {
-                Vec::new()
-            } else {
-                let offsets = ::std::iter::zip(
-                    (0..).step_by(3usize),
-                    (3usize..).step_by(3usize).take(arrow_data.len()),
-                );
-                let arrow_data_inner = {
-                    let arrow_data_inner = &**arrow_data.values();
-                    arrow_data_inner
-                        .as_any()
-                        .downcast_ref::<UInt8Array>()
-                        .ok_or_else(|| {
-                            let expected = DataType::UInt8;
-                            let actual = arrow_data_inner.data_type().clone();
-                            DeserializationError::datatype_mismatch(expected, actual)
-                        })
-                        .with_context("rerun.datatypes.ViewCoordinates#coordinates")?
-                        .into_iter()
-                        .collect::<Vec<_>>()
-                };
-                ZipValidity::new_with_validity(offsets, arrow_data.nulls())
-                    .map(|elem| {
-                        elem.map(|(start, end): (usize, usize)| {
-                            re_log::debug_assert!(end - start == 3usize);
-                            if arrow_data_inner.len() < end {
-                                return Err(DeserializationError::offset_slice_oob(
-                                    (start, end),
-                                    arrow_data_inner.len(),
-                                ));
-                            }
-
-                            #[expect(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                            let data = unsafe { arrow_data_inner.get_unchecked(start..end) };
-                            let data = data.iter().cloned().map(Option::unwrap_or_default);
-
-                            // NOTE: Unwrapping cannot fail: the length must be correct.
-                            #[expect(clippy::unwrap_used)]
-                            Ok(array_init::from_iter(data).unwrap())
-                        })
-                        .transpose()
-                    })
-                    .collect::<DeserializationResult<Vec<Option<_>>>>()?
-            }
-            .into_iter()
-        }
-        .map(|v| v.ok_or_else(DeserializationError::missing_data))
-        .map(|res| res.map(|v| Some(Self(v))))
-        .collect::<DeserializationResult<Vec<Option<_>>>>()
-        .with_context("rerun.datatypes.ViewCoordinates#coordinates")
-        .with_context("rerun.datatypes.ViewCoordinates")?)
-    }
-
-    #[inline]
-    fn from_arrow(arrow_data: &dyn arrow::array::Array) -> DeserializationResult<Vec<Self>>
-    where
-        Self: Sized,
-    {
-        use ::re_types_core::{Loggable as _, ResultExt as _, arrow_zip_validity::ZipValidity};
-        use arrow::{array::*, buffer::*, datatypes::*};
-        if let Some(nulls) = arrow_data.nulls()
-            && nulls.null_count() != 0
-        {
-            return Err(DeserializationError::missing_data());
-        }
-        Ok({
-            let slice = {
+        Ok(
+            {
                 let arrow_data = arrow_data
                     .as_any()
                     .downcast_ref::<arrow::array::FixedSizeListArray>()
                     .ok_or_else(|| {
-                        let expected = DataType::FixedSizeList(
-                            std::sync::Arc::new(Field::new("item", DataType::UInt8, false)),
-                            3,
-                        );
+                        let expected = Self::arrow_datatype();
                         let actual = arrow_data.data_type().clone();
                         DeserializationError::datatype_mismatch(expected, actual)
                     })
                     .with_context("rerun.datatypes.ViewCoordinates#coordinates")?;
-                let arrow_data_inner = &**arrow_data.values();
-                bytemuck::cast_slice::<_, [u8; 3usize]>(
-                    arrow_data_inner
-                        .as_any()
-                        .downcast_ref::<UInt8Array>()
-                        .ok_or_else(|| {
-                            let expected = DataType::UInt8;
-                            let actual = arrow_data_inner.data_type().clone();
-                            DeserializationError::datatype_mismatch(expected, actual)
+                if arrow_data.is_empty() {
+                    Vec::new()
+                } else {
+                    let offsets = ::std::iter::zip(
+                        (0..).step_by(3usize),
+                        (3usize..).step_by(3usize).take(arrow_data.len()),
+                    );
+                    let arrow_data_inner = {
+                        let arrow_data_inner = &**arrow_data.values();
+                        crate::datatypes::ViewDir::from_arrow_opt(arrow_data_inner)
+                            .with_context("rerun.datatypes.ViewCoordinates#coordinates")?
+                            .into_iter()
+                            .collect::<Vec<_>>()
+                    };
+                    ZipValidity::new_with_validity(offsets, arrow_data.nulls())
+                        .map(|elem| {
+                            elem
+                                .map(|(start, end): (usize, usize)| {
+                                    re_log::debug_assert!(end - start == 3usize);
+                                    if arrow_data_inner.len() < end {
+                                        return Err(
+                                            DeserializationError::offset_slice_oob(
+                                                (start, end),
+                                                arrow_data_inner.len(),
+                                            ),
+                                        );
+                                    }
+
+                                    #[expect(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                    let data = unsafe {
+                                        arrow_data_inner.get_unchecked(start..end)
+                                    };
+                                    if data.iter().any(Option::is_none) {
+                                        return Err(DeserializationError::missing_data());
+                                    }
+                                    let data = data
+                                        .iter()
+                                        .cloned()
+                                        .map(|opt| {
+                                            opt
+                                                .unwrap_or_else(|| {
+                                                    <crate::datatypes::ViewDir as ::re_types_core::reflection::Enum>::variants()[0]
+                                                })
+                                        });
+
+                                    // NOTE: Unwrapping cannot fail: the length must be correct.
+                                    #[expect(clippy::unwrap_used)]
+                                    Ok(array_init::from_iter(data).unwrap())
+                                })
+                                .transpose()
                         })
-                        .with_context("rerun.datatypes.ViewCoordinates#coordinates")?
-                        .values()
-                        .as_ref(),
-                )
-            };
-            { slice.iter().copied().map(Self).collect::<Vec<_>>() }
-        })
+                        .collect::<DeserializationResult<Vec<Option<_>>>>()?
+                }
+                    .into_iter()
+            }
+                .map(|v| v.ok_or_else(DeserializationError::missing_data))
+                .map(|res| res.map(|v| Some(Self(v))))
+                .collect::<DeserializationResult<Vec<Option<_>>>>()
+                .with_context("rerun.datatypes.ViewCoordinates#coordinates")
+                .with_context("rerun.datatypes.ViewCoordinates")?,
+        )
     }
 }
 
-impl From<[u8; 3usize]> for ViewCoordinates {
-    #[inline]
-    fn from(coordinates: [u8; 3usize]) -> Self {
-        Self(coordinates)
+impl<T: Into<[crate::datatypes::ViewDir; 3usize]>> From<T> for ViewCoordinates {
+    fn from(v: T) -> Self {
+        Self(v.into())
     }
 }
 
-impl From<ViewCoordinates> for [u8; 3usize] {
+impl std::borrow::Borrow<[crate::datatypes::ViewDir; 3usize]> for ViewCoordinates {
     #[inline]
-    fn from(value: ViewCoordinates) -> Self {
-        value.0
+    fn borrow(&self) -> &[crate::datatypes::ViewDir; 3usize] {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for ViewCoordinates {
+    type Target = [crate::datatypes::ViewDir; 3usize];
+
+    #[inline]
+    fn deref(&self) -> &[crate::datatypes::ViewDir; 3usize] {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for ViewCoordinates {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut [crate::datatypes::ViewDir; 3usize] {
+        &mut self.0
     }
 }

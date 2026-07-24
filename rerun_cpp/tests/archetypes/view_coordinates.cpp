@@ -14,17 +14,17 @@ SCENARIO(
 ) {
     GIVEN("Constructed from builder and manually") {
         auto from_builder = ViewCoordinates(
-            rerun::components::ViewCoordinates::Right,
-            rerun::components::ViewCoordinates::Down,
-            rerun::components::ViewCoordinates::Forward
+            rerun::datatypes::ViewDir::Right,
+            rerun::datatypes::ViewDir::Down,
+            rerun::datatypes::ViewDir::Forward
         );
 
         ViewCoordinates from_manual;
         from_manual.xyz = rerun::ComponentBatch::from_loggable<rerun::components::ViewCoordinates>(
                               {
-                                  rerun::components::ViewCoordinates::Right,
-                                  rerun::components::ViewCoordinates::Down,
-                                  rerun::components::ViewCoordinates::Forward,
+                                  rerun::datatypes::ViewDir::Right,
+                                  rerun::datatypes::ViewDir::Down,
+                                  rerun::datatypes::ViewDir::Forward,
                               },
                               ViewCoordinates::Descriptor_xyz
         )
@@ -35,9 +35,9 @@ SCENARIO(
 
     GIVEN("Constructed from builder and static") {
         auto from_builder = ViewCoordinates(
-            rerun::components::ViewCoordinates::Right,
-            rerun::components::ViewCoordinates::Down,
-            rerun::components::ViewCoordinates::Forward
+            rerun::datatypes::ViewDir::Right,
+            rerun::datatypes::ViewDir::Down,
+            rerun::datatypes::ViewDir::Forward
         );
 
         test_compare_archetype_serialization(ViewCoordinates::RDF, from_builder);

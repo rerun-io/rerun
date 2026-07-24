@@ -1,6 +1,12 @@
+use std::sync::Arc;
+
+use arrow::array::{FixedSizeListArray, UInt8Array};
+use arrow::datatypes::{DataType, Field};
 use re_sdk_types::archetypes::ViewCoordinates;
-use re_sdk_types::view_coordinates::ViewDir;
-use re_sdk_types::{Archetype as _, AsComponents as _, ComponentBatch as _, components};
+use re_sdk_types::datatypes::{self, ViewDir};
+use re_sdk_types::{
+    Archetype as _, AsComponents as _, ComponentBatch as _, Loggable as _, components,
+};
 
 #[test]
 fn roundtrip() {
@@ -24,6 +30,35 @@ fn roundtrip() {
 
     let deserialized = ViewCoordinates::from_arrow(serialized).unwrap();
     similar_asserts::assert_eq!(expected, deserialized);
+}
+
+/// Previously, the underlying `ViewDir` datatype wasn't an enum, but used raw u8 values.
+/// This test ensures that we're still compatible with this old version.
+#[test]
+fn legacy_arrow_layout_is_compatible() {
+    let legacy_datatype =
+        DataType::FixedSizeList(Arc::new(Field::new("item", DataType::UInt8, false)), 3);
+    assert_eq!(
+        datatypes::ViewCoordinates::arrow_datatype(),
+        legacy_datatype
+    );
+
+    let legacy_array = FixedSizeListArray::new(
+        Arc::new(Field::new("item", DataType::UInt8, false)),
+        3,
+        Arc::new(UInt8Array::from(vec![3, 2, 5])),
+        None,
+    );
+    let decoded = datatypes::ViewCoordinates::from_arrow(&legacy_array).unwrap();
+
+    assert_eq!(
+        decoded,
+        vec![datatypes::ViewCoordinates([
+            ViewDir::Right,
+            ViewDir::Down,
+            ViewDir::Forward,
+        ])]
+    );
 }
 
 // ----------------------------------------------------------------------------

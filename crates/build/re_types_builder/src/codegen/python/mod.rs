@@ -553,6 +553,12 @@ impl PythonCodeGenerator {
 
             let manifest = quote_manifest(names);
 
+            // Keep generated imports narrow so Ruff does not reformat imports in unrelated files.
+            let needs_type_alias = obj
+                .try_get_attr::<String>(ATTR_PYTHON_ARRAY_ALIASES)
+                .is_some_and(|aliases| aliases.contains(&format!("{}Like", obj.name)));
+            let type_alias_import = if needs_type_alias { ", TypeAlias" } else { "" };
+
             let rerun_path = if obj.is_testing() {
                 "rerun."
             } else if obj.scope().is_some() {
@@ -567,7 +573,7 @@ impl PythonCodeGenerator {
             from __future__ import annotations
 
             from collections.abc import Iterable, Mapping, Set, Sequence, Dict
-            from typing import Any, ClassVar, Optional, Union, TYPE_CHECKING, SupportsFloat, Literal, Tuple
+            from typing import Any, ClassVar, Optional, Union, TYPE_CHECKING, SupportsFloat, Literal, Tuple{type_alias_import}
             from typing_extensions import deprecated # type: ignore[misc, unused-ignore]
 
             from attrs import define, field
@@ -1756,10 +1762,15 @@ fn quote_aliases_from_object(obj: &Object) -> String {
     code.push_unindented(
         format!(
             r#"
-            {name}ArrayLike = {name} | Sequence[{name}Like]{array_aliases}
+            {name}ArrayLike{type_alias_annotation} = {name} | Sequence[{name}Like]{array_aliases}
             """A type alias for any {name}-like array object."""
             "#,
             array_aliases = format!(" | {array_aliases}").trim_end_matches(" | "),
+            type_alias_annotation = if array_aliases.contains(&format!("{name}Like")) {
+                ": TypeAlias"
+            } else {
+                ""
+            },
         ),
         0,
     );
@@ -2150,28 +2161,36 @@ fn quote_enum_array_field_converter(
     });
 
     let obj_type = fqname_to_type(&obj.fqname);
+    let obj_like_type = format!("{}Like", obj.name);
 
     function.push_unindented(
         format!(
             r#"
-            def {converter_name}(x: Any) -> list[{enum_type}]:
+            def {converter_name}(x: {obj_like_type}) -> list[{enum_type}]:
+                from operator import index
+                from typing import SupportsIndex
+
                 from .. import {enum_module}
 
                 if isinstance(x, {obj_type}):
                     return x.{field_name}
 
-                try:
-                    values = list(x)
-                except TypeError as err:
-                    raise ValueError("{field_name} must be an iterable of {enum_name} values") from err
-                {length_check}
-
-                def convert_value(value: Any) -> {enum_type}:
+                def convert_value(value: object) -> {enum_type}:
                     if isinstance(value, ({enum_type}, str)):
                         return {enum_type}.auto(value)
-                    return {enum_type}.auto(int(value))
+                    if isinstance(value, SupportsIndex):
+                        return {enum_type}.auto(index(value))
+                    raise ValueError("{field_name} must contain {enum_name} values, names, or integers")
 
-                return [convert_value(value) for value in values]
+                try:
+                    input_values = iter(x)  # type: ignore[arg-type]
+                except TypeError as err:
+                    raise ValueError("{field_name} must be an iterable of {enum_name} values") from err
+
+                values = [convert_value(value) for value in input_values]
+                {length_check}
+
+                return values
             "#,
             field_name = field.name,
         ),
@@ -2442,17 +2461,14 @@ fn quote_arrow_serialization(
                         quote_arrow_datatype(&type_registry.get(&enum_obj.fqname));
                     return Ok(unindent(&format!(
                         r##"
-                            from typing import cast
-
                             if isinstance(data, {name}):
                                 typed_data = [data.{field_name}]
                             else:
-                                data = cast({name}ArrayLike, data)
                                 try:
                                     typed_data = [{name}(data).{field_name}]  # type: ignore[arg-type]
                                 except (AttributeError, TypeError, ValueError):
                                     typed_data = [
-                                        datum.{field_name} if isinstance(datum, {name}) else {name}(datum).{field_name}
+                                        datum.{field_name} if isinstance(datum, {name}) else {name}(datum).{field_name}  # type: ignore[arg-type, redundant-expr]
                                         for datum in data  # type: ignore[union-attr]  # ty: ignore[not-iterable]
                                     ]
 

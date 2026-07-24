@@ -20,26 +20,35 @@ if TYPE_CHECKING:
 __all__ = ["FixedSizeEnumArray", "FixedSizeEnumArrayArrayLike", "FixedSizeEnumArrayBatch", "FixedSizeEnumArrayLike"]
 
 
-def _fixed_size_enum_array__values__special_field_converter_override(x: Any) -> list[datatypes.EnumTest]:
+def _fixed_size_enum_array__values__special_field_converter_override(
+    x: FixedSizeEnumArrayLike,
+) -> list[datatypes.EnumTest]:
+    from operator import index
+    from typing import SupportsIndex
+
     from .. import datatypes
 
     if isinstance(x, datatypes.FixedSizeEnumArray):
         return x.values
 
+    def convert_value(value: object) -> datatypes.EnumTest:
+        if isinstance(value, (datatypes.EnumTest, str)):
+            return datatypes.EnumTest.auto(value)
+        if isinstance(value, SupportsIndex):
+            return datatypes.EnumTest.auto(index(value))
+        raise ValueError("values must contain EnumTest values, names, or integers")
+
     try:
-        values = list(x)
+        input_values = iter(x)  # type: ignore[arg-type]
     except TypeError as err:
         raise ValueError("values must be an iterable of EnumTest values") from err
+
+    values = [convert_value(value) for value in input_values]
 
     if len(values) != 3:
         raise ValueError(f"values must be a 3-element array. Got: {len(values)}")
 
-    def convert_value(value: Any) -> datatypes.EnumTest:
-        if isinstance(value, (datatypes.EnumTest, str)):
-            return datatypes.EnumTest.auto(value)
-        return datatypes.EnumTest.auto(int(value))
-
-    return [convert_value(value) for value in values]
+    return values
 
 
 @define(init=False)
@@ -82,17 +91,14 @@ class FixedSizeEnumArrayBatch(BaseBatch[FixedSizeEnumArrayArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: FixedSizeEnumArrayArrayLike, data_type: pa.DataType) -> pa.Array:
-        from typing import cast
-
         if isinstance(data, FixedSizeEnumArray):
             typed_data = [data.values]
         else:
-            data = cast("FixedSizeEnumArrayArrayLike", data)
             try:
                 typed_data = [FixedSizeEnumArray(data).values]  # type: ignore[arg-type]
             except (AttributeError, TypeError, ValueError):
                 typed_data = [
-                    datum.values if isinstance(datum, FixedSizeEnumArray) else FixedSizeEnumArray(datum).values
+                    datum.values if isinstance(datum, FixedSizeEnumArray) else FixedSizeEnumArray(datum).values  # type: ignore[arg-type, redundant-expr]
                     for datum in data  # type: ignore[union-attr]  # ty: ignore[not-iterable]
                 ]
 

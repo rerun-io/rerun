@@ -6,9 +6,8 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, TypeAlias
 
-import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
@@ -16,17 +15,41 @@ from attrs import define, field
 from .._baseclasses import (
     BaseBatch,
 )
-from .._converters import (
-    to_np_uint8,
-)
-from .._numpy_compatibility import asarray
-from .view_coordinates_ext import ViewCoordinatesExt
 
 __all__ = ["ViewCoordinates", "ViewCoordinatesArrayLike", "ViewCoordinatesBatch", "ViewCoordinatesLike"]
 
 
+def _view_coordinates__coordinates__special_field_converter_override(x: ViewCoordinatesLike) -> list[datatypes.ViewDir]:
+    from operator import index
+    from typing import SupportsIndex
+
+    from .. import datatypes
+
+    if isinstance(x, datatypes.ViewCoordinates):
+        return x.coordinates
+
+    def convert_value(value: object) -> datatypes.ViewDir:
+        if isinstance(value, (datatypes.ViewDir, str)):
+            return datatypes.ViewDir.auto(value)
+        if isinstance(value, SupportsIndex):
+            return datatypes.ViewDir.auto(index(value))
+        raise ValueError("coordinates must contain ViewDir values, names, or integers")
+
+    try:
+        input_values = iter(x)  # type: ignore[arg-type]
+    except TypeError as err:
+        raise ValueError("coordinates must be an iterable of ViewDir values") from err
+
+    values = [convert_value(value) for value in input_values]
+
+    if len(values) != 3:
+        raise ValueError(f"coordinates must be a 3-element array. Got: {len(values)}")
+
+    return values
+
+
 @define(init=False)
-class ViewCoordinates(ViewCoordinatesExt):
+class ViewCoordinates:
     """
     **Datatype**: How we interpret the coordinate system of an entity/space.
 
@@ -38,14 +61,6 @@ class ViewCoordinates(ViewCoordinatesExt):
     down, and the Z axis points forward.
 
     ⚠ [Rerun does not yet support left-handed coordinate systems](https://github.com/rerun-io/rerun/issues/5032).
-
-    The following constants are used to represent the different directions:
-     * Up = 1
-     * Down = 2
-     * Right = 3
-     * Left = 4
-     * Forward = 5
-     * Back = 6
 
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
@@ -64,14 +79,12 @@ class ViewCoordinates(ViewCoordinatesExt):
         # You can define your own __init__ function as a member of ViewCoordinatesExt in view_coordinates_ext.py
         self.__attrs_init__(coordinates=coordinates)
 
-    coordinates: npt.NDArray[np.uint8] = field(converter=to_np_uint8)
+    coordinates: list[datatypes.ViewDir] = field(
+        converter=_view_coordinates__coordinates__special_field_converter_override
+    )
     # The directions of the [x, y, z] axes.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
-
-    def __array__(self, dtype: npt.DTypeLike = None, copy: bool | None = None) -> npt.NDArray[Any]:
-        # You can define your own __array__ function as a member of ViewCoordinatesExt in view_coordinates_ext.py
-        return asarray(self.coordinates, dtype=dtype, copy=copy)
 
     def __len__(self) -> int:
         # You can define your own __len__ function as a member of ViewCoordinatesExt in view_coordinates_ext.py
@@ -79,12 +92,16 @@ class ViewCoordinates(ViewCoordinatesExt):
 
 
 if TYPE_CHECKING:
-    ViewCoordinatesLike = ViewCoordinates | npt.ArrayLike
+    from .. import datatypes
+
+    ViewCoordinatesLike = ViewCoordinates | Sequence[datatypes.ViewDirLike] | npt.ArrayLike
     """A type alias for any ViewCoordinates-like object."""
 else:
     ViewCoordinatesLike = Any
 
-ViewCoordinatesArrayLike = ViewCoordinates | Sequence[ViewCoordinatesLike] | npt.ArrayLike
+ViewCoordinatesArrayLike: TypeAlias = (
+    ViewCoordinates | Sequence[ViewCoordinatesLike] | ViewCoordinatesLike | npt.ArrayLike
+)
 """A type alias for any ViewCoordinates-like array object."""
 
 
@@ -93,4 +110,16 @@ class ViewCoordinatesBatch(BaseBatch[ViewCoordinatesArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: ViewCoordinatesArrayLike, data_type: pa.DataType) -> pa.Array:
-        return ViewCoordinatesExt.native_to_pa_array_override(data, data_type)
+        if isinstance(data, ViewCoordinates):
+            typed_data = [data.coordinates]
+        else:
+            try:
+                typed_data = [ViewCoordinates(data).coordinates]  # type: ignore[arg-type]
+            except (AttributeError, TypeError, ValueError):
+                typed_data = [
+                    datum.coordinates if isinstance(datum, ViewCoordinates) else ViewCoordinates(datum).coordinates  # type: ignore[arg-type, redundant-expr]
+                    for datum in data  # type: ignore[union-attr]  # ty: ignore[not-iterable]
+                ]
+
+        flat_data = [axis.value for item in typed_data for axis in item]
+        return pa.FixedSizeListArray.from_arrays(pa.array(flat_data, type=pa.uint8()), type=data_type)

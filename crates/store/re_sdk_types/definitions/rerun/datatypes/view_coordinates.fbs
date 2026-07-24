@@ -1,17 +1,6 @@
+include "./view_dir.fbs";
+
 namespace rerun.datatypes;
-
-
-// TODO(#6320)
-/*
-enum ViewDir: ubyte {
-    Up = 1,
-    Down = 2,
-    Right = 3,
-    Left = 4,
-    Forward = 5,
-    Back = 6,
-}
-*/
 
 /// How we interpret the coordinate system of an entity/space.
 ///
@@ -24,22 +13,15 @@ enum ViewDir: ubyte {
 ///
 /// ⚠ [Rerun does not yet support left-handed coordinate systems](https://github.com/rerun-io/rerun/issues/5032).
 ///
-/// The following constants are used to represent the different directions:
-///  * Up = 1
-///  * Down = 2
-///  * Right = 3
-///  * Left = 4
-///  * Forward = 5
-///  * Back = 6
 struct ViewCoordinates (
   "attr.arrow.transparent",
-  "attr.python.aliases": "npt.ArrayLike",
-  "attr.python.array_aliases": "npt.ArrayLike",
+  "attr.python.aliases": "Sequence[datatypes.ViewDirLike] | npt.ArrayLike",
+  "attr.python.array_aliases": "ViewCoordinatesLike | npt.ArrayLike",
   "attr.rerun.state": "unstable",
-  "attr.rust.derive": "Copy, PartialEq, Eq, bytemuck::Pod, bytemuck::Zeroable",
+  "attr.rust.derive": "Copy, PartialEq, Eq",
   "attr.rust.repr": "transparent",
   "attr.rust.tuple_struct"
 ) {
   /// The directions of the [x, y, z] axes.
-  coordinates: [ubyte: 3] (order: 100);
+  coordinates: [rerun.datatypes.ViewDir: 3] (order: 100);
 }

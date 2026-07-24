@@ -28,14 +28,6 @@ class ViewCoordinates(ViewCoordinatesExt, datatypes.ViewCoordinates, ComponentMi
 
     ⚠ [Rerun does not yet support left-handed coordinate systems](https://github.com/rerun-io/rerun/issues/5032).
 
-    The following constants are used to represent the different directions:
-     * Up = 1
-     * Down = 2
-     * Right = 3
-     * Left = 4
-     * Forward = 5
-     * Back = 6
-
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
 

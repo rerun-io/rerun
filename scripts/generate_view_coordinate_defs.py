@@ -212,7 +212,7 @@ def gen_py_cmp_decl() -> list[str]:
 
 
 def py_cmp_def(coords: ViewCoordinates) -> str:
-    return f"cls.{coords.name} = cls([cls.ViewDir.{coords.x}, cls.ViewDir.{coords.y}, cls.ViewDir.{coords.z}])\n"
+    return f"cls.{coords.name} = cls([datatypes.ViewDir.{coords.x}, datatypes.ViewDir.{coords.y}, datatypes.ViewDir.{coords.z}])\n"
 
 
 def gen_py_cmp_def() -> list[str]:
@@ -294,7 +294,7 @@ def gen_cpp_cmp_decl() -> list[str]:
 def cpp_cmp_def(coords: ViewCoordinates) -> str:
     return (
         f"const ViewCoordinates ViewCoordinates::{coords.name} = ViewCoordinates(\n"
-        f"rerun::components::ViewCoordinates::{coords.x}, rerun::components::ViewCoordinates::{coords.y}, rerun::components::ViewCoordinates::{coords.z}\n"
+        f"rerun::datatypes::ViewDir::{coords.x}, rerun::datatypes::ViewDir::{coords.y}, rerun::datatypes::ViewDir::{coords.z}\n"
         ");\n"
     )
 

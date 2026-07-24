@@ -3,6 +3,8 @@
 
 #include "view_coordinates.hpp"
 
+#include "view_dir.hpp"
+
 #include <arrow/builder.h>
 #include <arrow/type_fwd.h>
 
@@ -10,8 +12,10 @@ namespace rerun::datatypes {}
 
 namespace rerun {
     const std::shared_ptr<arrow::DataType>& Loggable<datatypes::ViewCoordinates>::arrow_datatype() {
-        static const auto datatype =
-            arrow::fixed_size_list(arrow::field("item", arrow::uint8(), false), 3);
+        static const auto datatype = arrow::fixed_size_list(
+            arrow::field("item", Loggable<rerun::datatypes::ViewDir>::arrow_datatype(), false),
+            3
+        );
         return datatype;
     }
 
@@ -50,14 +54,20 @@ namespace rerun {
         }
 
         auto value_builder = static_cast<arrow::UInt8Builder*>(builder->value_builder());
+        ARROW_RETURN_NOT_OK(builder->Reserve(static_cast<int64_t>(num_elements)));
+        ARROW_RETURN_NOT_OK(value_builder->Reserve(static_cast<int64_t>(num_elements * 3)));
 
-        ARROW_RETURN_NOT_OK(builder->AppendValues(static_cast<int64_t>(num_elements)));
-        static_assert(sizeof(elements[0].coordinates) == sizeof(elements[0]));
-        ARROW_RETURN_NOT_OK(value_builder->AppendValues(
-            elements[0].coordinates.data(),
-            static_cast<int64_t>(num_elements * 3),
-            nullptr
-        ));
+        for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+            const auto& element = elements[elem_idx];
+            ARROW_RETURN_NOT_OK(builder->Append());
+            if (element.coordinates.data()) {
+                RR_RETURN_NOT_OK(Loggable<rerun::datatypes::ViewDir>::fill_arrow_array_builder(
+                    value_builder,
+                    element.coordinates.data(),
+                    3
+                ));
+            }
+        }
 
         return Error::ok();
     }

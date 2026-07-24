@@ -17,8 +17,11 @@ namespace rerun::archetypes {
 
         // <CODEGEN_COPY_TO_HEADER>
 
-        /// Construct Vec3D from x/y/z values.
-        ViewCoordinates(uint8_t axis0, uint8_t axis1, uint8_t axis2)
+        /// Construct `ViewCoordinates` from x/y/z enum values.
+        ViewCoordinates(
+            rerun::datatypes::ViewDir axis0, rerun::datatypes::ViewDir axis1,
+            rerun::datatypes::ViewDir axis2
+        )
             : ViewCoordinates(rerun::components::ViewCoordinates(axis0, axis1, axis2)) {}
 
         // <BEGIN_GENERATED:declarations>
