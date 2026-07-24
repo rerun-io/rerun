@@ -1,5 +1,7 @@
 //! Shared functionality for querying time series data.
 
+use std::iter::zip;
+
 use itertools::Itertools as _;
 
 use re_chunk_store::RangeQuery;
@@ -16,7 +18,19 @@ use crate::{MAX_NUM_SERIES_FOR_REMAPPED_SCALARS, PlotPoint, PlotSeriesKind};
 
 type PlotPointsPerSeries = smallvec::SmallVec<[Vec<PlotPoint>; 1]>;
 
+/// All scalar rows in chunk iteration order.
+fn iter_scalar_slices<'a>(
+    all_scalar_chunks: &'a re_view::ChunksWithComponent<'_>,
+) -> impl Iterator<Item = &'a [f64]> + 'a {
+    all_scalar_chunks
+        .iter()
+        .flat_map(|chunk| chunk.iter_slices::<f64>())
+}
+
 /// Determines how many series there are in the scalar chunks.
+///
+/// Uses the first non-empty scalar slice in chunk iteration order for rendering.
+/// Width consistency is checked in [`collect_scalars`].
 ///
 /// If the scalar component has a non-identity mapping (i.e. it's sourced from a different
 /// component or uses a selector), the number of series is capped at
@@ -27,16 +41,8 @@ pub fn determine_num_series(
     all_scalar_chunks: &re_view::ChunksWithComponent<'_>,
     results: &re_view::VisualizerInstructionQueryResults<'_>,
 ) -> usize {
-    // TODO(andreas): We should determine this only once and cache the result.
-    // As data comes in we can validate that the number of series is consistent.
-    // Keep in mind clears here.
-    let count = all_scalar_chunks
-        .iter()
-        .find_map(|chunk| {
-            chunk
-                .iter_slices::<f64>()
-                .find_map(|slice| (!slice.is_empty()).then_some(slice.len()))
-        })
+    let count = iter_scalar_slices(all_scalar_chunks)
+        .find_map(|slice| (!slice.is_empty()).then_some(slice.len()))
         .unwrap_or(1);
 
     let scalar_component = archetypes::Scalars::descriptor_scalars().component;
@@ -52,7 +58,7 @@ pub fn determine_num_series(
             VisualizerReportSeverity::Error,
             format!(
                 "Too many series ({}), capping to {}. \
-             This limit can be lifted in Settings.",
+                This limit can be lifted in Settings.",
                 re_format::format_uint(count),
                 re_format::format_uint(MAX_NUM_SERIES_FOR_REMAPPED_SCALARS),
             ),
@@ -133,38 +139,54 @@ pub fn allocate_plot_points(
 }
 
 /// Allocates scalars per series into pre-allocated plot points.
+///
+/// Warns once if non-empty rows have different widths.
 pub fn collect_scalars(
     all_scalar_chunks: &re_view::ChunksWithComponent<'_>,
+    results: &re_view::VisualizerInstructionQueryResults<'_>,
     points_per_series: &mut PlotPointsPerSeries,
 ) {
     re_tracing::profile_function!(format!("points_per_series={}", points_per_series.len()));
 
-    if points_per_series.len() == 1 {
-        let points = &mut *points_per_series[0];
-        for (i, values) in all_scalar_chunks
-            .iter()
-            .flat_map(|chunk| chunk.iter_slices::<f64>())
-            .enumerate()
-        {
+    let num_series = points_per_series.len();
+    let mut expected_width = None;
+    let mut width_mismatch = false;
+
+    // `i` is the time index.
+    for (i, values) in iter_scalar_slices(all_scalar_chunks).enumerate() {
+        if !values.is_empty() {
+            let expected_width = *expected_width.get_or_insert(values.len());
+            width_mismatch |= values.len() != expected_width;
+        }
+
+        if num_series == 1 {
+            let points = &mut points_per_series[0];
             if let Some(value) = values.first() {
                 points[i].value = *value;
             } else {
                 points[i].attrs.kind = PlotSeriesKind::Clear;
             }
-        }
-    } else {
-        for (i, values) in all_scalar_chunks
-            .iter()
-            .flat_map(|chunk| chunk.iter_slices::<f64>())
-            .enumerate()
-        {
-            for (points, value) in std::iter::zip(&mut *points_per_series, values) {
+        } else {
+            for (points, value) in zip(&mut *points_per_series, values) {
                 points[i].value = *value;
             }
+            // `zip` stops at the shorter iterator — extra scalars in `values` are ignored.
             for points in points_per_series.iter_mut().skip(values.len()) {
                 points[i].attrs.kind = PlotSeriesKind::Clear;
             }
         }
+    }
+
+    if width_mismatch {
+        results.report_unspecified_source(
+            VisualizerReportSeverity::Warning,
+            format!(
+                "Number of scalars for entity `{}` varies between timestamps in the query, \
+                currently rendering {} series",
+                results.entity_path(),
+                re_format::format_uint(num_series),
+            ),
+        );
     }
 }
 
