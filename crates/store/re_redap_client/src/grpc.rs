@@ -481,15 +481,14 @@ pub fn fetch_chunks_response_to_chunk_and_segment_id(
                             )
                         })?;
 
-                        let chunk = re_chunk::Chunk::from_record_batch(&arrow_msg.batch).map_err(
-                            |err| {
+                        let chunk = re_chunk::Chunk::from_chunk_record_batch(&arrow_msg.batch)
+                            .map_err(|err| {
                                 ApiError::deserialization_with_source(
                                     trace_id,
                                     err,
                                     "failed to parse item in /FetchChunks response stream",
                                 )
-                            },
-                        )?;
+                            })?;
 
                         Ok((chunk, segment_id))
                     })
@@ -540,7 +539,7 @@ pub fn fetch_chunks_response_to_chunk_and_segment_id(
                 })?;
 
                 let chunk =
-                    re_chunk::Chunk::from_record_batch(&arrow_msg.batch).map_err(|err| {
+                    re_chunk::Chunk::from_chunk_record_batch(&arrow_msg.batch).map_err(|err| {
                         ApiError::deserialization_with_source(
                             trace_id,
                             err,

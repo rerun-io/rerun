@@ -127,9 +127,8 @@ impl PyChunkInternal {
         };
         let entity_path = entity_path.map(|p| EntityPath::parse_forgiving(&p));
 
-        let chunks =
-            Chunk::from_dataframe_record_batch(&record_batch.0, &index, entity_path.as_ref())
-                .map_err(|err| PyValueError::new_err(err.to_string()))?;
+        let chunks = Chunk::from_record_batch(&record_batch.0, &index, entity_path.as_ref())
+            .map_err(|err| PyValueError::new_err(err.to_string()))?;
 
         Ok(chunks
             .into_iter()

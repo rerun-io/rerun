@@ -1086,7 +1086,7 @@ impl RerunCloudService for RerunCloudHandler {
                 .clone()
                 .into();
 
-            let chunk = Arc::new(Chunk::from_record_batch(&chunk_batch).map_err(|err| {
+            let chunk = Arc::new(Chunk::from_chunk_record_batch(&chunk_batch).map_err(|err| {
                 tonic::Status::internal(format!("error decoding chunk from record batch: {err:#}"))
             })?);
 
