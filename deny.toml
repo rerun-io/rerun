@@ -53,7 +53,7 @@ deny = [
   { name = "openssl-sys", reason = "We prefer rustls" },
   { name = "openssl", reason = "We prefer rustls" },
   { name = "protobuf_src", reason = "We don't want to force users to compile protoc" },
-  # { name = "protoc-prebuilt", reason = "It would be better if 3rd party crates shipped their pre-compiled proto sources" }, # unfortunately, we use this for our objectron example. TODO(emilk): avoid protoc-prebuilt
+  { name = "protoc-prebuilt", reason = "Downloads protoc at build time without checksum verification; objectron uses protoc-bin-vendored instead" },
 
   # We have to allow egui_kittest since we use it behind a `testing` feature flag, rather than just as a dev-dependency.
   #{ name = "egui_kittest", reason = "Only allowed as a dev-dependency for testing." },
@@ -86,9 +86,6 @@ skip = [
   { name = "rustix" }, # tantivy uses an old version.
   { name = "socket2" }, # `egui_mcp` pulls `tokio` (→ socket2 0.6) into the non-dev graph; the viewer otherwise uses 0.5 via `hyper-util`.
   { name = "unicode-width" }, # walkers depends on 0.1 via http-cache-request / cacache
-  { name = "ureq" }, # duplicated by `protoc-prebuilt`, which uses an outdated version.
-  { name = "webpki-roots" }, # need to update ureq
-  { name = "zip" }, # duplicated by `protoc-prebuilt`, which uses an ancient version.
 ]
 skip-tree = [
   # PREFER `skip` (above): `skip-tree` exempts the crate AND its whole transitive subtree from the

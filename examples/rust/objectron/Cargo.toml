@@ -19,4 +19,4 @@ prost.workspace = true
 [build-dependencies]
 re_build_tools = { path = "../../../crates/build/re_build_tools" }
 prost-build.workspace = true
-protoc-prebuilt.workspace = true
+protoc-bin-vendored.workspace = true

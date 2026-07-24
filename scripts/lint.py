@@ -479,7 +479,6 @@ def test_lint_line() -> None:
         "The theme is great",
         "template <typename... Args>",
         '_TFunc = TypeVar("_TFunc", bound=Callable[..., Any])',
-        'protoc_prebuilt::init("22.0")',
         'rr.init("rerun_example_app")',
         'rr.script_setup(args, "rerun_example_app")',
         """

@@ -3483,7 +3483,7 @@ dependencies = [
  "js-sys",
  "serde",
  "serde_json",
- "ureq 3.3.0",
+ "ureq",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "wasm-streams",
@@ -4719,7 +4719,7 @@ dependencies = [
  "tokio",
  "tokio-rustls",
  "tower-service",
- "webpki-roots 1.0.2",
+ "webpki-roots",
 ]
 
 [[package]]
@@ -7212,7 +7212,7 @@ dependencies = [
  "glam",
  "prost",
  "prost-build",
- "protoc-prebuilt",
+ "protoc-bin-vendored",
  "re_build_tools",
  "rerun",
 ]
@@ -8084,14 +8084,68 @@ dependencies = [
 ]
 
 [[package]]
-name = "protoc-prebuilt"
-version = "0.3.0"
+name = "protoc-bin-vendored"
+version = "3.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4d85d4641fe3b8c6e853dfd09fe35379bc6b6e66bd692ac29ed4f7087de69ed5"
+checksum = "d1c381df33c98266b5f08186583660090a4ffa0889e76c7e9a5e175f645a67fa"
 dependencies = [
- "ureq 2.12.1",
- "zip 0.6.6",
+ "protoc-bin-vendored-linux-aarch_64",
+ "protoc-bin-vendored-linux-ppcle_64",
+ "protoc-bin-vendored-linux-s390_64",
+ "protoc-bin-vendored-linux-x86_32",
+ "protoc-bin-vendored-linux-x86_64",
+ "protoc-bin-vendored-macos-aarch_64",
+ "protoc-bin-vendored-macos-x86_64",
+ "protoc-bin-vendored-win32",
 ]
+
+[[package]]
+name = "protoc-bin-vendored-linux-aarch_64"
+version = "3.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c350df4d49b5b9e3ca79f7e646fde2377b199e13cfa87320308397e1f37e1a4c"
+
+[[package]]
+name = "protoc-bin-vendored-linux-ppcle_64"
+version = "3.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a55a63e6c7244f19b5c6393f025017eb5d793fd5467823a099740a7a4222440c"
+
+[[package]]
+name = "protoc-bin-vendored-linux-s390_64"
+version = "3.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1dba5565db4288e935d5330a07c264a4ee8e4a5b4a4e6f4e83fad824cc32f3b0"
+
+[[package]]
+name = "protoc-bin-vendored-linux-x86_32"
+version = "3.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8854774b24ee28b7868cd71dccaae8e02a2365e67a4a87a6cd11ee6cdbdf9cf5"
+
+[[package]]
+name = "protoc-bin-vendored-linux-x86_64"
+version = "3.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b38b07546580df720fa464ce124c4b03630a6fb83e05c336fea2a241df7e5d78"
+
+[[package]]
+name = "protoc-bin-vendored-macos-aarch_64"
+version = "3.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "89278a9926ce312e51f1d999fee8825d324d603213344a9a706daa009f1d8092"
+
+[[package]]
+name = "protoc-bin-vendored-macos-x86_64"
+version = "3.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "81745feda7ccfb9471d7a4de888f0652e806d5795b61480605d4943176299756"
+
+[[package]]
+name = "protoc-bin-vendored-win32"
+version = "3.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "95067976aca6421a523e491fce939a3e65249bac4b977adee0ee9771568e8aa3"
 
 [[package]]
 name = "puffin"
@@ -9037,7 +9091,7 @@ dependencies = [
  "serde_json",
  "tempfile",
  "toml",
- "ureq 3.3.0",
+ "ureq",
  "url",
  "wasm-bindgen-cli-support",
 ]
@@ -9234,7 +9288,7 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.18",
  "urdf-rs",
- "ureq 3.3.0",
+ "ureq",
  "walkdir",
 ]
 
@@ -11091,7 +11145,7 @@ dependencies = [
  "re_log",
  "thiserror 2.0.18",
  "tiny_http",
- "zip 8.6.0",
+ "zip",
 ]
 
 [[package]]
@@ -11259,7 +11313,7 @@ dependencies = [
  "wasm-bindgen-futures",
  "wasm-streams",
  "web-sys",
- "webpki-roots 1.0.2",
+ "webpki-roots",
 ]
 
 [[package]]
@@ -13461,21 +13515,6 @@ dependencies = [
 
 [[package]]
 name = "ureq"
-version = "2.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "02d1a66277ed75f640d608235660df48c8e3c19f3b4edb6a263315626cc3c01d"
-dependencies = [
- "base64 0.22.1",
- "log",
- "once_cell",
- "rustls",
- "rustls-pki-types",
- "url",
- "webpki-roots 0.26.11",
-]
-
-[[package]]
-name = "ureq"
 version = "3.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dea7109cdcd5864d4eeb1b58a1648dc9bf520360d7af16ec26d0a9354bafcfc0"
@@ -13491,7 +13530,7 @@ dependencies = [
  "serde_json",
  "ureq-proto",
  "utf8-zero",
- "webpki-roots 1.0.2",
+ "webpki-roots",
 ]
 
 [[package]]
@@ -14076,15 +14115,6 @@ dependencies = [
  "objc2-foundation 0.3.2",
  "url",
  "web-sys",
-]
-
-[[package]]
-name = "webpki-roots"
-version = "0.26.11"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "521bc38abb08001b01866da9f51eb7c5d647a19260e00054a8c7fd5f9e57f7a9"
-dependencies = [
- "webpki-roots 1.0.2",
 ]
 
 [[package]]
@@ -15218,18 +15248,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.117",
-]
-
-[[package]]
-name = "zip"
-version = "0.6.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "760394e246e4c28189f19d488c058bf16f564016aefac5d32bb1f3b51d5e9261"
-dependencies = [
- "byteorder",
- "crc32fast",
- "crossbeam-utils",
- "flate2",
 ]
 
 [[package]]
