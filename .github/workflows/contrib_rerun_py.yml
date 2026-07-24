@@ -51,6 +51,9 @@ jobs:
         with:
           lfs: true
 
+      - name: Set up Rust
+        run: rustup install
+
       - uses: prefix-dev/setup-pixi@v0.10.0
         with:
           pixi-version: v0.71.3
