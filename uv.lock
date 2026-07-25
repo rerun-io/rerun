@@ -1349,14 +1349,14 @@ wheels = [
 
 [[package]]
 name = "gitpython"
-version = "3.1.50"
+version = "3.1.56"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "gitdb" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/33/f6/354ae6491228b5eb40e10d89c4d13c651fe1cf7556e35ebdded50cff57ce/gitpython-3.1.50.tar.gz", hash = "sha256:80da2d12504d52e1f998772dc5baf6e553f8d2fcfe1fcc226c9d9a2ee3372dcc", size = 219798, upload-time = "2026-05-06T04:01:26.571Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/81/45/d45f94fa38b199862959cd7b5461a31f03746d75ef59363339fc0c394345/gitpython-3.1.56.tar.gz", hash = "sha256:127adf5c73f1a822e368301c4d5ffa5d305ce611eccab76f3336f9380a78ad0b", size = 229619, upload-time = "2026-07-25T07:41:43.179Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/20/7a/1c6e3562dfd8950adbb11ffbc65d21e7c89d01a6e4f137fa981056de25c5/gitpython-3.1.50-py3-none-any.whl", hash = "sha256:d352abe2908d07355014abdd21ddf798c2a961469239afec4962e9da884858f9", size = 212507, upload-time = "2026-05-06T04:01:23.799Z" },
+    { url = "https://files.pythonhosted.org/packages/06/27/8b9b039c7f026d4af8954dbbdcc9f101f8d6901daa3a65b065d8f450c0bd/gitpython-3.1.56-py3-none-any.whl", hash = "sha256:bedffdc4bdd2e3cf21b328711a552b0529751f08bff6591339d18492291ad035", size = 216644, upload-time = "2026-07-25T07:41:41.737Z" },
 ]
 
 [[package]]
@@ -5018,7 +5018,7 @@ dev = [
     { name = "opentelemetry-exporter-otlp-proto-grpc", specifier = "==1.39.0" },
     { name = "pandas", specifier = ">=2.0" },
     { name = "pandas-stubs", specifier = "==2.3.3.251201" },
-    { name = "pillow", specifier = ">=12.2.0,<13" },
+    { name = "pillow", specifier = ">=12.3.0,<13" },
     { name = "platformdirs", specifier = ">=4.0" },
     { name = "polars", specifier = ">=1.0" },
     { name = "pygithub", specifier = ">=2.0" },
