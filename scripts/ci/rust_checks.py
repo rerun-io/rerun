@@ -241,6 +241,19 @@ def sdk_variations(results: list[Result]) -> None:
     results.append(run_cargo("check", "-p re_server"))
 
 
+# Targets to check for leaked UI dependencies in `denied_sdk_deps`.
+# `cargo deny` gets its targets from `[graph].targets` in `deny.toml` instead.
+sdk_dep_targets = [
+    "aarch64-apple-darwin",
+    "wasm32-unknown-unknown",
+    "x86_64-apple-darwin",
+    "x86_64-pc-windows-gnu",
+    "x86_64-pc-windows-msvc",
+    "x86_64-unknown-linux-gnu",
+    "x86_64-unknown-linux-musl",
+]
+
+
 def cargo_deny(results: list[Result]) -> None:
     # Targets come from `[graph].targets` in `deny.toml`, checked together in a single run.
     # Passing `--target` instead would evaluate one triple at a time, which makes any
@@ -289,7 +302,7 @@ def denied_sdk_deps(results: list[Result]) -> None:
         return None
 
     for features in ["default", "default,auth,oss_server,perf_telemetry,web_viewer"]:
-        for target in deny_targets:
+        for target in sdk_dep_targets:
             result = run_cargo(
                 "tree",
                 # -f '{lib}' is used here because otherwise cargo tree would print links to repositories of patched crates
