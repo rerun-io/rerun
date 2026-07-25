@@ -9,11 +9,13 @@
 # For finding duplicate dependencies:  cargo deny check bans --hide-inclusion-graph
 
 
-# Note: running just `cargo deny check` without a `--target` can result in
-# false positives due to https://github.com/EmbarkStudios/cargo-deny/issues/324
+# Note: `cargo deny check` is run without `--target` so that all of the triples below are
+# evaluated in one pass. Checking them one at a time makes a platform-conditional `ignore`
+# unused on every other triple, which `unused-ignored-advisory = "deny"` rejects.
 [graph]
 targets = [
   { triple = "aarch64-apple-darwin" },
+  { triple = "aarch64-unknown-linux-gnu" },
   { triple = "i686-pc-windows-gnu" },
   { triple = "i686-pc-windows-msvc" },
   { triple = "i686-unknown-linux-gnu" },
@@ -31,6 +33,9 @@ all-features = true
 [advisories]
 version = 2
 unused-ignored-advisory = "deny"
+# `unsound` defaults to `workspace` scope, which silently skips transitive deps;
+# `unmaintained` already defaults to `all`.
+unsound = "all"
 ignore = [
   { id = "RUSTSEC-2024-0436", reason = "paste is unmaintained — https://github.com/dtolnay/paste" },
   { id = "RUSTSEC-2024-0014", reason = "generational-arena is unmaintained" },
@@ -39,6 +44,11 @@ ignore = [
   { id = "RUSTSEC-2026-0177", reason = "RR-4865 can't update to pyo3 0.29 until numpy crate is updated" },
   { id = "RUSTSEC-2026-0194", reason = "quick-xml is pulled in by upstream crates that do not yet allow 0.41" },
   { id = "RUSTSEC-2026-0195", reason = "quick-xml is pulled in by upstream crates that do not yet allow 0.41" },
+  # memmap2 0.5.10 via cacache -> http-cache -> http-cache-reqwest -> walkers -> re_view_map.
+  # The advisory is scoped to `advise_range`/`unchecked_advise_range`/`flush_range`/`flush_async_range`;
+  # cacache only ever calls `MmapMut::map_mut` (content/write.rs), so none of the affected functions run.
+  # Remove when `cacache` bumps memmap2 to >= 0.9.11, or when `walkers` drops the http-cache stack.
+  { id = "RUSTSEC-2026-0186", reason = "memmap2 0.5.10 unsound in advise/flush range fns, which cacache never calls (see comment above)" },
 ]
 
 

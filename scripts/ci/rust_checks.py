@@ -241,27 +241,15 @@ def sdk_variations(results: list[Result]) -> None:
     results.append(run_cargo("check", "-p re_server"))
 
 
-deny_targets = [
-    "aarch64-apple-darwin",
-    "wasm32-unknown-unknown",
-    "x86_64-apple-darwin",
-    "x86_64-pc-windows-gnu",
-    "x86_64-pc-windows-msvc",
-    "x86_64-unknown-linux-gnu",
-    "x86_64-unknown-linux-musl",
-]
-
-
 def cargo_deny(results: list[Result]) -> None:
-    # Note: running just `cargo deny check` without a `--target` can result in
-    # false positives due to https://github.com/EmbarkStudios/cargo-deny/issues/324
+    # Targets come from `[graph].targets` in `deny.toml`, checked together in a single run.
+    # Passing `--target` instead would evaluate one triple at a time, which makes any
+    # platform-conditional `ignore` unused on the other triples and therefore an error
+    # under `unused-ignored-advisory = "deny"`.
     # Installing is quite quick if it's already installed.
     results.append(run_cargo("install", "--locked cargo-deny@^0.19"))
 
-    for target in deny_targets:
-        results.append(
-            run_cargo("deny", f"--all-features --exclude-dev --log-level error --target {target} check"),
-        )
+    results.append(run_cargo("deny", "--all-features --exclude-dev --log-level error check"))
 
 
 def denied_sdk_deps(results: list[Result]) -> None:
