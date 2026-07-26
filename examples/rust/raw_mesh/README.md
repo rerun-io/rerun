@@ -5,12 +5,9 @@ thumbnail = "https://static.rerun.io/raw-mesh/7731418dda47e15dbfc0f9a2c326739090
 thumbnail_dimensions = [480, 480]
 -->
 
-This example demonstrates how to use the Rerun SDK to log raw 3D meshes (so-called "triangle soups") and their transform hierarchy. Simple material properties are supported.
-
-Note that while this example loads GLTF meshes to illustrate [`Mesh3D`](https://rerun.io/docs/reference/types/archetypes/mesh3d)'s abilitites, you can also send various kinds of mesh assets
-directly via [`Asset3D`](https://rerun.io/docs/reference/types/archetypes/asset3d).
-
-<!-- TODO(#1957): How about we load something elseto avoid confusion? -->
+This example demonstrates how to use the Rerun SDK to log procedurally generated raw 3D meshes (so-called "triangle soups") and a transform hierarchy.
+Simple material properties are supported.
+For prepacked mesh files such as GLTF, GLB, OBJ, and STL, use [`Asset3D`](https://rerun.io/docs/reference/types/archetypes/asset3d) instead.
 
 <picture>
   <img src="https://static.rerun.io/raw_mesh/d5d008b9f1b53753a86efe2580443a9265070b77/full.png" alt="">

@@ -1,139 +1,144 @@
 #!/usr/bin/env python3
-"""
-Shows how to use the Rerun SDK to log raw 3D meshes (so-called "triangle soups") and their transform hierarchy.
-
-Note that while this example loads GLTF meshes to illustrate
-[`Mesh3D`](https://rerun.io/docs/reference/types/archetypes/mesh3d)'s abilitites,
-you can also send various kinds of mesh assets directly via
-[`Asset3D`](https://rerun.io/docs/reference/types/archetypes/asset3d).
-"""
+"""Shows how to log procedurally generated raw 3D meshes and a transform hierarchy."""
 
 from __future__ import annotations
 
 import argparse
-from pathlib import Path
-from typing import cast
-
-import numpy as np
-import trimesh
+import math
+from collections.abc import Sequence
 
 import rerun as rr  # pip install rerun-sdk
 import rerun.blueprint as rrb
 
-from .download_dataset import AVAILABLE_MESHES, ensure_mesh_downloaded
-
 DESCRIPTION = """
 # Raw meshes
-This example shows how you can log a hierarchical 3D mesh, including its transform hierarchy.
+This example builds a small scene directly from vertices and triangles, then logs it as [`Mesh3D`][mesh].
+The scene also demonstrates how child meshes inherit their parents' [`Transform3D`][transform].
 
-The full source code for this example is available [on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/raw_mesh).
+[mesh]: https://rerun.io/docs/reference/types/archetypes/mesh3d
+[transform]: https://rerun.io/docs/reference/types/archetypes/transform3d
 """
 
-
-def load_scene(path: Path) -> trimesh.Scene:
-    print(f"loading scene {path}…")
-    mesh = trimesh.load(path, force="scene")
-    return cast("trimesh.Scene", mesh)
+Vec3 = tuple[float, float, float]
+Triangle = tuple[int, int, int]
+Rgb = tuple[int, int, int]
 
 
-# NOTE: The scene hierarchy will look different compared to the Rust example, as this is using the
-# trimesh hierarchy, not the raw glTF hierarchy.
-def log_scene(scene: trimesh.Scene, node: str, path: str | None = None) -> None:
-    path = path + "/" + node if path else node
+def _triangle_soup(
+    vertices: Sequence[Vec3],
+    triangles: Sequence[Triangle],
+    face_colors: Sequence[Rgb],
+) -> tuple[list[Vec3], list[Vec3], list[Rgb]]:
+    """Expand indexed triangles and compute one normal and color per face."""
+    positions: list[Vec3] = []
+    normals: list[Vec3] = []
+    colors: list[Rgb] = []
 
-    parent = scene.graph.transforms.parents.get(node)
-    children = scene.graph.transforms.children.get(node)
+    for (i0, i1, i2), color in zip(triangles, face_colors, strict=True):
+        p0, p1, p2 = vertices[i0], vertices[i1], vertices[i2]
+        edge1 = tuple(b - a for a, b in zip(p0, p1, strict=True))
+        edge2 = tuple(b - a for a, b in zip(p0, p2, strict=True))
+        normal = (
+            edge1[1] * edge2[2] - edge1[2] * edge2[1],
+            edge1[2] * edge2[0] - edge1[0] * edge2[2],
+            edge1[0] * edge2[1] - edge1[1] * edge2[0],
+        )
+        length = math.sqrt(sum(component * component for component in normal))
+        unit_normal = tuple(component / length for component in normal)
 
-    node_data = scene.graph.get(frame_to=node, frame_from=parent)
-    if node_data:
-        # Log the transform between this node and its direct parent (if it has one!).
-        if parent:
-            # TODO(#3559): We should support 4x4 matrices directly
-            world_from_mesh = node_data[0]
-            rr.log(
-                path,
-                rr.Transform3D(
-                    translation=trimesh.transformations.translation_from_matrix(world_from_mesh),
-                    mat3x3=world_from_mesh[0:3, 0:3],
-                ),
-            )
+        positions.extend((p0, p1, p2))
+        normals.extend((unit_normal, unit_normal, unit_normal))
+        colors.extend((color, color, color))
 
-        # Log this node's mesh, if it has one.
-        mesh = cast("trimesh.Trimesh", scene.geometry.get(node_data[1]))
-        if mesh is not None:
-            vertex_colors = None
-            vertex_texcoords = None
-            albedo_factor = None
-            albedo_texture = None
+    return positions, normals, colors
 
-            try:
-                vertex_texcoords = mesh.visual.uv  # type: ignore[union-attr]
-                # trimesh uses the OpenGL convention for UV coordinates, so we need to flip the V coordinate
-                # since Rerun uses the Vulkan/Metal/DX12/WebGPU convention.
-                vertex_texcoords[:, 1] = 1.0 - vertex_texcoords[:, 1]
-            except Exception:
-                pass
 
-            try:
-                albedo_texture = mesh.visual.material.baseColorTexture  # type: ignore[union-attr]
-                if mesh.visual.material.baseColorTexture is None:  # type: ignore[union-attr]
-                    raise ValueError()
-            except Exception:
-                # Try vertex colors instead.
-                try:
-                    colors = mesh.visual.to_color().vertex_colors  # type: ignore[union-attr]
-                    if len(colors) == 4:
-                        # If trimesh gives us a single vertex color for the entire mesh, we can interpret that
-                        # as an albedo factor for the whole primitive.
-                        albedo_factor = np.array(colors)
-                    else:
-                        vertex_colors = colors
-                except Exception:
-                    pass
+def _box(size: Vec3) -> rr.Mesh3D:
+    """Create a box as a non-indexed triangle soup with per-face colors."""
+    x, y, z = (dimension / 2.0 for dimension in size)
+    vertices = [
+        (-x, -y, -z),
+        (x, -y, -z),
+        (x, y, -z),
+        (-x, y, -z),
+        (-x, -y, z),
+        (x, -y, z),
+        (x, y, z),
+        (-x, y, z),
+    ]
+    triangles = [
+        (0, 2, 1),
+        (0, 3, 2),
+        (4, 5, 6),
+        (4, 6, 7),
+        (0, 1, 5),
+        (0, 5, 4),
+        (1, 2, 6),
+        (1, 6, 5),
+        (2, 3, 7),
+        (2, 7, 6),
+        (3, 0, 4),
+        (3, 4, 7),
+    ]
+    face_colors = [
+        (95, 145, 255),
+        (95, 145, 255),
+        (80, 120, 220),
+        (80, 120, 220),
+        (120, 165, 255),
+        (120, 165, 255),
+        (65, 105, 205),
+        (65, 105, 205),
+        (110, 155, 245),
+        (110, 155, 245),
+        (75, 115, 215),
+        (75, 115, 215),
+    ]
+    positions, normals, colors = _triangle_soup(vertices, triangles, face_colors)
+    return rr.Mesh3D(vertex_positions=positions, vertex_normals=normals, vertex_colors=colors)
 
-            rr.log(
-                path,
-                rr.Mesh3D(
-                    vertex_positions=mesh.vertices,
-                    vertex_colors=vertex_colors,
-                    vertex_normals=mesh.vertex_normals,
-                    vertex_texcoords=vertex_texcoords,
-                    albedo_texture=albedo_texture,
-                    triangle_indices=mesh.faces,
-                    albedo_factor=albedo_factor,
-                ),
-            )
 
-    if children:
-        for child in children:
-            log_scene(scene, child, path)
+def _pyramid() -> rr.Mesh3D:
+    """Create an indexed pyramid to demonstrate triangle indices and a material color."""
+    return rr.Mesh3D(
+        vertex_positions=[
+            (-0.45, -0.45, 0.0),
+            (0.45, -0.45, 0.0),
+            (0.45, 0.45, 0.0),
+            (-0.45, 0.45, 0.0),
+            (0.0, 0.0, 0.8),
+        ],
+        triangle_indices=[
+            (0, 2, 1),
+            (0, 3, 2),
+            (0, 1, 4),
+            (1, 2, 4),
+            (2, 3, 4),
+            (3, 0, 4),
+        ],
+        albedo_factor=(255, 170, 60),
+    )
+
+
+def log_scene() -> None:
+    """Log a small hierarchy assembled from raw mesh data."""
+    rr.log("world", rr.ViewCoordinates.RFU, static=True)
+
+    rr.log("world/base", _box((2.6, 1.8, 0.35)), static=True)
+
+    rr.log("world/base/arm", rr.Transform3D(translation=(0.0, 0.0, 0.9)), static=True)
+    rr.log("world/base/arm", _box((0.45, 0.45, 1.5)), static=True)
+
+    rr.log("world/base/arm/tool", rr.Transform3D(translation=(0.0, 0.0, 1.1)), static=True)
+    rr.log("world/base/arm/tool", _pyramid(), static=True)
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Logs raw 3D meshes and their transform hierarchy using the Rerun SDK.",
-    )
-    parser.add_argument(
-        "--scene",
-        type=str,
-        choices=AVAILABLE_MESHES,
-        default=AVAILABLE_MESHES[0],
-        help="The name of the scene to load",
-    )
-    parser.add_argument(
-        "--scene-path",
-        type=Path,
-        help="Path to a scene to analyze. If set, overrides the `--scene` argument.",
+        description="Logs procedurally generated raw 3D meshes and their transform hierarchy.",
     )
     rr.script_add_args(parser)
     args = parser.parse_args()
-
-    scene_path = args.scene_path
-    if scene_path is None:
-        scene_path = ensure_mesh_downloaded(args.scene)
-    scene = load_scene(scene_path)
-
-    root = next(iter(scene.graph.nodes))
 
     blueprint = rrb.Horizontal(
         rrb.Spatial3DView(name="Mesh", origin="/world"),
@@ -143,11 +148,7 @@ def main() -> None:
 
     rr.script_setup(args, "rerun_example_raw_mesh", default_blueprint=blueprint)
     rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), static=True)
-
-    # glTF always uses a right-handed coordinate system when +Y is up and meshes face +Z.
-    rr.log(root, rr.ViewCoordinates.RUB, static=True)
-    log_scene(scene, root)
-
+    log_scene()
     rr.script_teardown(args)
 
 

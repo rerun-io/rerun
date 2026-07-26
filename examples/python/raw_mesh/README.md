@@ -8,12 +8,8 @@ channel = "release"
 include_in_manifest = true
 -->
 
-Demonstrates logging of raw 3D mesh data (so-called "triangle soups") with simple material properties and their transform hierarchy.
-
-Note that while this example loads GLTF meshes to illustrate [`Mesh3D`](https://rerun.io/docs/reference/types/archetypes/mesh3d)'s abilitites, you can also send various kinds of mesh assets
-directly via [`Asset3D`](https://rerun.io/docs/reference/types/archetypes/asset3d).
-
-<!-- TODO(#1957): How about we load something elseto avoid confusion? -->
+Demonstrates logging of procedurally generated raw 3D mesh data (so-called "triangle soups") with simple material properties and a transform hierarchy.
+For prepacked mesh files such as GLTF, GLB, OBJ, and STL, use [`Asset3D`](https://rerun.io/docs/reference/types/archetypes/asset3d) instead.
 
 <picture data-inline-viewer="examples/raw_mesh">
   <img src="https://static.rerun.io/raw_mesh/d5d008b9f1b53753a86efe2580443a9265070b77/full.png" alt="">
@@ -37,30 +33,26 @@ Rerun was employed to visualize and manage this raw mesh data, along with its as
 The visualizations in this example were created with the following Rerun code:
 
 ### 3D mesh data
-The raw 3D mesh data are logged as [`Mesh3D`](https://www.rerun.io/docs/reference/types/archetypes/mesh3d) objects, and includes details about vertex positions, colors, normals, texture coordinates, material properties, and face indices for an accurate reconstruction and visualization.
+The raw 3D mesh data are logged as [`Mesh3D`](https://www.rerun.io/docs/reference/types/archetypes/mesh3d) objects.
+This example creates one mesh as a non-indexed triangle soup with per-face normals and colors, and another as indexed triangles with a material color.
 
 ```python
 rr.log(
-    path,
+    "world/base",
     rr.Mesh3D(
-        vertex_positions=mesh.vertices,
-        vertex_colors=vertex_colors,
-        vertex_normals=mesh.vertex_normals,
-        vertex_texcoords=vertex_texcoords,
-        albedo_texture=albedo_texture,
-        triangle_indices=mesh.faces,
-        albedo_factor=albedo_factor,
+        vertex_positions=positions,
+        vertex_normals=normals,
+        vertex_colors=colors,
     ),
+    static=True,
 )
 ```
 Through Rerun's [`Transform3D`](https://www.rerun.io/docs/reference/types/archetypes/transform3d) archetype, essential details are captured to ensure precise positioning and orientation of meshes within the 3D scene.
 ```python
 rr.log(
-    path,
-    rr.Transform3D(
-        translation=trimesh.transformations.translation_from_matrix(world_from_mesh),
-        mat3x3=world_from_mesh[0:3, 0:3],
-    ),
+    "world/base/arm",
+    rr.Transform3D(translation=(0.0, 0.0, 0.9)),
+    static=True,
 )
 ```
 
@@ -77,13 +69,9 @@ Install the necessary libraries specified in the requirements file:
 ```bash
 pip install -e examples/python/raw_mesh
 ```
-To experiment with the provided example, simply execute the main Python script:
+To experiment with the provided example, execute the main Python script:
 ```bash
 python -m raw_mesh # run the example
-```
-You can specify scene:
-```bash
-python -m raw_mesh --scene {lantern,avocado,buggy,brain_stem}
 ```
 If you wish to customize it, explore additional features, or save it use the CLI with the `--help` option for guidance:
 ```bash

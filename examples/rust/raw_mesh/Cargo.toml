@@ -10,6 +10,4 @@ publish = false
 rerun = { path = "../../../crates/top/rerun", features = ["web_viewer", "clap", "ecolor"] }
 
 anyhow.workspace = true
-bytes.workspace = true
 clap = { workspace = true, features = ["derive"] }
-gltf.workspace = true
