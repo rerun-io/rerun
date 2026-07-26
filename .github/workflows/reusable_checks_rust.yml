@@ -150,6 +150,10 @@ jobs:
 
     if: ${{ inputs.CHANNEL == 'main' }}
     runs-on: ${{ matrix.runs_on }}
+    env:
+      # Windows runners have 64 GB of RAM, which is enough to OOM the build process
+      # if there are too many in parallel.
+      CARGO_BUILD_JOBS: ${{ matrix.name == 'windows' && '16' || 'default' }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -229,6 +233,10 @@ jobs:
 
     if: ${{ inputs.CHANNEL == 'nightly' }}
     runs-on: ${{ matrix.platform.runs_on }}
+    env:
+      # Windows runners have 64 GB of RAM, which is enough to OOM the build process
+      # if there are too many in parallel.
+      CARGO_BUILD_JOBS: ${{ matrix.platform.name == 'windows' && '16' || 'default' }}
     steps:
       - uses: actions/checkout@v6
         with:
