@@ -73,6 +73,8 @@ jobs:
               - '**/*.pyi'
               - '**/requirements.txt'
               - '**/pyproject.toml'
+              # `uv.lock` pins the versions we actually install, and is not matched by `**/*.toml`.
+              - '**/uv.lock'
 
             rust_changes:
               # - .github/**/*.yml  -  this is tempting, but leads to constant rebuilds
