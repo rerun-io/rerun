@@ -20,7 +20,9 @@ use re_auth::oauth::login_flow::{DeviceCodeFlow, DeviceCodeFlowState};
 use re_chunk::{ChunkBatcherConfig, TimelineName};
 use re_log::ResultExt as _;
 use re_log_types::external::re_types_core::reflection::ComponentDescriptorExt as _;
-use re_log_types::{BlueprintActivationCommand, EntityPathPart, LogMsg, RecordingId};
+use re_log_types::{
+    ApplicationId, BlueprintActivationCommand, EntityPathPart, LogMsg, RecordingId,
+};
 use re_sdk::external::re_log_encoding::Encoder;
 use re_sdk::sink::{BinaryStreamStorage, CallbackSink, MemorySinkStorage, SinkFlushError};
 use re_sdk::time::TimePoint;
@@ -660,10 +662,13 @@ fn new_recording(
     send_properties: bool,
     batcher_config: Option<PyChunkBatcherConfig>,
 ) -> PyResult<PyRecordingStream> {
+    let application_id = ApplicationId::try_new(application_id)
+        .map_err(|err| PyValueError::new_err(err.to_string()))?;
+
     let recording_id = if let Some(recording_id) = recording_id {
         RecordingId::from(recording_id)
     } else {
-        default_recording_id(py, &application_id)
+        default_recording_id(py, application_id.as_str())
     };
 
     let mut hooks = re_chunk::BatcherHooks::NONE;
@@ -727,6 +732,9 @@ fn new_blueprint(
         re_quota_channel::send_crossbeam(&GARBAGE_QUEUE.0, chunk).ok();
     };
     hooks.on_release = Some(on_release.into());
+
+    let application_id = ApplicationId::try_new(application_id)
+        .map_err(|err| PyValueError::new_err(err.to_string()))?;
 
     let blueprint = RecordingStreamBuilder::new(application_id)
         // We don't currently support additive blueprints, so we should always be generating a new,

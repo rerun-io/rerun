@@ -127,7 +127,7 @@ impl DatasetSegmentUri {
     pub fn store_id(&self) -> StoreId {
         StoreId::new(
             re_log_types::StoreKind::Recording,
-            self.dataset_id.to_string(),
+            re_log_types::EntryId::from(self.dataset_id),
             self.segment_id.clone(),
         )
     }

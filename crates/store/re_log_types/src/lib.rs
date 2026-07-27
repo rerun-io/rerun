@@ -17,6 +17,7 @@
 //! e.g. the entity `foo/bar/baz` is has the transform that is the product of
 //! `foo.transform * foo/bar.transform * foo/bar/baz.transform`.
 
+mod app_id;
 pub mod arrow_msg;
 mod entry_id;
 mod entry_name;
@@ -39,6 +40,7 @@ use re_build_info::CrateVersion;
 use re_types_core::SegmentId;
 pub use re_types_core::{InvalidTimelineNameError, TimelineName};
 
+pub use self::app_id::{ApplicationId, InvalidApplicationIdError};
 pub use self::arrow_msg::{ArrowMsg, ArrowRecordBatchReleaseCallback};
 pub use self::entry_id::{EntryId, EntryIdOrName};
 pub use self::entry_name::{EntryName, InvalidEntryNameError};
@@ -287,72 +289,6 @@ impl StoreId {
     #[inline]
     pub fn application_id(&self) -> &ApplicationId {
         &self.application_id
-    }
-}
-
-// ----------------------------------------------------------------------------
-
-/// The user-chosen name of the application doing the logging.
-///
-/// Application IDs are really schema names.
-/// Every recording using the same schema (approximately!) could share the same blueprint.
-///
-/// In the context of a remote recording, this is the dataset entry id.
-#[derive(
-    Clone,
-    Debug,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    re_byte_size::SizeBytes,
-    serde::Deserialize,
-    serde::Serialize,
-)]
-pub struct ApplicationId(Arc<String>);
-
-impl From<&str> for ApplicationId {
-    fn from(s: &str) -> Self {
-        Self(Arc::new(s.to_owned()))
-    }
-}
-
-impl From<String> for ApplicationId {
-    fn from(s: String) -> Self {
-        Self(Arc::new(s))
-    }
-}
-
-impl ApplicationId {
-    /// The default [`ApplicationId`] if the user hasn't set one.
-    ///
-    /// Currently: `"unknown_app_id"`.
-    pub fn unknown() -> Self {
-        static UNKNOWN_APP_ID: std::sync::LazyLock<ApplicationId> =
-            std::sync::LazyLock::new(|| ApplicationId(Arc::new("unknown_app_id".to_owned())));
-
-        UNKNOWN_APP_ID.clone()
-    }
-
-    pub fn as_str(&self) -> &str {
-        self.0.as_str()
-    }
-
-    /// A randomly generated app id
-    pub fn random() -> Self {
-        Self(Arc::new(format!("app_{}", uuid::Uuid::new_v4().simple())))
-    }
-
-    fn as_recording_id(&self) -> RecordingId {
-        RecordingId(Arc::clone(&self.0))
-    }
-}
-
-impl std::fmt::Display for ApplicationId {
-    #[inline]
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.fmt(f)
     }
 }
 

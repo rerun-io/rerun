@@ -142,6 +142,9 @@ pub enum TypeConversionError {
         type_name: &'static str,
     },
 
+    #[error("invalid application id: {0}")]
+    InvalidApplicationId(#[from] re_log_types::InvalidApplicationIdError),
+
     #[error("invalid entry name: {0}")]
     InvalidEntryName(#[from] InvalidEntryNameError),
 

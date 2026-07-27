@@ -1,5 +1,6 @@
 use prost::bytes::Bytes;
 
+use crate::common::v1alpha1::ext::StoreIdFromProtoError;
 use crate::{TypeConversionError, invalid_field, missing_field};
 
 impl From<crate::log_msg::v1alpha1::log_msg::Msg> for crate::log_msg::v1alpha1::LogMsg {
@@ -232,14 +233,20 @@ impl TryFrom<crate::log_msg::v1alpha1::StoreInfo> for re_log_types::StoreInfo {
             .try_into()
         {
             Ok(store_id) => store_id,
-            Err(err) => match legacy_application_id {
-                Some(app_id) => err.recover(app_id.into()),
+            // 0.24 back compat: a *missing* application id can be recovered from the deprecated
+            // `StoreInfo.application_id` field. A *present but invalid* id (in either place) is a
+            // hard error — we let `ApplicationId::try_new` decide, no empty-string special-casing.
+            Err(StoreIdFromProtoError::MissingApplicationId(err)) => match legacy_application_id {
+                Some(app_id) => err.recover(re_log_types::ApplicationId::try_from(app_id)?),
                 None => {
                     return Err(err.into_type_conversion_error(
                         "both `StoreId` and `StoreInfo` are missing an application id",
                     ));
                 }
             },
+            Err(err @ StoreIdFromProtoError::InvalidApplicationId(_)) => {
+                return Err(err.into());
+            }
         };
 
         let store_source: re_log_types::StoreSource = value

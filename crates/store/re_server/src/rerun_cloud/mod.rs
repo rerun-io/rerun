@@ -1094,11 +1094,7 @@ impl RerunCloudService for RerunCloudHandler {
                 .entry(segment_id.clone())
                 .or_insert_with(|| {
                     ChunkStore::new(
-                        StoreId::new(
-                            StoreKind::Recording,
-                            entry_id.to_string(),
-                            segment_id.clone(),
-                        ),
+                        StoreId::new(StoreKind::Recording, entry_id, segment_id.clone()),
                         self.eager_chunk_store_config.clone(),
                     )
                 })

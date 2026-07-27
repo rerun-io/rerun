@@ -119,6 +119,17 @@ impl From<ext::StoreIdMissingApplicationIdError> for CodecError {
     }
 }
 
+impl From<ext::StoreIdFromProtoError> for CodecError {
+    fn from(value: ext::StoreIdFromProtoError) -> Self {
+        match value {
+            ext::StoreIdFromProtoError::MissingApplicationId(err) => err.into(),
+            ext::StoreIdFromProtoError::InvalidApplicationId(err) => {
+                re_protos::TypeConversionError::from(err).into()
+            }
+        }
+    }
+}
+
 /// When the file does not have the expected .rrd [FourCC](https://en.wikipedia.org/wiki/FourCC) header.
 #[derive(Debug)]
 pub struct NotAnRrdError {

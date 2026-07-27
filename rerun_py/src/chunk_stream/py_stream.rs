@@ -400,6 +400,7 @@ fn write_rrd_compiled(
     app_id: &str,
     rec_id: &str,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let app_id = re_log_types::ApplicationId::try_new(app_id)?;
     let store_id = StoreId::new(StoreKind::Recording, app_id, rec_id);
     let store_info = StoreInfo::new(
         store_id.clone(),

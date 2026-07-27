@@ -37,9 +37,8 @@ pub fn import_from_path(
 
     // If no application ID was specified, we derive one from the filename.
     let application_id = settings.application_id.clone().or_else(|| {
-        path.file_name()
-            .map(|f| f.to_string_lossy().to_string())
-            .map(ApplicationId::from)
+        let file_name = path.file_name()?;
+        ApplicationId::try_new(file_name.to_string_lossy()).ok()
     });
     let settings = crate::ImporterSettings {
         // When importing a LeRobot dataset, avoid sending a `SetStoreInfo` message since the LeRobot importer handles this automatically.
@@ -77,10 +76,8 @@ pub fn import_from_file_contents(
 
     // If no application ID was specified, we derive one from the filename.
     let application_id = settings.application_id.clone().or_else(|| {
-        filepath
-            .file_name()
-            .map(|f| f.to_string_lossy().to_string())
-            .map(ApplicationId::from)
+        let file_name = filepath.file_name()?;
+        ApplicationId::try_new(file_name.to_string_lossy()).ok()
     });
 
     let settings = crate::ImporterSettings {

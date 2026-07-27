@@ -205,10 +205,10 @@ impl ConvertCommand {
 
         let start_time = std::time::Instant::now();
 
-        let application_id = application_id
-            .to_owned()
-            .map(ApplicationId::from)
-            .unwrap_or_else(|| ApplicationId::from(path_to_input_mcap.clone()));
+        let application_id = match application_id {
+            Some(application_id) => ApplicationId::try_new(application_id.clone())?,
+            None => ApplicationId::try_new(path_to_input_mcap.clone())?,
+        };
 
         let recording_id = recording_id
             .to_owned()

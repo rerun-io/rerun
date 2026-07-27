@@ -434,21 +434,15 @@ macro_rules! declare_new_type_nonempty {
             impl $StructName {
                 /// The single place where the naming rules are enforced.
                 ///
+                /// This is the single place where the naming rules are enforced.
                 /// Currently only forbids the empty string, but this is where future rules
                 /// (e.g. no whitespace) would go.
                 #[inline]
-                fn validate(string: &str) -> Result<(), [<Invalid $StructName Error>]> {
+                pub fn try_new(string: impl AsRef<str>) -> Result<Self, [<Invalid $StructName Error>]> {
+                    let string = string.as_ref();
                     if string.is_empty() {
                         return Err([<Invalid $StructName Error>] { reason: "must not be empty" });
                     }
-                    Ok(())
-                }
-
-                /// Create a new instance, failing if the string is invalid (e.g. empty).
-                #[inline]
-                pub fn try_new(string: impl AsRef<str>) -> Result<Self, [<Invalid $StructName Error>]> {
-                    let string = string.as_ref();
-                    Self::validate(string)?;
                     Ok(Self($crate::InternedString::new(string)))
                 }
 
@@ -458,8 +452,8 @@ macro_rules! declare_new_type_nonempty {
                 /// Panics if `string` is invalid (e.g. empty).
                 #[inline]
                 pub fn from_static_str(string: &'static str) -> Self {
-                    match Self::validate(string) {
-                        Ok(()) => Self($crate::InternedString::new(string)),
+                    match Self::try_new(string) {
+                        Ok(slf) => slf,
                         Err(err) => panic!("{err} (got {string:?})"),
                     }
                 }

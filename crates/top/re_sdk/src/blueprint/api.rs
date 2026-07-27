@@ -106,7 +106,10 @@ impl Blueprint {
     }
 
     /// Convert the blueprint into a vector of `LogMsgs`.
-    pub(crate) fn to_log_msgs(&self, application_id: &str) -> RecordingStreamResult<Vec<LogMsg>> {
+    pub(crate) fn to_log_msgs(
+        &self,
+        application_id: re_log_types::ApplicationId,
+    ) -> RecordingStreamResult<Vec<LogMsg>> {
         let (rec, storage) = RecordingStreamBuilder::new(application_id)
             .recording_id(re_log_types::RecordingId::random())
             .blueprint()
@@ -165,10 +168,10 @@ impl Blueprint {
     ) -> RecordingStreamResult<()> {
         let application_id = recording
             .store_info()
-            .map(|info| info.application_id().to_string())
-            .unwrap_or_else(|| "rerun_example_app".to_owned());
+            .map(|info| info.application_id().clone())
+            .unwrap_or_else(|| re_log_types::ApplicationId::from("rerun_example_app"));
 
-        let msgs = self.to_log_msgs(&application_id)?;
+        let msgs = self.to_log_msgs(application_id)?;
 
         let blueprint_id = msgs
             .first()

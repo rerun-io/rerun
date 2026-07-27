@@ -114,7 +114,8 @@ impl<T: DataframeClientAPI> DataframeSegmentStream<T> {
 
         // Note: using segment id as the store id, shouldn't really
         // matter since this is just a temporary store.
-        let store_id = StoreId::random(StoreKind::Recording, segment_id);
+        let application_id = re_log_types::ApplicationId::new_or_unknown(segment_id);
+        let store_id = StoreId::random(StoreKind::Recording, application_id);
         let store = ChunkStore::new_handle(store_id, Default::default());
 
         while let Some(chunks_and_segment_ids) = chunk_stream.next().await {

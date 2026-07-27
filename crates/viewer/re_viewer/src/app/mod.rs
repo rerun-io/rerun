@@ -994,7 +994,8 @@ impl App {
 
                     // If we don't have any application ID to recommend (which means we are on the welcome screen),
                     // then we use the file path as the application ID or the file name if there is no path (on web builds).
-                    let application_id = ApplicationId::from(file_path.display().to_string());
+                    let application_id =
+                        ApplicationId::new_or_unknown(file_path.display().to_string());
 
                     // NOTE: We don't override blueprints' store IDs anyhow, so it is sound to assume that
                     // this can only be a recording.

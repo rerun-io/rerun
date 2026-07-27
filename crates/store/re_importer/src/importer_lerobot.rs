@@ -2,6 +2,7 @@ use std::thread;
 
 use anyhow::{Context as _, anyhow};
 use crossbeam::channel::Sender;
+use re_log_types::ApplicationId;
 
 use crate::lerobot::{LeRobotDatasetVersion, datasetv2, datasetv3, is_lerobot_dataset};
 use crate::{ImportedData, Importer, ImporterError};
@@ -63,7 +64,7 @@ impl LeRobotDatasetImporter {
         let application_id = settings
             .application_id
             .clone()
-            .unwrap_or_else(|| filepath.display().to_string().into());
+            .unwrap_or_else(|| ApplicationId::new_or_unknown(filepath.display().to_string()));
 
         let loader_name = Self.name();
 
@@ -101,7 +102,7 @@ impl LeRobotDatasetImporter {
         let application_id = settings
             .application_id
             .clone()
-            .unwrap_or_else(|| filepath.display().to_string().into());
+            .unwrap_or_else(|| ApplicationId::new_or_unknown(filepath.display().to_string()));
 
         let loader_name = Self.name();
 

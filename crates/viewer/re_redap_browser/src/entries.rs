@@ -378,7 +378,7 @@ fn start_streaming_segment_table_blueprint(
     };
 
     let blueprint_store_id =
-        re_log_types::StoreId::random(re_log_types::StoreKind::Blueprint, dataset_id.to_string());
+        re_log_types::StoreId::random(re_log_types::StoreKind::Blueprint, dataset_id);
 
     let (tx, rx) = re_redap_client::table_blueprint_log_channel(
         origin.clone(),
@@ -419,10 +419,8 @@ fn start_registered_table_blueprint_stream(
         return;
     };
 
-    let blueprint_store_id = re_log_types::StoreId::random(
-        re_log_types::StoreKind::Blueprint,
-        table_entry.details.id.to_string(),
-    );
+    let blueprint_store_id =
+        re_log_types::StoreId::random(re_log_types::StoreKind::Blueprint, table_entry.details.id);
 
     let (tx, rx) = re_redap_client::table_blueprint_log_channel(
         origin.clone(),

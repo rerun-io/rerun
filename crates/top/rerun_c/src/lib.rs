@@ -574,7 +574,10 @@ fn rr_recording_stream_new_impl(
         store_kind,
     } = *store_info;
 
-    let application_id = application_id.as_nonempty_str("store_info.application_id")?;
+    let application_id = re_sdk::ApplicationId::try_new(
+        application_id.as_nonempty_str("store_info.application_id")?,
+    )
+    .map_err(|err| CError::new(CErrorCode::InvalidStringArgument, &err.to_string()))?;
 
     let mut rec_builder = RecordingStreamBuilder::new(application_id)
         //.store_id(recording_id.clone()) // TODO(andreas): Expose store id.

@@ -797,9 +797,10 @@ fn parse_chunk_store_browser_url(url: &str) -> anyhow::Result<Option<ViewerOpenU
     }
 
     let recording_id = match (application_id, recording_name) {
-        (Some(application_id), Some(recording_id)) => {
-            Some(StoreId::recording(application_id, recording_id))
-        }
+        (Some(application_id), Some(recording_id)) => Some(StoreId::recording(
+            re_log_types::ApplicationId::try_new(application_id)?,
+            recording_id,
+        )),
         (None, None) => None,
         _ => anyhow::bail!("Chunk store browser URL must include both app_id and recording_id"),
     };

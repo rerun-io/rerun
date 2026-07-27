@@ -6,7 +6,7 @@ use itertools::Itertools as _;
 
 use re_chunk::ChunkId;
 use re_log_encoding::{Encoder, RawRrdManifest};
-use re_protos::common::v1alpha1::ApplicationId;
+use re_log_types::ApplicationId;
 use re_protos::log_msg::v1alpha1::log_msg::Msg;
 use re_protos::log_msg::v1alpha1::{ArrowMsg, BlueprintActivationCommand, SetStoreInfo, StoreInfo};
 
@@ -57,7 +57,8 @@ impl RouteCommand {
         let rewrites = Rewrites {
             application_id: application_id
                 .as_ref()
-                .map(|id| ApplicationId { id: id.clone() }),
+                .map(|id| ApplicationId::try_new(id.clone()))
+                .transpose()?,
             recording_id: recording_id.clone(),
         };
 
@@ -168,7 +169,8 @@ fn process_messages<W: std::io::Write>(
                             }
 
                             if let Some(application_id) = &rewrites.application_id {
-                                target_store_id.application_id = Some(application_id.clone());
+                                target_store_id.application_id =
+                                    Some(application_id.clone().into());
                             }
                         }
                     }
@@ -232,7 +234,7 @@ fn process_messages<W: std::io::Write>(
                 rewrites
                     .application_id
                     .clone()
-                    .unwrap_or_else(|| store_id.application_id().clone().into()),
+                    .unwrap_or_else(|| store_id.application_id().clone()),
                 rewrites
                     .recording_id
                     .clone()
