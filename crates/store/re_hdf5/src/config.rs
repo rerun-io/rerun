@@ -28,6 +28,16 @@ pub struct Hdf5Config {
 
     /// Prefix prepended to every emitted entity path (defaults to the root `/`).
     pub entity_path_prefix: EntityPath,
+
+    /// Byte target for one emitted chunk (and for one windowed read from the file).
+    ///
+    /// The default value mirrors `re_chunk_store::OptimizationProfile::OBJECT_STORE`.
+    pub chunk_max_bytes: u64,
+
+    /// Row cap for one emitted chunk (binding cap for thin rows, where the byte target would allow more).
+    ///
+    /// The default value mirrors `re_chunk_store::OptimizationProfile::OBJECT_STORE`.
+    pub chunk_max_rows: u64,
 }
 
 impl Default for Hdf5Config {
@@ -38,6 +48,10 @@ impl Default for Hdf5Config {
             ignore_datasets: Vec::new(),
             use_structs: true,
             entity_path_prefix: EntityPath::from("/"),
+            // Mirrors `OptimizationProfile::OBJECT_STORE` but hardcoded to avoid dependency.
+            // Equality is guaranteed by a test.
+            chunk_max_bytes: 2 * 1024 * 1024,
+            chunk_max_rows: 65_536,
         }
     }
 }

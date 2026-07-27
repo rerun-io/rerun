@@ -23,11 +23,7 @@ pub fn load_hdf5(
 ) -> Result<impl Iterator<Item = Result<Chunk, Hdf5Error>> + use<>, Hdf5Error> {
     let file = hdf5_pure::File::open_streaming(path).map_err(Hdf5Error::open)?;
     let plan = plan::build_plan(&file, config)?;
-    Ok(streaming::Hdf5ChunkIterator::new(
-        file,
-        plan,
-        config.use_structs,
-    ))
+    Ok(streaming::Hdf5ChunkIterator::new(file, plan, config))
 }
 
 /// Load HDF5 from in-memory bytes and return a lazy iterator of chunks.
@@ -39,11 +35,7 @@ pub fn load_hdf5_from_bytes(
 ) -> Result<impl Iterator<Item = Result<Chunk, Hdf5Error>> + use<>, Hdf5Error> {
     let file = hdf5_pure::File::from_bytes(bytes).map_err(Hdf5Error::open)?;
     let plan = plan::build_plan(&file, config)?;
-    Ok(streaming::Hdf5ChunkIterator::new(
-        file,
-        plan,
-        config.use_structs,
-    ))
+    Ok(streaming::Hdf5ChunkIterator::new(file, plan, config))
 }
 
 /// Metadata-only structural validation of `config` against the file at `path`.

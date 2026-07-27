@@ -4489,9 +4489,9 @@ dependencies = [
 
 [[package]]
 name = "hdf5-pure"
-version = "0.23.0"
+version = "0.24.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "705a350c9f0b6222f4ba6b857c05cc4a02d1b66c8dd0049026b5c5940f1586a6"
+checksum = "0b1689a97f81fbf3d951258cc3935ee76e1de6401db4558056a47f7657bcf92b"
 dependencies = [
  "byteorder",
  "flate2",
@@ -9246,6 +9246,7 @@ dependencies = [
  "hdf5-pure",
  "itertools 0.14.0",
  "re_chunk",
+ "re_chunk_store",
  "re_log",
  "re_log_types",
  "re_sdk_types",

@@ -119,6 +119,8 @@ impl PyHdf5ReaderInternal {
             entity_path_prefix: entity_path_prefix
                 .map(EntityPath::from)
                 .unwrap_or_else(|| Hdf5Config::default().entity_path_prefix),
+            // Chunk shape stays at the crate default (OptimizationProfile::OBJECT_STORE).
+            ..Hdf5Config::default()
         };
 
         // Per-stream structural validation: fail fast before spawning the worker.
