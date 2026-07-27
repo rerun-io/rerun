@@ -126,7 +126,7 @@ impl ViewClass for TextDocumentView {
         state: &mut dyn ViewState,
         query: &ViewQuery<'_>,
         system_output: re_viewer_context::SystemExecutionOutput,
-    ) -> Result<(), ViewSystemExecutionError> {
+    ) -> Result<re_viewer_context::ViewClassUiOutput, ViewSystemExecutionError> {
         let tokens = ui.tokens();
         let state = state.downcast_mut::<TextDocumentViewState>()?;
         let text_entries = system_output.visualizer_data_or_default::<Vec<TextDocumentEntry>>(
@@ -174,7 +174,7 @@ impl ViewClass for TextDocumentView {
                 .send_system(SystemCommand::set_selection(Item::View(query.view_id)));
         }
 
-        Ok(())
+        Ok(Default::default())
     }
 }
 

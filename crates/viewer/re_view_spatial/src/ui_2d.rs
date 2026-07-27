@@ -201,11 +201,11 @@ impl SpatialView2D {
         state: &mut SpatialViewState,
         query: &ViewQuery<'_>,
         mut system_output: re_viewer_context::SystemExecutionOutput,
-    ) -> Result<(), ViewSystemExecutionError> {
+    ) -> Result<re_viewer_context::ViewClassUiOutput, ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
         if ui.available_size().min_elem() <= 0.0 {
-            return Ok(());
+            return Ok(Default::default());
         }
 
         // TODO(emilk): some way to visualize the resolution rectangle of the pinhole camera (in case there is no image logged).
@@ -326,7 +326,7 @@ impl SpatialView2D {
             state.pinhole_at_origin.as_ref(),
             picking_config,
         ) else {
-            return Ok(());
+            return Ok(Default::default());
         };
         let mut view_builder = ViewBuilder::new(
             ctx.render_ctx(),
@@ -406,7 +406,7 @@ impl SpatialView2D {
         // Add egui-rendered labels on top of everything else:
         painter.extend(label_shapes);
 
-        Ok(())
+        Ok(Default::default())
     }
 }
 

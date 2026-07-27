@@ -161,7 +161,7 @@ impl ViewClass for BarChartView {
         state: &mut dyn ViewState,
         query: &ViewQuery<'_>,
         system_output: re_viewer_context::SystemExecutionOutput,
-    ) -> Result<(), ViewSystemExecutionError> {
+    ) -> Result<re_viewer_context::ViewClassUiOutput, ViewSystemExecutionError> {
         use egui_plot::{Bar, BarChart, Plot};
 
         let state = state.downcast_mut::<()>()?;
@@ -415,7 +415,7 @@ impl ViewClass for BarChartView {
             }
         });
 
-        Ok(())
+        Ok(Default::default())
     }
 }
 

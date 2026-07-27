@@ -8,8 +8,8 @@ use re_view::{ChunksWithComponent, collect_recursive_clears, range_with_blueprin
 use re_viewer_context::external::re_entity_db::InstancePath;
 use re_viewer_context::{
     IdentifiedViewSystem, SingleRequiredComponentConstraint, ViewContext, ViewQuery,
-    ViewStateExt as _, ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo,
-    VisualizerReportSeverity, VisualizerSystem, typed_fallback_for,
+    ViewStateExt as _, ViewSystemExecutionError, ViewerReportSeverity, VisualizerExecutionOutput,
+    VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
 };
 
 use crate::series_query::{
@@ -350,7 +350,7 @@ impl SeriesLinesSystem {
             Err(err) => {
                 output.report_unspecified_source(
                     instruction.id,
-                    VisualizerReportSeverity::Error,
+                    ViewerReportSeverity::Error,
                     format!("Failed to determine query range: {err}"),
                 );
                 return Vec::new();
@@ -411,7 +411,7 @@ impl SeriesLinesSystem {
         let all_scalar_chunks = if let Some(chunk) = all_scalar_chunks.chunks.first()
             && chunk.is_static()
         {
-            results.report_for_component(scalar_component, VisualizerReportSeverity::Error, "Can't plot data that was logged statically in a time series since there's no temporal dimension");
+            results.report_for_component(scalar_component, ViewerReportSeverity::Error, "Can't plot data that was logged statically in a time series since there's no temporal dimension");
             empty_chunks = ChunksWithComponent::empty(scalar_component);
             &empty_chunks // Proceed with empty data so we catch other errors as well.
         } else {

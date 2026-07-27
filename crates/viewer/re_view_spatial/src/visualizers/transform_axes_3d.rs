@@ -9,8 +9,8 @@ use re_sdk_types::components::{AxisLength, ShowLabels};
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
     IdentifiedViewSystem, ViewClass as _, ViewContext, ViewContextCollection, ViewQuery,
-    ViewSystemExecutionError, VisualizabilityConstraints, VisualizerExecutionOutput,
-    VisualizerQueryInfo, VisualizerReportSeverity, VisualizerSystem,
+    ViewSystemExecutionError, ViewerReportSeverity, VisualizabilityConstraints,
+    VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use super::{SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget};
@@ -158,7 +158,7 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
                     ) {
                         output.report_unspecified_source(
                             instruction.id,
-                            VisualizerReportSeverity::Error,
+                            ViewerReportSeverity::Error,
                             err_msg,
                         );
                     }
@@ -221,7 +221,7 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
                         re_log::debug_panic!("unable to resolve frame id hash {label_id_hash:?}");
                         output.report_unspecified_source(
                             instruction.id,
-                            VisualizerReportSeverity::Error,
+                            ViewerReportSeverity::Error,
                             format!("Could not resolve frame id hash {label_id_hash:?}"),
                         );
                     }

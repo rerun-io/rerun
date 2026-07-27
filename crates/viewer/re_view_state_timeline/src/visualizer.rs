@@ -10,7 +10,7 @@ use re_view::{ComponentCastRule, collect_recursive_clears};
 use re_viewer_context::{
     AppOptions, IdentifiedViewSystem, SingleRequiredComponentConstraint, ViewContext,
     ViewContextCollection, ViewQuery, ViewSystemExecutionError, ViewSystemIdentifier,
-    VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerReportSeverity, VisualizerSystem,
+    ViewerReportSeverity, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::data::{
@@ -358,7 +358,7 @@ impl VisualizerSystem for StateVisualizer {
                     .join(", ");
                 range_results.report_for_component(
                     state_component,
-                    VisualizerReportSeverity::Error,
+                    ViewerReportSeverity::Error,
                     format!(
                         "State component type changed over time ({kinds_list}). \
                          The lane cannot be rendered until the column has a single type."

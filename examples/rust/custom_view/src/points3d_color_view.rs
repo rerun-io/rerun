@@ -11,7 +11,7 @@ use rerun::external::re_viewer_context::{
     DataResultInteractionAddress, HoverHighlight, IdentifiedViewSystem as _, IndicatedEntities,
     Item, MissingChunkReporter, PerVisualizerType, RecommendedVisualizers, SelectionHighlight,
     SystemExecutionOutput, UiLayout, ViewClass, ViewClassExt as _, ViewClassLayoutPriority,
-    ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState,
+    ViewClassRegistryError, ViewClassUiOutput, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState,
     ViewSystemExecutionError, ViewSystemIdentifier, ViewSystemRegistrator, ViewerContext,
     VisualizableReason,
 };
@@ -134,7 +134,7 @@ impl ViewClass for ColorCoordinatesView {
         state: &mut dyn ViewState,
         query: &ViewQuery<'_>,
         system_output: SystemExecutionOutput,
-    ) -> Result<(), ViewSystemExecutionError> {
+    ) -> Result<ViewClassUiOutput, ViewSystemExecutionError> {
         let colors = system_output
             .visualizer_data_or_default::<crate::points3d_color_visualizer::Points3DColorVisualizerOutput>(
                 Points3DColorVisualizer::identifier(),
@@ -170,7 +170,8 @@ impl ViewClass for ColorCoordinatesView {
             };
             color_space_ui(ui, ctx, colors.as_ref(), query, color_at, position_at);
         });
-        Ok(())
+
+        Ok(Default::default())
     }
 }
 

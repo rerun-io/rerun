@@ -128,7 +128,7 @@ Configure in the selection panel:
         state: &mut dyn ViewState,
         query: &ViewQuery<'_>,
         _system_output: SystemExecutionOutput,
-    ) -> Result<(), ViewSystemExecutionError> {
+    ) -> Result<re_viewer_context::ViewClassUiOutput, ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
         let state = state.downcast_mut::<DataframeViewState>()?;
@@ -139,7 +139,7 @@ Configure in the selection panel:
 
         let Some(timeline) = timeline else {
             timeline_not_found_ui(ctx, ui, query.view_id);
-            return Ok(());
+            return Ok(Default::default());
         };
 
         let query_engine = QueryEngine {
@@ -221,7 +221,7 @@ Configure in the selection panel:
         view_query.handle_hide_column_actions(ctx, &view_columns, hide_column_actions)?;
 
         state.view_columns = Some(view_columns);
-        Ok(())
+        Ok(Default::default())
     }
 }
 

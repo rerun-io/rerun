@@ -230,7 +230,7 @@ impl ViewClass for MapView {
         state: &mut dyn ViewState,
         query: &ViewQuery<'_>,
         system_output: SystemExecutionOutput,
-    ) -> Result<(), ViewSystemExecutionError> {
+    ) -> Result<re_viewer_context::ViewClassUiOutput, ViewSystemExecutionError> {
         let state = state.downcast_mut::<MapViewState>()?;
         let view_ctx = self.view_context(ctx, query.view_id, state, query.space_origin);
         let map_background = ViewProperty::from_archetype::<MapBackground>(&view_ctx);
@@ -380,7 +380,7 @@ impl ViewClass for MapView {
 
         map_overlays::acknowledgement_overlay(ui, &map_rect, &attribution);
 
-        Ok(())
+        Ok(Default::default())
     }
 }
 

@@ -12,7 +12,7 @@ use re_log_types::external::arrow::datatypes::UInt32Type;
 use re_sdk_types::external::arrow::datatypes::DataType as ArrowDatatype;
 use re_sdk_types::{ComponentDescriptor, Loggable as _, RowId, archetypes, components};
 use re_view::clamped_or_nothing;
-use re_viewer_context::{ViewQuery, VisualizerReportSeverity};
+use re_viewer_context::{ViewQuery, ViewerReportSeverity};
 
 use crate::{MAX_NUM_SERIES_FOR_REMAPPED_SCALARS, PlotPoint, PlotSeriesKind};
 
@@ -55,7 +55,7 @@ pub fn determine_num_series(
         .visualizer_limits_enabled;
     if !is_identity && limits_enabled && count > MAX_NUM_SERIES_FOR_REMAPPED_SCALARS {
         results.report_unspecified_source(
-            VisualizerReportSeverity::Error,
+            ViewerReportSeverity::Error,
             format!(
                 "Too many series ({}), capping to {}. \
                 This limit can be lifted in Settings.",
@@ -179,7 +179,7 @@ pub fn collect_scalars(
 
     if width_mismatch {
         results.report_unspecified_source(
-            VisualizerReportSeverity::Warning,
+            ViewerReportSeverity::Warning,
             format!(
                 "Number of scalars for entity `{}` varies between timestamps in the query, \
                 currently rendering {} series",

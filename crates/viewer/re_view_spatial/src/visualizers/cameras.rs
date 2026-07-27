@@ -7,8 +7,8 @@ use re_sdk_types::components;
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
     IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewOutlineMasks, ViewQuery,
-    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo,
-    VisualizerReportSeverity, VisualizerSystem, typed_fallback_for,
+    ViewSystemExecutionError, ViewerReportSeverity, VisualizerExecutionOutput, VisualizerQueryInfo,
+    VisualizerSystem, typed_fallback_for,
 };
 
 use super::SpatialViewVisualizerData;
@@ -324,11 +324,7 @@ impl VisualizerSystem for CamerasVisualizer {
                 entity_highlight,
                 view_kind,
             ) {
-                output.report_unspecified_source(
-                    instruction.id,
-                    VisualizerReportSeverity::Error,
-                    err,
-                );
+                output.report_unspecified_source(instruction.id, ViewerReportSeverity::Error, err);
             }
         }
 

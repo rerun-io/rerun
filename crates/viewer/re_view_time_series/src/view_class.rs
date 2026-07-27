@@ -445,7 +445,7 @@ impl ViewClass for TimeSeriesView {
         state: &mut dyn ViewState,
         query: &ViewQuery<'_>,
         mut system_output: SystemExecutionOutput,
-    ) -> Result<(), ViewSystemExecutionError> {
+    ) -> Result<re_viewer_context::ViewClassUiOutput, ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
         let state = state.downcast_mut::<TimeSeriesViewState>()?;
@@ -531,7 +531,7 @@ impl ViewClass for TimeSeriesView {
 
         let current_time = ctx.time_ctrl.time_i64();
         let Some(timeline) = ctx.time_ctrl.timeline() else {
-            return Ok(());
+            return Ok(Default::default());
         };
         let time_type = timeline.typ();
 
@@ -1011,9 +1011,11 @@ impl ViewClass for TimeSeriesView {
                 update_series_visibility_from_legend(ctx, query, &all_plot_series, &hidden_items);
             }
 
-            Ok(())
+            Ok::<(), ViewSystemExecutionError>(())
         })
-        .inner
+        .inner?;
+
+        Ok(Default::default())
     }
 }
 

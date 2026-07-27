@@ -122,7 +122,7 @@ impl SpatialView3D {
         state: &mut SpatialViewState,
         query: &ViewQuery<'_>,
         mut system_output: re_viewer_context::SystemExecutionOutput,
-    ) -> Result<(), ViewSystemExecutionError> {
+    ) -> Result<re_viewer_context::ViewClassUiOutput, ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
         let highlights = &query.highlights;
@@ -141,7 +141,7 @@ impl SpatialView3D {
             ui.allocate_at_least(ui.available_size(), egui::Sense::click_and_drag());
 
         if !ui_rect.is_positive() {
-            return Ok(()); // protect against problems with zero-sized views
+            return Ok(Default::default()); // protect against problems with zero-sized views
         }
 
         let mut state_3d = state.state_3d.clone();
@@ -185,7 +185,7 @@ impl SpatialView3D {
         let resolution_in_pixel =
             gpu_bridge::viewport_resolution_in_pixels(ui_rect, ui.pixels_per_point());
         if resolution_in_pixel[0] == 0 || resolution_in_pixel[1] == 0 {
-            return Ok(());
+            return Ok(Default::default());
         }
 
         // Various ui interactions draw additional lines.
@@ -417,7 +417,7 @@ impl SpatialView3D {
         let painter = ui.painter().with_clip_rect(ui.max_rect());
         painter.extend(label_shapes);
 
-        Ok(())
+        Ok(Default::default())
     }
 
     fn setup_grid_3d(

@@ -11,8 +11,8 @@ use re_view::{clamped_or_nothing, process_annotation_slices, process_color_slice
 #[cfg(doc)]
 use re_viewer_context::VisualizerSystem;
 use re_viewer_context::{
-    QueryContext, ViewQuery, ViewSystemExecutionError, VisualizerExecutionOutput,
-    VisualizerReportSeverity, typed_fallback_for,
+    QueryContext, ViewQuery, ViewSystemExecutionError, ViewerReportSeverity,
+    VisualizerExecutionOutput, typed_fallback_for,
 };
 use vec1::smallvec_v1::SmallVec1;
 
@@ -195,7 +195,7 @@ impl<'ctx> ProcMeshDrawableBuilder<'ctx> {
             if let Some(instruction_id) = query_context.instruction_id {
                 self.output.report_unspecified_source(
                     instruction_id,
-                    VisualizerReportSeverity::Warning,
+                    ViewerReportSeverity::Warning,
                     format!(
                         "Too many instances ({}), capping to {}. \
                              This limit can be lifted in Settings.",

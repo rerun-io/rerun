@@ -177,7 +177,9 @@ fn snapshot_visualizer_errors(
         .iter()
         .map(|(visualizer_type, error)| {
             let error = match error {
-                re_viewer_context::VisualizerTypeReport::OverallError(err) => err.summary.clone(),
+                re_viewer_context::VisualizerTypeReport::OverallError(err) => {
+                    err.diagnostic.summary.clone()
+                }
                 re_viewer_context::VisualizerTypeReport::PerInstructionReport(errors) => errors
                     .iter()
                     .flat_map(|(instr_id, reports)| {
@@ -185,7 +187,10 @@ fn snapshot_visualizer_errors(
                             .lookup_result_by_visualizer_instruction(*instr_id)
                             .expect("visualizer instruction should resolve to a query result");
                         reports.iter().map(|report| {
-                            format!("{:?}: {}", data_result.entity_path, report.summary)
+                            format!(
+                                "{:?}: {}",
+                                data_result.entity_path, report.diagnostic.summary
+                            )
                         })
                     })
                     .collect::<Vec<_>>()

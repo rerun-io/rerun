@@ -216,7 +216,7 @@ Set the displayed dimensions in a selection panel.",
         state: &mut dyn ViewState,
         query: &ViewQuery<'_>,
         system_output: re_viewer_context::SystemExecutionOutput,
-    ) -> Result<(), ViewSystemExecutionError> {
+    ) -> Result<re_viewer_context::ViewClassUiOutput, ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
         let tokens = ui.tokens();
@@ -268,7 +268,7 @@ Set the displayed dimensions in a selection panel.",
                 .send_system(SystemCommand::set_selection(Item::View(query.view_id)));
         }
 
-        Ok(())
+        Ok(Default::default())
     }
 }
 

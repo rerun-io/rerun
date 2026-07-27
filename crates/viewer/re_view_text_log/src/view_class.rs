@@ -196,7 +196,7 @@ Filter message types and toggle column visibility in a selection panel.",
         state: &mut dyn ViewState,
         query: &ViewQuery<'_>,
         system_output: re_viewer_context::SystemExecutionOutput,
-    ) -> Result<(), ViewSystemExecutionError> {
+    ) -> Result<re_viewer_context::ViewClassUiOutput, ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
         let tokens = ui.tokens();
@@ -284,7 +284,7 @@ Filter message types and toggle column visibility in a selection panel.",
         });
         state.latest_time = time;
 
-        Ok(())
+        Ok(Default::default())
     }
 }
 

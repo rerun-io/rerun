@@ -10,8 +10,8 @@ use re_ui::{ContextExt as _, DesignTokens, UiExt as _, filter_widget, list_item}
 use re_viewer_context::{
     CollapseScope, ContainerId, Contents, DataResultInteractionAddress, DragAndDropFeedback,
     DragAndDropPayload, HoverHighlight, Item, ItemCollection, ItemContext, SystemCommand,
-    SystemCommandSender as _, ViewId, ViewStates, ViewerContext, VisitorControlFlow,
-    VisualizerReportSeverity, VisualizerViewReport, contents_name_style, icon_for_container_kind,
+    SystemCommandSender as _, ViewId, ViewStates, ViewerContext, ViewerReportSeverity,
+    VisitorControlFlow, VisualizerViewReport, contents_name_style, icon_for_container_kind,
 };
 use re_viewport_blueprint::ViewportBlueprint;
 use smallvec::SmallVec;
@@ -544,7 +544,7 @@ impl BlueprintTree {
                     DataResultKind::EmptyOriginPlaceholder
                 );
 
-                let highest_report_severity: Option<VisualizerReportSeverity> = visualizer_reports
+                let highest_report_severity: Option<ViewerReportSeverity> = visualizer_reports
                     .and_then(|visualizer_reports| {
                         data_result_data
                             .visualizer_instruction_ids
@@ -559,12 +559,9 @@ impl BlueprintTree {
                     });
 
                 let format_color = match highest_report_severity {
-                    Some(
-                        VisualizerReportSeverity::Error
-                        | VisualizerReportSeverity::OverallVisualizerError,
-                    ) => Some(ui.visuals().error_fg_color),
-                    Some(VisualizerReportSeverity::Warning) => Some(ui.visuals().warn_fg_color),
-                    Some(VisualizerReportSeverity::Info) => None,
+                    Some(ViewerReportSeverity::Error) => Some(ui.visuals().error_fg_color),
+                    Some(ViewerReportSeverity::Warning) => Some(ui.visuals().warn_fg_color),
+                    Some(ViewerReportSeverity::Info) => None,
                     None => is_empty_origin_placeholder.then(|| ui.visuals().warn_fg_color),
                 };
 

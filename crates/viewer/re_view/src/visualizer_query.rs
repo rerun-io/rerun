@@ -2,8 +2,8 @@ use re_log_types::hash::Hash64;
 use re_sdk_types::ComponentIdentifier;
 use re_sdk_types::blueprint::components::VisualizerInstructionId;
 use re_viewer_context::{
-    QueryContext, VisualizerInstruction, VisualizerInstructionReport, VisualizerReportContext,
-    VisualizerReportSeverity,
+    QueryContext, ViewerDiagnostic, ViewerReportSeverity, VisualizerInstruction,
+    VisualizerInstructionReport, VisualizerReportContext,
 };
 
 use crate::{
@@ -78,13 +78,15 @@ impl<'a> VisualizerInstructionQueryResults<'a> {
                         | ComponentMappingError::NoComponentDataForQueryButIsFetchable(_)
                 ) {
                     let report = VisualizerInstructionReport {
-                        severity: VisualizerReportSeverity::Error,
+                        diagnostic: ViewerDiagnostic {
+                            severity: ViewerReportSeverity::Error,
+                            summary: err.summary(),
+                            details: err.details(),
+                        },
                         context: VisualizerReportContext {
                             component: Some(component),
                             extra: None,
                         },
-                        summary: err.summary(),
-                        details: err.details(),
                     };
 
                     self.output.report(self.instruction.id, report);
@@ -119,13 +121,15 @@ impl<'a> VisualizerInstructionQueryResults<'a> {
             Ok(chunks) => chunks,
             Err(err) => {
                 let report = VisualizerInstructionReport {
-                    severity: VisualizerReportSeverity::Warning,
+                    diagnostic: ViewerDiagnostic {
+                        severity: ViewerReportSeverity::Warning,
+                        summary: err.summary(),
+                        details: err.details(),
+                    },
                     context: VisualizerReportContext {
                         component: Some(component),
                         extra: None,
                     },
-                    summary: err.summary(),
-                    details: err.details(),
                 };
 
                 self.output.report(self.instruction.id, report);
@@ -143,7 +147,7 @@ impl<'a> VisualizerInstructionQueryResults<'a> {
 
     pub fn report_unspecified_source(
         &self,
-        severity: VisualizerReportSeverity,
+        severity: ViewerReportSeverity,
         message: impl Into<String>,
     ) {
         self.output
@@ -154,19 +158,21 @@ impl<'a> VisualizerInstructionQueryResults<'a> {
     pub fn report_for_component(
         &self,
         component: re_sdk_types::ComponentIdentifier,
-        severity: VisualizerReportSeverity,
+        severity: ViewerReportSeverity,
         summary: impl Into<String>,
     ) {
         self.output.report(
             self.instruction.id,
             VisualizerInstructionReport {
-                severity,
+                diagnostic: ViewerDiagnostic {
+                    severity,
+                    summary: summary.into(),
+                    details: None,
+                },
                 context: VisualizerReportContext {
                     component: Some(component),
                     extra: None,
                 },
-                summary: summary.into(),
-                details: None,
             },
         );
     }

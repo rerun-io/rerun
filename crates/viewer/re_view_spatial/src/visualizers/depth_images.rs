@@ -13,7 +13,7 @@ use re_sdk_types::{Archetype as _, ArchetypeName, ComponentIdentifier};
 use re_viewer_context::{
     ColormapWithRange, IdentifiedViewSystem, ImageInfo, ImageStatsCache, QueryContext,
     ViewClass as _, ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError,
-    VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerReportSeverity, VisualizerSystem,
+    ViewerReportSeverity, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
     typed_fallback_for,
 };
 
@@ -331,7 +331,7 @@ impl VisualizerSystem for DepthImageVisualizer {
                     };
 
                     let mut report_error = |error: String| {
-                        results.report_unspecified_source(VisualizerReportSeverity::Error, error);
+                        results.report_unspecified_source(ViewerReportSeverity::Error, error);
                     };
                     process_depth_image_data(
                         ctx,

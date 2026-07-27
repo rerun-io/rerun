@@ -293,7 +293,7 @@ impl ViewClass for StateTimelineView {
         state: &mut dyn ViewState,
         query: &ViewQuery<'_>,
         system_output: re_viewer_context::SystemExecutionOutput,
-    ) -> Result<(), ViewSystemExecutionError> {
+    ) -> Result<re_viewer_context::ViewClassUiOutput, ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
         let state = state.downcast_mut::<StateTimelineViewState>()?;
@@ -314,7 +314,7 @@ impl ViewClass for StateTimelineView {
                     );
                 });
             });
-            return Ok(());
+            return Ok(Default::default());
         }
 
         // Compute data time range.
@@ -358,7 +358,7 @@ impl ViewClass for StateTimelineView {
             ui.allocate_exact_size(ui.available_size(), egui::Sense::click_and_drag());
 
         if !ui.is_rect_visible(rect) {
-            return Ok(());
+            return Ok(Default::default());
         }
 
         // Layout: ruler at the top, lanes below.
@@ -635,7 +635,7 @@ impl ViewClass for StateTimelineView {
         };
         ctx.handle_select_hover_drag_interactions(&response, interacted_item, false);
 
-        Ok(())
+        Ok(Default::default())
     }
 }
 

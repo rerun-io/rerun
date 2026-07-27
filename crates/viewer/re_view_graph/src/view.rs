@@ -194,7 +194,7 @@ impl ViewClass for GraphView {
         state: &mut dyn ViewState,
         query: &ViewQuery<'_>,
         system_output: SystemExecutionOutput,
-    ) -> Result<(), ViewSystemExecutionError> {
+    ) -> Result<re_viewer_context::ViewClassUiOutput, ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
         let node_data = system_output
@@ -292,7 +292,7 @@ impl ViewClass for GraphView {
             ui.request_repaint();
         }
 
-        Ok(())
+        Ok(Default::default())
     }
 }
 

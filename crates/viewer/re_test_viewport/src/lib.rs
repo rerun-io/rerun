@@ -49,8 +49,6 @@ impl TestContextExt for TestContext {
     /// Important pre-requisite:
     /// - The current timeline must already be set to the timeline of interest, because some
     ///   updates are timeline-dependant (in particular those related to visible time range).
-    /// - The view classes used by view must be already registered (see
-    ///   [`TestContext::register_view_class`]).
     /// - The data store must be already populated for the views to have any content (see, e.g.,
     ///   [`TestContext::log_entity`]).
     ///
@@ -91,14 +89,18 @@ impl TestContextExt for TestContext {
 
                             let class_registry = ctx.view_class_registry();
                             let class_identifier = view_blueprint.class_identifier();
-                            let class = class_registry.class(class_identifier).unwrap_or_else(|| panic!("The class '{class_identifier}' must be registered beforehand"));
+                            let class = class_registry.get_class_or_log_error(class_identifier);
 
                             let query_range = view_blueprint.query_range(
                                 ctx.blueprint_db(),
                                 ctx.blueprint_query,
                                 ctx.time_ctrl.timeline(),
                                 class_registry,
-                                self.view_states.lock().get_mut_or_create(ctx.store_id(), *view_id, class),
+                                self.view_states.lock().get_mut_or_create(
+                                    ctx.store_id(),
+                                    *view_id,
+                                    class,
+                                ),
                             );
 
                             let data_query_result = view_blueprint.contents.build_data_result_tree(
@@ -158,7 +160,7 @@ impl TestContextExt for TestContext {
             MissingChunkReporter::new(system_execution_output.any_missing_chunks());
 
         let view_state = view_states.get_mut_or_create(ctx.store_id(), view_id, view_class);
-        view_class
+        let view_ui_output = view_class
             .ui(
                 ctx,
                 &missing_chunk_reporter,
@@ -168,6 +170,7 @@ impl TestContextExt for TestContext {
                 system_execution_output,
             )
             .expect("failed to run view ui");
+        view_states.set_view_reports(ctx.store_id(), view_id, view_ui_output.reports);
 
         // We intentionally ignore missing_chunk_reporter in this test… for now.
     }

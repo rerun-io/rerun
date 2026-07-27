@@ -22,9 +22,9 @@ use re_view::{
 };
 use re_viewer_context::{
     BlueprintContext as _, DataResult, DatatypeMatch, RecommendedMappings, TryShowEditUiResult,
-    UiLayout, ViewContext, ViewSystemIdentifier, VisualizableReason, VisualizerCollection,
-    VisualizerComponentMappings, VisualizerComponentSource, VisualizerInstruction,
-    VisualizerQueryInfo, VisualizerReportSeverity, VisualizerSystem, VisualizerViewReport,
+    UiLayout, ViewContext, ViewSystemIdentifier, ViewerReportSeverity, VisualizableReason,
+    VisualizerCollection, VisualizerComponentMappings, VisualizerComponentSource,
+    VisualizerInstruction, VisualizerQueryInfo, VisualizerSystem, VisualizerViewReport,
 };
 use re_viewport_blueprint::ViewBlueprint;
 
@@ -397,8 +397,8 @@ fn visualizer_components(
                 true,
                 component_reports
                     .iter()
-                    .find(|report| report.severity == VisualizerReportSeverity::Error)
-                    .map(|report| report.summary.clone()),
+                    .find(|report| report.diagnostic.severity == ViewerReportSeverity::Error)
+                    .map(|report| report.diagnostic.summary.clone()),
             );
         };
 
@@ -586,8 +586,8 @@ impl<'a> SourceSelectorContext<'a> {
                 show_default_and_override,
                 component_reports
                     .iter()
-                    .find(|report| report.severity == VisualizerReportSeverity::Error)
-                    .map(|report| report.summary.clone()),
+                    .find(|report| report.diagnostic.severity == ViewerReportSeverity::Error)
+                    .map(|report| report.diagnostic.summary.clone()),
             );
         });
     }
@@ -597,23 +597,22 @@ fn show_visualizer_report(
     ui: &mut egui::Ui,
     report: &re_viewer_context::VisualizerInstructionReport,
 ) {
-    match report.severity {
-        re_viewer_context::VisualizerReportSeverity::OverallVisualizerError
-        | re_viewer_context::VisualizerReportSeverity::Error => {
-            let label = ui.error_label(&report.summary);
-            if let Some(details) = &report.details {
+    match report.diagnostic.severity {
+        re_viewer_context::ViewerReportSeverity::Error => {
+            let label = ui.error_label(&report.diagnostic.summary);
+            if let Some(details) = &report.diagnostic.details {
                 label.on_hover_text(details);
             }
         }
-        re_viewer_context::VisualizerReportSeverity::Warning => {
-            let label = ui.warning_label(&report.summary);
-            if let Some(details) = &report.details {
+        re_viewer_context::ViewerReportSeverity::Warning => {
+            let label = ui.warning_label(&report.diagnostic.summary);
+            if let Some(details) = &report.diagnostic.details {
                 label.on_hover_text(details);
             }
         }
-        re_viewer_context::VisualizerReportSeverity::Info => {
-            let label = ui.info_label(&report.summary);
-            if let Some(details) = &report.details {
+        re_viewer_context::ViewerReportSeverity::Info => {
+            let label = ui.info_label(&report.diagnostic.summary);
+            if let Some(details) = &report.diagnostic.details {
                 label.on_hover_text(details);
             }
         }

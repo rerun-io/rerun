@@ -4,8 +4,8 @@ use re_sdk_types::components::{ImageBuffer, ImageFormat, MagnificationFilter, Op
 use re_sdk_types::image::ImageKind;
 use re_viewer_context::{
     IdentifiedViewSystem, ImageInfo, ViewClass as _, ViewContext, ViewContextCollection, ViewQuery,
-    ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo,
-    VisualizerReportSeverity, VisualizerSystem, typed_fallback_for,
+    ViewSystemExecutionError, ViewerReportSeverity, VisualizerExecutionOutput, VisualizerQueryInfo,
+    VisualizerSystem, typed_fallback_for,
 };
 
 use super::SpatialViewVisualizerData;
@@ -133,7 +133,7 @@ impl VisualizerSystem for SegmentationImageVisualizer {
                         Err(err) => {
                             results.report_for_component(
                                 SegmentationImage::descriptor_buffer().component,
-                                VisualizerReportSeverity::Error,
+                                ViewerReportSeverity::Error,
                                 re_error::format(err),
                             );
                         }

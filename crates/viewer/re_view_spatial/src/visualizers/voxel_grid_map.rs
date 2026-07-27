@@ -12,8 +12,8 @@ use re_sdk_types::reflection::Enum as _;
 use re_view::clamped_or_nothing;
 use re_viewer_context::{
     IdentifiedViewSystem, QueryContext, ViewClass as _, ViewContext, ViewContextCollection,
-    ViewQuery, ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo,
-    VisualizerReportSeverity, VisualizerSystem, gpu_bridge, typed_fallback_for,
+    ViewQuery, ViewSystemExecutionError, ViewerReportSeverity, VisualizerExecutionOutput,
+    VisualizerQueryInfo, VisualizerSystem, gpu_bridge, typed_fallback_for,
 };
 
 use super::SpatialViewVisualizerData;
@@ -216,7 +216,7 @@ impl VoxelGridMapVisualizer {
         if !voxel_size.is_finite() || !voxel_size.cmpgt(glam::Vec3::ZERO).all() {
             results.report_for_component(
                 VoxelGridMap::descriptor_voxel_size().component,
-                VisualizerReportSeverity::Error,
+                ViewerReportSeverity::Error,
                 "voxel_size must be finite and positive",
             );
             return Ok(None);
@@ -247,7 +247,7 @@ impl VoxelGridMapVisualizer {
             if let Some(instruction_id) = ctx.instruction_id {
                 output.report_unspecified_source(
                     instruction_id,
-                    VisualizerReportSeverity::Warning,
+                    ViewerReportSeverity::Warning,
                     format!(
                         "Too many voxels ({}), capping to {}. This limit can be lifted in Settings.",
                         re_format::format_uint(indices.len()),
@@ -349,7 +349,7 @@ impl VoxelGridMapVisualizer {
             // It's expected that the colormap has no effect here, so this is informational only.
             results.report_for_component(
                 VoxelGridMap::descriptor_colormap().component,
-                VisualizerReportSeverity::Info,
+                ViewerReportSeverity::Info,
                 "VoxelGridMap colormaps only apply to scalar values; ignoring the colormap because explicit per-voxel colors are present.",
             );
             return clamped_or_nothing(colors, num_voxels)
@@ -389,7 +389,7 @@ impl VoxelGridMapVisualizer {
         // Expected, so informational only.
         results.report_for_component(
             VoxelGridMap::descriptor_colormap().component,
-            VisualizerReportSeverity::Info,
+            ViewerReportSeverity::Info,
             "VoxelGridMap colormaps require scalar values; showing the fallback color because no values are present.",
         );
 
