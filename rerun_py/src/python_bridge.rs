@@ -2463,13 +2463,11 @@ fn new_entity_path(parts: Vec<Bound<'_, pyo3::types::PyString>>) -> PyResult<Str
 #[pyfunction]
 fn new_property_entity_path(parts: Vec<Bound<'_, pyo3::types::PyString>>) -> PyResult<String> {
     let parts: PyResult<Vec<_>> = parts.iter().map(|part| part.to_cow()).collect();
-    let path = EntityPath::from(
-        parts?
-            .into_iter()
-            .map(|part| EntityPathPart::from(part.borrow()))
-            .collect_vec(),
-    );
-    Ok(EntityPath::properties().join(&path).to_string())
+    let parts = parts?
+        .into_iter()
+        .map(|part| EntityPathPart::from(part.borrow()))
+        .collect_vec();
+    Ok(crate::utils::property_entity_path(parts).to_string())
 }
 
 /// Send the name of the recording.

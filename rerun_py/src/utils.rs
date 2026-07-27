@@ -62,3 +62,15 @@ pub fn py_rerun_warn(msg: &str) -> PyResult<()> {
     let cmsg = CString::new(msg)?;
     py_rerun_warn_cstr(&cmsg)
 }
+
+/// Build the reserved entity path for a recording property: `/__properties/{parts…}`.
+///
+/// Each part is treated as a single literal (escaped) path part, so this is the one
+/// place that defines the escaping rules for property names.
+pub fn property_entity_path(
+    parts: impl IntoIterator<Item = re_log_types::EntityPathPart>,
+) -> re_log_types::EntityPath {
+    re_log_types::EntityPath::properties().join(&re_log_types::EntityPath::from(
+        parts.into_iter().collect::<Vec<_>>(),
+    ))
+}

@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     import datafusion  # Soft dependency, ok for type checking
 
     from rerun import ComponentColumn
-    from rerun._baseclasses import ComponentDescriptor
+    from rerun._baseclasses import AsComponents, ComponentDescriptor, DescribedComponentBatch
     from rerun._send_columns import TimeColumnLike
     from rerun_bindings import ChunkInternal
 
@@ -271,6 +271,45 @@ class Chunk:
         timelines_args, columns_args = build_column_args(indexes, columns)
 
         return cls(ChunkInternal.from_columns(entity_path, timelines_args, columns_args))
+
+    @classmethod
+    def from_property(
+        cls,
+        name: str,
+        values: AsComponents | Iterable[DescribedComponentBatch],
+    ) -> Chunk:
+        """
+        Create a Chunk from a property, mirroring the [`rerun.send_property`][] API.
+
+        Parameters
+        ----------
+        name:
+            The name of the property.
+        values:
+            The values for this property, either as `AsComponents` or an iterable of `DescribedComponentBatch`.
+
+        Raises
+        ------
+        TypeError
+            If `values` is neither `AsComponents` nor an iterable of `DescribedComponentBatch`.
+        ValueError
+            If the component data is invalid.
+
+        Example
+        -------
+        ```python
+        chunk = Chunk.from_property(
+            "my_property",
+            values=rr.Points3D.positions([[1, 2, 3], [4, 5, 6], [7, 8, 9]]),
+        )
+        ```
+
+        """
+        from rerun._properties import build_property_args
+        from rerun_bindings import ChunkInternal
+
+        components = build_property_args(values)
+        return cls(ChunkInternal.from_property(name, components))
 
     @property
     def id(self) -> str:
