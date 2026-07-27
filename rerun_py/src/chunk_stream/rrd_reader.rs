@@ -98,10 +98,7 @@ impl PyRrdReaderInternal {
         // so it's worth surfacing this up-front rather than at first use.
         if let Ok(file) = std::fs::File::open(&path)
             && matches!(
-                wait_for_future(
-                    py,
-                    re_log_encoding::read_rrd_footer(&mut futures::io::AllowStdIo::new(file)),
-                ),
+                wait_for_future(py, re_log_encoding::read_rrd_footer(&file)),
                 Ok(None)
             )
         {
@@ -162,13 +159,12 @@ impl PyRrdReaderInternal {
 
         wait_for_future(py, async move {
             let path_buf = path.clone();
-            let file = std::fs::File::open(&path).map_err(|err| ChunkPipelineError::RrdRead {
+            let reader = std::fs::File::open(&path).map_err(|err| ChunkPipelineError::RrdRead {
                 path: path_buf.clone(),
                 reason: err.to_string(),
             })?;
-            let mut reader = futures::io::AllowStdIo::new(file);
 
-            match re_log_encoding::read_rrd_footer(&mut reader).await {
+            match re_log_encoding::read_rrd_footer(&reader).await {
                 Ok(Some(rrd_footer)) => {
                     let raw = pick_manifest(&rrd_footer, &path, &target_store_id)?;
                     let provider = Arc::new(
@@ -361,12 +357,11 @@ impl ChunkStream for RrdStream {
 
 /// Open `path` and enumerate its stores, wrapping I/O and codec errors into [`ChunkPipelineError`].
 fn enumerate_rrd_stores(py: Python<'_>, path: &Path) -> Result<Vec<StoreId>, ChunkPipelineError> {
-    let file = std::fs::File::open(path).map_err(|err| ChunkPipelineError::RrdRead {
+    let reader = std::fs::File::open(path).map_err(|err| ChunkPipelineError::RrdRead {
         path: path.to_path_buf(),
         reason: err.to_string(),
     })?;
-    let mut reader = futures::io::AllowStdIo::new(file);
-    wait_for_future(py, re_log_encoding::enumerate_rrd_stores(&mut reader)).map_err(|err| {
+    wait_for_future(py, re_log_encoding::enumerate_rrd_stores(&reader)).map_err(|err| {
         ChunkPipelineError::RrdRead {
             path: path.to_path_buf(),
             reason: err.to_string(),

@@ -54,6 +54,67 @@ pub async fn read(path: &Path) -> io::Result<Vec<u8>> {
     .await
 }
 
+/// A positional-read handle to an OPFS file.
+///
+/// Owns the browser [`web_sys::File`] snapshot returned when opened. Reads slice the backing
+/// [`web_sys::Blob`], so only the requested range crosses the JS/Wasm boundary — unlike [`read`],
+/// which copies the whole file.
+#[derive(Debug)]
+pub struct File {
+    file: web_sys::File,
+}
+
+impl File {
+    /// Opens an existing OPFS file, failing with [`io::ErrorKind::NotFound`] if it is absent.
+    pub async fn open(path: impl AsRef<Path>) -> io::Result<Self> {
+        let path = path.as_ref().to_owned();
+        let file = run_local(async move {
+            let file_handle = open_file(&path).await?;
+            await_js(file_handle.get_file()).await
+        })
+        .await?;
+        Ok(Self { file })
+    }
+}
+
+#[async_trait::async_trait]
+impl re_async::AsyncReadAt for File {
+    async fn read_exact_at(&self, offset: u64, len: usize) -> io::Result<bytes::Bytes> {
+        let file = self.file.clone();
+        run_local(async move {
+            let end = offset.checked_add(len as u64).ok_or_else(|| {
+                io::Error::new(io::ErrorKind::InvalidInput, "read range overflows u64")
+            })?;
+
+            let blob: &web_sys::Blob = file.as_ref();
+            // `Blob::slice` clamps to the file end, so a short result means EOF was reached.
+            let slice = blob
+                .slice_with_f64_and_f64(offset as f64, end as f64)
+                .map_err(|err| js_to_io_error(&err))?;
+            let buffer: js_sys::ArrayBuffer = await_js(slice.array_buffer()).await?;
+            let bytes = js_sys::Uint8Array::new(&buffer).to_vec();
+
+            if bytes.len() < len {
+                return Err(io::Error::new(
+                    io::ErrorKind::UnexpectedEof,
+                    "read past end of file",
+                ));
+            }
+            Ok(bytes.into())
+        })
+        .await
+    }
+
+    async fn size(&self) -> io::Result<u64> {
+        let file = self.file.clone();
+        run_local(async move {
+            let blob: &web_sys::Blob = file.as_ref();
+            Ok(blob.size() as u64)
+        })
+        .await
+    }
+}
+
 /// Write `contents` to `path`, creating any missing parent directories.
 ///
 /// Takes `contents` by value so callers that already own the bytes avoid a copy; the whole
@@ -245,6 +306,7 @@ mod test {
 
     use std::io;
 
+    use re_async::AsyncReadAt as _;
     use wasm_bindgen_test::wasm_bindgen_test;
 
     wasm_bindgen_test::wasm_bindgen_test_configure!(run_in_browser);
@@ -338,5 +400,53 @@ mod test {
             .await
             .expect_err("OPFS paths must not allow parent-directory traversal");
         assert_eq!(err.kind(), io::ErrorKind::InvalidInput);
+    }
+
+    #[wasm_bindgen_test]
+    async fn file_reads_file() {
+        let test_dir = unique_opfs_test_dir();
+        let file_path = format!("/{test_dir}/data.bin");
+        let contents = b"0123456789";
+
+        write(&file_path, Vec::from(contents).into())
+            .await
+            .expect("write should succeed");
+
+        let file = File::open(&file_path).await.expect("open should succeed");
+
+        assert_eq!(
+            file.size().await.expect("size should succeed"),
+            contents.len() as u64,
+        );
+
+        assert_eq!(
+            file.read_exact_at(3, 4)
+                .await
+                .expect("mid-file read should succeed"),
+            b"3456".as_slice(),
+        );
+
+        // A read ending exactly at EOF returns all requested bytes.
+        assert_eq!(
+            file.read_exact_at(6, 4)
+                .await
+                .expect("tail read should succeed"),
+            b"6789".as_slice(),
+        );
+
+        let err = file
+            .read_exact_at(8, 4)
+            .await
+            .expect_err("reading past the end should fail");
+        assert_eq!(err.kind(), io::ErrorKind::UnexpectedEof);
+
+        let err = File::open(format!("/{test_dir}/missing.bin"))
+            .await
+            .expect_err("opening a missing OPFS file should fail");
+        assert_eq!(err.kind(), io::ErrorKind::NotFound);
+
+        remove_dir_all(test_dir)
+            .await
+            .expect("test cleanup should remove the OPFS directory");
     }
 }

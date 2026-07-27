@@ -98,6 +98,7 @@ tower-service.workspace = true
 tracing.workspace = true
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
+bytes.workspace = true
 chrono = { workspace = true, features = ["wasmbind"] }
 getrandom = { workspace = true, features = ["wasm_js"] }
 percent-encoding.workspace = true

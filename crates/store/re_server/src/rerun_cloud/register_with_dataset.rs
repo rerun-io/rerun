@@ -9,9 +9,6 @@ use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, SegmentId};
 use re_types_core::LayerName;
 use url::Url;
 
-#[cfg(not(target_arch = "wasm32"))]
-use tokio_util::compat::TokioAsyncReadCompatExt as _;
-
 use crate::store::{
     Error, InMemoryStore, LayerInfo, ResolvedStore, StoreSlotId, TASK_ID_SUCCESS, TaskResult,
 };
@@ -432,28 +429,27 @@ async fn register_sources(
 /// Returns a deduplicated set because a single RRD can contain duplicate
 /// `SetStoreInfo` messages for the same store.
 async fn load_store_ids(rrd_path: &Path) -> tonic::Result<BTreeSet<StoreId>> {
+    // TODO(tokio-rs/tokio#1529): positional reads block the reactor; use `std::fs::File` until an
+    // async positional file API lands (or push reads to `spawn_blocking`).
     #[cfg(not(target_arch = "wasm32"))]
-    let mut file = fs::File::open(rrd_path)
-        .await
-        .map_err(|err| {
-            tonic::Status::internal(format!(
-                "Failed to open RRD file: {err:#}\nFile path: {rrd_path:?}"
-            ))
-        })?
-        .compat();
+    let file = std::fs::File::open(rrd_path).map_err(|err| {
+        tonic::Status::internal(format!(
+            "Failed to open RRD file: {err:#}\nFile path: {rrd_path:?}"
+        ))
+    })?;
 
     #[cfg(target_arch = "wasm32")]
-    let mut file = {
+    let file = {
         let bytes = fs::read(rrd_path).await.map_err(|err| {
             tonic::Status::internal(format!(
                 "Failed to open RRD file: {err:#}\nFile path: {rrd_path:?}"
             ))
         })?;
         // TODO(RR-5154): Avoid buffering the full OPFS file once footer enumeration can use range reads.
-        futures::io::Cursor::new(bytes)
+        bytes::Bytes::from(bytes)
     };
 
-    let store_ids = re_log_encoding::enumerate_rrd_stores(&mut file)
+    let store_ids = re_log_encoding::enumerate_rrd_stores(&file)
         .await
         .map_err(|err| {
             tonic::Status::internal(format!("Failed to enumerate RRD stores: {err:#}"))

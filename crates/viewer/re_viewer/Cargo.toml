@@ -170,7 +170,6 @@ egui_kittest.workspace = true
 poll-promise = { workspace = true, features = ["tokio"] }
 re_perf_telemetry = { workspace = true, optional = true }
 tokio.workspace = true
-tokio-util = { workspace = true, features = ["compat"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]
 winit.workspace = true
@@ -178,6 +177,7 @@ winit.workspace = true
 # web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 re_web.workspace = true
+bytes.workspace = true
 js-sys.workspace = true
 poll-promise = { workspace = true, features = ["web"] }
 wasm-bindgen-futures.workspace = true

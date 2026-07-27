@@ -4,6 +4,10 @@ use std::fmt::Debug;
 use std::future::Future;
 use std::time::Duration;
 
+mod read_at;
+
+pub use read_at::AsyncReadAt;
+
 /// Waits for at least `duration`.
 #[cfg(not(target_arch = "wasm32"))]
 #[inline]

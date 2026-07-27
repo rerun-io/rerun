@@ -486,12 +486,12 @@ mod pushdown_tests {
         }
         encoder.finish().unwrap();
 
-        let mut reader = futures::io::AllowStdIo::new(File::open(path).unwrap());
-        let footer = futures::executor::block_on(re_log_encoding::read_rrd_footer(&mut reader))
+        let reader = File::open(path).unwrap();
+        let footer = futures::executor::block_on(re_log_encoding::read_rrd_footer(&reader))
             .unwrap()
             .unwrap();
         let raw = Arc::new(footer.manifests[&store_id].clone());
-        let reader = futures::io::AllowStdIo::new(File::open(path).unwrap());
+        let reader = File::open(path).unwrap();
         let provider = Arc::new(
             RrdChunkProvider::from_reader(reader, path.display().to_string(), raw).unwrap(),
         );

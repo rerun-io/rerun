@@ -268,7 +268,7 @@ mod tests {
         path: &Path,
         num_entities: usize,
         num_frames: usize,
-    ) -> (futures::io::AllowStdIo<File>, StoreId, Vec<Arc<Chunk>>) {
+    ) -> (std::fs::File, StoreId, Vec<Arc<Chunk>>) {
         let store_id = StoreId::random(StoreKind::Recording, "test");
         let store_info = StoreInfo::new(store_id.clone(), StoreSource::Unknown);
         let timeline = Timeline::new_sequence("frame");
@@ -314,13 +314,10 @@ mod tests {
 
         // Re-open for reading.
         let file = File::open(path).unwrap();
-        (futures::io::AllowStdIo::new(file), store_id, chunks)
+        (file, store_id, chunks)
     }
 
-    async fn read_raw_manifest(
-        file: &mut futures::io::AllowStdIo<File>,
-        store_id: &StoreId,
-    ) -> Arc<RawRrdManifest> {
+    async fn read_raw_manifest(file: &std::fs::File, store_id: &StoreId) -> Arc<RawRrdManifest> {
         let footer = re_log_encoding::read_rrd_footer(file)
             .await
             .unwrap()
@@ -331,7 +328,7 @@ mod tests {
     /// Construct a `LazyStore` from an open RRD file, via `RrdChunkProvider`.
     fn build_test_lazy_store(
         path: &Path,
-        file: futures::io::AllowStdIo<File>,
+        file: std::fs::File,
         raw_manifest: Arc<RawRrdManifest>,
     ) -> LazyStore {
         let provider = Arc::new(
@@ -349,8 +346,8 @@ mod tests {
     fn test_lazy_store_no_physical_chunks() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("test.rrd");
-        let (mut file, store_id, chunks) = create_test_rrd(&path, 2, 3);
-        let raw = futures::executor::block_on(read_raw_manifest(&mut file, &store_id));
+        let (file, store_id, chunks) = create_test_rrd(&path, 2, 3);
+        let raw = futures::executor::block_on(read_raw_manifest(&file, &store_id));
 
         let lazy = build_test_lazy_store(&path, file, raw);
 
@@ -366,8 +363,8 @@ mod tests {
     fn test_lazy_store_entities_visible() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("test.rrd");
-        let (mut file, store_id, _) = create_test_rrd(&path, 3, 2);
-        let raw = futures::executor::block_on(read_raw_manifest(&mut file, &store_id));
+        let (file, store_id, _) = create_test_rrd(&path, 3, 2);
+        let raw = futures::executor::block_on(read_raw_manifest(&file, &store_id));
 
         let lazy = build_test_lazy_store(&path, file, raw);
         let entity_tree = lazy.entity_tree();
@@ -386,8 +383,8 @@ mod tests {
     fn test_lazy_store_load_all() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("test.rrd");
-        let (mut file, store_id, chunks) = create_test_rrd(&path, 2, 3);
-        let raw = futures::executor::block_on(read_raw_manifest(&mut file, &store_id));
+        let (file, store_id, chunks) = create_test_rrd(&path, 2, 3);
+        let raw = futures::executor::block_on(read_raw_manifest(&file, &store_id));
 
         let lazy = build_test_lazy_store(&path, file, raw);
         let loaded = futures::executor::block_on(lazy.load_all_chunks()).unwrap();
@@ -398,8 +395,8 @@ mod tests {
     fn test_lazy_store_load_single_chunk() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("test.rrd");
-        let (mut file, store_id, chunks) = create_test_rrd(&path, 2, 3);
-        let raw = futures::executor::block_on(read_raw_manifest(&mut file, &store_id));
+        let (file, store_id, chunks) = create_test_rrd(&path, 2, 3);
+        let raw = futures::executor::block_on(read_raw_manifest(&file, &store_id));
 
         let lazy = build_test_lazy_store(&path, file, raw);
         let first_chunk_id = lazy.manifest().col_chunk_ids()[0];
@@ -417,8 +414,8 @@ mod tests {
     fn test_lazy_store_load_idempotent() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("test.rrd");
-        let (mut file, store_id, _) = create_test_rrd(&path, 1, 3);
-        let raw = futures::executor::block_on(read_raw_manifest(&mut file, &store_id));
+        let (file, store_id, _) = create_test_rrd(&path, 1, 3);
+        let raw = futures::executor::block_on(read_raw_manifest(&file, &store_id));
 
         let lazy = build_test_lazy_store(&path, file, raw);
 
@@ -446,8 +443,8 @@ mod tests {
     fn test_lazy_store_load_does_not_retain() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("test.rrd");
-        let (mut file, store_id, _) = create_test_rrd(&path, 2, 3);
-        let raw = futures::executor::block_on(read_raw_manifest(&mut file, &store_id));
+        let (file, store_id, _) = create_test_rrd(&path, 2, 3);
+        let raw = futures::executor::block_on(read_raw_manifest(&file, &store_id));
 
         let lazy = build_test_lazy_store(&path, file, raw);
         let first_chunk_id = lazy.manifest().col_chunk_ids()[0];
@@ -504,8 +501,8 @@ mod tests {
             .unwrap();
         encoder.finish().unwrap();
 
-        let mut file = futures::io::AllowStdIo::new(File::open(&path).unwrap());
-        let raw = futures::executor::block_on(read_raw_manifest(&mut file, &store_id));
+        let file = File::open(&path).unwrap();
+        let raw = futures::executor::block_on(read_raw_manifest(&file, &store_id));
 
         let lazy = build_test_lazy_store(&path, file, raw);
         let batch = futures::executor::block_on(lazy.extract_properties()).unwrap();
@@ -524,8 +521,8 @@ mod tests {
     fn test_lazy_store_schema() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("test.rrd");
-        let (mut file, store_id, _) = create_test_rrd(&path, 2, 3);
-        let raw = futures::executor::block_on(read_raw_manifest(&mut file, &store_id));
+        let (file, store_id, _) = create_test_rrd(&path, 2, 3);
+        let raw = futures::executor::block_on(read_raw_manifest(&file, &store_id));
 
         let lazy = build_test_lazy_store(&path, file, raw);
         let schema = lazy.schema();
@@ -548,8 +545,8 @@ mod tests {
     fn test_lazy_vs_eager_equivalence() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("test.rrd");
-        let (mut file, store_id, _) = create_test_rrd(&path, 2, 3);
-        let raw = futures::executor::block_on(read_raw_manifest(&mut file, &store_id));
+        let (file, store_id, _) = create_test_rrd(&path, 2, 3);
+        let raw = futures::executor::block_on(read_raw_manifest(&file, &store_id));
 
         // Lazy path: create lazy store, load all chunks via the no-cache API.
         let lazy = build_test_lazy_store(&path, file, raw);

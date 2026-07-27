@@ -23,7 +23,7 @@ all-features = true
 default = []
 
 ## Enable loading data from an .rrd file.
-decoder = ["dep:bytes"]
+decoder = ["dep:bytes", "dep:re_async"]
 
 ## Enable encoding of log messages to an .rrd file/stream.
 encoder = []
@@ -43,6 +43,7 @@ stream_from_http = [
 
 # Rerun:
 re_arrow_util.workspace = true
+re_async = { workspace = true, optional = true }
 re_build_info.workspace = true
 re_byte_size.workspace = true
 re_chunk.workspace = true
@@ -76,7 +77,6 @@ web-time = { workspace = true, optional = true }
 # Web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 js-sys = { workspace = true, optional = true }
-re_async = { workspace = true, optional = true }
 wasm-bindgen = { workspace = true, optional = true }
 web-sys = { workspace = true, optional = true, features = ["Window", "MessageEvent"] }
 

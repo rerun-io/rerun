@@ -1,9 +1,7 @@
-use std::io::SeekFrom;
-
-use futures::{AsyncReadExt as _, AsyncSeekExt as _};
+use re_async::AsyncReadAt;
 
 use super::footer_reader::read_rrd_footer_payload;
-use crate::rrd::{AsyncReadAt, CodecError};
+use crate::rrd::CodecError;
 
 /// A SHA-256 fingerprint of an RRD stream.
 //
@@ -22,25 +20,22 @@ impl RrdFingerprint {
     /// Computes an RRD fingerprint without reading chunk payloads when possible.
     ///
     /// When a footer is present, the fingerprint is the SHA-256 of its encoded payload.
-    /// Otherwise, the reader is reset and the entire stream is hashed incrementally.
-    /// The reader position is unspecified on return.
-    pub async fn compute_for_rrd<R: AsyncReadAt>(reader: &mut R) -> Result<Self, CodecError> {
+    /// Otherwise, the entire stream is hashed incrementally.
+    pub async fn compute_for_rrd<R: AsyncReadAt>(reader: &R) -> Result<Self, CodecError> {
         use sha2::Digest as _;
 
         if let Some(payload) = read_rrd_footer_payload(reader).await? {
             return Ok(Self(sha2::Sha256::digest(payload).into()));
         }
 
-        reader.seek(SeekFrom::Start(0)).await?;
-
+        let size = reader.size().await?;
         let mut hasher = sha2::Sha256::new();
-        let mut buffer = vec![0; 64 * 1024];
-        loop {
-            let read = reader.read(&mut buffer).await?;
-            if read == 0 {
-                break;
-            }
-            hasher.update(&buffer[..read]);
+        let mut offset = 0u64;
+        while offset < size {
+            let len = usize::try_from((64 * 1024u64).min(size - offset))?;
+            let buffer = reader.read_exact_at(offset, len).await?;
+            hasher.update(&buffer);
+            offset += len as u64;
         }
 
         Ok(Self(hasher.finalize().into()))
@@ -71,9 +66,9 @@ mod tests {
         let end = usize::try_from(span.start + span.len).unwrap();
         let expected: [u8; 32] = sha2::Sha256::digest(&bytes[start..end]).into();
 
-        let mut file = futures::io::AllowStdIo::new(File::open(file.path()).unwrap());
+        let file = File::open(file.path()).unwrap();
         let fingerprint =
-            futures::executor::block_on(RrdFingerprint::compute_for_rrd(&mut file)).unwrap();
+            futures::executor::block_on(RrdFingerprint::compute_for_rrd(&file)).unwrap();
 
         assert_eq!(fingerprint, RrdFingerprint(expected));
     }
@@ -86,9 +81,9 @@ mod tests {
         let bytes = std::fs::read(file.path()).unwrap();
         let expected: [u8; 32] = sha2::Sha256::digest(&bytes).into();
 
-        let mut file = futures::io::AllowStdIo::new(File::open(file.path()).unwrap());
+        let file = File::open(file.path()).unwrap();
         let fingerprint =
-            futures::executor::block_on(RrdFingerprint::compute_for_rrd(&mut file)).unwrap();
+            futures::executor::block_on(RrdFingerprint::compute_for_rrd(&file)).unwrap();
 
         assert_eq!(fingerprint, RrdFingerprint(expected));
     }

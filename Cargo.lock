@@ -8573,6 +8573,8 @@ dependencies = [
 name = "re_async"
 version = "0.36.0-alpha.1+dev"
 dependencies = [
+ "async-trait",
+ "bytes",
  "futures",
  "js-sys",
  "thiserror 2.0.18",
@@ -10877,6 +10879,7 @@ dependencies = [
  "anyhow",
  "arrow",
  "bytemuck",
+ "bytes",
  "camino",
  "crossbeam",
  "eframe",
@@ -10973,7 +10976,6 @@ dependencies = [
  "thiserror 2.0.18",
  "tokio",
  "tokio-stream",
- "tokio-util",
  "url",
  "wasm-bindgen",
  "wasm-bindgen-futures",
@@ -11135,6 +11137,8 @@ dependencies = [
 name = "re_web"
 version = "0.36.0-alpha.1+dev"
 dependencies = [
+ "async-trait",
+ "bytes",
  "getrandom 0.3.4",
  "js-sys",
  "re_async",

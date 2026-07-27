@@ -1,15 +1,13 @@
 use std::sync::Arc;
 
+use re_async::AsyncReadAt;
 use re_chunk::{Chunk, ChunkId};
 
-use crate::{
-    AsyncReadAt, ChunkProvider, ChunkProviderError, CodecResult, RawRrdManifest, RrdManifest,
-};
+use crate::{ChunkProvider, ChunkProviderError, CodecResult, RawRrdManifest, RrdManifest};
 
 /// Reader-backed [`ChunkProvider`].
 pub struct RrdChunkProvider<R: AsyncReadAt> {
-    // TODO(grtlr): Change this to be `Mutex` free, but one step at a time.
-    reader: futures::lock::Mutex<R>,
+    reader: R,
     manifest: Arc<RrdManifest>,
     raw_manifest: Arc<RawRrdManifest>,
 
@@ -28,7 +26,7 @@ impl<R: AsyncReadAt> RrdChunkProvider<R> {
     ) -> CodecResult<Self> {
         let manifest = Arc::new(RrdManifest::try_new(&raw_manifest)?);
         Ok(Self {
-            reader: futures::lock::Mutex::new(reader),
+            reader,
             manifest,
             raw_manifest,
             source: source.into(),
@@ -37,7 +35,7 @@ impl<R: AsyncReadAt> RrdChunkProvider<R> {
 }
 
 #[async_trait::async_trait]
-impl<R: AsyncReadAt + Send> ChunkProvider for RrdChunkProvider<R> {
+impl<R: AsyncReadAt> ChunkProvider for RrdChunkProvider<R> {
     fn manifest(&self) -> &Arc<RrdManifest> {
         &self.manifest
     }
@@ -54,8 +52,7 @@ impl<R: AsyncReadAt + Send> ChunkProvider for RrdChunkProvider<R> {
         if ids.is_empty() {
             return Ok(Vec::new());
         }
-        let mut reader = self.reader.lock().await;
-        crate::read_chunks(&mut *reader, &self.manifest, ids)
+        crate::read_chunks(&self.reader, &self.manifest, ids)
             .await
             .map_err(|err| ChunkProviderError(Box::new(err)))
     }
@@ -83,7 +80,7 @@ mod tests {
         fn _assert_object_safe(_: &dyn ChunkProvider) {}
 
         fn _assert_arc_dyn_constructs(
-            p: Arc<RrdChunkProvider<futures::io::AllowStdIo<std::fs::File>>>,
+            p: Arc<RrdChunkProvider<std::fs::File>>,
         ) -> Arc<dyn ChunkProvider> {
             p
         }
@@ -142,14 +139,14 @@ mod tests {
         let path = dir.path().join("test.rrd");
         let (store_id, chunks) = write_test_rrd(&path, 3);
 
-        let mut footer_file = futures::io::AllowStdIo::new(std::fs::File::open(&path).unwrap());
-        let footer = futures::executor::block_on(crate::read_rrd_footer(&mut footer_file))
+        let footer_file = std::fs::File::open(&path).unwrap();
+        let footer = futures::executor::block_on(crate::read_rrd_footer(&footer_file))
             .unwrap()
             .unwrap();
         let raw = Arc::new(footer.manifests[&store_id].clone());
         drop(footer_file);
 
-        let store_file = futures::io::AllowStdIo::new(std::fs::File::open(&path).unwrap());
+        let store_file = std::fs::File::open(&path).unwrap();
         let provider =
             RrdChunkProvider::from_reader(store_file, path.display().to_string(), raw).unwrap();
 

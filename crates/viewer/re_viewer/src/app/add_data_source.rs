@@ -12,8 +12,6 @@ use std::path::Path;
 use anyhow::Context as _;
 use re_protos::cloud::v1alpha1::ext::DataSource;
 use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
-#[cfg(not(target_arch = "wasm32"))]
-use tokio_util::compat::TokioAsyncReadCompatExt as _;
 
 impl App {
     #[expect(clippy::needless_pass_by_ref_mut)]
@@ -399,16 +397,15 @@ async fn register_local_file(
     })?;
 
     let dataset_name = async {
-        let mut file = tokio::fs::File::open(&abs_path)
-            .await
-            .with_context(|| {
-                format!(
-                    "failed to open RRD for application id extraction\nFile path: {}",
-                    abs_path.display(),
-                )
-            })?
-            .compat();
-        rrd_dataset_name(&mut file).await
+        // TODO(tokio-rs/tokio#1529): positional reads block the reactor; use `std::fs::File` until
+        // an async positional file API lands (or push reads to `spawn_blocking`).
+        let file = std::fs::File::open(&abs_path).with_context(|| {
+            format!(
+                "failed to open RRD for application id extraction\nFile path: {}",
+                abs_path.display(),
+            )
+        })?;
+        rrd_dataset_name(&file).await
     }
     .await
     .unwrap_or_else(|err| {
@@ -431,14 +428,15 @@ async fn register_opfs_file(
     connection_registry: &re_redap_client::ConnectionRegistryHandle,
     file_contents: &re_data_source::FileContents,
 ) -> anyhow::Result<re_uri::DatasetSegmentUri> {
-    let mut reader = futures::io::Cursor::new(file_contents.bytes.clone());
-    let dataset_name = rrd_dataset_name(&mut reader).await.with_context(|| {
+    // Zero-copy: `Bytes` wraps the shared `Arc<[u8]>` and slices it by refcount.
+    let reader = bytes::Bytes::from_owner(file_contents.bytes.clone());
+    let dataset_name = rrd_dataset_name(&reader).await.with_context(|| {
         format!(
             "failed to read application id from RRD\nFile path: {}",
             file_contents.path.display(),
         )
     })?;
-    let fingerprint = re_log_encoding::RrdFingerprint::compute_for_rrd(&mut reader)
+    let fingerprint = re_log_encoding::RrdFingerprint::compute_for_rrd(&reader)
         .await
         .with_context(|| {
             format!(
@@ -528,9 +526,7 @@ async fn register_file(
     })
 }
 
-async fn rrd_dataset_name(
-    reader: &mut impl re_log_encoding::AsyncReadAt,
-) -> anyhow::Result<String> {
+async fn rrd_dataset_name(reader: &impl re_async::AsyncReadAt) -> anyhow::Result<String> {
     let store_ids = re_log_encoding::enumerate_rrd_stores(reader).await?;
     let first_application_id = store_ids
         .first()

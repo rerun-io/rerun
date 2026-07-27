@@ -294,7 +294,6 @@ mod tests {
         example_components::{MyPoint, MyPoints},
     };
     use re_types_core::ChunkId;
-    use tokio_util::compat::TokioAsyncReadCompatExt as _;
 
     use super::*;
     use crate::store::{ChunkKey, ResolvedStore};
@@ -385,19 +384,13 @@ mod tests {
         let rrd_path = dir.path().join("test.rrd");
         write_rrd(&rrd_path, &store_id, &chunks);
 
-        let mut footer_file = tokio::fs::File::open(&rrd_path)
-            .await
-            .expect("failed to open test RRD")
-            .compat();
-        let footer = re_log_encoding::read_rrd_footer(&mut footer_file)
+        let footer_file = std::fs::File::open(&rrd_path).expect("failed to open test RRD");
+        let footer = re_log_encoding::read_rrd_footer(&footer_file)
             .await
             .expect("failed to read test RRD footer")
             .expect("test RRD should have a footer");
         let raw_manifest = Arc::new(footer.manifests[&store_id].clone());
-        let store_file = tokio::fs::File::open(&rrd_path)
-            .await
-            .expect("failed to open test RRD")
-            .compat();
+        let store_file = std::fs::File::open(&rrd_path).expect("failed to open test RRD");
         let provider = Arc::new(
             RrdChunkProvider::from_reader(store_file, rrd_path.display().to_string(), raw_manifest)
                 .expect("failed to create test RRD chunk provider"),

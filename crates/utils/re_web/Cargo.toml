@@ -23,6 +23,8 @@ targets = ["wasm32-unknown-unknown"]
 ignored = ["getrandom"] # enables the wasm backend used by re_tuid in tests
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
+async-trait.workspace = true
+bytes.workspace = true
 js-sys.workspace = true
 re_async.workspace = true
 wasm-bindgen.workspace = true

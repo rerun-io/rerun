@@ -3,8 +3,6 @@ use std::sync::Arc;
 
 use arrow::array::RecordBatch;
 use futures::AsyncRead;
-#[cfg(not(target_arch = "wasm32"))]
-use futures::AsyncSeekExt as _;
 use nohash_hasher::IntSet;
 use re_chunk_store::{
     ChunkStoreHandle, ChunkStoreHandleWeak, ChunkTrackingMode, LazyStore, QueryResults, StoreSchema,
@@ -161,15 +159,17 @@ impl ResolvedStore {
 
         #[cfg(not(target_arch = "wasm32"))]
         {
-            let mut file = tokio::fs::File::open(path).await?.compat();
+            // TODO(tokio-rs/tokio#1529): positional reads block the reactor; use `std::fs::File`
+            // until an async positional file API lands (or push reads to `spawn_blocking`).
+            let file = std::fs::File::open(path)?;
 
-            if let Ok(Some(footer)) = re_log_encoding::read_rrd_footer(&mut file).await {
+            if let Ok(Some(footer)) = re_log_encoding::read_rrd_footer(&file).await {
                 let mut out = Vec::with_capacity(footer.manifests.len());
                 for (store_id, raw_manifest) in footer.manifests {
                     if store_id.kind() != store_kind {
                         continue;
                     }
-                    let store_file = tokio::fs::File::open(path).await?.compat();
+                    let store_file = std::fs::File::open(path)?;
                     let provider = Arc::new(
                         RrdChunkProvider::from_reader(
                             store_file,
@@ -183,8 +183,9 @@ impl ResolvedStore {
                 }
                 Ok(out)
             } else {
-                // Legacy fallback: eager load (no footer, or footer read error).
-                file.seek(std::io::SeekFrom::Start(0)).await?;
+                // Legacy fallback: eager load (no footer, or footer read error). This path needs a
+                // streaming `AsyncRead`, so open a fresh reader for it.
+                let file = tokio::fs::File::open(path).await?.compat();
                 Self::load_rrd_reader_eager(
                     file,
                     store_kind,
@@ -221,7 +222,6 @@ mod tests {
     use re_log_types::{
         EntityPath, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource,
     };
-    use tokio_util::compat::TokioAsyncReadCompatExt as _;
 
     use super::ResolvedStore;
 
@@ -289,11 +289,8 @@ mod tests {
             let store_id = StoreId::random(StoreKind::Recording, "test");
             write_rrd(path, &store_id, with_footer);
 
-            let mut file = tokio::fs::File::open(path)
-                .await
-                .expect("failed to open test RRD file")
-                .compat();
-            let validated: BTreeSet<StoreId> = re_log_encoding::enumerate_rrd_stores(&mut file)
+            let file = std::fs::File::open(path).expect("failed to open test RRD file");
+            let validated: BTreeSet<StoreId> = re_log_encoding::enumerate_rrd_stores(&file)
                 .await
                 .expect("failed to enumerate test RRD stores")
                 .into_iter()
