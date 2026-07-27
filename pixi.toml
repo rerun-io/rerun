@@ -595,7 +595,6 @@ cpp-prepare-msvc = "cmake -G 'Visual Studio 17 2022' -B build-msvc -S ."
 #   `meilisearch`).
 # - Last resort, use a feature to conditionally include a dependency (e.g. `taplo`).
 
-aiohttp = ">=3.9.3,<3.10" # For `zombie_todos.py`
 attrs = ">=23.1.0"
 clang = "16.0.6.*"
 clang-tools = "16.0.6.*" # clang-format
@@ -638,7 +637,7 @@ pip = ">=23"
 wheel = ">=0.38,<0.39"
 
 [feature.base.pypi-dependencies]
-cryptography = "==38.0.4" # For `upload_image.py` -- note: version is constrained by hatch dependency
+cryptography = ">=49" # Transitive need of `google-auth` (via `google-cloud-storage`) for `upload_image.py`.
 google-cloud-storage = "==2.9.0" # For `upload_image.py`
 hatch = "*" # For `rerun_notebook`
 pillow = ">=12.2.0,<13" # For `upload_image.py`
