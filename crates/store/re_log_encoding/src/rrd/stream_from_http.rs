@@ -157,7 +157,7 @@ pub mod web_decode {
     use super::{Error, HttpMessage, HttpMessageCallback};
 
     pub fn decode_rrd(rrd_bytes: Vec<u8>, on_msg: Arc<HttpMessageCallback>) {
-        re_web::task::spawn_local(decode_rrd_async(rrd_bytes, on_msg));
+        re_async::spawn_local(decode_rrd_async(rrd_bytes, on_msg));
     }
 
     /// Decodes the file in chunks, with an yield between each chunk.
@@ -201,7 +201,7 @@ pub mod web_decode {
     // Yield to other tasks
     async fn yield_() {
         // TODO(emilk): create a better async yield function. See https://github.com/wasm-bindgen/wasm-bindgen/issues/3359
-        re_web::time::sleep(std::time::Duration::from_millis(1)).await;
+        re_async::sleep(std::time::Duration::from_millis(1)).await;
     }
 }
 

@@ -1869,7 +1869,7 @@ fn save_entity_db(
     // Web
     #[cfg(target_arch = "wasm32")]
     {
-        re_web::task::spawn_local(async move {
+        re_async::spawn_local(async move {
             if let Err(err) =
                 async_save_dialog(rrd_version, &file_name, &title, messages.into_iter()).await
             {

@@ -19,6 +19,7 @@ use datafusion::physical_plan::ExecutionPlan;
 use futures::StreamExt as _;
 use itertools::Itertools as _;
 use parking_lot::Mutex;
+use re_async::AsyncRuntimeHandle;
 use re_dataframe::external::re_chunk_store::ChunkStore;
 use re_dataframe::{Index, IndexValue, QueryExpression, SparseFillStrategy};
 use re_log_types::{EntityPath, EntryId};
@@ -246,7 +247,17 @@ impl DataframeQueryTableProvider<ConnectionClient> {
         )
         .await?;
 
-        provider.analytics = connection.analytics.map(crate::ConnectionAnalytics::new);
+        if let Some(exporter) = connection.analytics {
+            let async_runtime = AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen()
+                .map_err(|err| {
+                    ApiError::internal_with_source(
+                        None,
+                        err,
+                        "failed to capture the async runtime for query analytics",
+                    )
+                })?;
+            provider.analytics = Some(crate::ConnectionAnalytics::new(exporter, async_runtime));
+        }
 
         Ok(provider)
     }

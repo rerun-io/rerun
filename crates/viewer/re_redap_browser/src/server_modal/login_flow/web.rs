@@ -1,11 +1,11 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use re_async::AsyncRuntimeHandle;
 use re_auth::oauth::Credentials;
 use re_auth::oauth::api::{AuthenticateWithCode, Pkce, authorization_url, send_async};
 use re_log::ResultExt as _;
 use re_ui::UiExt as _;
-use re_viewer_context::AsyncRuntimeHandle;
 use uuid::Uuid;
 use wasm_bindgen::JsCast as _;
 use wasm_bindgen::prelude::Closure;

@@ -3,6 +3,7 @@
 
 use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs as _};
 
+use re_async::AsyncRuntimeHandle;
 use tokio::net::TcpListener;
 use tokio::sync::oneshot::Sender;
 use tokio::sync::{mpsc, oneshot};
@@ -36,7 +37,6 @@ pub struct Server {
 pub struct ServerHandle {
     shutdown: Option<Sender<()>>,
     failed: mpsc::Receiver<String>,
-    _task: tokio::task::JoinHandle<()>,
 
     /// The address clients should connect to.
     connect_addr: SocketAddr,
@@ -74,7 +74,10 @@ impl ServerHandle {
 
 impl Server {
     /// Starts the server, waits for it to be ready, and returns a [`ServerHandle`].
-    pub async fn start(self) -> Result<ServerHandle, ServerError> {
+    pub async fn start(
+        self,
+        async_runtime: &AsyncRuntimeHandle,
+    ) -> Result<ServerHandle, ServerError> {
         let Self {
             addr,
             routes,
@@ -90,7 +93,7 @@ impl Server {
         let injected_errors = InjectedErrors::new();
 
         let injected_errors_for_handle = injected_errors.clone();
-        let task = tokio::spawn(async move {
+        async_runtime.spawn_future(async move {
             let listener = if let Ok(listener) = TcpListener::bind(addr).await {
                 #[expect(clippy::unwrap_used)]
                 let bind_addr = listener.local_addr().unwrap();
@@ -207,7 +210,6 @@ impl Server {
         Ok(ServerHandle {
             shutdown: Some(shutdown_tx),
             failed: failed_rx_for_select,
-            _task: task,
             connect_addr,
             injected_errors: injected_errors_for_handle,
         })

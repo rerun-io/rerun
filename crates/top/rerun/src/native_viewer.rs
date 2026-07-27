@@ -19,8 +19,8 @@ pub fn show(main_thread_token: crate::MainThreadToken, msgs: Vec<LogMsg>) -> efr
         llvm_version: env!("RE_BUILD_LLVM_VERSION").into(),
     };
 
-    let runtime =
-        tokio::runtime::Runtime::new().map_err(|err| eframe::Error::AppCreation(Box::new(err)))?;
+    let runtime = tokio::runtime::Runtime::new() // NOLINT: the blocking viewer entrypoint owns this runtime
+        .map_err(|err| eframe::Error::AppCreation(Box::new(err)))?;
 
     let startup_options = re_viewer::StartupOptions::default();
 

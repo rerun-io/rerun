@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use egui::{FocusDirection, Key};
+use re_async::AsyncRuntimeHandle;
 use re_auth::credentials::CredentialsProvider as _;
 use re_build_info::CrateVersion;
 use re_byte_size::{MemUsageTree, MemUsageTreeCapture};
@@ -18,10 +19,10 @@ use re_ui::{ContextExt as _, UICommand, UICommandSender as _, notifications};
 use re_viewer_context::open_url::{OpenUrlOptions, ViewerOpenUrl};
 use re_viewer_context::store_hub::{BlueprintPersistence, StoreHub};
 use re_viewer_context::{
-    AppBlueprintCtx, AppOptions, AsyncRuntimeHandle, AuthContext, CommandReceiver, CommandSender,
-    ComponentUiRegistry, EditRedapServerModalCommand, FallbackProviderRegistry, Item, NeedsRepaint,
-    Route, SystemCommand, SystemCommandSender as _, TimeControlCommand, ViewClass,
-    ViewClassRegistry, ViewClassRegistryError, command_channel,
+    AppBlueprintCtx, AppOptions, AuthContext, CommandReceiver, CommandSender, ComponentUiRegistry,
+    EditRedapServerModalCommand, FallbackProviderRegistry, Item, NeedsRepaint, Route,
+    SystemCommand, SystemCommandSender as _, TimeControlCommand, ViewClass, ViewClassRegistry,
+    ViewClassRegistryError, command_channel,
 };
 
 use crate::app_blueprint::{AppBlueprint, PanelStateOverrides};
@@ -175,7 +176,7 @@ impl App {
         startup_options: StartupOptions,
         creation_context: &eframe::CreationContext<'_>,
         connection_registry: Option<ConnectionRegistryHandle>,
-        tokio_runtime: AsyncRuntimeHandle,
+        async_runtime: AsyncRuntimeHandle,
     ) -> Self {
         Self::with_commands(
             main_thread_token,
@@ -184,7 +185,7 @@ impl App {
             startup_options,
             creation_context,
             connection_registry,
-            tokio_runtime,
+            async_runtime,
             crate::register_text_log_receiver(),
             command_channel(),
         )
@@ -198,7 +199,7 @@ impl App {
         startup_options: StartupOptions,
         creation_context: &eframe::CreationContext<'_>,
         connection_registry: Option<ConnectionRegistryHandle>,
-        tokio_runtime: AsyncRuntimeHandle,
+        async_runtime: AsyncRuntimeHandle,
         text_log_rx: crossbeam::channel::Receiver<re_log::LogMsg>,
         command_channel: (CommandSender, CommandReceiver),
     ) -> Self {
@@ -224,7 +225,7 @@ impl App {
             });
 
             // Call get_token once so the auth state is initialized.
-            tokio_runtime.spawn_future(async move {
+            async_runtime.spawn_future(async move {
                 re_auth::credentials::CliCredentialsProvider::new()
                     .get_token()
                     .await
@@ -512,7 +513,7 @@ impl App {
 
             connection_registry,
             server_latency_trackers: ServerLatencyTrackers::default(),
-            async_runtime: tokio_runtime,
+            async_runtime,
         }
     }
 
@@ -1259,7 +1260,7 @@ impl eframe::App for App {
         }
 
         self.server_latency_trackers
-            .update(&self.connection_registry);
+            .update(&self.async_runtime, &self.connection_registry);
 
         // We move the time at the very start of the frame,
         // so that we always show the latest data when we're in "follow" mode.

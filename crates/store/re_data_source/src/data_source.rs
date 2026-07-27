@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 #[cfg(not(target_arch = "wasm32"))]
 use anyhow::Context as _;
+use re_async::AsyncRuntimeHandle;
 use re_log_channel::{LogReceiver, LogSource, RecordingOpenBehavior};
 use re_log_types::RecordingId;
 use re_redap_client::ConnectionRegistryHandle;
@@ -242,10 +243,12 @@ impl LogDataSource {
     /// `on_redap_err` should handle authentication errors by showing a login prompt.
     pub fn stream(
         self,
+        async_runtime: &AsyncRuntimeHandle,
         on_auth_err: AuthErrorHandler,
         connection_registry: &ConnectionRegistryHandle,
     ) -> anyhow::Result<LogReceiver> {
         self.stream_with_options(
+            async_runtime,
             on_auth_err,
             connection_registry,
             re_redap_client::StreamingOptions::default(),
@@ -255,6 +258,7 @@ impl LogDataSource {
     /// Like [`Self::stream`], but with additional options controlling streaming behavior.
     pub fn stream_with_options(
         self,
+        async_runtime: &AsyncRuntimeHandle,
         on_auth_err: AuthErrorHandler,
         connection_registry: &ConnectionRegistryHandle,
         streaming_options: re_redap_client::StreamingOptions,
@@ -322,7 +326,7 @@ impl LogDataSource {
                 let path = std::path::PathBuf::from(file.name());
                 let (tx, rx) = re_log_channel::log_channel(LogSource::File { path: path.clone() });
 
-                spawn_future(async move {
+                async_runtime.spawn_future(async move {
                     re_log::debug!("Reading {}…", path.display());
                     let file_contents = match FileContents::from_file(file).await {
                         Ok(file_contents) => file_contents,
@@ -389,7 +393,7 @@ impl LogDataSource {
                     .await
                 };
 
-                spawn_future(async move {
+                async_runtime.spawn_future(async move {
                     if let Err(err) = stream_segment.await {
                         if let Some(err) = err.as_client_credentials_error() {
                             on_auth_err(uri, err);
@@ -401,7 +405,7 @@ impl LogDataSource {
                 Ok(rx)
             }
 
-            Self::RedapProxy(uri) => Ok(re_grpc_client::stream(uri)),
+            Self::RedapProxy(uri) => Ok(re_grpc_client::stream(async_runtime, uri)),
         }
     }
 
@@ -527,28 +531,6 @@ pub struct LogDataSourceAnalytics {
     /// How the file was opened (e.g., "cli", `file_dialog`, `drag_and_drop`).
     /// Only applicable for file-based sources.
     pub file_source: Option<&'static str>,
-}
-
-// TODO(ab, andreas): This should be replaced by the use of `AsyncRuntimeHandle`. However, this
-// requires:
-// - `AsyncRuntimeHandle` to be moved lower in the crate hierarchy to be available here (unsure
-//   where).
-// - Make sure that all callers of `DataSource::stream` have access to an `AsyncRuntimeHandle`
-//   (maybe it should be in `AppContext`?).
-#[cfg(target_arch = "wasm32")]
-fn spawn_future<F>(future: F)
-where
-    F: std::future::Future<Output = ()> + 'static,
-{
-    re_web::task::spawn_local(future);
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-fn spawn_future<F>(future: F)
-where
-    F: std::future::Future<Output = ()> + 'static + Send,
-{
-    tokio::spawn(future);
 }
 
 #[cfg(test)]

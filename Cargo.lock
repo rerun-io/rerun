@@ -8570,6 +8570,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_async"
+version = "0.36.0-alpha.1+dev"
+dependencies = [
+ "futures",
+ "js-sys",
+ "thiserror 2.0.18",
+ "tokio",
+ "wasm-bindgen-futures",
+ "wasm-bindgen-test",
+ "web-sys",
+]
+
+[[package]]
 name = "re_auth"
 version = "0.36.0-alpha.1+dev"
 dependencies = [
@@ -8612,8 +8625,7 @@ version = "0.36.0-alpha.1+dev"
 dependencies = [
  "getrandom 0.3.4",
  "rand 0.9.4",
- "re_web",
- "tokio",
+ "re_async",
 ]
 
 [[package]]
@@ -8887,6 +8899,7 @@ dependencies = [
  "itertools 0.14.0",
  "js-sys",
  "rayon",
+ "re_async",
  "re_format",
  "re_grpc_client",
  "re_importer",
@@ -8898,7 +8911,6 @@ dependencies = [
  "re_tracing",
  "re_uri",
  "re_web",
- "tokio",
  "url",
  "web-sys",
 ]
@@ -8986,6 +8998,7 @@ dependencies = [
  "nohash-hasher",
  "ordered-float 5.3.0",
  "re_arrow_util",
+ "re_async",
  "re_chunk_store",
  "re_component_ui",
  "re_data_source",
@@ -9037,6 +9050,7 @@ dependencies = [
  "quiver",
  "re_analytics",
  "re_arrow_util",
+ "re_async",
  "re_backoff",
  "re_byte_size",
  "re_dataframe",
@@ -9052,7 +9066,6 @@ dependencies = [
  "re_tracing",
  "re_types_core",
  "re_uri",
- "re_web",
  "reqwest",
  "tokio",
  "tokio-stream",
@@ -9159,6 +9172,7 @@ version = "0.36.0-alpha.1+dev"
 dependencies = [
  "async-stream",
  "crossbeam",
+ "re_async",
  "re_chunk",
  "re_error",
  "re_log",
@@ -9170,7 +9184,6 @@ dependencies = [
  "re_sorbet",
  "re_tracing",
  "re_uri",
- "re_web",
  "rerun-tonic-web-wasm-client",
  "thiserror 2.0.18",
  "tokio",
@@ -9412,6 +9425,7 @@ dependencies = [
  "mimalloc",
  "parking_lot",
  "re_arrow_util",
+ "re_async",
  "re_build_info",
  "re_byte_size",
  "re_chunk",
@@ -9424,7 +9438,6 @@ dependencies = [
  "re_span",
  "re_tracing",
  "re_types_core",
- "re_web",
  "sha2",
  "similar-asserts",
  "tempfile",
@@ -9786,6 +9799,7 @@ dependencies = [
  "egui_extras",
  "futures",
  "itertools 0.14.0",
+ "re_async",
  "re_auth",
  "re_backoff",
  "re_component_ui",
@@ -9957,9 +9971,9 @@ dependencies = [
  "macaw",
  "pollster",
  "rand 0.9.4",
+ "re_async",
  "re_log",
  "re_renderer",
- "re_web",
  "web-sys",
  "web-time",
  "wgpu",
@@ -10129,6 +10143,7 @@ dependencies = [
  "parking_lot",
  "percent-encoding",
  "re_arrow_util",
+ "re_async",
  "re_build_info",
  "re_build_tools",
  "re_byte_size",
@@ -10517,6 +10532,7 @@ dependencies = [
  "itertools 0.14.0",
  "js-sys",
  "poll-promise",
+ "re_async",
  "re_byte_size",
  "re_int",
  "re_log",
@@ -10883,6 +10899,7 @@ dependencies = [
  "poll-promise",
  "rayon",
  "re_analytics",
+ "re_async",
  "re_auth",
  "re_blueprint_tree",
  "re_build_info",
@@ -10999,6 +11016,7 @@ dependencies = [
  "rayon",
  "re_arrow_ui",
  "re_arrow_util",
+ "re_async",
  "re_byte_size",
  "re_capabilities",
  "re_chunk",
@@ -11117,13 +11135,11 @@ dependencies = [
 name = "re_web"
 version = "0.36.0-alpha.1+dev"
 dependencies = [
- "futures",
  "getrandom 0.3.4",
  "js-sys",
+ "re_async",
  "re_tuid",
- "thiserror 2.0.18",
  "wasm-bindgen",
- "wasm-bindgen-futures",
  "wasm-bindgen-test",
  "web-sys",
 ]
@@ -11359,6 +11375,7 @@ dependencies = [
  "rayon",
  "re_analytics",
  "re_arrow_util",
+ "re_async",
  "re_auth",
  "re_build_info",
  "re_build_tools",

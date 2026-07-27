@@ -53,7 +53,7 @@ impl WebViewerSink {
         let server_handle = std::thread::Builder::new()
             .name("message_proxy_server".to_owned())
             .spawn(move || {
-                let mut builder = tokio::runtime::Builder::new_current_thread();
+                let mut builder = tokio::runtime::Builder::new_current_thread(); // NOLINT: the synchronous server thread owns this runtime
                 builder.enable_all();
                 let rt = builder.build().expect("failed to build tokio runtime");
 

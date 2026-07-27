@@ -23,11 +23,9 @@ targets = ["wasm32-unknown-unknown"]
 ignored = ["getrandom"] # enables the wasm backend used by re_tuid in tests
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-futures.workspace = true
 js-sys.workspace = true
-thiserror.workspace = true
+re_async.workspace = true
 wasm-bindgen.workspace = true
-wasm-bindgen-futures.workspace = true
 web-sys = { workspace = true, features = [
   "Blob",
   "DomException",

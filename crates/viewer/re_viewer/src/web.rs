@@ -8,14 +8,13 @@ use std::str::FromStr as _;
 use ahash::HashMap;
 use arrow::array::RecordBatch;
 use itertools::Itertools as _;
+use re_async::AsyncRuntimeHandle;
 use re_log::ResultExt as _;
 use re_log_channel::{LogSender, RecordingOpenBehavior};
 use re_log_types::{TableId, TableMsg, TimelineName};
 use re_memory::AccountingAllocator;
 use re_sdk_types::blueprint::components::PlayState;
-use re_viewer_context::{
-    AsyncRuntimeHandle, SystemCommand, SystemCommandSender as _, TimeControlCommand, open_url,
-};
+use re_viewer_context::{SystemCommand, SystemCommandSender as _, TimeControlCommand, open_url};
 use serde::Deserialize;
 use wasm_bindgen::prelude::*;
 

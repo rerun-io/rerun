@@ -208,7 +208,7 @@ fn run_local<T>(
 where
     T: Send + 'static,
 {
-    let task = crate::task::spawn_local_with_result(future);
+    let task = re_async::spawn_local_with_result(future);
 
     async move {
         task.await.map_err(|_err| {

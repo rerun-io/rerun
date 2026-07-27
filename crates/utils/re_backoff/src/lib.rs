@@ -39,21 +39,11 @@ pub struct Backoff {
     jittered: Duration,
 }
 
-#[cfg(not(target_arch = "wasm32"))]
-async fn sleep(duration: Duration) {
-    tokio::time::sleep(duration).await;
-}
-
-#[cfg(target_arch = "wasm32")]
-async fn sleep(duration: Duration) {
-    re_web::time::sleep(duration).await;
-}
-
 impl Backoff {
     /// Sleep for the amount of time specified by this backoff instance.
     #[inline]
     pub async fn sleep(&self) {
-        sleep(self.jittered).await;
+        re_async::sleep(self.jittered).await;
     }
 
     /// The base duration for the backoff.

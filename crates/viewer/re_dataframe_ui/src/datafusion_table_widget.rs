@@ -10,6 +10,7 @@ use egui::{Frame, Id, Margin, OpenUrl, Panel, RichText, Ui};
 use egui_table::{CellInfo, HeaderCellInfo};
 use itertools::Itertools as _;
 use re_arrow_util::ArrowArrayDowncastRef as _;
+use re_async::AsyncRuntimeHandle;
 use re_format::{format_plural_s, format_uint};
 use re_log::error;
 use re_log_types::{EntryId, Timestamp};
@@ -18,7 +19,7 @@ use re_sorbet::{ColumnDescriptorRef, SorbetSchema};
 use re_ui::egui_ext::response_ext::ResponseExt as _;
 use re_ui::menu::menu_style;
 use re_ui::{UiExt as _, UiLayout, icons};
-use re_viewer_context::{AppContext, AsyncRuntimeHandle, SystemCommand, SystemCommandSender as _};
+use re_viewer_context::{AppContext, SystemCommand, SystemCommandSender as _};
 
 use crate::StreamingCacheTableProvider;
 use crate::datafusion_adapter::{DataFusionAdapter, DataFusionQueryResult};

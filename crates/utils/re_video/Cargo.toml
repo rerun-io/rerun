@@ -92,6 +92,7 @@ image = { workspace = true, default-features = false, features = ["jpeg"] }
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { workspace = true, features = ["wasm_js"] }
 js-sys.workspace = true
+re_async.workspace = true
 re_web.workspace = true
 wasm-bindgen.workspace = true
 web-sys = { workspace = true, features = [

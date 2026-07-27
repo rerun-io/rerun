@@ -69,7 +69,7 @@ winit = { workspace = true, default-features = false, features = [
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 console_error_panic_hook.workspace = true
-re_web.workspace = true
+re_async.workspace = true
 web-sys = { workspace = true, features = [
   "Blob",
   "Element",

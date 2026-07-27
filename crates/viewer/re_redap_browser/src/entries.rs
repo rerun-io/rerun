@@ -8,6 +8,7 @@ use datafusion::common::TableReference;
 use datafusion::prelude::SessionContext;
 use futures::stream::FuturesUnordered;
 use futures::{FutureExt as _, StreamExt as _, TryFutureExt as _};
+use re_async::AsyncRuntimeHandle;
 use re_dataframe_ui::{RequestedObject, StreamingCacheTableProvider};
 use re_datafusion::{SegmentTableProvider, TableEntryTableProvider, TableKind, TableQueryCaller};
 use re_log_types::{EntryId, EntryName, TableId};
@@ -19,9 +20,7 @@ use re_redap_client::{
     ApiError, ConnectionAnalyticsExporter, ConnectionClient, ConnectionRegistryHandle,
 };
 use re_ui::{Icon, icons};
-use re_viewer_context::{
-    AsyncRuntimeHandle, CommandSender, SystemCommand, SystemCommandSender as _,
-};
+use re_viewer_context::{CommandSender, SystemCommand, SystemCommandSender as _};
 
 pub type EntryResult<T = ()> = Result<T, ApiError>;
 
@@ -472,9 +471,9 @@ async fn fetch_table_details(
     );
 
     #[cfg(target_arch = "wasm32")]
-    let runtime = None;
+    let tokio_runtime = None;
     #[cfg(not(target_arch = "wasm32"))]
-    let runtime = Some(runtime.inner().clone());
+    let tokio_runtime = Some(runtime.inner().clone());
 
     let table_kind = TableKind::from(&result.table_entry.provider_details);
     let caller = match table_kind {
@@ -482,11 +481,11 @@ async fn fetch_table_details(
         TableKind::Lance | TableKind::Unknown => TableQueryCaller::BrowserDetailView,
     };
 
-    let mut table_provider = TableEntryTableProvider::new(client, id, runtime)
+    let mut table_provider = TableEntryTableProvider::new(client, id, tokio_runtime)
         .with_caller(caller)
         .with_table_kind(table_kind);
     if let Some(exporter) = analytics {
-        table_provider = table_provider.with_analytics(exporter);
+        table_provider = table_provider.with_analytics(exporter, runtime.clone());
     }
     let table_provider = table_provider.into_provider().await.map_err(|err| {
         ApiError::internal_with_source(None, err, "failed creating table-entry table provider")

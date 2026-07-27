@@ -233,6 +233,7 @@ impl App {
         }
 
         let stream = data_source.clone().stream_with_options(
+            &self.async_runtime,
             Self::auth_error_handler(self.command_sender.clone()),
             &self.connection_registry,
             if let LogDataSource::RedapDatasetSegment { open_behavior, .. } = &data_source
@@ -286,6 +287,7 @@ impl App {
             open_behavior: RecordingOpenBehavior::Background,
         };
         match data_source.stream_with_options(
+            &self.async_runtime,
             Self::auth_error_handler(self.command_sender.clone()),
             &self.connection_registry,
             re_redap_client::StreamingOptions {

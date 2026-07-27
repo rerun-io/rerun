@@ -46,6 +46,7 @@ disallowed-macros = [
 
 # https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_methods
 disallowed-methods = [
+  { path = "wasm_bindgen_futures::spawn_local", reason = "Use `re_async::spawn_local` or an explicit `re_async::AsyncRuntimeHandle`." },
   { path = "arrow_array::record_batch::RecordBatch::try_new", reason = "Use `arrow_array::record_batch::RecordBatch::try_new_with_options` instead. There is a corner case for empty batches that require the length specified." },
   { path = "arrow::compute::concat", reason = "Use `re_arrow_util::arrow_util::concat_arrays` instead, which has better memory management" },
   { path = "arrow::compute::filter", reason = "Use `re_arrow_util::arrow_util::filter_array` instead" },

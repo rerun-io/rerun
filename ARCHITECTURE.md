@@ -99,11 +99,11 @@ Of course, this will only take us so far. In the future we plan on caching queri
 Here is an overview of the crates included in the project:
 
 <picture>
-  <img src="https://static.rerun.io/architecture_diagram/db6dc84c54d0ee9abf2931e9b2783df46480b416/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/architecture_diagram/db6dc84c54d0ee9abf2931e9b2783df46480b416/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/architecture_diagram/db6dc84c54d0ee9abf2931e9b2783df46480b416/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/architecture_diagram/db6dc84c54d0ee9abf2931e9b2783df46480b416/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/architecture_diagram/db6dc84c54d0ee9abf2931e9b2783df46480b416/1200w.png">
+  <img src="https://static.rerun.io/crates/13c07f0a88b08cfd85e53261d5df55b3e218d863/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/13c07f0a88b08cfd85e53261d5df55b3e218d863/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/13c07f0a88b08cfd85e53261d5df55b3e218d863/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/13c07f0a88b08cfd85e53261d5df55b3e218d863/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/13c07f0a88b08cfd85e53261d5df55b3e218d863/1200w.png">
 </picture>
 
 <!-- !!! IMPORTANT!!!
@@ -231,6 +231,7 @@ Update instructions:
 | Crate                | Description                                                                                   |
 | -------------------- | --------------------------------------------------------------------------------------------- |
 | re_analytics         | Rerun's analytics SDK                                                                         |
+| re_async             | Async runtime abstractions for native and WebAssembly targets.                                |
 | re_arrow_util        | Helpers for working with arrow                                                                |
 | re_auth              | Authentication and authorization helpers                                                      |
 | re_backoff           | Simple backoff logic used for retries.                                                        |

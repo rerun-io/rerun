@@ -846,6 +846,7 @@ fn run_impl(
 ) -> anyhow::Result<()> {
     //TODO(#10068): populate token passed with `--token`
     let connection_registry = re_redap_client::ConnectionRegistry::new_with_stored_credentials();
+    let async_runtime = re_async::AsyncRuntimeHandle::new_native(tokio_runtime_handle.clone());
 
     let wants_new = args.new || args.port.is_auto();
     let port = args.port.port();
@@ -898,6 +899,7 @@ fn run_impl(
             url_or_paths,
             &UrlParamProcessingConfig::convert_everything_to_data_sources(),
             &connection_registry,
+            &async_runtime,
             None,
         )?;
         save_or_test_receive(
@@ -915,6 +917,7 @@ fn run_impl(
                     url_or_paths,
                     &UrlParamProcessingConfig::convert_everything_to_data_sources(),
                     &connection_registry,
+                    &async_runtime,
                     None,
                 )?;
                 serve_grpc(
@@ -945,6 +948,7 @@ fn run_impl(
                     url_or_paths,
                     &UrlParamProcessingConfig::grpc_server_and_web_viewer(),
                     &connection_registry,
+                    &async_runtime,
                     None,
                 )?;
                 #[cfg(all(feature = "server", feature = "web_viewer"))]
@@ -965,6 +969,7 @@ fn run_impl(
             url_or_paths,
             &UrlParamProcessingConfig::convert_everything_to_data_sources(),
             &connection_registry,
+            &async_runtime,
             None,
         )?;
         connect_to_existing_server(receivers, server_addr)
@@ -976,7 +981,7 @@ fn run_impl(
                 _main_thread_token,
                 _build_info,
                 _call_source,
-                tokio_runtime_handle,
+                async_runtime,
                 profiler,
                 connection_registry,
                 #[cfg(feature = "server")]
@@ -999,7 +1004,7 @@ fn start_native_viewer(
     _main_thread_token: re_viewer::MainThreadToken,
     _build_info: re_build_info::BuildInfo,
     call_source: CallSource,
-    tokio_runtime_handle: &tokio::runtime::Handle,
+    async_runtime: re_async::AsyncRuntimeHandle,
     profiler: re_tracing::Profiler,
     connection_registry: re_redap_client::ConnectionRegistryHandle,
     #[cfg(feature = "server")] server_addr: std::net::SocketAddr,
@@ -1027,8 +1032,6 @@ fn start_native_viewer(
 
     let auth_error_handler = re_viewer::App::auth_error_handler(command_tx.clone());
 
-    let tokio_runtime_handle = tokio_runtime_handle.clone();
-
     // Start catching `re_log::info/warn/error` messages
     // so we can show them in the notification panel.
     // In particular: create this before calling `run_native_app`
@@ -1043,6 +1046,7 @@ fn start_native_viewer(
         url_or_paths,
         &UrlParamProcessingConfig::native_viewer(),
         &connection_registry,
+        &async_runtime,
         Some(auth_error_handler),
     )?;
 
@@ -1050,7 +1054,7 @@ fn start_native_viewer(
         {
             let tx = command_tx.clone();
             let egui_ctx = cc.egui_ctx.clone();
-            tokio::spawn(async move {
+            async_runtime.spawn_future(async move {
                 // We catch ctrl-c commands so we can properly quit.
                 // Without this, recent state changes might not be persisted.
                 match tokio::signal::ctrl_c().await {
@@ -1072,7 +1076,7 @@ fn start_native_viewer(
             startup_options,
             cc,
             Some(connection_registry.clone()),
-            re_viewer::AsyncRuntimeHandle::new_native(tokio_runtime_handle),
+            async_runtime,
             text_log_rx,
             (command_tx, command_rx),
         );
@@ -1547,7 +1551,7 @@ fn initialize_tokio_runtime(threads_args: i32) -> std::io::Result<Runtime> {
     use std::sync::atomic::{AtomicUsize, Ordering};
 
     // Name the tokio threads for the benefit of debuggers and profilers:
-    let mut builder = tokio::runtime::Builder::new_multi_thread();
+    let mut builder = tokio::runtime::Builder::new_multi_thread(); // NOLINT: the CLI process owns this configurable runtime
     builder.thread_name_fn(|| {
         static ATOMIC_ID: AtomicUsize = AtomicUsize::new(0);
         let nr = ATOMIC_ID.fetch_add(1, Ordering::Relaxed);
@@ -1702,6 +1706,7 @@ impl ReceiversFromUrlParams {
         input_urls: Vec<String>,
         config: &UrlParamProcessingConfig,
         connection_registry: &re_redap_client::ConnectionRegistryHandle,
+        async_runtime: &re_async::AsyncRuntimeHandle,
         auth_error_handler: Option<AuthErrorHandler>,
     ) -> anyhow::Result<Self> {
         let mut data_sources = Vec::new();
@@ -1758,7 +1763,13 @@ impl ReceiversFromUrlParams {
 
         let log_receivers = data_sources
             .into_iter()
-            .map(|data_source| data_source.stream(auth_error_handler.clone(), connection_registry))
+            .map(|data_source| {
+                data_source.stream(
+                    async_runtime,
+                    auth_error_handler.clone(),
+                    connection_registry,
+                )
+            })
             .collect::<anyhow::Result<Vec<_>>>()?;
 
         Ok(Self {

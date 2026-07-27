@@ -7,6 +7,7 @@ use datafusion::catalog::{CatalogProvider, CatalogProviderList, SchemaProvider, 
 use datafusion::common::{DataFusionError, Result as DataFusionResult, TableReference, exec_err};
 use datafusion::logical_expr::TableType;
 use parking_lot::Mutex;
+use re_async::AsyncRuntimeHandle;
 use re_log_types::EntryName;
 use re_protos::cloud::v1alpha1::EntryKind;
 use re_redap_client::{ConnectionAnalyticsExporter, ConnectionClient};
@@ -358,7 +359,11 @@ impl SchemaProvider for RedapSchemaProvider {
         )
         .with_caller(TableQueryCaller::CatalogResolver);
         if let Some(exporter) = self.analytics.clone() {
-            provider = provider.with_analytics(exporter);
+            #[cfg(not(target_arch = "wasm32"))]
+            let async_runtime = AsyncRuntimeHandle::new_native(self.runtime.clone());
+            #[cfg(target_arch = "wasm32")]
+            let async_runtime = AsyncRuntimeHandle::new_web();
+            provider = provider.with_analytics(exporter, async_runtime);
         }
         provider.into_provider().await.map(Some)
     }

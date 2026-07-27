@@ -165,8 +165,10 @@ impl Args {
             .with_cors_allowed_origins(cors_allow_origin);
 
         let server = server_builder.build();
+        let async_runtime =
+            re_async::AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen()?;
 
-        let server_handle = server.start().await?;
+        let server_handle = server.start(&async_runtime).await?;
 
         Ok(server_handle)
     }

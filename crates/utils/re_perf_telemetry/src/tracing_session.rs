@@ -407,7 +407,7 @@ mod tests {
         // standing up the full OTel pipeline.
         crate::telemetry::set_telemetry_active_for_test(true);
 
-        let rt = tokio::runtime::Builder::new_current_thread()
+        let rt = tokio::runtime::Builder::new_current_thread() // NOLINT: the synchronous test owns this runtime
             .enable_all()
             .build()
             .unwrap();
@@ -478,7 +478,7 @@ mod tests {
 
         let baseline = ACTIVE_TRACING_SESSION_COUNT.load(Ordering::Acquire);
 
-        let rt = tokio::runtime::Builder::new_current_thread()
+        let rt = tokio::runtime::Builder::new_current_thread() // NOLINT: the synchronous test owns this runtime
             .enable_all()
             .build()
             .unwrap();

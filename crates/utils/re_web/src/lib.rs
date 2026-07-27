@@ -6,10 +6,6 @@ pub mod browser;
 mod error;
 #[cfg(target_arch = "wasm32")]
 pub mod fs;
-#[cfg(target_arch = "wasm32")]
-pub mod task;
-#[cfg(target_arch = "wasm32")]
-pub mod time;
 
 #[cfg(target_arch = "wasm32")]
 pub use error::Error;

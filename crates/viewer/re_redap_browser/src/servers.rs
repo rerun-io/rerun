@@ -5,6 +5,7 @@ use std::task::Poll;
 use datafusion::prelude::{SessionConfig, SessionContext, col, lit};
 use datafusion::sql::TableReference;
 use egui::{Frame, Margin, RichText};
+use re_async::AsyncRuntimeHandle;
 use re_dataframe_ui::{ColumnBlueprint, default_display_name_for_column};
 use re_log_types::{EntityPathPart, EntryId, TableId};
 use re_protos::cloud::v1alpha1::EntryKind;
@@ -18,8 +19,7 @@ use re_ui::alert::Alert;
 use re_ui::{UiExt as _, icons};
 use re_uri::DATASET_HIERARCHY_SEPARATOR;
 use re_viewer_context::{
-    AppContext, AsyncRuntimeHandle, CommandSender as ViewerCommandSender,
-    EditRedapServerModalCommand, ViewStates,
+    AppContext, CommandSender as ViewerCommandSender, EditRedapServerModalCommand, ViewStates,
 };
 
 use crate::context::Context;

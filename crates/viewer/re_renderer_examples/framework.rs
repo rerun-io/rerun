@@ -426,7 +426,7 @@ pub fn start<E: Example + 'static>() {
             .and_then(|doc| doc.body())
             .and_then(|body| body.append_child(&canvas).ok())
             .expect("couldn't append canvas to document body");
-        re_web::task::spawn_local(run::<E>(event_loop, window));
+        re_async::spawn_local(run::<E>(event_loop, window));
     }
 }
 

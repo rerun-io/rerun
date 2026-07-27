@@ -7,9 +7,9 @@ use arrow::datatypes::{Field, Schema};
 use datafusion::prelude::SessionContext;
 use egui::accesskit::Role;
 use egui_kittest::kittest::Queryable as _;
+use re_async::AsyncRuntimeHandle;
 use re_dataframe_ui::{DataFusionTableWidget, SortBy, TableBlueprint};
 use re_test_context::TestContext;
-use re_viewer_context::AsyncRuntimeHandle;
 
 use common::run_async_harness;
 

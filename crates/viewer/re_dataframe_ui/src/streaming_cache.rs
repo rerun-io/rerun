@@ -20,8 +20,8 @@ use datafusion::physical_plan::{
 use datafusion::prelude::Expr;
 use datafusion::{catalog::TableProvider, datasource::MemTable};
 use futures::{Stream, StreamExt as _};
+use re_async::AsyncRuntimeHandle;
 use re_mutex::Mutex;
-use re_viewer_context::AsyncRuntimeHandle;
 
 /// State of the streaming cache.
 #[derive(Debug, Clone)]

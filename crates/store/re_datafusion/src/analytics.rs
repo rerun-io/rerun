@@ -34,6 +34,7 @@ use opentelemetry_proto::tonic::{
     resource::v1::Resource,
     trace::v1::{ResourceSpans, ScopeSpans, Span, span::SpanKind},
 };
+use re_async::AsyncRuntimeHandle;
 use re_dataframe::QueryExpression;
 use re_protos::cloud::v1alpha1::SystemTableKind;
 use re_protos::cloud::v1alpha1::ext::ProviderDetails;
@@ -66,6 +67,7 @@ impl fmt::Debug for ConnectionAnalytics {
 
 struct Inner {
     origin: Origin,
+    async_runtime: Option<AsyncRuntimeHandle>,
 
     /// Analytics OTLP exporter sharing the layered tower service of the sibling
     /// [`re_redap_client::ConnectionClient`] (same HTTP/2 transport, same auth /
@@ -78,11 +80,12 @@ impl ConnectionAnalytics {
     ///
     /// The analytics OTLP exports go through the same authenticated and
     /// version-tagged HTTP/2 connection as regular REDAP RPCs.
-    pub fn new(exporter: ConnectionAnalyticsExporter) -> Self {
+    pub fn new(exporter: ConnectionAnalyticsExporter, async_runtime: AsyncRuntimeHandle) -> Self {
         let origin = exporter.origin().clone();
         Self {
             inner: Arc::new(Inner {
                 origin,
+                async_runtime: Some(async_runtime),
                 exporter: Some(exporter),
             }),
         }
@@ -93,6 +96,7 @@ impl ConnectionAnalytics {
         Self {
             inner: Arc::new(Inner {
                 origin,
+                async_runtime: None,
                 exporter: None,
             }),
         }
@@ -135,32 +139,8 @@ impl ConnectionAnalytics {
             }
         };
 
-        #[cfg(target_arch = "wasm32")]
-        re_web::task::spawn_local(fut);
-
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            if let Ok(handle) = tokio::runtime::Handle::try_current() {
-                handle.spawn(fut);
-            } else {
-                // Prefer spawning on the current tokio runtime if available.
-                // When called from Python via FFI, the polling thread may not have a
-                // tokio runtime entered, so fall back to a detached thread.
-                std::thread::Builder::new()
-                    .name("query-analytics-sender".to_owned())
-                    .spawn(move || {
-                        let rt = tokio::runtime::Builder::new_current_thread()
-                            .enable_all()
-                            .build();
-                        match rt {
-                            Ok(rt) => rt.block_on(fut),
-                            Err(err) => {
-                                re_log::debug_once!("Failed to create analytics runtime: {err}");
-                            }
-                        }
-                    })
-                    .ok();
-            }
+        if let Some(async_runtime) = &self.inner.async_runtime {
+            async_runtime.spawn_future(fut);
         }
     }
 

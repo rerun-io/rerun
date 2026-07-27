@@ -59,6 +59,7 @@ testing = ["dep:tokio", "re_ui/testing", "re_analytics/testing"]
 
 [dependencies]
 # Internal:
+re_async.workspace = true
 re_auth.workspace = true
 re_blueprint_tree.workspace = true
 re_build_info.workspace = true

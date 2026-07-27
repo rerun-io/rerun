@@ -1,3 +1,4 @@
+use re_async::AsyncRuntimeHandle;
 use re_log_encoding::ToApplication as _;
 use re_protos::sdk_comms::v1alpha1::message_proxy_service_client::MessageProxyServiceClient;
 use re_protos::sdk_comms::v1alpha1::{ReadMessagesRequest, ReadMessagesResponse};
@@ -8,13 +9,16 @@ use crate::{MAX_DECODING_MESSAGE_SIZE, StreamError, TonicStatusError};
 /// Read log messages from a proxy server.
 ///
 /// This is used by the viewer to _receive_ log messages.
-pub fn stream(uri: re_uri::ProxyUri) -> re_log_channel::LogReceiver {
+pub fn stream(
+    async_runtime: &AsyncRuntimeHandle,
+    uri: re_uri::ProxyUri,
+) -> re_log_channel::LogReceiver {
     re_log::debug!(?uri, "Loading via gRPC…");
 
     let (tx, rx) =
         re_log_channel::log_channel(re_log_channel::LogSource::MessageProxy(uri.clone()));
 
-    crate::spawn_future(async move {
+    async_runtime.spawn_future(async move {
         if let Err(err) = stream_async(uri, &tx).await {
             tx.quit(Some(Box::new(err))).ok();
         }

@@ -92,6 +92,7 @@ home.workspace = true
 tokio.workspace = true
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
+re_async.workspace = true
 re_web.workspace = true
 
 [dev-dependencies]

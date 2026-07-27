@@ -136,7 +136,7 @@ impl Client {
             thread::Builder::new()
                 .name("message_proxy_client".to_owned())
                 .spawn(move || {
-                    let mut runtime = runtime::Builder::new_current_thread();
+                    let mut runtime = runtime::Builder::new_current_thread(); // NOLINT: the synchronous client thread owns this runtime
                     runtime.enable_all();
                     runtime
                         .build()

@@ -5,9 +5,9 @@ use std::sync::Arc;
 use arrow::array::{Int32Array, RecordBatch, StringArray, StructArray};
 use arrow::datatypes::{DataType, Field, Fields, Schema};
 use datafusion::prelude::SessionContext;
+use re_async::AsyncRuntimeHandle;
 use re_dataframe_ui::DataFusionTableWidget;
 use re_test_context::TestContext;
-use re_viewer_context::AsyncRuntimeHandle;
 
 use common::run_async_harness;
 

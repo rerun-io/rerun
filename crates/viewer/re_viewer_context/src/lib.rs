@@ -15,7 +15,6 @@ mod active_store_context;
 mod annotations;
 mod app_context;
 mod app_options;
-mod async_runtime_handle;
 mod blueprint_helpers;
 mod blueprint_id;
 mod cache;
@@ -64,7 +63,6 @@ pub use self::annotations::{
 };
 pub use self::app_context::{AppContext, AuthContext};
 pub use self::app_options::{AppOptions, ExperimentalAppOptions, VideoOptions};
-pub use self::async_runtime_handle::{AsyncRuntimeError, AsyncRuntimeHandle, WasmNotSend};
 pub use self::blueprint_helpers::{
     AppBlueprintCtx, BlueprintContext, blueprint_timeline, blueprint_timepoint_for_writes,
 };

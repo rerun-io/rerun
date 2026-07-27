@@ -854,7 +854,7 @@ impl CpuRuntime {
     // Deliberately not `pub`, because CpuRuntime should be a singleton
     #[tracing::instrument(level = "trace", skip_all)]
     fn try_new(num_threads: usize) -> Result<Self, DataFusionError> {
-        let runtime = tokio::runtime::Builder::new_multi_thread()
+        let runtime = tokio::runtime::Builder::new_multi_thread() // NOLINT: CPU-bound query work requires one isolated process-wide executor
             .worker_threads(num_threads)
             .thread_name("datafusion_cpu_worker")
             .build()?;

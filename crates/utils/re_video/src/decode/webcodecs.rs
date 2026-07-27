@@ -357,7 +357,7 @@ impl AsyncDecoder for WebVideoDecoder {
         let flush_promise = self.decoder.flush();
 
         // If we don't handle potential flush errors, we'll get a lot of spam in the console.
-        re_web::task::spawn_local(async move {
+        re_async::spawn_local(async move {
             let flush_result = flush_promise.await;
             if let Err(err) = flush_result {
                 if let Some(dom_exception) = err.dyn_ref::<web_sys::DomException>()

@@ -25,7 +25,7 @@ where
     F: std::future::Future<Output = ApiResult<T>> + 'static,
     T: Send + 'static,
 {
-    let task = re_web::task::spawn_local_with_result(f);
+    let task = re_async::spawn_local_with_result(f);
 
     async move {
         task.await.unwrap_or_else(|_cancelled| {

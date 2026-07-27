@@ -16,6 +16,7 @@ use datafusion::physical_plan::execution_plan::{Boundedness, EmissionType};
 use datafusion::physical_plan::{DisplayAs, DisplayFormatType, ExecutionPlan, PlanProperties};
 use futures::Stream;
 use parking_lot::Mutex;
+use re_async::AsyncRuntimeHandle;
 use re_log_types::{EntryId, EntryIdOrName};
 use re_protos::cloud::v1alpha1::ext::{EntryDetails, TableInsertMode};
 use re_protos::cloud::v1alpha1::{
@@ -102,8 +103,12 @@ impl TableEntryTableProvider {
     /// Enable per-scan analytics for this provider.
     ///
     /// Without this call no `cloud_scan_table` span will be emitted.
-    pub fn with_analytics(mut self, exporter: ConnectionAnalyticsExporter) -> Self {
-        self.analytics = Some(ConnectionAnalytics::new(exporter));
+    pub fn with_analytics(
+        mut self,
+        exporter: ConnectionAnalyticsExporter,
+        async_runtime: AsyncRuntimeHandle,
+    ) -> Self {
+        self.analytics = Some(ConnectionAnalytics::new(exporter, async_runtime));
         self
     }
 

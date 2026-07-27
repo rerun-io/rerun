@@ -65,6 +65,9 @@ unspaced_em_dash = re.compile(r"[\w\)\*]—[\w\(\*]")
 sentence_en_dash = re.compile(r"[A-Za-z\"'\)]\s–\s[A-Za-z]")
 todo_owner = re.compile(r"TODO\(([^)]*)\)")
 malformed_todo = re.compile(r'TODO([^_"(]|$)')
+tokio_runtime_creation = re.compile(
+    r"(?:tokio::)?runtime::Builder::new_(?:current|multi)_thread|tokio::runtime::Runtime::new"
+)
 debug_formatted_error = re.compile(r"\{\w*err:#?\?\}")
 debug_tracing_error = re.compile(r"\?\w*err\b")
 quoted_string = re.compile(r'"([^"]*)"')
@@ -293,6 +296,12 @@ def lint_line(
 
     if malformed_todo.search(line):
         return "TODO:s should be written as `TODO(yourname): what to do`"
+
+    if file_extension == "rs" and is_in_oss_rerun_repo and tokio_runtime_creation.search(line):
+        return (
+            "Create Tokio runtimes only at audited process or thread ownership boundaries. "
+            "Library code should accept `re_async::AsyncRuntimeHandle`. Add a NOLINT with the ownership reason if this runtime is required."
+        )
 
     if debug_formatted_error.search(line) or debug_format_of_err.search(line):
         return "Format errors with re_error::format or using Display - NOT Debug formatting!"
@@ -704,6 +713,10 @@ def test_lint_line() -> None:
         for line in test.split("\n"):
             assert lint_line(line, prev_line) is not None, f'expected "{line}" to fail'
             prev_line = line
+
+    runtime_creation = "tokio::runtime::Runtime::new()"
+    assert lint_line(runtime_creation, None, is_in_oss_rerun_repo=True) is not None
+    assert lint_line(runtime_creation, None, is_in_oss_rerun_repo=False) is None
 
     # rST (reStructuredText) is not rendered by MkDocs/mkdocstrings.
     # Flagged inside Python docstrings and Rust `///` doc comments only.
