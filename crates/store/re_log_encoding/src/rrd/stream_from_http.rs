@@ -151,15 +151,13 @@ mod web_event_listener {
 pub use web_event_listener::stream_rrd_from_event_listener;
 
 #[cfg(target_arch = "wasm32")]
-// TODO(#3408): remove unwrap()
-#[expect(clippy::unwrap_used)]
 pub mod web_decode {
     use std::sync::Arc;
 
     use super::{Error, HttpMessage, HttpMessageCallback};
 
     pub fn decode_rrd(rrd_bytes: Vec<u8>, on_msg: Arc<HttpMessageCallback>) {
-        wasm_bindgen_futures::spawn_local(decode_rrd_async(rrd_bytes, on_msg));
+        re_web::task::spawn_local(decode_rrd_async(rrd_bytes, on_msg));
     }
 
     /// Decodes the file in chunks, with an yield between each chunk.
@@ -203,18 +201,7 @@ pub mod web_decode {
     // Yield to other tasks
     async fn yield_() {
         // TODO(emilk): create a better async yield function. See https://github.com/wasm-bindgen/wasm-bindgen/issues/3359
-        sleep_ms(1).await;
-    }
-
-    // Hack to get async sleep on wasm
-    async fn sleep_ms(millis: i32) {
-        let mut cb = |resolve: js_sys::Function, _reject: js_sys::Function| {
-            web_sys::window()
-                .unwrap()
-                .set_timeout_with_callback_and_timeout_and_arguments_0(&resolve, millis)
-                .expect("Failed to call set_timeout");
-        };
-        js_sys::Promise::new(&mut cb).await.unwrap();
+        re_web::time::sleep(std::time::Duration::from_millis(1)).await;
     }
 }
 

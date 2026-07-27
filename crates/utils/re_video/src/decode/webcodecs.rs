@@ -357,7 +357,7 @@ impl AsyncDecoder for WebVideoDecoder {
         let flush_promise = self.decoder.flush();
 
         // If we don't handle potential flush errors, we'll get a lot of spam in the console.
-        wasm_bindgen_futures::spawn_local(async move {
+        re_web::task::spawn_local(async move {
             let flush_result = flush_promise.await;
             if let Err(err) = flush_result {
                 if let Some(dom_exception) = err.dyn_ref::<web_sys::DomException>()
@@ -562,18 +562,11 @@ fn js_video_decoder_config(
     js
 }
 
-pub fn string_from_js_value(v: &wasm_bindgen::JsValue) -> String {
-    if let Some(v) = v.as_string() {
-        return v;
-    }
+pub fn string_from_js_value(value: &wasm_bindgen::JsValue) -> String {
+    let error = re_web::Error::from(value).to_string();
 
-    if let Some(v) = v.dyn_ref::<js_sys::Error>() {
-        // Firefox prefixes most decoding errors with "EncodingError: ", which isn't super helpful.
-        let error = std::string::ToString::to_string(&v.to_string());
-        return error
-            .strip_prefix("EncodingError: ")
-            .map_or_else(|| error.clone(), |s| s.to_owned());
-    }
-
-    format!("{v:#?}")
+    // Firefox prefixes most decoding errors with "EncodingError: ", which isn't useful here.
+    error
+        .strip_prefix("EncodingError: ")
+        .map_or_else(|| error.clone(), ToOwned::to_owned)
 }

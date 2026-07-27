@@ -128,6 +128,7 @@ re_test_mocks = { path = "crates/utils/re_test_mocks", version = "=0.36.0-alpha.
 re_tracing = { path = "crates/utils/re_tracing", version = "=0.36.0-alpha.1", default-features = false }
 re_tuid = { path = "crates/utils/re_tuid", version = "=0.36.0-alpha.1", default-features = false }
 re_video = { path = "crates/utils/re_video", version = "=0.36.0-alpha.1", default-features = false }
+re_web = { path = "crates/utils/re_web", version = "=0.36.0-alpha.1", default-features = false }
 
 # crates/viewer:
 re_arrow_ui = { path = "crates/viewer/re_arrow_ui", version = "=0.36.0-alpha.1", default-features = false }

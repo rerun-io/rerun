@@ -857,7 +857,9 @@ impl App {
 
         re_log::trace!("Updating navigation bar");
 
-        use crate::web_history::{HistoryEntry, HistoryExt as _, history};
+        use re_log::ResultExt as _;
+
+        use crate::web_history::{HistoryEntry, HistoryExt as _};
         use crate::web_tools::JsResultExt as _;
 
         /// Returns the url without the fragment
@@ -866,7 +868,7 @@ impl App {
             url.rsplit_once("%23").map_or(url, |(url, _)| url)
         }
 
-        if let Some(history) = history().ok_or_log_js_error() {
+        if let Some(history) = re_web::browser::history().ok_or_log_error() {
             let current_entry = history.current_entry().ok_or_log_js_error().flatten();
             let new_entry = HistoryEntry::new(url);
             if Some(&new_entry) != current_entry.as_ref() {

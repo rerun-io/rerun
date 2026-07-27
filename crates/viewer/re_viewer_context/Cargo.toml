@@ -91,10 +91,8 @@ vec1.workspace = true
 home.workspace = true
 tokio.workspace = true
 
-# Web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-wasm-bindgen-futures.workspace = true
-web-sys = { workspace = true, features = ["Window"] }
+re_web.workspace = true
 
 [dev-dependencies]
 re_ui = { workspace = true, features = ["testing"] }

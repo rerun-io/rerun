@@ -99,25 +99,8 @@ tracing.workspace = true
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 chrono = { workspace = true, features = ["wasmbind"] }
 getrandom = { workspace = true, features = ["wasm_js"] }
-js-sys.workspace = true
 percent-encoding.workspace = true
-wasm-bindgen.workspace = true
-wasm-bindgen-futures.workspace = true
-web-sys = { workspace = true, features = [
-  "Blob",
-  "DomException",
-  "File",
-  "FileSystemDirectoryHandle",
-  "FileSystemFileHandle",
-  "FileSystemGetDirectoryOptions",
-  "FileSystemGetFileOptions",
-  "FileSystemRemoveOptions",
-  "FileSystemWritableFileStream",
-  "Navigator",
-  "StorageManager",
-  "Window",
-  "WritableStream",
-] }
+re_web.workspace = true
 
 [dev-dependencies]
 re_chunk.workspace = true

@@ -75,7 +75,7 @@ impl AsyncRuntimeHandle {
     where
         F: std::future::Future<Output = ()> + WasmNotSend + 'static,
     {
-        wasm_bindgen_futures::spawn_local(future);
+        re_web::task::spawn_local(future);
     }
 
     #[cfg(not(target_arch = "wasm32"))]

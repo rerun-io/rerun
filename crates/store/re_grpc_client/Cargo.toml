@@ -48,6 +48,6 @@ tonic = { workspace = true, default-features = false, features = ["transport", "
 
 # Web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
+re_web.workspace = true
 tonic-web-wasm-client.workspace = true
-wasm-bindgen-futures.workspace = true
 tonic = { workspace = true, default-features = false }

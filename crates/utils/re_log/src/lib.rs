@@ -123,6 +123,7 @@ pub mod external {
 }
 
 /// Never log anything less serious than a `ERROR` from these crates.
+#[cfg(any(feature = "setup", not(target_arch = "wasm32")))]
 const CRATES_AT_ERROR_LEVEL: &[&str] = &[
     // silence rustls in release mode: https://github.com/rerun-io/rerun/issues/3104
     #[cfg(not(debug_assertions))]
@@ -130,6 +131,7 @@ const CRATES_AT_ERROR_LEVEL: &[&str] = &[
 ];
 
 /// Never log anything less serious than a `WARN` from these crates.
+#[cfg(any(feature = "setup", not(target_arch = "wasm32")))]
 const CRATES_AT_WARN_LEVEL: &[&str] = &[
     // wgpu crates spam a lot on info level, which is really annoying
     // TODO(emilk): remove once https://github.com/gfx-rs/wgpu/issues/3206 is fixed
@@ -143,6 +145,7 @@ const CRATES_AT_WARN_LEVEL: &[&str] = &[
 /// Never log anything less serious than a `INFO` from these crates.
 ///
 /// These creates are quite spammy on debug, drowning out what we care about:
+#[cfg(any(feature = "setup", not(target_arch = "wasm32")))]
 const CRATES_AT_INFO_LEVEL: &[&str] = &[
     "datafusion_optimizer",
     "datafusion",

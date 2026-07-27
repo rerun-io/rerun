@@ -33,7 +33,7 @@ stream_from_http = [
   "decoder",
   "dep:ehttp",
   "dep:js-sys",
-  "dep:wasm-bindgen-futures",
+  "dep:re_web",
   "dep:wasm-bindgen",
   "dep:web-sys",
   "dep:web-time",
@@ -76,8 +76,8 @@ web-time = { workspace = true, optional = true }
 # Web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 js-sys = { workspace = true, optional = true }
+re_web = { workspace = true, optional = true }
 wasm-bindgen = { workspace = true, optional = true }
-wasm-bindgen-futures = { workspace = true, optional = true }
 web-sys = { workspace = true, optional = true, features = ["Window", "MessageEvent"] }
 
 [dev-dependencies]

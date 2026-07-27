@@ -12,11 +12,11 @@ use url::Url;
 #[cfg(not(target_arch = "wasm32"))]
 use tokio_util::compat::TokioAsyncReadCompatExt as _;
 
-#[cfg(target_arch = "wasm32")]
-use crate::opfs as fs;
 use crate::store::{
     Error, InMemoryStore, LayerInfo, ResolvedStore, StoreSlotId, TASK_ID_SUCCESS, TaskResult,
 };
+#[cfg(target_arch = "wasm32")]
+use re_web::fs;
 #[cfg(not(target_arch = "wasm32"))]
 use tokio::fs;
 

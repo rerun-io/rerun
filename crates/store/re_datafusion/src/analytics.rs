@@ -136,7 +136,7 @@ impl ConnectionAnalytics {
         };
 
         #[cfg(target_arch = "wasm32")]
-        wasm_bindgen_futures::spawn_local(fut);
+        re_web::task::spawn_local(fut);
 
         #[cfg(not(target_arch = "wasm32"))]
         {

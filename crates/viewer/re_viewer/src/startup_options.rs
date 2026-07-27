@@ -153,7 +153,10 @@ impl StartupOptions {
         } else {
             #[cfg(target_arch = "wasm32")]
             {
-                crate::web_tools::current_base_url().ok()
+                re_web::browser::current_page_url()
+                    .ok()
+                    .and_then(|url| url.parse().ok())
+                    .map(|url| re_viewer_context::open_url::base_url(&url))
             }
 
             #[cfg(not(target_arch = "wasm32"))]

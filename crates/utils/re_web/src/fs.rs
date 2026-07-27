@@ -3,8 +3,6 @@
 //! The signatures loosely mirror [`tokio::fs`](https://docs.rs/tokio/latest/tokio/fs/index.html)
 //! for familiarity.
 
-// TODO(grtlr): Maybe move this to a `re_opfs` crate.
-
 use std::io;
 use std::path::{Component, Path};
 use std::sync::Arc;
@@ -210,15 +208,10 @@ fn run_local<T>(
 where
     T: Send + 'static,
 {
-    let (tx, rx) = futures::channel::oneshot::channel();
-
-    wasm_bindgen_futures::spawn_local(async move {
-        let result = future.await;
-        tx.send(result).ok();
-    });
+    let task = crate::task::spawn_local_with_result(future);
 
     async move {
-        rx.await.map_err(|_err| {
+        task.await.map_err(|_err| {
             io::Error::new(
                 io::ErrorKind::Interrupted,
                 "OPFS browser task was canceled before completion",
@@ -232,11 +225,7 @@ fn js_to_io_error(value: &JsValue) -> io::Error {
         return err_from_dom_exception(exception);
     }
 
-    if let Some(error) = value.dyn_ref::<js_sys::Error>() {
-        return err_from_js(error);
-    }
-
-    io::Error::other(value.as_string().unwrap_or_else(|| format!("{value:?}")))
+    io::Error::other(crate::Error::from(value))
 }
 
 fn err_from_dom_exception(exception: &DomException) -> io::Error {
@@ -248,18 +237,6 @@ fn err_from_dom_exception(exception: &DomException) -> io::Error {
     };
 
     io::Error::new(kind, exception.message())
-}
-
-fn err_from_js(error: &js_sys::Error) -> io::Error {
-    let name = String::from(error.name());
-    let raw_message = String::from(error.message());
-    let message = if raw_message.is_empty() {
-        name
-    } else {
-        format!("{name}: {raw_message}")
-    };
-
-    io::Error::other(message)
 }
 
 #[cfg(test)]

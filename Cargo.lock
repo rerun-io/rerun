@@ -8583,12 +8583,12 @@ dependencies = [
  "http",
  "indicatif",
  "jiff",
- "js-sys",
  "jsonwebtoken",
  "parking_lot",
  "rand 0.9.4",
  "re_analytics",
  "re_log",
+ "re_web",
  "ring",
  "saturating_cast",
  "serde",
@@ -8602,7 +8602,6 @@ dependencies = [
  "tower",
  "url",
  "uuid",
- "wasm-bindgen",
  "web-sys",
  "webbrowser",
 ]
@@ -8611,13 +8610,10 @@ dependencies = [
 name = "re_backoff"
 version = "0.36.0-alpha.1+dev"
 dependencies = [
- "futures",
  "getrandom 0.3.4",
- "js-sys",
  "rand 0.9.4",
+ "re_web",
  "tokio",
- "wasm-bindgen-futures",
- "web-sys",
 ]
 
 [[package]]
@@ -8865,6 +8861,7 @@ dependencies = [
  "re_uri",
  "re_viewer_context",
  "re_viewport_blueprint",
+ "re_web",
  "static_assertions",
 ]
 
@@ -8900,9 +8897,9 @@ dependencies = [
  "re_redap_client",
  "re_tracing",
  "re_uri",
+ "re_web",
  "tokio",
  "url",
- "wasm-bindgen-futures",
  "web-sys",
 ]
 
@@ -9054,12 +9051,12 @@ dependencies = [
  "re_tracing",
  "re_types_core",
  "re_uri",
+ "re_web",
  "reqwest",
  "tokio",
  "tokio-stream",
  "tonic",
  "tracing",
- "wasm-bindgen-futures",
  "web-time",
 ]
 
@@ -9170,12 +9167,12 @@ dependencies = [
  "re_sorbet",
  "re_tracing",
  "re_uri",
+ "re_web",
  "rerun-tonic-web-wasm-client",
  "thiserror 2.0.18",
  "tokio",
  "tokio-stream",
  "tonic",
- "wasm-bindgen-futures",
  "web-time",
 ]
 
@@ -9419,13 +9416,13 @@ dependencies = [
  "re_span",
  "re_tracing",
  "re_types_core",
+ "re_web",
  "sha2",
  "similar-asserts",
  "tempfile",
  "thiserror 2.0.18",
  "tracing",
  "wasm-bindgen",
- "wasm-bindgen-futures",
  "web-sys",
  "web-time",
  "xxhash-rust",
@@ -9782,7 +9779,6 @@ dependencies = [
  "egui_extras",
  "futures",
  "itertools 0.14.0",
- "js-sys",
  "re_auth",
  "re_backoff",
  "re_component_ui",
@@ -9797,6 +9793,7 @@ dependencies = [
  "re_ui",
  "re_uri",
  "re_viewer_context",
+ "re_web",
  "serde",
  "serde_json",
  "url",
@@ -9906,7 +9903,6 @@ dependencies = [
  "gltf",
  "half",
  "itertools 0.14.0",
- "js-sys",
  "macaw",
  "never",
  "notify",
@@ -9923,6 +9919,7 @@ dependencies = [
  "re_quota_channel",
  "re_tracing",
  "re_video",
+ "re_web",
  "regex-lite",
  "serde",
  "slotmap",
@@ -9934,7 +9931,6 @@ dependencies = [
  "type-map",
  "unindent",
  "walkdir",
- "wasm-bindgen",
  "web-sys",
  "wgpu",
 ]
@@ -9956,7 +9952,7 @@ dependencies = [
  "rand 0.9.4",
  "re_log",
  "re_renderer",
- "wasm-bindgen-futures",
+ "re_web",
  "web-sys",
  "web-time",
  "wgpu",
@@ -10120,7 +10116,6 @@ dependencies = [
  "http-body",
  "itertools 0.14.0",
  "jiff",
- "js-sys",
  "lance",
  "nohash-hasher",
  "opentelemetry",
@@ -10144,6 +10139,7 @@ dependencies = [
  "re_span",
  "re_tuid",
  "re_types_core",
+ "re_web",
  "serde",
  "tempfile",
  "thiserror 2.0.18",
@@ -10156,10 +10152,7 @@ dependencies = [
  "tower-service",
  "tracing",
  "url",
- "wasm-bindgen",
- "wasm-bindgen-futures",
  "wasm-bindgen-test",
- "web-sys",
 ]
 
 [[package]]
@@ -10527,6 +10520,7 @@ dependencies = [
  "re_span",
  "re_tracing",
  "re_tuid",
+ "re_web",
  "saturating_cast",
  "scuffle-av1",
  "scuffle-bytes-util",
@@ -10534,7 +10528,6 @@ dependencies = [
  "smallvec",
  "thiserror 2.0.18",
  "wasm-bindgen",
- "wasm-bindgen-futures",
  "web-sys",
  "web-time",
 ]
@@ -10943,6 +10936,7 @@ dependencies = [
  "re_viewer_context",
  "re_viewport",
  "re_viewport_blueprint",
+ "re_web",
  "rfd",
  "ron",
  "serde",
@@ -11026,6 +11020,7 @@ dependencies = [
  "re_ui",
  "re_uri",
  "re_video",
+ "re_web",
  "rfd",
  "serde",
  "slotmap",
@@ -11036,8 +11031,6 @@ dependencies = [
  "tokio",
  "uuid",
  "vec1",
- "wasm-bindgen-futures",
- "web-sys",
  "wgpu",
 ]
 
@@ -11111,6 +11104,21 @@ dependencies = [
  "slotmap",
  "smallvec",
  "thiserror 2.0.18",
+]
+
+[[package]]
+name = "re_web"
+version = "0.36.0-alpha.1+dev"
+dependencies = [
+ "futures",
+ "getrandom 0.3.4",
+ "js-sys",
+ "re_tuid",
+ "thiserror 2.0.18",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "wasm-bindgen-test",
+ "web-sys",
 ]
 
 [[package]]

@@ -464,7 +464,7 @@ async fn register_opfs_file(
         .join(&fingerprint)
         .join(file_name);
 
-    let file_exists = match re_server::opfs::metadata(&path).await {
+    let file_exists = match re_web::fs::metadata(&path).await {
         Ok(metadata) => metadata.is_file(),
         Err(err) if err.kind() == std::io::ErrorKind::NotFound => false,
         Err(err) => {
@@ -478,7 +478,7 @@ async fn register_opfs_file(
     };
 
     if !file_exists {
-        re_server::opfs::write(&path, file_contents.bytes.clone())
+        re_web::fs::write(&path, file_contents.bytes.clone())
             .await
             .with_context(|| {
                 format!(

@@ -148,7 +148,7 @@ impl ResolvedStore {
     ) -> Result<Vec<(StoreId, Self)>, super::Error> {
         #[cfg(target_arch = "wasm32")]
         {
-            let bytes = crate::opfs::read(path).await?;
+            let bytes = re_web::fs::read(path).await?;
 
             // TODO(RR-5086): Ultimately, we want to be able to load from an OPFS file into a lazy store too.
             Self::load_rrd_reader_eager(

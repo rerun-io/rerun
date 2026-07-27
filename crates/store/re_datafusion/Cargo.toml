@@ -73,8 +73,7 @@ bytes.workspace = true
 reqwest.workspace = true
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-futures.workspace = true
-wasm-bindgen-futures.workspace = true
+re_web.workspace = true
 
 # These are used by Datafusion but the required features are not set for wasm build.
 chrono = { workspace = true, features = ["wasmbind"] }

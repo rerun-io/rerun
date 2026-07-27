@@ -41,7 +41,7 @@ async fn register_rrd_from_file_url_in_opfs() {
     let file_name = format!("{}.rrd", re_tuid::Tuid::new());
     let url = format!("file:///{file_name}");
 
-    re_server::opfs::write(&file_name, encode_rrd().into())
+    re_web::fs::write(&file_name, encode_rrd().into())
         .await
         .expect("failed to write OPFS file");
 

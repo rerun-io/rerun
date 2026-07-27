@@ -664,8 +664,7 @@ impl ViewerOpenUrl {
                     // We _are_ a web viewer.
                     // If the base URL doesn't match our own then that's reason for concern (==warn),
                     // because this URL was probably meant to be opened in a different Rerun version.
-                    if let Some(window) = web_sys::window()
-                        && let Ok(location) = window.location().href()
+                    if let Ok(location) = re_web::browser::current_page_url()
                         && let Ok(location) = Url::parse(&location)
                     {
                         let current_webpage_base_url = base_url(&location);

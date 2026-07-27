@@ -1093,15 +1093,23 @@ impl App {
 
             #[cfg(target_arch = "wasm32")]
             UICommand::RestartWithWebGl => {
-                if crate::web_tools::set_url_parameter_and_refresh("renderer", "webgl").is_err() {
-                    re_log::error!("Failed to set URL parameter `renderer=webgl` & refresh page.");
+                if let Err(err) =
+                    re_web::browser::set_url_parameter_and_refresh("renderer", "webgl")
+                {
+                    re_log::error!(
+                        "Failed to set URL parameter `renderer=webgl` and refresh page: {err}"
+                    );
                 }
             }
 
             #[cfg(target_arch = "wasm32")]
             UICommand::RestartWithWebGpu => {
-                if crate::web_tools::set_url_parameter_and_refresh("renderer", "webgpu").is_err() {
-                    re_log::error!("Failed to set URL parameter `renderer=webgpu` & refresh page.");
+                if let Err(err) =
+                    re_web::browser::set_url_parameter_and_refresh("renderer", "webgpu")
+                {
+                    re_log::error!(
+                        "Failed to set URL parameter `renderer=webgpu` and refresh page: {err}"
+                    );
                 }
             }
 
@@ -1491,7 +1499,7 @@ impl App {
             if let Some(options) = &self.startup_options.fullscreen_options {
                 // Tell JS to toggle fullscreen.
                 if let Err(err) = options.on_toggle.call0() {
-                    re_log::error!("{}", crate::web_tools::string_from_js_value(err));
+                    re_log::error!("{err}");
                 }
             }
         }
@@ -1508,7 +1516,7 @@ impl App {
             // Ask JS if fullscreen is on or not.
             match options.get_state.call0() {
                 Ok(v) => return v.is_truthy(),
-                Err(err) => re_log::error_once!("{}", crate::web_tools::string_from_js_value(err)),
+                Err(err) => re_log::error_once!("{err}"),
             }
         }
 
@@ -1861,7 +1869,7 @@ fn save_entity_db(
     // Web
     #[cfg(target_arch = "wasm32")]
     {
-        wasm_bindgen_futures::spawn_local(async move {
+        re_web::task::spawn_local(async move {
             if let Err(err) =
                 async_save_dialog(rrd_version, &file_name, &title, messages.into_iter()).await
             {

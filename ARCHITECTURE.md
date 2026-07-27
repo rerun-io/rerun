@@ -99,11 +99,11 @@ Of course, this will only take us so far. In the future we plan on caching queri
 Here is an overview of the crates included in the project:
 
 <picture>
-  <img src="https://static.rerun.io/architecture_diagram/c5147aa4d640dfdd57063eee3359249e2487b475/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/architecture_diagram/c5147aa4d640dfdd57063eee3359249e2487b475/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/architecture_diagram/c5147aa4d640dfdd57063eee3359249e2487b475/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/architecture_diagram/c5147aa4d640dfdd57063eee3359249e2487b475/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/architecture_diagram/c5147aa4d640dfdd57063eee3359249e2487b475/1200w.png">
+  <img src="https://static.rerun.io/crates/709bdeb968d4a895132fad872bcfee9478e6b8d5/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/709bdeb968d4a895132fad872bcfee9478e6b8d5/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/709bdeb968d4a895132fad872bcfee9478e6b8d5/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/709bdeb968d4a895132fad872bcfee9478e6b8d5/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/709bdeb968d4a895132fad872bcfee9478e6b8d5/1200w.png">
 </picture>
 
 <!-- !!! IMPORTANT!!!
@@ -260,6 +260,7 @@ Update instructions:
 | re_tuid              | 128-bit Time-based Unique Identifier                                                          |
 | re_uri               | Parsing and constructing of Rerun URIs                                                        |
 | re_video             | Video decoding library                                                                        |
+| re_web               | Utilities for interacting with Web APIs                                                       |
 
 ### Test crates
 

@@ -40,7 +40,7 @@ impl AsyncDecoder for WebImageDecoder {
         let bit_depth = self.bit_depth;
         let chroma_subsampling = self.chroma_subsampling;
 
-        wasm_bindgen_futures::spawn_local(async move {
+        re_web::task::spawn_local(async move {
             match decode_image(chunk, &mime_type, bit_depth, chroma_subsampling).await {
                 Ok(frame) => {
                     output_sender.send(Ok(frame)).ok();

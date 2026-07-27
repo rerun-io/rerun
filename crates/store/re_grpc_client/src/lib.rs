@@ -114,7 +114,7 @@ fn spawn_future<F>(future: F)
 where
     F: std::future::Future<Output = ()> + 'static,
 {
-    wasm_bindgen_futures::spawn_local(future);
+    re_web::task::spawn_local(future);
 }
 
 #[cfg(not(target_arch = "wasm32"))]

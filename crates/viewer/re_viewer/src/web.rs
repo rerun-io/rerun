@@ -772,9 +772,7 @@ fn create_app(
                 let Some(event) = serde_json::to_string(&event).ok_or_log_error() else {
                     return;
                 };
-                on_event
-                    .call1(&JsValue::from_str(&event))
-                    .ok_or_log_js_error();
+                on_event.call1(&JsValue::from_str(&event)).ok_or_log_error();
             }) as crate::event::ViewerEventCallback
         }),
 
@@ -817,7 +815,7 @@ fn create_app(
     );
 
     if enable_history {
-        install_popstate_listener(&mut app).ok_or_log_js_error();
+        install_popstate_listener(&mut app).ok_or_log_error();
     }
 
     if let Some(manifest_url) = manifest_url {

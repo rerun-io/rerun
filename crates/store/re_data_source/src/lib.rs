@@ -39,8 +39,7 @@ impl FileContents {
         let buffer = file
             .array_buffer()
             .await
-            // NOLINT: `JsValue` error formatting will be fixed in a follow-up PR using `re_web`.
-            .map_err(|err| anyhow::anyhow!("failed to read file: {err:?}"))?;
+            .map_err(|err| anyhow::anyhow!("failed to read file: {}", re_web::Error::from(err)))?;
 
         Ok(Self {
             path,
