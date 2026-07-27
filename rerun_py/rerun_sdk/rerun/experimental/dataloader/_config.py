@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from rerun.catalog._entry import DatasetEntry
@@ -51,6 +51,12 @@ class Field:
         period to align with the sampling grid). For example, `(1, 50)`
         on an integer timeline fetches the next 50 values after the
         current sample.
+    max_staleness
+        Optional maximum age, in the index timeline's native unit (same as
+        `window`), of the data backing a sample. When set, a required sample is
+        dropped if the nearest value at or before a queried point is older than
+        this. `None` (the default) applies no staleness limit. Enforced only
+        during manifest construction, not by the streaming dataloader.
 
     """
 
@@ -58,6 +64,22 @@ class Field:
     decode: ColumnDecoder
     select: Selector | None = None
     window: tuple[int, int] | None = None
+    max_staleness: int | None = None
+
+    def to_recipe(self) -> dict[str, Any]:
+        """
+        A JSON-serializable snapshot of this field's spec, for a manifest's provenance header.
+
+        Kept on `Field` so it stays in sync as the spec evolves. `decode` / `select`
+        are captured via `repr` — a human-readable record, not a round-trippable form.
+        """
+        return {
+            "path": self.path,
+            "window": list(self.window) if self.window is not None else None,
+            "max_staleness": self.max_staleness,
+            "decoder": repr(self.decode),
+            "select": repr(self.select) if self.select is not None else None,
+        }
 
 
 @dataclass(frozen=True)

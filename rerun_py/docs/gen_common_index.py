@@ -88,6 +88,9 @@ EXCLUDED_FROM_TRACK_A: Final[set[str]] = {
     # No aggregated surface to document at the namespace level.
     "rerun.utilities.datafusion",
     "rerun.utilities.datafusion.functions",
+    # Sampling-manifest internals; its only public symbol (`Manifest`) is
+    # re-exported flat into `rerun.experimental.dataloader` and documented there.
+    "rerun.experimental.dataloader.manifest",
 }
 
 # Per-package, per-symbol allow-list of public symbols that should NOT be

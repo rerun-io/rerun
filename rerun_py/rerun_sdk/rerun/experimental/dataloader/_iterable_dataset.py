@@ -63,7 +63,6 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tens
         mainly useful to decorrelate batches under
         [`BlockShuffle`][rerun.experimental.dataloader.BlockShuffle]. Holds at
         most that many decoded samples in memory per DataLoader worker.
-        Must be at least `fetch_size`, so the buffer can absorb a whole fetch.
         Defaults to `None` (no buffering).
 
     """
@@ -88,10 +87,6 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tens
         self._fetch_size = fetch_size
 
         self._shuffle_strategy = shuffle_strategy if shuffle_strategy is not None else SampleShuffle()
-        if shuffle_buffer_size is not None and shuffle_buffer_size < fetch_size:
-            raise ValueError(
-                f"shuffle_buffer_size must be at least fetch_size ({fetch_size}), got {shuffle_buffer_size}"
-            )
         self._shuffle_buffer = ShuffleBuffer(shuffle_buffer_size) if shuffle_buffer_size is not None else None
         self._epoch = 0
 

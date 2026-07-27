@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from ._decoders import ColumnDecoder, ImageDecoder, NumericDecoder, VideoFrameDecoder
     from ._iterable_dataset import RerunIterableDataset
     from ._map_dataset import RerunMapDataset
+    from .manifest._manifest import Manifest
 
 __all__ = [
     "BlockShuffle",
@@ -26,6 +27,7 @@ __all__ = [
     "Field",
     "FixedRateSampling",
     "ImageDecoder",
+    "Manifest",
     "NoShuffle",
     "NumericDecoder",
     "RerunIterableDataset",
@@ -49,6 +51,7 @@ _LAZY_SUBMODULES = {
     "VideoFrameDecoder": "._decoders",
     "RerunIterableDataset": "._iterable_dataset",
     "RerunMapDataset": "._map_dataset",
+    "Manifest": ".manifest._manifest",
 }
 
 

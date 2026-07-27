@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, TypeVar
+from typing import TYPE_CHECKING, ClassVar, TypeVar
 
 import numpy as np
 
@@ -22,6 +22,10 @@ class ShuffleStrategy(ABC):
 
     See [the training guide](https://rerun.io/docs/howto/train/dataloader) for the trade-offs.
     """
+
+    # Stable identifier recorded as the manifest header's `shuffle_strategy` (provenance).
+    # Decoupled from the class name on purpose, so renaming a class never changes the header.
+    RECIPE_TAG: ClassVar[str]
 
     @abstractmethod
     def epoch_order(self, sample_index: SampleIndex, *, fetch_size: int, seed: int) -> tuple[np.ndarray, np.ndarray]:
@@ -43,8 +47,10 @@ class SampleShuffle(ShuffleStrategy):
     throughput is the bottleneck.
     """
 
+    RECIPE_TAG: ClassVar[str] = "sample"
+
     def epoch_order(self, sample_index: SampleIndex, *, fetch_size: int, seed: int) -> tuple[np.ndarray, np.ndarray]:  # noqa: ARG002
-        return _sample_order(sample_index, seed=seed)
+        return _block_order(sample_index, block_size=1, shuffle=True, seed=seed)
 
 
 @dataclass(frozen=True)
@@ -66,6 +72,8 @@ class BlockShuffle(ShuffleStrategy):
 
     """
 
+    RECIPE_TAG: ClassVar[str] = "block"
+
     block_size: int | None = None
 
     def __post_init__(self) -> None:
@@ -74,15 +82,17 @@ class BlockShuffle(ShuffleStrategy):
 
     def epoch_order(self, sample_index: SampleIndex, *, fetch_size: int, seed: int) -> tuple[np.ndarray, np.ndarray]:
         block_size = self.block_size if self.block_size is not None else fetch_size
-        return _blockwise_order(sample_index, block_size=block_size, shuffle_blocks=True, seed=seed)
+        return _block_order(sample_index, block_size=block_size, shuffle=True, seed=seed)
 
 
 @dataclass(frozen=True)
 class NoShuffle(ShuffleStrategy):
     """Natural order (segment by segment, along the timeline): maximal fetch locality, no randomness."""
 
-    def epoch_order(self, sample_index: SampleIndex, *, fetch_size: int, seed: int) -> tuple[np.ndarray, np.ndarray]:  # noqa: ARG002
-        return _blockwise_order(sample_index, block_size=fetch_size, shuffle_blocks=False)
+    RECIPE_TAG: ClassVar[str] = "none"
+
+    def epoch_order(self, sample_index: SampleIndex, *, fetch_size: int, seed: int) -> tuple[np.ndarray, np.ndarray]:
+        return _block_order(sample_index, block_size=fetch_size, shuffle=False, seed=seed)
 
 
 class ShuffleBuffer:
@@ -130,6 +140,21 @@ class ShuffleBuffer:
         finally:
             items.close()
 
+    def emit_order(self, n: int, *, rng: np.random.Generator) -> np.ndarray:
+        """
+        Return the emission permutation for `n` items: `emit_order[k]` is the input position emitted `k`-th.
+
+        Rolls the very same reservoir [`shuffle`][rerun.experimental.dataloader.ShuffleBuffer.shuffle]
+        uses, but over positions `[0, n)` instead of decoded samples. A baked
+        manifest and the live buffer therefore share one implementation and can
+        never diverge. Values are `int64`.
+        """
+
+        def _positions() -> Generator[int, None, None]:
+            yield from range(n)
+
+        return np.fromiter(self.shuffle(_positions(), rng=rng), dtype=np.int64, count=n)
+
 
 def _pick(buffer: list[T], rng: np.random.Generator) -> T:
     """Remove and return a uniformly random element, O(1) via swap-with-last."""
@@ -138,26 +163,19 @@ def _pick(buffer: list[T], rng: np.random.Generator) -> T:
     return buffer.pop()
 
 
-def _sample_order(sample_index: SampleIndex, *, seed: int) -> tuple[np.ndarray, np.ndarray]:
-    """Return `(indices, block_bounds)` for a uniform per-sample permutation; every sample is its own block."""
-    total = int(sample_index.segment_offsets[-1])
-    rng = np.random.default_rng(seed=seed)
-    indices = rng.permutation(total).astype(np.int64)
-    return indices, np.arange(1, total + 1, dtype=np.int64)
-
-
-def _blockwise_order(
+def _block_order(
     sample_index: SampleIndex,
     *,
     block_size: int,
-    shuffle_blocks: bool,
-    seed: int = 0,
+    shuffle: bool,
+    seed: int,
 ) -> tuple[np.ndarray, np.ndarray]:
     """
     Return `(indices, block_bounds)` cutting the global index space into segment-local blocks.
 
-    With `shuffle_blocks`, the block order is permuted; samples within a block
-    always keep their natural order (this preserves decoder cache locality).
+    With `shuffle`, the block order is permuted; samples within a block keep
+    their natural order (this preserves decoder cache locality).
+    `block_size=1` reduces to a plain per-sample shuffle.
     """
     offsets = sample_index.segment_offsets
     total = int(offsets[-1])
@@ -173,7 +191,7 @@ def _blockwise_order(
         block_ids[start:end] = num_blocks + np.arange(end - start, dtype=np.int64) // block_size
         num_blocks += (end - start + block_size - 1) // block_size
 
-    if shuffle_blocks:
+    if shuffle:
         rng = np.random.default_rng(seed=seed)
         emitted_blocks = rng.permutation(num_blocks)
     else:

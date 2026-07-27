@@ -8,8 +8,9 @@ import os
 import sys
 import warnings
 from collections import defaultdict
-from concurrent.futures import Future, ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
+from functools import partial
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
@@ -23,10 +24,11 @@ from rerun.catalog import CatalogClient
 from ._sample_index import _ns_to_datetime64, _ns_to_timedelta64
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Callable, Iterator
 
     import torch
 
+    from rerun.catalog._entry import DatasetEntry
     from rerun.experimental._selector import Selector
 
     from ._config import Field
@@ -85,14 +87,15 @@ class _WorkerConnection:
         self._fields = fields
         self._initialized: bool = False
         self._init_pid: int = -1
-        self._view: Any = None
+        self._view: DatasetEntry | None = None
         self._decoders: dict[str, ColumnDecoder] = {}
 
     @with_tracing("RerunDataset._ensure_initialized")
-    def ensure(self) -> tuple[Any, dict[str, ColumnDecoder]]:
+    def ensure(self) -> tuple[DatasetEntry, dict[str, ColumnDecoder]]:
         """Return `(view, decoders)`, building them once per worker process."""
         pid = os.getpid()
         if self._initialized and self._init_pid == pid:
+            assert self._view is not None  # always set once `_initialized`
             return self._view, self._decoders
 
         client = CatalogClient(self._catalog_url)
@@ -124,7 +127,7 @@ class _WorkerConnection:
 @with_tracing("RerunDataset._fetch_arrow")
 def _fetch_arrow(
     *,
-    view: Any,
+    view: DatasetEntry,
     index: str,
     fields: dict[str, Field],
     decoders: dict[str, ColumnDecoder],
@@ -176,27 +179,39 @@ def _fetch_arrow(
     return targets, seg_tables
 
 
+def _run_parallel(tasks: list[Callable[[], Any]], *, max_workers: int | None = None) -> list[Any]:
+    """
+    Run independent, GIL-releasing tasks concurrently, returning results in task order.
+
+    Each task runs under a copy of the caller's context so its tracing spans stay
+    nested under the current span, and runs inline when there is a single task.
+    Intended for catalog queries, which release the GIL while waiting on the server.
+    `max_workers` caps the pool so a large task list runs in bounded waves rather
+    than one thread per task (defaults to one thread per task).
+    """
+    if not tasks:
+        return []
+    if len(tasks) == 1:
+        return [tasks[0]()]
+    workers = min(len(tasks), max_workers) if max_workers else len(tasks)
+    with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="rerun-parallel") as executor:
+        futures = [executor.submit(contextvars.copy_context().run, task) for task in tasks]
+        return [future.result() for future in futures]
+
+
 def _fetch_groups_parallel(
     groups: list[tuple[bool, dict[str, Field]]],
     *,
-    view: Any,
+    view: DatasetEntry,
     index: str,
     decoders: dict[str, ColumnDecoder],
     sample_index: SampleIndex,
     targets: list[Target],
 ) -> list[tuple[dict[str, Field], dict[str, pa.Table]]]:
-    """
-    Fetch every read group, overlapping them when there is more than one.
+    """Fetch every read group, overlapping the independent server round-trips."""
 
-    Each group is an independent server round-trip, so a thread per group lets
-    them run concurrently instead of back-to-back: the catalog query releases the
-    GIL while it waits on the server. Each thread runs under a copy of the
-    caller's context so its `_fetch_group` tracing spans stay nested under
-    `_fetch_arrow`.
-    """
-
-    def fetch(fill_latest_at: bool, group_fields: dict[str, Field]) -> dict[str, pa.Table]:
-        return _fetch_group(
+    def fetch(fill_latest_at: bool, group_fields: dict[str, Field]) -> tuple[dict[str, Field], dict[str, pa.Table]]:
+        return group_fields, _fetch_group(
             view=view,
             index=index,
             fields=group_fields,
@@ -206,16 +221,12 @@ def _fetch_groups_parallel(
             fill_latest_at=fill_latest_at,
         )
 
-    if len(groups) == 1:
-        fill_latest_at, group_fields = groups[0]
-        return [(group_fields, fetch(fill_latest_at, group_fields))]
+    return _run_parallel([partial(fetch, fill_latest_at, group_fields) for fill_latest_at, group_fields in groups])
 
-    with ThreadPoolExecutor(max_workers=len(groups), thread_name_prefix="rerun-fetch-group") as executor:
-        futures: list[tuple[dict[str, Field], Future[dict[str, pa.Table]]]] = [
-            (group_fields, executor.submit(contextvars.copy_context().run, fetch, fill_latest_at, group_fields))
-            for fill_latest_at, group_fields in groups
-        ]
-        return [(group_fields, future.result()) for group_fields, future in futures]
+
+def is_video_field(field: Field, decoder: ColumnDecoder) -> bool:
+    """Whether a field is keyframe-anchored (compressed video), i.e. its decode window starts at a prior keyframe."""
+    return decoder.prior_keyframe_path(field.path) is not None
 
 
 def _read_groups(
@@ -250,7 +261,7 @@ def _read_groups(
 
 def _fetch_group(
     *,
-    view: Any,
+    view: DatasetEntry,
     index: str,
     fields: dict[str, Field],
     decoders: dict[str, ColumnDecoder],
@@ -259,13 +270,8 @@ def _fetch_group(
     fill_latest_at: bool,
 ) -> dict[str, pa.Table]:
     """Run one server query over the index values one read group needs, split per segment."""
-    anchored = any(
-        field.window is None and decoders[key].prior_keyframe_path(field.path) is not None
-        for key, field in fields.items()
-    )
-    windowed = any(field.window is not None for field in fields.values())
-    kind = "anchored" if anchored else ("windowed" if windowed else "unwindowed")
-    group = f"{kind},{'fill' if fill_latest_at else 'exact'}"
+    anchored = any(is_video_field(field, decoders[key]) for key, field in fields.items())
+    group = f"{'anchored' if anchored else 'windowed'},{'fill' if fill_latest_at else 'exact'}"
     with tracing_scope(f"RerunDataset._fetch_group[{group}]"):
         query_indices = _build_query_indices(targets, fields, decoders, sample_index=sample_index)
 
@@ -414,7 +420,7 @@ def _build_query_indices(
 @with_tracing("RerunDataset._fetch_prior_keyframes")
 def _fetch_prior_keyframes(
     *,
-    view: Any,
+    view: DatasetEntry,
     index: str,
     fields: dict[str, Field],
     decoders: dict[str, ColumnDecoder],
