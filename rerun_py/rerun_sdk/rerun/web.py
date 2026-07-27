@@ -1,6 +1,20 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import rerun_bindings as bindings
+
+
+def _packaged_assets_archive_path() -> str | None:
+    """
+    Path to the web viewer assets archive shipped in the wheel, or `None` if absent.
+
+    Some wheels are built without web viewer assets embedded in the extension module.
+    They instead ship the assets as `rerun_sdk/web_viewer.zip`,
+    which is expected to be served from disk.
+    """
+    path = Path(__file__).parent.parent / "web_viewer.zip"
+    return str(path) if path.is_file() else None
 
 
 def serve_web_viewer(*, web_port: int | None = None, open_browser: bool = True, connect_to: str | None = None) -> None:
@@ -35,4 +49,5 @@ def serve_web_viewer(*, web_port: int | None = None, open_browser: bool = True, 
         web_port=web_port,
         open_browser=open_browser,
         connect_to=connect_to,
+        assets_archive_path=_packaged_assets_archive_path(),
     )

@@ -11169,6 +11169,7 @@ dependencies = [
  "re_analytics",
  "re_build_tools",
  "re_log",
+ "tempfile",
  "thiserror 2.0.18",
  "tiny_http",
  "zip",

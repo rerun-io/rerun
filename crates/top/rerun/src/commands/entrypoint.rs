@@ -1303,6 +1303,7 @@ fn serve_web(
         force_wgpu_backend,
         video_decoder,
         open_browser,
+        assets_archive_path: None,
     }
     .host_web_viewer()?
     .block();

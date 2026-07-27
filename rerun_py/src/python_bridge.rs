@@ -1751,11 +1751,12 @@ fn serve_grpc(
 /// This only serves HTML+JS+Wasm, but does NOT host a gRPC server.
 #[allow(clippy::allow_attributes, clippy::unnecessary_wraps)] // False positive
 #[pyfunction]
-#[pyo3(signature = (web_port = None, open_browser = true, connect_to = None))]
+#[pyo3(signature = (web_port = None, open_browser = true, connect_to = None, assets_archive_path = None))]
 fn serve_web_viewer(
     web_port: Option<u16>,
     open_browser: bool,
     connect_to: Option<String>,
+    assets_archive_path: Option<std::path::PathBuf>,
 ) -> PyResult<()> {
     #[cfg(feature = "web_viewer")]
     {
@@ -1763,6 +1764,7 @@ fn serve_web_viewer(
             open_browser,
             connect_to: connect_to.into_iter().collect(),
             web_port: web_port.map(WebViewerServerPort).unwrap_or_default(),
+            assets_archive_path,
             ..Default::default()
         }
         .host_web_viewer()
@@ -1777,6 +1779,7 @@ fn serve_web_viewer(
         _ = web_port;
         _ = open_browser;
         _ = connect_to;
+        _ = assets_archive_path;
         Err(PyRuntimeError::new_err(
             "The Rerun SDK was not compiled with the 'web_viewer' feature",
         ))
@@ -1787,7 +1790,7 @@ fn serve_web_viewer(
 // NOTE: DEPRECATED
 #[allow(clippy::allow_attributes, clippy::unnecessary_wraps)] // False positive
 #[pyfunction]
-#[pyo3(signature = (open_browser, web_port, grpc_port, server_memory_limit, default_blueprint = None, recording = None, cors_allow_origin = vec![]))]
+#[pyo3(signature = (open_browser, web_port, grpc_port, server_memory_limit, default_blueprint = None, recording = None, cors_allow_origin = vec![], assets_archive_path = None))]
 fn serve_web(
     open_browser: bool,
     web_port: Option<u16>,
@@ -1796,6 +1799,7 @@ fn serve_web(
     default_blueprint: Option<&PyMemorySinkStorage>,
     recording: Option<&PyRecordingStream>,
     cors_allow_origin: Vec<String>,
+    assets_archive_path: Option<std::path::PathBuf>,
 ) -> PyResult<()> {
     #[cfg(feature = "web_viewer")]
     {
@@ -1820,6 +1824,7 @@ fn serve_web(
             open_browser,
             "0.0.0.0",
             web_port.map(WebViewerServerPort).unwrap_or_default(),
+            assets_archive_path.as_deref(),
             grpc_port.unwrap_or(re_grpc_server::DEFAULT_SERVER_PORT),
             server_options,
         )
@@ -1843,6 +1848,7 @@ fn serve_web(
         _ = open_browser;
         _ = server_memory_limit;
         _ = cors_allow_origin;
+        _ = assets_archive_path;
         Err(PyRuntimeError::new_err(
             "The Rerun SDK was not compiled with the 'web_viewer' feature",
         ))
@@ -2412,18 +2418,26 @@ fn get_app_url() -> String {
 /// Start a web server to host the run web-assets.
 #[allow(clippy::allow_attributes, clippy::unnecessary_wraps)] // false positive
 #[pyfunction]
-fn start_web_viewer_server(port: u16) -> PyResult<()> {
+#[pyo3(signature = (port, assets_archive_path = None))]
+fn start_web_viewer_server(
+    port: u16,
+    assets_archive_path: Option<std::path::PathBuf>,
+) -> PyResult<()> {
     #[cfg(feature = "web_viewer")]
     {
         let mut web_handle = global_web_viewer_server();
 
         *web_handle = Some(
-            re_web_viewer_server::WebViewerServer::new("0.0.0.0", WebViewerServerPort(port))
-                .map_err(|err| {
-                    PyRuntimeError::new_err(format!(
-                        "Failed to start web viewer server on port {port}: {err}",
-                    ))
-                })?,
+            re_web_viewer_server::WebViewerServer::with_archive(
+                "0.0.0.0",
+                WebViewerServerPort(port),
+                assets_archive_path.as_deref(),
+            )
+            .map_err(|err| {
+                PyRuntimeError::new_err(format!(
+                    "Failed to start web viewer server on port {port}: {err}",
+                ))
+            })?,
         );
 
         Ok(())
@@ -2432,6 +2446,7 @@ fn start_web_viewer_server(port: u16) -> PyResult<()> {
     #[cfg(not(feature = "web_viewer"))]
     {
         _ = port;
+        _ = assets_archive_path;
         Err(PyRuntimeError::new_err(
             "The Rerun SDK was not compiled with the 'web_viewer' feature",
         ))

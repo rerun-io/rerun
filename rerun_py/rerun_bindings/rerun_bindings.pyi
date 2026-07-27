@@ -734,7 +734,12 @@ def serve_grpc(
     Returns the URI of the server so you can connect the viewer to it.
     """
 
-def serve_web_viewer(web_port: int | None = None, open_browser: bool = True, connect_to: str | None = None) -> None:
+def serve_web_viewer(
+    web_port: int | None = None,
+    open_browser: bool = True,
+    connect_to: str | None = None,
+    assets_archive_path: str | None = None,
+) -> None:
     """
     Serve a web-viewer over HTTP.
 
@@ -749,6 +754,7 @@ def serve_web(
     default_blueprint: PyMemorySinkStorage | None = None,
     recording: PyRecordingStream | None = None,
     cors_allow_origin: list[str] = ...,  # type: ignore[assignment]
+    assets_archive_path: str | None = None,
 ) -> None:
     """Serve a web-viewer AND host a gRPC server."""
 
@@ -911,7 +917,7 @@ def get_app_url() -> str:
     whether [`start_web_viewer_server()`] was called.
     """
 
-def start_web_viewer_server(port: int) -> None:
+def start_web_viewer_server(port: int, assets_archive_path: str | None = None) -> None:
     """Start a web server to host the run web-assets."""
 
 def escape_entity_path_part(part: str) -> str:

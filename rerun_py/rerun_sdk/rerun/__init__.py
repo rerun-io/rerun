@@ -486,7 +486,9 @@ def start_web_viewer_server(port: int = 0) -> None:
 
     """
 
-    bindings.start_web_viewer_server(port)
+    from .web import _packaged_assets_archive_path
+
+    bindings.start_web_viewer_server(port, assets_archive_path=_packaged_assets_archive_path())
 
 
 def notebook_show(
