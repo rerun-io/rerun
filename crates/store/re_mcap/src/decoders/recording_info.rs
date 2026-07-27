@@ -1,6 +1,6 @@
 use re_chunk::{Chunk, EntityPath, RowId, TimePoint};
+use re_int::SaturatingCast as _;
 use re_sdk_types::archetypes::RecordingInfo;
-use saturating_cast::SaturatingCast as _;
 
 use super::{Decoder, DecoderContext, MCAP_PROPERTIES_ENTITY_PATH};
 use crate::Error;

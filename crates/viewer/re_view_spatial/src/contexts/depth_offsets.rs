@@ -1,13 +1,13 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use ahash::HashMap;
+use re_int::SaturatingCast as _;
 use re_log_types::EntityPathHash;
 use re_sdk_types::components::DrawOrder;
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
     IdentifiedViewSystem, QueryContext, ViewContextSystem, ViewSystemIdentifier,
 };
-use saturating_cast::SaturatingCast as _;
 
 use crate::visualizers::visualizers_processing_draw_order;
 

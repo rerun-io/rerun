@@ -2,6 +2,7 @@ use arrow::datatypes::SchemaRef;
 use datafusion::common::{DataFusionError, ScalarValue, exec_err};
 use datafusion::logical_expr::{BinaryExpr, Expr, Operator, TableProviderFilterPushDown};
 use itertools::Itertools as _;
+use re_int::SaturatingCast as _;
 use re_log_types::{AbsoluteTimeRange, TimeInt, TimelineName};
 use re_protos::cloud::v1alpha1::ext::{Query, QueryDatasetRequest, QueryLatestAt, QueryRange};
 use re_protos::cloud::v1alpha1::{SegmentIdFilter, SegmentIdList, segment_id_filter};
@@ -458,7 +459,7 @@ fn known_filter_column(
                 ScalarValue::UInt8(Some(v)) => *v as i64,
                 ScalarValue::UInt16(Some(v)) => *v as i64,
                 ScalarValue::UInt32(Some(v)) => *v as i64,
-                ScalarValue::UInt64(Some(v)) => i64::try_from(*v).unwrap_or(i64::MAX),
+                ScalarValue::UInt64(Some(v)) => v.saturating_cast::<i64>(),
                 ScalarValue::Int8(Some(v)) => *v as i64,
                 ScalarValue::Int16(Some(v)) => *v as i64,
                 ScalarValue::Int32(Some(v)) => *v as i64,

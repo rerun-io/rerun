@@ -1,7 +1,7 @@
 [package]
-name = "re_format"
+name = "re_int"
 authors.workspace = true
-description = "Miscellaneous tools to format and parse numbers, durations, etc."
+description = "Small numeric helper traits: saturating integer casts and unsigned absolute value"
 edition.workspace = true
 homepage.workspace = true
 include.workspace = true
@@ -15,14 +15,8 @@ version.workspace = true
 [lints]
 workspace = true
 
+
 [package.metadata.docs.rs]
 all-features = true
 
-
 [dependencies]
-half.workspace = true
-itertools.workspace = true
-num-traits.workspace = true
-re_int.workspace = true
-re_log.workspace = true
-# Do NOT add any complex dependencies here. Keep this crate lightweight!

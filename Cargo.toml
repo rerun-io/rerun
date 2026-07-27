@@ -115,6 +115,7 @@ re_crash_handler = { path = "crates/utils/re_crash_handler", version = "=0.36.0-
 re_error = { path = "crates/utils/re_error", version = "=0.36.0-alpha.1", default-features = false }
 re_format = { path = "crates/utils/re_format", version = "=0.36.0-alpha.1", default-features = false }
 re_grpc_headers = { path = "crates/utils/re_grpc_headers", version = "=0.36.0-alpha.1", default-features = false }
+re_int = { path = "crates/utils/re_int", version = "=0.36.0-alpha.1", default-features = false }
 re_log = { path = "crates/utils/re_log", version = "=0.36.0-alpha.1", default-features = false }
 re_memory = { path = "crates/utils/re_memory", version = "=0.36.0-alpha.1", default-features = false }
 re_mutex = { path = "crates/utils/re_mutex", version = "=0.36.0-alpha.1", default-features = false }
@@ -393,7 +394,6 @@ ron = { version = "0.12.1", features = ["integer128"] }
 roxmltree = "0.20.0" # 0.21 would duplicate the 0.20 that `resvg` (via egui_extras) requires. Bump once egui_extras/resvg move to roxmltree 0.21.
 ring = "0.17.14"
 rustls = { version = "0.23.40", default-features = false }
-saturating_cast = "0.1.0"
 scuffle-av1 = "0.1.4"
 scuffle-bytes-util = "0.1.5"
 semver = "1.0"
@@ -554,6 +554,7 @@ debug = false
 "re_gamepad".debug = true
 "re_grpc_client".debug = true
 "re_grpc_server".debug = true
+"re_int".debug = true
 "re_integration_test".debug = true
 "re_log_channel".debug = true
 "re_log_encoding".debug = true

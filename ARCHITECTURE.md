@@ -99,11 +99,11 @@ Of course, this will only take us so far. In the future we plan on caching queri
 Here is an overview of the crates included in the project:
 
 <picture>
-  <img src="https://static.rerun.io/crates/709bdeb968d4a895132fad872bcfee9478e6b8d5/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/709bdeb968d4a895132fad872bcfee9478e6b8d5/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/709bdeb968d4a895132fad872bcfee9478e6b8d5/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/709bdeb968d4a895132fad872bcfee9478e6b8d5/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/709bdeb968d4a895132fad872bcfee9478e6b8d5/1200w.png">
+  <img src="https://static.rerun.io/architecture_diagram/db6dc84c54d0ee9abf2931e9b2783df46480b416/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/architecture_diagram/db6dc84c54d0ee9abf2931e9b2783df46480b416/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/architecture_diagram/db6dc84c54d0ee9abf2931e9b2783df46480b416/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/architecture_diagram/db6dc84c54d0ee9abf2931e9b2783df46480b416/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/architecture_diagram/db6dc84c54d0ee9abf2931e9b2783df46480b416/1200w.png">
 </picture>
 
 <!-- !!! IMPORTANT!!!
@@ -242,6 +242,7 @@ Update instructions:
 | re_error             | Helpers for handling errors.                                                                  |
 | re_format            | Miscellaneous tools to format and parse numbers, durations, etc.                              |
 | re_grpc_headers      | Rerun gRPC header conventions (`x-rerun-*` consts, version interceptor, tower layers).        |
+| re_int               | Small numeric helper traits: saturating integer casts and unsigned absolute value.            |
 | re_lenses            | A collection of lenses for mapping component data to Rerun semantic types.                    |
 | re_lenses_core       | Core lens types and composable Arrow array transformations                                    |
 | re_log               | Helpers for setting up and doing text logging in the Rerun crates.                            |

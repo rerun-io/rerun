@@ -8587,10 +8587,10 @@ dependencies = [
  "parking_lot",
  "rand 0.9.4",
  "re_analytics",
+ "re_int",
  "re_log",
  "re_web",
  "ring",
- "saturating_cast",
  "serde",
  "serde_json",
  "sha2",
@@ -8772,6 +8772,7 @@ dependencies = [
  "re_byte_size",
  "re_chunk",
  "re_format",
+ "re_int",
  "re_log",
  "re_log_encoding",
  "re_log_types",
@@ -8779,7 +8780,6 @@ dependencies = [
  "re_sorbet",
  "re_tracing",
  "re_types_core",
- "saturating_cast",
  "similar-asserts",
  "tempfile",
  "thiserror 2.0.18",
@@ -9041,6 +9041,7 @@ dependencies = [
  "re_byte_size",
  "re_dataframe",
  "re_format",
+ "re_int",
  "re_log",
  "re_log_encoding",
  "re_log_types",
@@ -9104,6 +9105,7 @@ dependencies = [
  "re_chunk",
  "re_chunk_store",
  "re_format",
+ "re_int",
  "re_log",
  "re_log_channel",
  "re_log_encoding",
@@ -9137,6 +9139,7 @@ dependencies = [
  "half",
  "itertools 0.14.0",
  "num-traits",
+ "re_int",
  "re_log",
 ]
 
@@ -9258,6 +9261,7 @@ dependencies = [
  "re_chunk_store",
  "re_error",
  "re_format",
+ "re_int",
  "re_lenses",
  "re_lenses_core",
  "re_log",
@@ -9279,6 +9283,10 @@ dependencies = [
  "ureq",
  "walkdir",
 ]
+
+[[package]]
+name = "re_int"
+version = "0.36.0-alpha.1+dev"
 
 [[package]]
 name = "re_integration_test"
@@ -9485,6 +9493,7 @@ dependencies = [
  "re_arrow_util",
  "re_cdr",
  "re_chunk",
+ "re_int",
  "re_log",
  "re_log_types",
  "re_quota_channel",
@@ -9492,7 +9501,6 @@ dependencies = [
  "re_sdk_types",
  "re_tracing",
  "regex-lite",
- "saturating_cast",
  "serde",
  "serde_bytes",
  "strum",
@@ -9514,7 +9522,6 @@ dependencies = [
  "re_log",
  "re_quota_channel",
  "re_tracing",
- "saturating_cast",
  "serde",
  "smallvec",
  "sysinfo",
@@ -10511,6 +10518,7 @@ dependencies = [
  "js-sys",
  "poll-promise",
  "re_byte_size",
+ "re_int",
  "re_log",
  "re_mp4",
  "re_mutex",
@@ -10521,7 +10529,6 @@ dependencies = [
  "re_tracing",
  "re_tuid",
  "re_web",
- "saturating_cast",
  "scuffle-av1",
  "scuffle-bytes-util",
  "serde",
@@ -10693,6 +10700,7 @@ dependencies = [
  "re_error",
  "re_format",
  "re_gamepad",
+ "re_int",
  "re_log",
  "re_log_types",
  "re_mp4",
@@ -10710,7 +10718,6 @@ dependencies = [
  "re_viewer_context",
  "re_viewport",
  "re_viewport_blueprint",
- "saturating_cast",
  "serde",
  "smallvec",
  "thiserror 2.0.18",
@@ -11833,12 +11840,6 @@ checksum = "93fc1dc3aaa9bfed95e02e6eadabb4baf7e3078b0bd1b4d7b6b0b68378900502"
 dependencies = [
  "winapi-util",
 ]
-
-[[package]]
-name = "saturating_cast"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3fc4972f129a0ea378b69fa7c186d63255606e362ad00795f00b869dea5265eb"
 
 [[package]]
 name = "schannel"

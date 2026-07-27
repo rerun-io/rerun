@@ -220,6 +220,7 @@ use std::sync::atomic::{
     Ordering::{AcqRel, Acquire, Relaxed, Release},
 };
 
+use re_int::SaturatingCast as _;
 use re_log_types::TimeInt;
 
 use parking_lot::Mutex;
@@ -818,7 +819,7 @@ impl PipelineBudget {
         if let Some(metrics) = &metrics {
             metrics
                 .pipeline_budget_bytes
-                .fetch_max(u64::try_from(budget).unwrap_or(u64::MAX), Relaxed);
+                .fetch_max(budget.saturating_cast::<u64>(), Relaxed);
         }
 
         Self {
@@ -996,7 +997,7 @@ impl PipelineBudget {
         if let Some(metrics) = &self.metrics {
             metrics
                 .pipeline_peak_decoded_bytes
-                .fetch_max(u64::try_from(current).unwrap_or(u64::MAX), Relaxed);
+                .fetch_max(current.saturating_cast::<u64>(), Relaxed);
         }
     }
 

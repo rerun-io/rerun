@@ -4,8 +4,8 @@ use std::io::{Read, Seek};
 use mcap::Summary;
 use mcap::sans_io::{SummaryReadEvent, SummaryReader};
 use re_chunk::{TimePoint, TimelineName};
+use re_int::SaturatingCast as _;
 use re_log_types::{TimeCell, TimeType};
-use saturating_cast::SaturatingCast as _;
 
 use crate::Error;
 use crate::parsers::ChannelId;

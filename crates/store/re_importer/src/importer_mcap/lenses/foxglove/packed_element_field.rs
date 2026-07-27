@@ -6,6 +6,8 @@
 
 use std::sync::Arc;
 
+use re_int::SaturatingCast as _;
+
 use crate::importer_mcap::lenses::helpers::get_field_as;
 use arrow::array::builder::{
     FixedSizeListBuilder, Float32Builder, Int32Builder, ListBuilder, UInt32Builder,
@@ -93,10 +95,10 @@ impl NumericType {
             // intentional reinterpretation of raw byte as signed
             #[expect(clippy::cast_possible_wrap)]
             Self::Int8 => (bytes[0] as i8).clamp(0, i8::MAX) as u8,
-            Self::Uint16 => u16::from_le_bytes([bytes[0], bytes[1]]).min(255) as u8,
-            Self::Int16 => i16::from_le_bytes([bytes[0], bytes[1]]).clamp(0, 255) as u8,
+            Self::Uint16 => u16::from_le_bytes([bytes[0], bytes[1]]).saturating_cast::<u8>(),
+            Self::Int16 => i16::from_le_bytes([bytes[0], bytes[1]]).saturating_cast::<u8>(),
             Self::Uint32 => {
-                u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]).min(255) as u8
+                u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]).saturating_cast::<u8>()
             }
             Self::Int32 => {
                 i32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]).clamp(0, 255) as u8

@@ -5,8 +5,8 @@ use cros_codecs::codec::h265::parser::{
 };
 use h264_reader::nal::{self, Nal as _};
 use itertools::Itertools as _;
+use re_int::SaturatingCast as _;
 use re_span::Span;
-use saturating_cast::SaturatingCast as _;
 
 use super::{SampleMetadata, VideoDataDescription, VideoLoadError};
 use crate::demux::{

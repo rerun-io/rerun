@@ -1,5 +1,3 @@
-use saturating_cast::SaturatingCast as _;
-
 /// Represents a limit in how much RAM to use.
 ///
 /// Different systems can chose to heed the memory limit in different ways,
@@ -53,7 +51,7 @@ impl MemoryLimit {
     /// Set the limit to some number of bytes.
     pub fn from_bytes(max_bytes: u64) -> Self {
         Self {
-            max_bytes: Some(max_bytes.saturating_cast()),
+            max_bytes: Some(max_bytes),
         }
     }
 

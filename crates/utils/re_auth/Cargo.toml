@@ -36,6 +36,7 @@ ignored = [
 [dependencies]
 re_analytics.workspace = true
 re_log.workspace = true
+re_int.workspace = true
 
 async-trait.workspace = true
 base64.workspace = true
@@ -47,7 +48,6 @@ ring = { workspace = true, optional = true }
 parking_lot.workspace = true
 sha2.workspace = true
 signature.workspace = true
-saturating_cast.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
