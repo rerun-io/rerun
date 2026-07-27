@@ -208,6 +208,21 @@ snippet: archetypes/mesh3d_instancing
 In this example, the mesh at `"shape"` is instantiated four times with different translations and rotations.
 The box at `"shape/box"` is not affected by its parent's instance poses and appears only once.
 
+## Debugging transform trees
+
+The Rerun viewer features a debugging UI for visual introspection of the 3D transform cache.
+This allows to view the tree structure of the transforms, including potentially disconnected trees, and inspect the latest stored values of each frame node or transform edge.
+The UI supports horizontal and vertical tree layout and you can filter by transform type (e.g. static or temporal).
+
+> [!NOTE]
+> This UI is currently a tab in the dev panel (accessible via "Toggle dev panel" in the menu or ctrl/cmd+shift+m).
+> We are open to making this a dedicated view in the future - let us know if you have any [feedback](https://rerun.io/docs/development)!
+
+<video width="100%" autoplay loop muted controls>
+    <source src="https://static.rerun.io/cc6c41138eeeabb31fb2ec988eefdcd8da446c86_transform_dev_panel_teaser.mp4" type="video/mp4" />
+</video>
+
+
 <!--
 
 Visualizing transforms
