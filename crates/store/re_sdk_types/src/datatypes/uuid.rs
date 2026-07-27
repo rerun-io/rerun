@@ -196,8 +196,18 @@ impl ::re_types_core::Loggable for Uuid {
                         DeserializationError::datatype_mismatch(expected, actual)
                     })
                     .with_context("rerun.datatypes.Uuid#bytes")?;
+                if arrow_data.value_length() != 16i32 {
+                    return Err(DeserializationError::datatype_mismatch(
+                        DataType::FixedSizeList(
+                            std::sync::Arc::new(Field::new("item", DataType::UInt8, false)),
+                            16,
+                        ),
+                        arrow_data.data_type().clone(),
+                    ))
+                    .with_context("rerun.datatypes.Uuid#bytes");
+                }
                 let arrow_data_inner = &**arrow_data.values();
-                bytemuck::cast_slice::<_, [u8; 16usize]>(
+                bytemuck::try_cast_slice::<_, [u8; 16usize]>(
                     arrow_data_inner
                         .as_any()
                         .downcast_ref::<UInt8Array>()
@@ -210,6 +220,8 @@ impl ::re_types_core::Loggable for Uuid {
                         .values()
                         .as_ref(),
                 )
+                .map_err(|err| DeserializationError::ValidationError(err.to_string()))
+                .with_context("rerun.datatypes.Uuid#bytes")?
             };
             {
                 slice

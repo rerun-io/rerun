@@ -116,6 +116,7 @@ from .archetypes import (
     Ellipsoids3D as Ellipsoids3D,
     EncodedDepthImage as EncodedDepthImage,
     EncodedImage as EncodedImage,
+    GaussianSplats3D as GaussianSplats3D,
     GeoLineStrings as GeoLineStrings,
     GeoPoints as GeoPoints,
     GraphEdges as GraphEdges,

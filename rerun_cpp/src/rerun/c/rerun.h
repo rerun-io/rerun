@@ -441,6 +441,12 @@ typedef struct rr_error {
 /// If not, the SDK's binary and the C header are out of sync.
 extern const char* rr_version_string(void);
 
+/// Converts a 32-bit `float` to the bits of an IEEE 754 16-bit half-precision float.
+///
+/// Rounds to nearest, ties to even. Values too large to represent become infinity,
+/// and `NaN` stays `NaN`.
+extern uint16_t rr_f16_from_f32(float value);
+
 /// Spawns a new Rerun Viewer process from an executable available in PATH, ready to
 /// listen for incoming gRPC connections.
 ///

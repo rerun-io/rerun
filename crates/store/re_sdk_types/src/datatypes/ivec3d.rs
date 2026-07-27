@@ -202,8 +202,18 @@ impl ::re_types_core::Loggable for IVec3D {
                         DeserializationError::datatype_mismatch(expected, actual)
                     })
                     .with_context("rerun.datatypes.IVec3D#xyz")?;
+                if arrow_data.value_length() != 3i32 {
+                    return Err(DeserializationError::datatype_mismatch(
+                        DataType::FixedSizeList(
+                            std::sync::Arc::new(Field::new("item", DataType::Int32, false)),
+                            3,
+                        ),
+                        arrow_data.data_type().clone(),
+                    ))
+                    .with_context("rerun.datatypes.IVec3D#xyz");
+                }
                 let arrow_data_inner = &**arrow_data.values();
-                bytemuck::cast_slice::<_, [i32; 3usize]>(
+                bytemuck::try_cast_slice::<_, [i32; 3usize]>(
                     arrow_data_inner
                         .as_any()
                         .downcast_ref::<Int32Array>()
@@ -216,6 +226,8 @@ impl ::re_types_core::Loggable for IVec3D {
                         .values()
                         .as_ref(),
                 )
+                .map_err(|err| DeserializationError::ValidationError(err.to_string()))
+                .with_context("rerun.datatypes.IVec3D#xyz")?
             };
             { slice.iter().copied().map(Self).collect::<Vec<_>>() }
         })

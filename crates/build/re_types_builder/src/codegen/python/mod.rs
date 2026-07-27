@@ -2402,6 +2402,44 @@ fn np_dtype_from_type(t: &Type) -> Option<&'static str> {
     }
 }
 
+/// The numpy dtype for a scalar [`ElementType`], if it is a numeric/bool scalar.
+fn np_dtype_from_element_type(t: &ElementType) -> Option<&'static str> {
+    match t {
+        ElementType::UInt8 => Some("np.uint8"),
+        ElementType::UInt16 => Some("np.uint16"),
+        ElementType::UInt32 => Some("np.uint32"),
+        ElementType::UInt64 => Some("np.uint64"),
+        ElementType::Int8 => Some("np.int8"),
+        ElementType::Int16 => Some("np.int16"),
+        ElementType::Int32 => Some("np.int32"),
+        ElementType::Int64 => Some("np.int64"),
+        ElementType::Bool => Some("np.bool_"),
+        ElementType::Float16 => Some("np.float16"),
+        ElementType::Float32 => Some("np.float32"),
+        ElementType::Float64 => Some("np.float64"),
+        ElementType::Binary
+        | ElementType::String
+        | ElementType::Object { .. }
+        | ElementType::Array { .. } => None,
+    }
+}
+
+/// For a fixed-size array whose innermost element is a numeric/bool scalar, returns
+/// `(numpy_dtype, nesting_depth)`, where depth counts the array levels: `1` for `[f16; N]`,
+/// `2` for `[[f16; 3]; N]`, and so on. Returns `None` for anything else.
+fn fixed_size_array_scalar_dtype(typ: &Type) -> Option<(&'static str, usize)> {
+    let Type::Array { elem_type, .. } = typ else {
+        return None;
+    };
+    let mut depth = 1;
+    let mut elem = elem_type;
+    while let ElementType::Array { elem_type, .. } = elem {
+        depth += 1;
+        elem = elem_type;
+    }
+    np_dtype_from_element_type(elem).map(|np_dtype| (np_dtype, depth))
+}
+
 /// Only implemented for some cases.
 fn quote_arrow_serialization(
     reporter: &Reporter,
@@ -2477,6 +2515,36 @@ fn quote_arrow_serialization(
                         "##,
                         field_name = obj.fields[0].name,
                     )));
+                } else if let Some((np_dtype, depth)) =
+                    fixed_size_array_scalar_dtype(&obj.fields[0].typ)
+                {
+                    // A fixed-size array of a scalar type, possibly nested (e.g. `[[f16; 3]; 15]`).
+                    // Build the Arrow `FixedSizeList` from the flat scalar values outwards, one
+                    // level at a time. `data_type.value_type` peels one `FixedSizeList` level.
+                    let mut code = String::new();
+                    code.push_indented(
+                        0,
+                        format!("array = np.asarray(data, dtype={np_dtype}).flatten()"),
+                        1,
+                    );
+                    let scalar_type = format!("data_type{}", ".value_type".repeat(depth));
+                    code.push_indented(
+                        0,
+                        format!("array = pa.array(array, type={scalar_type})"),
+                        1,
+                    );
+                    for level in (0..depth).rev() {
+                        let level_type = format!("data_type{}", ".value_type".repeat(level));
+                        code.push_indented(
+                            0,
+                            format!(
+                                "array = pa.FixedSizeListArray.from_arrays(array, type={level_type})"
+                            ),
+                            1,
+                        );
+                    }
+                    code.push_indented(0, "return array", 1);
+                    return Ok(code);
                 }
             }
 

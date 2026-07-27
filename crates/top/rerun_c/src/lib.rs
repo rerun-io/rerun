@@ -449,6 +449,15 @@ pub extern "C" fn rr_version_string() -> *const c_char {
     VERSION.as_ptr()
 }
 
+/// Converts a 32-bit float to the bits of an IEEE 754 16-bit half-precision float.
+// SAFETY: the unsafety comes from #[no_mangle], because we can declare multiple
+// functions with the same symbol names, and the linker behavior in this case i undefined.
+#[expect(unsafe_code)]
+#[unsafe(no_mangle)]
+pub extern "C" fn rr_f16_from_f32(value: f32) -> u16 {
+    half::f16::from_f32(value).to_bits()
+}
+
 #[expect(clippy::result_large_err)]
 fn rr_spawn_impl(spawn_opts: *const CSpawnOptions) -> Result<(), CError> {
     let spawn_opts = if spawn_opts.is_null() {

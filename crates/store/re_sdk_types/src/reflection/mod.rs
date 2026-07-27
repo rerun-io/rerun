@@ -1284,6 +1284,17 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <SphericalHarmonics3 as Component>::name(),
+            ComponentReflection {
+                docstring_md: "View-dependent color, expressed as spherical harmonics coefficients of degrees 1 through 3.\n\nThe view-independent (degree-0) base color is represented as a separate [`components.Color`](https://rerun.io/docs/reference/types/components/color).\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: None,
+                datatype: SphericalHarmonics3::arrow_datatype(),
+                is_enum: false,
+                verify_arrow_array: SphericalHarmonics3::verify_arrow_array,
+            },
+        ),
+        (
             <StrokeWidth as Component>::name(),
             ComponentReflection {
                 docstring_md: "The width of a stroke specified in UI points.",
@@ -2487,6 +2498,52 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Magnification filter",
                         component_type: "rerun.components.MagnificationFilter".into(),
                         docstring_md: "Optional filter used when a texel is magnified (displayed larger than a screen pixel).",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::from("rerun.archetypes.GaussianSplats3D"),
+            ArchetypeReflection {
+                display_name: "Gaussian splats 3D",
+                deprecation_summary: None,
+                scope: None,
+                view_types: &["Spatial3DView"],
+                fields: vec![
+                    ArchetypeFieldReflection {
+                        name: "centers",
+                        display_name: "Centers",
+                        component_type: "rerun.components.Position3D".into(),
+                        docstring_md: "The centers (means) of the gaussians.",
+                        flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "scales",
+                        display_name: "Scales",
+                        component_type: "rerun.components.Scale3D".into(),
+                        docstring_md: "Per-axis standard deviations of the gaussians, in scene units.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "quaternions",
+                        display_name: "Quaternions",
+                        component_type: "rerun.components.RotationQuat".into(),
+                        docstring_md: "The orientations of the gaussians.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "colors",
+                        display_name: "Colors",
+                        component_type: "rerun.components.Color".into(),
+                        docstring_md: "The base colors and opacities of the gaussians.\n\nThe RGB part is the view-independent base color, i.e. the degree-0 (DC) term of the spherical harmonics.\nThe alpha part is the peak opacity of the gaussian; the gaussian falloff further modulates it spatially.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "sh_coefficients",
+                        display_name: "Sh coefficients",
+                        component_type: "rerun.components.SphericalHarmonics3".into(),
+                        docstring_md: "Higher-order spherical harmonics coefficients for view-dependent color.",
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                 ],

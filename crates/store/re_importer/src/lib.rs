@@ -410,21 +410,46 @@ pub enum ImporterError {
 
     #[error("{}", re_error::format(.0))]
     Other(#[from] anyhow::Error),
+
+    #[error("{source}\nFile path: {path}")]
+    File {
+        path: String,
+        #[source]
+        source: Box<Self>,
+    },
 }
 
 impl ImporterError {
+    /// Attaches the file being imported, so that individual loaders don't each have to
+    /// thread the path through just to produce a useful error message.
+    pub fn with_path(self, path: &std::path::Path) -> Self {
+        match self {
+            // These already name the file.
+            Self::Incompatible { .. } | Self::Mp4 { .. } | Self::File { .. } => self,
+            err => Self::File {
+                path: path.display().to_string(),
+                source: Box::new(err),
+            },
+        }
+    }
+
     #[inline]
     pub fn is_path_not_found(&self) -> bool {
         match self {
             #[cfg(not(target_arch = "wasm32"))]
             Self::IO(err) => err.kind() == std::io::ErrorKind::NotFound,
+            Self::File { source, .. } => source.is_path_not_found(),
             _ => false,
         }
     }
 
     #[inline]
     pub fn is_incompatible(&self) -> bool {
-        matches!(self, Self::Incompatible { .. })
+        match self {
+            Self::Incompatible { .. } => true,
+            Self::File { source, .. } => source.is_incompatible(),
+            _ => false,
+        }
     }
 }
 

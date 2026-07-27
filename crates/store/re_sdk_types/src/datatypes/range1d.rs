@@ -200,8 +200,18 @@ impl ::re_types_core::Loggable for Range1D {
                         DeserializationError::datatype_mismatch(expected, actual)
                     })
                     .with_context("rerun.datatypes.Range1D#range")?;
+                if arrow_data.value_length() != 2i32 {
+                    return Err(DeserializationError::datatype_mismatch(
+                        DataType::FixedSizeList(
+                            std::sync::Arc::new(Field::new("item", DataType::Float64, false)),
+                            2,
+                        ),
+                        arrow_data.data_type().clone(),
+                    ))
+                    .with_context("rerun.datatypes.Range1D#range");
+                }
                 let arrow_data_inner = &**arrow_data.values();
-                bytemuck::cast_slice::<_, [f64; 2usize]>(
+                bytemuck::try_cast_slice::<_, [f64; 2usize]>(
                     arrow_data_inner
                         .as_any()
                         .downcast_ref::<Float64Array>()
@@ -214,6 +224,8 @@ impl ::re_types_core::Loggable for Range1D {
                         .values()
                         .as_ref(),
                 )
+                .map_err(|err| DeserializationError::ValidationError(err.to_string()))
+                .with_context("rerun.datatypes.Range1D#range")?
             };
             { slice.iter().copied().map(Self).collect::<Vec<_>>() }
         })

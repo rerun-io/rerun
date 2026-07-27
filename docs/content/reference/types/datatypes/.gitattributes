@@ -29,6 +29,7 @@ range1d.md linguist-generated=true
 range2d.md linguist-generated=true
 rgba32.md linguist-generated=true
 rotation_axis_angle.md linguist-generated=true
+spherical_harmonics3.md linguist-generated=true
 tensor_buffer.md linguist-generated=true
 tensor_data.md linguist-generated=true
 tensor_dimension_index_selection.md linguist-generated=true

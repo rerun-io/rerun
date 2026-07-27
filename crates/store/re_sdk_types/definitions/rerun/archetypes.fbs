@@ -17,6 +17,7 @@ include "./archetypes/ellipses2d.fbs";
 include "./archetypes/ellipsoids3d.fbs";
 include "./archetypes/encoded_depth_image.fbs";
 include "./archetypes/encoded_image.fbs";
+include "./archetypes/gaussian_splats3d.fbs";
 include "./archetypes/geo_line_strings.fbs";
 include "./archetypes/geo_points.fbs";
 include "./archetypes/graph_edges.fbs";

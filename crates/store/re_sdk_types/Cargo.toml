@@ -63,7 +63,7 @@ re_video = { workspace = true, optional = true }
 # External
 array-init.workspace = true
 arrow.workspace = true
-bytemuck = { workspace = true, features = ["derive", "extern_crate_alloc"] }
+bytemuck = { workspace = true, features = ["derive", "extern_crate_alloc", "min_const_generics"] }
 document-features.workspace = true
 emath.workspace = true
 half = { workspace = true, features = ["bytemuck"] }

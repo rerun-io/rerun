@@ -34,6 +34,7 @@ UInt32
 * [`Cylinders3D`](../archetypes/cylinders3d.md)
 * [`Ellipses2D`](../archetypes/ellipses2d.md)
 * [`Ellipsoids3D`](../archetypes/ellipsoids3d.md)
+* [`GaussianSplats3D`](../archetypes/gaussian_splats3d.md?speculative-link)
 * [`GeoLineStrings`](../archetypes/geo_line_strings.md)
 * [`GeoPoints`](../archetypes/geo_points.md)
 * [`GraphNodes`](../archetypes/graph_nodes.md)

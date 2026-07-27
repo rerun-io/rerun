@@ -59,6 +59,7 @@ include "./components/scalar.fbs";
 include "./components/scale3d.fbs";
 include "./components/schema_id.fbs";
 include "./components/show_labels.fbs";
+include "./components/spherical_harmonics3.fbs";
 include "./components/stroke_width.fbs";
 include "./components/tensor_data.fbs";
 include "./components/tensor_dimension_selection.fbs";

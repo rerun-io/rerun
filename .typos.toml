@@ -13,6 +13,7 @@ extend-exclude = [
   "rerun_cpp/src/rerun/third_party/cxxopts.hpp",
   "*.png",
   "*.mp4",
+  "*.ply",
   "*.rrd",
 ]
 

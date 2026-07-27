@@ -208,8 +208,18 @@ impl ::re_types_core::Loggable for Plane3D {
                         DeserializationError::datatype_mismatch(expected, actual)
                     })
                     .with_context("rerun.datatypes.Plane3D#xyzd")?;
+                if arrow_data.value_length() != 4i32 {
+                    return Err(DeserializationError::datatype_mismatch(
+                        DataType::FixedSizeList(
+                            std::sync::Arc::new(Field::new("item", DataType::Float32, false)),
+                            4,
+                        ),
+                        arrow_data.data_type().clone(),
+                    ))
+                    .with_context("rerun.datatypes.Plane3D#xyzd");
+                }
                 let arrow_data_inner = &**arrow_data.values();
-                bytemuck::cast_slice::<_, [f32; 4usize]>(
+                bytemuck::try_cast_slice::<_, [f32; 4usize]>(
                     arrow_data_inner
                         .as_any()
                         .downcast_ref::<Float32Array>()
@@ -222,6 +232,8 @@ impl ::re_types_core::Loggable for Plane3D {
                         .values()
                         .as_ref(),
                 )
+                .map_err(|err| DeserializationError::ValidationError(err.to_string()))
+                .with_context("rerun.datatypes.Plane3D#xyzd")?
             };
             { slice.iter().copied().map(Self).collect::<Vec<_>>() }
         })

@@ -23,5 +23,6 @@ FixedSizeList(3 x non-null Float32)
 ## Used by
 
 * [`Arrows3D`](../archetypes/arrows3d.md)
+* [`GaussianSplats3D`](../archetypes/gaussian_splats3d.md?speculative-link)
 * [`Mesh3D`](../archetypes/mesh3d.md)
 * [`Points3D`](../archetypes/points3d.md)

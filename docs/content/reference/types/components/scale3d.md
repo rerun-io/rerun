@@ -26,5 +26,6 @@ FixedSizeList(3 x non-null Float32)
 
 ## Used by
 
+* [`GaussianSplats3D`](../archetypes/gaussian_splats3d.md?speculative-link)
 * [`InstancePoses3D`](../archetypes/instance_poses3d.md)
 * [`Transform3D`](../archetypes/transform3d.md)

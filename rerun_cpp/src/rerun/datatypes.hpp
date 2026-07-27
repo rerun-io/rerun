@@ -30,6 +30,7 @@
 #include "datatypes/range2d.hpp"
 #include "datatypes/rgba32.hpp"
 #include "datatypes/rotation_axis_angle.hpp"
+#include "datatypes/spherical_harmonics3.hpp"
 #include "datatypes/tensor_buffer.hpp"
 #include "datatypes/tensor_data.hpp"
 #include "datatypes/tensor_dimension_index_selection.hpp"

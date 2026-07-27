@@ -6,8 +6,10 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
+import numpy as np
+import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 from rerun._baseclasses import (
@@ -17,10 +19,6 @@ from rerun._converters import (
     to_np_float32,
 )
 from rerun._numpy_compatibility import asarray
-
-if TYPE_CHECKING:
-    import numpy as np
-    import numpy.typing as npt
 
 __all__ = ["ManyVec3", "ManyVec3ArrayLike", "ManyVec3Batch", "ManyVec3Like"]
 
@@ -66,6 +64,8 @@ class ManyVec3Batch(BaseBatch[ManyVec3ArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: ManyVec3ArrayLike, data_type: pa.DataType) -> pa.Array:
-        raise NotImplementedError(
-            "Arrow serialization of ManyVec3 not implemented: We lack codegen for arrow-serialization of general structs"
-        )  # You need to implement native_to_pa_array_override in many_vec3_ext.py
+        array = np.asarray(data, dtype=np.float32).flatten()
+        array = pa.array(array, type=data_type.value_type.value_type)
+        array = pa.FixedSizeListArray.from_arrays(array, type=data_type.value_type)
+        array = pa.FixedSizeListArray.from_arrays(array, type=data_type)
+        return array

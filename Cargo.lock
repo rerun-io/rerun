@@ -11476,6 +11476,7 @@ version = "0.36.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "arrow",
+ "half",
  "infer",
  "itertools 0.14.0",
  "parking_lot",

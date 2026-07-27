@@ -1148,7 +1148,7 @@ fn quote_arrow_field_deserializer_buffer_slice(
             }
         }
 
-        DataType::FixedSizeList(inner, _) => {
+        DataType::FixedSizeList(inner, length) => {
             let data_src_inner = format_ident!("{data_src}_inner");
             let quoted_inner = quote_arrow_field_deserializer_buffer_slice(
                 inner.data_type(),
@@ -1157,14 +1157,13 @@ fn quote_arrow_field_deserializer_buffer_slice(
                 &data_src_inner,
             );
 
+            let quoted_datatype = quote_datatype(datatype);
+            let quoted_length = proc_macro2::Literal::i32_suffixed(
+                i32::try_from(*length).expect("fixed-size-list length must fit in an i32"),
+            );
             let quoted_downcast = {
                 let cast_as = quote!(arrow::array::FixedSizeListArray);
-                quote_array_downcast(
-                    obj_field_fqname,
-                    data_src,
-                    cast_as,
-                    &quote_datatype(datatype),
-                )
+                quote_array_downcast(obj_field_fqname, data_src, cast_as, &quoted_datatype)
             };
 
             // Fully spell out the target type of the cast: type inference fails for
@@ -1174,8 +1173,22 @@ fn quote_arrow_field_deserializer_buffer_slice(
             quote! {{
                 let #data_src = #quoted_downcast?;
 
+                // Downcasting to `FixedSizeListArray` succeeds for _any_ list width,
+                // so check the width explicitly rather than let the cast below trip over it.
+                if #data_src.value_length() != #quoted_length {
+                    return Err(DeserializationError::datatype_mismatch(
+                        #quoted_datatype, #data_src.data_type().clone(),
+                    )).with_context(#obj_field_fqname);
+                }
+
                 let #data_src_inner = &**#data_src.values();
-                bytemuck::cast_slice::<_, #quoted_elem_type>(#quoted_inner)
+
+                // NOTE: `try_cast_slice` rather than `cast_slice`: the child buffer of a
+                // `FixedSizeListArray` may be longer than `len * width`, and deserializers
+                // must never panic on malformed data.
+                bytemuck::try_cast_slice::<_, #quoted_elem_type>(#quoted_inner)
+                    .map_err(|err| DeserializationError::ValidationError(err.to_string()))
+                    .with_context(#obj_field_fqname)?
             }}
         }
 

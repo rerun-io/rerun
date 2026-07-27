@@ -45,6 +45,12 @@ from .rotation_axis_angle import (
     RotationAxisAngleBatch,
     RotationAxisAngleLike,
 )
+from .spherical_harmonics3 import (
+    SphericalHarmonics3,
+    SphericalHarmonics3ArrayLike,
+    SphericalHarmonics3Batch,
+    SphericalHarmonics3Like,
+)
 from .tensor_buffer import TensorBuffer, TensorBufferArrayLike, TensorBufferBatch, TensorBufferLike
 from .tensor_data import TensorData, TensorDataArrayLike, TensorDataBatch, TensorDataLike
 from .tensor_dimension_index_selection import (
@@ -197,6 +203,10 @@ __all__ = [
     "RotationAxisAngleArrayLike",
     "RotationAxisAngleBatch",
     "RotationAxisAngleLike",
+    "SphericalHarmonics3",
+    "SphericalHarmonics3ArrayLike",
+    "SphericalHarmonics3Batch",
+    "SphericalHarmonics3Like",
     "TensorBuffer",
     "TensorBufferArrayLike",
     "TensorBufferBatch",

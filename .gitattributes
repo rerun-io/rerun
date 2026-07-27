@@ -17,4 +17,5 @@ pixi.lock linguist-generated=true
 **/*.h5 filter=lfs diff=lfs merge=lfs -text
 **/*.mp4 filter=lfs diff=lfs merge=lfs -text
 examples/assets/example.rrd filter=lfs diff=lfs merge=lfs -text
+tests/assets/gaussian_splats/*.ply filter=lfs diff=lfs merge=lfs -text
 tests/assets/image/*.bin filter=lfs diff=lfs merge=lfs -text

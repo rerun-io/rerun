@@ -294,8 +294,29 @@ impl ::re_types_core::Loggable for ManyVec3 {
                         DeserializationError::datatype_mismatch(expected, actual)
                     })
                     .with_context("rerun.testing.datatypes.ManyVec3#triples")?;
+                if arrow_data.value_length() != 2i32 {
+                    return Err(DeserializationError::datatype_mismatch(
+                        DataType::FixedSizeList(
+                            std::sync::Arc::new(Field::new(
+                                "item",
+                                DataType::FixedSizeList(
+                                    std::sync::Arc::new(Field::new(
+                                        "item",
+                                        DataType::Float32,
+                                        false,
+                                    )),
+                                    3,
+                                ),
+                                false,
+                            )),
+                            2,
+                        ),
+                        arrow_data.data_type().clone(),
+                    ))
+                    .with_context("rerun.testing.datatypes.ManyVec3#triples");
+                }
                 let arrow_data_inner = &**arrow_data.values();
-                bytemuck::cast_slice::<_, [[f32; 3usize]; 2usize]>({
+                bytemuck::try_cast_slice::<_, [[f32; 3usize]; 2usize]>({
                     let arrow_data_inner = arrow_data_inner
                         .as_any()
                         .downcast_ref::<arrow::array::FixedSizeListArray>()
@@ -308,8 +329,18 @@ impl ::re_types_core::Loggable for ManyVec3 {
                             DeserializationError::datatype_mismatch(expected, actual)
                         })
                         .with_context("rerun.testing.datatypes.ManyVec3#triples")?;
+                    if arrow_data_inner.value_length() != 3i32 {
+                        return Err(DeserializationError::datatype_mismatch(
+                            DataType::FixedSizeList(
+                                std::sync::Arc::new(Field::new("item", DataType::Float32, false)),
+                                3,
+                            ),
+                            arrow_data_inner.data_type().clone(),
+                        ))
+                        .with_context("rerun.testing.datatypes.ManyVec3#triples");
+                    }
                     let arrow_data_inner_inner = &**arrow_data_inner.values();
-                    bytemuck::cast_slice::<_, [f32; 3usize]>(
+                    bytemuck::try_cast_slice::<_, [f32; 3usize]>(
                         arrow_data_inner_inner
                             .as_any()
                             .downcast_ref::<Float32Array>()
@@ -322,7 +353,11 @@ impl ::re_types_core::Loggable for ManyVec3 {
                             .values()
                             .as_ref(),
                     )
+                    .map_err(|err| DeserializationError::ValidationError(err.to_string()))
+                    .with_context("rerun.testing.datatypes.ManyVec3#triples")?
                 })
+                .map_err(|err| DeserializationError::ValidationError(err.to_string()))
+                .with_context("rerun.testing.datatypes.ManyVec3#triples")?
             };
             { slice.iter().copied().map(Self).collect::<Vec<_>>() }
         })

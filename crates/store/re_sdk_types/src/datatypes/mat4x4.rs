@@ -203,8 +203,18 @@ impl ::re_types_core::Loggable for Mat4x4 {
                         DeserializationError::datatype_mismatch(expected, actual)
                     })
                     .with_context("rerun.datatypes.Mat4x4#flat_columns")?;
+                if arrow_data.value_length() != 16i32 {
+                    return Err(DeserializationError::datatype_mismatch(
+                        DataType::FixedSizeList(
+                            std::sync::Arc::new(Field::new("item", DataType::Float32, false)),
+                            16,
+                        ),
+                        arrow_data.data_type().clone(),
+                    ))
+                    .with_context("rerun.datatypes.Mat4x4#flat_columns");
+                }
                 let arrow_data_inner = &**arrow_data.values();
-                bytemuck::cast_slice::<_, [f32; 16usize]>(
+                bytemuck::try_cast_slice::<_, [f32; 16usize]>(
                     arrow_data_inner
                         .as_any()
                         .downcast_ref::<Float32Array>()
@@ -217,6 +227,8 @@ impl ::re_types_core::Loggable for Mat4x4 {
                         .values()
                         .as_ref(),
                 )
+                .map_err(|err| DeserializationError::ValidationError(err.to_string()))
+                .with_context("rerun.datatypes.Mat4x4#flat_columns")?
             };
             { slice.iter().copied().map(Self).collect::<Vec<_>>() }
         })
