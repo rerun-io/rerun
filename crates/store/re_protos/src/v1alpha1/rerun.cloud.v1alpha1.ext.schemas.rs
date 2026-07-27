@@ -196,13 +196,19 @@ pub struct ScanDatasetManifestDataframe {
     pub rerun_last_updated_at: quiver::Column<quiver::TimestampNanosecond>,
 
     /// Total number of chunks in this row's source.
-    pub rerun_num_chunks: quiver::Column<u64>,
+    ///
+    /// Nullable: only set once the source has been processed. A segment that is
+    /// still `pending` (or that `errored` during registration) carries a null
+    /// here — the server must not choke on those rows when scanning the manifest.
+    pub rerun_num_chunks: quiver::Column<Option<u64>>,
 
-    /// Total size in bytes of this row's source.
-    pub rerun_size_bytes: quiver::Column<u64>,
+    /// Total size in bytes of this row's source. Nullable for the same reason as
+    /// [`Self::rerun_num_chunks`].
+    pub rerun_size_bytes: quiver::Column<Option<u64>>,
 
-    /// SHA-256 hash of the schema of this row's source.
-    pub rerun_schema_sha256: quiver::Column<quiver::FixedSizeBinary<32>>,
+    /// SHA-256 hash of the schema of this row's source. Nullable for the same
+    /// reason as [`Self::rerun_num_chunks`].
+    pub rerun_schema_sha256: quiver::Column<Option<quiver::FixedSizeBinary<32>>>,
 
     /// The registration status of this row's source
     /// (see [`LayerRegistrationStatus`](crate::cloud::v1alpha1::ext::LayerRegistrationStatus)).
@@ -215,6 +221,13 @@ pub struct ScanDatasetManifestDataframe {
 
 impl ScanDatasetManifestDataframe {
     /// One row per (layer, segment) pair; all columns must have the same length.
+    ///
+    /// This convenience constructor is for callers whose rows are all fully
+    /// processed (e.g. the in-memory OSS server, where a registration only exists
+    /// once it has succeeded), so `num_chunks` / `size_bytes` / `schema_sha256`
+    /// are always present. They are wrapped as `Some` into the nullable columns.
+    /// Callers that need to emit null (pending/errored rows) build the columns
+    /// directly against [`Self::min_schema`].
     #[expect(clippy::too_many_arguments)]
     pub fn new(
         layer_names: Vec<LayerName>,
@@ -235,9 +248,13 @@ impl ScanDatasetManifestDataframe {
             rerun_layer_type: layer_types.into(),
             rerun_registration_time: registration_times.into(),
             rerun_last_updated_at: last_updated_at_times.into(),
-            rerun_num_chunks: num_chunks.into(),
-            rerun_size_bytes: size_bytes.into(),
-            rerun_schema_sha256: schema_sha256s.into(),
+            rerun_num_chunks: num_chunks.into_iter().map(Some).collect::<Vec<_>>().into(),
+            rerun_size_bytes: size_bytes.into_iter().map(Some).collect::<Vec<_>>().into(),
+            rerun_schema_sha256: schema_sha256s
+                .into_iter()
+                .map(Some)
+                .collect::<Vec<_>>()
+                .into(),
             rerun_registration_status: registration_statuses.into(),
             extra_columns: vec![],
         }
