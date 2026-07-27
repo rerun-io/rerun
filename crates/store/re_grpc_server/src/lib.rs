@@ -50,6 +50,13 @@ const CHANNEL_SIZE_MESSAGES: usize = 1024; // TODO(emilk): move into `ServerOpti
 /// even if the server has a [`ServerOptions::memory_limit`] of zero.
 const CHANNEL_SIZE_BYTES: u64 = 128 * 1024 * 1024; // TODO(emilk): move into `ServerOptions` after the patch release.
 
+/// How often the server sends HTTP/2 keepalive pings to idle clients.
+const HTTP2_KEEPALIVE_INTERVAL: std::time::Duration = std::time::Duration::from_secs(10);
+
+/// How long the server waits for a keepalive ping response before
+/// considering the connection dead and closing it.
+const HTTP2_KEEPALIVE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(20);
+
 /// Options for the gRPC Proxy Server
 #[derive(Clone, Debug)]
 pub struct ServerOptions {
@@ -339,6 +346,10 @@ async fn serve_impl(
 
     Server::builder()
         .accept_http1(true) // Support `grpc-web` clients
+        // Ping clients so silently dropped connections (no TCP RST, e.g. cable pull
+        // or dead NAT entry) are detected and torn down instead of lingering forever:
+        .http2_keepalive_interval(Some(HTTP2_KEEPALIVE_INTERVAL))
+        .http2_keepalive_timeout(Some(HTTP2_KEEPALIVE_TIMEOUT))
         .layer(cors) // Allow CORS requests from web clients
         .layer(grpc_web) // Support `grpc-web` clients
         .add_routes(routes)
