@@ -27,8 +27,8 @@ mod voxel_grid_map;
 
 // Tests of other things
 
-#[cfg(feature = "testing")]
-mod fuzzy;
 #[cfg(feature = "mint")]
 mod mint_conversions;
+#[cfg(feature = "testing")]
+mod type_zoo;
 mod validity;

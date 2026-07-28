@@ -16,8 +16,8 @@ include "./rerun/blueprint/archetypes.fbs";
 
 include "./rerun/blueprint/views.fbs";
 
-include "./rerun/testing/datatypes/fuzzy.fbs";
+include "./rerun/testing/datatypes/type_zoo.fbs";
 include "./rerun/testing/components/enum_test.fbs";
-include "./rerun/testing/components/fuzzy_deps.fbs";
-include "./rerun/testing/components/fuzzy.fbs";
-include "./rerun/testing/archetypes/fuzzy.fbs";
+include "./rerun/testing/components/type_zoo_deps.fbs";
+include "./rerun/testing/components/type_zoo.fbs";
+include "./rerun/testing/archetypes/type_zoo.fbs";
