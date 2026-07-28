@@ -66,8 +66,9 @@ dev = [
   "pyyaml>=6.0",
   "types-pyyaml>=6.0",
   "wheel>=0.46",
-  # Needed by lerobot importer example
-  "huggingface-hub<1.0",
+  # Needed by lerobot importer example. `<1.0` held `transformers` on 4.x, which is why the
+  # bound is now `<2.0` — `snapshot_download`, the only API we call, is unchanged in 1.x.
+  "huggingface-hub<2.0",
   # Typed packages for dataframe/arrow operations (needed for linting examples/tests)
   "polars>=1.0",
   "datafusion>=53.0",
