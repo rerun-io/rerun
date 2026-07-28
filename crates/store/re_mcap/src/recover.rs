@@ -12,7 +12,7 @@ use mcap::read::{Options, RawMessageStream, parse_record};
 use mcap::records::{self, op};
 use mcap::{Channel, McapError, Schema, Summary};
 
-use crate::Error;
+use crate::{Error, McapSummarySource};
 
 /// The result of a cheap, decompression-free scan of an MCAP data section.
 ///
@@ -93,19 +93,15 @@ pub fn build_chunk_index(mcap: &[u8]) -> Result<ScanResult, Error> {
     // byte offsets, and the reconstructed `ChunkIndex` / `MetadataIndex` need each record's absolute
     // offset. Record *bodies* are still handed to `parse_record`, so only the envelope is manual.
     //
-    // Every MCAP record is framed by a fixed header of a 1-byte opcode followed by an 8-byte
-    // little-endian `u64` body length, so the body starts this many bytes after the opcode byte.
-    const RECORD_HEADER_LEN: usize = 1 + 8;
-
     let mut off = mcap::MAGIC.len();
-    while off + RECORD_HEADER_LEN <= mcap.len() {
+    while off + crate::RECORD_HEADER_LEN <= mcap.len() {
         let opcode = mcap[off];
         let len = u64::from_le_bytes(
-            mcap[off + 1..off + RECORD_HEADER_LEN]
+            mcap[off + 1..off + crate::RECORD_HEADER_LEN]
                 .try_into()
                 .expect("slice is exactly 8 bytes"),
         );
-        let body_start = off + RECORD_HEADER_LEN;
+        let body_start = off + crate::RECORD_HEADER_LEN;
         let Some(body_end) = usize::try_from(len)
             .ok()
             .and_then(|len| body_start.checked_add(len))
@@ -348,8 +344,16 @@ pub(crate) fn reconstruct_summary(mcap: &[u8]) -> Result<Summary, Error> {
 ///
 /// With `recover` disabled, a missing summary is an error and a read failure is propagated.
 pub fn read_or_reconstruct_summary(mcap: &[u8], recover: bool) -> Result<Summary, Error> {
+    read_or_reconstruct_summary_with_source(mcap, recover).map(|(summary, _source)| summary)
+}
+
+/// Like [`read_or_reconstruct_summary`], but also reports where the summary came from.
+pub(crate) fn read_or_reconstruct_summary_with_source(
+    mcap: &[u8],
+    recover: bool,
+) -> Result<(Summary, McapSummarySource), Error> {
     match crate::read_summary(std::io::Cursor::new(mcap)) {
-        Ok(Some(summary)) => return Ok(summary),
+        Ok(Some(summary)) => return Ok((summary, McapSummarySource::Embedded)),
         Ok(None) if !recover => {
             return Err(Error::Other(anyhow::anyhow!(
                 "MCAP file does not contain a summary"
@@ -369,7 +373,7 @@ pub fn read_or_reconstruct_summary(mcap: &[u8], recover: bool) -> Result<Summary
         }
     }
 
-    reconstruct_summary(mcap)
+    reconstruct_summary(mcap).map(|summary| (summary, McapSummarySource::Reconstructed))
 }
 
 /// Deep-copies a [`Schema`] into an owned, `'static` value.

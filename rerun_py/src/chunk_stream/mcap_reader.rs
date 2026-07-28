@@ -21,16 +21,10 @@ use super::{ChunkStream, ChunkStreamFactory};
 )]
 pub struct PyMcapReaderInternal {
     path: PathBuf,
+    mcap_file: Arc<re_mcap::McapFile<memmap2::Mmap>>,
     loader: re_importer::importer_mcap::McapImporter,
     timeline_type: TimeType,
     timestamp_offset_ns: Option<i64>,
-
-    /// Whether to reconstruct a missing/invalid summary in memory (truncated files).
-    recover: bool,
-
-    /// The parsed MCAP summary, read once and shared across `time_bounds()` and every `stream()`
-    /// so repeated (e.g. windowed) scans don't each re-parse it.
-    summary: std::sync::OnceLock<Arc<re_mcap::Summary>>,
 }
 
 #[pymethods]
@@ -95,16 +89,15 @@ impl PyMcapReaderInternal {
         let loader = re_importer::importer_mcap::McapImporter::new(&selected_decoders)
             .with_raw_fallback(true)
             .with_topic_filter(topic_filter)
-            .with_time_range(time_range)
-            .with_recover(recover);
+            .with_time_range(time_range);
+        let mcap_file = Arc::new(re_mcap::McapFile::new(mmap_file(&path)?, recover));
 
         Ok(Self {
             path,
+            mcap_file,
             loader,
             timeline_type,
             timestamp_offset_ns,
-            recover,
-            summary: std::sync::OnceLock::new(),
         })
     }
 
@@ -123,14 +116,16 @@ impl PyMcapReaderInternal {
         if start_time_ns.is_some() || end_time_ns.is_some() {
             loader = loader.with_time_range(compile_time_range(start_time_ns, end_time_ns)?);
         }
+        // Validate the summary here so errors are returned by `stream()` instead of surfacing
+        // asynchronously while consuming the stream.
+        self.summary()?;
 
         Ok(PyLazyChunkStreamInternal::new(
             LazyChunkStream::from_factory(McapStreamFactory::new(
-                self.path.clone(),
+                Arc::clone(&self.mcap_file),
                 loader,
                 self.timeline_type,
                 self.timestamp_offset_ns,
-                self.summary()?,
             )),
         ))
     }
@@ -155,13 +150,12 @@ impl PyMcapReaderInternal {
             )
         };
 
-        if let Some(summary) = self.summary.get() {
-            return bounds_from_summary(summary);
+        if let Some(summary) = self.mcap_file.cached_summary() {
+            return bounds_from_summary(&summary);
         }
 
-        let mmap = mmap_file(&self.path)?;
         let bounds_from_scan = || {
-            let scan = re_mcap::build_chunk_index(&mmap).map_err(|err| {
+            let scan = re_mcap::build_chunk_index(self.mcap_file.bytes()).map_err(|err| {
                 PyValueError::new_err(format!("Failed to scan MCAP chunk index: {err}"))
             })?;
             scan.reject_if_unrecoverable()
@@ -175,15 +169,15 @@ impl PyMcapReaderInternal {
             )
         };
 
-        match re_mcap::read_summary(std::io::Cursor::new(&mmap[..])) {
+        match re_mcap::read_summary(std::io::Cursor::new(self.mcap_file.bytes())) {
             Ok(Some(summary)) => bounds_from_summary(&summary),
-            Ok(None) if self.recover => {
+            Ok(None) if self.mcap_file.recover() => {
                 re_log::warn!(
                     "MCAP file has no summary; scanning the chunk index for time bounds. The file may be truncated"
                 );
                 bounds_from_scan()
             }
-            Err(err) if self.recover => {
+            Err(err) if self.mcap_file.recover() => {
                 re_log::warn!(
                     "Failed to read the MCAP summary ({err}); scanning the chunk index for time bounds. The file may be truncated"
                 );
@@ -217,16 +211,9 @@ impl PyMcapReaderInternal {
 impl PyMcapReaderInternal {
     /// Return the parsed MCAP summary, reading and caching it on first use.
     fn summary(&self) -> PyResult<Arc<re_mcap::Summary>> {
-        if let Some(summary) = self.summary.get() {
-            return Ok(summary.clone());
-        }
-
-        let mmap = mmap_file(&self.path)?;
-        let summary = re_mcap::read_or_reconstruct_summary(&mmap, self.recover)
-            .map_err(|err| PyValueError::new_err(format!("Failed to read MCAP summary: {err}")))?;
-
-        // A concurrent caller may have won the race; `get_or_init` keeps whichever landed first.
-        Ok(self.summary.get_or_init(|| Arc::new(summary)).clone())
+        self.mcap_file
+            .summary()
+            .map_err(|err| PyValueError::new_err(format!("Failed to read MCAP summary: {err}")))
     }
 }
 
@@ -258,29 +245,26 @@ fn compute_time_bounds(
 /// Factory for creating chunk streams from MCAP files.
 ///
 /// Wraps a [`re_importer::importer_mcap::McapImporter`] (which holds decoder config
-/// and pre-built lenses) plus the file path and timeline settings.
+/// and pre-built lenses) plus the shared MCAP file and timeline settings.
 pub struct McapStreamFactory {
-    path: PathBuf,
+    mcap_file: Arc<re_mcap::McapFile<memmap2::Mmap>>,
     loader: re_importer::importer_mcap::McapImporter,
     timeline_type: TimeType,
     timestamp_offset_ns: Option<i64>,
-    summary: Arc<re_mcap::Summary>,
 }
 
 impl McapStreamFactory {
     pub fn new(
-        path: PathBuf,
+        mcap_file: Arc<re_mcap::McapFile<memmap2::Mmap>>,
         loader: re_importer::importer_mcap::McapImporter,
         timeline_type: TimeType,
         timestamp_offset_ns: Option<i64>,
-        summary: Arc<re_mcap::Summary>,
     ) -> Self {
         Self {
-            path,
+            mcap_file,
             loader,
             timeline_type,
             timestamp_offset_ns,
-            summary,
         }
     }
 }
@@ -296,25 +280,19 @@ impl ChunkStreamFactory for McapStreamFactory {
             super::CHUNK_CHANNEL_CAPACITY,
         );
 
-        let mmap = mmap_file(&self.path)?;
+        let mcap_file = Arc::clone(&self.mcap_file);
         let loader = self.loader.clone();
         let timeline_type = self.timeline_type;
         let timestamp_offset_ns = self.timestamp_offset_ns;
-        let summary = self.summary.clone();
 
         std::thread::Builder::new()
             .name("mcap-chunk-source".into())
             .spawn(move || {
-                let result = loader.emit_chunks_with_summary(
-                    &mmap,
-                    &summary,
-                    timeline_type,
-                    timestamp_offset_ns,
-                    &|chunk| {
+                let result =
+                    loader.emit_chunks(&mcap_file, timeline_type, timestamp_offset_ns, &|chunk| {
                         // Stop producing if the receiver has been dropped.
                         re_quota_channel::send_crossbeam(&tx, Ok(Arc::new(chunk))).ok();
-                    },
-                );
+                    });
                 if let Err(err) = result {
                     re_quota_channel::send_crossbeam(
                         &tx,

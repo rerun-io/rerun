@@ -31,6 +31,7 @@ byteorder.workspace = true
 crossbeam.workspace = true
 itertools.workspace = true
 mcap.workspace = true
+parking_lot.workspace = true
 prost-reflect.workspace = true
 rayon.workspace = true
 re_cdr.workspace = true

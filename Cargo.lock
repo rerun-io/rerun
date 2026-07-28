@@ -9554,6 +9554,7 @@ dependencies = [
  "insta",
  "itertools 0.14.0",
  "mcap",
+ "parking_lot",
  "prost-reflect",
  "rayon",
  "re_arrow_util",

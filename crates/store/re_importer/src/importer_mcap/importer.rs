@@ -92,13 +92,16 @@ impl McapImporter {
         self
     }
 
-    /// Enables recovery of truncated / summary-less MCAP files.
+    /// Enables recovery of truncated / summary-less MCAP files when using
+    /// [`Importer::import_from_path`] or [`Importer::import_from_file_contents`].
     ///
-    /// When set, [`Self::emit_chunks`] reconstructs a [`re_mcap::Summary`] in memory (via
-    /// [`re_mcap::read_or_reconstruct_summary`]) if the file has no valid summary — the incomplete tail
-    /// chunk/record is dropped with a warning, and channels declared only in the dropped tail are
-    /// lost. The recovered statistics therefore only count the channels and messages that could be
-    /// recovered.
+    /// When enabled, a missing or invalid summary is reconstructed in memory from the readable
+    /// portion of the file.
+    /// The incomplete tail chunk or record is dropped with a warning, and recovered statistics only
+    /// count the channels and messages that could be recovered.
+    ///
+    /// Note: This has no effect on [`Self::emit_chunks`], which uses the recovery setting of the
+    /// supplied [`re_mcap::McapFile`].
     pub fn with_recover(mut self, recover: bool) -> Self {
         self.recover = recover;
         self
@@ -129,42 +132,20 @@ impl McapImporter {
         }
     }
 
-    /// Load chunks from MCAP bytes, calling `emit_chunk` for each produced chunk.
+    /// Load chunks from an [`re_mcap::McapFile`], calling `emit_chunk` for each produced chunk.
     ///
     /// Bypasses the [`Importer`] / [`ImportedData`] / `SetStoreInfo` ceremony.
     /// Uses the decoders, raw fallback, and lenses already configured on this importer.
-    pub fn emit_chunks(
+    pub fn emit_chunks<BytesSource>(
         &self,
-        mcap: &[u8],
+        mcap_file: &re_mcap::McapFile<BytesSource>,
         timeline_type: re_log_types::TimeType,
         timestamp_offset_ns: Option<i64>,
         emit_chunk: &(dyn Fn(re_chunk::Chunk) + Send + Sync),
-    ) -> Result<(), ImporterError> {
-        let summary = re_mcap::read_or_reconstruct_summary(mcap, self.recover)
-            .map_err(anyhow::Error::from)?;
-        self.emit_chunks_with_summary(
-            mcap,
-            &summary,
-            timeline_type,
-            timestamp_offset_ns,
-            emit_chunk,
-        )
-    }
-
-    /// Like [`Self::emit_chunks`], but reuses an already-read [`re_mcap::Summary`] rather than
-    /// parsing it from `mcap` again. The summary must be the one for `mcap`.
-    ///
-    /// Parsing the summary walks every chunk index, so for large files it is a real cost. When a
-    /// single file is scanned repeatedly (e.g. windowed reads), read the summary once and pass it
-    /// in here to avoid re-parsing it on every scan.
-    pub fn emit_chunks_with_summary(
-        &self,
-        mcap: &[u8],
-        summary: &re_mcap::Summary,
-        timeline_type: re_log_types::TimeType,
-        timestamp_offset_ns: Option<i64>,
-        emit_chunk: &(dyn Fn(re_chunk::Chunk) + Send + Sync),
-    ) -> Result<(), ImporterError> {
+    ) -> Result<(), ImporterError>
+    where
+        BytesSource: AsRef<[u8]>,
+    {
         // Tag the scope with the time range so each window of a windowed read is a distinct span.
         re_tracing::profile_function!(match self.time_range {
             Some((start, end)) => format!("log_time [{start}, {end})"),
@@ -205,20 +186,26 @@ impl McapImporter {
             }
         };
 
+        let summary = mcap_file.summary().map_err(anyhow::Error::from)?;
         DecoderRegistry::all_builtin(self.raw_fallback_enabled)
             .select(&self.selected_decoders)
-            .plan(mcap, summary, &self.topic_filter)?
+            .plan(mcap_file.bytes(), &summary, &self.topic_filter)?
             .with_time_range(self.time_range)
-            .run(mcap, summary, timeline_type, &on_chunk_with_transforms)?;
+            .run(
+                mcap_file.bytes(),
+                &summary,
+                timeline_type,
+                &on_chunk_with_transforms,
+            )?;
 
         if self
             .selected_decoders
             .contains(&DecoderIdentifier::from(URDF_DECODER_IDENTIFIER))
             && let Err(err) = super::robot_description::extract_urdf_from_robot_descriptions(
-                mcap,
-                summary,
+                mcap_file.bytes(),
+                &summary,
                 &self.topic_filter,
-                self.recover,
+                mcap_file.recover(),
                 &on_chunk_with_transforms,
             )
         {
@@ -274,8 +261,9 @@ impl Importer for McapImporter {
                         return;
                     }
                 };
+                let mcap_file = re_mcap::McapFile::new(mmap, loader.recover);
 
-                if let Err(err) = loader.load_and_send(&mmap, &settings, &tx) {
+                if let Err(err) = loader.load_and_send(&mcap_file, &settings, &tx) {
                     re_log::error!("Failed to load MCAP file: {err}");
                 }
             })
@@ -307,13 +295,15 @@ impl Importer for McapImporter {
         // common rayon thread pool.
         cfg_select! {
             target_arch = "wasm32" => {
-                loader.load_and_send(&contents, &settings, &tx)?;
+                let mcap_file = re_mcap::McapFile::new(contents, loader.recover);
+                loader.load_and_send(&mcap_file, &settings, &tx)?;
             }
             _ => {
                 std::thread::Builder::new()
                     .name(format!("load_mcap({filepath:?})"))
                     .spawn(move || {
-                        if let Err(err) = loader.load_and_send(&contents, &settings, &tx) {
+                        let mcap_file = re_mcap::McapFile::new(contents, loader.recover);
+                        if let Err(err) = loader.load_and_send(&mcap_file, &settings, &tx) {
                             re_log::error!("Failed to load MCAP file: {err}");
                         }
                     })
@@ -328,12 +318,15 @@ impl Importer for McapImporter {
 impl McapImporter {
     /// Send `SetStoreInfo` then decode chunks via [`Self::emit_chunks`],
     /// forwarding each chunk to the [`Importer`] channel.
-    pub fn load_and_send(
+    pub fn load_and_send<BytesSource>(
         &self,
-        mcap: &[u8],
+        mcap_file: &re_mcap::McapFile<BytesSource>,
         settings: &ImporterSettings,
         tx: &Sender<ImportedData>,
-    ) -> Result<(), ImporterError> {
+    ) -> Result<(), ImporterError>
+    where
+        BytesSource: AsRef<[u8]>,
+    {
         re_log::debug!(
             "Loading MCAP with timeline type {:?}",
             settings.timeline_type
@@ -356,7 +349,7 @@ impl McapImporter {
         }
 
         self.emit_chunks(
-            mcap,
+            mcap_file,
             settings.timeline_type,
             settings.timestamp_offset_ns,
             &|chunk| {
