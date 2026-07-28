@@ -1983,8 +1983,22 @@ mod tests {
 
     #[test]
     fn detach_relaunches_a_native_viewer_exactly_once() {
-        let parent = Args::try_parse_from(["rerun", "--detach-process"]).unwrap();
-        assert!(should_relaunch_detached(&parent));
+        for cli_args in [
+            &["rerun", "--detach-process"][..],
+            &["rerun", "--detach-process", "recording.rrd"],
+            &[
+                "rerun",
+                "--detach-process",
+                "--screenshot-to",
+                "screenshot.png",
+            ],
+        ] {
+            let parent = Args::try_parse_from(cli_args).unwrap();
+            assert!(
+                should_relaunch_detached(&parent),
+                "expected relaunch for {cli_args:?}"
+            );
+        }
 
         let child = Args::try_parse_from(["rerun", "--detach-process", "--detached-process-child"])
             .unwrap();
@@ -2001,6 +2015,7 @@ mod tests {
             &["rerun", "--detach-process", "--save", "output.rrd"],
             &["rerun", "--detach-process", "--test-receive"],
             &["rerun", "--detach-process", "--version"],
+            &["rerun", "--detach-process", "reset"],
         ] {
             let args = Args::try_parse_from(cli_args).unwrap();
             assert!(
