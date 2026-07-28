@@ -17,7 +17,7 @@ __all__ = ["ViewCoordinates", "ViewCoordinatesBatch"]
 
 class ViewCoordinates(ViewCoordinatesExt, datatypes.ViewCoordinates, ComponentMixin):
     """
-    **Component**: How we interpret the coordinate system of an entity/space.
+    **Component**: How to interpret the coordinate system of an entity, space, or spatial view.
 
     For instance: What is "up"? What does the Z axis mean?
 
@@ -25,6 +25,8 @@ class ViewCoordinates(ViewCoordinatesExt, datatypes.ViewCoordinates, ComponentMi
 
     For example [Right, Down, Forward] means that the X axis points to the right, the Y axis points
     down, and the Z axis points forward.
+
+    Logged [`archetypes.ViewCoordinates`][rerun.archetypes.ViewCoordinates] provide the default for [`archetypes.SpatialInformation`][rerun.blueprint.archetypes.SpatialInformation] axes in 3D views.
 
     ⚠ [Rerun does not yet support left-handed coordinate systems](https://github.com/rerun-io/rerun/issues/5032).
 

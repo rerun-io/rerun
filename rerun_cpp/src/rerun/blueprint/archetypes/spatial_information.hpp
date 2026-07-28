@@ -8,6 +8,7 @@
 #include "../../component_batch.hpp"
 #include "../../component_column.hpp"
 #include "../../components/transform_frame_id.hpp"
+#include "../../components/view_coordinates.hpp"
 #include "../../result.hpp"
 
 #include <cstdint>
@@ -16,7 +17,7 @@
 #include <vector>
 
 namespace rerun::blueprint::archetypes {
-    /// **Archetype**: This configures extra drawing config for the 3D view.
+    /// **Archetype**: Configures spatial view properties.
     ///
     /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     ///
@@ -26,11 +27,27 @@ namespace rerun::blueprint::archetypes {
         /// Defaults to the coordinate frame used by the space origin entity.
         std::optional<ComponentBatch> target_frame;
 
+        /// Whether the bounding box should be shown.
+        std::optional<ComponentBatch> show_bounding_box;
+
         /// Whether axes should be shown at the origin.
         std::optional<ComponentBatch> show_axes;
 
-        /// Whether the bounding box should be shown.
-        std::optional<ComponentBatch> show_bounding_box;
+        /// Determines the coordinate system of this 3D view.
+        ///
+        /// For instance: What is "up"? What does the Z axis mean?
+        ///
+        /// The three coordinates are always ordered as [x, y, z].
+        ///
+        /// For example [Right, Down, Forward] means that the X axis points to the right, the Y axis points
+        /// down, and the Z axis points forward.
+        ///
+        /// ⚠ [Rerun does not yet support left-handed coordinate systems](https://github.com/rerun-io/rerun/issues/5032).
+        ///
+        /// Defaults to RFU unless `archetypes::ViewCoordinates` is logged at the origin entity, or at the closest ancestor thereof.
+        ///
+        /// TODO(#1387): This property has no effect in 2D views and is hidden from their selection panel.
+        std::optional<ComponentBatch> axes;
 
       public:
         /// The name of the archetype as used in `ComponentDescriptor`s.
@@ -42,15 +59,20 @@ namespace rerun::blueprint::archetypes {
             ArchetypeName, "SpatialInformation:target_frame",
             Loggable<rerun::components::TransformFrameId>::ComponentType
         );
+        /// `ComponentDescriptor` for the `show_bounding_box` field.
+        static constexpr auto Descriptor_show_bounding_box = ComponentDescriptor(
+            ArchetypeName, "SpatialInformation:show_bounding_box",
+            Loggable<rerun::blueprint::components::Enabled>::ComponentType
+        );
         /// `ComponentDescriptor` for the `show_axes` field.
         static constexpr auto Descriptor_show_axes = ComponentDescriptor(
             ArchetypeName, "SpatialInformation:show_axes",
             Loggable<rerun::blueprint::components::Enabled>::ComponentType
         );
-        /// `ComponentDescriptor` for the `show_bounding_box` field.
-        static constexpr auto Descriptor_show_bounding_box = ComponentDescriptor(
-            ArchetypeName, "SpatialInformation:show_bounding_box",
-            Loggable<rerun::blueprint::components::Enabled>::ComponentType
+        /// `ComponentDescriptor` for the `axes` field.
+        static constexpr auto Descriptor_axes = ComponentDescriptor(
+            ArchetypeName, "SpatialInformation:axes",
+            Loggable<rerun::components::ViewCoordinates>::ComponentType
         );
 
       public:
@@ -85,6 +107,16 @@ namespace rerun::blueprint::archetypes {
             return std::move(*this);
         }
 
+        /// Whether the bounding box should be shown.
+        SpatialInformation with_show_bounding_box(
+            const rerun::blueprint::components::Enabled& _show_bounding_box
+        ) && {
+            show_bounding_box =
+                ComponentBatch::from_loggable(_show_bounding_box, Descriptor_show_bounding_box)
+                    .value_or_throw();
+            return std::move(*this);
+        }
+
         /// Whether axes should be shown at the origin.
         SpatialInformation with_show_axes(const rerun::blueprint::components::Enabled& _show_axes
         ) && {
@@ -93,13 +125,22 @@ namespace rerun::blueprint::archetypes {
             return std::move(*this);
         }
 
-        /// Whether the bounding box should be shown.
-        SpatialInformation with_show_bounding_box(
-            const rerun::blueprint::components::Enabled& _show_bounding_box
-        ) && {
-            show_bounding_box =
-                ComponentBatch::from_loggable(_show_bounding_box, Descriptor_show_bounding_box)
-                    .value_or_throw();
+        /// Determines the coordinate system of this 3D view.
+        ///
+        /// For instance: What is "up"? What does the Z axis mean?
+        ///
+        /// The three coordinates are always ordered as [x, y, z].
+        ///
+        /// For example [Right, Down, Forward] means that the X axis points to the right, the Y axis points
+        /// down, and the Z axis points forward.
+        ///
+        /// ⚠ [Rerun does not yet support left-handed coordinate systems](https://github.com/rerun-io/rerun/issues/5032).
+        ///
+        /// Defaults to RFU unless `archetypes::ViewCoordinates` is logged at the origin entity, or at the closest ancestor thereof.
+        ///
+        /// TODO(#1387): This property has no effect in 2D views and is hidden from their selection panel.
+        SpatialInformation with_axes(const rerun::components::ViewCoordinates& _axes) && {
+            axes = ComponentBatch::from_loggable(_axes, Descriptor_axes).value_or_throw();
             return std::move(*this);
         }
 

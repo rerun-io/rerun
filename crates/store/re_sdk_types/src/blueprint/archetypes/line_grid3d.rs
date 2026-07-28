@@ -40,7 +40,7 @@ pub struct LineGrid3D {
 
     /// In what plane the grid is drawn.
     ///
-    /// Defaults to whatever plane is determined as the plane at zero units up/down as defined by [`components::ViewCoordinates`][crate::components::ViewCoordinates] if present.
+    /// Defaults to the plane at zero units along the up/down axis defined by [`archetypes::SpatialInformation`][crate::blueprint::archetypes::SpatialInformation]'s axes property.
     pub plane: Option<SerializedComponentBatch>,
 
     /// How thick the lines should be in ui units.
@@ -318,7 +318,7 @@ impl LineGrid3D {
 
     /// In what plane the grid is drawn.
     ///
-    /// Defaults to whatever plane is determined as the plane at zero units up/down as defined by [`components::ViewCoordinates`][crate::components::ViewCoordinates] if present.
+    /// Defaults to the plane at zero units along the up/down axis defined by [`archetypes::SpatialInformation`][crate::blueprint::archetypes::SpatialInformation]'s axes property.
     #[inline]
     pub fn with_plane(mut self, plane: impl Into<crate::components::Plane3D>) -> Self {
         self.plane = try_serialize_field(Self::descriptor_plane(), [plane]);

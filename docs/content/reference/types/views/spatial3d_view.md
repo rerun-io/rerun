@@ -25,8 +25,9 @@ Configuration for the 3D line grid.
 Configuration of debug drawing in the 3D view.
 
 * `target_frame`: The target reference frame for all transformations.
-* `show_axes`: Whether axes should be shown at the origin.
 * `show_bounding_box`: Whether the bounding box should be shown.
+* `show_axes`: Whether axes should be shown at the origin.
+* `axes`: Determines the coordinate system of this 3D view.
 ### `eye_controls`
 Configuration for the 3D eye
 

@@ -7,7 +7,7 @@ use re_sdk_types::blueprint::archetypes::{
 };
 use re_sdk_types::{View as _, ViewClassIdentifier};
 use re_ui::{Help, UiExt as _};
-use re_view::view_property_ui;
+use re_view::{view_property_ui, view_property_ui_with_hidden_components};
 use re_viewer_context::{
     RecommendedView, ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewId, ViewQuery,
     ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewerContext,
@@ -249,7 +249,11 @@ impl ViewClass for SpatialView2D {
 
         re_ui::list_item::list_item_scope(ui, "spatial_view2d_selection_ui", |ui| {
             let view_ctx = self.view_context(ctx, view_id, state, space_origin);
-            view_property_ui::<SpatialInformation>(&view_ctx, ui);
+            view_property_ui_with_hidden_components::<SpatialInformation>(
+                &view_ctx,
+                ui,
+                &[SpatialInformation::descriptor_axes().component],
+            );
             view_property_ui::<VisualBounds2D>(&view_ctx, ui);
             view_property_ui::<NearClipPlane>(&view_ctx, ui);
             view_property_ui::<Background>(&view_ctx, ui);

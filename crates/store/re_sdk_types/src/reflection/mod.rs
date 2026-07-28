@@ -1517,7 +1517,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <ViewCoordinates as Component>::name(),
             ComponentReflection {
-                docstring_md: "How we interpret the coordinate system of an entity/space.\n\nFor instance: What is \"up\"? What does the Z axis mean?\n\nThe three coordinates are always ordered as [x, y, z].\n\nFor example [Right, Down, Forward] means that the X axis points to the right, the Y axis points\ndown, and the Z axis points forward.\n\n⚠ [Rerun does not yet support left-handed coordinate systems](https://github.com/rerun-io/rerun/issues/5032).\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                docstring_md: "How to interpret the coordinate system of an entity, space, or spatial view.\n\nFor instance: What is \"up\"? What does the Z axis mean?\n\nThe three coordinates are always ordered as [x, y, z].\n\nFor example [Right, Down, Forward] means that the X axis points to the right, the Y axis points\ndown, and the Z axis points forward.\n\nLogged [`archetypes.ViewCoordinates`](https://rerun.io/docs/reference/types/archetypes/view_coordinates) provide the default for archetypes.SpatialInformation axes in 3D views.\n\n⚠ [Rerun does not yet support left-handed coordinate systems](https://github.com/rerun-io/rerun/issues/5032).\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: Some(ViewCoordinates::default().to_arrow()?),
                 datatype: ViewCoordinates::arrow_datatype(),
@@ -4458,7 +4458,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         name: "plane",
                         display_name: "Plane",
                         component_type: "rerun.components.Plane3D".into(),
-                        docstring_md: "In what plane the grid is drawn.\n\nDefaults to whatever plane is determined as the plane at zero units up/down as defined by [`components.ViewCoordinates`](https://rerun.io/docs/reference/types/components/view_coordinates) if present.",
+                        docstring_md: "In what plane the grid is drawn.\n\nDefaults to the plane at zero units along the up/down axis defined by archetypes.SpatialInformation's axes property.",
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
@@ -4633,6 +4633,13 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
+                        name: "show_bounding_box",
+                        display_name: "Show bounding box",
+                        component_type: "rerun.blueprint.components.Enabled".into(),
+                        docstring_md: "Whether the bounding box should be shown.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
                         name: "show_axes",
                         display_name: "Show axes",
                         component_type: "rerun.blueprint.components.Enabled".into(),
@@ -4640,10 +4647,10 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
-                        name: "show_bounding_box",
-                        display_name: "Show bounding box",
-                        component_type: "rerun.blueprint.components.Enabled".into(),
-                        docstring_md: "Whether the bounding box should be shown.",
+                        name: "axes",
+                        display_name: "Axes",
+                        component_type: "rerun.components.ViewCoordinates".into(),
+                        docstring_md: "Determines the coordinate system of this 3D view.\n\nFor instance: What is \"up\"? What does the Z axis mean?\n\nThe three coordinates are always ordered as [x, y, z].\n\nFor example [Right, Down, Forward] means that the X axis points to the right, the Y axis points\ndown, and the Z axis points forward.\n\n⚠ [Rerun does not yet support left-handed coordinate systems](https://github.com/rerun-io/rerun/issues/5032).\n\nDefaults to RFU unless [`archetypes.ViewCoordinates`](https://rerun.io/docs/reference/types/archetypes/view_coordinates) is logged at the origin entity, or at the closest ancestor thereof.\n\nTODO(#1387): This property has no effect in 2D views and is hidden from their selection panel.",
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                 ],

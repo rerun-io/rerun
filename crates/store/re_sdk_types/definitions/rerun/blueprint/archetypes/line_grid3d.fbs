@@ -18,7 +18,7 @@ table LineGrid3D (
 
     /// In what plane the grid is drawn.
     ///
-    /// Defaults to whatever plane is determined as the plane at zero units up/down as defined by [components.ViewCoordinates] if present.
+    /// Defaults to the plane at zero units along the up/down axis defined by [archetypes.SpatialInformation]'s axes property.
     plane: rerun.components.Plane3D ("attr.rerun.component_optional", nullable, order: 3000);
 
     /// How thick the lines should be in ui units.

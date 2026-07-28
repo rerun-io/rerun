@@ -22,8 +22,9 @@ Somethings outside of these bounds may also be visible due to letterboxing.
 Configuration of spatial information shown in the view.
 
 * `target_frame`: The target reference frame for all transformations.
-* `show_axes`: Whether axes should be shown at the origin.
 * `show_bounding_box`: Whether the bounding box should be shown.
+* `show_axes`: Whether axes should be shown at the origin.
+* `axes`: Determines the coordinate system of this 3D view.
 ### `time_ranges`
 Configures which range on each timeline is shown by this view (unless specified differently per entity).
 

@@ -22,7 +22,7 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Component**: How we interpret the coordinate system of an entity/space.
+/// **Component**: How to interpret the coordinate system of an entity, space, or spatial view.
 ///
 /// For instance: What is "up"? What does the Z axis mean?
 ///
@@ -30,6 +30,8 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// For example [Right, Down, Forward] means that the X axis points to the right, the Y axis points
 /// down, and the Z axis points forward.
+///
+/// Logged [`archetypes::ViewCoordinates`][crate::archetypes::ViewCoordinates] provide the default for [`archetypes::SpatialInformation`][crate::blueprint::archetypes::SpatialInformation] axes in 3D views.
 ///
 /// ⚠ [Rerun does not yet support left-handed coordinate systems](https://github.com/rerun-io/rerun/issues/5032).
 ///

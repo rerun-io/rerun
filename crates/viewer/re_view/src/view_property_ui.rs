@@ -16,7 +16,17 @@ pub fn view_property_ui<A: Archetype + ArchetypeReflectionMarker>(
     ui: &mut egui::Ui,
 ) {
     let view_property = ViewProperty::from_archetype::<A>(ctx);
-    view_property_ui_impl(ctx, ui, &view_property, None);
+    view_property_ui_impl(ctx, ui, &view_property, None, &[]);
+}
+
+/// Display the UI for all components except those listed in `hidden_components`.
+pub fn view_property_ui_with_hidden_components<A: Archetype + ArchetypeReflectionMarker>(
+    ctx: &ViewContext<'_>,
+    ui: &mut egui::Ui,
+    hidden_components: &[ComponentIdentifier],
+) {
+    let view_property = ViewProperty::from_archetype::<A>(ctx);
+    view_property_ui_impl(ctx, ui, &view_property, None, hidden_components);
 }
 
 /// See [`view_property_ui`].
@@ -49,6 +59,7 @@ pub fn view_property_ui_with_redirect<A: Archetype + ArchetypeReflectionMarker>(
                 redirect_with_view_id,
             ),
         }),
+        &[],
     );
 }
 
@@ -63,6 +74,7 @@ fn view_property_ui_impl(
     ui: &mut egui::Ui,
     property: &ViewProperty,
     override_component_view: Option<&RedirectComponentView<'_>>,
+    hidden_components: &[ComponentIdentifier],
 ) {
     let reflection = ctx.viewer_ctx.reflection();
     let Some(archetype) = reflection.archetypes.get(&property.archetype_name) else {
@@ -83,19 +95,22 @@ fn view_property_ui_impl(
     // Happens in some cases, like for the `NearClipPlane` archetype that
     // only has one component which is also called `NearClipPlane`.
     if archetype.fields.len() == 1 && archetype_display_name == archetype.fields[0].display_name {
-        view_property_component_ui(
-            &query_ctx,
-            ui,
-            property,
-            archetype_display_name,
-            &archetype.fields[0],
-        );
+        let field = &archetype.fields[0];
+        let component = field
+            .component_descriptor(property.archetype_name)
+            .component;
+        if !hidden_components.contains(&component) {
+            view_property_component_ui(&query_ctx, ui, property, archetype_display_name, field);
+        }
     } else {
         let sub_prop_ui = |ui: &mut egui::Ui| {
             for field in &archetype.fields {
                 let component = field
                     .component_descriptor(property.archetype_name)
                     .component;
+                if hidden_components.contains(&component) {
+                    continue;
+                }
 
                 let (query_ctx, property) = if let Some(override_component_view) =
                     &override_component_view

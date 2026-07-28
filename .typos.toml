@@ -19,6 +19,7 @@ extend-exclude = [
 
 [default.extend-words]
 FUL = "FUL" # forward-up-left coordinate system
+NED = "NED" # north-east-down coordinate system
 Isse = "Isse" # It's a name
 lod = "lod" # level-of-detail
 ND = "ND" # np.NDArray

@@ -23,7 +23,7 @@ __all__ = ["SpatialInformation"]
 @define(str=False, repr=False, init=False)
 class SpatialInformation(Archetype):
     """
-    **Archetype**: This configures extra drawing config for the 3D view.
+    **Archetype**: Configures spatial view properties.
 
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
     """
@@ -34,8 +34,9 @@ class SpatialInformation(Archetype):
         self: Any,
         target_frame: datatypes.Utf8Like,
         *,
-        show_axes: datatypes.BoolLike | None = None,
         show_bounding_box: datatypes.BoolLike | None = None,
+        show_axes: datatypes.BoolLike | None = None,
+        axes: datatypes.ViewCoordinatesLike | None = None,
     ) -> None:
         """
         Create a new instance of the SpatialInformation archetype.
@@ -46,16 +47,33 @@ class SpatialInformation(Archetype):
             The target reference frame for all transformations.
 
             Defaults to the coordinate frame used by the space origin entity.
-        show_axes:
-            Whether axes should be shown at the origin.
         show_bounding_box:
             Whether the bounding box should be shown.
+        show_axes:
+            Whether axes should be shown at the origin.
+        axes:
+            Determines the coordinate system of this 3D view.
+
+            For instance: What is "up"? What does the Z axis mean?
+
+            The three coordinates are always ordered as [x, y, z].
+
+            For example [Right, Down, Forward] means that the X axis points to the right, the Y axis points
+            down, and the Z axis points forward.
+
+            ⚠ [Rerun does not yet support left-handed coordinate systems](https://github.com/rerun-io/rerun/issues/5032).
+
+            Defaults to RFU unless [`archetypes.ViewCoordinates`][rerun.archetypes.ViewCoordinates] is logged at the origin entity, or at the closest ancestor thereof.
+
+            TODO(#1387): This property has no effect in 2D views and is hidden from their selection panel.
 
         """
 
         # You can define your own __init__ function as a member of SpatialInformationExt in spatial_information_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(target_frame=target_frame, show_axes=show_axes, show_bounding_box=show_bounding_box)
+            self.__attrs_init__(
+                target_frame=target_frame, show_bounding_box=show_bounding_box, show_axes=show_axes, axes=axes
+            )
             return
         self.__attrs_clear__()
 
@@ -63,8 +81,9 @@ class SpatialInformation(Archetype):
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
             target_frame=None,
-            show_axes=None,
             show_bounding_box=None,
+            show_axes=None,
+            axes=None,
         )
 
     @classmethod
@@ -80,8 +99,9 @@ class SpatialInformation(Archetype):
         *,
         clear_unset: bool = False,
         target_frame: datatypes.Utf8Like | None = None,
-        show_axes: datatypes.BoolLike | None = None,
         show_bounding_box: datatypes.BoolLike | None = None,
+        show_axes: datatypes.BoolLike | None = None,
+        axes: datatypes.ViewCoordinatesLike | None = None,
     ) -> SpatialInformation:
         """
         Update only some specific fields of a `SpatialInformation`.
@@ -94,10 +114,25 @@ class SpatialInformation(Archetype):
             The target reference frame for all transformations.
 
             Defaults to the coordinate frame used by the space origin entity.
-        show_axes:
-            Whether axes should be shown at the origin.
         show_bounding_box:
             Whether the bounding box should be shown.
+        show_axes:
+            Whether axes should be shown at the origin.
+        axes:
+            Determines the coordinate system of this 3D view.
+
+            For instance: What is "up"? What does the Z axis mean?
+
+            The three coordinates are always ordered as [x, y, z].
+
+            For example [Right, Down, Forward] means that the X axis points to the right, the Y axis points
+            down, and the Z axis points forward.
+
+            ⚠ [Rerun does not yet support left-handed coordinate systems](https://github.com/rerun-io/rerun/issues/5032).
+
+            Defaults to RFU unless [`archetypes.ViewCoordinates`][rerun.archetypes.ViewCoordinates] is logged at the origin entity, or at the closest ancestor thereof.
+
+            TODO(#1387): This property has no effect in 2D views and is hidden from their selection panel.
 
         """
 
@@ -105,8 +140,9 @@ class SpatialInformation(Archetype):
         with catch_and_log_exceptions(context=cls.__name__):
             kwargs = {
                 "target_frame": target_frame,
-                "show_axes": show_axes,
                 "show_bounding_box": show_bounding_box,
+                "show_axes": show_axes,
+                "axes": axes,
             }
 
             if clear_unset:
@@ -132,6 +168,14 @@ class SpatialInformation(Archetype):
         )
 
     @staticmethod
+    def descriptor_show_bounding_box() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "SpatialInformation:show_bounding_box",
+            archetype=SpatialInformation.NAME,
+            component_type=blueprint_components.EnabledBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
     def descriptor_show_axes() -> ComponentDescriptor:
         return ComponentDescriptor(
             "SpatialInformation:show_axes",
@@ -140,11 +184,11 @@ class SpatialInformation(Archetype):
         )
 
     @staticmethod
-    def descriptor_show_bounding_box() -> ComponentDescriptor:
+    def descriptor_axes() -> ComponentDescriptor:
         return ComponentDescriptor(
-            "SpatialInformation:show_bounding_box",
+            "SpatialInformation:axes",
             archetype=SpatialInformation.NAME,
-            component_type=blueprint_components.EnabledBatch._COMPONENT_TYPE,
+            component_type=components.ViewCoordinatesBatch._COMPONENT_TYPE,
         )
 
     target_frame: components.TransformFrameIdBatch | None = field(
@@ -158,6 +202,15 @@ class SpatialInformation(Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
+    show_bounding_box: blueprint_components.EnabledBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=blueprint_components.EnabledBatch._converter,  # type: ignore[misc]
+    )
+    # Whether the bounding box should be shown.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
     show_axes: blueprint_components.EnabledBatch | None = field(
         metadata={"component": True},
         default=None,
@@ -167,12 +220,25 @@ class SpatialInformation(Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    show_bounding_box: blueprint_components.EnabledBatch | None = field(
+    axes: components.ViewCoordinatesBatch | None = field(
         metadata={"component": True},
         default=None,
-        converter=blueprint_components.EnabledBatch._converter,  # type: ignore[misc]
+        converter=components.ViewCoordinatesBatch._converter,  # type: ignore[misc]
     )
-    # Whether the bounding box should be shown.
+    # Determines the coordinate system of this 3D view.
+    #
+    # For instance: What is "up"? What does the Z axis mean?
+    #
+    # The three coordinates are always ordered as [x, y, z].
+    #
+    # For example [Right, Down, Forward] means that the X axis points to the right, the Y axis points
+    # down, and the Z axis points forward.
+    #
+    # ⚠ [Rerun does not yet support left-handed coordinate systems](https://github.com/rerun-io/rerun/issues/5032).
+    #
+    # Defaults to RFU unless [`archetypes.ViewCoordinates`][rerun.archetypes.ViewCoordinates] is logged at the origin entity, or at the closest ancestor thereof.
+    #
+    # TODO(#1387): This property has no effect in 2D views and is hidden from their selection panel.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

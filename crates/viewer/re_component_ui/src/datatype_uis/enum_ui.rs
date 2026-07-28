@@ -84,7 +84,7 @@ fn edit_view_enum_impl<
             let mut response = ui
                 .selectable_toggle(|ui| {
                     for variant in variants.iter().copied() {
-                        variant_ui(
+                        enum_variant_ui(
                             ui,
                             current_value,
                             variant,
@@ -109,14 +109,14 @@ fn edit_view_enum_impl<
                         return ui.label("<no variants>");
                     };
 
-                    let mut response = crate::datatype_uis::enum_ui::variant_ui(
+                    let mut response = crate::datatype_uis::enum_ui::enum_variant_ui(
                         ui,
                         current_value,
                         first,
                         VariantAvailT::is_variant_enabled(ctx, first),
                     );
                     for variant in iter {
-                        response |= variant_ui(
+                        response |= enum_variant_ui(
                             ui,
                             current_value,
                             variant,
@@ -145,7 +145,7 @@ fn edit_view_enum_impl<
     }
 }
 
-fn variant_ui<EnumT: re_types_core::reflection::Enum>(
+pub fn enum_variant_ui<EnumT: re_types_core::reflection::Enum>(
     ui: &mut egui::Ui,
     current_value: &mut EnumT,
     variant: EnumT,

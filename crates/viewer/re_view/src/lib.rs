@@ -45,7 +45,7 @@ pub use query::{
 use re_log_types::external::arrow;
 pub use view_property_ui::{
     view_property_component_ui, view_property_component_ui_custom, view_property_ui,
-    view_property_ui_with_redirect,
+    view_property_ui_with_hidden_components, view_property_ui_with_redirect,
 };
 pub use visualizer_query::VisualizerInstructionQueryResults;
 
