@@ -30,8 +30,8 @@ class ParquetReader:
     from rerun.experimental import ParquetReader, DeriveLens, IndexColumn
 
     store = (
-        ParquetReader(path, index_columns=[IndexColumn.sequence("frame_index")])
-        .stream()
+        ParquetReader(path)
+        .stream(index_columns=[IndexColumn.sequence("frame_index")])
         .lenses(
             [
                 DeriveLens("data", output_entity="/pose")
@@ -44,13 +44,25 @@ class ParquetReader:
     )
     ```
 
+    Parameters
+    ----------
+    path:
+        Path to the `.parquet` file.
+
+    Raises
+    ------
+    FileNotFoundError
+        If `path` does not exist.
+
     """
 
     _internal: ParquetReaderInternal
 
-    def __init__(
+    def __init__(self, path: str | Path) -> None:
+        self._internal = ParquetReaderInternal(str(path))
+
+    def stream(
         self,
-        path: str | Path,
         *,
         entity_path_prefix: str | None = None,
         column_grouping: str = "prefix",
@@ -59,14 +71,12 @@ class ParquetReader:
         use_structs: bool = True,
         static_columns: list[str] | None = None,
         index_columns: list[IndexColumn] | None = None,
-    ) -> None:
+    ) -> LazyChunkStream:
         """
-        Load a parquet file with configurable column grouping.
+        Return a lazy stream over all chunks in the Parquet file.
 
         Parameters
         ----------
-        path:
-            Path to the `.parquet` file.
         entity_path_prefix:
             Optional prefix for all entity paths (e.g. `"/world"`).
         column_grouping:
@@ -102,20 +112,19 @@ class ParquetReader:
             generated automatically (one entry per row).
 
         """
-        self._internal = ParquetReaderInternal(
-            str(path),
-            entity_path_prefix=entity_path_prefix,
-            column_grouping=column_grouping,
-            delimiter=delimiter,
-            prefixes=prefixes,
-            use_structs=use_structs,
-            static_columns=static_columns,
-            index_columns=([ic._as_internal_tuple() for ic in index_columns] if index_columns is not None else None),
+        return LazyChunkStream(
+            self._internal.stream(
+                entity_path_prefix=entity_path_prefix,
+                column_grouping=column_grouping,
+                delimiter=delimiter,
+                prefixes=prefixes,
+                use_structs=use_structs,
+                static_columns=static_columns,
+                index_columns=(
+                    [ic._as_internal_tuple() for ic in index_columns] if index_columns is not None else None
+                ),
+            )
         )
-
-    def stream(self) -> LazyChunkStream:
-        """Return a lazy stream over all chunks in the Parquet file."""
-        return LazyChunkStream(self._internal.stream())
 
     @property
     def path(self) -> Path:

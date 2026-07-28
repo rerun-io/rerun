@@ -19,36 +19,13 @@ use super::{ChunkStream, ChunkStreamFactory};
 )]
 pub struct PyParquetReaderInternal {
     path: PathBuf,
-    config: ParquetConfig,
-    entity_path_prefix: EntityPath,
 }
 
 #[pymethods]
 impl PyParquetReaderInternal {
     #[new]
-    #[pyo3(
-        signature = (
-            path,
-            entity_path_prefix = None,
-            column_grouping = "prefix",
-            delimiter = '_',
-            prefixes = None,
-            use_structs = true,
-            static_columns = None,
-            index_columns = None,
-        ),
-        text_signature = "(self, path, entity_path_prefix=None, column_grouping='prefix', delimiter='_', prefixes=None, use_structs=True, static_columns=None, index_columns=None)"
-    )]
-    fn new(
-        path: &str,
-        entity_path_prefix: Option<String>,
-        column_grouping: &str,
-        delimiter: char,
-        prefixes: Option<Vec<String>>,
-        use_structs: bool,
-        static_columns: Option<Vec<String>>,
-        index_columns: Option<Vec<(String, String, Option<String>)>>,
-    ) -> PyResult<Self> {
+    #[pyo3(text_signature = "(self, path)")]
+    fn new(path: &str) -> PyResult<Self> {
         let path = PathBuf::from(path);
         if !path.exists() {
             return Err(PyFileNotFoundError::new_err(format!(
@@ -56,7 +33,32 @@ impl PyParquetReaderInternal {
                 path.display()
             )));
         }
+        Ok(Self { path })
+    }
 
+    /// Return a new lazy stream over all chunks in the Parquet file.
+    ///
+    /// The config is validated against the file's schema up front (footer only), so
+    /// bad configuration fails here rather than mid-stream.
+    #[pyo3(signature = (
+        entity_path_prefix = None,
+        column_grouping = "prefix",
+        delimiter = '_',
+        prefixes = None,
+        use_structs = true,
+        static_columns = None,
+        index_columns = None,
+    ))]
+    fn stream(
+        &self,
+        entity_path_prefix: Option<String>,
+        column_grouping: &str,
+        delimiter: char,
+        prefixes: Option<Vec<String>>,
+        use_structs: bool,
+        static_columns: Option<Vec<String>>,
+        index_columns: Option<Vec<(String, String, Option<String>)>>,
+    ) -> PyResult<PyLazyChunkStreamInternal> {
         let grouping = match column_grouping {
             "individual" => {
                 if prefixes.is_some() {
@@ -138,20 +140,20 @@ impl PyParquetReaderInternal {
             .map(EntityPath::from)
             .unwrap_or_else(ParquetConfig::default_entity_path_prefix);
 
-        Ok(Self {
-            path,
-            config,
-            entity_path_prefix: prefix,
-        })
-    }
+        // Per-stream config validation (schema/footer only): fail fast before
+        // spawning the worker. Misconfiguration and open/parse failures of a present
+        // file become `ValueError`.
+        re_parquet::validate_config(&self.path, &config).map_err(|err| {
+            PyValueError::new_err(format!("{err}\nFile path: {}", self.path.display()))
+        })?;
 
-    /// Return a new lazy stream over all chunks in the Parquet file.
-    fn stream(&self) -> PyLazyChunkStreamInternal {
-        PyLazyChunkStreamInternal::new(LazyChunkStream::from_factory(Self {
-            path: self.path.clone(),
-            config: self.config.clone(),
-            entity_path_prefix: self.entity_path_prefix.clone(),
-        }))
+        Ok(PyLazyChunkStreamInternal::new(
+            LazyChunkStream::from_factory(ParquetStreamFactory {
+                path: self.path.clone(),
+                config,
+                entity_path_prefix: prefix,
+            }),
+        ))
     }
 
     /// The file path this reader was constructed with.
@@ -161,13 +163,20 @@ impl PyParquetReaderInternal {
     }
 }
 
+/// The source behind a single `stream()` call: path + the fully resolved config for that stream.
+struct ParquetStreamFactory {
+    path: PathBuf,
+    config: ParquetConfig,
+    entity_path_prefix: EntityPath,
+}
+
 // TODO(RR-4850): this spawn-thread + bounded-channel block is hand-copied across
-// mp4/mcap/parquet. Factor it into a shared `spawn_threaded_stream` adapter and
+// mp4/mcap/parquet/hdf5. Factor it into a shared `spawn_threaded_stream` adapter and
 // benchmark. Note parquet's iterator is `!Send` (see below), so the threaded
 // adapter must bound only the `produce` closure as `Send` — not `I` itself, since
 // the iterator is created and consumed entirely on the worker thread. This reader
 // therefore cannot use the synchronous `IterStream` variant.
-impl ChunkStreamFactory for PyParquetReaderInternal {
+impl ChunkStreamFactory for ParquetStreamFactory {
     fn create(&self) -> Result<Box<dyn ChunkStream>, ChunkPipelineError> {
         let (tx, rx) = crossbeam::channel::bounded::<Result<Arc<Chunk>, ChunkPipelineError>>(
             super::CHUNK_CHANNEL_CAPACITY,

@@ -10,7 +10,7 @@ done separately with lenses (see `test_lazy_chunk_stream.py`).
 from __future__ import annotations
 
 import itertools
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -43,9 +43,9 @@ def parquet_writer(tmp_path: Path) -> ParquetWriter:
     return write
 
 
-def _data_chunks(reader: ParquetReader) -> list[Chunk]:
-    """Run the reader, dropping the file-metadata `/__properties` chunk that parquet's schema metadata produces."""
-    return reader.stream().drop(content="/__properties/**").to_chunks()
+def _data_chunks(path: Path, **stream_kwargs: Any) -> list[Chunk]:
+    """Stream the file, dropping the file-metadata `/__properties` chunk that parquet's schema metadata produces."""
+    return ParquetReader(path).stream(**stream_kwargs).drop(content="/__properties/**").to_chunks()
 
 
 def _by_entity(chunks: list[Chunk], entity_path: str) -> Chunk:
@@ -88,7 +88,7 @@ def test_prefix_grouping(parquet_writer: ParquetWriter) -> None:
         "camera_depth": pa.array([40.0, 50.0, 60.0]),
         "speed": pa.array([100.0, 200.0, 300.0]),
     })
-    chunks = _data_chunks(ParquetReader(path, index_columns=[IndexColumn.sequence("frame_index")]))
+    chunks = _data_chunks(path, index_columns=[IndexColumn.sequence("frame_index")])
 
     assert {c.entity_path for c in chunks} == {"/A", "/obs", "/camera", "/speed"}
 
@@ -126,9 +126,7 @@ def test_individual_grouping(parquet_writer: ParquetWriter) -> None:
         "camera_rgb": pa.array([1.0, 2.0, 3.0]),
         "camera_depth": pa.array([4.0, 5.0, 6.0]),
     })
-    chunks = _data_chunks(
-        ParquetReader(path, column_grouping="individual", index_columns=[IndexColumn.sequence("frame_index")])
-    )
+    chunks = _data_chunks(path, column_grouping="individual", index_columns=[IndexColumn.sequence("frame_index")])
     assert {c.entity_path for c in chunks} == {"/camera_rgb", "/camera_depth"}
     for c in chunks:
         assert "data" not in c.to_record_batch().schema.names
@@ -143,7 +141,7 @@ def test_explicit_prefixes(parquet_writer: ParquetWriter) -> None:
         "catb": pa.array([7.0, 8.0]),
         "other": pa.array([9.0, 10.0]),
     })
-    chunks = _data_chunks(ParquetReader(path, column_grouping="explicit_prefixes", prefixes=["cat", "foo"]))
+    chunks = _data_chunks(path, column_grouping="explicit_prefixes", prefixes=["cat", "foo"])
     assert {c.entity_path for c in chunks} == {"/foo", "/cat", "/other"}
     # The prefix is stripped from each struct field name.
     assert _struct_field_names(_by_entity(chunks, "/foo")) == ["a", "b"]
@@ -158,7 +156,7 @@ def test_explicit_prefixes(parquet_writer: ParquetWriter) -> None:
 def test_index_sequence(parquet_writer: ParquetWriter) -> None:
     path = parquet_writer({"frame_index": pa.array([0, 1, 2], pa.int64()), "value": pa.array([10.0, 20.0, 30.0])})
     chunk = _by_entity(
-        _data_chunks(ParquetReader(path, index_columns=[IndexColumn.sequence("frame_index")])),
+        _data_chunks(path, index_columns=[IndexColumn.sequence("frame_index")]),
         "/value",
     )
     rb = chunk.to_record_batch()
@@ -170,7 +168,7 @@ def test_index_timestamp_unit_scaling(parquet_writer: ParquetWriter) -> None:
     """A `ms` timestamp index is scaled to nanoseconds and typed `timestamp[ns]`."""
     path = parquet_writer({"ts_ms": pa.array([1, 2, 3], pa.int64()), "value": pa.array([1.0, 2.0, 3.0])})
     chunk = _by_entity(
-        _data_chunks(ParquetReader(path, index_columns=[IndexColumn.timestamp("ts_ms", input_unit="ms")])),
+        _data_chunks(path, index_columns=[IndexColumn.timestamp("ts_ms", input_unit="ms")]),
         "/value",
     )
     rb = chunk.to_record_batch()
@@ -182,7 +180,7 @@ def test_index_duration_unit_scaling(parquet_writer: ParquetWriter) -> None:
     """A `us` duration index is scaled to nanoseconds and typed `duration[ns]`."""
     path = parquet_writer({"elapsed_us": pa.array([100, 200, 300], pa.int64()), "value": pa.array([1.0, 2.0, 3.0])})
     chunk = _by_entity(
-        _data_chunks(ParquetReader(path, index_columns=[IndexColumn.duration("elapsed_us", input_unit="us")])),
+        _data_chunks(path, index_columns=[IndexColumn.duration("elapsed_us", input_unit="us")]),
         "/value",
     )
     rb = chunk.to_record_batch()
@@ -204,12 +202,10 @@ def test_static_columns(parquet_writer: ParquetWriter) -> None:
         "agg": pa.array(["mean", "mean", "mean"]),
     })
     chunks = _data_chunks(
-        ParquetReader(
-            path,
-            column_grouping="individual",
-            index_columns=[IndexColumn.sequence("frame_index")],
-            static_columns=["suite", "agg"],
-        )
+        path,
+        column_grouping="individual",
+        index_columns=[IndexColumn.sequence("frame_index")],
+        static_columns=["suite", "agg"],
     )
     static = [c for c in chunks if c.is_static]
     assert len(static) == 1
@@ -224,10 +220,10 @@ def test_static_columns(parquet_writer: ParquetWriter) -> None:
 
 
 def test_static_column_non_uniform_is_error(parquet_writer: ParquetWriter) -> None:
-    """A static column with varying values raises when the stream runs."""
+    """A static column with varying values raises when the stream runs — uniformity is data-dependent, so it can't be caught at `stream()`."""
     path = parquet_writer({"x": pa.array([1.0, 2.0]), "suite": pa.array(["a", "b"])})
     with pytest.raises(Exception, match=r"non-uniform|static"):
-        ParquetReader(path, column_grouping="individual", static_columns=["suite"]).stream().to_chunks()
+        ParquetReader(path).stream(column_grouping="individual", static_columns=["suite"]).to_chunks()
 
 
 # ---------------------------------------------------------------------------
@@ -243,19 +239,56 @@ def test_file_not_found(tmp_path: Path) -> None:
 def test_invalid_column_grouping(parquet_writer: ParquetWriter) -> None:
     path = parquet_writer({"x": pa.array([1.0])})
     with pytest.raises(ValueError, match="Unknown column_grouping"):
-        ParquetReader(path, column_grouping="bogus")
+        ParquetReader(path).stream(column_grouping="bogus")
 
 
 def test_prefixes_without_explicit_grouping_is_error(parquet_writer: ParquetWriter) -> None:
     path = parquet_writer({"x": pa.array([1.0])})
     with pytest.raises(ValueError, match="explicit_prefixes"):
-        ParquetReader(path, prefixes=["foo"])
+        ParquetReader(path).stream(prefixes=["foo"])
 
 
 def test_missing_index_column_is_error(parquet_writer: ParquetWriter) -> None:
+    """The config is validated against the schema at `stream()` — no need to consume the stream."""
     path = parquet_writer({"x": pa.array([1.0])})
-    with pytest.raises(Exception, match="not found"):
-        ParquetReader(path, index_columns=[IndexColumn.sequence("missing")]).stream().to_chunks()
+    with pytest.raises(ValueError, match="not found"):
+        ParquetReader(path).stream(index_columns=[IndexColumn.sequence("missing")])
+
+
+def test_missing_static_column_is_error(parquet_writer: ParquetWriter) -> None:
+    """A static column that doesn't exist in the schema is caught at `stream()`."""
+    path = parquet_writer({"x": pa.array([1.0])})
+    with pytest.raises(ValueError, match="Static column"):
+        ParquetReader(path).stream(static_columns=["missing"])
+
+
+def test_non_parquet_file_is_error_at_stream(tmp_path: Path) -> None:
+    """A present-but-unparsable file fails at `stream()`, not at construction."""
+    path = tmp_path / "not_really.parquet"
+    path.write_bytes(b"this is not a parquet file")
+    reader = ParquetReader(path)
+    with pytest.raises(ValueError):
+        reader.stream()
+
+
+# ---------------------------------------------------------------------------
+# stream-time configuration
+# ---------------------------------------------------------------------------
+
+
+def test_multiple_streams_from_one_reader(parquet_writer: ParquetWriter) -> None:
+    """One reader can drive several differently-configured streams over the same file."""
+    path = parquet_writer({
+        "camera_rgb": pa.array([1.0, 2.0]),
+        "camera_depth": pa.array([3.0, 4.0]),
+    })
+    reader = ParquetReader(path)
+
+    grouped = reader.stream().drop(content="/__properties/**").to_chunks()
+    assert {c.entity_path for c in grouped} == {"/camera"}
+
+    individual = reader.stream(column_grouping="individual").drop(content="/__properties/**").to_chunks()
+    assert {c.entity_path for c in individual} == {"/camera_rgb", "/camera_depth"}
 
 
 # ---------------------------------------------------------------------------
@@ -290,8 +323,8 @@ def test_transform3d_via_lenses(parquet_writer: ParquetWriter) -> None:
     )
 
     chunks = (
-        ParquetReader(path, index_columns=[IndexColumn.sequence("frame_index")])
-        .stream()
+        ParquetReader(path)
+        .stream(index_columns=[IndexColumn.sequence("frame_index")])
         .lenses([lens], content="/A", output_mode="drop_unmatched")
         .to_chunks()
     )
@@ -325,8 +358,8 @@ def test_to_packed_component_generic(parquet_writer: ParquetWriter) -> None:
     )
 
     chunks = (
-        ParquetReader(path, index_columns=[IndexColumn.sequence("frame_index")])
-        .stream()
+        ParquetReader(path)
+        .stream(index_columns=[IndexColumn.sequence("frame_index")])
         .lenses([lens], content="/p", output_mode="drop_unmatched")
         .to_chunks()
     )
@@ -350,8 +383,8 @@ def test_to_rotation_axis_angle(parquet_writer: ParquetWriter) -> None:
     lens = DeriveLens("data", output_entity="/rot").to_rotation_axis_angle("ax", "ay", "az", "angle")
 
     chunks = (
-        ParquetReader(path, index_columns=[IndexColumn.sequence("frame_index")])
-        .stream()
+        ParquetReader(path)
+        .stream(index_columns=[IndexColumn.sequence("frame_index")])
         .lenses([lens], content="/r", output_mode="drop_unmatched")
         .to_chunks()
     )
@@ -377,8 +410,8 @@ def test_to_scalars(parquet_writer: ParquetWriter) -> None:
     lens = DeriveLens("data", output_entity="/obs").to_scalars("vx", "vy", "vz")
 
     chunks = (
-        ParquetReader(path, index_columns=[IndexColumn.sequence("frame_index")])
-        .stream()
+        ParquetReader(path)
+        .stream(index_columns=[IndexColumn.sequence("frame_index")])
         .lenses([lens], content="/obs", output_mode="drop_unmatched")
         .to_chunks()
     )
@@ -401,8 +434,8 @@ def test_to_scalars_single_field_is_plain_scalar(parquet_writer: ParquetWriter) 
     lens = DeriveLens("data", output_entity="/obs").to_scalars("vx")
 
     chunks = (
-        ParquetReader(path, index_columns=[IndexColumn.sequence("frame_index")])
-        .stream()
+        ParquetReader(path)
+        .stream(index_columns=[IndexColumn.sequence("frame_index")])
         .lenses([lens], content="/obs", output_mode="drop_unmatched")
         .to_chunks()
     )
@@ -430,8 +463,8 @@ def test_named_scalar_series_via_lenses(parquet_writer: ParquetWriter) -> None:
 
     lens = DeriveLens("data", output_entity="/obs").to_scalars("vx", "vy", "vz")
     reader_stream = (
-        ParquetReader(path, index_columns=[IndexColumn.sequence("t")])
-        .stream()
+        ParquetReader(path)
+        .stream(index_columns=[IndexColumn.sequence("t")])
         .lenses([lens], content="/obs", output_mode="drop_unmatched")
     )
 

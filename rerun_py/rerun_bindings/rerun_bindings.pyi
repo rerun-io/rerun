@@ -1669,9 +1669,9 @@ class Hdf5ReaderInternal:
 class ParquetReaderInternal:
     """Internal implementation. Use ParquetReader from rerun.experimental instead."""
 
-    def __init__(
+    def __init__(self, path: str) -> None: ...
+    def stream(
         self,
-        path: str,
         entity_path_prefix: str | None = None,
         column_grouping: str = "prefix",
         delimiter: str = "_",
@@ -1679,8 +1679,7 @@ class ParquetReaderInternal:
         use_structs: bool = True,
         static_columns: list[str] | None = None,
         index_columns: list[tuple[str, str, str | None]] | None = None,
-    ) -> None: ...
-    def stream(self) -> LazyChunkStreamInternal: ...
+    ) -> LazyChunkStreamInternal: ...
     @property
     def path(self) -> Path: ...
 
