@@ -90,7 +90,7 @@ nasm = ["re_video/nasm"]
 ## This adds a lot of extra dependencies, so only enable this feature if you need it!
 ##
 ## Also enables the `rerun viewer-mcp` command.
-native_viewer = ["dep:re_viewer", "dep:re_crash_handler", "dep:re_viewer_mcp"]
+native_viewer = ["dep:libc", "dep:re_viewer", "dep:re_crash_handler", "dep:re_viewer_mcp"]
 
 ## Enable the in-memory Rerun data server.
 oss_server = ["dep:re_server"]
@@ -209,6 +209,9 @@ jiff = { workspace = true, optional = true }
 re_perf_telemetry = { workspace = true, optional = true }
 unindent = { workspace = true, optional = true }
 url = { workspace = true, optional = true }
+
+[target.'cfg(target_family = "unix")'.dependencies]
+libc = { workspace = true, optional = true }
 
 [build-dependencies]
 re_build_tools.workspace = true
