@@ -16,11 +16,14 @@ pub fn code_for_view(
 
     let mut code = String::new();
 
+    // NOTE: the `blueprint` imports must be spelled exactly like
+    // `quote_import_clauses_from_fqname` spells them, or `ruff` will see two different import
+    // statements binding the same name and fail with F811.
     code.push_indented(
         0,
         "
-from .. import archetypes as blueprint_archetypes
-from .. import components as blueprint_components
+from ...blueprint import archetypes as blueprint_archetypes
+from ...blueprint import components as blueprint_components
 from ... import datatypes
 from ... import components
 from ..._baseclasses import AsComponents, ComponentBatchLike

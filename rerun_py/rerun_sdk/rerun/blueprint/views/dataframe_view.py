@@ -5,10 +5,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from ...blueprint import archetypes as blueprint_archetypes
+
 __all__ = ["DataframeView"]
 
 
-from .. import archetypes as blueprint_archetypes
 from ..api import View, ViewContentsLike, VisualizerLike
 
 if TYPE_CHECKING:
