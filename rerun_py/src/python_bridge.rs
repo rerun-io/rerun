@@ -216,6 +216,7 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyBinarySinkStorage>()?;
     m.add_class::<PyFileSink>()?;
     m.add_class::<PyGrpcSink>()?;
+    m.add_class::<PyGrpcServerSink>()?;
     m.add_class::<PyComponentDescriptor>()?;
     m.add_class::<PyChunkBatcherConfig>()?;
     m.add_class::<PyDeviceCodeFlow>()?;
@@ -1124,6 +1125,109 @@ impl PyGrpcSink {
     }
 }
 
+#[cfg(feature = "server")]
+#[pyclass(
+    frozen,
+    eq,
+    hash,
+    name = "GrpcServerSink",
+    module = "rerun_bindings.rerun_bindings"
+)]
+#[derive(PartialEq, Hash)]
+struct PyGrpcServerSink {
+    bind_ip: String,
+    port: u16,
+    server_memory_limit: String,
+    newest_first: bool,
+    cors_allow_origin: Vec<String>,
+}
+
+#[cfg(feature = "server")]
+#[pymethods]
+impl PyGrpcServerSink {
+    #[new]
+    #[pyo3(signature = (bind_ip="0.0.0.0".to_owned(), port=9876, *, server_memory_limit="1GiB".to_owned(), newest_first=false, cors_allow_origin=None))]
+    #[pyo3(
+        text_signature = "(self, bind_ip='0.0.0.0', port=9876, *, server_memory_limit='1GiB', newest_first=False, cors_allow_origin=None)"
+    )]
+    fn new(
+        bind_ip: String,
+        port: u16,
+        server_memory_limit: String,
+        newest_first: bool,
+        cors_allow_origin: Option<Vec<String>>,
+    ) -> Self {
+        Self {
+            bind_ip,
+            port,
+            server_memory_limit,
+            newest_first,
+            cors_allow_origin: cors_allow_origin.unwrap_or_default(),
+        }
+    }
+
+    #[getter]
+    fn uri(&self) -> String {
+        format!("rerun+http://{}:{}/proxy", self.bind_ip, self.port)
+    }
+
+    fn __repr__(&self) -> String {
+        let Self {
+            bind_ip,
+            port,
+            server_memory_limit,
+            newest_first,
+            cors_allow_origin,
+        } = self;
+
+        format!(
+            "GrpcServerSink(bind_ip={bind_ip:?}, port={port}, server_memory_limit={server_memory_limit:?}, newest_first={newest_first}, cors_allow_origin={cors_allow_origin:?})"
+        )
+    }
+}
+
+#[cfg(not(feature = "server"))]
+#[pyclass(name = "GrpcServerSink", module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] stub that always fails to construct
+struct PyGrpcServerSink;
+
+#[cfg(not(feature = "server"))]
+#[pymethods] // NOLINT: ignore[py-mthd-str] stub that always fails to construct
+impl PyGrpcServerSink {
+    /// Create a hosted gRPC server sink.
+    #[new]
+    #[pyo3(signature = (bind_ip="0.0.0.0".to_owned(), port=9876, *, server_memory_limit="1GiB".to_owned(), newest_first=false, cors_allow_origin=None))]
+    #[pyo3(
+        text_signature = "(self, bind_ip='0.0.0.0', port=9876, *, server_memory_limit='1GiB', newest_first=False, cors_allow_origin=None)"
+    )]
+    fn new(
+        bind_ip: String,
+        port: u16,
+        server_memory_limit: String,
+        newest_first: bool,
+        cors_allow_origin: Option<Vec<String>>,
+    ) -> PyResult<Self> {
+        let _ = (
+            bind_ip,
+            port,
+            server_memory_limit,
+            newest_first,
+            cors_allow_origin,
+        );
+        Err(PyRuntimeError::new_err(
+            "The Rerun SDK was not compiled with the 'server' feature",
+        ))
+    }
+
+    /// URI that a Rerun Viewer can use to connect to this server.
+    #[getter]
+    fn uri(&self) -> PyResult<String> {
+        let _ = self;
+        Err(PyRuntimeError::new_err(
+            "The Rerun SDK was not compiled with the 'server' feature",
+        ))
+    }
+}
+
 #[pyclass(
     frozen,
     eq,
@@ -1178,6 +1282,30 @@ fn set_sinks<'py>(
             let sink = sink.get();
             let sink = re_sdk::sink::GrpcSink::new(sink.uri.clone());
             resolved_sinks.push(Box::new(sink));
+        } else if let Ok(sink) = sink.cast::<PyGrpcServerSink>() {
+            #[cfg(feature = "server")]
+            {
+                let sink = sink.get();
+                let server_options = server_options(
+                    &sink.server_memory_limit,
+                    sink.newest_first,
+                    &sink.cors_allow_origin,
+                )?;
+                let sink = re_sdk::grpc_server::GrpcServerSink::new(
+                    &sink.bind_ip,
+                    sink.port,
+                    server_options,
+                )
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+                resolved_sinks.push(Box::new(sink));
+            }
+            #[cfg(not(feature = "server"))]
+            {
+                let _unused = sink;
+                return Err(PyRuntimeError::new_err(
+                    "The Rerun SDK was not compiled with the 'server' feature",
+                ));
+            }
         } else if let Ok(sink) = sink.cast::<PyFileSink>() {
             let sink = sink.get();
             let sink = re_sdk::sink::FileSink::with_options(
@@ -1204,7 +1332,7 @@ fn set_sinks<'py>(
         } else {
             let type_name = sink.get_type().name()?;
             return Err(PyRuntimeError::new_err(format!(
-                "{type_name} is not a valid LogSink, must be one of: GrpcSink, FileSink, BinaryStream"
+                "{type_name} is not a valid LogSink, must be one of: GrpcSink, GrpcServerSink, FileSink, BinaryStream"
             )));
         }
     }
@@ -1685,6 +1813,20 @@ fn duration_from_sec(seconds: f64) -> PyResult<Duration> {
     }
 }
 
+#[cfg(feature = "server")]
+fn server_options(
+    server_memory_limit: &str,
+    newest_first: bool,
+    cors_allow_origin: &[String],
+) -> PyResult<re_sdk::ServerOptions> {
+    Ok(re_sdk::ServerOptions {
+        playback_behavior: re_sdk::PlaybackBehavior::from_newest_first(newest_first),
+        memory_limit: re_memory::MemoryLimit::parse(server_memory_limit)
+            .map_err(|err| PyRuntimeError::new_err(format!("Bad server_memory_limit: {err}")))?,
+        cors_allowed_origins: cors_allow_origin.to_vec(),
+    })
+}
+
 /// Spawn a gRPC server which an SDK or Viewer can connect to.
 ///
 /// Returns the URI of the server so you can connect the viewer to it.
@@ -1709,15 +1851,8 @@ fn serve_grpc(
             return Ok("[_RERUN_TEST_FORCE_SAVE is set]".to_owned());
         }
 
-        let server_options = re_sdk::ServerOptions {
-            playback_behavior: re_sdk::PlaybackBehavior::from_newest_first(newest_first),
-
-            memory_limit: re_memory::MemoryLimit::parse(&server_memory_limit).map_err(|err| {
-                PyRuntimeError::new_err(format!("Bad server_memory_limit: {err}:"))
-            })?,
-
-            cors_allowed_origins: cors_allow_origin,
-        };
+        let server_options =
+            server_options(&server_memory_limit, newest_first, &cors_allow_origin)?;
 
         let sink = re_sdk::grpc_server::GrpcServerSink::new(
             "0.0.0.0",

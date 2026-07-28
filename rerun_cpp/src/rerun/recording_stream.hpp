@@ -24,17 +24,6 @@ namespace rerun {
         Blueprint,
     };
 
-    /// What happens when a client connects to a gRPC server?
-    enum class PlaybackBehavior {
-        /// Start playing back all the old data first,
-        /// and only after start sending anything that happened since.
-        OldestFirst,
-
-        /// Prioritize the newest arriving messages,
-        /// replaying the history later, starting with the newest.
-        NewestFirst,
-    };
-
     /// A `RecordingStream` handles everything related to logging data into Rerun.
     ///
     /// ## Multithreading and ordering
@@ -156,6 +145,10 @@ namespace rerun {
         /// See specific sink types for more information:
         /// * `FileSink`
         /// * `GrpcSink`
+        /// * `GrpcServerSink`
+        ///
+        /// Sink descriptors are copied and may be destroyed after this call.
+        /// Replacing the sinks or destroying the recording shuts hosted servers down.
         template <typename... Ts>
         Error set_sinks(const Ts&... sinks) const {
             LogSink out_sinks[] = {sinks...};

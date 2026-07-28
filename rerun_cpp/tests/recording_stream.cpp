@@ -424,6 +424,20 @@ SCENARIO("RecordingStream can connect over grpc", TEST_TAG) {
     }
 }
 
+SCENARIO("RecordingStream can set a grpc server sink", TEST_TAG) {
+    rerun::RecordingStream stream("test-local");
+    rerun::GrpcServerSink sink{
+        "0.0.0.0",
+        21522,
+        "64MiB",
+        rerun::PlaybackBehavior::NewestFirst,
+        {"https://*.example.com"}};
+    CHECK(
+        stream.set_sinks(sink, rerun::FileSink{"build/test_output/server-sink.rrd"}).code ==
+        rerun::ErrorCode::Ok
+    );
+}
+
 SCENARIO("RecordingStream can serve grpc", TEST_TAG) {
     GIVEN("a new serving RecordingStream") {
         rerun::RecordingStream stream("test-local");

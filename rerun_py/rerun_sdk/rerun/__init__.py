@@ -210,6 +210,7 @@ from .recording_stream import (
 )
 from .sinks import (
     FileSink as FileSink,
+    GrpcServerSink as GrpcServerSink,
     GrpcSink as GrpcSink,
     connect_grpc as connect_grpc,
     disconnect as disconnect,

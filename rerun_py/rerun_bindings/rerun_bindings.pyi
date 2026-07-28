@@ -611,9 +611,12 @@ def binary_stream(recording: PyRecordingStream | None = None) -> PyBinarySinkSto
 
 class GrpcSink:
     """
-    Used in [`rerun.RecordingStream.set_sinks`][].
+    Connect to an existing Rerun gRPC server and stream the recording to it.
 
-    Connect the recording stream to a remote Rerun Viewer on the given URL.
+    This is a gRPC client: it connects to a server but does not host one.
+    Use [`rerun.GrpcServerSink`][] to host a server that SDKs and Viewers can connect to.
+
+    Used in [`rerun.RecordingStream.set_sinks`][].
     """
 
     def __init__(self, url: str | None = None) -> None:
@@ -631,6 +634,32 @@ class GrpcSink:
             The default is `rerun+http://127.0.0.1:9876/proxy`.
 
         """
+
+class GrpcServerSink:
+    """
+    Host a Rerun gRPC server and stream the recording to connected clients.
+
+    This is a gRPC server: SDKs and Viewers connect to it.
+    Use [`rerun.GrpcSink`][] to connect as a client to an existing server.
+    Replacing the recording's sinks or dropping the recording shuts down the server.
+
+    Used in [`rerun.RecordingStream.set_sinks`][].
+    """
+
+    def __init__(
+        self,
+        bind_ip: str = "0.0.0.0",
+        port: int = 9876,
+        *,
+        server_memory_limit: str = "1GiB",
+        newest_first: bool = False,
+        cors_allow_origin: list[str] | None = None,
+    ) -> None:
+        """Create a hosted gRPC server sink."""
+
+    @property
+    def uri(self) -> str:
+        """URI that a Rerun Viewer can use to connect to this server."""
 
 class FileSink:
     """

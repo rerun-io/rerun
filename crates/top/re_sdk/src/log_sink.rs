@@ -275,6 +275,12 @@ impl private::Sealed for crate::sink::GrpcSink {}
 
 impl MultiSinkCompatible for crate::sink::GrpcSink {}
 
+#[cfg(feature = "server")]
+impl private::Sealed for crate::grpc_server::GrpcServerSink {}
+
+#[cfg(feature = "server")]
+impl MultiSinkCompatible for crate::grpc_server::GrpcServerSink {}
+
 impl private::Sealed for crate::binary_stream_sink::BinaryStreamSink {}
 
 impl MultiSinkCompatible for crate::binary_stream_sink::BinaryStreamSink {}
@@ -544,7 +550,11 @@ impl LogSink for CallbackSink {
 
 // ----------------------------------------------------------------------------
 
-/// Stream log messages to an a remote Rerun server.
+/// Stream log messages to an existing remote Rerun gRPC server.
+///
+/// This is a gRPC client: it connects to a server but does not host one.
+/// To host a server that viewers can connect to, use
+/// [`crate::grpc_server::GrpcServerSink`] instead.
 pub struct GrpcSink {
     client: MessageProxyClient,
 }
