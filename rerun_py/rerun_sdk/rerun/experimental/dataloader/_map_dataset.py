@@ -79,11 +79,7 @@ class RerunMapDataset(torch.utils.data.Dataset[dict[str, torch.Tensor | None]]):
             timeline_sampling=timeline_sampling,
         )
 
-        self._connection = _WorkerConnection(
-            catalog_url=source.dataset.catalog.url,
-            dataset_name=source.dataset.name,
-            fields=fields,
-        )
+        self._connection = _WorkerConnection.from_source(source, fields)
 
     @property
     def sample_index(self) -> SampleIndex:

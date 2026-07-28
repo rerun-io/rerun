@@ -8,7 +8,7 @@ import os
 import sys
 import warnings
 from collections import defaultdict
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass
 from functools import partial
 from typing import TYPE_CHECKING, Any
@@ -24,14 +24,14 @@ from rerun.catalog import CatalogClient
 from ._sample_index import _ns_to_datetime64, _ns_to_timedelta64
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterator
+    from collections.abc import Callable, Generator, Iterator, Sequence
 
     import torch
 
     from rerun.catalog._entry import DatasetEntry
     from rerun.experimental._selector import Selector
 
-    from ._config import Field
+    from ._config import DataSource, Field
     from ._decoders import ColumnDecoder
     from ._sample_index import SampleIndex, SegmentMetadata
 
@@ -90,6 +90,11 @@ class _WorkerConnection:
         self._view: DatasetEntry | None = None
         self._decoders: dict[str, ColumnDecoder] = {}
 
+    @classmethod
+    def from_source(cls, source: DataSource, fields: dict[str, Field]) -> _WorkerConnection:
+        """Build a connection for a [`DataSource`][rerun.experimental.dataloader.DataSource]'s catalog."""
+        return cls(catalog_url=source.dataset.catalog.url, dataset_name=source.dataset.name, fields=fields)
+
     @with_tracing("RerunDataset._ensure_initialized")
     def ensure(self) -> tuple[DatasetEntry, dict[str, ColumnDecoder]]:
         """Return `(view, decoders)`, building them once per worker process."""
@@ -126,13 +131,13 @@ class _WorkerConnection:
 
 @with_tracing("RerunDataset._fetch_arrow")
 def _fetch_arrow(
+    indices: np.ndarray | list[int],
     *,
     view: DatasetEntry,
     index: str,
     fields: dict[str, Field],
     decoders: dict[str, ColumnDecoder],
     sample_index: SampleIndex,
-    indices: np.ndarray | list[int],
 ) -> tuple[list[Target], dict[str, dict[str, pa.Table]]]:
     """
     Run the server queries for `indices` and return `(targets, per-field tables)`.
@@ -161,6 +166,19 @@ def _fetch_arrow(
                 anchors[key] = kf
         targets.append(Target(segment=seg, index_value=idx_val, anchors=anchors))
 
+    return _fetch_targets(targets, view=view, index=index, fields=fields, decoders=decoders, sample_index=sample_index)
+
+
+def _fetch_targets(
+    targets: list[Target],
+    *,
+    view: DatasetEntry,
+    index: str,
+    fields: dict[str, Field],
+    decoders: dict[str, ColumnDecoder],
+    sample_index: SampleIndex,
+) -> tuple[list[Target], dict[str, dict[str, pa.Table]]]:
+    """Run each read group's server query for already-resolved `targets`, split per segment and field."""
     groups = _read_groups(fields, decoders)
     group_results = _fetch_groups_parallel(
         groups,
@@ -177,6 +195,57 @@ def _fetch_arrow(
             seg_tables[key] = group_tables
 
     return targets, seg_tables
+
+
+def _interleave_fetch_and_decode(
+    chunks: list[np.ndarray],
+    *,
+    fetch: Callable[[np.ndarray], Any],
+    decode: Callable[[Any], Iterator[dict[str, torch.Tensor | None]]],
+) -> Generator[dict[str, torch.Tensor | None], None, None]:
+    """Yield decoded samples, fetching chunk N+1 on a background thread while chunk N is decoded."""
+    if not chunks:
+        return
+
+    executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="rerun-fetch")
+
+    def submit(chunk: np.ndarray) -> Future[Any]:
+        # Copy the caller's contextvars so the fetch's span nests under the current OTel
+        # context instead of appearing as a root trace.
+        ctx = contextvars.copy_context()
+        return executor.submit(lambda: ctx.run(fetch, chunk))
+
+    try:
+        pending: Future[Any] | None = submit(chunks[0])
+        for i in range(len(chunks)):
+            assert pending is not None
+            fetched = pending.result()
+            pending = submit(chunks[i + 1]) if i + 1 < len(chunks) else None
+            yield from decode(fetched)
+    finally:
+        with tracing_scope("executor.shutdown"):
+            executor.shutdown(wait=False)
+
+
+def _replay(
+    samples: Iterator[dict[str, torch.Tensor | None]],
+    order: np.ndarray,
+) -> Iterator[dict[str, torch.Tensor | None]]:
+    """
+    Re-emit a fetch-order sample stream in a known pull `order` (a deterministic queue).
+
+    `order[k]` is the fetch position to emit `k`-th. Decode still runs in fetch order;
+    this only buffers decoded samples until their turn, so the buffer never exceeds what
+    the manifest's reservoir held at build time (the order came from that reservoir).
+    """
+    buffer: dict[int, dict[str, torch.Tensor | None]] = {}
+    fetched = enumerate(samples)
+    for fetch_idx in order:
+        fetch_idx = int(fetch_idx)
+        while fetch_idx not in buffer:
+            i, sample = next(fetched)
+            buffer[i] = sample
+        yield buffer.pop(fetch_idx)
 
 
 def _run_parallel(tasks: list[Callable[[], Any]], *, max_workers: int | None = None) -> list[Any]:
@@ -424,7 +493,7 @@ def _fetch_prior_keyframes(
     index: str,
     fields: dict[str, Field],
     decoders: dict[str, ColumnDecoder],
-    located: list[tuple[SegmentMetadata, int | np.datetime64 | np.timedelta64]],
+    located: Sequence[tuple[SegmentMetadata, int | np.datetime64 | np.timedelta64]],
     sample_index: SampleIndex,
 ) -> dict[str, dict[str, np.ndarray]]:
     """

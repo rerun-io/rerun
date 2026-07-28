@@ -15,6 +15,7 @@ import json
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
+import numpy as np
 import pyarrow as pa
 import pyarrow.compute as pc
 import pyarrow.parquet as pq
@@ -65,8 +66,8 @@ class ManifestMeta:
     shuffle_strategy: str  # the strategy's `RECIPE_TAG`, recorded for provenance
 
 
-def _metadata_from_arrow(table: pa.Table) -> ManifestMeta:
-    metadata_bytes = table.schema.metadata
+def _metadata_from_schema(schema: pa.Schema) -> ManifestMeta:
+    metadata_bytes = schema.metadata
     m = {k.decode(): v.decode() for k, v in (metadata_bytes or {}).items()}
 
     def _opt_int(key: str) -> int | None:
@@ -92,7 +93,7 @@ def _metadata_from_arrow(table: pa.Table) -> ManifestMeta:
 
 
 def _metadata_to_arrow(meta: ManifestMeta) -> dict[str, str]:
-    """Serialize a metadata header to the schema-metadata string dict (inverse of `_metadata_from_arrow`)."""
+    """Serialize a metadata header to the schema-metadata string dict (inverse of `_metadata_from_schema`)."""
     raw: dict[str, Any] = {
         "manifest_format_version": meta.format_version,
         "dataset_name": meta.dataset_name,
@@ -116,37 +117,64 @@ class Manifest:
     """
     A description of the exact sampling order of data for one epoch of a training run. This serves the purpose of making training runs reproducible and resumable.
 
-    We support exporting the Manifest as a pyArrow table or a parquet table in a serialized format.
     A manifest is created by generating one from a source with [`Manifest.generate`][rerun.experimental.dataloader.Manifest.generate],
-    or by loading an existing one with [`Manifest.from_parquet`][rerun.experimental.dataloader.Manifest.from_parquet]
-    or [`Manifest.from_arrow`][rerun.experimental.dataloader.Manifest.from_arrow]. Export it with
-    [`Manifest.write_parquet`][rerun.experimental.dataloader.Manifest.write_parquet].
+    or by loading an existing one with [`Manifest.from_parquet`][rerun.experimental.dataloader.Manifest.from_parquet].
+    Persist it with [`Manifest.write_parquet`][rerun.experimental.dataloader.Manifest.write_parquet]; a manifest is always
+    backed by a parquet file on the read path so a `DataLoader` worker never holds the whole table in RAM.
 
     !!! note
         This API is provisional and will be improved, expect the surface to change.
     """
 
-    def __init__(self, table: pa.Table, metadata: ManifestMeta, *, _key: object = None) -> None:
+    def __init__(
+        self,
+        table: pa.Table | None,
+        metadata: ManifestMeta,
+        *,
+        path: str | os.PathLike[str] | None = None,
+        _key: object = None,
+    ) -> None:
         if _key is not _CONSTRUCTOR_KEY:
-            raise TypeError(
-                "Create a Manifest via Manifest.generate(), Manifest.from_arrow(), or Manifest.from_parquet()."
-            )
+            raise TypeError("Create a Manifest via Manifest.generate() or Manifest.from_parquet().")
+        # `_table` is the loaded manifest, or `None` when parquet-backed and not yet loaded —
+        # the read path then loads only each worker's shard (see `worker_assignments`).
         self._table = table
         self._meta = metadata
+        self._path = path
 
     @classmethod
-    def from_arrow(cls, table: pa.Table) -> Manifest:
-        """Build a manifest from an Arrow table whose schema metadata carries the header."""
-        return cls(table, _metadata_from_arrow(table), _key=_CONSTRUCTOR_KEY)
+    def _from_arrow(cls, table: pa.Table) -> Manifest:
+        """Wrap an in-memory table built by `generate` / `shuffle`; there is no public in-memory constructor."""
+        return cls(table, _metadata_from_schema(table.schema), _key=_CONSTRUCTOR_KEY)
 
     @classmethod
     def from_parquet(cls, path: str | os.PathLike[str]) -> Manifest:
-        """Load a manifest from a parquet file."""
-        return cls.from_arrow(pq.read_table(path))
+        """
+        Load a manifest from a parquet file.
+
+        Rows are read lazily, per `(rank, worker)` shard, so a `DataLoader` worker
+        never loads the whole manifest into RAM.
+        """
+        meta = _metadata_from_schema(pq.read_schema(path))
+        return cls(None, meta, path=path, _key=_CONSTRUCTOR_KEY)
+
+    def _ensure_table(self) -> pa.Table:
+        """The whole manifest, read from the backing parquet file on first use."""
+        if self._table is None:
+            assert self._path is not None
+            self._table = pq.read_table(self._path)
+        return self._table
+
+    def __getstate__(self) -> dict[str, Any]:
+        """Ship only the path (not the loaded rows) to `DataLoader` workers when parquet-backed."""
+        state = self.__dict__.copy()
+        if self._path is not None:
+            state["_table"] = None  # each worker re-reads its own shard; don't ship the whole table
+        return state
 
     def write_parquet(self, path: str | os.PathLike[str], *, row_group_size: int = 1 << 16) -> None:
         """Write the manifest to a zstd-compressed parquet file; the header rides in the schema metadata."""
-        pq.write_table(self._table, path, compression="zstd", row_group_size=row_group_size)
+        pq.write_table(self._ensure_table(), path, compression="zstd", row_group_size=row_group_size)
 
     @property
     def metadata(self) -> ManifestMeta:
@@ -156,6 +184,9 @@ class Manifest:
     @property
     def num_rows(self) -> int:
         """Total number of samples in the manifest."""
+        if self._table is None:
+            assert self._path is not None
+            return int(pq.read_metadata(self._path).num_rows)  # from the footer, without loading rows
         return int(self._table.num_rows)
 
     @classmethod
@@ -170,6 +201,7 @@ class Manifest:
         num_ranks: int = 1,
         num_workers_per_rank: int = 1,
         required_fields: list[str] | None = None,
+        scan_max_workers: int | None = None,
     ) -> Manifest:
         """
         Generate an **unshuffled** manifest for one epoch by scanning the source.
@@ -185,7 +217,8 @@ class Manifest:
         `source` / `index` / `fields` / `timeline_sampling`. `fetch_size` is the co-fetch /
         co-decode block size and `num_ranks` / `num_workers_per_rank` freeze the `(rank, worker)`
         assignment. `required_fields` are the field keys that must resolve to real data for a
-        sample to be kept.
+        sample to be kept. `scan_max_workers` caps the concurrent scan queries against the
+        server (defaults to `8`); raise it to speed up scanning a large dataset.
         """
         # Deferred import: `_manifest_build` imports this module's schema constants.
         from ._manifest_build import build_manifest_table
@@ -199,8 +232,9 @@ class Manifest:
             num_ranks=num_ranks,
             num_workers_per_rank=num_workers_per_rank,
             required_fields=required_fields,
+            scan_max_workers=scan_max_workers,
         )
-        return cls.from_arrow(table)
+        return cls._from_arrow(table)
 
     def shuffle(
         self,
@@ -240,9 +274,10 @@ class Manifest:
 
         strategy = strategy if strategy is not None else BlockShuffle()
         meta = self._meta
+        # Re-scheduling needs every sample, so this materializes a parquet-backed manifest.
         # `schedule_samples` drops the old schedule columns and regenerates them.
         table = schedule_samples(
-            self._table,
+            self._ensure_table(),
             strategy=strategy,
             fetch_size=meta.fetch_size,
             buffer_size=buffer_size,
@@ -251,11 +286,11 @@ class Manifest:
             seed=seed,
         )
         new_meta = dataclasses.replace(meta, shuffle_strategy=strategy.RECIPE_TAG, buffer_size=buffer_size, seed=seed)
-        return type(self).from_arrow(table.replace_schema_metadata(_metadata_to_arrow(new_meta)))
+        return type(self)._from_arrow(table.replace_schema_metadata(_metadata_to_arrow(new_meta)))
 
     def to_arrow(self) -> pa.Table:
-        """The manifest as an Arrow table."""
-        return self._table
+        """The manifest as an Arrow table (loading it from the backing parquet file if needed)."""
+        return self._ensure_table()
 
     def validate_topology(self, num_ranks: int, num_workers_per_rank: int) -> None:
         """Raise if the run's topology differs from the one the manifest was frozen for."""
@@ -271,10 +306,32 @@ class Manifest:
         """
         Rows assigned to one `(rank, worker)`, in fetch order.
 
-        Iterate the returned rows front-to-back to fetch/decode each `fetch_group`
-        in order; emit them in `argsort(emit_rank)` order to reproduce the frozen
-        training sequence.
+        For a parquet-backed manifest this reads only this shard from the file
+        (predicate pushdown), not the whole manifest.
         """
-        table = self._table
-        mask = pc.and_(pc.equal(table[COL_RANK], rank), pc.equal(table[COL_WORKER], worker))
-        return table.filter(mask)
+        if self._table is None:
+            assert self._path is not None
+            return pq.read_table(self._path, filters=[(COL_RANK, "=", rank), (COL_WORKER, "=", worker)])
+        mask = pc.and_(pc.equal(self._table[COL_RANK], rank), pc.equal(self._table[COL_WORKER], worker))
+        return self._table.filter(mask)
+
+    def worker_plan(self, rank: int, worker: int) -> tuple[list[pa.Table], np.ndarray]:
+        """
+        Return this `(rank, worker)`'s `fetch_group`s (co-fetch / co-decode units, in fetch order) and emission pull order.
+
+        Reading a shard can hit disk, so the fetch groups and the emission order are
+        both derived from a single read.
+        """
+        rows = self.worker_assignments(rank, worker)
+        if rows.num_rows == 0:
+            return [], np.empty(0, dtype=np.int64)
+
+        # Split the shard into one table per `fetch_group` (a run of consecutive rows sharing an id).
+        fetch_group = rows.column(COL_FETCH_GROUP).to_numpy()
+        cuts = np.flatnonzero(np.diff(fetch_group)) + 1  # row indices where the id changes
+        starts = [0, *cuts.tolist()]
+        ends = [*cuts.tolist(), rows.num_rows]
+        chunks = [rows.slice(start, end - start) for start, end in zip(starts, ends, strict=True)]
+
+        emit_order = np.argsort(rows.column(COL_EMIT_RANK).to_numpy())
+        return chunks, emit_order

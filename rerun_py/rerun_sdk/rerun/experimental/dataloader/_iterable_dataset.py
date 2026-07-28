@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-import contextvars
-from concurrent.futures import Future, ThreadPoolExecutor
+import functools
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -14,14 +13,25 @@ from rerun._tracing import tracing_scope
 
 from ._sample_index import FixedRateSampling, SampleIndex
 from ._shuffle import SampleShuffle, ShuffleBuffer, ShuffleStrategy, _contiguous_shard, _fetch_chunks
-from ._utils import Target, _decode_iter, _fetch_arrow, _warn_if_fork_unsafe, _WorkerConnection
+from ._utils import (
+    Target,
+    _decode_iter,
+    _fetch_arrow,
+    _fetch_targets,
+    _interleave_fetch_and_decode,
+    _replay,
+    _warn_if_fork_unsafe,
+    _WorkerConnection,
+)
 
 if TYPE_CHECKING:
-    from collections.abc import Generator, Iterator
+    from collections.abc import Iterator
 
     import pyarrow as pa
 
     from ._config import DataSource, Field
+    from ._decoders import ColumnDecoder
+    from .manifest._manifest import Manifest
 
 
 class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tensor | None]]):
@@ -58,8 +68,8 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tens
         [`SampleShuffle`][rerun.experimental.dataloader.SampleShuffle]; pass
         [`NoShuffle`][rerun.experimental.dataloader.NoShuffle] for natural order.
     shuffle_buffer_size
-        Size of a post-decode shuffle buffer
-        that randomizes emission order without changing the fetch order;
+        Size of a post-decode reservoir buffer that randomizes emission
+        order without changing the fetch order;
         mainly useful to decorrelate batches under
         [`BlockShuffle`][rerun.experimental.dataloader.BlockShuffle]. Holds at
         most that many decoded samples in memory per DataLoader worker.
@@ -89,6 +99,7 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tens
         self._shuffle_strategy = shuffle_strategy if shuffle_strategy is not None else SampleShuffle()
         self._shuffle_buffer = ShuffleBuffer(shuffle_buffer_size) if shuffle_buffer_size is not None else None
         self._epoch = 0
+        self._manifest: Manifest | None = None
 
         self._sample_index = SampleIndex.build(
             source,
@@ -97,11 +108,40 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tens
             timeline_sampling=timeline_sampling,
         )
 
-        self._connection = _WorkerConnection(
-            catalog_url=source.dataset.catalog.url,
-            dataset_name=source.dataset.name,
-            fields=fields,
-        )
+        self._connection = _WorkerConnection.from_source(source, fields)
+
+    @classmethod
+    def from_manifest(cls, manifest: Manifest, source: DataSource, fields: dict[str, Field]) -> RerunIterableDataset:
+        """
+        Build a dataset that replays a frozen [`Manifest`][rerun.experimental.dataloader.Manifest]'s sampling order.
+
+        The order, shards, and decode ranges all come from `manifest`; a manifest records only
+        the field specs, not the objects, so the live connection and decoders are supplied here.
+
+        Parameters
+        ----------
+        manifest:
+            The frozen manifest to replay. Provides the sampling order, shards, and decode ranges.
+        source:
+            The live catalog connection.
+        fields:
+            The decoders, keyed by field name (a manifest records only their spec, not the objects).
+
+        Returns
+        -------
+        RerunIterableDataset
+            A dataset that yields samples in the manifest's recorded order.
+
+        """
+        self = cls.__new__(cls)
+        torch.utils.data.IterableDataset.__init__(self)
+        _warn_if_fork_unsafe(stacklevel=3)
+        self._fields = fields
+        self._index = manifest.metadata.index_name
+        self._epoch = 0
+        self._manifest = manifest
+        self._connection = _WorkerConnection.from_source(source, fields)
+        return self
 
     @property
     def sample_index(self) -> SampleIndex:
@@ -110,6 +150,8 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tens
 
     def __len__(self) -> int:
         """Total number of samples across all segments."""
+        if self._manifest is not None:
+            return self._manifest.num_rows
         return self._sample_index.total_samples
 
     def set_epoch(self, epoch: int) -> None:
@@ -117,6 +159,13 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tens
         self._epoch = epoch
 
     def __iter__(self) -> Iterator[dict[str, torch.Tensor | None]]:
+        """Yield this worker's samples: replayed from a manifest, or fetched live from the catalog."""
+        if self._manifest is not None:
+            yield from self._iter_manifest()
+        else:
+            yield from self._iter_catalog()
+
+    def _iter_catalog(self) -> Iterator[dict[str, torch.Tensor | None]]:
         """
         Yield individual samples as they are decoded.
 
@@ -125,62 +174,91 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tens
         With `shuffle_buffer_size` set, decoded samples pass through a
         shuffle buffer before being yielded.
         """
-        with tracing_scope("RerunIterableDataset.__iter__"):
+        with tracing_scope("RerunIterableDataset._iter_catalog"):
             view, decoders = self._connection.ensure()
 
             indices, block_bounds = self._worker_order()
             chunks = _fetch_chunks(indices, block_bounds, fetch_size=self._fetch_size)
 
+            fetch = functools.partial(
+                _fetch_arrow,
+                view=view,
+                index=self._index,
+                fields=self._fields,
+                decoders=decoders,
+                sample_index=self._sample_index,
+            )
+
+            samples = _interleave_fetch_and_decode(
+                chunks, fetch=fetch, decode=functools.partial(self._decode, decoders)
+            )
+            if self._shuffle_buffer is not None:
+                distributed = torch.distributed.is_available() and torch.distributed.is_initialized()
+                rank = torch.distributed.get_rank() if distributed else 0
+                worker_info = torch.utils.data.get_worker_info()
+                worker_id = worker_info.id if worker_info is not None else 0
+                # Must match the build-time reservoir seed in `_manifest_build._emit_rank`
+                # (`[seed, rank, worker]`) so a manifest replays a live buffered run's exact order.
+                rng = np.random.default_rng([self._epoch, rank, worker_id])
+                samples = self._shuffle_buffer.shuffle(samples, rng=rng)
+            yield from samples
+
+    def _iter_manifest(self) -> Iterator[dict[str, torch.Tensor | None]]:
+        """Replay the manifest for this `(rank, worker)`: fetch groups in order, emit in the frozen order."""
+        from .manifest._manifest_read import targets_from_rows
+
+        assert self._manifest is not None
+        with tracing_scope("RerunIterableDataset._iter_manifest"):
+            view, decoders = self._connection.ensure()
+            meta = self._manifest.metadata
+
+            distributed = torch.distributed.is_available() and torch.distributed.is_initialized()
+            rank = torch.distributed.get_rank() if distributed else 0
+            world_size = torch.distributed.get_world_size() if distributed else 1
+            worker_info = torch.utils.data.get_worker_info()
+            worker = worker_info.id if worker_info is not None else 0
+            num_workers = worker_info.num_workers if worker_info is not None else 1
+
+            self._manifest.validate_topology(world_size, num_workers)
+            # Read this worker's shard once (a disk hit for parquet-backed manifests) and
+            # derive both the fetch schedule and the emission order from it.
+            chunks, emit_order = self._manifest.worker_plan(rank, worker)
             if not chunks:
                 return
 
-            def fetch_and_decode() -> Generator[dict[str, torch.Tensor | None], None, None]:
-                executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="rerun-fetch")
+            # Query construction only needs the grid step / dtype, not the full sample space.
+            sample_index = SampleIndex([], ns_per_sample=meta.ns_per_sample, ns_dtype=meta.ns_dtype)
 
-                def submit_fetch(chunk: np.ndarray) -> Future[tuple[list[Target], dict[str, dict[str, pa.Table]]]]:
-                    # Copy the calling thread's contextvars so _fetch_arrow's span is
-                    # parented under the current OTel context instead of appearing as a root trace.
-                    ctx = contextvars.copy_context()
+            def fetch(chunk: pa.Table) -> tuple[list[Target], dict[str, dict[str, pa.Table]]]:
+                targets = targets_from_rows(chunk, fields=self._fields, decoders=decoders, ns_dtype=meta.ns_dtype)
+                return _fetch_targets(
+                    targets,
+                    view=view,
+                    index=self._index,
+                    fields=self._fields,
+                    decoders=decoders,
+                    sample_index=sample_index,
+                )
 
-                    def fetch() -> tuple[list[Target], dict[str, dict[str, pa.Table]]]:
-                        return ctx.run(
-                            _fetch_arrow,
-                            view=view,
-                            index=self._index,
-                            fields=self._fields,
-                            decoders=decoders,
-                            sample_index=self._sample_index,
-                            indices=chunk,
-                        )
+            samples = _interleave_fetch_and_decode(
+                chunks, fetch=fetch, decode=functools.partial(self._decode, decoders)
+            )
+            yield from _replay(samples, emit_order)
 
-                    return executor.submit(fetch)
-
-                try:
-                    pending: Future[tuple[list[Target], dict[str, dict[str, pa.Table]]]] | None = submit_fetch(
-                        chunks[0]
-                    )
-                    for i, _ in enumerate(chunks):
-                        assert pending is not None
-                        targets, seg_tables = pending.result()
-                        pending = submit_fetch(chunks[i + 1]) if i + 1 < len(chunks) else None
-                        yield from _decode_iter(
-                            targets=targets,
-                            seg_tables=seg_tables,
-                            index=self._index,
-                            fields=self._fields,
-                            decoders=decoders,
-                        )
-                finally:
-                    with tracing_scope("executor.shutdown"):
-                        executor.shutdown(wait=False)
-
-            samples = fetch_and_decode()
-            if self._shuffle_buffer is not None:
-                worker_info = torch.utils.data.get_worker_info()
-                worker_id = worker_info.id if worker_info is not None else 0
-                rng = np.random.default_rng([self._epoch, worker_id])
-                samples = self._shuffle_buffer.shuffle(samples, rng=rng)
-            yield from samples
+    def _decode(
+        self,
+        decoders: dict[str, ColumnDecoder],
+        fetched: tuple[list[Target], dict[str, dict[str, pa.Table]]],
+    ) -> Iterator[dict[str, torch.Tensor | None]]:
+        """Decode one fetched chunk into samples (shared by the catalog and manifest paths)."""
+        targets, seg_tables = fetched
+        return _decode_iter(
+            targets=targets,
+            seg_tables=seg_tables,
+            index=self._index,
+            fields=self._fields,
+            decoders=decoders,
+        )
 
     def _worker_order(self) -> tuple[np.ndarray, np.ndarray]:
         """Return this worker's shard of the epoch's `(indices, block_bounds)`, in fetch order."""
