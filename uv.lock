@@ -66,7 +66,10 @@ members = [
     "template",
     "using-index-values",
 ]
-constraints = [{ name = "pyarrow", specifier = ">=23.0.1,<24" }]
+constraints = [
+    { name = "pyarrow", specifier = ">=23.0.1,<24" },
+    { name = "pymdown-extensions", specifier = ">=11.0.0" },
+]
 
 [[package]]
 name = "accelerate"
@@ -416,6 +419,16 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/50/2e/ca206b678cdbd2eca56aa2ce49996f6d6cd21db840efa6e2e6f73d4cb7db/backports_zstd-1.2.0-pp311-pypy311_pp73-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:72bc2b03590d66d8706e4717da25cc6c192f5a6bfc3f6148f671f79e73afd4e8", size = 394149, upload-time = "2025-12-06T20:26:35.563Z" },
     { url = "https://files.pythonhosted.org/packages/50/c2/ba7bcfe28dc3f8e8848419757883c8a0c7a4263dcd5d3988dd7f49818ca8/backports_zstd-1.2.0-pp311-pypy311_pp73-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:89afe7d6e86bedbf2bac083beb096732a1e92025a5efa9c972941a6140994485", size = 414114, upload-time = "2025-12-06T20:26:36.808Z" },
     { url = "https://files.pythonhosted.org/packages/71/ad/d5e8a3b28150e4f310999ef26db1e6b5f3bbb899c07d88ebd910954fcaf2/backports_zstd-1.2.0-pp311-pypy311_pp73-win_amd64.whl", hash = "sha256:f00066de6ffd72c653b43afb9aaa36969fd0e2c91f66adb45a11f73e6423263a", size = 299968, upload-time = "2025-12-06T20:26:38.382Z" },
+]
+
+[[package]]
+name = "backrefs"
+version = "8.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/ec/56/4744bcd0c82184e80c52b0ac4076c261a8ffa1f1b343ff2f6e89ce0e1cef/backrefs-8.0.tar.gz", hash = "sha256:b556cd7d36c3a3a2f256b89590b176b8eddfb73bcfaee3a3ddd84ea66d21ce50", size = 7013081, upload-time = "2026-07-26T19:54:24.638Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e3/fd/9bf53b6a6f6f519ffaac765df2f2a25e5c2fc6d32cfd2b2747099e72c911/backrefs-8.0-py310-none-any.whl", hash = "sha256:4a627b817fd2dce43b79ab48da63613340509381cd8ce0897078a0bce79a2ab8", size = 380377, upload-time = "2026-07-26T19:54:17.457Z" },
+    { url = "https://files.pythonhosted.org/packages/e1/29/4bd7ae72a2634da00379c2b3bcc5439e7c94620235c6afea8af15229a973/backrefs-8.0-py311-none-any.whl", hash = "sha256:f0c35cf0102ba6b6070c12a492be3c1c1d3f5839529784b9a9565d6d04569a01", size = 392169, upload-time = "2026-07-26T19:54:18.782Z" },
 ]
 
 [[package]]
@@ -2885,10 +2898,11 @@ wheels = [
 
 [[package]]
 name = "mkdocs-material"
-version = "9.4.7"
+version = "9.7.7"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "babel" },
+    { name = "backrefs" },
     { name = "colorama" },
     { name = "jinja2" },
     { name = "markdown" },
@@ -2897,12 +2911,11 @@ dependencies = [
     { name = "paginate" },
     { name = "pygments" },
     { name = "pymdown-extensions" },
-    { name = "regex" },
     { name = "requests" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/2d/65/b65ff6cdd6899551e5d98867f5bfbb94fd8672bb4e8ae1b47a619dd301cd/mkdocs_material-9.4.7.tar.gz", hash = "sha256:e704e001c9ef17291e1d3462c202425217601653e18f68f85d28eff4690e662b", size = 3869400, upload-time = "2023-10-27T17:19:16.873Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f1/cd/c05d3a530ba7934f144fb45f7203cd236adc25c7bdcc34673d202f4b0278/mkdocs_material-9.7.7.tar.gz", hash = "sha256:c0649c065b1b0512d60aad8c10f947f8e455284475239b364b610f2deb4d0855", size = 4097923, upload-time = "2026-07-17T16:21:33.156Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a6/ca/e72f41f1f94eae8a45de6b247ed90c868b9af107cd3b2182c6c6e944fe06/mkdocs_material-9.4.7-py3-none-any.whl", hash = "sha256:4d698d52bb6a6a3c452ab854481c4cdb68453a0420956a6aee2de55fe15fe610", size = 8408656, upload-time = "2023-10-27T17:19:11.547Z" },
+    { url = "https://files.pythonhosted.org/packages/ad/21/17c1bc9e6f47c972ad66fb2ac2568f99f90f1207eeb6fc3b34d094dba7b5/mkdocs_material-9.7.7-py3-none-any.whl", hash = "sha256:8ea9bb1737a5b524a5f9dcf2e1b4ebda8274ae3008aa7845720a97083bef708f", size = 9305438, upload-time = "2026-07-17T16:21:30.017Z" },
 ]
 
 [[package]]
@@ -4255,15 +4268,15 @@ crypto = [
 
 [[package]]
 name = "pymdown-extensions"
-version = "10.21.3"
+version = "11.0.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "markdown" },
     { name = "pyyaml" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/9e/26/d1015444da4d952a1ca487a236b522eb979766f0295a0bd0c5fc089989a9/pymdown_extensions-10.21.3.tar.gz", hash = "sha256:72cfcf55f07aea0d4af2c4f11dd4e52466ddfb1bb819673146398e0bd3a77354", size = 854140, upload-time = "2026-05-13T12:57:32.267Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/21/a9/5f0c535ba3b08fe09270c16808e053a968868242ecbd5676d4e3a488bf28/pymdown_extensions-11.0.1.tar.gz", hash = "sha256:dd2905ae6fc5b75582fafb139a1266ffc754705efa902aa50067fa7ff4f94ec0", size = 857113, upload-time = "2026-07-02T17:59:22.955Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/7e/85/545a951eecc270fcd688288c600017e2050a1aacb56c711d208586d3e470/pymdown_extensions-10.21.3-py3-none-any.whl", hash = "sha256:d7a5d08014fc571e80ca21dd6f854e31f94c489800350564d55d15b3c41e76b6", size = 269002, upload-time = "2026-05-13T12:57:30.296Z" },
+    { url = "https://files.pythonhosted.org/packages/d6/54/da572c98c0b77626a91b5d3b89f0231d8bff5125c225420908632f8b342d/pymdown_extensions-11.0.1-py3-none-any.whl", hash = "sha256:db3943a62bab7e03af1364f0c4083e64b91fb097675a4b6cceccfbe9a77e5eb2", size = 269455, upload-time = "2026-07-02T17:59:21.271Z" },
 ]
 
 [[package]]
@@ -5052,7 +5065,7 @@ docs = [
     { name = "mkdocs", specifier = "==1.6.1" },
     { name = "mkdocs-gen-files", specifier = "==0.5.0" },
     { name = "mkdocs-literate-nav", specifier = "==0.6.1" },
-    { name = "mkdocs-material", specifier = "==9.4.7" },
+    { name = "mkdocs-material", specifier = "==9.7.7" },
     { name = "mkdocs-material-extensions", specifier = "==1.3" },
     { name = "mkdocs-redirects", specifier = "==1.2.2" },
     { name = "mkdocstrings", specifier = ">=0.28.2,<0.29" },

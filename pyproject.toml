@@ -147,7 +147,8 @@ docs = [
   "mkdocs-gen-files==0.5.0",
   "mkdocs-literate-nav==0.6.1",
   "mkdocs-redirects==1.2.2",
-  "mkdocs-material==9.4.7",
+  # 9.7.0 relaxed `pymdown-extensions~=10.2` to `>=10.2`, which is what lets us take 11.x below.
+  "mkdocs-material==9.7.7",
   "mkdocs-material-extensions==1.3",
   "mkdocstrings>=0.28.2,<0.29",
   "mkdocstrings-python>=1.16.2,<2",
@@ -161,7 +162,9 @@ package = false
 
 # pyarrow 24.0.0 ships an incomplete `py.typed` that breaks mypy on `pyarrow.compute.*`.
 # 23.x has no type stubs (so mypy leaves it untyped) and clears RUSTSEC/GHSA pyarrow alert >= 23.0.1.
-constraint-dependencies = ["pyarrow>=23.0.1,<24"]
+#
+# `pymdown-extensions` is transitive (mkdocs-material, mkdocstrings); pinned only to hold a security floor.
+constraint-dependencies = ["pyarrow>=23.0.1,<24", "pymdown-extensions>=11.0.0"]
 
 [tool.uv.sources]
 rerun-sdk = { workspace = true }
