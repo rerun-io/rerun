@@ -127,6 +127,11 @@ jobs:
         if: ${{ inputs.CHANNEL != 'pr' }}
         run: pixi run rs-check --only tests_without_all_features
 
+      # Only upload snapshots that failed or are new, instead of all ~80 MB of them.
+      - name: Prune unchanged snapshots
+        if: always()
+        run: bash scripts/ci/prune_snapshots_for_upload.sh
+
       - name: Upload test results
         uses: actions/upload-artifact@v7
         if: always()
@@ -135,6 +140,7 @@ jobs:
           path: |
             **/tests/snapshots
             **/tests/failures
+          if-no-files-found: ignore
 
   # Run tests on Mac and Windows (main channel)
   mac-windows-tests-main:
@@ -189,6 +195,11 @@ jobs:
       - name: Rust tests
         run: pixi run rs-check --only tests
 
+      # Only upload snapshots that failed or are new, instead of all ~80 MB of them.
+      - name: Prune unchanged snapshots
+        if: always()
+        run: bash scripts/ci/prune_snapshots_for_upload.sh
+
       - name: Upload test results
         uses: actions/upload-artifact@v7
         if: always()
@@ -197,6 +208,7 @@ jobs:
           path: |
             **/tests/snapshots
             **/tests/failures
+          if-no-files-found: ignore
 
   # Run all checks on Mac and Windows (nightly channel, split across multiple jobs)
   mac-windows-checks-nightly:
@@ -272,6 +284,11 @@ jobs:
       - name: Rust checks
         run: pixi run rs-check --only ${{ matrix.checks_group.checks }}
 
+      # Only upload snapshots that failed or are new, instead of all ~80 MB of them.
+      - name: Prune unchanged snapshots
+        if: always()
+        run: bash scripts/ci/prune_snapshots_for_upload.sh
+
       - name: Upload test results
         uses: actions/upload-artifact@v7
         if: always()
@@ -280,3 +297,4 @@ jobs:
           path: |
             **/tests/snapshots
             **/tests/failures
+          if-no-files-found: ignore

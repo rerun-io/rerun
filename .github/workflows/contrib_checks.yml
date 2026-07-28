@@ -133,6 +133,11 @@ jobs:
       - name: Rust checks & tests
         run: pixi run rs-check --skip individual_crates docs_slow
 
+      # Only upload snapshots that failed or are new, instead of all ~80 MB of them.
+      - name: Prune unchanged snapshots
+        if: always()
+        run: bash scripts/ci/prune_snapshots_for_upload.sh
+
       - name: Upload test results
         uses: actions/upload-artifact@v7
         if: always()
@@ -141,6 +146,7 @@ jobs:
           path: |
             **/tests/snapshots
             **/tests/failures
+          if-no-files-found: ignore
 
   rerun-lints:
     name: Rerun lints
