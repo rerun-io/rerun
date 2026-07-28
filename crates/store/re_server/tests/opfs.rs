@@ -35,13 +35,28 @@ async fn version() {
 }
 
 #[wasm_bindgen_test]
-async fn register_rrd_from_file_url_in_opfs() {
+async fn register_rrd_with_footer_from_file_url_in_opfs() {
+    register_rrd_from_file_url_in_opfs(true).await;
+}
+
+#[wasm_bindgen_test]
+async fn register_rrd_without_footer_from_file_url_in_opfs() {
+    register_rrd_from_file_url_in_opfs(false).await;
+}
+
+async fn register_rrd_from_file_url_in_opfs(with_footer: bool) {
     let service = RerunCloudHandlerBuilder::new().build();
-    let dataset_name = EntryName::new("opfs_dataset").expect("valid dataset name");
+    let footer_suffix = if with_footer {
+        "with_footer"
+    } else {
+        "without_footer"
+    };
+    let dataset_name =
+        EntryName::new(format!("opfs_dataset_{footer_suffix}")).expect("valid dataset name");
     let file_name = format!("{}.rrd", re_tuid::Tuid::new());
     let url = format!("file:///{file_name}");
 
-    re_web::fs::write(&file_name, encode_rrd().into())
+    re_web::fs::write(&file_name, encode_rrd(with_footer).into())
         .await
         .expect("failed to write OPFS file");
 
@@ -113,7 +128,7 @@ async fn register_rrd_from_file_url_in_opfs() {
     }));
 }
 
-fn encode_rrd() -> Vec<u8> {
+fn encode_rrd(with_footer: bool) -> Vec<u8> {
     let store_id = StoreId::random(StoreKind::Recording, "opfs_test");
     let timeline = Timeline::new_sequence("frame");
     let points = MyPoint::from_iter(0..1);
@@ -133,6 +148,9 @@ fn encode_rrd() -> Vec<u8> {
         &mut bytes,
     )
     .expect("failed to create test RRD encoder");
+    if !with_footer {
+        encoder.do_not_emit_footer();
+    }
     encoder
         .append(&LogMsg::SetStoreInfo(SetStoreInfo {
             row_id: *RowId::ZERO,

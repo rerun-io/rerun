@@ -14,44 +14,62 @@ use web_sys::{
 
 pub struct Metadata {
     is_file: bool,
+    len: u64,
 }
 
 impl Metadata {
     pub fn is_file(&self) -> bool {
         self.is_file
     }
+
+    #[expect(clippy::len_without_is_empty, reason = "mirrors std::fs::Metadata")]
+    pub fn len(&self) -> u64 {
+        self.len
+    }
 }
 
 pub async fn metadata(path: &Path) -> io::Result<Metadata> {
     let path = path.to_owned();
-    run_local(async move {
+    re_async::spawn_local_with_result(async move {
         match open_file(&path).await {
             Ok(file_handle) => {
-                let _file: web_sys::File = await_js(file_handle.get_file()).await?;
-                Ok(Metadata { is_file: true })
+                let file: web_sys::File = await_js(file_handle.get_file()).await?;
+                let blob: &web_sys::Blob = file.as_ref();
+                Ok(Metadata {
+                    is_file: true,
+                    len: blob.size() as u64,
+                })
             }
-            Err(err) if err.kind() == io::ErrorKind::InvalidInput => {
-                Ok(Metadata { is_file: false })
-            }
+            Err(err) if err.kind() == io::ErrorKind::InvalidInput => Ok(Metadata {
+                is_file: false,
+                len: 0,
+            }),
             Err(err) => Err(err),
         }
     })
     .await
+    .map_err(io::Error::other)?
 }
 
-// TODO(RR-5154): Replace this with something akin to `read_exact_at`, to avoid
-// copying all of the bytes via `to_vec`.
+/// Read the entire file into Wasm linear memory.
 pub async fn read(path: &Path) -> io::Result<Vec<u8>> {
     let path = path.to_owned();
-    run_local(async move {
+    re_async::spawn_local_with_result(async move {
         let file_handle = open_file(&path).await?;
         let file: web_sys::File = await_js(file_handle.get_file()).await?;
         let blob: &web_sys::Blob = file.as_ref();
+        if blob.size() > f64::from(u32::MAX) {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "cannot read files larger than u32::MAX bytes into Wasm memory",
+            ));
+        }
         let buffer: js_sys::ArrayBuffer = await_js(blob.array_buffer()).await?;
 
         Ok(js_sys::Uint8Array::new(&buffer).to_vec())
     })
     .await
+    .map_err(io::Error::other)?
 }
 
 /// A positional-read handle to an OPFS file.
@@ -64,15 +82,22 @@ pub struct File {
     file: web_sys::File,
 }
 
+impl From<web_sys::File> for File {
+    fn from(file: web_sys::File) -> Self {
+        Self { file }
+    }
+}
+
 impl File {
     /// Opens an existing OPFS file, failing with [`io::ErrorKind::NotFound`] if it is absent.
     pub async fn open(path: impl AsRef<Path>) -> io::Result<Self> {
         let path = path.as_ref().to_owned();
-        let file = run_local(async move {
+        let file = re_async::spawn_local_with_result(async move {
             let file_handle = open_file(&path).await?;
             await_js(file_handle.get_file()).await
         })
-        .await?;
+        .await
+        .map_err(io::Error::other)??;
         Ok(Self { file })
     }
 }
@@ -81,7 +106,7 @@ impl File {
 impl re_async::AsyncReadAt for File {
     async fn read_exact_at(&self, offset: u64, len: usize) -> io::Result<bytes::Bytes> {
         let file = self.file.clone();
-        run_local(async move {
+        re_async::spawn_local_with_result(async move {
             let end = offset.checked_add(len as u64).ok_or_else(|| {
                 io::Error::new(io::ErrorKind::InvalidInput, "read range overflows u64")
             })?;
@@ -103,15 +128,17 @@ impl re_async::AsyncReadAt for File {
             Ok(bytes.into())
         })
         .await
+        .map_err(io::Error::other)?
     }
 
     async fn size(&self) -> io::Result<u64> {
         let file = self.file.clone();
-        run_local(async move {
+        re_async::spawn_local_with_result(async move {
             let blob: &web_sys::Blob = file.as_ref();
             Ok(blob.size() as u64)
         })
         .await
+        .map_err(io::Error::other)?
     }
 }
 
@@ -121,13 +148,13 @@ impl re_async::AsyncReadAt for File {
 /// buffer would otherwise be duplicated on the Wasm heap for large uploads.
 pub async fn write(path: impl AsRef<Path>, contents: Arc<[u8]>) -> io::Result<()> {
     let path = path.as_ref().to_owned();
-    run_local(async move {
+    re_async::spawn_local_with_result(async move {
         let file_handle = create_file(&path).await?;
         let writer: FileSystemWritableFileStream = await_js(file_handle.create_writable()).await?;
 
         if let Err(err) = write_all(&writer, &contents).await {
-            // Discard the partially-written file so a later read fails cleanly rather than
-            // returning truncated contents (e.g. when the quota is exceeded mid-write).
+            // `createWritable` commits atomically on close. Aborting preserves any previous file
+            // and prevents a partial write from becoming visible.
             let writable_stream: &web_sys::WritableStream = writer.as_ref();
             writable_stream.abort().await.ok();
             return Err(err);
@@ -136,6 +163,30 @@ pub async fn write(path: impl AsRef<Path>, contents: Arc<[u8]>) -> io::Result<()
         Ok(())
     })
     .await
+    .map_err(io::Error::other)?
+}
+
+/// Copy a browser file into OPFS without moving its payload through Wasm linear memory.
+pub async fn write_file(path: impl AsRef<Path>, file: web_sys::File) -> io::Result<()> {
+    let path = path.as_ref().to_owned();
+    let blob: web_sys::Blob = file.unchecked_into();
+    let readable_stream = blob.stream();
+    re_async::spawn_local_with_result(async move {
+        let file_handle = create_file(&path).await?;
+        let writer: FileSystemWritableFileStream = await_js(file_handle.create_writable()).await?;
+        let writable_stream: &web_sys::WritableStream = writer.as_ref();
+
+        if let Err(err) = await_js::<JsValue>(readable_stream.pipe_to(writable_stream)).await {
+            // `pipeTo` normally aborts its destination on failure. Abort explicitly as well so
+            // this remains transactional if browser defaults change.
+            writable_stream.abort().await.ok();
+            return Err(err);
+        }
+
+        Ok(())
+    })
+    .await
+    .map_err(io::Error::other)?
 }
 
 async fn write_all(writer: &FileSystemWritableFileStream, contents: &[u8]) -> io::Result<()> {
@@ -156,7 +207,7 @@ async fn write_all(writer: &FileSystemWritableFileStream, contents: &[u8]) -> io
 /// A missing `path` is treated as success, so this is an idempotent "clear".
 pub async fn remove_dir_all(path: impl AsRef<Path>) -> io::Result<()> {
     let path = path.as_ref().to_owned();
-    run_local(async move {
+    re_async::spawn_local_with_result(async move {
         let (directory, name) = match parent_directory_and_file_name(&path, false).await {
             Ok(directory_and_name) => directory_and_name,
             Err(err) if err.kind() == io::ErrorKind::NotFound => return Ok(()),
@@ -173,6 +224,7 @@ pub async fn remove_dir_all(path: impl AsRef<Path>) -> io::Result<()> {
         }
     })
     .await
+    .map_err(io::Error::other)?
 }
 
 async fn open_file(path: &Path) -> io::Result<FileSystemFileHandle> {
@@ -261,26 +313,6 @@ where
         .map_err(|err| js_to_io_error(&err))
 }
 
-/// `tonic` service futures are `Send`, while JS-backed futures are not.
-/// Run browser API work on the local Wasm executor and await only the `Send` oneshot receiver.
-fn run_local<T>(
-    future: impl std::future::Future<Output = io::Result<T>> + 'static,
-) -> impl std::future::Future<Output = io::Result<T>> + Send
-where
-    T: Send + 'static,
-{
-    let task = re_async::spawn_local_with_result(future);
-
-    async move {
-        task.await.map_err(|_err| {
-            io::Error::new(
-                io::ErrorKind::Interrupted,
-                "OPFS browser task was canceled before completion",
-            )
-        })?
-    }
-}
-
 fn js_to_io_error(value: &JsValue) -> io::Error {
     if let Some(exception) = value.dyn_ref::<DomException>() {
         return err_from_dom_exception(exception);
@@ -294,6 +326,7 @@ fn err_from_dom_exception(exception: &DomException) -> io::Error {
         DomException::NOT_FOUND_ERR => io::ErrorKind::NotFound,
         DomException::SECURITY_ERR => io::ErrorKind::PermissionDenied,
         DomException::TYPE_MISMATCH_ERR => io::ErrorKind::InvalidInput,
+        DomException::QUOTA_EXCEEDED_ERR => io::ErrorKind::StorageFull,
         _ => io::ErrorKind::Other,
     };
 
@@ -328,6 +361,7 @@ mod test {
             .await
             .expect("metadata should succeed for an OPFS file");
         assert!(metadata.is_file());
+        assert_eq!(metadata.len(), b"first write".len() as u64);
         assert_eq!(
             read(file_path.as_ref())
                 .await
@@ -348,6 +382,54 @@ mod test {
         remove_dir_all(test_dir)
             .await
             .expect("test cleanup should remove the OPFS directory");
+    }
+
+    #[wasm_bindgen_test]
+    async fn write_file_overwrites_and_preserves_contents() {
+        let test_dir = unique_opfs_test_dir();
+        let file_path = format!("/{test_dir}/streamed.bin");
+
+        write_file(&file_path, file(b"streamed contents"))
+            .await
+            .expect("streamed write should succeed");
+        assert_eq!(
+            read(file_path.as_ref()).await.expect("read should succeed"),
+            b"streamed contents",
+        );
+        assert_eq!(
+            metadata(file_path.as_ref())
+                .await
+                .expect("metadata should succeed")
+                .len(),
+            b"streamed contents".len() as u64,
+        );
+
+        write_file(&file_path, file(b"short"))
+            .await
+            .expect("streamed overwrite should succeed");
+        assert_eq!(
+            read(file_path.as_ref()).await.expect("read should succeed"),
+            b"short",
+        );
+        assert_eq!(
+            metadata(file_path.as_ref())
+                .await
+                .expect("metadata should succeed")
+                .len(),
+            b"short".len() as u64,
+        );
+
+        remove_dir_all(test_dir)
+            .await
+            .expect("test cleanup should remove the OPFS directory");
+    }
+
+    fn file(contents: &[u8]) -> web_sys::File {
+        let bytes = js_sys::Uint8Array::from(contents);
+        let parts = js_sys::Array::new();
+        parts.push(&bytes);
+        web_sys::File::new_with_u8_array_sequence(&parts, "source.bin")
+            .expect("File creation should succeed")
     }
 
     #[wasm_bindgen_test]

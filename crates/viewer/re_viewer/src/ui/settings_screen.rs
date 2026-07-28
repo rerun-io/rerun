@@ -167,6 +167,13 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
     ui.strong("Video");
     video_section_ui(ui, video);
 
+    #[cfg(target_arch = "wasm32")]
+    if experimental.use_internal_catalog {
+        separator_with_some_space(ui);
+        ui.strong("Origin private filesystem");
+        origin_private_filesystem_section_ui(ui);
+    }
+
     {
         let ExperimentalAppOptions {
             table_cards_and_blueprints,
@@ -204,6 +211,50 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
         {
             let _ = gamepad_navigation;
         }
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+fn origin_private_filesystem_section_ui(ui: &mut Ui) {
+    if ui
+        .button("Request persistence")
+        .on_hover_text(
+            "Ask the browser to protect Viewer catalog files from automatic storage eviction. \
+             The browser may deny this request. Some browsers, including Firefox, also increase \
+             the origin's storage quota when persistence is granted.",
+        )
+        .clicked()
+    {
+        let request = re_web::browser::window().and_then(|window| {
+            window
+                .navigator()
+                .storage()
+                .persist()
+                .map_err(re_web::Error::from)
+        });
+        re_async::spawn_local(async move {
+            let result = match request {
+                Ok(request) => request
+                    .await
+                    .map_err(re_web::Error::from)
+                    .and_then(|value| {
+                        value.as_bool().ok_or_else(|| {
+                            re_web::Error::new(
+                                "persistent storage request returned a non-boolean value",
+                            )
+                        })
+                    }),
+                Err(err) => Err(err),
+            };
+
+            match result {
+                Ok(true) => re_log::info!("Persistent browser storage granted"),
+                Ok(false) => re_log::warn!("Persistent browser storage denied"),
+                Err(err) => {
+                    re_log::error!("Failed to request persistent browser storage: {err}");
+                }
+            }
+        });
     }
 }
 

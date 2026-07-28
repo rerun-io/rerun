@@ -126,7 +126,8 @@ impl App {
                             }
                             Err(err) => {
                                 re_log::error!(
-                                    "Failed to load file via the Viewer catalog: {err}\nFile path: {}",
+                                    "Failed to load file via the Viewer catalog: {}\nFile path: {}",
+                                    re_error::format(err),
                                     path.display(),
                                 );
                             }
@@ -147,12 +148,13 @@ impl App {
             // we'd switch that over to `FileHandle` too.
             #[cfg(target_arch = "wasm32")]
             LogDataSource::FileContents(_file_source, file_contents) => {
-                let file_contents = file_contents.clone();
                 let path = file_contents.path.clone();
-                if self
-                    .try_register_via_internal_catalog(&path, std::future::ready(Ok(file_contents)))
-                    .is_break()
-                {
+                if self.should_register_via_internal_catalog(&path) {
+                    let file_contents = file_contents.clone();
+                    let connection_registry = self.connection_registry.clone();
+                    self.register_via_internal_catalog(&path, async move {
+                        register_web_contents(&connection_registry, &file_contents).await
+                    });
                     return;
                 }
 
@@ -162,13 +164,12 @@ impl App {
             #[cfg(target_arch = "wasm32")]
             LogDataSource::FileHandle { file, .. } => {
                 let path = std::path::PathBuf::from(file.name());
-                if self
-                    .try_register_via_internal_catalog(
-                        &path,
-                        re_data_source::FileContents::from_file(file.clone()),
-                    )
-                    .is_break()
-                {
+                if self.should_register_via_internal_catalog(&path) {
+                    let connection_registry = self.connection_registry.clone();
+                    let file = file.clone();
+                    self.register_via_internal_catalog(&path, async move {
+                        register_web_file(&connection_registry, file).await
+                    });
                     return;
                 }
             }
@@ -317,41 +318,26 @@ impl App {
         }
     }
 
-    /// On Wasm with the internal catalog enabled, register a dropped `.rrd`'s contents with the
-    /// in-process catalog and open the resulting segment, returning [`ControlFlow::Break`] when it
-    /// took ownership of the load.
     #[cfg(target_arch = "wasm32")]
-    fn try_register_via_internal_catalog(
+    fn should_register_via_internal_catalog(&self, path: &std::path::Path) -> bool {
+        path.extension()
+            .and_then(|ext| ext.to_str())
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("rrd"))
+            && self.app_options().experimental.use_internal_catalog
+            && self.connection_registry.internal_origin().is_some()
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn register_via_internal_catalog(
         &self,
         path: &std::path::Path,
-        file_contents: impl std::future::Future<Output = anyhow::Result<re_data_source::FileContents>>
+        registration: impl std::future::Future<Output = anyhow::Result<re_uri::DatasetSegmentUri>>
         + 'static,
-    ) -> std::ops::ControlFlow<()> {
-        use std::ops::ControlFlow;
-
-        let is_rrd = path
-            .extension()
-            .and_then(|ext| ext.to_str())
-            .is_some_and(|ext| ext.eq_ignore_ascii_case("rrd"));
-        if !(is_rrd
-            && self.app_options().experimental.use_internal_catalog
-            && self.connection_registry.internal_origin().is_some())
-        {
-            return ControlFlow::Continue(());
-        }
-
-        let connection_registry = self.connection_registry.clone();
+    ) {
         let sender = self.command_sender.clone();
         let path = path.to_owned();
         self.async_runtime.spawn_future(async move {
-            let file_contents = match file_contents.await {
-                Ok(file_contents) => file_contents,
-                Err(err) => {
-                    re_log::error!("Failed to read file: {err}\nFile path: {}", path.display());
-                    return;
-                }
-            };
-            match register_opfs_file(&connection_registry, &file_contents).await {
+            match registration.await {
                 Ok(uri) => {
                     sender.send_system(SystemCommand::RefreshRedapEntry {
                         origin: uri.origin.clone(),
@@ -366,14 +352,13 @@ impl App {
                 }
                 Err(err) => {
                     re_log::error!(
-                        "Failed to load file via the Viewer catalog: {err}\nFile path: {}",
-                        file_contents.path.display(),
+                        "Failed to load file via the Viewer catalog: {}\nFile path: {}",
+                        re_error::format(err),
+                        path.display(),
                     );
                 }
             }
         });
-
-        ControlFlow::Break(())
     }
 }
 
@@ -424,79 +409,140 @@ async fn register_local_file(
 }
 
 #[cfg(target_arch = "wasm32")]
-async fn register_opfs_file(
+async fn register_web_contents(
     connection_registry: &re_redap_client::ConnectionRegistryHandle,
     file_contents: &re_data_source::FileContents,
 ) -> anyhow::Result<re_uri::DatasetSegmentUri> {
-    // Zero-copy: `Bytes` wraps the shared `Arc<[u8]>` and slices it by refcount.
+    // `Bytes` wraps the shared `Arc<[u8]>` and slices it by refcount.
     let reader = bytes::Bytes::from_owner(file_contents.bytes.clone());
-    let dataset_name = rrd_dataset_name(&reader).await.with_context(|| {
-        format!(
-            "failed to read application id from RRD\nFile path: {}",
-            file_contents.path.display(),
-        )
-    })?;
-    let fingerprint = re_log_encoding::RrdFingerprint::compute_for_rrd(&reader)
-        .await
-        .with_context(|| {
-            format!(
-                "failed to fingerprint RRD\nFile path: {}",
-                file_contents.path.display(),
-            )
-        })?;
-    let fingerprint = fingerprint
-        .as_bytes()
-        .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect::<String>();
+    let upload = prepare_opfs_upload(&reader, &file_contents.path).await?;
 
-    let file_name = file_contents
-        .path
-        .file_name()
-        .filter(|file_name| !file_name.is_empty())
-        .context("OPFS upload path has no file name")?
-        .to_str()
-        .context("OPFS upload file name is not UTF-8")?;
-
-    // The web file picker yields only a base name, so key uploads on the RRD fingerprint to avoid
-    // path collisions. Identical re-uploads deduplicate to the same path.
-    let path = std::path::PathBuf::from("/uploads")
-        .join(&fingerprint)
-        .join(file_name);
-
-    let file_exists = match re_web::fs::metadata(&path).await {
-        Ok(metadata) => metadata.is_file(),
-        Err(err) if err.kind() == std::io::ErrorKind::NotFound => false,
-        Err(err) => {
-            return Err(err).with_context(|| {
-                format!(
-                    "failed to inspect OPFS upload file\nFile path: {}",
-                    path.display()
-                )
-            });
-        }
-    };
-
-    if !file_exists {
-        re_web::fs::write(&path, file_contents.bytes.clone())
+    if !opfs_upload_matches(&upload.path, upload.file_size).await? {
+        re_web::fs::write(&upload.path, file_contents.bytes.clone())
             .await
             .with_context(|| {
                 format!(
                     "failed to write OPFS upload file\nFile path: {}",
-                    path.display()
+                    upload.path.display()
                 )
             })?;
     }
 
-    // `Url::from_file_path` is unavailable on `wasm32-unknown-unknown`, so build the `file://` URL
-    // for the same on-disk location by hand. Both fallible steps are infallible for a known base.
-    let mut file_url = url::Url::parse("file:///").expect("`file:///` is a valid base URL");
-    file_url
-        .path_segments_mut()
-        .expect("`file:///` is a base URL")
-        .extend(["uploads", fingerprint.as_str(), file_name]);
+    let file_url = upload.file_url();
+    register_file(connection_registry, upload.dataset_name, file_url).await
+}
 
-    register_file(connection_registry, dataset_name, file_url).await
+#[cfg(target_arch = "wasm32")]
+async fn register_web_file(
+    connection_registry: &re_redap_client::ConnectionRegistryHandle,
+    file: web_sys::File,
+) -> anyhow::Result<re_uri::DatasetSegmentUri> {
+    let source_path = std::path::PathBuf::from(file.name());
+    let reader = re_web::fs::File::from(file.clone());
+    let upload = prepare_opfs_upload(&reader, &source_path).await?;
+
+    if !opfs_upload_matches(&upload.path, upload.file_size).await? {
+        re_web::fs::write_file(&upload.path, file)
+            .await
+            .with_context(|| {
+                format!(
+                    "failed to stream OPFS upload file\nFile path: {}",
+                    upload.path.display()
+                )
+            })?;
+    }
+
+    let file_url = upload.file_url();
+    register_file(connection_registry, upload.dataset_name, file_url).await
+}
+
+#[cfg(target_arch = "wasm32")]
+struct OpfsUpload {
+    dataset_name: String,
+    fingerprint: String,
+    file_name: String,
+    file_size: u64,
+    path: std::path::PathBuf,
+}
+
+#[cfg(target_arch = "wasm32")]
+impl OpfsUpload {
+    fn file_url(&self) -> url::Url {
+        // `Url::from_file_path` is unavailable on `wasm32-unknown-unknown`.
+        let mut file_url = url::Url::parse("file:///").expect("`file:///` is a valid base URL");
+        file_url
+            .path_segments_mut()
+            .expect("`file:///` is a base URL")
+            .extend([
+                "uploads",
+                self.fingerprint.as_str(),
+                self.file_name.as_str(),
+            ]);
+        file_url
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+async fn prepare_opfs_upload(
+    reader: &impl re_async::AsyncReadAt,
+    source_path: &std::path::Path,
+) -> anyhow::Result<OpfsUpload> {
+    let file_size = reader.size().await.with_context(|| {
+        format!(
+            "failed to read RRD file size\nFile path: {}",
+            source_path.display(),
+        )
+    })?;
+    let dataset_name = rrd_dataset_name(reader).await.with_context(|| {
+        format!(
+            "failed to read application id from RRD\nFile path: {}",
+            source_path.display(),
+        )
+    })?;
+    let fingerprint = re_log_encoding::RrdFingerprint::compute_for_rrd(reader)
+        .await
+        .with_context(|| {
+            format!(
+                "failed to fingerprint RRD\nFile path: {}",
+                source_path.display(),
+            )
+        })?
+        .as_bytes()
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect::<String>();
+    let file_name = source_path
+        .file_name()
+        .filter(|file_name| !file_name.is_empty())
+        .context("OPFS upload path has no file name")?
+        .to_str()
+        .context("OPFS upload file name is not UTF-8")?
+        .to_owned();
+    let path = std::path::PathBuf::from("/uploads")
+        .join(&fingerprint)
+        .join(&file_name);
+
+    Ok(OpfsUpload {
+        dataset_name,
+        fingerprint,
+        file_name,
+        file_size,
+        path,
+    })
+}
+
+#[cfg(target_arch = "wasm32")]
+async fn opfs_upload_matches(path: &std::path::Path, expected_size: u64) -> anyhow::Result<bool> {
+    match re_web::fs::metadata(path).await {
+        Ok(metadata) => Ok(metadata.is_file() && metadata.len() == expected_size),
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(false),
+        Err(err) => Err(err).with_context(|| {
+            format!(
+                "failed to inspect OPFS upload file\nFile path: {}",
+                path.display()
+            )
+        }),
+    }
 }
 
 async fn register_file(

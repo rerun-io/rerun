@@ -439,15 +439,11 @@ async fn load_store_ids(rrd_path: &Path) -> tonic::Result<BTreeSet<StoreId>> {
     })?;
 
     #[cfg(target_arch = "wasm32")]
-    let file = {
-        let bytes = fs::read(rrd_path).await.map_err(|err| {
-            tonic::Status::internal(format!(
-                "Failed to open RRD file: {err:#}\nFile path: {rrd_path:?}"
-            ))
-        })?;
-        // TODO(RR-5154): Avoid buffering the full OPFS file once footer enumeration can use range reads.
-        bytes::Bytes::from(bytes)
-    };
+    let file = re_web::fs::File::open(rrd_path).await.map_err(|err| {
+        tonic::Status::internal(format!(
+            "Failed to open RRD file: {err:#}\nFile path: {rrd_path:?}"
+        ))
+    })?;
 
     let store_ids = re_log_encoding::enumerate_rrd_stores(&file)
         .await

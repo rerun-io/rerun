@@ -41,6 +41,7 @@ web-sys = { workspace = true, features = [
   "History",
   "Location",
   "Navigator",
+  "ReadableStream",
   "StorageManager",
   "Url",
   "UrlSearchParams",
