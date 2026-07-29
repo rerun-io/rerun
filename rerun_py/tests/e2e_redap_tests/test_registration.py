@@ -170,7 +170,7 @@ def test_register_unregister_batch(
 └───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘\
 """)
 
-    ds.unregister(segments_to_drop=[recording_ids[0], recording_ids[2]], layers_to_drop=[])
+    ds.unregister(segments_to_drop=[recording_ids[0], recording_ids[2]], layers_to_drop=[]).wait()
 
     df = ds.segment_table()
     assert df.count() == 1

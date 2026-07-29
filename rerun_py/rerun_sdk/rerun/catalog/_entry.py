@@ -304,6 +304,9 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         """
         Unregister a previously registered asset.
 
+        Blocks until the unregistration completes, mirroring
+        [`register_asset`][rerun.catalog.DatasetEntry.register_asset].
+
         Since assets are shared across all of a dataset's segments, there is no way to scope
         an asset to a subset of them, so removing one means unregistering it here.
 
@@ -322,7 +325,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
             # No asset dataset means no assets were ever registered, so there is nothing to drop.
             return
 
-        asset_dataset.unregister(segments_to_drop=[segment_id], layers_to_drop=[])
+        asset_dataset.unregister(segments_to_drop=[segment_id], layers_to_drop=[]).wait()
 
     def asset_dataset(self) -> DatasetEntry | None:
         """
