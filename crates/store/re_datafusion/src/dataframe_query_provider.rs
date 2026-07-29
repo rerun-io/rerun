@@ -559,6 +559,7 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
         let pipeline_budget = Arc::new(PipelineBudget::new_with_metrics(
             total_uncompressed,
             num_partitions,
+            crate::pipeline_budget::segment_admission_limit(),
             Arc::clone(pending_analytics.metrics()),
         ));
 

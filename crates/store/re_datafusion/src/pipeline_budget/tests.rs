@@ -203,6 +203,7 @@ async fn test_peak_current_tracks_high_water_mark() {
     let metrics = test_query_metrics();
     let budget = Arc::new(PipelineBudget::with_exact_budget_and_metrics(
         100 * 1024 * 1024,
+        MAX_CONCURRENT_SEGMENTS,
         Some(Arc::clone(&metrics)),
     ));
     budget.set_multiplier(1.0);
@@ -630,6 +631,7 @@ async fn test_admission_metrics_record_combined_pressure_after_parking() {
     let metrics = test_query_metrics();
     let budget = Arc::new(PipelineBudget::with_exact_budget_and_metrics(
         100,
+        MAX_CONCURRENT_SEGMENTS,
         Some(Arc::clone(&metrics)),
     ));
     budget.set_multiplier(1.0);
@@ -680,6 +682,50 @@ fn test_parse_usize_rejects_negative() {
 fn test_parse_usize_rejects_non_numeric() {
     assert_eq!(parse_usize_or_default("TEST", "not-a-number", 128), 128);
     assert_eq!(parse_usize_or_default("TEST", "64MB", 128), 128);
+}
+
+#[test]
+fn test_parse_segment_admission_cap_accepts_experimental_range() {
+    assert_eq!(
+        parse_segment_admission_cap(&MAX_CONCURRENT_SEGMENTS.to_string()),
+        MAX_CONCURRENT_SEGMENTS
+    );
+    assert_eq!(parse_segment_admission_cap("128"), 128);
+    assert_eq!(
+        parse_segment_admission_cap(&MAX_EXPERIMENTAL_SEGMENT_ADMISSION_CAP.to_string()),
+        MAX_EXPERIMENTAL_SEGMENT_ADMISSION_CAP
+    );
+}
+
+#[test]
+fn test_resolve_segment_admission_limit_handles_unset_empty_and_trimmed() {
+    assert_eq!(
+        resolve_segment_admission_limit(None),
+        MAX_CONCURRENT_SEGMENTS
+    );
+    assert_eq!(
+        resolve_segment_admission_limit(Some("")),
+        MAX_CONCURRENT_SEGMENTS
+    );
+    assert_eq!(
+        resolve_segment_admission_limit(Some("   ")),
+        MAX_CONCURRENT_SEGMENTS
+    );
+    assert_eq!(resolve_segment_admission_limit(Some(" 128 ")), 128);
+}
+
+#[test]
+fn test_parse_segment_admission_cap_rejects_out_of_range_and_invalid() {
+    assert_eq!(parse_segment_admission_cap("0"), MAX_CONCURRENT_SEGMENTS);
+    assert_eq!(parse_segment_admission_cap("2"), MAX_CONCURRENT_SEGMENTS);
+    assert_eq!(
+        parse_segment_admission_cap(&(MAX_EXPERIMENTAL_SEGMENT_ADMISSION_CAP + 1).to_string()),
+        MAX_CONCURRENT_SEGMENTS
+    );
+    assert_eq!(
+        parse_segment_admission_cap("not-a-number"),
+        MAX_CONCURRENT_SEGMENTS
+    );
 }
 
 // -----------------------------------------------------------------
@@ -833,6 +879,39 @@ async fn test_segment_count_gate_caps_at_max() {
     parked.await.unwrap();
 }
 
+#[tokio::test]
+async fn test_segment_count_gate_uses_query_limit() {
+    const SEGMENT_LIMIT: usize = 8;
+    let budget = Arc::new(PipelineBudget::with_exact_budget_and_metrics(
+        1 << 30,
+        SEGMENT_LIMIT,
+        None,
+    ));
+    budget.set_multiplier(1.0);
+
+    for i in 0..SEGMENT_LIMIT {
+        budget
+            .reserve_with_priority(1, ti(0), &[format!("seg{i}")])
+            .await;
+    }
+    assert_eq!(budget.segment_limit(), SEGMENT_LIMIT);
+    assert_eq!(budget.active_segments.lock().effective_len(), SEGMENT_LIMIT);
+
+    let waiter_budget = Arc::clone(&budget);
+    let waiter = tokio::spawn(async move {
+        waiter_budget
+            .reserve_with_priority(1, ti(0), &["overflow".to_owned()])
+            .await;
+    });
+    for _ in 0..16 {
+        tokio::task::yield_now().await;
+    }
+    assert!(!waiter.is_finished());
+
+    budget.publish_segment_finalized("seg0");
+    waiter.await.unwrap();
+}
+
 /// A *single* reservation spanning more than `MAX_CONCURRENT_SEGMENTS`
 /// distinct segments can never satisfy the segment-count gate (an empty
 /// gate admits at most `MAX_CONCURRENT_SEGMENTS` new segments), so it
@@ -910,6 +989,96 @@ async fn test_stall_breaker_fires_after_threshold() {
     // gets through immediately via the bypass.
     let extra = budget.reserve_with_priority(50, ti(0), &[]).await;
     assert_eq!(extra, 50);
+}
+
+/// A delayed ordered-head fetch must win priority and escape through the stall breaker when
+/// completed later segments hold every byte needed to make ordered emit progress.
+#[tokio::test]
+async fn test_delayed_head_fetch_recovers_after_later_work_saturates_budget() {
+    const TEST_SEGMENT_LIMIT: usize = 16;
+    let metrics = test_query_metrics();
+    let budget = Arc::new(PipelineBudget::with_exact_budget_and_metrics(
+        100,
+        TEST_SEGMENT_LIMIT,
+        Some(Arc::clone(&metrics)),
+    ));
+    budget.set_multiplier(1.0);
+
+    // A later segment arrives while the ordered head fetch is delayed and consumes the entire
+    // byte budget. Its bytes cannot be released until the missing head segment makes progress.
+    budget
+        .reserve_with_priority(100, ti(100), &["later-complete".to_owned()])
+        .await;
+
+    let release_delayed_head = Arc::new(Notify::new());
+    let head_budget = Arc::clone(&budget);
+    let head_release = Arc::clone(&release_delayed_head);
+    let head = tokio::spawn(async move {
+        head_release.notified().await;
+        head_budget
+            .reserve_with_priority(40, ti(0), &["ordered-head".to_owned()])
+            .await
+    });
+    release_delayed_head.notify_one();
+
+    // A future fetch also parks, making the priority contract observable when the breaker wakes
+    // one waiter: the ordered head must be admitted before later work.
+    let future_budget = Arc::clone(&budget);
+    let future = tokio::spawn(async move {
+        future_budget
+            .reserve_with_priority(10, ti(200), &["future".to_owned()])
+            .await
+    });
+    for _ in 0..16 {
+        tokio::task::yield_now().await;
+    }
+    assert!(!head.is_finished());
+    assert!(!future.is_finished());
+    assert_eq!(
+        metrics
+            .pipeline_byte_waits
+            .load(std::sync::atomic::Ordering::Relaxed),
+        2
+    );
+
+    // Later chunk arrivals repeatedly attempt to flush the unavailable ordered head. The final
+    // empty emit arms the breaker and wakes the earlier-time waiter through the bypass path.
+    for _ in 0..(STALL_EMPTY_EMIT_THRESHOLD - 1) {
+        budget.notify_empty_emit();
+    }
+    assert!(!head.is_finished());
+    budget.notify_empty_emit();
+
+    let head_reserved = tokio::time::timeout(std::time::Duration::from_secs(1), head)
+        .await
+        .expect("the delayed ordered head must escape a saturated budget")
+        .unwrap();
+    assert_eq!(head_reserved, 40);
+    assert!(!future.is_finished());
+    assert_eq!(
+        metrics
+            .pipeline_stall_breaker_activations
+            .load(std::sync::atomic::Ordering::Relaxed),
+        1
+    );
+
+    // Ordered-head progress clears the emergency bypass. The future waiter remains blocked until
+    // the later segment can finally retire and release the bytes it held behind the head.
+    budget.release(head_reserved);
+    budget.publish_segment_finalized("ordered-head");
+    assert!(!future.is_finished());
+    budget.release(100);
+    budget.publish_segment_finalized("later-complete");
+
+    let future_reserved = tokio::time::timeout(std::time::Duration::from_secs(1), future)
+        .await
+        .expect("future work must resume after ordered progress releases the budget")
+        .unwrap();
+    assert_eq!(future_reserved, 10);
+    budget.release(future_reserved);
+    budget.publish_segment_finalized("future");
+    assert_eq!(budget.current.load(std::sync::atomic::Ordering::Acquire), 0);
+    assert!(budget.active_segments.lock().all.is_empty());
 }
 
 /// `force_overcommit` must bypass the **segment-count** gate as

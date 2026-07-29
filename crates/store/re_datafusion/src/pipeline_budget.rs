@@ -68,6 +68,7 @@
 //! | `RERUN_PIPELINE_BUDGET_MAX`          | size  | `> 0`          | `1TiB`  |
 //! | `RERUN_PIPELINE_BUDGET_FRACTION`     | float | `(0.0, 1.0]`   | 1.0     |
 //! | `RERUN_DIRECT_FETCH_MAX_CONCURRENCY` | int   | `>= 1`         | 128     |
+//! | `RERUN_SEGMENT_ADMISSION_CAP`        | int   | `3..=1024`     | 3       |
 //!
 //! Sizes accept either a SI/IEC suffix (`64MB`, `1GiB`, `512KiB`) or a
 //! bare positive integer interpreted as bytes. Values are trimmed of
@@ -76,6 +77,11 @@
 //! parameter falls back to its compile-time default. If `MIN > MAX`
 //! after overrides, both revert to defaults (rather than panicking on
 //! the downstream `clamp()`).
+//!
+//! `RERUN_SEGMENT_ADMISSION_CAP` is resolved once per query and controls transport
+//! batching, wave formation, gRPC grouping, and CPU-state admission together.
+//! It is experimental: higher values can reduce latency for small segments but can
+//! sharply increase decoded memory for medium, large, or skewed workloads.
 //!
 //! # Adaptive estimation
 //!
@@ -107,8 +113,8 @@
 //! 1. **Before fetch:** IO task calls [`PipelineBudget::reserve_with_priority`]
 //!    with the chunk's uncompressed size, a priority key (`task_time_min`,
 //!    earliest-first), and the distinct `segment_ids` the fetch touches.
-//!    Admission is gated on both available bytes *and* the segment-count gate
-//!    ([`MAX_CONCURRENT_SEGMENTS`]). If either is full, the call blocks. A
+//!    Admission is gated on both available bytes *and* the query-level segment-count
+//!    limit. If either is full, the call blocks. A
 //!    parked reserver wakes when any of:
 //!    - [`PipelineBudget::release`] runs on the CPU thread,
 //!    - [`PipelineBudget::publish_segment_finalized`] frees a segment slot,
@@ -315,20 +321,22 @@ const MIN_ESTIMATE_MULTIPLIER: f64 = 1.0;
 /// future reservation.
 const MAX_ESTIMATE_MULTIPLIER: f64 = 3.0;
 
-/// Cap on the number of distinct segments that may be in-flight on the
-/// IO side simultaneously. Independent of the byte budget — even if
-/// bytes are available, only this many segments can have a parked
-/// fetch reservation at once. The cap keeps the CPU worker's `HashMap`
-/// of open `CurrentStores` from growing without bound under high
-/// network concurrency, which directly bounds the cross-segment
-/// reorder pressure a single safe-horizon advance has to resolve.
+/// Current default for the query-level limit on normally admitted segments.
 ///
-/// `create_request_batches` reads this constant to cap the distinct
-/// segments per merged fetch batch — without that, a small-segment
-/// workload would merge many segments into a single 8 MB fetch and
-/// every such fetch with `new_segments > MAX_CONCURRENT_SEGMENTS`
-/// would deadlock on the gate (the gate can never admit it).
+/// The selected value is stored on [`PipelineBudget`] and shared by transport
+/// batching, wave formation, gRPC grouping, and CPU-state admission. Keeping
+/// those decisions aligned prevents a planned reservation from exceeding the
+/// gate and requiring the exceptional bypass path.
 pub(crate) const MAX_CONCURRENT_SEGMENTS: usize = 3;
+
+/// Experimental upper bound for [`ENV_SEGMENT_ADMISSION_CAP`].
+///
+/// The production default remains [`MAX_CONCURRENT_SEGMENTS`] until a separate adaptive policy
+/// has enough evidence to select a larger cap safely.
+const MAX_EXPERIMENTAL_SEGMENT_ADMISSION_CAP: usize = 1024;
+
+/// Per-query exact override used for controlled cap sweeps.
+const ENV_SEGMENT_ADMISSION_CAP: &str = "RERUN_SEGMENT_ADMISSION_CAP";
 
 /// Default process-wide ceiling on concurrent in-flight direct-URL fetch
 /// requests, enforced by [`direct_fetch_semaphore`].
@@ -421,9 +429,9 @@ impl Ord for PriorityWaiter {
 }
 
 /// Tracks the segments currently holding a reservation against the
-/// budget, plus the subset that was admitted past
-/// [`MAX_CONCURRENT_SEGMENTS`] via the stall-breaker `force_overcommit`
-/// bypass. Wrapped in a single [`Mutex`] so the cap check (which reads
+/// budget, plus the subset that was admitted past the query-level segment
+/// limit via the stall-breaker `force_overcommit` bypass. Wrapped in a single
+/// [`Mutex`] so the cap check (which reads
 /// both fields) is atomic with the membership update.
 #[derive(Default)]
 struct SegmentGate {
@@ -433,7 +441,7 @@ struct SegmentGate {
 
     /// Subset of `all` that was admitted while
     /// [`PipelineBudget::force_overcommit`] was set. These segments do
-    /// NOT consume a slot of [`MAX_CONCURRENT_SEGMENTS`] for future
+    /// NOT consume a slot of the query-level segment limit for future
     /// admissions — they are over-cap by design, and the cap contract
     /// is restored as soon as they finalize.
     bypass: HashSet<String>,
@@ -460,6 +468,9 @@ pub(crate) struct PipelineBudget {
     /// Maximum decoded bytes allowed in the pipeline at any time.
     budget: usize,
 
+    /// Query-level bound on normally admitted CPU segment state.
+    segment_limit: usize,
+
     /// Current decoded bytes in the pipeline (IO buffers + channel + `ChunkStore`).
     current: AtomicUsize,
 
@@ -477,8 +488,7 @@ pub(crate) struct PipelineBudget {
 
     /// Set of segments that currently hold a reservation against the
     /// budget. A new `reserve` only succeeds if its full set of
-    /// `segment_ids` would not push the union past
-    /// [`MAX_CONCURRENT_SEGMENTS`]. Cleared on
+    /// `segment_ids` would not push the union past `segment_limit`. Cleared on
     /// [`Self::publish_segment_finalized`] (called from
     /// `Drop for CurrentStores`) — never on `release`, because byte
     /// release happens before the CPU worker is done with the
@@ -657,6 +667,43 @@ fn parse_usize_or_default(key: &str, raw: &str, default: usize) -> usize {
     }
 }
 
+fn parse_segment_admission_cap(raw: &str) -> usize {
+    match raw.parse::<usize>() {
+        Ok(cap)
+            if (MAX_CONCURRENT_SEGMENTS..=MAX_EXPERIMENTAL_SEGMENT_ADMISSION_CAP)
+                .contains(&cap) =>
+        {
+            cap
+        }
+        Ok(cap) => {
+            re_log::error!(
+                "{ENV_SEGMENT_ADMISSION_CAP}={cap} must be in \
+                 [{MAX_CONCURRENT_SEGMENTS}, {MAX_EXPERIMENTAL_SEGMENT_ADMISSION_CAP}]; \
+                 falling back to {MAX_CONCURRENT_SEGMENTS}",
+            );
+            MAX_CONCURRENT_SEGMENTS
+        }
+        Err(err) => {
+            re_log::error!(
+                "{ENV_SEGMENT_ADMISSION_CAP}={raw:?} could not be parsed as an integer ({err}); \
+                 falling back to {MAX_CONCURRENT_SEGMENTS}",
+            );
+            MAX_CONCURRENT_SEGMENTS
+        }
+    }
+}
+
+fn resolve_segment_admission_limit(raw: Option<&str>) -> usize {
+    raw.map(str::trim)
+        .filter(|raw| !raw.is_empty())
+        .map_or(MAX_CONCURRENT_SEGMENTS, parse_segment_admission_cap)
+}
+
+pub(crate) fn segment_admission_limit() -> usize {
+    let raw = std::env::var(ENV_SEGMENT_ADMISSION_CAP).ok();
+    resolve_segment_admission_limit(raw.as_deref())
+}
+
 /// Resolve a byte-size environment variable, falling back to the
 /// default (in bytes) when unset, empty, unparsable, or ≤ 0. Accepts
 /// either a SI/IEC suffix (`64MB`, `1GiB`) or a bare positive integer
@@ -763,20 +810,32 @@ impl PipelineBudget {
     /// default.
     #[cfg(test)]
     pub(crate) fn new(total_uncompressed_estimate: usize, num_partitions: usize) -> Self {
-        Self::new_impl(total_uncompressed_estimate, num_partitions, None)
+        Self::new_impl(
+            total_uncompressed_estimate,
+            num_partitions,
+            MAX_CONCURRENT_SEGMENTS,
+            None,
+        )
     }
 
     pub(crate) fn new_with_metrics(
         total_uncompressed_estimate: usize,
         num_partitions: usize,
+        segment_limit: usize,
         metrics: Arc<QueryMetrics>,
     ) -> Self {
-        Self::new_impl(total_uncompressed_estimate, num_partitions, Some(metrics))
+        Self::new_impl(
+            total_uncompressed_estimate,
+            num_partitions,
+            segment_limit,
+            Some(metrics),
+        )
     }
 
     fn new_impl(
         total_uncompressed_estimate: usize,
         num_partitions: usize,
+        segment_limit: usize,
         metrics: Option<Arc<QueryMetrics>>,
     ) -> Self {
         let fraction = read_env_fraction(ENV_BUDGET_FRACTION, BUDGET_FRACTION);
@@ -801,7 +860,7 @@ impl PipelineBudget {
 
         re_log::debug!("Pipeline budget: {}MB", budget / (1024 * 1024));
 
-        Self::with_exact_budget_and_metrics(budget, metrics)
+        Self::with_exact_budget_and_metrics(budget, segment_limit, metrics)
     }
 
     /// Construct a budget of exactly `budget` bytes with all counters
@@ -812,10 +871,18 @@ impl PipelineBudget {
     /// saturation tests where `budget = 100` matters exactly).
     #[cfg(test)]
     fn with_exact_budget(budget: usize) -> Self {
-        Self::with_exact_budget_and_metrics(budget, None)
+        Self::with_exact_budget_and_metrics(budget, MAX_CONCURRENT_SEGMENTS, None)
     }
 
-    fn with_exact_budget_and_metrics(budget: usize, metrics: Option<Arc<QueryMetrics>>) -> Self {
+    fn with_exact_budget_and_metrics(
+        budget: usize,
+        segment_limit: usize,
+        metrics: Option<Arc<QueryMetrics>>,
+    ) -> Self {
+        assert!(
+            segment_limit > 0,
+            "segment admission limit must be positive"
+        );
         if let Some(metrics) = &metrics {
             metrics
                 .pipeline_budget_bytes
@@ -824,6 +891,7 @@ impl PipelineBudget {
 
         Self {
             budget,
+            segment_limit,
             current: AtomicUsize::new(0),
             wait_queue: Mutex::new(BinaryHeap::new()),
             wait_seq: AtomicU64::new(0),
@@ -838,6 +906,10 @@ impl PipelineBudget {
             #[cfg(test)]
             test_pause_hook: parking_lot::Mutex::new(None),
         }
+    }
+
+    pub(crate) fn segment_limit(&self) -> usize {
+        self.segment_limit
     }
 
     /// Number of [`Self::release`] calls observed since construction.
@@ -978,7 +1050,7 @@ impl PipelineBudget {
             .iter()
             .filter(|s| !segments.all.contains(s.as_str()))
             .count();
-        if segments.effective_len() + new_segments > MAX_CONCURRENT_SEGMENTS {
+        if segments.effective_len() + new_segments > self.segment_limit {
             return false;
         }
         current + waiter.reserved_bytes <= self.budget
@@ -1017,7 +1089,7 @@ impl PipelineBudget {
     /// when both gates admit `reserved_bytes` AND every segment in
     /// `segment_ids` either already holds a reservation or pushing the
     /// *effective* in-flight count to include them stays within
-    /// [`MAX_CONCURRENT_SEGMENTS`].
+    /// `self.segment_limit`.
     ///
     /// Holds the `active_segments` mutex across the byte CAS so the
     /// two gates admit atomically — admitting only the byte gate would
@@ -1029,8 +1101,8 @@ impl PipelineBudget {
     /// [`SegmentGate::bypass`] so they don't count against the cap for
     /// future admissions — the cap "self-heals" as soon as those
     /// segments finalize rather than blocking every new admission
-    /// until enough segments drain to bring `all.len()` back below
-    /// `MAX_CONCURRENT_SEGMENTS`.
+    /// until enough segments drain to bring `all.len()` back below the
+    /// query-level limit.
     fn try_admit(
         &self,
         reserved_bytes: usize,
@@ -1064,7 +1136,7 @@ impl PipelineBudget {
             .iter()
             .filter(|s| !segments.all.contains(s.as_str()))
             .count();
-        let segments_blocked = segments.effective_len() + new_segments > MAX_CONCURRENT_SEGMENTS;
+        let segments_blocked = segments.effective_len() + new_segments > self.segment_limit;
         if segments_blocked {
             let bytes_blocked =
                 self.current.load(Acquire).saturating_add(reserved_bytes) > self.budget;
@@ -1184,11 +1256,12 @@ impl PipelineBudget {
             "segment_ids must be distinct"
         );
         let distinct_segments = segment_ids.len();
-        if distinct_segments > MAX_CONCURRENT_SEGMENTS {
+        if distinct_segments > self.segment_limit {
             re_log::warn_once!(
                 "Single fetch reservation spans {distinct_segments} distinct segments, \
-                 exceeding the concurrent-segment cap ({MAX_CONCURRENT_SEGMENTS}) — allowing \
-                 it through to avoid deadlock.",
+                 exceeding the concurrent-segment cap ({}) — allowing it through to avoid \
+                 deadlock.",
+                self.segment_limit,
             );
             let new_cur = self.current.fetch_add(reserved_bytes, AcqRel) + reserved_bytes;
             self.record_peak_decoded_bytes(new_cur);
@@ -1397,6 +1470,27 @@ impl PipelineBudget {
         }
     }
 
+    fn arm_stall_breaker(&self, reason: std::fmt::Arguments<'_>, saturation: f64) {
+        if self
+            .force_overcommit
+            .compare_exchange(false, true, AcqRel, Relaxed)
+            .is_err()
+        {
+            return;
+        }
+        if let Some(metrics) = &self.metrics {
+            metrics
+                .pipeline_stall_breaker_activations
+                .fetch_add(1, Relaxed);
+        }
+        re_log::info!(
+            "PipelineBudget stall detected: {reason} with budget {:.0}% saturated — enabling \
+             force_overcommit until next progress",
+            saturation * 100.0,
+        );
+        self.wake_next();
+    }
+
     /// Count a `flush_incremental` call that produced no emittable
     /// rows. When the count crosses [`STALL_EMPTY_EMIT_THRESHOLD`]
     /// *consecutive* saturated empty emits, sets `force_overcommit`
@@ -1421,28 +1515,8 @@ impl PipelineBudget {
             return;
         }
         let count = self.empty_emit_count.fetch_add(1, AcqRel) + 1;
-        // CAS so exactly one caller arms the breaker (and logs / wakes)
-        // when several CPU workers sharing the budget cross the
-        // threshold together.
-        if count >= STALL_EMPTY_EMIT_THRESHOLD
-            && self
-                .force_overcommit
-                .compare_exchange(false, true, AcqRel, Relaxed)
-                .is_ok()
-        {
-            if let Some(metrics) = &self.metrics {
-                metrics
-                    .pipeline_stall_breaker_activations
-                    .fetch_add(1, Relaxed);
-            }
-            re_log::info!(
-                "PipelineBudget stall detected: {count} consecutive empty emits with \
-                 budget {:.0}% saturated — enabling force_overcommit until next progress",
-                saturation * 100.0,
-            );
-            // Wake whoever's at the front so they can break out
-            // through the bypass.
-            self.wake_next();
+        if count >= STALL_EMPTY_EMIT_THRESHOLD {
+            self.arm_stall_breaker(format_args!("{count} consecutive empty emits"), saturation);
         }
     }
 
