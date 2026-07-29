@@ -32,7 +32,9 @@ struct FrameUniformBuffer {
     /// Screen resolution in pixels.
     framebuffer_resolution: vec2f,
 
-    _padding: vec2f,
+    /// Focal length in pixels: `framebuffer_resolution / (2 * tan_half_fov)`.
+    /// Zero for orthographic projection.
+    focal_length_in_pixels: vec2f,
 };
 
 @group(0) @binding(0)

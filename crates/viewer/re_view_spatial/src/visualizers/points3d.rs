@@ -7,8 +7,7 @@ use re_byte_size::SizeBytes as _;
 use re_entity_db::EntityDb;
 use re_log_types::hash::Hash64;
 use re_renderer::{
-    LineDrawableBuilder, PickingLayerInstanceId, PointCloudBuilder, PositionRadius,
-    renderer::PointCloudSortOrderCache,
+    LineDrawableBuilder, PickingLayerInstanceId, PointCloudBuilder, PositionRadius, SortOrderCache,
 };
 use re_sdk_types::Archetype as _;
 use re_sdk_types::ArrowString;
@@ -77,7 +76,7 @@ struct Points3DCpu {
     /// Scratch buffers holding the back-to-front point ordering across frames.
     ///
     /// Each instance transform has its own cache, which tracks ordering per rendered view.
-    sort_order_caches: Mutex<Vec<PointCloudSortOrderCache>>,
+    sort_order_caches: Mutex<Vec<SortOrderCache>>,
 }
 
 impl Points3DCpu {
@@ -144,9 +143,9 @@ impl Points3DCpu {
         }
     }
 
-    fn sort_order_cache(&self, transform_index: usize) -> PointCloudSortOrderCache {
+    fn sort_order_cache(&self, transform_index: usize) -> SortOrderCache {
         let mut caches = self.sort_order_caches.lock();
-        caches.resize_with(transform_index + 1, PointCloudSortOrderCache::default);
+        caches.resize_with(transform_index + 1, SortOrderCache::default);
         caches[transform_index].clone()
     }
 }

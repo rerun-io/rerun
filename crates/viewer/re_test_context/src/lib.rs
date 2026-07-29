@@ -31,6 +31,19 @@ pub mod external {
     pub use egui_kittest;
 }
 
+/// Resolve a path under the workspace-root `tests/assets/` directory.
+///
+/// e.g. `asset_path("gaussian_splats/cactus.ply")`.
+pub fn asset_path(relative_path: impl AsRef<std::path::Path>) -> std::path::PathBuf {
+    // `crates/viewer/re_test_context` → `crates/viewer` → `crates` → repo-root.
+    std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .ancestors()
+        .nth(3)
+        .expect("workspace root is three ancestors up from crates/viewer/re_test_context")
+        .join("tests/assets")
+        .join(relative_path)
+}
+
 /// Harness to execute code that rely on [`crate::ViewerContext`].
 ///
 /// Example:

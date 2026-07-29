@@ -112,6 +112,12 @@ impl From<re_renderer::renderer::PointCloudDrawDataError> for ViewSystemExecutio
     }
 }
 
+impl From<re_renderer::renderer::GaussianSplatDrawDataError> for ViewSystemExecutionError {
+    fn from(val: re_renderer::renderer::GaussianSplatDrawDataError) -> Self {
+        Self::DrawDataCreationError(Arc::new(val))
+    }
+}
+
 impl From<re_sdk_types::DeserializationError> for ViewSystemExecutionError {
     fn from(val: re_sdk_types::DeserializationError) -> Self {
         Self::DeserializationError(Arc::new(val))

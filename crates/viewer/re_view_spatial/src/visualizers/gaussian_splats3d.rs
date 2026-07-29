@@ -1,17 +1,16 @@
-//! Placeholder gaussian visualizer until we have a proper one.
-
 use std::sync::Arc;
 
 use itertools::Itertools as _;
 use nohash_hasher::IntMap;
+use parking_lot::Mutex;
 use re_byte_size::SizeBytes as _;
 use re_entity_db::EntityDb;
 use re_log_types::hash::Hash64;
-use re_renderer::{PickingLayerInstanceId, PointCloudBuilder, PositionRadius};
+use re_renderer::{GaussianSplatBuilder, PickingLayerInstanceId, Rgba32Unmul, SortOrderCache};
 use re_sdk_types::Archetype as _;
 use re_sdk_types::archetypes::GaussianSplats3D;
-use re_sdk_types::components::{Color, Position3D, Scale3D};
-use re_view::clamped_or_nothing;
+use re_sdk_types::components;
+use re_sdk_types::components::{Color, Position3D, RotationQuat, Scale3D};
 use re_viewer_context::{
     Cache, IdentifiedViewSystem, QueryContext, ViewClass as _, ViewContext, ViewContextCollection,
     ViewQuery, ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo,
@@ -24,11 +23,20 @@ use crate::contexts::SpatialSceneVisualizerInstructionContext;
 
 // ---
 
-/// Renders [`GaussianSplats3D`] via the point cloud renderer.
+/// The scale (standard deviation) used for gaussians that don't specify one, in scene units.
+// TODO(RR-3840): create a proper default-provider for this
+const FALLBACK_SCALE: f32 = 0.01;
+
+/// Gaussians with a peak opacity (alpha, 0-255) below this are excluded from the bounding box.
 ///
-/// This is a first step: each gaussian is drawn as an opaque point whose radius is the geometric
-/// mean of the gaussian's per-axis scales. Orientation, opacity, and view-dependent color
-/// (spherical harmonics) are all ignored until we have a real splat renderer.
+/// 3DGS reconstructions often contain sparse, near-invisible "floater" gaussians far from the
+/// object; including them would blow up the bounds far beyond what's actually visible.
+const MIN_OPACITY_FOR_BOUNDS: u8 = 5; // ~0.02
+
+/// Renders [`GaussianSplats3D`] via [`re_renderer`]'s gaussian splat renderer.
+///
+/// Each gaussian's 3D covariance is projected to a screen-space ellipse and alpha-blended
+/// back-to-front. View-dependent color (spherical harmonics) is not evaluated yet.
 #[derive(Default)]
 pub struct GaussianSplats3DVisualizer;
 
@@ -41,25 +49,39 @@ struct GaussianSplats3DComponentData<'a> {
 
     // Clamped to edge
     scales: &'a [Scale3D],
+    quaternions: &'a [RotationQuat],
     colors: &'a [Color],
 }
 
 /// Processed/computed gaussian cloud data ready for rendering.
 ///
 /// This bundles together the results of processing raw component data
-/// (computing colors, radii, bounding boxes, etc.)
+/// (computing colors, bounding boxes, etc.)
 /// so that it can be memoized based on `data.query_hash`.
+#[derive(re_byte_size::SizeBytes)]
 struct GaussianSplats3DCpu {
-    position_radii: Vec<PositionRadius>,
-    point_cloud_bounds: re_renderer::util::PointCloudBounds,
+    centers: Vec<glam::Vec3>,
+    scales: Vec<glam::Vec3>,
+    rotations: Vec<glam::Quat>,
+    colors: Vec<Rgba32Unmul>,
     picking_ids: Vec<PickingLayerInstanceId>,
-    colors: Vec<egui::Color32>,
+    point_cloud_bounds: re_renderer::util::PointCloudBounds,
+
+    /// Scratch buffers holding the back-to-front gaussian ordering, reused across frames to speed
+    /// up the per-frame CPU sort (see [`re_renderer::GaussianSplatBuilder`]).
+    ///
+    /// Each instance transform has its own cache, which tracks ordering per rendered view.
+    ///
+    /// Lives here so its lifetime and invalidation piggyback on the [`GaussianSplats3DCache`]
+    /// memoization: when the underlying data changes, fresh (empty) caches are created
+    /// automatically.
+    sort_order_caches: Mutex<Vec<SortOrderCache>>,
 }
 
 impl GaussianSplats3DCpu {
     fn compute(ctx: &QueryContext<'_>, data: &GaussianSplats3DComponentData<'_>) -> Self {
         let num_instances = data.centers.len();
-        re_tracing::profile_function!(num_instances.to_string());
+        re_tracing::profile_function!(re_format::format_uint(num_instances));
 
         let picking_ids = {
             re_tracing::profile_scope_if!(100_000 < num_instances, "picking_ids");
@@ -68,67 +90,66 @@ impl GaussianSplats3DCpu {
                 .collect_vec()
         };
 
-        let positions: &[glam::Vec3] = bytemuck::cast_slice(data.centers);
+        let centers: Vec<glam::Vec3> = bytemuck::cast_slice(data.centers).to_vec();
+
+        let scales: Vec<glam::Vec3> = if data.scales.is_empty() {
+            vec![glam::Vec3::splat(FALLBACK_SCALE); num_instances]
+        } else {
+            bytemuck::cast_slice(data.scales).to_vec()
+        };
+
+        let rotations: Vec<glam::Quat> = {
+            re_tracing::profile_scope_if!(100_000 < num_instances, "rotations");
+            data.quaternions
+                .iter()
+                .map(|q| glam::Quat::try_from(*q).unwrap_or(glam::Quat::IDENTITY))
+                .collect()
+        };
+
+        // Unmultiplied sRGB RGBA (NOT `Color32`, which is premultiplied: premultiplying in
+        // gamma space badly darkens the accumulation of many low-opacity gaussians and
+        // quantizes away the color of faint ones).
+        let colors: Vec<Rgba32Unmul> = {
+            re_tracing::profile_scope_if!(100_000 < num_instances, "colors");
+            let fallback: components::Color =
+                typed_fallback_for(ctx, GaussianSplats3D::descriptor_colors().component);
+            let last = data.colors.last().copied().unwrap_or(fallback);
+            std::iter::chain(data.colors.iter().copied(), std::iter::repeat(last))
+                .take(num_instances)
+                .map(|c| Rgba32Unmul::from_rgba_unmul_array(c.to_array()))
+                .collect()
+        };
 
         let point_cloud_bounds = {
             re_tracing::profile_scope_if!(100_000 < num_instances, "bounding_box");
-            re_renderer::util::point_cloud_bounds(positions)
-        };
-
-        let radii = {
-            re_tracing::profile_scope_if!(100_000 < num_instances, "radii");
-            if data.scales.is_empty() {
-                vec![re_renderer::Size::ONE_UI_POINT; num_instances]
+            // Exclude near-invisible floater gaussians so they don't blow up the bounds.
+            let opaque_centers: Vec<glam::Vec3> = std::iter::zip(&centers, &colors)
+                .filter(|(_, color)| MIN_OPACITY_FOR_BOUNDS <= color.0[3])
+                .map(|(center, _)| *center)
+                .collect();
+            if opaque_centers.is_empty() {
+                re_renderer::util::point_cloud_bounds(&centers)
             } else {
-                data.scales
-                    .iter()
-                    .map(|scale| {
-                        // Collapse the anisotropic scale to a single radius (the geometric mean).
-                        let [x, y, z]: [f32; 3] = scale.0.0;
-                        re_renderer::Size::new_scene_units((x * y * z).cbrt())
-                    })
-                    .collect_vec()
+                re_renderer::util::point_cloud_bounds(&opaque_centers)
             }
         };
-
-        let colors = {
-            re_tracing::profile_scope_if!(100_000 < num_instances, "colors");
-            // Gaussians have no class ids, so there is no annotation context to consult:
-            // it's the logged colors, or the fallback.
-            if data.colors.is_empty() {
-                let fallback = typed_fallback_for::<Color>(
-                    ctx,
-                    GaussianSplats3D::descriptor_colors().component,
-                );
-                vec![egui::Color32::from(fallback); num_instances]
-            } else {
-                clamped_or_nothing(data.colors, num_instances)
-                    .map(|color| egui::Color32::from(*color))
-                    .collect()
-            }
-        };
-
-        let position_radii = PositionRadius::from_many(positions, &radii);
 
         Self {
-            position_radii,
-            point_cloud_bounds,
-            picking_ids,
+            centers,
+            scales,
+            rotations,
             colors,
+            picking_ids,
+            point_cloud_bounds,
+            sort_order_caches: Mutex::new(Vec::new()),
         }
     }
 
-    fn heap_size_bytes(&self) -> u64 {
-        let Self {
-            position_radii,
-            point_cloud_bounds: _,
-            picking_ids,
-            colors,
-        } = self;
-
-        (position_radii.capacity() * std::mem::size_of::<PositionRadius>()) as u64
-            + picking_ids.heap_size_bytes()
-            + colors.heap_size_bytes()
+    /// The back-to-front sort cache for the given instance transform, creating it on first use.
+    fn sort_order_cache(&self, transform_index: usize) -> SortOrderCache {
+        let mut caches = self.sort_order_caches.lock();
+        caches.resize_with(transform_index + 1, SortOrderCache::default);
+        caches[transform_index].clone()
     }
 }
 
@@ -139,7 +160,7 @@ struct GaussianSplats3DCacheEntry {
     last_used_generation: u64,
 }
 
-/// Caches [`GaussianSplats3DCpu`] to avoid recomputing colors, radii, etc. every frame.
+/// Caches [`GaussianSplats3DCpu`] to avoid recomputing colors etc. every frame.
 #[derive(Default)]
 pub struct GaussianSplats3DCache {
     cache: IntMap<Hash64, GaussianSplats3DCacheEntry>,
@@ -215,7 +236,7 @@ impl GaussianSplats3DVisualizer {
     fn process_data<'a>(
         view_data: &mut SpatialViewVisualizerData,
         ctx: &QueryContext<'_>,
-        point_builder: &mut PointCloudBuilder<'_>,
+        splat_builder: &mut GaussianSplatBuilder<'_>,
         ent_context: &SpatialSceneVisualizerInstructionContext<'_>,
         data: impl Iterator<Item = GaussianSplats3DComponentData<'a>>,
     ) {
@@ -228,48 +249,54 @@ impl GaussianSplats3DVisualizer {
                 continue;
             }
 
-            // The gaussian data is all `compute` looks at, and `query_result_hash` covers it.
+            // Gaussians don't use the annotation context, so the query results are the only
+            // input to `compute`.
             let cache_key = Hash64::hash((data.query_result_hash, data.index));
 
             let cpu = ctx.store_ctx().memoizer(|c: &mut GaussianSplats3DCache| {
                 c.entry(cache_key, || GaussianSplats3DCpu::compute(ctx, &data))
             });
 
-            for world_from_obj in ent_context
+            for (transform_index, world_from_obj) in ent_context
                 .transform_info
                 .target_from_instances()
                 .iter()
                 .map(|transform| transform.as_affine3a())
+                .enumerate()
             {
                 re_tracing::profile_scope!("one-transform");
 
-                let point_batch = point_builder
+                // Seed this frame's back-to-front sort from the previous frame's ordering. The
+                // cache lives in `cpu`, so it persists across frames (per transform, per view)
+                // and is reset automatically when the underlying data changes.
+                let mut splat_batch = splat_builder
                     .batch(entity_path.to_string())
-                    // Gaussians are soft blobs, not lit spheres.
-                    // Note that this also means the per-gaussian opacity (the alpha of the
-                    // color) is ignored: every splat is drawn fully opaque, so scenes render
-                    // denser than they should. A real splat renderer will fix that.
-                    .enable_shading(false)
                     .world_from_obj(world_from_obj)
+                    .object_space_bounding_box(cpu.point_cloud_bounds.bbox)
                     .outline_mask_ids(ent_context.highlight.overall)
-                    .picking_object_id(re_renderer::PickingLayerObjectId(entity_path.hash64()));
-
-                let mut point_range_builder =
-                    point_batch.add_points(&cpu.position_radii, &cpu.colors, &cpu.picking_ids);
+                    .picking_object_id(re_renderer::PickingLayerObjectId(entity_path.hash64()))
+                    .sort_order(cpu.sort_order_cache(transform_index))
+                    .add_gaussians(
+                        &cpu.centers,
+                        &cpu.scales,
+                        &cpu.rotations,
+                        &cpu.colors,
+                        &cpu.picking_ids,
+                    );
 
                 // Determine if there's any sub-ranges that need extra highlighting.
                 #[expect(clippy::iter_over_hash_type)]
                 // Non-overlapping per-instance mask ranges.
                 for (highlighted_key, instance_mask_ids) in &ent_context.highlight.instances {
                     if highlighted_key.get() < num_instances as u64 {
-                        let highlighted_point_index = highlighted_key.get() as u32;
-                        point_range_builder = point_range_builder
-                            .push_additional_outline_mask_ids_for_range(
-                                highlighted_point_index..highlighted_point_index + 1,
-                                *instance_mask_ids,
-                            );
+                        let highlighted_index = highlighted_key.get() as u32;
+                        splat_batch = splat_batch.push_additional_outline_mask_ids_for_range(
+                            highlighted_index..highlighted_index + 1,
+                            *instance_mask_ids,
+                        );
                     }
                 }
+                drop(splat_batch);
 
                 view_data.add_bounding_box_and_region_of_interest(
                     entity_path.hash(),
@@ -317,10 +344,7 @@ impl VisualizerSystem for GaussianSplats3DVisualizer {
         let mut view_data = SpatialViewVisualizerData::default();
         let output = VisualizerExecutionOutput::default();
 
-        let mut point_builder = PointCloudBuilder::new(ctx.viewer_ctx.render_ctx());
-        point_builder.radius_boost_in_ui_points_for_outlines(
-            re_view::SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
-        );
+        let mut splat_builder = GaussianSplatBuilder::new(ctx.viewer_ctx.render_ctx());
 
         use super::entity_iterator::process_archetype;
         process_archetype::<GaussianSplats3D, _, _>(
@@ -334,6 +358,9 @@ impl VisualizerSystem for GaussianSplats3DVisualizer {
 
                 let all_centers =
                     results.iter_required(GaussianSplats3D::descriptor_centers().component);
+                if all_centers.is_empty() {
+                    return Ok(());
+                }
 
                 let num_centers: usize = {
                     re_tracing::profile_scope!("num_centers");
@@ -349,25 +376,30 @@ impl VisualizerSystem for GaussianSplats3DVisualizer {
                     return Ok(());
                 }
 
-                point_builder.reserve(num_centers)?;
+                splat_builder.reserve(num_centers)?;
                 let all_scales =
                     results.iter_optional(GaussianSplats3D::descriptor_scales().component);
+                let all_quaternions =
+                    results.iter_optional(GaussianSplats3D::descriptor_quaternions().component);
                 let all_colors =
                     results.iter_optional(GaussianSplats3D::descriptor_colors().component);
 
                 let query_result_hash = results.query_result_hash();
 
-                let results_iter = re_query::range_zip_1x2(
+                let results_iter = re_query::range_zip_1x3(
                     all_centers.slice::<[f32; 3]>(),
                     all_scales.slice::<[f32; 3]>(),
+                    all_quaternions.slice::<[f32; 4]>(),
                     all_colors.slice::<u32>(),
                 )
-                .map(|(index, centers, scales, colors)| {
+                .map(|(index, centers, scales, quaternions, colors)| {
                     GaussianSplats3DComponentData {
                         index,
                         query_result_hash,
                         centers: bytemuck::cast_slice(centers),
                         scales: scales.map_or(&[], |scales| bytemuck::cast_slice(scales)),
+                        quaternions: quaternions
+                            .map_or(&[], |quaternions| bytemuck::cast_slice(quaternions)),
                         colors: colors.map_or(&[], |colors| bytemuck::cast_slice(colors)),
                     }
                 });
@@ -375,7 +407,7 @@ impl VisualizerSystem for GaussianSplats3DVisualizer {
                 Self::process_data(
                     &mut view_data,
                     ctx,
-                    &mut point_builder,
+                    &mut splat_builder,
                     spatial_ctx,
                     results_iter,
                 );
@@ -385,7 +417,7 @@ impl VisualizerSystem for GaussianSplats3DVisualizer {
         )?;
 
         Ok(output
-            .with_draw_data([point_builder.into_draw_data()?.into()])
+            .with_draw_data([splat_builder.into_draw_data()?.into()])
             .with_visualizer_data(view_data))
     }
 }

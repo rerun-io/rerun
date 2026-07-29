@@ -12778,6 +12778,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "test_gaussian_compare"
+version = "0.36.0-alpha.1+dev"
+dependencies = [
+ "anyhow",
+ "clap",
+ "glam",
+ "image",
+ "macaw",
+ "pollster",
+ "re_renderer",
+ "re_sdk_types",
+ "re_types_core",
+ "wgpu",
+]
+
+[[package]]
 name = "test_image_memory"
 version = "0.36.0-alpha.1+dev"
 dependencies = [

@@ -271,28 +271,20 @@ impl PointCloudBatchBuilder<'_, '_> {
         }
         {
             re_tracing::profile_scope!("colors");
-
+            // Clamp-to-edge: repeat the last color (white if none were given).
             self.builder
                 .color_buffer
-                .extend_from_slice(colors)
-                .ok_or_log_error();
-            self.builder
-                .color_buffer
-                .add_n(Color32::WHITE, num_points.saturating_sub(colors.len())) // TODO(emilk): don't use a hard-coded default color here
+                .extend_from_slice_clamped(colors, Color32::WHITE, num_points)
                 .ok_or_log_error();
         }
         {
             re_tracing::profile_scope!("picking_ids");
-
             self.builder
                 .picking_instance_ids_buffer
-                .extend_from_slice(picking_ids)
-                .ok_or_log_error();
-            self.builder
-                .picking_instance_ids_buffer
-                .add_n(
+                .extend_from_slice_clamped(
+                    picking_ids,
                     PickingLayerInstanceId::default(),
-                    num_points.saturating_sub(picking_ids.len()),
+                    num_points,
                 )
                 .ok_or_log_error();
         }
@@ -369,10 +361,7 @@ impl PointCloudBatchBuilder<'_, '_> {
     /// The caller owns its lifetime and invalidation, and must enable alpha blending and provide
     /// the cache before adding points.
     #[inline]
-    pub fn sort_order(
-        mut self,
-        sort_order_cache: crate::renderer::PointCloudSortOrderCache,
-    ) -> Self {
+    pub fn sort_order(mut self, sort_order_cache: crate::SortOrderCache) -> Self {
         self.batch_mut().sort_order_cache = Some(sort_order_cache);
         self
     }
