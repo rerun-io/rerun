@@ -1,4 +1,3 @@
-use std::any::Any;
 use std::sync::Arc;
 
 use ahash::{HashMap, HashSet};
@@ -67,10 +66,6 @@ impl RedapCatalogProviderList {
 }
 
 impl CatalogProviderList for RedapCatalogProviderList {
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
     fn register_catalog(
         &self,
         name: String,
@@ -193,10 +188,6 @@ impl RedapCatalogProvider {
 }
 
 impl CatalogProvider for RedapCatalogProvider {
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
     fn schema_names(&self) -> Vec<String> {
         // Enumerates server entries (a wildcard `FindEntries`) and projects them to distinct
         // schema names. Only used by `SHOW SCHEMAS` / `INFORMATION_SCHEMA.schemata`; the SELECT
@@ -318,10 +309,6 @@ impl RedapSchemaProvider {
 impl SchemaProvider for RedapSchemaProvider {
     fn owner_name(&self) -> Option<&str> {
         self.catalog_name.as_deref()
-    }
-
-    fn as_any(&self) -> &dyn Any {
-        self
     }
 
     fn table_names(&self) -> Vec<String> {

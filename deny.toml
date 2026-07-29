@@ -39,19 +39,17 @@ unsound = "all"
 ignore = [
   # `paste` is a proc-macro: it expands at compile time and contributes no runtime code, so being
   # unmaintained is a supply-chain concern rather than a reachability one.
-  # Direct parents: `abi_stable`, eight `datafusion-*` 53.1 crates, `lance-bitpacking`, `mcap`,
-  # `parquet`, `re_rav1d`, and our own `re_query` and `re_string_interner`.
+  # Direct parents include DataFusion 54 crates, `lance-bitpacking`, `mcap`, `parquet`, `re_rav1d`,
+  # and our own `re_query` and `re_string_interner`.
   { id = "RUSTSEC-2024-0436", reason = "paste 1.0.15 unmaintained — proc-macro only, no runtime code (see comment above). Remove when the upstream crates move to `pastey` and `re_query`/`re_string_interner` follow. No ticket yet." },
-  { id = "RUSTSEC-2024-0014", reason = "generational-arena 0.2.9 unmaintained, reached only transitively via abi_stable 0.11.3 → async-ffi → datafusion-ffi 53.1 → rerun_py; no first-party crate depends on it. Remove when `datafusion-ffi` drops `abi_stable`, or `abi_stable` drops the arena. No ticket yet." },
   { id = "RUSTSEC-2025-0141", reason = "bincode 1.3.3 unmaintained, via http-cache → http-cache-reqwest → walkers → re_view_map and via puffin, plus direct use by re_server and the custom_callback example. Remove when `walkers` drops the http-cache stack (same exit as RUSTSEC-2026-0186) and our own uses move to bincode 2. No ticket yet." },
   # pyo3 0.28.3 is reached by `rerun_py`, `re_protos`, `arrow-pyarrow` 58.3.0 and `numpy` 0.28.0,
   # so both advisories sit in the shipped Python SDK rather than in dev tooling.
   # The `numpy` half of RR-4865 is done: `numpy` 0.29.0 (2026-06-13) requires `pyo3 ^0.29.0`.
-  # What remains is the arrow half. `arrow-pyarrow` only moved to `pyo3 ^0.29.0` in 59.1.0, and we are on
-  # arrow 58.3 because `datafusion` 53.1 requires `arrow ^58` — so pyo3 0.29 needs arrow-rs 59.1+, which
-  # needs `datafusion` 54 and a matching bump of the `lance` fork.
-  { id = "RUSTSEC-2026-0176", reason = "pyo3 0.28.3 out-of-bounds read in `nth`/`nth_back` for PyList and PyTuple iterators; blocked by arrow-pyarrow 58.3.0 requiring pyo3 ^0.28 (see comment above). Remove when arrow-rs 59.1+ is adopted. RR-4865" },
-  { id = "RUSTSEC-2026-0177", reason = "pyo3 0.28.3 missing `Sync` bound on `PyCFunction::new_closure` closures; blocked by arrow-pyarrow 58.3.0 requiring pyo3 ^0.28 (see comment above). Remove when arrow-rs 59.1+ is adopted. RR-4865" },
+  # What remains is the Arrow half. `arrow-pyarrow` only moved to `pyo3 ^0.29.0` in 59.1.0, while
+  # DataFusion 54 and Lance 9 still use Arrow 58.3.
+  { id = "RUSTSEC-2026-0176", reason = "pyo3 0.28.3 out-of-bounds read in `nth`/`nth_back` for PyList and PyTuple iterators; blocked by arrow-pyarrow 58.3.0 requiring pyo3 ^0.28 (see comment above). Remove when arrow-rs 59.1+ and compatible DataFusion and Lance versions are adopted. RR-4865" },
+  { id = "RUSTSEC-2026-0177", reason = "pyo3 0.28.3 missing `Sync` bound on `PyCFunction::new_closure` closures; blocked by arrow-pyarrow 58.3.0 requiring pyo3 ^0.28 (see comment above). Remove when arrow-rs 59.1+ and compatible DataFusion and Lance versions are adopted. RR-4865" },
   # Two independent quick-xml paths, both below the 0.41 fix:
   #  - 0.36.2 via `minidom-14` 0.17 → `dae-parser` 0.11 → `re_renderer`. This one is exercised — it parses
   #    COLLADA files the user opens. Both advisories are parser denial-of-service, so the exposure is a
@@ -91,9 +89,13 @@ skip = [
   { name = "accesskit_consumer" }, # `egui_mcp` uses a newer version than the viewer's `eframe`/`accesskit_winit`.
   { name = "base64" }, # Too popular
   { name = "bitflags" }, # core-graphics & png uses an older version.
+  { name = "block-buffer" }, # DataFusion 54 uses the sha2 0.11 stack while the rest of the ecosystem uses 0.10.
   { name = "block2" }, # Old version via rfd
   { name = "console" }, # smallish
   { name = "core-foundation" }, # Currently, e.g. `webbrowser` and `winit` use different versions.
+  { name = "cpufeatures" }, # DataFusion 54 uses the sha2 0.11 stack while the rest of the ecosystem uses 0.10.
+  { name = "crypto-common" }, # DataFusion 54 uses the sha2 0.11 stack while the rest of the ecosystem uses 0.10.
+  { name = "digest" }, # DataFusion 54 uses the sha2 0.11 stack while the rest of the ecosystem uses 0.10.
   { name = "getrandom" }, # ring uses 0.2, ahash/arrow/datafusion use 0.3
   { name = "hashbrown" }, # Old version used by polar-rs
   { name = "itertools" }, # Too popular
@@ -110,6 +112,7 @@ skip = [
   { name = "redox_syscall" }, # Plenty of versions in the wild
   { name = "rustc-hash" }, # numpy with compatible pyo3 requires different version than wgpu
   { name = "rustix" }, # tantivy uses an old version.
+  { name = "sha2" }, # DataFusion 54 uses 0.11 while the rest of the ecosystem uses 0.10.
   { name = "socket2" }, # `egui_mcp` pulls `tokio` (→ socket2 0.6) into the non-dev graph; the viewer otherwise uses 0.5 via `hyper-util`.
   { name = "unicode-width" }, # walkers depends on 0.1 via http-cache-request / cacache
 ]

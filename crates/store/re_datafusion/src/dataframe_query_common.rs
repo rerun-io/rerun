@@ -41,7 +41,6 @@ use re_sorbet::{
     BatchType, ChunkColumnDescriptors, ColumnDescriptor, ColumnKind, ComponentColumnSelector,
 };
 use re_uri::Origin;
-use std::any::Any;
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 use std::str::FromStr as _;
@@ -438,10 +437,6 @@ impl<T: DataframeClientAPI> DataframeQueryTableProvider<T> {
 
 #[async_trait]
 impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
     fn schema(&self) -> SchemaRef {
         Arc::clone(&self.schema)
     }
@@ -1016,12 +1011,13 @@ pub(crate) fn prepend_string_column_schema(schema: &Schema, column_name: &str) -
 ///
 /// Hashes the underlying string with DataFusion's `HashValue` so the result
 /// matches `RepartitionExec`'s hashing of the segment-id string column.
-pub(crate) fn segment_partition_hash(
-    segment_id: &SegmentId,
-    random_state: &ahash::RandomState,
-) -> u64 {
+pub(crate) fn segment_partition_hash(segment_id: &SegmentId) -> u64 {
     use datafusion::common::hash_utils::HashValue as _;
-    segment_id.as_str().hash_one(random_state)
+    use datafusion::physical_plan::repartition::REPARTITION_RANDOM_STATE;
+
+    segment_id
+        .as_str()
+        .hash_one(REPARTITION_RANDOM_STATE.random_state())
 }
 
 /// We need to create `num_partitions` of DataFusion partition stream outputs, each of

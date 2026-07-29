@@ -16,12 +16,12 @@ use crate::utils::get_tokio_runtime;
     module = "rerun_bindings.rerun_bindings"
 )]
 pub struct PyTableProviderAdapterInternal {
-    provider: Arc<dyn TableProvider + Send>,
+    provider: Arc<dyn TableProvider>,
     streaming: bool,
 }
 
 impl PyTableProviderAdapterInternal {
-    pub fn new(provider: Arc<dyn TableProvider + Send>, streaming: bool) -> Self {
+    pub fn new(provider: Arc<dyn TableProvider>, streaming: bool) -> Self {
         Self {
             provider,
             streaming,

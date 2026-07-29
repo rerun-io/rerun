@@ -1,4 +1,3 @@
-use std::any::Any;
 use std::collections::BTreeMap;
 use std::fmt::Debug;
 use std::pin::Pin;
@@ -423,10 +422,6 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
         "SegmentStreamExec"
     }
 
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
     fn properties(&self) -> &Arc<PlanProperties> {
         &self.props
     }
@@ -491,12 +486,11 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
         partition: usize,
         _context: Arc<TaskContext>,
     ) -> datafusion::common::Result<SendableRecordBatchStream> {
-        let random_state = ahash::RandomState::with_seeds(0, 0, 0, 0);
         let mut remaining_segment_ids = self
             .chunk_info
             .keys()
             .filter(|segment_id| {
-                let hash_value = segment_partition_hash(segment_id, &random_state) as usize;
+                let hash_value = segment_partition_hash(segment_id) as usize;
                 hash_value % self.target_partitions == partition
             })
             .cloned()

@@ -1,6 +1,5 @@
 //! [`SizedCoalesceBatchesExec`] combines small batches into larger batches.
 
-use std::any::Any;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
@@ -114,11 +113,6 @@ impl ExecutionPlan for SizedCoalesceBatchesExec {
         "SizedCoalesceBatchesExec"
     }
 
-    /// Return a reference to Any that can be used for downcasting
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
     fn properties(&self) -> &Arc<PlanProperties> {
         &self.cache
     }
@@ -166,12 +160,14 @@ impl ExecutionPlan for SizedCoalesceBatchesExec {
         Some(self.metrics.clone_inner())
     }
 
-    fn partition_statistics(&self, partition: Option<usize>) -> Result<Statistics> {
-        self.input.partition_statistics(partition)?.with_fetch(
-            self.coalescer_options.max_rows,
-            0,
-            1,
-        )
+    fn partition_statistics(&self, partition: Option<usize>) -> Result<Arc<Statistics>> {
+        Ok(Arc::new(
+            self.input
+                .partition_statistics(partition)?
+                .as_ref()
+                .clone()
+                .with_fetch(self.coalescer_options.max_rows, 0, 1)?,
+        ))
     }
 
     fn with_fetch(&self, limit: Option<usize>) -> Option<Arc<dyn ExecutionPlan>> {

@@ -1,4 +1,3 @@
-use std::any::Any;
 use std::hash::{Hash, Hasher};
 use std::sync::{Arc, LazyLock};
 
@@ -62,10 +61,6 @@ impl SegmentUrlUdf {
 }
 
 impl ScalarUDFImpl for SegmentUrlUdf {
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
     fn name(&self) -> &'static str {
         "segment_url"
     }

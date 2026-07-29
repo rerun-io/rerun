@@ -247,10 +247,10 @@ criterion = "0.8.2"
 cros-codecs = "0.0.6"
 crossbeam = "0.8.4"
 dae-parser = "0.11.0"
-datafusion = { version = "53.1", default-features = false, features = [
+datafusion = { version = "54.0", default-features = false, features = [
   # NOTE: we enable the same features everywhere
   # because otherwise we will recompile datafusion all the time based on our current compile target.
-  # The features here are the same as in https://github.com/rerun-io/lance/blob/release-8.0.0/Cargo.toml#L125
+  # The features here are the same as in https://github.com/rerun-io/lance/blob/release-9.0.0/Cargo.toml#L131
   # This is very hacky, and I don't like it.
   "crypto_expressions",
   "datetime_expressions",
@@ -261,7 +261,7 @@ datafusion = { version = "53.1", default-features = false, features = [
   "string_expressions",
   "unicode_expressions",
 ] }
-datafusion-ffi = "53.1"
+datafusion-ffi = "54.0"
 directories = "6.0"
 document-features = "0.2.12"
 econtext = "0.2.0" # Prints error contexts on crashes
@@ -305,7 +305,7 @@ itertools = "0.14.0" # 0.15 would duplicate the 0.14 that `datafusion` (pinned) 
 jiff = { version = "0.2.29", features = ["js"] }
 js-sys = "0.3.94"
 jsonwebtoken = { version = "10.4", default-features = false }
-lance = { version = "8.0", default-features = false } # When you update this, also update the list of features enabled for `datafusion` (~50 lines up)
+lance = { version = "9.0", default-features = false } # When you update this, also update the list of features enabled for `datafusion` (~50 lines up)
 libc = "0.2.186"
 linked-hash-map = { version = "0.5.6", default-features = false }
 log = "0.4.33"

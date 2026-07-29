@@ -71,7 +71,7 @@ dev = [
   "huggingface-hub<2.0",
   # Typed packages for dataframe/arrow operations (needed for linting examples/tests)
   "polars>=1.0",
-  "datafusion>=53.0",
+  "datafusion>=54.0",
   "jupyter>=1.0",
   # >=2.20.0 fixes the nbconvert stored-XSS (missing CSP sandbox directive)
   "jupyter-server>=2.20.0",

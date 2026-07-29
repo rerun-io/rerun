@@ -1,4 +1,3 @@
-use std::any::Any;
 use std::pin::Pin;
 use std::sync::Arc;
 
@@ -117,10 +116,6 @@ where
     T: GrpcStreamToTable + Send + 'static,
     T::GrpcStreamData: Send + 'static,
 {
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
     fn schema(&self) -> SchemaRef {
         Arc::clone(&self.schema)
     }

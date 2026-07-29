@@ -1,4 +1,3 @@
-use std::any::Any;
 use std::fmt;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -196,10 +195,6 @@ impl StreamingCacheTableProvider {
 
 #[async_trait]
 impl TableProvider for StreamingCacheTableProvider {
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
     fn schema(&self) -> SchemaRef {
         Arc::clone(&self.schema)
     }
@@ -318,10 +313,6 @@ impl DisplayAs for CachedStreamingExec {
 impl ExecutionPlan for CachedStreamingExec {
     fn name(&self) -> &'static str {
         "CachedStreamingExec"
-    }
-
-    fn as_any(&self) -> &dyn Any {
-        self
     }
 
     fn schema(&self) -> SchemaRef {

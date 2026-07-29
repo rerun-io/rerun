@@ -1,4 +1,3 @@
-use std::any::Any;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
@@ -426,10 +425,6 @@ impl TableEntryWriterExec {
 impl ExecutionPlan for TableEntryWriterExec {
     fn name(&self) -> &'static str {
         "TableEntryWriterExec"
-    }
-
-    fn as_any(&self) -> &dyn Any {
-        self
     }
 
     fn properties(&self) -> &Arc<PlanProperties> {

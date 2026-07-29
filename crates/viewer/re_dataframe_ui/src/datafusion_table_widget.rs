@@ -203,9 +203,7 @@ impl<'a> DataFusionTableWidget<'a> {
     /// query results remain visible until a new query completes.
     async fn invalidate_streaming_cache(session_ctx: &SessionContext, table_ref: &TableReference) {
         if let Ok(provider) = session_ctx.table_provider(table_ref.clone()).await
-            && let Some(cache_provider) = provider
-                .as_any()
-                .downcast_ref::<StreamingCacheTableProvider>()
+            && let Some(cache_provider) = provider.downcast_ref::<StreamingCacheTableProvider>()
         {
             cache_provider.refresh();
         }
