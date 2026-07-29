@@ -13,6 +13,7 @@ const COLORMAP_SPECTRAL:       u32 = 8u;
 const COLORMAP_TWILIGHT:       u32 = 9u;
 const COLORMAP_RVIZ_MAP:       u32 = 10u;
 const COLORMAP_RVIZ_COSTMAP:   u32 = 11u;
+const COLORMAP_COSTMAP:        u32 = 12u;
 
 /// Returns a gamma-space sRGBA in 0-1 range.
 ///
@@ -43,6 +44,8 @@ fn colormap_srgba(which: u32, t_unsaturated: f32) -> vec4f {
         return colormap_rviz_map_srgba(t);
     } else if which == COLORMAP_RVIZ_COSTMAP {
         return colormap_rviz_costmap_srgba(t);
+    } else if which == COLORMAP_COSTMAP {
+        return colormap_costmap_srgba(t);
     } else {
         return ERROR_RGBA;
     }
@@ -211,44 +214,106 @@ fn colormap_twilight_srgba(t: f32) -> vec4f {
 
 /// Reimplements the "Map" color palette from `RViz`.
 ///
+/// An occupancy grid stores signed-char cell values that `RViz` interprets as:
+/// - `0..=100`: occupancy probability in percent, mapped to grayscale (`0` free -> white, `100` occupied -> black).
+/// - `101..=127`: illegal positive values, drawn bright green to flag bad data.
+/// - `128..=254`: illegal values (a signed `-128..=-2` reinterpreted as `u8`), on a red -> yellow ramp.
+/// - `255`: the legal `-1` value ("unknown"), drawn teal-gray.
+///
+/// `t` is the normalized cell value, i.e. `raw_value / 255`.
+///
 /// Reference: <https://github.com/ros-visualization/rviz/blob/26bbf0a1819253d7515c096a71f1f5cd58f88748/src/rviz/default_plugin/map_display.cpp#L285>
 fn colormap_rviz_map_srgba(t: f32) -> vec4f {
     let value = floor((saturate(t) * 255.0) + 0.5);
 
     if value <= 100.0 {
+        // Occupancy probability: white (free) -> black (occupied).
         let x = (255.0 - (value * 255.0) / 100.0) / 255.0;
         return vec4f(vec3f(x), 1.0);
     } else if value < 128.0 {
+        // 101..=127: illegal positive values.
         return vec4f(0.0, 1.0, 0.0, 1.0);
     } else if value < 255.0 {
+        // 128..=254: illegal (negative) values, on a red -> yellow ramp.
         let x = ((255.0 * (value - 128.0)) / (254.0 - 128.0)) / 255.0;
         return vec4f(1.0, x, 0.0, 1.0);
     } else {
+        // 255 == -1: unknown.
         return vec4f(112.0 / 255.0, 137.0 / 255.0, 134.0 / 255.0, 1.0);
     }
 }
 
 /// Reimplements the "Costmap" color palette from `RViz`.
 ///
+/// A costmap stores signed-char cell values that `RViz` interprets as:
+/// - `0`: free space (zero cost), drawn fully transparent.
+/// - `1..=98`: increasing cost, on a blue (low) -> red (high) ramp.
+/// - `99`: inscribed obstacle (the robot's footprint would collide), drawn cyan.
+/// - `100`: lethal obstacle (definitely occupied), drawn magenta.
+/// - `101..=127`: illegal positive values, drawn bright green to flag bad data.
+/// - `128..=254`: illegal values (a signed `-128..=-2` reinterpreted as `u8`), on a red -> yellow ramp.
+/// - `255`: the legal `-1` value ("unknown"), drawn teal-gray.
+///
+/// `t` is the normalized cell value, i.e. `raw_value / 255`.
+///
 /// Reference: <https://github.com/ros-visualization/rviz/blob/26bbf0a1819253d7515c096a71f1f5cd58f88748/src/rviz/default_plugin/map_display.cpp#L323>
 fn colormap_rviz_costmap_srgba(t: f32) -> vec4f {
     let value = floor((saturate(t) * 255.0) + 0.5);
 
     if value == 0.0 {
+        // Free space (zero cost).
         return vec4f(0.0, 0.0, 0.0, 0.0);
     } else if value < 99.0 {
+        // 1..=98: cost ramp from blue (low) to red (high).
         let x = (value * 255.0 / 100.0) / 255.0;
         return vec4f(x, 0.0, 1.0 - x, 1.0);
     } else if value == 99.0 {
+        // Inscribed obstacle.
         return vec4f(0.0, 1.0, 1.0, 1.0);
     } else if value == 100.0 {
+        // Lethal obstacle.
         return vec4f(1.0, 0.0, 1.0, 1.0);
     } else if value < 128.0 {
+        // 101..=127: illegal positive values.
         return vec4f(0.0, 1.0, 0.0, 1.0);
     } else if value < 255.0 {
+        // 128..=254: illegal (negative) values, on a red -> yellow ramp.
         let x = ((255.0 * (value - 128.0)) / (254.0 - 128.0)) / 255.0;
         return vec4f(1.0, x, 0.0, 1.0);
     } else {
+        // 255 == -1: unknown.
         return vec4f(112.0 / 255.0, 137.0 / 255.0, 134.0 / 255.0, 1.0);
+    }
+}
+
+const RERUN_RED: vec3f = vec3f(215.0, 47.0, 33.0) / 255.0; // #D72F21
+const RERUN_BLUE: vec3f = vec3f(24.0, 106.0, 221.0) / 255.0; // #186ADD
+const RERUN_GREEN: vec3f = vec3f(134.0, 217.0, 166.0) / 255.0; // #86D9A6
+const RERUN_YELLOW: vec3f = vec3f(246.0, 218.0, 117.0) / 255.0; // #F6DA75
+
+/// Semantically equivalent to the `RViz` cost map but with a more pleasing color palette.
+///
+/// See `colormap_rviz_costmap_srgba` for the meaning of each value range.
+///
+/// We use selected colors from the Rerun gradient palette here, see also: https://rerun.io/media
+fn colormap_costmap_srgba(t: f32) -> vec4f {
+    let value = floor((saturate(t) * 255.0) + 0.5);
+
+    // Values 101+ are illegal/unknown and rare in practice, but we still map them to match RViz semantics.
+    if value == 0.0 {
+        return vec4f(0.0, 0.0, 0.0, 0.0); // free space (zero cost)
+    } else if value < 99.0 {
+        return vec4f(mix(RERUN_GREEN, RERUN_YELLOW, value / 98.0), 1.0); // 1-98: cost ramp
+    } else if value == 99.0 {
+        return vec4f(RERUN_RED, 1.0); // inscribed obstacle
+    } else if value == 100.0 {
+        return vec4f(RERUN_BLUE, 1.0); // lethal obstacle
+    } else if value < 128.0 {
+        return vec4f(RERUN_GREEN, 1.0); // 101-127 (illegal positive)
+    } else if value < 255.0 {
+        // 128-254 (illegal negative): red -> ramp yellow
+        return vec4f(mix(RERUN_RED, RERUN_YELLOW, (value - 128.0) / (254.0 - 128.0)), 1.0);
+    } else {
+        return vec4f(112.0 / 255.0, 137.0 / 255.0, 134.0 / 255.0, 1.0); // 255 == -1: teal-gray (unknown, matches RViz)
     }
 }

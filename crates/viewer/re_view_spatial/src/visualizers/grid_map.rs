@@ -299,9 +299,9 @@ impl GridMapVisualizer {
 
         let texture_filter_minification = match &color_mode {
             GridMapColorMode::Colormapped(ColormapWithRange {
-                // RViz colormaps encode discrete occupancy/cost classes.
+                // Grid-map colormaps encode discrete occupancy/cost classes.
                 // Use nearest instead of linear filtering to avoid blending neighboring values.
-                colormap: Colormap::RvizMap | Colormap::RvizCostmap,
+                colormap: Colormap::RvizMap | Colormap::RvizCostmap | Colormap::Costmap,
                 ..
             }) => renderer::TextureFilterMin::Nearest,
             _ => renderer::TextureFilterMin::Linear,
@@ -343,7 +343,7 @@ impl GridMapVisualizer {
 
         if matches!(
             component_data.colormap,
-            Colormap::RvizMap | Colormap::RvizCostmap
+            Colormap::RvizMap | Colormap::RvizCostmap | Colormap::Costmap
         ) && !matches!(
             component_data.image.format.datatype(),
             re_sdk_types::datatypes::ChannelDatatype::U8
@@ -352,7 +352,7 @@ impl GridMapVisualizer {
                 GridMap::descriptor_colormap().component,
                 ViewerReportSeverity::Warning,
                 format!(
-                    "RViz GridMap colormaps require L/U8 data; showing the original image for {:?} pixels.",
+                    "GridMap colormaps require L/U8 data; showing the original image for {:?} pixels.",
                     component_data.image.format.datatype()
                 ),
             );
@@ -367,9 +367,9 @@ impl GridMapVisualizer {
 
         let value_range = if matches!(
             component_data.colormap,
-            Colormap::RvizMap | Colormap::RvizCostmap
+            Colormap::RvizMap | Colormap::RvizCostmap | Colormap::Costmap
         ) {
-            // RViz grid-map colormaps are discrete mappings for u8 values, not continuous gradients.
+            // Grid-map colormaps are discrete mappings for u8 values, not continuous gradients.
             [0.0, 255.0]
         } else {
             // For conventional colormaps, use the image data range.

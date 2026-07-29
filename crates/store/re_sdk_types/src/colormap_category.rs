@@ -61,7 +61,7 @@ impl ColormapCategory {
             | Colormap::Turbo => Self::Sequential,
             Colormap::CyanToYellow | Colormap::Spectral => Self::Diverging,
             Colormap::Twilight => Self::Cyclic,
-            Colormap::RvizMap | Colormap::RvizCostmap => Self::GridMap,
+            Colormap::RvizMap | Colormap::RvizCostmap | Colormap::Costmap => Self::GridMap,
         }
     }
 }

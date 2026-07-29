@@ -102,6 +102,14 @@ pub enum Colormap {
     /// Cost values are mapped to blue to red spectrum, and special cost values
     /// (e.g. lethal obstacles) have highlight colors. Zero values are fully transparent.
     RvizCostmap = 11,
+
+    /// A grid-map colormap for robot navigation cost maps.
+    ///
+    /// Semantically equivalent to the `RViz` cost map but with a more pleasing color palette.
+    ///
+    /// Cost values are mapped to a green to yellow spectrum, and special cost values
+    /// (e.g. lethal obstacles) have highlight colors. Zero values are fully transparent.
+    Costmap = 12,
 }
 
 impl ::re_types_core::Component for Colormap {
@@ -203,6 +211,7 @@ impl std::fmt::Display for Colormap {
             Self::Twilight => write!(f, "Twilight"),
             Self::RvizMap => write!(f, "RvizMap"),
             Self::RvizCostmap => write!(f, "RvizCostmap"),
+            Self::Costmap => write!(f, "Costmap"),
         }
     }
 }
@@ -224,6 +233,7 @@ impl ::re_types_core::reflection::Enum for Colormap {
             Self::Twilight,
             Self::RvizMap,
             Self::RvizCostmap,
+            Self::Costmap,
         ]
     }
 
@@ -262,6 +272,9 @@ impl ::re_types_core::reflection::Enum for Colormap {
             }
             Self::RvizCostmap => {
                 "The classic `RViz` \"Costmap\" grid-map colormap for robot navigation cost maps.\n\nCost values are mapped to blue to red spectrum, and special cost values\n(e.g. lethal obstacles) have highlight colors. Zero values are fully transparent."
+            }
+            Self::Costmap => {
+                "A grid-map colormap for robot navigation cost maps.\n\nSemantically equivalent to the `RViz` cost map but with a more pleasing color palette.\n\nCost values are mapped to a green to yellow spectrum, and special cost values\n(e.g. lethal obstacles) have highlight colors. Zero values are fully transparent."
             }
         }
     }

@@ -123,6 +123,12 @@ fn test_grid_map_rviz_costmap_colormap() {
     run_grid_map_colormap_snapshot("grid_map_rviz_costmap", Colormap::RvizCostmap);
 }
 
+/// Creates a snapshot that renders a strip with all the possible [`Colormap::Costmap`] values.
+#[test]
+fn test_grid_map_costmap_colormap() {
+    run_grid_map_colormap_snapshot("grid_map_costmap", Colormap::Costmap);
+}
+
 fn run_grid_map_colormap_snapshot(name: &str, colormap: Colormap) {
     let mut test_context = TestContext::new_with_view_class::<re_view_spatial::SpatialView3D>();
 
