@@ -1,3 +1,4 @@
+mod check;
 mod info;
 
 use std::collections::BTreeSet;
@@ -12,6 +13,7 @@ use re_mcap::{DecoderIdentifier, SelectedDecoders, TopicFilter};
 use re_sdk::external::re_importer::{McapImporter, supported_mcap_decoder_identifiers};
 use re_sdk::{ApplicationId, ImportedData, Importer, ImporterSettings};
 
+use check::CheckCommand;
 use info::InfoCommand;
 
 fn possible_timeline_types() -> impl clap::builder::TypedValueParser {
@@ -268,8 +270,14 @@ pub enum McapCommands {
     /// Convert an .mcap file to an .rrd
     Convert(ConvertCommand),
 
-    /// Print timeline / sortedness diagnostics for an .mcap file
+    /// Print recording, channel, and compression information for an .mcap file
     Info(InfoCommand),
+
+    /// Check an .mcap file for structural and timeline issues.
+    ///
+    /// Reports timelines that disagree on row ordering, whole-topic ordering conflicts, and chunks
+    /// that arrive out of order on a timeline.
+    Check(CheckCommand),
 }
 
 impl McapCommands {
@@ -277,6 +285,7 @@ impl McapCommands {
         match self {
             Self::Convert(cmd) => cmd.run(),
             Self::Info(cmd) => cmd.run(),
+            Self::Check(cmd) => cmd.run(),
         }
     }
 }

@@ -17,3 +17,8 @@ ParquetReader(path).stream(column_grouping="individual", index_columns=[IndexCol
 ```
 
 The reader is now a lightweight handle over the file, and each `stream()` call is independent — one reader can drive several differently-configured streams over the same file.
+
+## `rerun mcap info` output changed
+
+The `rerun mcap info` CLI command has been rewritten to output richer and more detailed file-level information instead of just diagnostic checks.
+The diagnostic checks are now in a dedicated `rerun mcap check` subcommand instead.
