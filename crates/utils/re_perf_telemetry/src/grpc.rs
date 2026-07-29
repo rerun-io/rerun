@@ -552,9 +552,7 @@ impl<B> tower_http::trace::OnResponse<B> for GrpcOnResponse {
                     opentelemetry::KeyValue::new("endpoint", endpoint.clone()),
                     opentelemetry::KeyValue::new("grpc_status", grpc_status),
                     opentelemetry::KeyValue::new("http_status", http_status),
-                    opentelemetry::KeyValue::new("client_version", client_version.to_owned()),
                     opentelemetry::KeyValue::new("server_version", server_version.to_owned()),
-                    opentelemetry::KeyValue::new("email", email.to_owned()),
                 ],
             );
         };
@@ -663,9 +661,7 @@ impl<B> tower_http::trace::OnBodyChunk<B> for GrpcOnFirstBodyChunk {
                 latency.as_secs_f64() * 1000.0,
                 &[
                     opentelemetry::KeyValue::new("endpoint", endpoint),
-                    opentelemetry::KeyValue::new("client_version", client_version.to_owned()),
                     opentelemetry::KeyValue::new("server_version", server_version.to_owned()),
-                    opentelemetry::KeyValue::new("email", email.to_owned()),
                 ],
             );
 
