@@ -259,23 +259,25 @@ fn test_single_component_ui_as_list_item(
 ) -> Result<(), SnapshotError> {
     let actual_ui = |ctx: &ViewerContext<'_>, ui: &mut egui::Ui| {
         ui.list_item_flat_noninteractive(
-            list_item::PropertyContent::new("ComponentName").value_fn(|ui, _| {
-                ctx.component_ui_registry().component_ui_raw(
-                    &ctx.active_recording_store_view_context(),
-                    ui,
-                    UiLayout::List,
-                    &EntityPath::root(),
-                    // As of writing, `ComponentDescriptor` the descriptor part is only used for
-                    // caching and actual lookup of uis is only done via `ComponentType`.
-                    &ComponentDescriptor {
-                        component: test_case.label.into(),
-                        archetype: None,
-                        component_type: Some(test_case.component_type),
-                    },
-                    None,
-                    &*test_case.component_data,
-                );
-            }),
+            list_item::PropertyContent::new(test_case.component_type.short_name()).value_fn(
+                |ui, _| {
+                    ctx.component_ui_registry().component_ui_raw(
+                        &ctx.active_recording_store_view_context(),
+                        ui,
+                        UiLayout::List,
+                        &EntityPath::root(),
+                        // As of writing, `ComponentDescriptor` the descriptor part is only used for
+                        // caching and actual lookup of uis is only done via `ComponentType`.
+                        &ComponentDescriptor {
+                            component: test_case.label.into(),
+                            archetype: None,
+                            component_type: Some(test_case.component_type),
+                        },
+                        None,
+                        &*test_case.component_data,
+                    );
+                },
+            ),
         );
     };
 
