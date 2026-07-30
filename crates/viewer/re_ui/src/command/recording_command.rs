@@ -138,6 +138,14 @@ impl RecordingCommandKind {
         )
     }
 
+    /// Does this command only exist in debug builds?
+    ///
+    /// Such commands are marked with an orange "debug only" badge in the UI.
+    #[cfg(debug_assertions)]
+    pub fn is_debug_only(self) -> bool {
+        matches!(self, Self::ToggleBlueprintInspectionPanel)
+    }
+
     /// Pair this command with the active recording (from `env`) to make it dispatchable.
     ///
     /// Returns `None` when there is no active recording.
@@ -401,7 +409,19 @@ impl RecordingCommandKind {
                 self.text(),
             )
         } else {
-            egui::Button::new(self.text())
+            cfg_select! {
+                debug_assertions => {
+                    if self.is_debug_only() {
+                        egui::Button::new((
+                            self.text(),
+                            crate::debug_only::debug_only_rich_text(&egui_ctx.global_style()),
+                        ))
+                    } else {
+                        egui::Button::new(self.text())
+                    }
+                }
+                _ => egui::Button::new(self.text()),
+            }
         };
 
         if let Some(shortcut_text) = self.formatted_kb_shortcut(egui_ctx) {

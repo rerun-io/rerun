@@ -90,8 +90,10 @@ impl crate::AppUi for EntityDb {
             }
         }
 
-        if cfg!(debug_assertions) && !ctx.is_test {
-            ui.collapsing_header("Debug info", true, |ui| {
+        #[cfg(debug_assertions)]
+        if !ctx.is_test {
+            let title = re_ui::debug_only::with_debug_only_badge(ui.style(), "Debug info");
+            ui.collapsing_header(title, true, |ui| {
                 debug_ui(ui, self);
             });
         }
@@ -359,8 +361,8 @@ fn grid_content_ui(ctx: &AppContext<'_>, db: &EntityDb, ui: &mut egui::Ui, ui_la
     }
 }
 
+#[cfg(debug_assertions)]
 fn debug_ui(ui: &mut egui::Ui, db: &EntityDb) {
-    ui.weak("(only visible in debug builds)");
     egui::Grid::new("debug-info").show(ui, |ui| {
         if let Some(manifest) = db.rrd_manifest_index().manifest() {
             ui.label("Entities");

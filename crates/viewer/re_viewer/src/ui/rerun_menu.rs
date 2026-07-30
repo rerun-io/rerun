@@ -152,7 +152,7 @@ impl App {
         backend_menu_ui(&self.command_sender, ui, render_state);
 
         #[cfg(debug_assertions)]
-        menu::SubMenuButton::new("Debug")
+        menu::SubMenuButton::new(("Debug", re_ui::debug_only::debug_only_rich_text(ui.style())))
             .config(
                 menu::MenuConfig::new()
                     .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside)

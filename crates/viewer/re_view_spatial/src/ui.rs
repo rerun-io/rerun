@@ -516,6 +516,7 @@ pub fn paint_loading_indicators(
 pub fn bbox_debug_ui(ui: &mut egui::Ui, state: &mut SpatialViewState) {
     ui.re_checkbox(&mut state.show_smoothed_bbox, "Smoothed bbox");
     ui.re_checkbox(&mut state.show_per_entity_bbox, "Per-entity bboxes");
+    ui.debug_only_badge();
 }
 
 /// Draws the origin axes gizmo of a spatial view.

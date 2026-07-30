@@ -54,6 +54,12 @@ pub trait UiExt {
         crate::loading_indicator::loading_indicator_ui(self.ui_mut(), reason)
     }
 
+    /// Small orange "debug only" pill, marking UI that is only present in debug builds.
+    #[cfg(debug_assertions)]
+    fn debug_only_badge(&mut self) -> egui::Response {
+        crate::debug_only::debug_only_badge_ui(self.ui_mut())
+    }
+
     /// Shows a success label with a large border.
     ///
     /// If the text contains [`re_error::DETAILS_SEPARATOR`], the details are
@@ -466,12 +472,13 @@ pub trait UiExt {
     /// where the collapsing header should align nicely with checkboxes and other controls.
     fn collapsing_header<R>(
         &mut self,
-        label: &str,
+        label: impl Into<WidgetText>,
         default_open: bool,
         add_body: impl FnOnce(&mut egui::Ui) -> R,
     ) -> egui::CollapsingResponse<R> {
+        let label = label.into();
         let ui = self.ui_mut();
-        let id = ui.make_persistent_id(label);
+        let id = ui.make_persistent_id(label.text());
         let button_padding = ui.spacing().button_padding;
 
         let available = ui.available_rect_before_wrap();
@@ -480,7 +487,7 @@ pub trait UiExt {
         let indent = 18.0;
         let text_pos = available.min + egui::vec2(indent, 0.0);
         let wrap_width = available.right() - text_pos.x;
-        let galley = egui::WidgetText::from(label).into_galley(
+        let galley = label.into_galley(
             ui,
             Some(egui::TextWrapMode::Extend),
             wrap_width,

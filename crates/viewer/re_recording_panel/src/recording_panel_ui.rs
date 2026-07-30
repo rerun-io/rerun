@@ -143,10 +143,7 @@ fn add_button_ui(
                 #[cfg(debug_assertions)]
                 {
                     ui.separator();
-                    ui.add_enabled(
-                        false,
-                        egui::Button::new(egui::RichText::new("Debug-only tools").italics()),
-                    );
+                    ui.debug_only_badge();
 
                     if ui.button("Print recording entity DBs").clicked() {
                         let recording_entity_dbs = ctx

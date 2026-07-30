@@ -5,6 +5,8 @@ mod color_table;
 mod command;
 mod command_palette;
 mod context_ext;
+#[cfg(debug_assertions)]
+pub mod debug_only;
 mod design_tokens;
 pub mod drag_and_drop;
 pub mod egui_ext;

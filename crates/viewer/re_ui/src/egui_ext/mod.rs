@@ -12,4 +12,4 @@ mod widget_text_ext;
 pub use group::Group;
 pub use kb_shortcut_ext::KeyboardShortcutExt;
 pub use layout_job_ext::LayoutJobExt;
-pub use widget_text_ext::WidgetTextExt;
+pub use widget_text_ext::{WidgetTextExt, concat_rich_text};
