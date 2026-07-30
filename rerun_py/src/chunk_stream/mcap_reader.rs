@@ -192,6 +192,14 @@ impl PyMcapReaderInternal {
         }
     }
 
+    /// Return file-level information derived from the MCAP header and summary.
+    fn info(&self) -> PyResult<PyMcapInfoInternal> {
+        self.mcap_file
+            .info()
+            .map(|info| PyMcapInfoInternal { info })
+            .map_err(|err| PyValueError::new_err(format!("Failed to inspect MCAP file: {err}")))
+    }
+
     /// The file path this reader was constructed with.
     #[getter]
     fn path(&self) -> PathBuf {
@@ -205,6 +213,213 @@ impl PyMcapReaderInternal {
             .into_iter()
             .map(|id| id.to_string())
             .collect()
+    }
+}
+
+/// Header and summary information transferred to the public Python API.
+#[pyclass(
+    frozen,
+    name = "_McapInfoInternal",
+    module = "rerun_bindings.rerun_bindings"
+)]
+pub struct PyMcapInfoInternal {
+    info: Arc<re_mcap::McapInfo>,
+}
+
+#[pymethods]
+impl PyMcapInfoInternal {
+    #[getter]
+    fn profile(&self) -> String {
+        self.info.profile.clone()
+    }
+
+    #[getter]
+    fn library(&self) -> String {
+        self.info.library.clone()
+    }
+
+    #[getter]
+    fn message_count(&self) -> Option<u64> {
+        self.info.message_count
+    }
+
+    #[getter]
+    fn message_start_time_ns(&self) -> Option<u64> {
+        self.info.message_start_time_ns
+    }
+
+    #[getter]
+    fn message_end_time_ns(&self) -> Option<u64> {
+        self.info.message_end_time_ns
+    }
+
+    #[getter]
+    fn duration_ns(&self) -> Option<u64> {
+        self.info.duration_ns
+    }
+
+    #[getter]
+    fn schema_count(&self) -> usize {
+        self.info.schema_count
+    }
+
+    #[getter]
+    fn channel_count(&self) -> usize {
+        self.info.channel_count
+    }
+
+    #[getter]
+    fn attachment_count(&self) -> usize {
+        self.info.attachment_count
+    }
+
+    #[getter]
+    fn metadata_count(&self) -> usize {
+        self.info.metadata_count
+    }
+
+    #[getter]
+    fn statistics_present(&self) -> bool {
+        self.info.statistics_present
+    }
+
+    #[getter]
+    fn summary_source(&self) -> &'static str {
+        match self.info.summary_source {
+            re_mcap::McapSummarySource::Embedded => "embedded",
+            re_mcap::McapSummarySource::Reconstructed => "reconstructed",
+        }
+    }
+
+    #[getter]
+    fn chunks(&self) -> PyMcapChunkInfoInternal {
+        PyMcapChunkInfoInternal::from(&self.info.chunks)
+    }
+
+    #[getter]
+    fn compression(&self) -> Vec<PyMcapCompressionInfoInternal> {
+        self.info
+            .compression
+            .iter()
+            .map(PyMcapCompressionInfoInternal::from)
+            .collect()
+    }
+
+    #[getter]
+    fn channels(&self) -> Vec<PyMcapChannelInfoInternal> {
+        self.info
+            .channels
+            .iter()
+            .map(PyMcapChannelInfoInternal::from)
+            .collect()
+    }
+}
+
+/// Aggregate chunk information transferred to the public Python API.
+#[pyclass(
+    frozen,
+    get_all,
+    name = "_McapChunkInfoInternal",
+    module = "rerun_bindings.rerun_bindings"
+)]
+pub struct PyMcapChunkInfoInternal {
+    count: usize,
+    max_uncompressed_size_bytes: Option<u64>,
+    max_compressed_size_bytes: Option<u64>,
+    has_overlapping_time_ranges: bool,
+}
+
+impl From<&re_mcap::McapChunkInfo> for PyMcapChunkInfoInternal {
+    fn from(info: &re_mcap::McapChunkInfo) -> Self {
+        Self {
+            count: info.count,
+            max_uncompressed_size_bytes: info.max_uncompressed_size_bytes,
+            max_compressed_size_bytes: info.max_compressed_size_bytes,
+            has_overlapping_time_ranges: info.has_overlapping_time_ranges,
+        }
+    }
+}
+
+/// Compression information transferred to the public Python API.
+#[pyclass(
+    frozen,
+    get_all,
+    name = "_McapCompressionInfoInternal",
+    module = "rerun_bindings.rerun_bindings"
+)]
+pub struct PyMcapCompressionInfoInternal {
+    codec: String,
+    chunk_count: usize,
+    compressed_size_bytes: u64,
+    uncompressed_size_bytes: u64,
+}
+
+impl From<&re_mcap::McapCompressionInfo> for PyMcapCompressionInfoInternal {
+    fn from(info: &re_mcap::McapCompressionInfo) -> Self {
+        Self {
+            codec: info.codec.clone(),
+            chunk_count: info.chunk_count,
+            compressed_size_bytes: info.compressed_size_bytes,
+            uncompressed_size_bytes: info.uncompressed_size_bytes,
+        }
+    }
+}
+
+/// Schema information transferred to the public Python API.
+#[pyclass(
+    frozen,
+    get_all,
+    skip_from_py_object,
+    name = "_McapSchemaInfoInternal",
+    module = "rerun_bindings.rerun_bindings"
+)]
+#[derive(Clone)]
+pub struct PyMcapSchemaInfoInternal {
+    id: u16,
+    name: String,
+    encoding: String,
+    data_size_bytes: usize,
+}
+
+impl From<&re_mcap::McapSchemaInfo> for PyMcapSchemaInfoInternal {
+    fn from(info: &re_mcap::McapSchemaInfo) -> Self {
+        Self {
+            id: info.id,
+            name: info.name.clone(),
+            encoding: info.encoding.clone(),
+            data_size_bytes: info.data_size_bytes,
+        }
+    }
+}
+
+/// Channel information transferred to the public Python API.
+#[pyclass(
+    frozen,
+    get_all,
+    name = "_McapChannelInfoInternal",
+    module = "rerun_bindings.rerun_bindings"
+)]
+pub struct PyMcapChannelInfoInternal {
+    id: u16,
+    topic: String,
+    message_encoding: String,
+    metadata: std::collections::BTreeMap<String, String>,
+    schema: Option<PyMcapSchemaInfoInternal>,
+    message_count: Option<u64>,
+    frequency_hz: Option<(f64, f64)>,
+}
+
+impl From<&re_mcap::McapChannelInfo> for PyMcapChannelInfoInternal {
+    fn from(info: &re_mcap::McapChannelInfo) -> Self {
+        Self {
+            id: info.id,
+            topic: info.topic.clone(),
+            message_encoding: info.message_encoding.clone(),
+            metadata: info.metadata.clone(),
+            schema: info.schema.as_ref().map(PyMcapSchemaInfoInternal::from),
+            message_count: info.message_count,
+            frequency_hz: info.frequency_hz,
+        }
     }
 }
 

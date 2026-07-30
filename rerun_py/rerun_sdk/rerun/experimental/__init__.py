@@ -16,7 +16,14 @@ from ._indexed_reader import IndexedReader as IndexedReader
 from ._lazy_chunk_stream import LazyChunkStream as LazyChunkStream
 from ._lazy_store import LazyStore as LazyStore
 from ._lens import DeriveLens as DeriveLens, Lens as Lens, MutateLens as MutateLens
-from ._mcap_reader import McapReader as McapReader
+from ._mcap_reader import (
+    McapChannelInfo as McapChannelInfo,
+    McapChunkInfo as McapChunkInfo,
+    McapCompressionInfo as McapCompressionInfo,
+    McapInfo as McapInfo,
+    McapReader as McapReader,
+    McapSchemaInfo as McapSchemaInfo,
+)
 from ._mp4_reader import Mp4Reader as Mp4Reader, Mp4TranscodeOptions as Mp4TranscodeOptions
 from ._optimization_profile import OptimizationProfile as OptimizationProfile
 from ._parquet_reader import ParquetReader as ParquetReader

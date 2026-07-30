@@ -43,6 +43,11 @@ pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<rrd_reader::PyRrdReaderInternal>()?;
     m.add_class::<rrd_reader::PyStoreEntryInternal>()?;
     m.add_class::<mcap_reader::PyMcapReaderInternal>()?;
+    m.add_class::<mcap_reader::PyMcapInfoInternal>()?;
+    m.add_class::<mcap_reader::PyMcapChunkInfoInternal>()?;
+    m.add_class::<mcap_reader::PyMcapCompressionInfoInternal>()?;
+    m.add_class::<mcap_reader::PyMcapChannelInfoInternal>()?;
+    m.add_class::<mcap_reader::PyMcapSchemaInfoInternal>()?;
     m.add_class::<mp4_reader::PyMp4ReaderInternal>()?;
     m.add_class::<hdf5_reader::PyHdf5ReaderInternal>()?;
     m.add_class::<mp4_reader::PyMp4TranscodeOptions>()?;

@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 import pyarrow as pa
 import pytest
-from rerun.experimental import Chunk, McapReader, StreamingReader
+from rerun.experimental import Chunk, McapInfo, McapReader, StreamingReader
 
 if TYPE_CHECKING:
     from syrupy import SnapshotAssertion
@@ -66,6 +66,28 @@ def test_load_log(snapshot: SnapshotAssertion) -> None:
     """Default load of log MCAP: TextLog with 6 rows."""
     chunks = McapReader(LOG_MCAP).stream().to_chunks()
     assert chunk_summary(chunks) == snapshot
+
+
+def test_info_is_structured_and_independent_of_filters() -> None:
+    baseline = McapReader(LOG_MCAP).info()
+    filtered = McapReader(
+        LOG_MCAP,
+        decoders=[],
+        include_topic_regex=["^__nothing__$"],
+        start_time_ns=0,
+        end_time_ns=1,
+    ).info()
+
+    assert isinstance(baseline, McapInfo)
+    assert filtered == baseline
+    assert baseline.summary_source == "embedded"
+    assert baseline.statistics_present
+    assert baseline.message_count == 6
+    assert baseline.message_start_time_ns is not None
+    assert baseline.message_end_time_ns is not None
+    assert baseline.duration_ns == baseline.message_end_time_ns - baseline.message_start_time_ns
+    assert baseline.channel_count == len(baseline.channels)
+    assert [channel.id for channel in baseline.channels] == sorted(channel.id for channel in baseline.channels)
 
 
 # ---------------------------------------------------------------------------
