@@ -388,45 +388,44 @@ pub fn start<E: Example + 'static>() {
 
     let event_loop = EventLoop::new().unwrap();
 
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        let mut wrap_app = WrapApp::<E> { app: None };
-        event_loop.run_app(&mut wrap_app).unwrap();
-    }
+    cfg_select! {
+        target_arch = "wasm32" => {
+            async fn run<E: Example + 'static>(event_loop: EventLoop<()>, window: Window) {
+                let app = Application::<E>::new(window).await.unwrap();
+                let mut wrap_app = WrapApp::<E> { app: Some(app) };
+                event_loop.run_app(&mut wrap_app).unwrap();
+            }
 
-    #[cfg(target_arch = "wasm32")]
-    {
-        async fn run<E: Example + 'static>(event_loop: EventLoop<()>, window: Window) {
-            let app = Application::<E>::new(window).await.unwrap();
-            let mut wrap_app = WrapApp::<E> { app: Some(app) };
+            // Make sure panics are logged using `console.error`.
+            console_error_panic_hook::set_once();
+
+            re_log::setup_logging();
+
+            let window = winit::window::WindowAttributes::default()
+                .with_title(format!("re_renderer sample - {}", E::title()))
+                .with_inner_size(winit::dpi::PhysicalSize {
+                    width: 1920,
+                    height: 1080,
+                });
+
+            // TODO(emilk): port this to the winit 0.30 API, using maybe https://docs.rs/winit/latest/winit/platform/web/trait.EventLoopExtWebSys.html ?
+            #[expect(deprecated)]
+            let window = event_loop.create_window(window).unwrap();
+
+            use winit::platform::web::WindowExtWebSys as _;
+            let canvas = window.canvas().expect("Couldn't get canvas");
+            canvas.style().set_css_text("height: 100%; width: 100%;");
+            web_sys::window()
+                .and_then(|win| win.document())
+                .and_then(|doc| doc.body())
+                .and_then(|body| body.append_child(&canvas).ok())
+                .expect("couldn't append canvas to document body");
+            re_async::spawn_local(run::<E>(event_loop, window));
+        }
+        _ => {
+            let mut wrap_app = WrapApp::<E> { app: None };
             event_loop.run_app(&mut wrap_app).unwrap();
         }
-
-        // Make sure panics are logged using `console.error`.
-        console_error_panic_hook::set_once();
-
-        re_log::setup_logging();
-
-        let window = winit::window::WindowAttributes::default()
-            .with_title(format!("re_renderer sample - {}", E::title()))
-            .with_inner_size(winit::dpi::PhysicalSize {
-                width: 1920,
-                height: 1080,
-            });
-
-        // TODO(emilk): port this to the winit 0.30 API, using maybe https://docs.rs/winit/latest/winit/platform/web/trait.EventLoopExtWebSys.html ?
-        #[expect(deprecated)]
-        let window = event_loop.create_window(window).unwrap();
-
-        use winit::platform::web::WindowExtWebSys as _;
-        let canvas = window.canvas().expect("Couldn't get canvas");
-        canvas.style().set_css_text("height: 100%; width: 100%;");
-        web_sys::window()
-            .and_then(|win| win.document())
-            .and_then(|doc| doc.body())
-            .and_then(|body| body.append_child(&canvas).ok())
-            .expect("couldn't append canvas to document body");
-        re_async::spawn_local(run::<E>(event_loop, window));
     }
 }
 

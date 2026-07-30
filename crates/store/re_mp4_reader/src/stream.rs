@@ -117,19 +117,19 @@ pub(crate) fn iter_chunks(
         // ffmpeg re-encodes and streams back a fragmented mp4, one segment per GOP
         // fragment. Only one GOP is resident at a time.
         drop(reader);
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            Box::new(transcoded_segments(
-                input,
-                desc.codec.clone(),
-                transcode,
-                debug_name,
-            )?)
-        }
-        #[cfg(target_arch = "wasm32")]
-        {
-            let _ = (input, transcode);
-            return Err(Mp4Error::TranscodeRequiresFfmpeg);
+        cfg_select! {
+            target_arch = "wasm32" => {
+                let _ = (input, transcode);
+                return Err(Mp4Error::TranscodeRequiresFfmpeg);
+            }
+            _ => {
+                Box::new(transcoded_segments(
+                    input,
+                    desc.codec.clone(),
+                    transcode,
+                    debug_name,
+                )?)
+            }
         }
     };
 

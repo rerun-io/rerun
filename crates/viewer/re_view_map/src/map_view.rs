@@ -545,16 +545,15 @@ fn handle_ui_interactions(
 ///
 /// On native targets, it configures a cache directory.
 fn http_options(_ctx: &ViewerContext<'_>) -> walkers::HttpOptions {
-    #[cfg(not(target_arch = "wasm32"))]
-    let options = walkers::HttpOptions {
-        cache: _ctx.app_options().cache_subdirectory("map_view"),
-        ..Default::default()
-    };
-
-    #[cfg(target_arch = "wasm32")]
-    let options = Default::default();
-
-    options
+    cfg_select! {
+        target_arch = "wasm32" => { Default::default() }
+        _ => {
+            walkers::HttpOptions {
+                cache: _ctx.app_options().cache_subdirectory("map_view"),
+                ..Default::default()
+            }
+        }
+    }
 }
 
 fn get_tile_manager(

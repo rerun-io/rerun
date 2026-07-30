@@ -91,17 +91,17 @@ impl AsyncRuntimeHandle {
     /// Captures the current Tokio runtime on native or the browser executor on `WebAssembly`.
     #[cfg_attr(target_arch = "wasm32", expect(clippy::unnecessary_wraps))]
     pub fn from_current_tokio_runtime_or_wasmbindgen() -> Result<Self, AsyncRuntimeError> {
-        #[cfg(target_arch = "wasm32")]
-        {
-            Ok(Self::new_web())
-        }
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            Ok(Self::new_native(
-                tokio::runtime::Handle::try_current()
-                    .map_err(|err| AsyncRuntimeError::TokioError(err.to_string()))?
-                    .clone(),
-            ))
+        cfg_select! {
+            target_arch = "wasm32" => {
+                Ok(Self::new_web())
+            }
+            _ => {
+                Ok(Self::new_native(
+                    tokio::runtime::Handle::try_current()
+                        .map_err(|err| AsyncRuntimeError::TokioError(err.to_string()))?
+                        .clone(),
+                ))
+            }
         }
     }
 

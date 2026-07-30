@@ -159,14 +159,14 @@ pub(crate) fn set_session_id_reader(reader: SessionIdReader) {
 /// Invoke the registered reader, if any. Returns `None` when no reader has
 /// been installed or when the feature is off.
 fn read_via_reader() -> Option<RerunTracingSessionId> {
-    #[cfg(feature = "session_id_reader")]
-    {
-        let reader = SESSION_ID_READER.get()?;
-        reader()
-    }
-    #[cfg(not(feature = "session_id_reader"))]
-    {
-        None
+    cfg_select! {
+        feature = "session_id_reader" => {
+            let reader = SESSION_ID_READER.get()?;
+            reader()
+        }
+        _ => {
+            None
+        }
     }
 }
 

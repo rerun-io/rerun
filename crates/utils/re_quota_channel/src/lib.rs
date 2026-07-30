@@ -42,30 +42,29 @@ pub fn send_crossbeam<T: std::fmt::Debug>(
     sender: &crossbeam::channel::Sender<T>,
     msg: T,
 ) -> Result<(), crossbeam::channel::SendError<T>> {
-    #[cfg(target_arch = "wasm32")]
-    {
-        // On web we cannot block, so we just do a normal send.
-        sender.send(msg)
-    }
+    cfg_select! {
+        target_arch = "wasm32" => {
+            // On web we cannot block, so we just do a normal send.
+            sender.send(msg)
+        }
+        _ => {
+            use crossbeam::channel::SendTimeoutError;
 
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        use crossbeam::channel::SendTimeoutError;
+            match sender.send_timeout(msg, BLOCKED_WARNING_THRESHOLD) {
+                Ok(()) => Ok(()),
+                Err(SendTimeoutError::Disconnected(msg)) => Err(crossbeam::channel::SendError(msg)),
+                Err(SendTimeoutError::Timeout(msg)) => {
+                    let caller = std::panic::Location::caller();
+                    re_log::debug_once!(
+                        "{}:{}: failed to send message within {BLOCKED_WARNING_THRESHOLD_SECS}s. Message: {msg:?}. Will keep blocking…",
+                        caller.file(),
+                        caller.line(),
+                    );
 
-        match sender.send_timeout(msg, BLOCKED_WARNING_THRESHOLD) {
-            Ok(()) => Ok(()),
-            Err(SendTimeoutError::Disconnected(msg)) => Err(crossbeam::channel::SendError(msg)),
-            Err(SendTimeoutError::Timeout(msg)) => {
-                let caller = std::panic::Location::caller();
-                re_log::debug_once!(
-                    "{}:{}: failed to send message within {BLOCKED_WARNING_THRESHOLD_SECS}s. Message: {msg:?}. Will keep blocking…",
-                    caller.file(),
-                    caller.line(),
-                );
-
-                #[expect(clippy::disallowed_methods)]
-                // This is the one place we're allowed to call `Sender::send`.
-                sender.send(msg)
+                    #[expect(clippy::disallowed_methods)]
+                    // This is the one place we're allowed to call `Sender::send`.
+                    sender.send(msg)
+                }
             }
         }
     }

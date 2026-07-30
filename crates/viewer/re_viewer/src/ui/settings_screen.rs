@@ -198,18 +198,18 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
                 "Load .rrd files through the Viewer catalog instead of importing them as a live \
                  recording. Takes effect for files opened after enabling.",
             );
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            let gamepad_navigation_response = ui
-                .re_checkbox(gamepad_navigation, "Gamepad navigation")
-                .on_hover_text("Enable gamepad navigation in 3D spatial views.");
-            if gamepad_navigation_response.changed() && !*gamepad_navigation {
-                re_gamepad::clear_event_waker();
+        cfg_select! {
+            target_arch = "wasm32" => {
+                let _ = gamepad_navigation;
             }
-        }
-        #[cfg(target_arch = "wasm32")]
-        {
-            let _ = gamepad_navigation;
+            _ => {
+                let gamepad_navigation_response = ui
+                    .re_checkbox(gamepad_navigation, "Gamepad navigation")
+                    .on_hover_text("Enable gamepad navigation in 3D spatial views.");
+                if gamepad_navigation_response.changed() && !*gamepad_navigation {
+                    re_gamepad::clear_event_waker();
+                }
+            }
         }
     }
 }
@@ -435,64 +435,63 @@ fn map_view_section_ui(ui: &mut Ui, mapbox_access_token: &mut String) {
 }
 
 fn video_section_ui(ui: &mut Ui, options: &mut VideoOptions) {
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        ui.re_checkbox(
-            &mut options.override_ffmpeg_path,
-            "Override the FFmpeg binary path",
-        )
-        .on_hover_ui(|ui| {
-            ui.markdown_ui(
-                "By default, the viewer tries to automatically find a suitable FFmpeg binary in \
-                the system's `PATH`. Enabling this option allows you to specify a custom path to \
-                the FFmpeg binary.",
-            );
-        });
+    cfg_select! {
+        target_arch = "wasm32" => {
+            // This affects only the web target, so we don't need to show it on native.
+            use re_video::DecodeHardwareAcceleration;
 
-        ui.add_enabled_ui(options.override_ffmpeg_path, |ui| {
+            let hardware_acceleration = &mut options.hw_acceleration;
             ui.horizontal(|ui| {
-                // TODO(ab): needed for alignment, we should use egui flex instead
-                ui.set_height(19.0);
-
-                ui.label("Path:");
-
-                ui.add(egui::TextEdit::singleline(&mut options.ffmpeg_path));
+                ui.label("Decoder:");
+                egui::ComboBox::from_id_salt("video_decoder_hw_acceleration")
+                    .selected_text(hardware_acceleration.to_string())
+                    .show_ui(ui, |ui| {
+                        ui.selectable_value(
+                            hardware_acceleration,
+                            DecodeHardwareAcceleration::Auto,
+                            DecodeHardwareAcceleration::Auto.to_string(),
+                        );
+                        ui.selectable_value(
+                            hardware_acceleration,
+                            DecodeHardwareAcceleration::PreferSoftware,
+                            DecodeHardwareAcceleration::PreferSoftware.to_string(),
+                        );
+                        ui.selectable_value(
+                            hardware_acceleration,
+                            DecodeHardwareAcceleration::PreferHardware,
+                            DecodeHardwareAcceleration::PreferHardware.to_string(),
+                        );
+                    });
+                // Note that the setting is part of the video's cache key, so, if it changes, the cache
+                // entries outdate automatically.
             });
-        });
+        }
+        _ => {
+            ui.re_checkbox(
+                &mut options.override_ffmpeg_path,
+                "Override the FFmpeg binary path",
+            )
+            .on_hover_ui(|ui| {
+                ui.markdown_ui(
+                    "By default, the viewer tries to automatically find a suitable FFmpeg binary in \
+                    the system's `PATH`. Enabling this option allows you to specify a custom path to \
+                    the FFmpeg binary.",
+                );
+            });
 
-        ffmpeg_path_status_ui(ui, options);
-    }
+            ui.add_enabled_ui(options.override_ffmpeg_path, |ui| {
+                ui.horizontal(|ui| {
+                    // TODO(ab): needed for alignment, we should use egui flex instead
+                    ui.set_height(19.0);
 
-    // This affects only the web target, so we don't need to show it on native.
-    #[cfg(target_arch = "wasm32")]
-    {
-        use re_video::DecodeHardwareAcceleration;
+                    ui.label("Path:");
 
-        let hardware_acceleration = &mut options.hw_acceleration;
-        ui.horizontal(|ui| {
-            ui.label("Decoder:");
-            egui::ComboBox::from_id_salt("video_decoder_hw_acceleration")
-                .selected_text(hardware_acceleration.to_string())
-                .show_ui(ui, |ui| {
-                    ui.selectable_value(
-                        hardware_acceleration,
-                        DecodeHardwareAcceleration::Auto,
-                        DecodeHardwareAcceleration::Auto.to_string(),
-                    );
-                    ui.selectable_value(
-                        hardware_acceleration,
-                        DecodeHardwareAcceleration::PreferSoftware,
-                        DecodeHardwareAcceleration::PreferSoftware.to_string(),
-                    );
-                    ui.selectable_value(
-                        hardware_acceleration,
-                        DecodeHardwareAcceleration::PreferHardware,
-                        DecodeHardwareAcceleration::PreferHardware.to_string(),
-                    );
+                    ui.add(egui::TextEdit::singleline(&mut options.ffmpeg_path));
                 });
-            // Note that the setting is part of the video's cache key, so, if it changes, the cache
-            // entries outdate automatically.
-        });
+            });
+
+            ffmpeg_path_status_ui(ui, options);
+        }
     }
 }
 

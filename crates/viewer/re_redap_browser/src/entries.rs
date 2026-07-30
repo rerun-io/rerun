@@ -468,10 +468,10 @@ async fn fetch_table_details(
         command_sender,
     );
 
-    #[cfg(target_arch = "wasm32")]
-    let tokio_runtime = None;
-    #[cfg(not(target_arch = "wasm32"))]
-    let tokio_runtime = Some(runtime.inner().clone());
+    let tokio_runtime = cfg_select! {
+        target_arch = "wasm32" => { None }
+        _ => { Some(runtime.inner().clone()) }
+    };
 
     let table_kind = TableKind::from(&result.table_entry.provider_details);
     let caller = match table_kind {

@@ -382,10 +382,14 @@ impl WebViewerServer {
     ) -> Result<Self, WebViewerServerError> {
         // Load the assets eagerly so that e.g. a missing archive fails server
         // creation instead of killing the serve thread on the first request.
-        #[cfg(not(disable_web_viewer_server))]
-        let data = WebViewerData::load(assets_archive_path)?;
-        #[cfg(disable_web_viewer_server)]
-        let _ = assets_archive_path;
+        cfg_select! {
+            disable_web_viewer_server => {
+                let _ = assets_archive_path;
+            }
+            _ => {
+                let data = WebViewerData::load(assets_archive_path)?;
+            }
+        }
 
         let bind_addr = std::net::SocketAddr::new(bind_ip.parse()?, port.0);
 

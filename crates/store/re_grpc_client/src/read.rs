@@ -34,20 +34,19 @@ async fn stream_async(
     let mut client = {
         let url = uri.origin.as_url();
 
-        #[cfg(target_arch = "wasm32")]
-        let tonic_client = {
-            tonic_web_wasm_client::Client::new_with_options(
-                url,
-                tonic_web_wasm_client::options::FetchOptions::new(),
-            )
-        };
-
-        #[cfg(not(target_arch = "wasm32"))]
-        let tonic_client = {
-            tonic::transport::Endpoint::new(url)?
-                .http2_adaptive_window(true) // Optimize for throughput
-                .connect()
-                .await?
+        let tonic_client = cfg_select! {
+            target_arch = "wasm32" => {
+                tonic_web_wasm_client::Client::new_with_options(
+                    url,
+                    tonic_web_wasm_client::options::FetchOptions::new(),
+                )
+            }
+            _ => {
+                tonic::transport::Endpoint::new(url)?
+                    .http2_adaptive_window(true) // Optimize for throughput
+                    .connect()
+                    .await?
+            }
         };
 
         MessageProxyServiceClient::new(tonic_client)

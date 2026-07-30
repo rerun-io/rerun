@@ -43,15 +43,16 @@ pub(crate) fn read_trace_context_from_python(
     #[allow(unused)] py: Python<'_>,
     #[allow(unused)] name: &'static str,
 ) -> tracing::Span {
-    #[cfg(feature = "perf_telemetry")]
-    {
-        let trace_headers = extract_trace_context_from_contextvar(py);
-        let _guard = trace_headers.attach();
-        tracing::span!(tracing::Level::INFO, "sdk", otel.name = name)
+    cfg_select! {
+        feature = "perf_telemetry" => {
+            let trace_headers = extract_trace_context_from_contextvar(py);
+            let _guard = trace_headers.attach();
+            tracing::span!(tracing::Level::INFO, "sdk", otel.name = name)
+        }
+        _ => {
+            tracing::Span::none()
+        }
     }
-
-    #[cfg(not(feature = "perf_telemetry"))]
-    tracing::Span::none()
 }
 
 /// Return the `ContextVar` that Python uses to pass trace headers to Rust.
@@ -64,14 +65,14 @@ pub(crate) fn read_trace_context_from_python(
 #[pyfunction]
 #[pyo3(name = "_get_trace_context_var")]
 pub fn get_trace_context_var(py: Python<'_>) -> PyResult<Py<PyAny>> {
-    #[cfg(feature = "perf_telemetry")]
-    {
-        let context_var = trace_context_var(py)?;
-        Ok(context_var.unbind())
-    }
-    #[cfg(not(feature = "perf_telemetry"))]
-    {
-        Ok(py.None())
+    cfg_select! {
+        feature = "perf_telemetry" => {
+            let context_var = trace_context_var(py)?;
+            Ok(context_var.unbind())
+        }
+        _ => {
+            Ok(py.None())
+        }
     }
 }
 

@@ -45,38 +45,36 @@ pub fn set_url_parameter_and_refresh(key: &str, value: &str) -> Result<(), crate
 
 /// Whether the current browser is Safari.
 pub fn is_safari() -> bool {
-    #[cfg(target_arch = "wasm32")]
-    {
-        use wasm_bindgen::{JsCast as _, JsValue};
+    cfg_select! {
+        target_arch = "wasm32" => {
+            use wasm_bindgen::{JsCast as _, JsValue};
 
-        let Ok(window) = window() else {
-            return false;
-        };
+            let Ok(window) = window() else {
+                return false;
+            };
 
-        js_sys::Object::has_own(
-            window.unchecked_ref::<js_sys::Object>(),
-            &JsValue::from("safari"),
-        )
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        false
+            js_sys::Object::has_own(
+                window.unchecked_ref::<js_sys::Object>(),
+                &JsValue::from("safari"),
+            )
+        }
+        _ => {
+            false
+        }
     }
 }
 
 /// Whether the current browser is Firefox.
 pub fn is_firefox() -> bool {
-    #[cfg(target_arch = "wasm32")]
-    {
-        window()
-            .ok()
-            .and_then(|window| window.navigator().user_agent().ok())
-            .is_some_and(|user_agent| user_agent.to_lowercase().contains("firefox"))
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        false
+    cfg_select! {
+        target_arch = "wasm32" => {
+            window()
+                .ok()
+                .and_then(|window| window.navigator().user_agent().ok())
+                .is_some_and(|user_agent| user_agent.to_lowercase().contains("firefox"))
+        }
+        _ => {
+            false
+        }
     }
 }

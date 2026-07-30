@@ -456,13 +456,16 @@ mod tests_import_clause {
 
 // ---
 
-/// The recommended `FileResolver` type for the current platform/target.
-#[cfg(load_shaders_from_disk)]
-pub type RecommendedFileResolver = FileResolver<crate::OsFileSystem>;
-
-/// The recommended `FileResolver` type for the current platform/target.
-#[cfg(not(load_shaders_from_disk))]
-pub type RecommendedFileResolver = FileResolver<&'static crate::MemFileSystem>;
+cfg_select! {
+    load_shaders_from_disk => {
+        /// The recommended `FileResolver` type for the current platform/target.
+        pub type RecommendedFileResolver = FileResolver<crate::OsFileSystem>;
+    }
+    _ => {
+        /// The recommended `FileResolver` type for the current platform/target.
+        pub type RecommendedFileResolver = FileResolver<&'static crate::MemFileSystem>;
+    }
+}
 
 /// Returns the recommended `FileResolver` for the current platform/target.
 pub fn new_recommended() -> RecommendedFileResolver {

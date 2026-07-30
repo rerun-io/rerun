@@ -325,16 +325,16 @@ impl ViewerOpenUrl {
             LogSource::HttpStream { url, .. } => Ok(Self::HttpUrl(url.parse::<Url>()?)),
 
             LogSource::File { path, .. } => {
-                #[cfg(not(target_arch = "wasm32"))]
-                {
-                    Ok(Self::FilePath(path.clone()))
-                }
-                #[cfg(target_arch = "wasm32")]
-                {
-                    _ = path;
-                    Err(anyhow::anyhow!(
-                        "Can't share links to local files on the web."
-                    ))
+                cfg_select! {
+                    target_arch = "wasm32" => {
+                        _ = path;
+                        Err(anyhow::anyhow!(
+                            "Can't share links to local files on the web."
+                        ))
+                    }
+                    _ => {
+                        Ok(Self::FilePath(path.clone()))
+                    }
                 }
             }
 

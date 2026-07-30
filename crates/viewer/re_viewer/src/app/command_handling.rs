@@ -1485,22 +1485,21 @@ impl App {
     }
 
     pub(crate) fn toggle_fullscreen(&self) {
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            let fullscreen = self
-                .egui_ctx
-                .input(|i| i.viewport().fullscreen.unwrap_or(false));
-            self.egui_ctx
-                .send_viewport_cmd(egui::ViewportCommand::Fullscreen(!fullscreen));
-        }
-
-        #[cfg(target_arch = "wasm32")]
-        {
-            if let Some(options) = &self.startup_options.fullscreen_options {
-                // Tell JS to toggle fullscreen.
-                if let Err(err) = options.on_toggle.call0() {
-                    re_log::error!("{err}");
+        cfg_select! {
+            target_arch = "wasm32" => {
+                if let Some(options) = &self.startup_options.fullscreen_options {
+                    // Tell JS to toggle fullscreen.
+                    if let Err(err) = options.on_toggle.call0() {
+                        re_log::error!("{err}");
+                    }
                 }
+            }
+            _ => {
+                let fullscreen = self
+                    .egui_ctx
+                    .input(|i| i.viewport().fullscreen.unwrap_or(false));
+                self.egui_ctx
+                    .send_viewport_cmd(egui::ViewportCommand::Fullscreen(!fullscreen));
             }
         }
     }
@@ -1866,33 +1865,32 @@ fn save_entity_db(
     // It just sucks latency-wise.
     let messages = messages.collect::<Vec<_>>();
 
-    // Web
-    #[cfg(target_arch = "wasm32")]
-    {
-        re_async::spawn_local(async move {
-            if let Err(err) =
-                async_save_dialog(rrd_version, &file_name, &title, messages.into_iter()).await
-            {
-                re_log::error!("File saving failed: {err}");
+    cfg_select! {
+        target_arch = "wasm32" => {
+            // Web
+            re_async::spawn_local(async move {
+                if let Err(err) =
+                    async_save_dialog(rrd_version, &file_name, &title, messages.into_iter()).await
+                {
+                    re_log::error!("File saving failed: {err}");
+                }
+            });
+        }
+        _ => {
+            // Native
+            let path = {
+                re_tracing::profile_scope!("file_dialog");
+                rfd::FileDialog::new()
+                    .set_file_name(file_name)
+                    .set_title(title)
+                    .save_file()
+            };
+            if let Some(path) = path {
+                app.background_tasks.spawn_file_saver(move || {
+                    crate::saving::encode_to_file(rrd_version, &path, messages.into_iter())?;
+                    Ok(path)
+                })?;
             }
-        });
-    }
-
-    // Native
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        let path = {
-            re_tracing::profile_scope!("file_dialog");
-            rfd::FileDialog::new()
-                .set_file_name(file_name)
-                .set_title(title)
-                .save_file()
-        };
-        if let Some(path) = path {
-            app.background_tasks.spawn_file_saver(move || {
-                crate::saving::encode_to_file(rrd_version, &path, messages.into_iter())?;
-                Ok(path)
-            })?;
         }
     }
 

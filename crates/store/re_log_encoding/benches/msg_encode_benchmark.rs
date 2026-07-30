@@ -16,12 +16,15 @@ const PROTOBUF_COMPRESSED: EncodingOptions = EncodingOptions::PROTOBUF_COMPRESSE
 use criterion::{Criterion, criterion_group, criterion_main};
 use itertools::Itertools as _;
 
-#[cfg(not(debug_assertions))]
-const NUM_POINTS: usize = 10_000;
-
-// `cargo test` also runs the benchmark setup code, so make sure they run quickly:
-#[cfg(debug_assertions)]
-const NUM_POINTS: usize = 1;
+cfg_select! {
+    debug_assertions => {
+        // `cargo test` also runs the benchmark setup code, so make sure they run quickly:
+        const NUM_POINTS: usize = 1;
+    }
+    _ => {
+        const NUM_POINTS: usize = 10_000;
+    }
+}
 
 criterion_group!(
     benches,

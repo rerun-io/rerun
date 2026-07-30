@@ -435,10 +435,10 @@ impl MessageDecoderRunner {
             None => summary.chunk_indexes.iter().collect(),
         };
 
-        #[cfg(target_arch = "wasm32")]
-        let workers = 1;
-        #[cfg(not(target_arch = "wasm32"))]
-        let workers = rayon::current_num_threads().max(1);
+        let workers = cfg_select! {
+            target_arch = "wasm32" => { 1 }
+            _ => { rayon::current_num_threads().max(1) }
+        };
 
         if workers <= 2 {
             // Serial path. Used on wasm32 and on small worker counts.

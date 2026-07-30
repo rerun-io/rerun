@@ -270,93 +270,92 @@ impl RerunCloudHandler {
         let mut resolved = Vec::<DataSource>::with_capacity(data_sources.len());
         for source in data_sources {
             if source.is_prefix {
-                #[cfg(target_arch = "wasm32")]
-                {
-                    // TODO(RR-5155): Support enumerating OPFS directories for prefix registration.
-                    return Err(tonic::Status::invalid_argument(
-                        "prefix data sources are not supported on wasm",
-                    ));
-                }
-
-                #[cfg(not(target_arch = "wasm32"))]
-                {
-                    if source.storage_url.scheme() == "memory" {
+                cfg_select! {
+                    target_arch = "wasm32" => {
+                        // TODO(RR-5155): Support enumerating OPFS directories for prefix registration.
                         return Err(tonic::Status::invalid_argument(
-                            "memory:// URLs cannot be used as prefix data sources",
+                            "prefix data sources are not supported on wasm",
                         ));
                     }
-                    let path = source.storage_url.to_file_path().map_err(|_err| {
-                        tonic::Status::invalid_argument(format!(
-                            "getting file path from {:?}",
-                            source.storage_url
-                        ))
-                    })?;
-                    let meta =
-                        tokio::fs::metadata(&path)
-                            .await
-                            .map_err(|err| match err.kind() {
-                                std::io::ErrorKind::NotFound => tonic::Status::invalid_argument(
-                                    format!("Directory not found: {path:?}"),
-                                ),
-                                _ => tonic::Status::invalid_argument(format!(
-                                    "Failed to read directory metadata {path:?}: {err:#}"
-                                )),
-                            })?;
-                    if !meta.is_dir() {
-                        return Err(tonic::Status::invalid_argument(format!(
-                            "expected prefix / directory but got an object ({path:?})"
-                        )));
-                    }
-
-                    // Recursively walk the directory and grab all '.rrd' files
-                    let mut dirs_to_visit = vec![path];
-                    let mut files = Vec::new();
-
-                    while let Some(current_dir) = dirs_to_visit.pop() {
-                        let mut entries =
-                            tokio::fs::read_dir(&current_dir).await.map_err(|err| {
-                                tonic::Status::internal(format!(
-                                    "Failed to read directory {current_dir:?}: {err:#}"
-                                ))
-                            })?;
-
-                        while let Some(entry) = entries.next_entry().await.map_err(|err| {
-                            tonic::Status::internal(format!(
-                                "Failed to read directory entry: {err:#}"
+                    _ => {
+                        if source.storage_url.scheme() == "memory" {
+                            return Err(tonic::Status::invalid_argument(
+                                "memory:// URLs cannot be used as prefix data sources",
+                            ));
+                        }
+                        let path = source.storage_url.to_file_path().map_err(|_err| {
+                            tonic::Status::invalid_argument(format!(
+                                "getting file path from {:?}",
+                                source.storage_url
                             ))
-                        })? {
-                            let entry_path = entry.path();
-                            let file_type = entry.file_type().await.map_err(|err| {
-                                tonic::Status::internal(format!(
-                                    "Failed to read directory entry metadata: {err:#}"
-                                ))
-                            })?;
+                        })?;
+                        let meta =
+                            tokio::fs::metadata(&path)
+                                .await
+                                .map_err(|err| match err.kind() {
+                                    std::io::ErrorKind::NotFound => tonic::Status::invalid_argument(
+                                        format!("Directory not found: {path:?}"),
+                                    ),
+                                    _ => tonic::Status::invalid_argument(format!(
+                                        "Failed to read directory metadata {path:?}: {err:#}"
+                                    )),
+                                })?;
+                        if !meta.is_dir() {
+                            return Err(tonic::Status::invalid_argument(format!(
+                                "expected prefix / directory but got an object ({path:?})"
+                            )));
+                        }
 
-                            if file_type.is_dir() {
-                                dirs_to_visit.push(entry_path);
-                            } else if let Some(extension) = entry_path.extension()
-                                && extension == "rrd"
-                            {
-                                files.push(entry_path);
+                        // Recursively walk the directory and grab all '.rrd' files
+                        let mut dirs_to_visit = vec![path];
+                        let mut files = Vec::new();
+
+                        while let Some(current_dir) = dirs_to_visit.pop() {
+                            let mut entries =
+                                tokio::fs::read_dir(&current_dir).await.map_err(|err| {
+                                    tonic::Status::internal(format!(
+                                        "Failed to read directory {current_dir:?}: {err:#}"
+                                    ))
+                                })?;
+
+                            while let Some(entry) = entries.next_entry().await.map_err(|err| {
+                                tonic::Status::internal(format!(
+                                    "Failed to read directory entry: {err:#}"
+                                ))
+                            })? {
+                                let entry_path = entry.path();
+                                let file_type = entry.file_type().await.map_err(|err| {
+                                    tonic::Status::internal(format!(
+                                        "Failed to read directory entry metadata: {err:#}"
+                                    ))
+                                })?;
+
+                                if file_type.is_dir() {
+                                    dirs_to_visit.push(entry_path);
+                                } else if let Some(extension) = entry_path.extension()
+                                    && extension == "rrd"
+                                {
+                                    files.push(entry_path);
+                                }
                             }
                         }
-                    }
 
-                    if files.is_empty() {
-                        return Err(tonic::Status::invalid_argument(format!(
-                            "no rrd files found in {:?}",
-                            source.storage_url
-                        )));
-                    }
+                        if files.is_empty() {
+                            return Err(tonic::Status::invalid_argument(format!(
+                                "no rrd files found in {:?}",
+                                source.storage_url
+                            )));
+                        }
 
-                    for file_path in files {
-                        let mut file_url = source.storage_url.clone();
-                        file_url.set_path(&file_path.to_string_lossy());
-                        resolved.push(DataSource {
-                            storage_url: file_url,
-                            is_prefix: false,
-                            ..source.clone()
-                        });
+                        for file_path in files {
+                            let mut file_url = source.storage_url.clone();
+                            file_url.set_path(&file_path.to_string_lossy());
+                            resolved.push(DataSource {
+                                storage_url: file_url,
+                                is_prefix: false,
+                                ..source.clone()
+                            });
+                        }
                     }
                 }
             } else {
@@ -1166,29 +1165,28 @@ impl RerunCloudService for RerunCloudHandler {
             let insert_op = TableInsertMode::try_from(write_msg.insert_mode)
                 .map_err(|err| Status::invalid_argument(err.to_string()))?;
 
-            #[cfg(feature = "lance")]
-            {
-                let mut store = self.store.write().await;
-                let Some(table) = store.table_mut(entry_id) else {
-                    return Err(tonic::Status::not_found("table not found"));
-                };
-                table.write_table(rb, insert_op).await.map_err(|err| {
-                    tonic::Status::internal(format!("error writing to table: {err:#}"))
-                })?;
-            }
-
-            #[cfg(not(feature = "lance"))]
-            {
-                let mut table = {
-                    let store = self.store.read().await;
-                    store
-                        .table(entry_id)
-                        .cloned()
-                        .ok_or_else(|| tonic::Status::not_found("table not found"))?
-                };
-                table.write_table(rb, insert_op).await.map_err(|err| {
-                    tonic::Status::internal(format!("error writing to table: {err:#}"))
-                })?;
+            cfg_select! {
+                feature = "lance" => {
+                    let mut store = self.store.write().await;
+                    let Some(table) = store.table_mut(entry_id) else {
+                        return Err(tonic::Status::not_found("table not found"));
+                    };
+                    table.write_table(rb, insert_op).await.map_err(|err| {
+                        tonic::Status::internal(format!("error writing to table: {err:#}"))
+                    })?;
+                }
+                _ => {
+                    let mut table = {
+                        let store = self.store.read().await;
+                        store
+                            .table(entry_id)
+                            .cloned()
+                            .ok_or_else(|| tonic::Status::not_found("table not found"))?
+                    };
+                    table.write_table(rb, insert_op).await.map_err(|err| {
+                        tonic::Status::internal(format!("error writing to table: {err:#}"))
+                    })?;
+                }
             }
         }
 
@@ -1845,64 +1843,64 @@ impl RerunCloudService for RerunCloudHandler {
         &self,
         request: tonic::Request<RegisterTableRequest>,
     ) -> tonic::Result<tonic::Response<RegisterTableResponse>> {
-        #[cfg(target_arch = "wasm32")]
-        {
-            let _ = request;
-            return Err(tonic::Status::unimplemented(
-                "register_table is not supported on wasm",
-            ));
-        }
-
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            #[cfg_attr(not(feature = "lance"), expect(unused_mut))]
-            let mut store = self.store.write().await;
-            let request = request.into_inner();
-            let Some(provider_details) = request.provider_details else {
-                return Err(tonic::Status::invalid_argument("Missing provider details"));
-            };
-            #[cfg_attr(not(feature = "lance"), expect(unused_variables))]
-            let lance_table = match ProviderDetails::try_from(&provider_details) {
-                Ok(ProviderDetails::LanceTable(lance_table)) => lance_table.table_url,
-                Ok(ProviderDetails::SystemTable(_)) => Err(Status::invalid_argument(
-                    "System tables cannot be registered",
-                ))?,
-                Err(err) => return Err(err.into()),
+        cfg_select! {
+            target_arch = "wasm32" => {
+                let _ = request;
+                return Err(tonic::Status::unimplemented(
+                    "register_table is not supported on wasm",
+                ));
             }
-            .to_file_path()
-            .map_err(|()| tonic::Status::invalid_argument("Invalid lance table path"))?;
+            _ => {
+                #[cfg_attr(not(feature = "lance"), expect(unused_mut))]
+                let mut store = self.store.write().await;
+                let request = request.into_inner();
+                let Some(provider_details) = request.provider_details else {
+                    return Err(tonic::Status::invalid_argument("Missing provider details"));
+                };
+                #[cfg_attr(not(feature = "lance"), expect(unused_variables))]
+                let lance_table = match ProviderDetails::try_from(&provider_details) {
+                    Ok(ProviderDetails::LanceTable(lance_table)) => lance_table.table_url,
+                    Ok(ProviderDetails::SystemTable(_)) => Err(Status::invalid_argument(
+                        "System tables cannot be registered",
+                    ))?,
+                    Err(err) => return Err(err.into()),
+                }
+                .to_file_path()
+                .map_err(|()| tonic::Status::invalid_argument("Invalid lance table path"))?;
 
-            #[cfg(feature = "lance")]
-            let entry_id = {
-                let named_path = NamedPath {
-                    name: Some(request.name.clone()),
-                    path: lance_table,
+                cfg_select! {
+                    feature = "lance" => {
+                        let named_path = NamedPath {
+                            name: Some(request.name.clone()),
+                            path: lance_table,
+                        };
+
+                        let entry_id = store
+                            .load_directory_as_table(&named_path, IfDuplicateBehavior::Error)
+                            .await?;
+                    }
+                    _ => {
+                        let entry_id = EntryId::new();
+                    }
+                }
+
+                let table_entry = store
+                    .table(entry_id)
+                    .ok_or_else(|| Status::internal("table missing that was just registered"))?
+                    .as_table_entry();
+
+                let response = RegisterTableResponse {
+                    table_entry: Some(table_entry.try_into()?),
                 };
 
-                store
-                    .load_directory_as_table(&named_path, IfDuplicateBehavior::Error)
-                    .await?
-            };
+                self.notify(watch_events_response::Kind::EntryCreated(
+                    EntryCreatedEvent {
+                        id: Some(entry_id.into()),
+                    },
+                ));
 
-            #[cfg(not(feature = "lance"))]
-            let entry_id = EntryId::new();
-
-            let table_entry = store
-                .table(entry_id)
-                .ok_or_else(|| Status::internal("table missing that was just registered"))?
-                .as_table_entry();
-
-            let response = RegisterTableResponse {
-                table_entry: Some(table_entry.try_into()?),
-            };
-
-            self.notify(watch_events_response::Kind::EntryCreated(
-                EntryCreatedEvent {
-                    id: Some(entry_id.into()),
-                },
-            ));
-
-            Ok(response.into())
+                Ok(response.into())
+            }
         }
     }
 
@@ -2085,68 +2083,70 @@ impl RerunCloudService for RerunCloudHandler {
 
         let schema = Arc::new(request.schema);
 
-        #[cfg(target_arch = "wasm32")]
-        let Some(details) = request.provider_details else {
-            return Err(tonic::Status::unimplemented(
-                "filesystem-backed table creation is not supported on wasm",
-            ));
-        };
-
-        #[cfg(not(target_arch = "wasm32"))]
-        let details = if let Some(details) = request.provider_details {
-            details
-        } else {
-            // Create a directory in the storage directory. We use a tuid to avoid collisions
-            // and avoid any sanitization issue with the provided table name.
-            let table_path = self
-                .settings
-                .storage_dir
-                .path()
-                .join(format!("lance-{}", Tuid::new()));
-            ProviderDetails::LanceTable(ext::LanceTable {
-                table_url: url::Url::from_directory_path(table_path).map_err(|_err| {
-                    Status::internal(format!(
-                        "Failed to create table directory in {:?}",
-                        self.settings.storage_dir.path()
-                    ))
-                })?,
-            })
-        };
-
-        #[cfg(target_arch = "wasm32")]
-        {
-            let _ = (table_name, schema, details);
-            return Err(tonic::Status::unimplemented(
-                "filesystem-backed table creation is not supported on wasm",
-            ));
+        cfg_select! {
+            target_arch = "wasm32" => {
+                let Some(details) = request.provider_details else {
+                    return Err(tonic::Status::unimplemented(
+                        "filesystem-backed table creation is not supported on wasm",
+                    ));
+                };
+            }
+            _ => {
+                let details = if let Some(details) = request.provider_details {
+                    details
+                } else {
+                    // Create a directory in the storage directory. We use a tuid to avoid collisions
+                    // and avoid any sanitization issue with the provided table name.
+                    let table_path = self
+                        .settings
+                        .storage_dir
+                        .path()
+                        .join(format!("lance-{}", Tuid::new()));
+                    ProviderDetails::LanceTable(ext::LanceTable {
+                        table_url: url::Url::from_directory_path(table_path).map_err(|_err| {
+                            Status::internal(format!(
+                                "Failed to create table directory in {:?}",
+                                self.settings.storage_dir.path()
+                            ))
+                        })?,
+                    })
+                };
+            }
         }
 
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            let table = match details {
-                ProviderDetails::LanceTable(table) => {
-                    self.store
-                        .write()
-                        .await
-                        .create_table_entry(table_name, &table.table_url, schema)
-                        .await?
-                }
-                ProviderDetails::SystemTable(_) => {
-                    return Err(tonic::Status::invalid_argument(
-                        "Creating system tables is not supported",
-                    ));
-                }
-            };
+        cfg_select! {
+            target_arch = "wasm32" => {
+                let _ = (table_name, schema, details);
+                return Err(tonic::Status::unimplemented(
+                    "filesystem-backed table creation is not supported on wasm",
+                ));
+            }
+            _ => {
+                let table = match details {
+                    ProviderDetails::LanceTable(table) => {
+                        self.store
+                            .write()
+                            .await
+                            .create_table_entry(table_name, &table.table_url, schema)
+                            .await?
+                    }
+                    ProviderDetails::SystemTable(_) => {
+                        return Err(tonic::Status::invalid_argument(
+                            "Creating system tables is not supported",
+                        ));
+                    }
+                };
 
-            self.notify(watch_events_response::Kind::EntryCreated(
-                EntryCreatedEvent {
-                    id: Some(table.details.id.into()),
-                },
-            ));
+                self.notify(watch_events_response::Kind::EntryCreated(
+                    EntryCreatedEvent {
+                        id: Some(table.details.id.into()),
+                    },
+                ));
 
-            Ok(Response::new(
-                CreateTableEntryResponse { table }.try_into()?,
-            ))
+                Ok(Response::new(
+                    CreateTableEntryResponse { table }.try_into()?,
+                ))
+            }
         }
     }
 }

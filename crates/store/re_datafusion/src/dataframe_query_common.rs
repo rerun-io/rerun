@@ -81,18 +81,16 @@ pub(crate) fn force_grpc() -> bool {
 /// ceiling. On wasm `pipeline_budget` isn't compiled in and there's no env, so
 /// the width is a small fixed constant.
 fn query_dataset_fanout() -> usize {
-    /// gRPC-web requests overlap usefully even though wasm is single-threaded;
-    /// kept modest since there's no process-wide limiter to back it up.
-    #[cfg(target_arch = "wasm32")]
-    const WASM_QUERY_DATASET_FANOUT: usize = 8;
-
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        crate::pipeline_budget::query_dataset_max_concurrency()
-    }
-    #[cfg(target_arch = "wasm32")]
-    {
-        WASM_QUERY_DATASET_FANOUT
+    cfg_select! {
+        target_arch = "wasm32" => {
+            /// gRPC-web requests overlap usefully even though wasm is single-threaded;
+            /// kept modest since there's no process-wide limiter to back it up.
+            const WASM_QUERY_DATASET_FANOUT: usize = 8;
+            WASM_QUERY_DATASET_FANOUT
+        }
+        _ => {
+            crate::pipeline_budget::query_dataset_max_concurrency()
+        }
     }
 }
 

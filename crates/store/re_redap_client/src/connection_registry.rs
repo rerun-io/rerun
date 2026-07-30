@@ -736,13 +736,10 @@ fn wrap_blocking_lock<F, R>(inner: F) -> R
 where
     F: FnOnce() -> R,
 {
-    #[cfg(not(target_arch = "wasm32"))]
-    let res = tokio::task::block_in_place(inner);
-
-    #[cfg(target_arch = "wasm32")]
-    let res = inner();
-
-    res
+    cfg_select! {
+        target_arch = "wasm32" => { inner() }
+        _ => { tokio::task::block_in_place(inner) }
+    }
 }
 
 // ---

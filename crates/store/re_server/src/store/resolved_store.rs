@@ -120,12 +120,14 @@ impl ResolvedStore {
         path: &Path,
         store_kind: StoreKind,
     ) -> Result<Vec<(StoreId, Self)>, super::Error> {
-        #[cfg(target_arch = "wasm32")]
-        let file = re_web::fs::File::open(path).await?;
-        #[cfg(not(target_arch = "wasm32"))]
-        // TODO(tokio-rs/tokio#1529): Positional reads block the reactor; use `std::fs::File`
-        // until an async positional file API lands (or push reads to `spawn_blocking`).
-        let file = std::fs::File::open(path)?;
+        let file = cfg_select! {
+            target_arch = "wasm32" => { re_web::fs::File::open(path).await? }
+            _ => {
+                // TODO(tokio-rs/tokio#1529): Positional reads block the reactor; use `std::fs::File`
+                // until an async positional file API lands (or push reads to `spawn_blocking`).
+                std::fs::File::open(path)?
+            }
+        };
 
         if let Some(footer) = re_log_encoding::read_rrd_footer(&file)
             .await
@@ -137,10 +139,10 @@ impl ResolvedStore {
                     continue;
                 }
 
-                #[cfg(target_arch = "wasm32")]
-                let store_file = re_web::fs::File::open(path).await?;
-                #[cfg(not(target_arch = "wasm32"))]
-                let store_file = std::fs::File::open(path)?;
+                let store_file = cfg_select! {
+                    target_arch = "wasm32" => { re_web::fs::File::open(path).await? }
+                    _ => { std::fs::File::open(path)? }
+                };
 
                 let provider = Arc::new(
                     RrdChunkProvider::from_reader(
@@ -156,13 +158,15 @@ impl ResolvedStore {
             return Ok(out);
         }
 
-        #[cfg(target_arch = "wasm32")]
-        let reader = futures::io::Cursor::new(re_web::fs::read(path).await?);
-        #[cfg(not(target_arch = "wasm32"))]
-        let reader = {
-            use tokio_util::compat::TokioAsyncReadCompatExt as _;
-            tokio::fs::File::open(path).await?.compat()
-        };
+        cfg_select! {
+            target_arch = "wasm32" => {
+                let reader = futures::io::Cursor::new(re_web::fs::read(path).await?);
+            }
+            _ => {
+                use tokio_util::compat::TokioAsyncReadCompatExt as _;
+                let reader = tokio::fs::File::open(path).await?.compat();
+            }
+        }
 
         Ok(re_chunk_store::ChunkStore::handle_from_rrd_reader_async(
             &super::InMemoryStore::default_eager_chunk_store_config(),

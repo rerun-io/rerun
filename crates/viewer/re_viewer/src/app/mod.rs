@@ -301,13 +301,15 @@ impl App {
             if (!connection_registry_was_provided || cfg!(target_arch = "wasm32"))
                 && connection_registry.internal_origin().is_none()
             {
-                #[cfg(not(target_arch = "wasm32"))]
-                let catalog = crate::internal_catalog::build(std::net::SocketAddr::from((
-                    std::net::Ipv4Addr::LOCALHOST,
-                    re_uri::DEFAULT_PROXY_PORT,
-                )));
-                #[cfg(target_arch = "wasm32")]
-                let catalog = crate::internal_catalog::build();
+                let catalog = cfg_select! {
+                    target_arch = "wasm32" => { crate::internal_catalog::build() }
+                    _ => {
+                        crate::internal_catalog::build(std::net::SocketAddr::from((
+                            std::net::Ipv4Addr::LOCALHOST,
+                            re_uri::DEFAULT_PROXY_PORT,
+                        )))
+                    }
+                };
 
                 connection_registry.with_internal((catalog.origin, catalog.connection))
             } else {
@@ -1008,35 +1010,38 @@ impl App {
                     StoreId::recording(application_id, recording_id)
                 });
 
-            #[cfg(target_arch = "wasm32")]
-            if let Some(bytes) = file.bytes {
-                command_sender.send_system(SystemCommand::LoadDataSource(
-                    LogDataSource::FileContents(
-                        FileSource::DragAndDrop {
-                            recommended_store_id: Some(active_store_id.clone()),
-                            force_store_info,
-                        },
-                        FileContents {
-                            path: file_path,
-                            bytes: bytes.clone(),
-                        },
-                    ),
-                ));
+            cfg_select! {
+                target_arch = "wasm32" => {
+                    if let Some(bytes) = file.bytes {
+                        command_sender.send_system(SystemCommand::LoadDataSource(
+                            LogDataSource::FileContents(
+                                FileSource::DragAndDrop {
+                                    recommended_store_id: Some(active_store_id.clone()),
+                                    force_store_info,
+                                },
+                                FileContents {
+                                    path: file_path,
+                                    bytes: bytes.clone(),
+                                },
+                            ),
+                        ));
 
-                continue;
-            }
-
-            #[cfg(not(target_arch = "wasm32"))]
-            if let Some(path) = file.path {
-                command_sender.send_system(SystemCommand::LoadDataSource(
-                    LogDataSource::FilePath {
-                        file_source: FileSource::DragAndDrop {
-                            recommended_store_id: Some(active_store_id.clone()),
-                            force_store_info,
-                        },
-                        path,
-                    },
-                ));
+                        continue;
+                    }
+                }
+                _ => {
+                    if let Some(path) = file.path {
+                        command_sender.send_system(SystemCommand::LoadDataSource(
+                            LogDataSource::FilePath {
+                                file_source: FileSource::DragAndDrop {
+                                    recommended_store_id: Some(active_store_id.clone()),
+                                    force_store_info,
+                                },
+                                path,
+                            },
+                        ));
+                    }
+                }
             }
         }
     }
@@ -1101,58 +1106,58 @@ impl App {
                 }
 
                 re_viewer_context::ScreenshotTarget::SaveToPath(file_path) => {
-                    #[cfg(not(target_arch = "wasm32"))]
-                    {
-                        let rgba = rgba.clone();
-                        let notifier = self.pending_screenshot_notifiers.remove(&file_path);
-                        let Some(rgba_image) = image::RgbaImage::from_vec(
-                            rgba.width() as _,
-                            rgba.height() as _,
-                            bytemuck::pod_collect_to_vec(&rgba.pixels),
-                        ) else {
-                            re_log::error!("Failed to create image from screenshot data");
-                            if let Some(notifier) = notifier {
-                                notifier
-                                    .unbounded_send(Err(SaveScreenshotError::InvalidImageData))
-                                    .ok();
-                            }
-                            return;
-                        };
-
-                        // Convert to RGB8 so it works with JPG and other formats that don't support alpha.
-                        // (There's nothing interesting in the alpha channel anyways.)
-                        let rgb_image = image::DynamicImage::ImageRgba8(rgba_image).to_rgb8();
-
-                        let result = match rgb_image.save(&file_path) {
-                            Ok(()) => {
-                                // Only show a user-facing toast for user-initiated screenshots.
-                                if notify {
-                                    re_log::info!("Saved screenshot to {file_path:?}");
-                                } else {
-                                    re_log::debug!("Saved screenshot to {file_path:?}");
-                                }
-                                Ok(())
-                            }
-                            Err(err) => {
-                                re_log::error!(?file_path, "Failed to save screenshot: {err}");
-                                // Image library has the bad habit of creating the file even when it fails e.g. due to unsupported format. Remove it again.
-                                std::fs::remove_file(&file_path).ok();
-                                Err(SaveScreenshotError::SaveToPathFailed {
-                                    path: file_path.to_string(),
-                                    reason: err.to_string(),
-                                })
-                            }
-                        };
-
-                        if let Some(notifier) = notifier {
-                            notifier.unbounded_send(result).ok();
+                    cfg_select! {
+                        target_arch = "wasm32" => {
+                            re_log::error!(
+                                "Saving screenshots to a path is not supported on web. Attempted to save to: {file_path:?}"
+                            );
                         }
-                    }
-                    #[cfg(target_arch = "wasm32")]
-                    {
-                        re_log::error!(
-                            "Saving screenshots to a path is not supported on web. Attempted to save to: {file_path:?}"
-                        );
+                        _ => {
+                            let rgba = rgba.clone();
+                            let notifier = self.pending_screenshot_notifiers.remove(&file_path);
+                            let Some(rgba_image) = image::RgbaImage::from_vec(
+                                rgba.width() as _,
+                                rgba.height() as _,
+                                bytemuck::pod_collect_to_vec(&rgba.pixels),
+                            ) else {
+                                re_log::error!("Failed to create image from screenshot data");
+                                if let Some(notifier) = notifier {
+                                    notifier
+                                        .unbounded_send(Err(SaveScreenshotError::InvalidImageData))
+                                        .ok();
+                                }
+                                return;
+                            };
+
+                            // Convert to RGB8 so it works with JPG and other formats that don't support alpha.
+                            // (There's nothing interesting in the alpha channel anyways.)
+                            let rgb_image = image::DynamicImage::ImageRgba8(rgba_image).to_rgb8();
+
+                            let result = match rgb_image.save(&file_path) {
+                                Ok(()) => {
+                                    // Only show a user-facing toast for user-initiated screenshots.
+                                    if notify {
+                                        re_log::info!("Saved screenshot to {file_path:?}");
+                                    } else {
+                                        re_log::debug!("Saved screenshot to {file_path:?}");
+                                    }
+                                    Ok(())
+                                }
+                                Err(err) => {
+                                    re_log::error!(?file_path, "Failed to save screenshot: {err}");
+                                    // Image library has the bad habit of creating the file even when it fails e.g. due to unsupported format. Remove it again.
+                                    std::fs::remove_file(&file_path).ok();
+                                    Err(SaveScreenshotError::SaveToPathFailed {
+                                        path: file_path.to_string(),
+                                        reason: err.to_string(),
+                                    })
+                                }
+                            };
+
+                            if let Some(notifier) = notifier {
+                                notifier.unbounded_send(result).ok();
+                            }
+                        }
                     }
                 }
             }
