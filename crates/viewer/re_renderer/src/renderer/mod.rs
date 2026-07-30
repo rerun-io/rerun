@@ -14,8 +14,8 @@ mod world_grid;
 
 pub use debug_overlay::{DebugOverlayDrawData, DebugOverlayError, DebugOverlayRenderer};
 pub use gaussian_splat::{
-    GaussianSplatBatchInfo, GaussianSplatDrawData, GaussianSplatDrawDataError,
-    GaussianSplatRenderer,
+    GaussianSplatBatchFlags, GaussianSplatBatchInfo, GaussianSplatDrawData,
+    GaussianSplatDrawDataError, GaussianSplatRenderer, SH_TEXELS_PER_GAUSSIAN,
 };
 pub use generic_skybox::{GenericSkyboxDrawData, GenericSkyboxType};
 pub use lines::{LineBatchInfo, LineDrawData, LineDrawDataError, LineStripFlags};
@@ -35,7 +35,7 @@ pub use self::depth_cloud::{DepthCloud, DepthCloudDrawData, DepthCloudRenderer, 
 
 pub mod gpu_data {
     pub use super::gaussian_splat::gpu_data::{
-        GaussianPositionScaleX, GaussianRotation, GaussianScaleYZ,
+        GaussianPositionScaleX, GaussianRotation, GaussianScaleYZ, GaussianShCoefficient,
     };
     pub use super::lines::gpu_data::{LineStripInfo, LineVertex};
     pub use super::point_cloud::gpu_data::PositionRadius;

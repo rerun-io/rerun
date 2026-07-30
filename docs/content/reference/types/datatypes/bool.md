@@ -23,4 +23,5 @@ Boolean
 * [`Interactive`](../components/interactive.md)
 * [`IsKeyframe`](../components/is_keyframe.md)
 * [`ShowLabels`](../components/show_labels.md)
+* [`ShowSphericalHarmonics`](../components/show_spherical_harmonics.md?speculative-link)
 * [`Visible`](../components/visible.md)

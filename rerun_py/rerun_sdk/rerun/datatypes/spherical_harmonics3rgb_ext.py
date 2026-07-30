@@ -8,19 +8,19 @@ import pyarrow as pa
 from .._converters import to_np_float16
 
 if TYPE_CHECKING:
-    from . import SphericalHarmonics3ArrayLike
+    from . import SphericalHarmonics3RgbArrayLike
 
 NUM_COEFFICIENTS = 15
 NUM_CHANNELS = 3
 NUM_VALUES = NUM_COEFFICIENTS * NUM_CHANNELS
 
 
-class SphericalHarmonics3Ext:
-    """Extension for [SphericalHarmonics3][rerun.datatypes.SphericalHarmonics3]."""
+class SphericalHarmonics3RgbExt:
+    """Extension for [SphericalHarmonics3Rgb][rerun.datatypes.SphericalHarmonics3Rgb]."""
 
     @staticmethod
-    def native_to_pa_array_override(data: SphericalHarmonics3ArrayLike, data_type: pa.DataType) -> pa.Array:
-        # `SphericalHarmonics3` itself is array-like (it has `__array__`), which the
+    def native_to_pa_array_override(data: SphericalHarmonics3RgbArrayLike, data_type: pa.DataType) -> pa.Array:
+        # `SphericalHarmonics3Rgb` itself is array-like (it has `__array__`), which the
         # `npt.ArrayLike` in the alias doesn't capture.
         array = to_np_float16(cast("Any", data))
 

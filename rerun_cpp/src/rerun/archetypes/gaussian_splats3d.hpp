@@ -10,7 +10,8 @@
 #include "../components/position3d.hpp"
 #include "../components/rotation_quat.hpp"
 #include "../components/scale3d.hpp"
-#include "../components/spherical_harmonics3.hpp"
+#include "../components/show_spherical_harmonics.hpp"
+#include "../components/spherical_harmonics3rgb.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
@@ -64,9 +65,9 @@ namespace rerun::archetypes {
     ///                 rerun::Rgba32(0, 0, 255, 255),
     ///             })
     ///             .with_sh_coefficients({
-    ///                 rerun::datatypes::SphericalHarmonics3(red_sh),
-    ///                 rerun::datatypes::SphericalHarmonics3(green_sh),
-    ///                 rerun::datatypes::SphericalHarmonics3(blue_sh),
+    ///                 rerun::datatypes::SphericalHarmonics3Rgb(red_sh),
+    ///                 rerun::datatypes::SphericalHarmonics3Rgb(green_sh),
+    ///                 rerun::datatypes::SphericalHarmonics3Rgb(blue_sh),
     ///             })
     ///     );
     /// }
@@ -116,6 +117,11 @@ namespace rerun::archetypes {
         /// Higher-order spherical harmonics coefficients for view-dependent color.
         std::optional<ComponentBatch> sh_coefficients;
 
+        /// Whether view-dependent color (the spherical harmonics coefficients) is used when rendering.
+        ///
+        /// If not set, defaults to true.
+        std::optional<ComponentBatch> show_spherical_harmonics;
+
       public:
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.archetypes.GaussianSplats3D";
@@ -143,7 +149,12 @@ namespace rerun::archetypes {
         /// `ComponentDescriptor` for the `sh_coefficients` field.
         static constexpr auto Descriptor_sh_coefficients = ComponentDescriptor(
             ArchetypeName, "GaussianSplats3D:sh_coefficients",
-            Loggable<rerun::components::SphericalHarmonics3>::ComponentType
+            Loggable<rerun::components::SphericalHarmonics3Rgb>::ComponentType
+        );
+        /// `ComponentDescriptor` for the `show_spherical_harmonics` field.
+        static constexpr auto Descriptor_show_spherical_harmonics = ComponentDescriptor(
+            ArchetypeName, "GaussianSplats3D:show_spherical_harmonics",
+            Loggable<rerun::components::ShowSphericalHarmonics>::ComponentType
         );
 
       public:
@@ -198,11 +209,40 @@ namespace rerun::archetypes {
 
         /// Higher-order spherical harmonics coefficients for view-dependent color.
         GaussianSplats3D with_sh_coefficients(
-            const Collection<rerun::components::SphericalHarmonics3>& _sh_coefficients
+            const Collection<rerun::components::SphericalHarmonics3Rgb>& _sh_coefficients
         ) && {
             sh_coefficients =
                 ComponentBatch::from_loggable(_sh_coefficients, Descriptor_sh_coefficients)
                     .value_or_throw();
+            return std::move(*this);
+        }
+
+        /// Whether view-dependent color (the spherical harmonics coefficients) is used when rendering.
+        ///
+        /// If not set, defaults to true.
+        GaussianSplats3D with_show_spherical_harmonics(
+            const rerun::components::ShowSphericalHarmonics& _show_spherical_harmonics
+        ) && {
+            show_spherical_harmonics = ComponentBatch::from_loggable(
+                                           _show_spherical_harmonics,
+                                           Descriptor_show_spherical_harmonics
+            )
+                                           .value_or_throw();
+            return std::move(*this);
+        }
+
+        /// This method makes it possible to pack multiple `show_spherical_harmonics` in a single component batch.
+        ///
+        /// This only makes sense when used in conjunction with `columns`. `with_show_spherical_harmonics` should
+        /// be used when logging a single row's worth of data.
+        GaussianSplats3D with_many_show_spherical_harmonics(
+            const Collection<rerun::components::ShowSphericalHarmonics>& _show_spherical_harmonics
+        ) && {
+            show_spherical_harmonics = ComponentBatch::from_loggable(
+                                           _show_spherical_harmonics,
+                                           Descriptor_show_spherical_harmonics
+            )
+                                           .value_or_throw();
             return std::move(*this);
         }
 

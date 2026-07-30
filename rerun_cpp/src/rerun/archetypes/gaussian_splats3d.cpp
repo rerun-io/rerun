@@ -18,7 +18,13 @@ namespace rerun::archetypes {
         archetype.colors =
             ComponentBatch::empty<rerun::components::Color>(Descriptor_colors).value_or_throw();
         archetype.sh_coefficients =
-            ComponentBatch::empty<rerun::components::SphericalHarmonics3>(Descriptor_sh_coefficients
+            ComponentBatch::empty<rerun::components::SphericalHarmonics3Rgb>(
+                Descriptor_sh_coefficients
+            )
+                .value_or_throw();
+        archetype.show_spherical_harmonics =
+            ComponentBatch::empty<rerun::components::ShowSphericalHarmonics>(
+                Descriptor_show_spherical_harmonics
             )
                 .value_or_throw();
         return archetype;
@@ -26,7 +32,7 @@ namespace rerun::archetypes {
 
     Collection<ComponentColumn> GaussianSplats3D::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(5);
+        columns.reserve(6);
         if (centers.has_value()) {
             columns.push_back(centers.value().partitioned(lengths_).value_or_throw());
         }
@@ -41,6 +47,10 @@ namespace rerun::archetypes {
         }
         if (sh_coefficients.has_value()) {
             columns.push_back(sh_coefficients.value().partitioned(lengths_).value_or_throw());
+        }
+        if (show_spherical_harmonics.has_value()) {
+            columns.push_back(show_spherical_harmonics.value().partitioned(lengths_).value_or_throw(
+            ));
         }
         return columns;
     }
@@ -61,6 +71,9 @@ namespace rerun::archetypes {
         if (sh_coefficients.has_value()) {
             return columns(std::vector<uint32_t>(sh_coefficients.value().length(), 1));
         }
+        if (show_spherical_harmonics.has_value()) {
+            return columns(std::vector<uint32_t>(show_spherical_harmonics.value().length(), 1));
+        }
         return Collection<ComponentColumn>();
     }
 } // namespace rerun::archetypes
@@ -72,7 +85,7 @@ namespace rerun {
     ) {
         using namespace archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(5);
+        cells.reserve(6);
 
         if (archetype.centers.has_value()) {
             cells.push_back(archetype.centers.value());
@@ -88,6 +101,9 @@ namespace rerun {
         }
         if (archetype.sh_coefficients.has_value()) {
             cells.push_back(archetype.sh_coefficients.value());
+        }
+        if (archetype.show_spherical_harmonics.has_value()) {
+            cells.push_back(archetype.show_spherical_harmonics.value());
         }
 
         return rerun::take_ownership(std::move(cells));

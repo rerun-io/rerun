@@ -91,7 +91,8 @@ from .scalar import Scalar, ScalarBatch
 from .scale3d import Scale3D, Scale3DBatch
 from .schema_id import SchemaId, SchemaIdBatch
 from .show_labels import ShowLabels, ShowLabelsBatch
-from .spherical_harmonics3 import SphericalHarmonics3, SphericalHarmonics3Batch
+from .show_spherical_harmonics import ShowSphericalHarmonics, ShowSphericalHarmonicsBatch
+from .spherical_harmonics3rgb import SphericalHarmonics3Rgb, SphericalHarmonics3RgbBatch
 from .stroke_width import StrokeWidth, StrokeWidthBatch
 from .tensor_data import TensorData, TensorDataBatch
 from .tensor_dimension_index_selection import TensorDimensionIndexSelection, TensorDimensionIndexSelectionBatch
@@ -272,8 +273,10 @@ __all__ = [
     "SchemaIdBatch",
     "ShowLabels",
     "ShowLabelsBatch",
-    "SphericalHarmonics3",
-    "SphericalHarmonics3Batch",
+    "ShowSphericalHarmonics",
+    "ShowSphericalHarmonicsBatch",
+    "SphericalHarmonics3Rgb",
+    "SphericalHarmonics3RgbBatch",
     "StrokeWidth",
     "StrokeWidthBatch",
     "TensorData",

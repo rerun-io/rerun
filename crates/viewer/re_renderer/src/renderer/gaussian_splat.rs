@@ -82,11 +82,46 @@ pub mod gpu_data {
     }
     static_assertions::assert_eq_size!(GaussianScaleYZ, glam::Vec2);
 
+    /// A single spherical harmonics coefficient, one `Rgba16Float` texel.
+    ///
+    /// Each gaussian occupies [`super::SH_TEXELS_PER_GAUSSIAN`] consecutive texels, one per
+    /// coefficient (degrees 1 through 3, coefficient-major). The alpha channel is unused: it
+    /// wastes an eighth of the texture, but keeps both the upload and the shader trivial.
+    #[repr(C, packed)]
+    #[derive(Clone, Copy, Default, bytemuck::Pod, bytemuck::Zeroable)]
+    pub struct GaussianShCoefficient {
+        pub rgb_unused: [half::f16; 4],
+    }
+    static_assertions::assert_eq_size!(GaussianShCoefficient, u64);
+
+    impl re_byte_size::SizeBytes for GaussianShCoefficient {
+        // Plain-old-data, so nothing lives on the heap.
+        const IS_POD: bool = true;
+
+        #[inline]
+        fn heap_size_bytes(&self) -> u64 {
+            0
+        }
+    }
+
+    impl GaussianShCoefficient {
+        /// Widens an RGB coefficient, zeroing the unused fourth channel.
+        #[inline]
+        pub fn from_rgb([r, g, b]: [half::f16; 3]) -> Self {
+            Self {
+                rgb_unused: [r, g, b, half::f16::ZERO],
+            }
+        }
+    }
+
     /// Uniform buffer that changes for every batch of gaussians.
     #[repr(C)]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct BatchUniformBuffer {
         pub world_from_obj: wgpu_buffer_types::Mat4,
+
+        /// Inverse of `world_from_obj`, used to evaluate the spherical harmonics in object space.
+        pub obj_from_world: wgpu_buffer_types::Mat4,
 
         // Keep this field order in sync with the WGSL `BatchUniformBuffer`.
         pub flags: u32, // See the `FLAG_*` constants above.
@@ -96,9 +131,27 @@ pub mod gpu_data {
         pub outline_mask_ids: wgpu_buffer_types::UVec2,
         pub picking_object_id: PickingLayerObjectId,
 
-        pub end_padding: [wgpu_buffer_types::PaddingRow; 16 - 6],
+        pub end_padding: [wgpu_buffer_types::PaddingRow; 16 - 10],
     }
 }
+
+bitflags::bitflags! {
+    /// Caller-settable property flags for a gaussian batch.
+    ///
+    /// Needs to be kept in sync with `gaussian_splat.wgsl`.
+    #[repr(C)]
+    #[derive(Clone, Copy, Default, bytemuck::Pod, bytemuck::Zeroable)]
+    pub struct GaussianSplatBatchFlags : u32 {
+        /// If set, the batch has spherical harmonics coefficients for view-dependent color.
+        ///
+        /// `0b0001` is reserved for [`FLAG_ENABLE_INDEX_LOOKUP`], which is set internally.
+        const FLAG_HAS_SH_COEFFICIENTS = 0b0010;
+    }
+}
+
+/// Number of the SH data texture's texels each gaussian occupies: one `Rgba16Float` texel per
+/// coefficient of SH degrees 1 through 3.
+pub const SH_TEXELS_PER_GAUSSIAN: usize = 15;
 
 /// Number of quad vertices emitted per gaussian (two triangles).
 const VERTICES_PER_GAUSSIAN: u32 = 6;
@@ -195,6 +248,9 @@ pub struct GaussianSplatBatchInfo {
     /// Transformation applied to the gaussians (both centers and covariances).
     pub world_from_obj: glam::Affine3A,
 
+    /// Additional properties of this batch.
+    pub flags: GaussianSplatBatchFlags,
+
     /// Number of gaussians covered by this batch.
     ///
     /// The batch will start with the next gaussian after the one the previous batch ended with.
@@ -237,6 +293,7 @@ impl Default for GaussianSplatBatchInfo {
         Self {
             label: Label::default(),
             world_from_obj: glam::Affine3A::IDENTITY,
+            flags: GaussianSplatBatchFlags::empty(),
             gaussian_count: 0,
             object_space_bounding_box: macaw::BoundingBox::nothing(),
             overall_outline_mask_ids: OutlineMaskPreference::NONE,
@@ -266,6 +323,8 @@ impl GaussianSplatDrawData {
             position_scale_x_buffer,
             rotation_buffer,
             scale_yz_buffer,
+            sh_buffer,
+            sh_padding_gaussians: _, // Deliberately left unwritten: those slots are never sampled.
             color_buffer,
             picking_instance_ids_buffer,
             batches,
@@ -307,6 +366,18 @@ impl GaussianSplatDrawData {
             wgpu::TextureFormat::Rg32Float,
             "GaussianSplatDrawData::scale_yz_texture",
         )?;
+        let sh_texture_handle = if sh_buffer.is_empty() {
+            // No batch has spherical harmonics, so nothing ever samples this texture -- but it
+            // still has to be a valid, bindable texture.
+            ctx.texture_manager_2d.zeroed_texture_float().handle
+        } else {
+            sh_buffer
+                .finish(
+                    wgpu::TextureFormat::Rgba16Float,
+                    "GaussianSplatDrawData::sh_texture",
+                )?
+                .handle
+        };
         let color_texture = color_buffer.finish(
             wgpu::TextureFormat::Rgba8UnormSrgb,
             "GaussianSplatDrawData::color_texture",
@@ -325,6 +396,7 @@ impl GaussianSplatDrawData {
                     BindGroupEntry::DefaultTextureView(position_scale_x_texture.handle),
                     BindGroupEntry::DefaultTextureView(rotation_texture.handle),
                     BindGroupEntry::DefaultTextureView(scale_yz_texture.handle),
+                    BindGroupEntry::DefaultTextureView(sh_texture_handle),
                     BindGroupEntry::DefaultTextureView(color_texture.handle),
                     BindGroupEntry::DefaultTextureView(picking_instance_id_texture.handle),
                 ],
@@ -342,7 +414,8 @@ impl GaussianSplatDrawData {
                  first_gaussian_index: u32| {
                     gpu_data::BatchUniformBuffer {
                         world_from_obj: batch_info.world_from_obj.into(),
-                        flags,
+                        obj_from_world: batch_info.world_from_obj.inverse().into(),
+                        flags: flags | batch_info.flags.bits(),
                         first_gaussian_index,
                         _row_padding: [0; 2],
                         outline_mask_ids: outline_mask_ids.0.unwrap_or_default().into(),
@@ -559,9 +632,10 @@ impl Renderer for GaussianSplatRenderer {
                     float_texture_entry(0), // position + scale.x
                     float_texture_entry(1), // rotation
                     float_texture_entry(2), // scale.yz
-                    float_texture_entry(3), // color
+                    float_texture_entry(3), // spherical harmonics coefficients
+                    float_texture_entry(4), // color
                     wgpu::BindGroupLayoutEntry {
-                        binding: 4,
+                        binding: 5,
                         visibility: wgpu::ShaderStages::VERTEX,
                         ty: wgpu::BindingType::Texture {
                             sample_type: wgpu::TextureSampleType::Uint,
@@ -820,6 +894,7 @@ mod tests {
                 &[glam::Vec3::splat(0.5)],
                 &[glam::Quat::IDENTITY],
                 &[Rgba32Unmul::WHITE],
+                &[],
                 &[instance_id],
             );
         view_builder.queue_draw(&ctx, builder.into_draw_data().expect("draw data"));

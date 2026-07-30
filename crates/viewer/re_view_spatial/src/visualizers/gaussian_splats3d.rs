@@ -1,16 +1,22 @@
 use std::sync::Arc;
 
+use half::f16;
 use itertools::Itertools as _;
 use nohash_hasher::IntMap;
 use parking_lot::Mutex;
 use re_byte_size::SizeBytes as _;
 use re_entity_db::EntityDb;
 use re_log_types::hash::Hash64;
-use re_renderer::{GaussianSplatBuilder, PickingLayerInstanceId, Rgba32Unmul, SortOrderCache};
+use re_renderer::{
+    GaussianShCoefficient, GaussianSplatBuilder, PickingLayerInstanceId, Rgba32Unmul,
+    SortOrderCache,
+};
 use re_sdk_types::Archetype as _;
 use re_sdk_types::archetypes::GaussianSplats3D;
 use re_sdk_types::components;
-use re_sdk_types::components::{Color, Position3D, RotationQuat, Scale3D};
+use re_sdk_types::components::{
+    Color, Position3D, RotationQuat, Scale3D, ShowSphericalHarmonics, SphericalHarmonics3Rgb,
+};
 use re_viewer_context::{
     Cache, IdentifiedViewSystem, QueryContext, ViewClass as _, ViewContext, ViewContextCollection,
     ViewQuery, ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo,
@@ -36,7 +42,7 @@ const MIN_OPACITY_FOR_BOUNDS: u8 = 5; // ~0.02
 /// Renders [`GaussianSplats3D`] via [`re_renderer`]'s gaussian splat renderer.
 ///
 /// Each gaussian's 3D covariance is projected to a screen-space ellipse and alpha-blended
-/// back-to-front. View-dependent color (spherical harmonics) is not evaluated yet.
+/// back-to-front, with view-dependent color from the spherical harmonics coefficients.
 #[derive(Default)]
 pub struct GaussianSplats3DVisualizer;
 
@@ -51,6 +57,10 @@ struct GaussianSplats3DComponentData<'a> {
     scales: &'a [Scale3D],
     quaternions: &'a [RotationQuat],
     colors: &'a [Color],
+    sh_coefficients: &'a [SphericalHarmonics3Rgb],
+
+    // Non-repeated
+    show_spherical_harmonics: Option<ShowSphericalHarmonics>,
 }
 
 /// Processed/computed gaussian cloud data ready for rendering.
@@ -64,6 +74,9 @@ struct GaussianSplats3DCpu {
     scales: Vec<glam::Vec3>,
     rotations: Vec<glam::Quat>,
     colors: Vec<Rgba32Unmul>,
+
+    /// Padded to RGBA so it can be uploaded straight into the `Rgba16Float` SH texture.
+    sh_coefficients: Vec<[GaussianShCoefficient; 15]>,
     picking_ids: Vec<PickingLayerInstanceId>,
     point_cloud_bounds: re_renderer::util::PointCloudBounds,
 
@@ -120,6 +133,15 @@ impl GaussianSplats3DCpu {
                 .collect()
         };
 
+        // Widen each RGB coefficient to RGBA so the renderer can memcpy it into its texture.
+        let sh_coefficients: Vec<[GaussianShCoefficient; 15]> = {
+            re_tracing::profile_scope_if!(100_000 < num_instances, "sh_coefficients");
+            data.sh_coefficients
+                .iter()
+                .map(|sh| std::array::from_fn(|i| GaussianShCoefficient::from_rgb(sh.0.0[i])))
+                .collect()
+        };
+
         let point_cloud_bounds = {
             re_tracing::profile_scope_if!(100_000 < num_instances, "bounding_box");
             // Exclude near-invisible floater gaussians so they don't blow up the bounds.
@@ -139,6 +161,7 @@ impl GaussianSplats3DCpu {
             scales,
             rotations,
             colors,
+            sh_coefficients,
             picking_ids,
             point_cloud_bounds,
             sort_order_caches: Mutex::new(Vec::new()),
@@ -257,6 +280,22 @@ impl GaussianSplats3DVisualizer {
                 c.entry(cache_key, || GaussianSplats3DCpu::compute(ctx, &data))
             });
 
+            let show_spherical_harmonics: bool = data
+                .show_spherical_harmonics
+                .unwrap_or_else(|| {
+                    typed_fallback_for(
+                        ctx,
+                        GaussianSplats3D::descriptor_show_spherical_harmonics().component,
+                    )
+                })
+                .0
+                .into();
+            let sh_coefficients: &[[GaussianShCoefficient; 15]] = if show_spherical_harmonics {
+                &cpu.sh_coefficients
+            } else {
+                &[]
+            };
+
             for (transform_index, world_from_obj) in ent_context
                 .transform_info
                 .target_from_instances()
@@ -281,6 +320,7 @@ impl GaussianSplats3DVisualizer {
                         &cpu.scales,
                         &cpu.rotations,
                         &cpu.colors,
+                        sh_coefficients,
                         &cpu.picking_ids,
                     );
 
@@ -383,26 +423,48 @@ impl VisualizerSystem for GaussianSplats3DVisualizer {
                     results.iter_optional(GaussianSplats3D::descriptor_quaternions().component);
                 let all_colors =
                     results.iter_optional(GaussianSplats3D::descriptor_colors().component);
+                let all_sh_coefficients =
+                    results.iter_optional(GaussianSplats3D::descriptor_sh_coefficients().component);
+                let all_show_spherical_harmonics = results.iter_optional(
+                    GaussianSplats3D::descriptor_show_spherical_harmonics().component,
+                );
 
                 let query_result_hash = results.query_result_hash();
 
-                let results_iter = re_query::range_zip_1x3(
+                let results_iter = re_query::range_zip_1x5(
                     all_centers.slice::<[f32; 3]>(),
                     all_scales.slice::<[f32; 3]>(),
                     all_quaternions.slice::<[f32; 4]>(),
                     all_colors.slice::<u32>(),
+                    all_sh_coefficients.slice::<[[f16; 3]; 15]>(),
+                    all_show_spherical_harmonics.slice::<bool>(),
                 )
-                .map(|(index, centers, scales, quaternions, colors)| {
-                    GaussianSplats3DComponentData {
+                .map(
+                    |(
                         index,
-                        query_result_hash,
-                        centers: bytemuck::cast_slice(centers),
-                        scales: scales.map_or(&[], |scales| bytemuck::cast_slice(scales)),
-                        quaternions: quaternions
-                            .map_or(&[], |quaternions| bytemuck::cast_slice(quaternions)),
-                        colors: colors.map_or(&[], |colors| bytemuck::cast_slice(colors)),
-                    }
-                });
+                        centers,
+                        scales,
+                        quaternions,
+                        colors,
+                        sh_coefficients,
+                        show_spherical_harmonics,
+                    )| {
+                        GaussianSplats3DComponentData {
+                            index,
+                            query_result_hash,
+                            centers: bytemuck::cast_slice(centers),
+                            scales: scales.map_or(&[], |scales| bytemuck::cast_slice(scales)),
+                            quaternions: quaternions
+                                .map_or(&[], |quaternions| bytemuck::cast_slice(quaternions)),
+                            colors: colors.map_or(&[], |colors| bytemuck::cast_slice(colors)),
+                            sh_coefficients: sh_coefficients
+                                .map_or(&[], |sh| bytemuck::cast_slice(sh)),
+                            show_spherical_harmonics: show_spherical_harmonics
+                                .map(|b| !b.is_empty() && b.value(0))
+                                .map(Into::into),
+                        }
+                    },
+                );
 
                 Self::process_data(
                     &mut view_data,

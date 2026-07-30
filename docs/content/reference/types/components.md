@@ -73,7 +73,8 @@ on [Entities and Components](../../concepts/logging-and-ingestion/entity-compone
 * [`Scale3D`](components/scale3d.md): A 3D scale factor.
 * [`SchemaId`](components/schema_id.md): A 16-bit unique identifier for a schema within the MCAP file.
 * [`ShowLabels`](components/show_labels.md): Whether the entity's [`components.Text`](https://rerun.io/docs/reference/types/components/text) label is shown.
-* [`SphericalHarmonics3`](components/spherical_harmonics3.md): View-dependent color, expressed as spherical harmonics coefficients of degrees 1 through 3.
+* [`ShowSphericalHarmonics`](components/show_spherical_harmonics.md): Whether view-dependent color ([`components.SphericalHarmonics3Rgb`](https://rerun.io/docs/reference/types/components/spherical_harmonics3rgb?speculative-link)) is used when rendering.
+* [`SphericalHarmonics3Rgb`](components/spherical_harmonics3rgb.md): View-dependent color, expressed as spherical harmonics coefficients of degrees 1 through 3.
 * [`StrokeWidth`](components/stroke_width.md): The width of a stroke specified in UI points.
 * [`TensorData`](components/tensor_data.md): An N-dimensional array of numbers.
 * [`TensorDimensionIndexSelection`](components/tensor_dimension_index_selection.md): Specifies a concrete index on a tensor dimension.

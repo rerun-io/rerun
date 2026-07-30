@@ -97,7 +97,8 @@ class GaussianSplats3D(Archetype, VisualizableArchetype):
         scales: datatypes.Vec3DArrayLike | None = None,
         quaternions: datatypes.QuaternionArrayLike | None = None,
         colors: datatypes.Rgba32ArrayLike | None = None,
-        sh_coefficients: datatypes.SphericalHarmonics3ArrayLike | None = None,
+        sh_coefficients: datatypes.SphericalHarmonics3RgbArrayLike | None = None,
+        show_spherical_harmonics: datatypes.BoolLike | None = None,
     ) -> None:
         """
         Create a new instance of the GaussianSplats3D archetype.
@@ -117,13 +118,22 @@ class GaussianSplats3D(Archetype, VisualizableArchetype):
             The alpha part is the peak opacity of the gaussian; the gaussian falloff further modulates it spatially.
         sh_coefficients:
             Higher-order spherical harmonics coefficients for view-dependent color.
+        show_spherical_harmonics:
+            Whether view-dependent color (the spherical harmonics coefficients) is used when rendering.
+
+            If not set, defaults to true.
 
         """
 
         # You can define your own __init__ function as a member of GaussianSplats3DExt in gaussian_splats3d_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
             self.__attrs_init__(
-                centers=centers, scales=scales, quaternions=quaternions, colors=colors, sh_coefficients=sh_coefficients
+                centers=centers,
+                scales=scales,
+                quaternions=quaternions,
+                colors=colors,
+                sh_coefficients=sh_coefficients,
+                show_spherical_harmonics=show_spherical_harmonics,
             )
             return
         self.__attrs_clear__()
@@ -136,6 +146,7 @@ class GaussianSplats3D(Archetype, VisualizableArchetype):
             quaternions=None,
             colors=None,
             sh_coefficients=None,
+            show_spherical_harmonics=None,
         )
 
     @classmethod
@@ -154,7 +165,8 @@ class GaussianSplats3D(Archetype, VisualizableArchetype):
         scales: datatypes.Vec3DArrayLike | None = None,
         quaternions: datatypes.QuaternionArrayLike | None = None,
         colors: datatypes.Rgba32ArrayLike | None = None,
-        sh_coefficients: datatypes.SphericalHarmonics3ArrayLike | None = None,
+        sh_coefficients: datatypes.SphericalHarmonics3RgbArrayLike | None = None,
+        show_spherical_harmonics: datatypes.BoolLike | None = None,
     ) -> GaussianSplats3D:
         """
         Update only some specific fields of a `GaussianSplats3D`.
@@ -176,6 +188,10 @@ class GaussianSplats3D(Archetype, VisualizableArchetype):
             The alpha part is the peak opacity of the gaussian; the gaussian falloff further modulates it spatially.
         sh_coefficients:
             Higher-order spherical harmonics coefficients for view-dependent color.
+        show_spherical_harmonics:
+            Whether view-dependent color (the spherical harmonics coefficients) is used when rendering.
+
+            If not set, defaults to true.
 
         """
 
@@ -187,6 +203,7 @@ class GaussianSplats3D(Archetype, VisualizableArchetype):
                 "quaternions": quaternions,
                 "colors": colors,
                 "sh_coefficients": sh_coefficients,
+                "show_spherical_harmonics": show_spherical_harmonics,
             }
 
             if clear_unset:
@@ -240,7 +257,15 @@ class GaussianSplats3D(Archetype, VisualizableArchetype):
         return ComponentDescriptor(
             "GaussianSplats3D:sh_coefficients",
             archetype=GaussianSplats3D.NAME,
-            component_type=components.SphericalHarmonics3Batch._COMPONENT_TYPE,
+            component_type=components.SphericalHarmonics3RgbBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_show_spherical_harmonics() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "GaussianSplats3D:show_spherical_harmonics",
+            archetype=GaussianSplats3D.NAME,
+            component_type=components.ShowSphericalHarmonicsBatch._COMPONENT_TYPE,
         )
 
     @classmethod
@@ -251,7 +276,8 @@ class GaussianSplats3D(Archetype, VisualizableArchetype):
         scales: datatypes.Vec3DArrayLike | None = None,
         quaternions: datatypes.QuaternionArrayLike | None = None,
         colors: datatypes.Rgba32ArrayLike | None = None,
-        sh_coefficients: datatypes.SphericalHarmonics3ArrayLike | None = None,
+        sh_coefficients: datatypes.SphericalHarmonics3RgbArrayLike | None = None,
+        show_spherical_harmonics: datatypes.BoolArrayLike | None = None,
     ) -> ComponentColumnList:
         """
         Construct a new column-oriented component bundle.
@@ -276,6 +302,10 @@ class GaussianSplats3D(Archetype, VisualizableArchetype):
             The alpha part is the peak opacity of the gaussian; the gaussian falloff further modulates it spatially.
         sh_coefficients:
             Higher-order spherical harmonics coefficients for view-dependent color.
+        show_spherical_harmonics:
+            Whether view-dependent color (the spherical harmonics coefficients) is used when rendering.
+
+            If not set, defaults to true.
 
         """
 
@@ -287,6 +317,7 @@ class GaussianSplats3D(Archetype, VisualizableArchetype):
                 quaternions=quaternions,
                 colors=colors,
                 sh_coefficients=sh_coefficients,
+                show_spherical_harmonics=show_spherical_harmonics,
             )
 
         batches = inst.as_component_batches()
@@ -299,6 +330,7 @@ class GaussianSplats3D(Archetype, VisualizableArchetype):
             "GaussianSplats3D:quaternions": quaternions,
             "GaussianSplats3D:colors": colors,
             "GaussianSplats3D:sh_coefficients": sh_coefficients,
+            "GaussianSplats3D:show_spherical_harmonics": show_spherical_harmonics,
         }
         columns = []
 
@@ -372,12 +404,23 @@ class GaussianSplats3D(Archetype, VisualizableArchetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    sh_coefficients: components.SphericalHarmonics3Batch | None = field(
+    sh_coefficients: components.SphericalHarmonics3RgbBatch | None = field(
         metadata={"component": True},
         default=None,
-        converter=components.SphericalHarmonics3Batch._converter,  # type: ignore[misc]
+        converter=components.SphericalHarmonics3RgbBatch._converter,  # type: ignore[misc]
     )
     # Higher-order spherical harmonics coefficients for view-dependent color.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    show_spherical_harmonics: components.ShowSphericalHarmonicsBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=components.ShowSphericalHarmonicsBatch._converter,  # type: ignore[misc]
+    )
+    # Whether view-dependent color (the spherical harmonics coefficients) is used when rendering.
+    #
+    # If not set, defaults to true.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

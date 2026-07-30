@@ -1,5 +1,5 @@
 #include "../half.hpp"
-#include "spherical_harmonics3.hpp"
+#include "spherical_harmonics3rgb.hpp"
 
 namespace rerun::datatypes {
 
@@ -10,12 +10,12 @@ namespace rerun::datatypes {
     static constexpr size_t NUM_COEFFICIENTS = 15;
 
     /// Construct from 15 RGB coefficient triples of `float`, converting each to half-precision.
-    SphericalHarmonics3(const std::array<std::array<float, 3>, NUM_COEFFICIENTS>& coefficients_);
+    SphericalHarmonics3Rgb(const std::array<std::array<float, 3>, NUM_COEFFICIENTS>& coefficients_);
 
     // </CODEGEN_COPY_TO_HEADER>
 #endif
 
-    SphericalHarmonics3::SphericalHarmonics3(
+    SphericalHarmonics3Rgb::SphericalHarmonics3Rgb(
         const std::array<std::array<float, 3>, NUM_COEFFICIENTS>& coefficients_
     ) {
         for (size_t coefficient = 0; coefficient < NUM_COEFFICIENTS; ++coefficient) {

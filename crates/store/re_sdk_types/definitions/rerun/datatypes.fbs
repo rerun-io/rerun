@@ -27,7 +27,7 @@ include "./datatypes/range1d.fbs";
 include "./datatypes/range2d.fbs";
 include "./datatypes/rgba32.fbs";
 include "./datatypes/rotation_axis_angle.fbs";
-include "./datatypes/spherical_harmonics3.fbs";
+include "./datatypes/spherical_harmonics3rgb.fbs";
 include "./datatypes/tensor_buffer.fbs";
 include "./datatypes/tensor_data.fbs";
 include "./datatypes/tensor_dimension_selection.fbs";

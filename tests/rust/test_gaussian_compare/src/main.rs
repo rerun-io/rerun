@@ -10,8 +10,8 @@ use clap::Parser as _;
 
 use re_renderer::view_builder::{Projection, TargetConfiguration, ViewBuilder};
 use re_renderer::{
-    GaussianSplatBuilder, RenderConfig, RenderContext, Rgba, Rgba32Unmul, ScreenshotProcessor,
-    device_caps,
+    GaussianShCoefficient, GaussianSplatBuilder, RenderConfig, RenderContext, Rgba, Rgba32Unmul,
+    ScreenshotProcessor, device_caps,
 };
 use re_sdk_types::archetypes::GaussianSplats3D;
 use re_types_core::Loggable as _;
@@ -103,7 +103,23 @@ fn main() -> anyhow::Result<()> {
             .into_iter()
             .map(|c| Rgba32Unmul::from_rgba_unmul_array(c.to_array()))
             .collect();
-    println!("loaded {} splats", centers.len());
+    let sh_coefficients: Vec<[GaussianShCoefficient; 15]> = gaussians
+        .sh_coefficients
+        .as_ref()
+        .map(|sh| {
+            re_sdk_types::components::SphericalHarmonics3Rgb::from_arrow(&sh.array).map(|v| {
+                v.into_iter()
+                    .map(|sh| std::array::from_fn(|i| GaussianShCoefficient::from_rgb(sh.0.0[i])))
+                    .collect::<Vec<_>>()
+            })
+        })
+        .transpose()?
+        .unwrap_or_default();
+    println!(
+        "loaded {} splats ({} with SH)",
+        centers.len(),
+        sh_coefficients.len()
+    );
 
     // --- Headless render context ---
     let instance = wgpu::Instance::new(device_caps::testing_instance_descriptor());
@@ -138,9 +154,14 @@ fn main() -> anyhow::Result<()> {
     )?;
 
     let mut splat_builder = GaussianSplatBuilder::new(&ctx);
-    splat_builder
-        .batch("gaussians")
-        .add_gaussians(&centers, &scales, &rotations, &colors, &[]);
+    splat_builder.batch("gaussians").add_gaussians(
+        &centers,
+        &scales,
+        &rotations,
+        &colors,
+        &sh_coefficients,
+        &[],
+    );
 
     view_builder.queue_draw(&ctx, splat_builder.into_draw_data()?);
     view_builder.schedule_screenshot(&ctx, 42, ())?;

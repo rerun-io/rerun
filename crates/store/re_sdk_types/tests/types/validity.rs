@@ -47,9 +47,9 @@ fn nested_fixed_size_list_of_the_wrong_width_errors() {
 
     use arrow::array::{Array as _, FixedSizeListArray, Float16Array};
     use arrow::datatypes::{DataType, Field};
-    use re_sdk_types::datatypes::SphericalHarmonics3;
+    use re_sdk_types::datatypes::SphericalHarmonics3Rgb;
 
-    // `SphericalHarmonics3` is a `FixedSizeList(FixedSizeList(f16, 3), 15)`.
+    // `SphericalHarmonics3Rgb` is a `FixedSizeList(FixedSizeList(f16, 3), 15)`.
     // Widen the inner list to 4: still 60 values, but no longer a whole number of coefficients.
     let values = Float16Array::from(vec![half::f16::ZERO; 60]);
     let inner_field = Arc::new(Field::new("item", DataType::Float16, false));
@@ -57,7 +57,7 @@ fn nested_fixed_size_list_of_the_wrong_width_errors() {
     let outer_field = Arc::new(Field::new("item", inner.data_type().clone(), false));
     let outer = FixedSizeListArray::new(outer_field, 15, Arc::new(inner), None);
 
-    let deserialized = SphericalHarmonics3::from_arrow(&outer);
+    let deserialized = SphericalHarmonics3Rgb::from_arrow(&outer);
     assert!(
         deserialized.is_err(),
         "Expected a deserialization error, got {deserialized:?}"

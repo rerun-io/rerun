@@ -47,8 +47,9 @@ use re_sdk_types::components::{
     AggregationPolicy, AlbedoFactor, AxisLength, Color, DepthMeter, DrawOrder, FillMode, FillRatio,
     GammaCorrection, GraphType, HalfSize3D, ImagePlaneDistance, InterpolationMode, IsKeyframe,
     Length, LinearSpeed, MagnificationFilter, MarkerSize, MeshFaceRendering, Name, Opacity,
-    PointShading, Position2D, Position3D, Range1D, Scale3D, ShowLabels, StrokeWidth, Text,
-    Timestamp, TransformRelation, Translation3D, ValueRange, Vector3D, VideoCodec, Visible,
+    PointShading, Position2D, Position3D, Range1D, Scale3D, ShowLabels, ShowSphericalHarmonics,
+    StrokeWidth, Text, Timestamp, TransformRelation, Translation3D, ValueRange, Vector3D,
+    VideoCodec, Visible,
 };
 use re_sdk_types::{archetypes, components};
 use re_viewer_context::gpu_bridge::colormap_edit_or_view_ui_with_selection;
@@ -111,6 +112,7 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     registry.add_singleline_edit_or_view::<Enabled>(edit_bool);
     registry.add_singleline_edit_or_view::<LockRangeDuringZoom>(edit_bool);
     registry.add_singleline_edit_or_view::<ShowLabels>(edit_bool);
+    registry.add_singleline_edit_or_view::<ShowSphericalHarmonics>(edit_bool);
     registry.add_singleline_edit_or_view::<Visible>(edit_bool);
 
     // `IsKeyframe` is logged data with no blueprint override path, so force

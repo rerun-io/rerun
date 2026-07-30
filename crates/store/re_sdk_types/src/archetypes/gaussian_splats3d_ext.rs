@@ -2,7 +2,7 @@ use half::f16;
 use ply_rs_bw::ply::{Addable as _, ElementDef, Property, PropertyAccess, PropertyDef};
 
 use super::GaussianSplats3D;
-use crate::components::{Color, Position3D, RotationQuat, Scale3D, SphericalHarmonics3};
+use crate::components::{Color, Position3D, RotationQuat, Scale3D, SphericalHarmonics3Rgb};
 use crate::datatypes::Quaternion;
 
 /// The names of the PLY properties used by 3D Gaussian Splatting (3DGS) training checkpoints,
@@ -34,7 +34,7 @@ mod prop {
 }
 
 /// The number of spherical harmonics coefficients (RGB triples) we keep, i.e. degrees 1 through 3.
-const NUM_SH_COEFFICIENTS: usize = crate::datatypes::SphericalHarmonics3::NUM_COEFFICIENTS;
+const NUM_SH_COEFFICIENTS: usize = crate::datatypes::SphericalHarmonics3Rgb::NUM_COEFFICIENTS;
 
 /// Where each value we read lands in [`Splat::values`].
 mod slot {
@@ -83,7 +83,7 @@ impl GaussianSplats3D {
     /// * `opacity` (logit) becomes the alpha of the [`Color`] via the sigmoid
     /// * `f_dc_*` becomes the RGB of the [`Color`] by evaluating the degree-0 spherical harmonic
     /// * `rot_*` (`wxyz`) becomes a normalized `xyzw` [`RotationQuat`]
-    /// * `f_rest_*` (channel-major) becomes coefficient-major [`SphericalHarmonics3`],
+    /// * `f_rest_*` (channel-major) becomes coefficient-major [`SphericalHarmonics3Rgb`],
     ///   zero-padded if the file is of a lower degree than 3, and truncated if of a higher one
     ///
     /// The file path, if known, is only used to improve warning messages.
@@ -286,13 +286,13 @@ impl Splat {
     /// Higher-degree spherical harmonics coefficients.
     ///
     /// Already coefficient-major and zero-padded: [`read_plan`] took care of the transpose.
-    fn sh_coefficients(&self) -> SphericalHarmonics3 {
+    fn sh_coefficients(&self) -> SphericalHarmonics3Rgb {
         let coefficients = std::array::from_fn(|coefficient| {
             std::array::from_fn(|channel| {
                 f16::from_f32(self.values[slot::SH + 3 * coefficient + channel])
             })
         });
-        crate::datatypes::SphericalHarmonics3(coefficients).into()
+        crate::datatypes::SphericalHarmonics3Rgb(coefficients).into()
     }
 }
 
@@ -446,7 +446,7 @@ mod tests {
     use re_types_core::Loggable as _;
 
     use super::{GaussianSplats3D, NUM_SH_COEFFICIENTS};
-    use crate::components::{Color, Position3D, RotationQuat, Scale3D, SphericalHarmonics3};
+    use crate::components::{Color, Position3D, RotationQuat, Scale3D, SphericalHarmonics3Rgb};
     use crate::datatypes::Quaternion;
 
     fn centers(g: &GaussianSplats3D) -> Vec<Position3D> {
@@ -477,10 +477,10 @@ mod tests {
             .unwrap_or_default()
     }
 
-    fn sh_coefficients(g: &GaussianSplats3D) -> Vec<SphericalHarmonics3> {
+    fn sh_coefficients(g: &GaussianSplats3D) -> Vec<SphericalHarmonics3Rgb> {
         g.sh_coefficients
             .as_ref()
-            .map(|c| SphericalHarmonics3::from_arrow(&c.array).unwrap())
+            .map(|c| SphericalHarmonics3Rgb::from_arrow(&c.array).unwrap())
             .unwrap_or_default()
     }
 

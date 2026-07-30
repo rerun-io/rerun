@@ -1284,14 +1284,25 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <SphericalHarmonics3 as Component>::name(),
+            <ShowSphericalHarmonics as Component>::name(),
+            ComponentReflection {
+                docstring_md: "Whether view-dependent color ([`components.SphericalHarmonics3Rgb`](https://rerun.io/docs/reference/types/components/spherical_harmonics3rgb?speculative-link)) is used when rendering.\n\nDisabling this in the blueprint can make the rendering a lot faster.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: Some(ShowSphericalHarmonics::default().to_arrow()?),
+                datatype: ShowSphericalHarmonics::arrow_datatype(),
+                is_enum: false,
+                verify_arrow_array: ShowSphericalHarmonics::verify_arrow_array,
+            },
+        ),
+        (
+            <SphericalHarmonics3Rgb as Component>::name(),
             ComponentReflection {
                 docstring_md: "View-dependent color, expressed as spherical harmonics coefficients of degrees 1 through 3.\n\nThe view-independent (degree-0) base color is represented as a separate [`components.Color`](https://rerun.io/docs/reference/types/components/color).\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
                 deprecation_summary: None,
                 custom_placeholder: None,
-                datatype: SphericalHarmonics3::arrow_datatype(),
+                datatype: SphericalHarmonics3Rgb::arrow_datatype(),
                 is_enum: false,
-                verify_arrow_array: SphericalHarmonics3::verify_arrow_array,
+                verify_arrow_array: SphericalHarmonics3Rgb::verify_arrow_array,
             },
         ),
         (
@@ -2542,8 +2553,15 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     ArchetypeFieldReflection {
                         name: "sh_coefficients",
                         display_name: "Sh coefficients",
-                        component_type: "rerun.components.SphericalHarmonics3".into(),
+                        component_type: "rerun.components.SphericalHarmonics3Rgb".into(),
                         docstring_md: "Higher-order spherical harmonics coefficients for view-dependent color.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "show_spherical_harmonics",
+                        display_name: "Show spherical harmonics",
+                        component_type: "rerun.components.ShowSphericalHarmonics".into(),
+                        docstring_md: "Whether view-dependent color (the spherical harmonics coefficients) is used when rendering.\n\nIf not set, defaults to true.",
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                 ],

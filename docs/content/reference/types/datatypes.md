@@ -36,7 +36,7 @@ Data types are the lowest layer of the data model hierarchy. They are re-usable 
 * [`Range2D`](datatypes/range2d.md): An Axis-Aligned Bounding Box in 2D space, implemented as the minimum and maximum corners.
 * [`Rgba32`](datatypes/rgba32.md): An RGBA color with unmultiplied/separate alpha, in sRGB gamma space with linear alpha.
 * [`RotationAxisAngle`](datatypes/rotation_axis_angle.md): 3D rotation represented by a rotation around a given axis.
-* [`SphericalHarmonics3`](datatypes/spherical_harmonics3.md): Spherical harmonics coefficients of degrees 1 through 3 for RGB, as 15 half-precision RGB triples.
+* [`SphericalHarmonics3Rgb`](datatypes/spherical_harmonics3rgb.md): Spherical harmonics coefficients of degrees 1 through 3 for RGB, as 15 half-precision RGB triples.
 * [`TensorBuffer`](datatypes/tensor_buffer.md): The underlying storage for [`archetypes.Tensor`](https://rerun.io/docs/reference/types/archetypes/tensor).
 * [`TensorData`](datatypes/tensor_data.md): An N-dimensional array of numbers.
 * [`TensorDimensionIndexSelection`](datatypes/tensor_dimension_index_selection.md): Indexing a specific tensor dimension.

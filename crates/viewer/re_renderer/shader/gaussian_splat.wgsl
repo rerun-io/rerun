@@ -17,7 +17,9 @@
 
 #import <./global_bindings.wgsl>
 #import <./types.wgsl>
+#import <./utils/flags.wgsl>
 #import <./utils/quaternion.wgsl>
+#import <./utils/srgb.wgsl>
 
 // Per-gaussian data, one texel per gaussian (see `read_data`).
 //
@@ -31,12 +33,16 @@ var quat_xyzw_texture: texture_2d<f32>; // rotation, xyzw quaternion
 @group(1) @binding(2)
 var scale_yz_texture: texture_2d<f32>; // scale_y, scale_z
 @group(1) @binding(3)
-var color_texture: texture_2d<f32>; // unmultiplied sRGB RGBA (alpha = peak opacity)
+var sh_texture: texture_2d<f32>;
 @group(1) @binding(4)
+var color_texture: texture_2d<f32>; // unmultiplied sRGB RGBA (alpha = peak opacity)
+@group(1) @binding(5)
 var picking_instance_id_texture: texture_2d<u32>;
 
 struct BatchUniformBuffer {
     world_from_obj: mat4x4f,
+    // Inverse of `world_from_obj`, used to evaluate the spherical harmonics in object space.
+    obj_from_world: mat4x4f,
     flags: u32, // See the `FLAG_*` constants in gaussian_splat.rs.
     // Index of this batch's first gaussian in the shared gaussian-data textures.
     first_gaussian_index: u32,
@@ -52,6 +58,14 @@ var gaussian_index_lookup_texture: texture_2d<u32>;
 
 // Must match `FLAG_ENABLE_INDEX_LOOKUP` in gaussian_splat.rs.
 const FLAG_ENABLE_INDEX_LOOKUP: u32 = 1u;
+
+// Must match `GaussianSplatBatchFlags::FLAG_HAS_SH_COEFFICIENTS` in gaussian_splat.rs.
+const FLAG_HAS_SH_COEFFICIENTS: u32 = 2u;
+
+// Number of `sh_texture` texels per gaussian: one per coefficient (SH degrees 1 through 3),
+// holding its RGB with an unused alpha channel.
+// Must be kept in sync with `gaussian_splat.rs#SH_TEXELS_PER_GAUSSIAN`.
+const SH_TEXELS_PER_GAUSSIAN: u32 = 15u;
 
 // The quad is spanned at this many standard deviations from the center.
 // exp(-0.5 * 3.5^2) = 0.0022, i.e. the cut-off contribution is below 1/255 and so invisible after
@@ -86,8 +100,11 @@ struct VertexOut {
     conic: vec3f,
 
     // Offset of this fragment from the gaussian center, in pixels.
-    // All vertices of the quad share the same `w`, so perspective interpolation is linear here.
-    @location(2) @interpolate(linear)
+    //
+    // Perspective-interpolated (the default): all vertices of the quad share the same `w`, so this
+    // is exactly linear anyway. We can't ask for `@interpolate(linear)` since that becomes
+    // `noperspective` in GLSL, which doesn't exist in GLSL ES 3.00 (i.e. WebGL2).
+    @location(2)
     offset_in_pixels: vec2f,
 
     @location(3) @interpolate(flat)
@@ -131,6 +148,56 @@ fn read_data(idx: u32) -> GaussianData {
     data.color = color;
     data.picking_instance_id = picking_instance_id;
     return data;
+}
+
+// Evaluates the (non-DC) spherical harmonics of a gaussian for the given
+// (normalized) view direction, returning the view-dependent color delta.
+//
+// Uses the same real SH basis and coefficient order as the 3D Gaussian Splatting
+// reference implementation; the degree-0 (DC) term is the gaussian's color and not included.
+fn evaluate_sh(gaussian_idx: u32, dir: vec3f) -> vec3f {
+    // One texel per coefficient, coefficient-major: [c1.rgb, c2.rgb, …].
+    let texture_size = textureDimensions(sh_texture);
+    var coefficients: array<vec3f, 15>;
+    for (var i = 0u; i < SH_TEXELS_PER_GAUSSIAN; i += 1u) {
+        let texel_idx = gaussian_idx * SH_TEXELS_PER_GAUSSIAN + i;
+        coefficients[i] = textureLoad(sh_texture,
+            vec2u(texel_idx % texture_size.x, texel_idx / texture_size.x), 0).rgb;
+    }
+
+    let x = dir.x;
+    let y = dir.y;
+    let z = dir.z;
+
+    // Degree 1:
+    const SH_C1: f32 = 0.4886025119029199;
+    var result = -SH_C1 * y * coefficients[0]
+                + SH_C1 * z * coefficients[1]
+                - SH_C1 * x * coefficients[2];
+
+    // Degree 2:
+    let xx = x * x;
+    let yy = y * y;
+    let zz = z * z;
+    let xy = x * y;
+    let yz = y * z;
+    let xz = x * z;
+    result += 1.0925484305920792 * xy * coefficients[3]
+            + -1.0925484305920792 * yz * coefficients[4]
+            + 0.31539156525252005 * (2.0 * zz - xx - yy) * coefficients[5]
+            + -1.0925484305920792 * xz * coefficients[6]
+            + 0.5462742152960396 * (xx - yy) * coefficients[7];
+
+    // Degree 3:
+    result += -0.5900435899266435 * y * (3.0 * xx - yy) * coefficients[8]
+            + 2.890611442640554 * xy * z * coefficients[9]
+            + -0.4570457994644658 * y * (4.0 * zz - xx - yy) * coefficients[10]
+            + 0.3731763325901154 * z * (2.0 * zz - 3.0 * xx - 3.0 * yy) * coefficients[11]
+            + -0.4570457994644658 * x * (4.0 * zz - xx - yy) * coefficients[12]
+            + 1.445305721320277 * z * (xx - yy) * coefficients[13]
+            + -0.5900435899266435 * x * (xx - yy) * coefficients[14];
+
+    return result;
 }
 
 // A vertex whose quad contributes nothing.
@@ -263,9 +330,25 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     // Conic: inverse of the 2D covariance, for the gaussian falloff in the fragment shader.
     let conic = vec3f(cov2d.z, -cov2d.y, cov2d.x) / det;
 
+    // View-dependent color: evaluate the spherical harmonics for the direction from the camera
+    // to the gaussian. Done per-vertex (i.e. per gaussian, since the result is uniform across
+    // the quad), like the reference implementation.
+    // 3DGS treats colors as display (sRGB-encoded) values, so the SH delta is added in sRGB
+    // space; our color texture load already linearized the base color, so convert back & forth.
+    var color = data.color;
+    if has_any_flag(batch.flags, FLAG_HAS_SH_COEFFICIENTS) {
+        // The coefficients are authored in object space, so the direction has to be too:
+        // otherwise a rotated `world_from_obj` would leave the lobes pointing the wrong way.
+        let camera_in_obj_4d = batch.obj_from_world * vec4f(frame.camera_position, 1.0);
+        let camera_in_obj = camera_in_obj_4d.xyz / camera_in_obj_4d.w;
+        let view_dir = normalize(data.pos_in_obj - camera_in_obj);
+        let srgb = srgb_from_linear(color.rgb) + evaluate_sh(gaussian_idx, view_dir);
+        color = vec4f(linear_from_srgb(clamp(srgb, vec3f(0.0), vec3f(1.0))), color.a);
+    }
+
     var out: VertexOut;
     out.position = position;
-    out.color = data.color;
+    out.color = color;
     out.conic = conic;
     out.offset_in_pixels = offset_in_pixels;
     out.picking_instance_id = data.picking_instance_id;

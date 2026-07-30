@@ -32,9 +32,9 @@ int main(int argc, char* argv[]) {
                 rerun::Rgba32(0, 0, 255, 255),
             })
             .with_sh_coefficients({
-                rerun::datatypes::SphericalHarmonics3(red_sh),
-                rerun::datatypes::SphericalHarmonics3(green_sh),
-                rerun::datatypes::SphericalHarmonics3(blue_sh),
+                rerun::datatypes::SphericalHarmonics3Rgb(red_sh),
+                rerun::datatypes::SphericalHarmonics3Rgb(green_sh),
+                rerun::datatypes::SphericalHarmonics3Rgb(blue_sh),
             })
     );
 }
