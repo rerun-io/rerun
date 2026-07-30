@@ -11,6 +11,14 @@ use re_types_core::ViewClassIdentifier;
 use crate::ViewSystemIdentifier;
 
 /// Types of matches when matching [`crate::VisualizabilityConstraints::SingleRequiredComponent`].
+///
+/// Two components can be related on three different levels:
+/// * the *semantic* component type (e.g. `rerun.components.Position3D`),
+/// * the *encoding*, i.e. the Rerun datatype the component is built from (e.g. `rerun.datatypes.Vec3D`),
+/// * the *physical* Arrow datatype (e.g. `FixedSizeList(3 x non-null Float32)`).
+///
+/// Only the semantic type and the Arrow datatype are known at runtime — the encoding isn't tracked
+/// by the store — but components that share an encoding always share their Arrow datatype.
 #[derive(Clone, Debug, re_byte_size::SizeBytes)]
 pub enum DatatypeMatch {
     /// Only the physical datatype was matched, but semantics aren't the native ones.
@@ -132,6 +140,33 @@ impl VisualizableReason {
                     .map(|info| matches!(info, DatatypeMatch::NativeSemantics { .. }))
                     .unwrap_or(false)
             }
+        }
+    }
+
+    /// Returns true if this component is known to match only by its physical arrow datatype,
+    /// i.e. its semantics are *not* the ones the visualizer natively works with.
+    ///
+    /// For example, `GaussianSplats3D:scales` (`Scale3D`) matches the `Points3D:positions`
+    /// (`Position3D`) slot only physically, since both share the `rerun.datatypes.Vec3D` encoding.
+    ///
+    /// Unlike the negation of [`Self::full_native_match`], components that aren't part of this
+    /// match at all are *not* reported as physical-only.
+    /// This makes it suitable for ranking mapping candidates that may map components
+    /// beyond the ones this reason is concerned with.
+    pub fn physical_datatype_only_match(&self, component_identifier: ComponentIdentifier) -> bool {
+        match self {
+            Self::Always | Self::ExactMatchAny => false,
+
+            Self::SingleRequiredComponentMatch(m) => matches!(
+                m.matches.get(&component_identifier),
+                Some(DatatypeMatch::PhysicalDatatypeOnly { .. })
+            ),
+
+            // Format matches are always native by construction (semantic match required).
+            Self::BufferAndFormatMatch(m) => matches!(
+                m.buffer_matches.get(&component_identifier),
+                Some(DatatypeMatch::PhysicalDatatypeOnly { .. })
+            ),
         }
     }
 }

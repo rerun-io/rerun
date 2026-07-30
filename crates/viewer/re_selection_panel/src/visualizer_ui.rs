@@ -1319,7 +1319,20 @@ fn component_mappings_for_new_visualizer(
     // Now out of this list of all mappings, pick the best one!
     //
     // Reminder: Complex prioritization is already done for recommended visualizers, so we only should do very loose prioritization beyond that!
-    all_mapping_candidates
+    pick_best_mappings(
+        all_mapping_candidates,
+        active_visualizers,
+        visualizable_reason,
+    )
+}
+
+/// Picks the most suitable mapping out of all candidate mappings for a newly added visualizer.
+fn pick_best_mappings(
+    candidates: impl Iterator<Item = RecommendedMappings>,
+    active_visualizers: &[VisualizerInstruction],
+    visualizable_reason: Option<&VisualizableReason>,
+) -> VisualizerComponentMappings {
+    candidates
         .min_by_key(|recommended_mappings| {
             let is_trivial_mapping = recommended_mappings.mappings().is_empty()
                 || recommended_mappings
@@ -1330,9 +1343,27 @@ fn component_mappings_for_new_visualizer(
                 recommended_mappings.is_covered_by(&active_visualizer.component_mappings)
             });
 
+            // A component that merely has the right arrow datatype is a much worse source than one
+            // with the semantics the visualizer natively works with:
+            // e.g. `Points3D:positions` should map from `GaussianSplats3D:centers` (`Position3D`),
+            // not from `GaussianSplats3D:scales` (`Scale3D`), despite both sharing the
+            // `rerun.datatypes.Vec3D` encoding.
+            let has_physical_only_source = visualizable_reason.is_some_and(|reason| {
+                recommended_mappings.mappings().values().any(|source| {
+                    matches!(
+                        source,
+                        VisualizerComponentSource::SourceComponent {
+                            source_component, ..
+                        } if reason.physical_datatype_only_match(*source_component)
+                    )
+                })
+            });
+
             (
-                is_already_in_use,   // prefer mappings that haven't shown up yet
+                is_already_in_use,                   // prefer mappings that haven't shown up yet
+                has_physical_only_source, // prefer native semantics over plain datatype matches
                 !is_trivial_mapping, // prefer mappings that are completely trivial (false sorts earlier)
+                recommended_mappings.display_name(), // tie breaker, so that the pick is deterministic
             )
         })
         .map(RecommendedMappings::into_mappings)
@@ -1449,4 +1480,201 @@ fn available_inactive_visualizers(
         .map(|(vis, _)| vis)
         .sorted()
         .collect::<Vec<_>>()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use re_sdk_types::archetypes::{GaussianSplats3D, Points3D};
+    use re_viewer_context::{DatatypeMatch, SingleRequiredComponentMatch};
+
+    fn positions() -> ComponentIdentifier {
+        Points3D::descriptor_positions().component
+    }
+
+    fn centers() -> ComponentIdentifier {
+        GaussianSplats3D::descriptor_centers().component
+    }
+
+    fn scales() -> ComponentIdentifier {
+        GaussianSplats3D::descriptor_scales().component
+    }
+
+    fn vec3d() -> DataType {
+        <re_sdk_types::datatypes::Vec3D as re_types_core::Loggable>::arrow_datatype()
+    }
+
+    fn native(component: ComponentIdentifier) -> (ComponentIdentifier, DatatypeMatch) {
+        (
+            component,
+            DatatypeMatch::NativeSemantics {
+                arrow_datatype: vec3d(),
+                component_type: Points3D::descriptor_positions().component_type,
+            },
+        )
+    }
+
+    fn physical_only(component: ComponentIdentifier) -> (ComponentIdentifier, DatatypeMatch) {
+        (
+            component,
+            DatatypeMatch::PhysicalDatatypeOnly {
+                arrow_datatype: vec3d(),
+                component_type: GaussianSplats3D::descriptor_scales().component_type,
+                selectors: Vec::new(),
+            },
+        )
+    }
+
+    /// A `Vec3D` column without any semantic type, as logged via `AnyValues`.
+    fn untyped_physical_only(
+        component: ComponentIdentifier,
+    ) -> (ComponentIdentifier, DatatypeMatch) {
+        (
+            component,
+            DatatypeMatch::PhysicalDatatypeOnly {
+                arrow_datatype: vec3d(),
+                component_type: None,
+                selectors: Vec::new(),
+            },
+        )
+    }
+
+    fn positions_match(
+        matches: impl IntoIterator<Item = (ComponentIdentifier, DatatypeMatch)>,
+    ) -> VisualizableReason {
+        VisualizableReason::SingleRequiredComponentMatch(SingleRequiredComponentMatch {
+            target_component: positions(),
+            matches: matches.into_iter().collect(),
+        })
+    }
+
+    fn source(component: ComponentIdentifier) -> VisualizerComponentSource {
+        VisualizerComponentSource::SourceComponent {
+            source_component: component,
+            selector: String::new(),
+        }
+    }
+
+    /// A single `positions` mapping.
+    fn positions_from(component: ComponentIdentifier) -> VisualizerComponentMappings {
+        std::iter::once((positions(), source(component))).collect()
+    }
+
+    /// Picks the best mapping out of all candidates derived from the visualizability reason.
+    fn pick(
+        reason: &VisualizableReason,
+        active_visualizers: &[VisualizerInstruction],
+    ) -> VisualizerComponentMappings {
+        let candidates = component_mappings_for_required_components_from_visualizability(
+            &EntityPath::from("splats"),
+            &ViewSystemIdentifier::from_static_str("Points3D"),
+            Some(reason),
+        )
+        .into_iter()
+        .map(RecommendedMappings::from_mappings);
+
+        pick_best_mappings(candidates, active_visualizers, Some(reason))
+    }
+
+    fn active_visualizer(mappings: VisualizerComponentMappings) -> VisualizerInstruction {
+        VisualizerInstruction::new(
+            VisualizerInstructionId::new_random(),
+            ViewSystemIdentifier::from_static_str("Points3D"),
+            &EntityPath::from("blueprint/visualizers"),
+            mappings,
+        )
+    }
+
+    /// Regression test for RR-5303: `Points3D:positions` must map from the `Position3D`-typed
+    /// `centers`, not from the `Scale3D`-typed `scales` which merely has the same `Vec3D` datatype.
+    #[test]
+    fn native_semantics_wins_over_physical_datatype_match() {
+        // Note that `CustomSplats:acceleration` would win any name-based tie breaking.
+        let reason = positions_match([
+            native(centers()),
+            physical_only(scales()),
+            untyped_physical_only(ComponentIdentifier::from_static_str(
+                "CustomSplats:acceleration",
+            )),
+        ]);
+        assert_eq!(pick(&reason, &[]), positions_from(centers()));
+    }
+
+    /// Without any native match we still fall back to a plain physical datatype match.
+    #[test]
+    fn physical_datatype_match_is_used_if_there_is_no_native_one() {
+        let reason = positions_match([physical_only(scales())]);
+        assert_eq!(pick(&reason, &[]), positions_from(scales()));
+    }
+
+    /// An identity mapping is native by construction and should be preferred.
+    #[test]
+    fn identity_mapping_is_preferred() {
+        let reason = positions_match([
+            native(positions()),
+            native(centers()),
+            physical_only(scales()),
+        ]);
+        assert_eq!(pick(&reason, &[]), positions_from(positions()));
+    }
+
+    /// Ties between equally good candidates are broken deterministically.
+    #[test]
+    fn pick_is_deterministic_among_equally_good_candidates() {
+        // Both are native matches, so the tie is broken by name.
+        let other_centers = ComponentIdentifier::from_static_str("AaaPoints:centers");
+        let reason = positions_match([native(centers()), native(other_centers)]);
+
+        // Same result no matter how often we ask (`matches` is a hash map, so iteration order varies).
+        for _ in 0..10 {
+            assert_eq!(pick(&reason, &[]), positions_from(other_centers));
+        }
+    }
+
+    /// Mappings that are already in use are skipped, even if they'd be the better match.
+    #[test]
+    fn already_used_mapping_is_skipped() {
+        let reason = positions_match([native(centers()), physical_only(scales())]);
+        let active = [active_visualizer(positions_from(centers()))];
+        assert_eq!(pick(&reason, &active), positions_from(scales()));
+    }
+
+    /// Sources that aren't part of the match at all (e.g. mappings for other slots coming from a
+    /// view class recommendation) must not count as physical-only matches.
+    #[test]
+    fn mappings_for_unrelated_slots_are_not_penalized() {
+        let colors = Points3D::descriptor_colors().component;
+        let reason = positions_match([native(centers()), physical_only(scales())]);
+
+        let native_plus_unrelated: VisualizerComponentMappings = [
+            (positions(), source(centers())),
+            (
+                colors,
+                source(GaussianSplats3D::descriptor_colors().component),
+            ),
+        ]
+        .into_iter()
+        .collect();
+        let physical_only_mapping = positions_from(scales());
+
+        let picked = pick_best_mappings(
+            [
+                RecommendedMappings::from_mappings(physical_only_mapping),
+                RecommendedMappings::from_mappings(native_plus_unrelated.clone()),
+            ]
+            .into_iter(),
+            &[],
+            Some(&reason),
+        );
+        assert_eq!(picked, native_plus_unrelated);
+    }
+
+    #[test]
+    fn no_candidates_yields_no_mappings() {
+        assert_eq!(
+            pick_best_mappings(std::iter::empty(), &[], None),
+            VisualizerComponentMappings::default()
+        );
+    }
 }
