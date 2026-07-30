@@ -26,7 +26,17 @@ pub fn edit_u64_raw(
     range: RangeInclusive<u64>,
     suffix: &str,
 ) -> egui::Response {
-    let speed = (**value as f64 * 0.01).at_least(0.001);
+    // TODO(emilk): we could do something even smarter here, but for now this is good enough.
+    let max_pts_per_step = 20.0; // A matter of taste
+    let min_speed = 1.0 / max_pts_per_step;
+
+    let use_exponential_speed = range.end() - range.start() > 50;
+
+    let speed = if use_exponential_speed {
+        (**value as f64 * 0.01).at_least(min_speed)
+    } else {
+        min_speed
+    };
     edit_u64_raw_with_speed_impl(ui, value, range, speed, suffix)
 }
 
