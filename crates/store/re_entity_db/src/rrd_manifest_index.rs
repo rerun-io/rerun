@@ -451,25 +451,21 @@ impl RrdManifestIndex {
                     let old_state = chunk_info.state;
                     chunk_info.state = new_state;
 
-                    // Only update loaded ranges on actual state transitions to avoid
-                    // mismatched increments/decrements.
+                    // Only update loaded ranges when a chunk actually became loaded or unloaded, to
+                    // avoid mismatched increments/decrements. Note that `InTransit` counts as
+                    // unloaded, so going back to it from `FullyLoaded` is a change too.
                     if let Some(loaded_ranges) = &mut self.loaded_ranges
-                        && old_state != new_state
+                        && old_state.is_fully_loaded() != new_state.is_fully_loaded()
                     {
-                        match new_state {
-                            LoadState::Unloaded => {
-                                loaded_ranges.ranges.on_chunk_unloaded(
-                                    &chunk_id,
-                                    &self.chunk_prioritizer.component_paths_from_root_id,
-                                );
-                            }
-                            LoadState::InTransit => {}
-                            LoadState::FullyLoaded => {
-                                loaded_ranges.ranges.on_chunk_loaded(
-                                    &chunk_id,
-                                    &self.chunk_prioritizer.component_paths_from_root_id,
-                                );
-                            }
+                        let component_paths = &self.chunk_prioritizer.component_paths_from_root_id;
+                        if new_state.is_fully_loaded() {
+                            loaded_ranges
+                                .ranges
+                                .on_chunk_loaded(&chunk_id, component_paths);
+                        } else {
+                            loaded_ranges
+                                .ranges
+                                .on_chunk_unloaded(&chunk_id, component_paths);
                         }
                     }
 
