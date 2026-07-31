@@ -1078,7 +1078,7 @@ fn validate_layout_index_errors() {
 /// Reads a committed h5py-written fixture — every other test round-trips
 /// through `hdf5-pure`'s own writer, which would hide writer-symmetric parser
 /// bugs and never exercises libhdf5 idiosyncrasies (v1 symbol-table groups,
-/// string padding, attribute encodings).
+/// string padding, attribute encodings, the h5py compression filters).
 #[test]
 fn reads_h5py_written_file() {
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/assets/h5py_compat.h5");
@@ -1098,6 +1098,21 @@ fn reads_h5py_written_file() {
         .downcast_ref::<FixedSizeListArray>()
         .unwrap();
     assert_eq!(qpos_values.value_length(), 3);
+
+    let f32_values = |name: &'static str| {
+        data.components()
+            .get_array(name.into())
+            .unwrap()
+            .values()
+            .as_any()
+            .downcast_ref::<Float32Array>()
+            .unwrap()
+            .values()
+            .to_vec()
+    };
+    // `qvel` is gzip-compressed, `qacc` lzf-compressed.
+    assert_eq!(f32_values("qvel"), &[0.0, 1.0, 2.0, 3.0]);
+    assert_eq!(f32_values("qacc"), &[0.0, 10.0, 20.0, 30.0]);
 
     let props = find_chunk(&chunks, "/__hdf5_properties");
     let version = props.components().get_array("version".into()).unwrap();

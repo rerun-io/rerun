@@ -107,6 +107,9 @@ impl std::fmt::Display for DatasetDtype {
 
 impl From<&DType> for DatasetDtype {
     fn from(dtype: &DType) -> Self {
+        // The listed types and the `_` arm both map to `Unsupported`, but keep them
+        // apart: only the listed ones are types we know about.
+        #[expect(clippy::match_same_arms)]
         match dtype {
             DType::I8 => Self::Int8,
             DType::I16 => Self::Int16,
@@ -120,12 +123,16 @@ impl From<&DType> for DatasetDtype {
             DType::F64 => Self::Float64,
             DType::String | DType::VariableLengthString => Self::String,
 
-            //TODO(ab): support more of these?
+            //TODO(ab): support compound, enum, array and object-reference types?
             DType::Compound(_)
             | DType::Enum(_)
             | DType::Array(..)
             | DType::ObjectReference
             | DType::Other(_) => Self::Unsupported,
+
+            // `DType` is `#[non_exhaustive]`. A variant added upstream lands here
+            // instead of breaking the build.
+            _ => Self::Unsupported,
         }
     }
 }
@@ -362,11 +369,38 @@ pub(crate) fn read_index_to_ns(
     Ok(ScalarBuffer::from(values))
 }
 
+/// The attribute types [`attr_to_component`] maps to Arrow, in the same order.
+///
+/// Planning drops the rest, so an unmapped attribute never reaches conversion.
+/// `AttrValue` is `#[non_exhaustive]`, so a variant added upstream is unsupported
+/// until it is listed here and in [`attr_to_component`].
+pub(crate) fn supported_attr(value: &hdf5_pure::AttrValue) -> bool {
+    use hdf5_pure::AttrValue;
+
+    matches!(
+        value,
+        AttrValue::F64(_)
+            | AttrValue::I32(_)
+            | AttrValue::I64(_)
+            | AttrValue::U32(_)
+            | AttrValue::U64(_)
+            | AttrValue::String(_)
+            | AttrValue::AsciiString(_)
+            | AttrValue::F64Array(_)
+            | AttrValue::I64Array(_)
+            | AttrValue::StringArray(_)
+            | AttrValue::AsciiStringArray(_)
+            | AttrValue::VarLenAsciiArray(_)
+    )
+}
+
 /// Map one HDF5 attribute to a single-row static component.
 ///
 /// Scalar variants become a one-scalar `List<primitive>` row; array variants a
 /// single row whose value is a `FixedSizeList<L>` — the same one-per-row rule
 /// as datasets.
+///
+/// Errors for an attribute type [`supported_attr`] rejects.
 pub(crate) fn attr_to_component(
     name: &str,
     value: &hdf5_pure::AttrValue,
@@ -393,6 +427,14 @@ pub(crate) fn attr_to_component(
         | AttrValue::VarLenAsciiArray(values) => one_row_fixed_size_list(Arc::new(
             StringArray::from_iter_values(values.iter().map(String::as_str)),
         ))?,
+
+        // Planning drops what `supported_attr` rejects, so this arm means the two
+        // lists have drifted apart.
+        _ => {
+            return Err(Hdf5Error::UnsupportedAttributeType {
+                name: name.to_owned(),
+            });
+        }
     };
 
     let item_field = Field::new("item", values.data_type().clone(), true);

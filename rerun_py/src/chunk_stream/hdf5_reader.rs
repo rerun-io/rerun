@@ -158,6 +158,9 @@ impl PyHdf5ReaderInternal {
             re_hdf5::read_attributes(&self.path, path).map_err(|err| accessor_err_to_py(&err))?;
 
         let dict = PyDict::new(py);
+        // `AttrValue` is `#[non_exhaustive]`: leave an unlisted attribute type out of
+        // the dict, and warn once for the whole object.
+        let mut unsupported = Vec::new();
         for (name, value) in attrs {
             match value {
                 AttrValue::F64(value) => dict.set_item(name, value)?,
@@ -173,8 +176,19 @@ impl PyHdf5ReaderInternal {
                 AttrValue::StringArray(values)
                 | AttrValue::AsciiStringArray(values)
                 | AttrValue::VarLenAsciiArray(values) => dict.set_item(name, values)?,
+
+                _ => unsupported.push(name),
             }
         }
+
+        if !unsupported.is_empty() {
+            re_log::warn_once!(
+                "Ignoring HDF5 attributes of {path:?} with unsupported types: {}\nFile path: {}",
+                unsupported.join(", "),
+                self.path.display(),
+            );
+        }
+
         Ok(dict)
     }
 

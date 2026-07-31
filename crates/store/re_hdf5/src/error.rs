@@ -77,6 +77,9 @@ pub enum Hdf5Error {
 
     #[error("Unsupported element type {dtype}")]
     UnsupportedElementType { dtype: String },
+
+    #[error("Unsupported type for attribute {name:?}")]
+    UnsupportedAttributeType { name: String },
 }
 
 impl Hdf5Error {
@@ -144,7 +147,8 @@ impl Hdf5Error {
             | Self::InvalidComponentName { .. }
             | Self::InvalidTimelineName { .. }
             | Self::ListTooLong { .. }
-            | Self::UnsupportedElementType { .. } => false,
+            | Self::UnsupportedElementType { .. }
+            | Self::UnsupportedAttributeType { .. } => false,
         }
     }
 

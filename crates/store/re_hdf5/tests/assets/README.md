@@ -2,6 +2,7 @@
 
 `h5py_compat.h5` is the libhdf5-compat fixture read by `tests/integration.rs`.
 Unlike every other test fixture (written in-test by `hdf5-pure`'s own writer), it was written by h5py/libhdf5, so it exercises libhdf5 idiosyncrasies such as v1 symbol-table groups.
+It also covers the two compression filters h5py offers: `gzip` (`qvel`) and `lzf` (`qacc`).
 It was generated once with the following script (h5py is deliberately not a repo dependency):
 
 ```python
@@ -18,4 +19,5 @@ with h5py.File(out, "w") as f:
     obs.attrs["frequency"] = np.float64(50.0)
     obs.create_dataset("qpos", data=np.arange(12, dtype=np.float64).reshape(4, 3))
     obs.create_dataset("qvel", data=np.arange(4, dtype=np.float32), compression="gzip")
+    obs.create_dataset("qacc", data=np.arange(4, dtype=np.float32) * 10.0, compression="lzf")
 ```

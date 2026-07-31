@@ -125,16 +125,34 @@ fn resolve_root_group(file: &hdf5_pure::File, config: &Hdf5Config) -> Result<H5P
     }
 }
 
+/// One warning per kind of dropped object, each listing every path, so a file of
+/// unsupported types does not flood the log.
 fn warn_unsupported(walked: &Walk) {
-    let unsupported = walked
+    let datasets = walked
         .datasets
         .iter()
         .filter(|dataset| !convert::supported_dtype(&dataset.dtype))
         .map(|dataset| format!("{} ({})", dataset.path, dataset.dtype))
         .join(", ");
 
-    if !unsupported.is_empty() {
-        re_log::warn!("Ignoring HDF5 datasets with unsupported element types: {unsupported}");
+    if !datasets.is_empty() {
+        re_log::warn!("Ignoring HDF5 datasets with unsupported element types: {datasets}");
+    }
+
+    let attrs = walked
+        .attrs
+        .iter()
+        .flat_map(|object| {
+            object
+                .attrs
+                .iter()
+                .filter(|(_name, value)| !convert::supported_attr(value))
+                .map(|(name, _value)| format!("{}:{name}", object.path))
+        })
+        .join(", ");
+
+    if !attrs.is_empty() {
+        re_log::warn!("Ignoring HDF5 attributes of unsupported type: {attrs}");
     }
 }
 
@@ -269,8 +287,8 @@ fn build_timeline(
 }
 
 /// Assemble emission units: attributes first, then per group its timed
-/// (`Data`) and static-scalar datasets. The consumed index dataset and
-/// unsupported dtypes are dropped; empty units are skipped.
+/// (`Data`) and static-scalar datasets. The consumed index dataset, unsupported
+/// dtypes and unsupported attribute types are dropped; empty units are skipped.
 ///
 /// Entity paths are relative to `root` (the root group acts as `/`).
 fn build_units(
@@ -287,9 +305,17 @@ fn build_units(
     let mut units = Vec::new();
 
     for attr in walked.attrs {
+        let attrs: Vec<(String, hdf5_pure::AttrValue)> = attr
+            .attrs
+            .into_iter()
+            .filter(|(_name, value)| convert::supported_attr(value))
+            .collect();
+        if attrs.is_empty() {
+            continue;
+        }
         units.push(EmitUnit::Attributes {
             entity: props_entity(entity_path_prefix, &relative(&attr.path)),
-            attrs: attr.attrs,
+            attrs,
         });
     }
 
