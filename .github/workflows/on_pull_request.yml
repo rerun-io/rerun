@@ -49,6 +49,8 @@ jobs:
               - pixi.lock # maybe our build commands have changed
               - pixi.toml # maybe our build commands have changed
               - scripts/ci/**/*
+              - scripts/lint_cpp.py
+              - rerun_cpp/.clang-tidy
               - '**/*.cpp'
               - '**/*.hpp'
               - '**/*cmake'

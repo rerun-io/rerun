@@ -32,7 +32,7 @@ namespace rerun {
         std::vector<int64_t> times_in_nanoseconds;
         times_in_nanoseconds.reserve(times_in_secs.size());
         for (auto time_in_secs : times_in_secs) {
-            times_in_nanoseconds.push_back(static_cast<int64_t>(time_in_secs * 1.0e9 + 0.5));
+            times_in_nanoseconds.push_back(std::llround(time_in_secs * 1.0e9));
         }
         return TimeColumn(
             Timeline(std::move(timeline_name), TimeType::Duration),

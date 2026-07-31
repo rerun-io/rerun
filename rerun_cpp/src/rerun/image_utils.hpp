@@ -60,8 +60,11 @@ namespace rerun {
     }
 
     inline size_t num_bytes(WidthHeight resolution, datatypes::ChannelDatatype datatype) {
+        // Widen first: `uint32_t` overflows here, and the result is a buffer length.
+        const auto num_pixels =
+            static_cast<size_t>(resolution.width) * static_cast<size_t>(resolution.height);
         // rounding upwards:
-        return (resolution.width * resolution.height * datatype_bits(datatype) + 7) / 8;
+        return (num_pixels * datatype_bits(datatype) + 7) / 8;
     }
 
     template <typename TElement>
@@ -155,7 +158,9 @@ namespace rerun {
     inline size_t pixel_format_num_bytes(
         WidthHeight resolution, datatypes::PixelFormat pixel_format
     ) {
-        auto num_pixels = resolution.width * resolution.height;
+        // Widen before multiplying — see `num_bytes` above.
+        const auto num_pixels =
+            static_cast<size_t>(resolution.width) * static_cast<size_t>(resolution.height);
         switch (pixel_format) {
             // 444 formats.
             case datatypes::PixelFormat::Y_U_V24_FullRange:

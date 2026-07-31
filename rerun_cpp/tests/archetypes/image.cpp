@@ -49,6 +49,20 @@ SCENARIO("Image archetype can be created" TEST_TAG) {
         }
     }
 
+    GIVEN("simple 16bit grayscale image") {
+        std::vector<uint16_t> data(10 * 10, 0);
+        auto reference_image = check_logged_error([&] {
+            return Image(rerun::borrow(data), {10, 10}, ColorModel::L);
+        });
+
+        THEN("a pointer uses the full byte length") {
+            auto image_from_ptr = check_logged_error([&] {
+                return Image(data.data(), {10, 10}, ColorModel::L);
+            });
+            test_compare_archetype_serialization(image_from_ptr, reference_image);
+        }
+    }
+
     GIVEN("simple 8bit RGB image") {
         std::vector<uint8_t> data(10 * 10 * 3, 0);
         Image reference_image;

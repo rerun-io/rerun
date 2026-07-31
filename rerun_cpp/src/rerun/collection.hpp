@@ -107,6 +107,10 @@ namespace rerun {
         /// If the data is borrowed, this will copy the borrow,
         /// meaning there's now (at least) two collections borrowing the same data.
         void operator=(const Collection<TElement>& other) {
+            // Self-assignment would destroy `other` before copying from it.
+            if (this == &other) {
+                return;
+            }
             this->~Collection<TElement>();
             new (this) Collection(other);
         }

@@ -49,14 +49,14 @@ RR_DISABLE_MAYBE_UNINITIALIZED_POP
     Result<std::shared_ptr<arrow::Array>> tensor_data_with_dim_names(
         const std::optional<rerun::ComponentBatch>& data, Collection<std::string> names
     ) {
-        if (names.empty()) {
-            return std::move(data.value().array);
-        }
         if (!data.has_value()) {
             return Error(
                 ErrorCode::InvalidComponent,
                 "Can't set names on a tensor that doesn't have any data"
             );
+        }
+        if (names.empty()) {
+            return std::move(data.value().array);
         }
 
         // TODO(#9119): Right now everything is crammed into a single struct array,
@@ -145,6 +145,8 @@ RR_DISABLE_MAYBE_UNINITIALIZED_POP
             return std::move(*this);
         }
 
+        // `tensor_data_with_dim_names` errors when `data` is empty, so it is set here.
+        // NOLINTNEXTLINE(bugprone-unchecked-optional-access)
         this->data.value().array = std::move(result.value);
 
         return std::move(*this);

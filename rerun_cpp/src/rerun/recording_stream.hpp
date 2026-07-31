@@ -1,6 +1,7 @@
 #pragma once
 
 #include <chrono>
+#include <cmath>
 #include <cstdint> // uint32_t etc.
 #include <filesystem>
 #include <limits>
@@ -280,7 +281,7 @@ namespace rerun {
         /// You can remove a timeline from subsequent log calls again using `rec.disable_timeline`.
         /// @see set_time_sequence, set_time_duration, set_time_duration_secs, set_time_duration_nanos, set_time_timestamp, set_time_timestamp_secs_since_epoch, set_time_timestamp_nanos_since_epoch
         void set_time_duration_secs(std::string_view timeline_name, double secs) const {
-            set_time_duration_nanos(timeline_name, static_cast<int64_t>(1e9 * secs + 0.5));
+            set_time_duration_nanos(timeline_name, std::llround(1e9 * secs));
         }
 
         /// Set the index value of the given timeline as a duration in nanoseconds, for the current calling thread.

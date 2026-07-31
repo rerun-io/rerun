@@ -281,10 +281,11 @@ namespace rerun::archetypes {
         template <typename T>
         Image(const T* elements, WidthHeight resolution, datatypes::ColorModel color_model)
             : Image(
-                  rerun::Collection<uint8_t>::borrow(
-                      reinterpret_cast<const uint8_t*>(elements),
-                      resolution.width * resolution.height * color_model_channel_count(color_model)
-                  ),
+                  rerun::Collection<T>::borrow(
+                      elements, static_cast<size_t>(resolution.width) * resolution.height *
+                                    color_model_channel_count(color_model)
+                  )
+                      .to_uint8(),
                   resolution, color_model, get_datatype(elements)
               ) {}
 

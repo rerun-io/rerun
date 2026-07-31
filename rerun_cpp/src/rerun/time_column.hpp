@@ -2,6 +2,7 @@
 
 #include <cassert>
 #include <chrono>
+#include <cmath>
 #include <memory> // shared_ptr
 
 #include "collection.hpp"
@@ -204,7 +205,7 @@ namespace rerun {
             std::vector<int64_t> duration_in_nanos;
             duration_in_nanos.reserve(duration_in_secs.size());
             for (auto time_in_secs : duration_in_secs) {
-                duration_in_nanos.push_back(static_cast<int64_t>(time_in_secs * 1.0e9 + 0.5));
+                duration_in_nanos.push_back(std::llround(time_in_secs * 1.0e9));
             }
             return TimeColumn(
                 Timeline(std::move(timeline_name), TimeType::Duration),
@@ -269,7 +270,7 @@ namespace rerun {
             std::vector<int64_t> timestamp_in_nanos;
             timestamp_in_nanos.reserve(timestamp_in_secs.size());
             for (auto time_in_secs : timestamp_in_secs) {
-                timestamp_in_nanos.push_back(static_cast<int64_t>(time_in_secs * 1.0e9 + 0.5));
+                timestamp_in_nanos.push_back(std::llround(time_in_secs * 1.0e9));
             }
             return TimeColumn::from_nanos_since_epoch(
                 std::move(timeline_name),

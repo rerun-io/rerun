@@ -22,7 +22,8 @@ namespace rerun {
         }
 
         auto* data = reinterpret_cast<uint8_t*>(vec.data());
-        auto size_in_bytes = static_cast<int64_t>(vec.size() * sizeof(T));
+        const auto size_in_bytes =
+            static_cast<int64_t>(vec.size()) * static_cast<int64_t>(sizeof(T));
         return std::shared_ptr<arrow::Buffer>{
             new arrow::Buffer{data, size_in_bytes},
             // Keep the vector's buffer alive inside the shared_ptr's destructor until after we have deleted the Buffer.
