@@ -1,6 +1,7 @@
 ---
-source: crates/store/re_importer/src/importer_mcap/tests/ros2msg/test_pose_stamped.rs
-expression: "format!(\"{:-240}\", chunk)"
+source: crates/store/re_importer/src/importer_mcap/tests/test_suite.rs
+expression: snapshot
+input_file: crates/store/re_importer/src/importer_mcap/tests/assets/ros_pose_stamped.mcap
 ---
 ┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │ METADATA:                                                                                                                                                                                                                              │

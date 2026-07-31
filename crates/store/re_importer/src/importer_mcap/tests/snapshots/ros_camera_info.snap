@@ -1,7 +1,7 @@
 ---
-source: crates/store/re_importer/src/importer_mcap/tests/ros2msg/test_camera_info.rs
-assertion_line: 10
-expression: "format!(\"{:-240}\", chunk)"
+source: crates/store/re_importer/src/importer_mcap/tests/test_suite.rs
+expression: snapshot
+input_file: crates/store/re_importer/src/importer_mcap/tests/assets/ros_camera_info.mcap
 ---
 ┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │ METADATA:                                                                                                                                                                                                                         │

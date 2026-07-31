@@ -2,5 +2,4 @@
 
 mod foxglove;
 mod ros2msg;
-
-pub mod util;
+mod util;
