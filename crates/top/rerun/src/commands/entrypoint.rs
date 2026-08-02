@@ -864,13 +864,30 @@ fn should_relaunch_detached(args: &Args) -> bool {
 }
 
 #[cfg(feature = "native_viewer")]
+fn detached_child_args(raw_args: &[std::ffi::OsString]) -> Vec<&std::ffi::OsStr> {
+    let mut child_args = raw_args
+        .iter()
+        .skip(1)
+        .map(std::ffi::OsString::as_os_str)
+        .collect::<Vec<_>>();
+    let insertion_index = child_args
+        .iter()
+        .position(|arg| *arg == std::ffi::OsStr::new("--"))
+        .unwrap_or(child_args.len());
+    child_args.insert(
+        insertion_index,
+        std::ffi::OsStr::new("--detached-process-child"),
+    );
+    child_args
+}
+
+#[cfg(feature = "native_viewer")]
 fn relaunch_detached(raw_args: &[std::ffi::OsString]) -> anyhow::Result<()> {
     let executable = std::env::current_exe()
         .map_err(|err| anyhow::anyhow!("failed to locate the Rerun executable: {err}"))?;
     let mut command = std::process::Command::new(executable);
     command
-        .args(raw_args.iter().skip(1))
-        .arg("--detached-process-child")
+        .args(detached_child_args(raw_args))
         .stdin(std::process::Stdio::null())
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null());
@@ -1993,16 +2010,55 @@ mod tests {
                 "screenshot.png",
             ],
         ] {
-            let parent = Args::try_parse_from(cli_args).unwrap();
+            let raw_args = cli_args
+                .iter()
+                .copied()
+                .map(std::ffi::OsString::from)
+                .collect::<Vec<_>>();
+            let parent = Args::try_parse_from(raw_args.iter()).unwrap();
             assert!(
                 should_relaunch_detached(&parent),
                 "expected relaunch for {cli_args:?}"
             );
-        }
 
-        let child = Args::try_parse_from(["rerun", "--detach-process", "--detached-process-child"])
+            let child_args = detached_child_args(&raw_args);
+            let child = Args::try_parse_from(
+                std::iter::once(std::ffi::OsStr::new("rerun")).chain(child_args),
+            )
             .unwrap();
+            assert!(child.detached_process_child);
+            assert!(
+                !should_relaunch_detached(&child),
+                "unexpected second relaunch for {cli_args:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn detach_child_marker_precedes_end_of_options_separator() {
+        let raw_args =
+            ["rerun", "--detach-process", "--", "recording.rrd"].map(std::ffi::OsString::from);
+        let parent = Args::try_parse_from(raw_args.iter()).unwrap();
+        assert!(should_relaunch_detached(&parent));
+
+        let child_args = detached_child_args(&raw_args);
+
+        assert_eq!(
+            child_args,
+            [
+                std::ffi::OsStr::new("--detach-process"),
+                std::ffi::OsStr::new("--detached-process-child"),
+                std::ffi::OsStr::new("--"),
+                std::ffi::OsStr::new("recording.rrd"),
+            ]
+        );
+
+        let child =
+            Args::try_parse_from(std::iter::once(std::ffi::OsStr::new("rerun")).chain(child_args))
+                .unwrap();
+        assert!(child.detached_process_child);
         assert!(!should_relaunch_detached(&child));
+        assert_eq!(child.url_or_paths, ["recording.rrd"]);
     }
 
     #[test]
