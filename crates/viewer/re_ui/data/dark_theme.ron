@@ -36,10 +36,6 @@
     "bottom_bar_color": {
       "color": "{Gray.150}"
     },
-    "bottom_bar_stroke": {
-      "color": "{Gray.250}",
-      "width": 1
-    },
     "shadow_gradient_dark_start": {
       "color": "{Gray.0}",
       "alpha": 77

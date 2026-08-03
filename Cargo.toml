@@ -360,7 +360,7 @@ pico-args = "0.5.0"
 pin-project-lite = "0.2.17"
 ply-rs-bw = { version = "=3.0.0", default-features = false } # ply-rs-bw has released semver breaking changes in patch releases before. Fool me once, shame on you…
 poll-promise = "0.3.0"
-pollster = "0.4.0"
+pollster = "1.0"
 prettyplease = "0.2.37"
 proc-macro-crate = "3.5"
 proc-macro2 = { version = "1.0", default-features = false }

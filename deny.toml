@@ -108,6 +108,7 @@ skip = [
   { name = "objc2-foundation" }, # `accesskit_macos` uses a different version than `arboard`
   { name = "objc2" }, # `accesskit_macos` uses a different version than `arboard`
   { name = "ordered-float" }, # Old version being used by parquet, but super small!
+  { name = "pollster" }, # `rfd` still uses 0.4, we use 1.0
   { name = "quick-xml" }, # because of urdf-rs
   { name = "redox_syscall" }, # Plenty of versions in the wild
   { name = "rustc-hash" }, # numpy with compatible pyo3 requires different version than wgpu

@@ -248,7 +248,6 @@ impl TimePanel {
         let min_top_space = 150.0 + screen_header_height;
         let expanded = egui::Panel::bottom(id.with("time_panel_expanded"))
             .resizable(true)
-            .show_separator_line(false)
             .frame(panel_frame)
             .min_size(min_height)
             .max_size((window_height - min_top_space).at_least(min_height).round())
@@ -257,9 +256,8 @@ impl TimePanel {
         if can_collapse_to_bar {
             let collapsed = egui::Panel::bottom(id.with("time_panel_collapsed"))
                 .resizable(true)
-                .show_separator_line(false)
                 .frame(panel_frame)
-                .exact_size(32.0);
+                .exact_size(29.0);
 
             egui::Panel::show_switched(
                 ui,

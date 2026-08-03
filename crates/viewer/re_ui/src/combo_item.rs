@@ -1,5 +1,3 @@
-use crate::egui_ext::WidgetTextExt as _;
-use crate::egui_ext::boxed_widget::{BoxedWidget, BoxedWidgetExt as _};
 use crate::{DesignTokens, UiExt as _, icons};
 use eframe::emath::Align;
 use eframe::epaint::FontFamily;
@@ -13,7 +11,7 @@ use egui::{
 pub struct ComboItem<'a> {
     label: WidgetText,
     selected: bool,
-    value: Option<BoxedWidget<'a>>,
+    value: Option<egui::BoxedWidget<'a>>,
     error: Option<String>,
 }
 
@@ -43,16 +41,16 @@ impl<'a> ComboItem<'a> {
     }
 
     /// Add a value. Will be shown on the right side at font size 10.
-    pub fn value(mut self, value: impl Into<WidgetText> + Send + Sync + 'a) -> Self {
+    pub fn value(mut self, value: impl Into<WidgetText> + 'a) -> Self {
         let value = value
             .into()
-            .force_size(DesignTokens::combo_item_small_font_size());
+            .size(DesignTokens::combo_item_small_font_size());
         self.value = Some((|ui: &mut Ui| ui.label(value)).boxed());
         self
     }
 
     /// Add a value as a widget. Will be shown on the right side at font size 10.
-    pub fn value_widget(mut self, value: impl Widget + Send + Sync + 'a) -> Self {
+    pub fn value_widget(mut self, value: impl Widget + 'a) -> Self {
         self.value = Some(value.boxed());
         self
     }

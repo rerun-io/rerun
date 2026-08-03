@@ -956,7 +956,6 @@ impl AppState {
                             egui::Panel::top("recording_panel")
                                 .frame(egui::Frame::new())
                                 .resizable(resizable)
-                                .show_separator_line(false)
                                 .min_size(recordings_min_height)
                                 .max_size(max_recordings_height)
                                 .default_size(160.0_f32.max(recordings_min_height))

@@ -10,8 +10,6 @@ use egui::text::{ByteIndex, LayoutJob, TextFormat};
 use nucleo_matcher::pattern::{AtomKind, CaseMatching, Normalization, Pattern};
 use nucleo_matcher::{Matcher, Utf32String};
 
-use crate::egui_ext::LayoutJobExt as _;
-
 pub struct FuzzyQuery {
     raw_query: String,
 
@@ -184,7 +182,8 @@ impl FuzzyMatch {
 
         // Break up the job into one-character pieces, and then highlight those:
 
-        let mut out_job = input_job.cleared();
+        let mut out_job = input_job.clone();
+        out_job.clear();
         let mut char_byte_idx = 0;
         for (char_idx, chr) in self.target.chars().enumerate() {
             let mut format = input_job.format_at_byte(ByteIndex(char_byte_idx)).clone();

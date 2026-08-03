@@ -36,10 +36,6 @@
     "bottom_bar_color": {
       "color": "{Gray.1000}"
     },
-    "bottom_bar_stroke": {
-      "color": "{Gray.800}",
-      "width": 1
-    },
     "shadow_gradient_dark_start": {
       "color": "{Gray.0}",
       "alpha": 10
@@ -173,7 +169,7 @@
     "table_grid_view_card_fill": {
       "color": "{Gray.900}"
     },
-    
+
     "table_grid_view_card_hover_fill": {
       "color": "{Gray.850}"
     },
