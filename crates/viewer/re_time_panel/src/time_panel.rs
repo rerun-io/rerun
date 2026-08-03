@@ -1061,7 +1061,7 @@ impl TimePanel {
 
                     if total_num_messages == 0 {
                         ui.label(
-                            ui.warning_text(format!("No event logged on timeline {timeline:?}")),
+                            ui.warning_text(format!("No event logged on timeline {timeline}")),
                         );
                     } else {
                         list_item::list_item_scope(ui, "hover tooltip", |ui| {

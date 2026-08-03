@@ -47,9 +47,7 @@ impl DataUi for LatestAtInstanceResult<'_> {
             .schema()
             .entity_component_descriptor(&entity_path, component)
         else {
-            ui.label(format!(
-                "Entity {entity_path:?} has no component {component:?}"
-            ));
+            ui.label(format!("Entity {entity_path} has no component {component}"));
             return;
         };
 

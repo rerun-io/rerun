@@ -377,7 +377,7 @@ fn debug_ui(ui: &mut egui::Ui, db: &EntityDb) {
         ui.end_row();
 
         ui.label("Connection");
-        ui.label(format!("{:?}", db.redap_connection_state()));
+        ui.label(format!("{:?}", db.redap_connection_state())); // NOLINT: debug-only UI
         ui.end_row();
 
         ui.label("Physical chunks");

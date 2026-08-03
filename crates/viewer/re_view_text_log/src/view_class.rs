@@ -498,7 +498,7 @@ fn view_property_ui_rows(ctx: &ViewContext<'_>, ui: &mut egui::Ui) {
     let reflection = ctx.viewer_ctx.reflection();
     let Some(reflection) = reflection.archetypes.get(&property.archetype_name) else {
         ui.error_label(format!(
-            "Missing reflection data for archetype {:?}.",
+            "Missing reflection data for archetype {}.",
             property.archetype_name
         ));
         return;

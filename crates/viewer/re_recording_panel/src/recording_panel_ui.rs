@@ -504,7 +504,7 @@ fn dataset_entry_ui(ctx: &AppContext<'_>, ui: &mut egui::Ui, dataset_entry_data:
     };
 
     let item_response = item_response.on_hover_ui(|ui| {
-        ui.label(format!("Dataset: {name:?}"));
+        ui.label(format!("Dataset: {name}"));
     });
 
     let new_route = Route::from(re_uri::EntryUri::new(origin.clone(), *entry_id));

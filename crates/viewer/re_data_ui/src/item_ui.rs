@@ -596,7 +596,7 @@ pub fn store_id_button_ui(
         entity_db_button_ui(ctx, entity_db, ui, ui_layout, true);
     } else {
         ui_layout.label(ui, "<unknown store>").on_hover_ui(|ui| {
-            ui.label(format!("{store_id:?}"));
+            ui.label(format!("{store_id}"));
         });
     }
 }

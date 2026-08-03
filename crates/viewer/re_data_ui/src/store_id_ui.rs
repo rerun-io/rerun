@@ -6,7 +6,7 @@ impl crate::AppUi for re_log_types::StoreId {
             entity_db.app_ui(ctx, ui, ui_layout);
         } else {
             ui_layout.label(ui, "<unknown store>").on_hover_ui(|ui| {
-                ui.label(format!("{self:?}"));
+                ui.label(format!("{self}"));
             });
         }
     }

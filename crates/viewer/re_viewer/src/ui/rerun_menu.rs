@@ -168,7 +168,7 @@ impl App {
                 );
 
                 ui.label("egui debug options:");
-                ui.weak(format!("pixels_per_point: {:?}", ui.pixels_per_point()));
+                ui.weak(format!("pixels_per_point: {}", ui.pixels_per_point()));
                 egui_debug_options_ui(ui);
             });
 
@@ -393,22 +393,28 @@ fn render_state_ui(ui: &mut egui::Ui, render_state: &egui_wgpu::RenderState) {
             ui.end_row();
 
             ui.label("Device Type");
-            ui.label(format!("{device_type:?}"));
+            ui.label(match device_type {
+                wgpu::DeviceType::Other => "Other",
+                wgpu::DeviceType::IntegratedGpu => "Integrated GPU",
+                wgpu::DeviceType::DiscreteGpu => "Discrete GPU",
+                wgpu::DeviceType::VirtualGpu => "Virtual GPU",
+                wgpu::DeviceType::Cpu => "CPU",
+            });
             ui.end_row();
 
             if !name.is_empty() {
                 ui.label("Name");
-                ui.label(format!("{name:?}"));
+                ui.label(name);
                 ui.end_row();
             }
             if !driver.is_empty() {
                 ui.label("Driver");
-                ui.label(format!("{driver:?}"));
+                ui.label(driver);
                 ui.end_row();
             }
             if !driver_info.is_empty() {
                 ui.label("Driver info");
-                ui.label(format!("{driver_info:?}"));
+                ui.label(driver_info);
                 ui.end_row();
             }
             if *vendor != 0 {

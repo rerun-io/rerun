@@ -70,6 +70,7 @@ tokio_runtime_creation = re.compile(
 )
 debug_formatted_error = re.compile(r"\{\w*err:#?\?\}")
 debug_tracing_error = re.compile(r"\?\w*err\b")
+debug_formatted_ui_label = re.compile(r"ui\.\w+\([^)]*\n?[^)]*:\?")
 quoted_string = re.compile(r'"([^"]*)"')
 deprecated_rerun_cloud = re.compile(r"\bRerun\s+Cloud\b", re.IGNORECASE)
 deprecated_rerun_base = re.compile(r"\bRerun\s+Base\b", re.IGNORECASE)
@@ -483,6 +484,7 @@ def test_lint_line() -> None:
         "let Some(foo) = bar else { return; };",
         "{foo:?}",
         'ui.label("This is fine. Correct casing.")',
+        'ui.label(format!("Value: {value}"));',
         "rec",
         "anyhow::Result<()>",
         "The theme is great",
@@ -713,6 +715,12 @@ def test_lint_line() -> None:
         for line in test.split("\n"):
             assert lint_line(line, prev_line) is not None, f'expected "{line}" to fail'
             prev_line = line
+
+    assert debug_formatted_ui_label.search('ui.label(format!("Value: {value:?}"));')
+    assert debug_formatted_ui_label.search('ui.label(format!(\n    "Value: {value:?}",\n));')
+    assert debug_formatted_ui_label.search('ui.error_label(format!("Value: {value:?}"));')
+    assert not debug_formatted_ui_label.search('ui.label(format!("Value: {value}"));')
+    assert not debug_formatted_ui_label.search('ui.error_label(format!("Value: {value}"));')
 
     runtime_creation = "tokio::runtime::Runtime::new()"
     assert lint_line(runtime_creation, None, is_in_oss_rerun_repo=True) is not None
@@ -1682,6 +1690,12 @@ def lint_file(filepath: str, args: Any) -> int:
             num_errors += 1
 
     if filepath.endswith(".rs"):
+        for match in debug_formatted_ui_label.finditer(source.content):
+            line_nr = _index_to_line_nr(source.content, match.start())
+            if not source.should_ignore(line_nr):
+                print(source.error("Use Display, not Debug formatting, in GUI labels", line_nr=line_nr))
+                num_errors += 1
+
         for match in tonic_result.finditer(source.content):
             line_nr = _index_to_line_nr(source.content, match.start())
             print(source.error("Prefer using tonic::Result<>", line_nr=line_nr))

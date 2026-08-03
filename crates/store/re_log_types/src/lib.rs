@@ -185,6 +185,18 @@ impl std::fmt::Debug for StoreId {
     }
 }
 
+impl std::fmt::Display for StoreId {
+    #[inline]
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self {
+            kind,
+            application_id,
+            recording_id,
+        } = self;
+        write!(f, "{kind}:{application_id}:{recording_id}")
+    }
+}
+
 impl StoreId {
     #[inline]
     pub fn new(
