@@ -1371,6 +1371,7 @@ impl RerunCloudService for RerunCloudHandler {
                 rrd_manifest: Some(rrd_manifest.to_transport(()).map_err(|err| {
                     tonic::Status::internal(format!("Unable to compute RRD manifest: {err:#}"))
                 })?),
+                manifest_key: None,
             }));
 
         Ok(tonic::Response::new(

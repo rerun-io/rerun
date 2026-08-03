@@ -724,6 +724,7 @@ where
             .get_rrd_manifest(
                 tonic::Request::new(re_protos::cloud::v1alpha1::GetRrdManifestRequest {
                     segment_id: Some(segment_id.clone().into()),
+                    generate_direct_urls: false,
                 })
                 .with_entry_id(dataset_id),
             )

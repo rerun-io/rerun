@@ -139,6 +139,11 @@ service RerunCloudService {
   // When that happens, it is guaranteed that all parts have the same exact Sorbet schemas (and therefore
   // identical Sorbet schema hashes too).
   // That means it is always semantically valid to concatenate the data from these RRD manifests.
+  //
+  // If the client sets `generate_direct_urls`, the server may instead return keys pointing at the
+  // raw manifest data, for the client to fetch and decode itself. This is best-effort: the
+  // response may still inline the manifests: clients must handle both forms. However, all the
+  // items in a stream will either send inline manifest or urls, uniformly.
   rpc GetRrdManifest(GetRrdManifestRequest) returns (stream GetRrdManifestResponse) {}
 
   // Get the assets that apply to this dataset.
@@ -528,10 +533,22 @@ message GetDatasetSchemaResponse {
 
 message GetRrdManifestRequest {
   rerun.common.v1alpha1.SegmentId segment_id = 1;
+
+  // Will ask the server to return direct URLs pointing at the raw manifest data, instead of
+  // inlining the manifest.
+  //
+  // It is not guaranteed that the server will honor this.
+  bool generate_direct_urls = 2;
 }
 
 message GetRrdManifestResponse {
+  // Exactly one of `rrd_manifest` and `manifest_key` is set per response.
+
+  // The manifest, inlined.
   rerun.log_msg.v1alpha1.RrdManifest rrd_manifest = 1;
+
+  // Points at the raw manifest data, for the client to fetch and decode itself.
+  RrdManifestKey manifest_key = 2;
 }
 
 message GetAssetsForSegmentRequest {}
@@ -1245,4 +1262,22 @@ message RrdChunkLocation {
 
   // Chunk length in bytes.
   optional uint64 length = 3;
+}
+
+// `RrdManifestKey` points at an RRD manifest (footer) in the object store.
+message RrdManifestKey {
+  // The location of the manifest
+  RrdChunkLocation location = 1;
+
+  // The segment layer this manifest belongs to.
+  optional string layer = 2;
+
+  // ETag of the source object (the layer's RRD file) as observed at registration time.
+  //
+  // Clients should pass this as an `If-Match` precondition when fetching, so that a concurrent
+  // re-registration results in a clean failure (HTTP 412) instead of decoding garbage from a
+  // mismatched byte range.
+  //
+  // Optional: legacy registrations and stores that do not return an ETag leave this unset.
+  optional string etag = 3;
 }
