@@ -185,10 +185,7 @@ impl PyChunkStoreInternal {
 
         let provider =
             LocalChunkStoreTableProvider::try_new(self.handle.clone(), query).map_err(to_py_err)?;
-        Ok(PyTableProviderAdapterInternal::new(
-            Arc::new(provider),
-            /* streaming= */ true,
-        ))
+        Ok(PyTableProviderAdapterInternal::new(Arc::new(provider)))
     }
 }
 

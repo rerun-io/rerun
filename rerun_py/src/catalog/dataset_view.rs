@@ -263,7 +263,7 @@ impl PyDatasetViewInternal {
             using_index_values,
         )?;
 
-        let table = PyTableProviderAdapterInternal::new(provider, true);
+        let table = PyTableProviderAdapterInternal::new(provider);
 
         let dataset = self_.dataset.borrow(py);
         let client = dataset.client().borrow(py);

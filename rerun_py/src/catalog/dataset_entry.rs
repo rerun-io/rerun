@@ -248,7 +248,7 @@ impl PyDatasetEntryInternal {
                 .map_err(to_py_err)
         })?;
 
-        let table = PyTableProviderAdapterInternal::new(provider, false);
+        let table = PyTableProviderAdapterInternal::new(provider);
 
         let client = self_.client.borrow(py);
         let ctx = client.ctx(py)?;
@@ -272,7 +272,7 @@ impl PyDatasetEntryInternal {
                 .map_err(to_py_err)
         })?;
 
-        let table = PyTableProviderAdapterInternal::new(provider, false);
+        let table = PyTableProviderAdapterInternal::new(provider);
 
         let client = self_.client.borrow(py);
         let ctx = client.ctx(py)?;
