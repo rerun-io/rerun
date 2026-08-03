@@ -1,6 +1,9 @@
 mod blueprint_ext;
 mod command;
 
+#[cfg(test)]
+mod tests;
+
 use std::collections::BTreeMap;
 
 use re_chunk::TimelineName;
@@ -500,11 +503,17 @@ impl TimeControl {
                     } else {
                         let dt = stable_dt.min(0.1) * self.speed;
 
-                        if self.loop_mode == LoopMode::Off && full_range.max() <= state.time {
+                        if self.loop_mode == LoopMode::Off
+                            && (full_range.max() <= state.time && dt > 0.0
+                                || full_range.min() >= state.time && dt < 0.0)
+                        {
                             // We've reached the end of the data
-                            self.set_time_ad_hoc(full_range.max().into());
+                            let new_time = state
+                                .time
+                                .clamp(full_range.min().into(), full_range.max().into());
+                            self.set_time_ad_hoc(new_time);
 
-                            if more_data_is_streaming_in {
+                            if more_data_is_streaming_in && dt > 0.0 {
                                 // then let's wait for it without pausing!
                             } else {
                                 self.pause(blueprint_ctx);
@@ -529,10 +538,12 @@ impl TimeControl {
                                 None => {}
                             }
 
-                            if let Some(loop_range) = loop_range
-                                && loop_range.max < new_time
-                            {
-                                new_time = loop_range.min; // loop!
+                            if let Some(loop_range) = loop_range {
+                                if dt > 0.0 && loop_range.max < new_time {
+                                    new_time = loop_range.min; // loop!
+                                } else if dt < 0.0 && loop_range.min > new_time {
+                                    new_time = loop_range.max; // loop in reverse!
+                                }
                             }
 
                             self.set_time_ad_hoc(new_time);
@@ -659,13 +670,16 @@ impl TimeControl {
                 self.playing = true;
                 self.following = false;
 
-                // Start from beginning if we are at the end:
                 if let Some(db) = db
                     && let Some(range) = db.time_range_for(self.timeline_name())
                 {
                     if let Some(state) = self.states.get_mut(self.timeline.name()) {
-                        if range.max <= state.time {
+                        if self.speed > 0.0 && range.max <= state.time {
+                            // Start from beginning if we are at the end and playing forward.
                             state.time = range.min.into();
+                        } else if self.speed < 0.0 && range.min >= state.time {
+                            // Start from the end if we are at the beginning and playing backward.
+                            state.time = range.max.into();
                         }
                     } else {
                         self.states

@@ -697,17 +697,6 @@ impl TimeControl {
         if self.playing {
             self.pause(blueprint_ctx);
         } else {
-            // Start from beginning if we are at the end:
-            if let Some(range) = db.time_range_for(self.timeline_name())
-                && let Some(state) = self.states.get_mut(self.timeline.name())
-                && range.max <= state.time
-            {
-                state.time = range.min.into();
-                self.playing = true;
-                self.following = false;
-                return;
-            }
-
             self.set_play_state(Some(db), PlayState::Playing, blueprint_ctx);
         }
     }
