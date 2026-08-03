@@ -275,7 +275,8 @@ mod tests {
                 time: Some(10.0 + i as f64),
                 ..Default::default()
             };
-            let _out = ctx.run_ui(input, |_| {});
+            let mut output = ctx.run_ui(input, |_| {});
+            output.textures_delta.clear();
         }
     }
 
@@ -287,7 +288,8 @@ mod tests {
             time: Some(100.0 + frame_nr as f64),
             ..Default::default()
         };
-        let _out = ctx.run_ui(input, |_| {});
+        let mut output = ctx.run_ui(input, |_| {});
+        output.textures_delta.clear();
         undo.update(ctx, db);
     }
 

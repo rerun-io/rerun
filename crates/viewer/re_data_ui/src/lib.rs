@@ -2,6 +2,9 @@
 //!
 //! This crate provides ui elements for Rerun component data for the Rerun Viewer.
 
+// Increased recursion is needed for rustdoc to evaluate `Send` and `Sync` for wgpu's `RenderPipeline`.
+#![recursion_limit = "256"]
+
 use re_log_types::EntityPath;
 use re_sdk_types::reflection::ComponentDescriptorExt as _;
 use re_sdk_types::{ComponentDescriptor, RowId};

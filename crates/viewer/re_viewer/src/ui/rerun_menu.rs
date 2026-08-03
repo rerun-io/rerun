@@ -379,6 +379,7 @@ fn render_state_ui(ui: &mut egui::Ui, render_state: &egui_wgpu::RenderState) {
             subgroup_min_size: _,
             subgroup_max_size: _,
             transient_saves_memory: _,
+            limit_bucket: _,
         } = &info;
 
         // Example values:

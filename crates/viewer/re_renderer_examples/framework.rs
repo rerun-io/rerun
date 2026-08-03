@@ -293,7 +293,7 @@ impl<E: Example + 'static> Application<E> {
                     std::iter::once(composite_cmd_encoder.finish()),
                 ));
                 self.window.pre_present_notify();
-                frame.present();
+                self.re_ctx.queue.present(frame);
 
                 self.example
                     .on_frame_finished(&self.re_ctx, submission_index);

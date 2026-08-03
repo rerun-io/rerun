@@ -5,21 +5,13 @@ use wasm_bindgen_test::wasm_bindgen_test;
 wasm_bindgen_test::wasm_bindgen_test_configure!(run_in_browser);
 
 fn redap_port() -> u16 {
-    // TODO(grtlr): Move browser URL query parsing to `re_web`.
-    let search = web_sys::window()
+    web_sys::window()
         .expect("test should run in a browser window")
         .location()
-        .search()
-        .expect("window location search should be available");
-
-    search
-        .trim_start_matches('?')
-        .split('&')
-        .filter_map(|pair| pair.split_once('='))
-        .find_map(|(key, value)| (key == "redap_port").then_some(value))
-        .expect("redap_port query parameter should be set")
+        .port()
+        .expect("window location port should be available")
         .parse()
-        .expect("redap_port should be a valid port")
+        .expect("window location port should be valid")
 }
 
 #[wasm_bindgen_test]

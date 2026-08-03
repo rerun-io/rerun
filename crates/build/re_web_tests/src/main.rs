@@ -98,15 +98,6 @@ fn discover_packages(package_filter: Option<&str>) -> anyhow::Result<Vec<WebTest
 }
 
 async fn run_package(args: &Args, package: &WebTestPackage) -> anyhow::Result<()> {
-    if args.no_headless && package.redap_server {
-        // Interactive mode parses `WASM_BINDGEN_TEST_ADDRESS` as a socket address, so it
-        // cannot carry the `redap_port` URL query parameter used by headless tests.
-        bail!(
-            "package {:?} requires a native redap server, which is only supported in headless mode",
-            package.name
-        );
-    }
-
     eprintln!("Running web tests for {}", package.name);
 
     let server = if package.redap_server {
@@ -114,6 +105,7 @@ async fn run_package(args: &Args, package: &WebTestPackage) -> anyhow::Result<()
             re_server::Args {
                 host: "127.0.0.1".to_owned(),
                 port: 0,
+                cors_allow_origin: vec!["http://127.0.0.2:*".to_owned()],
                 ..Default::default()
             }
             .create_server_handle()
@@ -134,10 +126,7 @@ async fn run_package(args: &Args, package: &WebTestPackage) -> anyhow::Result<()
     if let Some(server) = &server {
         command.env(
             "WASM_BINDGEN_TEST_ADDRESS",
-            format!(
-                "http://127.0.0.1/?redap_port={}",
-                server.connect_addr().port()
-            ),
+            format!("127.0.0.2:{}", server.connect_addr().port()),
         );
     } else {
         command.env_remove("WASM_BINDGEN_TEST_ADDRESS");

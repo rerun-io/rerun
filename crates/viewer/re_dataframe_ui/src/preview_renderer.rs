@@ -326,7 +326,7 @@ impl<'a> RecordingPreviewRenderer<'a> {
                     let input_before = input.clone();
 
                     // Suppress most input.
-                    input.raw.modifiers = egui::Modifiers::default();
+                    input.modifiers = egui::Modifiers::default();
                     input.raw.events.clear();
                     input.smooth_scroll_delta = egui::Vec2::ZERO;
                     input.focused = false;
