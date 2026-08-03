@@ -1,5 +1,7 @@
+use std::collections::BTreeMap;
+
 use re_async::AsyncReadAt;
-use re_log_types::{LogMsg, StoreId};
+use re_log_types::{ApplicationId, LogMsg, StoreId};
 
 use crate::rrd::{
     CodecError, Decodable as _, DecoderEntrypoint as _, MessageHeader, MessageKind, StreamFooter,
@@ -105,18 +107,35 @@ pub async fn enumerate_rrd_stores<R: AsyncReadAt>(reader: &R) -> Result<Vec<Stor
         return Ok(store_ids);
     }
 
-    enumerate_legacy_stores(reader).await
+    enumerate_legacy_metadata(reader)
+        .await
+        .map(|metadata| metadata.store_ids)
 }
 
-/// Legacy (no-footer) enumeration: walk message frames without decoding chunk data.
+/// Metadata collected from RRD message frames without decoding chunk data.
+pub struct RrdMetadata {
+    /// All store ids announced by `SetStoreInfo` messages, sorted and deduplicated.
+    pub store_ids: Vec<StoreId>,
+
+    /// The last default-blueprint activation for each application id.
+    pub default_blueprint_by_app_id: BTreeMap<ApplicationId, StoreId>,
+}
+
+/// Enumerate the metadata available through legacy RRD message frames.
 ///
-/// We read each 16-byte [`MessageHeader`], decode only `SetStoreInfo` payloads, and skip past
-/// `ArrowMsg` / `BlueprintActivationCommand` payloads. Cost is `O(num_messages * 16 bytes)` of
-/// frame reads + small `SetStoreInfo` payload decodes. No Arrow IPC decoding ever happens.
+/// Reads each 16-byte [`MessageHeader`], decodes only `SetStoreInfo` and
+/// `BlueprintActivationCommand` payloads, and skips past `ArrowMsg` payloads. No Arrow IPC decoding
+/// happens.
 ///
-/// The same `StoreId` can appear in multiple `SetStoreInfo` messages (e.g. after a
-/// flush/reconnect); the returned list is deduplicated.
-async fn enumerate_legacy_stores<R: AsyncReadAt>(reader: &R) -> Result<Vec<StoreId>, CodecError> {
+/// This does not inspect the footer. Store ids therefore come only from `SetStoreInfo` messages and
+/// may be incomplete for footer-backed RRDs. The same `StoreId` can appear in multiple
+/// `SetStoreInfo` messages, so the returned list is sorted and deduplicated.
+pub async fn enumerate_legacy_metadata<R: AsyncReadAt>(
+    reader: &R,
+) -> Result<RrdMetadata, CodecError> {
+    // TODO(grtlr): Profile this scan without holding a Puffin scope across `.await` points.
+    // `ProfilerScope` must end on its starting thread and therefore makes the future non-`Send`.
+
     // Read and validate the StreamHeader; it also carries the crate version we need when
     // decoding individual message payloads (for version-dependent migrations).
     let stream_header_buf = reader
@@ -126,6 +145,7 @@ async fn enumerate_legacy_stores<R: AsyncReadAt>(reader: &R) -> Result<Vec<Store
     let (version, _options) = stream_header.to_version_and_options()?;
 
     let mut store_ids = Vec::new();
+    let mut default_blueprint_by_app_id = BTreeMap::new();
     let mut app_id_cache = CachingApplicationIdInjector::default();
 
     let mut offset = StreamHeader::ENCODED_SIZE_BYTES as u64;
@@ -144,23 +164,32 @@ async fn enumerate_legacy_stores<R: AsyncReadAt>(reader: &R) -> Result<Vec<Store
         match header.kind {
             MessageKind::End => break,
 
-            MessageKind::SetStoreInfo => {
+            MessageKind::SetStoreInfo | MessageKind::BlueprintActivationCommand => {
                 let payload_len = usize::try_from(header.len).map_err(CodecError::Overflow)?;
                 let payload = reader.read_exact_at(offset, payload_len).await?;
                 offset += header.len;
                 let byte_span = re_chunk::Span::from_start_len(0, header.len);
-                if let Some(LogMsg::SetStoreInfo(set_store_info)) = LogMsg::decode(
+                match LogMsg::decode(
                     payload,
                     byte_span,
-                    MessageKind::SetStoreInfo,
+                    header.kind,
                     &mut app_id_cache,
                     Some(version),
                 )? {
-                    store_ids.push(set_store_info.info.store_id);
+                    Some(LogMsg::SetStoreInfo(set_store_info)) => {
+                        store_ids.push(set_store_info.info.store_id);
+                    }
+                    Some(LogMsg::BlueprintActivationCommand(command)) if command.make_default => {
+                        default_blueprint_by_app_id.insert(
+                            command.blueprint_id.application_id().clone(),
+                            command.blueprint_id,
+                        );
+                    }
+                    _ => {}
                 }
             }
 
-            MessageKind::ArrowMsg | MessageKind::BlueprintActivationCommand => {
+            MessageKind::ArrowMsg => {
                 offset += header.len;
             }
         }
@@ -168,7 +197,16 @@ async fn enumerate_legacy_stores<R: AsyncReadAt>(reader: &R) -> Result<Vec<Store
 
     store_ids.sort();
     store_ids.dedup();
-    Ok(store_ids)
+
+    // From a server-perspective, it does not make sense to keep
+    // former blueprint activation commands, if they are not part
+    // of this RRD.
+    default_blueprint_by_app_id.retain(|_, store_id| store_ids.contains(store_id));
+
+    Ok(RrdMetadata {
+        store_ids,
+        default_blueprint_by_app_id,
+    })
 }
 
 #[cfg(test)]
@@ -178,6 +216,13 @@ mod tests {
 
     use super::*;
     use crate::rrd::test_util::{encode_test_rrd, encode_test_rrd_to_file, make_test_chunks};
+
+    fn set_store_info(store_id: StoreId) -> LogMsg {
+        LogMsg::SetStoreInfo(re_log_types::SetStoreInfo {
+            row_id: *re_chunk::RowId::ZERO,
+            info: re_log_types::StoreInfo::new(store_id, re_log_types::StoreSource::Unknown),
+        })
+    }
 
     #[test]
     fn test_read_footer_roundtrip() {
@@ -407,6 +452,123 @@ mod tests {
             ids_footer, ids_legacy,
             "footer and legacy paths must agree on the same content"
         );
+    }
+
+    #[test]
+    fn test_enumerate_legacy_metadata_default_blueprint_last_wins() {
+        use re_log_types::{BlueprintActivationCommand, LogMsg, StoreId, StoreKind};
+
+        let app_id = re_log_types::ApplicationId::from("metadata_app");
+        let recording = StoreId::random(StoreKind::Recording, app_id.clone());
+        let blueprint_a = StoreId::random(StoreKind::Blueprint, app_id.clone());
+        let blueprint_b = StoreId::random(StoreKind::Blueprint, app_id);
+        let file = tempfile::NamedTempFile::new().unwrap();
+        {
+            let mut out = std::fs::File::create(file.path()).unwrap();
+            let mut encoder = crate::Encoder::new_eager(
+                re_build_info::CrateVersion::LOCAL,
+                crate::EncodingOptions::PROTOBUF_COMPRESSED,
+                &mut out,
+            )
+            .unwrap();
+            encoder.append(&set_store_info(recording.clone())).unwrap();
+            encoder
+                .append(&set_store_info(blueprint_a.clone()))
+                .unwrap();
+            encoder
+                .append(&LogMsg::BlueprintActivationCommand(
+                    BlueprintActivationCommand::make_default(blueprint_a),
+                ))
+                .unwrap();
+            encoder
+                .append(&set_store_info(blueprint_b.clone()))
+                .unwrap();
+            encoder
+                .append(&LogMsg::BlueprintActivationCommand(
+                    BlueprintActivationCommand::make_default(blueprint_b.clone()),
+                ))
+                .unwrap();
+            encoder.finish().unwrap();
+        }
+
+        let file = File::open(file.path()).unwrap();
+        let default_blueprints = futures::executor::block_on(enumerate_legacy_metadata(&file))
+            .unwrap()
+            .default_blueprint_by_app_id;
+        assert_eq!(default_blueprints.len(), 1);
+        assert_eq!(
+            default_blueprints.get(recording.application_id()),
+            Some(&blueprint_b)
+        );
+    }
+
+    #[test]
+    fn test_enumerate_legacy_metadata_ignores_non_default_blueprint_activation() {
+        use re_log_types::{BlueprintActivationCommand, LogMsg, StoreId, StoreKind};
+
+        let app_id = re_log_types::ApplicationId::from("metadata_app");
+        let recording = StoreId::random(StoreKind::Recording, app_id.clone());
+        let blueprint = StoreId::random(StoreKind::Blueprint, app_id);
+        let file = tempfile::NamedTempFile::new().unwrap();
+        {
+            let mut out = std::fs::File::create(file.path()).unwrap();
+            let mut encoder = crate::Encoder::new_eager(
+                re_build_info::CrateVersion::LOCAL,
+                crate::EncodingOptions::PROTOBUF_COMPRESSED,
+                &mut out,
+            )
+            .unwrap();
+            encoder.append(&set_store_info(recording)).unwrap();
+            encoder.append(&set_store_info(blueprint.clone())).unwrap();
+            encoder
+                .append(&LogMsg::BlueprintActivationCommand(
+                    BlueprintActivationCommand {
+                        blueprint_id: blueprint,
+                        make_active: false,
+                        make_default: false,
+                    },
+                ))
+                .unwrap();
+            encoder.finish().unwrap();
+        }
+
+        let file = File::open(file.path()).unwrap();
+        let default_blueprints = futures::executor::block_on(enumerate_legacy_metadata(&file))
+            .unwrap()
+            .default_blueprint_by_app_id;
+        assert!(default_blueprints.is_empty());
+    }
+
+    #[test]
+    fn test_enumerate_legacy_metadata_omits_missing_default_blueprint() {
+        use re_log_types::{BlueprintActivationCommand, LogMsg, StoreId, StoreKind};
+
+        let app_id = re_log_types::ApplicationId::from("metadata_app");
+        let recording = StoreId::random(StoreKind::Recording, app_id.clone());
+        let dangling_blueprint = StoreId::random(StoreKind::Blueprint, app_id);
+        let file = tempfile::NamedTempFile::new().unwrap();
+        {
+            let mut out = std::fs::File::create(file.path()).unwrap();
+            let mut encoder = crate::Encoder::new_eager(
+                re_build_info::CrateVersion::LOCAL,
+                crate::EncodingOptions::PROTOBUF_COMPRESSED,
+                &mut out,
+            )
+            .unwrap();
+            encoder.append(&set_store_info(recording.clone())).unwrap();
+            encoder
+                .append(&LogMsg::BlueprintActivationCommand(
+                    BlueprintActivationCommand::make_default(dangling_blueprint.clone()),
+                ))
+                .unwrap();
+            encoder.finish().unwrap();
+        }
+
+        let file = File::open(file.path()).unwrap();
+        let default_blueprints = futures::executor::block_on(enumerate_legacy_metadata(&file))
+            .unwrap()
+            .default_blueprint_by_app_id;
+        assert!(!default_blueprints.contains_key(recording.application_id()));
     }
 
     #[test]

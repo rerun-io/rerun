@@ -1,6 +1,7 @@
 use re_data_source::LogDataSource;
 use re_entity_db::LogSource;
 use re_log_channel::{LogReceiver, RecordingOpenBehavior};
+use re_log_encoding::RrdMetadata;
 use re_log_types::StoreId;
 use re_viewer_context::{StoreHub, SystemCommand, SystemCommandSender as _};
 
@@ -11,7 +12,7 @@ use std::path::Path;
 
 use anyhow::Context as _;
 use re_protos::cloud::v1alpha1::ext::DataSource;
-use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
+use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, SegmentId};
 
 impl App {
     #[expect(clippy::needless_pass_by_ref_mut)]
@@ -101,6 +102,9 @@ impl App {
 
             #[cfg(not(target_arch = "wasm32"))]
             LogDataSource::FilePath { path, .. } => {
+                // TODO(RR-5309): Keep `.rbl` files on the legacy importer until the server supports
+                // blueprint management. Catalog registration must preserve retargeting to the
+                // currently open `ApplicationId`.
                 // If the internal catalog is enabled, route `.rrd` files through it.
                 if path.extension().is_some_and(|ext| ext == "rrd")
                     && self.app_options().experimental.use_internal_catalog
@@ -320,6 +324,8 @@ impl App {
 
     #[cfg(target_arch = "wasm32")]
     fn should_register_via_internal_catalog(&self, path: &std::path::Path) -> bool {
+        // TODO(RR-5309): Keep `.rbl` files on the legacy importer until the server supports
+        // blueprint management and catalog registration can preserve `ApplicationId` retargeting.
         path.extension()
             .and_then(|ext| ext.to_str())
             .is_some_and(|ext| ext.eq_ignore_ascii_case("rrd"))
@@ -381,31 +387,33 @@ async fn register_local_file(
         )
     })?;
 
-    let dataset_name = async {
+    let rrd_metadata = async {
         // TODO(tokio-rs/tokio#1529): positional reads block the reactor; use `std::fs::File` until
         // an async positional file API lands (or push reads to `spawn_blocking`).
         let file = std::fs::File::open(&abs_path).with_context(|| {
             format!(
-                "failed to open RRD for application id extraction\nFile path: {}",
+                "failed to open RRD for metadata extraction\nFile path: {}",
                 abs_path.display(),
             )
         })?;
-        rrd_dataset_name(&file).await
+
+        let metadata = read_rrd_metadata(&file).await?;
+
+        metadata
+            .store_ids
+            .first()
+            .context("no application id found in RRD")?;
+        Ok::<_, anyhow::Error>(metadata)
     }
     .await
-    .unwrap_or_else(|err| {
-        re_log::warn!(
-            "Failed to read application id from RRD: {err}\nFile path: {}",
+    .inspect_err(|err| {
+        re_log::error!(
+            "Failed to read RRD metadata: {err}\nFile path: {}",
             abs_path.display(),
         );
-        abs_path
-            .file_stem()
-            .and_then(|s| s.to_str())
-            .unwrap_or("recording")
-            .to_owned()
-    });
+    })?;
 
-    register_file(connection_registry, dataset_name, file_url).await
+    register_file(connection_registry, file_url, rrd_metadata).await
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -429,7 +437,7 @@ async fn register_web_contents(
     }
 
     let file_url = upload.file_url();
-    register_file(connection_registry, upload.dataset_name, file_url).await
+    register_file(connection_registry, file_url, upload.rrd_metadata).await
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -453,16 +461,16 @@ async fn register_web_file(
     }
 
     let file_url = upload.file_url();
-    register_file(connection_registry, upload.dataset_name, file_url).await
+    register_file(connection_registry, file_url, upload.rrd_metadata).await
 }
 
 #[cfg(target_arch = "wasm32")]
 struct OpfsUpload {
-    dataset_name: String,
     fingerprint: String,
     file_name: String,
     file_size: u64,
     path: std::path::PathBuf,
+    rrd_metadata: re_log_encoding::RrdMetadata,
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -493,9 +501,15 @@ async fn prepare_opfs_upload(
             source_path.display(),
         )
     })?;
-    let dataset_name = rrd_dataset_name(reader).await.with_context(|| {
+    let rrd_metadata = read_rrd_metadata(reader).await.with_context(|| {
         format!(
-            "failed to read application id from RRD\nFile path: {}",
+            "failed to read RRD metadata\nFile path: {}",
+            source_path.display(),
+        )
+    })?;
+    rrd_metadata.store_ids.first().with_context(|| {
+        format!(
+            "no application id found in RRD\nFile path: {}",
             source_path.display(),
         )
     })?;
@@ -523,12 +537,30 @@ async fn prepare_opfs_upload(
         .join(&file_name);
 
     Ok(OpfsUpload {
-        dataset_name,
         fingerprint,
         file_name,
         file_size,
         path,
+        rrd_metadata,
     })
+}
+
+/// Makes use of the fact that we don't need to scan for `default_blueprint_by_app_id`,
+/// if we don't have blueprints in the RRD.
+async fn read_rrd_metadata(reader: &impl re_async::AsyncReadAt) -> anyhow::Result<RrdMetadata> {
+    if let Some(footer) = re_log_encoding::read_rrd_footer(reader).await?
+        && footer
+            .manifests
+            .keys()
+            .all(|store_id| !store_id.is_blueprint())
+    {
+        Ok(RrdMetadata {
+            store_ids: footer.manifests.into_keys().collect(),
+            default_blueprint_by_app_id: Default::default(),
+        })
+    } else {
+        Ok(re_log_encoding::enumerate_legacy_metadata(reader).await?)
+    }
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -547,22 +579,51 @@ async fn opfs_upload_matches(path: &std::path::Path, expected_size: u64) -> anyh
 
 async fn register_file(
     connection_registry: &re_redap_client::ConnectionRegistryHandle,
-    dataset_name: String,
     file_url: url::Url,
+    rrd_metadata: re_log_encoding::RrdMetadata,
 ) -> anyhow::Result<re_uri::DatasetSegmentUri> {
+    let application_id = rrd_metadata
+        .store_ids
+        .first()
+        .map(StoreId::application_id)
+        .context("no application id found in RRD")?;
+
+    if rrd_metadata
+        .store_ids
+        .iter()
+        .any(|store_id| store_id.application_id() != application_id)
+    {
+        re_log::warn!(
+            "RRD contains multiple application ids; using the first as the dataset name: {application_id}"
+        );
+    }
+
     let origin = connection_registry
         .internal_origin()
         .context("internal catalog is not running")?;
     let mut client = connection_registry.client(origin.clone()).await?;
     let data_source = DataSource::new_rrd_url(file_url);
 
+    // TODO(RR-5309): Handle RRDs without recording stores as standalone blueprints.
     let (dataset_id, segment_id) = client
         .ensure_dataset_and_register(
-            &dataset_name,
-            vec![data_source],
+            application_id.as_str(),
+            vec![data_source.clone()],
             IfDuplicateBehavior::Overwrite,
         )
         .await?;
+
+    if let Err(err) = update_default_blueprint(
+        &mut client,
+        dataset_id,
+        &segment_id,
+        data_source,
+        &rrd_metadata,
+    )
+    .await
+    {
+        re_log::warn!("Failed to update default blueprint for catalog RRD load: {err:#}");
+    }
 
     Ok(re_uri::DatasetSegmentUri {
         origin,
@@ -572,21 +633,71 @@ async fn register_file(
     })
 }
 
-async fn rrd_dataset_name(reader: &impl re_async::AsyncReadAt) -> anyhow::Result<String> {
-    let store_ids = re_log_encoding::enumerate_rrd_stores(reader).await?;
-    let first_application_id = store_ids
-        .first()
-        .map(re_log_types::StoreId::application_id)
-        .context("no application id found in RRD")?;
-
-    if store_ids
-        .iter()
-        .any(|store_id| store_id.application_id() != first_application_id)
-    {
-        re_log::warn!(
-            "RRD contains multiple application ids; using the first as the dataset name: {first_application_id}"
-        );
+/// Registers the recording's embedded default blueprint (if any) into the dataset's hidden
+/// blueprint dataset and records it as the dataset's default blueprint segment.
+///
+/// The blueprint lives in the same RRD, so we register the same `file://` URL into the blueprint
+/// dataset; the server picks out the blueprint store and serves it lazily.
+async fn update_default_blueprint(
+    client: &mut re_redap_client::ConnectionClient,
+    dataset_id: re_log_types::EntryId,
+    segment_id: &SegmentId,
+    data_source: DataSource,
+    rrd_metadata: &re_log_encoding::RrdMetadata,
+) -> anyhow::Result<()> {
+    // TODO(RR-5309): Register embedded blueprints that lack a `make_default` command once the
+    // server supports blueprint management.
+    if rrd_metadata.default_blueprint_by_app_id.is_empty() {
+        return Ok(());
     }
 
-    Ok(first_application_id.to_string())
+    let Some(recording_store_id) = rrd_metadata.store_ids.iter().find(|store_id| {
+        store_id.is_recording() && SegmentId::from(store_id.recording_id()) == *segment_id
+    }) else {
+        re_log::warn!("Could not match registered segment {segment_id} to an RRD recording store");
+        return Ok(());
+    };
+
+    let Some(default_blueprint_store_id) = rrd_metadata
+        .default_blueprint_by_app_id
+        .get(recording_store_id.application_id())
+    else {
+        return Ok(());
+    };
+
+    let mut dataset_details = client.read_dataset_entry(dataset_id).await?.dataset_details;
+    let Some(blueprint_dataset_id) = dataset_details.blueprint_dataset else {
+        re_log::warn!(
+            "Dataset {dataset_id} has no hidden blueprint dataset; cannot set default blueprint"
+        );
+        return Ok(());
+    };
+
+    let expected_blueprint_segment_id = SegmentId::from(default_blueprint_store_id.recording_id());
+    let (_trace_id, tasks) = client
+        .register_with_dataset(
+            blueprint_dataset_id,
+            vec![data_source],
+            IfDuplicateBehavior::Overwrite,
+        )
+        .await?;
+
+    if !tasks
+        .iter()
+        .any(|task| task.segment_id == expected_blueprint_segment_id)
+    {
+        re_log::warn!(
+            "Registered RRD into the blueprint dataset, but default blueprint segment \
+             {expected_blueprint_segment_id} was not returned; keeping the existing default blueprint"
+        );
+        return Ok(());
+    }
+
+    dataset_details.default_blueprint_segment = Some(expected_blueprint_segment_id);
+
+    client
+        .update_dataset_entry(dataset_id, dataset_details)
+        .await?;
+
+    Ok(())
 }

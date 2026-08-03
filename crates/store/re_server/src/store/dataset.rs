@@ -673,7 +673,11 @@ impl Dataset {
         on_duplicate: IfDuplicateBehavior,
         store_kind: StoreKind,
     ) -> Result<BTreeSet<SegmentId>, Error> {
-        re_log::info!("Loading {path:?}…");
+        if store_kind == StoreKind::Blueprint {
+            re_log::debug!("Loading {path:?}…");
+        } else {
+            re_log::info!("Loading {path:?}…");
+        }
 
         let layer_name = layer_name.unwrap_or_else(LayerName::base);
         let layer_info = Arc::new(LayerInfo {

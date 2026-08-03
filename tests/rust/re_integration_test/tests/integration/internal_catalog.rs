@@ -40,7 +40,6 @@ fn test_rrd() -> (tempfile::TempDir, PathBuf) {
     )
     .expect("failed to log points");
 
-    // TODO(RR-5030): We don't load the blueprint yet, which is why the snapshots differ.
     Blueprint::new(
         Spatial2DView::new("points")
             .with_origin("/")
@@ -111,16 +110,21 @@ async fn internal_catalog_load_rrd() {
 
         let loading_rrd_toast = format!("Loading {rrd_path:?}…");
         viewer_test_utils::step_until(
-            "loading toast gone",
+            "loading toasts gone",
             &mut harness,
             |harness| {
                 harness
-                    .query_by_label_contains(&loading_rrd_toast)
+                    .query_all_by_label_contains(&loading_rrd_toast)
+                    .next()
                     .is_none()
             },
             Duration::from_millis(100),
             Duration::from_secs(10),
         );
+
+        // TODO(RR-5355): We currently still show too many toasts. Once we have improved
+        // `re_log` level integration in `re_server`, we should update the snapshots so that
+        // they only contain the appropriate amount of toasts.
 
         harness.set_time_panel_opened(false);
 

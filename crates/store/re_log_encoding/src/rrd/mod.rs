@@ -66,7 +66,9 @@ pub use self::footer::{
     RrdManifestStaticMap, RrdManifestTemporalMap, RrdManifestTemporalMapEntry,
 };
 #[cfg(feature = "decoder")]
-pub use self::footer_reader::{enumerate_rrd_stores, read_rrd_footer};
+pub use self::footer_reader::{
+    RrdMetadata, enumerate_legacy_metadata, enumerate_rrd_stores, read_rrd_footer,
+};
 pub use self::frames::{
     Compression, CrateVersion, EncodingOptions, MessageHeader, MessageKind, Serializer,
     StreamFooter, StreamFooterEntry, StreamHeader,
