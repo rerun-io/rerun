@@ -460,11 +460,12 @@ impl ListItem {
         } = self;
 
         let tokens = ui.tokens();
+        let is_first_item = LayoutInfoStack::take_is_first_item(ui.ctx());
 
-        if y_offset != 0.0 {
+        if y_offset != 0.0 && !is_first_item {
             ui.add_space(y_offset);
-            height -= y_offset;
         }
+        height -= y_offset;
 
         let collapsing_triangle_size = tokens.collapsing_triangle_size();
 
