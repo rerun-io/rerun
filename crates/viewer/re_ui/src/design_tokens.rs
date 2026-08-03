@@ -677,9 +677,8 @@ impl DesignTokens {
 
         egui_style.spacing.combo_width = 8.0; // minimum width of ComboBox - keep them small, with the down-arrow close.
 
-        egui_style.spacing.scroll.bar_inner_margin = 2.0;
         egui_style.spacing.scroll.bar_width = 6.0;
-        egui_style.spacing.scroll.bar_outer_margin = 2.0;
+        egui_style.spacing.scroll.bar_outer_margin = 0.0; // Keep scroll bars flush to the right side; having the background visible through a gap is ugly
 
         match self.theme {
             Theme::Dark => {
