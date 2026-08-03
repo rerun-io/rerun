@@ -97,11 +97,7 @@ impl VisualizerSystem for TensorSystem {
                     })
                     .unwrap_or_else(|| {
                         typed_fallback_for(
-                            &ctx.query_context(
-                                data_result,
-                                query.latest_at_query(),
-                                instruction.id,
-                            ),
+                            results.query_context(),
                             Tensor::descriptor_value_range().component,
                         )
                     });

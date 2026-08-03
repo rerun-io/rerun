@@ -92,21 +92,24 @@ fn collect_draw_order_per_visualizer(
 
     for (data_result, instruction) in query.iter_visualizer_instruction_for(visualizer_identifier) {
         let key = (visualizer_identifier, data_result.entity_path.hash());
-        let draw_order = latest_at_with_blueprint_resolved_data(
+        let results = latest_at_with_blueprint_resolved_data(
             ctx,
             None,
             &latest_at_query,
             data_result,
             [draw_order_descriptor.component],
             Some(instruction),
-        )
-        .get_mono::<DrawOrder>(draw_order_descriptor.component)
-        .unwrap_or_else(|| {
-            *default_draw_order.get_or_insert_with(|| {
-                let ctx = ctx.query_context(data_result, latest_at_query.clone(), instruction.id);
-                determine_default_draworder(&ctx, draw_order_descriptor.component)
-            })
-        });
+        );
+        let draw_order = results
+            .get_mono::<DrawOrder>(draw_order_descriptor.component)
+            .unwrap_or_else(|| {
+                *default_draw_order.get_or_insert_with(|| {
+                    determine_default_draworder(
+                        results.query_context(),
+                        draw_order_descriptor.component,
+                    )
+                })
+            });
 
         entities_per_draw_order
             .entry(draw_order)

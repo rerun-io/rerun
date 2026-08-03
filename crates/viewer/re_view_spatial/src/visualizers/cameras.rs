@@ -317,7 +317,7 @@ impl VisualizerSystem for CamerasVisualizer {
             if let Err(err) = Self::visit_instance(
                 &mut data,
                 &mut pinhole_cameras,
-                &ctx.query_context(data_result, query.latest_at_query(), instruction.id),
+                query_results.query_context(),
                 &mut line_builder,
                 transforms,
                 &component_data,

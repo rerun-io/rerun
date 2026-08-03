@@ -618,10 +618,7 @@ fn lookup_image_plane_distance(
                     .component_mono_quiet::<ImagePlaneDistance>(plane_dist_component)
                     .unwrap_or_else(|| {
                         typed_fallback_for(
-                            &ctx.query_context_without_visualizer(
-                                data_result,
-                                latest_at_query.clone(),
-                            ),
+                            &ctx.query_context(data_result, latest_at_query.clone(), None),
                             plane_dist_component,
                         )
                     })

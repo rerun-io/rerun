@@ -52,27 +52,12 @@ impl<'a> ViewContext<'a> {
         &'a self,
         data_result: &'a DataResult,
         query: LatestAtQuery,
-        instruction_id: VisualizerInstructionId,
+        instruction_id: impl Into<Option<VisualizerInstructionId>>,
     ) -> QueryContext<'a> {
         QueryContext {
             view_ctx: self,
             target_entity_path: &data_result.entity_path,
             instruction_id: instruction_id.into(),
-            archetype_name: None,
-            query,
-        }
-    }
-
-    #[inline]
-    pub fn query_context_without_visualizer(
-        &'a self,
-        data_result: &'a DataResult,
-        query: LatestAtQuery,
-    ) -> QueryContext<'a> {
-        QueryContext {
-            view_ctx: self,
-            target_entity_path: &data_result.entity_path,
-            instruction_id: None,
             archetype_name: None,
             query,
         }

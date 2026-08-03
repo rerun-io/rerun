@@ -235,7 +235,6 @@ fn visualizer_components(
 
     let store_query = ctx.current_query();
     let viewer_ctx = ctx.viewer_ctx;
-    let query_ctx = ctx.query_context(data_result, store_query.clone(), instruction.id);
 
     // Query fully resolved data.
     let query_result = latest_at_with_blueprint_resolved_data(
@@ -246,6 +245,7 @@ fn visualizer_components(
         query_info.queried_components(),
         Some(instruction),
     );
+    let query_ctx = query_result.query_context();
 
     // Query all components of the entity so we can show them in the source component mapping UI.
     let entity_components_with_datatype = {
@@ -285,7 +285,7 @@ fn visualizer_components(
 
         let raw_default = || -> ArrayRef {
             if is_ui_editable {
-                raw_default_or_fallback(&query_ctx, &query_result, target_component_descr)
+                raw_default_or_fallback(query_ctx, &query_result, target_component_descr)
             } else {
                 // In this context, we're only concerned with displaying an empty array, so it can be _any_ empty array.
                 // This would have to change if we add data type information in this place to the UI as well.
@@ -470,7 +470,6 @@ pub struct SourceSelectorContext<'a> {
     data_result: &'a DataResult,
     instruction: &'a VisualizerInstruction,
     type_report: Option<&'a re_viewer_context::VisualizerTypeReport>,
-    store_query: re_chunk_store::LatestAtQuery,
     query_info: VisualizerQueryInfo,
     query_result: re_view::BlueprintResolvedLatestAtResults<'a>,
     entity_components_with_datatype: Vec<(ComponentIdentifier, DataType)>,
@@ -519,7 +518,6 @@ impl<'a> SourceSelectorContext<'a> {
             data_result,
             instruction,
             type_report,
-            store_query,
             query_info,
             query_result,
             entity_components_with_datatype,
@@ -547,13 +545,12 @@ impl<'a> SourceSelectorContext<'a> {
             .is_some_and(|field| field.is_ui_editable());
 
         let raw_default = {
-            let query_ctx = self.ctx.query_context(
-                self.data_result,
-                self.store_query.clone(),
-                self.instruction.id,
-            );
             if is_ui_editable {
-                raw_default_or_fallback(&query_ctx, &self.query_result, target_component_descr)
+                raw_default_or_fallback(
+                    self.query_result.query_context(),
+                    &self.query_result,
+                    target_component_descr,
+                )
             } else {
                 raw_default_without_fallback(&self.query_result, target_component_descr)
                     .unwrap_or_else(|| Arc::new(arrow::array::NullArray::new(0)))
