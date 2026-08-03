@@ -293,13 +293,12 @@ impl SpatialView2D {
         ) else {
             return Ok(Default::default());
         };
-        let ui2d = ui2d_from_world(&target_config, ui_rect);
 
         // Create labels now since their shapes participate are added to scene.ui for picking.
         let (label_shapes, label_ui_rects) = create_labels(
             &collect_ui_labels(&system_output),
             ui_from_scene,
-            ui2d,
+            ui2d_from_world(&target_config, ui_rect),
             ui,
             &query.highlights,
             SpaceKind::TwoD,
@@ -519,7 +518,7 @@ fn setup_target_config(
     })
 }
 
-fn ui2d_from_world(config: &TargetConfiguration, space2d_rect: Rect) -> glam::Mat4 {
+fn ui2d_from_world(config: &TargetConfiguration, ui_rect: Rect) -> glam::Mat4 {
     let projection_from_view = config
         .projection_from_view
         .projection_from_view(config.resolution_in_pixel);
@@ -528,11 +527,9 @@ fn ui2d_from_world(config: &TargetConfiguration, space2d_rect: Rect) -> glam::Ma
         .to_ndc_scale_and_translation();
     let projection_from_view = ndc_scale_and_translation * projection_from_view;
 
-    glam::Mat4::from_translation(glam::vec3(
-        space2d_rect.center().x,
-        space2d_rect.center().y,
-        0.0,
-    )) * glam::Mat4::from_scale(0.5 * glam::vec3(space2d_rect.width(), -space2d_rect.height(), 1.0))
+    // Map NDC to ui coordinates (y axis points down in ui space).
+    glam::Mat4::from_translation(glam::vec3(ui_rect.center().x, ui_rect.center().y, 0.0))
+        * glam::Mat4::from_scale(0.5 * glam::vec3(ui_rect.width(), -ui_rect.height(), 1.0))
         * projection_from_view
         * config.view_from_world.to_mat4()
 }

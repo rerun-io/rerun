@@ -400,10 +400,10 @@ fn resolve_label_positions(
         resolved.push((label.clone(), wrap_width, text_anchor_pos));
     }
 
-    // Closest last (painters algorithm)
+    // clip space, w = -z_view
     resolved.sort_by_key(|(label, _, _)| {
         if let UiLabelTarget::Position3D(pos) = label.target {
-            OrderedFloat::from(-ui_from_world_3d.project_point3(pos).z)
+            OrderedFloat::from(-(*ui_from_world_3d * pos.extend(1.0)).w)
         } else {
             OrderedFloat::from(0.0)
         }

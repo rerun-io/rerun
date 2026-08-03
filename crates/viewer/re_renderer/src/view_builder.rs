@@ -129,6 +129,7 @@ pub enum Projection {
 }
 
 impl Projection {
+    /// Returns the matrix that maps view space to NDC (normalized device coordinates).
     pub fn projection_from_view(self, resolution_in_pixel: [u32; 2]) -> glam::Mat4 {
         match self {
             Self::Perspective {
