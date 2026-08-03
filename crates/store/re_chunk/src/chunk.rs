@@ -1699,6 +1699,36 @@ impl TimeColumn {
         }
     }
 
+    /// Find the earliest time at or after `cursor` in this time column.
+    pub fn find_time_at_or_after(&self, cursor: TimeInt) -> Option<TimeInt> {
+        if self.is_sorted() {
+            let times = self.times_raw();
+            let idx = times.partition_point(|&t| t < cursor.as_i64());
+            (idx < times.len()).then(|| TimeInt::new_temporal(times[idx]))
+        } else {
+            self.times_raw()
+                .iter()
+                .filter(|&&t| t >= cursor.as_i64())
+                .min()
+                .map(|&t| TimeInt::new_temporal(t))
+        }
+    }
+
+    /// Find the latest time at or before `cursor` in this time column.
+    pub fn find_time_at_or_before(&self, cursor: TimeInt) -> Option<TimeInt> {
+        if self.is_sorted() {
+            let times = self.times_raw();
+            let idx = times.partition_point(|&t| t <= cursor.as_i64());
+            (idx > 0).then(|| TimeInt::new_temporal(times[idx - 1]))
+        } else {
+            self.times_raw()
+                .iter()
+                .filter(|&&t| t <= cursor.as_i64())
+                .max()
+                .map(|&t| TimeInt::new_temporal(t))
+        }
+    }
+
     /// Returns a new [`TimeColumn`] with all time values offset by `offset_ns` nanoseconds.
     ///
     /// Uses saturating arithmetic.

@@ -535,6 +535,108 @@ impl ChunkStore {
         Some(AbsoluteTimeRange::new(*start, *end))
     }
 
+    /// Returns the time of the earliest update for this entity, at or after `cursor`, on the
+    /// given timeline (ignoring static data).
+    ///
+    /// Looks inside chunks for individual row times (same prune + binary-search technique as
+    /// [`Self::next_time_on_timeline`], scoped to one entity). Intended for "what's coming up
+    /// next for this entity" sort/UI heuristics.
+    pub fn entity_time_at_or_after(
+        &self,
+        timeline: &TimelineName,
+        entity_path: &EntityPath,
+        cursor: TimeInt,
+    ) -> Option<TimeInt> {
+        re_tracing::profile_function!();
+
+        let temporal_chunk_ids_per_timeline =
+            self.temporal_chunk_ids_per_entity.get(entity_path)?;
+        let per_time = temporal_chunk_ids_per_timeline.get(timeline)?;
+
+        let mut result: Option<TimeInt> = None;
+
+        // Chunks whose start time is at or after the cursor.
+        for (&start_time, chunk_ids) in per_time.per_start_time.range(cursor..) {
+            if result.is_some_and(|r| r <= start_time) {
+                break;
+            }
+            for chunk_id in chunk_ids {
+                result = opt_min(
+                    result,
+                    self.search_chunk_by_time(timeline, chunk_id, |tc| {
+                        tc.find_time_at_or_after(cursor)
+                    }),
+                );
+            }
+        }
+
+        // Chunks that start before the cursor but may still contain times at or after it.
+        for (_start_time, chunk_ids) in per_time.per_start_time.range(..cursor).rev() {
+            for chunk_id in chunk_ids {
+                result = opt_min(
+                    result,
+                    self.search_chunk_by_time(timeline, chunk_id, |tc| {
+                        tc.find_time_at_or_after(cursor)
+                    }),
+                );
+            }
+        }
+
+        result
+    }
+
+    /// Returns the time of the most recent update for this entity, at or before `cursor`, on the
+    /// given timeline (ignoring static data).
+    ///
+    /// Looks inside chunks for individual row times (same prune + binary-search technique as
+    /// [`Self::prev_time_on_timeline`], scoped to one entity). Intended for "what just happened
+    /// for this entity" sort/UI heuristics.
+    pub fn entity_time_at_or_before(
+        &self,
+        timeline: &TimelineName,
+        entity_path: &EntityPath,
+        cursor: TimeInt,
+    ) -> Option<TimeInt> {
+        re_tracing::profile_function!();
+
+        let temporal_chunk_ids_per_timeline =
+            self.temporal_chunk_ids_per_entity.get(entity_path)?;
+        let per_time = temporal_chunk_ids_per_timeline.get(timeline)?;
+
+        let mut result: Option<TimeInt> = None;
+
+        // Chunks whose end time is at or before the cursor.
+        for (&end_time, chunk_ids) in per_time.per_end_time.range(..=cursor).rev() {
+            if result.is_some_and(|r| r >= end_time) {
+                break;
+            }
+            for chunk_id in chunk_ids {
+                result = opt_max(
+                    result,
+                    self.search_chunk_by_time(timeline, chunk_id, |tc| {
+                        tc.find_time_at_or_before(cursor)
+                    }),
+                );
+            }
+        }
+
+        // Chunks that end after the cursor but may still contain times at or before it.
+        for (_end_time, chunk_ids) in per_time.per_end_time.range(
+            (std::ops::Bound::Excluded(cursor), std::ops::Bound::Unbounded),
+        ) {
+            for chunk_id in chunk_ids {
+                result = opt_max(
+                    result,
+                    self.search_chunk_by_time(timeline, chunk_id, |tc| {
+                        tc.find_time_at_or_before(cursor)
+                    }),
+                );
+            }
+        }
+
+        result
+    }
+
     fn search_chunk_by_time(
         &self,
         timeline: &TimelineName,
@@ -1878,6 +1980,177 @@ mod tests {
         assert_eq!(
             store.prev_time_on_timeline(tl, TimeInt::new_temporal(10)),
             None
+        );
+    }
+
+    #[test]
+    fn entity_time_at_or_after_and_before_multi_row_chunk() {
+        let mut store = ChunkStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
+            crate::ChunkStoreConfig::ALL_DISABLED,
+        );
+
+        let entity_path: EntityPath = "entity".into();
+        let timeline = Timeline::new_sequence("frame");
+        let tl = timeline.name();
+        let point = MyPoint::new(1.0, 1.0);
+        let mut next_chunk_id = next_chunk_id_generator(0xDD);
+
+        // One chunk with three rows at times 10, 20, 30 — the in-chunk search must see past the
+        // chunk-start key (10) to find 20/30.
+        let chunk = Arc::new(
+            Chunk::builder_with_id(next_chunk_id(), entity_path.clone())
+                .with_component_batch(
+                    RowId::new(),
+                    TimePoint::from_iter([(timeline, 10)]),
+                    (
+                        MyPoints::descriptor_points(),
+                        &[point] as &dyn re_types_core::ComponentBatch,
+                    ),
+                )
+                .with_component_batch(
+                    RowId::new(),
+                    TimePoint::from_iter([(timeline, 20)]),
+                    (
+                        MyPoints::descriptor_points(),
+                        &[point] as &dyn re_types_core::ComponentBatch,
+                    ),
+                )
+                .with_component_batch(
+                    RowId::new(),
+                    TimePoint::from_iter([(timeline, 30)]),
+                    (
+                        MyPoints::descriptor_points(),
+                        &[point] as &dyn re_types_core::ComponentBatch,
+                    ),
+                )
+                .build()
+                .unwrap(),
+        );
+        store.insert_chunk(&chunk).unwrap();
+
+        // at_or_after: inclusive, looks inside the chunk.
+        assert_eq!(
+            store.entity_time_at_or_after(tl, &entity_path, TimeInt::new_temporal(0)),
+            Some(TimeInt::new_temporal(10))
+        );
+        assert_eq!(
+            store.entity_time_at_or_after(tl, &entity_path, TimeInt::new_temporal(10)),
+            Some(TimeInt::new_temporal(10))
+        );
+        assert_eq!(
+            store.entity_time_at_or_after(tl, &entity_path, TimeInt::new_temporal(15)),
+            Some(TimeInt::new_temporal(20))
+        );
+        assert_eq!(
+            store.entity_time_at_or_after(tl, &entity_path, TimeInt::new_temporal(20)),
+            Some(TimeInt::new_temporal(20))
+        );
+        assert_eq!(
+            store.entity_time_at_or_after(tl, &entity_path, TimeInt::new_temporal(25)),
+            Some(TimeInt::new_temporal(30))
+        );
+        assert_eq!(
+            store.entity_time_at_or_after(tl, &entity_path, TimeInt::new_temporal(30)),
+            Some(TimeInt::new_temporal(30))
+        );
+        assert_eq!(
+            store.entity_time_at_or_after(tl, &entity_path, TimeInt::new_temporal(31)),
+            None
+        );
+
+        // at_or_before: inclusive, looks inside the chunk.
+        assert_eq!(
+            store.entity_time_at_or_before(tl, &entity_path, TimeInt::new_temporal(99)),
+            Some(TimeInt::new_temporal(30))
+        );
+        assert_eq!(
+            store.entity_time_at_or_before(tl, &entity_path, TimeInt::new_temporal(30)),
+            Some(TimeInt::new_temporal(30))
+        );
+        assert_eq!(
+            store.entity_time_at_or_before(tl, &entity_path, TimeInt::new_temporal(25)),
+            Some(TimeInt::new_temporal(20))
+        );
+        assert_eq!(
+            store.entity_time_at_or_before(tl, &entity_path, TimeInt::new_temporal(20)),
+            Some(TimeInt::new_temporal(20))
+        );
+        assert_eq!(
+            store.entity_time_at_or_before(tl, &entity_path, TimeInt::new_temporal(15)),
+            Some(TimeInt::new_temporal(10))
+        );
+        assert_eq!(
+            store.entity_time_at_or_before(tl, &entity_path, TimeInt::new_temporal(10)),
+            Some(TimeInt::new_temporal(10))
+        );
+        assert_eq!(
+            store.entity_time_at_or_before(tl, &entity_path, TimeInt::new_temporal(9)),
+            None
+        );
+
+        // Missing entity / timeline.
+        let missing: EntityPath = "missing".into();
+        assert_eq!(
+            store.entity_time_at_or_after(tl, &missing, TimeInt::new_temporal(0)),
+            None
+        );
+        assert_eq!(
+            store.entity_time_at_or_before(
+                &TimelineName::from("other"),
+                &entity_path,
+                TimeInt::new_temporal(99)
+            ),
+            None
+        );
+    }
+
+    #[test]
+    fn entity_time_at_or_after_and_before_scoped_to_entity() {
+        let mut store = ChunkStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
+            crate::ChunkStoreConfig::ALL_DISABLED,
+        );
+
+        let timeline = Timeline::new_sequence("frame");
+        let tl = timeline.name();
+        let point = MyPoint::new(1.0, 1.0);
+        let mut next_chunk_id = next_chunk_id_generator(0xEE);
+
+        // Entity A has data at 10, 30.
+        // Entity B has data at 20, 40.
+        for (entity, times) in [("a", vec![10, 30]), ("b", vec![20, 40])] {
+            let entity_path: EntityPath = entity.into();
+            for t in times {
+                let chunk = create_chunk_with_point(
+                    next_chunk_id(),
+                    entity_path.clone(),
+                    TimePoint::from_iter([(timeline, t)]),
+                    point,
+                );
+                store.insert_chunk(&chunk).unwrap();
+            }
+        }
+
+        let entity_a: EntityPath = "a".into();
+        let entity_b: EntityPath = "b".into();
+
+        // Must not leak times from the other entity.
+        assert_eq!(
+            store.entity_time_at_or_after(tl, &entity_a, TimeInt::new_temporal(15)),
+            Some(TimeInt::new_temporal(30))
+        );
+        assert_eq!(
+            store.entity_time_at_or_after(tl, &entity_b, TimeInt::new_temporal(15)),
+            Some(TimeInt::new_temporal(20))
+        );
+        assert_eq!(
+            store.entity_time_at_or_before(tl, &entity_a, TimeInt::new_temporal(35)),
+            Some(TimeInt::new_temporal(30))
+        );
+        assert_eq!(
+            store.entity_time_at_or_before(tl, &entity_b, TimeInt::new_temporal(35)),
+            Some(TimeInt::new_temporal(20))
         );
     }
 
