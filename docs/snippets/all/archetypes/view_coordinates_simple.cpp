@@ -1,4 +1,4 @@
-// Change the view coordinates for the scene.
+// Set the default orientation for a 3D view.
 
 #include <rerun.hpp>
 
@@ -6,7 +6,7 @@ int main(int argc, char* argv[]) {
     const auto rec = rerun::RecordingStream("rerun_example_view_coordinates");
     rec.spawn().exit_on_failure();
 
-    // Set an up-axis:
+    // Set the 3D view's up direction:
     rec.log_static("world", rerun::ViewCoordinates::RIGHT_HAND_Z_UP);
     rec.log(
         "world/xyz",

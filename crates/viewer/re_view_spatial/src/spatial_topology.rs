@@ -107,7 +107,7 @@ impl SubSpace {
         // Pro:
         // * on a disconnect everything should be possible again, so why would that not be the case at every cut?
         // * being overly restrictive means we won't display 3D content when we could.
-        //    * for the same reason we also don't want to preclude 3D content when encountering 2D view coordinates, albeit this may still inform heuristics
+        //    * for the same reason, camera-orientation metadata must not preclude 3D content, although it may still inform heuristics.
         // Con:
         // * if at any point (without a disconnect) we encountered a pinhole prior, everything below should be considered 2D
         !self

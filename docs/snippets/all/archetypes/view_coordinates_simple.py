@@ -1,4 +1,4 @@
-"""Change the view coordinates for the scene."""
+"""Set the default orientation for a 3D view."""
 
 import rerun as rr
 
@@ -6,7 +6,7 @@ rr.init("rerun_example_view_coordinates", spawn=True)
 
 rr.log(
     "world", rr.ViewCoordinates.RIGHT_HAND_Z_UP, static=True
-)  # Set an up-axis
+)  # Set the 3D view's up direction
 rr.log(
     "world/xyz",
     rr.Arrows3D(

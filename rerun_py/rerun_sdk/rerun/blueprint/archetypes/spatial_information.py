@@ -52,20 +52,20 @@ class SpatialInformation(Archetype):
         show_axes:
             Whether axes should be shown at the origin.
         axes:
-            Determines the coordinate system of this 3D view.
+            Controls the orientation of the axes in a 3D view; it has no effect in a 2D view.
 
-            For instance: What is "up"? What does the Z axis mean?
+            This determines the 3D eye orientation, navigation, and default grid plane.
 
-            The three coordinates are always ordered as [x, y, z].
+            The three directions are always ordered as [x, y, z] and specify where each positive axis points.
+            For example, [Right, Down, Forward] means that +X points right, +Y points down, and +Z points forward.
 
-            For example [Right, Down, Forward] means that the X axis points to the right, the Y axis points
-            down, and the Z axis points forward.
+            When this property is unset, a 3D view first uses [`archetypes.ViewCoordinates`][rerun.archetypes.ViewCoordinates] logged at its origin entity or the closest ancestor.
+            If none is found, it uses the camera orientation from the closest ancestor [`archetypes.Pinhole`][rerun.archetypes.Pinhole].
+            If neither is found, the fallback is RFU.
+
+            This property is hidden from the selection panel for 2D views.
 
             ⚠ [Rerun does not yet support left-handed coordinate systems](https://github.com/rerun-io/rerun/issues/5032).
-
-            Defaults to RFU unless [`archetypes.ViewCoordinates`][rerun.archetypes.ViewCoordinates] is logged at the origin entity, or at the closest ancestor thereof.
-
-            TODO(#1387): This property has no effect in 2D views and is hidden from their selection panel.
 
         """
 
@@ -119,20 +119,20 @@ class SpatialInformation(Archetype):
         show_axes:
             Whether axes should be shown at the origin.
         axes:
-            Determines the coordinate system of this 3D view.
+            Controls the orientation of the axes in a 3D view; it has no effect in a 2D view.
 
-            For instance: What is "up"? What does the Z axis mean?
+            This determines the 3D eye orientation, navigation, and default grid plane.
 
-            The three coordinates are always ordered as [x, y, z].
+            The three directions are always ordered as [x, y, z] and specify where each positive axis points.
+            For example, [Right, Down, Forward] means that +X points right, +Y points down, and +Z points forward.
 
-            For example [Right, Down, Forward] means that the X axis points to the right, the Y axis points
-            down, and the Z axis points forward.
+            When this property is unset, a 3D view first uses [`archetypes.ViewCoordinates`][rerun.archetypes.ViewCoordinates] logged at its origin entity or the closest ancestor.
+            If none is found, it uses the camera orientation from the closest ancestor [`archetypes.Pinhole`][rerun.archetypes.Pinhole].
+            If neither is found, the fallback is RFU.
+
+            This property is hidden from the selection panel for 2D views.
 
             ⚠ [Rerun does not yet support left-handed coordinate systems](https://github.com/rerun-io/rerun/issues/5032).
-
-            Defaults to RFU unless [`archetypes.ViewCoordinates`][rerun.archetypes.ViewCoordinates] is logged at the origin entity, or at the closest ancestor thereof.
-
-            TODO(#1387): This property has no effect in 2D views and is hidden from their selection panel.
 
         """
 
@@ -225,20 +225,20 @@ class SpatialInformation(Archetype):
         default=None,
         converter=components.ViewCoordinatesBatch._converter,  # type: ignore[misc]
     )
-    # Determines the coordinate system of this 3D view.
+    # Controls the orientation of the axes in a 3D view; it has no effect in a 2D view.
     #
-    # For instance: What is "up"? What does the Z axis mean?
+    # This determines the 3D eye orientation, navigation, and default grid plane.
     #
-    # The three coordinates are always ordered as [x, y, z].
+    # The three directions are always ordered as [x, y, z] and specify where each positive axis points.
+    # For example, [Right, Down, Forward] means that +X points right, +Y points down, and +Z points forward.
     #
-    # For example [Right, Down, Forward] means that the X axis points to the right, the Y axis points
-    # down, and the Z axis points forward.
+    # When this property is unset, a 3D view first uses [`archetypes.ViewCoordinates`][rerun.archetypes.ViewCoordinates] logged at its origin entity or the closest ancestor.
+    # If none is found, it uses the camera orientation from the closest ancestor [`archetypes.Pinhole`][rerun.archetypes.Pinhole].
+    # If neither is found, the fallback is RFU.
+    #
+    # This property is hidden from the selection panel for 2D views.
     #
     # ⚠ [Rerun does not yet support left-handed coordinate systems](https://github.com/rerun-io/rerun/issues/5032).
-    #
-    # Defaults to RFU unless [`archetypes.ViewCoordinates`][rerun.archetypes.ViewCoordinates] is logged at the origin entity, or at the closest ancestor thereof.
-    #
-    # TODO(#1387): This property has no effect in 2D views and is hidden from their selection panel.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

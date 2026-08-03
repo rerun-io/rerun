@@ -16,7 +16,7 @@ int main(int argc, char* argv[]) {
     const auto rec = rerun::RecordingStream("rerun_example_asset3d");
     rec.spawn().exit_on_failure();
 
-    // Set an up-axis:
+    // Set the 3D view's up direction:
     rec.log_static("world", rerun::ViewCoordinates::RIGHT_HAND_Z_UP);
     rec.log(
         "world/asset",

@@ -694,8 +694,7 @@ fn pinhole3d_from_image_plane(
                 scale.extend(2.0 / (1.0 / scale.x + 1.0 / scale.y)),
             );
 
-    // Our interpretation of the pinhole camera implies that the axis semantics, i.e. ViewCoordinates,
-    // determine how the image plane is oriented.
+    // The pinhole's orientation convention determines how its image plane is oriented.
     // (see also `CamerasPart` where the frustum lines are set up)
     let obj_from_image_plane3d = glam::DMat3::from_cols_array(
         &view_coordinates

@@ -263,7 +263,7 @@ impl std::str::FromStr for ViewCoordinates {
 impl Default for ViewCoordinates {
     #[inline]
     fn default() -> Self {
-        // TODO(#2663): This is a good usecase for world coordinates, but not so much for camera coordinates.
+        // RFU is the default for 3D views; pinhole cameras use `Pinhole::DEFAULT_CAMERA_XYZ` instead.
         Self::RFU
     }
 }

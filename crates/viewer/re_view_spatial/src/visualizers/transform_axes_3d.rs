@@ -286,8 +286,6 @@ pub fn add_axis_arrows(
 ) {
     use re_renderer::renderer::LineStripFlags;
 
-    // TODO(andreas): It would be nice if could display the ViewCoordinates axis names (left/right/up) as a tooltip on hover.
-
     let line_radius = re_renderer::Size::new_ui_points(1.0);
 
     let mut line_batch = line_builder

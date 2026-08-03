@@ -81,7 +81,7 @@ This page lists all built-in archetypes.
 * [`Pinhole`](archetypes/pinhole.md): Camera perspective projection (a.k.a. intrinsics).
 * [`Transform3D`](archetypes/transform3d.md): A transform between two 3D spaces, i.e. a pose.
 * [`TransformAxes3D`](archetypes/transform_axes3d.md): A visual representation of a [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d).
-* [`ViewCoordinates`](archetypes/view_coordinates.md): How we interpret the coordinate system of an entity/space.
+* [`ViewCoordinates`](archetypes/view_coordinates.md): Sets the default orientation for 3D views at or below this entity.
 
 ## Video
 

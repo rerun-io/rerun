@@ -22,14 +22,10 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Datatype**: How we interpret the coordinate system of an entity/space.
+/// **Datatype**: An orientation convention for three-dimensional coordinates.
 ///
-/// For instance: What is "up"? What does the Z axis mean?
-///
-/// The three coordinates are always ordered as [x, y, z].
-///
-/// For example [Right, Down, Forward] means that the X axis points to the right, the Y axis points
-/// down, and the Z axis points forward.
+/// The three directions are always ordered as [x, y, z] and specify where each positive axis points.
+/// For example, [Right, Down, Forward] means that +X points right, +Y points down, and +Z points forward.
 ///
 /// ⚠ [Rerun does not yet support left-handed coordinate systems](https://github.com/rerun-io/rerun/issues/5032).
 ///

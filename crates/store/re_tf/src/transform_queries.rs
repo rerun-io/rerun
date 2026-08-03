@@ -555,11 +555,11 @@ pub fn query_view_coordinates(
         .map(|(_index, view_coordinates)| view_coordinates)
 }
 
-/// Queries view coordinates from either the [`archetypes::Pinhole`] or [`archetypes::ViewCoordinates`] archetype
-/// at the closest ancestor of the given entity path.
+/// Queries view coordinates at the closest ancestor of the given entity path.
 ///
-/// Gives precedence to the `Pinhole` archetype.
-// TODO(#2663): This is confusing and should be cleaned up.
+/// Scene-level [`archetypes::ViewCoordinates`] take precedence so that a pinhole camera cannot
+/// override the orientation chosen for a 3D view. A [`archetypes::Pinhole`] is used only as a
+/// fallback when no scene-level view coordinates are present.
 pub fn query_view_coordinates_at_closest_ancestor(
     entity_path: &EntityPath,
     entity_db: &EntityDb,
@@ -569,13 +569,13 @@ pub fn query_view_coordinates_at_closest_ancestor(
         .latest_at_component_at_closest_ancestor::<components::ViewCoordinates>(
             entity_path,
             query,
-            archetypes::Pinhole::descriptor_camera_xyz().component,
+            archetypes::ViewCoordinates::descriptor_xyz().component,
         )
         .or_else(|| {
             entity_db.latest_at_component_at_closest_ancestor::<components::ViewCoordinates>(
                 entity_path,
                 query,
-                archetypes::ViewCoordinates::descriptor_xyz().component,
+                archetypes::Pinhole::descriptor_camera_xyz().component,
             )
         })
         .map(|(_path, _index, view_coordinates)| view_coordinates)
@@ -589,11 +589,52 @@ mod tests {
     use re_entity_db::{EntityDb, EntityPath};
     use re_log_types::Timeline;
     use re_sdk_types::{
-        archetypes::{InstancePoses3D, Transform3D},
-        components::RotationQuat,
+        archetypes::{self, InstancePoses3D, Pinhole, Transform3D},
+        components::{PinholeProjection, RotationQuat, ViewCoordinates},
     };
 
     use super::*;
+
+    #[test]
+    fn scene_view_coordinates_take_precedence_over_pinhole_fallback()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let mut entity_db = EntityDb::new(re_log_types::StoreInfo::testing().store_id);
+        let timeline = Timeline::new_sequence("t");
+        let query = LatestAtQuery::new(*timeline.name(), 1);
+
+        let camera_path = EntityPath::from("world/camera");
+        let camera_chunk = Chunk::builder(camera_path.clone())
+            .with_archetype_auto_row(
+                [(timeline, 1)],
+                &Pinhole::new(PinholeProjection::from_focal_length_and_principal_point(
+                    [1.0, 1.0],
+                    [0.0, 0.0],
+                ))
+                .with_camera_xyz(ViewCoordinates::RDF),
+            )
+            .build()?;
+        entity_db.add_chunk(&Arc::new(camera_chunk))?;
+
+        assert_eq!(
+            query_view_coordinates_at_closest_ancestor(&camera_path, &entity_db, &query),
+            Some(ViewCoordinates::RDF)
+        );
+
+        let scene_chunk = Chunk::builder(EntityPath::from("world"))
+            .with_archetype_auto_row(
+                [(timeline, 1)],
+                &archetypes::ViewCoordinates::RIGHT_HAND_Z_UP(),
+            )
+            .build()?;
+        entity_db.add_chunk(&Arc::new(scene_chunk))?;
+
+        assert_eq!(
+            query_view_coordinates_at_closest_ancestor(&camera_path, &entity_db, &query),
+            Some(ViewCoordinates::RIGHT_HAND_Z_UP)
+        );
+
+        Ok(())
+    }
 
     /// Test that an invalid instance pose quaternion is ignored while still keeping the translation.
     #[test]

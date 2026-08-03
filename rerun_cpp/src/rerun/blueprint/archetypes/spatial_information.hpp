@@ -33,20 +33,20 @@ namespace rerun::blueprint::archetypes {
         /// Whether axes should be shown at the origin.
         std::optional<ComponentBatch> show_axes;
 
-        /// Determines the coordinate system of this 3D view.
+        /// Controls the orientation of the axes in a 3D view; it has no effect in a 2D view.
         ///
-        /// For instance: What is "up"? What does the Z axis mean?
+        /// This determines the 3D eye orientation, navigation, and default grid plane.
         ///
-        /// The three coordinates are always ordered as [x, y, z].
+        /// The three directions are always ordered as [x, y, z] and specify where each positive axis points.
+        /// For example, [Right, Down, Forward] means that +X points right, +Y points down, and +Z points forward.
         ///
-        /// For example [Right, Down, Forward] means that the X axis points to the right, the Y axis points
-        /// down, and the Z axis points forward.
+        /// When this property is unset, a 3D view first uses `archetypes::ViewCoordinates` logged at its origin entity or the closest ancestor.
+        /// If none is found, it uses the camera orientation from the closest ancestor `archetypes::Pinhole`.
+        /// If neither is found, the fallback is RFU.
+        ///
+        /// This property is hidden from the selection panel for 2D views.
         ///
         /// ⚠ [Rerun does not yet support left-handed coordinate systems](https://github.com/rerun-io/rerun/issues/5032).
-        ///
-        /// Defaults to RFU unless `archetypes::ViewCoordinates` is logged at the origin entity, or at the closest ancestor thereof.
-        ///
-        /// TODO(#1387): This property has no effect in 2D views and is hidden from their selection panel.
         std::optional<ComponentBatch> axes;
 
       public:
@@ -125,20 +125,20 @@ namespace rerun::blueprint::archetypes {
             return std::move(*this);
         }
 
-        /// Determines the coordinate system of this 3D view.
+        /// Controls the orientation of the axes in a 3D view; it has no effect in a 2D view.
         ///
-        /// For instance: What is "up"? What does the Z axis mean?
+        /// This determines the 3D eye orientation, navigation, and default grid plane.
         ///
-        /// The three coordinates are always ordered as [x, y, z].
+        /// The three directions are always ordered as [x, y, z] and specify where each positive axis points.
+        /// For example, [Right, Down, Forward] means that +X points right, +Y points down, and +Z points forward.
         ///
-        /// For example [Right, Down, Forward] means that the X axis points to the right, the Y axis points
-        /// down, and the Z axis points forward.
+        /// When this property is unset, a 3D view first uses `archetypes::ViewCoordinates` logged at its origin entity or the closest ancestor.
+        /// If none is found, it uses the camera orientation from the closest ancestor `archetypes::Pinhole`.
+        /// If neither is found, the fallback is RFU.
+        ///
+        /// This property is hidden from the selection panel for 2D views.
         ///
         /// ⚠ [Rerun does not yet support left-handed coordinate systems](https://github.com/rerun-io/rerun/issues/5032).
-        ///
-        /// Defaults to RFU unless `archetypes::ViewCoordinates` is logged at the origin entity, or at the closest ancestor thereof.
-        ///
-        /// TODO(#1387): This property has no effect in 2D views and is hidden from their selection panel.
         SpatialInformation with_axes(const rerun::components::ViewCoordinates& _axes) && {
             axes = ComponentBatch::from_loggable(_axes, Descriptor_axes).value_or_throw();
             return std::move(*this);

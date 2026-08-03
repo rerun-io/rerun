@@ -22,16 +22,14 @@ use ::re_types_core::{ComponentBatch as _, SerializedComponentBatch};
 use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Component**: How to interpret the coordinate system of an entity, space, or spatial view.
+/// **Component**: An orientation convention for a camera or 3D view.
 ///
-/// For instance: What is "up"? What does the Z axis mean?
+/// On [`archetypes::Pinhole`][crate::archetypes::Pinhole], this component controls the camera orientation and projection direction.
+/// On [SpatialInformation](https://rerun.io/docs/reference/types/views/spatial3d_view), it controls the 3D view's eye orientation, navigation, and default grid plane.
+/// A logged [`archetypes::ViewCoordinates`][crate::archetypes::ViewCoordinates] provides the default for [SpatialInformation](https://rerun.io/docs/reference/types/views/spatial3d_view).
 ///
-/// The three coordinates are always ordered as [x, y, z].
-///
-/// For example [Right, Down, Forward] means that the X axis points to the right, the Y axis points
-/// down, and the Z axis points forward.
-///
-/// Logged [`archetypes::ViewCoordinates`][crate::archetypes::ViewCoordinates] provide the default for [`archetypes::SpatialInformation`][crate::blueprint::archetypes::SpatialInformation] axes in 3D views.
+/// The three directions are always ordered as [x, y, z] and specify where each positive axis points.
+/// For example, [Right, Down, Forward] means that +X points right, +Y points down, and +Z points forward.
 ///
 /// ⚠ [Rerun does not yet support left-handed coordinate systems](https://github.com/rerun-io/rerun/issues/5032).
 ///

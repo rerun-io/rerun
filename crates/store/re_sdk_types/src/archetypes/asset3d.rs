@@ -44,7 +44,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///     let rec =
 ///         rerun::RecordingStreamBuilder::new("rerun_example_asset3d").spawn()?;
 ///
-///     rec.log_static("world", &rerun::ViewCoordinates::RIGHT_HAND_Z_UP())?; // Set an up-axis
+///     rec.log_static("world", &rerun::ViewCoordinates::RIGHT_HAND_Z_UP())?; // Set the 3D view's up direction
 ///     rec.log("world/asset", &rerun::Asset3D::from_file_path(path)?)?;
 ///
 ///     Ok(())
