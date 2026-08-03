@@ -160,7 +160,7 @@ pub mod web_decode {
         re_async::spawn_local(decode_rrd_async(rrd_bytes, on_msg));
     }
 
-    /// Decodes the file in chunks, with an yield between each chunk.
+    /// Decodes the file in chunks, with a yield between each chunk.
     ///
     /// This is cooperative multi-tasking.
     async fn decode_rrd_async(rrd_bytes: Vec<u8>, on_msg: Arc<HttpMessageCallback>) {
@@ -185,8 +185,7 @@ pub mod web_decode {
                     }
 
                     if last_yield.elapsed() > web_time::Duration::from_millis(10) {
-                        // yield to the ui task
-                        yield_().await;
+                        re_async::yield_now().await;
                         last_yield = web_time::Instant::now();
                     }
                 }
@@ -196,12 +195,6 @@ pub mod web_decode {
                 let _ignored_control_flow = on_msg(HttpMessage::Failure(Error::DecodeEager(err)));
             }
         }
-    }
-
-    // Yield to other tasks
-    async fn yield_() {
-        // TODO(emilk): create a better async yield function. See https://github.com/wasm-bindgen/wasm-bindgen/issues/3359
-        re_async::sleep(std::time::Duration::from_millis(1)).await;
     }
 }
 

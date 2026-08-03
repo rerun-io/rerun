@@ -8576,7 +8576,6 @@ dependencies = [
  "js-sys",
  "thiserror 2.0.18",
  "tokio",
- "wasm-bindgen-futures",
  "wasm-bindgen-test",
  "web-sys",
 ]

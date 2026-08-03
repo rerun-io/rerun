@@ -5,6 +5,7 @@ use std::sync::Arc;
 pub use crossbeam::channel::{RecvError, RecvTimeoutError, SendError, TryRecvError};
 use parking_lot::RwLock;
 use re_log_types::{StoreId, TableId};
+pub use re_quota_channel::sync::TrySendError;
 use re_uri::RedapUri;
 
 mod data_source_message;

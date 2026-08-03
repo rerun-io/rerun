@@ -62,6 +62,9 @@ async fn stream_async(
         .into_inner();
 
     let mut app_id_cache = re_log_encoding::CachingApplicationIdInjector::default();
+    #[cfg(target_arch = "wasm32")]
+    let mut last_yield = web_time::Instant::now();
+
     loop {
         match stream.try_next().await {
             Ok(Some(ReadMessagesResponse {
@@ -77,9 +80,35 @@ async fn stream_async(
                     );
                 }
 
-                if tx.send(log_msg.into()).is_err() {
-                    re_log::debug!("gRPC stream smart channel closed");
-                    break;
+                cfg_select! {
+                    target_arch = "wasm32" => {
+                        let mut msg = log_msg.into();
+                        loop {
+                            match tx.try_send(msg) {
+                                Ok(()) => break,
+                                Err(re_log_channel::TrySendError::Full(unsent_msg)) => {
+                                    msg = *unsent_msg;
+                                    re_async::yield_now().await;
+                                    last_yield = web_time::Instant::now();
+                                }
+                                Err(re_log_channel::TrySendError::Disconnected(_)) => {
+                                    re_log::debug!("gRPC stream smart channel closed");
+                                    return Ok(());
+                                }
+                            }
+                        }
+
+                        if last_yield.elapsed() >= web_time::Duration::from_millis(10) {
+                            re_async::yield_now().await;
+                            last_yield = web_time::Instant::now();
+                        }
+                    }
+                    _ => {
+                        if tx.send(log_msg.into()).is_err() {
+                            re_log::debug!("gRPC stream smart channel closed");
+                            break;
+                        }
+                    }
                 }
             }
 

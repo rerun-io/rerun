@@ -37,6 +37,13 @@ pub async fn sleep(duration: Duration) {
     .expect("browser timer task should not be canceled while it is awaited");
 }
 
+/// Yields to the browser event loop so other tasks can run.
+#[cfg(target_arch = "wasm32")]
+#[inline]
+pub async fn yield_now() {
+    sleep(Duration::from_millis(0)).await;
+}
+
 #[cfg(not(target_arch = "wasm32"))]
 pub trait WasmNotSend: Send {}
 
@@ -137,7 +144,7 @@ pub struct TaskCancelled;
     reason = "this is the workspace's browser executor boundary"
 )]
 pub fn spawn_local(future: impl Future<Output = ()> + 'static) {
-    wasm_bindgen_futures::spawn_local(future);
+    js_sys::futures::spawn_local(future);
 }
 
 /// Spawns a possibly non-`Send` browser future and returns a `Send` future for its result.
@@ -202,6 +209,23 @@ mod web_tests {
     #[wasm_bindgen_test]
     async fn sleeps() {
         super::sleep(std::time::Duration::ZERO).await;
+    }
+
+    #[wasm_bindgen_test]
+    async fn yield_now_allows_other_tasks_to_run() {
+        let (other_task_tx, mut other_task_rx) = oneshot::channel();
+        let (result_tx, result_rx) = oneshot::channel();
+
+        // We defer this to later, so that we can first observe the second task.
+        super::spawn_local(async move {
+            super::yield_now().await;
+            result_tx.send(other_task_rx.try_recv()).ok();
+        });
+        super::spawn_local(async move {
+            other_task_tx.send(()).ok();
+        });
+
+        assert_eq!(result_rx.await, Ok(Ok(Some(()))));
     }
 
     #[wasm_bindgen_test]
