@@ -113,7 +113,7 @@ namespace rerun {
             auto field_builder = static_cast<arrow::ListBuilder*>(builder->field_builder(3));
             auto value_builder = static_cast<arrow::FloatBuilder*>(field_builder->value_builder());
             ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
-            ARROW_RETURN_NOT_OK(value_builder->Reserve(static_cast<int64_t>(num_elements * 1)));
+            ARROW_RETURN_NOT_OK(value_builder->Reserve(static_cast<int64_t>(num_elements) * 1));
 
             for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                 const auto& element = elements[elem_idx];
@@ -133,7 +133,7 @@ namespace rerun {
             auto field_builder = static_cast<arrow::ListBuilder*>(builder->field_builder(4));
             auto value_builder = static_cast<arrow::StringBuilder*>(field_builder->value_builder());
             ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
-            ARROW_RETURN_NOT_OK(value_builder->Reserve(static_cast<int64_t>(num_elements * 2)));
+            ARROW_RETURN_NOT_OK(value_builder->Reserve(static_cast<int64_t>(num_elements) * 2));
 
             for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                 const auto& element = elements[elem_idx];
@@ -150,7 +150,7 @@ namespace rerun {
             auto field_builder = static_cast<arrow::ListBuilder*>(builder->field_builder(5));
             auto value_builder = static_cast<arrow::StringBuilder*>(field_builder->value_builder());
             ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
-            ARROW_RETURN_NOT_OK(value_builder->Reserve(static_cast<int64_t>(num_elements * 1)));
+            ARROW_RETURN_NOT_OK(value_builder->Reserve(static_cast<int64_t>(num_elements) * 1));
 
             for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                 const auto& element = elements[elem_idx];

@@ -390,7 +390,7 @@ namespace rerun {
         rr_error status = {};
         log_static(
             this->PROPERTIES_ENTITY_PATH,
-            rerun::archetypes::RecordingInfo::update_fields().with_name(name.data())
+            rerun::archetypes::RecordingInfo::update_fields().with_name(std::string(name))
         );
         return status;
     }

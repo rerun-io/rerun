@@ -55,7 +55,7 @@ namespace rerun {
 
         auto value_builder = static_cast<arrow::StringBuilder*>(builder->value_builder());
         ARROW_RETURN_NOT_OK(builder->Reserve(static_cast<int64_t>(num_elements)));
-        ARROW_RETURN_NOT_OK(value_builder->Reserve(static_cast<int64_t>(num_elements * 2)));
+        ARROW_RETURN_NOT_OK(value_builder->Reserve(static_cast<int64_t>(num_elements) * 2));
 
         for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
             const auto& element = elements[elem_idx];

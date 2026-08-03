@@ -72,9 +72,11 @@ namespace rerun::datatypes {
             case detail::TensorBufferTag::F64: {
                 return _data.f64.size();
             }
+            default: {
+                assert(false && "Unknown TensorBuffer tag");
+                return 0;
+            }
         }
-        assert(false && "Unknown TensorBuffer tag");
-        return 0;
     }
 
 } // namespace rerun::datatypes

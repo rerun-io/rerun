@@ -2154,7 +2154,7 @@ fn quote_append_field_to_builder(
                     #setup
                     ARROW_RETURN_NOT_OK(#value_builder->AppendValues(
                         #value_ptr_accessor,
-                        static_cast<int64_t>(num_elements * #num_items_per_value), nullptr)
+                        static_cast<int64_t>(num_elements) * #num_items_per_value, nullptr)
                     );
                 }
             }
@@ -2175,7 +2175,7 @@ fn quote_append_field_to_builder(
             let setup = quote! {
                 auto #value_builder = static_cast<arrow::#value_builder_type*>(#builder->value_builder());
                 ARROW_RETURN_NOT_OK(#builder->Reserve(static_cast<int64_t>(num_elements)));
-                ARROW_RETURN_NOT_OK(#value_builder->Reserve(static_cast<int64_t>(num_elements * #value_reserve_factor)));
+                ARROW_RETURN_NOT_OK(#value_builder->Reserve(static_cast<int64_t>(num_elements) * #value_reserve_factor));
                 #NEWLINE_TOKEN #NEWLINE_TOKEN
             };
 

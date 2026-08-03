@@ -54,7 +54,7 @@ namespace rerun {
         static_assert(sizeof(elements[0].xy) == sizeof(elements[0]));
         ARROW_RETURN_NOT_OK(value_builder->AppendValues(
             elements[0].xy.data(),
-            static_cast<int64_t>(num_elements * 2),
+            static_cast<int64_t>(num_elements) * 2,
             nullptr
         ));
 
