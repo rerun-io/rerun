@@ -71,8 +71,8 @@ namespace rerun {
                                {{focal_length.x(), 0.0f, 0.0f},
                                 {0.0f, focal_length.y(), 0.0f},
                                 {u_cen, v_cen, 1.0f}}
-                           )
-            ).with_resolution(_resolution);
+                           ))
+                .with_resolution(_resolution);
         }
 
     } // namespace archetypes

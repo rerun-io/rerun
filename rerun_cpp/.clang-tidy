@@ -4,7 +4,7 @@
 # This is a *security* lint, not a style pass — `readability-*`, `modernize-*` and
 # `performance-*` would bury it. `.clang-format` remains the authority on style.
 #
-# ⚠️ Keys and checks must exist in clang-tidy 16, the version `clang-tools` pins. An unknown
+# ⚠️ Keys and checks must exist in clang-tidy 19, the version `clang-tools` pins. An unknown
 # key makes clang-tidy discard this whole file and fall back to defaults that find almost
 # nothing — a clean-looking run that checked nothing. `scripts/lint_cpp.py` guards against it.
 #
@@ -20,6 +20,8 @@
 #   cert-err58-cpp                          Public SDK constants use generated constructors that
 #                                           are not `noexcept`; changing them to accessors would
 #                                           break the API.
+#   cert-int09-c                            False positive e.g. for `enum class ErrorCode`.
+#   bugprone-chained-comparison             Spams with expanded CHECK macros.
 Checks: >
   -*,
   bugprone-*,
@@ -33,7 +35,9 @@ Checks: >
   -cert-dcl50-cpp,
   -cert-dcl51-cpp,
   -cert-err33-c,
-  -cert-err58-cpp
+  -cert-err58-cpp,
+  -cert-int09-c,
+  -bugprone-chained-comparison
 
 # The SDK is header-heavy, so restricting diagnostics to main files would miss most of the code.
 HeaderFilterRegex: 'rerun_cpp/src/rerun/.*'

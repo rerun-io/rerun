@@ -30,7 +30,8 @@ int main(int argc, char* argv[]) {
 
     std::vector<uint8_t> bytes{
         std::istreambuf_iterator<char>(file),
-        std::istreambuf_iterator<char>()};
+        std::istreambuf_iterator<char>()
+    };
     // Determine media type based on file extension
     rerun::MediaType media_type;
     if (depth_path.extension() == ".png") {

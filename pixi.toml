@@ -596,8 +596,8 @@ cpp-prepare-msvc = "cmake -G 'Visual Studio 17 2022' -B build-msvc -S ."
 # - Last resort, use a feature to conditionally include a dependency (e.g. `taplo`).
 
 attrs = ">=23.1.0"
-clang = "16.0.6.*"
-clang-tools = "16.0.6.*" # clang-format
+clang = "19.1.7.*"
+clang-tools = "19.1.7.*" # clang-format
 cmake = "3.27.6.*"
 colorama = ">=0.4.6,<0.5"
 doxygen = "1.9.7.*" # Make sure to use a version that is compatible with the theme we're using, see https://github.com/jothepro/doxygen-awesome-css/blob/v2.2.1/README.md
@@ -674,11 +674,11 @@ zig = "0.13.0.*"
 buf = "1.*" # not available for linux-aarch64
 libgfortran5 = ">=14" # Fixes issues with OpenCV
 meilisearch = "1.5.1.*" # not available for linux-aarch64
-llvm-tools = "16.0.6.*" # Various Wasm targets fail on mac without llvm-ar
+llvm-tools = "19.1.7.*" # Various Wasm targets fail on mac without llvm-ar
 
 [target.win-64.dependencies]
 buf = "1.*" # not available for linux-aarch64
-llvm-tools = "16.0.6.*" # Wasm targets need llvm-ar for cc-rs (same as osx-arm64)
+llvm-tools = "19.1.7.*" # Wasm targets need llvm-ar for cc-rs (same as osx-arm64)
 
 [feature.cpp.target.linux-64.dependencies]
 sysroot_linux-64 = ">=2.17,<3" # rustc 1.64+ requires glibc 2.17+, see https://blog.rust-lang.org/2022/08/01/Increasing-glibc-kernel-requirements.html
@@ -696,8 +696,8 @@ ninja = "1.11.1.*"
 #
 # Note however, that as of writing, our web viewer build needs to use a newer compiler than what MacOS ships with,
 # so we have to make sure that anything building the web viewer does **not** use these packages.
-c-compiler = "1.6.0.*"
-cxx-compiler = "1.6.0.*"
+c-compiler = "1.11.0.*"
+cxx-compiler = "1.11.0.*"
 
 [feature.cpp.target.win-64.dependencies]
 vs2022_win-64 = "19.37.32822.*"

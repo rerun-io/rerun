@@ -121,8 +121,7 @@ struct CheckElementMoveAndCopyCount {
     int copy_convertible_count_before, move_convertible_count_before;
 };
 
-#define EXPECTED_ELEMENT_LIST \
-    { 1337, 42 }
+#define EXPECTED_ELEMENT_LIST {1337, 42}
 
 // Checks if the collection contains the elements defined in `EXPECTED_ELEMENT_LIST`.
 void check_for_expected_list(const rerun::Collection<Element>& collection) {

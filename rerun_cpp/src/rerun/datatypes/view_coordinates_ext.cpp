@@ -23,7 +23,8 @@ namespace rerun {
                 : coordinates{
                       static_cast<rerun::datatypes::ViewDir>(axis0),
                       static_cast<rerun::datatypes::ViewDir>(axis1),
-                      static_cast<rerun::datatypes::ViewDir>(axis2)} {}
+                      static_cast<rerun::datatypes::ViewDir>(axis2)
+                  } {}
 
             /// Construct `ViewCoordinates` from x/y/z enum values.
             explicit constexpr ViewCoordinates(

@@ -52,8 +52,8 @@ namespace rerun::archetypes {
     ///     const auto rec = rerun::RecordingStream("rerun_example_transform3d");
     ///     rec.spawn().exit_on_failure();
     ///
-    ///     auto arrow = rerun::Arrows3D::from_vectors({{0.0f, 1.0f, 0.0f}}
-    ///     ).with_origins({{0.0f, 0.0f, 0.0f}});
+    ///     auto arrow = rerun::Arrows3D::from_vectors({{0.0f, 1.0f, 0.0f}})
+    ///                      .with_origins({{0.0f, 0.0f, 0.0f}});
     ///
     ///     rec.log("base", arrow);
     ///
@@ -98,8 +98,8 @@ namespace rerun::archetypes {
     ///     rec.set_time_sequence("tick", 0);
     ///     rec.log(
     ///         "box",
-    ///         rerun::Boxes3D::from_half_sizes({{4.f, 2.f, 1.0f}}
-    ///         ).with_fill_mode(rerun::FillMode::Solid),
+    ///         rerun::Boxes3D::from_half_sizes({{4.f, 2.f, 1.0f}})
+    ///             .with_fill_mode(rerun::FillMode::Solid),
     ///         rerun::TransformAxes3D(10.0)
     ///     );
     ///
@@ -143,8 +143,8 @@ namespace rerun::archetypes {
     ///     rec.set_time_sequence("tick", 0);
     ///     rec.log(
     ///         "box",
-    ///         rerun::Boxes3D::from_half_sizes({{4.f, 2.f, 1.0f}}
-    ///         ).with_fill_mode(rerun::FillMode::Solid),
+    ///         rerun::Boxes3D::from_half_sizes({{4.f, 2.f, 1.0f}})
+    ///             .with_fill_mode(rerun::FillMode::Solid),
     ///         rerun::TransformAxes3D(10.0)
     ///     );
     ///
@@ -193,8 +193,8 @@ namespace rerun::archetypes {
     ///     // Set up a 3D box.
     ///     rec.log(
     ///         "box",
-    ///         rerun::Boxes3D::from_half_sizes({{4.f, 2.f, 1.0f}}
-    ///         ).with_fill_mode(rerun::FillMode::Solid)
+    ///         rerun::Boxes3D::from_half_sizes({{4.f, 2.f, 1.0f}})
+    ///             .with_fill_mode(rerun::FillMode::Solid)
     ///     );
     ///
     ///     // Update only the rotation of the box.
