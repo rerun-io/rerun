@@ -44,7 +44,6 @@ ignored = [
   "re_renderer_examples",
 
   # used for specific targets or features
-  "home",
   "profiling",
   "wayland-sys", # only enabled via the `server` feature of `re_tracing`
   "windows-core",
@@ -211,7 +210,7 @@ walkers = "0.56.0"
 ahash = "0.8.12"
 anyhow = { version = "1.0", default-features = false }
 argh = "0.1.19"
-arrayvec = "0.7.6"
+arrayvec = "0.7.8"
 array-init = "2.1"
 arrow = { version = "58.3", default-features = false, features = [
   # NOTE: Similar to `datafusion`, we enable many features on a workspace level
@@ -221,12 +220,12 @@ arrow = { version = "58.3", default-features = false, features = [
   "json",
 ] }
 async-stream = "0.3.6"
-async-trait = "0.1.89"
+async-trait = "0.1.91"
 axum = "0.8.9"
 backtrace = "0.3.76"
-base64 = "0.22.1"
+base64 = "0.23.0"
 bincode = "1.3"
-bit-vec = "0.9.1"
+bit-vec = "0.9.1" # 0.10 would duplicate the 0.9 that `wgpu-core` requires. Bump once `wgpu` moves to bit-vec 0.10.
 bitflags = { version = "2.13", features = ["bytemuck"] }
 bytemuck = { version = "1.25", features = ["extern_crate_alloc"] }
 byteorder = "1.5"
@@ -234,11 +233,11 @@ bytes = "1.12"
 camino = "1.2"
 cargo_metadata = "0.23.1"
 cargo-run-wasm = "0.4.0"
-cfg_aliases = "0.2.1"
+cfg_aliases = "0.2.2"
 chrono = { version = "0.4.45", default-features = false } # Needed for datafusion, see `re_datafusion`'s Cargo.toml
 clap = { version = "4.6", features = ["derive"] }
 clean-path = "0.2.1"
-colored = "2.2" # Old b/c of dify
+colored = "2.2" # 3.1 would duplicate the 2.2 that `dify` (via egui_kittest) requires. Bump once `dify` moves to colored 3.
 comfy-table = { version = "7.2", default-features = false }
 console_error_panic_hook = "0.1.7"
 const_format = "0.2.36"
@@ -267,30 +266,30 @@ document-features = "0.2.12"
 econtext = "0.2.0" # Prints error contexts on crashes
 ehttp = "0.7.1"
 enumset = "1.1"
-env_filter = { version = "1.0", default-features = false }
+env_filter = { version = "2.0", default-features = false }
 ffmpeg-sidecar = { version = "2.5", default-features = false }
-fixed = { version = "1.30", default-features = false }
+fixed = { version = "1.31", default-features = false }
 fjadra = "0.2.1"
 flatbuffers = "25.12"
-futures = "0.3.32"
-futures-util = "0.3.32"
+futures = "0.3.33"
+futures-util = "0.3.33"
 getrandom = "0.3.4"
 getrandom02 = { package = "getrandom", version = "0.2.17" }
-gilrs = "0.11.1"
+gilrs = "0.11.1" # `gilrs-core` 0.6.8 (pulled by 0.11.2) moves to `nix` 0.31, duplicating the `nix` 0.30 that `zbus` requires, so `gilrs-core` is held at 0.6.7 in `Cargo.lock`. Bump once `zbus` moves to `nix` 0.31.
 glam = { version = "0.30.10", features = [
   "debug-glam-assert",
   "serde",
 ] } # pinned to 0.30 by `macaw`; 0.33 would duplicate glam. Bump once macaw releases a glam-0.33 version.
-glob = "0.3.3"
+glob = "0.3.4"
 gltf = "1.4"
 h264-reader = "0.8.0"
 half = { version = "2.7", features = ["bytemuck"] }
 hdf5-pure = "=0.30.0" # Very young crate (first release 2026-06) — pin exactly, bump deliberately.
 hexasphere = "16.0" # Update in tandem with glam
 hmac = "0.12.1" # pinned by `jsonwebtoken` (RustCrypto family); bump once jsonwebtoken moves to hmac 0.13/sha2 0.11/signature 3.
-home = "0.5.12"
-http = "1.4"
-http-body = "1.0"
+http = "1.5"
+http-body = "1.1"
+# 0.25.10 moves to `png` 0.18 and `tiff` 0.11, duplicating the `png` 0.17 that `resvg` (via egui_extras) requires and the `tiff` 0.9 we depend on directly. Bump once `resvg` moves to `png` 0.18.
 image = { version = "0.25.6", default-features = false, features = ["jpeg", "png"] }
 indent = "0.1.1"
 indexmap = { version = "2.14", features = [
@@ -298,19 +297,19 @@ indexmap = { version = "2.14", features = [
   "std",
   "serde",
 ] }
-indicatif = "0.18.4" # Progress bar
-infer = "0.19.0" # infer MIME type by checking the magic number signature
+indicatif = "0.18.6" # Progress bar
+infer = "0.22.0" # infer MIME type by checking the magic number signature
 insta = "1.48"
-itertools = "0.14.0" # 0.15 would duplicate the 0.14 that `datafusion` (pinned) requires. Bump once datafusion moves to itertools 0.15.
-jiff = { version = "0.2.29", features = ["js"] }
+itertools = "0.15.0"
+jiff = { version = "0.2.35", features = ["js"] }
 js-sys = "0.3.103"
 jsonwebtoken = { version = "10.4", default-features = false }
 lance = { version = "9.0", default-features = false } # When you update this, also update the list of features enabled for `datafusion` (~50 lines up)
-libc = "0.2.186"
+libc = "0.2.189"
 linked-hash-map = { version = "0.5.6", default-features = false }
 log = "0.4.33"
 log-once = "0.4.1"
-lz4_flex = "0.13.0"
+lz4_flex = "0.13.1"
 macaw = "0.30.0"
 mcap = "0.25.0"
 memmap2 = "0.9.11"
@@ -333,7 +332,7 @@ nucleo-matcher = { version = "0.3.1", default-features = false, features = [
   "unicode-casefold",
   "unicode-normalization",
 ] }
-num-derive = "0.4.2"
+num-derive = "0.4.2" # 0.5 would duplicate the 0.4 that `av-data` (via re_rav1d) requires. Bump once re_rav1d is updated (same blocker as `strum`).
 num-traits = "0.2.19"
 numpy = "0.28.0"
 opentelemetry = { version = "0.32.0", features = ["metrics"] }
@@ -361,14 +360,14 @@ pin-project-lite = "0.2.17"
 ply-rs-bw = { version = "=3.0.0", default-features = false } # ply-rs-bw has released semver breaking changes in patch releases before. Fool me once, shame on you…
 poll-promise = "0.3.0"
 pollster = "1.0"
-prettyplease = "0.2.37"
+prettyplease = "0.3.0" # Takes a `syn` 3 AST — keep in lockstep with `syn`.
 proc-macro-crate = "3.5"
 proc-macro2 = { version = "1.0", default-features = false }
 profiling = { version = "1.0", default-features = false }
 prometheus-client = "0.25.0"
 prost = "0.14.4"
 prost-build = "0.14.4"
-prost-reflect = "0.16.4"
+prost-reflect = "0.16.5"
 prost-types = "0.14.4"
 protoc-bin-vendored = "3.2"
 puffin = "0.20.0"
@@ -376,7 +375,7 @@ puffin_http = "0.17.0"
 pyo3 = "0.28.3"
 pyo3-build-config = "0.28.3"
 quote = "1.0"
-rand = { version = "0.9.4", default-features = false, features = [
+rand = { version = "0.9.5", default-features = false, features = [
   "small_rng",
   "std",
   "thread_rng",
@@ -384,17 +383,19 @@ rand = { version = "0.9.4", default-features = false, features = [
 rand_distr = { version = "0.5.1", default-features = false, features = ["std"] }
 raw-window-handle = "0.6.2"
 rayon = "1.12"
-re_cdr = "0.1"
+re_cdr = "0.1.0"
 regex-lite = "0.1.9"
-reqwest = { version = "0.12.22", default-features = false, features = [
+reqwest = { version = "0.12.28", default-features = false, features = [
   "rustls-tls",
 ] } # 0.13 blocked: `walkers` (latest 0.54) and `http-cache-reqwest` still depend on reqwest 0.12. Bump once walkers moves to reqwest 0.13 (also unblocks tower-http 0.7).
 rexif = "0.7.5"
 rfd = { version = "0.17.2", default-features = false, features = ["xdg-portal"] }
-ron = { version = "0.12.1", features = ["integer128"] }
+rmcp = { version = "1.8", features = ["macros", "schemars", "server", "transport-io"] }
+ron = { version = "0.12.2", features = ["integer128"] }
 roxmltree = "0.20.0" # 0.21 would duplicate the 0.20 that `resvg` (via egui_extras) requires. Bump once egui_extras/resvg move to roxmltree 0.21.
 ring = "0.17.14"
-rustls = { version = "0.23.40", default-features = false }
+rustls = { version = "0.23.43", default-features = false }
+schemars = "1.2"
 scuffle-av1 = "0.1.4"
 scuffle-bytes-util = "0.1.5"
 semver = "1.0"
@@ -414,17 +415,17 @@ static_assertions = "1.1"
 stl_io = "0.11.0"
 strum = { version = "0.26.3", features = ["derive"] } # need to update re_rav1d first
 strum_macros = "0.26.4" # need to update re_rav1d first
-syn = "2.0"
-sysinfo = { version = "0.38.4", default-features = false }
+syn = "3.0"
+sysinfo = { version = "0.39.6", default-features = false }
 tap = "1.0"
 tempfile = "3.27"
 thiserror = "2.0"
 tiff = "0.9.1" # 0.11 duplicates `png` (via the older `image`/`png` stack) and adds a `DecodingResult::F16` variant. Bump once `image` moves to the matching `png`.
 tiny_http = { version = "0.12.0", default-features = false }
 tobj = "4.0"
-tokio = { version = "1.52", default-features = false }
-tokio-stream = "0.1.18"
-tokio-util = { version = "0.7.18", default-features = false }
+tokio = { version = "1.53", default-features = false }
+tokio-stream = "0.1.19"
+tokio-util = { version = "0.7.19", default-features = false }
 toml = { version = "1.1", default-features = false }
 tonic = { version = "0.14.6", default-features = false }
 tonic-prost = { version = "0.14.6", default-features = false }
@@ -455,7 +456,7 @@ unindent = "0.2.4"
 urdf-rs = "0.9.0"
 ureq = { version = "3.3", features = ["json"] }
 url = "2.5"
-uuid = { version = "1.23", features = ["serde", "v4", "js"] }
+uuid = { version = "1.24", features = ["serde", "v4", "js"] }
 vec1 = { version = "1.12", features = ["serde", "smallvec-v1"] }
 walkdir = "2.5"
 wildmatch = "2.6"
@@ -473,7 +474,7 @@ wasm-bindgen = "0.2.126" # ⚠️ read above notice before touching this!
 wasm-bindgen-cli-support = "0.2.126" # ⚠️ read above notice before touching this!
 wasm-bindgen-futures = "0.4.76"
 wasm-bindgen-test = "0.3.76"
-wayland-client = "0.31.14"
+wayland-client = "0.31.15"
 wayland-protocols = { version = "0.32.13", default-features = false }
 wayland-sys = "0.31.11"
 web-sys = "0.3.103"
@@ -506,7 +507,7 @@ wgpu = { version = "30.0", default-features = false, features = [
   "fragile-send-sync-non-atomic-wasm",
 ] }
 xshell = "0.2.7"
-xxhash-rust = { version = "0.8.15", features = ["xxh32", "xxh64"] }
+xxhash-rust = { version = "0.8.18", features = ["xxh32", "xxh64"] }
 zip = { version = "8.6", default-features = false, features = ["deflate"] }
 
 # ---------------------------------------------------------------------------------

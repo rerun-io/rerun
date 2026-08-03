@@ -27,8 +27,8 @@ re_protos.workspace = true
 
 anyhow.workspace = true
 parking_lot.workspace = true
-rmcp = { version = "1.7", features = ["server", "macros", "transport-io", "schemars"] }
-schemars = "1.0"
+rmcp.workspace = true
+schemars.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 tokio = { workspace = true, features = ["rt-multi-thread", "io-std", "macros", "sync"] }

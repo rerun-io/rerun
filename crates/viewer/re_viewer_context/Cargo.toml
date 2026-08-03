@@ -88,7 +88,6 @@ vec1.workspace = true
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-home.workspace = true
 tokio.workspace = true
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
