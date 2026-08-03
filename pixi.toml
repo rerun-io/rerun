@@ -247,7 +247,10 @@ link-check = 'lychee --cache --max-cache-age 1d . --root-dir "$PIXI_PROJECT_ROOT
 # Assorted linting tasks
 fast-lint = "python scripts/fast_lint.py"
 lint-codegen = "cargo run --package re_types_builder -- --check"
-lint-cpp-files = "python scripts/lint_cpp.py"
+lint-clang-tidy-config = "clang-tidy --config-file rerun_cpp/.clang-tidy --verify-config"
+lint-cpp-files = { cmd = "run-clang-tidy -p build/debug -config-file rerun_cpp/.clang-tidy -quiet -use-color -warnings-as-errors '*' 'rerun_cpp/.*'", depends-on = [
+  "lint-clang-tidy-config",
+] }
 lint-rerun = "python scripts/lint.py"
 lint-rs-files = "rustfmt --edition 2024 --check"
 lint-rs-all = "cargo fmt --check"

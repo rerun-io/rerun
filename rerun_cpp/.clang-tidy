@@ -1,12 +1,8 @@
 # clang-tidy for the C++ SDK, including generated code.
-# Run with `pixi run -e cpp lint-cpp-files`, which supplies the compilation database.
+# Run with `pixi run -e cpp lint-cpp-files`.
 #
 # This is a *security* lint, not a style pass — `readability-*`, `modernize-*` and
 # `performance-*` would bury it. `.clang-format` remains the authority on style.
-#
-# ⚠️ Keys and checks must exist in clang-tidy 19, the version `clang-tools` pins. An unknown
-# key makes clang-tidy discard this whole file and fall back to defaults that find almost
-# nothing — a clean-looking run that checked nothing. `scripts/lint_cpp.py` guards against it.
 #
 # Why each check is off:
 #   bugprone-easily-swappable-parameters    Style opinion, and a loud one.
@@ -22,6 +18,11 @@
 #                                           break the API.
 #   cert-int09-c                            False positive e.g. for `enum class ErrorCode`.
 #   bugprone-chained-comparison             Spams with expanded CHECK macros.
+#                                           TODO(michael): use a newer clang version that supports
+#                                           this more fine-grained setting for `CheckOptions`:
+#                                           `bugprone-chained-comparison.IgnoreMacros: true`.
+#   bugprone-implicit-widening-of-multiplication-result
+#                                           Flags harmless products of literals like `std::vector<int>(10 * 10, 0)`.
 Checks: >
   -*,
   bugprone-*,
@@ -37,11 +38,12 @@ Checks: >
   -cert-err33-c,
   -cert-err58-cpp,
   -cert-int09-c,
-  -bugprone-chained-comparison
+  -bugprone-chained-comparison,
+  -bugprone-implicit-widening-of-multiplication-result
 
 # The SDK is header-heavy, so restricting diagnostics to main files would miss most of the code.
 HeaderFilterRegex: 'rerun_cpp/src/rerun/.*'
 
-# The gate is `scripts/lint_cpp.py`, which fails on any finding. Setting this too would only
-# break editors and clangd.
+# CI passes `-warnings-as-errors` to `run-clang-tidy`. Setting this here would also affect
+# editors and clangd.
 WarningsAsErrors: ''
