@@ -9,6 +9,7 @@ import sys
 import warnings
 from collections import defaultdict
 from concurrent.futures import Future, ThreadPoolExecutor
+from contextlib import contextmanager
 from dataclasses import dataclass
 from functools import partial
 from typing import TYPE_CHECKING, Any
@@ -371,6 +372,65 @@ def _fetch_group(
         return _split_by_segment(arrow_table)
 
 
+def _resolve_decode_threads(decode_threads: int | None, fields: dict[str, Field]) -> int:
+    """The per-worker decode fan-out, defaulting to one thread per video field."""
+    if decode_threads is None:
+        return max(1, sum(1 for field in fields.values() if is_video_field(field, field.decode)))
+    if decode_threads < 1:
+        raise ValueError(f"decode_threads must be at least 1, got {decode_threads}")
+    return decode_threads
+
+
+@contextmanager
+def _decode_pool(decode_threads: int, num_fields: int) -> Generator[ThreadPoolExecutor | None, None, None]:
+    """
+    A decode pool for one iteration pass, or `None` when fields are decoded sequentially.
+
+    Sized to `min(decode_threads, num_fields)`: a sample's fields are joined before
+    it is yielded, so threads beyond the field count would never be scheduled.
+    """
+    workers = min(decode_threads, num_fields)
+    if workers <= 1:
+        yield None
+        return
+    executor = ThreadPoolExecutor(max_workers=workers, thread_name_prefix="rerun-decode")
+    try:
+        yield executor
+    finally:
+        executor.shutdown(wait=False)
+
+
+def _decode_field(
+    *,
+    target: Target,
+    key: str,
+    field: Field,
+    decoder: ColumnDecoder,
+    seg_tables: dict[str, dict[str, pa.Table]],
+    index: str,
+) -> torch.Tensor | None:
+    """Decode one field of one sample out of the pre-fetched arrow chunks."""
+    segment_id = target.segment.segment_id
+    seg_table = seg_tables[key].get(segment_id)
+    if seg_table is None:
+        raise RuntimeError(
+            f"No rows returned for field {key!r} in segment {segment_id!r} at index {target.index_value!r}"
+        )
+    index_array = seg_table[index]
+    lo, hi = _field_index_range(target.index_value, field, decoder, prior_keyframe=target.anchors.get(key)) or (
+        target.index_value,
+        target.index_value,
+    )
+    mask = pc.and_(
+        pc.greater_equal(index_array, lo),
+        pc.less_equal(index_array, hi),
+    )
+    raw = seg_table.filter(mask).column(key)
+    if field.select is not None:
+        raw = _apply_selector(field.select, raw)
+    return decoder.decode(raw, target.index_value, segment_id)
+
+
 def _decode_iter(
     *,
     targets: list[Target],
@@ -378,32 +438,37 @@ def _decode_iter(
     index: str,
     fields: dict[str, Field],
     decoders: dict[str, ColumnDecoder],
+    executor: ThreadPoolExecutor | None = None,
 ) -> Iterator[dict[str, torch.Tensor | None]]:
-    """Yield decoded samples one at a time from the pre-fetched per-field arrow chunks."""
+    """
+    Yield decoded samples one at a time from the pre-fetched per-field arrow chunks.
+
+    Without `executor`, a sample's fields are decoded one after another on this
+    thread. With one, they are decoded concurrently and joined before the sample
+    is yielded: fields are independent streams, each with its own decoder and its
+    own session cache, and the per-sample join keeps a given field's calls in
+    sample order — which its incremental GOP reuse depends on. Decoding releases
+    the GIL, so the overlap is real.
+    """
     with tracing_scope("RerunDataset._decode_chunk"):
         for target in targets:
             with tracing_scope("RerunDataset._decode_sample"):
-                segment_id = target.segment.segment_id
-                sample: dict[str, torch.Tensor | None] = {}
-                for key, field in fields.items():
-                    decoder = decoders[key]
-                    seg_table = seg_tables[key].get(segment_id)
-                    if seg_table is None:
-                        raise RuntimeError(
-                            f"No rows returned for field {key!r} in segment {segment_id!r} at index {target.index_value!r}"
+                decode_one = partial(_decode_field, target=target, seg_tables=seg_tables, index=index)
+                if executor is None:
+                    sample: dict[str, torch.Tensor | None] = {
+                        key: decode_one(key=key, field=field, decoder=decoders[key]) for key, field in fields.items()
+                    }
+                else:
+                    # Copy the caller's contextvars so each field's spans nest under this
+                    # sample's span instead of appearing as roots.
+                    futures: dict[str, Future[torch.Tensor | None]] = {
+                        key: executor.submit(
+                            contextvars.copy_context().run,
+                            partial(decode_one, key=key, field=field, decoder=decoders[key]),
                         )
-                    index_array = seg_table[index]
-                    lo, hi = _field_index_range(
-                        target.index_value, field, decoder, prior_keyframe=target.anchors.get(key)
-                    ) or (target.index_value, target.index_value)
-                    mask = pc.and_(
-                        pc.greater_equal(index_array, lo),
-                        pc.less_equal(index_array, hi),
-                    )
-                    raw = seg_table.filter(mask).column(key)
-                    if field.select is not None:
-                        raw = _apply_selector(field.select, raw)
-                    sample[key] = decoder.decode(raw, target.index_value, segment_id)
+                        for key, field in fields.items()
+                    }
+                    sample = {key: future.result() for key, future in futures.items()}
             yield sample
 
 

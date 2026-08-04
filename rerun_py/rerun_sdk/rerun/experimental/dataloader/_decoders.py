@@ -232,13 +232,36 @@ class VideoFrameDecoder(ColumnDecoder):
         fps_estimate: float = 30.0,
         codec: str = "h264",
         max_decoder_sessions: int = 8,
+        thread_count: int = 1,
     ) -> None:
+        """
+        Construct a decoder for a compressed video column.
+
+        Parameters
+        ----------
+        keyframe_interval:
+            Fallback GOP length (in frames) used to estimate how far back the
+            prior keyframe sits when the stream has no explicit markers.
+        fps_estimate:
+            Fallback frame rate used to turn `keyframe_interval` into a time window.
+        codec:
+            Video codec of the encoded samples (e.g. `"h264"`).
+        max_decoder_sessions:
+            Upper bound on the number of live codec contexts kept in the LRU cache.
+        thread_count:
+            ffmpeg decode thread count. Usually 1 for low resolution, larger for
+            large resolutions; 1 is preferred over auto, so we do not propose auto.
+
+        """
         self.codec = codec
         # Cached: read per sample in the decode loop.
         self._video_codec = _to_video_codec(codec)
         self._keyframe_interval = keyframe_interval
         self._fps_estimate = fps_estimate
         self._max_decoder_sessions = max_decoder_sessions
+        # TODO(guillaume): expose `thread_count` as a user-facing parameter
+        # if some customers do want to decode large images.
+        self.thread_count = thread_count
 
         # LRU of live decode sessions, keyed by `(segment_id, keyframe sample)`.
         self._sessions: OrderedDict[tuple[str, bytes], _DecoderSession] = OrderedDict()
@@ -393,6 +416,8 @@ class VideoFrameDecoder(ColumnDecoder):
         """A fresh raw-packet CodecContext (no container)."""
         decoder_name = _CODEC_TO_DECODER.get(self.codec, self.codec)
         context = cast("av.VideoCodecContext", av.CodecContext.create(decoder_name, "r"))
+        if self.thread_count:
+            context.thread_count = self.thread_count
         if decoder_name == "libdav1d":
             # dav1d delays output for pipelining by default; the session fast
             # path needs one frame out per packet in.

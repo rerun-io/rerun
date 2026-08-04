@@ -99,6 +99,13 @@ def parse_args() -> argparse.Namespace:
     common.add_argument("--epochs", type=int, default=EPOCHS, help="Number of training epochs")
     common.add_argument("--batch-size", type=int, default=BATCH_SIZE, help="Training batch size")
     common.add_argument("--num-workers", type=int, default=NUM_WORKERS, help="DataLoader worker processes")
+    common.add_argument(
+        "--decode-threads",
+        type=int,
+        default=None,
+        help="Fields decoded concurrently inside each worker (default: one per video field). "
+        "Prefer this over --num-workers when RAM per worker, not CPU, is the limit",
+    )
     common.add_argument("--lr", type=float, default=LR, help="Learning rate")
     common.add_argument(
         "--checkpoint-dir",
@@ -220,6 +227,7 @@ def main() -> None:
             fields=fields,
             fetch_size=args.fetch_size,
             shuffle_strategy=shuffle_strategies[args.shuffle],
+            decode_threads=args.decode_threads,
         )
     print(f"Using {args.dataset_style} dataset with {len(ds)} samples (after window trimming)")
 

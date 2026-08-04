@@ -10,7 +10,14 @@ import torch.utils.data
 from rerun._tracing import with_tracing
 
 from ._sample_index import FixedRateSampling, SampleIndex
-from ._utils import _decode_iter, _fetch_arrow, _warn_if_fork_unsafe, _WorkerConnection
+from ._utils import (
+    _decode_iter,
+    _decode_pool,
+    _fetch_arrow,
+    _resolve_decode_threads,
+    _warn_if_fork_unsafe,
+    _WorkerConnection,
+)
 
 if TYPE_CHECKING:
     from ._config import DataSource, Field
@@ -40,6 +47,8 @@ class RerunMapDataset(torch.utils.data.Dataset[dict[str, torch.Tensor | None]]):
         Required when `index` is a timestamp timeline; ignored for
         integer indices. Pass [`FixedRateSampling`][rerun.experimental.dataloader.FixedRateSampling] to sample on
         a fixed grid (e.g. 30 Hz).
+    decode_threads
+        Fields to decode concurrently within each `DataLoader` worker.
 
     Examples
     --------
@@ -64,6 +73,7 @@ class RerunMapDataset(torch.utils.data.Dataset[dict[str, torch.Tensor | None]]):
         fields: dict[str, Field],
         *,
         timeline_sampling: FixedRateSampling | None = None,
+        decode_threads: int | None = None,
     ) -> None:
         super().__init__()
 
@@ -71,6 +81,7 @@ class RerunMapDataset(torch.utils.data.Dataset[dict[str, torch.Tensor | None]]):
 
         self._fields = fields
         self._index = index
+        self._decode_threads = _resolve_decode_threads(decode_threads, fields)
 
         self._sample_index = SampleIndex.build(
             source,
@@ -111,12 +122,14 @@ class RerunMapDataset(torch.utils.data.Dataset[dict[str, torch.Tensor | None]]):
             sample_index=self._sample_index,
             indices=indices,
         )
-        return list(
-            _decode_iter(
-                targets=targets,
-                seg_tables=seg_tables,
-                index=self._index,
-                fields=self._fields,
-                decoders=decoders,
-            ),
-        )
+        with _decode_pool(self._decode_threads, len(self._fields)) as executor:
+            return list(
+                _decode_iter(
+                    targets=targets,
+                    seg_tables=seg_tables,
+                    index=self._index,
+                    fields=self._fields,
+                    decoders=decoders,
+                    executor=executor,
+                ),
+            )

@@ -16,16 +16,19 @@ from ._shuffle import SampleShuffle, ShuffleStrategy, _contiguous_shard, _fetch_
 from ._utils import (
     Target,
     _decode_iter,
+    _decode_pool,
     _fetch_arrow,
     _fetch_targets,
     _interleave_fetch_and_decode,
     _replay,
+    _resolve_decode_threads,
     _warn_if_fork_unsafe,
     _WorkerConnection,
 )
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
+    from concurrent.futures import ThreadPoolExecutor
 
     import pyarrow as pa
 
@@ -69,6 +72,8 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tens
         optional post-decode buffer samples are emitted through. Defaults to
         [`SampleShuffle`][rerun.experimental.dataloader.SampleShuffle]; pass
         [`NoShuffle`][rerun.experimental.dataloader.NoShuffle] for natural order.
+    decode_threads
+        Fields to decode concurrently within each `DataLoader` worker.
 
     """
 
@@ -81,6 +86,7 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tens
         timeline_sampling: FixedRateSampling | None = None,
         fetch_size: int = 128,
         shuffle_strategy: ShuffleStrategy | None = None,
+        decode_threads: int | None = None,
     ) -> None:
         super().__init__()
 
@@ -89,6 +95,7 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tens
         self._fields = fields
         self._index = index
         self._fetch_size = fetch_size
+        self._decode_threads = _resolve_decode_threads(decode_threads, fields)
 
         self._shuffle_strategy = shuffle_strategy if shuffle_strategy is not None else SampleShuffle()
         self._shuffle_buffer = self._shuffle_strategy.emission_buffer()
@@ -105,7 +112,14 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tens
         self._connection = _WorkerConnection.from_source(source, fields)
 
     @classmethod
-    def from_manifest(cls, manifest: Manifest, source: DataSource, fields: dict[str, Field]) -> RerunIterableDataset:
+    def from_manifest(
+        cls,
+        manifest: Manifest,
+        source: DataSource,
+        fields: dict[str, Field],
+        *,
+        decode_threads: int | None = None,
+    ) -> RerunIterableDataset:
         """
         Build a dataset that replays a frozen [`Manifest`][rerun.experimental.dataloader.Manifest]'s sampling order.
 
@@ -120,6 +134,8 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tens
             The live catalog connection.
         fields:
             The decoders, keyed by field name (a manifest records only their spec, not the objects).
+        decode_threads:
+            Fields to decode concurrently within each `DataLoader` worker.
 
         Returns
         -------
@@ -134,6 +150,7 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tens
         self._index = manifest.metadata.index_name
         self._epoch = 0
         self._manifest = manifest
+        self._decode_threads = _resolve_decode_threads(decode_threads, fields)
         self._connection = _WorkerConnection.from_source(source, fields)
         return self
 
@@ -168,7 +185,10 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tens
         When the strategy defines an emission buffer, decoded samples pass
         through that buffer before being yielded.
         """
-        with tracing_scope("RerunIterableDataset._iter_catalog"):
+        with (
+            tracing_scope("RerunIterableDataset._iter_catalog"),
+            _decode_pool(self._decode_threads, len(self._fields)) as executor,
+        ):
             view, decoders = self._connection.ensure()
 
             indices, block_bounds = self._worker_order()
@@ -184,7 +204,7 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tens
             )
 
             samples = _interleave_fetch_and_decode(
-                chunks, fetch=fetch, decode=functools.partial(self._decode, decoders)
+                chunks, fetch=fetch, decode=functools.partial(self._decode, decoders, executor)
             )
             if self._shuffle_buffer is not None:
                 distributed = torch.distributed.is_available() and torch.distributed.is_initialized()
@@ -202,7 +222,10 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tens
         from .manifest._manifest_read import targets_from_rows
 
         assert self._manifest is not None
-        with tracing_scope("RerunIterableDataset._iter_manifest"):
+        with (
+            tracing_scope("RerunIterableDataset._iter_manifest"),
+            _decode_pool(self._decode_threads, len(self._fields)) as executor,
+        ):
             view, decoders = self._connection.ensure()
             meta = self._manifest.metadata
 
@@ -235,13 +258,14 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tens
                 )
 
             samples = _interleave_fetch_and_decode(
-                chunks, fetch=fetch, decode=functools.partial(self._decode, decoders)
+                chunks, fetch=fetch, decode=functools.partial(self._decode, decoders, executor)
             )
             yield from _replay(samples, emit_order)
 
     def _decode(
         self,
         decoders: dict[str, ColumnDecoder],
+        executor: ThreadPoolExecutor | None,
         fetched: tuple[list[Target], dict[str, dict[str, pa.Table]]],
     ) -> Iterator[dict[str, torch.Tensor | None]]:
         """Decode one fetched chunk into samples (shared by the catalog and manifest paths)."""
@@ -252,6 +276,7 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tens
             index=self._index,
             fields=self._fields,
             decoders=decoders,
+            executor=executor,
         )
 
     def _worker_order(self) -> tuple[np.ndarray, np.ndarray]:
