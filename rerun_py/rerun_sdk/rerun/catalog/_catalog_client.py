@@ -65,6 +65,13 @@ class VersionInfo:
     cloud_region: str | None
     """The cloud region (e.g. "us-west-2", "eastus"). None if not deployed on cloud."""
 
+    features: list[str]
+    """
+    Feature flags advertised by the server.
+
+    Servers too old to advertise features return an empty list, which means "no optional features supported".
+    """
+
 
 @dataclass(frozen=True)
 class BenchmarkResult:
@@ -183,11 +190,11 @@ class CatalogClient:
         """
         Returns version and deployment information from the server.
 
-        Returns a `VersionInfo` object with `version`, `cloud_provider`, and `cloud_region` fields.
+        Returns a `VersionInfo` object with `version`, `cloud_provider`, `cloud_region`, and `features` fields.
         Cloud fields are `None` if the server is not deployed on a cloud provider.
         """
-        version, cloud_provider, cloud_region = self._internal.version_info()
-        return VersionInfo(version=version, cloud_provider=cloud_provider, cloud_region=cloud_region)
+        version, cloud_provider, cloud_region, features = self._internal.version_info()
+        return VersionInfo(version=version, cloud_provider=cloud_provider, cloud_region=cloud_region, features=features)
 
     @with_tracing("CatalogClient.benchmark")
     def benchmark(self, *, num_bytes: int = 16 * 1024 * 1024, num_pings: int = 5) -> BenchmarkResult:

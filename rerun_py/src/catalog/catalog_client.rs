@@ -16,6 +16,9 @@ use crate::catalog::{
 use crate::trace_context::read_trace_context_from_python;
 use crate::utils::wait_for_future;
 
+/// (version, cloud_provider, cloud_region, features), as returned by `version_info`.
+type VersionInfoTuple = (String, Option<String>, Option<String>, Vec<String>);
+
 /// Client for a remote Rerun catalog server.
 #[pyclass(
     name = "CatalogClientInternal",
@@ -118,15 +121,17 @@ impl PyCatalogClientInternal {
         self.origin.to_string()
     }
 
-    /// Returns version and deployment information as (version, cloud_provider, cloud_region).
-    fn version_info(
-        self_: Py<Self>,
-        py: Python<'_>,
-    ) -> PyResult<(String, Option<String>, Option<String>)> {
+    /// Returns version and deployment information as (version, cloud_provider, cloud_region, features).
+    fn version_info(self_: Py<Self>, py: Python<'_>) -> PyResult<VersionInfoTuple> {
         let _span = read_trace_context_from_python(py, "CatalogClient.version_info").entered();
         let connection = self_.borrow(py).connection.clone();
         let info = connection.version_info(py)?;
-        Ok((info.version, info.cloud_provider, info.cloud_region))
+        Ok((
+            info.version,
+            info.cloud_provider,
+            info.cloud_region,
+            info.features,
+        ))
     }
 
     fn rtt_seconds(self_: Py<Self>, py: Python<'_>, num_pings: usize) -> PyResult<f64> {
