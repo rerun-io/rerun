@@ -9,7 +9,6 @@ use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
 use super::arrow::quote_fqname_as_type_path;
-use super::blueprint_validation::generate_blueprint_validation;
 use super::reflection::generate_reflection;
 use super::util::{append_tokens, doc_as_lines, quote_doc_lines};
 use crate::codegen::rust::arrow::ArrowDataTypeTokenizer;
@@ -63,7 +62,6 @@ impl CodeGenerator for RustCodeGenerator {
             );
         }
 
-        generate_blueprint_validation(reporter, objects, &mut files_to_write);
         generate_reflection(
             reporter,
             objects,

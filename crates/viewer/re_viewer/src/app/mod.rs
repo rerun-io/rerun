@@ -13,6 +13,7 @@ use re_log_channel::{LogReceiverSet, RecordingOpenBehavior, SaveScreenshotError}
 use re_log_types::{ApplicationId, FileSource, RecordingId, StoreId};
 use re_redap_client::ConnectionRegistryHandle;
 use re_sdk_types::blueprint::components::PlayState;
+use re_types_core::reflection::ComponentReflectionMap;
 use re_ui::{ContextExt as _, UICommand, UICommandSender as _, notifications};
 use re_viewer_context::open_url::{OpenUrlOptions, ViewerOpenUrl};
 use re_viewer_context::store_hub::{BlueprintPersistence, StoreHub};
@@ -322,6 +323,11 @@ impl App {
             Default::default()
         });
 
+        // The blueprint validator needs to know the expected datatype of every component.
+        // `Reflection::components` is never mutated after this point (unlike the archetype
+        // reflection, which embedders can extend), so a snapshot is safe to share.
+        let component_reflection = Arc::new(reflection.components.clone());
+
         let mut component_fallback_registry =
             re_component_fallbacks::create_component_fallback_registry();
 
@@ -478,9 +484,9 @@ impl App {
             background_tasks: Default::default(),
             store_hub: Some(StoreHub::new(
                 if is_test {
-                    noop_blueprint_loader()
+                    noop_blueprint_loader(component_reflection)
                 } else {
-                    blueprint_loader()
+                    blueprint_loader(component_reflection)
                 },
                 &crate::app_blueprint::setup_welcome_screen_blueprint,
             )),
@@ -1705,28 +1711,35 @@ impl MemUsageTreeCapture for App {
 }
 
 #[cfg(target_arch = "wasm32")]
-fn blueprint_loader() -> BlueprintPersistence {
+fn blueprint_loader(component_reflection: Arc<ComponentReflectionMap>) -> BlueprintPersistence {
     // TODO(#2579): implement persistence for web
-    noop_blueprint_loader()
+    noop_blueprint_loader(component_reflection)
 }
 
 /// No-op blueprint persistence used on wasm. Also used in tests so that on-disk blueprints from
 /// the developer's running viewer don't leak into the test environment.
-fn noop_blueprint_loader() -> BlueprintPersistence {
+fn noop_blueprint_loader(
+    component_reflection: Arc<ComponentReflectionMap>,
+) -> BlueprintPersistence {
     BlueprintPersistence {
         loader: None,
         saver: None,
-        validator: Some(Box::new(crate::blueprint::is_valid_blueprint)),
+        validator: Some(Box::new(move |blueprint| {
+            crate::blueprint::is_valid_blueprint(blueprint, &component_reflection)
+        })),
         deleter: None,
     }
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn blueprint_loader() -> BlueprintPersistence {
+fn blueprint_loader(component_reflection: Arc<ComponentReflectionMap>) -> BlueprintPersistence {
     use re_entity_db::{EntityDb, StoreBundle};
     use re_log_types::{ApplicationId, StoreKind};
 
-    fn load_blueprint_from_disk(app_id: &ApplicationId) -> anyhow::Result<Option<StoreBundle>> {
+    fn load_blueprint_from_disk(
+        component_reflection: &ComponentReflectionMap,
+        app_id: &ApplicationId,
+    ) -> anyhow::Result<Option<StoreBundle>> {
         let blueprint_path = crate::saving::default_blueprint_path(app_id)?;
         if !blueprint_path.exists() {
             return Ok(None);
@@ -1737,7 +1750,7 @@ fn blueprint_loader() -> BlueprintPersistence {
         if let Some(bundle) = crate::loading::load_blueprint_file(&blueprint_path) {
             for store in bundle.entity_dbs() {
                 if store.store_kind() == StoreKind::Blueprint
-                    && !crate::blueprint::is_valid_blueprint(store)
+                    && !crate::blueprint::is_valid_blueprint(store, component_reflection)
                 {
                     re_log::warn_once!(
                         "Blueprint for {app_id} at {blueprint_path:?} appears invalid - will ignore. This is expected if you have just upgraded Rerun versions."
@@ -1770,9 +1783,14 @@ fn blueprint_loader() -> BlueprintPersistence {
     }
 
     BlueprintPersistence {
-        loader: Some(Box::new(load_blueprint_from_disk)),
+        loader: Some(Box::new({
+            let component_reflection = component_reflection.clone();
+            move |app_id| load_blueprint_from_disk(&component_reflection, app_id)
+        })),
         saver: Some(Box::new(save_blueprint_to_disk)),
-        validator: Some(Box::new(crate::blueprint::is_valid_blueprint)),
+        validator: Some(Box::new(move |blueprint| {
+            crate::blueprint::is_valid_blueprint(blueprint, &component_reflection)
+        })),
         deleter: Some(Box::new(crate::saving::delete_blueprint)),
     }
 }
