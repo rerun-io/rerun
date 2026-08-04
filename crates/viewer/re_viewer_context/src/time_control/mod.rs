@@ -385,6 +385,10 @@ impl TimeControl {
             self.speed = playback_speed as f32;
         }
 
+        if let Some(delay_ms) = blueprint_ctx.follow_delay_ms() {
+            self.follow_delay_ms = delay_ms as u64; // Or match your exact integer/Duration type name
+        }
+
         let play_state = self.play_state();
 
         // Update the last paused time if we are paused.
