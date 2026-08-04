@@ -6,8 +6,6 @@ use re_auth::credentials::CredentialsProvider as _;
 use re_build_info::CrateVersion;
 use re_byte_size::{MemUsageTree, MemUsageTreeCapture};
 use re_capabilities::MainThreadToken;
-#[cfg(target_arch = "wasm32")]
-use re_data_source::FileContents;
 use re_data_source::{AuthErrorHandler, LogDataSource};
 use re_entity_db::InstancePath;
 use re_entity_db::entity_db::EntityDb;
@@ -977,12 +975,10 @@ impl App {
         let mut force_store_info = false;
 
         for file in dropped_files {
-            // egui gives an optional filesystem `path` plus a display `name` (only `name` is set on
-            // web); reconcile them once so the fallback isn't reproduced at each use below.
-            let file_path = file
-                .path
-                .clone()
-                .unwrap_or_else(|| std::path::PathBuf::from(&file.name));
+            #[cfg(target_arch = "wasm32")]
+            let Some(web_file) = file.web_file().cloned() else {
+                continue;
+            };
 
             let active_store_id = route
                 .recording_id()
@@ -994,10 +990,9 @@ impl App {
                     // But we want one, otherwise multiple things being dropped simultaneously on the
                     // welcome screen would end up in different recordings!
 
-                    // If we don't have any application ID to recommend (which means we are on the welcome screen),
-                    // then we use the file path as the application ID or the file name if there is no path (on web builds).
+                    // If we don't have any application ID to recommend, use the source path as the application ID.
                     let application_id =
-                        ApplicationId::new_or_unknown(file_path.display().to_string());
+                        ApplicationId::new_or_unknown(file.path().display().to_string());
 
                     // NOTE: We don't override blueprints' store IDs anyhow, so it is sound to assume that
                     // this can only be a recording.
@@ -1012,35 +1007,27 @@ impl App {
 
             cfg_select! {
                 target_arch = "wasm32" => {
-                    if let Some(bytes) = file.bytes {
-                        command_sender.send_system(SystemCommand::LoadDataSource(
-                            LogDataSource::FileContents(
-                                FileSource::DragAndDrop {
-                                    recommended_store_id: Some(active_store_id.clone()),
-                                    force_store_info,
-                                },
-                                FileContents {
-                                    path: file_path,
-                                    bytes: bytes.clone(),
-                                },
-                            ),
-                        ));
-
-                        continue;
-                    }
+                    command_sender.send_system(SystemCommand::LoadDataSource(
+                        LogDataSource::FileHandle {
+                            file_source: FileSource::DragAndDrop {
+                                recommended_store_id: Some(active_store_id),
+                                force_store_info,
+                            },
+                            path: file.path().to_owned(),
+                            file: web_file,
+                        },
+                    ));
                 }
                 _ => {
-                    if let Some(path) = file.path {
-                        command_sender.send_system(SystemCommand::LoadDataSource(
-                            LogDataSource::FilePath {
-                                file_source: FileSource::DragAndDrop {
-                                    recommended_store_id: Some(active_store_id.clone()),
-                                    force_store_info,
-                                },
-                                path,
+                    command_sender.send_system(SystemCommand::LoadDataSource(
+                        LogDataSource::FilePath {
+                            file_source: FileSource::DragAndDrop {
+                                recommended_store_id: Some(active_store_id),
+                                force_store_info,
                             },
-                        ));
-                    }
+                            path: file.path().to_owned(),
+                        },
+                    ));
                 }
             }
         }
@@ -1314,6 +1301,7 @@ impl eframe::App for App {
                             recommended_store_id: recommended_store_id.clone(),
                             force_store_info: *force_store_info,
                         },
+                        path: file.name().into(),
                         file: file.clone(),
                     }));
             }

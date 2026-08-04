@@ -177,7 +177,6 @@ winit.workspace = true
 # web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 re_web.workspace = true
-bytes.workspace = true
 js-sys.workspace = true
 poll-promise = { workspace = true, features = ["web"] }
 wasm-bindgen-futures.workspace = true

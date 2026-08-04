@@ -200,11 +200,6 @@ impl ViewerOpenUrl {
                 LogDataSource::FilePath { path, .. } => Ok(Self::FilePath(path)),
 
                 #[cfg(target_arch = "wasm32")]
-                LogDataSource::FileContents(..) => {
-                    unreachable!("FileContents can not be shared as a URL");
-                }
-
-                #[cfg(target_arch = "wasm32")]
                 LogDataSource::FileHandle { .. } => {
                     unreachable!("FileHandle can not be shared as a URL");
                 }

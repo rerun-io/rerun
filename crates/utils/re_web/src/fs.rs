@@ -57,19 +57,29 @@ pub async fn read(path: &Path) -> io::Result<Vec<u8>> {
     re_async::spawn_local_with_result(async move {
         let file_handle = open_file(&path).await?;
         let file: web_sys::File = await_js(file_handle.get_file()).await?;
-        let blob: &web_sys::Blob = file.as_ref();
-        if blob.size() > f64::from(u32::MAX) {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidInput,
-                "cannot read files larger than u32::MAX bytes into Wasm memory",
-            ));
-        }
-        let buffer: js_sys::ArrayBuffer = await_js(blob.array_buffer()).await?;
-
-        Ok(js_sys::Uint8Array::new(&buffer).to_vec())
+        read_blob(file.as_ref()).await
     })
     .await
     .map_err(io::Error::other)?
+}
+
+/// Read an entire browser file into Wasm linear memory.
+pub async fn read_file(file: web_sys::File) -> io::Result<Vec<u8>> {
+    re_async::spawn_local_with_result(async move { read_blob(file.as_ref()).await })
+        .await
+        .map_err(io::Error::other)?
+}
+
+async fn read_blob(blob: &web_sys::Blob) -> io::Result<Vec<u8>> {
+    if blob.size() > f64::from(u32::MAX) {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "cannot read files larger than u32::MAX bytes into Wasm memory",
+        ));
+    }
+    let buffer: js_sys::ArrayBuffer = await_js(blob.array_buffer()).await?;
+
+    Ok(js_sys::Uint8Array::new(&buffer).to_vec())
 }
 
 /// A positional-read handle to an OPFS file.

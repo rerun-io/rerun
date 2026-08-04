@@ -43,6 +43,5 @@ url.workspace = true
 
 # web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-js-sys.workspace = true
 re_web.workspace = true
 web-sys = { workspace = true, features = ["File"] }

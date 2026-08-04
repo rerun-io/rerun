@@ -148,31 +148,14 @@ impl App {
                 }
             }
 
-            // TODO(RR-5239): Right now this is still used for dropped files. Ideally,
-            // we'd switch that over to `FileHandle` too.
             #[cfg(target_arch = "wasm32")]
-            LogDataSource::FileContents(_file_source, file_contents) => {
-                let path = file_contents.path.clone();
-                if self.should_register_via_internal_catalog(&path) {
-                    let file_contents = file_contents.clone();
+            LogDataSource::FileHandle { path, file, .. } => {
+                if self.should_register_via_internal_catalog(path) {
                     let connection_registry = self.connection_registry.clone();
-                    self.register_via_internal_catalog(&path, async move {
-                        register_web_contents(&connection_registry, &file_contents).await
-                    });
-                    return;
-                }
-
-                // For raw file contents we currently can't determine whether we're already receiving them.
-            }
-
-            #[cfg(target_arch = "wasm32")]
-            LogDataSource::FileHandle { file, .. } => {
-                let path = std::path::PathBuf::from(file.name());
-                if self.should_register_via_internal_catalog(&path) {
-                    let connection_registry = self.connection_registry.clone();
+                    let source_path = path.clone();
                     let file = file.clone();
-                    self.register_via_internal_catalog(&path, async move {
-                        register_web_file(&connection_registry, file).await
+                    self.register_via_internal_catalog(path, async move {
+                        register_web_file(&connection_registry, &source_path, file).await
                     });
                     return;
                 }
@@ -417,37 +400,13 @@ async fn register_local_file(
 }
 
 #[cfg(target_arch = "wasm32")]
-async fn register_web_contents(
-    connection_registry: &re_redap_client::ConnectionRegistryHandle,
-    file_contents: &re_data_source::FileContents,
-) -> anyhow::Result<re_uri::DatasetSegmentUri> {
-    // `Bytes` wraps the shared `Arc<[u8]>` and slices it by refcount.
-    let reader = bytes::Bytes::from_owner(file_contents.bytes.clone());
-    let upload = prepare_opfs_upload(&reader, &file_contents.path).await?;
-
-    if !opfs_upload_matches(&upload.path, upload.file_size).await? {
-        re_web::fs::write(&upload.path, file_contents.bytes.clone())
-            .await
-            .with_context(|| {
-                format!(
-                    "failed to write OPFS upload file\nFile path: {}",
-                    upload.path.display()
-                )
-            })?;
-    }
-
-    let file_url = upload.file_url();
-    register_file(connection_registry, file_url, upload.rrd_metadata).await
-}
-
-#[cfg(target_arch = "wasm32")]
 async fn register_web_file(
     connection_registry: &re_redap_client::ConnectionRegistryHandle,
+    source_path: &std::path::Path,
     file: web_sys::File,
 ) -> anyhow::Result<re_uri::DatasetSegmentUri> {
-    let source_path = std::path::PathBuf::from(file.name());
     let reader = re_web::fs::File::from(file.clone());
-    let upload = prepare_opfs_upload(&reader, &source_path).await?;
+    let upload = prepare_opfs_upload(&reader, source_path).await?;
 
     if !opfs_upload_matches(&upload.path, upload.file_size).await? {
         re_web::fs::write_file(&upload.path, file)
