@@ -27,6 +27,7 @@ pub async fn test_spatial_cross_view_interaction_named_transforms() {
 fn run_test(use_named_transforms: bool) {
     let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions {
         window_size: Some(egui::vec2(1000.0, 600.0)),
+        snapshot_test_options: re_ui::testing::TestOptions::Rendering3D,
         ..Default::default()
     });
     harness.init_recording();

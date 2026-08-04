@@ -696,7 +696,7 @@ fn test_state_timeline_zoom() {
 
     let size = egui::vec2(800.0, 400.0);
     let mut harness = test_context
-        .setup_kittest_for_rendering_3d(size)
+        .setup_kittest_for_rendering_ui(size)
         .build_ui(|ui| {
             test_context.run_with_single_view(ui, view_id);
         });
@@ -757,7 +757,7 @@ fn test_state_timeline_pan_past_data() {
 
     let size = egui::vec2(800.0, 150.0);
     let mut harness = test_context
-        .setup_kittest_for_rendering_3d(size)
+        .setup_kittest_for_rendering_ui(size)
         .build_ui(|ui| {
             test_context.run_with_single_view(ui, view_id);
         });
@@ -818,7 +818,7 @@ fn test_state_timeline_pan_before_data() {
 
     let size = egui::vec2(800.0, 150.0);
     let mut harness = test_context
-        .setup_kittest_for_rendering_3d(size)
+        .setup_kittest_for_rendering_ui(size)
         .build_ui(|ui| {
             test_context.run_with_single_view(ui, view_id);
         });
@@ -1017,7 +1017,7 @@ fn test_state_timeline_link_to_global() {
 
     let size = egui::vec2(800.0, 150.0);
     let mut harness = test_context
-        .setup_kittest_for_rendering_3d(size)
+        .setup_kittest_for_rendering_ui(size)
         .build_ui(|ui| {
             test_context.run_with_single_view(ui, view_id);
         });

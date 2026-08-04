@@ -73,6 +73,9 @@ disallowed-methods = [
   { path = "egui::Ui::checkbox", reason = "Use `re_checkbox` from `re_ui::UiEx" },
   { path = "egui::Ui::radio_value", reason = "Use `re_radio_value` from `re_ui::UiEx" },
   { path = "egui::Ui::spinner", reason = "Use `ui.loading_indicator` from `re_ui::UiEx" },
+  # `SnapshotOptions::default` cannot be listed here (clippy can't refer to trait methods),
+  # so `scripts/lint.py` forbids that one instead.
+  { path = "egui_kittest::SnapshotOptions::new", reason = "Use `re_ui::testing::default_snapshot_options_for_ui/_3d` instead, so that snapshot tests get strict thresholds on CI" },
   { path = "glam::Vec2::normalize", reason = "normalize() can create NaNs. Use try_normalize or normalize_or_zero" },
   { path = "glam::Vec3::normalize", reason = "normalize() can create NaNs. Use try_normalize or normalize_or_zero" },
   { path = "lock_api::RwLock::try_upgradable_read_for", reason = "See `lock_api::RwLock::upgradable_read`" },

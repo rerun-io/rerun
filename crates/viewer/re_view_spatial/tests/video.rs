@@ -111,13 +111,14 @@ fn snapshot_options_for_codec(codec: &VideoCodec, viewport_size: egui::Vec2) -> 
     match codec {
         // Despite version pinning, ffmpeg's results are quite different depending on the platform
         // and seemingly even between runs!
+        // These are nondeterministic even on CI, so we don't use `strict_on_ci` here.
         VideoCodec::H264 | VideoCodec::H265 | VideoCodec::VP8 | VideoCodec::VP9 => {
-            SnapshotOptions::new()
+            re_ui::testing::default_snapshot_options_for_3d(viewport_size)
                 .threshold(2.2)
                 .failed_pixel_count_threshold(300)
         }
         // AV1 has this problem as well but to a lesser extent.
-        VideoCodec::AV1 => SnapshotOptions::new()
+        VideoCodec::AV1 => re_ui::testing::default_snapshot_options_for_3d(viewport_size)
             .threshold(1.2)
             .failed_pixel_count_threshold(100),
 

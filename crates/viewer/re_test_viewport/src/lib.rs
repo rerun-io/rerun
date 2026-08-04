@@ -33,6 +33,15 @@ pub trait TestContextExt {
         size: egui::Vec2,
         snapshot_options: Option<SnapshotOptions>,
     ) -> SnapshotResult;
+
+    /// Like [`Self::run_view_ui_and_save_snapshot`], but for a view that draws with `re_renderer`.
+    fn run_view_ui_and_save_renderer_snapshot(
+        &self,
+        view_id: ViewId,
+        snapshot_name: &str,
+        size: egui::Vec2,
+        snapshot_options: Option<SnapshotOptions>,
+    ) -> SnapshotResult;
 }
 
 impl TestContextExt for TestContext {
@@ -191,15 +200,56 @@ impl TestContextExt for TestContext {
         size: egui::Vec2,
         snapshot_options: Option<SnapshotOptions>,
     ) -> SnapshotResult {
-        let mut harness = self.setup_kittest_for_rendering_3d(size).build_ui(|ui| {
-            self.run_with_single_view(ui, view_id);
-        });
-        harness.run();
+        run_view_ui_and_save_snapshot_with_test_options(
+            self,
+            view_id,
+            snapshot_name,
+            size,
+            snapshot_options,
+            re_ui::testing::TestOptions::Gui,
+        )
+    }
 
-        if let Some(snapshot_options) = snapshot_options {
-            harness.try_snapshot_options(snapshot_name, &snapshot_options)
-        } else {
-            harness.try_snapshot(snapshot_name)
+    fn run_view_ui_and_save_renderer_snapshot(
+        &self,
+        view_id: ViewId,
+        snapshot_name: &str,
+        size: egui::Vec2,
+        snapshot_options: Option<SnapshotOptions>,
+    ) -> SnapshotResult {
+        run_view_ui_and_save_snapshot_with_test_options(
+            self,
+            view_id,
+            snapshot_name,
+            size,
+            snapshot_options,
+            re_ui::testing::TestOptions::Rendering3D,
+        )
+    }
+}
+
+fn run_view_ui_and_save_snapshot_with_test_options(
+    test_context: &TestContext,
+    view_id: ViewId,
+    snapshot_name: &str,
+    size: egui::Vec2,
+    snapshot_options: Option<SnapshotOptions>,
+    test_options: re_ui::testing::TestOptions,
+) -> SnapshotResult {
+    let harness_builder = match test_options {
+        re_ui::testing::TestOptions::Gui => test_context.setup_kittest_for_rendering_ui(size),
+        re_ui::testing::TestOptions::Rendering3D => {
+            test_context.setup_kittest_for_rendering_3d(size)
         }
+    };
+    let mut harness = harness_builder.build_ui(|ui| {
+        test_context.run_with_single_view(ui, view_id);
+    });
+    harness.run();
+
+    if let Some(snapshot_options) = snapshot_options {
+        harness.try_snapshot_options(snapshot_name, &snapshot_options)
+    } else {
+        harness.try_snapshot(snapshot_name)
     }
 }

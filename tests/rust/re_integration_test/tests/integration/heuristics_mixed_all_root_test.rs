@@ -5,7 +5,10 @@ use re_viewer::external::re_sdk_types;
 use re_viewer::viewer_test_utils::{self, HarnessOptions};
 
 fn make_multi_view_test_harness<'a>() -> egui_kittest::Harness<'a, re_viewer::App> {
-    let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions::default());
+    let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions {
+        snapshot_test_options: re_ui::testing::TestOptions::Rendering3D,
+        ..Default::default()
+    });
     harness.init_recording();
 
     // Log some data

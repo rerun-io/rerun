@@ -48,7 +48,7 @@ fn run_magnification_filter_test(
 
     let snapshot_name = format!("magnification_filter_{}", filter.to_string().to_lowercase());
 
-    snapshot_results.add(test_context.run_view_ui_and_save_snapshot(
+    snapshot_results.add(test_context.run_view_ui_and_save_renderer_snapshot(
         view_id,
         &snapshot_name,
         egui::vec2(200.0, 200.0),
@@ -98,7 +98,7 @@ fn run_depth_image_magnification_filter_test(
         filter.to_string().to_lowercase()
     );
 
-    snapshot_results.add(test_context.run_view_ui_and_save_snapshot(
+    snapshot_results.add(test_context.run_view_ui_and_save_renderer_snapshot(
         view_id,
         &snapshot_name,
         egui::vec2(200.0, 200.0),

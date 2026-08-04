@@ -13,13 +13,15 @@ use re_viewer_context::external::re_log_types::DateVisibility;
 
 pub type AppOptionsEditor = Box<dyn Fn(&mut AppOptions)>;
 
-#[derive(Default)]
 pub struct HarnessOptions {
     pub window_size: Option<egui::Vec2>,
     pub max_steps: Option<u64>,
     pub step_dt: Option<f32>,
     pub startup_url: Option<String>,
     pub enable_component_mapping: bool,
+
+    /// Snapshot tolerance policy for the rendered view.
+    pub snapshot_test_options: re_ui::testing::TestOptions,
 
     /// Allows tests to emulate platform-specific UI behavior.
     pub os: Option<egui::os::OperatingSystem>,
@@ -28,12 +30,27 @@ pub struct HarnessOptions {
     pub app_options_editor: Option<AppOptionsEditor>,
 }
 
+impl Default for HarnessOptions {
+    fn default() -> Self {
+        Self {
+            window_size: None,
+            max_steps: None,
+            step_dt: None,
+            startup_url: None,
+            enable_component_mapping: false,
+            snapshot_test_options: re_ui::testing::TestOptions::Gui,
+            os: None,
+            app_options_editor: None,
+        }
+    }
+}
+
 /// Convenience function for creating a kittest harness of the viewer App.
 pub fn viewer_harness(options: &HarnessOptions) -> Harness<'static, App> {
     let window_size = options.window_size.unwrap_or(egui::vec2(1024.0, 768.0));
 
     let mut harness_builder =
-        re_ui::testing::new_harness(re_ui::testing::TestOptions::Rendering3D, window_size);
+        re_ui::testing::new_harness(options.snapshot_test_options, window_size);
     if let Some(max_steps) = options.max_steps {
         harness_builder = harness_builder.with_max_steps(max_steps);
     }
@@ -128,7 +145,7 @@ pub fn step_until<'app, 'harness, Predicate>(
         harness
             .try_snapshot_options(
                 test_description,
-                &egui_kittest::SnapshotOptions::default().output_path(snapshot_path),
+                &re_ui::testing::default_snapshot_options_for_ui().output_path(snapshot_path),
             )
             .ok();
 

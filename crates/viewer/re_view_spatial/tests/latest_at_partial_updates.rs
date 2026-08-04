@@ -2,7 +2,6 @@ use re_chunk_store::RowId;
 use re_log_types::{EntityPath, build_frame_nr};
 use re_sdk_types::{Archetype as _, archetypes};
 use re_test_context::TestContext;
-use re_test_context::external::egui_kittest::SnapshotOptions;
 use re_test_viewport::TestContextExt as _;
 use re_view_spatial::SpatialView2D;
 use re_viewer_context::{BlueprintContext as _, TimeControlCommand, ViewClass as _, ViewId};
@@ -127,7 +126,8 @@ fn run_view_ui_and_save_snapshot(
         });
 
     {
-        let options = SnapshotOptions::new().output_path(format!("tests/snapshots/{name}"));
+        let options = re_ui::testing::default_snapshot_options_for_3d(size)
+            .output_path(format!("tests/snapshots/{name}"));
 
         let mut success = true;
         for frame_nr in 42..=46 {

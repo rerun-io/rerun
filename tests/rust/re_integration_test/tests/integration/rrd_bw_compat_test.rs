@@ -4,8 +4,8 @@
 //! The previous release version is derived from the workspace `CARGO_PKG_VERSION`.
 
 use egui::accesskit::Role;
+use egui_kittest::SnapshotResults;
 use egui_kittest::kittest::Queryable as _;
-use egui_kittest::{SnapshotOptions, SnapshotResults};
 use futures::StreamExt as _;
 use re_integration_test::HarnessExt as _;
 use re_viewer::external::re_log_types::TimelineName;
@@ -85,8 +85,7 @@ const MAP_VIEW_EXAMPLES: &[&str] = &[
     "nuscenes_dataset",
 ];
 
-/// Examples whose snapshots are unstable enough on macOS/Windows that we need to
-/// bump `failed_pixel_count_threshold` on those platforms to avoid spurious CI failures.
+/// Examples whose snapshots need a higher per-pixel threshold on macOS/Windows.
 const HIGH_THRESHOLD_TESTS: &[&str] = &[
     // Small but consistent rendering diff on macOS.
     "rgbd",
@@ -95,6 +94,9 @@ const HIGH_THRESHOLD_TESTS: &[&str] = &[
     // The transparent gripper is slightly flakey
     "animated_urdf",
 ];
+
+/// The size of the viewer window we take the snapshots of.
+const WINDOW_SIZE: egui::Vec2 = egui::vec2(1024.0, 768.0);
 
 /// Height in points of the bottom strip we mask to hide the collapsed time-control bar.
 ///
@@ -250,7 +252,7 @@ async fn test_old_rrds_in_current_viewer() {
         // Open the .rrd via the viewer's normal file-open path (same as Cmd+O).
         let file_path = rrd_path.canonicalize().unwrap().display().to_string();
         let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions {
-            window_size: Some(egui::vec2(1024.0, 768.0)),
+            window_size: Some(WINDOW_SIZE),
             startup_url: Some(file_path),
             max_steps: Some(200),
             ..Default::default()
@@ -323,15 +325,14 @@ async fn test_old_rrds_in_current_viewer() {
             // day rolls over.
             harness.mask_dates();
 
-            let snapshot_options = if HIGH_THRESHOLD_TESTS.contains(&example_name.as_str()) {
-                SnapshotOptions::new()
-                    .threshold(2.0)
-                    .failed_pixel_count_threshold(10_000)
+            let lenient_threshold = if HIGH_THRESHOLD_TESTS.contains(&example_name.as_str()) {
+                10.0
             } else {
-                SnapshotOptions::new()
-                    .threshold(2.0)
-                    .failed_pixel_count_threshold(50)
+                2.0
             };
+            let snapshot_options = re_ui::testing::default_snapshot_options_for_3d(WINDOW_SIZE)
+                .threshold(re_ui::testing::strict_on_ci(2.0, lenient_threshold))
+                .failed_pixel_count_threshold(re_ui::testing::strict_on_ci(10, 50));
             harness.snapshot_options(format!("rrd_bw_compat_{example_name}"), &snapshot_options);
         }
 

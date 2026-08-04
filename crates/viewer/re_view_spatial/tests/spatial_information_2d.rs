@@ -99,6 +99,11 @@ fn test_spatial_information_2d() {
     }
 
     test_context
-        .run_view_ui_and_save_snapshot(view_id, "spatial_information_2d", SNAPSHOT_SIZE, None)
+        .run_view_ui_and_save_renderer_snapshot(
+            view_id,
+            "spatial_information_2d",
+            SNAPSHOT_SIZE,
+            None,
+        )
         .unwrap();
 }

@@ -304,6 +304,10 @@ def lint_line(
             "Library code should accept `re_async::AsyncRuntimeHandle`. Add a NOLINT with the ownership reason if this runtime is required."
         )
 
+    if file_extension == "rs" and "SnapshotOptions::default(" in line:
+        # `clippy.toml` forbids `SnapshotOptions::new` instead - clippy cannot refer to trait methods.
+        return "Use `re_ui::testing::default_snapshot_options_for_ui/_3d` instead, so that snapshot tests get strict thresholds on CI"
+
     if debug_formatted_error.search(line) or debug_format_of_err.search(line):
         return "Format errors with re_error::format or using Display - NOT Debug formatting!"
 
@@ -637,6 +641,7 @@ def test_lint_line() -> None:
         "rr_stream",
         "rec_stream",
         "Result<(), anyhow::Error>",
+        "let options = SnapshotOptions::default();",
         "The the problem with double words",
         "More than meets the eye...",
         're_log::trace!("Performing migrations...");',

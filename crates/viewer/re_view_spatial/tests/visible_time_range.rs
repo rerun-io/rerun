@@ -208,7 +208,7 @@ fn run_test_2d(
     add_data(&mut test_context);
 
     let view_id = setup_blueprint_2d(&mut test_context, view_time_range, override_time_range);
-    snapshot_results.add(test_context.run_view_ui_and_save_snapshot(
+    snapshot_results.add(test_context.run_view_ui_and_save_renderer_snapshot(
         view_id,
         name,
         egui::vec2(200.0, 200.0),

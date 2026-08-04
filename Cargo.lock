@@ -9330,6 +9330,7 @@ dependencies = [
  "re_sdk_types",
  "re_server",
  "re_test_context",
+ "re_ui",
  "re_uri",
  "re_view_bar_chart",
  "re_view_state_timeline",

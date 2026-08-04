@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use arrow::array::ArrayRef;
 use arrow::datatypes::DataType;
-use egui_kittest::{OsThreshold, SnapshotError, SnapshotOptions};
+use egui_kittest::{SnapshotError, SnapshotOptions};
 use itertools::Itertools as _;
 use nohash_hasher::IntSet;
 use re_component_ui::create_component_ui_registry;
@@ -229,9 +229,8 @@ pub fn test_all_components_ui_as_list_items() {
 fn run_all_component_tests(width: f32, theme: egui::Theme, output_dir: &str) {
     let test_context = get_test_context();
     let test_cases = test_cases(&test_context.reflection);
-    let snapshot_options = SnapshotOptions::new()
-        .output_path(output_dir)
-        .threshold(OsThreshold::default().macos(2.5));
+    let snapshot_options =
+        re_ui::testing::default_snapshot_options_for_ui().output_path(output_dir);
 
     let results = test_cases
         .iter()

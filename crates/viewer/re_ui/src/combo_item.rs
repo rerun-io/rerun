@@ -198,8 +198,8 @@ pub mod tests {
     use crate::syntax_highlighting::SyntaxHighlightedBuilder;
     use crate::{ComboItem, ComboItemHeader};
     use egui::ComboBox;
+    use egui_kittest::Harness;
     use egui_kittest::kittest::Queryable as _;
-    use egui_kittest::{Harness, OsThreshold, SnapshotOptions};
 
     #[test]
     pub fn test_combo_item() {
@@ -239,9 +239,7 @@ pub mod tests {
         harness.run();
         harness.fit_contents();
 
-        let options = SnapshotOptions::new()
-            .threshold(OsThreshold::default().macos(2.5))
-            .failed_pixel_count_threshold(OsThreshold::default().macos(5));
+        let options = crate::testing::default_snapshot_options_for_ui();
 
         harness.snapshot_options("combo_item", &options);
     }
