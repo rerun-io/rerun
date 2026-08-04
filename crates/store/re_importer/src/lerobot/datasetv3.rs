@@ -7,6 +7,7 @@ use crate::lerobot::{
     SubtaskIndex, TaskIndex,
 };
 
+use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
@@ -151,7 +152,8 @@ impl LeRobotDatasetV3 {
         re_tracing::profile_scope!("load_all_episode_data_files");
 
         // Group episodes by their data file
-        let mut files_to_episodes: HashMap<(usize, usize), Vec<EpisodeIndex>> = HashMap::default();
+        let mut files_to_episodes: BTreeMap<(usize, usize), Vec<EpisodeIndex>> =
+            BTreeMap::default();
         for episode in self.metadata.episodes.values() {
             files_to_episodes
                 .entry((episode.data_chunk_index, episode.data_file_index))
@@ -942,7 +944,7 @@ pub struct LeRobotDatasetMetadataV3 {
     pub info: LeRobotDatasetInfoV3,
     pub tasks: LeRobotDatasetV3Tasks,
     pub subtasks: Option<LeRobotDatasetV3Subtasks>,
-    pub episodes: HashMap<EpisodeIndex, LeRobotEpisodeData>,
+    pub episodes: BTreeMap<EpisodeIndex, LeRobotEpisodeData>,
 }
 
 impl LeRobotDatasetMetadataV3 {
@@ -958,7 +960,7 @@ impl LeRobotDatasetMetadataV3 {
 
     /// Iterate over the indices of all episodes in the dataset.
     pub fn iter_episode_indices(&self) -> impl Iterator<Item = EpisodeIndex> + '_ {
-        self.episodes.values().map(|episode| episode.episode_index)
+        self.episodes.keys().copied()
     }
 
     /// Loads all metadata files from the provided directory.
@@ -981,7 +983,8 @@ impl LeRobotDatasetMetadataV3 {
             None
         };
 
-        // Convert episode data Vec to HashMap for O(1) lookups
+        // Key episodes by their own index; the ordered map makes every iteration ascending,
+        // which the importer relies on when announcing one recording per episode.
         let episodes = episode_data
             .into_iter()
             .map(|ep| (ep.episode_index, ep))
@@ -1905,6 +1908,60 @@ mod tests {
                     c.num_rows()
                 );
             }
+        }
+    }
+
+    /// Minimal dataset info for tests that never touch any files.
+    fn synthetic_info(total_episodes: usize) -> LeRobotDatasetInfoV3 {
+        LeRobotDatasetInfoV3 {
+            robot_type: None,
+            codebase_version: "v3.0".to_owned(),
+            total_episodes,
+            total_frames: 0,
+            total_tasks: 0,
+            chunks_size: 1000,
+            data_path: String::new(),
+            video_path: None,
+            image_path: None,
+            fps: 30.0,
+            features: HashMap::default(),
+        }
+    }
+
+    fn synthetic_episode(index: usize) -> LeRobotEpisodeData {
+        LeRobotEpisodeData {
+            episode_index: EpisodeIndex(index),
+            data_chunk_index: 0,
+            data_file_index: 0,
+            feature_files: HashMap::default(),
+        }
+    }
+
+    #[test]
+    fn episode_indices_iterate_in_ascending_order() {
+        // Episode metadata is discovered in filesystem order, which is arbitrary, while the
+        // importer announces one recording per episode in iteration order. The ordered map must
+        // therefore yield ascending indices regardless of insertion order. Repeated with fresh
+        // maps: a `HashMap`-backed regression randomizes its order per instance and would only
+        // pass a run by luck (p = 1/120 per attempt for 5 episodes).
+        let scrambled = [4, 0, 3, 1, 2];
+        for _ in 0..10 {
+            let metadata = LeRobotDatasetMetadataV3 {
+                info: synthetic_info(scrambled.len()),
+                tasks: LeRobotDatasetV3Tasks {
+                    tasks: HashMap::default(),
+                },
+                subtasks: None,
+                episodes: scrambled
+                    .into_iter()
+                    .map(|index| (EpisodeIndex(index), synthetic_episode(index)))
+                    .collect(),
+            };
+
+            assert_eq!(
+                metadata.iter_episode_indices().collect::<Vec<_>>(),
+                (0..scrambled.len()).map(EpisodeIndex).collect::<Vec<_>>()
+            );
         }
     }
 }
