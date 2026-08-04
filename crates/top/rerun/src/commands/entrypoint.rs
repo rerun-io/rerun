@@ -2022,9 +2022,10 @@ mod tests {
             );
 
             let child_args = detached_child_args(&raw_args);
-            let child = Args::try_parse_from(
-                std::iter::once(std::ffi::OsStr::new("rerun")).chain(child_args),
-            )
+            let child = Args::try_parse_from(std::iter::chain(
+                std::iter::once(std::ffi::OsStr::new("rerun")),
+                child_args,
+            ))
             .unwrap();
             assert!(child.detached_process_child);
             assert!(
@@ -2053,9 +2054,11 @@ mod tests {
             ]
         );
 
-        let child =
-            Args::try_parse_from(std::iter::once(std::ffi::OsStr::new("rerun")).chain(child_args))
-                .unwrap();
+        let child = Args::try_parse_from(std::iter::chain(
+            std::iter::once(std::ffi::OsStr::new("rerun")),
+            child_args,
+        ))
+        .unwrap();
         assert!(child.detached_process_child);
         assert!(!should_relaunch_detached(&child));
         assert_eq!(child.url_or_paths, ["recording.rrd"]);
