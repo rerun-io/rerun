@@ -17,7 +17,7 @@ use super::auto_color_egui;
 
 const MISSING_ROW_ID: RowId = RowId::ZERO;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, re_byte_size::SizeBytes)]
 pub struct Annotations {
     row_id: RowId,
     class_map: HashMap<ClassId, CachedClassDescription>,
@@ -61,7 +61,7 @@ impl Annotations {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, re_byte_size::SizeBytes)]
 struct CachedClassDescription {
     class_description: ClassDescription,
     keypoint_map: HashMap<KeypointId, AnnotationInfo>,
@@ -221,7 +221,7 @@ impl ResolvedAnnotationInfos {
 
 // ----------------------------------------------------------------------------
 
-#[derive(Default, Clone, Debug)]
+#[derive(Default, Clone, Debug, re_byte_size::SizeBytes)]
 pub struct AnnotationMap(pub BTreeMap<EntityPath, Arc<Annotations>>);
 
 impl AnnotationMap {

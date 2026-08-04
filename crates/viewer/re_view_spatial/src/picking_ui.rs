@@ -5,7 +5,7 @@ use re_log_types::Instance;
 use re_renderer::ViewPickingConfiguration;
 use re_ui::UiExt as _;
 use re_ui::list_item::{PropertyContent, list_item_scope};
-use re_view::AnnotationSceneContext;
+use re_view::AnnotationMapCache;
 use re_viewer_context::{
     DataResultInteractionAddress, IdentifiedViewSystem as _, Item, ItemCollection, ItemContext,
     UiLayout, ViewQuery, ViewSystemExecutionError, ViewerContext,
@@ -63,9 +63,7 @@ pub fn picking(
         show_debug_view: ctx.app_options().show_picking_debug_overlay,
     };
 
-    let annotations = system_output
-        .context_systems
-        .get_and_report_missing::<AnnotationSceneContext>(missing_chunk_reporter)?;
+    let annotations = AnnotationMapCache::for_query(ctx, &query.latest_at_query());
 
     let picking_result = picking_context.pick(
         ctx.render_ctx(),
@@ -156,7 +154,7 @@ pub fn picking(
                             query,
                             spatial_kind,
                             picking_context.camera_plane_from_ui,
-                            annotations,
+                            &annotations,
                             picked_pixel,
                             hit_idx as _,
                         );

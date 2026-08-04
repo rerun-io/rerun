@@ -5,7 +5,7 @@
 pub mod controls;
 
 mod annotation_context_utils;
-mod annotation_scene_context;
+mod annotation_map_cache;
 mod blueprint_resolved_results;
 mod chunks_with_component;
 mod clears;
@@ -21,7 +21,7 @@ use std::{borrow::Cow, sync::Arc};
 pub use annotation_context_utils::{
     process_annotation_and_keypoint_slices, process_annotation_slices, process_color_slice,
 };
-pub use annotation_scene_context::AnnotationSceneContext;
+pub use annotation_map_cache::AnnotationMapCache;
 pub use blueprint_resolved_results::{
     BlueprintResolvedLatestAtResults, BlueprintResolvedRangeResults, BlueprintResolvedResults,
     BlueprintResolvedResultsExt, HybridResultsChunkIter,

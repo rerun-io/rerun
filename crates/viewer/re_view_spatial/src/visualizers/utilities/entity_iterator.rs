@@ -1,5 +1,5 @@
 use re_sdk_types::Archetype;
-use re_view::{AnnotationSceneContext, DataResultQuery as _, VisualizerInstructionQueryResults};
+use re_view::{AnnotationMapCache, DataResultQuery as _, VisualizerInstructionQueryResults};
 use re_viewer_context::{
     IdentifiedViewSystem, QueryContext, ViewContext, ViewContextCollection, ViewQuery,
     ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerSystem,
@@ -42,9 +42,9 @@ where
     let view_kind = super::spatial_view_kind_from_view_class(ctx.view_class_identifier);
     let transforms = context_systems.get::<TransformTreeContext>(output)?;
     let depth_offsets = context_systems.get::<EntityDepthOffsets>(output)?;
-    let annotations = context_systems.get::<AnnotationSceneContext>(output)?;
 
     let latest_at = query.latest_at_query();
+    let annotations = AnnotationMapCache::for_query(ctx.viewer_ctx, &latest_at);
 
     let system_identifier = V::identifier();
     let archetype_kind = spatial_view_kind_from_affinity(visualizer.affinity());
@@ -74,7 +74,7 @@ where
                 .get(&depth_offset_key)
                 .copied()
                 .unwrap_or_default(),
-            annotations: annotations.0.find(entity_path),
+            annotations: annotations.find(entity_path),
             highlight: query.highlights.entity_outline_mask(entity_path.hash()),
             view_class_identifier: context_systems.view_class_identifier(),
         };

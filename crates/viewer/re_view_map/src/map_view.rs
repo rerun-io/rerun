@@ -10,7 +10,6 @@ use re_sdk_types::blueprint::archetypes::{MapBackground, MapZoom};
 use re_sdk_types::blueprint::components::{MapProvider, ZoomLevel};
 use re_sdk_types::{View as _, ViewClassIdentifier};
 use re_ui::{Help, IconText, icons, list_item};
-use re_view::AnnotationSceneContext;
 use re_viewer_context::{
     DataResultInteractionAddress, IdentifiedViewSystem as _, Item, StoreViewContext, SystemCommand,
     SystemCommandSender as _, SystemExecutionOutput, UiLayout, ViewClass, ViewClassExt as _,
@@ -155,8 +154,7 @@ impl ViewClass for MapView {
         system_registry.register_visualizer::<GeoPointsVisualizer>()?;
         system_registry.register_visualizer::<GeoLineStringsVisualizer>()?;
 
-        system_registry.register_context_system::<AnnotationSceneContext>()?;
-        re_viewer_context::AnnotationContextStoreSubscriber::subscription_handle(); // Needed by `AnnotationSceneContext`
+        re_viewer_context::AnnotationContextStoreSubscriber::subscription_handle();
 
         Ok(())
     }
