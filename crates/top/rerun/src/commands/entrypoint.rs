@@ -302,7 +302,9 @@ If no arguments are given, a server will be hosted which a Rerun SDK can connect
     #[clap(long)]
     hide_welcome_screen: bool,
 
-    /// Detach Rerun Viewer process from the application process.
+    /// Detach the native Rerun Viewer process from the invoking process.
+    ///
+    /// Ignored for any command that doesn't spawn a viewer.
     #[clap(long)]
     detach_process: bool,
 
@@ -851,16 +853,49 @@ where
 
 #[cfg(feature = "native_viewer")]
 fn should_relaunch_detached(args: &Args) -> bool {
-    args.detach_process
-        && !args.detached_process_child
-        && args.command.is_none()
-        && !args.headless
-        && !args.serve_grpc
-        && !args.serve_web
-        && !args.web_viewer
-        && args.save.is_none()
-        && !args.test_receive
-        && !args.version
+    // Destructure to ensure we consider all fields when adding new ones.
+    let Args {
+        detach_process,
+        detached_process_child,
+        command,
+        serve_grpc,
+        serve_web,
+        web_viewer,
+        save,
+        test_receive,
+        version,
+
+        headless: _,
+        bind: _,
+        memory_limit: _,
+        server_memory_limit: _,
+        newest_first: _,
+        cors_allow_origin: _,
+        persist_state: _,
+        port: _,
+        new: _,
+        profile: _,
+        screenshot_to: _,
+        connect: _,
+        expect_data_soon: _,
+        threads: _,
+        url_or_paths: _,
+        web_viewer_port: _,
+        hide_welcome_screen: _,
+        window_size: _,
+        renderer: _,
+        video_decoder: _,
+    } = args;
+
+    *detach_process
+        && !detached_process_child
+        && command.is_none()
+        && !serve_grpc
+        && !serve_web
+        && !web_viewer
+        && save.is_none()
+        && !test_receive
+        && !version
 }
 
 #[cfg(feature = "native_viewer")]
