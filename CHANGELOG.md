@@ -1,5 +1,13 @@
 # Rerun changelog
 
+## [0.35.1](https://github.com/rerun-io/rerun/compare/0.35.0...0.35.1) - 2026-08-04
+
+### 🔎 Details
+
+#### 🪳 Bug fixes
+- Fix filter pushdown in Python table providers [2238b62](https://github.com/rerun-io/rerun/commit/2238b621782f7832f8d13c184df369fbb0c6f0e5)
+
+
 ## [0.35.0](https://github.com/rerun-io/rerun/compare/0.34.1...0.35.0) - 2026-07-23
 
 🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-35
