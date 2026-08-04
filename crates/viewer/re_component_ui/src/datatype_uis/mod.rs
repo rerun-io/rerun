@@ -19,7 +19,7 @@ pub use float_drag::{
     edit_f64_float_raw_with_speed_impl, edit_f64_min_to_max_float, edit_f64_zero_to_max,
     edit_ui_points,
 };
-pub use int_drag::edit_u64_range;
+pub use int_drag::{edit_u32_range, edit_u64_range};
 pub use range1d::edit_view_range1d;
 pub use singleline_string::{edit_multiline_string, edit_singleline_string};
 pub use vec::{

@@ -46,7 +46,10 @@ struct BatchUniformBuffer {
     flags: u32, // See the `FLAG_*` constants in gaussian_splat.rs.
     // Index of this batch's first gaussian in the shared gaussian-data textures.
     first_gaussian_index: u32,
-    _padding: vec2u,
+    // How many coefficients this batch stores per gaussian: 0, 3, 8 or 15.
+    sh_num_coefficients: u32,
+    // Texel offset of this batch's region in the shared SH texture.
+    sh_first_texel: u32,
     outline_mask: vec2u,
     picking_layer_object_id: vec2u,
 };
@@ -61,11 +64,6 @@ const FLAG_ENABLE_INDEX_LOOKUP: u32 = 1u;
 
 // Must match `GaussianSplatBatchFlags::FLAG_HAS_SH_COEFFICIENTS` in gaussian_splat.rs.
 const FLAG_HAS_SH_COEFFICIENTS: u32 = 2u;
-
-// Number of `sh_texture` texels per gaussian: one per coefficient (SH degrees 1 through 3),
-// holding its RGB with an unused alpha channel.
-// Must be kept in sync with `gaussian_splat.rs#SH_TEXELS_PER_GAUSSIAN`.
-const SH_TEXELS_PER_GAUSSIAN: u32 = 15u;
 
 // The quad is spanned at this many standard deviations from the center.
 // exp(-0.5 * 3.5^2) = 0.0022, i.e. the cut-off contribution is below 1/255 and so invisible after
@@ -155,12 +153,14 @@ fn read_data(idx: u32) -> GaussianData {
 //
 // Uses the same real SH basis and coefficient order as the 3D Gaussian Splatting
 // reference implementation; the degree-0 (DC) term is the gaussian's color and not included.
-fn evaluate_sh(gaussian_idx: u32, dir: vec3f) -> vec3f {
+fn evaluate_sh(batch_gaussian_idx: u32, dir: vec3f, num_coefficients: u32) -> vec3f {
     // One texel per coefficient, coefficient-major: [c1.rgb, c2.rgb, …].
+    // The batch stores exactly `num_coefficients` of them per gaussian, packed, so a lower
+    // spherical harmonics degree means both a smaller texture and fewer fetches here.
     let texture_size = textureDimensions(sh_texture);
     var coefficients: array<vec3f, 15>;
-    for (var i = 0u; i < SH_TEXELS_PER_GAUSSIAN; i += 1u) {
-        let texel_idx = gaussian_idx * SH_TEXELS_PER_GAUSSIAN + i;
+    for (var i = 0u; i < num_coefficients; i += 1u) {
+        let texel_idx = batch.sh_first_texel + batch_gaussian_idx * num_coefficients + i;
         coefficients[i] = textureLoad(sh_texture,
             vec2u(texel_idx % texture_size.x, texel_idx / texture_size.x), 0).rgb;
     }
@@ -174,6 +174,9 @@ fn evaluate_sh(gaussian_idx: u32, dir: vec3f) -> vec3f {
     var result = -SH_C1 * y * coefficients[0]
                 + SH_C1 * z * coefficients[1]
                 - SH_C1 * x * coefficients[2];
+    if num_coefficients <= 3u {
+        return result;
+    }
 
     // Degree 2:
     let xx = x * x;
@@ -187,6 +190,9 @@ fn evaluate_sh(gaussian_idx: u32, dir: vec3f) -> vec3f {
             + 0.31539156525252005 * (2.0 * zz - xx - yy) * coefficients[5]
             + -1.0925484305920792 * xz * coefficients[6]
             + 0.5462742152960396 * (xx - yy) * coefficients[7];
+    if num_coefficients <= 8u {
+        return result;
+    }
 
     // Degree 3:
     result += -0.5900435899266435 * y * (3.0 * xx - yy) * coefficients[8]
@@ -336,13 +342,18 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     // 3DGS treats colors as display (sRGB-encoded) values, so the SH delta is added in sRGB
     // space; our color texture load already linearized the base color, so convert back & forth.
     var color = data.color;
-    if has_any_flag(batch.flags, FLAG_HAS_SH_COEFFICIENTS) {
+    if has_any_flag(batch.flags, FLAG_HAS_SH_COEFFICIENTS) && 0u < batch.sh_num_coefficients {
         // The coefficients are authored in object space, so the direction has to be too:
         // otherwise a rotated `world_from_obj` would leave the lobes pointing the wrong way.
         let camera_in_obj_4d = batch.obj_from_world * vec4f(frame.camera_position, 1.0);
         let camera_in_obj = camera_in_obj_4d.xyz / camera_in_obj_4d.w;
         let view_dir = normalize(data.pos_in_obj - camera_in_obj);
-        let srgb = srgb_from_linear(color.rgb) + evaluate_sh(gaussian_idx, view_dir);
+        let srgb = srgb_from_linear(color.rgb)
+            + evaluate_sh(
+                gaussian_idx - batch.first_gaussian_index,
+                view_dir,
+                batch.sh_num_coefficients,
+            );
         color = vec4f(linear_from_srgb(clamp(srgb, vec3f(0.0), vec3f(1.0))), color.a);
     }
 

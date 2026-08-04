@@ -126,7 +126,12 @@ pub mod gpu_data {
         // Keep this field order in sync with the WGSL `BatchUniformBuffer`.
         pub flags: u32, // See the `FLAG_*` constants above.
         pub first_gaussian_index: u32,
-        pub _row_padding: [u32; 2],
+
+        /// How many coefficients this batch stores (and evaluates) per gaussian.
+        pub sh_num_coefficients: u32,
+
+        /// Texel offset of this batch's region in the shared SH texture.
+        pub sh_first_texel: u32,
 
         pub outline_mask_ids: wgpu_buffer_types::UVec2,
         pub picking_object_id: PickingLayerObjectId,
@@ -149,8 +154,11 @@ bitflags::bitflags! {
     }
 }
 
-/// Number of the SH data texture's texels each gaussian occupies: one `Rgba16Float` texel per
-/// coefficient of SH degrees 1 through 3.
+/// Number of `Rgba16Float` texels a gaussian occupies in the SH data texture at the highest
+/// spherical harmonics degree: one per coefficient of degrees 1 through 3.
+///
+/// A batch at a lower degree stores (and reads) correspondingly fewer per gaussian, so this is
+/// an upper bound rather than a fixed stride -- see [`GaussianSplatBatchInfo::sh_num_coefficients`].
 pub const SH_TEXELS_PER_GAUSSIAN: usize = 15;
 
 /// Number of quad vertices emitted per gaussian (two triangles).
@@ -251,6 +259,13 @@ pub struct GaussianSplatBatchInfo {
     /// Additional properties of this batch.
     pub flags: GaussianSplatBatchFlags,
 
+    /// How many coefficients this batch stores per gaussian: 0, 3, 8 or 15, for spherical
+    /// harmonics degrees 0 through 3 respectively.
+    ///
+    /// Set by [`crate::GaussianSplatBuilder`] from the value passed to `add_gaussians`; lower
+    /// values mean less to upload and less for the vertex shader to fetch and evaluate.
+    pub sh_num_coefficients: u32,
+
     /// Number of gaussians covered by this batch.
     ///
     /// The batch will start with the next gaussian after the one the previous batch ended with.
@@ -294,6 +309,7 @@ impl Default for GaussianSplatBatchInfo {
             label: Label::default(),
             world_from_obj: glam::Affine3A::IDENTITY,
             flags: GaussianSplatBatchFlags::empty(),
+            sh_num_coefficients: 0,
             gaussian_count: 0,
             object_space_bounding_box: macaw::BoundingBox::nothing(),
             overall_outline_mask_ids: OutlineMaskPreference::NONE,
@@ -324,7 +340,6 @@ impl GaussianSplatDrawData {
             rotation_buffer,
             scale_yz_buffer,
             sh_buffer,
-            sh_padding_gaussians: _, // Deliberately left unwritten: those slots are never sampled.
             color_buffer,
             picking_instance_ids_buffer,
             batches,
@@ -411,13 +426,15 @@ impl GaussianSplatDrawData {
                 |batch_info: &GaussianSplatBatchInfo,
                  outline_mask_ids: OutlineMaskPreference,
                  flags: u32,
-                 first_gaussian_index: u32| {
+                 first_gaussian_index: u32,
+                 sh_first_texel: u32| {
                     gpu_data::BatchUniformBuffer {
                         world_from_obj: batch_info.world_from_obj.into(),
                         obj_from_world: batch_info.world_from_obj.inverse().into(),
                         flags: flags | batch_info.flags.bits(),
                         first_gaussian_index,
-                        _row_padding: [0; 2],
+                        sh_num_coefficients: batch_info.sh_num_coefficients,
+                        sh_first_texel,
                         outline_mask_ids: outline_mask_ids.0.unwrap_or_default().into(),
                         picking_object_id: batch_info.picking_object_id,
 
@@ -432,25 +449,39 @@ impl GaussianSplatDrawData {
                     .is_some_and(|p| !p.is_empty())
             };
 
+            // The SH texture holds one region per batch that has coefficients, laid out
+            // in batch order, so their offsets accumulate alongside the gaussian indices.
+            let batch_offsets = batches
+                .iter()
+                .scan(
+                    (0, 0),
+                    |(first_gaussian_index, first_sh_texel), batch_info| {
+                        let offsets = (*first_gaussian_index, *first_sh_texel);
+                        *first_gaussian_index += batch_info.gaussian_count;
+                        *first_sh_texel +=
+                            batch_info.gaussian_count * batch_info.sh_num_coefficients;
+                        Some(offsets)
+                    },
+                )
+                .collect::<Vec<_>>();
+
             let uniform_buffer_bindings = create_and_fill_uniform_buffer_batch(
                 ctx,
                 "gaussian batch uniform buffers".into(),
-                batches
-                    .iter()
-                    .scan(0, |first_gaussian_index, batch_info| {
-                        let first = *first_gaussian_index;
-                        *first_gaussian_index += batch_info.gaussian_count;
+                std::iter::zip(batches, &batch_offsets)
+                    .map(|(batch_info, &(first_gaussian_index, sh_first_texel))| {
                         let flags = if batch_is_sorted(batch_info) {
                             FLAG_ENABLE_INDEX_LOOKUP
                         } else {
                             0
                         };
-                        Some(make_batch_uniform_buffer(
+                        make_batch_uniform_buffer(
                             batch_info,
                             batch_info.overall_outline_mask_ids,
                             flags,
-                            first,
-                        ))
+                            first_gaussian_index,
+                            sh_first_texel,
+                        )
                     })
                     .collect::<Vec<_>>()
                     .into_iter(),
@@ -462,13 +493,24 @@ impl GaussianSplatDrawData {
                 create_and_fill_uniform_buffer_batch(
                     ctx,
                     "gaussian batch uniform buffers - mask only".into(),
-                    batches
-                        .iter()
-                        .flat_map(|batch_info| {
+                    std::iter::zip(batches, &batch_offsets)
+                        .flat_map(|(batch_info, &(first_gaussian_index, sh_first_texel))| {
                             batch_info
                                 .additional_outline_mask_ids_vertex_ranges
                                 .iter()
-                                .map(|(_, mask)| make_batch_uniform_buffer(batch_info, *mask, 0, 0))
+                                .map(move |(_, mask)| {
+                                    // These micro batches index into the same gaussian & SH
+                                    // regions as the batch they belong to, so they need its
+                                    // offsets. They never use the sorted lookup though: their
+                                    // ranges are in unsorted instance order.
+                                    make_batch_uniform_buffer(
+                                        batch_info,
+                                        *mask,
+                                        0,
+                                        first_gaussian_index,
+                                        sh_first_texel,
+                                    )
+                                })
                         })
                         .collect::<Vec<_>>()
                         .into_iter(),
@@ -895,6 +937,7 @@ mod tests {
                 &[glam::Quat::IDENTITY],
                 &[Rgba32Unmul::WHITE],
                 &[],
+                0,
                 &[instance_id],
             );
         view_builder.queue_draw(&ctx, builder.into_draw_data().expect("draw data"));

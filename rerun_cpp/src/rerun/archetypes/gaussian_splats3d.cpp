@@ -22,9 +22,9 @@ namespace rerun::archetypes {
                 Descriptor_sh_coefficients
             )
                 .value_or_throw();
-        archetype.show_spherical_harmonics =
-            ComponentBatch::empty<rerun::components::ShowSphericalHarmonics>(
-                Descriptor_show_spherical_harmonics
+        archetype.spherical_harmonics_degree =
+            ComponentBatch::empty<rerun::components::SphericalHarmonicsDegree>(
+                Descriptor_spherical_harmonics_degree
             )
                 .value_or_throw();
         return archetype;
@@ -48,9 +48,10 @@ namespace rerun::archetypes {
         if (sh_coefficients.has_value()) {
             columns.push_back(sh_coefficients.value().partitioned(lengths_).value_or_throw());
         }
-        if (show_spherical_harmonics.has_value()) {
-            columns.push_back(show_spherical_harmonics.value().partitioned(lengths_).value_or_throw(
-            ));
+        if (spherical_harmonics_degree.has_value()) {
+            columns.push_back(
+                spherical_harmonics_degree.value().partitioned(lengths_).value_or_throw()
+            );
         }
         return columns;
     }
@@ -71,8 +72,8 @@ namespace rerun::archetypes {
         if (sh_coefficients.has_value()) {
             return columns(std::vector<uint32_t>(sh_coefficients.value().length(), 1));
         }
-        if (show_spherical_harmonics.has_value()) {
-            return columns(std::vector<uint32_t>(show_spherical_harmonics.value().length(), 1));
+        if (spherical_harmonics_degree.has_value()) {
+            return columns(std::vector<uint32_t>(spherical_harmonics_degree.value().length(), 1));
         }
         return Collection<ComponentColumn>();
     }
@@ -102,8 +103,8 @@ namespace rerun {
         if (archetype.sh_coefficients.has_value()) {
             cells.push_back(archetype.sh_coefficients.value());
         }
-        if (archetype.show_spherical_harmonics.has_value()) {
-            cells.push_back(archetype.show_spherical_harmonics.value());
+        if (archetype.spherical_harmonics_degree.has_value()) {
+            cells.push_back(archetype.spherical_harmonics_degree.value());
         }
 
         return rerun::take_ownership(std::move(cells));

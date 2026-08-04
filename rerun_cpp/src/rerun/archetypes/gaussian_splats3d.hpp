@@ -10,8 +10,8 @@
 #include "../components/position3d.hpp"
 #include "../components/rotation_quat.hpp"
 #include "../components/scale3d.hpp"
-#include "../components/show_spherical_harmonics.hpp"
 #include "../components/spherical_harmonics3rgb.hpp"
+#include "../components/spherical_harmonics_degree.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
@@ -117,10 +117,11 @@ namespace rerun::archetypes {
         /// Higher-order spherical harmonics coefficients for view-dependent color.
         std::optional<ComponentBatch> sh_coefficients;
 
-        /// Whether view-dependent color (the spherical harmonics coefficients) is used when rendering.
+        /// The highest spherical harmonics degree to evaluate when rendering, 0-3.
         ///
-        /// If not set, defaults to true.
-        std::optional<ComponentBatch> show_spherical_harmonics;
+        /// Lower values render faster; `0` disables view-dependent color entirely.
+        /// If not set, defaults to 3, i.e. all coefficients present in the data are used.
+        std::optional<ComponentBatch> spherical_harmonics_degree;
 
       public:
         /// The name of the archetype as used in `ComponentDescriptor`s.
@@ -151,10 +152,10 @@ namespace rerun::archetypes {
             ArchetypeName, "GaussianSplats3D:sh_coefficients",
             Loggable<rerun::components::SphericalHarmonics3Rgb>::ComponentType
         );
-        /// `ComponentDescriptor` for the `show_spherical_harmonics` field.
-        static constexpr auto Descriptor_show_spherical_harmonics = ComponentDescriptor(
-            ArchetypeName, "GaussianSplats3D:show_spherical_harmonics",
-            Loggable<rerun::components::ShowSphericalHarmonics>::ComponentType
+        /// `ComponentDescriptor` for the `spherical_harmonics_degree` field.
+        static constexpr auto Descriptor_spherical_harmonics_degree = ComponentDescriptor(
+            ArchetypeName, "GaussianSplats3D:spherical_harmonics_degree",
+            Loggable<rerun::components::SphericalHarmonicsDegree>::ComponentType
         );
 
       public:
@@ -217,32 +218,34 @@ namespace rerun::archetypes {
             return std::move(*this);
         }
 
-        /// Whether view-dependent color (the spherical harmonics coefficients) is used when rendering.
+        /// The highest spherical harmonics degree to evaluate when rendering, 0-3.
         ///
-        /// If not set, defaults to true.
-        GaussianSplats3D with_show_spherical_harmonics(
-            const rerun::components::ShowSphericalHarmonics& _show_spherical_harmonics
+        /// Lower values render faster; `0` disables view-dependent color entirely.
+        /// If not set, defaults to 3, i.e. all coefficients present in the data are used.
+        GaussianSplats3D with_spherical_harmonics_degree(
+            const rerun::components::SphericalHarmonicsDegree& _spherical_harmonics_degree
         ) && {
-            show_spherical_harmonics = ComponentBatch::from_loggable(
-                                           _show_spherical_harmonics,
-                                           Descriptor_show_spherical_harmonics
+            spherical_harmonics_degree = ComponentBatch::from_loggable(
+                                             _spherical_harmonics_degree,
+                                             Descriptor_spherical_harmonics_degree
             )
-                                           .value_or_throw();
+                                             .value_or_throw();
             return std::move(*this);
         }
 
-        /// This method makes it possible to pack multiple `show_spherical_harmonics` in a single component batch.
+        /// This method makes it possible to pack multiple `spherical_harmonics_degree` in a single component batch.
         ///
-        /// This only makes sense when used in conjunction with `columns`. `with_show_spherical_harmonics` should
+        /// This only makes sense when used in conjunction with `columns`. `with_spherical_harmonics_degree` should
         /// be used when logging a single row's worth of data.
-        GaussianSplats3D with_many_show_spherical_harmonics(
-            const Collection<rerun::components::ShowSphericalHarmonics>& _show_spherical_harmonics
+        GaussianSplats3D with_many_spherical_harmonics_degree(
+            const Collection<rerun::components::SphericalHarmonicsDegree>&
+                _spherical_harmonics_degree
         ) && {
-            show_spherical_harmonics = ComponentBatch::from_loggable(
-                                           _show_spherical_harmonics,
-                                           Descriptor_show_spherical_harmonics
+            spherical_harmonics_degree = ComponentBatch::from_loggable(
+                                             _spherical_harmonics_degree,
+                                             Descriptor_spherical_harmonics_degree
             )
-                                           .value_or_throw();
+                                             .value_or_throw();
             return std::move(*this);
         }
 

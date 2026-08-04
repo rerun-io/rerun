@@ -33,9 +33,9 @@ mod zoom_level;
 use datatype_uis::{
     edit_bool, edit_f32_min_to_max_float, edit_f32_zero_to_max, edit_f32_zero_to_one,
     edit_f64_min_to_max_float, edit_f64_zero_to_max, edit_multiline_string, edit_or_view_vec2d,
-    edit_or_view_vec3d, edit_or_view_vec3d_positive, edit_singleline_string, edit_u64_range,
-    edit_ui_points, edit_view_enum, edit_view_enum_with_variant_available, edit_view_range1d,
-    view_timestamp, view_uuid, view_view_id,
+    edit_or_view_vec3d, edit_or_view_vec3d_positive, edit_singleline_string, edit_u32_range,
+    edit_u64_range, edit_ui_points, edit_view_enum, edit_view_enum_with_variant_available,
+    edit_view_range1d, view_timestamp, view_uuid, view_view_id,
 };
 use re_sdk_types::ColormapSelection;
 use re_sdk_types::blueprint::components::{
@@ -47,7 +47,7 @@ use re_sdk_types::components::{
     AggregationPolicy, AlbedoFactor, AxisLength, Color, DepthMeter, DrawOrder, FillMode, FillRatio,
     GammaCorrection, GraphType, HalfSize3D, ImagePlaneDistance, InterpolationMode, IsKeyframe,
     Length, LinearSpeed, MagnificationFilter, MarkerSize, MeshFaceRendering, Name, Opacity,
-    PointShading, Position2D, Position3D, Range1D, Scale3D, ShowLabels, ShowSphericalHarmonics,
+    PointShading, Position2D, Position3D, Range1D, Scale3D, ShowLabels, SphericalHarmonicsDegree,
     StrokeWidth, Text, Timestamp, TransformRelation, Translation3D, ValueRange, Vector3D,
     VideoCodec, Visible,
 };
@@ -107,12 +107,14 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     registry.add_singleline_edit_or_view::<ForceIterations>(|ctx, ui, value| {
         edit_u64_range(ctx, ui, value, 1..=5)
     });
+    registry.add_singleline_edit_or_view::<SphericalHarmonicsDegree>(|ctx, ui, value| {
+        edit_u32_range(ctx, ui, value, 0..=SphericalHarmonicsDegree::MAX)
+    });
 
     // Bool components:
     registry.add_singleline_edit_or_view::<Enabled>(edit_bool);
     registry.add_singleline_edit_or_view::<LockRangeDuringZoom>(edit_bool);
     registry.add_singleline_edit_or_view::<ShowLabels>(edit_bool);
-    registry.add_singleline_edit_or_view::<ShowSphericalHarmonics>(edit_bool);
     registry.add_singleline_edit_or_view::<Visible>(edit_bool);
 
     // `IsKeyframe` is logged data with no blueprint override path, so force

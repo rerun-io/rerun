@@ -8,6 +8,7 @@ use std::path::PathBuf;
 
 use clap::Parser as _;
 
+use re_renderer::renderer::SH_TEXELS_PER_GAUSSIAN;
 use re_renderer::view_builder::{Projection, TargetConfiguration, ViewBuilder};
 use re_renderer::{
     GaussianShCoefficient, GaussianSplatBuilder, RenderConfig, RenderContext, Rgba, Rgba32Unmul,
@@ -160,6 +161,7 @@ fn main() -> anyhow::Result<()> {
         &rotations,
         &colors,
         &sh_coefficients,
+        SH_TEXELS_PER_GAUSSIAN,
         &[],
     );
 

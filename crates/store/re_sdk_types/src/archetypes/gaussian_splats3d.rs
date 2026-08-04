@@ -113,10 +113,11 @@ pub struct GaussianSplats3D {
     /// Higher-order spherical harmonics coefficients for view-dependent color.
     pub sh_coefficients: Option<SerializedComponentBatch>,
 
-    /// Whether view-dependent color (the spherical harmonics coefficients) is used when rendering.
+    /// The highest spherical harmonics degree to evaluate when rendering, 0-3.
     ///
-    /// If not set, defaults to true.
-    pub show_spherical_harmonics: Option<SerializedComponentBatch>,
+    /// Lower values render faster; `0` disables view-dependent color entirely.
+    /// If not set, defaults to 3, i.e. all coefficients present in the data are used.
+    pub spherical_harmonics_degree: Option<SerializedComponentBatch>,
 }
 
 impl GaussianSplats3D {
@@ -190,16 +191,16 @@ impl GaussianSplats3D {
         (*DESCRIPTOR).clone()
     }
 
-    /// Returns the [`ComponentDescriptor`] for [`Self::show_spherical_harmonics`].
+    /// Returns the [`ComponentDescriptor`] for [`Self::spherical_harmonics_degree`].
     ///
-    /// The corresponding component is [`crate::components::ShowSphericalHarmonics`].
+    /// The corresponding component is [`crate::components::SphericalHarmonicsDegree`].
     #[inline]
-    pub fn descriptor_show_spherical_harmonics() -> ComponentDescriptor {
+    pub fn descriptor_spherical_harmonics_degree() -> ComponentDescriptor {
         static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
             std::sync::LazyLock::new(|| ComponentDescriptor {
                 archetype: Some("rerun.archetypes.GaussianSplats3D".into()),
-                component: "GaussianSplats3D:show_spherical_harmonics".into(),
-                component_type: Some("rerun.components.ShowSphericalHarmonics".into()),
+                component: "GaussianSplats3D:spherical_harmonics_degree".into(),
+                component_type: Some("rerun.components.SphericalHarmonicsDegree".into()),
             });
         (*DESCRIPTOR).clone()
     }
@@ -221,7 +222,7 @@ static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 2usize]> =
     std::sync::LazyLock::new(|| {
         [
             GaussianSplats3D::descriptor_sh_coefficients(),
-            GaussianSplats3D::descriptor_show_spherical_harmonics(),
+            GaussianSplats3D::descriptor_spherical_harmonics_degree(),
         ]
     });
 
@@ -233,7 +234,7 @@ static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 6usize]> =
             GaussianSplats3D::descriptor_quaternions(),
             GaussianSplats3D::descriptor_colors(),
             GaussianSplats3D::descriptor_sh_coefficients(),
-            GaussianSplats3D::descriptor_show_spherical_harmonics(),
+            GaussianSplats3D::descriptor_spherical_harmonics_degree(),
         ]
     });
 
@@ -302,12 +303,12 @@ impl ::re_types_core::Archetype for GaussianSplats3D {
             .map(|array| {
                 SerializedComponentBatch::new(array.clone(), Self::descriptor_sh_coefficients())
             });
-        let show_spherical_harmonics = arrays_by_descr
-            .get(&Self::descriptor_show_spherical_harmonics())
+        let spherical_harmonics_degree = arrays_by_descr
+            .get(&Self::descriptor_spherical_harmonics_degree())
             .map(|array| {
                 SerializedComponentBatch::new(
                     array.clone(),
-                    Self::descriptor_show_spherical_harmonics(),
+                    Self::descriptor_spherical_harmonics_degree(),
                 )
             });
         Ok(Self {
@@ -316,7 +317,7 @@ impl ::re_types_core::Archetype for GaussianSplats3D {
             quaternions,
             colors,
             sh_coefficients,
-            show_spherical_harmonics,
+            spherical_harmonics_degree,
         })
     }
 }
@@ -331,7 +332,7 @@ impl ::re_types_core::AsComponents for GaussianSplats3D {
             self.quaternions.clone(),
             self.colors.clone(),
             self.sh_coefficients.clone(),
-            self.show_spherical_harmonics.clone(),
+            self.spherical_harmonics_degree.clone(),
         ]
         .into_iter()
         .flatten()
@@ -360,7 +361,7 @@ impl GaussianSplats3D {
             quaternions: None,
             colors: None,
             sh_coefficients: None,
-            show_spherical_harmonics: None,
+            spherical_harmonics_degree: None,
         }
     }
 
@@ -395,9 +396,9 @@ impl GaussianSplats3D {
                 crate::components::SphericalHarmonics3Rgb::arrow_empty(),
                 Self::descriptor_sh_coefficients(),
             )),
-            show_spherical_harmonics: Some(SerializedComponentBatch::new(
-                crate::components::ShowSphericalHarmonics::arrow_empty(),
-                Self::descriptor_show_spherical_harmonics(),
+            spherical_harmonics_degree: Some(SerializedComponentBatch::new(
+                crate::components::SphericalHarmonicsDegree::arrow_empty(),
+                Self::descriptor_spherical_harmonics_degree(),
             )),
         }
     }
@@ -436,9 +437,9 @@ impl GaussianSplats3D {
             self.sh_coefficients
                 .map(|sh_coefficients| sh_coefficients.partitioned(_lengths.clone()))
                 .transpose()?,
-            self.show_spherical_harmonics
-                .map(|show_spherical_harmonics| {
-                    show_spherical_harmonics.partitioned(_lengths.clone())
+            self.spherical_harmonics_degree
+                .map(|spherical_harmonics_degree| {
+                    spherical_harmonics_degree.partitioned(_lengths.clone())
                 })
                 .transpose()?,
         ];
@@ -458,8 +459,8 @@ impl GaussianSplats3D {
         let len_quaternions = self.quaternions.as_ref().map(|b| b.array.len());
         let len_colors = self.colors.as_ref().map(|b| b.array.len());
         let len_sh_coefficients = self.sh_coefficients.as_ref().map(|b| b.array.len());
-        let len_show_spherical_harmonics = self
-            .show_spherical_harmonics
+        let len_spherical_harmonics_degree = self
+            .spherical_harmonics_degree
             .as_ref()
             .map(|b| b.array.len());
         let len = None
@@ -468,7 +469,7 @@ impl GaussianSplats3D {
             .or(len_quaternions)
             .or(len_colors)
             .or(len_sh_coefficients)
-            .or(len_show_spherical_harmonics)
+            .or(len_spherical_harmonics_degree)
             .unwrap_or(0);
         self.columns(std::iter::repeat_n(1, len))
     }
@@ -527,35 +528,36 @@ impl GaussianSplats3D {
         self
     }
 
-    /// Whether view-dependent color (the spherical harmonics coefficients) is used when rendering.
+    /// The highest spherical harmonics degree to evaluate when rendering, 0-3.
     ///
-    /// If not set, defaults to true.
+    /// Lower values render faster; `0` disables view-dependent color entirely.
+    /// If not set, defaults to 3, i.e. all coefficients present in the data are used.
     #[inline]
-    pub fn with_show_spherical_harmonics(
+    pub fn with_spherical_harmonics_degree(
         mut self,
-        show_spherical_harmonics: impl Into<crate::components::ShowSphericalHarmonics>,
+        spherical_harmonics_degree: impl Into<crate::components::SphericalHarmonicsDegree>,
     ) -> Self {
-        self.show_spherical_harmonics = try_serialize_field(
-            Self::descriptor_show_spherical_harmonics(),
-            [show_spherical_harmonics],
+        self.spherical_harmonics_degree = try_serialize_field(
+            Self::descriptor_spherical_harmonics_degree(),
+            [spherical_harmonics_degree],
         );
         self
     }
 
-    /// This method makes it possible to pack multiple [`crate::components::ShowSphericalHarmonics`] in a single component batch.
+    /// This method makes it possible to pack multiple [`crate::components::SphericalHarmonicsDegree`] in a single component batch.
     ///
-    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_show_spherical_harmonics`] should
+    /// This only makes sense when used in conjunction with [`Self::columns`]. [`Self::with_spherical_harmonics_degree`] should
     /// be used when logging a single row's worth of data.
     #[inline]
-    pub fn with_many_show_spherical_harmonics(
+    pub fn with_many_spherical_harmonics_degree(
         mut self,
-        show_spherical_harmonics: impl IntoIterator<
-            Item = impl Into<crate::components::ShowSphericalHarmonics>,
+        spherical_harmonics_degree: impl IntoIterator<
+            Item = impl Into<crate::components::SphericalHarmonicsDegree>,
         >,
     ) -> Self {
-        self.show_spherical_harmonics = try_serialize_field(
-            Self::descriptor_show_spherical_harmonics(),
-            show_spherical_harmonics,
+        self.spherical_harmonics_degree = try_serialize_field(
+            Self::descriptor_spherical_harmonics_degree(),
+            spherical_harmonics_degree,
         );
         self
     }

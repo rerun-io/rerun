@@ -24,7 +24,7 @@ in their natural form: linear scales, and base colors with opacity as RGBA.
 
 ### Optional
 * `sh_coefficients`: [`SphericalHarmonics3Rgb`](../components/spherical_harmonics3rgb.md)
-* `show_spherical_harmonics`: [`ShowSphericalHarmonics`](../components/show_spherical_harmonics.md)
+* `spherical_harmonics_degree`: [`SphericalHarmonicsDegree`](../components/spherical_harmonics_degree.md)
 
 
 ## Can be shown in

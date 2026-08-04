@@ -1284,17 +1284,6 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <ShowSphericalHarmonics as Component>::name(),
-            ComponentReflection {
-                docstring_md: "Whether view-dependent color ([`components.SphericalHarmonics3Rgb`](https://rerun.io/docs/reference/types/components/spherical_harmonics3rgb?speculative-link)) is used when rendering.\n\nDisabling this in the blueprint can make the rendering a lot faster.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
-                deprecation_summary: None,
-                custom_placeholder: Some(ShowSphericalHarmonics::default().to_arrow()?),
-                datatype: ShowSphericalHarmonics::arrow_datatype(),
-                is_enum: false,
-                verify_arrow_array: ShowSphericalHarmonics::verify_arrow_array,
-            },
-        ),
-        (
             <SphericalHarmonics3Rgb as Component>::name(),
             ComponentReflection {
                 docstring_md: "View-dependent color, expressed as spherical harmonics coefficients of degrees 1 through 3.\n\nThe view-independent (degree-0) base color is represented as a separate [`components.Color`](https://rerun.io/docs/reference/types/components/color).\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
@@ -1303,6 +1292,17 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
                 datatype: SphericalHarmonics3Rgb::arrow_datatype(),
                 is_enum: false,
                 verify_arrow_array: SphericalHarmonics3Rgb::verify_arrow_array,
+            },
+        ),
+        (
+            <SphericalHarmonicsDegree as Component>::name(),
+            ComponentReflection {
+                docstring_md: "The highest spherical harmonics degree to evaluate when rendering, 0-3.\n\n`0` renders the view-independent base color only, and is the fastest.\nEach higher degree brings in more view-dependent detail, at the cost of fetching and\nevaluating more coefficients ([`components.SphericalHarmonics3Rgb`](https://rerun.io/docs/reference/types/components/spherical_harmonics3rgb?speculative-link)):\n3 of them for degree 1, 8 for degree 2, and all 15 for degree 3.\n\nLowering this in the blueprint can make the rendering a lot faster.\n\nDefaults to 3, i.e. every coefficient the data has.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: Some(SphericalHarmonicsDegree::default().to_arrow()?),
+                datatype: SphericalHarmonicsDegree::arrow_datatype(),
+                is_enum: false,
+                verify_arrow_array: SphericalHarmonicsDegree::verify_arrow_array,
             },
         ),
         (
@@ -2558,10 +2558,10 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {
-                        name: "show_spherical_harmonics",
-                        display_name: "Show spherical harmonics",
-                        component_type: "rerun.components.ShowSphericalHarmonics".into(),
-                        docstring_md: "Whether view-dependent color (the spherical harmonics coefficients) is used when rendering.\n\nIf not set, defaults to true.",
+                        name: "spherical_harmonics_degree",
+                        display_name: "Spherical harmonics degree",
+                        component_type: "rerun.components.SphericalHarmonicsDegree".into(),
+                        docstring_md: "The highest spherical harmonics degree to evaluate when rendering, 0-3.\n\nLower values render faster; `0` disables view-dependent color entirely.\nIf not set, defaults to 3, i.e. all coefficients present in the data are used.",
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                 ],

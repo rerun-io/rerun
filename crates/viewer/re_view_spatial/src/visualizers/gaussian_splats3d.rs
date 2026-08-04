@@ -15,7 +15,7 @@ use re_sdk_types::Archetype as _;
 use re_sdk_types::archetypes::GaussianSplats3D;
 use re_sdk_types::components;
 use re_sdk_types::components::{
-    Color, Position3D, RotationQuat, Scale3D, ShowSphericalHarmonics, SphericalHarmonics3Rgb,
+    Color, Position3D, RotationQuat, Scale3D, SphericalHarmonics3Rgb, SphericalHarmonicsDegree,
 };
 use re_viewer_context::{
     Cache, IdentifiedViewSystem, QueryContext, ViewClass as _, ViewContext, ViewContextCollection,
@@ -60,7 +60,7 @@ struct GaussianSplats3DComponentData<'a> {
     sh_coefficients: &'a [SphericalHarmonics3Rgb],
 
     // Non-repeated
-    show_spherical_harmonics: Option<ShowSphericalHarmonics>,
+    spherical_harmonics_degree: Option<SphericalHarmonicsDegree>,
 }
 
 /// Processed/computed gaussian cloud data ready for rendering.
@@ -280,20 +280,21 @@ impl GaussianSplats3DVisualizer {
                 c.entry(cache_key, || GaussianSplats3DCpu::compute(ctx, &data))
             });
 
-            let show_spherical_harmonics: bool = data
-                .show_spherical_harmonics
+            let sh_num_coefficients = data
+                .spherical_harmonics_degree
                 .unwrap_or_else(|| {
                     typed_fallback_for(
                         ctx,
-                        GaussianSplats3D::descriptor_show_spherical_harmonics().component,
+                        GaussianSplats3D::descriptor_spherical_harmonics_degree().component,
                     )
                 })
-                .0
-                .into();
-            let sh_coefficients: &[[GaussianShCoefficient; 15]] = if show_spherical_harmonics {
-                &cpu.sh_coefficients
-            } else {
+                .num_coefficients();
+            // Degree 0 is the base color alone, so nothing needs uploading at all. Otherwise the
+            // (degree-independent) cache is truncated on the way to the GPU.
+            let sh_coefficients: &[[GaussianShCoefficient; 15]] = if sh_num_coefficients == 0 {
                 &[]
+            } else {
+                &cpu.sh_coefficients
             };
 
             for (transform_index, world_from_obj) in ent_context
@@ -321,6 +322,7 @@ impl GaussianSplats3DVisualizer {
                         &cpu.rotations,
                         &cpu.colors,
                         sh_coefficients,
+                        sh_num_coefficients,
                         &cpu.picking_ids,
                     );
 
@@ -425,8 +427,8 @@ impl VisualizerSystem for GaussianSplats3DVisualizer {
                     results.iter_optional(GaussianSplats3D::descriptor_colors().component);
                 let all_sh_coefficients =
                     results.iter_optional(GaussianSplats3D::descriptor_sh_coefficients().component);
-                let all_show_spherical_harmonics = results.iter_optional(
-                    GaussianSplats3D::descriptor_show_spherical_harmonics().component,
+                let all_spherical_harmonics_degree = results.iter_optional(
+                    GaussianSplats3D::descriptor_spherical_harmonics_degree().component,
                 );
 
                 let query_result_hash = results.query_result_hash();
@@ -437,7 +439,7 @@ impl VisualizerSystem for GaussianSplats3DVisualizer {
                     all_quaternions.slice::<[f32; 4]>(),
                     all_colors.slice::<u32>(),
                     all_sh_coefficients.slice::<[[f16; 3]; 15]>(),
-                    all_show_spherical_harmonics.slice::<bool>(),
+                    all_spherical_harmonics_degree.slice::<u32>(),
                 )
                 .map(
                     |(
@@ -447,7 +449,7 @@ impl VisualizerSystem for GaussianSplats3DVisualizer {
                         quaternions,
                         colors,
                         sh_coefficients,
-                        show_spherical_harmonics,
+                        spherical_harmonics_degree,
                     )| {
                         GaussianSplats3DComponentData {
                             index,
@@ -459,9 +461,9 @@ impl VisualizerSystem for GaussianSplats3DVisualizer {
                             colors: colors.map_or(&[], |colors| bytemuck::cast_slice(colors)),
                             sh_coefficients: sh_coefficients
                                 .map_or(&[], |sh| bytemuck::cast_slice(sh)),
-                            show_spherical_harmonics: show_spherical_harmonics
-                                .map(|b| !b.is_empty() && b.value(0))
-                                .map(Into::into),
+                            spherical_harmonics_degree: spherical_harmonics_degree
+                                .and_then(|d| d.first().copied())
+                                .map(|d| SphericalHarmonicsDegree(d.into())),
                         }
                     },
                 );

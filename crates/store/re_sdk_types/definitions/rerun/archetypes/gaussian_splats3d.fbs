@@ -45,8 +45,9 @@ table GaussianSplats3D (
   /// Higher-order spherical harmonics coefficients for view-dependent color.
   sh_coefficients: [rerun.components.SphericalHarmonics3Rgb] ("attr.rerun.component_optional", nullable, order: 3000);
 
-  /// Whether view-dependent color (the spherical harmonics coefficients) is used when rendering.
+  /// The highest spherical harmonics degree to evaluate when rendering, 0-3.
   ///
-  /// If not set, defaults to true.
-  show_spherical_harmonics: rerun.components.ShowSphericalHarmonics ("attr.rerun.component_optional", nullable, order: 3100);
+  /// Lower values render faster; `0` disables view-dependent color entirely.
+  /// If not set, defaults to 3, i.e. all coefficients present in the data are used.
+  spherical_harmonics_degree: rerun.components.SphericalHarmonicsDegree ("attr.rerun.component_optional", nullable, order: 3100);
 }

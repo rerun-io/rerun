@@ -17,3 +17,6 @@ UInt32
  * 🦀 [Rust API docs for `UInt32`](https://docs.rs/rerun/latest/rerun/datatypes/struct.UInt32.html)
 
 
+## Used by
+
+* [`SphericalHarmonicsDegree`](../components/spherical_harmonics_degree.md?speculative-link)
