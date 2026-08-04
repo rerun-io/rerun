@@ -10,6 +10,14 @@ use re_viewer_context::{RecommendedView, ViewClass as _};
 use re_viewport_blueprint::{ViewBlueprint, ViewProperty};
 
 fn setup_scene(test_context: &mut TestContext, use_explicit_frames: bool) {
+    setup_scene_with_focal_length(test_context, use_explicit_frames, [2.0, 2.0]);
+}
+
+fn setup_scene_with_focal_length(
+    test_context: &mut TestContext,
+    use_explicit_frames: bool,
+    focal_length: [f32; 2],
+) {
     use ndarray::{Array, ShapeBuilder as _};
 
     let eye_position = glam::vec3(0.0, -1.0, 0.2);
@@ -19,7 +27,7 @@ fn setup_scene(test_context: &mut TestContext, use_explicit_frames: bool) {
     )
     .with_translation(eye_position);
     let camera_intrinsics =
-        archetypes::Pinhole::from_focal_length_and_resolution([2., 2.], [3., 2.])
+        archetypes::Pinhole::from_focal_length_and_resolution(focal_length, [3., 2.])
             .with_image_plane_distance(1.0);
     let camera_image = {
         let height = 2;
@@ -263,4 +271,31 @@ fn test_3d_in_2d_with_explicit_frames() {
 #[test]
 fn test_3d_in_2d_without_explicit_frames() {
     test_3d_in_2d(false);
+}
+
+#[test]
+fn test_anamorphic_3d_in_2d() {
+    let mut test_context = TestContext::new_with_view_class::<re_view_spatial::SpatialView2D>();
+    setup_scene_with_focal_length(&mut test_context, false, [3.0, 1.0]);
+
+    let view_id = test_context.setup_viewport_blueprint(|_ctx, blueprint| {
+        blueprint.add_view_at_root(ViewBlueprint::new(
+            re_view_spatial::SpatialView2D::identifier(),
+            RecommendedView {
+                origin: "origin/camera".into(),
+                query_filter: EntityPathFilter::all(),
+            },
+        ))
+    });
+
+    let mut harness = test_context
+        .setup_kittest_for_rendering_3d([400.0, 300.0])
+        .build_ui(|ui| {
+            test_context.run_ui(ui, |ctx, ui| {
+                test_context.ui_for_single_view(ui, ctx, view_id);
+            });
+        });
+
+    harness.run();
+    harness.snapshot("anamorphic_3d_in_2d");
 }
