@@ -8,7 +8,7 @@ use egui::Modifiers;
 use re_integration_test::HarnessExt as _;
 use re_sdk::log::RowId;
 use re_viewer::external::re_sdk_types;
-use re_viewer::external::re_viewer_context::{RecommendedView, ViewClass as _};
+use re_viewer::external::re_viewer_context::{Item, RecommendedView, ViewClass as _, ViewId};
 use re_viewer::viewer_test_utils::{self, HarnessOptions};
 use re_viewport_blueprint::ViewBlueprint;
 
@@ -62,6 +62,60 @@ fn make_harness<'a>() -> egui_kittest::Harness<'a, re_viewer::App> {
     harness
 }
 
+fn assert_view_entity_inclusion(
+    harness: &mut egui_kittest::Harness<'_, re_viewer::App>,
+    view_name: &str,
+    expectations: &[(&str, bool)],
+) {
+    let view_name = view_name.to_owned();
+    let assertion_view_name = view_name.clone();
+    let expectations = expectations
+        .iter()
+        .map(|(entity_path, expected)| (re_sdk::EntityPath::from(*entity_path), *expected))
+        .collect::<Vec<_>>();
+
+    let results = harness.setup_viewport_blueprint(move |_ctx, blueprint| {
+        let view = blueprint
+            .views
+            .values()
+            .find(|view| view.display_name.as_deref() == Some(&view_name))
+            .unwrap_or_else(|| panic!("Failed to find view {view_name:?}"));
+        let filter = view.contents.entity_path_filter();
+
+        expectations
+            .into_iter()
+            .map(|(entity_path, expected)| {
+                let actual = filter.is_explicitly_included(&entity_path);
+                (entity_path, expected, actual)
+            })
+            .collect::<Vec<_>>()
+    });
+
+    for (entity_path, expected, actual) in results {
+        assert_eq!(
+            actual, expected,
+            "Unexpected inclusion state for {entity_path} in {assertion_view_name:?}"
+        );
+    }
+}
+
+fn view_id(harness: &mut egui_kittest::Harness<'_, re_viewer::App>, view_name: &str) -> ViewId {
+    let view_name = view_name.to_owned();
+    harness.setup_viewport_blueprint(move |_ctx, blueprint| {
+        blueprint
+            .views
+            .values()
+            .find(|view| view.display_name.as_deref() == Some(&view_name))
+            .unwrap_or_else(|| panic!("Failed to find view {view_name:?}"))
+            .id
+    })
+}
+
+fn assert_selected_item(harness: &mut egui_kittest::Harness<'_, re_viewer::App>, expected: Item) {
+    let actual = harness.run_with_app_context(|ctx| ctx.selection().single_item().cloned());
+    assert_eq!(actual, Some(expected));
+}
+
 #[tokio::test(flavor = "multi_thread")]
 pub async fn test_drop_stream_to_view() {
     let mut harness = make_harness();
@@ -70,8 +124,12 @@ pub async fn test_drop_stream_to_view() {
         .click_label("Viewport (Grid container)");
 
     let drop_point_1 = harness.get_panel_position("Plot 1").center();
+    let plot_1_id = view_id(&mut harness, "Plot 1");
+    let sin_curve = Item::from(re_sdk::EntityPath::from("sin_curve"));
 
-    // Drag "sin_curve" to the plot
+    // A successful drop selects the target view.
+    harness.streams_tree().click_label("sin_curve");
+    assert_selected_item(&mut harness, sin_curve.clone());
     harness.streams_tree().drag_label("sin_curve");
     harness.hover_at(drop_point_1);
     harness.snapshot_app("drop_stream_to_view_1");
@@ -80,8 +138,11 @@ pub async fn test_drop_stream_to_view() {
     harness.drop_at(drop_point_1);
     harness.snapshot_app("drop_stream_to_view_2");
     assert_eq!(harness.cursor_icon(), egui::CursorIcon::Default);
+    assert_selected_item(&mut harness, Item::View(plot_1_id));
 
-    // Try again, should fail
+    // A rejected drop preserves the dragged entity's selection.
+    harness.streams_tree().click_label("sin_curve");
+    assert_selected_item(&mut harness, sin_curve.clone());
     harness.streams_tree().drag_label("sin_curve");
     harness.hover_at(drop_point_1);
     harness.snapshot_app("drop_stream_to_view_3");
@@ -90,8 +151,11 @@ pub async fn test_drop_stream_to_view() {
     harness.drop_at(drop_point_1);
     harness.snapshot_app("drop_stream_to_view_4");
     assert_eq!(harness.cursor_icon(), egui::CursorIcon::Default);
+    assert_selected_item(&mut harness, sin_curve);
 
-    // Drag "line_curve" to the plot
+    // Dragging an unselected entity preserves the target view's selection.
+    harness.blueprint_tree().click_label("Plot 1");
+    assert_selected_item(&mut harness, Item::View(plot_1_id));
     harness.streams_tree().drag_label("line_curve");
     harness.hover_at(drop_point_1);
     harness.snapshot_app("drop_stream_to_view_5");
@@ -99,6 +163,7 @@ pub async fn test_drop_stream_to_view() {
 
     harness.drop_at(drop_point_1);
     harness.snapshot_app("drop_stream_to_view_6");
+    assert_selected_item(&mut harness, Item::View(plot_1_id));
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -118,6 +183,11 @@ pub async fn test_drop_multiple_streams_to_view() {
     harness.drop_at(drop_point_1);
     harness.snapshot_app("drop_multiple_streams_to_view_1");
     assert_eq!(harness.cursor_icon(), egui::CursorIcon::Default);
+    assert_view_entity_inclusion(
+        &mut harness,
+        "Plot 1",
+        &[("sin_curve", true), ("line_curve", false)],
+    );
 
     // Drag both entities to sine plot
     harness.streams_tree().click_label("sin_curve");
@@ -133,6 +203,11 @@ pub async fn test_drop_multiple_streams_to_view() {
     harness.drop_at(drop_point_1);
     harness.snapshot_app("drop_multiple_streams_to_view_3");
     assert_eq!(harness.cursor_icon(), egui::CursorIcon::Default);
+    assert_view_entity_inclusion(
+        &mut harness,
+        "Plot 1",
+        &[("sin_curve", true), ("line_curve", true)],
+    );
 
     // Drag both again, should fail, but should succeed to other plot
     harness.streams_tree().click_label("sin_curve");
@@ -152,4 +227,14 @@ pub async fn test_drop_multiple_streams_to_view() {
     harness.drop_at(drop_point_2);
     harness.snapshot_app("drop_multiple_streams_to_view_6");
     assert_eq!(harness.cursor_icon(), egui::CursorIcon::Default);
+    assert_view_entity_inclusion(
+        &mut harness,
+        "Plot 1",
+        &[("sin_curve", true), ("line_curve", true)],
+    );
+    assert_view_entity_inclusion(
+        &mut harness,
+        "Plot 2",
+        &[("sin_curve", true), ("line_curve", true)],
+    );
 }
