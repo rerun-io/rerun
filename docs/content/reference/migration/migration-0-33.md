@@ -1,6 +1,7 @@
 ---
 title: Migrating from 0.32 to 0.33
 order: 977
+hidden: true
 ---
 
 ## `rerun-sdk[dataplatform]` and `rerun-sdk[datafusion]` renamed to `rerun-sdk[catalog]`

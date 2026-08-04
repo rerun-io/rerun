@@ -1,6 +1,7 @@
 ---
 title: Migrating from 0.30 to 0.31
 order: 979
+hidden: true
 ---
 
 ## CLI

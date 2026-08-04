@@ -1,6 +1,7 @@
 ---
 title: Migrating from 0.15 to 0.16
 order: 994
+hidden: true
 ---
 
 

@@ -2,80 +2,19 @@
 
 ## [0.35.0](https://github.com/rerun-io/rerun/compare/0.34.1...0.35.0) - 2026-07-23
 
-🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-35
+🧳 Migration guide: https://rerun.io/docs/changelog/changeset-0-35#breaking-changes
 
 ### ✨ Overview & highlights
 
-#### Improved command palette
+- Improved command palette
+- Experimental Viewer catalog
+- Rich display of built-in url types
+- Import HDF5 data using the chunk processing API
+- Improved video chunk reader
+- Time-windowed and corrupted MCAP conversion
+- Improved ROS 2 timestamp handling
 
-The Viewer's command palette (`Cmd+k`/`Ctrl+k`) now lets you find & select entities & components!
-
-https://github.com/user-attachments/assets/1d609f61-cde4-4baa-a250-0e020591dea3
-
-It also adds context dependent commands like, like refreshing the currently selected
-catalog or dataset.
-
-#### Experimental Viewer catalog
-
-The Viewer now includes an experimental built-in catalog for working with local recordings without starting a separate catalog server.
-For now, it has to be activated through the settings menu since there's still some rough edges.
-The main advantage of this is that it allows you to stream arbitrary large rrd files from disk with ease!
-
-The internal Viewer catalog implements the entire functionality of the OSS redap server protocol and can be connected to via the Python SDK.
-For security reasons, we limit this to connections from the same machine.
-
-It also is a first step in a series of changes that make the Viewer more streamlined & explicit
-about consuming live versus server data.
-
-#### Rich display of built-in url types
-
-Rerun now detects links known url formats (links to rrds, hub datasets, etc.) and shows them as a compact link button:
-
-<img width="453" height="166" alt="grafik" src="https://github.com/user-attachments/assets/742ecbb8-bbff-439c-9288-8851bf5297b1" />
-
-Previously these all would all be shown as a plain link.
-The Rerun Hub dataset open button has been reworked as well:
-
-<img width="477" height="163" alt="grafik" src="https://github.com/user-attachments/assets/ef245d43-14b4-4a3b-8d4c-88f5c8afdb7d" />
-
-#### Import HDF5 data using the chunk processing API
-
-This release introduces `Hdf5Reader`, which reads an HDF5 file into a lazy stream of chunks — each group becomes an entity, each dataset a component:
-
-```python
-from rerun.experimental import Hdf5Reader, IndexColumn
-
-reader = Hdf5Reader("episode.h5")
-store = reader.stream(index_column=IndexColumn.timestamp("/time", input_unit="s")).collect()
-```
-
-#### Improved video chunk reader
-
-`Mp4Reader` (Rust & Python) can now plumb data through FFmpeg to remove unsupported B-frames, transcode to different output formats, adjust gop size, and take advantage of some GPU accelerated codecs.
-Also added improvements around reporting unsupported codecs more clearly, and handles large MP4 offsets without crashing.
-
-This is experimental so we are still iterating on how to make it as seamless as possible to go from mp4 to RRD.
-
-Feedback is welcome!
-
-#### Time-windowed and corrupted MCAP conversion
-
-You can now read a selected time range from a source MCAP file.
-The corresponding option is available both for the Python `McapReader` and the CLI (see `rerun mcap convert --help`).
-
-Besides simple time filtering, this also enables large recordings to be converted and optimized in bounded windows instead of loading the entire recording at once.
-In a 20 GB test recording, processing 32 windows reduced peak memory use from about 26 GB to 1.4 GB and reduced wall-clock time from 14.3 seconds to 5.8 seconds.
-Some user code is required to loop over windows in the source MCAP.
-
-The converter can also read corrupted MCAP files directly without a separate recovery pass.
-When the `recover` option is enabled in `McapReader` or CLI, the converter will attempt to recover the missing summary and index on-the-fly during processing.
-
-#### Improved ROS 2 timestamp handling
-
-All ROS 2 MCAP messages that have a top-level `std_msgs/msg/Header` "header" or a `builtin_interfaces/Time` "stamp" field now appear also on the `ros2_timestamp` timeline in addition to the standard MCAP log and publish timelines.
-
-Previously, the `ros2_timestamp` timeline was only populated for ROS messages that were converted to Rerun archetypes.
-Now this is supported for any ROS message that goes through [schema reflection](https://rerun.io/docs/concepts/logging-and-ingestion/mcap/message-formats#schema-reflection) (e.g. custom ROS message types), making it easier to see all data in header timestamp order if desired.
+📖 Release notes: https://rerun.io/docs/changelog/changeset-0-35#highlights
 
 ### ⚠️ Breaking changes
 
@@ -84,7 +23,7 @@ Now this is supported for any ROS message that goes through [schema reflection](
 - **CLI**: The `--follow` mode for tailing `.rrd` files has been removed.
   For live workflows, log to the Viewer and an `.rrd` file with multiple sinks instead.
 
-🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-35
+🧳 Migration guide: https://rerun.io/docs/changelog/changeset-0-35#breaking-changes
 
 ### 🔎 Details
 
@@ -200,102 +139,19 @@ Now this is supported for any ROS message that goes through [schema reflection](
 
 ## [0.34.0](https://github.com/rerun-io/rerun/compare/0.33.1...0.34.0) - 2026-07-06
 
-🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-34
+🧳 Migration guide: https://rerun.io/docs/changelog/changeset-0-34#breaking-changes
 
 ### ✨ Overview & highlights
 
-#### Viewer MCP
+- Viewer MCP
+- Learning course
+- Rerun agent skills
+- `VoxelGridMap` archetype
+- 🎮 Gamepad support in 3D views
+- Drag & drop components
+- Transform debugging tool
 
-We've added a MCP that allows an llm agent to see and interact with the Viewer!
-You could ask your agent to
- - verify its work looks as expected in the Viewer.
- - debug a bug when something doesn't show up right.
- - explore a recording or dataset to search for specific patterns.
-
-The agent has full control over the Viewer, meaning it can see and click any widget.
-
-Here's an example where Claude Sonnet was asked to create a fancy particle animation of the Rerun logo and verify its
-work using the mcp in the open Viewer (sped up by a lot, except when showing the end result):
-
-https://github.com/user-attachments/assets/14ffe7ed-6000-4193-900c-627784682125
-
-Once it wrote the script, it logged the recording to the Viewer, and then iterated until the result looked as requested.
-It adjusted the camera position, improved the particle rendering by looking at different frames in the animation,
-and then debugged why the fade out animation was still showing particles on the last frame.
-
-<details>
-  <summary>Full prompt</summary>
-
-  > /goal Create a new rerun python example in this folder that uses reruns 2D shapes to recreate the rerun logo (rerun-wordmark-black.svg).
-  > There should be a nice fade-in animation in the beginning, 10 frames duration. Then pause a bit with the full rerun logo visible and then
-  > the shapes should explosively fade away with a 20 frame animation before the recording ends.
-  >
-  > You may only stop once the recreated logo in the viewer looks close to the provided svg (black text, white background).
-  > Use the mcp to verify in the open viewer, don't ever kill it. Once done, launch an opus agent and ask it to judge how
-  > closely it looks to the original image. Keep going until it's convinced that it looks close.
-</details>
-
-See our [mcp docs](https://rerun.io/docs/reference/viewer/mcp) to get started.
-
-#### Learning course
-
-https://rerun.io/learn is a great way to learn how the Rerun data model covers the full physical AI experiment loop.
-It is a short, hands-on course for robotics ML engineers who want the full robot learning data loop in one place:
-```
-raw data -> RRD -> derived layers -> dataset queries -> training -> evaluation
-```
-
-#### Rerun agent skills
-
-We added new skills to the Rerun repo to make it easier to investigate existing robotics data with Rerun.
-You can install the skills in your project via:
-```sh
-npx skills add rerun-io/rerun
-```
-
-The new [learning course](https://rerun.io/learn) also shows how these agent skills can be used to collect, refine and train with robotics data.
-
-#### `VoxelGridMap` archetype
-
-Rerun now supports sparse voxel grids through a new [`VoxelGridMap`](https://rerun.io/docs/reference/types/archetypes/voxel_grid_map) archetype (thanks to [@makeecat](https://github.com/makeecat) for the contribution!).
-The archetype supports sparse indexing, anisotropic voxel sizes, pose offsets, and optional explicit colors or values & colormap per voxel.
-
-Rerun's MCAP importer now also converts the *dense* ROS `nav2_msgs/VoxelGrid` and Foxglove `VoxelGrid` formats to Rerun `VoxelGridMap`.
-
-And if you wonder how the smooth 3D navigation through the [voxel scene](https://github.com/ephtracy/voxel-model) in this video was done, see below!
-
-<!-- https://static.rerun.io/7724132292eb25c643530304c6699270aeaa68e1_voxel_grid_teaser.mp4 -->
-https://github.com/user-attachments/assets/87fb80da-66dd-4fcd-8b35-ab553696f536
-
-#### 🎮 Gamepad support in 3D views
-
-You can now use a gamepad to navigate 3D views in the native viewer.
-This makes it easier to do fine-grained, complex maneuvers with varying speed - e.g. for navigating large scenes or for screen videos.
-Analog sticks control the eye position and look target, shoulder triggers move the eye up and down, and shoulder buttons accelerate/decelerate.
-
-**Note:** The gamepad feature is currently experimental and can be activated through the settings menu.
-Switch the 3D view's eye controls to `FirstPerson` for optimal experience.
-Under the hood, we use the [`gilrs`](https://crates.io/crates/gilrs) crate that supports a wide range of devices.
-
-#### Drag & drop components
-
-You can now drag & drop a component right from the streams panel to visualize it in a Time series view or Status timeline.
-
-<!-- https://static.rerun.io/95f484cd8a2e937acd2eafa424bc778fe3ef5d7b_615146790-591024b9-57e7-4864-98f6-0b15ffb7ca2b-1782828747052.mp4 -->
-
-https://github.com/user-attachments/assets/d70587a9-2020-4ae8-9cf3-0fef54dcf896
-
-#### Transform debugging tool
-
-We added a new debugging UI for visual introspection of the 3D transform cache.
-This allows to view the tree structure of the transform hierarchy, including potentially disconnected trees, and inspect the latest stored values of each frame node or transform edge.
-The UI supports horizontal and vertical tree layout and you can filter by transform type (e.g. static or temporal).
-
-**Note:** this UI is currently a tab in the dev panel (accessible via "Toggle dev panel" in the menu or ctrl/cmd+shift+m).
-But we are open to making this a dedicated view in the future - let us know if you have any feedback!
-
-<!-- https://static.rerun.io/cc6c41138eeeabb31fb2ec988eefdcd8da446c86_transform_dev_panel_teaser.mp4 -->
-https://github.com/user-attachments/assets/b4b1ea6e-bce9-4e88-9ede-262f545e3b47
+📖 Release notes: https://rerun.io/docs/changelog/changeset-0-34#highlights
 
 ### ⚠️ Breaking changes
 
@@ -305,7 +161,7 @@ https://github.com/user-attachments/assets/b4b1ea6e-bce9-4e88-9ede-262f545e3b47
 - **SDK**: Several deprecated `DatasetEntry` methods have been removed.
 - **SDK**: `ParquetReader` column rules have been removed in favor of [lenses](https://rerun.io/docs/concepts/query-and-transform/lenses).
 
-🧳 Migration guide: https://rerun.io/docs/reference/migration/migration-0-34
+🧳 Migration guide: https://rerun.io/docs/changelog/changeset-0-34#breaking-changes
 
 ### 🔎 Details
 

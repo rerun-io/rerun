@@ -85,19 +85,29 @@ Members of the `rerun-io` organization can enable auto-approval for a single PR 
 
 ### Labeling of PRs & changelog generation
 
-Org members _must_ label their PRs — labels are how we generate [changelogs](https://github.com/rerun-io/rerun/blob/main/CHANGELOG.md).
+Org members _must_ label their PRs — labels drive both the [changelog](https://github.com/rerun-io/rerun/blob/main/CHANGELOG.md) and the per-release changeset.
 
-* `include in changelog`: The PR **title** will be used as a changelog entry. Keep it informative and concise.
-* `exclude from changelog`: Required if the PR shouldn't appear in the changelog.
-* At least one category label is required. See the [CI job](./.github/workflows/labels.yml) for the current list.
+Every PR needs **exactly one** of these four changelog categories:
+
+* `exclude from changelog`: not user-facing — kept out of the changelog entirely.
+* `🪳 bug`: a bug fix — auto-added to `CHANGELOG.md` from the PR **title**. Keep the title informative and concise.
+* `📉 performance`: a performance improvement — auto-added to `CHANGELOG.md` from the PR **title**. Keep the title informative and concise.
+* `include in changelog`: a user-facing feature or breaking change. You **must** add a hand-written entry by copying [`docs/content/changelog/upcoming/_template.md`](./docs/content/changelog/upcoming/_template.md) to `upcoming/<short-slug>.md` and filling it in. One file per PR keeps PRs conflict-free; at release the entries are merged into the release's changeset. It is the reviewer's job to point out a missing changeset entry.
+
+In addition:
+
+* At least one category label (e.g. `📺 re_viewer`, `sdk-python`, …) is required. See the [CI job](./.github/workflows/labels.yml) for the current list.
 * When in doubt, add more labels rather than fewer — they help with search.
 
-#### What should go to the changelog?
+#### What goes in the changeset?
+
+A changeset entry should link to docs and/or an example, and include a migration guide (breaking changes) or screenshot/GIF (visual features).
+Set `type: highlight|breaking|feature` in the entry's frontmatter so the release merge knows which section it belongs in.
+A `TODO(name): add link` placeholder is fine while iterating, but the release is **blocked** until it is resolved.
+If a user-facing change is not in the changeset, it should stay behind a feature flag.
 
 Err on the side of including entries — if it adds value for a user browsing the changelog, add it.
 Be generous with external contributions — credit where credit is due!
-
-We typically don't include: pure refactors, testing, CI fixes, fixes for bugs introduced since last release, minor doc changes (typos, etc.).
 
 #### Other special labels
 

@@ -100,23 +100,34 @@ uv run scripts/fetch_patch_candidates.py
 
 After cherry-picking a commit into the patch, please make sure to remove the `consider-patch` label.
 
-### 4. Update [`CHANGELOG.md`](./CHANGELOG.md)
+### 4. Finalize the changeset and update [`CHANGELOG.md`](./CHANGELOG.md)
 
 ⚠️ Skip this step when preparing an alpha release.
 
-Update the change log. It should include:
+The curated part of the release notes — highlights, breaking changes & migration guides, and new
+features, including any screenshots/GIFs — is written incrementally **during the cycle, per PR**:
+every `include in changelog` PR drops one file in [`docs/content/changelog/upcoming/`](./docs/content/changelog/upcoming)
+(one file per PR avoids merge conflicts). At release, assemble those into the release's changeset:
 
--   A one-line summary of the release
--   A multi-line summary of the release
-    - You may ask feature leads to write a summary for each highlighted item
--   A gif or screenshot showing one or more major new features
-    - Try to avoid `mp4`s, gifs have a better experience on GitHub
-    - You can upload images to a PR, use the link it generates to use GitHub as an image hosting service.
--   Run `pixi run uvpy scripts/generate_changelog.py > new_changelog.md`
+-   Assemble `upcoming/*.md` into `docs/content/changelog/changeset-0-xx.md`, grouping each entry by
+    its `type:` hint (`highlight` / `breaking` / `feature`). This is an agent-friendly task — run the
+    `/assemble-changelog` skill (Claude Code), which merges and de-duplicates the entries, generates
+    the detail sections, and verifies every `include in changelog` PR has an entry.
+-   Once assembled and reviewed, delete the merged files from `upcoming/` (leave `_template.md`).
+-   Resolve every `TODO(name)` in the changeset (docs links, example links, screenshots/GIFs, migration guides).
+    **The release is blocked until all of these are resolved.**
+-   Sanity-check the `## Highlights` section reads well as a whole. (Feature leads write their own items per PR;
+    here you just make sure the one-line and multi-line summary of the release hang together.)
+
+Then update `CHANGELOG.md` with the auto-generated detail (bug fixes + the full list of changes):
+
+-   Run `pixi run uvpy scripts/generate_changelog.py --version 0.x.y > new_changelog.md`
 -   Edit PR descriptions/labels to improve the generated changelog
 -   Copy-paste the results into `CHANGELOG.md`.
--   Editorialize the changelog if necessary
--   Make sure the changelog includes instructions for handling any breaking changes
+
+The changeset is *not* copied into `CHANGELOG.md`. The script summarizes it instead — the section
+headings plus links to the changeset on the website — so the full prose lives in exactly one place.
+Assemble the changeset before running the script, or the summary will be a `TODO` placeholder. <!-- NOLINT -->
 
 ### 5. Clean up documentation links
 
@@ -127,6 +138,15 @@ Remove all the `attr.docs.unreleased` attributes in all `.fbs` files, followed b
 Remove the speculative link markers (`?speculative-link`).
 
 Update the [python support table](./rerun_py/docs/gen_common_index.py) for the major release.
+
+Point the `redirect:` in [`docs/content/changelog.md`](./docs/content/changelog.md) at this release's changeset.
+
+Do *not* create the next release's changeset yet: `scripts/ci/check_changelog_redirect.py` requires the
+newest `changeset-0-xx.md` to be the one `changelog.md` redirects to, so an empty changeset for an unreleased
+version would fail CI. The next changeset is created from
+[`docs/content/changelog/_template.md`](./docs/content/changelog/_template.md) when that release is assembled
+(step 4). Until then the now-empty [`upcoming/`](./docs/content/changelog/upcoming) folder collects the next
+release's per-PR entries.
 
 Once you're done, commit and push onto the release branch.
 

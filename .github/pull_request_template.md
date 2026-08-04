@@ -18,9 +18,20 @@ Include links to any related issues/PRs in a bulleted list, for example:
 
 <!--
 Make sure the PR title and labels are set to maximize their usefulness for the CHANGELOG,
-and our `git log`.
+and our `git log`. Every PR needs exactly one of these changelog labels:
 
-If you have noticed any breaking changes, include them in the migration guide.
+* `exclude from changelog`: not user-facing — kept out of the changelog.
+* `🪳 bug`: a bug fix — auto-added to the changelog from this PR's title.
+* `📉 performance`: a performance improvement — auto-added to the changelog from this PR's title.
+* `include in changelog`: a user-facing change — add a hand-written entry by copying
+  `docs/content/changelog/upcoming/_template.md` to `upcoming/<short-slug>.md` (one file per
+  PR avoids conflicts), including a migration guide (breaking changes), screenshot/GIF (visual
+  features), and docs/example links (new features). A `TODO(name): …` placeholder is fine, but
+  it blocks the release.
+
+It's fine to combine `🪳 bug` with `exclude from changelog` for a fix to a bug that was never
+released (e.g. introduced earlier in the same release cycle) — users never saw it, so it doesn't
+belong in the changelog.
 
 We track various metrics at <https://build.rerun.io>.
 

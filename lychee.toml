@@ -77,6 +77,7 @@ exclude_path = [
   "crates/utils/re_analytics/src/event.rs", # Contains test with malformed urls
   "crates/utils/re_perf_telemetry/src/telemetry.rs", # Contains `parse_rerun_endpoint` docs/tests with fake `rerun://host…` URLs
   "crates/viewer/re_viewer/src/reflection/mod.rs", # Checker struggles how links from examples are escaped here. They are all checked elsewhere, so not an issue.
+  "docs/content/changelog/upcoming", # Transient per-PR changeset entries; their relative links resolve from changelog/ once merged at release, and the merged changeset is link-checked then.
   "docs/snippets/INDEX.md", # The snippet index is guaranteed should be correct by design.
   "scripts/lint.py", # Contains url-matching regexes that aren't actual urls
   "scripts/screenshot_compare/assets/templates/",
@@ -178,6 +179,10 @@ exclude = [
   'https://www.shadertoy.com/*', # 403 on CI
   'https://www.tensorflow.org/*', # tensorflow.org apparently blocks CI.
   'https://www.unicode.org/license.txt', # Gives network error on CI.
+
+  # `CHANGELOG.md` links to a release's changeset page, which only goes live with the docs deploy
+  # that follows the release — so the newest links 404 until then.
+  'https://rerun.io/docs/changelog/changeset-.*',
 
   # Need GitHub login.
   'https://github.com/rerun-io/landing',

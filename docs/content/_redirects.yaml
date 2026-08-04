@@ -81,6 +81,8 @@ reference/mcap/layers-explained: concepts/logging-and-ingestion/mcap/decoders-ex
 reference/mcap/decoders-explained: concepts/logging-and-ingestion/mcap/decoders-explained
 reference/mcap/message-formats: concepts/logging-and-ingestion/mcap/message-formats
 reference/migration-0-9: reference/migration/migration-0-9
+reference/migration/migration-0-34: changelog/changeset-0-34
+reference/migration/migration-0-35: changelog/changeset-0-35
 reference/sdk-micro-batching: reference/sdk/micro-batching
 reference/sdk-operating-modes: reference/sdk/operating-modes
 reference/video: concepts/logging-and-ingestion/video
