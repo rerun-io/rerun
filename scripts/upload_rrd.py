@@ -90,7 +90,8 @@ class Uploader:
 
 def data_hash(data: bytes) -> str:
     """Compute a sha1 hash digest of some data."""
-    return hashlib.sha1(data).hexdigest()
+    # Content digest for upload deduplication, not a security primitive.
+    return hashlib.sha1(data, usedforsecurity=False).hexdigest()
 
 
 DESCRIPTION = """Upload an .rrd to static.rerun.io.

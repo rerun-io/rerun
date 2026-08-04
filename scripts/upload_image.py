@@ -313,13 +313,14 @@ class Uploader:
 
 def data_hash(data: bytes) -> str:
     """Compute a sha1 hash digest of some data."""
-    return hashlib.sha1(data).hexdigest()
+    # Content digest for upload deduplication, not a security primitive.
+    return hashlib.sha1(data, usedforsecurity=False).hexdigest()
 
 
 def download_file(url: str, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     logging.info("Downloading %s to %s", url, path)
-    response = requests.get(url, stream=True)
+    response = requests.get(url, stream=True, timeout=30)
     with tqdm.tqdm.wrapattr(
         open(path, "wb"),
         "write",

@@ -109,7 +109,7 @@ for event in ["crash-panic", "crash-signal"]:
         params["after"] = args.date_after_included
     headers = {"Authorization": f"Bearer {personal_api_key}"}
 
-    response = requests.get(url, headers=headers, params=params)
+    response = requests.get(url, headers=headers, params=params, timeout=30)
 
     if response.status_code != 200:
         print("Request failed with status code:", response.status_code)

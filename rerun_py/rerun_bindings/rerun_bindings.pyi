@@ -648,7 +648,8 @@ class GrpcServerSink:
 
     def __init__(
         self,
-        bind_ip: str = "0.0.0.0",
+        # Binding all interfaces is the intended default; see `rerun.server.Server`.
+        bind_ip: str = "0.0.0.0",  # noqa: S104
         port: int = 9876,
         *,
         server_memory_limit: str = "1GiB",

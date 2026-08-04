@@ -51,7 +51,7 @@ SNIPPETS_DIR = RERUN_DIR / "docs" / "snippets"
 
 def measure_thumbnail(url: str) -> Any:
     """Downloads `url` and returns its width and height."""
-    response = requests.get(url)
+    response = requests.get(url, timeout=30)
     response.raise_for_status()
     image = Image.open(BytesIO(response.content))
     return image.size
