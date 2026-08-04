@@ -34,6 +34,8 @@ class SpatialInformation(Archetype):
         self: Any,
         target_frame: datatypes.Utf8Like,
         *,
+        transform_resolution_mode: blueprint_components.TransformResolutionModeLike | None = None,
+        transform_time_component: datatypes.Utf8Like | None = None,
         show_bounding_box: datatypes.BoolLike | None = None,
         show_axes: datatypes.BoolLike | None = None,
         axes: datatypes.ViewCoordinatesLike | None = None,
@@ -47,6 +49,15 @@ class SpatialInformation(Archetype):
             The target reference frame for all transformations.
 
             Defaults to the coordinate frame used by the space origin entity.
+        transform_resolution_mode:
+            Determines which time is used to resolve entity transforms.
+
+            Defaults to resolving every transform at the global time cursor.
+        transform_time_component:
+            The local component identifier whose timestamp anchors component-time transform resolution.
+
+            If this component isn't configured or isn't present on an entity, that entity falls back to
+            transform resolution at the global time cursor.
         show_bounding_box:
             Whether the bounding box should be shown.
         show_axes:
@@ -72,7 +83,12 @@ class SpatialInformation(Archetype):
         # You can define your own __init__ function as a member of SpatialInformationExt in spatial_information_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
             self.__attrs_init__(
-                target_frame=target_frame, show_bounding_box=show_bounding_box, show_axes=show_axes, axes=axes
+                target_frame=target_frame,
+                transform_resolution_mode=transform_resolution_mode,
+                transform_time_component=transform_time_component,
+                show_bounding_box=show_bounding_box,
+                show_axes=show_axes,
+                axes=axes,
             )
             return
         self.__attrs_clear__()
@@ -81,6 +97,8 @@ class SpatialInformation(Archetype):
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
             target_frame=None,
+            transform_resolution_mode=None,
+            transform_time_component=None,
             show_bounding_box=None,
             show_axes=None,
             axes=None,
@@ -99,6 +117,8 @@ class SpatialInformation(Archetype):
         *,
         clear_unset: bool = False,
         target_frame: datatypes.Utf8Like | None = None,
+        transform_resolution_mode: blueprint_components.TransformResolutionModeLike | None = None,
+        transform_time_component: datatypes.Utf8Like | None = None,
         show_bounding_box: datatypes.BoolLike | None = None,
         show_axes: datatypes.BoolLike | None = None,
         axes: datatypes.ViewCoordinatesLike | None = None,
@@ -114,6 +134,15 @@ class SpatialInformation(Archetype):
             The target reference frame for all transformations.
 
             Defaults to the coordinate frame used by the space origin entity.
+        transform_resolution_mode:
+            Determines which time is used to resolve entity transforms.
+
+            Defaults to resolving every transform at the global time cursor.
+        transform_time_component:
+            The local component identifier whose timestamp anchors component-time transform resolution.
+
+            If this component isn't configured or isn't present on an entity, that entity falls back to
+            transform resolution at the global time cursor.
         show_bounding_box:
             Whether the bounding box should be shown.
         show_axes:
@@ -140,6 +169,8 @@ class SpatialInformation(Archetype):
         with catch_and_log_exceptions(context=cls.__name__):
             kwargs = {
                 "target_frame": target_frame,
+                "transform_resolution_mode": transform_resolution_mode,
+                "transform_time_component": transform_time_component,
                 "show_bounding_box": show_bounding_box,
                 "show_axes": show_axes,
                 "axes": axes,
@@ -165,6 +196,22 @@ class SpatialInformation(Archetype):
             "SpatialInformation:target_frame",
             archetype=SpatialInformation.NAME,
             component_type=components.TransformFrameIdBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_transform_resolution_mode() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "SpatialInformation:transform_resolution_mode",
+            archetype=SpatialInformation.NAME,
+            component_type=blueprint_components.TransformResolutionModeBatch._COMPONENT_TYPE,
+        )
+
+    @staticmethod
+    def descriptor_transform_time_component() -> ComponentDescriptor:
+        return ComponentDescriptor(
+            "SpatialInformation:transform_time_component",
+            archetype=SpatialInformation.NAME,
+            component_type=blueprint_components.TransformTimeComponentBatch._COMPONENT_TYPE,
         )
 
     @staticmethod
@@ -199,6 +246,29 @@ class SpatialInformation(Archetype):
     # The target reference frame for all transformations.
     #
     # Defaults to the coordinate frame used by the space origin entity.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    transform_resolution_mode: blueprint_components.TransformResolutionModeBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=blueprint_components.TransformResolutionModeBatch._converter,  # type: ignore[misc]
+    )
+    # Determines which time is used to resolve entity transforms.
+    #
+    # Defaults to resolving every transform at the global time cursor.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    transform_time_component: blueprint_components.TransformTimeComponentBatch | None = field(
+        metadata={"component": True},
+        default=None,
+        converter=blueprint_components.TransformTimeComponentBatch._converter,  # type: ignore[misc]
+    )
+    # The local component identifier whose timestamp anchors component-time transform resolution.
+    #
+    # If this component isn't configured or isn't present on an entity, that entity falls back to
+    # transform resolution at the global time cursor.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

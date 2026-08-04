@@ -1,0 +1,16 @@
+namespace rerun.blueprint.components;
+
+/// The local component identifier whose timestamp anchors transform resolution for an entity.
+///
+/// For example, `Points3D:positions` anchors a point cloud's transform to the time at which its
+/// positions were logged.
+table TransformTimeComponent (
+  "attr.arrow.transparent",
+  "attr.python.aliases": "str",
+  "attr.python.array_aliases": "str | Sequence[str]",
+  "attr.rust.derive": "PartialEq, Eq, PartialOrd, Ord, Hash",
+  "attr.rust.repr": "transparent",
+  "attr.rerun.scope": "blueprint"
+) {
+    value: rerun.datatypes.Utf8 (order: 100);
+}

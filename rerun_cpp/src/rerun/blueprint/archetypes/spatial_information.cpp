@@ -11,6 +11,16 @@ namespace rerun::blueprint::archetypes {
         archetype.target_frame =
             ComponentBatch::empty<rerun::components::TransformFrameId>(Descriptor_target_frame)
                 .value_or_throw();
+        archetype.transform_resolution_mode =
+            ComponentBatch::empty<rerun::blueprint::components::TransformResolutionMode>(
+                Descriptor_transform_resolution_mode
+            )
+                .value_or_throw();
+        archetype.transform_time_component =
+            ComponentBatch::empty<rerun::blueprint::components::TransformTimeComponent>(
+                Descriptor_transform_time_component
+            )
+                .value_or_throw();
         archetype.show_bounding_box = ComponentBatch::empty<rerun::blueprint::components::Enabled>(
                                           Descriptor_show_bounding_box
         )
@@ -25,9 +35,18 @@ namespace rerun::blueprint::archetypes {
 
     Collection<ComponentColumn> SpatialInformation::columns(const Collection<uint32_t>& lengths_) {
         std::vector<ComponentColumn> columns;
-        columns.reserve(4);
+        columns.reserve(6);
         if (target_frame.has_value()) {
             columns.push_back(target_frame.value().partitioned(lengths_).value_or_throw());
+        }
+        if (transform_resolution_mode.has_value()) {
+            columns.push_back(
+                transform_resolution_mode.value().partitioned(lengths_).value_or_throw()
+            );
+        }
+        if (transform_time_component.has_value()) {
+            columns.push_back(transform_time_component.value().partitioned(lengths_).value_or_throw(
+            ));
         }
         if (show_bounding_box.has_value()) {
             columns.push_back(show_bounding_box.value().partitioned(lengths_).value_or_throw());
@@ -44,6 +63,12 @@ namespace rerun::blueprint::archetypes {
     Collection<ComponentColumn> SpatialInformation::columns() {
         if (target_frame.has_value()) {
             return columns(std::vector<uint32_t>(target_frame.value().length(), 1));
+        }
+        if (transform_resolution_mode.has_value()) {
+            return columns(std::vector<uint32_t>(transform_resolution_mode.value().length(), 1));
+        }
+        if (transform_time_component.has_value()) {
+            return columns(std::vector<uint32_t>(transform_time_component.value().length(), 1));
         }
         if (show_bounding_box.has_value()) {
             return columns(std::vector<uint32_t>(show_bounding_box.value().length(), 1));
@@ -66,10 +91,16 @@ namespace rerun {
         ) {
         using namespace blueprint::archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(4);
+        cells.reserve(6);
 
         if (archetype.target_frame.has_value()) {
             cells.push_back(archetype.target_frame.value());
+        }
+        if (archetype.transform_resolution_mode.has_value()) {
+            cells.push_back(archetype.transform_resolution_mode.value());
+        }
+        if (archetype.transform_time_component.has_value()) {
+            cells.push_back(archetype.transform_time_component.value());
         }
         if (archetype.show_bounding_box.has_value()) {
             cells.push_back(archetype.show_bounding_box.value());

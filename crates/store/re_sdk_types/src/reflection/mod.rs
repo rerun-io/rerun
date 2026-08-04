@@ -514,6 +514,28 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <TransformResolutionMode as Component>::name(),
+            ComponentReflection {
+                docstring_md: "Determines which time is used to resolve entity transforms in a spatial view.",
+                deprecation_summary: None,
+                custom_placeholder: Some(TransformResolutionMode::default().to_arrow()?),
+                datatype: TransformResolutionMode::arrow_datatype(),
+                is_enum: true,
+                verify_arrow_array: TransformResolutionMode::verify_arrow_array,
+            },
+        ),
+        (
+            <TransformTimeComponent as Component>::name(),
+            ComponentReflection {
+                docstring_md: "The local component identifier whose timestamp anchors transform resolution for an entity.\n\nFor example, `Points3D:positions` anchors a point cloud's transform to the time at which its\npositions were logged.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: None,
+                datatype: TransformTimeComponent::arrow_datatype(),
+                is_enum: false,
+                verify_arrow_array: TransformTimeComponent::verify_arrow_array,
+            },
+        ),
+        (
             <ViewClass as Component>::name(),
             ComponentReflection {
                 docstring_md: "The class identifier of view, e.g. `\"2D\"`, `\"TextLog\"`, ….\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
@@ -4648,6 +4670,20 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         display_name: "Target frame",
                         component_type: "rerun.components.TransformFrameId".into(),
                         docstring_md: "The target reference frame for all transformations.\n\nDefaults to the coordinate frame used by the space origin entity.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "transform_resolution_mode",
+                        display_name: "Transform resolution mode",
+                        component_type: "rerun.blueprint.components.TransformResolutionMode".into(),
+                        docstring_md: "Determines which time is used to resolve entity transforms.\n\nDefaults to resolving every transform at the global time cursor.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "transform_time_component",
+                        display_name: "Transform time component",
+                        component_type: "rerun.blueprint.components.TransformTimeComponent".into(),
+                        docstring_md: "The local component identifier whose timestamp anchors component-time transform resolution.\n\nIf this component isn't configured or isn't present on an entity, that entity falls back to\ntransform resolution at the global time cursor.",
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {

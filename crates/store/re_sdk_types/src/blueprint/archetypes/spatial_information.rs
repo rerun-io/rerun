@@ -32,6 +32,17 @@ pub struct SpatialInformation {
     /// Defaults to the coordinate frame used by the space origin entity.
     pub target_frame: Option<SerializedComponentBatch>,
 
+    /// Determines which time is used to resolve entity transforms.
+    ///
+    /// Defaults to resolving every transform at the global time cursor.
+    pub transform_resolution_mode: Option<SerializedComponentBatch>,
+
+    /// The local component identifier whose timestamp anchors component-time transform resolution.
+    ///
+    /// If this component isn't configured or isn't present on an entity, that entity falls back to
+    /// transform resolution at the global time cursor.
+    pub transform_time_component: Option<SerializedComponentBatch>,
+
     /// Whether the bounding box should be shown.
     pub show_bounding_box: Option<SerializedComponentBatch>,
 
@@ -66,6 +77,34 @@ impl SpatialInformation {
                 archetype: Some("rerun.blueprint.archetypes.SpatialInformation".into()),
                 component: "SpatialInformation:target_frame".into(),
                 component_type: Some("rerun.components.TransformFrameId".into()),
+            });
+        (*DESCRIPTOR).clone()
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::transform_resolution_mode`].
+    ///
+    /// The corresponding component is [`crate::blueprint::components::TransformResolutionMode`].
+    #[inline]
+    pub fn descriptor_transform_resolution_mode() -> ComponentDescriptor {
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.SpatialInformation".into()),
+                component: "SpatialInformation:transform_resolution_mode".into(),
+                component_type: Some("rerun.blueprint.components.TransformResolutionMode".into()),
+            });
+        (*DESCRIPTOR).clone()
+    }
+
+    /// Returns the [`ComponentDescriptor`] for [`Self::transform_time_component`].
+    ///
+    /// The corresponding component is [`crate::blueprint::components::TransformTimeComponent`].
+    #[inline]
+    pub fn descriptor_transform_time_component() -> ComponentDescriptor {
+        static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
+            std::sync::LazyLock::new(|| ComponentDescriptor {
+                archetype: Some("rerun.blueprint.archetypes.SpatialInformation".into()),
+                component: "SpatialInformation:transform_time_component".into(),
+                component_type: Some("rerun.blueprint.components.TransformTimeComponent".into()),
             });
         (*DESCRIPTOR).clone()
     }
@@ -119,20 +158,24 @@ static REQUIRED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
 static RECOMMENDED_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 0usize]> =
     std::sync::LazyLock::new(|| []);
 
-static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 4usize]> =
+static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 6usize]> =
     std::sync::LazyLock::new(|| {
         [
             SpatialInformation::descriptor_target_frame(),
+            SpatialInformation::descriptor_transform_resolution_mode(),
+            SpatialInformation::descriptor_transform_time_component(),
             SpatialInformation::descriptor_show_bounding_box(),
             SpatialInformation::descriptor_show_axes(),
             SpatialInformation::descriptor_axes(),
         ]
     });
 
-static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 4usize]> =
+static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 6usize]> =
     std::sync::LazyLock::new(|| {
         [
             SpatialInformation::descriptor_target_frame(),
+            SpatialInformation::descriptor_transform_resolution_mode(),
+            SpatialInformation::descriptor_transform_time_component(),
             SpatialInformation::descriptor_show_bounding_box(),
             SpatialInformation::descriptor_show_axes(),
             SpatialInformation::descriptor_axes(),
@@ -140,8 +183,8 @@ static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 4usize]> =
     });
 
 impl SpatialInformation {
-    /// The total number of components in the archetype: 0 required, 0 recommended, 4 optional
-    pub const NUM_COMPONENTS: usize = 4usize;
+    /// The total number of components in the archetype: 0 required, 0 recommended, 6 optional
+    pub const NUM_COMPONENTS: usize = 6usize;
 }
 
 impl ::re_types_core::Archetype for SpatialInformation {
@@ -190,6 +233,22 @@ impl ::re_types_core::Archetype for SpatialInformation {
             .map(|array| {
                 SerializedComponentBatch::new(array.clone(), Self::descriptor_target_frame())
             });
+        let transform_resolution_mode = arrays_by_descr
+            .get(&Self::descriptor_transform_resolution_mode())
+            .map(|array| {
+                SerializedComponentBatch::new(
+                    array.clone(),
+                    Self::descriptor_transform_resolution_mode(),
+                )
+            });
+        let transform_time_component = arrays_by_descr
+            .get(&Self::descriptor_transform_time_component())
+            .map(|array| {
+                SerializedComponentBatch::new(
+                    array.clone(),
+                    Self::descriptor_transform_time_component(),
+                )
+            });
         let show_bounding_box = arrays_by_descr
             .get(&Self::descriptor_show_bounding_box())
             .map(|array| {
@@ -205,6 +264,8 @@ impl ::re_types_core::Archetype for SpatialInformation {
             .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_axes()));
         Ok(Self {
             target_frame,
+            transform_resolution_mode,
+            transform_time_component,
             show_bounding_box,
             show_axes,
             axes,
@@ -218,6 +279,8 @@ impl ::re_types_core::AsComponents for SpatialInformation {
         use ::re_types_core::Archetype as _;
         [
             self.target_frame.clone(),
+            self.transform_resolution_mode.clone(),
+            self.transform_time_component.clone(),
             self.show_bounding_box.clone(),
             self.show_axes.clone(),
             self.axes.clone(),
@@ -236,6 +299,8 @@ impl SpatialInformation {
     pub fn new(target_frame: impl Into<crate::components::TransformFrameId>) -> Self {
         Self {
             target_frame: try_serialize_field(Self::descriptor_target_frame(), [target_frame]),
+            transform_resolution_mode: None,
+            transform_time_component: None,
             show_bounding_box: None,
             show_axes: None,
             axes: None,
@@ -256,6 +321,14 @@ impl SpatialInformation {
             target_frame: Some(SerializedComponentBatch::new(
                 crate::components::TransformFrameId::arrow_empty(),
                 Self::descriptor_target_frame(),
+            )),
+            transform_resolution_mode: Some(SerializedComponentBatch::new(
+                crate::blueprint::components::TransformResolutionMode::arrow_empty(),
+                Self::descriptor_transform_resolution_mode(),
+            )),
+            transform_time_component: Some(SerializedComponentBatch::new(
+                crate::blueprint::components::TransformTimeComponent::arrow_empty(),
+                Self::descriptor_transform_time_component(),
             )),
             show_bounding_box: Some(SerializedComponentBatch::new(
                 crate::blueprint::components::Enabled::arrow_empty(),
@@ -281,6 +354,37 @@ impl SpatialInformation {
         target_frame: impl Into<crate::components::TransformFrameId>,
     ) -> Self {
         self.target_frame = try_serialize_field(Self::descriptor_target_frame(), [target_frame]);
+        self
+    }
+
+    /// Determines which time is used to resolve entity transforms.
+    ///
+    /// Defaults to resolving every transform at the global time cursor.
+    #[inline]
+    pub fn with_transform_resolution_mode(
+        mut self,
+        transform_resolution_mode: impl Into<crate::blueprint::components::TransformResolutionMode>,
+    ) -> Self {
+        self.transform_resolution_mode = try_serialize_field(
+            Self::descriptor_transform_resolution_mode(),
+            [transform_resolution_mode],
+        );
+        self
+    }
+
+    /// The local component identifier whose timestamp anchors component-time transform resolution.
+    ///
+    /// If this component isn't configured or isn't present on an entity, that entity falls back to
+    /// transform resolution at the global time cursor.
+    #[inline]
+    pub fn with_transform_time_component(
+        mut self,
+        transform_time_component: impl Into<crate::blueprint::components::TransformTimeComponent>,
+    ) -> Self {
+        self.transform_time_component = try_serialize_field(
+            Self::descriptor_transform_time_component(),
+            [transform_time_component],
+        );
         self
     }
 

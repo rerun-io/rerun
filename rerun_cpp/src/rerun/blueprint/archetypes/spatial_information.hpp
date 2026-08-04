@@ -4,6 +4,8 @@
 #pragma once
 
 #include "../../blueprint/components/enabled.hpp"
+#include "../../blueprint/components/transform_resolution_mode.hpp"
+#include "../../blueprint/components/transform_time_component.hpp"
 #include "../../collection.hpp"
 #include "../../component_batch.hpp"
 #include "../../component_column.hpp"
@@ -26,6 +28,17 @@ namespace rerun::blueprint::archetypes {
         ///
         /// Defaults to the coordinate frame used by the space origin entity.
         std::optional<ComponentBatch> target_frame;
+
+        /// Determines which time is used to resolve entity transforms.
+        ///
+        /// Defaults to resolving every transform at the global time cursor.
+        std::optional<ComponentBatch> transform_resolution_mode;
+
+        /// The local component identifier whose timestamp anchors component-time transform resolution.
+        ///
+        /// If this component isn't configured or isn't present on an entity, that entity falls back to
+        /// transform resolution at the global time cursor.
+        std::optional<ComponentBatch> transform_time_component;
 
         /// Whether the bounding box should be shown.
         std::optional<ComponentBatch> show_bounding_box;
@@ -58,6 +71,16 @@ namespace rerun::blueprint::archetypes {
         static constexpr auto Descriptor_target_frame = ComponentDescriptor(
             ArchetypeName, "SpatialInformation:target_frame",
             Loggable<rerun::components::TransformFrameId>::ComponentType
+        );
+        /// `ComponentDescriptor` for the `transform_resolution_mode` field.
+        static constexpr auto Descriptor_transform_resolution_mode = ComponentDescriptor(
+            ArchetypeName, "SpatialInformation:transform_resolution_mode",
+            Loggable<rerun::blueprint::components::TransformResolutionMode>::ComponentType
+        );
+        /// `ComponentDescriptor` for the `transform_time_component` field.
+        static constexpr auto Descriptor_transform_time_component = ComponentDescriptor(
+            ArchetypeName, "SpatialInformation:transform_time_component",
+            Loggable<rerun::blueprint::components::TransformTimeComponent>::ComponentType
         );
         /// `ComponentDescriptor` for the `show_bounding_box` field.
         static constexpr auto Descriptor_show_bounding_box = ComponentDescriptor(
@@ -104,6 +127,35 @@ namespace rerun::blueprint::archetypes {
         ) && {
             target_frame = ComponentBatch::from_loggable(_target_frame, Descriptor_target_frame)
                                .value_or_throw();
+            return std::move(*this);
+        }
+
+        /// Determines which time is used to resolve entity transforms.
+        ///
+        /// Defaults to resolving every transform at the global time cursor.
+        SpatialInformation with_transform_resolution_mode(
+            const rerun::blueprint::components::TransformResolutionMode& _transform_resolution_mode
+        ) && {
+            transform_resolution_mode = ComponentBatch::from_loggable(
+                                            _transform_resolution_mode,
+                                            Descriptor_transform_resolution_mode
+            )
+                                            .value_or_throw();
+            return std::move(*this);
+        }
+
+        /// The local component identifier whose timestamp anchors component-time transform resolution.
+        ///
+        /// If this component isn't configured or isn't present on an entity, that entity falls back to
+        /// transform resolution at the global time cursor.
+        SpatialInformation with_transform_time_component(
+            const rerun::blueprint::components::TransformTimeComponent& _transform_time_component
+        ) && {
+            transform_time_component = ComponentBatch::from_loggable(
+                                           _transform_time_component,
+                                           Descriptor_transform_time_component
+            )
+                                           .value_or_throw();
             return std::move(*this);
         }
 

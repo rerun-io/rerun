@@ -43,6 +43,8 @@ include "./components/time_int.fbs";
 include "./components/time_range.fbs";
 include "./components/timeline_column.fbs";
 include "./components/timeline_name.fbs";
+include "./components/transform_resolution_mode.fbs";
+include "./components/transform_time_component.fbs";
 include "./components/view_class.fbs";
 include "./components/view_fit.fbs";
 include "./components/view_maximized.fbs";

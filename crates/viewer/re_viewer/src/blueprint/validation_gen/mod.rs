@@ -47,6 +47,8 @@ pub use re_sdk_types::blueprint::components::TimeInt;
 pub use re_sdk_types::blueprint::components::TimeRange;
 pub use re_sdk_types::blueprint::components::TimelineColumn;
 pub use re_sdk_types::blueprint::components::TimelineName;
+pub use re_sdk_types::blueprint::components::TransformResolutionMode;
+pub use re_sdk_types::blueprint::components::TransformTimeComponent;
 pub use re_sdk_types::blueprint::components::ViewClass;
 pub use re_sdk_types::blueprint::components::ViewFit;
 pub use re_sdk_types::blueprint::components::ViewMaximized;
@@ -106,6 +108,8 @@ pub fn is_valid_blueprint(blueprint: &EntityDb) -> bool {
         && validate_component::<TimeRange>(blueprint)
         && validate_component::<TimelineColumn>(blueprint)
         && validate_component::<TimelineName>(blueprint)
+        && validate_component::<TransformResolutionMode>(blueprint)
+        && validate_component::<TransformTimeComponent>(blueprint)
         && validate_component::<ViewClass>(blueprint)
         && validate_component::<ViewFit>(blueprint)
         && validate_component::<ViewMaximized>(blueprint)

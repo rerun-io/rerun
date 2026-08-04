@@ -5,7 +5,7 @@ use nohash_hasher::{IntMap, IntSet};
 use re_chunk_store::{LatestAtQuery, MissingChunkReporter};
 use re_log_types::{EntityPath, EntityPathHash};
 use re_sdk_types::components::ImagePlaneDistance;
-use re_sdk_types::{ArchetypeName, archetypes, blueprint};
+use re_sdk_types::{ArchetypeName, ComponentIdentifier, archetypes, blueprint};
 use re_tf::{TransformFrameId, TransformFrameIdHash, TreeTransform};
 use re_view::{
     BlueprintResolvedLatestAtResults, DataResultQuery as _, latest_at_with_blueprint_resolved_data,
@@ -248,12 +248,50 @@ impl ViewContextSystem for TransformTreeContext {
         self.entity_transform_id_mapping =
             EntityTransformIdMapping::new(ctx, &frame_id_results, query.space_origin);
 
+        let spatial_info_prop =
+            ViewProperty::from_archetype::<blueprint::archetypes::SpatialInformation>(ctx);
+
+        let transform_resolution_mode = spatial_info_prop
+            .component_or_empty::<blueprint::components::TransformResolutionMode>(
+                blueprint::archetypes::SpatialInformation::descriptor_transform_resolution_mode()
+                    .component,
+            )
+            .unwrap_or_else(|err| {
+                re_log::error_once!("Failed to query transform resolution mode: {err}");
+                None
+            })
+            .unwrap_or_default();
+
+        let transform_time_component = if transform_resolution_mode
+            == blueprint::components::TransformResolutionMode::ComponentTime
+        {
+            spatial_info_prop
+                .component_or_empty::<blueprint::components::TransformTimeComponent>(
+                    blueprint::archetypes::SpatialInformation::descriptor_transform_time_component(
+                    )
+                    .component,
+                )
+                .unwrap_or_else(|err| {
+                    re_log::error_once!("Failed to query transform time component: {err}");
+                    None
+                })
+                .and_then(|component| {
+                    ComponentIdentifier::try_new(component.as_str())
+                        .map_err(|err| {
+                            re_log::warn_once!(
+                                "Ignoring invalid transform time component {:?}: {err}",
+                                component.as_str()
+                            );
+                        })
+                        .ok()
+                })
+        } else {
+            None
+        };
+
         // Target frame - check for blueprint override first, otherwise use space origin's coordinate frame.
         self.target_frame = {
             re_tracing::profile_scope!("target_frame");
-
-            let spatial_info_prop =
-                ViewProperty::from_archetype::<blueprint::archetypes::SpatialInformation>(ctx);
 
             let target_frame_component = spatial_info_prop
                 .component_or_fallback::<TransformFrameId>(
@@ -331,10 +369,10 @@ impl ViewContextSystem for TransformTreeContext {
             };
 
             let entity_path = frame_transforms.associated_entity_path(latest_at_query.at());
-            lookup_image_plane_distance(ctx, entity_path.hash(), &latest_at_query)
+            query_image_plane_distance(ctx, entity_path.hash(), &latest_at_query)
         };
 
-        let tree_transforms_per_frame = {
+        let tree_transforms_per_frame = transform_time_component.is_none().then(|| {
             re_tracing::profile_scope!("transform_from_to");
             self.transform_forest
                 .transform_from_to(
@@ -347,7 +385,7 @@ impl ViewContextSystem for TransformTreeContext {
                     // Collect into Vec for simplicity, also bulk operating on the transform loop seems like a good idea (perf citation needed!)
                 )
                 .collect::<Vec<_>>()
-        };
+        });
 
         // TODO(andreas, grtlr): We should not re-query all those transforms. We still have them around in `tree_transforms_per_frame` (and a bit below in later `self.transform_infos`).
         // Can we instead just do another lookup indirection to `self.transform_infos`?
@@ -368,7 +406,111 @@ impl ViewContextSystem for TransformTreeContext {
             })
             .collect();
 
-        self.transform_infos = {
+        self.transform_infos = if let Some(transform_time_component) = transform_time_component {
+            re_tracing::profile_scope!("transform info lookup at component time");
+
+            let transforms = &*transforms_for_timeline;
+            let global_query = query.latest_at_query();
+            let mut transform_infos = IntMap::default();
+
+            let mut entity_frame_ids = self
+                .entity_transform_id_mapping
+                .entity_path_to_transform_frame_id
+                .iter()
+                .map(|(&entity_path_hash, &transform_frame_id_hash)| {
+                    (entity_path_hash, transform_frame_id_hash)
+                })
+                .collect::<Vec<_>>();
+            entity_frame_ids.sort_unstable_by_key(|(entity_path_hash, _)| *entity_path_hash);
+
+            for (entity_path_hash, transform_frame_id_hash) in entity_frame_ids {
+                let data_result = ctx
+                    .query_result
+                    .tree
+                    .lookup_result_by_path(entity_path_hash);
+                let entity_path = data_result
+                    .map(|data_result| &data_result.entity_path)
+                    .or_else(|| ctx.recording().entity_path_from_hash(&entity_path_hash));
+                let Some(entity_path) = entity_path else {
+                    continue;
+                };
+
+                let transform_query = transform_query_at_component_time(
+                    ctx,
+                    missing_chunk_reporter,
+                    &global_query,
+                    entity_path,
+                    transform_time_component,
+                );
+
+                let transform_frame_id_hash =
+                    data_result.map_or(transform_frame_id_hash, |data_result| {
+                        let transform_frame_id_component =
+                            archetypes::CoordinateFrame::descriptor_frame().component;
+                        let frame_results = latest_at_with_blueprint_resolved_data(
+                            ctx,
+                            None,
+                            &transform_query,
+                            data_result,
+                            [transform_frame_id_component],
+                            None,
+                        );
+                        let (frame_id, has_empty_frame) =
+                            transform_frame_id_from_results(&frame_results);
+                        if has_empty_frame {
+                            self.entity_transform_id_mapping
+                                .empty_coordinate_frames
+                                .insert(entity_path_hash);
+                        }
+                        frame_id
+                    });
+
+                let transform_forest =
+                    caches.memoizer(|cache: &mut TransformDatabaseStoreCache| {
+                        cache.transform_forest_for_query(ctx.recording(), &transform_query)
+                    });
+                if transform_forest.any_missing_chunks() {
+                    missing_chunk_reporter.report_missing_chunk();
+                }
+
+                let lookup_image_plane_distance =
+                    |transform_frame_id_hash: TransformFrameIdHash| -> f64 {
+                        let Some(frame_transforms) =
+                            transforms.frame_transforms(transform_frame_id_hash)
+                        else {
+                            re_log::debug_panic!(
+                                "No tree transforms found for frame id hash {transform_frame_id_hash:?} for which we're trying to lookup a pinhole image plane distance."
+                            );
+                            return 1.0;
+                        };
+
+                        let entity_path =
+                            frame_transforms.associated_entity_path(transform_query.at());
+                        query_image_plane_distance(ctx, entity_path.hash(), &transform_query)
+                    };
+
+                let (_, tree_transform) = transform_forest
+                    .transform_from_to(
+                        self.target_frame,
+                        std::iter::once(transform_frame_id_hash),
+                        &lookup_image_plane_distance,
+                    )
+                    .next()
+                    .expect("one transform result for one requested frame");
+
+                let transform_info = map_tree_transform_to_transform_info(
+                    ctx,
+                    missing_chunk_reporter,
+                    &tree_transform,
+                    transforms,
+                    &transform_query,
+                    &entity_path_hash,
+                );
+                transform_infos.insert(entity_path_hash, transform_info);
+            }
+
+            transform_infos
+        } else {
             re_tracing::profile_scope!("transform info lookup");
 
             let transforms = &*transforms_for_timeline;
@@ -376,6 +518,7 @@ impl ViewContextSystem for TransformTreeContext {
             let latest_at_query = &query.latest_at_query();
 
             tree_transforms_per_frame
+                .expect("global transform resolution computes a current-time forest")
                 .into_iter()
                 .filter_map(|(transform_frame_id_hash, tree_transform)| {
                     let entity_paths_for_frame = self
@@ -410,6 +553,32 @@ impl ViewContextSystem for TransformTreeContext {
                     .pinhole_tree_root_info(info.root)
                     .map(|_pinhole_info| info.root)
             });
+    }
+}
+
+fn transform_query_at_component_time(
+    ctx: &ViewContext<'_>,
+    missing_chunk_reporter: &MissingChunkReporter,
+    global_query: &LatestAtQuery,
+    entity_path: &EntityPath,
+    component: ComponentIdentifier,
+) -> LatestAtQuery {
+    let Some(timeline) = global_query.timeline() else {
+        return global_query.clone();
+    };
+
+    let results = ctx
+        .recording()
+        .latest_at(global_query, entity_path, [component]);
+    if results.is_partial() {
+        missing_chunk_reporter.report_missing_chunk();
+    }
+
+    let (data_time, _row_id) = results.max_index();
+    if data_time.is_static() {
+        global_query.clone()
+    } else {
+        LatestAtQuery::new(timeline, data_time)
     }
 }
 
@@ -579,7 +748,7 @@ impl TransformTreeContext {
     }
 }
 
-fn lookup_image_plane_distance(
+fn query_image_plane_distance(
     ctx: &ViewContext<'_>,
     entity_path_hash: EntityPathHash,
     latest_at_query: &LatestAtQuery,
@@ -680,45 +849,11 @@ impl EntityTransformIdMapping {
         _ctx: &ViewContext<'_>,
         results: &BlueprintResolvedLatestAtResults<'_>,
     ) {
-        let transform_frame_id_component =
-            archetypes::CoordinateFrame::descriptor_frame().component;
-
         let entity_path_hash = results.entity_path().hash();
-        // Missing coordinate frames use the implicit frame derived from the entity path.
-        let fallback = || {
-            let fallback = TransformFrameIdHash::from_entity_path(results.entity_path());
-            // Make sure this is the same as the fallback provider (which is a lot slower to run)
-            re_log::debug_assert_eq!(
-                TransformFrameIdHash::new(&typed_fallback_for::<TransformFrameId>(
-                    results.query_context(),
-                    transform_frame_id_component
-                )),
-                fallback
-            );
-            fallback
-        };
-        let frame_id = match results.get_mono::<TransformFrameId>(transform_frame_id_component) {
-            None => fallback(),
-            Some(frame_id) => {
-                let is_mono = results
-                    .get_raw_cell(transform_frame_id_component)
-                    .is_some_and(|array| array.len() == 1);
-                if !is_mono {
-                    re_log::warn_once!(
-                        "Entity {:?} has multiple coordinate frame instances, which is not supported. Using the first one.",
-                        results.entity_path(),
-                    );
-                }
-
-                if frame_id.as_str().is_empty() {
-                    // Treat an empty value like an absent CoordinateFrame, but remember it so visualizers can warn.
-                    self.empty_coordinate_frames.insert(entity_path_hash);
-                    fallback()
-                } else {
-                    TransformFrameIdHash::new(&frame_id)
-                }
-            }
-        };
+        let (frame_id, has_empty_frame) = transform_frame_id_from_results(results);
+        if has_empty_frame {
+            self.empty_coordinate_frames.insert(entity_path_hash);
+        }
 
         match self.transform_frame_id_to_entity_path.entry(frame_id) {
             std::collections::hash_map::Entry::Vacant(entry) => {
@@ -733,17 +868,59 @@ impl EntityTransformIdMapping {
     }
 }
 
+fn transform_frame_id_from_results(
+    results: &BlueprintResolvedLatestAtResults<'_>,
+) -> (TransformFrameIdHash, bool) {
+    let transform_frame_id_component = archetypes::CoordinateFrame::descriptor_frame().component;
+
+    // Missing coordinate frames use the implicit frame derived from the entity path.
+    let fallback = || {
+        let fallback = TransformFrameIdHash::from_entity_path(results.entity_path());
+        // Make sure this is the same as the fallback provider (which is a lot slower to run).
+        re_log::debug_assert_eq!(
+            TransformFrameIdHash::new(&typed_fallback_for::<TransformFrameId>(
+                results.query_context(),
+                transform_frame_id_component
+            )),
+            fallback
+        );
+        fallback
+    };
+
+    let Some(frame_id) = results.get_mono::<TransformFrameId>(transform_frame_id_component) else {
+        return (fallback(), false);
+    };
+
+    let is_mono = results
+        .get_raw_cell(transform_frame_id_component)
+        .is_some_and(|array| array.len() == 1);
+    if !is_mono {
+        re_log::warn_once!(
+            "Entity {:?} has multiple coordinate frame instances, which is not supported. Using the first one.",
+            results.entity_path(),
+        );
+    }
+
+    if frame_id.as_str().is_empty() {
+        // Treat an empty value like an absent CoordinateFrame, but remember it so visualizers can warn.
+        (fallback(), true)
+    } else {
+        (TransformFrameIdHash::new(&frame_id), false)
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use re_chunk_store::MissingChunkReporter;
-    use re_log_types::{EntityPath, TimePoint};
-    use re_sdk_types::archetypes::CoordinateFrame;
+    use re_chunk_store::{MissingChunkReporter, RowId};
+    use re_log_types::{EntityPath, TimePoint, Timeline};
+    use re_sdk_types::archetypes::{CoordinateFrame, Points3D, Transform3D};
+    use re_sdk_types::blueprint::components::{TransformResolutionMode, TransformTimeComponent};
     use re_test_context::TestContext;
     use re_test_viewport::TestContextExt as _;
     use re_tf::{TransformFrameId, TransformFrameIdHash};
     use re_viewer_context::{
-        BlueprintContext as _, RecommendedView, ViewClass as _, ViewClassExt as _,
-        ViewContextSystem as _,
+        BlueprintContext as _, RecommendedView, TimeControlCommand, ViewClass as _,
+        ViewClassExt as _, ViewContextSystem as _,
     };
     use re_viewport_blueprint::{ViewBlueprint, ViewContents, ViewProperty};
 
@@ -966,6 +1143,186 @@ mod tests {
                     tree_context.lookup_frame_id(tree_context.target_frame())
                 );
             }
+        });
+    }
+
+    #[test]
+    fn component_time_resolution_freezes_transform_at_payload_time() {
+        let mut test_context = TestContext::new_with_view_class::<SpatialView3D>();
+        let timeline = Timeline::new_sequence("time");
+        let time_zero = TimePoint::from([(timeline, 0)]);
+        let time_one = TimePoint::from([(timeline, 1)]);
+
+        test_context.log_entity("mouse", |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                TimePoint::STATIC,
+                &CoordinateFrame::new("world_frame"),
+            )
+        });
+        test_context.log_entity("mouse", |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                time_zero.clone(),
+                &Points3D::new([[0.0, 0.0, 0.0]]),
+            )
+        });
+        test_context.log_entity("dynamic_mouse", |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                time_zero.clone(),
+                &CoordinateFrame::new("world_frame"),
+            )
+        });
+        test_context.log_entity("dynamic_mouse", |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                time_zero.clone(),
+                &Points3D::new([[0.0, 0.0, 0.0]]),
+            )
+        });
+        test_context.log_entity("dynamic_mouse", |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                time_one.clone(),
+                &CoordinateFrame::new("disconnected_frame"),
+            )
+        });
+        test_context.log_entity("cat", |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                TimePoint::STATIC,
+                &CoordinateFrame::new("cat_frame"),
+            )
+        });
+        test_context.log_entity("tf", |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                time_zero,
+                &Transform3D::default()
+                    .with_translation([0.0, 0.0, 0.0])
+                    .with_parent_frame("world_frame")
+                    .with_child_frame("cat_frame"),
+            )
+        });
+        test_context.log_entity("tf", |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                time_one,
+                &Transform3D::default()
+                    .with_translation([10.0, 0.0, 0.0])
+                    .with_parent_frame("world_frame")
+                    .with_child_frame("cat_frame"),
+            )
+        });
+
+        test_context.send_time_commands(
+            test_context.active_store_id(),
+            [
+                TimeControlCommand::SetActiveTimeline(*timeline.name()),
+                TimeControlCommand::SetTime(1.into()),
+            ],
+        );
+        test_context.handle_system_commands(&egui::Context::default());
+
+        let (global_view, component_time_view, missing_component_view) =
+            test_context.setup_viewport_blueprint(|ctx, blueprint| {
+                let make_view =
+                    |mode: TransformResolutionMode, time_component: Option<&str>| {
+                    let view = ViewBlueprint::new(
+                        SpatialView3D::identifier(),
+                        RecommendedView {
+                            origin: "cat".into(),
+                            query_filter: "+ /**".parse().expect("valid query filter"),
+                        },
+                    );
+                    let view_id = blueprint.add_view_at_root(view);
+                    let property = ViewProperty::from_archetype_for_view::<
+                        re_sdk_types::blueprint::archetypes::SpatialInformation,
+                    >(ctx, view_id);
+                    property.save_blueprint_component(
+                        ctx,
+                        &re_sdk_types::blueprint::archetypes::SpatialInformation::descriptor_target_frame(),
+                        &TransformFrameId::from("cat_frame"),
+                    );
+                    property.save_blueprint_component(
+                        ctx,
+                        &re_sdk_types::blueprint::archetypes::SpatialInformation::descriptor_transform_resolution_mode(),
+                        &mode,
+                    );
+                    if let Some(time_component) = time_component {
+                        property.save_blueprint_component(
+                            ctx,
+                            &re_sdk_types::blueprint::archetypes::SpatialInformation::descriptor_transform_time_component(),
+                            &TransformTimeComponent::from(time_component),
+                        );
+                    }
+                    view_id
+                };
+
+                (
+                    make_view(TransformResolutionMode::GlobalTimeCursor, None),
+                    make_view(
+                        TransformResolutionMode::ComponentTime,
+                        Some(Points3D::descriptor_positions().component.as_str()),
+                    ),
+                    make_view(
+                        TransformResolutionMode::ComponentTime,
+                        Some(Points3D::descriptor_colors().component.as_str()),
+                    ),
+                )
+            });
+
+        test_context.run_in_egui_central_panel(|ctx, _ui| {
+            let global_context = execute_transform_tree_context(&test_context, ctx, global_view);
+            let component_time_context =
+                execute_transform_tree_context(&test_context, ctx, component_time_view);
+            let missing_component_context =
+                execute_transform_tree_context(&test_context, ctx, missing_component_view);
+            let mouse = EntityPath::from("mouse").hash();
+            let dynamic_mouse = EntityPath::from("dynamic_mouse").hash();
+
+            let global = global_context
+                .target_from_entity_path(mouse)
+                .expect("mouse transform in global mode")
+                .as_ref()
+                .expect("connected global transform");
+            let component_time = component_time_context
+                .target_from_entity_path(mouse)
+                .expect("mouse transform in component-time mode")
+                .as_ref()
+                .expect("connected component-time transform");
+            let missing_component = missing_component_context
+                .target_from_entity_path(mouse)
+                .expect("mouse transform with missing trigger component")
+                .as_ref()
+                .expect("connected transform with missing trigger component");
+            let global_dynamic_mouse = global_context
+                .target_from_entity_path(dynamic_mouse)
+                .expect("dynamic mouse transform in global mode");
+            let component_time_dynamic_mouse = component_time_context
+                .target_from_entity_path(dynamic_mouse)
+                .expect("dynamic mouse transform in component-time mode")
+                .as_ref()
+                .expect("connected dynamic mouse transform at component time");
+
+            assert_eq!(
+                global.target_from_source.translation.abs(),
+                glam::DVec3::X * 10.0
+            );
+            assert_eq!(
+                component_time.target_from_source.translation,
+                glam::DVec3::ZERO
+            );
+            assert_eq!(
+                missing_component.target_from_source.translation.abs(),
+                glam::DVec3::X * 10.0
+            );
+            assert!(global_dynamic_mouse.is_err());
+            assert_eq!(
+                component_time_dynamic_mouse.target_from_source.translation,
+                glam::DVec3::ZERO
+            );
         });
     }
 }
