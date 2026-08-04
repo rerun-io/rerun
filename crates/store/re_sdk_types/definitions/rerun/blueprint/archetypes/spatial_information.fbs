@@ -9,6 +9,17 @@ table SpatialInformation (
   /// Defaults to the coordinate frame used by the space origin entity.
   target_frame: rerun.components.TransformFrameId ("attr.rerun.component_optional", order: 50);
 
+  /// Determines which time is used to resolve entity transforms.
+  ///
+  /// Defaults to resolving every transform at the global time cursor.
+  transform_resolution_mode: rerun.blueprint.components.TransformResolutionMode ("attr.rerun.component_optional", nullable, order: 60);
+
+  /// The local component identifier whose timestamp anchors component-time transform resolution.
+  ///
+  /// If this component isn't configured or isn't present on an entity, that entity falls back to
+  /// transform resolution at the global time cursor.
+  transform_time_component: rerun.blueprint.components.TransformTimeComponent ("attr.rerun.component_optional", nullable, order: 70);
+
   /// Whether the bounding box should be shown.
   // TODO(andreas): Make this an enum so the user can choose between showing bounding boxes,
   // regions of interest, or per-entity bounding boxes.

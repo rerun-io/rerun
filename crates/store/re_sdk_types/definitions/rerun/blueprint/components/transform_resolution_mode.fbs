@@ -1,0 +1,19 @@
+namespace rerun.blueprint.components;
+
+/// Determines which time is used to resolve entity transforms in a spatial view.
+enum TransformResolutionMode: ubyte (
+    "attr.rerun.scope": "blueprint"
+) {
+    /// Invalid value. Won't show up in generated types.
+    Invalid = 0,
+
+    /// Resolve all transforms at the global time cursor.
+    ///
+    /// This is Rerun's default behavior.
+    GlobalTimeCursor (default),
+
+    /// Resolve each entity's transform at the latest timestamp of a configured component.
+    ///
+    /// The component is configured by [components.TransformTimeComponent].
+    ComponentTime,
+}

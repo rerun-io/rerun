@@ -45,6 +45,13 @@ from .time_int import TimeInt, TimeIntBatch
 from .time_range import TimeRange, TimeRangeBatch
 from .timeline_column import TimelineColumn, TimelineColumnBatch
 from .timeline_name import TimelineName, TimelineNameBatch
+from .transform_resolution_mode import (
+    TransformResolutionMode,
+    TransformResolutionModeArrayLike,
+    TransformResolutionModeBatch,
+    TransformResolutionModeLike,
+)
+from .transform_time_component import TransformTimeComponent, TransformTimeComponentBatch
 from .view_class import ViewClass, ViewClassBatch
 from .view_fit import ViewFit, ViewFitArrayLike, ViewFitBatch, ViewFitLike
 from .view_maximized import ViewMaximized, ViewMaximizedBatch
@@ -164,6 +171,12 @@ __all__ = [
     "TimelineColumnBatch",
     "TimelineName",
     "TimelineNameBatch",
+    "TransformResolutionMode",
+    "TransformResolutionModeArrayLike",
+    "TransformResolutionModeBatch",
+    "TransformResolutionModeLike",
+    "TransformTimeComponent",
+    "TransformTimeComponentBatch",
     "ViewClass",
     "ViewClassBatch",
     "ViewFit",

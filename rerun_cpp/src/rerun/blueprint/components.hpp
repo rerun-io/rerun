@@ -45,6 +45,8 @@
 #include "blueprint/components/time_range.hpp"
 #include "blueprint/components/timeline_column.hpp"
 #include "blueprint/components/timeline_name.hpp"
+#include "blueprint/components/transform_resolution_mode.hpp"
+#include "blueprint/components/transform_time_component.hpp"
 #include "blueprint/components/view_class.hpp"
 #include "blueprint/components/view_fit.hpp"
 #include "blueprint/components/view_maximized.hpp"
