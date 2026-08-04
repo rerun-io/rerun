@@ -129,16 +129,19 @@ def parse_args() -> argparse.Namespace:
         "'none' reads in natural order",
     )
     iterable.add_argument(
-        "--block-size",
-        type=int,
-        default=None,
-        help="Samples per block for --shuffle block (default: --fetch-size)",
-    )
-    iterable.add_argument(
         "--shuffle-buffer-size",
         type=int,
         default=None,
-        help="Post-decode shuffle buffer (samples per worker); mixes many blocks into each batch",
+        help="Post-decode shuffle buffer for --shuffle block (samples per worker); mixes many blocks "
+        "into each batch. Holds this many decoded samples per worker, so budget "
+        "buffer_size * bytes_per_sample * num_workers of RAM",
+    )
+    iterable.add_argument(
+        "--shuffle-buffer-min-fill",
+        type=int,
+        default=None,
+        help="Samples buffered before emission starts (default: half the buffer). "
+        "This is also how long the first batch is delayed",
     )
 
     subparsers.add_parser(
@@ -152,8 +155,8 @@ def parse_args() -> argparse.Namespace:
         dataset_style="iterable",
         fetch_size=FETCH_SIZE,
         shuffle="block",
-        block_size=None,
         shuffle_buffer_size=None,
+        shuffle_buffer_min_fill=None,
     )
     return parser.parse_args()
 
@@ -198,8 +201,16 @@ def main() -> None:
     if args.dataset_style == "map":
         ds = RerunMapDataset(source=source, index="frame_index", fields=fields)
     else:
+        # Only `BlockShuffle` takes an emission buffer: its fetch order is deliberately
+        # correlated, so emission is where its batches get decorrelated. `SampleShuffle`
+        # already fetches a uniform permutation and `NoShuffle` is a deterministic baseline.
+        if args.shuffle != "block" and (args.shuffle_buffer_size or args.shuffle_buffer_min_fill):
+            raise SystemExit(f"--shuffle-buffer-* only applies to --shuffle block, not {args.shuffle!r}")
         shuffle_strategies: dict[str, ShuffleStrategy] = {
-            "block": BlockShuffle(block_size=args.block_size),
+            "block": BlockShuffle(
+                buffer_size=args.shuffle_buffer_size,
+                min_fill=args.shuffle_buffer_min_fill,
+            ),
             "sample": SampleShuffle(),
             "none": NoShuffle(),
         }
@@ -209,7 +220,6 @@ def main() -> None:
             fields=fields,
             fetch_size=args.fetch_size,
             shuffle_strategy=shuffle_strategies[args.shuffle],
-            shuffle_buffer_size=args.shuffle_buffer_size,
         )
     print(f"Using {args.dataset_style} dataset with {len(ds)} samples (after window trimming)")
 

@@ -64,7 +64,17 @@ _SOURCE = cast(
 _FIELDS = {"x": Field("/e:Scalars:scalars", decode=NumericDecoder())}
 
 
-def _build_manifest(strategy: ShuffleStrategy, buffer_size: int | None, *, num_ranks: int = 1) -> Manifest:
+def _buffer_size(strategy: ShuffleStrategy) -> int | None:
+    buffer = strategy.emission_buffer()
+    return buffer.buffer_size if buffer is not None else None
+
+
+def _min_fill(strategy: ShuffleStrategy) -> int | None:
+    buffer = strategy.emission_buffer()
+    return buffer.min_fill if buffer is not None else None
+
+
+def _build_manifest(strategy: ShuffleStrategy, *, num_ranks: int = 1) -> Manifest:
     """Build a `num_ranks` / single-worker manifest for the fake dataset via the real scheduler."""
     anchors = np.array(ANCHORS, dtype=np.int64)
     rows = _ResolvedRows(
@@ -76,7 +86,6 @@ def _build_manifest(strategy: ShuffleStrategy, buffer_size: int | None, *, num_r
         _sample_table(rows, ["x"]),
         strategy=strategy,
         fetch_size=FETCH_SIZE,
-        buffer_size=buffer_size,
         num_ranks=num_ranks,
         num_workers_per_rank=1,
         seed=SEED,
@@ -91,7 +100,8 @@ def _build_manifest(strategy: ShuffleStrategy, buffer_size: int | None, *, num_r
         recipe={},
         required_fields=["x"],
         fetch_size=FETCH_SIZE,
-        buffer_size=buffer_size,
+        buffer_size=_buffer_size(strategy),
+        min_fill=_min_fill(strategy),
         num_ranks=num_ranks,
         num_workers_per_rank=1,
         seed=SEED,
@@ -102,7 +112,7 @@ def _build_manifest(strategy: ShuffleStrategy, buffer_size: int | None, *, num_r
 
 def test_parquet_backed_manifest_reads_shards_lazily(tmp_path: Path) -> None:
     """A parquet-backed manifest reads only per-`(rank, worker)` shards, never the whole table into RAM."""
-    mem = _build_manifest(BlockShuffle(), buffer_size=FETCH_SIZE, num_ranks=2)
+    mem = _build_manifest(BlockShuffle(buffer_size=FETCH_SIZE), num_ranks=2)
     path = tmp_path / "manifest.parquet"
     mem.write_parquet(path)
 
@@ -164,7 +174,7 @@ def _patch_rank(monkeypatch: pytest.MonkeyPatch, rank: int, world_size: int) -> 
     monkeypatch.setattr(torch.distributed, "get_world_size", lambda: world_size)
 
 
-def _build_live(strategy: ShuffleStrategy, buffer_size: int | None) -> RerunIterableDataset:
+def _build_live(strategy: ShuffleStrategy) -> RerunIterableDataset:
     """A live (manifest-less) dataset over the same fake dataset, strategy, seed, and topology."""
     live = RerunIterableDataset(
         _SOURCE,
@@ -172,7 +182,6 @@ def _build_live(strategy: ShuffleStrategy, buffer_size: int | None) -> RerunIter
         _FIELDS,
         fetch_size=FETCH_SIZE,
         shuffle_strategy=strategy,
-        shuffle_buffer_size=buffer_size,
     )
     live.set_epoch(SEED)
     return live
@@ -204,20 +213,19 @@ def _stub_catalog(monkeypatch: pytest.MonkeyPatch, seg_tables: dict[str, dict[st
     monkeypatch.setattr(iterable_dataset, "_fetch_arrow", fake_fetch_arrow)
 
 
+# Only `BlockShuffle` can carry an emission buffer; the other strategies emit in fetch order.
 _STRATEGIES = [
-    pytest.param(NoShuffle(), None, id="no-shuffle"),
-    pytest.param(SampleShuffle(), None, id="uniform"),
-    pytest.param(BlockShuffle(), None, id="block"),
-    pytest.param(BlockShuffle(), 6, id="block+buffer"),
-    pytest.param(SampleShuffle(), 6, id="uniform+buffer"),
+    pytest.param(NoShuffle(), id="no-shuffle"),
+    pytest.param(SampleShuffle(), id="uniform"),
+    pytest.param(BlockShuffle(), id="block"),
+    pytest.param(BlockShuffle(buffer_size=6), id="block+buffer"),
+    pytest.param(BlockShuffle(buffer_size=6, min_fill=1), id="block+buffer+min_fill"),
 ]
 
 
 @pytest.mark.filterwarnings("ignore::RuntimeWarning")  # the fork-safety warning is irrelevant here
-@pytest.mark.parametrize(("strategy", "buffer_size"), _STRATEGIES)
-def test_manifest_replays_live_order_exactly(
-    monkeypatch: pytest.MonkeyPatch, strategy: ShuffleStrategy, buffer_size: int | None
-) -> None:
+@pytest.mark.parametrize("strategy", _STRATEGIES)
+def test_manifest_replays_live_order_exactly(monkeypatch: pytest.MonkeyPatch, strategy: ShuffleStrategy) -> None:
     # Decode is irrelevant here: tag each sample with its anchor so we compare emission order only.
     monkeypatch.setattr(
         iterable_dataset, "_decode_iter", lambda *, targets, **_: ({"anchor": int(t.index_value)} for t in targets)
@@ -226,23 +234,23 @@ def test_manifest_replays_live_order_exactly(
 
     manifest_order = [
         cast("int", s["anchor"])
-        for s in RerunIterableDataset.from_manifest(_build_manifest(strategy, buffer_size), _SOURCE, _FIELDS)
+        for s in RerunIterableDataset.from_manifest(_build_manifest(strategy), _SOURCE, _FIELDS)
     ]
-    live_order = [cast("int", s["anchor"]) for s in _build_live(strategy, buffer_size)]
+    live_order = [cast("int", s["anchor"]) for s in _build_live(strategy)]
 
     assert manifest_order == live_order  # the contract: a manifest replays the live order sample-for-sample
     assert sorted(live_order) == sorted(ANCHORS)  # every sample exactly once
 
-    reordered = strategy.RECIPE_TAG != "none" or buffer_size is not None
+    reordered = strategy.RECIPE_TAG != "none" or strategy.emission_buffer() is not None
     assert (live_order != ANCHORS) == reordered  # shuffling (or a buffer) actually permutes; NoShuffle does not
 
 
 @pytest.mark.filterwarnings("ignore::RuntimeWarning")
 def test_manifest_replays_live_order_across_ranks(monkeypatch: pytest.MonkeyPatch) -> None:
     # A buffered block shuffle across 2 DDP ranks: this is the case that fails if the live
-    # reservoir seed drops `rank` (its emission order would no longer match the frozen manifest).
-    strategy, buffer_size, world_size = BlockShuffle(), 6, 2
-    manifest = _build_manifest(strategy, buffer_size, num_ranks=world_size)
+    # buffer seed drops `rank` (its emission order would no longer match the frozen manifest).
+    strategy, world_size = BlockShuffle(buffer_size=6), 2
+    manifest = _build_manifest(strategy, num_ranks=world_size)
     monkeypatch.setattr(
         iterable_dataset, "_decode_iter", lambda *, targets, **_: ({"anchor": int(t.index_value)} for t in targets)
     )
@@ -255,7 +263,7 @@ def test_manifest_replays_live_order_across_ranks(monkeypatch: pytest.MonkeyPatc
             manifest_order = [
                 cast("int", s["anchor"]) for s in RerunIterableDataset.from_manifest(manifest, _SOURCE, _FIELDS)
             ]
-            live_order = [cast("int", s["anchor"]) for s in _build_live(strategy, buffer_size)]
+            live_order = [cast("int", s["anchor"]) for s in _build_live(strategy)]
         assert manifest_order == live_order, f"rank {rank} replay diverged from the live run"
         all_live += live_order
 
@@ -284,8 +292,8 @@ def test_manifest_and_live_decode_identical_content(monkeypatch: pytest.MonkeyPa
     _stub_catalog(monkeypatch, seg_tables=seg_tables)
 
     strategy = NoShuffle()
-    manifest_samples = list(RerunIterableDataset.from_manifest(_build_manifest(strategy, None), _SOURCE, _FIELDS))
-    live_samples = list(_build_live(strategy, None))
+    manifest_samples = list(RerunIterableDataset.from_manifest(_build_manifest(strategy), _SOURCE, _FIELDS))
+    live_samples = list(_build_live(strategy))
 
     by_anchor = {int(cast("torch.Tensor", s["x"]).item() / 1.5): s for s in manifest_samples}
     assert len(by_anchor) == len(ANCHORS)  # every sample decoded, once

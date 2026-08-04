@@ -60,10 +60,11 @@ class ManifestMeta:
     required_fields: list[str]
     fetch_size: int
     buffer_size: int | None
+    min_fill: int | None
     num_ranks: int
     num_workers_per_rank: int
     seed: int
-    shuffle_strategy: str  # the strategy's `RECIPE_TAG`, recorded for provenance
+    shuffle_strategy: str
 
 
 def _metadata_from_schema(schema: pa.Schema) -> ManifestMeta:
@@ -85,6 +86,7 @@ def _metadata_from_schema(schema: pa.Schema) -> ManifestMeta:
         required_fields=json.loads(m.get("required_fields", "[]")),
         fetch_size=int(m.get("fetch_size", "0")),
         buffer_size=_opt_int("buffer_size"),
+        min_fill=_opt_int("min_fill"),
         num_ranks=int(m.get("num_ranks", "1")),
         num_workers_per_rank=int(m.get("num_workers_per_rank", "1")),
         seed=int(m.get("seed", "0")),
@@ -105,6 +107,7 @@ def _metadata_to_arrow(meta: ManifestMeta) -> dict[str, str]:
         "required_fields": json.dumps(meta.required_fields),
         "fetch_size": meta.fetch_size,
         "buffer_size": meta.buffer_size,
+        "min_fill": meta.min_fill,
         "num_ranks": meta.num_ranks,
         "num_workers_per_rank": meta.num_workers_per_rank,
         "seed": meta.seed,
@@ -240,7 +243,6 @@ class Manifest:
         self,
         strategy: ShuffleStrategy | None = None,
         *,
-        buffer_size: int | None = None,
         seed: int = 0,
     ) -> Manifest:
         """
@@ -248,9 +250,9 @@ class Manifest:
 
         Keeps the manifest's validated sample set and per-field decode ranges (the
         expensive scan result) and only recomputes the `fetch_group` / `emit_rank`
-        schedule under a new fetch-order `strategy`, emission `buffer_size`, and
-        `seed`. `fetch_size` and the `(num_ranks, num_workers_per_rank)` topology are
-        inherited from this manifest. Returns a new manifest; this one is unchanged.
+        schedule under a new `strategy` and `seed`. `fetch_size` and the
+        `(num_ranks, num_workers_per_rank)` topology are inherited from this manifest.
+        Returns a new manifest; this one is unchanged.
 
         Scan once with [`generate`][rerun.experimental.dataloader.Manifest.generate],
         then call this per epoch (bumping `seed`) to get fresh orders for free.
@@ -258,15 +260,15 @@ class Manifest:
         Parameters
         ----------
         strategy
-            The fetch-order [`ShuffleStrategy`][rerun.experimental.dataloader.ShuffleStrategy]
+            The [`ShuffleStrategy`][rerun.experimental.dataloader.ShuffleStrategy]
             to apply, e.g. [`BlockShuffle`][rerun.experimental.dataloader.BlockShuffle] (the
             default), [`SampleShuffle`][rerun.experimental.dataloader.SampleShuffle], or
-            [`NoShuffle`][rerun.experimental.dataloader.NoShuffle].
-        buffer_size
-            Reservoir size for the emission shuffle. `None` means no emission shuffle
-            (emission order equals fetch order).
+            [`NoShuffle`][rerun.experimental.dataloader.NoShuffle]. It fixes both the
+            fetch order and the emission buffer, so passing the same strategy object
+            here and to [`RerunIterableDataset`][rerun.experimental.dataloader.RerunIterableDataset]
+            guarantees a replay matches the live run.
         seed
-            Seed for the block shuffle and the emission reservoir.
+            Seed for the block shuffle and the emission buffer.
 
         """
         # Deferred import: `_manifest_build` imports this module's schema constants.
@@ -280,12 +282,18 @@ class Manifest:
             self._ensure_table(),
             strategy=strategy,
             fetch_size=meta.fetch_size,
-            buffer_size=buffer_size,
             num_ranks=meta.num_ranks,
             num_workers_per_rank=meta.num_workers_per_rank,
             seed=seed,
         )
-        new_meta = dataclasses.replace(meta, shuffle_strategy=strategy.RECIPE_TAG, buffer_size=buffer_size, seed=seed)
+        buffer = strategy.emission_buffer()
+        new_meta = dataclasses.replace(
+            meta,
+            shuffle_strategy=strategy.RECIPE_TAG,
+            buffer_size=buffer.buffer_size if buffer is not None else None,
+            min_fill=buffer.min_fill if buffer is not None else None,
+            seed=seed,
+        )
         return type(self)._from_arrow(table.replace_schema_metadata(_metadata_to_arrow(new_meta)))
 
     def to_arrow(self) -> pa.Table:

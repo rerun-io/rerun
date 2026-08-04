@@ -2,7 +2,7 @@
 
 # Scans the source once to resolve every sample's real decode ranges and drop
 # invalid samples, then unrolls one epoch of the blockwise sampling procedure —
-# the strategy's fetch order plus the reservoir emission shuffle — into a single
+# the strategy's fetch order plus the buffer emission shuffle — into a single
 # parquet table. The unroll reuses the exact runtime primitives (`ShuffleStrategy`,
 # `_fetch_chunks`, `ShuffleBuffer`) over sample IDs, so build and runtime can
 # never diverge, and no decoding happens here.
@@ -160,13 +160,13 @@ def build_manifest_table(
         required=required,
     )
 
-    # A freshly built manifest is unshuffled: natural fetch order, no emission reservoir.
+    # A freshly built manifest is unshuffled: natural fetch order, no emission
+    # buffer (`NoShuffle` never defines one).
     strategy = NoShuffle()
     table = schedule_samples(
         _sample_table(rows, list(fields)),
         strategy=strategy,
         fetch_size=fetch_size,
-        buffer_size=None,
         num_ranks=num_ranks,
         num_workers_per_rank=num_workers_per_rank,
         seed=0,
@@ -183,6 +183,7 @@ def build_manifest_table(
         required_fields=sorted(required),
         fetch_size=fetch_size,
         buffer_size=None,
+        min_fill=None,
         num_ranks=num_ranks,
         num_workers_per_rank=num_workers_per_rank,
         seed=0,
@@ -393,7 +394,7 @@ def _grid_timestamps(index_value: int, field: Field, sample_index: SampleIndex) 
 
 
 # --------------------------------------------------------------------------------------
-# Unroll: the strategy's fetch order + reservoir emission order (the cheap part).
+# Unroll: the strategy's fetch order + buffer emission order (the cheap part).
 # --------------------------------------------------------------------------------------
 
 
@@ -413,21 +414,24 @@ def _compact_index(seg_ids: list[str]) -> SampleIndex:
     return SampleIndex(segments)
 
 
-def _emit_rank(n: int, buffer_size: int | None, *, seed: int, rank: int, worker: int) -> np.ndarray:
+def _emit_rank(n: int, buffer: ShuffleBuffer | None, *, seed: int, rank: int, worker: int) -> np.ndarray:
     """
     Emission order for one worker's `n` fetch positions.
 
-    Identity (emit in fetch order) when there is no reservoir; otherwise the
-    inverse of
-    [`ShuffleBuffer.emit_order`][rerun.experimental.dataloader.ShuffleBuffer.emit_order],
-    so `emit_rank[k]` is the emission slot of the `k`-th fetched sample. This is
-    the only emission-time decorrelation; the fetch order itself stays ascending
-    within each block so decode remains monotonic.
+    Identity (emit in fetch order) when the strategy defines no buffer;
+    otherwise the inverse of `ShuffleBuffer.emit_order`, so `emit_rank[k]` is the
+    emission slot of the `k`-th fetched sample. This is the only emission-time
+    decorrelation; the fetch order itself stays ascending within each block so
+    decode remains monotonic.
+
+    `buffer` is the strategy's own [`emission_buffer`][rerun.experimental.dataloader.ShuffleStrategy.emission_buffer],
+    the same object a live run emits through, so a replay can never be baked
+    against a differently-configured buffer.
     """
-    if buffer_size is None:
+    if buffer is None:
         return np.arange(n, dtype=np.int64)
     rng = np.random.default_rng([seed, rank, worker])
-    emit_seq = ShuffleBuffer(buffer_size).emit_order(n, rng=rng)
+    emit_seq = buffer.emit_order(n, rng=rng)
     emit_rank = np.empty(n, dtype=np.int64)
     emit_rank[emit_seq] = np.arange(n, dtype=np.int64)
     return emit_rank
@@ -494,7 +498,6 @@ def schedule_samples(
     *,
     strategy: ShuffleStrategy,
     fetch_size: int,
-    buffer_size: int | None,
     num_ranks: int,
     num_workers_per_rank: int,
     seed: int,
@@ -510,12 +513,13 @@ def schedule_samples(
     samples gathered in fetch order; the caller re-attaches the metadata header.
 
     `strategy` fixes the fetch order (each block ascending, so decode stays
-    monotonic) and `num_ranks` / `num_workers_per_rank` split the epoch into
-    per-worker slices.
+    monotonic) *and* the emission buffer, if it defines one;
+    `num_ranks` / `num_workers_per_rank` split the epoch into per-worker slices.
     """
     sample = _canonicalize(sample.select([c for c in sample.column_names if c not in _SCHEDULE_COLUMNS]))
     compact = _compact_index(sample[COL_SEGMENT_ID].to_pylist())
     indices, bounds = strategy.epoch_order(compact, fetch_size=fetch_size, seed=seed)
+    buffer = strategy.emission_buffer()
 
     ranks: list[np.ndarray] = []
     workers: list[np.ndarray] = []
@@ -534,7 +538,7 @@ def schedule_samples(
             ranks.append(np.full(n, rank, dtype=np.int32))
             workers.append(np.full(n, worker, dtype=np.int32))
             groups.append(np.repeat(np.arange(len(chunks), dtype=np.int64), [len(c) for c in chunks]))
-            emits.append(_emit_rank(n, buffer_size, seed=seed, rank=rank, worker=worker))
+            emits.append(_emit_rank(n, buffer, seed=seed, rank=rank, worker=worker))
             sids.append(fetch_order)
 
     def _concat(parts: list[np.ndarray], dtype: type) -> np.ndarray:

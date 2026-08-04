@@ -236,7 +236,7 @@ def _replay(
 
     `order[k]` is the fetch position to emit `k`-th. Decode still runs in fetch order;
     this only buffers decoded samples until their turn, so the buffer never exceeds what
-    the manifest's reservoir held at build time (the order came from that reservoir).
+    the manifest's buffer held at build time (the order came from that buffer).
     """
     buffer: dict[int, dict[str, torch.Tensor | None]] = {}
     fetched = enumerate(samples)

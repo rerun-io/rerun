@@ -12,7 +12,7 @@ import torch.utils.data
 from rerun._tracing import tracing_scope
 
 from ._sample_index import FixedRateSampling, SampleIndex
-from ._shuffle import SampleShuffle, ShuffleBuffer, ShuffleStrategy, _contiguous_shard, _fetch_chunks
+from ._shuffle import SampleShuffle, ShuffleStrategy, _contiguous_shard, _fetch_chunks
 from ._utils import (
     Target,
     _decode_iter,
@@ -64,16 +64,11 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tens
         amortize network overhead but use more memory. Defaults to 128.
     shuffle_strategy
         The [`ShuffleStrategy`][rerun.experimental.dataloader.ShuffleStrategy]
-        that determines the order samples are fetched in. Defaults to
+        that determines the order samples are fetched in, and — for
+        [`BlockShuffle`][rerun.experimental.dataloader.BlockShuffle] — the
+        optional post-decode buffer samples are emitted through. Defaults to
         [`SampleShuffle`][rerun.experimental.dataloader.SampleShuffle]; pass
         [`NoShuffle`][rerun.experimental.dataloader.NoShuffle] for natural order.
-    shuffle_buffer_size
-        Size of a post-decode reservoir buffer that randomizes emission
-        order without changing the fetch order;
-        mainly useful to decorrelate batches under
-        [`BlockShuffle`][rerun.experimental.dataloader.BlockShuffle]. Holds at
-        most that many decoded samples in memory per DataLoader worker.
-        Defaults to `None` (no buffering).
 
     """
 
@@ -86,7 +81,6 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tens
         timeline_sampling: FixedRateSampling | None = None,
         fetch_size: int = 128,
         shuffle_strategy: ShuffleStrategy | None = None,
-        shuffle_buffer_size: int | None = None,
     ) -> None:
         super().__init__()
 
@@ -97,7 +91,7 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tens
         self._fetch_size = fetch_size
 
         self._shuffle_strategy = shuffle_strategy if shuffle_strategy is not None else SampleShuffle()
-        self._shuffle_buffer = ShuffleBuffer(shuffle_buffer_size) if shuffle_buffer_size is not None else None
+        self._shuffle_buffer = self._shuffle_strategy.emission_buffer()
         self._epoch = 0
         self._manifest: Manifest | None = None
 
@@ -171,8 +165,8 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tens
 
         The arrow fetch for chunk N+1 runs on a background thread while
         chunk N is being decoded, so samples stream out during decode.
-        With `shuffle_buffer_size` set, decoded samples pass through a
-        shuffle buffer before being yielded.
+        When the strategy defines an emission buffer, decoded samples pass
+        through that buffer before being yielded.
         """
         with tracing_scope("RerunIterableDataset._iter_catalog"):
             view, decoders = self._connection.ensure()
@@ -197,7 +191,7 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tens
                 rank = torch.distributed.get_rank() if distributed else 0
                 worker_info = torch.utils.data.get_worker_info()
                 worker_id = worker_info.id if worker_info is not None else 0
-                # Must match the build-time reservoir seed in `_manifest_build._emit_rank`
+                # Must match the build-time buffer seed in `_manifest_build._emit_rank`
                 # (`[seed, rank, worker]`) so a manifest replays a live buffered run's exact order.
                 rng = np.random.default_rng([self._epoch, rank, worker_id])
                 samples = self._shuffle_buffer.shuffle(samples, rng=rng)
