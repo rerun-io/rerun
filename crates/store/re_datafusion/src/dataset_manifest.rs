@@ -82,7 +82,11 @@ impl GrpcStreamToTable for DatasetManifestProvider {
         );
 
         let request = tonic::Request::new(ScanDatasetManifestRequest {
-            columns: vec![], // all of them
+            columns: params
+                .projected_columns
+                .as_deref()
+                .unwrap_or_default()
+                .to_vec(),
             segment_id_filter,
         })
         .with_entry_id(self.dataset_id);
