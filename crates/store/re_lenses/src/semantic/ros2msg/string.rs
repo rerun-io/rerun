@@ -1,4 +1,4 @@
-use re_lenses::{Lens, LensBuilderError};
+use crate::{Lens, LensBuilderError};
 use re_lenses_core::Selector;
 use re_sdk_types::archetypes::TextDocument;
 

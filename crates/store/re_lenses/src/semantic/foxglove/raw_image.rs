@@ -1,9 +1,9 @@
-use re_lenses::{Lens, LensBuilderError, op};
+use crate::{Lens, LensBuilderError, op};
 use re_lenses_core::Selector;
 use re_log_types::TimeType;
 use re_sdk_types::archetypes::{CoordinateFrame, Image};
 
-use crate::importer_mcap::lenses::image_helpers::{encoding_to_image_format, extract_image_buffer};
+use super::super::image_helpers::{encoding_to_image_format, extract_image_buffer};
 
 use super::{FOXGLOVE_TIMESTAMP, IMAGE_PLANE_SUFFIX};
 

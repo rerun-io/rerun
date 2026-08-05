@@ -9266,9 +9266,7 @@ dependencies = [
  "re_chunk_store",
  "re_error",
  "re_format",
- "re_int",
  "re_lenses",
- "re_lenses_core",
  "re_log",
  "re_log_channel",
  "re_log_encoding",
@@ -9342,10 +9340,15 @@ version = "0.36.0-alpha.1+dev"
 dependencies = [
  "arrow",
  "insta",
+ "itertools 0.15.0",
  "re_arrow_util",
+ "re_int",
  "re_lenses_core",
  "re_log",
+ "re_log_types",
+ "re_mcap",
  "re_sdk_types",
+ "re_tracing",
 ]
 
 [[package]]

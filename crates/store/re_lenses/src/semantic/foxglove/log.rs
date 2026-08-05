@@ -1,5 +1,5 @@
+use crate::{Lens, LensBuilderError, op};
 use arrow::array::{Array as _, ArrayRef, StringArray};
-use re_lenses::{Lens, LensBuilderError, op};
 use re_lenses_core::Selector;
 use re_lenses_core::combinators::Error;
 use re_log_types::TimeType;

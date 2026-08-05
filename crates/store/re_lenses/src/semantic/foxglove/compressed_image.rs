@@ -1,4 +1,4 @@
-use re_lenses::{Lens, LensBuilderError, op};
+use crate::{Lens, LensBuilderError, op};
 use re_lenses_core::Selector;
 use re_log_types::TimeType;
 use re_sdk_types::archetypes::{CoordinateFrame, EncodedImage};

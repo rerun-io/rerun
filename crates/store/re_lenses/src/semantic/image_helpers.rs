@@ -12,7 +12,7 @@ use re_lenses_core::combinators::Error;
 use re_sdk_types::Loggable as _;
 use re_sdk_types::datatypes::ImageFormat;
 
-use super::helpers::get_field_as;
+use crate::semantic::helpers::get_field_as;
 
 /// Returns a pipe-compatible function that converts a struct with `width`, `height`, and
 /// `encoding` fields into a Rerun [`ImageFormat`] struct array.

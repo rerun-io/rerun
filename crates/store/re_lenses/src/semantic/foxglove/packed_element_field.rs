@@ -8,7 +8,7 @@ use std::sync::Arc;
 
 use re_int::SaturatingCast as _;
 
-use crate::importer_mcap::lenses::helpers::get_field_as;
+use crate::semantic::helpers::get_field_as;
 use arrow::array::builder::{
     FixedSizeListBuilder, Float32Builder, Int32Builder, ListBuilder, UInt32Builder,
 };

@@ -1,6 +1,4 @@
 mod foxglove;
-mod helpers;
-mod image_helpers;
 mod ros2msg;
 
 pub use crate::FOXGLOVE_LENSES_IDENTIFIER;
@@ -11,12 +9,6 @@ use re_mcap::{DecoderIdentifier, SelectedDecoders};
 
 const ROS2MSG_DECODER_IDENTIFIER: &str = "ros2msg";
 
-/// Suffix appended to frame IDs for image planes.
-///
-/// This is required to match the Rerun model for named pinhole frames, where the image plane has its own frame ID
-/// different from the pinhole frame. In ROS/Foxglove, both image and camera info share the same frame ID.
-const IMAGE_PLANE_SUFFIX: &str = "_image_plane";
-
 pub fn mcap_lenses(
     selected_decoders: &SelectedDecoders,
     time_type: TimeType,
@@ -26,7 +18,7 @@ pub fn mcap_lenses(
     let has_foxglove_lenses = if selected_decoders
         .contains(&DecoderIdentifier::from(crate::FOXGLOVE_LENSES_IDENTIFIER))
     {
-        foxglove::add_foxglove_lenses(&mut lenses, time_type)?;
+        lenses = foxglove::add_foxglove_lenses(lenses, time_type)?;
         true
     } else {
         false
@@ -34,7 +26,7 @@ pub fn mcap_lenses(
 
     let has_ros2msg_lenses =
         if selected_decoders.contains(&DecoderIdentifier::from(ROS2MSG_DECODER_IDENTIFIER)) {
-            ros2msg::add_ros2msg_lenses(&mut lenses)?;
+            lenses = ros2msg::add_ros2msg_lenses(lenses)?;
             true
         } else {
             false

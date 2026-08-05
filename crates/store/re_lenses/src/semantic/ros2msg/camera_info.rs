@@ -1,8 +1,8 @@
-use re_lenses::{CastTo, Lens, LensBuilderError, op};
+use crate::{CastTo, Lens, LensBuilderError, op};
 use re_lenses_core::Selector;
 use re_sdk_types::archetypes::Pinhole;
 
-use crate::importer_mcap::lenses::helpers::row_major_3x3_to_column_major;
+use crate::semantic::helpers::row_major_3x3_to_column_major;
 
 use super::IMAGE_PLANE_SUFFIX;
 

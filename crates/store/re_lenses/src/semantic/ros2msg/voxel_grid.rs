@@ -1,16 +1,16 @@
 use std::sync::Arc;
 
+use crate::{CastTo, Lens, LensBuilderError};
 use arrow::array::builder::{FixedSizeListBuilder, Int32Builder, ListBuilder, UInt32Builder};
 use arrow::array::{Array as _, ArrayRef, Float32Builder, ListArray, StructArray, UInt32Array};
 use arrow::datatypes::{DataType, Field};
-use re_lenses::{CastTo, Lens, LensBuilderError};
 use re_lenses_core::Selector;
 use re_lenses_core::combinators::Error;
 use re_sdk_types::Loggable as _;
 use re_sdk_types::archetypes::{CoordinateFrame, VoxelGridMap};
 use re_sdk_types::components::Opacity;
 
-use crate::importer_mcap::lenses::helpers::get_field_as;
+use crate::semantic::helpers::get_field_as;
 
 const MARKED_COLOR: u32 = 0xFF0000FF;
 const FREE_COLOR: u32 = 0x00FF00FF;

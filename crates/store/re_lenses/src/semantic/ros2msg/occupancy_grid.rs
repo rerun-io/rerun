@@ -1,4 +1,4 @@
-use re_lenses::{CastTo, Lens, LensBuilderError};
+use crate::{CastTo, Lens, LensBuilderError};
 use re_lenses_core::Selector;
 use re_sdk_types::archetypes::{CoordinateFrame, GridMap};
 use re_sdk_types::components::Colormap;

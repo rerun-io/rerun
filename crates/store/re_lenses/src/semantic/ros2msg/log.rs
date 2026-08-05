@@ -1,14 +1,14 @@
 use std::sync::Arc;
 
+use crate::{Lens, LensBuilderError};
 use arrow::array::{Array as _, ArrayRef, StringArray, StructArray, UInt8Array, UInt32Array};
-use re_lenses::{Lens, LensBuilderError};
 use re_lenses_core::Selector;
 use re_lenses_core::combinators::Error;
 use re_sdk_types::ComponentDescriptor;
 use re_sdk_types::archetypes::TextLog;
 use re_sdk_types::datatypes::Rgba32;
 
-use crate::importer_mcap::lenses::helpers::get_field_as;
+use crate::semantic::helpers::get_field_as;
 
 const LOG_ARCHETYPE: &str = "rcl_interfaces.msg.Log";
 

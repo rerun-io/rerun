@@ -8,7 +8,7 @@ use re_sdk_types::Loggable as _;
 use re_sdk_types::components::{Colormap, ImageFormat};
 use re_sdk_types::datatypes::{ChannelDatatype, ColorModel};
 
-use crate::importer_mcap::lenses::helpers::get_field_as;
+use crate::semantic::helpers::get_field_as;
 
 /// Returns a pipe-compatible function that converts ROS maps
 /// stored in i8 buffers to Rerun image buffers.

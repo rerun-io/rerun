@@ -1,4 +1,4 @@
-use re_lenses::{CastTo, Lens, LensBuilderError, op};
+use crate::{CastTo, Lens, LensBuilderError, op};
 use re_lenses_core::Selector;
 use re_log_types::TimeType;
 use re_sdk_types::archetypes::{CoordinateFrame, VoxelGridMap};

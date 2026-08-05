@@ -1,9 +1,9 @@
-use re_lenses::{Lens, LensBuilderError, op};
+use crate::{Lens, LensBuilderError, op};
 use re_lenses_core::Selector;
 use re_log_types::TimeType;
 use re_sdk_types::archetypes::{CoordinateFrame, GeoPoints};
 
-use crate::importer_mcap::lenses::helpers::lat_lon_struct_to_fixed;
+use crate::semantic::helpers::lat_lon_struct_to_fixed;
 
 use super::FOXGLOVE_TIMESTAMP;
 
