@@ -177,7 +177,7 @@ The Rerun command-line interface:
 * `--detach-process <DETACH_PROCESS>`
 > Detach the native Rerun Viewer process from the invoking process.
 >
-> Ignored for subcommands, headless mode, server and web modes, saving, testing, and version queries.
+> Ignored for any command that doesn't spawn a viewer.
 >
 > [Default: `false`]
 
