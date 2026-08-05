@@ -3150,7 +3150,7 @@ checksum = "d0881ea181b1df73ff77ffaaf9c7544ecc11e82fba9b5f27b262a3c73a332555"
 [[package]]
 name = "ecolor"
 version = "0.35.0"
-source = "git+https://github.com/emilk/egui?branch=main#49d4befe6b6198f5adcb7e2e6b413fa1f8de288c"
+source = "git+https://github.com/emilk/egui?branch=main#e37d44ad8a61ace5c8462e20e826bf254f42fc3e"
 dependencies = [
  "bytemuck",
  "color-hex",
@@ -3167,7 +3167,7 @@ checksum = "18aade80d5e09429040243ce1143ddc08a92d7a22820ac512610410a4dd5214f"
 [[package]]
 name = "eframe"
 version = "0.35.0"
-source = "git+https://github.com/emilk/egui?branch=main#49d4befe6b6198f5adcb7e2e6b413fa1f8de288c"
+source = "git+https://github.com/emilk/egui?branch=main#e37d44ad8a61ace5c8462e20e826bf254f42fc3e"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -3204,7 +3204,7 @@ dependencies = [
 [[package]]
 name = "egui"
 version = "0.35.0"
-source = "git+https://github.com/emilk/egui?branch=main#49d4befe6b6198f5adcb7e2e6b413fa1f8de288c"
+source = "git+https://github.com/emilk/egui?branch=main#e37d44ad8a61ace5c8462e20e826bf254f42fc3e"
 dependencies = [
  "accesskit",
  "ahash",
@@ -3226,7 +3226,7 @@ dependencies = [
 [[package]]
 name = "egui-wgpu"
 version = "0.35.0"
-source = "git+https://github.com/emilk/egui?branch=main#49d4befe6b6198f5adcb7e2e6b413fa1f8de288c"
+source = "git+https://github.com/emilk/egui?branch=main#e37d44ad8a61ace5c8462e20e826bf254f42fc3e"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -3245,7 +3245,7 @@ dependencies = [
 [[package]]
 name = "egui-winit"
 version = "0.35.0"
-source = "git+https://github.com/emilk/egui?branch=main#49d4befe6b6198f5adcb7e2e6b413fa1f8de288c"
+source = "git+https://github.com/emilk/egui?branch=main#e37d44ad8a61ace5c8462e20e826bf254f42fc3e"
 dependencies = [
  "accesskit_winit",
  "arboard",
@@ -3312,7 +3312,7 @@ dependencies = [
 [[package]]
 name = "egui_extras"
 version = "0.35.0"
-source = "git+https://github.com/emilk/egui?branch=main#49d4befe6b6198f5adcb7e2e6b413fa1f8de288c"
+source = "git+https://github.com/emilk/egui?branch=main#e37d44ad8a61ace5c8462e20e826bf254f42fc3e"
 dependencies = [
  "ahash",
  "egui",
@@ -3330,7 +3330,7 @@ dependencies = [
 [[package]]
 name = "egui_glow"
 version = "0.35.0"
-source = "git+https://github.com/emilk/egui?branch=main#49d4befe6b6198f5adcb7e2e6b413fa1f8de288c"
+source = "git+https://github.com/emilk/egui?branch=main#e37d44ad8a61ace5c8462e20e826bf254f42fc3e"
 dependencies = [
  "bytemuck",
  "egui",
@@ -3343,7 +3343,7 @@ dependencies = [
 [[package]]
 name = "egui_inspection"
 version = "0.35.0"
-source = "git+https://github.com/emilk/egui?branch=main#49d4befe6b6198f5adcb7e2e6b413fa1f8de288c"
+source = "git+https://github.com/emilk/egui?branch=main#e37d44ad8a61ace5c8462e20e826bf254f42fc3e"
 dependencies = [
  "egui",
  "image",
@@ -3356,7 +3356,7 @@ dependencies = [
 [[package]]
 name = "egui_kittest"
 version = "0.35.0"
-source = "git+https://github.com/emilk/egui?branch=main#49d4befe6b6198f5adcb7e2e6b413fa1f8de288c"
+source = "git+https://github.com/emilk/egui?branch=main#e37d44ad8a61ace5c8462e20e826bf254f42fc3e"
 dependencies = [
  "dify",
  "eframe",
@@ -3455,7 +3455,7 @@ checksum = "9e5e8f6c15a24b9a3ee5efec809ccd006d3b30e8b3bb63c39af737c7f87daa1d"
 [[package]]
 name = "emath"
 version = "0.35.0"
-source = "git+https://github.com/emilk/egui?branch=main#49d4befe6b6198f5adcb7e2e6b413fa1f8de288c"
+source = "git+https://github.com/emilk/egui?branch=main#e37d44ad8a61ace5c8462e20e826bf254f42fc3e"
 dependencies = [
  "bytemuck",
  "serde",
@@ -3568,7 +3568,7 @@ dependencies = [
 [[package]]
 name = "epaint"
 version = "0.35.0"
-source = "git+https://github.com/emilk/egui?branch=main#49d4befe6b6198f5adcb7e2e6b413fa1f8de288c"
+source = "git+https://github.com/emilk/egui?branch=main#e37d44ad8a61ace5c8462e20e826bf254f42fc3e"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -3594,7 +3594,7 @@ dependencies = [
 [[package]]
 name = "epaint_default_fonts"
 version = "0.35.0"
-source = "git+https://github.com/emilk/egui?branch=main#49d4befe6b6198f5adcb7e2e6b413fa1f8de288c"
+source = "git+https://github.com/emilk/egui?branch=main#e37d44ad8a61ace5c8462e20e826bf254f42fc3e"
 
 [[package]]
 name = "equivalent"
@@ -7993,7 +7993,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "03da047801ff44bb6a4d407d4860c05fd70bb81714e6b2f3812603d5b145b042"
 dependencies = [
  "heck",
- "itertools 0.14.0",
+ "itertools 0.13.0",
  "log",
  "multimap",
  "petgraph 0.8.3",
@@ -8012,7 +8012,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b570b25f7617e43d59005d0990ccb79e950a423952cea19671b7a876da390adf"
 dependencies = [
  "anyhow",
- "itertools 0.14.0",
+ "itertools 0.13.0",
  "proc-macro2",
  "quote",
  "syn 2.0.119",

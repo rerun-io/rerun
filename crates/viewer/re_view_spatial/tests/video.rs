@@ -115,12 +115,12 @@ fn snapshot_options_for_codec(codec: &VideoCodec, viewport_size: egui::Vec2) -> 
         VideoCodec::H264 | VideoCodec::H265 | VideoCodec::VP8 | VideoCodec::VP9 => {
             re_ui::testing::default_snapshot_options_for_3d(viewport_size)
                 .threshold(2.2)
-                .failed_pixel_count_threshold(300)
+                .max_failed_pixels(300)
         }
         // AV1 has this problem as well but to a lesser extent.
         VideoCodec::AV1 => re_ui::testing::default_snapshot_options_for_3d(viewport_size)
             .threshold(1.2)
-            .failed_pixel_count_threshold(100),
+            .max_failed_pixels(100),
 
         VideoCodec::ImageSequence(_) => {
             re_ui::testing::default_snapshot_options_for_3d(viewport_size)

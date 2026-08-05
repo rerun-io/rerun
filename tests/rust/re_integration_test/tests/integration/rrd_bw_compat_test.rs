@@ -332,7 +332,7 @@ async fn test_old_rrds_in_current_viewer() {
             };
             let snapshot_options = re_ui::testing::default_snapshot_options_for_3d(WINDOW_SIZE)
                 .threshold(re_ui::testing::strict_on_ci(2.0, lenient_threshold))
-                .failed_pixel_count_threshold(re_ui::testing::strict_on_ci(10, 50));
+                .max_failed_pixels(re_ui::testing::strict_on_ci(10, 50));
             harness.snapshot_options(format!("rrd_bw_compat_{example_name}"), &snapshot_options);
         }
 
