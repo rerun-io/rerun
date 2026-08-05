@@ -23,7 +23,7 @@ use re_viewer_context::{
 use re_viewport_blueprint::ViewProperty;
 
 use super::visualizer_system::{Entry, FetchWindow, TextLogOutput, TextLogSystem};
-use crate::scroll_geometry::ScrollGeometry;
+use crate::scroll_geometry::{LevelCountCache, LevelFilter, ScrollGeometry};
 
 // TODO(andreas): This should be a blueprint component.
 #[derive(Clone, PartialEq, Eq, Default, re_byte_size::SizeBytes)]
@@ -51,11 +51,9 @@ pub struct TextViewState {
     /// [`TextLogSystem::execute`] one frame later.
     pub(crate) fetch_window: Option<FetchWindow>,
 
-    /// Whether an explicit log level filter is set.
-    ///
-    /// If so, the visualizer queries the full time range, since the row layout can then no
-    /// longer be derived from chunk-level metadata.
-    pub(crate) filter_active: bool,
+    /// Cached per-chunk log level counts, used to lay out the table when a level filter is
+    /// active (see [`ScrollGeometry`]).
+    level_counts: LevelCountCache,
 }
 
 impl ViewState for TextViewState {
@@ -242,82 +240,63 @@ Filter message types and toggle column visibility in a selection panel.",
         )?;
 
         // An *explicit* level filter (i.e. one set in the blueprint, not the show-everything
-        // fallback) means the row count can no longer be derived from chunk-level metadata,
-        // so the visualizer falls back to fetching the full range and we filter here.
-        let explicit_levels = rows_property.component_array::<TextLogLevel>(
-            TextLogRows::descriptor_filter_by_log_level().component,
-        )?;
-        let filter_active = explicit_levels.is_some();
-
-        for te in &output.entries {
-            if let Some(lvl) = &te.level {
-                state.seen_levels.insert(lvl.to_string());
-            }
-        }
+        // fallback) changes which rows are shown; the row layout then comes from cached
+        // per-chunk level counts instead of plain chunk row counts.
+        let filter = rows_property
+            .component_array::<TextLogLevel>(
+                TextLogRows::descriptor_filter_by_log_level().component,
+            )?
+            .map(|levels| LevelFilter(levels.iter().map(|lvl| lvl.as_str().to_owned()).collect()));
 
         let time = ctx.time_ctrl.time_i64().unwrap_or(state.latest_time);
 
         // Only the fetched window's entries are materialized; the rest of the row layout comes
         // from chunk-level metadata (time ranges + row counts), so we never have to touch the
         // full data. See <https://github.com/rerun-io/rerun/issues/7562>.
-        let geometry = if filter_active {
-            None
-        } else {
+        let geometry = {
             let engine = ctx.recording_engine();
-            Some(ScrollGeometry::build(
+            ScrollGeometry::build(
                 engine.store(),
                 &query.timeline,
                 TextLog::descriptor_text().component,
+                TextLog::descriptor_level().component,
                 query
                     .iter_visualizer_instruction_for(TextLogSystem::identifier())
                     .map(|(data_result, _)| &data_result.entity_path),
-            ))
+                filter.as_ref(),
+                &mut state.level_counts,
+            )
         };
 
-        if geometry.as_ref().is_some_and(|g| g.any_missing) {
+        state.seen_levels.extend(geometry.levels().iter().cloned());
+
+        if geometry.any_missing {
             missing_chunk_reporter.report_missing_chunk();
         }
 
-        let filtered_entries: Vec<&Entry>; // Only used when the level filter is active.
-        let (num_rows, rows, scroll_row, anchor_row) = if let Some(geometry) = &geometry {
-            let scroll_row = geometry.rows_before(TimeInt::new_temporal(time));
-            let anchor_row = geometry.rows_before(TimeInt::new_temporal(time).inc());
-
-            let rows = RowLookup::Virtual {
-                entries: &output.entries,
-                num_static: geometry.num_static_rows(),
-                fetched_static: output
-                    .entries
-                    .partition_point(|entry| entry.time.is_static())
-                    as u64,
-                temporal_offset: output.window.map_or_else(
-                    || geometry.num_static_rows(),
-                    |window| geometry.rows_before(window.min),
-                ),
-            };
-
-            (geometry.num_rows(), rows, scroll_row, anchor_row)
-        } else {
-            let levels = explicit_levels.as_deref().unwrap_or(&[]);
-            filtered_entries = output
+        // The fetched window contains *all* rows in its time range; apply the level filter
+        // here so the entries line up with the (filtered) row layout.
+        let visible_entries: Vec<&Entry> = match &filter {
+            Some(filter) => output
                 .entries
                 .iter()
-                .filter(|te| {
-                    te.level
-                        .as_ref()
-                        .is_none_or(|lvl| levels.iter().any(|l| l.as_str() == lvl.as_str()))
-                })
-                .collect();
+                .filter(|te| filter.matches(te.level.as_ref().map(|lvl| lvl.as_str())))
+                .collect(),
+            None => output.entries.iter().collect(),
+        };
 
-            let scroll_row = filtered_entries.partition_point(|te| te.time.as_i64() < time) as u64;
-            let anchor_row = filtered_entries.partition_point(|te| te.time.as_i64() <= time) as u64;
+        let num_rows = geometry.num_rows();
+        let scroll_row = geometry.rows_before(TimeInt::new_temporal(time));
+        let anchor_row = geometry.rows_before(TimeInt::new_temporal(time).inc());
 
-            (
-                filtered_entries.len() as u64,
-                RowLookup::Materialized(&filtered_entries),
-                scroll_row,
-                anchor_row,
-            )
+        let rows = RowLookup {
+            num_static: geometry.num_static_rows(),
+            fetched_static: visible_entries.partition_point(|entry| entry.time.is_static()) as u64,
+            temporal_offset: output.window.map_or_else(
+                || geometry.num_static_rows(),
+                |window| geometry.rows_before(window.min),
+            ),
+            entries: visible_entries,
         };
 
         // Auto-scroll when the time cursor moves, or whenever the row below the cursor shifts
@@ -399,31 +378,19 @@ Filter message types and toggle column visibility in a selection panel.",
         // Tell the visualizer which time window to fetch next frame: the visible rows,
         // padded by one page on each side for scroll responsiveness.
         let visible_rows = delegate.visible_rows.clone();
-        let new_window = if let Some(geometry) = &geometry {
-            let page = (visible_rows.end - visible_rows.start).max(1);
-            let prefetch_rows =
-                visible_rows.start.saturating_sub(page)..(visible_rows.end + page).min(num_rows);
-            geometry
-                .time_window_for_rows(prefetch_rows)
-                .map(|(min, max)| FetchWindow {
-                    timeline: query.timeline,
-                    min,
-                    max,
-                })
-        } else {
-            // Level filter active: the window is unused, keep it around for when the filter
-            // is removed again.
-            state.fetch_window
-        };
+        let page = (visible_rows.end - visible_rows.start).max(1);
+        let prefetch_rows =
+            visible_rows.start.saturating_sub(page)..(visible_rows.end + page).min(num_rows);
+        let new_window = geometry
+            .time_window_for_rows(prefetch_rows)
+            .map(|(min, max)| FetchWindow {
+                timeline: query.timeline,
+                min,
+                max,
+            });
 
-        // The `is_full_range` check covers the frame on which a level filter was just
-        // activated: the visualizer only picks the new mode up on the next frame.
-        if state.fetch_window != new_window
-            || state.filter_active != filter_active
-            || (filter_active && !output.is_full_range)
-        {
+        if state.fetch_window != new_window {
             state.fetch_window = new_window;
-            state.filter_active = filter_active;
             ui.ctx().request_repaint();
         }
 
@@ -439,40 +406,29 @@ enum ColumnKind {
 }
 
 /// Maps a global row index to a (possibly not-yet-fetched) [`Entry`].
-enum RowLookup<'a> {
-    /// Only the fetched time window is materialized.
-    Virtual {
-        /// Sorted by time, static entries first.
-        entries: &'a [Entry],
-        /// Total number of static rows according to chunk metadata.
-        num_static: u64,
-        /// Number of static entries at the front of `entries`.
-        fetched_static: u64,
-        /// Global row index of the first fetched temporal entry.
-        temporal_offset: u64,
-    },
+///
+/// Only the fetched time window is materialized.
+struct RowLookup<'a> {
+    /// Fetched entries that pass the level filter, sorted by time, static entries first.
+    entries: Vec<&'a Entry>,
 
-    /// Everything is materialized (level filter active).
-    Materialized(&'a [&'a Entry]),
+    /// Total number of static rows according to chunk metadata.
+    num_static: u64,
+
+    /// Number of static entries at the front of `entries`.
+    fetched_static: u64,
+
+    /// Global row index of the first fetched temporal entry.
+    temporal_offset: u64,
 }
 
 impl RowLookup<'_> {
     fn entry(&self, row_nr: u64) -> Option<&Entry> {
-        match self {
-            Self::Virtual {
-                entries,
-                num_static,
-                fetched_static,
-                temporal_offset,
-            } => {
-                if row_nr < *num_static {
-                    (row_nr < *fetched_static).then(|| &entries[row_nr as usize])
-                } else {
-                    let idx = fetched_static + row_nr.checked_sub(*temporal_offset)?;
-                    entries.get(idx as usize)
-                }
-            }
-            Self::Materialized(entries) => entries.get(row_nr as usize).copied(),
+        if row_nr < self.num_static {
+            (row_nr < self.fetched_static).then(|| self.entries[row_nr as usize])
+        } else {
+            let idx = self.fetched_static + row_nr.checked_sub(self.temporal_offset)?;
+            self.entries.get(idx as usize).copied()
         }
     }
 }
@@ -694,17 +650,27 @@ fn view_property_ui_rows(ctx: &ViewContext<'_>, ui: &mut egui::Ui) {
                         }
 
                         if any_change {
-                            let log_levels: Vec<_> = new_levels
-                                .into_iter()
-                                .filter(|(_, active)| *active)
-                                .map(|(lvl, _)| TextLogLevel(lvl.into()))
-                                .collect();
+                            if new_levels.iter().all(|(_, active)| *active) {
+                                // Nothing is filtered out: remove the filter entirely, so that
+                                // levels showing up later stay visible and the view stays on
+                                // the cheaper unfiltered path.
+                                property.reset_blueprint_component(
+                                    ctx.viewer_ctx,
+                                    TextLogRows::descriptor_filter_by_log_level(),
+                                );
+                            } else {
+                                let log_levels: Vec<_> = new_levels
+                                    .into_iter()
+                                    .filter(|(_, active)| *active)
+                                    .map(|(lvl, _)| TextLogLevel(lvl.into()))
+                                    .collect();
 
-                            property.save_blueprint_component(
-                                ctx.viewer_ctx,
-                                &TextLogRows::descriptor_filter_by_log_level(),
-                                &log_levels,
-                            );
+                                property.save_blueprint_component(
+                                    ctx.viewer_ctx,
+                                    &TextLogRows::descriptor_filter_by_log_level(),
+                                    &log_levels,
+                                );
+                            }
                         }
                     }),
                 );

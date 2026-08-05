@@ -11,14 +11,18 @@ use std::time::Instant;
 
 use re_chunk::Chunk;
 use re_log_types::{TimeInt, Timeline};
+use re_sdk_types::Archetype as _;
 use re_sdk_types::archetypes::TextLog;
+use re_sdk_types::blueprint::archetypes::TextLogRows;
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
 use re_view_text_log::TextView;
-use re_viewer_context::{TimeControlCommand, ViewClass as _};
+use re_viewer_context::{BlueprintContext as _, TimeControlCommand, ViewClass as _};
 use re_viewport_blueprint::ViewBlueprint;
 
 const ROWS_PER_CHUNK: usize = 25_000;
+
+const LEVELS: [&str; 5] = ["TRACE", "DEBUG", "INFO", "WARN", "ERROR"];
 
 #[test]
 #[ignore = "manual benchmark, run with --ignored --nocapture"]
@@ -29,6 +33,12 @@ fn frame_time_large_log() {
         .and_then(|s| s.parse().ok())
         .unwrap_or(20);
     let num_rows = num_chunks * ROWS_PER_CHUNK;
+
+    // Optionally set an explicit log level filter, e.g. `PERF_LEVEL_FILTER=WARN,ERROR`,
+    // to measure the level-filtered path.
+    let level_filter: Option<Vec<String>> = std::env::var("PERF_LEVEL_FILTER")
+        .ok()
+        .map(|levels| levels.split(',').map(|lvl| lvl.trim().to_owned()).collect());
 
     let mut test_context = TestContext::new_with_view_class::<TextView>();
     let timeline = Timeline::log_tick();
@@ -42,7 +52,8 @@ fn frame_time_large_log() {
                     i64::try_from(chunk_idx * ROWS_PER_CHUNK + row).expect("row count fits in i64");
                 builder = builder.with_archetype_auto_row(
                     [(timeline, tick)],
-                    &TextLog::new(format!("log entry {tick}")),
+                    &TextLog::new(format!("log entry {tick}"))
+                        .with_level(LEVELS[tick as usize % LEVELS.len()]),
                 );
             }
             builder.build().expect("failed to build chunk")
@@ -61,8 +72,26 @@ fn frame_time_large_log() {
     );
     test_context.handle_system_commands(&egui::Context::default());
 
-    let view_id = test_context.setup_viewport_blueprint(|_ctx, blueprint| {
-        blueprint.add_view_at_root(ViewBlueprint::new_with_root_wildcard(TextView::identifier()))
+    let view_id = test_context.setup_viewport_blueprint(|ctx, blueprint| {
+        let view_id = blueprint
+            .add_view_at_root(ViewBlueprint::new_with_root_wildcard(TextView::identifier()));
+
+        if let Some(levels) = &level_filter {
+            let property_path = {
+                let engine = ctx.store_context.blueprint.storage_engine();
+                re_viewport_blueprint::entity_path_for_view_property(
+                    view_id,
+                    engine.store().entity_tree(),
+                    TextLogRows::name(),
+                )
+            };
+            ctx.save_blueprint_archetype(
+                property_path,
+                &TextLogRows::new().with_filter_by_log_level(levels.iter().map(|lvl| lvl.as_str())),
+            );
+        }
+
+        view_id
     });
 
     let mut harness = test_context
