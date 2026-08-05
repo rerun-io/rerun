@@ -1,8 +1,9 @@
+use std::collections::HashMap;
+
 use itertools::izip;
-use re_chunk_store::AbsoluteTimeRange;
+use re_chunk_store::{AbsoluteTimeRange, RowId};
 use re_entity_db::EntityPath;
 use re_log_types::{TimeInt, TimePoint, TimelineName};
-use re_query::range_zip_1x2;
 use re_sdk_types::Archetype as _;
 use re_sdk_types::archetypes::TextLog;
 use re_sdk_types::components::{Color, Text, TextLogLevel};
@@ -46,15 +47,12 @@ impl re_byte_size::SizeBytes for FetchWindow {
 pub struct TextLogOutput {
     /// Entries sorted by time on the active timeline, static entries first.
     ///
-    /// Unless [`Self::is_full_range`] is set, this only covers [`Self::window`]
+    /// This only covers [`Self::window`]
     /// (plus all static entries, which any range query returns).
     pub entries: Vec<Entry>,
 
     /// The time window that was queried, if any.
     pub window: Option<FetchWindow>,
-
-    /// Whether the query covered the entire timeline (used when a log level filter is active).
-    pub is_full_range: bool,
 }
 
 /// A text scene, with everything needed to render it.
@@ -95,22 +93,17 @@ impl VisualizerSystem for TextLogSystem {
         // have to query (and materialize entries for) the entire recording.
         // See <https://github.com/rerun-io/rerun/issues/7562>.
         let state = ctx.view_state.downcast_ref::<TextViewState>().ok();
-        let filter_active = state.is_some_and(|state| state.filter_active);
         let window = state
             .and_then(|state| state.fetch_window)
             .filter(|window| window.timeline == view_query.timeline);
 
-        let (time_range, is_full_range) = if filter_active {
-            // With a log level filter active we can't derive the row layout from chunk-level
-            // metadata (the filter changes the row count), so fall back to fetching everything.
-            (AbsoluteTimeRange::EVERYTHING, true)
-        } else if let Some(window) = window {
-            (AbsoluteTimeRange::new(window.min, window.max), false)
+        let time_range = if let Some(window) = window {
+            AbsoluteTimeRange::new(window.min, window.max)
         } else {
             // We don't know the visible window yet (first frame, or the timeline changed).
             // Query a degenerate range: static chunks are returned regardless, and the view
             // will request a repaint once it has computed the window.
-            (AbsoluteTimeRange::new(TimeInt::MAX, TimeInt::MAX), false)
+            AbsoluteTimeRange::new(TimeInt::MAX, TimeInt::MAX)
         };
 
         let query = re_chunk_store::RangeQuery::new(view_query.timeline, time_range)
@@ -138,11 +131,7 @@ impl VisualizerSystem for TextLogSystem {
             entries.sort_by_key(|e| e.time);
         }
 
-        Ok(output.with_visualizer_data(TextLogOutput {
-            entries,
-            window,
-            is_full_range,
-        }))
+        Ok(output.with_visualizer_data(TextLogOutput { entries, window }))
     }
 }
 
@@ -181,36 +170,37 @@ impl TextLogSystem {
             .iter()
             .flat_map(|chunk| chunk.iter_component_timepoints());
 
-        let all_levels = results.iter_optional(TextLog::descriptor_level().component);
-        let all_colors = results.iter_optional(TextLog::descriptor_color().component);
+        // A text log entry is one row, and its level/color are read from that same row only
+        // (i.e. the same log call), by joining on the exact `(time, row id)` index — as opposed
+        // to the usual latest-at clamping from earlier rows. This keeps the levels in sync with
+        // the chunk-level metadata that the view uses to lay out the table (see
+        // `ScrollGeometry`); it also means that blueprint overrides and defaults of these
+        // components are not applied here.
+        let all_levels: HashMap<(TimeInt, RowId), _> = results
+            .iter_optional(TextLog::descriptor_level().component)
+            .slice::<String>()
+            .filter_map(|(index, levels)| levels.first().map(|level| (index, level.clone())))
+            .collect();
+        let all_colors: HashMap<(TimeInt, RowId), u32> = results
+            .iter_optional(TextLog::descriptor_color().component)
+            .slice::<u32>()
+            .filter_map(|(index, colors)| colors.first().map(|color| (index, *color)))
+            .collect();
 
-        let all_frames = range_zip_1x2(
-            all_texts.slice::<String>(),
-            all_levels.slice::<String>(),
-            all_colors.slice::<u32>(),
-        );
+        let all_frames = izip!(all_timepoints, all_texts.slice::<String>());
 
-        let all_frames = izip!(all_timepoints, all_frames);
-
-        for (timepoint, ((data_time, _row_id), bodies, levels, colors)) in all_frames {
-            // A text log entry is one row; we only ever look at the first instance of each
-            // component. This keeps the row count in sync with the chunk-level metadata that
-            // the view uses to lay out the table.
-            let Some(body) = bodies.first() else {
-                continue;
-            };
+        for (timepoint, (index, bodies)) in all_frames {
+            let (data_time, _row_id) = index;
 
             entries.push(Entry {
                 entity_path: data_result.entity_path.clone(),
                 time: data_time,
                 timepoint,
-                color: colors
-                    .and_then(|colors| colors.first().copied())
-                    .map(Into::into),
-                body: body.clone().into(),
-                level: levels
-                    .and_then(|levels| levels.first().cloned())
-                    .map(Into::into),
+                color: all_colors.get(&index).copied().map(Into::into),
+                // We only ever look at the first instance of each component: a text log entry
+                // is one row, which keeps the row count in sync with the chunk-level metadata.
+                body: bodies.first().cloned().map(Into::into).unwrap_or_default(),
+                level: all_levels.get(&index).cloned().map(Into::into),
             });
         }
     }
