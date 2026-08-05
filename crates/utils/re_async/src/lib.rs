@@ -41,7 +41,24 @@ pub async fn sleep(duration: Duration) {
 #[cfg(target_arch = "wasm32")]
 #[inline]
 pub async fn yield_now() {
-    sleep(Duration::from_millis(0)).await;
+    use wasm_bindgen::JsCast as _;
+
+    // Use `scheduler.yield()`, if available. More information:
+    // https://developer.mozilla.org/docs/Web/API/Scheduler/yield
+    let global = js_sys::global();
+    if let Ok(scheduler) = js_sys::Reflect::get(&global, &"scheduler".into())
+        && let Ok(yield_fn) = js_sys::Reflect::get(&scheduler, &"yield".into())
+        && let Some(yield_fn) = yield_fn.dyn_ref::<js_sys::Function>()
+    {
+        let promise = yield_fn
+            .call0(&scheduler)
+            .expect("scheduler.yield should return a promise")
+            .dyn_into::<js_sys::Promise>()
+            .expect("scheduler.yield should return a promise");
+        promise.await.expect("scheduler.yield should complete");
+    } else {
+        sleep(Duration::ZERO).await;
+    }
 }
 
 #[cfg(not(target_arch = "wasm32"))]
