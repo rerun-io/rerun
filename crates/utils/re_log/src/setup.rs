@@ -45,7 +45,7 @@ pub fn setup_logging_with_filter(log_filter: &str) {
             .with_line_number(LOG_FILE_LINE);
         let env_filter = tracing_subscriber::EnvFilter::new(log_filter);
         let panic_on_warn = PanicOnWarn {
-            always_enabled: env_var_bool("RERUN_PANIC_ON_WARN") == Some(true),
+            always_enabled: crate::is_panic_on_warn(),
         };
 
         tracing_subscriber::registry()
@@ -143,21 +143,6 @@ impl Drop for PanicOnWarnScope {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn env_var_bool(name: &str) -> Option<bool> {
-    let s = std::env::var(name).ok()?;
-    match s.to_lowercase().as_str() {
-        "0" | "false" | "off" | "no" => Some(false),
-        "1" | "true" | "on" | "yes" => Some(true),
-        _ => {
-            crate::warn!(
-                "Invalid value for environment variable {name}={s:?}. Expected 'on' or 'off'. It will be ignored"
-            );
-            None
-        }
-    }
-}
-
-#[cfg(not(target_arch = "wasm32"))]
 struct PanicOnWarn {
     always_enabled: bool,
 }
@@ -179,9 +164,10 @@ where
             tracing::Level::INFO | tracing::Level::DEBUG | tracing::Level::TRACE => return,
         };
 
-        let enabled = self.always_enabled
+        let enabled = (self.always_enabled
             || PANIC_ON_WARN_SCOPE_DEPTH
-                .with(|enabled| enabled.load(std::sync::atomic::Ordering::Relaxed) > 0);
+                .with(|enabled| enabled.load(std::sync::atomic::Ordering::Relaxed) > 0))
+            && !crate::is_panic_on_warn_suppressed();
         if enabled {
             let mut visitor = crate::event_visitor::EventVisitor::default();
             event.record(&mut visitor);
@@ -190,5 +176,50 @@ where
                 visitor.format_as_string()
             );
         }
+    }
+}
+
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod tests {
+    /// `RERUN_PANIC_ON_WARN` should catch user-facing warnings,
+    /// but not `debug_warn!`/`debug_warn_once!`, which are only warnings in debug builds.
+    ///
+    /// See <https://linear.app/rerun/issue/RR-4672>.
+    #[test]
+    fn test_debug_warn_does_not_panic_on_warn() {
+        // SAFETY: tests run via `cargo nextest` get their own process,
+        // and no other thread is reading the environment here.
+        #[expect(unsafe_code)]
+        unsafe {
+            std::env::set_var("RERUN_PANIC_ON_WARN", "1");
+        }
+        crate::setup_logging();
+
+        crate::debug_warn!("this should not panic");
+        crate::debug_warn_once!("this should not panic either");
+    }
+
+    /// Same as above, but for [`crate::PanicOnWarnScope`] instead of `RERUN_PANIC_ON_WARN`.
+    #[test]
+    fn test_debug_warn_does_not_panic_in_panic_on_warn_scope() {
+        crate::setup_logging();
+        let _scope = crate::PanicOnWarnScope::new();
+
+        crate::debug_warn!("this should not panic");
+        crate::debug_warn_once!("this should not panic either");
+    }
+
+    /// Sanity check for the two tests above: user-facing warnings should still panic.
+    ///
+    /// Uses [`crate::PanicOnWarnScope`] rather than `RERUN_PANIC_ON_WARN`, so that it
+    /// doesn't depend on whether `setup_logging` ran before or after the environment
+    /// variable was set.
+    #[test]
+    #[should_panic(expected = "warning logged with RERUN_PANIC_ON_WARN")]
+    fn test_warn_panics_in_panic_on_warn_scope() {
+        crate::setup_logging();
+        let _scope = crate::PanicOnWarnScope::new();
+
+        crate::warn!("user-facing warning");
     }
 }

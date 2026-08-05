@@ -64,11 +64,15 @@ macro_rules! log_once {
 ///
 /// In debug builds, the message is prefixed with "DEBUG: " and logged at WARN level.
 /// In release builds, the message is logged at DEBUG level without any prefix.
+///
+/// This macro never triggers panic-on-warn (`RERUN_PANIC_ON_WARN` or `PanicOnWarnScope`):
+/// that is meant to catch user-facing warnings, and this macro is never a warning
+/// in release builds.
 #[cfg(debug_assertions)]
 #[macro_export]
 macro_rules! debug_warn {
     ($($arg:tt)+) => {
-        $crate::warn!("DEBUG: {}", format_args!($($arg)+))
+        $crate::_with_panic_on_warn_suppressed(|| $crate::warn!("DEBUG: {}", format_args!($($arg)+)))
     };
 }
 
@@ -94,11 +98,15 @@ macro_rules! debug_warn {
 ///
 /// In debug builds, the message is prefixed with "DEBUG: " and logged at WARN level.
 /// In release builds, the message is logged at DEBUG level without any prefix.
+///
+/// This macro never triggers panic-on-warn (`RERUN_PANIC_ON_WARN` or `PanicOnWarnScope`):
+/// that is meant to catch user-facing warnings, and this macro is never a warning
+/// in release builds.
 #[cfg(debug_assertions)]
 #[macro_export]
 macro_rules! debug_warn_once {
     ($($arg:tt)+) => {
-        $crate::warn_once!("DEBUG: {}", format_args!($($arg)+))
+        $crate::_with_panic_on_warn_suppressed(|| $crate::warn_once!("DEBUG: {}", format_args!($($arg)+)))
     };
 }
 
@@ -338,6 +346,49 @@ pub fn env_var_is_truthy(var_name: &str) -> bool {
 pub fn is_rerun_very_strict() -> bool {
     static VERY_STRICT: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
     *VERY_STRICT.get_or_init(|| env_var_is_truthy("RERUN_VERY_STRICT"))
+}
+
+/// Is `RERUN_PANIC_ON_WARN` set to a truthy value?
+///
+/// When enabled, any user-facing warning or error log message causes a panic
+/// (see `setup_logging`). This is meant for tests and CI, to catch warnings early.
+///
+/// The result is cached on the first call, so subsequent calls are very cheap and
+/// changing the environment variable at runtime has no effect.
+pub fn is_panic_on_warn() -> bool {
+    static PANIC_ON_WARN: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *PANIC_ON_WARN.get_or_init(|| env_var_is_truthy("RERUN_PANIC_ON_WARN"))
+}
+
+thread_local! {
+    static SUPPRESS_PANIC_ON_WARN: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// Runs `f` with panic-on-warn suppressed on the current thread.
+///
+/// Used by [`debug_warn!`] & co, which are warnings only in debug builds
+/// and thus shouldn't trip `RERUN_PANIC_ON_WARN` or `PanicOnWarnScope`.
+///
+/// This relies on `tracing` dispatching events synchronously on the emitting thread.
+#[doc(hidden)] // implementation detail of the `debug_warn!` family
+pub fn _with_panic_on_warn_suppressed<R>(f: impl FnOnce() -> R) -> R {
+    // RAII-restore, so a panic during `f` (e.g. while formatting) doesn't leak the flag.
+    struct Guard(bool);
+
+    impl Drop for Guard {
+        fn drop(&mut self) {
+            SUPPRESS_PANIC_ON_WARN.with(|suppress| suppress.set(self.0));
+        }
+    }
+
+    let _guard = Guard(SUPPRESS_PANIC_ON_WARN.with(|suppress| suppress.replace(true)));
+    f()
+}
+
+/// Is panic-on-warn currently suppressed on this thread (see [`_with_panic_on_warn_suppressed`])?
+#[cfg(all(feature = "setup", not(target_arch = "wasm32")))] // only used by the `PanicOnWarn` layer
+pub(crate) fn is_panic_on_warn_suppressed() -> bool {
+    SUPPRESS_PANIC_ON_WARN.with(|suppress| suppress.get())
 }
 
 /// Shorten a path to a Rust source file.
