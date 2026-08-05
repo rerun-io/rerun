@@ -127,6 +127,15 @@ class QueryMetrics:
     planned_fetch_batches: int
     planned_segment_waves: int
     segment_admission_limit: int
+    segment_admission_candidate_limit: int
+    segment_admission_source: str
+    segment_admission_candidate_reason: str
+    segment_admission_adaptive_enabled: bool
+    segment_admission_profile_segment_count: int
+    segment_admission_profile_complete: bool
+    segment_admission_p95_segment_bytes: int
+    segment_admission_max_segment_bytes: int
+    segment_admission_largest_window_bytes: int
     max_segments_per_fetch_batch: int
     max_segments_per_wave: int
     peak_active_segments: int
@@ -183,6 +192,15 @@ def _from_rust(m: object) -> QueryMetrics:
         planned_fetch_batches=m.planned_fetch_batches,  # type: ignore[attr-defined]
         planned_segment_waves=m.planned_segment_waves,  # type: ignore[attr-defined]
         segment_admission_limit=m.segment_admission_limit,  # type: ignore[attr-defined]
+        segment_admission_candidate_limit=m.segment_admission_candidate_limit,  # type: ignore[attr-defined]
+        segment_admission_source=m.segment_admission_source,  # type: ignore[attr-defined]
+        segment_admission_candidate_reason=m.segment_admission_candidate_reason,  # type: ignore[attr-defined]
+        segment_admission_adaptive_enabled=m.segment_admission_adaptive_enabled,  # type: ignore[attr-defined]
+        segment_admission_profile_segment_count=m.segment_admission_profile_segment_count,  # type: ignore[attr-defined]
+        segment_admission_profile_complete=m.segment_admission_profile_complete,  # type: ignore[attr-defined]
+        segment_admission_p95_segment_bytes=m.segment_admission_p95_segment_bytes,  # type: ignore[attr-defined]
+        segment_admission_max_segment_bytes=m.segment_admission_max_segment_bytes,  # type: ignore[attr-defined]
+        segment_admission_largest_window_bytes=m.segment_admission_largest_window_bytes,  # type: ignore[attr-defined]
         max_segments_per_fetch_batch=m.max_segments_per_fetch_batch,  # type: ignore[attr-defined]
         max_segments_per_wave=m.max_segments_per_wave,  # type: ignore[attr-defined]
         peak_active_segments=m.peak_active_segments,  # type: ignore[attr-defined]

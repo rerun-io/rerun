@@ -14,8 +14,8 @@ use crate::dataframe_query_common::{
     DataframeClientAPI, IndexValuesMap, PlanSummary, group_chunk_infos_by_segment_id,
     segment_partition_hash,
 };
-use crate::pipeline_budget::PipelineBudget;
-use arrow::array::RecordBatch;
+use crate::pipeline_budget::{PipelineBudget, SegmentAdmissionPolicy, SegmentAdmissionProfile};
+use arrow::array::{Array as _, RecordBatch, UInt64Array};
 use arrow::compute::SortOptions;
 use arrow::datatypes::{Schema, SchemaRef};
 use cpu_worker::{CpuWorkerMsg, chunk_store_cpu_worker_thread};
@@ -35,7 +35,7 @@ use futures_util::Stream;
 use io_loop::chunk_stream_io_loop;
 use itertools::Itertools as _;
 use re_dataframe::{Index, QueryExpression, TimelineName};
-use re_protos::cloud::v1alpha1::ext::ScanSegmentTableDataframe;
+use re_protos::cloud::v1alpha1::ext::{QueryDatasetDataframe, ScanSegmentTableDataframe};
 use re_types_core::SegmentId;
 
 use re_redap_client::{ApiError, ApiResult};
@@ -434,6 +434,81 @@ impl<T: DataframeClientAPI> Drop for DataframeSegmentStreamInner<T> {
     }
 }
 
+/// Sum the queried uncompressed sizes of a segment's chunks.
+///
+/// Returns `None` when the metadata is unusable for admission sizing. The
+/// caller only records that as `IncompleteMetadata`, so each rejection also
+/// logs *why* at debug level — the distinction between "the column isn't there
+/// at all" and "the column is there but carries nulls or zeros" is what tells
+/// you whether to look at the manifest schema or at the stored sizes.
+fn queried_uncompressed_segment_size(batches: &[RecordBatch]) -> Option<u64> {
+    let column_name = QueryDatasetDataframe::COLUMN_CHUNK_BYTE_SIZE_UNCOMPRESSED_NAME;
+    let mut segment_size = 0u64;
+    for batch in batches {
+        let Some(column) = batch.column_by_name(column_name) else {
+            re_log::debug!(
+                "adaptive segment admission: chunk-info batch has no {column_name} column"
+            );
+            return None;
+        };
+        let Some(sizes) = column.as_any().downcast_ref::<UInt64Array>() else {
+            re_log::debug!(
+                "adaptive segment admission: {column_name} is {:?}, expected UInt64",
+                column.data_type(),
+            );
+            return None;
+        };
+        if sizes.null_count() > 0 {
+            re_log::debug!(
+                "adaptive segment admission: {column_name} has {} null of {} rows",
+                sizes.null_count(),
+                sizes.len(),
+            );
+            return None;
+        }
+        for size in sizes.values() {
+            if *size == 0 {
+                re_log::debug!("adaptive segment admission: {column_name} contains a zero size");
+                return None;
+            }
+            let Some(next) = segment_size.checked_add(*size) else {
+                re_log::debug!(
+                    "adaptive segment admission: {column_name} sum overflows u64 at {segment_size}"
+                );
+                return None;
+            };
+            segment_size = next;
+        }
+    }
+    if segment_size == 0 {
+        re_log::debug!("adaptive segment admission: no {column_name} rows for this segment");
+        return None;
+    }
+    Some(segment_size)
+}
+
+fn segment_admission_profile(
+    chunk_info: &BTreeMap<SegmentId, Vec<RecordBatch>>,
+    index_values: &IndexValuesMap,
+) -> SegmentAdmissionProfile {
+    let selected_segments = chunk_info.iter().filter(|(segment_id, _)| {
+        index_values
+            .as_ref()
+            .is_none_or(|values| values.contains_key(*segment_id))
+    });
+    let (segment_count, segment_sizes) = selected_segments.fold(
+        (0usize, Some(Vec::new())),
+        |(count, sizes), (_, batches)| {
+            let sizes = sizes.and_then(|mut sizes| {
+                sizes.push(queried_uncompressed_segment_size(batches)?);
+                Some(sizes)
+            });
+            (count + 1, sizes)
+        },
+    );
+    SegmentAdmissionProfile::new(segment_count, segment_sizes)
+}
+
 impl<T: DataframeClientAPI> SegmentStreamExec<T> {
     #[tracing::instrument(level = "info", skip_all)]
     pub fn try_new(
@@ -545,6 +620,12 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
         let chunk_info = group_chunk_infos_by_segment_id(chunk_info_batches.as_slice())?;
         drop(chunk_info_batches);
 
+        let resolved_pipeline_budget =
+            PipelineBudget::resolve_size(total_uncompressed, num_partitions);
+        let admission_profile = segment_admission_profile(&chunk_info, &index_values);
+        let admission_policy =
+            SegmentAdmissionPolicy::from_env(&admission_profile, resolved_pipeline_budget.bytes());
+
         // The analytics' `QueryMetrics` carries the plan-time `QueryInfo`
         // (set by the caller in `dataframe_query_common::scan`) plus
         // zero-initialized fetch atomics that the IO loop will populate.
@@ -557,9 +638,8 @@ impl<T: DataframeClientAPI> SegmentStreamExec<T> {
         let partitions_remaining = Arc::new(AtomicUsize::new(num_partitions));
         let snapshot_sent = Arc::new(AtomicBool::new(false));
         let pipeline_budget = Arc::new(PipelineBudget::new_with_metrics(
-            total_uncompressed,
-            num_partitions,
-            crate::pipeline_budget::segment_admission_limit(),
+            resolved_pipeline_budget,
+            admission_policy,
             Arc::clone(pending_analytics.metrics()),
         ));
 
@@ -899,5 +979,64 @@ impl CpuRuntime {
     /// Return a handle suitable for spawning CPU-bound tasks.
     fn handle(&self) -> &Handle {
         self.runtime.handle()
+    }
+}
+
+#[cfg(test)]
+mod segment_admission_profile_tests {
+    use arrow::array::ArrayRef;
+
+    use super::*;
+
+    fn batch(sizes: Vec<Option<u64>>, column_name: &str) -> RecordBatch {
+        RecordBatch::try_from_iter(vec![(
+            column_name,
+            Arc::new(UInt64Array::from(sizes)) as ArrayRef,
+        )])
+        .unwrap()
+    }
+
+    #[test]
+    fn queried_uncompressed_segment_size_requires_complete_positive_metadata() {
+        let column = QueryDatasetDataframe::COLUMN_CHUNK_BYTE_SIZE_UNCOMPRESSED_NAME;
+        assert_eq!(
+            queried_uncompressed_segment_size(&[
+                batch(vec![Some(10), Some(20)], column),
+                batch(vec![Some(30)], column),
+            ]),
+            Some(60)
+        );
+        assert_eq!(
+            queried_uncompressed_segment_size(&[batch(vec![Some(10), None], column)]),
+            None
+        );
+        assert_eq!(
+            queried_uncompressed_segment_size(&[batch(vec![Some(0)], column)]),
+            None
+        );
+        assert_eq!(
+            queried_uncompressed_segment_size(&[batch(vec![Some(10)], "other")]),
+            None
+        );
+    }
+
+    #[test]
+    fn segment_admission_profile_uses_only_index_selected_segments() {
+        let column = QueryDatasetDataframe::COLUMN_CHUNK_BYTE_SIZE_UNCOMPRESSED_NAME;
+        let selected_id: SegmentId = "selected".into();
+        let excluded_id: SegmentId = "excluded".into();
+        let chunk_info = BTreeMap::from([
+            (selected_id.clone(), vec![batch(vec![Some(10)], column)]),
+            (excluded_id, vec![batch(vec![None], column)]),
+        ]);
+        let index_values: IndexValuesMap = Some(Arc::new(BTreeMap::from([(
+            selected_id,
+            Default::default(),
+        )])));
+
+        assert_eq!(
+            segment_admission_profile(&chunk_info, &index_values),
+            SegmentAdmissionProfile::new(1, Some(vec![10]))
+        );
     }
 }

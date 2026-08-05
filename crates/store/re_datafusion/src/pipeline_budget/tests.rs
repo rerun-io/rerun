@@ -687,13 +687,18 @@ fn test_parse_usize_rejects_non_numeric() {
 #[test]
 fn test_parse_segment_admission_cap_accepts_experimental_range() {
     assert_eq!(
-        parse_segment_admission_cap(&MAX_CONCURRENT_SEGMENTS.to_string()),
-        MAX_CONCURRENT_SEGMENTS
+        resolve_exact_segment_admission_override(Some(&MAX_CONCURRENT_SEGMENTS.to_string())),
+        ExactSegmentAdmissionOverride::Valid(MAX_CONCURRENT_SEGMENTS)
     );
-    assert_eq!(parse_segment_admission_cap("128"), 128);
     assert_eq!(
-        parse_segment_admission_cap(&MAX_EXPERIMENTAL_SEGMENT_ADMISSION_CAP.to_string()),
-        MAX_EXPERIMENTAL_SEGMENT_ADMISSION_CAP
+        resolve_exact_segment_admission_override(Some("128")),
+        ExactSegmentAdmissionOverride::Valid(128)
+    );
+    assert_eq!(
+        resolve_exact_segment_admission_override(Some(
+            &MAX_EXPERIMENTAL_SEGMENT_ADMISSION_CAP.to_string()
+        )),
+        ExactSegmentAdmissionOverride::Valid(MAX_EXPERIMENTAL_SEGMENT_ADMISSION_CAP)
     );
 }
 
@@ -716,16 +721,263 @@ fn test_resolve_segment_admission_limit_handles_unset_empty_and_trimmed() {
 
 #[test]
 fn test_parse_segment_admission_cap_rejects_out_of_range_and_invalid() {
-    assert_eq!(parse_segment_admission_cap("0"), MAX_CONCURRENT_SEGMENTS);
-    assert_eq!(parse_segment_admission_cap("2"), MAX_CONCURRENT_SEGMENTS);
+    for raw in [
+        "0".to_owned(),
+        "2".to_owned(),
+        (MAX_EXPERIMENTAL_SEGMENT_ADMISSION_CAP + 1).to_string(),
+        "not-a-number".to_owned(),
+    ] {
+        assert_eq!(
+            resolve_exact_segment_admission_override(Some(&raw)),
+            ExactSegmentAdmissionOverride::Invalid
+        );
+    }
+}
+
+#[test]
+fn test_adaptive_segment_admission_override_defaults_enabled_and_fails_closed() {
     assert_eq!(
-        parse_segment_admission_cap(&(MAX_EXPERIMENTAL_SEGMENT_ADMISSION_CAP + 1).to_string()),
-        MAX_CONCURRENT_SEGMENTS
+        resolve_adaptive_segment_admission_override(None),
+        AdaptiveSegmentAdmissionOverride::Default
     );
     assert_eq!(
-        parse_segment_admission_cap("not-a-number"),
-        MAX_CONCURRENT_SEGMENTS
+        resolve_adaptive_segment_admission_override(Some("  ")),
+        AdaptiveSegmentAdmissionOverride::Default
     );
+    assert_eq!(
+        resolve_adaptive_segment_admission_override(Some("true")),
+        AdaptiveSegmentAdmissionOverride::Enabled
+    );
+    assert_eq!(
+        resolve_adaptive_segment_admission_override(Some("false")),
+        AdaptiveSegmentAdmissionOverride::Disabled
+    );
+    assert_eq!(
+        resolve_adaptive_segment_admission_override(Some("invalid")),
+        AdaptiveSegmentAdmissionOverride::Invalid
+    );
+}
+
+#[test]
+fn test_adaptive_segment_admission_policy_matrix() {
+    const GIB: usize = 1024 * 1024 * 1024;
+    let mib = 1024 * 1024;
+    let cases = [
+        (
+            "eligible by default",
+            SegmentAdmissionProfile::new(16, Some(vec![mib; 16])),
+            GIB,
+            None,
+            None,
+            ADAPTIVE_SEGMENT_ADMISSION_CAP,
+            ADAPTIVE_SEGMENT_ADMISSION_CAP,
+            SegmentAdmissionSource::Adaptive,
+            SegmentAdmissionCandidateReason::Eligible,
+        ),
+        (
+            "eligible explicit enable",
+            SegmentAdmissionProfile::new(16, Some(vec![mib; 16])),
+            GIB,
+            None,
+            Some("true"),
+            ADAPTIVE_SEGMENT_ADMISSION_CAP,
+            ADAPTIVE_SEGMENT_ADMISSION_CAP,
+            SegmentAdmissionSource::Adaptive,
+            SegmentAdmissionCandidateReason::Eligible,
+        ),
+        (
+            "invalid adaptive override remains metrics only",
+            SegmentAdmissionProfile::new(16, Some(vec![mib; 16])),
+            GIB,
+            None,
+            Some("invalid"),
+            ADAPTIVE_SEGMENT_ADMISSION_CAP,
+            MAX_CONCURRENT_SEGMENTS,
+            SegmentAdmissionSource::MetricsOnly,
+            SegmentAdmissionCandidateReason::Eligible,
+        ),
+        (
+            "insufficient segments",
+            SegmentAdmissionProfile::new(3, Some(vec![mib; 3])),
+            GIB,
+            None,
+            Some("true"),
+            MAX_CONCURRENT_SEGMENTS,
+            MAX_CONCURRENT_SEGMENTS,
+            SegmentAdmissionSource::Adaptive,
+            SegmentAdmissionCandidateReason::InsufficientSegments,
+        ),
+        (
+            "small query below adaptive ceiling",
+            SegmentAdmissionProfile::new(4, Some(vec![mib; 4])),
+            GIB,
+            None,
+            Some("true"),
+            ADAPTIVE_SEGMENT_ADMISSION_CAP,
+            ADAPTIVE_SEGMENT_ADMISSION_CAP,
+            SegmentAdmissionSource::Adaptive,
+            SegmentAdmissionCandidateReason::Eligible,
+        ),
+        (
+            "incomplete metadata",
+            SegmentAdmissionProfile::new(16, None),
+            GIB,
+            None,
+            Some("true"),
+            MAX_CONCURRENT_SEGMENTS,
+            MAX_CONCURRENT_SEGMENTS,
+            SegmentAdmissionSource::Adaptive,
+            SegmentAdmissionCandidateReason::IncompleteMetadata,
+        ),
+        (
+            "mismatched metadata length",
+            SegmentAdmissionProfile::new(16, Some(vec![mib; 15])),
+            GIB,
+            None,
+            Some("true"),
+            MAX_CONCURRENT_SEGMENTS,
+            MAX_CONCURRENT_SEGMENTS,
+            SegmentAdmissionSource::Adaptive,
+            SegmentAdmissionCandidateReason::IncompleteMetadata,
+        ),
+        (
+            "one zero metadata value",
+            SegmentAdmissionProfile::new(16, Some([vec![mib; 15], vec![0]].concat())),
+            GIB,
+            None,
+            Some("true"),
+            MAX_CONCURRENT_SEGMENTS,
+            MAX_CONCURRENT_SEGMENTS,
+            SegmentAdmissionSource::Adaptive,
+            SegmentAdmissionCandidateReason::IncompleteMetadata,
+        ),
+        (
+            "p95 threshold inclusive",
+            SegmentAdmissionProfile::new(
+                16,
+                Some(vec![ADAPTIVE_SMALL_SEGMENT_THRESHOLD_BYTES; 16]),
+            ),
+            GIB,
+            None,
+            Some("true"),
+            ADAPTIVE_SEGMENT_ADMISSION_CAP,
+            ADAPTIVE_SEGMENT_ADMISSION_CAP,
+            SegmentAdmissionSource::Adaptive,
+            SegmentAdmissionCandidateReason::Eligible,
+        ),
+        (
+            "p95 above threshold",
+            SegmentAdmissionProfile::new(
+                20,
+                Some(
+                    [
+                        vec![ADAPTIVE_SMALL_SEGMENT_THRESHOLD_BYTES; 18],
+                        vec![ADAPTIVE_SMALL_SEGMENT_THRESHOLD_BYTES + 1; 2],
+                    ]
+                    .concat(),
+                ),
+            ),
+            GIB,
+            None,
+            Some("true"),
+            MAX_CONCURRENT_SEGMENTS,
+            MAX_CONCURRENT_SEGMENTS,
+            SegmentAdmissionSource::Adaptive,
+            SegmentAdmissionCandidateReason::P95AboveThreshold,
+        ),
+        (
+            "budget equality is eligible",
+            SegmentAdmissionProfile::new(16, Some(vec![mib; 16])),
+            48 * mib as usize,
+            None,
+            Some("true"),
+            ADAPTIVE_SEGMENT_ADMISSION_CAP,
+            ADAPTIVE_SEGMENT_ADMISSION_CAP,
+            SegmentAdmissionSource::Adaptive,
+            SegmentAdmissionCandidateReason::Eligible,
+        ),
+        (
+            "budget insufficient",
+            SegmentAdmissionProfile::new(16, Some(vec![mib; 16])),
+            48 * mib as usize - 1,
+            None,
+            Some("true"),
+            MAX_CONCURRENT_SEGMENTS,
+            MAX_CONCURRENT_SEGMENTS,
+            SegmentAdmissionSource::Adaptive,
+            SegmentAdmissionCandidateReason::BudgetInsufficient,
+        ),
+        (
+            "explicit disable remains metrics only",
+            SegmentAdmissionProfile::new(16, Some(vec![mib; 16])),
+            GIB,
+            None,
+            Some("false"),
+            ADAPTIVE_SEGMENT_ADMISSION_CAP,
+            MAX_CONCURRENT_SEGMENTS,
+            SegmentAdmissionSource::MetricsOnly,
+            SegmentAdmissionCandidateReason::Eligible,
+        ),
+        (
+            "exact override wins with incomplete metadata",
+            SegmentAdmissionProfile::new(16, None),
+            GIB,
+            Some("8"),
+            Some("true"),
+            MAX_CONCURRENT_SEGMENTS,
+            8,
+            SegmentAdmissionSource::ExactOverride,
+            SegmentAdmissionCandidateReason::IncompleteMetadata,
+        ),
+        (
+            "exact override wins when adaptive is disabled",
+            SegmentAdmissionProfile::new(16, Some(vec![mib; 16])),
+            GIB,
+            Some("8"),
+            Some("false"),
+            ADAPTIVE_SEGMENT_ADMISSION_CAP,
+            8,
+            SegmentAdmissionSource::ExactOverride,
+            SegmentAdmissionCandidateReason::Eligible,
+        ),
+        (
+            "invalid exact override fails closed",
+            SegmentAdmissionProfile::new(16, Some(vec![mib; 16])),
+            GIB,
+            Some("invalid"),
+            Some("true"),
+            ADAPTIVE_SEGMENT_ADMISSION_CAP,
+            MAX_CONCURRENT_SEGMENTS,
+            SegmentAdmissionSource::InvalidOverride,
+            SegmentAdmissionCandidateReason::Eligible,
+        ),
+    ];
+
+    for (name, profile, budget, exact, adaptive, candidate, effective, source, reason) in cases {
+        let policy = SegmentAdmissionPolicy::resolve(&profile, budget, exact, adaptive);
+        assert_eq!(policy.candidate_limit, candidate, "{name}");
+        assert_eq!(policy.effective_limit, effective, "{name}");
+        assert_eq!(policy.source, source, "{name}");
+        assert_eq!(policy.candidate_reason, reason, "{name}");
+    }
+}
+
+#[test]
+fn test_adaptive_policy_uses_nearest_rank_p95_and_largest_window() {
+    let mib = 1024 * 1024;
+    let mut sizes = vec![mib; 19];
+    sizes.push(9 * mib);
+    let policy = SegmentAdmissionPolicy::resolve(
+        &SegmentAdmissionProfile::new(20, Some(sizes)),
+        usize::MAX,
+        None,
+        None,
+    );
+
+    assert_eq!(policy.p95_segment_bytes, mib);
+    assert_eq!(policy.max_segment_bytes, 9 * mib);
+    assert_eq!(policy.largest_window_bytes, 24 * mib);
+    assert_eq!(policy.candidate_limit, ADAPTIVE_SEGMENT_ADMISSION_CAP);
 }
 
 // -----------------------------------------------------------------

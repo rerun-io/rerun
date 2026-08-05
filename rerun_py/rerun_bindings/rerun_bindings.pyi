@@ -1962,6 +1962,33 @@ class _QueryMetrics:
     segment_admission_limit: int
     """Maximum concurrently admitted segments configured for this query."""
 
+    segment_admission_candidate_limit: int
+    """Cap recommended by the adaptive policy, whether or not it was applied."""
+
+    segment_admission_source: str
+    """Source of the effective admission cap."""
+
+    segment_admission_candidate_reason: str
+    """Reason the adaptive candidate was or was not eligible."""
+
+    segment_admission_adaptive_enabled: bool
+    """Whether adaptive segment admission was enabled."""
+
+    segment_admission_profile_segment_count: int
+    """Number of segments evaluated by the adaptive policy."""
+
+    segment_admission_profile_complete: bool
+    """Whether every segment had complete positive uncompressed-size metadata."""
+
+    segment_admission_p95_segment_bytes: int
+    """Nearest-rank p95 queried uncompressed bytes per segment."""
+
+    segment_admission_max_segment_bytes: int
+    """Largest queried uncompressed segment size."""
+
+    segment_admission_largest_window_bytes: int
+    """Sum of the largest candidate-window segment estimates."""
+
     max_segments_per_fetch_batch: int
     """Largest distinct-segment count in a planned transport batch."""
 

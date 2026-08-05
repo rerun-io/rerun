@@ -18,6 +18,73 @@ use web_time::Duration;
 
 use crate::analytics::{DirectFetchFailureReason, QueryInfo};
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(u64)]
+pub(crate) enum SegmentAdmissionSource {
+    Unknown = 0,
+    MetricsOnly = 1,
+    Adaptive = 2,
+    ExactOverride = 3,
+    InvalidOverride = 4,
+}
+
+impl SegmentAdmissionSource {
+    fn from_metric(value: u64) -> Self {
+        match value {
+            1 => Self::MetricsOnly,
+            2 => Self::Adaptive,
+            3 => Self::ExactOverride,
+            4 => Self::InvalidOverride,
+            _ => Self::Unknown,
+        }
+    }
+
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Unknown => "unknown",
+            Self::MetricsOnly => "metrics_only",
+            Self::Adaptive => "adaptive",
+            Self::ExactOverride => "exact_override",
+            Self::InvalidOverride => "invalid_override",
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(u64)]
+pub(crate) enum SegmentAdmissionCandidateReason {
+    Unknown = 0,
+    Eligible = 1,
+    InsufficientSegments = 2,
+    IncompleteMetadata = 3,
+    P95AboveThreshold = 4,
+    BudgetInsufficient = 5,
+}
+
+impl SegmentAdmissionCandidateReason {
+    fn from_metric(value: u64) -> Self {
+        match value {
+            1 => Self::Eligible,
+            2 => Self::InsufficientSegments,
+            3 => Self::IncompleteMetadata,
+            4 => Self::P95AboveThreshold,
+            5 => Self::BudgetInsufficient,
+            _ => Self::Unknown,
+        }
+    }
+
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Unknown => "unknown",
+            Self::Eligible => "eligible",
+            Self::InsufficientSegments => "insufficient_segments",
+            Self::IncompleteMetadata => "incomplete_metadata",
+            Self::P95AboveThreshold => "p95_above_threshold",
+            Self::BudgetInsufficient => "budget_insufficient",
+        }
+    }
+}
+
 /// Canonical source of truth for one query's runtime counters.
 ///
 /// Each `SegmentStreamExec` owns one of these (wrapped in [`Arc`](std::sync::Arc)) and shares
@@ -53,6 +120,15 @@ pub(crate) struct QueryMetrics {
     pub planned_fetch_batches: AtomicU64,
     pub planned_segment_waves: AtomicU64,
     pub segment_admission_limit: AtomicU64,
+    pub segment_admission_candidate_limit: AtomicU64,
+    pub segment_admission_source: AtomicU64,
+    pub segment_admission_candidate_reason: AtomicU64,
+    pub segment_admission_adaptive_enabled: AtomicU64,
+    pub segment_admission_profile_segment_count: AtomicU64,
+    pub segment_admission_profile_complete: AtomicU64,
+    pub segment_admission_p95_segment_bytes: AtomicU64,
+    pub segment_admission_max_segment_bytes: AtomicU64,
+    pub segment_admission_largest_window_bytes: AtomicU64,
     pub max_segments_per_fetch_batch: AtomicU64,
     pub max_segments_per_wave: AtomicU64,
     pub peak_active_segments: AtomicU64,
@@ -80,6 +156,15 @@ impl QueryMetrics {
             planned_fetch_batches: AtomicU64::new(0),
             planned_segment_waves: AtomicU64::new(0),
             segment_admission_limit: AtomicU64::new(0),
+            segment_admission_candidate_limit: AtomicU64::new(0),
+            segment_admission_source: AtomicU64::new(0),
+            segment_admission_candidate_reason: AtomicU64::new(0),
+            segment_admission_adaptive_enabled: AtomicU64::new(0),
+            segment_admission_profile_segment_count: AtomicU64::new(0),
+            segment_admission_profile_complete: AtomicU64::new(0),
+            segment_admission_p95_segment_bytes: AtomicU64::new(0),
+            segment_admission_max_segment_bytes: AtomicU64::new(0),
+            segment_admission_largest_window_bytes: AtomicU64::new(0),
             max_segments_per_fetch_batch: AtomicU64::new(0),
             max_segments_per_wave: AtomicU64::new(0),
             peak_active_segments: AtomicU64::new(0),
@@ -198,6 +283,33 @@ pub struct QuerySnapshot {
     /// Maximum number of concurrently admitted segments configured for this query.
     pub segment_admission_limit: u64,
 
+    /// Cap recommended by the adaptive policy, whether or not it was applied.
+    pub segment_admission_candidate_limit: u64,
+
+    /// Source of the effective cap.
+    pub segment_admission_source: &'static str,
+
+    /// Reason the adaptive candidate was or was not eligible.
+    pub segment_admission_candidate_reason: &'static str,
+
+    /// Whether adaptive admission was enabled for this query.
+    pub segment_admission_adaptive_enabled: bool,
+
+    /// Number of segments evaluated by the policy.
+    pub segment_admission_profile_segment_count: u64,
+
+    /// Whether every segment had complete positive uncompressed-size metadata.
+    pub segment_admission_profile_complete: bool,
+
+    /// Nearest-rank p95 queried uncompressed bytes per segment.
+    pub segment_admission_p95_segment_bytes: u64,
+
+    /// Largest queried uncompressed segment size.
+    pub segment_admission_max_segment_bytes: u64,
+
+    /// Sum of the largest candidate-window segment estimates before decode expansion.
+    pub segment_admission_largest_window_bytes: u64,
+
     /// Largest distinct-segment count in any planned transport batch.
     pub max_segments_per_fetch_batch: u64,
 
@@ -259,6 +371,25 @@ pub(crate) fn build_query_snapshot(
         planned_fetch_batches: load(&metrics.planned_fetch_batches),
         planned_segment_waves: load(&metrics.planned_segment_waves),
         segment_admission_limit: load(&metrics.segment_admission_limit),
+        segment_admission_candidate_limit: load(&metrics.segment_admission_candidate_limit),
+        segment_admission_source: SegmentAdmissionSource::from_metric(load(
+            &metrics.segment_admission_source,
+        ))
+        .as_str(),
+        segment_admission_candidate_reason: SegmentAdmissionCandidateReason::from_metric(load(
+            &metrics.segment_admission_candidate_reason,
+        ))
+        .as_str(),
+        segment_admission_adaptive_enabled: load(&metrics.segment_admission_adaptive_enabled) != 0,
+        segment_admission_profile_segment_count: load(
+            &metrics.segment_admission_profile_segment_count,
+        ),
+        segment_admission_profile_complete: load(&metrics.segment_admission_profile_complete) != 0,
+        segment_admission_p95_segment_bytes: load(&metrics.segment_admission_p95_segment_bytes),
+        segment_admission_max_segment_bytes: load(&metrics.segment_admission_max_segment_bytes),
+        segment_admission_largest_window_bytes: load(
+            &metrics.segment_admission_largest_window_bytes,
+        ),
         max_segments_per_fetch_batch: load(&metrics.max_segments_per_fetch_batch),
         max_segments_per_wave: load(&metrics.max_segments_per_wave),
         peak_active_segments: load(&metrics.peak_active_segments),
@@ -358,6 +489,15 @@ mod tests {
     }
 
     #[test]
+    fn unrecorded_segment_admission_policy_is_unknown() {
+        let metrics = QueryMetrics::new(dummy_query_info());
+        let snap = build_query_snapshot(&metrics, Duration::ZERO, None, None, None);
+
+        assert_eq!(snap.segment_admission_source, "unknown");
+        assert_eq!(snap.segment_admission_candidate_reason, "unknown");
+    }
+
+    #[test]
     fn build_query_snapshot_reads_atomic_counters() {
         let metrics = QueryMetrics::new(dummy_query_info());
         // Simulate two partitions each flushing into the shared atomics.
@@ -375,6 +515,32 @@ mod tests {
         metrics
             .segment_admission_limit
             .fetch_max(3, Ordering::Relaxed);
+        metrics
+            .segment_admission_candidate_limit
+            .store(16, Ordering::Relaxed);
+        metrics.segment_admission_source.store(
+            SegmentAdmissionSource::MetricsOnly as u64,
+            Ordering::Relaxed,
+        );
+        metrics.segment_admission_candidate_reason.store(
+            SegmentAdmissionCandidateReason::Eligible as u64,
+            Ordering::Relaxed,
+        );
+        metrics
+            .segment_admission_profile_segment_count
+            .store(32, Ordering::Relaxed);
+        metrics
+            .segment_admission_profile_complete
+            .store(1, Ordering::Relaxed);
+        metrics
+            .segment_admission_p95_segment_bytes
+            .store(1024, Ordering::Relaxed);
+        metrics
+            .segment_admission_max_segment_bytes
+            .store(2048, Ordering::Relaxed);
+        metrics
+            .segment_admission_largest_window_bytes
+            .store(16_384, Ordering::Relaxed);
         metrics
             .max_segments_per_fetch_batch
             .fetch_max(3, Ordering::Relaxed);
@@ -402,6 +568,14 @@ mod tests {
         assert_eq!(snap.planned_fetch_batches, 16);
         assert_eq!(snap.planned_segment_waves, 1_332);
         assert_eq!(snap.segment_admission_limit, 3);
+        assert_eq!(snap.segment_admission_candidate_limit, 16);
+        assert_eq!(snap.segment_admission_source, "metrics_only");
+        assert_eq!(snap.segment_admission_candidate_reason, "eligible");
+        assert_eq!(snap.segment_admission_profile_segment_count, 32);
+        assert!(snap.segment_admission_profile_complete);
+        assert_eq!(snap.segment_admission_p95_segment_bytes, 1024);
+        assert_eq!(snap.segment_admission_max_segment_bytes, 2048);
+        assert_eq!(snap.segment_admission_largest_window_bytes, 16_384);
         assert_eq!(snap.max_segments_per_fetch_batch, 3);
         assert_eq!(snap.max_segments_per_wave, 3);
         assert_eq!(snap.peak_active_segments, 3);

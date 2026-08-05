@@ -781,6 +781,23 @@ pub(crate) fn build_metrics_set_for_explain(
     global("planned_fetch_batches").add(load(&metrics.planned_fetch_batches));
     global("planned_segment_waves").add(load(&metrics.planned_segment_waves));
     global("segment_admission_limit").add(load(&metrics.segment_admission_limit));
+    global("segment_admission_candidate_limit")
+        .add(load(&metrics.segment_admission_candidate_limit));
+    global("segment_admission_source_code").add(load(&metrics.segment_admission_source));
+    global("segment_admission_candidate_reason_code")
+        .add(load(&metrics.segment_admission_candidate_reason));
+    global("segment_admission_adaptive_enabled")
+        .add(load(&metrics.segment_admission_adaptive_enabled));
+    global("segment_admission_profile_segment_count")
+        .add(load(&metrics.segment_admission_profile_segment_count));
+    global("segment_admission_profile_complete")
+        .add(load(&metrics.segment_admission_profile_complete));
+    global("segment_admission_p95_segment_bytes")
+        .add(load(&metrics.segment_admission_p95_segment_bytes));
+    global("segment_admission_max_segment_bytes")
+        .add(load(&metrics.segment_admission_max_segment_bytes));
+    global("segment_admission_largest_window_bytes")
+        .add(load(&metrics.segment_admission_largest_window_bytes));
     global("max_segments_per_fetch_batch").add(load(&metrics.max_segments_per_fetch_batch));
     global("max_segments_per_wave").add(load(&metrics.max_segments_per_wave));
     global("peak_active_segments").add(load(&metrics.peak_active_segments));
@@ -883,6 +900,15 @@ fn build_query_span(snap: &QuerySnapshot, wall_clock_range: Range<SystemTime>) -
         planned_fetch_batches,
         planned_segment_waves,
         segment_admission_limit,
+        segment_admission_candidate_limit,
+        segment_admission_source,
+        segment_admission_candidate_reason,
+        segment_admission_adaptive_enabled,
+        segment_admission_profile_segment_count,
+        segment_admission_profile_complete,
+        segment_admission_p95_segment_bytes,
+        segment_admission_max_segment_bytes,
+        segment_admission_largest_window_bytes,
         max_segments_per_fetch_batch,
         max_segments_per_wave,
         peak_active_segments,
@@ -948,6 +974,39 @@ fn build_query_span(snap: &QuerySnapshot, wall_clock_range: Range<SystemTime>) -
         kv_int("planned_fetch_batches", *planned_fetch_batches as i64),
         kv_int("planned_segment_waves", *planned_segment_waves as i64),
         kv_int("segment_admission_limit", *segment_admission_limit as i64),
+        kv_int(
+            "segment_admission_candidate_limit",
+            *segment_admission_candidate_limit as i64,
+        ),
+        kv_string("segment_admission_source", segment_admission_source),
+        kv_string(
+            "segment_admission_candidate_reason",
+            segment_admission_candidate_reason,
+        ),
+        kv_bool(
+            "segment_admission_adaptive_enabled",
+            *segment_admission_adaptive_enabled,
+        ),
+        kv_int(
+            "segment_admission_profile_segment_count",
+            *segment_admission_profile_segment_count as i64,
+        ),
+        kv_bool(
+            "segment_admission_profile_complete",
+            *segment_admission_profile_complete,
+        ),
+        kv_int(
+            "segment_admission_p95_segment_bytes",
+            *segment_admission_p95_segment_bytes as i64,
+        ),
+        kv_int(
+            "segment_admission_max_segment_bytes",
+            *segment_admission_max_segment_bytes as i64,
+        ),
+        kv_int(
+            "segment_admission_largest_window_bytes",
+            *segment_admission_largest_window_bytes as i64,
+        ),
         kv_int(
             "max_segments_per_fetch_batch",
             *max_segments_per_fetch_batch as i64,
@@ -1621,6 +1680,15 @@ mod tests {
         "planned_fetch_batches",
         "planned_segment_waves",
         "segment_admission_limit",
+        "segment_admission_candidate_limit",
+        "segment_admission_source",
+        "segment_admission_candidate_reason",
+        "segment_admission_adaptive_enabled",
+        "segment_admission_profile_segment_count",
+        "segment_admission_profile_complete",
+        "segment_admission_p95_segment_bytes",
+        "segment_admission_max_segment_bytes",
+        "segment_admission_largest_window_bytes",
         "max_segments_per_fetch_batch",
         "max_segments_per_wave",
         "peak_active_segments",
@@ -1657,6 +1725,15 @@ mod tests {
             planned_fetch_batches: 0,
             planned_segment_waves: 0,
             segment_admission_limit: 0,
+            segment_admission_candidate_limit: 0,
+            segment_admission_source: "metrics_only",
+            segment_admission_candidate_reason: "eligible",
+            segment_admission_adaptive_enabled: false,
+            segment_admission_profile_segment_count: 0,
+            segment_admission_profile_complete: false,
+            segment_admission_p95_segment_bytes: 0,
+            segment_admission_max_segment_bytes: 0,
+            segment_admission_largest_window_bytes: 0,
             max_segments_per_fetch_batch: 0,
             max_segments_per_wave: 0,
             peak_active_segments: 0,
@@ -1726,6 +1803,15 @@ mod tests {
         snap.planned_fetch_batches = 16;
         snap.planned_segment_waves = 1_332;
         snap.segment_admission_limit = 3;
+        snap.segment_admission_candidate_limit = 16;
+        snap.segment_admission_source = "metrics_only";
+        snap.segment_admission_candidate_reason = "eligible";
+        snap.segment_admission_adaptive_enabled = true;
+        snap.segment_admission_profile_segment_count = 32;
+        snap.segment_admission_profile_complete = true;
+        snap.segment_admission_p95_segment_bytes = 1024;
+        snap.segment_admission_max_segment_bytes = 2048;
+        snap.segment_admission_largest_window_bytes = 16_384;
         snap.max_segments_per_fetch_batch = 3;
         snap.max_segments_per_wave = 3;
         snap.peak_active_segments = 3;
@@ -1753,6 +1839,42 @@ mod tests {
         assert_eq!(find_int(&span, "planned_fetch_batches"), Some(16));
         assert_eq!(find_int(&span, "planned_segment_waves"), Some(1_332));
         assert_eq!(find_int(&span, "segment_admission_limit"), Some(3));
+        assert_eq!(
+            find_int(&span, "segment_admission_candidate_limit"),
+            Some(16)
+        );
+        assert_eq!(
+            find_string(&span, "segment_admission_source"),
+            Some("metrics_only")
+        );
+        assert_eq!(
+            find_string(&span, "segment_admission_candidate_reason"),
+            Some("eligible")
+        );
+        assert_eq!(
+            find_bool(&span, "segment_admission_adaptive_enabled"),
+            Some(true)
+        );
+        assert_eq!(
+            find_int(&span, "segment_admission_profile_segment_count"),
+            Some(32)
+        );
+        assert_eq!(
+            find_bool(&span, "segment_admission_profile_complete"),
+            Some(true)
+        );
+        assert_eq!(
+            find_int(&span, "segment_admission_p95_segment_bytes"),
+            Some(1024)
+        );
+        assert_eq!(
+            find_int(&span, "segment_admission_max_segment_bytes"),
+            Some(2048)
+        );
+        assert_eq!(
+            find_int(&span, "segment_admission_largest_window_bytes"),
+            Some(16_384)
+        );
         assert_eq!(find_int(&span, "max_segments_per_fetch_batch"), Some(3));
         assert_eq!(find_int(&span, "max_segments_per_wave"), Some(3));
         assert_eq!(find_int(&span, "peak_active_segments"), Some(3));
@@ -2377,6 +2499,14 @@ mod explain_metrics_set_tests {
         metrics
             .segment_admission_limit
             .fetch_max(3, Ordering::Relaxed);
+        metrics.segment_admission_source.store(
+            crate::metrics_capture::SegmentAdmissionSource::MetricsOnly as u64,
+            Ordering::Relaxed,
+        );
+        metrics.segment_admission_candidate_reason.store(
+            crate::metrics_capture::SegmentAdmissionCandidateReason::Eligible as u64,
+            Ordering::Relaxed,
+        );
         metrics
             .max_segments_per_fetch_batch
             .fetch_max(2, Ordering::Relaxed);
@@ -2418,6 +2548,14 @@ mod explain_metrics_set_tests {
         assert_eq!(
             metric_value_by_name(&set, "segment_admission_limit"),
             Some(3)
+        );
+        assert_eq!(
+            metric_value_by_name(&set, "segment_admission_source_code"),
+            Some(crate::metrics_capture::SegmentAdmissionSource::MetricsOnly as usize)
+        );
+        assert_eq!(
+            metric_value_by_name(&set, "segment_admission_candidate_reason_code"),
+            Some(crate::metrics_capture::SegmentAdmissionCandidateReason::Eligible as usize)
         );
         assert_eq!(
             metric_value_by_name(&set, "max_segments_per_fetch_batch"),

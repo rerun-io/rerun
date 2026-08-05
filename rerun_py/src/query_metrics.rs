@@ -275,6 +275,60 @@ impl PyQueryMetrics {
         self.snap.segment_admission_limit
     }
 
+    /// Cap recommended by the adaptive policy, whether or not it was applied.
+    #[getter]
+    fn segment_admission_candidate_limit(&self) -> u64 {
+        self.snap.segment_admission_candidate_limit
+    }
+
+    /// Source of the effective admission cap.
+    #[getter]
+    fn segment_admission_source(&self) -> &'static str {
+        self.snap.segment_admission_source
+    }
+
+    /// Reason the adaptive candidate was or was not eligible.
+    #[getter]
+    fn segment_admission_candidate_reason(&self) -> &'static str {
+        self.snap.segment_admission_candidate_reason
+    }
+
+    /// Whether adaptive segment admission was enabled.
+    #[getter]
+    fn segment_admission_adaptive_enabled(&self) -> bool {
+        self.snap.segment_admission_adaptive_enabled
+    }
+
+    /// Number of segments evaluated by the adaptive policy.
+    #[getter]
+    fn segment_admission_profile_segment_count(&self) -> u64 {
+        self.snap.segment_admission_profile_segment_count
+    }
+
+    /// Whether every segment had complete positive uncompressed-size metadata.
+    #[getter]
+    fn segment_admission_profile_complete(&self) -> bool {
+        self.snap.segment_admission_profile_complete
+    }
+
+    /// Nearest-rank p95 queried uncompressed bytes per segment.
+    #[getter]
+    fn segment_admission_p95_segment_bytes(&self) -> u64 {
+        self.snap.segment_admission_p95_segment_bytes
+    }
+
+    /// Largest queried uncompressed segment size.
+    #[getter]
+    fn segment_admission_max_segment_bytes(&self) -> u64 {
+        self.snap.segment_admission_max_segment_bytes
+    }
+
+    /// Sum of the largest candidate-window segment estimates.
+    #[getter]
+    fn segment_admission_largest_window_bytes(&self) -> u64 {
+        self.snap.segment_admission_largest_window_bytes
+    }
+
     /// Largest distinct-segment count in a planned transport batch.
     #[getter]
     fn max_segments_per_fetch_batch(&self) -> u64 {

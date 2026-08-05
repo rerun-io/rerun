@@ -68,7 +68,8 @@
 //! | `RERUN_PIPELINE_BUDGET_MAX`          | size  | `> 0`          | `1TiB`  |
 //! | `RERUN_PIPELINE_BUDGET_FRACTION`     | float | `(0.0, 1.0]`   | 1.0     |
 //! | `RERUN_DIRECT_FETCH_MAX_CONCURRENCY` | int   | `>= 1`         | 128     |
-//! | `RERUN_SEGMENT_ADMISSION_CAP`        | int   | `3..=1024`     | 3       |
+//! | `RERUN_SEGMENT_ADMISSION_CAP`        | int   | `3..=1024`     | unset   |
+//! | `RERUN_ADAPTIVE_SEGMENT_ADMISSION`   | bool  | `true`/`false` | true    |
 //!
 //! Sizes accept either a SI/IEC suffix (`64MB`, `1GiB`, `512KiB`) or a
 //! bare positive integer interpreted as bytes. Values are trimmed of
@@ -78,10 +79,12 @@
 //! after overrides, both revert to defaults (rather than panicking on
 //! the downstream `clamp()`).
 //!
-//! `RERUN_SEGMENT_ADMISSION_CAP` is resolved once per query and controls transport
-//! batching, wave formation, gRPC grouping, and CPU-state admission together.
-//! It is experimental: higher values can reduce latency for small segments but can
-//! sharply increase decoded memory for medium, large, or skewed workloads.
+//! Segment admission is resolved once per query and controls transport batching,
+//! wave formation, gRPC grouping, and CPU-state admission together.
+//! By default the adaptive policy applies its 3-or-16 candidate.
+//! `RERUN_ADAPTIVE_SEGMENT_ADMISSION=false` keeps the effective cap at 3 while preserving
+//! candidate telemetry, and a valid `RERUN_SEGMENT_ADMISSION_CAP` always takes precedence.
+//! Invalid exact overrides fail closed to 3 even when adaptive admission is enabled.
 //!
 //! # Adaptive estimation
 //!
@@ -232,7 +235,9 @@ use re_log_types::TimeInt;
 use parking_lot::Mutex;
 use tokio::sync::Notify;
 
-use crate::metrics_capture::QueryMetrics;
+use crate::metrics_capture::{
+    QueryMetrics, SegmentAdmissionCandidateReason, SegmentAdmissionSource,
+};
 
 // ---------------------------------------------------------------------------
 // Defaults are intentionally tuned to leave the budget effectively disengaged.
@@ -329,14 +334,249 @@ const MAX_ESTIMATE_MULTIPLIER: f64 = 3.0;
 /// gate and requiring the exceptional bypass path.
 pub(crate) const MAX_CONCURRENT_SEGMENTS: usize = 3;
 
-/// Experimental upper bound for [`ENV_SEGMENT_ADMISSION_CAP`].
+/// Adaptive cap used for queries whose planned segments have a small working set.
+const ADAPTIVE_SEGMENT_ADMISSION_CAP: usize = 16;
+
+/// Largest nearest-rank p95 queried size eligible for adaptive admission.
+const ADAPTIVE_SMALL_SEGMENT_THRESHOLD_BYTES: u64 = 8 * 1024 * 1024;
+
+/// Decoded-size factor used to size the adaptive admission window before the
+/// query-local EMA has any samples.
 ///
-/// The production default remains [`MAX_CONCURRENT_SEGMENTS`] until a separate adaptive policy
-/// has enough evidence to select a larger cap safely.
+/// This is deliberately the same value as [`MAX_ESTIMATE_MULTIPLIER`]: the
+/// learned multiplier can never exceed that ceiling, so an admission window
+/// that fits the budget at this factor still fits once the EMA takes over.
+const ADAPTIVE_DECODE_MULTIPLIER: u64 = MAX_ESTIMATE_MULTIPLIER as u64;
+
+/// Experimental upper bound for [`ENV_SEGMENT_ADMISSION_CAP`].
 const MAX_EXPERIMENTAL_SEGMENT_ADMISSION_CAP: usize = 1024;
 
 /// Per-query exact override used for controlled cap sweeps.
 const ENV_SEGMENT_ADMISSION_CAP: &str = "RERUN_SEGMENT_ADMISSION_CAP";
+
+/// Override that disables or explicitly enables the default adaptive candidate.
+const ENV_ADAPTIVE_SEGMENT_ADMISSION: &str = "RERUN_ADAPTIVE_SEGMENT_ADMISSION";
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct SegmentAdmissionProfile {
+    segment_count: usize,
+    complete_segment_sizes: Option<Vec<u64>>,
+}
+
+impl SegmentAdmissionProfile {
+    pub(crate) fn new(segment_count: usize, complete_segment_sizes: Option<Vec<u64>>) -> Self {
+        Self {
+            segment_count,
+            complete_segment_sizes,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct SegmentAdmissionPolicy {
+    candidate_limit: usize,
+    effective_limit: usize,
+    source: SegmentAdmissionSource,
+    candidate_reason: SegmentAdmissionCandidateReason,
+    adaptive_enabled: bool,
+    profile_segment_count: usize,
+    profile_complete: bool,
+    p95_segment_bytes: u64,
+    max_segment_bytes: u64,
+    largest_window_bytes: u64,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum ExactSegmentAdmissionOverride {
+    Unset,
+    Valid(usize),
+    Invalid,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum AdaptiveSegmentAdmissionOverride {
+    Default,
+    Enabled,
+    Disabled,
+    Invalid,
+}
+
+impl AdaptiveSegmentAdmissionOverride {
+    fn is_enabled(self) -> bool {
+        matches!(self, Self::Default | Self::Enabled)
+    }
+}
+
+impl SegmentAdmissionPolicy {
+    pub(crate) fn from_env(
+        profile: &SegmentAdmissionProfile,
+        pipeline_budget_bytes: usize,
+    ) -> Self {
+        let exact_override = match std::env::var(ENV_SEGMENT_ADMISSION_CAP) {
+            Ok(raw) => resolve_exact_segment_admission_override(Some(&raw)),
+            Err(std::env::VarError::NotPresent) => ExactSegmentAdmissionOverride::Unset,
+            Err(std::env::VarError::NotUnicode(_)) => {
+                re_log::error!(
+                    "{ENV_SEGMENT_ADMISSION_CAP} is not valid Unicode; \
+                     falling back to {MAX_CONCURRENT_SEGMENTS}",
+                );
+                ExactSegmentAdmissionOverride::Invalid
+            }
+        };
+        let adaptive_override = match std::env::var(ENV_ADAPTIVE_SEGMENT_ADMISSION) {
+            Ok(raw) => resolve_adaptive_segment_admission_override(Some(&raw)),
+            Err(std::env::VarError::NotPresent) => AdaptiveSegmentAdmissionOverride::Default,
+            Err(std::env::VarError::NotUnicode(_)) => {
+                re_log::error!(
+                    "{ENV_ADAPTIVE_SEGMENT_ADMISSION} is not valid Unicode; \
+                     disabling adaptive segment admission and falling back to \
+                     {MAX_CONCURRENT_SEGMENTS}",
+                );
+                AdaptiveSegmentAdmissionOverride::Invalid
+            }
+        };
+        Self::resolve_with_override(
+            profile,
+            pipeline_budget_bytes,
+            exact_override,
+            adaptive_override,
+        )
+    }
+
+    #[cfg(test)]
+    fn resolve(
+        profile: &SegmentAdmissionProfile,
+        pipeline_budget_bytes: usize,
+        exact_raw: Option<&str>,
+        adaptive_raw: Option<&str>,
+    ) -> Self {
+        Self::resolve_with_override(
+            profile,
+            pipeline_budget_bytes,
+            resolve_exact_segment_admission_override(exact_raw),
+            resolve_adaptive_segment_admission_override(adaptive_raw),
+        )
+    }
+
+    fn resolve_with_override(
+        profile: &SegmentAdmissionProfile,
+        pipeline_budget_bytes: usize,
+        exact_override: ExactSegmentAdmissionOverride,
+        adaptive_override: AdaptiveSegmentAdmissionOverride,
+    ) -> Self {
+        let profile_complete = profile
+            .complete_segment_sizes
+            .as_ref()
+            .is_some_and(|sizes| {
+                sizes.len() == profile.segment_count && sizes.iter().all(|size| *size > 0)
+            });
+        let mut sorted_sizes = profile
+            .complete_segment_sizes
+            .as_deref()
+            .filter(|_| profile_complete)
+            .unwrap_or_default()
+            .to_vec();
+        sorted_sizes.sort_unstable();
+
+        let p95_segment_bytes = nearest_rank_p95(&sorted_sizes).unwrap_or(0);
+        let max_segment_bytes = sorted_sizes.last().copied().unwrap_or(0);
+        let largest_window_bytes = sorted_sizes
+            .iter()
+            .rev()
+            .take(ADAPTIVE_SEGMENT_ADMISSION_CAP)
+            .fold(0u64, |total, size| total.saturating_add(*size));
+        let decoded_window_bytes = largest_window_bytes.saturating_mul(ADAPTIVE_DECODE_MULTIPLIER);
+
+        let candidate_reason = if profile.segment_count <= MAX_CONCURRENT_SEGMENTS {
+            SegmentAdmissionCandidateReason::InsufficientSegments
+        } else if !profile_complete {
+            SegmentAdmissionCandidateReason::IncompleteMetadata
+        } else if p95_segment_bytes > ADAPTIVE_SMALL_SEGMENT_THRESHOLD_BYTES {
+            SegmentAdmissionCandidateReason::P95AboveThreshold
+        } else if decoded_window_bytes > pipeline_budget_bytes.saturating_cast::<u64>() {
+            SegmentAdmissionCandidateReason::BudgetInsufficient
+        } else {
+            SegmentAdmissionCandidateReason::Eligible
+        };
+        let candidate_limit = if candidate_reason == SegmentAdmissionCandidateReason::Eligible {
+            ADAPTIVE_SEGMENT_ADMISSION_CAP
+        } else {
+            MAX_CONCURRENT_SEGMENTS
+        };
+
+        let adaptive_enabled = adaptive_override.is_enabled();
+        let (effective_limit, source) = match exact_override {
+            ExactSegmentAdmissionOverride::Valid(limit) => {
+                (limit, SegmentAdmissionSource::ExactOverride)
+            }
+            ExactSegmentAdmissionOverride::Invalid => (
+                MAX_CONCURRENT_SEGMENTS,
+                SegmentAdmissionSource::InvalidOverride,
+            ),
+            ExactSegmentAdmissionOverride::Unset if adaptive_enabled => {
+                (candidate_limit, SegmentAdmissionSource::Adaptive)
+            }
+            ExactSegmentAdmissionOverride::Unset => {
+                (MAX_CONCURRENT_SEGMENTS, SegmentAdmissionSource::MetricsOnly)
+            }
+        };
+
+        Self {
+            candidate_limit,
+            effective_limit,
+            source,
+            candidate_reason,
+            adaptive_enabled,
+            profile_segment_count: profile.segment_count,
+            profile_complete,
+            p95_segment_bytes,
+            max_segment_bytes,
+            largest_window_bytes,
+        }
+    }
+
+    pub(crate) fn effective_limit(self) -> usize {
+        self.effective_limit
+    }
+
+    pub(crate) fn record_metrics(self, metrics: &QueryMetrics) {
+        metrics
+            .segment_admission_candidate_limit
+            .store(self.candidate_limit.saturating_cast::<u64>(), Relaxed);
+        metrics
+            .segment_admission_source
+            .store(self.source as u64, Relaxed);
+        metrics
+            .segment_admission_candidate_reason
+            .store(self.candidate_reason as u64, Relaxed);
+        metrics
+            .segment_admission_adaptive_enabled
+            .store(u64::from(self.adaptive_enabled), Relaxed);
+        metrics
+            .segment_admission_profile_segment_count
+            .store(self.profile_segment_count.saturating_cast::<u64>(), Relaxed);
+        metrics
+            .segment_admission_profile_complete
+            .store(u64::from(self.profile_complete), Relaxed);
+        metrics
+            .segment_admission_p95_segment_bytes
+            .store(self.p95_segment_bytes, Relaxed);
+        metrics
+            .segment_admission_max_segment_bytes
+            .store(self.max_segment_bytes, Relaxed);
+        metrics
+            .segment_admission_largest_window_bytes
+            .store(self.largest_window_bytes, Relaxed);
+        metrics
+            .segment_admission_limit
+            .store(self.effective_limit.saturating_cast::<u64>(), Relaxed);
+    }
+}
+
+fn nearest_rank_p95(sorted_sizes: &[u64]) -> Option<u64> {
+    let rank = sorted_sizes.len() - sorted_sizes.len() / 20;
+    rank.checked_sub(1).map(|index| sorted_sizes[index])
+}
 
 /// Default process-wide ceiling on concurrent in-flight direct-URL fetch
 /// requests, enforced by [`direct_fetch_semaphore`].
@@ -667,13 +907,17 @@ fn parse_usize_or_default(key: &str, raw: &str, default: usize) -> usize {
     }
 }
 
-fn parse_segment_admission_cap(raw: &str) -> usize {
+fn resolve_exact_segment_admission_override(raw: Option<&str>) -> ExactSegmentAdmissionOverride {
+    let Some(raw) = raw.map(str::trim).filter(|raw| !raw.is_empty()) else {
+        return ExactSegmentAdmissionOverride::Unset;
+    };
+
     match raw.parse::<usize>() {
         Ok(cap)
             if (MAX_CONCURRENT_SEGMENTS..=MAX_EXPERIMENTAL_SEGMENT_ADMISSION_CAP)
                 .contains(&cap) =>
         {
-            cap
+            ExactSegmentAdmissionOverride::Valid(cap)
         }
         Ok(cap) => {
             re_log::error!(
@@ -681,27 +925,45 @@ fn parse_segment_admission_cap(raw: &str) -> usize {
                  [{MAX_CONCURRENT_SEGMENTS}, {MAX_EXPERIMENTAL_SEGMENT_ADMISSION_CAP}]; \
                  falling back to {MAX_CONCURRENT_SEGMENTS}",
             );
-            MAX_CONCURRENT_SEGMENTS
+            ExactSegmentAdmissionOverride::Invalid
         }
         Err(err) => {
             re_log::error!(
                 "{ENV_SEGMENT_ADMISSION_CAP}={raw:?} could not be parsed as an integer ({err}); \
                  falling back to {MAX_CONCURRENT_SEGMENTS}",
             );
+            ExactSegmentAdmissionOverride::Invalid
+        }
+    }
+}
+
+#[cfg(test)]
+fn resolve_segment_admission_limit(raw: Option<&str>) -> usize {
+    match resolve_exact_segment_admission_override(raw) {
+        ExactSegmentAdmissionOverride::Valid(limit) => limit,
+        ExactSegmentAdmissionOverride::Unset | ExactSegmentAdmissionOverride::Invalid => {
             MAX_CONCURRENT_SEGMENTS
         }
     }
 }
 
-fn resolve_segment_admission_limit(raw: Option<&str>) -> usize {
-    raw.map(str::trim)
-        .filter(|raw| !raw.is_empty())
-        .map_or(MAX_CONCURRENT_SEGMENTS, parse_segment_admission_cap)
-}
-
-pub(crate) fn segment_admission_limit() -> usize {
-    let raw = std::env::var(ENV_SEGMENT_ADMISSION_CAP).ok();
-    resolve_segment_admission_limit(raw.as_deref())
+fn resolve_adaptive_segment_admission_override(
+    raw: Option<&str>,
+) -> AdaptiveSegmentAdmissionOverride {
+    let Some(raw) = raw.map(str::trim).filter(|raw| !raw.is_empty()) else {
+        return AdaptiveSegmentAdmissionOverride::Default;
+    };
+    match raw.parse::<bool>() {
+        Ok(true) => AdaptiveSegmentAdmissionOverride::Enabled,
+        Ok(false) => AdaptiveSegmentAdmissionOverride::Disabled,
+        Err(err) => {
+            re_log::error!(
+                "{ENV_ADAPTIVE_SEGMENT_ADMISSION}={raw:?} could not be parsed as a boolean ({err}); \
+                 disabling adaptive segment admission and falling back to {MAX_CONCURRENT_SEGMENTS}",
+            );
+            AdaptiveSegmentAdmissionOverride::Invalid
+        }
+    }
 }
 
 /// Resolve a byte-size environment variable, falling back to the
@@ -798,46 +1060,23 @@ pub(crate) fn query_dataset_semaphore() -> &'static tokio::sync::Semaphore {
     })
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct ResolvedPipelineBudget {
+    bytes: usize,
+}
+
+impl ResolvedPipelineBudget {
+    pub(crate) fn bytes(self) -> usize {
+        self.bytes
+    }
+}
+
 impl PipelineBudget {
-    /// Create a new budget derived from `total_uncompressed_estimate`
-    /// (clamped per-partition to `[MIN_BUDGET_PER_PARTITION, MAX_BUDGET_PER_PARTITION]`,
-    /// then scaled by the number of partitions).
-    ///
-    /// The clamp bounds and fraction can be overridden at runtime via
-    /// [`ENV_BUDGET_MIN`], [`ENV_BUDGET_MAX`], and
-    /// [`ENV_BUDGET_FRACTION`]. Invalid values are logged at error
-    /// level and the affected parameter falls back to its compile-time
-    /// default.
-    #[cfg(test)]
-    pub(crate) fn new(total_uncompressed_estimate: usize, num_partitions: usize) -> Self {
-        Self::new_impl(
-            total_uncompressed_estimate,
-            num_partitions,
-            MAX_CONCURRENT_SEGMENTS,
-            None,
-        )
-    }
-
-    pub(crate) fn new_with_metrics(
+    /// Resolve the query-shared decoded-byte budget before selecting segment admission.
+    pub(crate) fn resolve_size(
         total_uncompressed_estimate: usize,
         num_partitions: usize,
-        segment_limit: usize,
-        metrics: Arc<QueryMetrics>,
-    ) -> Self {
-        Self::new_impl(
-            total_uncompressed_estimate,
-            num_partitions,
-            segment_limit,
-            Some(metrics),
-        )
-    }
-
-    fn new_impl(
-        total_uncompressed_estimate: usize,
-        num_partitions: usize,
-        segment_limit: usize,
-        metrics: Option<Arc<QueryMetrics>>,
-    ) -> Self {
+    ) -> ResolvedPipelineBudget {
         let fraction = read_env_fraction(ENV_BUDGET_FRACTION, BUDGET_FRACTION);
         let mut min_per_partition = read_env_bytes(ENV_BUDGET_MIN, MIN_BUDGET_PER_PARTITION);
         let mut max_per_partition = read_env_bytes(ENV_BUDGET_MAX, MAX_BUDGET_PER_PARTITION);
@@ -860,7 +1099,22 @@ impl PipelineBudget {
 
         re_log::debug!("Pipeline budget: {}MB", budget / (1024 * 1024));
 
-        Self::with_exact_budget_and_metrics(budget, segment_limit, metrics)
+        ResolvedPipelineBudget { bytes: budget }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn new(total_uncompressed_estimate: usize, num_partitions: usize) -> Self {
+        let resolved = Self::resolve_size(total_uncompressed_estimate, num_partitions);
+        Self::with_exact_budget_and_metrics(resolved.bytes, MAX_CONCURRENT_SEGMENTS, None)
+    }
+
+    pub(crate) fn new_with_metrics(
+        resolved: ResolvedPipelineBudget,
+        policy: SegmentAdmissionPolicy,
+        metrics: Arc<QueryMetrics>,
+    ) -> Self {
+        policy.record_metrics(&metrics);
+        Self::with_exact_budget_and_metrics(resolved.bytes, policy.effective_limit(), Some(metrics))
     }
 
     /// Construct a budget of exactly `budget` bytes with all counters
