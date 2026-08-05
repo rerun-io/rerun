@@ -59,6 +59,51 @@ fn test_rrd() -> (tempfile::TempDir, PathBuf) {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn internal_catalog_revealed_by_catalog_api() {
+    const DATASET_NAME: &str = "catalog_api_dataset";
+
+    let mut harness = viewer_test_utils::viewer_harness(&Default::default());
+    harness.set_selection_panel_opened(false);
+    harness.set_time_panel_opened(false);
+
+    assert!(
+        harness
+            .recording_panel()
+            .root()
+            .query_by_label_contains("Viewer catalog")
+            .is_none()
+    );
+
+    let connection_registry = harness.state().connection_registry().clone();
+    let origin = connection_registry
+        .internal_origin()
+        .expect("internal catalog should be configured");
+    let mut client = connection_registry
+        .client(origin)
+        .await
+        .expect("failed to connect to internal catalog");
+    client
+        .create_dataset_entry(DATASET_NAME.to_owned(), None)
+        .await
+        .expect("failed to create dataset");
+
+    viewer_test_utils::step_until(
+        "internal catalog revealed",
+        &mut harness,
+        |harness| {
+            let panel = harness.recording_panel();
+            let root = panel.root();
+            root.query_by_label_contains("Viewer catalog").is_some()
+                && root.query_by_label_contains(DATASET_NAME).is_some()
+        },
+        Duration::from_millis(100),
+        Duration::from_secs(5),
+    );
+
+    harness.snapshot("internal_catalog_revealed_by_catalog_api");
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn internal_catalog_load_rrd() {
     let mut snapshot_results = SnapshotResults::new();
 

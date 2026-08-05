@@ -304,6 +304,12 @@ fn server_section_ui(ctx: &AppContext<'_>, ui: &mut egui::Ui, server_data: &Serv
         entries_data,
     } = server_data;
 
+    // We hide the section for the internal catalog, until we actually have data.
+    // This mirrors the behavior of "Local" in the recording panel.
+    if *is_internal && entries_data.iter_datasets().is_empty() {
+        return;
+    }
+
     let content = list_item::LabelContent::header(server_title(ctx, origin, *is_internal))
         .with_menu_button(&icons::MORE, "Actions", move |ui| {
             for command in re_ui::RedapServerCommand::all_for_server(origin) {
