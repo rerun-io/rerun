@@ -62,6 +62,15 @@ struct PendingFilePromise {
     promise: poll_promise::Promise<Vec<web_sys::File>>,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum WindowDecorationsRequest {
+    /// The window uses the startup default, but no synchronization commands have been sent.
+    NotSent,
+
+    Native,
+    Custom,
+}
+
 /// The Rerun Viewer as an [`eframe`] application.
 pub struct App {
     #[allow(clippy::allow_attributes, dead_code)] // Unused on wasm32
@@ -137,6 +146,9 @@ pub struct App {
 
     /// The last theme we pushed to the OS window (via [`egui::ViewportCommand::SetTheme`]).
     last_window_theme: Option<egui::SystemTheme>,
+
+    /// Read via [`Self::custom_window_decorations`].
+    window_decorations_request: WindowDecorationsRequest,
 
     /// Commands to run at the end of the frame.
     pub command_sender: CommandSender,
@@ -503,6 +515,8 @@ impl App {
 
             frame_time_history: egui::util::History::new(1..100, 0.5),
             last_window_theme: None,
+
+            window_decorations_request: WindowDecorationsRequest::NotSent,
 
             command_sender,
             command_receiver,

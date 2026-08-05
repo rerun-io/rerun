@@ -20,7 +20,7 @@ use re_viewer_context::{
 
 use crate::app_blueprint::AppBlueprint;
 
-use super::App;
+use super::{App, WindowDecorationsRequest};
 
 impl App {
     /// Called before each call to `ui`, but ALSO when the app is
@@ -92,6 +92,7 @@ impl App {
         self.state.cleanup(&store_hub);
 
         self.sync_native_window_theme(egui_ctx);
+        self.sync_native_window_decorations(egui_ctx);
 
         // Return the `StoreHub` to the Viewer so we have it on the next frame
         self.store_hub = Some(store_hub);
@@ -113,6 +114,36 @@ impl App {
             self.last_window_theme = Some(window_theme);
             egui_ctx.send_viewport_cmd(egui::ViewportCommand::SetTheme(window_theme));
         }
+    }
+
+    /// Hand the window decorations over to the OS, or take them over ourselves.
+    ///
+    /// Only this may act on [`re_viewer_context::AppOptions::custom_window_decorations`];
+    /// everything that paints must use [`Self::custom_window_decorations`] instead, so
+    /// that a mid-frame toggle takes effect on the next frame rather than halfway through
+    /// this one.
+    fn sync_native_window_decorations(&mut self, egui_ctx: &egui::Context) {
+        if !re_ui::supports_custom_decorations(egui_ctx.os()) {
+            return;
+        }
+
+        let desired = self.app_options().custom_window_decorations;
+        let request = if desired {
+            WindowDecorationsRequest::Custom
+        } else {
+            WindowDecorationsRequest::Native
+        };
+        if self.window_decorations_request == request {
+            return;
+        }
+        self.window_decorations_request = request;
+
+        egui_ctx.send_viewport_cmd(egui::ViewportCommand::Decorations(!desired));
+
+        // The window always has an alpha-capable surface where custom decorations are
+        // possible (see `eframe_options`), because that cannot be changed after creation.
+        // Send this even when `desired` is false, or the window may stay transparent.
+        egui_ctx.send_viewport_cmd(egui::ViewportCommand::Transparent(desired));
     }
 
     fn receive_messages(&mut self, store_hub: &mut StoreHub, egui_ctx: &egui::Context) {

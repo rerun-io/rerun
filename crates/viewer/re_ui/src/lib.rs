@@ -88,34 +88,65 @@ pub fn fullsize_content(os: egui::os::OperatingSystem) -> bool {
     os == egui::os::OperatingSystem::Mac
 }
 
-/// Whether we support drawing a custom title bar (and overall decorations) on this OS.
+/// Whether this platform supports custom window decorations.
 pub fn supports_custom_decorations(os: egui::os::OperatingSystem) -> bool {
     matches!(
         os,
-        // On Mac we use the fullsize_content approach, which also is still a custom title bar, but preserves the native title bar buttons.
         egui::os::OperatingSystem::Windows | egui::os::OperatingSystem::Nix
     )
+}
+
+/// Set up the window chrome: who draws the decorations, and what is left of the native
+/// title bar.
+///
+/// `custom_decorations` should be [`custom_window_decorations_default`], or the persisted
+/// setting if the caller has one. Note that the transparency does *not* follow it: the
+/// alpha mode of the surface is fixed when the window is created, while the decorations
+/// can still be changed later via [`egui::ViewportCommand::Decorations`].
+pub fn viewport_with_window_chrome(
+    viewport: egui::ViewportBuilder,
+    custom_decorations: bool,
+) -> egui::ViewportBuilder {
+    let os = egui::os::OperatingSystem::default();
+    let fullsize_content = fullsize_content(os);
+    viewport
+        .with_decorations(!custom_decorations)
+        .with_fullsize_content_view(fullsize_content)
+        .with_title_shown(!fullsize_content)
+        .with_titlebar_shown(!fullsize_content)
+        // Ask for transparency on every platform that supports custom decorations:
+        // Rounded corners without decorations need it on Linux, and on Windows
+        // it makes resizing look better.
+        .with_transparent(supports_custom_decorations(os))
 }
 
 /// Whether custom (client-drawn) window decorations should be the default on this system.
 ///
 /// On Linux + Wayland we negotiate with the compositor via
 /// `xdg-decoration-unstable-v1`: we get `false` only if the compositor commits
-/// to drawing server-side decorations. Everywhere else (and on probe failure)
-/// we return `true`. The result is cached for the lifetime of the process.
+/// to drawing server-side decorations. On any other Linux session, and if the
+/// probe fails, we return `true`.
+///
+/// The result is cached for the lifetime of the process, and callers may rely on
+/// that: it is also what `eframe_options` used to create the window.
 pub fn custom_window_decorations_default() -> bool {
     cfg_select! {
         target_os = "linux" => {
-            // Skip the probe entirely on non-Wayland sessions.
-            if std::env::var_os("WAYLAND_DISPLAY").is_none()
-                && std::env::var_os("WAYLAND_SOCKET").is_none()
-            {
-                return true;
-            }
-
             use std::sync::OnceLock;
             static CACHE: OnceLock<bool> = OnceLock::new();
-            *CACHE.get_or_init(wayland::should_draw_own_decorations)
+            *CACHE.get_or_init(|| {
+                // Probing needs a Wayland connection of our own. `WAYLAND_SOCKET` names a
+                // file descriptor that only one connection may consume, and connecting to
+                // it also unsets the variable — that would leave winit unable to reach the
+                // compositor. So only probe when we can open our own socket.
+                if std::env::var_os("WAYLAND_DISPLAY").is_none()
+                    || std::env::var_os("WAYLAND_SOCKET").is_some()
+                {
+                    return true;
+                }
+
+                wayland::should_draw_own_decorations()
+            })
         }
         target_os = "windows" => {
             // On Windows we always draw decorations ourselves, but egui will still enable drop shadows etc.
