@@ -11093,12 +11093,13 @@ name = "re_view_text_log"
 version = "0.37.0-alpha.1+dev"
 dependencies = [
  "egui",
- "egui_extras",
+ "egui_table",
  "itertools 0.15.0",
  "re_byte_size",
  "re_chunk",
  "re_chunk_store",
  "re_data_ui",
+ "re_dataframe_ui",
  "re_entity_db",
  "re_log",
  "re_log_types",
