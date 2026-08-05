@@ -302,9 +302,15 @@ If no arguments are given, a server will be hosted which a Rerun SDK can connect
     #[clap(long)]
     hide_welcome_screen: bool,
 
-    /// Detach Rerun Viewer process from the application process.
+    /// Detach the native Rerun Viewer process from the invoking process.
+    ///
+    /// Ignored for any command that doesn't spawn a viewer.
     #[clap(long)]
     detach_process: bool,
+
+    /// Marks the relaunched child of a detached Rerun Viewer.
+    #[clap(long, hide = true)]
+    detached_process_child: bool,
 
     /// Run the viewer in headless mode (no OS window).
     ///
@@ -704,8 +710,17 @@ where
         std::env::set_var("OTEL_SERVICE_NAME", "rerun");
     }
 
+    let raw_args = args.into_iter().map(Into::into).collect::<Vec<_>>();
+
     use clap::Parser as _;
-    let mut args = Args::parse_from(args);
+    let mut args = Args::parse_from(raw_args.iter());
+
+    #[cfg(feature = "native_viewer")]
+    if should_relaunch_detached(&args) {
+        relaunch_detached(&raw_args)?;
+        return Ok(0);
+    }
+
     #[cfg(feature = "analytics")]
     record_cli_command_analytics(&args);
 
@@ -834,6 +849,114 @@ where
         // Unclean failure -- re-raise exception
         Err(err) => Err(err),
     }
+}
+
+#[cfg(feature = "native_viewer")]
+fn should_relaunch_detached(args: &Args) -> bool {
+    // Destructure to ensure we consider all fields when adding new ones.
+    let Args {
+        detach_process,
+        detached_process_child,
+        command,
+        serve_grpc,
+        serve_web,
+        web_viewer,
+        save,
+        test_receive,
+        version,
+
+        headless: _,
+        bind: _,
+        memory_limit: _,
+        server_memory_limit: _,
+        newest_first: _,
+        cors_allow_origin: _,
+        persist_state: _,
+        port: _,
+        new: _,
+        profile: _,
+        screenshot_to: _,
+        connect: _,
+        expect_data_soon: _,
+        threads: _,
+        url_or_paths: _,
+        web_viewer_port: _,
+        hide_welcome_screen: _,
+        window_size: _,
+        renderer: _,
+        video_decoder: _,
+    } = args;
+
+    *detach_process
+        && !detached_process_child
+        && command.is_none()
+        && !serve_grpc
+        && !serve_web
+        && !web_viewer
+        && save.is_none()
+        && !test_receive
+        && !version
+}
+
+#[cfg(feature = "native_viewer")]
+fn detached_child_args(raw_args: &[std::ffi::OsString]) -> Vec<&std::ffi::OsStr> {
+    let mut child_args = raw_args
+        .iter()
+        .skip(1)
+        .map(std::ffi::OsString::as_os_str)
+        .collect::<Vec<_>>();
+    let insertion_index = child_args
+        .iter()
+        .position(|arg| *arg == std::ffi::OsStr::new("--"))
+        .unwrap_or(child_args.len());
+    child_args.insert(
+        insertion_index,
+        std::ffi::OsStr::new("--detached-process-child"),
+    );
+    child_args
+}
+
+#[cfg(feature = "native_viewer")]
+fn relaunch_detached(raw_args: &[std::ffi::OsString]) -> anyhow::Result<()> {
+    let executable = std::env::current_exe()
+        .map_err(|err| anyhow::anyhow!("failed to locate the Rerun executable: {err}"))?;
+    let mut command = std::process::Command::new(executable);
+    command
+        .args(detached_child_args(raw_args))
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null());
+
+    #[cfg(target_family = "unix")]
+    {
+        use std::os::unix::process::CommandExt as _;
+
+        // SAFETY: This runs in the forked child before exec and only calls the
+        // async-signal-safe `setsid`.
+        #[expect(unsafe_code)]
+        unsafe {
+            command.pre_exec(|| {
+                if libc::setsid() == -1 {
+                    Err(std::io::Error::last_os_error())
+                } else {
+                    Ok(())
+                }
+            });
+        }
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt as _;
+
+        const DETACHED_PROCESS: u32 = 0x0000_0008;
+        command.creation_flags(DETACHED_PROCESS);
+    }
+
+    command
+        .spawn()
+        .map_err(|err| anyhow::anyhow!("failed to launch the detached Rerun Viewer: {err}"))?;
+    Ok(())
 }
 
 fn run_impl(
@@ -1815,6 +1938,7 @@ fn record_cli_command_analytics(args: &Args) {
         detach_process,
 
         // Not logged
+        detached_process_child: _,
         threads: _,
         url_or_paths: _,
         version: _,
@@ -1901,4 +2025,97 @@ fn record_cli_command_analytics(args: &Args) {
         detach_process: *detach_process,
         test_receive: *test_receive,
     });
+}
+
+#[cfg(all(test, feature = "native_viewer"))]
+mod tests {
+    use super::*;
+
+    use clap::Parser as _;
+
+    #[test]
+    fn detach_relaunches_a_native_viewer_exactly_once() {
+        for cli_args in [
+            &["rerun", "--detach-process"][..],
+            &["rerun", "--detach-process", "recording.rrd"],
+            &["rerun", "--detach-process", "--headless"],
+            &[
+                "rerun",
+                "--detach-process",
+                "--screenshot-to",
+                "screenshot.png",
+            ],
+        ] {
+            let raw_args = cli_args
+                .iter()
+                .copied()
+                .map(std::ffi::OsString::from)
+                .collect::<Vec<_>>();
+            let parent = Args::try_parse_from(raw_args.iter()).unwrap();
+            assert!(
+                should_relaunch_detached(&parent),
+                "expected relaunch for {cli_args:?}"
+            );
+
+            let child_args = detached_child_args(&raw_args);
+            let child = Args::try_parse_from(std::iter::chain(
+                std::iter::once(std::ffi::OsStr::new("rerun")),
+                child_args,
+            ))
+            .unwrap();
+            assert!(child.detached_process_child);
+            assert!(
+                !should_relaunch_detached(&child),
+                "unexpected second relaunch for {cli_args:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn detach_child_marker_precedes_end_of_options_separator() {
+        let raw_args =
+            ["rerun", "--detach-process", "--", "recording.rrd"].map(std::ffi::OsString::from);
+        let parent = Args::try_parse_from(raw_args.iter()).unwrap();
+        assert!(should_relaunch_detached(&parent));
+
+        let child_args = detached_child_args(&raw_args);
+
+        assert_eq!(
+            child_args,
+            [
+                std::ffi::OsStr::new("--detach-process"),
+                std::ffi::OsStr::new("--detached-process-child"),
+                std::ffi::OsStr::new("--"),
+                std::ffi::OsStr::new("recording.rrd"),
+            ]
+        );
+
+        let child = Args::try_parse_from(std::iter::chain(
+            std::iter::once(std::ffi::OsStr::new("rerun")),
+            child_args,
+        ))
+        .unwrap();
+        assert!(child.detached_process_child);
+        assert!(!should_relaunch_detached(&child));
+        assert_eq!(child.url_or_paths, ["recording.rrd"]);
+    }
+
+    #[test]
+    fn detach_does_not_relaunch_non_viewer_modes() {
+        for cli_args in [
+            &["rerun", "--detach-process", "--serve-grpc"][..],
+            &["rerun", "--detach-process", "--serve-web"],
+            &["rerun", "--detach-process", "--web-viewer"],
+            &["rerun", "--detach-process", "--save", "output.rrd"],
+            &["rerun", "--detach-process", "--test-receive"],
+            &["rerun", "--detach-process", "--version"],
+            &["rerun", "--detach-process", "reset"],
+        ] {
+            let args = Args::try_parse_from(cli_args).unwrap();
+            assert!(
+                !should_relaunch_detached(&args),
+                "unexpected relaunch for {cli_args:?}"
+            );
+        }
+    }
 }
