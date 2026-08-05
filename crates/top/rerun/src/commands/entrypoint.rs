@@ -2038,6 +2038,7 @@ mod tests {
         for cli_args in [
             &["rerun", "--detach-process"][..],
             &["rerun", "--detach-process", "recording.rrd"],
+            &["rerun", "--detach-process", "--headless"],
             &[
                 "rerun",
                 "--detach-process",
@@ -2102,8 +2103,7 @@ mod tests {
     #[test]
     fn detach_does_not_relaunch_non_viewer_modes() {
         for cli_args in [
-            &["rerun", "--detach-process", "--headless"][..],
-            &["rerun", "--detach-process", "--serve-grpc"],
+            &["rerun", "--detach-process", "--serve-grpc"][..],
             &["rerun", "--detach-process", "--serve-web"],
             &["rerun", "--detach-process", "--web-viewer"],
             &["rerun", "--detach-process", "--save", "output.rrd"],
