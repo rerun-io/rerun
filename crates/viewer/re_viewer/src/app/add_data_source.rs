@@ -1,4 +1,4 @@
-use re_data_source::LogDataSource;
+use re_data_source::{LogDataSource, LogDataSourceAnalytics};
 use re_entity_db::LogSource;
 use re_log_channel::{LogReceiver, RecordingOpenBehavior};
 use re_log_encoding::RrdMetadata;
@@ -111,11 +111,17 @@ impl App {
                     && self.connection_registry.internal_origin().is_some()
                 {
                     let path = path.clone();
+                    let data_source_analytics = data_source.analytics();
                     let connection_registry = self.connection_registry.clone();
                     let sender = self.command_sender.clone();
                     self.async_runtime.spawn_future(async move {
                         match register_local_file(&connection_registry, &path).await {
                             Ok(uri) => {
+                                record_catalog_load_analytics(
+                                    data_source_analytics,
+                                    Some("internal"),
+                                    true,
+                                );
                                 // Refresh the dataset if its open
                                 sender.send_system(SystemCommand::RefreshRedapEntry {
                                     origin: uri.origin.clone(),
@@ -129,6 +135,11 @@ impl App {
                                 ));
                             }
                             Err(err) => {
+                                record_catalog_load_analytics(
+                                    data_source_analytics,
+                                    Some("internal"),
+                                    false,
+                                );
                                 re_log::error!(
                                     "Failed to load file via the Viewer catalog: {}\nFile path: {}",
                                     re_error::format(err),
@@ -154,7 +165,7 @@ impl App {
                     let connection_registry = self.connection_registry.clone();
                     let source_path = path.clone();
                     let file = file.clone();
-                    self.register_via_internal_catalog(path, async move {
+                    self.register_via_internal_catalog(path, data_source.analytics(), async move {
                         register_web_file(&connection_registry, &source_path, file).await
                     });
                     return;
@@ -235,15 +246,12 @@ impl App {
             },
         );
 
-        #[cfg(feature = "analytics")]
-        if let Some(analytics) = re_analytics::Analytics::global_or_init() {
-            let data_source_analytics = data_source.analytics();
-            analytics.record(re_analytics::event::LoadDataSource {
-                source_type: data_source_analytics.source_type,
-                file_extension: data_source_analytics.file_extension,
-                file_source: data_source_analytics.file_source,
-                started_successfully: stream.is_ok(),
-            });
+        if !matches!(
+            data_source,
+            LogDataSource::RedapDatasetSegment { uri, .. }
+                if self.connection_registry.is_internal_origin(&uri.origin)
+        ) {
+            record_catalog_load_analytics(data_source.analytics(), None, stream.is_ok());
         }
 
         match stream {
@@ -320,6 +328,7 @@ impl App {
     fn register_via_internal_catalog(
         &self,
         path: &std::path::Path,
+        data_source_analytics: LogDataSourceAnalytics,
         registration: impl std::future::Future<Output = anyhow::Result<re_uri::DatasetSegmentUri>>
         + 'static,
     ) {
@@ -328,6 +337,7 @@ impl App {
         self.async_runtime.spawn_future(async move {
             match registration.await {
                 Ok(uri) => {
+                    record_catalog_load_analytics(data_source_analytics, Some("internal"), true);
                     sender.send_system(SystemCommand::RefreshRedapEntry {
                         origin: uri.origin.clone(),
                         entry_id: uri.dataset_id.into(),
@@ -340,6 +350,7 @@ impl App {
                     ));
                 }
                 Err(err) => {
+                    record_catalog_load_analytics(data_source_analytics, Some("internal"), false);
                     re_log::error!(
                         "Failed to load file via the Viewer catalog: {}\nFile path: {}",
                         re_error::format(err),
@@ -349,6 +360,26 @@ impl App {
             }
         });
     }
+}
+
+fn record_catalog_load_analytics(
+    data_source: LogDataSourceAnalytics,
+    catalog_kind: Option<&'static str>,
+    started_successfully: bool,
+) {
+    #[cfg(feature = "analytics")]
+    if let Some(analytics) = re_analytics::Analytics::global_or_init() {
+        analytics.record(re_analytics::event::LoadDataSource {
+            source_type: data_source.source_type,
+            file_extension: data_source.file_extension,
+            file_source: data_source.file_source,
+            catalog_kind,
+            started_successfully,
+        });
+    }
+
+    #[cfg(not(feature = "analytics"))]
+    let _ = (data_source, catalog_kind, started_successfully);
 }
 
 /// Register a local `.rrd` file with the catalog server.
