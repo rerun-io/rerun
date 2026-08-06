@@ -103,7 +103,7 @@ pub struct RowLayout {
 
     /// Chunks that the store knows of but that aren't loaded; row counts are incomplete.
     //
-    // TODO(#7562): once this is fed from the `RrdManifestIndex`, unloaded chunks can
+    // TODO(gijsd): once this is fed from the `RrdManifestIndex`, unloaded chunks can
     // contribute their row counts too, making the layout complete in streaming scenarios.
     pub any_missing: bool,
 }
