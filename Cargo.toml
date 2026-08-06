@@ -64,6 +64,9 @@ re_build_tools = { path = "crates/build/re_build_tools", version = "=0.36.0-alph
 re_dev_tools = { path = "crates/build/re_dev_tools", version = "=0.36.0-alpha.1", default-features = false }
 re_protos_builder = { path = "crates/build/re_protos_builder", version = "=0.36.0-alpha.1", default-features = false }
 re_types_builder = { path = "crates/build/re_types_builder", version = "=0.36.0-alpha.1", default-features = false }
+re_types_builder_macros = { path = "crates/build/re_types_builder_macros", version = "=0.36.0-alpha.1", default-features = false }
+# NOTE: `re_types_builder_prelude` gets its entry here once the type definitions depend on it.
+# Listing it before then trips `cargo shear` as an unused workspace dependency.
 
 # crates/store:
 re_lenses_core = { path = "crates/store/re_lenses_core", version = "=0.36.0-alpha.1", default-features = false }

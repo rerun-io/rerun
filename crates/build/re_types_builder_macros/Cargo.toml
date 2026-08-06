@@ -1,0 +1,30 @@
+[package]
+name = "re_types_builder_macros"
+authors.workspace = true
+description = "The `#[rerun_type]` attribute macro used by Rerun's IDL definitions."
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+license.workspace = true
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+
+[package.metadata.docs.rs]
+all-features = true
+
+
+[lib]
+proc-macro = true
+
+
+[dependencies]
+proc-macro2 = { workspace = true, features = ["proc-macro"] }
+quote.workspace = true
+syn = { workspace = true, features = ["full"] }

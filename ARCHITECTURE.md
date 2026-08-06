@@ -99,11 +99,11 @@ Of course, this will only take us so far. In the future we plan on caching queri
 Here is an overview of the crates included in the project:
 
 <picture>
-  <img src="https://static.rerun.io/crates/13c07f0a88b08cfd85e53261d5df55b3e218d863/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/13c07f0a88b08cfd85e53261d5df55b3e218d863/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/13c07f0a88b08cfd85e53261d5df55b3e218d863/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/13c07f0a88b08cfd85e53261d5df55b3e218d863/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/13c07f0a88b08cfd85e53261d5df55b3e218d863/1200w.png">
+  <img src="https://static.rerun.io/architecture_diagram/6e0cc663abd216f92fdf0e3e988832f05fd197a7/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/architecture_diagram/6e0cc663abd216f92fdf0e3e988832f05fd197a7/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/architecture_diagram/6e0cc663abd216f92fdf0e3e988832f05fd197a7/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/architecture_diagram/6e0cc663abd216f92fdf0e3e988832f05fd197a7/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/architecture_diagram/6e0cc663abd216f92fdf0e3e988832f05fd197a7/1200w.png">
 </picture>
 
 <!-- !!! IMPORTANT!!!
@@ -217,14 +217,16 @@ Update instructions:
 
 ### Build support
 
-| Crate             | Description                                                      |
-| ----------------- | ---------------------------------------------------------------- |
-| re_build_info     | Information about the build. Use together with re_build_tools    |
-| re_build_tools    | build.rs helpers for generating build info                       |
-| re_dev_tools      | Various tools for Rerun development. Each tool has a subcommand. |
-| re_protos_builder | Generates code for Rerun remote store gRPC API                   |
-| re_types_builder  | Generates code for Rerun's SDKs from flatbuffers definitions.    |
-| re_web_tests      | Discovers and runs browser-based Wasm tests.                     |
+| Crate                    | Description                                                          |
+| ------------------------ | -------------------------------------------------------------------- |
+| re_build_info            | Information about the build. Use together with re_build_tools        |
+| re_build_tools           | build.rs helpers for generating build info                           |
+| re_dev_tools             | Various tools for Rerun development. Each tool has a subcommand.     |
+| re_protos_builder        | Generates code for Rerun remote store gRPC API                       |
+| re_types_builder         | Generates code for Rerun's SDKs from flatbuffers definitions.        |
+| re_types_builder_macros  | The `#[rerun_type]` attribute macro used by Rerun's IDL definitions. |
+| re_types_builder_prelude | The vocabulary that Rerun's IDL definitions are written against.     |
+| re_web_tests             | Discovers and runs browser-based Wasm tests.                         |
 
 ### Utilities
 

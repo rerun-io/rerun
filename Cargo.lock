@@ -10427,6 +10427,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_types_builder_macros"
+version = "0.36.0-alpha.1+dev"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 3.0.3",
+]
+
+[[package]]
+name = "re_types_builder_prelude"
+version = "0.36.0-alpha.1+dev"
+dependencies = [
+ "half",
+ "re_types_builder_macros",
+]
+
+[[package]]
 name = "re_types_core"
 version = "0.36.0-alpha.1+dev"
 dependencies = [
