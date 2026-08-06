@@ -223,11 +223,28 @@ def _major_minor_patch(version: str) -> tuple[int, int, int]:
 
     Servers report either a bare semver (deployments set `EXPOSED_VERSION`) or a
     `build:0.16.0-alpha.1[ branch:… hash:…]` string (see `re_build_info::exposed_version!`).
+
+    Raises `ValueError` if there is no version to find. Use `_server_major_minor_patch` for
+    server-reported strings, which have a third form this cannot parse.
     """
     match = re.search(r"(\d+)\.(\d+)\.(\d+)", version)
     if match is None:
         raise ValueError(f"Cannot parse version string: {version!r}")
     return int(match.group(1)), int(match.group(2)), int(match.group(3))
+
+
+def _server_major_minor_patch(version: str) -> tuple[int, int, int] | None:
+    """
+    As `_major_minor_patch`, but returns `None` for a server that reports no version.
+
+    A server built from a pull request reports a bare commit hash rather than either documented
+    form, so the version is genuinely unknown. That is not the same as a parse failure on a
+    `min_hub_version` argument, which is a typo in the marker and should still raise.
+    """
+    try:
+        return _major_minor_patch(version)
+    except ValueError:
+        return None
 
 
 @pytest.fixture(scope="session")
@@ -265,7 +282,8 @@ def _server_compat_gate(request: pytest.FixtureRequest) -> None:
     # scheme (e.g. 0.16.x), so a version bound is only meaningful when targeting a hub.
     if version_marker is not None and request.config.getoption("--profile") != "local":
         min_version = version_marker.args[0]
-        if _major_minor_patch(info.version) < _major_minor_patch(min_version):
+        server_version = _server_major_minor_patch(info.version)
+        if server_version is not None and server_version < _major_minor_patch(min_version):
             pytest.skip(f"hub version {info.version} < required {min_version}")
 
 
