@@ -1,7 +1,7 @@
 use crate::codegen::Target;
 use crate::{Objects, Reporter};
 
-/// A high-level representation of the contents of a flatbuffer docstring.
+/// A high-level representation of the contents of a docstring.
 #[derive(Debug, Clone, Default)]
 pub struct Docs {
     /// All documentation lines, including the leading tag, if any.
@@ -15,20 +15,6 @@ pub struct Docs {
 }
 
 impl Docs {
-    pub fn from_raw_docs(
-        reporter: &Reporter,
-        virtpath: &str,
-        fqname: &str,
-        docs: Option<flatbuffers::Vector<'_, flatbuffers::ForwardsUOffset<&'_ str>>>,
-    ) -> Self {
-        Self::from_lines(
-            reporter,
-            virtpath,
-            fqname,
-            docs.into_iter().flat_map(|doc| doc.into_iter()),
-        )
-    }
-
     pub fn from_lines<'a>(
         reporter: &Reporter,
         virtpath: &str,

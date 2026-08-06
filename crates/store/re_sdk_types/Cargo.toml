@@ -92,6 +92,7 @@ macaw = { workspace = true, optional = true }
 
 # External
 glam.workspace = true
+insta.workspace = true
 itertools.workspace = true
 mint.workspace = true
 rand = { workspace = true, features = ["std", "std_rng"] }

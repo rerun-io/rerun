@@ -10056,6 +10056,7 @@ dependencies = [
  "half",
  "image",
  "infer",
+ "insta",
  "itertools 0.15.0",
  "macaw",
  "mime_guess2",

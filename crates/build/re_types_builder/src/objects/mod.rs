@@ -1,25 +1,26 @@
 //! This package implements the semantic pass of the codegen process.
 //!
 //! The semantic pass transforms the low-level raw reflection data into higher level types that
-//! are much easier to inspect and manipulate / friendler to work with.
+//! are much easier to inspect and manipulate / friendlier to work with.
+//!
+//! Everything in here is IDL-agnostic: it is a plain intermediate representation with no notion
+//! of the syntax it was parsed from.
+//! The Flatbuffers frontend that produces it lives in [`from_fbs`].
+
+mod from_fbs;
 
 use std::collections::BTreeMap;
 
 use anyhow::Context as _;
 use camino::{Utf8Path, Utf8PathBuf};
-use itertools::Itertools as _;
 
 use crate::data_type::LazyDatatype;
 use crate::{
     ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED, ATTR_RERUN_COMPONENT_REQUIRED,
-    ATTR_RERUN_DEPRECATED_NOTICE, ATTR_RERUN_DEPRECATED_SINCE, ATTR_RERUN_OVERRIDE_TYPE,
-    ATTR_RERUN_STATE, Docs, FbsBaseType, FbsEnum, FbsEnumVal, FbsField, FbsKeyValue, FbsObject,
-    FbsSchema, FbsType, Reporter, root_as_schema,
+    ATTR_RERUN_DEPRECATED_NOTICE, ATTR_RERUN_DEPRECATED_SINCE, ATTR_RERUN_STATE, Docs, Reporter,
 };
 
 // ---
-
-const BUILTIN_UNIT_TYPE_FQNAME: &str = "rerun.builtins.UnitType";
 
 /// The result of the semantic pass: an intermediate representation of all available object
 /// types; including structs, enums and unions.
@@ -30,60 +31,17 @@ pub struct Objects {
 }
 
 impl Objects {
-    /// Runs the semantic pass on a serialized flatbuffers schema.
+    /// The IDL-agnostic half of the semantic pass.
     ///
-    /// The buffer must be a serialized [`FbsSchema`] (i.e. `.bfbs` data).
-    pub fn from_buf(
-        reporter: &Reporter,
-        include_dir_path: impl AsRef<Utf8Path>,
-        buf: &[u8],
-    ) -> Self {
-        let schema = root_as_schema(buf).unwrap();
-        Self::from_raw_schema(reporter, include_dir_path, &schema)
-    }
-
-    /// Runs the semantic pass on a deserialized flatbuffers [`FbsSchema`].
-    pub fn from_raw_schema(
-        reporter: &Reporter,
-        include_dir_path: impl AsRef<Utf8Path>,
-        schema: &FbsSchema<'_>,
-    ) -> Self {
-        let mut resolved_objs = BTreeMap::new();
-        let mut resolved_enums = BTreeMap::new();
-
-        let enums = schema.enums().iter().collect::<Vec<_>>();
-        let objs = schema.objects().iter().collect::<Vec<_>>();
-
-        let include_dir_path = include_dir_path.as_ref();
-
-        // resolve enums
-        for enm in schema.enums() {
-            let resolved_enum =
-                Object::from_raw_enum(reporter, include_dir_path, &enums, &objs, &enm);
-            resolved_enums.insert(resolved_enum.fqname.clone(), resolved_enum);
-        }
-
-        // resolve objects
-        for obj in schema.objects() {
-            if obj.name() == BUILTIN_UNIT_TYPE_FQNAME {
-                continue;
-            }
-
-            let resolved_obj =
-                Object::from_raw_object(reporter, include_dir_path, &enums, &objs, &obj);
-            resolved_objs.insert(resolved_obj.fqname.clone(), resolved_obj);
-        }
-
-        let mut this = Self {
-            objects: std::iter::chain(resolved_enums, resolved_objs).collect(),
-        };
-
-        // Validate fields types: Archetype consist of components, Views (aka SuperArchetypes) consist of archetypes, everything else consists of datatypes.
-        for obj in this.objects.values() {
+    /// Validates the object graph and folds away everything marked `transparent`.
+    /// Every frontend must call this once it has produced the raw [`Object`] map.
+    pub(crate) fn resolve_and_validate(&mut self, reporter: &Reporter) {
+        // Validate field types: archetypes consist of components, Views (aka SuperArchetypes) consist of archetypes, everything else consists of datatypes.
+        for obj in self.objects.values() {
             for field in &obj.fields {
                 let virtpath = &field.virtpath;
                 if let Some(field_type_fqname) = field.typ.fqname() {
-                    let field_obj = &this[field_type_fqname];
+                    let field_obj = &self[field_type_fqname];
                     match obj.kind {
                         ObjectKind::Datatype | ObjectKind::Component => {
                             if field_obj.kind != ObjectKind::Datatype {
@@ -126,7 +84,7 @@ impl Objects {
                     // TODO(andreas): This is a hack, here because introducing this warning, I really don't want to touch annotation info right now.
                     && obj.name != "AnnotationInfo"
                 {
-                    let field_obj = &this[field_type_fqname];
+                    let field_obj = &self[field_type_fqname];
                     if field_obj.is_arrow_transparent() {
                         let suggestion = if field_obj.name == "Utf8" {
                             "Use `string (nullable)` instead of `rerun.datatypes.Utf8 (nullable)`."
@@ -158,8 +116,8 @@ impl Objects {
         let mut done = false;
         while !done {
             done = true;
-            let objects_copy = this.objects.clone(); // borrowck, the lazy way
-            for obj in this.objects.values_mut() {
+            let objects_copy = self.objects.clone(); // borrowck, the lazy way
+            for obj in self.objects.values_mut() {
                 for field in &mut obj.fields {
                     if field.is_transparent()
                         && let Some(target_fqname) = field.typ.fqname()
@@ -225,9 +183,7 @@ impl Objects {
         }
 
         // Remove whole objects marked as transparent.
-        this.objects.retain(|_, obj| !obj.is_transparent());
-
-        this
+        self.objects.retain(|_, obj| !obj.is_transparent());
     }
 }
 
@@ -500,246 +456,6 @@ impl PartialOrd for Object {
 }
 
 impl Object {
-    /// Resolves a raw [`crate::Object`] into a higher-level representation that can be easily
-    /// interpreted and manipulated.
-    pub fn from_raw_object(
-        reporter: &Reporter,
-        include_dir_path: impl AsRef<Utf8Path>,
-        enums: &[FbsEnum<'_>],
-        objs: &[FbsObject<'_>],
-        obj: &FbsObject<'_>,
-    ) -> Self {
-        let include_dir_path = include_dir_path.as_ref();
-
-        let fqname = obj.name().to_owned();
-        let (pkg_name, name) = fqname.rsplit_once('.').map_or_else(
-            || panic!("Missing '.' separator in fqname: {fqname:?} - Did you forget to put it in a `namespace`?"),
-            |(pkg_name, name)| (pkg_name.to_owned(), name.to_owned()),
-        );
-
-        let virtpath = obj
-            .declaration_file()
-            .map(ToOwned::to_owned)
-            .with_context(|| format!("no declaration_file found for {fqname}"))
-            .unwrap();
-        assert!(virtpath.ends_with(".fbs"), "Bad virtpath: {virtpath:?}");
-
-        let filepath = filepath_from_declaration_file(include_dir_path, &virtpath);
-        assert!(
-            filepath.to_string().ends_with(".fbs"),
-            "Bad filepath: {filepath:?}"
-        );
-
-        let docs = Docs::from_raw_docs(reporter, &virtpath, obj.name(), obj.documentation());
-        let attrs = Attributes::from_raw_attrs(obj.attributes());
-        let kind = ObjectKind::from_pkg_name(&pkg_name, &attrs);
-
-        let scope = attrs
-            .get_string(crate::ATTR_RERUN_SCOPE)
-            .or_else(|| (kind == ObjectKind::View).then(|| "blueprint".to_owned()));
-
-        let state = if attrs.has(ATTR_RERUN_STATE) {
-            State::from_attrs(&attrs).unwrap_or_else(|err| {
-                reporter.error(&virtpath, &fqname, &err);
-                State::Stable
-            })
-        } else if is_testing_fqname(&fqname) {
-            State::Stable
-        } else if scope == Some("blueprint".to_owned()) {
-            State::Unstable // All blueprint APIs are considered unstable unless otherwise specified
-        } else {
-            match kind {
-                ObjectKind::Datatype | ObjectKind::Component => {
-                    if false {
-                        // TODO(#9427): make ATTR_RERUN_STATE attribute mandatory
-                        reporter.warn(
-                            &virtpath,
-                            &fqname,
-                            format!("Missing attribute '{ATTR_RERUN_STATE}'"),
-                        );
-                    }
-                    State::Stable
-                }
-                ObjectKind::Archetype => {
-                    reporter.error(
-                        &virtpath,
-                        &fqname,
-                        format!("Missing attribute '{ATTR_RERUN_STATE}'"),
-                    );
-                    State::Stable
-                }
-                ObjectKind::View => State::Unstable,
-            }
-        };
-
-        let fields: Vec<_> = {
-            let mut fields: Vec<_> = obj
-                .fields()
-                .iter()
-                // NOTE: These are intermediate fields used by flatbuffers internals, we don't care.
-                .filter(|field| field.type_().base_type() != FbsBaseType::UType)
-                .filter(|field| field.type_().element() != FbsBaseType::UType)
-                .map(|field| {
-                    ObjectField::from_raw_object_field(
-                        reporter,
-                        include_dir_path,
-                        enums,
-                        objs,
-                        obj,
-                        &field,
-                    )
-                })
-                .collect();
-
-            // The fields of a struct are reported in arbitrary order by flatbuffers,
-            // so we use the `order` attribute to sort them:
-            fields.sort_by_key(|field| field.order);
-
-            // Make sure no two fields have the same order:
-            for (a, b) in fields.iter().tuple_windows() {
-                assert!(
-                    a.order != b.order,
-                    "{name:?}: Fields {:?} and {:?} have the same order",
-                    a.name,
-                    b.name
-                );
-            }
-
-            fields
-        };
-
-        if kind == ObjectKind::Component {
-            assert!(
-                fields.len() == 1,
-                "components must have exactly 1 field, but {fqname} has {}",
-                fields.len()
-            );
-        }
-
-        Self {
-            virtpath,
-            filepath,
-            fqname,
-            pkg_name,
-            name,
-            docs,
-            kind,
-            state,
-            attrs,
-            fields,
-            class: ObjectClass::Struct,
-            datatype: None,
-        }
-    }
-
-    /// Resolves a raw [`FbsEnum`] into a higher-level representation that can be easily
-    /// interpreted and manipulated.
-    pub fn from_raw_enum(
-        reporter: &Reporter,
-        include_dir_path: impl AsRef<Utf8Path>,
-        enums: &[FbsEnum<'_>],
-        objs: &[FbsObject<'_>],
-        enm: &FbsEnum<'_>,
-    ) -> Self {
-        let include_dir_path = include_dir_path.as_ref();
-
-        let fqname = enm.name().to_owned();
-        let (pkg_name, name) = fqname.rsplit_once('.').map_or_else(
-            || panic!("Missing '.' separator in fqname: {fqname:?} - Did you forget to put it in a `namespace`?"),
-            |(pkg_name, name)| (pkg_name.to_owned(), name.to_owned()),
-        );
-
-        let virtpath = enm
-            .declaration_file()
-            .map(ToOwned::to_owned)
-            .with_context(|| format!("no declaration_file found for {fqname}"))
-            .unwrap();
-        let filepath = filepath_from_declaration_file(include_dir_path, &virtpath);
-
-        let docs = Docs::from_raw_docs(reporter, &virtpath, enm.name(), enm.documentation());
-        let attrs = Attributes::from_raw_attrs(enm.attributes());
-        let kind = ObjectKind::from_pkg_name(&pkg_name, &attrs);
-        let state = if attrs.has(ATTR_RERUN_STATE) {
-            State::from_attrs(&attrs).unwrap_or_else(|err| {
-                reporter.error(
-                    &virtpath,
-                    &fqname,
-                    format!("Failed to parse `{ATTR_RERUN_STATE}`: {err}"),
-                );
-                State::Stable
-            })
-        } else {
-            State::Stable
-        };
-
-        let class = match enm.underlying_type().base_type() {
-            FbsBaseType::UByte => ObjectClass::Enum(EnumIntegerType::U8),
-            FbsBaseType::UShort => ObjectClass::Enum(EnumIntegerType::U16),
-            FbsBaseType::UInt => ObjectClass::Enum(EnumIntegerType::U32),
-            FbsBaseType::ULong => ObjectClass::Enum(EnumIntegerType::U64),
-            _ => ObjectClass::Union,
-        };
-
-        let mut fields: Vec<_> = enm
-            .values()
-            .iter()
-            .filter(|val| {
-                // NOTE: `BaseType::None` is only used by internal flatbuffers fields, we don't care.
-                class.is_enum()
-                    || val
-                        .union_type()
-                        .as_ref()
-                        .is_some_and(|utype| utype.base_type() != FbsBaseType::None)
-            })
-            .map(|val| {
-                ObjectField::from_raw_enum_value(reporter, include_dir_path, enums, objs, enm, &val)
-            })
-            .collect();
-
-        if class.is_enum() {
-            // We want to reserve the value of 0 in all of our enums as an Invalid type variant.
-            //
-            // The reasoning behind this is twofold:
-            // - 0 is a very common accidental value to end up with if processing an incorrectly constructed buffer.
-            // - The way the .fbs compiler works, declaring an enum as a member of a struct field either requires the
-            //   enum to have a 0 value, or every struct to specify it's contextual default for that enum. This way the
-            //   fbs schema definitions are always valid.
-            //
-            // However, we then remove this field out of our generated types. This means we don't actually have to deal with
-            // invalid arms in our enums. Instead we get a deserialization error if someone accidentally uses the invalid 0
-            // value in an arrow payload.
-            assert!(
-                !fields.is_empty(),
-                "enums must have at least one variant, but {fqname} has none",
-            );
-
-            assert!(
-                fields[0].name == "Invalid" && fields[0].enum_or_union_variant_value == Some(0),
-                "enums must start with 'Invalid' variant with value 0, but {fqname} starts with {} = {:?}",
-                fields[0].name,
-                fields[0].enum_or_union_variant_value,
-            );
-
-            // Now remove the invalid variant so that it doesn't make it into our native enum definitions.
-            fields.remove(0);
-        }
-
-        Self {
-            virtpath,
-            filepath,
-            fqname,
-            pkg_name,
-            name,
-            docs,
-            kind,
-            state,
-            attrs,
-            fields,
-            class,
-            datatype: None,
-        }
-    }
-
     pub fn get_attr<T>(&self, name: impl AsRef<str>) -> T
     where
         T: std::str::FromStr,
@@ -1002,157 +718,6 @@ pub struct ObjectField {
 }
 
 impl ObjectField {
-    pub fn from_raw_object_field(
-        reporter: &Reporter,
-        include_dir_path: impl AsRef<Utf8Path>,
-        enums: &[FbsEnum<'_>],
-        objs: &[FbsObject<'_>],
-        obj: &FbsObject<'_>,
-        field: &FbsField<'_>,
-    ) -> Self {
-        let fqname = format!("{}#{}", obj.name(), field.name());
-        let (pkg_name, name) = fqname.rsplit_once('#').map_or_else(
-            || (String::new(), fqname.clone()),
-            |(pkg_name, name)| (pkg_name.to_owned(), name.to_owned()),
-        );
-
-        let virtpath = obj
-            .declaration_file()
-            .map(ToOwned::to_owned)
-            .with_context(|| format!("no declaration_file found for {fqname}"))
-            .unwrap();
-        let filepath = filepath_from_declaration_file(include_dir_path, &virtpath);
-
-        if field.required() {
-            reporter.error(&virtpath, &fqname, "required fields should not be used");
-        }
-
-        let docs = Docs::from_raw_docs(reporter, &virtpath, field.name(), field.documentation());
-
-        let attrs = Attributes::from_raw_attrs(field.attributes());
-        let state = if attrs.has(ATTR_RERUN_STATE) {
-            State::from_attrs(&attrs).unwrap_or_else(|err| {
-                reporter.error(
-                    &virtpath,
-                    &fqname,
-                    format!("Failed to parse `{ATTR_RERUN_STATE}`: {err}"),
-                );
-                State::Stable
-            })
-        } else {
-            State::Stable
-        };
-
-        let typ = Type::from_raw_type(&virtpath, enums, objs, field.type_(), &attrs, &fqname);
-        let order = attrs.get::<u32>(&fqname, crate::ATTR_ORDER);
-
-        let is_nullable = attrs.has(crate::ATTR_NULLABLE) || typ == Type::Unit; // null type is always nullable
-
-        if field.deprecated() {
-            reporter.warn(
-                &virtpath,
-                &fqname,
-                format!(
-                    "Use {} attribute for deprecation instead",
-                    crate::ATTR_RERUN_STATE
-                ),
-            );
-        }
-
-        let enum_value = None;
-
-        Self {
-            virtpath,
-            filepath,
-            fqname,
-            pkg_name,
-            name,
-            enum_or_union_variant_value: enum_value,
-            docs,
-            state,
-            typ,
-            attrs,
-            order,
-            is_nullable,
-            datatype: None,
-        }
-    }
-
-    pub fn from_raw_enum_value(
-        reporter: &Reporter,
-        include_dir_path: impl AsRef<Utf8Path>,
-        enums: &[FbsEnum<'_>],
-        objs: &[FbsObject<'_>],
-        enm: &FbsEnum<'_>,
-        val: &FbsEnumVal<'_>,
-    ) -> Self {
-        let fqname = format!("{}#{}", enm.name(), val.name());
-        let (pkg_name, name) = fqname.rsplit_once('#').map_or_else(
-            || (String::new(), fqname.clone()),
-            |(pkg_name, name)| (pkg_name.to_owned(), name.to_owned()),
-        );
-
-        let virtpath = enm
-            .declaration_file()
-            .map(ToOwned::to_owned)
-            .with_context(|| format!("no declaration_file found for {fqname}"))
-            .unwrap();
-        let filepath = filepath_from_declaration_file(include_dir_path, &virtpath);
-
-        let docs = Docs::from_raw_docs(reporter, &virtpath, val.name(), val.documentation());
-
-        let attrs = Attributes::from_raw_attrs(val.attributes());
-        let state = if attrs.has(ATTR_RERUN_STATE) {
-            State::from_attrs(&attrs).unwrap_or_else(|err| {
-                reporter.error(
-                    &virtpath,
-                    &fqname,
-                    format!("Failed to parse `{ATTR_RERUN_STATE}`: {err}"),
-                );
-                State::Stable
-            })
-        } else {
-            State::Stable
-        };
-
-        // NOTE: Unwrapping is safe, we never resolve enums without union types.
-        let field_type = val.union_type().unwrap();
-        let typ = Type::from_raw_type(&virtpath, enums, objs, field_type, &attrs, &fqname);
-
-        let is_nullable = if field_type.base_type() == FbsBaseType::Obj && typ == Type::Unit {
-            // Builtin unit type for unions is not nullable.
-            false
-        } else {
-            attrs.has(crate::ATTR_NULLABLE) || typ == Type::Unit // null type is always nullable
-        };
-
-        if attrs.has(crate::ATTR_ORDER) {
-            reporter.warn(
-                &virtpath,
-                &fqname,
-                "There is no need for an `order` attribute on enum/union variants",
-            );
-        }
-
-        let enum_value = Some(val.value() as u64);
-
-        Self {
-            virtpath,
-            filepath,
-            fqname,
-            pkg_name,
-            name,
-            enum_or_union_variant_value: enum_value,
-            state,
-            docs,
-            typ,
-            attrs,
-            order: 0, // no needed for enums
-            is_nullable,
-            datatype: None,
-        }
-    }
-
     fn is_transparent(&self) -> bool {
         self.attrs.has(crate::ATTR_TRANSPARENT)
     }
@@ -1303,109 +868,6 @@ impl From<ElementType> for Type {
 }
 
 impl Type {
-    pub fn from_raw_type(
-        virtpath: &str,
-        enums: &[FbsEnum<'_>],
-        objs: &[FbsObject<'_>],
-        field_type: FbsType<'_>,
-        attrs: &Attributes,
-        fqname: &str,
-    ) -> Self {
-        let typ = field_type.base_type();
-
-        if let Some(type_override) = attrs.try_get::<String>(fqname, ATTR_RERUN_OVERRIDE_TYPE) {
-            match type_override.as_str() {
-                "binary" => {
-                    if typ == FbsBaseType::Vector && field_type.element() == FbsBaseType::UByte {
-                        return Self::Binary;
-                    } else {
-                        panic!("{fqname}: 'binary' can only be used on '[ubyte]', got {typ:?}")
-                    }
-                }
-                "float16" => {
-                    if matches!(typ, FbsBaseType::Array | FbsBaseType::Vector) {
-                        // Array of float16 handled later
-                    } else if typ == FbsBaseType::UShort {
-                        return Self::Float16;
-                    } else {
-                        panic!(
-                            "{fqname}: 'float16' can only be used on 'ushort' or `[ushort]`, got {typ:?}"
-                        )
-                    }
-                }
-                _ => {
-                    panic!("{fqname}: Unknown {ATTR_RERUN_OVERRIDE_TYPE:?}: {type_override:?}");
-                }
-            }
-        }
-
-        if let Some(enum_fqname) = try_get_enum_fqname(enums, field_type, typ, virtpath) {
-            return Self::Object {
-                fqname: enum_fqname,
-            };
-        }
-
-        match typ {
-            FbsBaseType::None => Self::Unit, // Enum variant
-
-            FbsBaseType::Bool => Self::Bool,
-            FbsBaseType::Byte => Self::Int8,
-            FbsBaseType::UByte => Self::UInt8,
-            FbsBaseType::Short => Self::Int16,
-            FbsBaseType::UShort => Self::UInt16,
-            FbsBaseType::Int => Self::Int32,
-            FbsBaseType::UInt => Self::UInt32,
-            FbsBaseType::Long => Self::Int64,
-            FbsBaseType::ULong => Self::UInt64,
-            FbsBaseType::Float => Self::Float32,
-            FbsBaseType::Double => Self::Float64,
-            FbsBaseType::String => Self::String,
-            FbsBaseType::Obj => {
-                let obj = &objs[field_type.index() as usize];
-                if obj.name() == BUILTIN_UNIT_TYPE_FQNAME {
-                    Self::Unit
-                } else {
-                    Self::Object {
-                        fqname: obj.name().to_owned(),
-                    }
-                }
-            }
-            FbsBaseType::Union => {
-                let union = &enums[field_type.index() as usize];
-                Self::Object {
-                    fqname: union.name().to_owned(),
-                }
-            }
-            FbsBaseType::Array => Self::Array {
-                elem_type: ElementType::from_raw_base_type(
-                    enums,
-                    objs,
-                    field_type,
-                    field_type.element(),
-                    attrs,
-                    virtpath,
-                ),
-                length: field_type.fixed_length() as usize,
-            },
-            FbsBaseType::Vector => Self::Vector {
-                elem_type: ElementType::from_raw_base_type(
-                    enums,
-                    objs,
-                    field_type,
-                    field_type.element(),
-                    attrs,
-                    virtpath,
-                ),
-            },
-            FbsBaseType::UType | FbsBaseType::Vector64 => {
-                unimplemented!("FbsBaseType::{typ:#?}")
-            }
-
-            // NOTE: `FbsBaseType` isn't actually an enum, it's just a bunch of constants…
-            _ => unreachable!("{typ:#?}"),
-        }
-    }
-
     /// The inverse of `From<ElementType> for Type`: the element type that this type
     /// corresponds to when used as an array/vector element.
     ///
@@ -1588,51 +1050,6 @@ impl Type {
     }
 }
 
-fn try_get_enum_fqname(
-    enums: &[FbsEnum<'_>],
-    field_type: FbsType<'_>,
-    typ: FbsBaseType,
-    virtpath: &str,
-) -> Option<String> {
-    if is_int(typ) {
-        // Hack needed because enums get `typ == FbsBaseType::Byte`,
-        // or whatever integer type the enum was assigned to.
-        let enum_index = field_type.index() as usize;
-        if enum_index < enums.len() {
-            // It is an enum.
-            assert!(
-                is_uint(typ),
-                "{virtpath}: For consistency, enums must be unsigned integers, i.e. `ubyte`, `ushort`, `uint` or `ulong`"
-            );
-
-            let enum_ = &enums[field_type.index() as usize];
-            return Some(enum_.name().to_owned());
-        }
-    }
-    None
-}
-
-fn is_int(typ: FbsBaseType) -> bool {
-    matches!(
-        typ,
-        FbsBaseType::Byte
-            | FbsBaseType::UByte
-            | FbsBaseType::Short
-            | FbsBaseType::UShort
-            | FbsBaseType::Int
-            | FbsBaseType::UInt
-            | FbsBaseType::Long
-            | FbsBaseType::ULong
-    )
-}
-
-fn is_uint(typ: FbsBaseType) -> bool {
-    matches!(
-        typ,
-        FbsBaseType::UByte | FbsBaseType::UShort | FbsBaseType::UInt | FbsBaseType::ULong
-    )
-}
-
 /// The underlying element type for arrays/vectors/maps.
 ///
 /// Flatbuffers doesn't support directly nesting multiple layers of arrays, they
@@ -1676,68 +1093,6 @@ pub enum ElementType {
 }
 
 impl ElementType {
-    pub fn from_raw_base_type(
-        enums: &[FbsEnum<'_>],
-        objs: &[FbsObject<'_>],
-        outer_type: FbsType<'_>,
-        inner_type: FbsBaseType,
-        attrs: &Attributes,
-        virtpath: &str,
-    ) -> Self {
-        if let Some(enum_fqname) = try_get_enum_fqname(enums, outer_type, inner_type, virtpath) {
-            return Self::Object {
-                fqname: enum_fqname,
-            };
-        }
-
-        // TODO(jleibs): Clean up fqname plumbing
-        let fqname = "???";
-        if let Some(type_override) = attrs.try_get::<String>(fqname, ATTR_RERUN_OVERRIDE_TYPE) {
-            match (inner_type, type_override.as_str()) {
-                (FbsBaseType::UShort, "float16") => {
-                    return Self::Float16;
-                }
-                _ => unreachable!(
-                    "UShort -> float16 is the only permitted type override. Not {inner_type:#?}->{type_override}"
-                ),
-            }
-        }
-
-        match inner_type {
-            FbsBaseType::Bool => Self::Bool,
-            FbsBaseType::Byte => Self::Int8,
-            FbsBaseType::UByte => Self::UInt8,
-            FbsBaseType::Short => Self::Int16,
-            FbsBaseType::UShort => Self::UInt16,
-            FbsBaseType::Int => Self::Int32,
-            FbsBaseType::UInt => Self::UInt32,
-            FbsBaseType::Long => Self::Int64,
-            FbsBaseType::ULong => Self::UInt64,
-            FbsBaseType::Float => Self::Float32,
-            FbsBaseType::Double => Self::Float64,
-            FbsBaseType::String => Self::String,
-            FbsBaseType::Obj => {
-                let obj = &objs[outer_type.index() as usize];
-                Self::Object {
-                    fqname: obj.name().to_owned(),
-                }
-            }
-            FbsBaseType::Union => {
-                let enm = &enums[outer_type.index() as usize];
-                Self::Object {
-                    fqname: enm.name().to_owned(),
-                }
-            }
-            FbsBaseType::None
-            | FbsBaseType::UType
-            | FbsBaseType::Array
-            | FbsBaseType::Vector
-            | FbsBaseType::Vector64 => unreachable!("{outer_type:#?} into {inner_type:#?}"),
-            // NOTE: `FbsType` isn't actually an enum, it's just a bunch of constants…
-            _ => unreachable!("{inner_type:#?}"),
-        }
-    }
-
     /// `Some(fqname)` if this is an `Object`.
     pub fn fqname(&self) -> Option<&str> {
         match self {
@@ -1833,23 +1188,6 @@ impl ElementType {
 pub struct Attributes(BTreeMap<String, Option<String>>);
 
 impl Attributes {
-    fn from_raw_attrs(
-        attrs: Option<flatbuffers::Vector<'_, flatbuffers::ForwardsUOffset<FbsKeyValue<'_>>>>,
-    ) -> Self {
-        Self(
-            attrs
-                .map(|attrs| {
-                    attrs
-                        .into_iter()
-                        .map(|kv| (kv.key().to_owned(), kv.value().map(ToOwned::to_owned)))
-                        .collect::<BTreeMap<_, _>>()
-                })
-                .unwrap_or_default(),
-        )
-    }
-}
-
-impl Attributes {
     pub fn get<T>(&self, owner_fqname: impl AsRef<str>, name: impl AsRef<str>) -> T
     where
         T: std::str::FromStr,
@@ -1917,30 +1255,4 @@ impl Attributes {
     pub fn remove(&mut self, name: impl AsRef<str>) {
         self.0.remove(name.as_ref());
     }
-}
-
-fn filepath_from_declaration_file(
-    include_dir_path: impl AsRef<Utf8Path>,
-    declaration_file: impl AsRef<str>,
-) -> Utf8PathBuf {
-    // It seems fbs is *very* confused about UNC paths on windows!
-    let declaration_file = declaration_file.as_ref();
-    let declaration_file = declaration_file
-        .strip_prefix("//")
-        .map_or(declaration_file, |f| {
-            f.trim_start_matches("../").trim_start_matches("/?/")
-        });
-
-    let declaration_file = Utf8PathBuf::from(declaration_file);
-    let declaration_file = if declaration_file.is_absolute() {
-        declaration_file
-    } else {
-        include_dir_path
-            .as_ref()
-            .join(crate::format_path(&declaration_file))
-    };
-
-    declaration_file
-        .canonicalize_utf8()
-        .unwrap_or_else(|_| panic!("Failed to canonicalize declaration path {declaration_file:?}"))
 }
