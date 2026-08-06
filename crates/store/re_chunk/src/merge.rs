@@ -12,48 +12,51 @@ use crate::{Chunk, ChunkError, ChunkId, ChunkResult, TimeColumn};
 
 impl Chunk {
     /// Picks the order intelligently, and sorts the result.
+    ///
+    /// This will return an error if the chunks are not [concatenable].
+    ///
+    /// [concatenable]: [`Chunk::concatenable`]
     pub fn concat_and_sort(left: &Self, right: &Self) -> ChunkResult<Self> {
         re_tracing::profile_function!();
 
         let left_rowid_min = right.row_id_range().map(|(min, _)| min);
         let right_rowid_min = left.row_id_range().map(|(min, _)| min);
         let mut compacted = if right_rowid_min < left_rowid_min {
-            left.concatenated(right)?
+            left.concatenated_unsorted(right)?
         } else {
-            right.concatenated(left)?
+            right.concatenated_unsorted(left)?
         };
 
         compacted.sort_by_row_ids_if_needed();
+        compacted.sanity_check()?;
 
         // Sanity check that timelines haven't become unsorted.
         // If they have, we have an unsorted timeline, which is good to know about.
+        for name in compacted.unsorted_timelines() {
+            let left_was_sorted = left.timelines().get(&name).is_none_or(|c| c.is_sorted());
+            let right_was_sorted = right.timelines().get(&name).is_none_or(|c| c.is_sorted());
 
-        for (name, column) in compacted.timelines() {
-            if !column.is_sorted() {
-                let left_was_sorted = left.timelines().get(name).is_none_or(|c| c.is_sorted());
-                let right_was_sorted = right.timelines().get(name).is_none_or(|c| c.is_sorted());
-
-                if left_was_sorted && right_was_sorted {
-                    let entity_path = compacted.entity_path();
-                    re_log::debug_warn_once!(
-                        "Timeline '{name}' BECAME unsorted after concatenating overlapping, sorted chunks for entity '{entity_path}'. This may cause performance issues."
-                    );
-                }
+            if left_was_sorted && right_was_sorted {
+                let entity_path = compacted.entity_path();
+                re_log::debug_warn_once!(
+                    "Timeline '{name}' BECAME unsorted after concatenating overlapping, sorted chunks for entity '{entity_path}'. This may cause performance issues."
+                );
             }
         }
 
         Ok(compacted)
     }
 
-    /// Concatenates two `Chunk`s into a new one.
+    /// Concatenates two `Chunk`s into a new one without sorting the result.
     ///
-    /// The order of the arguments matter: `self`'s contents will precede `rhs`' contents in the
+    /// The order of the arguments matters: `self`'s contents will precede `rhs`'s contents in the
     /// returned `Chunk`.
+    /// Use [`Self::concat_and_sort`] when the result must uphold [`crate::RowId`] order.
     ///
     /// This will return an error if the chunks are not [concatenable].
     ///
     /// [concatenable]: [`Chunk::concatenable`]
-    pub fn concatenated(&self, rhs: &Self) -> ChunkResult<Self> {
+    fn concatenated_unsorted(&self, rhs: &Self) -> ChunkResult<Self> {
         re_tracing::profile_function!(format!(
             "lhs={} rhs={}",
             re_format::format_uint(self.num_rows()),
@@ -262,8 +265,6 @@ impl Chunk {
             components,
         };
 
-        chunk.sanity_check()?;
-
         Ok(chunk)
     }
 
@@ -386,6 +387,70 @@ mod tests {
     use crate::{Chunk, RowId, Timeline};
 
     #[test]
+    fn concat_and_sort_sorts_and_doesnt_warn_about_intermediate_steps() -> anyhow::Result<()> {
+        re_log::setup_logging();
+        let log_rx = re_log::add_log_msg_receiver(re_log::LevelFilter::WARN);
+
+        let entity_path = "/concat_and_sort/overlapping_rows";
+        let timeline = Timeline::new_sequence("frame");
+        let row_id1 = RowId::new();
+        let row_id2 = RowId::new();
+        let row_id3 = RowId::new();
+        let row_id4 = RowId::new();
+        let points = &[MyPoint::new(1.0, 2.0)];
+
+        let left = Chunk::builder(entity_path)
+            .with_component_batch(
+                row_id1,
+                [(timeline, 1)],
+                (MyPoints::descriptor_points(), points),
+            )
+            .with_component_batch(
+                row_id3,
+                [(timeline, 3)],
+                (MyPoints::descriptor_points(), points),
+            )
+            .build()?;
+        let right = Chunk::builder(entity_path)
+            .with_component_batch(
+                row_id2,
+                [(timeline, 2)],
+                (MyPoints::descriptor_points(), points),
+            )
+            .with_component_batch(
+                row_id4,
+                [(timeline, 4)],
+                (MyPoints::descriptor_points(), points),
+            )
+            .build()?;
+
+        assert!(left.overlaps_on_row_id(&right));
+        let concatenated = left.concatenated_unsorted(&right)?;
+        assert!(!concatenated.is_row_ids_sorted());
+        assert!(!concatenated.all_timelines_sorted());
+
+        let got = Chunk::concat_and_sort(&left, &right)?;
+        assert!(got.is_row_ids_sorted());
+        assert!(got.all_timelines_sorted());
+
+        let ordering_warnings = log_rx
+            .try_iter()
+            .map(|msg| msg.message)
+            .filter(|message| {
+                message.contains("Found chunk that wasn't sorted by RowId")
+                    || (message.contains("Found out-of-order timelines")
+                        && message.contains(entity_path))
+            })
+            .collect_vec();
+        assert!(
+            ordering_warnings.is_empty(),
+            "temporary concatenation order produced warnings: {ordering_warnings:?}"
+        );
+
+        Ok(())
+    }
+
+    #[test]
     fn homogeneous() -> anyhow::Result<()> {
         let entity_path = "my/entity";
 
@@ -477,7 +542,7 @@ mod tests {
         {
             assert!(chunk1.concatenable(&chunk2));
 
-            let got = chunk1.concatenated(&chunk2).unwrap();
+            let got = chunk1.concatenated_unsorted(&chunk2).unwrap();
             let expected = Chunk::builder_with_id(got.id(), entity_path)
                 .with_sparse_component_batches(
                     row_id1,
@@ -547,7 +612,7 @@ mod tests {
         {
             assert!(chunk2.concatenable(&chunk1));
 
-            let got = chunk2.concatenated(&chunk1).unwrap();
+            let got = chunk2.concatenated_unsorted(&chunk1).unwrap();
             let expected = Chunk::builder_with_id(got.id(), entity_path)
                 .with_sparse_component_batches(
                     row_id4,
@@ -710,7 +775,7 @@ mod tests {
         {
             assert!(chunk1.concatenable(&chunk2));
 
-            let got = chunk1.concatenated(&chunk2).unwrap();
+            let got = chunk1.concatenated_unsorted(&chunk2).unwrap();
             let expected = Chunk::builder_with_id(got.id(), entity_path)
                 .with_sparse_component_batches(
                     row_id1,
@@ -780,7 +845,7 @@ mod tests {
         {
             assert!(chunk2.concatenable(&chunk1));
 
-            let got = chunk2.concatenated(&chunk1).unwrap();
+            let got = chunk2.concatenated_unsorted(&chunk1).unwrap();
             let expected = Chunk::builder_with_id(got.id(), entity_path)
                 .with_sparse_component_batches(
                     row_id4,
@@ -890,11 +955,11 @@ mod tests {
                 .build()?;
 
             assert!(matches!(
-                chunk1.concatenated(&chunk2),
+                chunk1.concatenated_unsorted(&chunk2),
                 Err(ChunkError::Malformed { .. })
             ));
             assert!(matches!(
-                chunk2.concatenated(&chunk1),
+                chunk2.concatenated_unsorted(&chunk1),
                 Err(ChunkError::Malformed { .. })
             ));
         }
@@ -929,11 +994,11 @@ mod tests {
                 .build()?;
 
             assert!(matches!(
-                chunk1.concatenated(&chunk2),
+                chunk1.concatenated_unsorted(&chunk2),
                 Err(ChunkError::Malformed { .. })
             ));
             assert!(matches!(
-                chunk2.concatenated(&chunk1),
+                chunk2.concatenated_unsorted(&chunk1),
                 Err(ChunkError::Malformed { .. })
             ));
         }
@@ -974,11 +1039,11 @@ mod tests {
                 .build()?;
 
             assert!(matches!(
-                chunk1.concatenated(&chunk2),
+                chunk1.concatenated_unsorted(&chunk2),
                 Err(ChunkError::Malformed { .. })
             ));
             assert!(matches!(
-                chunk2.concatenated(&chunk1),
+                chunk2.concatenated_unsorted(&chunk1),
                 Err(ChunkError::Malformed { .. })
             ));
         }
@@ -1078,7 +1143,7 @@ mod tests {
         assert!(chunk1.same_timelines(&chunk2));
         assert!(chunk1.concatenable(&chunk2));
 
-        let got = chunk1.concatenated(&chunk2)?;
+        let got = chunk1.concatenated_unsorted(&chunk2)?;
 
         // Paired by name, not map position.
         for name in &order1 {

@@ -299,12 +299,11 @@ impl ChunkUi {
 
             ui.list_item_flat_noninteractive(
                 list_item::PropertyContent::new("Unsorted timelines").value_text({
-                    let unsorted_timelines = self.chunk.unsorted_timelines();
-                    if unsorted_timelines.is_empty() {
+                    let mut unsorted_timelines = self.chunk.unsorted_timelines().peekable();
+                    if unsorted_timelines.peek().is_none() {
                         "none".to_owned()
                     } else {
                         unsorted_timelines
-                            .iter()
                             .map(|timeline| timeline.as_str())
                             .join(", ")
                     }

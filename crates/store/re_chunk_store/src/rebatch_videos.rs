@@ -229,7 +229,7 @@ fn rebatch_video_entity(
     re_tracing::profile_function!();
 
     for chunk in sample_chunks.values() {
-        let unsorted_timelines = chunk.unsorted_timelines();
+        let unsorted_timelines: Vec<_> = chunk.unsorted_timelines().collect();
         if !unsorted_timelines.is_empty() {
             // We could try pick one of the timelines _are_ sorted (w/ relation to RowId),
             // but let's be better safe than sorry for now. Video playback on these

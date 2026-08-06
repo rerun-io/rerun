@@ -1244,7 +1244,7 @@ fn test_clear_non_recursive() -> Result<(), Box<dyn std::error::Error>> {
             // And only now add the data chunk.
             entity_db.add_chunk(&Arc::new(data_chunk))?;
         } else {
-            let chunk = data_chunk.concatenated(&clear_chunk)?;
+            let chunk = Chunk::concat_and_sort(&data_chunk, &clear_chunk)?;
             entity_db.add_chunk(&Arc::new(chunk))?;
         }
 
