@@ -52,11 +52,8 @@ jobs:
         with:
           pixi-version: v0.71.3
 
-      - name: Set up Firefox
-        uses: browser-actions/setup-firefox@v1
-
-      - name: Set up geckodriver
-        uses: browser-actions/setup-geckodriver@latest
+      - name: Set up Firefox and geckodriver
+        run: bash ./scripts/ci/setup_web_test_browser.sh
 
       - name: Run Wasm browser tests
         run: pixi run web-test
