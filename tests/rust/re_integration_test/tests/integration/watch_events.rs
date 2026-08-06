@@ -26,7 +26,10 @@ pub async fn watch_events_auto_refresh_test() {
     // Create a persistent dataset and table up front as stable reference points that stay
     // around across the create/delete below.
     let persistent = client
-        .create_dataset_entry(persistent_dataset.to_owned(), None)
+        .create_dataset_entry(
+            re_log_types::EntryName::new(persistent_dataset).expect("Failed to create entry name"),
+            None,
+        )
         .await
         .expect("Failed to create persistent dataset");
     create_table(&mut client, persistent_table).await;
@@ -82,7 +85,10 @@ pub async fn watch_events_auto_refresh_test() {
     // When creating entries, the server emits `EntryCreated` and the viewer's watch loop
     // auto-refreshes the catalog without a manual refresh.
     let dataset = client
-        .create_dataset_entry(transient_dataset.to_owned(), None)
+        .create_dataset_entry(
+            re_log_types::EntryName::new(transient_dataset).expect("Failed to create entry name"),
+            None,
+        )
         .await
         .expect("Failed to create dataset");
     let table = create_table(&mut client, transient_table).await;

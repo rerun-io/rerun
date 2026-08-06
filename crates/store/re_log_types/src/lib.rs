@@ -241,7 +241,7 @@ impl StoreId {
 
     #[inline]
     pub fn empty_recording() -> Self {
-        Self::new(StoreKind::Recording, "<EMPTY>", "<EMPTY>")
+        Self::new(StoreKind::Recording, "-EMPTY-", "<EMPTY>")
     }
 
     #[inline]

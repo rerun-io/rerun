@@ -447,13 +447,13 @@ where
     #[tracing::instrument(level = "info", skip_all)]
     pub async fn create_dataset_entry(
         &mut self,
-        name: String,
+        name: EntryName,
         entry_id: Option<EntryId>,
     ) -> ApiResult<DatasetEntry> {
         let (inner, trace_id) = TonicResponseExt::into_inner_and_trace_id(
             self.inner()
                 .create_dataset_entry(CreateDatasetEntryRequest {
-                    name: Some(name),
+                    name: Some(name.to_string()),
                     id: entry_id.map(Into::into),
                 })
                 .await
@@ -1362,10 +1362,10 @@ where
 
     /// Look up a dataset entry by name, returning its id if it exists.
     #[tracing::instrument(level = "info", skip_all)]
-    pub async fn find_dataset_by_name(&mut self, name: &str) -> ApiResult<Option<EntryId>> {
+    pub async fn find_dataset_by_name(&mut self, name: &EntryName) -> ApiResult<Option<EntryId>> {
         let entries = match self
             .find_entries(EntryFilter {
-                name: Some(name.to_owned()),
+                name: Some(name.to_string()),
                 // Pass both `entry_kind` (deprecated) and `entry_kinds`
                 // to be compatible with old Hub versions.
                 // Drop `entry_kind` when no customer has a 0.14 deployment
@@ -1385,19 +1385,19 @@ where
 
     /// Find the dataset named `name`, creating it if it doesn't exist yet.
     #[tracing::instrument(level = "info", skip_all)]
-    pub async fn find_or_create_dataset(&mut self, name: &str) -> ApiResult<EntryId> {
+    pub async fn find_or_create_dataset(&mut self, name: &EntryName) -> ApiResult<EntryId> {
         if let Some(id) = self.find_dataset_by_name(name).await? {
             return Ok(id);
         }
 
-        match self.create_dataset_entry(name.to_owned(), None).await {
+        match self.create_dataset_entry(name.clone(), None).await {
             Ok(dataset) => Ok(dataset.details.id),
 
             // Created concurrently between our lookup and our create.
             Err(err) if err.kind == ApiErrorKind::AlreadyExists => {
                 self.find_dataset_by_name(name).await?.ok_or_else(|| {
                     ApiError::invalid_arguments(format!(
-                        "dataset {name:?} disappeared while registering"
+                        "dataset '{name}' disappeared while registering"
                     ))
                 })
             }
@@ -1410,7 +1410,7 @@ where
     #[tracing::instrument(level = "info", skip_all)]
     pub async fn ensure_dataset_and_register(
         &mut self,
-        dataset_name: &str,
+        dataset_name: &EntryName,
         data_sources: Vec<DataSource>,
         on_duplicate: IfDuplicateBehavior,
     ) -> ApiResult<(EntryId, SegmentId)> {

@@ -360,8 +360,8 @@ class CatalogClient:
         """
         Creates a new dataset with the given name.
 
-        Entry names may only contain ASCII alphanumeric characters, underscores, hyphens, dots, colons and spaces,
-        and must be at most 180 characters long.
+        Entry names must be non-empty ASCII strings of at most 180 characters.
+        They may contain alphanumeric characters, underscores, hyphens, dots, colons, spaces, and brackets.
 
         Parameters
         ----------
@@ -398,8 +398,8 @@ class CatalogClient:
             The name of the table entry to create. It must be unique within all entries in the catalog. An exception
             will be raised if an entry with the same name already exists.
 
-            Entry names may only contain ASCII alphanumeric characters, underscores, hyphens, dots, colons and spaces,
-            and must be at most 180 characters long.
+            Entry names must be non-empty ASCII strings of at most 180 characters.
+            They may contain alphanumeric characters, underscores, hyphens, dots, colons, spaces, and brackets.
 
         url
             The URL of the Lance table to register.
@@ -419,8 +419,8 @@ class CatalogClient:
             The name of the table entry to create. It must be unique within all entries in the catalog. An exception
             will be raised if an entry with the same name already exists.
 
-            Entry names may only contain ASCII alphanumeric characters, underscores, hyphens, dots, colons and spaces,
-            and must be at most 180 characters long.
+            Entry names must be non-empty ASCII strings of at most 180 characters.
+            They may contain alphanumeric characters, underscores, hyphens, dots, colons, spaces, and brackets.
 
         schema
             The schema of the table to create.

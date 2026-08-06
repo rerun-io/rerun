@@ -136,6 +136,7 @@ impl ConnectionHandle {
 
     #[tracing::instrument(level = "info", skip_all)]
     pub fn create_dataset(&self, py: Python<'_>, name: String) -> PyResult<DatasetEntry> {
+        let name = EntryName::new(name).map_err(|err| PyValueError::new_err(err.to_string()))?;
         wait_for_future(py, async {
             self.client()
                 .await?

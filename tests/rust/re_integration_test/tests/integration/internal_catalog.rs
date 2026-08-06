@@ -9,7 +9,7 @@ use std::time::Duration;
 use egui_kittest::SnapshotResults;
 use egui_kittest::kittest::Queryable as _;
 use re_integration_test::HarnessExt as _;
-use re_log_types::{EntityPath, TimelineName};
+use re_log_types::{EntityPath, EntryName, TimelineName};
 use re_sdk::RecordingStreamBuilder;
 use re_sdk::blueprint::{Blueprint, Spatial2DView};
 use re_sdk_types::archetypes::Points2D;
@@ -83,7 +83,10 @@ async fn internal_catalog_revealed_by_catalog_api() {
         .await
         .expect("failed to connect to internal catalog");
     client
-        .create_dataset_entry(DATASET_NAME.to_owned(), None)
+        .create_dataset_entry(
+            EntryName::new(DATASET_NAME).expect("valid entry name"),
+            None,
+        )
         .await
         .expect("failed to create dataset");
 

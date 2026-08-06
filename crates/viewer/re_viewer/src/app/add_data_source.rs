@@ -2,7 +2,7 @@ use re_data_source::{LogDataSource, LogDataSourceAnalytics};
 use re_entity_db::LogSource;
 use re_log_channel::{LogReceiver, RecordingOpenBehavior};
 use re_log_encoding::RrdMetadata;
-use re_log_types::{ApplicationId, StoreId};
+use re_log_types::{EntryName, StoreId};
 use re_viewer_context::{StoreHub, SystemCommand, SystemCommandSender as _};
 
 use super::App;
@@ -593,7 +593,7 @@ async fn register_file(
         .context("internal catalog is not running")?;
     let mut client = connection_registry.client(origin.clone()).await?;
     let data_source = DataSource::new_rrd_url(file_url);
-    let dataset_name = normalize_catalog_dataset_name(application_id);
+    let dataset_name = EntryName::from(application_id.clone());
 
     // TODO(RR-5309): Handle RRDs without recording stores as standalone blueprints.
     let (dataset_id, segment_id) = client
@@ -622,20 +622,6 @@ async fn register_file(
         segment_id,
         fragment: Default::default(),
     })
-}
-
-/// Catalogs don't support `/` in dataset names, while [`ApplicationId`] does.
-fn normalize_catalog_dataset_name(application_id: &ApplicationId) -> std::borrow::Cow<'_, str> {
-    let name = application_id.as_str();
-    if name.contains('/') {
-        let normalized = name.replace('/', "-");
-        re_log::warn!(
-            "Catalogs don't support '/' in dataset names; replacing it with '-': {name} -> {normalized}"
-        );
-        normalized.into()
-    } else {
-        name.into()
-    }
 }
 
 /// Registers the recording's embedded default blueprint (if any) into the dataset's hidden

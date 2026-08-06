@@ -1055,6 +1055,8 @@ impl RerunCloudService for RerunCloudHandler {
         request: tonic::Request<tonic::Streaming<re_protos::cloud::v1alpha1::WriteChunksRequest>>,
     ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::WriteChunksResponse>> {
         let entry_id = get_entry_id_from_headers(&*self.store.read().await, &request)?;
+        #[expect(deprecated)]
+        let application_id = re_log_types::ApplicationId::from_entry_id(entry_id);
 
         let mut request = request.into_inner();
 
@@ -1093,7 +1095,11 @@ impl RerunCloudService for RerunCloudHandler {
                 .entry(segment_id.clone())
                 .or_insert_with(|| {
                     ChunkStore::new(
-                        StoreId::new(StoreKind::Recording, entry_id, segment_id.clone()),
+                        StoreId::new(
+                            StoreKind::Recording,
+                            application_id.clone(),
+                            segment_id.clone(),
+                        ),
                         self.eager_chunk_store_config.clone(),
                     )
                 })

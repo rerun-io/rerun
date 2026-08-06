@@ -58,7 +58,10 @@ Rerun recordings are stored in `.rrd` files. [Blueprints](../visualization/bluep
 ## Application IDs
 
 Rerun recordings have an _application ID_ in their metadata.
-Application IDs are arbitrary user-defined strings set when initializing the SDK:
+Application IDs are user-defined strings set when initializing the SDK.
+They are subject to the same restrictions as [catalog entry names](../query-and-transform/catalog-object-model.md#catalog).
+`EntryName` values are non-empty ASCII strings of at most 180 characters and may contain only alphanumeric characters, underscores, hyphens, dots, spaces, brackets, and colons.
+Unsupported characters and dots in application IDs are normalized to hyphens, and migrated IDs receive a short hash suffix.
 
 snippet: tutorials/custom-application-id
 

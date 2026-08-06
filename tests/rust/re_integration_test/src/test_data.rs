@@ -4,6 +4,7 @@ use std::time::Duration;
 
 use futures::StreamExt as _;
 
+use re_protos::EntryName;
 use re_protos::cloud::v1alpha1::ext as cloud_ext;
 use re_protos::cloud::v1alpha1::ext::{
     DataSource, QueryTasksOnCompletionResponse, TableDetails, TableEntry,
@@ -141,7 +142,7 @@ async fn register_rrds(
     let dataset_id = re_tuid::Tuid::from_str(dataset_id_str).expect("Failed to parse TUID");
 
     let entry = client
-        .create_dataset_entry(dataset_name.to_owned(), Some(dataset_id.into()))
+        .create_dataset_entry(EntryName::new(dataset_name)?, Some(dataset_id.into()))
         .await?;
 
     let mut data_sources = Vec::with_capacity(paths.len());
