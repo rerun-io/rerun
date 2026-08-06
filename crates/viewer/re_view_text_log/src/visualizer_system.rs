@@ -174,7 +174,7 @@ impl TextLogSystem {
         // (i.e. the same log call), by joining on the exact `(time, row id)` index — as opposed
         // to the usual latest-at clamping from earlier rows. This keeps the levels in sync with
         // the chunk-level metadata that the view uses to lay out the table (see
-        // `ScrollGeometry`); it also means that blueprint overrides and defaults of these
+        // `RowLayout`); it also means that blueprint overrides and defaults of these
         // components are not applied here.
         let all_levels: HashMap<(TimeInt, RowId), _> = results
             .iter_optional(TextLog::descriptor_level().component)

@@ -57,14 +57,14 @@ impl re_byte_size::SizeBytes for LevelCounts {
 /// Cached per-chunk level counts, keyed by chunk id.
 pub type LevelCountCache = BTreeMap<ChunkId, LevelCounts>;
 
-/// Chunk-level metadata for one chunk holding text log rows.
-struct ChunkGeom {
-    /// Time range covered by the chunk on the geometry's timeline.
+/// The contiguous span of table rows contributed by one chunk.
+struct ChunkSpan {
+    /// Time range covered by the chunk on the layout's timeline.
     ///
     /// Meaningless for static chunks ([`AbsoluteTimeRange`] cannot represent static times).
     time_range: AbsoluteTimeRange,
 
-    /// Number of text log rows in this chunk.
+    /// Number of table rows this chunk contributes (only filter-matching rows count).
     num_rows: u64,
 
     is_static: bool,
@@ -84,7 +84,7 @@ struct ChunkGeom {
 /// Rows are ordered with static rows first, then by time.
 /// Where chunks of different entities overlap in time, the layout is approximate at chunk
 /// granularity, but stable; the visible window itself is always rendered in exact time order.
-pub struct ScrollGeometry {
+pub struct RowLayout {
     timeline: TimelineName,
     component: ComponentIdentifier,
     level_component: ComponentIdentifier,
@@ -93,7 +93,7 @@ pub struct ScrollGeometry {
     filter: Option<LevelFilter>,
 
     /// Sorted by `time_range.min` (which puts static chunks first).
-    chunks: Vec<ChunkGeom>,
+    chunks: Vec<ChunkSpan>,
 
     /// Prefix sums of `chunks[..i].num_rows`; length is `chunks.len() + 1`.
     prefix_rows: Vec<u64>,
@@ -110,7 +110,7 @@ pub struct ScrollGeometry {
     pub any_missing: bool,
 }
 
-impl ScrollGeometry {
+impl RowLayout {
     /// Note that the level counting is done on the raw store data: blueprint overrides of the
     /// `level` component are not taken into account by `filter`.
     pub fn build<'a>(
@@ -176,7 +176,7 @@ impl ScrollGeometry {
                     continue;
                 };
 
-                chunks.push(ChunkGeom {
+                chunks.push(ChunkSpan {
                     time_range,
                     num_rows,
                     is_static,
@@ -189,20 +189,20 @@ impl ScrollGeometry {
         level_counts.retain(|chunk_id, _| live_chunks.contains(chunk_id));
 
         // Static chunks first, then by time.
-        chunks.sort_by_key(|geom| (!geom.is_static, geom.time_range.min(), geom.chunk.id()));
+        chunks.sort_by_key(|span| (!span.is_static, span.time_range.min(), span.chunk.id()));
 
         let mut prefix_rows = Vec::with_capacity(chunks.len() + 1);
         let mut total = 0;
         prefix_rows.push(0);
-        for geom in &chunks {
-            total += geom.num_rows;
+        for span in &chunks {
+            total += span.num_rows;
             prefix_rows.push(total);
         }
 
         let num_static_rows = chunks
             .iter()
-            .take_while(|geom| geom.is_static)
-            .map(|geom| geom.num_rows)
+            .take_while(|span| span.is_static)
+            .map(|span| span.num_rows)
             .sum();
 
         Self {
@@ -239,21 +239,21 @@ impl ScrollGeometry {
         re_tracing::profile_function!();
 
         let mut count = 0;
-        for geom in &self.chunks {
-            if geom.is_static {
+        for span in &self.chunks {
+            if span.is_static {
                 // Static rows sort before any temporal time.
-                count += geom.num_rows;
+                count += span.num_rows;
                 continue;
             }
-            if geom.time_range.min() >= t {
+            if span.time_range.min() >= t {
                 // Chunks are sorted by min time: no further chunk can contribute.
                 break;
             }
-            if geom.time_range.max() < t {
-                count += geom.num_rows;
+            if span.time_range.max() < t {
+                count += span.num_rows;
             } else {
                 count += count_rows_before_in_chunk(
-                    &geom.chunk,
+                    &span.chunk,
                     &self.timeline,
                     self.component,
                     self.level_component,
@@ -272,18 +272,18 @@ impl ScrollGeometry {
     pub fn time_window_for_rows(&self, rows: Range<u64>) -> Option<(TimeInt, TimeInt)> {
         let mut window: Option<(TimeInt, TimeInt)> = None;
 
-        for (i, geom) in self.chunks.iter().enumerate() {
+        for (i, span) in self.chunks.iter().enumerate() {
             if self.prefix_rows[i] >= rows.end {
                 break;
             }
-            if self.prefix_rows[i + 1] <= rows.start || geom.is_static {
+            if self.prefix_rows[i + 1] <= rows.start || span.is_static {
                 continue;
             }
 
             let (min, max) = window.unwrap_or((TimeInt::MAX, TimeInt::MIN));
             window = Some((
-                min.min(geom.time_range.min()),
-                max.max(geom.time_range.max()),
+                min.min(span.time_range.min()),
+                max.max(span.time_range.max()),
             ));
         }
 
@@ -428,21 +428,17 @@ mod tests {
         builder.build().unwrap()
     }
 
-    fn geometry_for(
-        store: &ChunkStore,
-        timeline: &Timeline,
-        entities: &[EntityPath],
-    ) -> ScrollGeometry {
-        geometry_with_filter(store, timeline, entities, None)
+    fn layout_for(store: &ChunkStore, timeline: &Timeline, entities: &[EntityPath]) -> RowLayout {
+        layout_with_filter(store, timeline, entities, None)
     }
 
-    fn geometry_with_filter(
+    fn layout_with_filter(
         store: &ChunkStore,
         timeline: &Timeline,
         entities: &[EntityPath],
         filter: Option<&LevelFilter>,
-    ) -> ScrollGeometry {
-        ScrollGeometry::build(
+    ) -> RowLayout {
+        RowLayout::build(
             store,
             timeline.name(),
             TextLog::descriptor_text().component,
@@ -460,20 +456,20 @@ mod tests {
             text_chunk("a", timeline, [0, 2, 4, 6, 8]),
             text_chunk("b", timeline, [1, 3, 5, 7, 9]),
         ]);
-        let geometry = geometry_for(
+        let layout = layout_for(
             &store,
             &timeline,
             &[EntityPath::from("a"), EntityPath::from("b")],
         );
 
-        assert_eq!(geometry.num_rows(), 10);
-        assert_eq!(geometry.num_static_rows(), 0);
+        assert_eq!(layout.num_rows(), 10);
+        assert_eq!(layout.num_static_rows(), 0);
 
         // Both chunks overlap the whole range, so every boundary requires exact,
         // per-chunk row counting.
         for t in 0..=10 {
             assert_eq!(
-                geometry.rows_before(TimeInt::new_temporal(t)),
+                layout.rows_before(TimeInt::new_temporal(t)),
                 t as u64,
                 "rows_before({t})"
             );
@@ -490,19 +486,19 @@ mod tests {
             .unwrap();
 
         let store = store_with_chunks([static_chunk, text_chunk("a", timeline, [10, 20])]);
-        let geometry = geometry_for(
+        let layout = layout_for(
             &store,
             &timeline,
             &[EntityPath::from("static"), EntityPath::from("a")],
         );
 
-        assert_eq!(geometry.num_rows(), 3);
-        assert_eq!(geometry.num_static_rows(), 1);
+        assert_eq!(layout.num_rows(), 3);
+        assert_eq!(layout.num_static_rows(), 1);
 
         // The static row counts as "before" any temporal time.
-        assert_eq!(geometry.rows_before(TimeInt::new_temporal(0)), 1);
-        assert_eq!(geometry.rows_before(TimeInt::new_temporal(15)), 2);
-        assert_eq!(geometry.rows_before(TimeInt::new_temporal(21)), 3);
+        assert_eq!(layout.rows_before(TimeInt::new_temporal(0)), 1);
+        assert_eq!(layout.rows_before(TimeInt::new_temporal(15)), 2);
+        assert_eq!(layout.rows_before(TimeInt::new_temporal(21)), 3);
     }
 
     #[test]
@@ -513,21 +509,21 @@ mod tests {
             text_chunk("a", timeline, [10, 11, 12]),
             text_chunk("a", timeline, [20, 21, 22]),
         ]);
-        let geometry = geometry_for(&store, &timeline, &[EntityPath::from("a")]);
+        let layout = layout_for(&store, &timeline, &[EntityPath::from("a")]);
 
-        assert_eq!(geometry.num_rows(), 9);
+        assert_eq!(layout.num_rows(), 9);
 
         // Rows 3..6 live in the middle chunk.
-        let (min, max) = geometry.time_window_for_rows(3..6).unwrap();
+        let (min, max) = layout.time_window_for_rows(3..6).unwrap();
         assert_eq!(min, TimeInt::new_temporal(10));
         assert_eq!(max, TimeInt::new_temporal(12));
 
         // A range spanning chunk boundaries covers both chunks.
-        let (min, max) = geometry.time_window_for_rows(2..4).unwrap();
+        let (min, max) = layout.time_window_for_rows(2..4).unwrap();
         assert_eq!(min, TimeInt::new_temporal(0));
         assert_eq!(max, TimeInt::new_temporal(12));
 
-        assert!(geometry.time_window_for_rows(9..9).is_none());
+        assert!(layout.time_window_for_rows(9..9).is_none());
     }
 
     #[test]
@@ -550,7 +546,7 @@ mod tests {
         ]);
         let entities = [EntityPath::from("a")];
 
-        let unfiltered = geometry_for(&store, &timeline, &entities);
+        let unfiltered = layout_for(&store, &timeline, &entities);
         assert_eq!(unfiltered.num_rows(), 12);
         assert_eq!(
             unfiltered.levels().iter().cloned().collect::<Vec<_>>(),
@@ -558,7 +554,7 @@ mod tests {
         );
 
         let filter = LevelFilter(std::iter::once("WARN".to_owned()).collect());
-        let filtered = geometry_with_filter(&store, &timeline, &entities, Some(&filter));
+        let filtered = layout_with_filter(&store, &timeline, &entities, Some(&filter));
 
         // 5 WARN rows + 2 unleveled rows.
         assert_eq!(filtered.num_rows(), 7);
@@ -572,7 +568,7 @@ mod tests {
 
         // A filter matching nothing still shows unleveled rows.
         let none = LevelFilter(BTreeSet::default());
-        let none = geometry_with_filter(&store, &timeline, &entities, Some(&none));
+        let none = layout_with_filter(&store, &timeline, &entities, Some(&none));
         assert_eq!(none.num_rows(), 2);
     }
 }

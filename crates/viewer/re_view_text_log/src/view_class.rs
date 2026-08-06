@@ -23,7 +23,7 @@ use re_viewer_context::{
 use re_viewport_blueprint::ViewProperty;
 
 use super::visualizer_system::{Entry, FetchWindow, TextLogOutput, TextLogSystem};
-use crate::scroll_geometry::{LevelCountCache, LevelFilter, ScrollGeometry};
+use crate::row_layout::{LevelCountCache, LevelFilter, RowLayout};
 
 // TODO(andreas): This should be a blueprint component.
 #[derive(Clone, PartialEq, Eq, Default, re_byte_size::SizeBytes)]
@@ -52,7 +52,7 @@ pub struct TextViewState {
     pub(crate) fetch_window: Option<FetchWindow>,
 
     /// Cached per-chunk log level counts, used to lay out the table when a level filter is
-    /// active (see [`ScrollGeometry`]).
+    /// active (see [`RowLayout`]).
     level_counts: LevelCountCache,
 }
 
@@ -253,9 +253,9 @@ Filter message types and toggle column visibility in a selection panel.",
         // Only the fetched window's entries are materialized; the rest of the row layout comes
         // from chunk-level metadata (time ranges + row counts), so we never have to touch the
         // full data. See <https://github.com/rerun-io/rerun/issues/7562>.
-        let geometry = {
+        let layout = {
             let engine = ctx.recording_engine();
-            ScrollGeometry::build(
+            RowLayout::build(
                 engine.store(),
                 &query.timeline,
                 TextLog::descriptor_text().component,
@@ -268,9 +268,9 @@ Filter message types and toggle column visibility in a selection panel.",
             )
         };
 
-        state.seen_levels.extend(geometry.levels().iter().cloned());
+        state.seen_levels.extend(layout.levels().iter().cloned());
 
-        if geometry.any_missing {
+        if layout.any_missing {
             missing_chunk_reporter.report_missing_chunk();
         }
 
@@ -285,16 +285,16 @@ Filter message types and toggle column visibility in a selection panel.",
             None => output.entries.iter().collect(),
         };
 
-        let num_rows = geometry.num_rows();
-        let scroll_row = geometry.rows_before(TimeInt::new_temporal(time));
-        let anchor_row = geometry.rows_before(TimeInt::new_temporal(time).inc());
+        let num_rows = layout.num_rows();
+        let scroll_row = layout.rows_before(TimeInt::new_temporal(time));
+        let anchor_row = layout.rows_before(TimeInt::new_temporal(time).inc());
 
         let rows = RowLookup {
-            num_static: geometry.num_static_rows(),
+            num_static: layout.num_static_rows(),
             fetched_static: visible_entries.partition_point(|entry| entry.time.is_static()) as u64,
             temporal_offset: output.window.map_or_else(
-                || geometry.num_static_rows(),
-                |window| geometry.rows_before(window.min),
+                || layout.num_static_rows(),
+                |window| layout.rows_before(window.min),
             ),
             entries: visible_entries,
         };
@@ -381,7 +381,7 @@ Filter message types and toggle column visibility in a selection panel.",
         let page = (visible_rows.end - visible_rows.start).max(1);
         let prefetch_rows =
             visible_rows.start.saturating_sub(page)..(visible_rows.end + page).min(num_rows);
-        let new_window = geometry
+        let new_window = layout
             .time_window_for_rows(prefetch_rows)
             .map(|(min, max)| FetchWindow {
                 timeline: query.timeline,
