@@ -19,7 +19,13 @@ import pyarrow as pa
 import pyarrow.compute as pc
 from datafusion import col
 
-from rerun._tracing import attach_parent_carrier, current_trace_carrier, tracing_scope, with_tracing
+from rerun._tracing import (
+    attach_parent_carrier,
+    current_trace_carrier,
+    set_current_span_attributes,
+    tracing_scope,
+    with_tracing,
+)
 from rerun.catalog import CatalogClient
 
 from ._sample_index import _ns_to_datetime64, _ns_to_timedelta64
@@ -149,6 +155,13 @@ def _fetch_arrow(
     window. The returned mapping is `field_key -> {segment_id -> table}`.
     """
     located = [sample_index.global_to_local(int(idx)) for idx in indices]
+    set_current_span_attributes({
+        "rerun.dataloader.fetch.num_requested_indices": len(indices),
+        "rerun.dataloader.fetch.num_located_targets": len(located),
+        "rerun.dataloader.fetch.num_fields": len(fields),
+        "rerun.dataloader.fetch.num_segments": len({seg.segment_id for seg, _ in located}),
+        "rerun.dataloader.fetch.index_values_bytes_estimate": len(indices) * 8,
+    })
     keyframes = _fetch_prior_keyframes(
         view=view,
         index=index,
@@ -229,24 +242,30 @@ def _interleave_fetch_and_decode(
 
 
 def _replay(
-    samples: Iterator[dict[str, torch.Tensor | None]],
+    samples: Generator[dict[str, torch.Tensor | None], None, None],
     order: np.ndarray,
-) -> Iterator[dict[str, torch.Tensor | None]]:
+) -> Generator[dict[str, torch.Tensor | None], None, None]:
     """
     Re-emit a fetch-order sample stream in a known pull `order` (a deterministic queue).
 
     `order[k]` is the fetch position to emit `k`-th. Decode still runs in fetch order;
     this only buffers decoded samples until their turn, so the buffer never exceeds what
     the manifest's buffer held at build time (the order came from that buffer).
+
+    Closes `samples` on exit, so an early teardown reaches the fetch executor's
+    shutdown promptly.
     """
     buffer: dict[int, dict[str, torch.Tensor | None]] = {}
     fetched = enumerate(samples)
-    for fetch_idx in order:
-        fetch_idx = int(fetch_idx)
-        while fetch_idx not in buffer:
-            i, sample = next(fetched)
-            buffer[i] = sample
-        yield buffer.pop(fetch_idx)
+    try:
+        for fetch_idx in order:
+            fetch_idx = int(fetch_idx)
+            while fetch_idx not in buffer:
+                i, sample = next(fetched)
+                buffer[i] = sample
+            yield buffer.pop(fetch_idx)
+    finally:
+        samples.close()
 
 
 def _run_parallel(tasks: list[Callable[[], Any]], *, max_workers: int | None = None) -> list[Any]:
@@ -344,6 +363,14 @@ def _fetch_group(
     group = f"{'anchored' if anchored else 'windowed'},{'fill' if fill_latest_at else 'exact'}"
     with tracing_scope(f"RerunDataset._fetch_group[{group}]"):
         query_indices = _build_query_indices(targets, fields, decoders, sample_index=sample_index)
+        num_query_indices = sum(len(values) for values in query_indices.values())
+        set_current_span_attributes({
+            "rerun.dataloader.group.num_fields": len(fields),
+            "rerun.dataloader.group.num_segments": len(query_indices),
+            "rerun.dataloader.group.num_query_indices": num_query_indices,
+            "rerun.dataloader.group.fill_latest_at": fill_latest_at,
+            "rerun.dataloader.group.anchored": anchored,
+        })
 
         # Scope the query to just this group's entities. Otherwise it fetches (then
         # discards at projection) chunks for every other group's entities too: a scalar
@@ -368,6 +395,11 @@ def _fetch_group(
 
         with tracing_scope(f"RerunDataset._fetch_group.to_arrow_table[{group}]"):
             arrow_table = df.select(*select_exprs).to_arrow_table()
+            set_current_span_attributes({
+                "rerun.dataloader.group.arrow_rows": arrow_table.num_rows,
+                "rerun.dataloader.group.arrow_columns": arrow_table.num_columns,
+                "rerun.dataloader.group.arrow_nbytes": arrow_table.nbytes,
+            })
 
         return _split_by_segment(arrow_table)
 
@@ -400,6 +432,7 @@ def _decode_pool(decode_threads: int, num_fields: int) -> Generator[ThreadPoolEx
         executor.shutdown(wait=False)
 
 
+@with_tracing("RerunDataset._decode_field")
 def _decode_field(
     *,
     target: Target,
@@ -451,6 +484,7 @@ def _decode_iter(
     the GIL, so the overlap is real.
     """
     with tracing_scope("RerunDataset._decode_chunk"):
+        set_current_span_attributes({"rerun.dataloader.iter.chunk.num_targets": len(targets)})
         for target in targets:
             with tracing_scope("RerunDataset._decode_sample"):
                 decode_one = partial(_decode_field, target=target, seg_tables=seg_tables, index=index)

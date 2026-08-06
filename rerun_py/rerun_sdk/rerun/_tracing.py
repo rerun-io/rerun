@@ -184,6 +184,24 @@ def tracing_scope(name: str) -> Iterator[None]:
             _pop_carrier_from_rust(attachment)
 
 
+def set_current_span_attributes(attributes: dict[str, bool | int | float | str]) -> None:
+    """
+    Attach attributes to the current OpenTelemetry span.
+
+    No-op unless `TELEMETRY_ENABLED=true` and an OTLP endpoint is configured
+    (`OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` or `OTEL_EXPORTER_OTLP_ENDPOINT`).
+    """
+    _init_once()
+    if not _enabled:
+        return
+
+    from opentelemetry import trace
+
+    span = trace.get_current_span()
+    for key, value in attributes.items():
+        span.set_attribute(key, value)
+
+
 def with_tracing(name: str) -> Callable[[F], F]:
     """
     Wrap a function in an OpenTelemetry span and propagate trace context into Rerun's Rust SDK.

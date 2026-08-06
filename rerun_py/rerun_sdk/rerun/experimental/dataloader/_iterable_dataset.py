@@ -9,7 +9,7 @@ import numpy as np
 import torch
 import torch.utils.data
 
-from rerun._tracing import tracing_scope
+from rerun._tracing import set_current_span_attributes, tracing_scope
 
 from ._sample_index import FixedRateSampling, SampleIndex
 from ._shuffle import SampleShuffle, ShuffleStrategy, _contiguous_shard, _fetch_chunks
@@ -27,7 +27,7 @@ from ._utils import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Generator, Iterator
     from concurrent.futures import ThreadPoolExecutor
 
     import pyarrow as pa
@@ -35,6 +35,28 @@ if TYPE_CHECKING:
     from ._config import DataSource, Field
     from ._decoders import ColumnDecoder
     from .manifest._manifest import Manifest
+
+
+def _count_yields(
+    samples: Generator[dict[str, torch.Tensor | None], None, None],
+) -> Generator[dict[str, torch.Tensor | None], None, None]:
+    """
+    Yield `samples` through, recording how many were yielded as a span attribute.
+
+    The attribute is set when the stream ends — exhausted or closed early — so
+    this must run inside the `tracing_scope` whose span should carry the count.
+    Closes `samples` on exit: a plain `for` loop does not delegate `close()` to
+    the source the way `yield from` does, and the fetch executor's shutdown
+    hangs off that close.
+    """
+    count = 1
+    try:
+        for sample in samples:
+            set_current_span_attributes({"rerun.dataloader.iter.num_samples_yielded": count})
+            yield sample
+            count += 1
+    finally:
+        samples.close()
 
 
 class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tensor | None]]):
@@ -194,6 +216,11 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tens
             indices, block_bounds = self._worker_order()
             chunks = _fetch_chunks(indices, block_bounds, fetch_size=self._fetch_size)
 
+            set_current_span_attributes({
+                "rerun.dataloader.iter.num_chunks": len(chunks),
+                "rerun.dataloader.shuffle_strategy": self._shuffle_strategy.RECIPE_TAG,
+            })
+
             fetch = functools.partial(
                 _fetch_arrow,
                 view=view,
@@ -215,7 +242,7 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tens
                 # (`[seed, rank, worker]`) so a manifest replays a live buffered run's exact order.
                 rng = np.random.default_rng([self._epoch, rank, worker_id])
                 samples = self._shuffle_buffer.shuffle(samples, rng=rng)
-            yield from samples
+            yield from _count_yields(samples)
 
     def _iter_manifest(self) -> Iterator[dict[str, torch.Tensor | None]]:
         """Replay the manifest for this `(rank, worker)`: fetch groups in order, emit in the frozen order."""
@@ -241,7 +268,16 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tens
             # derive both the fetch schedule and the emission order from it.
             chunks, emit_order = self._manifest.worker_plan(rank, worker)
             if not chunks:
+                set_current_span_attributes({
+                    "rerun.dataloader.iter.num_samples_yielded": 0,
+                    "rerun.dataloader.iter.num_chunks": len(chunks),
+                })
                 return
+
+            set_current_span_attributes({
+                "rerun.dataloader.iter.num_chunks": len(chunks),
+                "rerun.dataloader.shuffle_strategy": self._manifest.metadata.shuffle_strategy,
+            })
 
             # Query construction only needs the grid step / dtype, not the full sample space.
             sample_index = SampleIndex([], ns_per_sample=meta.ns_per_sample, ns_dtype=meta.ns_dtype)
@@ -260,7 +296,7 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[dict[str, torch.Tens
             samples = _interleave_fetch_and_decode(
                 chunks, fetch=fetch, decode=functools.partial(self._decode, decoders, executor)
             )
-            yield from _replay(samples, emit_order)
+            yield from _count_yields(_replay(samples, emit_order))
 
     def _decode(
         self,
