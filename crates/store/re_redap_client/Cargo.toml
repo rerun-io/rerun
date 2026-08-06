@@ -34,6 +34,7 @@ redap-server = true
 
 [dependencies]
 re_arrow_util.workspace = true
+re_async.workspace = true
 re_auth = { workspace = true, features = ["oauth"] }
 re_backoff.workspace = true
 re_byte_size.workspace = true
@@ -82,6 +83,9 @@ tonic = { workspace = true, default-features = false, features = ["transport", "
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 tonic-web-wasm-client.workspace = true
 tonic = { workspace = true, default-features = false }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+tiny_http.workspace = true
 
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
 re_log = { workspace = true, features = ["setup"] }

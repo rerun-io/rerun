@@ -140,10 +140,10 @@ service RerunCloudService {
   // identical Sorbet schema hashes too).
   // That means it is always semantically valid to concatenate the data from these RRD manifests.
   //
-  // If the client sets `generate_direct_urls`, the server may instead return keys pointing at the
-  // raw manifest data, for the client to fetch and decode itself. This is best-effort: the
-  // response may still inline the manifests: clients must handle both forms. However, all the
-  // items in a stream will either send inline manifest or urls, uniformly.
+  // If the client sets `generate_direct_urls`, the server may instead return keys pointing at
+  // encoded `rerun.log_msg.v1alpha1.RrdFooter` payloads for the client to fetch and decode.
+  // This is best-effort: the response may still inline the manifests: clients must handle both forms.
+  // However, all the items in a stream will either send inline manifest or urls, uniformly.
   rpc GetRrdManifest(GetRrdManifestRequest) returns (stream GetRrdManifestResponse) {}
 
   // Get the assets that apply to this dataset.
@@ -534,8 +534,8 @@ message GetDatasetSchemaResponse {
 message GetRrdManifestRequest {
   rerun.common.v1alpha1.SegmentId segment_id = 1;
 
-  // Will ask the server to return direct URLs pointing at the raw manifest data, instead of
-  // inlining the manifest.
+  // Asks the server to return direct URLs pointing at encoded
+  // `rerun.log_msg.v1alpha1.RrdFooter` payloads instead of inlining manifests.
   //
   // It is not guaranteed that the server will honor this.
   bool generate_direct_urls = 2;
@@ -547,7 +547,7 @@ message GetRrdManifestResponse {
   // The manifest, inlined.
   rerun.log_msg.v1alpha1.RrdManifest rrd_manifest = 1;
 
-  // Points at the raw manifest data, for the client to fetch and decode itself.
+  // Points at an encoded `rerun.log_msg.v1alpha1.RrdFooter` payload for the client to fetch and decode.
   RrdManifestKey manifest_key = 2;
 }
 
@@ -1264,12 +1264,12 @@ message RrdChunkLocation {
   optional uint64 length = 3;
 }
 
-// `RrdManifestKey` points at an RRD manifest (footer) in the object store.
+// `RrdManifestKey` points at an encoded `rerun.log_msg.v1alpha1.RrdFooter` payload in the object store.
 message RrdManifestKey {
-  // The canonical location of the manifest (e.g. s3://bucket/file).
+  // The canonical location of the footer payload (e.g. s3://bucket/file).
   RrdChunkLocation location = 1;
 
-  // The segment layer this manifest belongs to.
+  // The segment layer whose manifest is stored in this footer.
   optional string layer = 2;
 
   // ETag of the source object (the layer's RRD file) as observed at registration time.

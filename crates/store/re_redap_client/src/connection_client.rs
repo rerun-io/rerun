@@ -2,11 +2,14 @@ use arrow::array::RecordBatch;
 use arrow::datatypes::{Schema as ArrowSchema, SchemaRef};
 use itertools::Itertools as _;
 
-use re_log_encoding::{RawRrdManifest, ToApplication as _};
+use re_log_encoding::{Decodable as _, RawRrdManifest, ToApplication as _};
 use re_log_types::EntryId;
 use re_protos::EntryName;
 use re_protos::cloud::v1alpha1::ext::ScanSegmentTableDataframe;
-use re_protos::cloud::v1alpha1::ext::{self as cloud_ext, WatchEventsResponse};
+use re_protos::cloud::v1alpha1::ext::{
+    self as cloud_ext, ETag, RrdManifestKey as RrdManifestKeyExt, SOURCE_CHANGED_MESSAGE,
+    WatchEventsResponse, url_strip_query,
+};
 use re_protos::cloud::v1alpha1::ext::{
     CreateDatasetEntryResponse, CreateTableEntryRequest, DataSource, DataSourceKind,
     DatasetDetails, DatasetEntry, EntryDetails, EntryDetailsUpdate, LanceTable, ProviderDetails,
@@ -27,8 +30,8 @@ use re_protos::cloud::v1alpha1::{
     GetDatasetManifestSchemaResponse, GetDatasetSchemaRequest, GetRrdManifestResponse,
     GetSegmentTableSchemaRequest, GetSegmentTableSchemaResponse, QueryDatasetResponse,
     QueryTasksOnCompletionResponse, QueryTasksResponse, ReadDatasetEntryRequest,
-    ReadTableEntryRequest, RegisterWithDatasetResponse, ScanSegmentTableRequest, VersionRequest,
-    WriteTableRequest,
+    ReadTableEntryRequest, RegisterWithDatasetResponse, RrdManifestKey, ScanSegmentTableRequest,
+    VersionRequest, WriteTableRequest,
 };
 use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, ScanParameters, SegmentId};
 use re_protos::common::v1alpha1::{DataframePart, TaskId};
@@ -69,6 +72,220 @@ type RedapHttpResponse = tonic::codegen::http::Response<tonic::body::Body>;
 
 pub type BoxedRedapClientStack =
     tower::util::BoxCloneSyncService<RedapHttpRequest, RedapHttpResponse, tonic::Status>;
+
+/// Checks that a `Content-Range` value describes the exact inclusive byte range expected by the
+/// request and, when present, a complete object length greater than the range end.
+fn content_range_matches(value: &str, expected_start: u64, expected_end: u64) -> bool {
+    let Some((unit, value)) = value.split_once(' ') else {
+        return false;
+    };
+    let Some((range, complete_length)) = value.split_once('/') else {
+        return false;
+    };
+    let Some((start, end)) = range.split_once('-') else {
+        return false;
+    };
+
+    unit.eq_ignore_ascii_case("bytes")
+        && start.parse::<u64>() == Ok(expected_start)
+        && end.parse::<u64>() == Ok(expected_end)
+        && (complete_length == "*"
+            || complete_length
+                .parse::<u64>()
+                .is_ok_and(|complete_length| expected_end < complete_length))
+}
+
+async fn fetch_rrd_manifest_via_key(
+    manifest_key: RrdManifestKey,
+    segment_id: &SegmentId,
+    trace_id: Option<TraceId>,
+) -> ApiResult<RawRrdManifest> {
+    let RrdManifestKeyExt {
+        location,
+        layer,
+        etag,
+        direct_url,
+    } = manifest_key.try_into().map_err(|err| {
+        ApiError::deserialization_with_source(trace_id, err, "invalid /GetRrdManifest manifest key")
+    })?;
+
+    let Some(direct_url) = direct_url else {
+        return Err(ApiError::deserialization(
+            trace_id,
+            "direct manifest key carries no direct_url to fetch",
+        ));
+    };
+
+    let Some(range_end) = location
+        .length
+        .checked_sub(1)
+        .and_then(|length_minus_one| location.offset.checked_add(length_minus_one))
+    else {
+        return Err(ApiError::deserialization(
+            trace_id,
+            "direct manifest byte range is empty or overflows u64",
+        ));
+    };
+
+    let mut request = ehttp::Request::get(direct_url.as_str()).with_timeout(None);
+    request.headers.insert(
+        http::header::RANGE.as_str(),
+        format!("bytes={}-{}", location.offset, range_end),
+    );
+    let expected_etag = etag.filter(|etag| !etag.is_empty());
+    if let Some(etag) = expected_etag.as_ref().and_then(ETag::as_if_match) {
+        request
+            .headers
+            .insert(http::header::IF_MATCH.as_str(), etag);
+    }
+
+    cfg_select! {
+            target_family = "wasm" => {
+                let response = re_async::spawn_local_with_result(ehttp::fetch_async(request))
+                .await
+                .unwrap_or_else(|_| Err("HTTP request was canceled".to_owned()));
+        }
+        _ => {
+            let response = ehttp::fetch_async(request).await;
+        }
+    }
+
+    let redacted_url = url_strip_query(direct_url.as_str());
+
+    let response = response.map_err(|err| {
+        let err = err.replace(direct_url.as_str(), redacted_url);
+        ApiError::connection_with_source(
+            trace_id,
+            std::io::Error::other(err),
+            format!("failed to fetch RRD manifest directly\nURL: {redacted_url}"),
+        )
+    })?;
+
+    let source_changed_error = || {
+        ApiError::http_status_with_source(
+            trace_id,
+            http::StatusCode::PRECONDITION_FAILED.as_u16(),
+            std::io::Error::other(SOURCE_CHANGED_MESSAGE),
+            format!("failed to fetch RRD manifest directly\nURL: {redacted_url}"),
+        )
+    };
+
+    // HTTP permits servers to ignore `Range` and return `200 OK`, but this path requires the
+    // requested range to be honored to avoid downloading or decoding the full RRD object.
+    if response.status != http::StatusCode::PARTIAL_CONTENT.as_u16() {
+        if response.status == http::StatusCode::PRECONDITION_FAILED.as_u16() {
+            return Err(source_changed_error());
+        } else {
+            let layer = layer
+                .as_deref()
+                .map_or_else(String::new, |layer| format!("\nLayer: {layer}"));
+            return Err(ApiError::http_status(
+                trace_id,
+                response.status,
+                format!("failed to fetch RRD manifest directly{layer}\nURL: {redacted_url}"),
+            ));
+        }
+    }
+
+    let content_range = response.headers.get(http::header::CONTENT_RANGE.as_str());
+    if !content_range.is_some_and(|content_range| {
+        content_range_matches(content_range, location.offset, range_end)
+    }) {
+        return Err(ApiError::with_kind_and_source(
+            ApiErrorKind::InvalidServer,
+            trace_id,
+            std::io::Error::other(format!(
+                "invalid Content-Range: {}",
+                content_range.unwrap_or("missing")
+            )),
+            format!("failed to fetch RRD manifest directly\nURL: {redacted_url}"),
+        ));
+    }
+
+    let expected_length = usize::try_from(location.length).map_err(|err| {
+        ApiError::deserialization_with_source(
+            trace_id,
+            err,
+            "direct RRD manifest is too large for this client",
+        )
+    })?;
+    if response.bytes.len() != expected_length {
+        return Err(ApiError::deserialization(
+            trace_id,
+            format!(
+                "direct RRD manifest response had {} bytes, expected {expected_length}\nURL: {redacted_url}",
+                response.bytes.len()
+            ),
+        ));
+    }
+
+    let rrd_footer = re_protos::log_msg::v1alpha1::RrdFooter::from_rrd_bytes(&response.bytes)
+        .map_err(|err| {
+            ApiError::deserialization_with_source(
+                trace_id,
+                err,
+                format!("failed decoding direct RRD footer\nURL: {redacted_url}"),
+            )
+        })?;
+
+    // A footer may in theory contain manifests for several stores.
+    // So we pick out the one that matches the requested segment_id!
+    let rrd_manifest = rrd_footer
+        .manifests
+        .into_iter()
+        .find(|manifest| {
+            manifest
+                .store_id
+                .as_ref()
+                .is_some_and(|store_id| store_id.recording_id == segment_id.as_str())
+        })
+        .ok_or_else(|| {
+            ApiError::deserialization(
+                trace_id,
+                format!(
+                    "direct RRD footer did not contain a manifest for segment {segment_id}\nURL: {redacted_url}"
+                ),
+            )
+        })?;
+
+    let raw = rrd_manifest.to_application(()).map_err(|err| {
+        ApiError::deserialization_with_source(
+            trace_id,
+            err,
+            format!("failed parsing direct RRD manifest\nURL: {redacted_url}"),
+        )
+    })?;
+
+    let Some(layer) = layer else {
+        return Err(ApiError::deserialization(
+            trace_id,
+            "direct manifest key carries no layer",
+        ));
+    };
+
+    // `FetchChunks` needs the same `chunk_partition_id`/`rerun_partition_layer`/`chunk_key`
+    // columns the inline `GetRrdManifest` path serves; the raw manifest alone doesn't carry them.
+    // [`re_log_encoding::HubRrdManifest::try_from_raw`] handles this.
+    let hub = re_log_encoding::HubRrdManifest::try_from_raw(
+        &raw,
+        segment_id,
+        &layer,
+        &location.url,
+        expected_etag.as_ref(),
+        None,
+    )
+    .map_err(|err| {
+        ApiError::deserialization_with_source(
+            trace_id,
+            err,
+            format!("failed hub-extending direct RRD manifest\nURL: {redacted_url}"),
+        )
+    })?;
+
+    // convert back to raw manifest so it can be interpreted
+    // with no changes by downstream users
+    Ok(hub.into_raw())
+}
 
 #[derive(Clone)]
 pub struct SegmentQueryParams {
@@ -712,19 +929,65 @@ where
     /// Stream the [`RawRrdManifest`] parts of a recording as they arrive from the server.
     ///
     /// Each item in the returned stream is a manifest part (a slice of the full manifest).
-    /// Use [`RawRrdManifest::concat`] to combine parts if needed.
+    /// Use [`RawRrdManifest::merge`] to combine parts because they may have different, overlapping schemas.
+    ///
+    /// The server may answer with manifest keys instead of inline manifests, in which case each
+    /// part is fetched directly from the object store. In a browser that direct fetch only works
+    /// when the bucket has a CORS configuration that allows it, so wasm clients fall back to
+    /// server-provided manifests when the first part fails.
     #[tracing::instrument(level = "info", skip_all)]
     pub async fn get_rrd_manifest_stream(
         &mut self,
         dataset_id: EntryId,
         segment_id: SegmentId,
     ) -> ApiResult<ApiResponseStream<RawRrdManifest>> {
+        if !cfg!(target_family = "wasm") {
+            return self
+                .get_rrd_manifest_stream_impl(dataset_id, segment_id, true)
+                .await;
+        }
+
+        // In a browser, direct object-store reads only work when the bucket's CORS
+        // configuration allows them, which cannot be assumed: if it fails,
+        // ask for server-provided manifests instead.
+        let mut stream = self
+            .get_rrd_manifest_stream_impl(dataset_id, segment_id.clone(), true)
+            .await?;
+        let trace_id = stream.trace_id();
+        match stream.next().await {
+            Some(Ok(first)) => Ok(ApiResponseStream::new(
+                futures::stream::iter([Ok(first)]).chain(stream), // NOLINT: Stream::chain, not Iterator::chain
+                trace_id,
+            )),
+            // Browsers report a CORS block as an opaque network failure, so `Connection` is
+            // the narrowest kind that covers it. This costs a fallback even on other
+            // types of network failures.
+            Some(Err(err)) if err.kind == ApiErrorKind::Connection => {
+                re_log::warn_once!(
+                    "Failed to fetch an RRD footer directly from the object store, \
+                        falling back to slower server-provided manifests. This may be caused by CORS issues. \
+                        \nDetails: {err}."
+                );
+                self.get_rrd_manifest_stream_impl(dataset_id, segment_id, false)
+                    .await
+            }
+            Some(Err(err)) => Err(err),
+            None => Ok(stream),
+        }
+    }
+
+    async fn get_rrd_manifest_stream_impl(
+        &mut self,
+        dataset_id: EntryId,
+        segment_id: SegmentId,
+        generate_direct_urls: bool,
+    ) -> ApiResult<ApiResponseStream<RawRrdManifest>> {
         let response = self
             .inner()
             .get_rrd_manifest(
                 tonic::Request::new(re_protos::cloud::v1alpha1::GetRrdManifestRequest {
                     segment_id: Some(segment_id.clone().into()),
-                    generate_direct_urls: false,
+                    generate_direct_urls,
                 })
                 .with_entry_id(dataset_id),
             )
@@ -733,30 +996,40 @@ where
 
         let stream = ApiResponseStream::from_tonic_response(response, "/GetRrdManifest");
         let trace_id = stream.trace_id();
-        let stream = stream.map(move |resp| {
-            resp?
-                .rrd_manifest
-                .ok_or_else(|| {
-                    let err = missing_field!(GetRrdManifestResponse, "rrd_manifest");
-                    ApiError::deserialization_with_source(
+        let stream = stream.then(move |resp| {
+            let segment_id = segment_id.clone();
+            async move {
+                let GetRrdManifestResponse {
+                    rrd_manifest,
+                    manifest_key,
+                } = resp?;
+
+                match (rrd_manifest, manifest_key) {
+                    (Some(rrd_manifest), None) => rrd_manifest.to_application(()).map_err(|err| {
+                        ApiError::deserialization_with_source(
+                            trace_id,
+                            err,
+                            "failed parsing inline /GetRrdManifest response",
+                        )
+                    }),
+                    (None, Some(manifest_key)) => {
+                        fetch_rrd_manifest_via_key(manifest_key, &segment_id, trace_id).await
+                    }
+                    (None, None) => Err(ApiError::deserialization(
                         trace_id,
-                        err,
-                        "missing field in /GetRrdManifest response",
-                    )
-                })?
-                .to_application(())
-                .map_err(|err| {
-                    ApiError::deserialization_with_source(
+                        "/GetRrdManifest response contained neither a manifest nor a manifest key",
+                    )),
+                    (Some(_), Some(_)) => Err(ApiError::deserialization(
                         trace_id,
-                        err,
-                        "failed parsing /GetRrdManifest response",
-                    )
-                })
+                        "/GetRrdManifest response contained both a manifest and a manifest key",
+                    )),
+                }
+            }
         });
         Ok(ApiResponseStream::new(stream, trace_id))
     }
 
-    /// Get the full [`RawRrdManifest`] of a recording, concatenated from all stream parts.
+    /// Get the full [`RawRrdManifest`] of a recording, combined from all stream parts.
     #[tracing::instrument(level = "info", skip_all)]
     pub async fn get_rrd_manifest(
         &mut self,
@@ -773,24 +1046,23 @@ where
             rrd_manifest_parts.push(part?);
         }
 
-        let Some(mut rrd_manifest) = rrd_manifest_parts.first().cloned() else {
+        let Some(first) = rrd_manifest_parts.first() else {
             return Err(ApiError::deserialization(
                 trace_id,
                 "failed to parse the response for /GetRrdManifest (no data)",
             ));
         };
+        if rrd_manifest_parts.len() == 1 {
+            return Ok(rrd_manifest_parts.pop().expect("length was checked"));
+        }
 
-        let data_parts = rrd_manifest_parts.into_iter().map(|p| p.data).collect_vec();
-        rrd_manifest.data =
-            re_arrow_util::concat_polymorphic_batches(&data_parts).map_err(|err| {
-                ApiError::deserialization_with_source(
-                    trace_id,
-                    err,
-                    "failed concatenating /GetRrdManifest response parts",
-                )
-            })?;
-
-        Ok(rrd_manifest)
+        RawRrdManifest::merge(first.store_id.clone(), rrd_manifest_parts).map_err(|err| {
+            ApiError::deserialization_with_source(
+                trace_id,
+                err,
+                "failed merging /GetRrdManifest response parts",
+            )
+        })
     }
 
     /// Fetches all chunks ids for a specified segment.
@@ -1435,6 +1707,182 @@ where
 #[cfg(all(test, not(target_arch = "wasm32")))]
 mod tests {
     use super::*;
+
+    #[test]
+    fn direct_rrd_manifest_response_metadata_is_validated() {
+        assert!(content_range_matches("bytes 10-19/100", 10, 19));
+        assert!(content_range_matches("BYTES 10-19/*", 10, 19));
+        assert!(!content_range_matches("bytes 11-20/100", 10, 19));
+        assert!(!content_range_matches("bytes 10-19/19", 10, 19));
+        assert!(!content_range_matches("invalid", 10, 19));
+    }
+
+    #[tokio::test]
+    async fn direct_rrd_manifest_fetch_uses_range_and_etag() {
+        use re_log_encoding::{Encodable as _, ToTransport as _};
+
+        let raw_manifest = RawRrdManifest::build_in_memory_from_chunks(
+            re_log_types::StoreId::recording("test", "recording"),
+            std::iter::empty::<&re_chunk::Chunk>(),
+        )
+        .unwrap();
+        let other_manifest = RawRrdManifest::build_in_memory_from_chunks(
+            re_log_types::StoreId::recording("test", "other"),
+            std::iter::empty::<&re_chunk::Chunk>(),
+        )
+        .unwrap();
+        let rrd_footer = re_log_encoding::RrdFooter {
+            manifests: std::collections::HashMap::from([
+                // Add a second manifest to ensure we pick out the right one.
+                (other_manifest.store_id.clone(), other_manifest),
+                (raw_manifest.store_id.clone(), raw_manifest.clone()),
+            ]),
+        };
+        let mut manifest_bytes = Vec::new();
+        rrd_footer
+            .to_transport(())
+            .unwrap()
+            .to_rrd_bytes(&mut manifest_bytes)
+            .unwrap();
+
+        let server = tiny_http::Server::http("127.0.0.1:0").unwrap();
+        let address = server.server_addr().to_ip().unwrap();
+        let offset = 123;
+        let range_end = offset + manifest_bytes.len() as u64 - 1;
+        let response_bytes = manifest_bytes.clone();
+        let server_thread = std::thread::Builder::new()
+            .name("direct-manifest-test-server".to_owned())
+            .spawn(move || {
+                let request = server.recv().unwrap();
+                let header = |name| {
+                    request
+                        .headers()
+                        .iter()
+                        .find(|header| header.field.equiv(name))
+                        .map(|header| header.value.as_str().to_owned())
+                };
+                let range = header(http::header::RANGE.as_str());
+                let if_match = header(http::header::IF_MATCH.as_str());
+                request
+                    .respond(
+                        tiny_http::Response::from_data(response_bytes)
+                            .with_status_code(tiny_http::StatusCode(
+                                http::StatusCode::PARTIAL_CONTENT.as_u16(),
+                            ))
+                            .with_header(
+                                tiny_http::Header::from_bytes(
+                                    http::header::CONTENT_RANGE.as_str(),
+                                    format!("bytes {offset}-{range_end}/{}", range_end + 1),
+                                )
+                                .unwrap(),
+                            )
+                            .with_header(
+                                tiny_http::Header::from_bytes(
+                                    http::header::ETAG.as_str(),
+                                    "\"different-etag\"",
+                                )
+                                .unwrap(),
+                            ),
+                    )
+                    .unwrap();
+                (range, if_match)
+            })
+            .unwrap();
+
+        let manifest_key = RrdManifestKey {
+            location: Some(re_protos::cloud::v1alpha1::RrdChunkLocation {
+                url: Some("s3://bucket/recording.rrd".to_owned()),
+                offset: Some(offset),
+                length: Some(manifest_bytes.len() as u64),
+            }),
+            layer: Some("base".to_owned()),
+            etag: Some("\"registered-etag\"".to_owned()),
+            direct_url: Some(format!(
+                "http://{address}/recording.rrd?X-Amz-Signature=secret"
+            )),
+        };
+
+        let segment_id = SegmentId::new("recording".to_owned());
+        let layer = LayerName::base();
+        let canonical_url = url::Url::parse("s3://bucket/recording.rrd").expect("valid s3 url");
+        let etag = ETag::new("\"registered-etag\"");
+
+        let fetched = fetch_rrd_manifest_via_key(manifest_key, &segment_id, None)
+            .await
+            .expect("direct manifest fetch succeeds");
+        assert_eq!(fetched.store_id, raw_manifest.store_id);
+        assert_eq!(
+            fetched.sorbet_schema_sha256,
+            raw_manifest.sorbet_schema_sha256
+        );
+
+        let expected = re_log_encoding::HubRrdManifest::try_from_raw(
+            &raw_manifest,
+            &segment_id,
+            &layer,
+            &canonical_url,
+            Some(&etag),
+            None,
+        )
+        .expect("hub-extending a zero-row in-memory manifest cannot fail")
+        .into_raw();
+        assert_eq!(fetched.data, expected.data);
+        for hub_column in [
+            re_log_encoding::HubRrdManifest::FIELD_CHUNK_PARTITION_ID,
+            re_log_encoding::HubRrdManifest::FIELD_RERUN_PARTITION_LAYER,
+            re_log_encoding::HubRrdManifest::FIELD_CHUNK_KEY,
+        ] {
+            assert!(
+                fetched.data.column_by_name(hub_column).is_some(),
+                "fetched manifest is missing hub column '{hub_column}'"
+            );
+        }
+
+        let (range, if_match) = server_thread.join().unwrap();
+        assert_eq!(
+            range.as_deref(),
+            Some(format!("bytes={offset}-{range_end}").as_str())
+        );
+        assert_eq!(if_match.as_deref(), Some("\"registered-etag\""));
+    }
+
+    #[tokio::test]
+    async fn direct_rrd_manifest_fetch_maps_precondition_failure_without_leaking_query() {
+        let server = tiny_http::Server::http("127.0.0.1:0").unwrap();
+        let address = server.server_addr().to_ip().unwrap();
+        let server_thread = std::thread::Builder::new()
+            .name("direct-manifest-test-server".to_owned())
+            .spawn(move || {
+                let request = server.recv().unwrap();
+                request
+                    .respond(tiny_http::Response::empty(tiny_http::StatusCode(
+                        http::StatusCode::PRECONDITION_FAILED.as_u16(),
+                    )))
+                    .unwrap();
+            })
+            .unwrap();
+
+        let manifest_key = RrdManifestKey {
+            location: Some(re_protos::cloud::v1alpha1::RrdChunkLocation {
+                url: Some("s3://bucket/manifest".to_owned()),
+                offset: Some(0),
+                length: Some(1),
+            }),
+            layer: None,
+            etag: Some("\"old-etag\"".to_owned()),
+            direct_url: Some(format!("http://{address}/manifest?secret=credential")),
+        };
+
+        let err =
+            fetch_rrd_manifest_via_key(manifest_key, &SegmentId::new("recording".to_owned()), None)
+                .await
+                .unwrap_err();
+        server_thread.join().unwrap();
+
+        assert_eq!(err.kind, ApiErrorKind::FailedPrecondition);
+        assert!(err.to_string().contains(SOURCE_CHANGED_MESSAGE));
+        assert!(!err.to_string().contains("credential"));
+    }
 
     /// When the `features` cell is already populated, `supports_feature`
     /// must answer from the cache without going through the gRPC transport.

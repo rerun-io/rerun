@@ -860,6 +860,7 @@ async fn stream_segment_from_server(
         Ok(manifest_stream) => {
             let mut manifest_stream = std::pin::pin!(manifest_stream);
 
+            let mut raw_rrd_manifest_parts = Vec::new();
             let mut rrd_manifest_parts: Vec<Arc<re_log_encoding::RrdManifest>> = Vec::new();
 
             while let Some(part_result) = manifest_stream.next().await {
@@ -894,6 +895,7 @@ async fn stream_segment_from_server(
                     return Ok(ControlFlow::Break(()));
                 }
 
+                raw_rrd_manifest_parts.push(raw_rrd_manifest_part);
                 rrd_manifest_parts.push(rrd_manifest);
             }
 
@@ -926,15 +928,25 @@ async fn stream_segment_from_server(
                 }
                 StoreKind::Recording | StoreKind::Blueprint => {
                     re_log::debug!("Loading all of the chunks in one go; most important first");
-                    let refs: Vec<&re_log_encoding::RrdManifest> =
-                        rrd_manifest_parts.iter().map(|m| m.as_ref()).collect();
-                    let combined = re_log_encoding::RrdManifest::concat(&refs).map_err(|err| {
+                    let combined = re_log_encoding::RawRrdManifest::merge(
+                        store_id.clone(),
+                        raw_rrd_manifest_parts,
+                    )
+                    .map_err(|err| {
                         ApiError::invalid_arguments_with_source(
                             trace_id,
                             err,
-                            "Failed to concatenate RRD manifest parts",
+                            "Failed to merge RRD manifest parts",
                         )
                     })?;
+                    let combined =
+                        re_log_encoding::RrdManifest::try_new(&combined).map_err(|err| {
+                            ApiError::invalid_arguments_with_source(
+                                trace_id,
+                                err,
+                                "Invalid merged RRD manifest",
+                            )
+                        })?;
                     let batch = sort_batch(combined.chunk_fetcher_rb()).map_err(|err| {
                         ApiError::invalid_arguments_with_source(
                             trace_id,

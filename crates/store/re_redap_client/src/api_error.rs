@@ -163,6 +163,46 @@ impl ApiError {
         }
     }
 
+    /// Convert an unsuccessful HTTP status into an [`ApiError`].
+    ///
+    /// Authentication, authorization, missing-resource, precondition, and throttling responses map
+    /// to their corresponding API error kinds.
+    /// Server errors are treated as connection failures so callers may retry them.
+    /// Other statuses indicate that the server did not honor the expected HTTP protocol.
+    pub fn http_status(
+        trace_id: Option<opentelemetry::TraceId>,
+        status: u16,
+        message: impl Into<String>,
+    ) -> Self {
+        Self::http_status_with_source(
+            trace_id,
+            status,
+            std::io::Error::other(format!("HTTP {status}")),
+            message,
+        )
+    }
+
+    /// Convert an unsuccessful HTTP status into an [`ApiError`] with a specific source error.
+    ///
+    /// Do NOT include `err` in the `message` - it will be added for you.
+    pub fn http_status_with_source(
+        trace_id: Option<opentelemetry::TraceId>,
+        status: u16,
+        err: impl std::error::Error + Send + Sync + 'static,
+        message: impl Into<String>,
+    ) -> Self {
+        let kind = match status {
+            401 => ApiErrorKind::Unauthenticated,
+            403 => ApiErrorKind::PermissionDenied,
+            404 => ApiErrorKind::NotFound,
+            412 => ApiErrorKind::FailedPrecondition,
+            429 => ApiErrorKind::ResourcesExhausted,
+            500..=599 => ApiErrorKind::Connection,
+            _ => ApiErrorKind::InvalidServer,
+        };
+        Self::with_kind_and_source(kind, trace_id, err, message)
+    }
+
     /// Do NOT include `err` in the `message` - it will be added for you.
     pub fn tonic(err: tonic::Status, message: impl Into<String>) -> Self {
         let message = message.into();
