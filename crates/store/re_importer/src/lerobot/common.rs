@@ -410,3 +410,98 @@ fn extract_list_array_elements_as_f64(
         })
         .try_collect()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use re_sdk_types::archetypes::TextDocument;
+
+    struct TestDataset {
+        episodes: Vec<EpisodeIndex>,
+    }
+
+    impl LeRobotDataset for TestDataset {
+        fn iter_episode_indices(&self) -> impl Iterator<Item = EpisodeIndex> {
+            self.episodes.iter().copied()
+        }
+
+        fn load_episode_chunks(&self, episode: EpisodeIndex) -> Result<Vec<Chunk>, ImporterError> {
+            let chunk = Chunk::builder(format!("episode_{}", episode.0))
+                .with_archetype(
+                    RowId::new(),
+                    TimePoint::STATIC,
+                    &TextDocument::new(format!("Episode {}", episode.0)),
+                )
+                .build()?;
+            Ok(vec![chunk])
+        }
+    }
+
+    #[test]
+    fn streams_each_episode_to_its_own_recording() {
+        let dataset = TestDataset {
+            episodes: (0..3).map(EpisodeIndex).collect(),
+        };
+        let application_id = ApplicationId::from("lerobot_test");
+        let loader_name = "rerun.importers.LeRobotDataset";
+        // The loader and receiver run on this test thread, so the queue cannot grow independently.
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "the sender and receiver are on the same thread"
+        )]
+        let (tx, rx) = crossbeam::channel::unbounded();
+
+        load_and_stream_versioned(&dataset, &application_id, &tx, loader_name);
+        drop(tx);
+
+        let imported = rx.into_iter().collect::<Vec<_>>();
+        assert!(
+            imported
+                .iter()
+                .all(|data| data.importer_name() == loader_name)
+        );
+
+        let store_info_ids = imported
+            .iter()
+            .filter_map(|data| match data {
+                ImportedData::LogMsg(_, re_log_types::LogMsg::SetStoreInfo(store_info)) => {
+                    Some(store_info.info.store_id.clone())
+                }
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(
+            store_info_ids
+                .iter()
+                .map(|store_id| store_id.recording_id().as_str())
+                .collect::<Vec<_>>(),
+            ["episode_0", "episode_1", "episode_2"]
+        );
+        assert!(store_info_ids.iter().all(|store_id| {
+            store_id.is_recording() && store_id.application_id() == &application_id
+        }));
+
+        let streamed_chunks = imported
+            .iter()
+            .filter_map(|data| match data {
+                ImportedData::Chunk(_, store_id, chunk) => Some((
+                    store_id.recording_id().as_str(),
+                    chunk.entity_path().to_string(),
+                )),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(
+            streamed_chunks,
+            [
+                ("episode_0", EntityPath::properties().to_string()),
+                ("episode_0", "/episode_0".to_owned()),
+                ("episode_1", EntityPath::properties().to_string()),
+                ("episode_1", "/episode_1".to_owned()),
+                ("episode_2", EntityPath::properties().to_string()),
+                ("episode_2", "/episode_2".to_owned()),
+            ]
+        );
+    }
+}

@@ -128,3 +128,93 @@ impl LeRobotDatasetImporter {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::collections::{BTreeMap, BTreeSet};
+    use std::path::{Path, PathBuf};
+
+    use re_log_types::LogMsg;
+
+    use super::*;
+
+    #[derive(Debug)]
+    struct ImportSummary {
+        recording_ids: Vec<String>,
+        entity_paths_by_recording: BTreeMap<String, BTreeSet<String>>,
+    }
+
+    fn fixture(name: &str) -> PathBuf {
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("tests/assets/lerobot")
+            .join(name)
+    }
+
+    fn import_dataset(path: &Path) -> ImportSummary {
+        let (tx, rx) = crossbeam::channel::bounded(1);
+        LeRobotDatasetImporter
+            .import_from_path(
+                &crate::ImporterSettings::recommended("lerobot_test"),
+                path.to_owned(),
+                tx,
+            )
+            .expect("dataset should start importing");
+
+        let mut recording_ids = Vec::new();
+        let mut entity_paths_by_recording = BTreeMap::<_, BTreeSet<_>>::new();
+        for data in rx {
+            match data {
+                ImportedData::LogMsg(_, LogMsg::SetStoreInfo(info)) => {
+                    recording_ids.push(info.info.store_id.recording_id().as_str().to_owned());
+                }
+                ImportedData::Chunk(_, store_id, chunk) => {
+                    entity_paths_by_recording
+                        .entry(store_id.recording_id().as_str().to_owned())
+                        .or_default()
+                        .insert(chunk.entity_path().to_string());
+                }
+                _ => {}
+            }
+        }
+
+        ImportSummary {
+            recording_ids,
+            entity_paths_by_recording,
+        }
+    }
+
+    #[test]
+    fn imports_real_v2_and_v3_datasets_into_one_recording_per_episode() {
+        for (fixture_name, expected_version) in [
+            ("v21_apple_storage", LeRobotDatasetVersion::V2),
+            ("v30_apple_storage", LeRobotDatasetVersion::V3),
+        ] {
+            let path = fixture(fixture_name);
+            assert_eq!(
+                LeRobotDatasetVersion::find_version(&path),
+                Some(expected_version)
+            );
+
+            let imported = import_dataset(&path);
+            assert_eq!(
+                imported.recording_ids,
+                ["episode_0", "episode_1", "episode_2"]
+            );
+            for recording_id in &imported.recording_ids {
+                let entity_paths = &imported.entity_paths_by_recording[recording_id];
+                for expected_path in [
+                    "/__properties",
+                    "/action",
+                    "/observation.state",
+                    "/observation.image",
+                    "/task",
+                ] {
+                    assert!(
+                        entity_paths.contains(expected_path),
+                        "{fixture_name} {recording_id} is missing {expected_path}; got {entity_paths:?}"
+                    );
+                }
+            }
+        }
+    }
+}
