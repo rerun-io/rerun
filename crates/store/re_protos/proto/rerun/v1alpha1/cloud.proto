@@ -1266,7 +1266,7 @@ message RrdChunkLocation {
 
 // `RrdManifestKey` points at an RRD manifest (footer) in the object store.
 message RrdManifestKey {
-  // The location of the manifest
+  // The canonical location of the manifest (e.g. s3://bucket/file).
   RrdChunkLocation location = 1;
 
   // The segment layer this manifest belongs to.
@@ -1280,4 +1280,7 @@ message RrdManifestKey {
   //
   // Optional: legacy registrations and stores that do not return an ETag leave this unset.
   optional string etag = 3;
+
+  // Presigned URL the client fetches the manifest's byte range from.
+  optional string direct_url = 4;
 }

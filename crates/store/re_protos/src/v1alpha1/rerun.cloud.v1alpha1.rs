@@ -1892,7 +1892,7 @@ impl ::prost::Name for RrdChunkLocation {
 /// `RrdManifestKey` points at an RRD manifest (footer) in the object store.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct RrdManifestKey {
-    /// The location of the manifest
+    /// The canonical location of the manifest (e.g. s3://bucket/file).
     #[prost(message, optional, tag = "1")]
     pub location: ::core::option::Option<RrdChunkLocation>,
     /// The segment layer this manifest belongs to.
@@ -1907,6 +1907,9 @@ pub struct RrdManifestKey {
     /// Optional: legacy registrations and stores that do not return an ETag leave this unset.
     #[prost(string, optional, tag = "3")]
     pub etag: ::core::option::Option<::prost::alloc::string::String>,
+    /// Presigned URL the client fetches the manifest's byte range from.
+    #[prost(string, optional, tag = "4")]
+    pub direct_url: ::core::option::Option<::prost::alloc::string::String>,
 }
 impl ::prost::Name for RrdManifestKey {
     const NAME: &'static str = "RrdManifestKey";
