@@ -74,16 +74,14 @@ struct ChunkSpan {
 
 /// Row layout of the text log table, derived from chunk-level metadata only.
 ///
-/// This is what allows the view to know how many rows there are — and roughly where in time
-/// each row lives — without touching any row data:
-/// row counts come from the per-chunk validity bitmaps (or, with a level filter active,
-/// from cached per-chunk level counts) and are exact,
-/// and only locating a time window boundary *inside* a chunk requires peeking at that
-/// (already loaded) chunk's time column.
+/// This is what allows the view to know how many rows there are, without touching any row data:
+/// row counts come from the per-chunk validity bitmaps (or, with a level filter active, from cached
+/// per-chunk level counts) and are exact, and only locating a time window boundary *inside* a chunk requires
+/// looking at that chunk's time column.
 ///
 /// Rows are ordered with static rows first, then by time.
 /// Where chunks of different entities overlap in time, the layout is approximate at chunk
-/// granularity, but stable; the visible window itself is always rendered in exact time order.
+/// granularity, but stable since the visible window itself is always rendered in exact time order.
 pub struct RowLayout {
     timeline: TimelineName,
     component: ComponentIdentifier,
@@ -111,7 +109,9 @@ pub struct RowLayout {
 }
 
 impl RowLayout {
-    /// Note that the level counting is done on the raw store data: blueprint overrides of the
+    /// Build a row layout for the given entities and timeline, optionally applying a level filter.
+    ///
+    /// Note: the level counting is done on the raw store data: blueprint overrides of the
     /// `level` component are not taken into account by `filter`.
     pub fn build<'a>(
         store: &ChunkStore,
@@ -132,7 +132,7 @@ impl RowLayout {
         let mut live_chunks = BTreeSet::new();
 
         for entity_path in entities {
-            // `Ignore`: don't trigger chunk downloads just to compute the row layout.
+            // don't trigger chunk downloads just to compute the row layout.
             let results = store.range_relevant_chunks(
                 ChunkTrackingMode::Ignore,
                 &query,
@@ -151,9 +151,8 @@ impl RowLayout {
 
                 live_chunks.insert(chunk.id());
 
-                // One-time scan per chunk (chunks are immutable, so the cache never goes
-                // stale); this is what makes level-filtered row counts affordable, and it
-                // gives us the complete set of occurring levels for the filter UI.
+                // One-time scan per chunk (chunks are immutable, so the cache never goes stale)
+                // this is what makes level-filtered row counts viable
                 let counts = level_counts
                     .entry(chunk.id())
                     .or_insert_with(|| level_counts_for_chunk(&chunk, component, level_component));
@@ -185,7 +184,7 @@ impl RowLayout {
             }
         }
 
-        // Drop cache entries for chunks that no longer exist (compacted or garbage collected).
+        // Drop cache entries for chunks that no longer exist
         level_counts.retain(|chunk_id, _| live_chunks.contains(chunk_id));
 
         // Static chunks first, then by time.
@@ -330,10 +329,8 @@ fn count_rows_before_in_chunk(
 
 /// Per-row access to the first log level instance of a chunk.
 ///
-/// This deliberately only looks at the chunk row itself — no blueprint overrides, no
-/// latest-at clamping from earlier rows — mirroring how the visualizer builds its entries
-/// (exact index join), so that row counts derived here always line up with the materialized
-/// entries.
+/// This deliberately only looks at the chunk row itself, just like how the visualizer builds its entries
+/// so that row counts derived here always line up with the materialize entries.
 struct RowLevels<'a> {
     list_and_values: Option<(&'a ArrowListArray, &'a ArrowStringArray)>,
 }
