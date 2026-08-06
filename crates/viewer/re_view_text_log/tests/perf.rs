@@ -2,7 +2,7 @@
 //!
 //! See <https://github.com/rerun-io/rerun/issues/7562>.
 //!
-//! This is not run on CI (timings are machine-dependent); run it manually with:
+//! This is not run on CI, run it manually with:
 //! ```sh
 //! cargo test -p re_view_text_log --test perf --release -- --ignored --nocapture
 //! ```

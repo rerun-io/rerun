@@ -27,8 +27,7 @@ pub struct Entry {
 
 /// Time window on a timeline that the visualizer should query.
 ///
-/// Written by the view's `ui()` (which owns the scrolling) each frame, and read here on the
-/// *next* frame — the same one-frame feedback loop the time series view uses.
+/// Written by the view's `ui()` each frame, and read here on the next frame.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FetchWindow {
     pub timeline: TimelineName,
@@ -47,8 +46,7 @@ impl re_byte_size::SizeBytes for FetchWindow {
 pub struct TextLogOutput {
     /// Entries sorted by time on the active timeline, static entries first.
     ///
-    /// This only covers [`Self::window`]
-    /// (plus all static entries, which any range query returns).
+    /// This only covers [`Self::window`] plus all static entries.
     pub entries: Vec<Entry>,
 
     /// The time window that was queried, if any.
@@ -89,9 +87,7 @@ impl VisualizerSystem for TextLogSystem {
 
         let output = VisualizerExecutionOutput::default();
 
-        // The view's `ui()` tells us which time window is actually visible, so that we don't
-        // have to query (and materialize entries for) the entire recording.
-        // See <https://github.com/rerun-io/rerun/issues/7562>.
+        // The view knows which time window is actually visible, so we only need query that window.
         let state = ctx.view_state.downcast_ref::<TextViewState>().ok();
         let window = state
             .and_then(|state| state.fetch_window)
@@ -100,9 +96,7 @@ impl VisualizerSystem for TextLogSystem {
         let time_range = if let Some(window) = window {
             AbsoluteTimeRange::new(window.min, window.max)
         } else {
-            // We don't know the visible window yet (first frame, or the timeline changed).
-            // Query a degenerate range: static chunks are returned regardless, and the view
-            // will request a repaint once it has computed the window.
+            // We don't know the visible window yet, query everything.
             AbsoluteTimeRange::new(TimeInt::MAX, TimeInt::MAX)
         };
 
@@ -126,7 +120,6 @@ impl VisualizerSystem for TextLogSystem {
 
         {
             // Sort by currently selected timeline.
-            // The sort is stable, so entries at the same time keep a deterministic order.
             re_tracing::profile_scope!("sort");
             entries.sort_by_key(|e| e.time);
         }
@@ -170,12 +163,10 @@ impl TextLogSystem {
             .iter()
             .flat_map(|chunk| chunk.iter_component_timepoints());
 
-        // A text log entry is one row, and its level/color are read from that same row only
-        // (i.e. the same log call), by joining on the exact `(time, row id)` index — as opposed
-        // to the usual latest-at clamping from earlier rows. This keeps the levels in sync with
-        // the chunk-level metadata that the view uses to lay out the table (see
-        // `RowLayout`); it also means that blueprint overrides and defaults of these
-        // components are not applied here.
+        // A text log entry is one row, and its level/color are read from that same row only.
+        // This is different from the usual latest-at semantics, but keeps the levels and row counts in sync
+        // with the chunk-level metadata which we use to layout the table.
+        // However, this does mean that if a level/color is overridden in a blueprint, it won't be applied here.
         let all_levels: HashMap<(TimeInt, RowId), _> = results
             .iter_optional(TextLog::descriptor_level().component)
             .slice::<String>()
@@ -197,8 +188,6 @@ impl TextLogSystem {
                 time: data_time,
                 timepoint,
                 color: all_colors.get(&index).copied().map(Into::into),
-                // We only ever look at the first instance of each component: a text log entry
-                // is one row, which keeps the row count in sync with the chunk-level metadata.
                 body: bodies.first().cloned().map(Into::into).unwrap_or_default(),
                 level: all_levels.get(&index).cloned().map(Into::into),
             });
