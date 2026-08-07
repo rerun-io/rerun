@@ -216,7 +216,7 @@ fn output_filename(data_source: &LogDataSource, original_url: &str) -> std::path
         LogDataSource::RedapDatasetSegment { uri, .. } => format!("{}.rrd", uri.segment_id).into(),
 
         #[cfg(not(target_arch = "wasm32"))]
-        LogDataSource::FilePath { path, .. } => path
+        LogDataSource::File { path, .. } => path
             .file_name()
             .map(Into::into)
             .unwrap_or_else(|| "output.rrd".into()),

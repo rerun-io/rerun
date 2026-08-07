@@ -1861,7 +1861,7 @@ impl ReceiversFromUrlParams {
                         }
                     }
 
-                    LogDataSource::FilePath { .. } => {
+                    LogDataSource::File { .. } => {
                         if config.data_source_from_filepaths {
                             data_sources.push(data_source);
                         } else {

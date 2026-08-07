@@ -1028,7 +1028,7 @@ impl App {
             cfg_select! {
                 target_arch = "wasm32" => {
                     command_sender.send_system(SystemCommand::LoadDataSource(
-                        LogDataSource::FileHandle {
+                        LogDataSource::File {
                             file_source: FileSource::DragAndDrop {
                                 recommended_store_id: Some(active_store_id),
                                 force_store_info,
@@ -1040,7 +1040,7 @@ impl App {
                 }
                 _ => {
                     command_sender.send_system(SystemCommand::LoadDataSource(
-                        LogDataSource::FilePath {
+                        LogDataSource::File {
                             file_source: FileSource::DragAndDrop {
                                 recommended_store_id: Some(active_store_id),
                                 force_store_info,
@@ -1316,7 +1316,7 @@ impl eframe::App for App {
         {
             for file in files {
                 self.command_sender
-                    .send_system(SystemCommand::LoadDataSource(LogDataSource::FileHandle {
+                    .send_system(SystemCommand::LoadDataSource(LogDataSource::File {
                         file_source: FileSource::FileDialog {
                             recommended_store_id: recommended_store_id.clone(),
                             force_store_info: *force_store_info,

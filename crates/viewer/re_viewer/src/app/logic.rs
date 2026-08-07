@@ -169,10 +169,7 @@ impl App {
 
                 re_log_channel::SmartMessagePayload::Quit(err) => {
                     if let Some(err) = err {
-                        re_log::warn!(
-                            "Data source has left unexpectedly: {err}, source: {}",
-                            msg.source
-                        );
+                        re_log::error!("Data source failed: {err}\nSource: {}", msg.source);
                         if let Some(re_uri::RedapUri::DatasetData(uri)) = channel_source.redap_uri()
                         {
                             self.connection_registry.set_uri_error(uri, err.to_string());

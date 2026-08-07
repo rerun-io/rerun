@@ -27,21 +27,16 @@ pub enum LogDataSource {
         url: url::Url,
     },
 
-    /// A path to a local file.
-    #[cfg(not(target_arch = "wasm32"))]
-    FilePath {
-        /// How we got to know about the file
+    /// A local file.
+    File {
+        /// How we got to know about the file.
         file_source: re_log_types::FileSource,
 
-        /// Where the file is
+        /// The file's path or, on web, its display name.
         path: std::path::PathBuf,
-    },
 
-    /// A browser file selected through the file dialog or drag-and-drop.
-    #[cfg(target_arch = "wasm32")]
-    FileHandle {
-        file_source: re_log_types::FileSource,
-        path: std::path::PathBuf,
+        /// The browser file selected through the file dialog or drag-and-drop.
+        #[cfg(target_arch = "wasm32")]
         file: web_sys::File,
     },
 
@@ -148,14 +143,14 @@ impl LogDataSource {
             }
 
             if url.starts_with("file://") || path.exists() {
-                return Some(Self::FilePath {
+                return Some(Self::File {
                     file_source: _file_source,
                     path,
                 });
             }
 
             if looks_like_a_file_path(url) {
-                return Some(Self::FilePath {
+                return Some(Self::File {
                     file_source: _file_source,
                     path,
                 });
@@ -278,8 +273,12 @@ impl LogDataSource {
                 }
             }
 
-            #[cfg(not(target_arch = "wasm32"))]
-            Self::FilePath { file_source, path } => {
+            Self::File {
+                file_source,
+                path,
+                #[cfg(target_arch = "wasm32")]
+                file,
+            } => {
                 let (tx, rx) = re_log_channel::log_channel(LogSource::File { path: path.clone() });
 
                 // This recording will be communicated to all `Importer`s, which may or may not
@@ -291,20 +290,12 @@ impl LogDataSource {
                     force_store_info: file_source.force_store_info(),
                     ..re_importer::ImporterSettings::recommended(shared_recording_id)
                 };
+
+                #[cfg(not(target_arch = "wasm32"))]
                 re_importer::import_from_path(&settings, file_source, &path, &tx)
                     .with_context(|| format!("{path:?}"))?;
 
-                Ok(rx)
-            }
-
-            #[cfg(target_arch = "wasm32")]
-            Self::FileHandle {
-                file_source,
-                path,
-                file,
-            } => {
-                let (tx, rx) = re_log_channel::log_channel(LogSource::File { path: path.clone() });
-
+                #[cfg(target_arch = "wasm32")]
                 async_runtime.spawn_future(async move {
                     re_log::debug!("Reading {}…", path.display());
                     let bytes = match re_web::fs::read_file(file).await {
@@ -320,12 +311,6 @@ impl LogDataSource {
                         re_format::format_bytes(bytes.len() as _)
                     );
 
-                    let shared_recording_id = RecordingId::random();
-                    let settings = re_importer::ImporterSettings {
-                        opened_store_id: file_source.recommended_store_id().cloned(),
-                        force_store_info: file_source.force_store_info(),
-                        ..re_importer::ImporterSettings::recommended(shared_recording_id)
-                    };
                     if let Err(err) = re_importer::import_from_file_contents(
                         &settings,
                         file_source,
@@ -402,8 +387,7 @@ impl LogDataSource {
                 }
             }
 
-            #[cfg(not(target_arch = "wasm32"))]
-            Self::FilePath {
+            Self::File {
                 file_source, path, ..
             } => {
                 let file_extension = path
@@ -412,21 +396,6 @@ impl LogDataSource {
                     .map(|s| s.to_lowercase());
                 LogDataSourceAnalytics {
                     source_type: "file_path",
-                    file_extension,
-                    file_source: Some(Self::file_source_to_analytics_str(file_source)),
-                }
-            }
-
-            #[cfg(target_arch = "wasm32")]
-            Self::FileHandle {
-                file_source, path, ..
-            } => {
-                let file_extension = path
-                    .extension()
-                    .and_then(|e| e.to_str())
-                    .map(|s| s.to_lowercase());
-                LogDataSourceAnalytics {
-                    source_type: "file_handle",
                     file_extension,
                     file_source: Some(Self::file_source_to_analytics_str(file_source)),
                 }
@@ -473,9 +442,9 @@ impl LogDataSource {
         match self {
             Self::HttpUrl { url, .. } => Some(url.to_string()),
             #[cfg(not(target_arch = "wasm32"))]
-            Self::FilePath { path, .. } => Some(format!("file://{}", path.display())),
+            Self::File { path, .. } => Some(format!("file://{}", path.display())),
             #[cfg(target_arch = "wasm32")]
-            Self::FileHandle { .. } => None,
+            Self::File { .. } => None,
             #[cfg(not(target_arch = "wasm32"))]
             Self::Stdin => Some("-".to_owned()),
             Self::RedapDatasetSegment { uri, .. } => Some(uri.to_string()),
@@ -580,9 +549,9 @@ mod tests {
 
         for uri in file {
             let data_source = LogDataSource::from_uri(file_source.clone(), uri, &default_options);
-            if !matches!(data_source, Some(LogDataSource::FilePath { .. })) {
+            if !matches!(data_source, Some(LogDataSource::File { .. })) {
                 eprintln!(
-                    "Expected {uri:?} to be categorized as FilePath. Instead it got parsed as {data_source:?}"
+                    "Expected {uri:?} to be categorized as File. Instead it got parsed as {data_source:?}"
                 );
                 failed = true;
             }

@@ -824,7 +824,7 @@ impl App {
                 use re_log_types::FileSource;
                 for file_path in open_file_dialog_native(self.main_thread_token) {
                     self.command_sender
-                        .send_system(SystemCommand::LoadDataSource(LogDataSource::FilePath {
+                        .send_system(SystemCommand::LoadDataSource(LogDataSource::File {
                             file_source: FileSource::FileDialog {
                                 recommended_store_id: None,
                                 force_store_info,
@@ -856,7 +856,7 @@ impl App {
                 use re_log_types::FileSource;
                 for file_path in open_file_dialog_native(self.main_thread_token) {
                     self.command_sender
-                        .send_system(SystemCommand::LoadDataSource(LogDataSource::FilePath {
+                        .send_system(SystemCommand::LoadDataSource(LogDataSource::File {
                             file_source: FileSource::FileDialog {
                                 recommended_store_id: Some(active_store_id.clone()),
                                 force_store_info,

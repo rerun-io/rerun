@@ -53,7 +53,7 @@ pub enum ViewerOpenUrl {
 
     /// A path to a local file.
     ///
-    /// See also [`LogDataSource::FilePath`].
+    /// See also [`LogDataSource::File`].
     #[cfg(not(target_arch = "wasm32"))]
     FilePath(std::path::PathBuf),
 
@@ -197,11 +197,11 @@ impl ViewerOpenUrl {
                 LogDataSource::HttpUrl { url, .. } => Ok(Self::HttpUrl(url)),
 
                 #[cfg(not(target_arch = "wasm32"))]
-                LogDataSource::FilePath { path, .. } => Ok(Self::FilePath(path)),
+                LogDataSource::File { path, .. } => Ok(Self::FilePath(path)),
 
                 #[cfg(target_arch = "wasm32")]
-                LogDataSource::FileHandle { .. } => {
-                    unreachable!("FileHandle can not be shared as a URL");
+                LogDataSource::File { .. } => {
+                    unreachable!("A browser file cannot be shared as a URL")
                 }
 
                 #[cfg(not(target_arch = "wasm32"))]
@@ -596,12 +596,10 @@ impl ViewerOpenUrl {
             }
             #[cfg(not(target_arch = "wasm32"))]
             Self::FilePath(path) => {
-                command_sender.send_system(SystemCommand::LoadDataSource(
-                    LogDataSource::FilePath {
-                        file_source: re_log_types::FileSource::Uri,
-                        path,
-                    },
-                ));
+                command_sender.send_system(SystemCommand::LoadDataSource(LogDataSource::File {
+                    file_source: re_log_types::FileSource::Uri,
+                    path,
+                }));
             }
             Self::RedapDatasetSegment(uri) => {
                 command_sender.send_system(SystemCommand::LoadDataSource(
