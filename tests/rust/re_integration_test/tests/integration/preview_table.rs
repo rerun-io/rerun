@@ -61,8 +61,7 @@ pub async fn preview_table() {
         .collect();
 
     // Create a remote table with a recording-URI column. A registered blueprint (set up below)
-    // renders each recording in a 3D preview. The `name` column gives grid-view cards stable
-    // titles.
+    // renders each recording in a 3D preview. The `name` column gives cards stable titles.
     let schema = Arc::new(Schema::new_with_metadata(
         vec![
             Field::new("id", DataType::Int64, false)
@@ -164,8 +163,8 @@ pub async fn preview_table() {
     harness.run_ok();
     harness.snapshot("preview_table");
 
-    // Switch to grid view and snapshot the same previews as cards.
-    harness.get_by_label("Grid view").click();
+    // Switch to card layout and snapshot the same previews as cards.
+    harness.get_by_label("Cards view").click();
     harness.run_ok();
     harness.snapshot("preview_table_grid");
 

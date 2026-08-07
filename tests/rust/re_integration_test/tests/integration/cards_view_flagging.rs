@@ -1,9 +1,9 @@
-//! Integration test for grid view flag toggling with server persistence.
+//! Integration test for card layout flag toggling with server persistence.
 //!
-//! Verifies that flag buttons appear in grid view for a remote table and that
+//! Verifies that flag buttons appear in card layout for a remote table and that
 //! clicking a flag visually toggles it.
 //!
-//! See also: `re_dataframe_ui::tests::grid_view::test_grid_view_flagging` for
+//! See also: `re_dataframe_ui::tests::cards_view::test_cards_view_flagging` for
 //! the widget-level (in-memory only) version of this test.
 
 use std::sync::Arc;
@@ -21,7 +21,7 @@ use re_sdk::external::re_log_types;
 use re_viewer::viewer_test_utils::{self, HarnessOptions};
 
 #[tokio::test(flavor = "multi_thread")]
-pub async fn grid_view_flagging() {
+pub async fn cards_view_flagging() {
     let server = TestServer::spawn().await;
     let mut client = server.client().await.expect("Failed to connect to server");
 
@@ -90,13 +90,13 @@ pub async fn grid_view_flagging() {
     harness.set_selection_panel_opened(false);
     harness.set_time_panel_opened(false);
 
-    // Switch to grid mode.
-    harness.get_by_label("Grid view").click();
+    // Switch to card layout.
+    harness.get_by_label("Cards view").click();
     harness.run_ok();
 
     // Wait for flag buttons to appear.
     viewer_test_utils::step_until(
-        "grid view renders with flag buttons",
+        "card layout renders with flag buttons",
         &mut harness,
         |harness| {
             harness
@@ -108,7 +108,7 @@ pub async fn grid_view_flagging() {
         Duration::from_secs(5),
     );
 
-    harness.snapshot("grid_view_flagging_before");
+    harness.snapshot("cards_view_flagging_before");
 
     // Toggle Alice's flag (first checkbox).
     harness
@@ -118,7 +118,7 @@ pub async fn grid_view_flagging() {
         .click();
     harness.run_ok();
 
-    harness.snapshot("grid_view_flagging_after");
+    harness.snapshot("cards_view_flagging_after");
 
     // Wait for the async upsert to reach the server, then verify the flag was persisted.
     viewer_test_utils::step_until(

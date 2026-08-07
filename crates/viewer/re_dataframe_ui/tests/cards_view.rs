@@ -1,4 +1,4 @@
-//! Test grid view mode of the `DataFusionTableWidget`.
+//! Test card layout mode of the `DataFusionTableWidget`.
 
 mod common;
 
@@ -16,9 +16,9 @@ use re_test_context::TestContext;
 
 use common::run_async_harness;
 
-/// Basic grid view rendering in dark and light theme.
+/// Basic card layout rendering in dark and light theme.
 #[tokio::test(flavor = "multi_thread")] // `multi_thread` required because `ConnectionRegistryHandle::credentials` uses `block_in_place`.
-async fn test_grid_view() {
+async fn test_cards_view() {
     let (session_context, table_ref) = setup_test_table(false);
     let mut snapshot_results = SnapshotResults::new();
 
@@ -37,7 +37,7 @@ async fn test_grid_view() {
             .build_ui(|ui| {
                 test_context.run_recording(&ui.ctx().clone(), |ctx| {
                     DataFusionTableWidget::new(Arc::clone(&session_context), table_ref)
-                        .title("Grid view test")
+                        .title("Cards view test")
                         .show(
                             ctx.app_ctx,
                             &runtime_handle,
@@ -49,18 +49,18 @@ async fn test_grid_view() {
 
         run_async_harness(&mut harness).await;
 
-        // Switch to grid mode.
-        harness.get_by_label("Grid view").click();
+        // Switch to card layout.
+        harness.get_by_label("Cards view").click();
         run_async_harness(&mut harness).await;
 
-        harness.snapshot(format!("grid_view_basic_{suffix}"));
+        harness.snapshot(format!("cards_view_basic_{suffix}"));
         snapshot_results.extend_harness(&mut harness);
     }
 }
 
-/// Test that the grid reflows when rendered at different widths.
+/// Test that the card layout reflows when rendered at different widths.
 #[tokio::test(flavor = "multi_thread")] // `multi_thread` required because `ConnectionRegistryHandle::credentials` uses `block_in_place`.
-async fn test_grid_view_resize() {
+async fn test_cards_view_resize() {
     let (session_context, table_ref) = setup_test_table(false);
     let mut snapshot_results = SnapshotResults::new();
 
@@ -78,7 +78,7 @@ async fn test_grid_view_resize() {
             .build_ui(|ui| {
                 test_context.run_recording(&ui.ctx().clone(), |ctx| {
                     DataFusionTableWidget::new(Arc::clone(&session_context), table_ref)
-                        .title("Grid resize test")
+                        .title("Cards resize test")
                         .show(
                             ctx.app_ctx,
                             &runtime_handle,
@@ -90,11 +90,11 @@ async fn test_grid_view_resize() {
 
         run_async_harness(&mut harness).await;
 
-        // Switch to grid mode.
-        harness.get_by_label("Grid view").click();
+        // Switch to card layout.
+        harness.get_by_label("Cards view").click();
         run_async_harness(&mut harness).await;
 
-        harness.snapshot(format!("grid_view_resize_{suffix}"));
+        harness.snapshot(format!("cards_view_resize_{suffix}"));
         snapshot_results.extend_harness(&mut harness);
     }
 }
@@ -103,9 +103,9 @@ async fn test_grid_view_resize() {
 ///
 /// Verifies that flag buttons appear and clicking toggles the visual state.
 /// Server-side persistence of flag changes is tested in
-/// `re_integration_test::tests::grid_view_flagging`.
+/// `re_integration_test::tests::cards_view_flagging`.
 #[tokio::test(flavor = "multi_thread")] // `multi_thread` required because `ConnectionRegistryHandle::credentials` uses `block_in_place`.
-async fn test_grid_view_flagging() {
+async fn test_cards_view_flagging() {
     let (session_context, table_ref) = setup_test_table(true);
     let mut snapshot_results = SnapshotResults::new();
 
@@ -142,9 +142,9 @@ async fn test_grid_view_flagging() {
             });
 
         run_async_harness(&mut harness).await;
-        harness.get_by_label("Grid view").click();
+        harness.get_by_label("Cards view").click();
         run_async_harness(&mut harness).await;
-        harness.snapshot(format!("grid_view_flagging_{suffix}"));
+        harness.snapshot(format!("cards_view_flagging_{suffix}"));
 
         // Toggle the first flag.
         harness
@@ -153,18 +153,18 @@ async fn test_grid_view_flagging() {
             .expect("Expected at least one flag button.")
             .click();
         run_async_harness(&mut harness).await;
-        harness.snapshot(format!("grid_view_flagging_toggled_{suffix}"));
+        harness.snapshot(format!("cards_view_flagging_toggled_{suffix}"));
 
         snapshot_results.extend_harness(&mut harness);
     }
 }
 
-/// Test grid view with non-uniform card heights to exercise virtualized layout.
+/// Test card layout with non-uniform card heights to exercise virtualized layout.
 ///
 /// Creates 30 rows with varying content lengths — some with long multi-word notes
 /// that wrap, some with short or missing values — so cards end up at different heights.
 #[tokio::test(flavor = "multi_thread")] // `multi_thread` required because `ConnectionRegistryHandle::credentials` uses `block_in_place`.
-async fn test_grid_view_non_uniform_cards() {
+async fn test_cards_view_non_uniform_cards() {
     let (session_context, table_ref) = setup_non_uniform_table();
     let mut test_context = TestContext::new();
     test_context
@@ -190,11 +190,11 @@ async fn test_grid_view_non_uniform_cards() {
 
     run_async_harness(&mut harness).await;
 
-    // Switch to grid mode.
-    harness.get_by_label("Grid view").click();
+    // Switch to card layout.
+    harness.get_by_label("Cards view").click();
     run_async_harness(&mut harness).await;
 
-    harness.snapshot("grid_view_non_uniform_cards");
+    harness.snapshot("cards_view_non_uniform_cards");
 }
 
 // ---

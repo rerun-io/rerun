@@ -307,7 +307,7 @@ pub struct DesignTokens {
     // Table filter UI
     pub table_filter_frame_stroke: Stroke,
 
-    // Grid view cards
+    // Table cards
     pub table_grid_view_card_min_width: f32,
     pub table_grid_view_card_spacing: f32,
     pub table_grid_view_card_inner_margin: f32,

@@ -17,7 +17,7 @@ use re_quota_channel::send_crossbeam;
 use re_sorbet::{BatchType, SorbetBatch, SorbetSchema};
 
 use crate::ColumnFilter;
-use crate::grid_view::FlagChangeEvent;
+use crate::cards_view::FlagChangeEvent;
 use crate::table_blueprint::{EntryLinksSpec, SegmentLinksSpec, SortBy, TableBlueprint};
 use crate::table_selection::TableSelectionState;
 

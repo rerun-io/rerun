@@ -198,7 +198,7 @@ pub struct ExperimentalAppOptions {
     /// Enable table cards and blueprints.
     ///
     /// This enables registered table blueprints,
-    /// plus the table/grid view toggle for card-based table layouts.
+    /// plus the table/card layout toggle for server-supplied tables.
     pub table_cards_and_blueprints: bool,
 
     /// Enable gamepad navigation in 3D spatial views.

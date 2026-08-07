@@ -32,10 +32,10 @@ struct CardConfig<'a> {
     flagging_enabled: bool,
 }
 
-/// Render the data as a card-based grid.
+/// Render the data using the card layout.
 ///
 /// Returns a list of flag toggle changes that need to be applied to the underlying data.
-pub fn grid_ui(
+pub fn cards_ui(
     ctx: &AppContext<'_>,
     ui: &mut Ui,
     columns: &Columns<'_>,
