@@ -1,6 +1,6 @@
 <!--[metadata]
 title = "Table blueprints"
-tags = ["Tables", "Blueprints", "Server"]
+tags = ["Tables", "Blueprint", "Server"]
 include_in_manifest = false
 -->
 

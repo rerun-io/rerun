@@ -41,6 +41,12 @@ rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKD
 You can base your example off of `python/template` or `rust/template`.
 Once it's ready to be displayed in the docs, add it to the [manifest](./manifest.toml).
 
+The `tags` in the README frontmatter must come from [`tags.toml`](./tags.toml), so that examples about
+the same thing group together on the website. Reuse an existing tag where one fits, or add a new one
+to that list. `pixi run uvpy scripts/ci/example_tags.py check` tells you which tags are unknown and
+suggests close matches; `… example_tags.py similar` reports tags that may be duplicates of each other;
+`… example_tags.py list --paths` shows how often each tag is used, and by which examples.
+
 The `manifest.toml` file describes the structure of the examples contained in this repository. Only the examples which appear in the manifest are included in the [generated documentation](https://rerun.io/examples). The file contains a description of its own format.
 
 If you want to run the example on CI and include it in the in-viewer example page,
