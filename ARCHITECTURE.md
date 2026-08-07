@@ -178,17 +178,18 @@ Update instructions:
 
 ### Application-level store
 
-| Crate           | Description                                                     |
-| --------------- | --------------------------------------------------------------- |
-| re_dataframe    | The Rerun public data APIs.                                     |
-| re_datafusion   | DataFusion interfaces to Rerun gRPC queries                     |
-| re_entity_db    | In-memory storage of Rerun entities                             |
-| re_log_encoding | Helpers for encoding and transporting Rerun log messages        |
-| re_protos       | Rerun remote store gRPC API types                               |
-| re_query        | Querying data in the re_chunk_store                             |
-| re_server       | In-memory data server                                           |
-| re_tf           | Dealing with spatial transforms & transform frames              |
-| re_sdk_types    | The built-in Rerun data types, component types, and archetypes. |
+| Crate                | Description                                                     |
+| -------------------- | --------------------------------------------------------------- |
+| re_dataframe         | The Rerun public data APIs.                                     |
+| re_datafusion        | DataFusion interfaces to Rerun gRPC queries                     |
+| re_entity_db         | In-memory storage of Rerun entities                             |
+| re_log_encoding      | Helpers for encoding and transporting Rerun log messages        |
+| re_protos            | Rerun remote store gRPC API types                               |
+| re_query             | Querying data in the re_chunk_store                             |
+| re_sdk_types         | The built-in Rerun data types, component types, and archetypes. |
+| re_server            | In-memory data server                                           |
+| re_tf                | Dealing with spatial transforms & transform frames              |
+| re_type_definitions  | The type definitions the SDKs are generated from. Never linked. |
 
 ### Low-level store
 

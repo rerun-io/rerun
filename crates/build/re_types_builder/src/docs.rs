@@ -34,6 +34,21 @@ impl Docs {
         Self { lines }
     }
 
+    /// The docstring as it was written: the text following each `///`, leading space included.
+    ///
+    /// The inverse of [`Self::from_lines`].
+    pub fn to_lines(&self) -> Vec<String> {
+        self.lines
+            .iter()
+            .map(|(tag, comment)| match (tag.as_str(), comment.as_str()) {
+                ("", "") => String::new(),
+                ("", comment) => format!(" {comment}"),
+                (tag, "") => format!(" \\{tag}"),
+                (tag, comment) => format!(" \\{tag} {comment}"),
+            })
+            .collect()
+    }
+
     /// Get the first line of the documentation untagged.
     pub fn first_line(
         &self,

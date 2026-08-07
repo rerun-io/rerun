@@ -1,5 +1,8 @@
 [package]
 name = "re_types_builder"
+# Only needed because `compare_frontends` is a second binary.
+# TODO(RR-5384): remove once we've migrated completely from flatbuffers.
+default-run = "build_re_types"
 authors.workspace = true
 description = "Generates code for Rerun's SDKs from flatbuffers definitions."
 edition.workspace = true
@@ -51,6 +54,7 @@ syn = { workspace = true, features = ["extra-traits", "full"] }
 tempfile.workspace = true
 toml = { workspace = true, features = ["parse", "preserve_order", "serde"] }
 unindent.workspace = true
+walkdir.workspace = true
 xshell.workspace = true
 
 

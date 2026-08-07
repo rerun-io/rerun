@@ -143,6 +143,10 @@ codegen-protos = { cmd = "cargo run --package re_protos_builder && cargo fmt -p 
 ] }
 codegen-protos-check = "before=$(./scripts/ci/compare_path_digest.py crates/store/re_protos) ;  pixi run codegen-protos && ./scripts/ci/compare_path_digest.py crates/store/re_protos $before"
 
+# Check that the Flatbuffers and the Rust type definitions still describe the same types.
+# TODO(RR-5384): remove once we've migrated completely from flatbuffers.
+compare-frontends = "cargo run --package re_types_builder --bin compare_frontends"
+
 # Generate the Rerun CLI manual.
 
 # NOTE: must be --all-features, otherwise we might miss some optional commands.

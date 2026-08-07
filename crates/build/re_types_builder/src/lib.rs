@@ -301,21 +301,51 @@ pub fn generate_lang_agnostic(
 }
 
 /// Generates .gitattributes files that mark up all generated files as generated.
-fn generate_gitattributes_for_generated_files(files_to_write: &mut GeneratedFiles) {
+///
+/// Directories under `opt_out` are left alone, for whoever owns their `.gitattributes` instead.
+fn generate_gitattributes_for_generated_files(
+    files_to_write: &mut GeneratedFiles,
+    opt_out: &BTreeSet<Utf8PathBuf>,
+) {
+    let generated: Vec<_> = files_to_write
+        .keys()
+        .filter(|filepath| {
+            !opt_out
+                .iter()
+                .any(|opted_out| filepath.starts_with(opted_out))
+        })
+        .cloned()
+        .collect();
+
+    mark_as_generated(files_to_write, generated);
+}
+
+/// Adds a `.gitattributes` to every directory holding one of `generated`, marking those files
+/// — and the `.gitattributes` itself — as `linguist-generated=true`.
+///
+/// Only the listed files are marked, so a directory can hold generated and hand-written files side
+/// by side. It is one file per directory because that is the only name git reads.
+pub(crate) fn mark_as_generated(
+    files_to_write: &mut GeneratedFiles,
+    generated: impl IntoIterator<Item = Utf8PathBuf>,
+) {
     re_tracing::profile_function!();
 
     const FILENAME: &str = ".gitattributes";
 
     let mut filepaths_per_folder = BTreeMap::default();
 
-    for filepath in files_to_write.keys() {
-        let dirpath = filepath.parent().unwrap();
-        let files: &mut Vec<_> = filepaths_per_folder.entry(dirpath.to_owned()).or_default();
-        files.push(filepath.clone());
+    for filepath in generated {
+        let Some(dirpath) = filepath.parent().map(Utf8Path::to_path_buf) else {
+            continue;
+        };
+        let files: &mut Vec<_> = filepaths_per_folder.entry(dirpath).or_default();
+        files.push(filepath);
     }
 
-    for (dirpath, files) in filepaths_per_folder {
+    for (dirpath, mut files) in filepaths_per_folder {
         let gitattributes_path = dirpath.join(FILENAME);
+        files.sort(); // The order the files were generated in is not ours to rely on.
 
         let generated_files = std::iter::chain(
             std::iter::once(FILENAME.to_owned()), // The attributes itself is generated!
@@ -403,6 +433,7 @@ pub fn compute_re_types_hash(locations: &SourceLocations<'_>) -> String {
 /// If `check` is true, this will run a comparison check instead of writing files to disk.
 ///
 /// Panics on error.
+#[expect(clippy::too_many_arguments)]
 fn generate_code(
     reporter: &Reporter,
     objects: &Objects,
@@ -410,6 +441,7 @@ fn generate_code(
     generator: &mut dyn CodeGenerator,
     formatter: &mut dyn CodeFormatter,
     orphan_paths_opt_out: &BTreeSet<Utf8PathBuf>,
+    gitattributes_opt_out: &BTreeSet<Utf8PathBuf>,
     check: bool,
 ) {
     use rayon::prelude::*;
@@ -427,7 +459,7 @@ fn generate_code(
     }
 
     // Generate in-memory gitattribute files:
-    generate_gitattributes_for_generated_files(&mut files);
+    generate_gitattributes_for_generated_files(&mut files, gitattributes_opt_out);
 
     // Format in-memory files:
     formatter.format(reporter, &mut files);
@@ -493,6 +525,7 @@ pub fn generate_cpp_code(
         &mut generator,
         &mut formatter,
         &std::iter::once(orphan_path_opt_out).collect(),
+        &BTreeSet::default(),
         check,
     );
 }
@@ -520,6 +553,7 @@ pub fn generate_rust_code(
         type_registry,
         &mut generator,
         &mut formatter,
+        &Default::default(),
         &Default::default(),
         check,
     );
@@ -562,6 +596,7 @@ pub fn generate_python_code(
         &mut generator,
         &mut formatter,
         &std::iter::once(orphan_path_opt_out).collect(),
+        &BTreeSet::default(),
         check,
     );
 }
@@ -599,6 +634,7 @@ pub fn generate_docs(
         &mut generator,
         &mut formatter,
         &orphan_path_opt_out,
+        &BTreeSet::default(),
         check,
     );
 }
@@ -630,8 +666,79 @@ pub fn generate_snippets_ref(
         &mut generator,
         &mut formatter,
         &std::iter::once(orphan_path_opt_out).collect(),
+        &BTreeSet::default(),
         check,
     );
+}
+
+/// Transpiles the type definitions into the Rust definition tree.
+///
+/// This is a migration step: the Flatbuffers definitions are still the source of truth, and this
+/// keeps the Rust ones in lockstep with them until they take over. See
+/// `codegen/definitions/transpile.rs`.
+///
+/// If `check` is true, this compares against what is on disk instead of writing.
+///
+/// TODO(RR-5384): once the Flatbuffers definitions are gone this keeps generating the module
+/// tree, but stops writing the definitions themselves — they become the input.
+pub fn generate_definitions(
+    reporter: &Reporter,
+    definition_dir: impl AsRef<Utf8Path>,
+    objects: &Objects,
+    check: bool,
+) {
+    re_tracing::profile_function!();
+
+    use rayon::prelude::*;
+
+    let definition_dir = definition_dir.as_ref();
+
+    let mut generator = DefinitionsCodeGenerator::new(definition_dir);
+    let mut files = generator.generate(reporter, objects, &TypeRegistry::default());
+    RustCodeFormatter.format(reporter, &mut files);
+
+    if check {
+        files.par_iter().for_each(
+            |(filepath, contents)| match std::fs::read_to_string(filepath) {
+                Ok(on_disk) if on_disk == *contents => {}
+                _ => reporter.error(filepath.as_str(), "", "out of sync"),
+            },
+        );
+        return;
+    }
+
+    files.par_iter().for_each(|(filepath, contents)| {
+        crate::codegen::common::write_file(filepath, contents);
+    });
+
+    // TODO(RR-5384): These share a directory with the Flatbuffers definitions, so the usual orphan sweep would
+    // delete those. Until the flip, only `.rs` files are ours to remove.
+    remove_orphaned_definitions(reporter, definition_dir, &files);
+}
+
+fn remove_orphaned_definitions(
+    reporter: &Reporter,
+    definition_dir: &Utf8Path,
+    files: &GeneratedFiles,
+) {
+    let walk = walkdir::WalkDir::new(definition_dir)
+        .into_iter()
+        .filter_map(Result::ok);
+
+    for entry in walk {
+        let Ok(filepath) = Utf8PathBuf::try_from(entry.path().to_path_buf()) else {
+            continue;
+        };
+
+        if filepath.extension() != Some("rs") || files.contains_key(&filepath) {
+            continue;
+        }
+
+        re_log::info!("Removing {filepath:?}");
+        if let Err(err) = std::fs::remove_file(&filepath) {
+            reporter.error_file(&filepath, err);
+        }
+    }
 }
 
 /// Generate flatbuffers definition files.
@@ -654,6 +761,12 @@ pub fn generate_fbs(reporter: &Reporter, definition_dir: impl AsRef<Utf8Path>, c
     .into_iter()
     .collect::<BTreeSet<_>>();
 
+    // TODO(RR-5384): remove once we've migrated completely from flatbuffers.
+    // The include lists share their directories with the definitions crate's module tree, and git
+    // reads one `.gitattributes` per directory, so a single generator has to write it. That is
+    // `DefinitionsCodeGenerator`, which is the one that outlives the flip.
+    let gitattributes_opt_out = std::iter::once(definition_dir.as_ref().join("rerun")).collect();
+
     generate_code(
         reporter,
         &objects,
@@ -661,6 +774,7 @@ pub fn generate_fbs(reporter: &Reporter, definition_dir: impl AsRef<Utf8Path>, c
         &mut generator,
         &mut formatter,
         &orphan_path_opt_outs,
+        &gitattributes_opt_out,
         check,
     );
 }

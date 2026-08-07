@@ -57,6 +57,10 @@ jobs:
       - name: Codegen out-of-sync (protos)
         run: pixi run codegen-protos-check
 
+      # TODO(RR-5384): remove once we've migrated completely from flatbuffers.
+      - name: Both type-definition frontends agree
+        run: pixi run compare-frontends
+
   # ---------------------------------------------------------------------------
 
   # NOTE: We don't want spurious failures caused by issues being closed, so this does not run on CI,

@@ -640,7 +640,9 @@ impl PythonCodeGenerator {
                 );
             }
 
-            let import_clauses: HashSet<_> = std::iter::chain(
+            // Sorted, so that the generated file does not depend on hash iteration order.
+            // `ruff` sorts the imports again afterwards, so this is not the order they end up in.
+            let import_clauses: BTreeSet<_> = std::iter::chain(
                 obj.fields.iter().filter_map(|field| {
                     quote_import_clauses_from_field(obj.scope().as_ref(), field)
                 }),

@@ -1833,13 +1833,14 @@ def lint_crate_docs() -> int:
 
     error_count = 0
     for cargo_toml in crates_dir.glob("**/Cargo.toml"):
-        crate = cargo_toml.parent
-        crate_name = crate.name
+        # The crate name is not always the directory name.
+        package_name = re.search(r'^name = "(.+)"$', cargo_toml.read_text("utf-8"), re.MULTILINE)
+        crate_name = package_name.group(1) if package_name else cargo_toml.parent.name
 
         listed_crates.pop(crate_name, None)
 
         if not re.search(r"\b" + crate_name + r"\b", architecture_md):
-            print(f"{architecture_md_file}: missing documentation for crate {crate.name}")
+            print(f"{architecture_md_file}: missing documentation for crate {crate_name}")
             error_count += 1
 
     for crate_name, line_nr in sorted(listed_crates.items(), key=lambda x: x[1]):

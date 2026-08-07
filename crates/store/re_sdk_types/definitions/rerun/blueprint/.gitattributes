@@ -2,6 +2,10 @@
 
 .gitattributes linguist-generated=true
 archetypes.fbs linguist-generated=true
+archetypes.rs linguist-generated=true
 components.fbs linguist-generated=true
+components.rs linguist-generated=true
 datatypes.fbs linguist-generated=true
+datatypes.rs linguist-generated=true
 views.fbs linguist-generated=true
+views.rs linguist-generated=true

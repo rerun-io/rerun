@@ -12,14 +12,10 @@
 //!
 //! # Names
 //!
-//! A definition's package comes from its path: `definitions/rerun/components/position3d.rs`
+//! A definition's package comes from its path: `definitions/rerun/components/position3d.def.rs`
 //! declares types in `rerun.components`. Definitions refer to each other by fully-qualified name
 //! with `::` for `.` — `rerun::components::Position3D` — and never contain a `use` statement.
 //! See `re_types_builder_prelude` for how that resolves for rustc.
-//!
-//! Every definition file must also open with [`BANNER`], because a definition is otherwise hard to
-//! tell apart from ordinary Rust: the `#[rerun_type]` on each item is the only other hint, and it
-//! looks like any other derive-ish attribute.
 //!
 //! # Annotations
 //!
@@ -35,6 +31,9 @@
 //!
 //! Nullability and field order are ordinary Rust, and have no annotation of their own: a nullable
 //! field is an `Option<T>`, and field order is source order.
+//!
+//! Every definition file must also open with [`BANNER`], for whoever — or whatever — reads one
+//! without noticing the `.def.rs` in its name.
 
 use std::collections::{BTreeMap, btree_map::Entry};
 
@@ -69,7 +68,7 @@ impl Objects {
     /// Runs the semantic pass on a tree of Rust type definitions.
     ///
     /// `definitions_dir` is the root of the definition tree; a type's package name is its path
-    /// relative to that root, so `rerun/components/position3d.rs` declares `rerun.components`.
+    /// relative to that root, so `rerun/components/position3d.def.rs` declares `rerun.components`.
     pub fn from_rust_definitions(
         reporter: &Reporter,
         definitions_dir: impl AsRef<Utf8Path>,
@@ -105,10 +104,27 @@ impl Objects {
     }
 }
 
-/// Every definition file under `definitions_dir`, sorted, excluding the generated module tree.
+/// What a definition file's name ends with, e.g. `position3d.def.rs`.
 ///
-/// The module tree (`lib.rs`, plus a `foo.rs` next to every `foo/`) exists only so that rustc and
-/// rust-analyzer can see the definitions; it declares no types of its own.
+/// Definitions are ordinary Rust as far as rustc is concerned, so the name is the only thing that
+/// tells them apart from the module tree they sit in, and from every other `.rs` file in the repo.
+pub(crate) const DEFINITION_SUFFIX: &str = ".def.rs";
+
+/// `…/components/position3d.def.rs` -> `position3d`, and `None` for anything that is not a
+/// definition file.
+///
+/// The module name is the file name without [`DEFINITION_SUFFIX`], so that the definitions are
+/// declared as `#[path = "position3d.def.rs"] mod position3d;`.
+pub(crate) fn definition_module_name(filepath: &Utf8Path) -> Option<&str> {
+    let name = filepath.file_name()?.strip_suffix(DEFINITION_SUFFIX)?;
+    (!name.is_empty()).then_some(name)
+}
+
+/// Every definition file under `definitions_dir`, sorted.
+///
+/// Only [`DEFINITION_SUFFIX`] files are definitions; the module tree around them (`lib.rs`, plus a
+/// `foo.rs` next to every `foo/`) exists so that rustc and rust-analyzer can see them, and declares
+/// no types of its own.
 fn definition_files(reporter: &Reporter, definitions_dir: &Utf8Path) -> Vec<Utf8PathBuf> {
     let mut files = Vec::new();
     collect_definition_files(reporter, definitions_dir, &mut files);
@@ -126,7 +142,7 @@ fn collect_definition_files(reporter: &Reporter, dir: &Utf8Path, files: &mut Vec
     };
 
     let mut subdirs = Vec::new();
-    let mut candidates = Vec::new();
+    let mut module_files = Vec::new();
 
     for entry in entries {
         let path = match entry {
@@ -139,22 +155,22 @@ fn collect_definition_files(reporter: &Reporter, dir: &Utf8Path, files: &mut Vec
 
         if path.is_dir() {
             subdirs.push(path);
+        } else if definition_module_name(&path).is_some() {
+            files.push(path);
         } else if path.extension() == Some("rs") {
-            candidates.push(path);
+            module_files.push(path);
         }
     }
 
-    for path in candidates {
+    // Whatever is left with a `.rs` name is the generated module tree, so make sure that is what it
+    // actually is.
+    for path in module_files {
         let stem = path.file_stem().unwrap_or_default();
-        let is_module_tree =
-            stem == "lib" || subdirs.iter().any(|dir| dir.file_name() == Some(stem));
-        if is_module_tree {
+        if stem == "lib" || subdirs.iter().any(|dir| dir.file_name() == Some(stem)) {
             match std::fs::read_to_string(&path) {
                 Ok(contents) => check_module_tree_file(reporter, &path, &contents),
                 Err(err) => reporter.error_file(&path, err),
             }
-        } else {
-            files.push(path);
         }
     }
 
@@ -180,7 +196,7 @@ fn check_module_tree_file(reporter: &Reporter, filepath: &Utf8Path, contents: &s
     ));
 }
 
-/// `…/definitions` + `…/definitions/rerun/components/position3d.rs` -> `rerun.components`.
+/// `…/definitions` + `…/definitions/rerun/components/position3d.def.rs` -> `rerun.components`.
 fn package_name_of(definitions_dir: &Utf8Path, filepath: &Utf8Path) -> Option<String> {
     let relative = filepath.strip_prefix(definitions_dir).ok()?;
     let dir = relative.parent()?;
@@ -194,14 +210,13 @@ fn package_name_of(definitions_dir: &Utf8Path, filepath: &Utf8Path) -> Option<St
 
 /// What every definition file must open with.
 ///
-/// Definitions look exactly like ordinary Rust, which is why we add this banner.
+/// The `.def.rs` name already says this is a definition, but a reader that only ever sees the
+/// contents — a search hit, a code review, a language model — has nothing else to go on.
 ///
 /// Plain `//`, not `//!`, so that neither rustdoc nor [`Docs`] mistakes it for a docstring.
-const BANNER: &[&str] = &[
-    "// This is a Rerun type definition, not normal Rust.",
-    "// It is parsed by `re_types_builder` to generate the Rust, Python and C++ SDKs.",
-    "// Only a subset of Rust is allowed here, and this crate is never linked into anything.",
-    "// Run `pixi run codegen` after editing.",
+pub(crate) const BANNER: &[&str] = &[
+    "// This is a Rerun type definition for the SDK, not executable code.",
+    "// It is parsed by `re_types_builder` to generate the Rust, Python and C++ bindings.",
 ];
 
 fn check_banner(reporter: &Reporter, filepath: &Utf8Path, contents: &str) {
@@ -215,7 +230,7 @@ fn check_banner(reporter: &Reporter, filepath: &Utf8Path, contents: &str) {
     ));
 }
 
-fn parse_file(
+pub(crate) fn parse_file(
     reporter: &Reporter,
     filepath: &Utf8Path,
     pkg_name: &str,
@@ -243,7 +258,7 @@ fn parse_file(
 }
 
 /// The path we show in diagnostics from the rest of the pipeline, e.g.
-/// `//rerun/components/position3d.rs`.
+/// `//rerun/components/position3d.def.rs`.
 fn virtpath_of(filepath: &Utf8Path) -> String {
     match filepath.as_str().split_once("/definitions/") {
         Some((_, relative)) => format!("//{relative}"),
@@ -348,12 +363,9 @@ impl Parser<'_> {
         let fqname = format!("{}.{}", self.pkg_name, item.ident);
         let attrs = self.parse_attributes(&item.attrs, &fqname);
 
-        // `#[repr(uN)]` is what distinguishes a C-style enum, encoded as an integer, from a
-        // sum type, encoded as an Arrow union. It is real Rust, so rustc validates it for us.
-        let class = match self.parse_repr(&item.attrs) {
-            Some(integer_type) => ObjectClass::Enum(integer_type),
-            None => ObjectClass::Union,
-        };
+        // The `#[repr(…)]` is what says how the variants are encoded, and so which kind of type
+        // this is. It is real Rust, so rustc validates it for us.
+        let class = self.parse_repr(&item.attrs, syn::spanned::Spanned::span(item));
 
         let fields = item
             .variants
@@ -766,8 +778,8 @@ impl Parser<'_> {
 
             match namespace.as_str() {
                 // - `doc` is handled by `parse_docs`.
-                // - `repr` is real Rust, kept so that rustc validates it. `#[repr(uN)]`
-                //   additionally tells us an enum's integer type; see `parse_repr`.
+                // - `repr` is real Rust, kept so that rustc validates it. On an enum it also
+                //   says how the variants are encoded; see `parse_repr`.
                 // - `rerun_type` is the attribute macro that lets rustc accept everything else.
                 //   It says nothing about the type. See `re_types_builder_macros`.
                 "doc" | "repr" | "rerun_type" => {}
@@ -914,10 +926,11 @@ impl Parser<'_> {
         Ok(paths)
     }
 
-    /// The integer type of a C-style enum, from its `#[repr(…)]`.
+    /// How an `enum`'s variants are encoded, from its `#[repr(…)]`.
     ///
-    /// Returns `None` for anything else, including a missing `#[repr]` and `#[repr(transparent)]`.
-    fn parse_repr(&self, attrs: &[syn::Attribute]) -> Option<EnumIntegerType> {
+    /// `#[repr]` is real Rust, so rustc checks that every variant value fits — and it is also what
+    /// makes an explicit value legal on a variant that carries a payload.
+    fn parse_repr(&self, attrs: &[syn::Attribute], span: proc_macro2::Span) -> ObjectClass {
         for attr in attrs {
             if !attr.path().is_ident("repr") {
                 continue;
@@ -940,17 +953,20 @@ impl Parser<'_> {
                     continue;
                 };
                 match ident.to_string().as_str() {
-                    "u8" => return Some(EnumIntegerType::U8),
-                    "u16" => return Some(EnumIntegerType::U16),
-                    "u32" => return Some(EnumIntegerType::U32),
-                    "u64" => return Some(EnumIntegerType::U64),
+                    // A C-style enum, encoded as a primitive integer array.
+                    "u8" => return ObjectClass::Enum(EnumIntegerType::U8),
+                    "u16" => return ObjectClass::Enum(EnumIntegerType::U16),
+                    "u32" => return ObjectClass::Enum(EnumIntegerType::U32),
+                    "u64" => return ObjectClass::Enum(EnumIntegerType::U64),
 
-                    // Variant values are wire format and start at 1, so a sign would only ever
-                    // widen the encoding without buying anything.
-                    "i8" | "i16" | "i32" | "i64" | "isize" | "usize" => self.error(
+                    // A sum type, encoded as a dense Arrow union, whose type-ids are `i8`.
+                    "i8" => return ObjectClass::Union,
+
+                    "i16" | "i32" | "i64" | "isize" | "usize" => self.error(
                         Spanned::span(&meta),
-                        "Enums must be represented by an unsigned integer of a fixed width, \
-                         i.e. `u8`, `u16`, `u32` or `u64`",
+                        "An enum is either `#[repr(i8)]`, making it a sum type encoded as an \
+                         Arrow union, or `#[repr(uN)]`, making it a C-style enum encoded as that \
+                         integer",
                     ),
 
                     _ => {}
@@ -958,7 +974,14 @@ impl Parser<'_> {
             }
         }
 
-        None
+        self.error(
+            span,
+            "Enums need a `#[repr(…)]`: `#[repr(i8)]` for a sum type encoded as an Arrow union, \
+             or `#[repr(uN)]` for a C-style enum encoded as that integer",
+        );
+
+        // Keep parsing; a union places the fewest demands on the variants.
+        ObjectClass::Union
     }
 
     fn parse_docs(&self, attrs: &[syn::Attribute], name: &str) -> Docs {
@@ -1084,12 +1107,12 @@ fn as_generic<'a>(ty: &'a syn::Type, wrapper: &str) -> Option<&'a syn::Type> {
 mod tests {
     use super::*;
 
-    /// Parses `contents` as if it were `definitions/<pkg>/test.rs`, returning the objects it
+    /// Parses `contents` as if it were `definitions/<pkg>/test.def.rs`, returning the objects it
     /// declares and any errors reported along the way.
     fn parse(pkg_name: &str, contents: &str) -> (Vec<Object>, Vec<String>) {
         let (report, reporter) = crate::report::init();
         let filepath = Utf8PathBuf::from(format!(
-            "/definitions/{}/test.rs",
+            "/definitions/{}/test{DEFINITION_SUFFIX}",
             pkg_name.replace('.', "/")
         ));
         let objects = parse_file(&reporter, &filepath, pkg_name, contents);
@@ -1309,6 +1332,7 @@ mod tests {
             "rerun.datatypes",
             r#"
             #[rerun_type]
+            #[repr(i8)]
             pub enum TimeRangeBoundary {
                 CursorRelative(rerun::datatypes::TimeInt) = 1,
                 Absolute(rerun::datatypes::TimeInt) = 2,
@@ -1474,7 +1498,7 @@ mod tests {
             "#[rerun_type]\npub struct A {\n    pub bad: HashMap<u8, u8>,\n}",
         );
         assert!(
-            error.starts_with("/definitions/rerun/datatypes/test.rs:3:14:"),
+            error.starts_with("/definitions/rerun/datatypes/test.def.rs:3:14:"),
             "{error}"
         );
     }
@@ -1503,11 +1527,12 @@ mod tests {
             ),
             ("pub struct A { pub a: Vec<Option<u8>> }", "outermost level"),
             ("pub struct A { pub a: [u8; N] }", "plain integer literals"),
-            ("pub enum A { B(u8) }", "need an explicit value"),
-            ("pub enum A { B(u8) = 0 }", "0 is reserved"),
-            ("#[repr(i8)] pub enum A { B = 1 }", "unsigned integer"),
+            ("#[repr(i8)] pub enum A { B(u8) }", "need an explicit value"),
+            ("#[repr(i8)] pub enum A { B(u8) = 0 }", "0 is reserved"),
+            ("pub enum A { B = 1 }", "Enums need a `#[repr(…)]`"),
+            ("#[repr(i16)] pub enum A { B = 1 }", "either `#[repr(i8)]`"),
             (
-                "pub enum A { B { x: u8 } = 1 }",
+                "#[repr(i8)] pub enum A { B { x: u8 } = 1 }",
                 "exactly one unnamed field",
             ),
             (
@@ -1575,16 +1600,70 @@ mod tests {
     }
 
     #[test]
+    fn only_def_rs_files_are_definitions() {
+        let name = |path| definition_module_name(Utf8Path::new(path));
+
+        assert_eq!(
+            name("/x/rerun/components/position3d.def.rs"),
+            Some("position3d")
+        );
+
+        // The module tree, and anything else that happens to sit in the same directory.
+        assert_eq!(name("/x/rerun/components.rs"), None);
+        assert_eq!(name("/x/rerun/lib.rs"), None);
+        assert_eq!(name("/x/rerun/components/position3d.fbs"), None);
+        assert_eq!(name("/x/rerun/components/position3d.rs"), None);
+        assert_eq!(name("/x/rerun/components/def.rs"), None);
+        assert_eq!(name("/x/rerun/components/.def.rs"), None); // No module name left.
+    }
+
+    #[test]
+    fn definitions_must_open_with_the_banner() {
+        fn warning(contents: &str) -> Option<String> {
+            let (report, reporter) = crate::report::init();
+            let filepath = Utf8Path::new("/definitions/rerun/components/test.def.rs");
+            check_banner(&reporter, filepath, contents);
+            report.drain_warnings().into_iter().next()
+        }
+
+        let banner = BANNER.join("\n");
+
+        assert_eq!(warning(&banner), None);
+        assert_eq!(
+            warning(&format!(
+                "{banner}\n\n#[rerun_type]\npub struct Position3D;\n"
+            )),
+            None
+        );
+
+        let bad = [
+            String::new(),                                      // empty
+            "#[rerun_type]\npub struct Position3D;".to_owned(), // no banner at all
+            BANNER[..BANNER.len() - 1].join("\n"),              // truncated
+            banner.replace("not executable code", "not code"),  // reworded
+            format!("\n{banner}"),                              // not at the very top
+        ];
+
+        for contents in bad {
+            assert!(warning(&contents).is_some(), "Should warn: {contents:?}");
+        }
+    }
+
+    #[test]
     fn package_name_comes_from_the_path() {
         let root = Utf8Path::new("/x/definitions");
         assert_eq!(
-            package_name_of(root, Utf8Path::new("/x/definitions/rerun/components/a.rs")).as_deref(),
+            package_name_of(
+                root,
+                Utf8Path::new("/x/definitions/rerun/components/a.def.rs")
+            )
+            .as_deref(),
             Some("rerun.components")
         );
         assert_eq!(
             package_name_of(
                 root,
-                Utf8Path::new("/x/definitions/rerun/blueprint/views/a.rs")
+                Utf8Path::new("/x/definitions/rerun/blueprint/views/a.def.rs")
             )
             .as_deref(),
             Some("rerun.blueprint.views")
@@ -1611,37 +1690,5 @@ mod tests {
         );
         assert!(warning("#[rerun_type]\npub struct A(pub u8);\n").is_some());
         assert!(warning("").is_some());
-    }
-
-    #[test]
-    fn definitions_must_open_with_the_banner() {
-        fn warning(contents: &str) -> Option<String> {
-            let (report, reporter) = crate::report::init();
-            let filepath = Utf8Path::new("/definitions/rerun/components/test.rs");
-            check_banner(&reporter, filepath, contents);
-            report.drain_warnings().into_iter().next()
-        }
-
-        let banner = BANNER.join("\n");
-
-        assert_eq!(warning(&banner), None);
-        assert_eq!(
-            warning(&format!(
-                "{banner}\n\n#[rerun_type]\npub struct Position3D;\n"
-            )),
-            None
-        );
-
-        let bad = [
-            String::new(),                                      // empty
-            "#[rerun_type]\npub struct Position3D;".to_owned(), // no banner at all
-            BANNER[..BANNER.len() - 1].join("\n"),              // truncated
-            banner.replace("normal Rust", "normal rust"),       // reworded
-            format!("\n{banner}"),                              // not at the very top
-        ];
-
-        for contents in bad {
-            assert!(warning(&contents).is_some(), "Should warn: {contents:?}");
-        }
     }
 }

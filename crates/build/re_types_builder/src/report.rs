@@ -8,8 +8,14 @@ use re_quota_channel::send_crossbeam;
 ///
 /// The [`Report`] should not be sent to other threads.
 pub fn init() -> (Report, Reporter) {
-    let (errors_tx, errors_rx) = crossbeam::channel::bounded(1024);
-    let (warnings_tx, warnings_rx) = crossbeam::channel::bounded(1024);
+    // Nothing drains these until `Report::finalize`, at the very end of the run, so backpressure
+    // has nobody to push back on: a bounded channel is a deadlock waiting for a definition file
+    // bad enough to fill it. Codegen is short-lived and one message is one diagnostic, so the
+    // memory this can grow to is bounded by how wrong the definitions are.
+    #[expect(clippy::disallowed_methods)]
+    let (errors_tx, errors_rx) = crossbeam::channel::unbounded();
+    #[expect(clippy::disallowed_methods)]
+    let (warnings_tx, warnings_rx) = crossbeam::channel::unbounded();
     (
         Report::new(errors_rx, warnings_rx),
         Reporter::new(errors_tx, warnings_tx),

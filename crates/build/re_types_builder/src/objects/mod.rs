@@ -8,7 +8,7 @@
 //! The frontends that produce it live in [`from_fbs`] and [`from_rust`].
 
 mod from_fbs;
-mod from_rust;
+pub(crate) mod from_rust;
 
 use std::collections::BTreeMap;
 
@@ -134,7 +134,6 @@ impl Objects {
                         );
 
                         let ObjectField {
-                            fqname,
                             typ,
                             attrs,
                             datatype,
@@ -166,13 +165,12 @@ impl Objects {
                         // TODO(cmc): might want to do something smarter at some point regarding attrs.
 
                         // NOTE: Transparency (or lack thereof) of the target field takes precedence.
-                        if let transparency @ Some(_) =
-                            attrs.try_get::<String>(&fqname, crate::ATTR_TRANSPARENT)
-                        {
+                        if attrs.has(crate::ATTR_TRANSPARENT) {
+                            let transparency = attrs.get_string(crate::ATTR_TRANSPARENT);
                             field
                                 .attrs
                                 .0
-                                .insert(crate::ATTR_TRANSPARENT.to_owned(), transparency.clone());
+                                .insert(crate::ATTR_TRANSPARENT.to_owned(), transparency);
                         } else {
                             field.attrs.0.remove(crate::ATTR_TRANSPARENT);
                         }
@@ -200,7 +198,7 @@ fn validate_archetype_field_attributes(reporter: &Reporter, obj: &Object) {
             ATTR_RERUN_COMPONENT_REQUIRED,
         ]
         .iter()
-        .filter(|attr| field.try_get_attr::<String>(attr).is_some())
+        .filter(|attr| field.has_attr(attr))
         .count()
             != 1
         {
@@ -1219,6 +1217,13 @@ impl Attributes {
 
     pub fn get_string(&self, name: &str) -> Option<String> {
         self.0.get(name).cloned().flatten()
+    }
+
+    /// Every attribute, sorted by name, with its value if it has one.
+    pub fn iter(&self) -> impl ExactSizeIterator<Item = (&str, Option<&str>)> {
+        self.0
+            .iter()
+            .map(|(name, value)| (name.as_str(), value.as_deref()))
     }
 
     pub fn try_get<T>(&self, owner_fqname: impl AsRef<str>, name: impl AsRef<str>) -> Option<T>

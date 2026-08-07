@@ -679,7 +679,18 @@ fn attributes_from_raw_attrs(
         attrs
             .into_iter()
             .flatten()
-            .map(|kv| (kv.key().to_owned(), kv.value().map(ToOwned::to_owned)))
+            .map(|kv| {
+                let key = kv.key();
+
+                // `flatc` gives an attribute written without a value the value `"0"`, which is
+                // indistinguishable from one written `(order: 0)` — and `order` is the only
+                // attribute for which `0` means anything.
+                let value = kv
+                    .value()
+                    .filter(|value| *value != "0" || key == crate::ATTR_ORDER);
+
+                (key.to_owned(), value.map(ToOwned::to_owned))
+            })
             .collect(),
     )
 }

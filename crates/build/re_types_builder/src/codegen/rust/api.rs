@@ -1005,16 +1005,13 @@ fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenSt
         let descriptors = obj
             .fields
             .iter()
-            .filter_map(move |field| {
-                field
-                    .try_get_attr::<String>(requirement_attr_value)
-                    .map(|_| {
-                        let archetype_name = format_ident!("{}", obj.name);
-                        let component = field.snake_case_name();
-                        let fn_name = format_ident!("descriptor_{component}");
+            .filter(|field| field.has_attr(requirement_attr_value))
+            .map(move |field| {
+                let archetype_name = format_ident!("{}", obj.name);
+                let component = field.snake_case_name();
+                let fn_name = format_ident!("descriptor_{component}");
 
-                        quote!(#archetype_name::#fn_name())
-                    })
+                quote!(#archetype_name::#fn_name())
             })
             .collect_vec();
 

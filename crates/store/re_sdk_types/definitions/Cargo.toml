@@ -1,0 +1,24 @@
+[package]
+name = "re_type_definitions"
+authors.workspace = true
+description = "Rerun's type definitions: a subset of Rust that generates the Rust, Python and C++ SDKs"
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+publish = false
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+# The crate root sits in `rerun/` so that a definition's module path is its fully-qualified name:
+# `rerun/components/position3d.def.rs` is `rerun::components::Position3D`. Nothing links this crate;
+# rustc compiles it so that we get name resolution, typo-checking, rust-analyzer and `cargo fmt`
+# on the definitions.
+[lib]
+path = "rerun/lib.rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+re_types_builder_prelude.workspace = true

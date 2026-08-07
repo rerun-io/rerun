@@ -43,8 +43,8 @@ pub fn is_tuple_struct_from_obj(obj: &Object) -> bool {
         return false;
     }
 
-    let is_tuple_struct = obj.kind == ObjectKind::Component
-        || obj.try_get_attr::<String>(ATTR_RUST_TUPLE_STRUCT).is_some();
+    let is_tuple_struct =
+        obj.kind == ObjectKind::Component || obj.is_attr_set(ATTR_RUST_TUPLE_STRUCT);
 
     if is_tuple_struct {
         assert!(

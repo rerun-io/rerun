@@ -128,7 +128,12 @@ fn main() {
     re_types_builder::generate_fbs(&reporter, &definitions_dir_path, check);
 
     let (objects, type_registry) =
-        re_types_builder::generate_lang_agnostic(&reporter, definitions_dir_path, entrypoint_path);
+        re_types_builder::generate_lang_agnostic(&reporter, &definitions_dir_path, entrypoint_path);
+
+    // TODO(RR-5384): remove the transpiling once we've migrated completely from flatbuffers.
+    // This keeps generating the definitions crate's module tree.
+    re_log::info!("Transpiling the Rust definitions…");
+    re_types_builder::generate_definitions(&reporter, &definitions_dir_path, &objects, check);
 
     re_tracing::profile_scope!("Language-specific code-gen");
     join!(

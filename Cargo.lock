@@ -10392,6 +10392,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_type_definitions"
+version = "0.36.0-alpha.1+dev"
+dependencies = [
+ "re_types_builder_prelude",
+]
+
+[[package]]
 name = "re_types"
 version = "0.36.0-alpha.1+dev"
 dependencies = [
@@ -10426,6 +10433,7 @@ dependencies = [
  "tempfile",
  "toml",
  "unindent",
+ "walkdir",
  "xshell",
 ]
 

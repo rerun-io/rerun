@@ -1,4 +1,4 @@
-//! Generates the module tree that makes the type definitions a real Rust crate.
+//! Generates the type definitions, and the module tree that makes them a real Rust crate.
 //!
 //! The definitions are a subset of Rust that `re_types_builder` parses (see
 //! `objects/from_rust.rs`), but they are *also* compiled by rustc — that is what buys us
@@ -6,20 +6,34 @@
 //! crate; it is built for its diagnostics alone.
 //!
 //! For rustc to see a file it has to be declared, so every directory needs a module file listing
-//! its contents. Those files hold no type definitions; they are generated from the directory
-//! listing, so that adding a definition is just adding a file.
+//! its contents. Those files hold no type definitions; they are generated from the definitions
+//! themselves, so that adding a definition is just adding a file.
 //!
-//! The crate root is `rerun/lib.rs`, so that `rerun/components/position3d.rs` is the module
+//! A definition is named `position3d.def.rs`, which is not a file name rustc would look for, so
+//! every one of them is declared with an explicit `#[path]`. The name is what tells a definition
+//! apart from the module tree it sits in, and from every other `.rs` file in the repo.
+//!
+//! The crate root is `rerun/lib.rs`, so that `rerun/components/position3d.def.rs` is the module
 //! `crate::components::position3d`, and the `extern crate self as rerun;` in the root makes
 //! `rerun::components::Position3D` — the fully-qualified name with `::` for `.` — resolve from
 //! anywhere, with no `use` statement in any definition.
+//!
+// TODO(RR-5384): remove once we've migrated completely from flatbuffers.
+//! The definition files themselves are written by [`transpile`], which exists only while the
+//! Flatbuffers definitions are still the source of truth. Once they are gone this generator emits
+//! the module tree alone, and a definition file is whatever a person wrote there.
 
+// TODO(RR-5384): remove once we've migrated completely from flatbuffers.
+mod transpile;
+
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
 
 use camino::{Utf8Path, Utf8PathBuf};
 
 use super::autogen_warning;
-use crate::{CodeGenerator, GeneratedFiles, Reporter};
+use crate::objects::from_rust::{DEFINITION_SUFFIX, definition_module_name};
+use crate::{CodeGenerator, GeneratedFiles, Object, Reporter};
 
 /// The directory holding the definition tree, relative to the definitions root.
 ///
@@ -45,113 +59,140 @@ impl DefinitionsCodeGenerator {
             definitions_dir: definitions_dir.into(),
         }
     }
+
+    /// Where the Rust-based IDL for an object is found.
+    ///
+    /// The directory is the package — a definition's path *is* its fully-qualified name, which is
+    /// what lets the frontend resolve `rerun::components::Position3D` without a lookup table. The
+    /// file name is the one it was declared in, so that types declared together stay together.
+    ///
+    /// `rerun.components` + `//rerun/components/position3d.fbs`
+    ///   -> `<definitions>/rerun/components/position3d.def.rs`.
+    fn path_of(&self, object: &Object) -> Utf8PathBuf {
+        let stem = Utf8Path::new(&object.virtpath)
+            .file_stem()
+            .unwrap_or("unnamed");
+        self.definitions_dir
+            .join(object.pkg_name.replace('.', "/"))
+            .join(format!("{stem}{DEFINITION_SUFFIX}"))
+    }
 }
 
 impl CodeGenerator for DefinitionsCodeGenerator {
     fn generate(
         &mut self,
         reporter: &Reporter,
-        _objects: &crate::Objects, // Generated from the directory listing.
-        _type_registry: &crate::TypeRegistry, // Ditto.
+        objects: &crate::Objects,
+        _type_registry: &crate::TypeRegistry, // The definitions are the input to all of that.
     ) -> GeneratedFiles {
+        let mut per_file: BTreeMap<Utf8PathBuf, Vec<&Object>> = BTreeMap::new();
+        for object in objects.objects.values() {
+            per_file
+                .entry(self.path_of(object))
+                .or_default()
+                .push(object);
+        }
+
         let mut files = GeneratedFiles::default();
+
+        // TODO(RR-5384): remove once we've migrated completely from flatbuffers.
+        // The definition files are the input by then, not something we write.
+        for (path, objects) in &per_file {
+            files.insert(path.clone(), transpile::transpile_file(reporter, objects));
+        }
+
         let crate_root = self.definitions_dir.join(CRATE_ROOT_DIR);
-        generate_module_files(reporter, &crate_root, &crate_root, &mut files);
+        let mut module_files = Vec::new();
+        for (dir, contents) in directory_tree(&crate_root, per_file.keys()) {
+            // The crate root is `lib.rs` inside its directory; every other `foo/` is declared by
+            // the `foo.rs` sitting next to it.
+            let (path, module_dir) = if dir == crate_root {
+                (dir.join("lib.rs"), None)
+            } else {
+                (dir.with_extension("rs"), dir.file_name())
+            };
+            module_files.push(path.clone());
+            files.insert(path, module_file(&contents, module_dir));
+        }
+
+        // The module tree is ours for good, so it is marked as generated. The definition files are
+        // not: they are the source, and are only transpiled while Flatbuffers is still it.
+        crate::mark_as_generated(&mut files, generated_scaffolding(&module_files));
+
         files
     }
 }
 
-/// Emits the module file for `dir` and, recursively, for every directory below it.
-fn generate_module_files(
-    reporter: &Reporter,
-    crate_root: &Utf8Path,
-    dir: &Utf8Path,
-    files: &mut GeneratedFiles,
-) {
-    let Some(contents) = read_dir(reporter, dir) else {
-        return;
-    };
+/// Everything in the definitions tree that a person did not write: the module tree, and, until the
+/// flip, the Flatbuffers include lists that sit in the very same directories.
+fn generated_scaffolding(module_files: &[Utf8PathBuf]) -> Vec<Utf8PathBuf> {
+    let mut scaffolding = module_files.to_vec();
 
-    let is_crate_root = dir == crate_root;
-    let path = if is_crate_root {
-        dir.join("lib.rs")
-    } else {
-        // `foo/` is declared by `foo.rs` sitting next to it.
-        dir.with_extension("rs")
-    };
+    // TODO(RR-5384): remove once we've migrated completely from flatbuffers.
+    // `FbsCodeGenerator` writes an include list next to every package directory, exactly where a
+    // module file goes, and leaves this tree's `.gitattributes` to us. Not every package has one,
+    // hence the check: `rerun/archetypes.fbs` exists, `rerun/blueprint.fbs` does not.
+    scaffolding.extend(
+        module_files
+            .iter()
+            .map(|path| path.with_extension("fbs"))
+            .filter(|path| path.exists()),
+    );
 
-    files.insert(path, module_file(&contents, is_crate_root));
-
-    for subdir in contents.subdirectories {
-        generate_module_files(reporter, crate_root, &dir.join(subdir), files);
-    }
+    scaffolding
 }
 
-/// The definitions and sub-packages of a single directory, sorted.
+/// The definitions and sub-packages of a single directory.
+#[derive(Default)]
 struct DirContents {
     /// Module names of the definition files, e.g. `position3d`.
-    definitions: Vec<String>,
+    definitions: BTreeSet<String>,
 
     /// Directory names of the sub-packages, e.g. `components`.
-    subdirectories: Vec<String>,
+    subdirectories: BTreeSet<String>,
 }
 
-fn read_dir(reporter: &Reporter, dir: &Utf8Path) -> Option<DirContents> {
-    let entries = match dir.read_dir_utf8() {
-        Ok(entries) => entries,
-        Err(err) => {
-            reporter.error_file(dir, err);
-            return None;
-        }
-    };
+/// Every directory from `crate_root` down, and what it holds.
+fn directory_tree<'a>(
+    crate_root: &Utf8Path,
+    definition_paths: impl Iterator<Item = &'a Utf8PathBuf>,
+) -> BTreeMap<Utf8PathBuf, DirContents> {
+    // The crate root always gets a module file, even if every definition is in a sub-package.
+    let mut dirs = BTreeMap::from([(crate_root.to_owned(), DirContents::default())]);
 
-    let mut definitions = Vec::new();
-    let mut subdirectories = Vec::new();
-
-    for entry in entries {
-        let path = match entry {
-            Ok(entry) => entry.into_path(),
-            Err(err) => {
-                reporter.error_file(dir, err);
-                return None;
-            }
-        };
-
-        let Some(name) = path.file_stem() else {
+    for path in definition_paths {
+        let (Some(dir), Some(module)) = (path.parent(), definition_module_name(path)) else {
             continue;
         };
 
-        if path.is_dir() {
-            subdirectories.push(name.to_owned());
-        } else if path.extension() == Some("rs") {
-            definitions.push(name.to_owned());
+        dirs.entry(dir.to_owned())
+            .or_default()
+            .definitions
+            .insert(module.to_owned());
+
+        // Every directory on the way to the root has to declare the one below it.
+        let mut child = dir;
+        while child != crate_root {
+            let (Some(parent), Some(name)) = (child.parent(), child.file_name()) else {
+                break;
+            };
+            dirs.entry(parent.to_owned())
+                .or_default()
+                .subdirectories
+                .insert(name.to_owned());
+            child = parent;
         }
     }
 
-    definitions.sort();
-    subdirectories.sort();
-
-    // A module file is not a definition, and would otherwise declare itself.
-    definitions.retain(|name| name != "lib" && !subdirectories.contains(name));
-
-    // `mod` is a keyword, so `mod mod;` does not even compile. The tree declares a directory with a
-    // `foo.rs` next to it, in the style rustc has preferred since the 2018 edition.
-    if let Some(index) = definitions.iter().position(|name| name == "mod") {
-        definitions.remove(index);
-        reporter.error_file(
-            &dir.join("mod.rs"),
-            "A definition file cannot be called `mod.rs`; a directory `foo/` is declared by a \
-             `foo.rs` next to it",
-        );
-    }
-
-    Some(DirContents {
-        definitions,
-        subdirectories,
-    })
+    dirs
 }
 
-fn module_file(contents: &DirContents, is_crate_root: bool) -> String {
+/// Writes the module file for one directory.
+///
+/// `module_dir` is the name of the directory the file declares — `components` for
+/// `rerun/components.rs` — and `None` for the crate root, which is `lib.rs` inside its own
+/// directory.
+fn module_file(contents: &DirContents, module_dir: Option<&str>) -> String {
     let DirContents {
         definitions,
         subdirectories,
@@ -159,7 +200,7 @@ fn module_file(contents: &DirContents, is_crate_root: bool) -> String {
 
     let mut out = format!("// {}\n", autogen_warning!());
 
-    if is_crate_root {
+    if module_dir.is_none() {
         write!(
             out,
             "
@@ -169,12 +210,19 @@ fn module_file(contents: &DirContents, is_crate_root: bool) -> String {
 // `extern crate self as rerun;` is what lets a definition refer to another one by its
 // fully-qualified name — `rerun::components::Position3D` — with no `use` statement anywhere.
 
+// Nothing links this crate. A type's name is API and wire format — spelled the way the SDKs
+// spell it, not the way Rust would — and its docstring is written for the SDK docs.
+#![allow(clippy::doc_markdown)]
+#![allow(clippy::upper_case_acronyms)]
+#![allow(dead_code)]
+#![allow(non_camel_case_types)]
+#![allow(rustdoc::all)]
+
 extern crate self as rerun;
 
-// Everything a definition may name that no definition declares: the types with no spelling in
-// plain Rust, and the attribute macro. Glob-imported, so that the vocabulary lives in the prelude
-// alone and this generator does not have to know it.
-pub use {PRELUDE}::*;
+// The two types that have no spelling in plain Rust, re-exported here so that the
+// `rerun::`-rooted rule holds without exceptions.
+pub use {PRELUDE}::{{Binary, f16, rerun_type}};
 "
         )
         .ok();
@@ -191,8 +239,14 @@ pub use {PRELUDE}::*;
     }
 
     if !definitions.is_empty() {
+        // `position3d.def.rs` is not a file name rustc would look for, hence the `#[path]`. It is
+        // resolved relative to the directory holding *this* file, which is one above the
+        // definitions, so the directory has to be spelled out.
+        let prefix = module_dir.map(|dir| format!("{dir}/")).unwrap_or_default();
+
         out.push('\n');
         for name in definitions {
+            writeln!(out, "#[path = \"{prefix}{name}{DEFINITION_SUFFIX}\"]").ok();
             writeln!(out, "mod {name};").ok();
         }
 
@@ -218,23 +272,28 @@ mod tests {
 
     #[test]
     fn package_module_file() {
-        let generated = module_file(&contents(&["position3d", "radius"], &[]), false);
-        insta::assert_snapshot!(generated, @r"
+        let generated = module_file(
+            &contents(&["position3d", "radius"], &[]),
+            Some("components"),
+        );
+        insta::assert_snapshot!(generated, @r##"
         // DO NOT EDIT! This file was auto-generated by crates/build/re_types_builder/src/codegen/definitions/mod.rs
 
+        #[path = "components/position3d.def.rs"]
         mod position3d;
+        #[path = "components/radius.def.rs"]
         mod radius;
 
         pub use self::position3d::*;
         pub use self::radius::*;
-        ");
+        "##);
     }
 
     #[test]
     fn crate_root_module_file() {
         let generated = module_file(
             &contents(&[], &["blueprint", "components", "datatypes"]),
-            true,
+            None,
         );
         insta::assert_snapshot!(generated, @r#"
         // DO NOT EDIT! This file was auto-generated by crates/build/re_types_builder/src/codegen/definitions/mod.rs
@@ -245,12 +304,19 @@ mod tests {
         // `extern crate self as rerun;` is what lets a definition refer to another one by its
         // fully-qualified name — `rerun::components::Position3D` — with no `use` statement anywhere.
 
+        // Nothing links this crate. A type's name is API and wire format — spelled the way the SDKs
+        // spell it, not the way Rust would — and its docstring is written for the SDK docs.
+        #![allow(clippy::doc_markdown)]
+        #![allow(clippy::upper_case_acronyms)]
+        #![allow(dead_code)]
+        #![allow(non_camel_case_types)]
+        #![allow(rustdoc::all)]
+
         extern crate self as rerun;
 
-        // Everything a definition may name that no definition declares: the types with no spelling in
-        // plain Rust, and the attribute macro. Glob-imported, so that the vocabulary lives in the prelude
-        // alone and this generator does not have to know it.
-        pub use re_types_builder_prelude::*;
+        // The two types that have no spelling in plain Rust, re-exported here so that the
+        // `rerun::`-rooted rule holds without exceptions.
+        pub use re_types_builder_prelude::{Binary, f16, rerun_type};
 
         pub mod blueprint;
         pub mod components;
@@ -260,15 +326,59 @@ mod tests {
 
     #[test]
     fn a_directory_can_hold_both_definitions_and_sub_packages() {
-        let generated = module_file(&contents(&["type_zoo"], &["archetypes"]), false);
-        insta::assert_snapshot!(generated, @r"
+        let generated = module_file(&contents(&["type_zoo"], &["archetypes"]), Some("testing"));
+        insta::assert_snapshot!(generated, @r##"
         // DO NOT EDIT! This file was auto-generated by crates/build/re_types_builder/src/codegen/definitions/mod.rs
 
         pub mod archetypes;
 
+        #[path = "testing/type_zoo.def.rs"]
         mod type_zoo;
 
         pub use self::type_zoo::*;
+        "##);
+    }
+
+    #[test]
+    fn the_module_tree_follows_the_definitions() {
+        let crate_root = Utf8Path::new("definitions/rerun");
+        let paths = [
+            Utf8PathBuf::from("definitions/rerun/blueprint/archetypes/background.def.rs"),
+            Utf8PathBuf::from("definitions/rerun/blueprint/views/spatial3d.def.rs"),
+            Utf8PathBuf::from("definitions/rerun/components/position3d.def.rs"),
+            Utf8PathBuf::from("definitions/rerun/components/radius.def.rs"),
+        ];
+
+        let tree = directory_tree(crate_root, paths.iter());
+
+        let summary = tree
+            .iter()
+            .map(|(dir, contents)| {
+                format!(
+                    "{dir}: [{}] [{}]",
+                    contents
+                        .subdirectories
+                        .iter()
+                        .cloned()
+                        .collect::<Vec<_>>()
+                        .join(", "),
+                    contents
+                        .definitions
+                        .iter()
+                        .cloned()
+                        .collect::<Vec<_>>()
+                        .join(", "),
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        insta::assert_snapshot!(summary, @r"
+        definitions/rerun: [blueprint, components] []
+        definitions/rerun/blueprint: [archetypes, views] []
+        definitions/rerun/blueprint/archetypes: [] [background]
+        definitions/rerun/blueprint/views: [] [spatial3d]
+        definitions/rerun/components: [] [position3d, radius]
         ");
     }
 }
