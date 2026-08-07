@@ -709,12 +709,15 @@ impl DesignTokens {
         egui_style.visuals.widgets.inactive.bg_fill = self.button_secondary.fill;
 
         {
-            // Background colors for buttons (menu buttons, blueprint buttons, etc) when hovered or clicked:
+            // Background colors for buttons (menu buttons, blueprint buttons, etc)
+            // when hovered or pressed. The pressed color is a step stronger, so
+            // clicking gives visual feedback (reusing the `button_ghost` pressed fill).
             let hovered_color = self.widget_hovered_color;
+            let pressed_color = self.button_ghost.fill_pressed;
             egui_style.visuals.widgets.hovered.weak_bg_fill = hovered_color;
             egui_style.visuals.widgets.hovered.bg_fill = hovered_color;
-            egui_style.visuals.widgets.active.weak_bg_fill = hovered_color;
-            egui_style.visuals.widgets.active.bg_fill = hovered_color;
+            egui_style.visuals.widgets.active.weak_bg_fill = pressed_color;
+            egui_style.visuals.widgets.active.bg_fill = pressed_color;
             egui_style.visuals.widgets.open.weak_bg_fill = hovered_color;
             egui_style.visuals.widgets.open.bg_fill = hovered_color;
         }
