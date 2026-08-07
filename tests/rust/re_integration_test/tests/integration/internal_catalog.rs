@@ -158,7 +158,7 @@ async fn internal_catalog_load_rrd() {
 
         let loading_rrd_toast = format!("Loading {rrd_path:?}…");
         viewer_test_utils::step_until(
-            "loading toasts gone",
+            "loading toast gone",
             &mut harness,
             |harness| {
                 harness
@@ -169,10 +169,6 @@ async fn internal_catalog_load_rrd() {
             Duration::from_millis(100),
             Duration::from_secs(10),
         );
-
-        // TODO(RR-5355): We currently still show too many toasts. Once we have improved
-        // `re_log` level integration in `re_server`, we should update the snapshots so that
-        // they only contain the appropriate amount of toasts.
 
         harness.set_time_panel_opened(false);
 

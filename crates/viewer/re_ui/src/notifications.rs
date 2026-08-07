@@ -66,6 +66,15 @@ fn is_relevant(target: &str, level: re_log::Level) -> bool {
         return false;
     }
 
+    // There is often an overlap between the info messages from`re_server`
+    // and the viewer. Since the viewer usually has more context it is better
+    // suited to inform the user. We suppress info messages from `re_server`
+    // to avoid spamming.
+    if level == re_log::Level::INFO && (target == "re_server" || target.starts_with("re_server::"))
+    {
+        return false;
+    }
+
     matches!(
         level,
         re_log::Level::WARN | re_log::Level::ERROR | re_log::Level::INFO
