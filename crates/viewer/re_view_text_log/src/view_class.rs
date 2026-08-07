@@ -48,7 +48,7 @@ pub struct TextViewState {
     /// Time window that the visualizer should query on the next frame.
     ///
     /// Written at the end of `ui()` based on the visible rows, read by
-    /// [`TextLogSystem::execute`] one frame later.
+    /// [`TextLogSystem`]'s `execute()` one frame later.
     pub(crate) fetch_window: Option<FetchWindow>,
 
     /// Cached per-chunk log level counts, used to lay out the table when a level filter is
