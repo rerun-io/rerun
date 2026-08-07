@@ -156,8 +156,8 @@ pub mod report;
 pub type GeneratedFiles = std::collections::BTreeMap<camino::Utf8PathBuf, String>;
 
 pub use self::codegen::{
-    CodeGenerator, CppCodeGenerator, DocsCodeGenerator, PythonCodeGenerator, RustCodeGenerator,
-    SnippetsRefCodeGenerator,
+    CodeGenerator, CppCodeGenerator, DefinitionsCodeGenerator, DocsCodeGenerator,
+    PythonCodeGenerator, RustCodeGenerator, SnippetsRefCodeGenerator,
 };
 pub use self::docs::Docs;
 pub use self::format::{CodeFormatter, CppCodeFormatter, PythonCodeFormatter, RustCodeFormatter};

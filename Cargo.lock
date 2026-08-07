@@ -10408,6 +10408,7 @@ dependencies = [
  "crossbeam",
  "flatbuffers",
  "indent",
+ "insta",
  "itertools 0.15.0",
  "prettyplease 0.3.0",
  "proc-macro2",

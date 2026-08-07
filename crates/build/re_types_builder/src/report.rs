@@ -134,6 +134,22 @@ impl Report {
             std::process::exit(1);
         }
     }
+
+    /// Drains and returns all errors accumulated so far.
+    ///
+    /// Production code goes through [`Self::finalize`], which exits the process.
+    #[cfg(test)]
+    pub fn drain_errors(&self) -> Vec<String> {
+        self.errors.try_iter().collect()
+    }
+
+    /// Drains and returns all warnings accumulated so far.
+    ///
+    /// Production code goes through [`Self::finalize`], which prints them.
+    #[cfg(test)]
+    pub fn drain_warnings(&self) -> Vec<String> {
+        self.warnings.try_iter().collect()
+    }
 }
 
 const _: () = {

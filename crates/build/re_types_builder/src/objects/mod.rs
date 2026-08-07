@@ -5,9 +5,10 @@
 //!
 //! Everything in here is IDL-agnostic: it is a plain intermediate representation with no notion
 //! of the syntax it was parsed from.
-//! The Flatbuffers frontend that produces it lives in [`from_fbs`].
+//! The frontends that produce it live in [`from_fbs`] and [`from_rust`].
 
 mod from_fbs;
+mod from_rust;
 
 use std::collections::BTreeMap;
 
