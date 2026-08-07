@@ -221,11 +221,13 @@ def _major_minor_patch(version: str) -> tuple[int, int, int]:
     """
     Parse the first `major.minor.patch` in a version string, ignoring pre-release/build suffixes.
 
-    Servers report either a bare semver (deployments set `EXPOSED_VERSION`) or a
-    `build:0.16.0-alpha.1[ branch:… hash:…]` string (see `re_build_info::exposed_version!`).
+    Deployed servers report a bare semver or a commit hash (whatever the deployment sets as
+    `EXPOSED_VERSION` — see `re_build_info::exposed_version`). Legacy servers built before the
+    version was runtime-injected report a `build:0.16.0-alpha.1[ branch:… hash:…]` string, which
+    this parses too — the oldest-supported-hub CI leg still runs such servers.
 
     Raises `ValueError` if there is no version to find. Use `_server_major_minor_patch` for
-    server-reported strings, which have a third form this cannot parse.
+    server-reported strings, which have unparsable forms.
     """
     match = re.search(r"(\d+)\.(\d+)\.(\d+)", version)
     if match is None:
@@ -237,9 +239,10 @@ def _server_major_minor_patch(version: str) -> tuple[int, int, int] | None:
     """
     As `_major_minor_patch`, but returns `None` for a server that reports no version.
 
-    A server built from a pull request reports a bare commit hash rather than either documented
-    form, so the version is genuinely unknown. That is not the same as a parse failure on a
-    `min_hub_version` argument, which is a typo in the marker and should still raise.
+    A server built from a pull request reports a bare commit hash, and a server whose deployment
+    never set `EXPOSED_VERSION` reports the `exposed-version-unset` sentinel; in both cases the
+    version is genuinely unknown. That is not the same as a parse failure on a `min_hub_version`
+    argument, which is a typo in the marker and should still raise.
     """
     try:
         return _major_minor_patch(version)

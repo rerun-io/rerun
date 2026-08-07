@@ -30,7 +30,7 @@ async fn version() {
         .expect("version request should succeed")
         .into_inner();
 
-    assert_eq!(response.version, re_build_info::exposed_version!());
+    assert_eq!(response.version, re_build_info::exposed_version());
     assert!(response.build_info.is_some());
 }
 

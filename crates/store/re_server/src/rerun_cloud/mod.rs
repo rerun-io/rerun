@@ -574,7 +574,7 @@ impl RerunCloudService for RerunCloudHandler {
         Ok(tonic::Response::new(
             re_protos::cloud::v1alpha1::VersionResponse {
                 build_info: Some(build_info.into()),
-                version: re_build_info::exposed_version!().to_owned(),
+                version: re_build_info::exposed_version().to_owned(),
                 cloud_provider: None,
                 cloud_region: None,
                 features: re_protos::cloud::v1alpha1::features::all_supported_features(),
