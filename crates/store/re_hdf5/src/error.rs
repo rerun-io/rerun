@@ -78,8 +78,8 @@ pub enum Hdf5Error {
     #[error("Unsupported element type {dtype}")]
     UnsupportedElementType { dtype: String },
 
-    #[error("Unsupported type for attribute {name:?}")]
-    UnsupportedAttributeType { name: String },
+    #[error("Unsupported type {type_name} for attribute {name:?}")]
+    UnsupportedAttributeType { name: String, type_name: String },
 }
 
 impl Hdf5Error {

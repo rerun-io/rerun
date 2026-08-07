@@ -147,7 +147,7 @@ fn warn_unsupported(walked: &Walk) {
                 .attrs
                 .iter()
                 .filter(|(_name, value)| !convert::supported_attr(value))
-                .map(|(name, _value)| format!("{}:{name}", object.path))
+                .map(|(name, value)| format!("{}:{name} ({})", object.path, value.type_name()))
         })
         .join(", ");
 

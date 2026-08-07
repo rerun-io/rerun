@@ -388,6 +388,7 @@ pub(crate) fn supported_attr(value: &hdf5_pure::AttrValue) -> bool {
             | AttrValue::AsciiString(_)
             | AttrValue::F64Array(_)
             | AttrValue::I64Array(_)
+            | AttrValue::U64Array(_)
             | AttrValue::StringArray(_)
             | AttrValue::AsciiStringArray(_)
             | AttrValue::VarLenAsciiArray(_)
@@ -422,6 +423,9 @@ pub(crate) fn attr_to_component(
         AttrValue::I64Array(values) => {
             one_row_fixed_size_list(Arc::new(Int64Array::from(values.clone())))?
         }
+        AttrValue::U64Array(values) => {
+            one_row_fixed_size_list(Arc::new(UInt64Array::from(values.clone())))?
+        }
         AttrValue::StringArray(values)
         | AttrValue::AsciiStringArray(values)
         | AttrValue::VarLenAsciiArray(values) => one_row_fixed_size_list(Arc::new(
@@ -433,6 +437,7 @@ pub(crate) fn attr_to_component(
         _ => {
             return Err(Hdf5Error::UnsupportedAttributeType {
                 name: name.to_owned(),
+                type_name: value.type_name().to_owned(),
             });
         }
     };

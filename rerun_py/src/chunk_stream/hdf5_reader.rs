@@ -173,11 +173,12 @@ impl PyHdf5ReaderInternal {
                 }
                 AttrValue::F64Array(values) => dict.set_item(name, values)?,
                 AttrValue::I64Array(values) => dict.set_item(name, values)?,
+                AttrValue::U64Array(values) => dict.set_item(name, values)?,
                 AttrValue::StringArray(values)
                 | AttrValue::AsciiStringArray(values)
                 | AttrValue::VarLenAsciiArray(values) => dict.set_item(name, values)?,
 
-                _ => unsupported.push(name),
+                _ => unsupported.push(format!("{name} ({})", value.type_name())),
             }
         }
 

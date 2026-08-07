@@ -8,7 +8,7 @@
 
 use arrow::array::{
     Array as _, FixedSizeListArray, Float32Array, Float64Array, Int64Array, ListArray, StringArray,
-    StructArray, UInt8Array,
+    StructArray, UInt8Array, UInt64Array,
 };
 use hdf5_pure::{
     AttrValue, CharacterSet, CompoundTypeBuilder, Datatype, FileBuilder, StringPadding,
@@ -806,6 +806,35 @@ fn attributes_become_static_components() {
         .downcast_ref::<StringArray>()
         .unwrap();
     assert_eq!(unit_values.value(0), "m");
+}
+
+/// An unsigned integer array reads back as `U64Array`, so it must stay mapped
+/// to `UInt64` — reinterpreting it as `i64` would corrupt anything above
+/// `i64::MAX`.
+#[test]
+fn unsigned_array_attribute_keeps_its_width() {
+    let big = u64::MAX - 1;
+    let (_dir, path) = write_h5(|b| {
+        b.set_attr("ids", AttrValue::U64Array(vec![1, big]));
+    });
+
+    let chunks = load_chunks(&path, &Hdf5Config::default());
+    let props = find_chunk(&chunks, "/__hdf5_properties");
+    let ids = props.components().get_array("ids".into()).unwrap();
+
+    let list = ids
+        .values()
+        .as_any()
+        .downcast_ref::<FixedSizeListArray>()
+        .unwrap();
+    assert_eq!(list.value_length(), 2);
+
+    let values = list
+        .values()
+        .as_any()
+        .downcast_ref::<UInt64Array>()
+        .unwrap();
+    assert_eq!(values.values(), &[1, big]);
 }
 
 #[test]
