@@ -1,4 +1,6 @@
-//! A module for loading and working with `LeRobot` datasets.
+#![allow(clippy::iter_over_hash_type)]
+
+//! A crate for loading and working with `LeRobot` datasets.
 //!
 //! This module provides functionality to identify and parse `LeRobot` datasets,
 //! which consist of metadata and episode data stored in a structured format.
@@ -164,7 +166,7 @@ pub enum DType {
 /// - A nested list of names for each dimension of a feature (e.g., `[["kLeftShoulderPitch", "kLeftShoulderRoll"]]`)
 /// - A map with a string array value (e.g., `{ "motors": ["motor_0", "motor_1", …] }` or `{ "axes": ["x", "y", "z"] }`).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-pub struct Names(pub(super) Vec<String>);
+pub struct Names(pub(crate) Vec<String>);
 
 impl Names {
     /// Retrieves the name corresponding to a specific index.
@@ -333,7 +335,7 @@ pub struct LeRobotDatasetSubtask {
     pub subtask: String,
 }
 
-/// Errors that might happen when importing data through a [`crate::importer_lerobot::LeRobotDatasetImporter`].
+/// Errors that might happen when loading data from a `LeRobot` dataset.
 #[derive(thiserror::Error, Debug)]
 pub enum LeRobotError {
     #[error("IO error occurred on path: {path}")]
@@ -373,6 +375,12 @@ pub enum LeRobotError {
 
     #[error("Episode {0:?} data file does not contain any records")]
     EmptyEpisode(EpisodeIndex),
+
+    #[error(transparent)]
+    Chunk(#[from] re_chunk::ChunkError),
+
+    #[error("{}", re_error::format(.0))]
+    Other(#[from] anyhow::Error),
 }
 
 impl LeRobotError {
@@ -387,8 +395,6 @@ impl LeRobotError {
 
 #[cfg(test)]
 mod tests {
-    use serde_json;
-
     use super::*;
 
     #[test]

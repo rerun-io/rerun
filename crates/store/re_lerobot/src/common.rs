@@ -6,20 +6,16 @@ use arrow::{
     compute::cast,
     datatypes::{DataType, Field},
 };
-use crossbeam::channel::Sender;
 use itertools::Itertools as _;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::{
     ArrowArray as _, Chunk, ChunkId, EntityPath, RowId, TimeColumn, TimePoint, TimelineName,
     external::nohash_hasher::IntMap,
 };
-use re_log_types::{ApplicationId, StoreId};
-use re_quota_channel::send_crossbeam;
 use re_sdk_types::archetypes;
 use re_sdk_types::archetypes::EncodedImage;
 
-use crate::lerobot::{EpisodeIndex, Feature};
-use crate::{ImportedData, ImporterError, import_file::prepare_store_info};
+use crate::{EpisodeIndex, Feature, LeRobotError};
 
 /// Shared interface for all `LeRobot` dataset versions.
 pub trait LeRobotDataset {
@@ -27,106 +23,18 @@ pub trait LeRobotDataset {
     fn iter_episode_indices(&self) -> impl Iterator<Item = EpisodeIndex>;
 
     /// Loads a specific episode and returns its chunks.
-    fn load_episode_chunks(&self, episode: EpisodeIndex) -> Result<Vec<Chunk>, ImporterError>;
+    fn load_episode_chunks(&self, episode: EpisodeIndex) -> Result<Vec<Chunk>, LeRobotError>;
 }
 
 /// Columns in the `LeRobot` dataset schema that we do not visualize in the viewer, and thus ignore.
 pub const LEROBOT_DATASET_IGNORED_COLUMNS: &[&str] =
     &["episode_index", "index", "frame_index", "timestamp"];
 
-/// Send `SetStoreInfo` messages for each episode and return the associated store ids.
-pub fn prepare_episode_chunks(
-    episodes: impl IntoIterator<Item = EpisodeIndex>,
-    application_id: &ApplicationId,
-    tx: &Sender<ImportedData>,
-    loader_name: &str,
-) -> Vec<(EpisodeIndex, StoreId)> {
-    let mut store_ids = vec![];
-
-    for episode in episodes {
-        let store_id = StoreId::recording(application_id.clone(), format!("episode_{}", episode.0));
-        let set_store_info = ImportedData::LogMsg(
-            loader_name.to_owned(),
-            prepare_store_info(&store_id, re_log_types::FileSource::Sdk),
-        );
-
-        if send_crossbeam(tx, set_store_info).is_err() {
-            break;
-        }
-
-        store_ids.push((episode, store_id));
-    }
-
-    store_ids
-}
-
-/// Shared streaming loop for `LeRobot` dataset versions.
-pub fn load_and_stream_common<Dataset>(
-    dataset: &Dataset,
-    store_ids: &[(EpisodeIndex, StoreId)],
-    tx: &Sender<ImportedData>,
-    loader_name: &str,
-    load_episode: impl Fn(&Dataset, EpisodeIndex) -> Result<Vec<Chunk>, ImporterError>,
-) {
-    for (episode, store_id) in store_ids {
-        // log episode data to its respective recording
-        match load_episode(dataset, *episode) {
-            Ok(chunks) => {
-                let recording_info = re_sdk_types::archetypes::RecordingInfo::new()
-                    .with_name(format!("Episode {}", episode.0));
-
-                let Ok(initial) = Chunk::builder(EntityPath::properties())
-                    .with_archetype(RowId::new(), TimePoint::STATIC, &recording_info)
-                    .build()
-                else {
-                    re_log::error!(
-                        "Failed to build recording properties chunk for episode {}",
-                        episode.0
-                    );
-                    return;
-                };
-
-                for chunk in std::iter::chain(std::iter::once(initial), chunks) {
-                    let data = ImportedData::Chunk(loader_name.to_owned(), store_id.clone(), chunk);
-
-                    if send_crossbeam(tx, data).is_err() {
-                        break; // The other end has decided to hang up, not our problem.
-                    }
-                }
-            }
-            Err(err) => {
-                re_log::warn!(
-                    "Failed to load episode {} from LeRobot dataset: {err}",
-                    episode.0
-                );
-            }
-        }
-    }
-}
-
-/// Prepare store info for all episodes and stream them using the provided loader.
-pub fn load_and_stream_versioned<D: LeRobotDataset>(
-    dataset: &D,
-    application_id: &ApplicationId,
-    tx: &Sender<ImportedData>,
-    loader_name: &str,
-) {
-    let store_ids = prepare_episode_chunks(
-        dataset.iter_episode_indices(),
-        application_id,
-        tx,
-        loader_name,
-    );
-    load_and_stream_common(dataset, &store_ids, tx, loader_name, |dataset, episode| {
-        dataset.load_episode_chunks(episode)
-    });
-}
-
 pub fn load_episode_images(
     observation: &str,
     timeline: &re_chunk::Timeline,
     data: &RecordBatch,
-) -> Result<impl ExactSizeIterator<Item = Chunk> + use<>, ImporterError> {
+) -> Result<impl ExactSizeIterator<Item = Chunk> + use<>, LeRobotError> {
     let image_bytes = data
         .column_by_name(observation)
         .and_then(|c| c.downcast_array_ref::<StructArray>())
@@ -158,7 +66,7 @@ pub fn load_episode_depth_images(
     observation: &str,
     timeline: &re_chunk::Timeline,
     data: &RecordBatch,
-) -> Result<impl ExactSizeIterator<Item = Chunk> + use<>, ImporterError> {
+) -> Result<impl ExactSizeIterator<Item = Chunk> + use<>, LeRobotError> {
     let image_bytes = data
         .column_by_name(observation)
         .and_then(|c| c.downcast_array_ref::<StructArray>())
@@ -216,7 +124,7 @@ pub fn load_scalar(
     feature: &Feature,
     timelines: &IntMap<TimelineName, TimeColumn>,
     data: &RecordBatch,
-) -> Result<ScalarChunkIterator, ImporterError> {
+) -> Result<ScalarChunkIterator, LeRobotError> {
     let field = data
         .schema_ref()
         .field_with_name(feature_key)
@@ -232,9 +140,7 @@ pub fn load_scalar(
                 .column_by_name(feature_key)
                 .and_then(|col| col.downcast_array_ref::<FixedSizeListArray>())
                 .ok_or_else(|| {
-                    ImporterError::Other(anyhow!(
-                        "Failed to downcast feature to FixedSizeListArray"
-                    ))
+                    LeRobotError::Other(anyhow!("Failed to downcast feature to FixedSizeListArray"))
                 })?;
 
             let batch_chunks = make_scalar_batch_entity_chunks(
@@ -250,7 +156,7 @@ pub fn load_scalar(
                 .column_by_name(feature_key)
                 .and_then(|col| col.downcast_array_ref::<arrow::array::ListArray>())
                 .ok_or_else(|| {
-                    ImporterError::Other(anyhow!("Failed to downcast feature to ListArray"))
+                    LeRobotError::Other(anyhow!("Failed to downcast feature to ListArray"))
                 })?;
 
             let sliced = extract_list_array_elements_as_f64(list_array).with_context(|| {
@@ -271,7 +177,7 @@ pub fn load_scalar(
         }
         DataType::Float32 | DataType::Float64 => {
             let feature_data = data.column_by_name(feature_key).ok_or_else(|| {
-                ImporterError::Other(anyhow!(
+                LeRobotError::Other(anyhow!(
                     "Failed to get LeRobot dataset column data for: {:?}",
                     field.name()
                 ))
@@ -301,7 +207,7 @@ fn make_scalar_batch_entity_chunks(
     feature: &Feature,
     timelines: &IntMap<TimelineName, TimeColumn>,
     data: &FixedSizeListArray,
-) -> Result<impl ExactSizeIterator<Item = Chunk> + use<>, ImporterError> {
+) -> Result<impl ExactSizeIterator<Item = Chunk> + use<>, LeRobotError> {
     let num_elements = data.value_length() as usize;
 
     let mut chunks = Vec::with_capacity(num_elements);
@@ -328,7 +234,7 @@ fn make_names_chunk(
     entity_path: &EntityPath,
     feature: &Feature,
     num_elements: usize,
-) -> Result<Option<Chunk>, ImporterError> {
+) -> Result<Option<Chunk>, LeRobotError> {
     let Some(names) = feature.names.clone() else {
         return Ok(None);
     };
@@ -355,7 +261,7 @@ fn make_scalar_entity_chunk(
     entity_path: EntityPath,
     timelines: &IntMap<TimelineName, TimeColumn>,
     sliced_data: &[ArrayRef],
-) -> Result<Chunk, ImporterError> {
+) -> Result<Chunk, LeRobotError> {
     let data_arrays = sliced_data
         .iter()
         .map(|e| Some(e.as_ref()))
@@ -409,99 +315,4 @@ fn extract_list_array_elements_as_f64(
                 .with_context(|| format!("Failed to cast {} to Float64", data.data_type()))
         })
         .try_collect()
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    use re_sdk_types::archetypes::TextDocument;
-
-    struct TestDataset {
-        episodes: Vec<EpisodeIndex>,
-    }
-
-    impl LeRobotDataset for TestDataset {
-        fn iter_episode_indices(&self) -> impl Iterator<Item = EpisodeIndex> {
-            self.episodes.iter().copied()
-        }
-
-        fn load_episode_chunks(&self, episode: EpisodeIndex) -> Result<Vec<Chunk>, ImporterError> {
-            let chunk = Chunk::builder(format!("episode_{}", episode.0))
-                .with_archetype(
-                    RowId::new(),
-                    TimePoint::STATIC,
-                    &TextDocument::new(format!("Episode {}", episode.0)),
-                )
-                .build()?;
-            Ok(vec![chunk])
-        }
-    }
-
-    #[test]
-    fn streams_each_episode_to_its_own_recording() {
-        let dataset = TestDataset {
-            episodes: (0..3).map(EpisodeIndex).collect(),
-        };
-        let application_id = ApplicationId::from("lerobot_test");
-        let loader_name = "rerun.importers.LeRobotDataset";
-        // The loader and receiver run on this test thread, so the queue cannot grow independently.
-        #[expect(
-            clippy::disallowed_methods,
-            reason = "the sender and receiver are on the same thread"
-        )]
-        let (tx, rx) = crossbeam::channel::unbounded();
-
-        load_and_stream_versioned(&dataset, &application_id, &tx, loader_name);
-        drop(tx);
-
-        let imported = rx.into_iter().collect::<Vec<_>>();
-        assert!(
-            imported
-                .iter()
-                .all(|data| data.importer_name() == loader_name)
-        );
-
-        let store_info_ids = imported
-            .iter()
-            .filter_map(|data| match data {
-                ImportedData::LogMsg(_, re_log_types::LogMsg::SetStoreInfo(store_info)) => {
-                    Some(store_info.info.store_id.clone())
-                }
-                _ => None,
-            })
-            .collect::<Vec<_>>();
-        assert_eq!(
-            store_info_ids
-                .iter()
-                .map(|store_id| store_id.recording_id().as_str())
-                .collect::<Vec<_>>(),
-            ["episode_0", "episode_1", "episode_2"]
-        );
-        assert!(store_info_ids.iter().all(|store_id| {
-            store_id.is_recording() && store_id.application_id() == &application_id
-        }));
-
-        let streamed_chunks = imported
-            .iter()
-            .filter_map(|data| match data {
-                ImportedData::Chunk(_, store_id, chunk) => Some((
-                    store_id.recording_id().as_str(),
-                    chunk.entity_path().to_string(),
-                )),
-                _ => None,
-            })
-            .collect::<Vec<_>>();
-        assert_eq!(
-            streamed_chunks,
-            [
-                ("episode_0", EntityPath::properties().to_string()),
-                ("episode_0", "/episode_0".to_owned()),
-                ("episode_1", EntityPath::properties().to_string()),
-                ("episode_1", "/episode_1".to_owned()),
-                ("episode_2", EntityPath::properties().to_string()),
-                ("episode_2", "/episode_2".to_owned()),
-            ]
-        );
-    }
 }

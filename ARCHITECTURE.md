@@ -99,11 +99,11 @@ Of course, this will only take us so far. In the future we plan on caching queri
 Here is an overview of the crates included in the project:
 
 <picture>
-  <img src="https://static.rerun.io/architecture_diagram/6e0cc663abd216f92fdf0e3e988832f05fd197a7/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/architecture_diagram/6e0cc663abd216f92fdf0e3e988832f05fd197a7/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/architecture_diagram/6e0cc663abd216f92fdf0e3e988832f05fd197a7/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/architecture_diagram/6e0cc663abd216f92fdf0e3e988832f05fd197a7/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/architecture_diagram/6e0cc663abd216f92fdf0e3e988832f05fd197a7/1200w.png">
+  <img src="https://static.rerun.io/architecture_diagram/807ecfb097e8f550e63c7d9c87b0eb98d1619711/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/architecture_diagram/807ecfb097e8f550e63c7d9c87b0eb98d1619711/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/architecture_diagram/807ecfb097e8f550e63c7d9c87b0eb98d1619711/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/architecture_diagram/807ecfb097e8f550e63c7d9c87b0eb98d1619711/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/architecture_diagram/807ecfb097e8f550e63c7d9c87b0eb98d1619711/1200w.png">
 </picture>
 
 <!-- !!! IMPORTANT!!!
@@ -210,6 +210,7 @@ Update instructions:
 | re_parquet           | Parquet file loading with configurable column grouping            |
 | re_hdf5              | HDF5 file loading into Rerun chunks                               |
 | re_mp4_reader        | Mp4 video file loading into Rerun chunks                          |
+| re_lerobot           | LeRobot dataset loading into Rerun chunks                         |
 | re_data_source       | Handles loading of Rerun data from different sources              |
 | re_grpc_client       | Client for the legacy StoreHub API                                |
 | re_grpc_server       | Server for the legacy StoreHub API                                |

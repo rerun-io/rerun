@@ -1,8 +1,8 @@
-use crate::lerobot::common::{
-    LEROBOT_DATASET_IGNORED_COLUMNS, LeRobotDataset, load_and_stream_versioned,
-    load_episode_depth_images, load_episode_images, load_scalar,
+use crate::common::{
+    LEROBOT_DATASET_IGNORED_COLUMNS, LeRobotDataset, load_episode_depth_images,
+    load_episode_images, load_scalar,
 };
-use crate::lerobot::{
+use crate::{
     DType, EpisodeIndex, Feature, LeRobotDatasetSubtask, LeRobotDatasetTask, LeRobotError,
     SubtaskIndex, TaskIndex,
 };
@@ -21,7 +21,6 @@ use arrow::array::{
 use arrow::buffer::ScalarBuffer;
 use arrow::compute::{cast, concat_batches};
 use arrow::datatypes::DataType;
-use crossbeam::channel::Sender;
 use itertools::Itertools as _;
 use parking_lot::RwLock;
 use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
@@ -32,10 +31,7 @@ use serde::{Deserialize, Serialize};
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::{Chunk, EntityPath, RowId, TimeColumn, TimePoint, Timeline};
-use re_log_types::ApplicationId;
 use re_sdk_types::archetypes::{TextDocument, VideoStream};
-
-use crate::{ImportedData, ImporterError};
 
 /// A `LeRobot` dataset consists of structured metadata and recorded episode data stored in
 /// Parquet files.
@@ -407,7 +403,7 @@ impl LeRobotDatasetV3 {
     /// This function processes an episode from the dataset by extracting the relevant data columns and
     /// converting them into appropriate Rerun data structures. It handles different types of data
     /// (videos, images, scalar values, etc.) based on their data type specifications in the dataset metadata.
-    fn load_episode(&self, episode: EpisodeIndex) -> Result<Vec<Chunk>, ImporterError> {
+    fn load_episode(&self, episode: EpisodeIndex) -> Result<Vec<Chunk>, LeRobotError> {
         let data = self
             .read_episode_data(episode)
             .map_err(|err| anyhow!("Reading data for episode {} failed: {err}", episode.0))?;
@@ -510,7 +506,7 @@ impl LeRobotDatasetV3 {
         &self,
         timeline: &Timeline,
         data: &RecordBatch,
-    ) -> Result<impl ExactSizeIterator<Item = Chunk> + use<>, ImporterError> {
+    ) -> Result<impl ExactSizeIterator<Item = Chunk> + use<>, LeRobotError> {
         let task_indices = data
             .column_by_name("task_index")
             .and_then(|c| c.downcast_array_ref::<Int64Array>())
@@ -545,7 +541,7 @@ impl LeRobotDatasetV3 {
         &self,
         timeline: &Timeline,
         data: &RecordBatch,
-    ) -> Result<impl ExactSizeIterator<Item = Chunk> + use<>, ImporterError> {
+    ) -> Result<impl ExactSizeIterator<Item = Chunk> + use<>, LeRobotError> {
         let subtask_indices = data
             .column_by_name("subtask_index")
             .and_then(|c| c.downcast_array_ref::<Int64Array>())
@@ -590,7 +586,7 @@ impl LeRobotDatasetV3 {
         feature_key: &str,
         timeline: &Timeline,
         data: &RecordBatch,
-    ) -> Result<Vec<Chunk>, ImporterError> {
+    ) -> Result<Vec<Chunk>, LeRobotError> {
         let Some(list) = data
             .column_by_name(feature_key)
             .and_then(|c| c.downcast_array_ref::<ListArray>())
@@ -784,7 +780,7 @@ impl LeRobotDatasetV3 {
         episode: EpisodeIndex,
         timeline: &Timeline,
         time_column: &TimeColumn,
-    ) -> Result<impl ExactSizeIterator<Item = Chunk> + use<>, ImporterError> {
+    ) -> Result<impl ExactSizeIterator<Item = Chunk> + use<>, LeRobotError> {
         let contents = self
             .read_episode_video_contents(observation, episode)
             .with_context(|| format!("Reading video contents for episode {episode:?} failed!"))?;
@@ -801,7 +797,7 @@ impl LeRobotDatasetV3 {
         let (start_time, end_time) = self.get_feature_timestamps(episode, observation);
 
         if video.samples.is_empty() {
-            return Err(ImporterError::Other(anyhow!(
+            return Err(LeRobotError::Other(anyhow!(
                 "Video feature '{observation}' for episode {episode:?} did not contain any samples"
             )));
         }
@@ -822,17 +818,17 @@ impl LeRobotDatasetV3 {
         let end_keyframe = video
             .presentation_time_keyframe_index(end_video_time)
             .or_else(|| video.keyframe_indices.len().checked_sub(1))
-            .ok_or(ImporterError::Other(anyhow!("No keyframes in the video")))?;
+            .ok_or(LeRobotError::Other(anyhow!("No keyframes in the video")))?;
 
         // Determine the sample range to extract from the video
         let start_sample = video
             .gop_sample_range_for_keyframe(start_keyframe)
-            .ok_or(ImporterError::Other(anyhow!("Bad video data")))?
+            .ok_or(LeRobotError::Other(anyhow!("Bad video data")))?
             .start;
 
         let end_sample = video
             .gop_sample_range_for_keyframe(end_keyframe)
-            .ok_or(ImporterError::Other(anyhow!("Bad video data")))?
+            .ok_or(LeRobotError::Other(anyhow!("Bad video data")))?
             .end;
 
         let sample_range = start_sample..end_sample;
@@ -926,7 +922,7 @@ impl LeRobotDataset for LeRobotDatasetV3 {
         self.metadata.iter_episode_indices()
     }
 
-    fn load_episode_chunks(&self, episode: EpisodeIndex) -> Result<Vec<Chunk>, ImporterError> {
+    fn load_episode_chunks(&self, episode: EpisodeIndex) -> Result<Vec<Chunk>, LeRobotError> {
         let result = self.load_episode(episode);
 
         // Release video blob references for this episode regardless of success or failure to avoid leaking memory if we fail to load an episode after caching its video blobs.
@@ -1428,15 +1424,6 @@ impl LeRobotDatasetV3Subtasks {
 
         Ok(Self { subtasks })
     }
-}
-
-pub fn load_and_stream(
-    dataset: &LeRobotDatasetV3,
-    application_id: &ApplicationId,
-    tx: &Sender<ImportedData>,
-    loader_name: &str,
-) {
-    load_and_stream_versioned(dataset, application_id, tx, loader_name);
 }
 
 #[cfg(test)]

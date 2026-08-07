@@ -1,0 +1,43 @@
+[package]
+name = "re_lerobot"
+authors.workspace = true
+description = "Core LeRobot-dataset-to-chunk loading logic for Rerun"
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+license.workspace = true
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+
+
+[dependencies]
+re_arrow_util.workspace = true
+re_chunk.workspace = true
+re_error.workspace = true
+re_log.workspace = true
+re_log_types.workspace = true
+re_sdk_types = { workspace = true, features = ["image", "video"] }
+re_tracing.workspace = true
+re_video.workspace = true
+
+ahash.workspace = true
+anyhow.workspace = true
+arrow.workspace = true
+itertools.workspace = true
+parking_lot.workspace = true
+parquet = { workspace = true, features = ["arrow", "snap", "zstd"] }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

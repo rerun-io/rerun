@@ -17,9 +17,6 @@ mod importer_directory;
 mod importer_rrd;
 mod importer_urdf;
 
-#[cfg(not(target_arch = "wasm32"))]
-pub mod lerobot;
-
 // This importer currently only works when loading the entire dataset directory, and we cannot do that on web yet.
 #[cfg(not(target_arch = "wasm32"))]
 pub mod importer_lerobot;

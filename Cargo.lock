@@ -9308,6 +9308,7 @@ dependencies = [
  "re_error",
  "re_format",
  "re_lenses",
+ "re_lerobot",
  "re_log",
  "re_log_channel",
  "re_log_encoding",
@@ -9318,9 +9319,7 @@ dependencies = [
  "re_quota_channel",
  "re_sdk_types",
  "re_tracing",
- "re_video",
  "serde",
- "serde_json",
  "tempfile",
  "thiserror 2.0.19",
  "urdf-rs",
@@ -9409,6 +9408,30 @@ dependencies = [
  "re_sdk_types",
  "thiserror 2.0.19",
  "vec1",
+]
+
+[[package]]
+name = "re_lerobot"
+version = "0.36.0-alpha.1+dev"
+dependencies = [
+ "ahash",
+ "anyhow",
+ "arrow",
+ "itertools 0.15.0",
+ "parking_lot",
+ "parquet",
+ "re_arrow_util",
+ "re_chunk",
+ "re_error",
+ "re_log",
+ "re_log_types",
+ "re_sdk_types",
+ "re_tracing",
+ "re_video",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.19",
 ]
 
 [[package]]

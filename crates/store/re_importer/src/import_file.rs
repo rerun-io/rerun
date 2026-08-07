@@ -42,7 +42,7 @@ pub fn import_from_path(
         .or_else(|| application_id_from_path(path));
     let settings = crate::ImporterSettings {
         // When importing a LeRobot dataset, avoid sending a `SetStoreInfo` message since the LeRobot importer handles this automatically.
-        force_store_info: !crate::lerobot::is_lerobot_dataset(path),
+        force_store_info: !re_lerobot::is_lerobot_dataset(path),
         application_id,
         ..settings.clone()
     };

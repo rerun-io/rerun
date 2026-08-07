@@ -1,8 +1,8 @@
-use crate::lerobot::common::{
-    LEROBOT_DATASET_IGNORED_COLUMNS, LeRobotDataset, load_and_stream_versioned,
-    load_episode_depth_images, load_episode_images, load_scalar,
+use crate::common::{
+    LEROBOT_DATASET_IGNORED_COLUMNS, LeRobotDataset, load_episode_depth_images,
+    load_episode_images, load_scalar,
 };
-use crate::lerobot::{DType, EpisodeIndex, Feature, LeRobotDatasetTask, LeRobotError, TaskIndex};
+use crate::{DType, EpisodeIndex, Feature, LeRobotDatasetTask, LeRobotError, TaskIndex};
 
 use std::borrow::Cow;
 use std::collections::BTreeMap;
@@ -13,7 +13,6 @@ use std::path::{Path, PathBuf};
 use ahash::HashMap;
 use anyhow::{Context as _, anyhow};
 use arrow::array::{Float64Array, Int64Array, RecordBatch};
-use crossbeam::channel::Sender;
 use itertools::{Either, Itertools as _};
 use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
 use serde::de::DeserializeOwned;
@@ -21,13 +20,10 @@ use serde::{Deserialize, Serialize};
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::{Chunk, RowId, TimeColumn, TimeInt, TimePoint, Timeline};
-use re_log_types::ApplicationId;
 use re_sdk_types::{
     archetypes::{AssetVideo, TextDocument, VideoFrameReference},
     components::VideoTimestamp,
 };
-
-use crate::{ImportedData, ImporterError};
 
 /// A `LeRobot` dataset consists of structured metadata and recorded episode data stored in
 /// Parquet files.
@@ -324,7 +320,7 @@ fn load_jsonl_file<D>(filepath: impl AsRef<Path>) -> Result<Vec<D>, LeRobotError
 where
     D: DeserializeOwned,
 {
-    use crate::lerobot::LeRobotError;
+    use crate::LeRobotError;
 
     let entries = std::fs::read_to_string(filepath.as_ref())
         .map_err(|err| LeRobotError::io(err, filepath.as_ref()))?
@@ -346,15 +342,6 @@ pub struct LeRobotDatasetEpisode {
     pub length: u32,
 }
 
-pub fn load_and_stream(
-    dataset: &LeRobotDatasetV2,
-    application_id: &ApplicationId,
-    tx: &Sender<ImportedData>,
-    loader_name: &str,
-) {
-    load_and_stream_versioned(dataset, application_id, tx, loader_name);
-}
-
 /// Loads a single episode from a `LeRobot` dataset and converts it into a collection of Rerun chunks.
 ///
 /// This function processes an episode from the dataset by extracting the relevant data columns and
@@ -363,7 +350,7 @@ pub fn load_and_stream(
 fn load_episode(
     dataset: &LeRobotDatasetV2,
     episode: EpisodeIndex,
-) -> Result<Vec<Chunk>, ImporterError> {
+) -> Result<Vec<Chunk>, LeRobotError> {
     let data = dataset
         .read_episode_data(episode)
         .map_err(|err| anyhow!("Reading data for episode {} failed: {err}", episode.0))?;
@@ -458,7 +445,7 @@ impl LeRobotDataset for LeRobotDatasetV2 {
         self.metadata.iter_episode_indices()
     }
 
-    fn load_episode_chunks(&self, episode: EpisodeIndex) -> Result<Vec<Chunk>, ImporterError> {
+    fn load_episode_chunks(&self, episode: EpisodeIndex) -> Result<Vec<Chunk>, LeRobotError> {
         load_episode(self, episode)
     }
 }
@@ -467,7 +454,7 @@ fn log_episode_task(
     dataset: &LeRobotDatasetV2,
     timeline: &Timeline,
     data: &RecordBatch,
-) -> Result<impl ExactSizeIterator<Item = Chunk> + use<>, ImporterError> {
+) -> Result<impl ExactSizeIterator<Item = Chunk> + use<>, LeRobotError> {
     let task_indices = data
         .column_by_name("task_index")
         .and_then(|c| c.downcast_array_ref::<Int64Array>())
@@ -504,7 +491,7 @@ fn load_episode_video(
     episode: EpisodeIndex,
     timeline: &Timeline,
     time_column: TimeColumn,
-) -> Result<impl ExactSizeIterator<Item = Chunk> + use<>, ImporterError> {
+) -> Result<impl ExactSizeIterator<Item = Chunk> + use<>, LeRobotError> {
     let contents = dataset
         .read_episode_video_contents(observation, episode)
         .with_context(|| format!("Reading video contents for episode {episode:?} failed!"))?;

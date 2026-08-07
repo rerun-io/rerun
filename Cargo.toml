@@ -80,6 +80,7 @@ re_grpc_client = { path = "crates/store/re_grpc_client", version = "=0.36.0-alph
 re_grpc_server = { path = "crates/store/re_grpc_server", version = "=0.36.0-alpha.1", default-features = false }
 re_hdf5 = { path = "crates/store/re_hdf5", version = "=0.36.0-alpha.1", default-features = false }
 re_lenses = { path = "crates/store/re_lenses", version = "=0.36.0-alpha.1", default-features = false }
+re_lerobot = { path = "crates/store/re_lerobot", version = "=0.36.0-alpha.1", default-features = false }
 re_log_channel = { path = "crates/store/re_log_channel", version = "=0.36.0-alpha.1", default-features = false }
 re_log_encoding = { path = "crates/store/re_log_encoding", version = "=0.36.0-alpha.1", default-features = false }
 re_log_types = { path = "crates/store/re_log_types", version = "=0.36.0-alpha.1", default-features = false }
