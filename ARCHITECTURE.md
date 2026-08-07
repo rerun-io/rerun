@@ -189,7 +189,6 @@ Update instructions:
 | re_sdk_types         | The built-in Rerun data types, component types, and archetypes. |
 | re_server            | In-memory data server                                           |
 | re_tf                | Dealing with spatial transforms & transform frames              |
-| re_type_definitions  | The type definitions the SDKs are generated from. Never linked. |
 
 ### Low-level store
 
@@ -224,7 +223,8 @@ Update instructions:
 | re_build_tools           | build.rs helpers for generating build info                           |
 | re_dev_tools             | Various tools for Rerun development. Each tool has a subcommand.     |
 | re_protos_builder        | Generates code for Rerun remote store gRPC API                       |
-| re_types_builder         | Generates code for Rerun's SDKs from flatbuffers definitions.        |
+| re_type_definitions      | The type definitions the SDKs are generated from. Never linked.      |
+| re_types_builder         | Generates code for Rerun's SDKs from `re_type_definitions`.          |
 | re_types_builder_macros  | The `#[rerun_type]` attribute macro used by Rerun's IDL definitions. |
 | re_types_builder_prelude | The vocabulary that Rerun's IDL definitions are written against.     |
 | re_web_tests             | Discovers and runs browser-based Wasm tests.                         |

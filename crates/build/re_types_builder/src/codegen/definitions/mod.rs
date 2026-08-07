@@ -1,4 +1,4 @@
-//! Generates the type definitions, and the module tree that makes them a real Rust crate.
+//! Generates the module tree that makes the type definitions a real Rust crate.
 //!
 //! The definitions are a subset of Rust that `re_types_builder` parses (see
 //! `objects/from_rust.rs`), but they are *also* compiled by rustc — that is what buys us
@@ -17,14 +17,6 @@
 //! `crate::components::position3d`, and the `extern crate self as rerun;` in the root makes
 //! `rerun::components::Position3D` — the fully-qualified name with `::` for `.` — resolve from
 //! anywhere, with no `use` statement in any definition.
-//!
-// TODO(RR-5384): remove once we've migrated completely from flatbuffers.
-//! The definition files themselves are written by [`transpile`], which exists only while the
-//! Flatbuffers definitions are still the source of truth. Once they are gone this generator emits
-//! the module tree alone, and a definition file is whatever a person wrote there.
-
-// TODO(RR-5384): remove once we've migrated completely from flatbuffers.
-mod transpile;
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
@@ -33,7 +25,7 @@ use camino::{Utf8Path, Utf8PathBuf};
 
 use super::autogen_warning;
 use crate::objects::from_rust::{DEFINITION_SUFFIX, definition_module_name};
-use crate::{CodeGenerator, GeneratedFiles, Object, Reporter};
+use crate::{CodeGenerator, GeneratedFiles, Reporter};
 
 /// The directory holding the definition tree, relative to the definitions root.
 ///
@@ -59,51 +51,27 @@ impl DefinitionsCodeGenerator {
             definitions_dir: definitions_dir.into(),
         }
     }
-
-    /// Where the Rust-based IDL for an object is found.
-    ///
-    /// The directory is the package — a definition's path *is* its fully-qualified name, which is
-    /// what lets the frontend resolve `rerun::components::Position3D` without a lookup table. The
-    /// file name is the one it was declared in, so that types declared together stay together.
-    ///
-    /// `rerun.components` + `//rerun/components/position3d.fbs`
-    ///   -> `<definitions>/rerun/components/position3d.def.rs`.
-    fn path_of(&self, object: &Object) -> Utf8PathBuf {
-        let stem = Utf8Path::new(&object.virtpath)
-            .file_stem()
-            .unwrap_or("unnamed");
-        self.definitions_dir
-            .join(object.pkg_name.replace('.', "/"))
-            .join(format!("{stem}{DEFINITION_SUFFIX}"))
-    }
 }
 
 impl CodeGenerator for DefinitionsCodeGenerator {
     fn generate(
         &mut self,
-        reporter: &Reporter,
+        _reporter: &Reporter,
         objects: &crate::Objects,
         _type_registry: &crate::TypeRegistry, // The definitions are the input to all of that.
     ) -> GeneratedFiles {
-        let mut per_file: BTreeMap<Utf8PathBuf, Vec<&Object>> = BTreeMap::new();
-        for object in objects.objects.values() {
-            per_file
-                .entry(self.path_of(object))
-                .or_default()
-                .push(object);
-        }
+        // Several types can share a file, and a file is declared once.
+        let definition_paths: BTreeSet<Utf8PathBuf> = objects
+            .objects
+            .values()
+            .map(|object| object.filepath.clone())
+            .collect();
 
         let mut files = GeneratedFiles::default();
 
-        // TODO(RR-5384): remove once we've migrated completely from flatbuffers.
-        // The definition files are the input by then, not something we write.
-        for (path, objects) in &per_file {
-            files.insert(path.clone(), transpile::transpile_file(reporter, objects));
-        }
-
         let crate_root = self.definitions_dir.join(CRATE_ROOT_DIR);
         let mut module_files = Vec::new();
-        for (dir, contents) in directory_tree(&crate_root, per_file.keys()) {
+        for (dir, contents) in directory_tree(&crate_root, definition_paths.iter()) {
             // The crate root is `lib.rs` inside its directory; every other `foo/` is declared by
             // the `foo.rs` sitting next to it.
             let (path, module_dir) = if dir == crate_root {
@@ -115,31 +83,11 @@ impl CodeGenerator for DefinitionsCodeGenerator {
             files.insert(path, module_file(&contents, module_dir));
         }
 
-        // The module tree is ours for good, so it is marked as generated. The definition files are
-        // not: they are the source, and are only transpiled while Flatbuffers is still it.
-        crate::mark_as_generated(&mut files, generated_scaffolding(&module_files));
+        // The module tree is ours; the definitions themselves are written by hand.
+        crate::mark_as_generated(&mut files, module_files);
 
         files
     }
-}
-
-/// Everything in the definitions tree that a person did not write: the module tree, and, until the
-/// flip, the Flatbuffers include lists that sit in the very same directories.
-fn generated_scaffolding(module_files: &[Utf8PathBuf]) -> Vec<Utf8PathBuf> {
-    let mut scaffolding = module_files.to_vec();
-
-    // TODO(RR-5384): remove once we've migrated completely from flatbuffers.
-    // `FbsCodeGenerator` writes an include list next to every package directory, exactly where a
-    // module file goes, and leaves this tree's `.gitattributes` to us. Not every package has one,
-    // hence the check: `rerun/archetypes.fbs` exists, `rerun/blueprint.fbs` does not.
-    scaffolding.extend(
-        module_files
-            .iter()
-            .map(|path| path.with_extension("fbs"))
-            .filter(|path| path.exists()),
-    );
-
-    scaffolding
 }
 
 /// The definitions and sub-packages of a single directory.

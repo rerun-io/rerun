@@ -2,7 +2,6 @@
 resolver = "2"
 members = [
   "crates/build/*",
-  "crates/store/re_sdk_types/definitions",
   "crates/store/*",
   "crates/top/*",
   "crates/utils/*",
@@ -273,7 +272,6 @@ env_filter = { version = "2.0", default-features = false }
 ffmpeg-sidecar = { version = "2.5", default-features = false }
 fixed = { version = "1.31", default-features = false }
 fjadra = "0.2.1"
-flatbuffers = "25.12"
 futures = "0.3.33"
 futures-util = "0.3.33"
 getrandom = "0.3.4"
@@ -508,7 +506,6 @@ wgpu = { version = "30.0", default-features = false, features = [
   # Other:
   "fragile-send-sync-non-atomic-wasm",
 ] }
-xshell = "0.2.7"
 xxhash-rust = { version = "0.8.18", features = ["xxh32", "xxh64"] }
 zip = { version = "8.6", default-features = false, features = ["deflate"] }
 

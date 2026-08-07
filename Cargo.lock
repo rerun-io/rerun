@@ -10403,7 +10403,6 @@ dependencies = [
  "camino",
  "colored",
  "crossbeam",
- "flatbuffers",
  "indent",
  "insta",
  "itertools 0.15.0",
@@ -10424,7 +10423,6 @@ dependencies = [
  "toml",
  "unindent",
  "walkdir",
- "xshell",
 ]
 
 [[package]]
@@ -14938,21 +14936,6 @@ name = "xmlwriter"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ec7a2a501ed189703dba8b08142f057e887dfc4b2cc4db2d343ac6376ba3e0b9"
-
-[[package]]
-name = "xshell"
-version = "0.2.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9e7290c623014758632efe00737145b6867b66292c42167f2ec381eb566a373d"
-dependencies = [
- "xshell-macros",
-]
-
-[[package]]
-name = "xshell-macros"
-version = "0.2.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "32ac00cd3f8ec9c1d33fb3e7958a82df6989c42d747bd326c822b1d625283547"
 
 [[package]]
 name = "xxhash-rust"

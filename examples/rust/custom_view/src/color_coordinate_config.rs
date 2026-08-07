@@ -1,6 +1,6 @@
 //! Custom blueprint configuration for the color coordinates view.
 //!
-//! Built-in views get this from `.fbs` + codegen. This example does it manually:
+//! Built-in views get this from `re_type_definitions` + codegen. This example does it manually:
 //! define a component, make it [`rerun::Loggable`], group it in an [`rerun::Archetype`], provide
 //! reflection, and register an editor UI.
 

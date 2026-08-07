@@ -3,7 +3,7 @@ use half::f16;
 use super::SphericalHarmonics3Rgb;
 
 /// Keeps [`SphericalHarmonics3Rgb::NUM_COEFFICIENTS`] in sync with the array length declared in
-/// `spherical_harmonics3rgb.fbs`, which is what the wrapped type is generated from.
+/// `spherical_harmonics3rgb.rs`, which is what the wrapped type is generated from.
 const _: () = assert!(
     size_of::<SphericalHarmonics3Rgb>()
         == SphericalHarmonics3Rgb::NUM_COEFFICIENTS * 3 * size_of::<f16>()

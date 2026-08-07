@@ -12,7 +12,8 @@
 //!
 //! # Names
 //!
-//! A definition's package comes from its path: `definitions/rerun/components/position3d.def.rs`
+//! A definition's package comes from its path:
+//! `re_type_definitions/rerun/components/position3d.def.rs`
 //! declares types in `rerun.components`. Definitions refer to each other by fully-qualified name
 //! with `::` for `.` — `rerun::components::Position3D` — and never contain a `use` statement.
 //! See `re_types_builder_prelude` for how that resolves for rustc.
@@ -196,7 +197,8 @@ fn check_module_tree_file(reporter: &Reporter, filepath: &Utf8Path, contents: &s
     ));
 }
 
-/// `…/definitions` + `…/definitions/rerun/components/position3d.def.rs` -> `rerun.components`.
+/// `…/re_type_definitions` + `…/re_type_definitions/rerun/components/position3d.def.rs`
+/// -> `rerun.components`.
 fn package_name_of(definitions_dir: &Utf8Path, filepath: &Utf8Path) -> Option<String> {
     let relative = filepath.strip_prefix(definitions_dir).ok()?;
     let dir = relative.parent()?;
@@ -247,7 +249,7 @@ pub(crate) fn parse_file(
     let parser = Parser {
         reporter,
         filepath: filepath.to_owned(),
-        virtpath: virtpath_of(filepath),
+        virtpath: virtpath_of(pkg_name, filepath),
         pkg_name: pkg_name.to_owned(),
     };
 
@@ -259,11 +261,12 @@ pub(crate) fn parse_file(
 
 /// The path we show in diagnostics from the rest of the pipeline, e.g.
 /// `//rerun/components/position3d.def.rs`.
-fn virtpath_of(filepath: &Utf8Path) -> String {
-    match filepath.as_str().split_once("/definitions/") {
-        Some((_, relative)) => format!("//{relative}"),
-        None => filepath.to_string(),
-    }
+///
+/// It is the package path with a `//` root, which is what makes it stable no matter where the
+/// definitions crate sits in the repository.
+fn virtpath_of(pkg_name: &str, filepath: &Utf8Path) -> String {
+    let file_name = filepath.file_name().unwrap_or_default();
+    format!("//{}/{file_name}", pkg_name.replace('.', "/"))
 }
 
 struct Parser<'a> {

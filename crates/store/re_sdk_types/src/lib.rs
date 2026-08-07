@@ -1,7 +1,7 @@
 //! The standard Rerun data types, component types, and archetypes.
 //!
-//! This crate contains both the IDL definitions for Rerun types (flatbuffers) as well as the code
-//! generated from those using `re_types_builder`.
+//! This crate contains the code generated from the type definitions in `re_type_definitions`,
+//! using `re_types_builder`.
 //!
 //! All builtin archetypes, components, datatypes and view definitions can be found in their
 //! respective top-level modules.
@@ -10,7 +10,8 @@
 //!
 //! ### Organization
 //!
-//! - `definitions/` contains IDL definitions for all Rerun types (data, components, archetypes).
+//! - `re_type_definitions` contains the definitions of all Rerun types (data, components,
+//!   archetypes).
 //! - `src/` contains the code generated for Rust.
 //! - `rerun_py/rerun/rerun2/` (at the root of this workspace) contains the code generated for Python.
 //!
@@ -22,7 +23,7 @@
 //! ### Build cache
 //!
 //! Updating either the source code of the code generator itself (`re_types_builder`) or any of the
-//! .fbs files should re-trigger the code generation process the next time `re_sdk_types` is built.
+//! definitions should re-trigger the code generation process the next time `re_sdk_types` is built.
 //! Manual extension files will be left untouched.
 //!
 //! Caching is controlled by a versioning hash that is stored in `store_hash.txt`.
@@ -33,11 +34,9 @@
 //!
 //! ### How-to: add a new datatype/component/archetype
 //!
-//! Create the appropriate .fbs file in the appropriate place, and make sure it gets included in
-//! some way (most likely indirectly) by `archetypes.fbs`, which is the main entrypoint for
-//! codegen.
-//! Generally, the easiest thing to do is to add your new type to one of the centralized manifests,
-//! e.g. for a new component, include it into `components.fbs`.
+//! Create the appropriate `.rs` file under `re_type_definitions/rerun/`, in the directory that
+//! matches the package it belongs to — a definition's path *is* its fully-qualified name, so
+//! `rerun/components/position3d.def.rs` declares `rerun.components.Position3D`.
 //!
 //! Your file should get picked up automatically by the code generator.
 //! Once the code for your new component has been generated, implement whatever extensions you need

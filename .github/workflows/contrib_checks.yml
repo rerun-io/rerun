@@ -97,10 +97,6 @@ jobs:
       - name: Codegen out-of-sync (protos)
         run: pixi run codegen-protos-check
 
-      # TODO(RR-5384): remove once we've migrated completely from flatbuffers.
-      - name: Both type-definition frontends agree
-        run: pixi run compare-frontends
-
   rs-lints:
     name: Rust lints (fmt, check, clippy, tests, doc)
     timeout-minutes: 60

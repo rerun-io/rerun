@@ -1714,7 +1714,7 @@ def lint_file(filepath: str, args: Any) -> int:
                 print(source.error("Use `//` not `///` for comments in .proto files", line_nr=line_nr))
                 num_errors += 1
 
-    if filepath.endswith((".rs", ".fbs")):
+    if filepath.endswith(".rs"):
         errors, lines_out = lint_vertical_spacing(source.lines)
         for error in errors:
             print(source.error(error))

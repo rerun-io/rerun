@@ -20,7 +20,7 @@ fn encode_hex(bytes: &[u8]) -> String {
 /// Recursively walks the directory at `path` in filename order.
 ///
 /// If `extensions` is specified, only files with the right extensions will be iterated.
-/// Specified extensions should _not_ include the leading dot, e.g. `fbs` rather than `.fbs`.
+/// Specified extensions should _not_ include the leading dot, e.g. `rs` rather than `.rs`.
 pub fn iter_dir<'a>(
     path: impl AsRef<Path>,
     extensions: Option<&'a [&'a str]>,
@@ -86,7 +86,7 @@ pub fn compute_file_hash(path: impl AsRef<Path>) -> String {
 /// This will automatically emit a `rerun-if-changed` clause for all the files that were hashed.
 ///
 /// If `extensions` is specified, only files with the right extensions will be iterated.
-/// Specified extensions should _not_ include the leading dot, e.g. `fbs` rather than `.fbs`.
+/// Specified extensions should _not_ include the leading dot, e.g. `rs` rather than `.rs`.
 pub fn compute_dir_hash<'a>(path: impl AsRef<Path>, extensions: Option<&'a [&'a str]>) -> String {
     let mut hasher = Sha256::new();
 

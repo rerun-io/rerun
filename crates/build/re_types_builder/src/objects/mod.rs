@@ -5,9 +5,8 @@
 //!
 //! Everything in here is IDL-agnostic: it is a plain intermediate representation with no notion
 //! of the syntax it was parsed from.
-//! The frontends that produce it live in [`from_fbs`] and [`from_rust`].
+//! The frontend that produces it lives in [`from_rust`].
 
-mod from_fbs;
 pub(crate) mod from_rust;
 
 use std::collections::BTreeMap;
@@ -387,14 +386,15 @@ pub struct ViewReference {
     pub explanation: Option<String>,
 }
 
-/// A high-level representation of a flatbuffers object, which can be either a struct, a union or
+/// A high-level representation of a type definition, which can be either a struct, a union or
 /// an enum.
 #[derive(Debug, Clone)]
 pub struct Object {
-    /// `Utf8Path` of the associated fbs definition in the Flatbuffers hierarchy, e.g. `//rerun/components/point2d.fbs`.
+    /// `Utf8Path` of the definition, relative to the definitions root, e.g.
+    /// `//rerun/components/point2d.def.rs`.
     pub virtpath: String,
 
-    /// Absolute filepath of the associated fbs definition.
+    /// Absolute filepath of the definition.
     pub filepath: Utf8PathBuf,
 
     /// Fully-qualified name of the object, e.g. `rerun.components.Position2D`.
@@ -421,7 +421,7 @@ pub struct Object {
     /// The object's inner fields, which can be either struct members or union/emum variants.
     ///
     /// These are ordered using their `order` attribute (structs),
-    /// or in the same order that they appeared in the .fbs (enum/union).
+    /// or in the same order that they appeared in the definition (enum/union).
     pub fields: Vec<ObjectField>,
 
     /// struct, enum, or union?
@@ -524,7 +524,7 @@ impl Object {
             .all(|field| field.typ.has_default_destructor(objects))
     }
 
-    /// Try to find the relative file path of the `.fbs` source file.
+    /// Try to find the relative file path of the definition.
     pub fn relative_filepath(&self) -> Option<&Utf8Path> {
         self.filepath
             .strip_prefix(crate::rerun_workspace_path())
@@ -665,14 +665,15 @@ impl ObjectClass {
     }
 }
 
-/// A high-level representation of a flatbuffers field, which can be either a struct member or a
+/// A high-level representation of a field, which can be either a struct member or a
 /// union value.
 #[derive(Debug, Clone)]
 pub struct ObjectField {
-    /// `Utf8Path` of the associated fbs definition in the Flatbuffers hierarchy, e.g. `//rerun/components/point2d.fbs`.
+    /// `Utf8Path` of the definition, relative to the definitions root, e.g.
+    /// `//rerun/components/point2d.def.rs`.
     pub virtpath: String,
 
-    /// Absolute filepath of the associated fbs definition.
+    /// Absolute filepath of the definition.
     pub filepath: Utf8PathBuf,
 
     /// Fully-qualified name of the field, e.g. `rerun.components.Position2D#position`.
@@ -1082,7 +1083,7 @@ pub enum ElementType {
 
     /// A nested fixed-size array.
     ///
-    /// This cannot be expressed directly in the flatbuffers IDL (arrays cannot nest);
+    /// This cannot be expressed directly in the definitions (arrays cannot nest);
     /// it is produced by the semantic pass when a `transparent` struct wrapping a
     /// fixed-size array is used as the element type of an array/vector.
     Array {

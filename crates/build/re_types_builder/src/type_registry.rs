@@ -10,8 +10,8 @@ use crate::{ATTR_ARROW_SPARSE_UNION, ElementType, Object, ObjectField, Type};
 
 // --- Registry ---
 
-/// Computes and maintains a registry of [`DataType`]s for specified flatbuffers
-/// definitions.
+/// Computes and maintains a registry of [`DataType`]s for the types defined in
+/// `re_type_definitions`.
 #[derive(Debug, Default)]
 pub struct TypeRegistry {
     registry: HashMap<String, LazyDatatype>,

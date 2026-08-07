@@ -133,7 +133,7 @@ Assemble the changeset before running the script, or the summary will be a `TODO
 
 ⚠️ Skip this step when preparing an alpha release.
 
-Remove all the `attr.docs.unreleased` attributes in all `.fbs` files, followed by `pixi run codegen`.
+Remove all the `#[docs(unreleased)]` attributes in `re_type_definitions`, followed by `pixi run codegen`.
 
 Remove the speculative link markers (`?speculative-link`).
 

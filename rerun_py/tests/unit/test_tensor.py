@@ -29,9 +29,10 @@ TENSOR_DATA_INPUTS: list[TensorDataLike] = [
     TensorData(array=RANDOM_TENSOR_SOURCE, dim_names=["a", "b", "c", "d"]),
 ]
 
-SHAPE = 0  # Based on datatypes/tensor_data.fbs
-NAMES = 1  # Based on datatypes/tensor_data.fbs
-BUFFER = 2  # Based on datatypes/tensor_data.fbs
+# Based on re_type_definitions/rerun/datatypes/tensor_data.def.rs
+SHAPE = 0
+NAMES = 1
+BUFFER = 2
 CHECK_FIELDS: list[list[int]] = [
     [SHAPE, NAMES, BUFFER],
     [BUFFER],

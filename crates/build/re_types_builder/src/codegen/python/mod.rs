@@ -1121,7 +1121,7 @@ fn code_for_enum(
                     .expect("enums fields must have values"),
             );
 
-        // NOTE: we keep the casing of the enum variants exactly as specified in the .fbs file,
+        // NOTE: we keep the casing of the enum variants exactly as written in `re_type_definitions`,
         // or else `RGBA` would become `Rgba` and so on.
         // Note that we want consistency across:
         // * all languages (C++, Python, Rust)

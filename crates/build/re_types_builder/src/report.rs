@@ -78,13 +78,12 @@ impl Reporter {
         send_crossbeam(&self.errors, text.to_string()).ok();
     }
 
-    // Tries to format a virtual fbs path such that it can be clicked in the CLI.
+    // Tries to format a virtual path such that it can be clicked in the CLI.
     fn format_virtpath(virtpath: &str) -> String {
         if let Ok(path) = Utf8Path::new(virtpath).canonicalize() {
             path.display().to_string()
         } else if let Ok(path) =
-            Utf8Path::new(&format!("crates/store/re_sdk_types/definitions/{virtpath}"))
-                .canonicalize()
+            Utf8Path::new(&format!("crates/build/re_type_definitions/{virtpath}")).canonicalize()
         {
             path.display().to_string()
         } else {
