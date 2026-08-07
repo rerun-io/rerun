@@ -6111,15 +6111,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0ceec5bc11778974d1bcb055b18002eba7f4b3518b6a0081b3af5f21666da9ad"
 
 [[package]]
-name = "log-once"
-version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6d8a05e3879b317b1b6dbf353e5bba7062bedcc59815267bb23eaa0c576cebf0"
-dependencies = [
- "log",
-]
-
-[[package]]
 name = "log_benchmark"
 version = "0.36.0-alpha.1+dev"
 dependencies = [
@@ -9377,7 +9368,6 @@ version = "0.36.0-alpha.1+dev"
 dependencies = [
  "crossbeam",
  "log",
- "log-once",
  "parking_lot",
  "tracing",
  "tracing-log",

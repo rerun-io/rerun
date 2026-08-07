@@ -311,7 +311,6 @@ lance = { version = "9.0", default-features = false } # When you update this, al
 libc = "0.2.189"
 linked-hash-map = { version = "0.5.6", default-features = false }
 log = "0.4.33"
-log-once = "0.4.1"
 lz4_flex = "0.13.1"
 macaw = "0.30.0"
 mcap = "0.25.0"
