@@ -10,6 +10,6 @@ pub struct MapBackground {
     /// Map provider and style to use.
     ///
     /// **Note**: Requires a Mapbox API key in the `RERUN_MAPBOX_ACCESS_TOKEN` environment variable.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub provider: rerun::blueprint::components::MapProvider,
 }

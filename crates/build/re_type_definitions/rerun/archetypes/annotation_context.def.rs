@@ -21,7 +21,7 @@
 #[rust(derive(PartialEq))]
 pub struct AnnotationContext {
     /// List of class descriptions, mapping class indices to class names, colors etc.
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_required)]
+    #[rerun(no_ui_edit)]
+    #[rerun(required)]
     pub context: rerun::components::AnnotationContext,
 }

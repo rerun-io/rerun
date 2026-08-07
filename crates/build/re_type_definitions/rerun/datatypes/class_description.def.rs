@@ -28,8 +28,12 @@ pub struct ClassDescription {
     pub info: rerun::datatypes::AnnotationInfo,
 
     /// The [datatypes.AnnotationInfo] for all of the keypoints.
+    // TODO(jleibs) this could be nullable rather than forcing an empty list
+    // don't null for now so we match the legacy schema
     pub keypoint_annotations: Vec<rerun::datatypes::AnnotationInfo>,
 
     /// The connections between keypoints.
+    // TODO(jleibs) this could be nullable rather than forcing an empty list
+    // don't null for now so we match the legacy schema
     pub keypoint_connections: Vec<rerun::datatypes::KeypointPair>,
 }

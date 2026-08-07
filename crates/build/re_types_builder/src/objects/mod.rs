@@ -15,10 +15,7 @@ use anyhow::Context as _;
 use camino::{Utf8Path, Utf8PathBuf};
 
 use crate::data_type::LazyDatatype;
-use crate::{
-    ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED, ATTR_RERUN_COMPONENT_REQUIRED,
-    ATTR_RERUN_DEPRECATED_NOTICE, ATTR_RERUN_DEPRECATED_SINCE, ATTR_RERUN_STATE, Docs, Reporter,
-};
+use crate::{Docs, Reporter, RerunAttr};
 
 // ---
 
@@ -33,9 +30,9 @@ pub struct Objects {
 impl Objects {
     /// The IDL-agnostic half of the semantic pass.
     ///
-    /// Validates the object graph and folds away everything marked `transparent`.
-    /// Every frontend must call this once it has produced the raw [`Object`] map.
-    pub(crate) fn resolve_and_validate(&mut self, reporter: &Reporter) {
+    /// Validates the object graph. Every frontend must call this once it has produced the raw
+    /// [`Object`] map.
+    pub(crate) fn validate(&self, reporter: &Reporter) {
         // Validate field types: archetypes consist of components, Views (aka SuperArchetypes) consist of archetypes, everything else consists of datatypes.
         for obj in self.objects.values() {
             for field in &obj.fields {
@@ -111,101 +108,30 @@ impl Objects {
                 }
             }
         }
-
-        // Resolve field-level semantic transparency recursively.
-        let mut done = false;
-        while !done {
-            done = true;
-            let objects_copy = self.objects.clone(); // borrowck, the lazy way
-            for obj in self.objects.values_mut() {
-                for field in &mut obj.fields {
-                    if field.is_transparent()
-                        && let Some(target_fqname) = field.typ.fqname()
-                    {
-                        let mut target_obj = objects_copy[target_fqname].clone();
-                        assert!(
-                            target_obj.fields.len() == 1,
-                            "field '{}' is marked transparent but points to object '{}' which \
-                                    doesn't have exactly one field (found {} fields instead)",
-                            field.fqname,
-                            target_obj.fqname,
-                            target_obj.fields.len(),
-                        );
-
-                        let ObjectField {
-                            typ,
-                            attrs,
-                            datatype,
-                            ..
-                        } = target_obj.fields.pop().unwrap();
-
-                        match &mut field.typ {
-                            // An array/vector of a transparent object: fold the target's
-                            // type into the element type, e.g. an array of a transparent
-                            // wrapper over `[float: 3]` becomes an array of `[f32; 3]`.
-                            Type::Array { elem_type, .. } | Type::Vector { elem_type } => {
-                                *elem_type = typ.to_element_type().unwrap_or_else(|| {
-                                    panic!(
-                                        "field '{}' is an array/vector of transparent object '{}' \
-                                         whose inner type {typ:?} cannot be used as an element type",
-                                        field.fqname, target_obj.fqname,
-                                    )
-                                });
-                                field.datatype = None;
-                            }
-
-                            // A direct object field: replace the field's type wholesale.
-                            _ => {
-                                field.typ = typ;
-                                field.datatype = datatype;
-                            }
-                        }
-
-                        // TODO(cmc): might want to do something smarter at some point regarding attrs.
-
-                        // NOTE: Transparency (or lack thereof) of the target field takes precedence.
-                        if attrs.has(crate::ATTR_TRANSPARENT) {
-                            let transparency = attrs.get_string(crate::ATTR_TRANSPARENT);
-                            field
-                                .attrs
-                                .0
-                                .insert(crate::ATTR_TRANSPARENT.to_owned(), transparency);
-                        } else {
-                            field.attrs.0.remove(crate::ATTR_TRANSPARENT);
-                        }
-
-                        done = false;
-                    }
-                }
-            }
-        }
-
-        // Remove whole objects marked as transparent.
-        self.objects.retain(|_, obj| !obj.is_transparent());
     }
 }
 
-/// Ensure that each field of an archetype has exactly one of the
-/// `attr.rerun.component_{required|recommended|optional}` attributes.
+/// Ensure that each field of an archetype belongs to exactly one of the three component lists.
 fn validate_archetype_field_attributes(reporter: &Reporter, obj: &Object) {
     assert_eq!(obj.kind, ObjectKind::Archetype);
 
+    const LISTS: [RerunAttr; 3] = [
+        RerunAttr::Optional,
+        RerunAttr::Recommended,
+        RerunAttr::Required,
+    ];
+
     for field in &obj.fields {
-        if [
-            ATTR_RERUN_COMPONENT_OPTIONAL,
-            ATTR_RERUN_COMPONENT_RECOMMENDED,
-            ATTR_RERUN_COMPONENT_REQUIRED,
-        ]
-        .iter()
-        .filter(|attr| field.has_attr(attr))
-        .count()
-            != 1
-        {
+        if LISTS.iter().filter(|attr| field.has_attr(attr)).count() != 1 {
             reporter.error(
                 &field.virtpath,
                 &field.fqname,
-                "field must have exactly one of the \"attr.rerun.component_{{required|recommended|\
-                optional}}\" attributes",
+                format!(
+                    "field must have exactly one of the `{}`, `{}` and `{}` attributes",
+                    RerunAttr::Optional,
+                    RerunAttr::Recommended,
+                    RerunAttr::Required
+                ),
             );
         }
     }
@@ -284,14 +210,14 @@ pub enum State {
 
 impl State {
     pub fn from_attrs(attrs: &Attributes) -> Result<Self, String> {
-        if let Some(state) = attrs.get_string(ATTR_RERUN_STATE) {
+        if let Some(state) = attrs.get_string(RerunAttr::State) {
             match state.as_str() {
                 "unstable" => Ok(Self::Unstable),
                 "stable" => Ok(Self::Stable),
                 "deprecated" => {
                     if let (Some(since), Some(notice)) = (
-                        attrs.get_string(ATTR_RERUN_DEPRECATED_SINCE),
-                        attrs.get_string(ATTR_RERUN_DEPRECATED_NOTICE),
+                        attrs.get_string(RerunAttr::DeprecatedSince),
+                        attrs.get_string(RerunAttr::DeprecatedNotice),
                     ) {
                         Ok(Self::Deprecated {
                             since: since.clone(),
@@ -299,14 +225,19 @@ impl State {
                         })
                     } else {
                         Err(format!(
-                            "Deprecated object must have {ATTR_RERUN_DEPRECATED_SINCE:?} and {ATTR_RERUN_DEPRECATED_NOTICE:?} set"
+                            "Deprecated object must have `{}` and `{}` set",
+                            RerunAttr::DeprecatedSince,
+                            RerunAttr::DeprecatedNotice
                         ))
                     }
                 }
-                unknown => Err(format!("Unknown value for {ATTR_RERUN_STATE:?}: {unknown}")),
+                unknown => Err(format!(
+                    "Unknown value for `{}`: {unknown}",
+                    RerunAttr::State
+                )),
             }
         } else {
-            Err(format!("Missing attribute {ATTR_RERUN_STATE:?}"))
+            Err(format!("Missing attribute `{}`", RerunAttr::State))
         }
     }
 
@@ -331,7 +262,7 @@ impl ObjectKind {
     pub fn from_pkg_name(pkg_name: &str, attrs: &Attributes) -> Self {
         assert!(!pkg_name.is_empty(), "Missing package name");
 
-        let scope = match attrs.try_get::<String>(pkg_name, crate::ATTR_RERUN_SCOPE) {
+        let scope = match attrs.try_get::<String>(pkg_name, crate::RerunAttr::Scope) {
             Some(scope) => format!(".{scope}"),
             None => String::new(),
         };
@@ -420,7 +351,7 @@ pub struct Object {
 
     /// The object's inner fields, which can be either struct members or union/emum variants.
     ///
-    /// These are ordered using their `order` attribute (structs),
+    /// These are in source order (structs),
     /// or in the same order that they appeared in the definition (enum/union).
     pub fields: Vec<ObjectField>,
 
@@ -476,7 +407,7 @@ impl Object {
     }
 
     pub fn archetype_view_types(&self) -> Option<Vec<ViewReference>> {
-        let view_types = self.try_get_attr::<String>(crate::ATTR_DOCS_VIEW_TYPES)?;
+        let view_types = self.try_get_attr::<String>(crate::DocsAttr::ViewTypes)?;
 
         Some(
             view_types
@@ -510,11 +441,7 @@ impl Object {
         if self.is_enum() {
             return false; // Enums are encoded as sparse unions
         }
-        self.kind == ObjectKind::Component || self.attrs.has(crate::ATTR_ARROW_TRANSPARENT)
-    }
-
-    fn is_transparent(&self) -> bool {
-        self.attrs.has(crate::ATTR_TRANSPARENT)
+        self.kind == ObjectKind::Component || self.attrs.has(crate::ArrowAttr::Transparent)
     }
 
     /// Is the destructor trivial/default (i.e. is this simple data with no allocations)?
@@ -543,7 +470,7 @@ impl Object {
 
     /// e.g. `blueprint`
     pub fn scope(&self) -> Option<String> {
-        self.try_get_attr::<String>(crate::ATTR_RERUN_SCOPE)
+        self.try_get_attr::<String>(crate::RerunAttr::Scope)
             .or_else(|| (self.kind == ObjectKind::View).then(|| "blueprint".to_owned()))
     }
 
@@ -561,12 +488,12 @@ impl Object {
     }
 
     pub fn doc_category(&self) -> Option<String> {
-        self.try_get_attr::<String>(crate::ATTR_DOCS_CATEGORY)
+        self.try_get_attr::<String>(crate::DocsAttr::Category)
     }
 
     /// Returns the crate name of an object, accounting for overrides.
     pub fn crate_name(&self) -> String {
-        self.try_get_attr::<String>(crate::ATTR_RUST_OVERRIDE_CRATE)
+        self.try_get_attr::<String>(crate::RustAttr::OverrideCrate)
             .unwrap_or_else(|| "re_sdk_types".to_owned())
     }
 
@@ -703,10 +630,6 @@ pub struct ObjectField {
     /// The field's attributes.
     pub attrs: Attributes,
 
-    /// The struct field's `order` attribute's value, which is mandatory for struct fields
-    /// (otherwise their order is undefined).
-    pub order: u32,
-
     /// Whether the field is nullable.
     pub is_nullable: bool,
 
@@ -718,10 +641,6 @@ pub struct ObjectField {
 }
 
 impl ObjectField {
-    fn is_transparent(&self) -> bool {
-        self.attrs.has(crate::ATTR_TRANSPARENT)
-    }
-
     pub fn get_attr<T>(&self, name: impl AsRef<str>) -> T
     where
         T: std::str::FromStr,
@@ -758,11 +677,11 @@ impl ObjectField {
     }
 
     pub fn kind(&self) -> Option<FieldKind> {
-        if self.has_attr(crate::ATTR_RERUN_COMPONENT_REQUIRED) {
+        if self.has_attr(crate::RerunAttr::Required) {
             Some(FieldKind::Required)
-        } else if self.has_attr(crate::ATTR_RERUN_COMPONENT_RECOMMENDED) {
+        } else if self.has_attr(crate::RerunAttr::Recommended) {
             Some(FieldKind::Recommended)
-        } else if self.has_attr(crate::ATTR_RERUN_COMPONENT_OPTIONAL) {
+        } else if self.has_attr(crate::RerunAttr::Optional) {
             Some(FieldKind::Optional)
         } else {
             None
@@ -1216,8 +1135,8 @@ impl Attributes {
             .unwrap()
     }
 
-    pub fn get_string(&self, name: &str) -> Option<String> {
-        self.0.get(name).cloned().flatten()
+    pub fn get_string(&self, name: impl AsRef<str>) -> Option<String> {
+        self.0.get(name.as_ref()).cloned().flatten()
     }
 
     /// Every attribute, sorted by name, with its value if it has one.

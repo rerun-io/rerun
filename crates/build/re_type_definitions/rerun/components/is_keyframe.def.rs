@@ -9,12 +9,10 @@
 /// still reference existing decoder state and are therefore not valid sync points.
 /// See [components.VideoCodec] for the codec-specific definition of a keyframe.
 #[rerun::rerun_type]
-#[arrow(transparent)]
 #[python(aliases = "bool")]
 #[python(array_aliases = "bool | npt.NDArray[np.bool_]")]
 #[rust(derive(Copy, PartialEq, Eq, PartialOrd, Ord, Hash))]
 #[rust(repr = "transparent")]
-#[rust(tuple_struct)]
 #[rerun(state = "stable")]
 pub struct IsKeyframe {
     pub is_keyframe: rerun::datatypes::Bool,

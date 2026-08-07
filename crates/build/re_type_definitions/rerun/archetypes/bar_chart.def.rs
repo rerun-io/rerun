@@ -14,19 +14,19 @@
 #[rust(derive(PartialEq))]
 pub struct BarChart {
     /// The values. Should always be a 1-dimensional tensor (i.e. a vector).
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_required)]
+    #[rerun(no_ui_edit)]
+    #[rerun(required)]
     pub values: rerun::components::TensorData,
 
     /// The color of the bar chart
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub color: Option<rerun::components::Color>,
 
     /// The abscissa corresponding to each value. Should be a 1-dimensional tensor (i.e. a vector) in same length as values.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub abscissa: Option<rerun::components::TensorData>,
 
     /// The width of the bins, defined in x-axis units and defaults to 1. Should be a 1-dimensional tensor (i.e. a vector) in same length as values.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub widths: Option<Vec<rerun::components::Length>>,
 }

@@ -8,11 +8,12 @@
 #[rerun(state = "unstable")]
 pub struct Background {
     /// The type of the background.
-    #[rerun(component_required)]
+    #[rerun(required)]
     pub kind: rerun::blueprint::components::BackgroundKind,
 
     /// Color used for the solid background type.
-    #[rerun(component_optional)]
+    // TODO(andreas): Can't link to [components.BackgroundKind.SolidColor] since blueprint components aren't part of the doc page yet.
+    #[rerun(optional)]
     pub color: Option<rerun::components::Color>,
 }
 
@@ -22,7 +23,7 @@ pub struct Background {
 #[rerun(state = "unstable")]
 pub struct GraphBackground {
     /// Color used for the background.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub color: Option<rerun::components::Color>,
 }
 
@@ -32,10 +33,10 @@ pub struct GraphBackground {
 #[rerun(state = "unstable")]
 pub struct PlotBackground {
     /// Color used for the background.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub color: Option<rerun::components::Color>,
 
     /// Should the grid be drawn?
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub show_grid: Option<rerun::blueprint::components::Enabled>,
 }

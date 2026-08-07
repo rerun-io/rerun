@@ -12,12 +12,12 @@ pub struct ForceManyBody {
     ///
     /// The many body force is applied on each pair of nodes in a way that ressembles an electrical charge. If the
     /// strength is smaller than 0, it pushes nodes apart; if it is larger than 0, it pulls them together.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub enabled: Option<rerun::blueprint::components::Enabled>,
 
     /// The strength of the force.
     ///
     /// If `strength` is smaller than 0, it pushes nodes apart, if it is larger than 0 it pulls them together.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub strength: Option<rerun::blueprint::components::ForceStrength>,
 }

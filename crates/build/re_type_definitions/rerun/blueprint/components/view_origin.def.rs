@@ -3,7 +3,6 @@
 
 /// The origin of a view.
 #[rerun::rerun_type]
-#[arrow(transparent)]
 #[python(aliases = "str")]
 #[rerun(scope = "blueprint")]
 #[rust(derive(PartialEq, Eq, PartialOrd, Ord))]

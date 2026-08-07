@@ -3,11 +3,9 @@
 
 /// A timeline column in a text log table.
 #[rerun::rerun_type]
-#[arrow(transparent)]
 #[rerun(scope = "blueprint")]
 #[rust(derive(PartialEq, Eq, Default, Hash))]
 #[rust(repr = "transparent")]
-#[rust(tuple_struct)]
 #[rerun(state = "unstable")]
 pub struct TimelineColumn {
     /// The timeline column.

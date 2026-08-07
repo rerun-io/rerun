@@ -39,10 +39,11 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
     Hash,
     bytemuck::Pod,
     bytemuck::Zeroable,
+    ::serde::Serialize,
+    ::serde::Deserialize,
     ::re_byte_size::SizeBytes,
 )]
 #[repr(transparent)]
-#[derive(::serde::Serialize, ::serde::Deserialize)]
 pub struct KeypointId(pub u16);
 
 ::re_types_core::macros::impl_into_cow!(KeypointId);

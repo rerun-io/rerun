@@ -8,7 +8,6 @@
 #[arrow(transparent)]
 #[python(aliases = "int")]
 #[python(array_aliases = "int | npt.ArrayLike")]
-#[rust(custom_clause = "derive(::serde::Serialize, ::serde::Deserialize)")]
 #[rust(derive(
     Copy,
     Default,
@@ -18,7 +17,9 @@
     Ord,
     Hash,
     bytemuck::Pod,
-    bytemuck::Zeroable
+    bytemuck::Zeroable,
+    ::serde::Serialize,
+    ::serde::Deserialize
 ))]
 #[rust(repr = "transparent")]
 #[rust(tuple_struct)]

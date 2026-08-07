@@ -21,11 +21,8 @@ use crate::codegen::rust::util::{is_tuple_struct_from_obj, quote_doc_line};
 use crate::codegen::{Target, autogen_warning};
 use crate::objects::ObjectClass;
 use crate::{
-    ATTR_DEFAULT, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
-    ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RERUN_VIEW_IDENTIFIER, ATTR_RERUN_VISUALIZER,
-    ATTR_RUST_CUSTOM_CLAUSE, ATTR_RUST_DERIVE, ATTR_RUST_DERIVE_ONLY, ATTR_RUST_NEW_PUB_CRATE,
-    ATTR_RUST_REPR, CodeGenerator, ElementType, Object, ObjectField, ObjectKind, Objects, Reporter,
-    Type, TypeRegistry, format_path,
+    ATTR_DEFAULT, CodeGenerator, ElementType, Object, ObjectField, ObjectKind, Objects, Reporter,
+    RerunAttr, RustAttr, Type, TypeRegistry, format_path,
 };
 
 // ---
@@ -262,19 +259,18 @@ fn quote_struct(
 
     let quoted_doc = quote_obj_docs(reporter, objects, obj);
 
-    let derive_only = obj.is_attr_set(ATTR_RUST_DERIVE_ONLY);
+    let derive_only = obj.is_attr_set(RustAttr::DeriveOnly);
     let quoted_derive_clone_debug = if derive_only {
         quote!()
     } else {
         quote_derive_clone_debug()
     };
     let quoted_derive_clause = if derive_only {
-        quote_meta_clause_from_obj(obj, ATTR_RUST_DERIVE_ONLY, "derive")
+        quote_meta_clause_from_obj(obj, RustAttr::DeriveOnly, "derive")
     } else {
-        quote_meta_clause_from_obj(obj, ATTR_RUST_DERIVE, "derive")
+        quote_meta_clause_from_obj(obj, RustAttr::Derive, "derive")
     };
-    let quoted_repr_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_REPR, "repr");
-    let quoted_custom_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_CUSTOM_CLAUSE, "");
+    let quoted_repr_clause = quote_meta_clause_from_obj(obj, RustAttr::Repr, "repr");
 
     // Archetypes must always derive Default.
     let quoted_derive_default_clause =
@@ -316,7 +312,6 @@ fn quote_struct(
         #quoted_derive_default_clause
         #quoted_derive_size_bytes
         #quoted_repr_clause
-        #quoted_custom_clause
         #quoted_deprecation_summary
         #quoted_struct
 
@@ -343,19 +338,18 @@ fn quote_union(
     let name = format_ident!("{name}");
 
     let quoted_doc = quote_obj_docs(reporter, objects, obj);
-    let derive_only = obj.try_get_attr::<String>(ATTR_RUST_DERIVE_ONLY).is_some();
+    let derive_only = obj.try_get_attr::<String>(RustAttr::DeriveOnly).is_some();
     let quoted_derive_clone_debug = if derive_only {
         quote!()
     } else {
         quote_derive_clone_debug()
     };
     let quoted_derive_clause = if derive_only {
-        quote_meta_clause_from_obj(obj, ATTR_RUST_DERIVE_ONLY, "derive")
+        quote_meta_clause_from_obj(obj, RustAttr::DeriveOnly, "derive")
     } else {
-        quote_meta_clause_from_obj(obj, ATTR_RUST_DERIVE, "derive")
+        quote_meta_clause_from_obj(obj, RustAttr::Derive, "derive")
     };
-    let quoted_repr_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_REPR, "repr");
-    let quoted_custom_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_CUSTOM_CLAUSE, "");
+    let quoted_repr_clause = quote_meta_clause_from_obj(obj, RustAttr::Repr, "repr");
 
     let quoted_fields = fields.iter().map(|obj_field| {
         let name = format_ident!("{}", re_case::to_pascal_case(&obj_field.name));
@@ -386,7 +380,6 @@ fn quote_union(
         #quoted_derive_clause
         #quoted_derive_size_bytes
         #quoted_repr_clause
-        #quoted_custom_clause
         pub enum #name {
             #(#quoted_fields,)*
         }
@@ -411,7 +404,6 @@ fn quote_enum(
     let name = format_ident!("{name}");
 
     let quoted_doc = quote_obj_docs(reporter, objects, obj);
-    let quoted_custom_clause = quote_meta_clause_from_obj(obj, ATTR_RUST_CUSTOM_CLAUSE, "");
 
     let mut derives = vec!["Clone", "Copy", "Debug", "Hash", "PartialEq", "Eq"];
 
@@ -564,7 +556,6 @@ fn quote_enum(
         #quoted_doc
         #[derive( #(#derives,)* )]
         #[derive(::re_byte_size::SizeBytes)]
-        #quoted_custom_clause
         #[repr(#repr_type)]
         pub enum #name {
             #(#quoted_fields,)*
@@ -774,7 +765,7 @@ fn quote_derive_clone_debug() -> TokenStream {
     quote!(#[derive(Clone, Debug)])
 }
 
-fn quote_meta_clause_from_obj(obj: &Object, attr: &str, clause: &str) -> TokenStream {
+fn quote_meta_clause_from_obj(obj: &Object, attr: RustAttr, clause: &str) -> TokenStream {
     let quoted = obj
         .try_get_attr::<String>(attr)
         .map(|contents| {
@@ -1000,7 +991,7 @@ fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenSt
 
     fn compute_component_descriptors(
         obj: &Object,
-        requirement_attr_value: &'static str,
+        requirement_attr_value: RerunAttr,
     ) -> (usize, TokenStream) {
         let descriptors = obj
             .fields
@@ -1069,7 +1060,7 @@ fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenSt
         })
         .collect_vec();
 
-    let visualizer_trait_impl = attrs.get_string(ATTR_RERUN_VISUALIZER).map(|visualizer| {
+    let visualizer_trait_impl = attrs.get_string(RerunAttr::Visualizer).map(|visualizer| {
         quote! {
             impl crate::VisualizableArchetype for #name {
                 #[inline]
@@ -1081,11 +1072,11 @@ fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenSt
     });
 
     let (num_required_descriptors, required_descriptors) =
-        compute_component_descriptors(obj, ATTR_RERUN_COMPONENT_REQUIRED);
+        compute_component_descriptors(obj, RerunAttr::Required);
     let (num_recommended_descriptors, recommended_descriptors) =
-        compute_component_descriptors(obj, ATTR_RERUN_COMPONENT_RECOMMENDED);
+        compute_component_descriptors(obj, RerunAttr::Recommended);
     let (num_optional_descriptors, optional_descriptors) =
-        compute_component_descriptors(obj, ATTR_RERUN_COMPONENT_OPTIONAL);
+        compute_component_descriptors(obj, RerunAttr::Optional);
 
     let num_components_docstring = quote_doc_line(&format!(
         "The total number of components in the archetype: {num_required_descriptors} required, {num_recommended_descriptors} recommended, {num_optional_descriptors} optional"
@@ -1230,11 +1221,11 @@ fn quote_trait_impls_for_view(reporter: &Reporter, obj: &Object) -> TokenStream 
 
     let name = format_ident!("{}", obj.name);
 
-    let Some(identifier): Option<String> = obj.try_get_attr(ATTR_RERUN_VIEW_IDENTIFIER) else {
+    let Some(identifier): Option<String> = obj.try_get_attr(RerunAttr::ViewIdentifier) else {
         reporter.error(
             &obj.virtpath,
             &obj.fqname,
-            format!("Missing {ATTR_RERUN_VIEW_IDENTIFIER} attribute for view"),
+            format!("Missing {} attribute for view", RerunAttr::ViewIdentifier),
         );
         return TokenStream::new();
     };
@@ -1434,7 +1425,7 @@ fn quote_builder_from_obj(reporter: &Reporter, objects: &Objects, obj: &Object) 
             quote!(#field_name: None)
         });
 
-        let fn_new_pub = if obj.is_attr_set(ATTR_RUST_NEW_PUB_CRATE) {
+        let fn_new_pub = if obj.is_attr_set(RustAttr::NewPubCrate) {
             quote!(pub(crate))
         } else {
             quote!(pub)

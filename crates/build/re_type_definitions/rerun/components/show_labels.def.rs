@@ -7,11 +7,9 @@
 /// is to be overridden when desired, to allow hiding and showing from the viewer and
 /// blueprints.
 #[rerun::rerun_type]
-#[arrow(transparent)]
 #[python(aliases = "bool")]
 #[python(array_aliases = "bool | npt.NDArray[np.bool_]")]
 #[rust(derive(Copy, PartialEq, Eq))]
-#[rust(tuple_struct)]
 #[rerun(state = "stable")]
 pub struct ShowLabels {
     /// Whether the entity's [components.Text] label is shown.

@@ -11,10 +11,10 @@ pub struct RecordingInfo {
     /// When the recording started.
     ///
     /// Should be an absolute time, i.e. relative to Unix Epoch.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub start_time: Option<rerun::components::Timestamp>,
 
     /// A user-chosen name for the recording.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub name: Option<rerun::components::Name>,
 }

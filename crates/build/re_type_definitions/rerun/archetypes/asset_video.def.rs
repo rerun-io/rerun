@@ -4,6 +4,7 @@
 /// A video binary.
 ///
 /// Only MP4 containers are currently supported.
+// TODO(#7354): fix above if ticket is outdated.
 ///
 /// See <https://rerun.io/docs/reference/video> for codec support and more general information.
 ///
@@ -18,8 +19,8 @@
 #[rerun(visualizer_none)]
 pub struct AssetVideo {
     /// The asset's bytes.
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_required)]
+    #[rerun(no_ui_edit)]
+    #[rerun(required)]
     pub blob: rerun::components::Blob,
 
     /// The Media Type of the asset.
@@ -29,6 +30,6 @@ pub struct AssetVideo {
     ///
     /// If omitted, the viewer will try to guess from the data blob.
     /// If it cannot guess, it won't be able to render the asset.
-    #[rerun(component_recommended)]
+    #[rerun(recommended)]
     pub media_type: Option<rerun::components::MediaType>,
 }

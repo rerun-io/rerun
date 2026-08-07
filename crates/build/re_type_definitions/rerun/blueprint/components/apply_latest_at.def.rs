@@ -3,12 +3,10 @@
 
 /// Whether empty cells in a dataframe should be filled with a latest-at query.
 #[rerun::rerun_type]
-#[arrow(transparent)]
 #[python(aliases = "bool")]
 #[rerun(scope = "blueprint")]
 #[rust(derive(Copy, Default, PartialEq, Eq, PartialOrd, Ord))]
 #[rust(repr = "transparent")]
-#[rust(tuple_struct)]
 #[rerun(state = "unstable")]
 pub struct ApplyLatestAt {
     pub apply_latest_at: rerun::datatypes::Bool,

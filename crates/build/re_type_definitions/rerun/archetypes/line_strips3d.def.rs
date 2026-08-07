@@ -16,37 +16,37 @@
 #[rust(derive(PartialEq))]
 pub struct LineStrips3D {
     /// All the actual 3D line strips that make up the batch.
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_required)]
+    #[rerun(no_ui_edit)]
+    #[rerun(required)]
     pub strips: Vec<rerun::components::LineStrip3D>,
 
     /// Optional radii for the line strips.
-    #[rerun(component_recommended)]
+    #[rerun(recommended)]
     pub radii: Option<Vec<rerun::components::Radius>>,
 
     /// Optional colors for the line strips.
     ///
     /// The alpha channel is ignored.
-    #[rerun(component_recommended)]
+    #[rerun(recommended)]
     pub colors: Option<Vec<rerun::components::Color>>,
 
     /// Optional text labels for the line strips.
     ///
     /// If there's a single label present, it will be placed at the center of the entity.
     /// Otherwise, each instance will have its own label.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub labels: Option<Vec<rerun::components::Text>>,
 
     /// Whether the text labels should be shown.
     ///
     /// If not set, labels will automatically appear when there is exactly one label for this entity
     /// or the number of instances on this entity is under a certain threshold.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub show_labels: Option<rerun::components::ShowLabels>,
 
     /// Optional [components.ClassId]s for the lines.
     ///
     /// The [components.ClassId] provides colors and labels if not specified explicitly.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub class_ids: Option<Vec<rerun::components::ClassId>>,
 }

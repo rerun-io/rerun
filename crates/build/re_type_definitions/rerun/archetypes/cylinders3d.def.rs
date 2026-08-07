@@ -19,59 +19,59 @@
 #[rust(new_pub_crate)]
 pub struct Cylinders3D {
     /// The total axial length of the cylinder, measured as the straight-line distance between the centers of its two endcaps.
-    #[rerun(component_required)]
+    #[rerun(required)]
     pub lengths: Vec<rerun::components::Length>,
 
     /// Radii of the cylinders.
-    #[rerun(component_required)]
+    #[rerun(required)]
     pub radii: Vec<rerun::components::Radius>,
 
     /// Optional centers of the cylinders.
     ///
     /// If not specified, each cylinder will be centered at (0, 0, 0).
-    #[rerun(component_recommended)]
+    #[rerun(recommended)]
     pub centers: Option<Vec<rerun::components::Translation3D>>,
 
     /// Rotations via axis + angle.
     ///
     /// If no rotation is specified, the cylinders align with the +Z axis of the local coordinate system.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub rotation_axis_angles: Option<Vec<rerun::components::RotationAxisAngle>>,
 
     /// Rotations via quaternion.
     ///
     /// If no rotation is specified, the cylinders align with the +Z axis of the local coordinate system.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub quaternions: Option<Vec<rerun::components::RotationQuat>>,
 
     /// Optional colors for the cylinders.
     ///
     /// Alpha channel is used for transparency for solid fill-mode.
-    #[rerun(component_recommended)]
+    #[rerun(recommended)]
     pub colors: Option<Vec<rerun::components::Color>>,
 
     /// Optional radii for the lines used when the cylinder is rendered as a wireframe.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub line_radii: Option<Vec<rerun::components::Radius>>,
 
     /// Optionally choose whether the cylinders are drawn with lines or solid.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub fill_mode: Option<rerun::components::FillMode>,
 
     /// Optional text labels for the cylinders, which will be located at their centers.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub labels: Option<Vec<rerun::components::Text>>,
 
     /// Whether the text labels should be shown.
     ///
     /// If not set, labels will automatically appear when there is exactly one label for this entity
     /// or the number of instances on this entity is under a certain threshold.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub show_labels: Option<rerun::components::ShowLabels>,
 
     /// Optional class ID for the ellipsoids.
     ///
     /// The class ID provides colors and labels if not specified explicitly.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub class_ids: Option<Vec<rerun::components::ClassId>>,
 }

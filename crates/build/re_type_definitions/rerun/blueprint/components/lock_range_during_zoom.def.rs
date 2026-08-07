@@ -8,7 +8,6 @@
 #[rerun(scope = "blueprint")]
 #[rust(derive(Copy, Default, PartialEq, Eq, PartialOrd, Ord))]
 #[rust(repr = "transparent")]
-#[rust(tuple_struct)]
 #[rerun(state = "unstable")]
 pub struct LockRangeDuringZoom {
     pub lock_range: rerun::datatypes::Bool,

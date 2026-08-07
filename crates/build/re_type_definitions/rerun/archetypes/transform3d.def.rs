@@ -28,48 +28,50 @@
 #[rerun(visualizer_none)]
 #[rust(derive(PartialEq))]
 pub struct Transform3D {
+    // TODO(#6743): Transforms can't be affected by blueprints which is why all components of this archetype are non-ui editable.
     /// Translation vector.
     ///
     /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_optional)]
+    #[rerun(no_ui_edit)]
+    #[rerun(optional)]
     pub translation: Option<rerun::components::Translation3D>,
 
     /// Rotation via axis + angle.
     ///
     /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_optional)]
+    #[rerun(no_ui_edit)]
+    #[rerun(optional)]
     pub rotation_axis_angle: Option<rerun::components::RotationAxisAngle>,
 
     /// Rotation via quaternion.
     ///
     /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_optional)]
+    #[rerun(no_ui_edit)]
+    #[rerun(optional)]
     pub quaternion: Option<rerun::components::RotationQuat>,
 
     /// Scaling factor.
     ///
     /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_optional)]
+    #[rerun(no_ui_edit)]
+    #[rerun(optional)]
     pub scale: Option<rerun::components::Scale3D>,
 
     /// 3x3 transformation matrix.
     ///
     /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_optional)]
+    #[rerun(no_ui_edit)]
+    #[rerun(optional)]
     pub mat3x3: Option<rerun::components::TransformMat3x3>,
 
     /// Specifies the relation this transform establishes between this entity and its parent.
     ///
     /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_optional)]
+    #[rerun(no_ui_edit)]
+    #[rerun(optional)]
     pub relation: Option<rerun::components::TransformRelation>,
 
+    // --- transform frame
     /// The child frame this transform transforms from.
     ///
     /// The entity at which the transform relationship of any given child frame is specified mustn't change over time, but is allowed to be different for static time.
@@ -82,8 +84,8 @@ pub struct Transform3D {
     /// To set the frame an entity is part of see [archetypes.CoordinateFrame].
     ///
     /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_optional)]
+    #[rerun(no_ui_edit)]
+    #[rerun(optional)]
     pub child_frame: Option<rerun::components::TransformFrameId>,
 
     /// The parent frame this transform transforms into.
@@ -94,7 +96,7 @@ pub struct Transform3D {
     /// To set the frame an entity is part of see [archetypes.CoordinateFrame].
     ///
     /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_optional)]
+    #[rerun(no_ui_edit)]
+    #[rerun(optional)]
     pub parent_frame: Option<rerun::components::TransformFrameId>,
 }

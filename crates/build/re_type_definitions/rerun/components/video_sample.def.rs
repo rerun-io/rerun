@@ -8,7 +8,6 @@
 ///
 /// Keyframes may require additional data, for details see [components.VideoCodec].
 #[rerun::rerun_type]
-#[arrow(transparent)]
 #[python(aliases = "bytes | npt.NDArray[np.uint8]")]
 #[python(array_aliases = "bytes | npt.NDArray[np.uint8]")]
 #[rust(derive(PartialEq, Eq))]

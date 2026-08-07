@@ -3,7 +3,6 @@
 
 /// The class identifier of view, e.g. `"2D"`, `"TextLog"`, ….
 #[rerun::rerun_type]
-#[arrow(transparent)]
 #[python(aliases = "str")]
 #[rerun(scope = "blueprint")]
 #[rust(derive(PartialEq, Eq, PartialOrd, Ord))]

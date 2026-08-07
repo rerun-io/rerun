@@ -20,28 +20,28 @@
 #[rust(derive(PartialEq))]
 pub struct VoxelGridMap {
     /// Indices of the voxels within the grid volume.
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_required)]
+    #[rerun(no_ui_edit)]
+    #[rerun(required)]
     pub voxel_indices: Vec<rerun::components::VoxelIndex>,
 
     /// The scene-unit dimensions of a single voxel cell.
     ///
     /// This defines the voxel size along the local grid X/Y/Z axes.
     /// Each dimension must be finite and positive.
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_required)]
+    #[rerun(no_ui_edit)]
+    #[rerun(required)]
     pub voxel_size: rerun::components::VoxelSize,
 
     /// Optional scalar occupancy or value data for each voxel.
     ///
     /// If explicit colors are not provided, values are mapped through `colormap` and `value_range`.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub values: Option<Vec<rerun::components::VoxelValue>>,
 
     /// Optional colors for each voxel.
     ///
     /// If set, these colors take precedence over color-mapped scalar values.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub colors: Option<Vec<rerun::components::Color>>,
 
     /// Translation of the minimum corner of voxel `[0, 0, 0]`.
@@ -50,8 +50,8 @@ pub struct VoxelGridMap {
     /// grid relative to the map's parent coordinate frame.
     ///
     /// If not set, the minimum corner is placed at the origin of the map's parent coordinate frame.
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_optional)]
+    #[rerun(no_ui_edit)]
+    #[rerun(optional)]
     pub translation: Option<rerun::components::Translation3D>,
 
     /// Rotation of the grid via axis + angle.
@@ -61,33 +61,33 @@ pub struct VoxelGridMap {
     ///
     /// Note: either this or [components.RotationQuat] can be set to specify the grid's rotation, but not both.
     /// If both this and [components.RotationQuat] are set, this is ignored in favor of the quaternion.
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_optional)]
+    #[rerun(no_ui_edit)]
+    #[rerun(optional)]
     pub rotation_axis_angle: Option<rerun::components::RotationAxisAngle>,
 
     /// Rotation of the grid via quaternion.
     ///
     /// Together with [components.Translation3D], this defines the pose of the grid relative to the
     /// map's parent coordinate frame.
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_optional)]
+    #[rerun(no_ui_edit)]
+    #[rerun(optional)]
     pub quaternion: Option<rerun::components::RotationQuat>,
 
     /// Opacity of the voxels after color or colormap application.
     ///
     /// Defaults to 1.0 (fully opaque).
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub opacity: Option<rerun::components::Opacity>,
 
     /// Scalar value range for color-mapping.
     ///
     /// Defaults to `[0.0, 1.0]`.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub value_range: Option<rerun::components::ValueRange>,
 
     /// Colormap to use when `values` are present and explicit `colors` are not provided.
     ///
     /// Defaults to Turbo.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub colormap: Option<rerun::components::Colormap>,
 }

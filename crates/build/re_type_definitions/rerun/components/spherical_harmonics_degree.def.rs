@@ -12,7 +12,6 @@
 ///
 /// Defaults to 3, i.e. every coefficient the data has.
 #[rerun::rerun_type]
-#[arrow(transparent)]
 #[docs(unreleased)]
 #[python(aliases = "int")]
 #[python(
@@ -21,7 +20,6 @@
 #[rerun(state = "unstable")]
 #[rust(derive(Copy, PartialEq, Eq, PartialOrd, Ord))]
 #[rust(repr = "transparent")]
-#[rust(tuple_struct)]
 pub struct SphericalHarmonicsDegree {
     pub degree: rerun::datatypes::UInt32,
 }

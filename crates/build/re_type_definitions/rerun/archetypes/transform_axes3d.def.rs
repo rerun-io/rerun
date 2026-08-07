@@ -15,10 +15,10 @@ pub struct TransformAxes3D {
     ///
     /// The length is interpreted in the local coordinate system of the transform.
     /// If the transform is scaled, the axes will be scaled accordingly.
-    #[rerun(component_required)]
+    #[rerun(required)]
     pub axis_length: rerun::components::AxisLength,
 
     /// Whether to show a text label with the corresponding frame.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub show_frame: Option<rerun::components::ShowLabels>,
 }

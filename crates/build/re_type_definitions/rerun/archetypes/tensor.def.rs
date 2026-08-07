@@ -20,8 +20,8 @@
 #[rust(derive(PartialEq))]
 pub struct Tensor {
     /// The tensor data
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_required)]
+    #[rerun(no_ui_edit)]
+    #[rerun(required)]
     pub data: rerun::components::TensorData,
 
     /// The expected range of values.
@@ -35,6 +35,6 @@ pub struct Tensor {
     /// in the contents of the tensor.
     /// E.g. if all values are positive, some bigger than 1.0 and all smaller than 255.0,
     /// the Viewer will guess that the data likely came from an 8bit image, thus assuming a range of 0-255.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub value_range: Option<rerun::components::ValueRange>,
 }

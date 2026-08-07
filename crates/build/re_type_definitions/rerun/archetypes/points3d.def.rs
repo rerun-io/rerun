@@ -19,11 +19,11 @@
 #[rust(derive(PartialEq))]
 pub struct Points3D {
     /// All the 3D positions at which the point cloud shows points.
-    #[rerun(component_required)]
+    #[rerun(required)]
     pub positions: Vec<rerun::components::Position3D>,
 
     /// Optional radii for the points, effectively turning them into circles.
-    #[rerun(component_recommended)]
+    #[rerun(recommended)]
     pub radii: Option<Vec<rerun::components::Radius>>,
 
     /// Optional colors for the points.
@@ -33,33 +33,33 @@ pub struct Points3D {
     ///
     /// By default, the alpha channel affects brightness rather than transparency.
     /// TODO(#1611): To use the alpha channel for transparency, enable the experimental "Transparent point clouds" feature flag.
-    #[rerun(component_recommended)]
+    #[rerun(recommended)]
     pub colors: Option<Vec<rerun::components::Color>>,
 
     /// Optional text labels for the points.
     ///
     /// If there's a single label present, it will be placed at the center of the entity.
     /// Otherwise, each instance will have its own label.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub labels: Option<Vec<rerun::components::Text>>,
 
     /// Whether the text labels should be shown.
     ///
     /// If not set, labels will automatically appear when there is exactly one label for this entity
     /// or the number of instances on this entity is under a certain threshold.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub show_labels: Option<rerun::components::ShowLabels>,
 
     /// How points should be shaded.
     ///
     /// If not set, points are rendered with [components.PointShading.Gradient] by default.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub point_shading: Option<rerun::components::PointShading>,
 
     /// Optional class Ids for the points.
     ///
     /// The [components.ClassId] provides colors and labels if not specified explicitly.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub class_ids: Option<Vec<rerun::components::ClassId>>,
 
     /// Optional keypoint IDs for the points, identifying them within a class.
@@ -70,6 +70,6 @@ pub struct Points3D {
     /// with `class_id`).
     /// E.g. the classification might be 'Person' and the keypoints refer to joints on a
     /// detected skeleton.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub keypoint_ids: Option<Vec<rerun::components::KeypointId>>,
 }

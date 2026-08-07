@@ -3,11 +3,9 @@
 
 /// A reference to a range of time.
 #[rerun::rerun_type]
-#[arrow(transparent)]
 #[rerun(scope = "blueprint")]
 #[rust(derive(Copy, PartialEq, Eq, PartialOrd, Ord))]
 #[rust(repr = "transparent")]
-#[rust(tuple_struct)]
 #[rerun(state = "unstable")]
 pub struct AbsoluteTimeRange {
     pub range: rerun::datatypes::AbsoluteTimeRange,

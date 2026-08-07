@@ -20,13 +20,13 @@
 #[rust(derive(PartialEq))]
 pub struct DepthImage {
     /// The raw depth image data.
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_required)]
+    #[rerun(no_ui_edit)]
+    #[rerun(required)]
     pub buffer: rerun::components::ImageBuffer,
 
     /// The format of the image.
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_required)]
+    #[rerun(no_ui_edit)]
+    #[rerun(required)]
     pub format: rerun::components::ImageFormat,
 
     /// An optional floating point value that specifies how long a meter is in the native depth units.
@@ -38,13 +38,13 @@ pub struct DepthImage {
     ///
     /// Note that the only effect on 2D views is the physical depth values shown when hovering the image.
     /// In 3D views on the other hand, this affects where the points of the point cloud are placed.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub meter: Option<rerun::components::DepthMeter>,
 
     /// Colormap to use for rendering the depth image.
     ///
     /// If not set, the depth image will be rendered using the Turbo colormap.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub colormap: Option<rerun::components::Colormap>,
 
     /// The expected range of depth values.
@@ -58,7 +58,7 @@ pub struct DepthImage {
     /// in the contents of the depth image.
     /// E.g. if all values are positive, some bigger than 1.0 and all smaller than 255.0,
     /// the Viewer will guess that the data likely came from an 8bit image, thus assuming a range of 0-255.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub depth_range: Option<rerun::components::ValueRange>,
 
     /// Scale the radii of the points in the point cloud generated from this image.
@@ -68,14 +68,14 @@ pub struct DepthImage {
     /// A fill ratio of 0.5 means that each point touches the edge of its neighbor if it has the same depth.
     ///
     /// TODO(#6744): This applies only to 3D views!
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub point_fill_ratio: Option<rerun::components::FillRatio>,
 
     /// An optional floating point value that specifies the 2D drawing order, used only if the depth image is shown as a 2D image.
     ///
     /// Objects with higher values are drawn on top of those with lower values.
     /// Defaults to `-20.0`.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub draw_order: Option<rerun::components::DrawOrder>,
 
     /// Optional filter used when a texel is magnified (displayed larger than a screen pixel) in 2D views.
@@ -83,6 +83,6 @@ pub struct DepthImage {
     /// The filter is applied to the scalar values *before* they are mapped to color via the colormap.
     ///
     /// Has no effect in 3D views.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub magnification_filter: Option<rerun::components::MagnificationFilter>,
 }

@@ -4,7 +4,7 @@ use super::ExtensionClass;
 use crate::codegen::Target;
 use crate::codegen::common::StringExt as _;
 use crate::codegen::python::{quote_doc_lines, quote_obj_docs};
-use crate::{ATTR_PYTHON_ALIASES, ATTR_RERUN_VIEW_IDENTIFIER, Object, Objects, Reporter};
+use crate::{Object, Objects, PythonAttr, Reporter, RerunAttr};
 
 pub fn code_for_view(
     reporter: &Reporter,
@@ -80,7 +80,7 @@ fn init_method(reporter: &Reporter, objects: &Objects, obj: &Object) -> String {
         // For archetypes in general this would only be confusing, but for View properties it
         // could be useful to make the annotation here shorter.
         let additional_type_annotations = property_type
-            .try_get_attr::<String>(ATTR_PYTHON_ALIASES)
+            .try_get_attr::<String>(PythonAttr::Aliases)
             .map_or(String::new(), |aliases| {
                 let mut types = String::new();
                 for alias in aliases.split(',') {
@@ -171,11 +171,11 @@ This will be addressed in <https://github.com/rerun-io/rerun/issues/6673>.
     }
     code.push_indented(1, quote_doc_lines(init_docs), 1);
 
-    let Some(identifier): Option<String> = obj.try_get_attr(ATTR_RERUN_VIEW_IDENTIFIER) else {
+    let Some(identifier): Option<String> = obj.try_get_attr(RerunAttr::ViewIdentifier) else {
         reporter.error(
             &obj.virtpath,
             &obj.fqname,
-            format!("Missing {ATTR_RERUN_VIEW_IDENTIFIER} attribute for view"),
+            format!("Missing {} attribute for view", RerunAttr::ViewIdentifier),
         );
         return code;
     };

@@ -372,7 +372,7 @@ mod doclink_translation {
             }
 
             scope = object.scope().unwrap_or_default();
-            is_unreleased = object.is_attr_set(crate::ATTR_DOCS_UNRELEASED);
+            is_unreleased = object.is_attr_set(crate::DocsAttr::Unreleased);
 
             if let Some(deprecation_summary) = object.deprecation_summary() {
                 return Err(format!(

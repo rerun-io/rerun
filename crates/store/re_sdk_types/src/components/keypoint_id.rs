@@ -39,10 +39,11 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
     Hash,
     bytemuck::Pod,
     bytemuck::Zeroable,
+    ::serde::Serialize,
+    ::serde::Deserialize,
     ::re_byte_size::SizeBytes,
 )]
 #[repr(transparent)]
-#[derive(::serde::Serialize, ::serde::Deserialize)]
 pub struct KeypointId(pub crate::datatypes::KeypointId);
 
 impl ::re_types_core::WrapperComponent for KeypointId {

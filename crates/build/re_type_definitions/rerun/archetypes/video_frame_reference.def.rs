@@ -26,7 +26,7 @@ pub struct VideoFrameReference {
     /// Timestamps are relative to the start of the video, i.e. a timestamp of 0 always corresponds to the first frame.
     /// This is oftentimes equivalent to presentation timestamps (known as PTS), but in the presence of B-frames
     /// (bidirectionally predicted frames) there may be an offset on the first presentation timestamp in the video.
-    #[rerun(component_required)]
+    #[rerun(required)]
     pub timestamp: rerun::components::VideoTimestamp,
 
     /// Optional reference to an entity with a [archetypes.AssetVideo].
@@ -38,19 +38,19 @@ pub struct VideoFrameReference {
     /// For a series of video frame references, it is recommended to specify this path only once
     /// at the beginning of the series and then rely on latest-at query semantics to
     /// keep the video reference active.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub video_reference: Option<rerun::components::EntityPath>,
 
     /// Opacity of the video, useful for layering several media.
     ///
     /// Defaults to 1.0 (fully opaque).
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub opacity: Option<rerun::components::Opacity>,
 
     /// An optional floating point value that specifies the 2D drawing order.
     ///
     /// Objects with higher values are drawn on top of those with lower values.
     /// Defaults to `-15.0`.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub draw_order: Option<rerun::components::DrawOrder>,
 }

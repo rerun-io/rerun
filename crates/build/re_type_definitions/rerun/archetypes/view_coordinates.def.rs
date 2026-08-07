@@ -24,7 +24,7 @@
 #[rust(repr = "transparent")]
 pub struct ViewCoordinates {
     /// The directions of the [x, y, z] axes.
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_required)]
+    #[rerun(no_ui_edit)]
+    #[rerun(required)]
     pub xyz: rerun::components::ViewCoordinates,
 }

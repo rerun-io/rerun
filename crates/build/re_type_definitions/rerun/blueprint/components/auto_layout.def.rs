@@ -3,12 +3,10 @@
 
 /// Whether the viewport layout is determined automatically.
 #[rerun::rerun_type]
-#[arrow(transparent)]
 #[python(aliases = "bool")]
 #[rerun(scope = "blueprint")]
 #[rust(derive(Copy))]
 #[rust(repr = "transparent")]
-#[rust(tuple_struct)]
 #[rerun(state = "unstable")]
 pub struct AutoLayout {
     pub auto_layout: rerun::datatypes::Bool,

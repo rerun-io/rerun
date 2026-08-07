@@ -3,7 +3,6 @@
 
 /// A time range on an unspecified timeline using either relative or absolute boundaries.
 #[rerun::rerun_type]
-#[arrow(transparent)]
 #[rerun(scope = "blueprint")]
 #[rust(derive(Copy, PartialEq, Eq))]
 #[rust(repr = "transparent")]

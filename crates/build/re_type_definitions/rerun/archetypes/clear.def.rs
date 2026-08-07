@@ -23,7 +23,7 @@
 #[rust(derive(PartialEq))]
 #[rust(override_crate = "re_types_core")]
 pub struct Clear {
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_required)]
+    #[rerun(no_ui_edit)]
+    #[rerun(required)]
     pub is_recursive: rerun::components::ClearIsRecursive,
 }

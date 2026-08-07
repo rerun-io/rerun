@@ -10,10 +10,10 @@ pub struct ScalarAxis {
     /// The range of the axis.
     ///
     /// If unset, the range well be automatically determined based on the queried data.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub range: Option<rerun::components::Range1D>,
 
     /// If enabled, the Y axis range will remain locked to the specified range when zooming.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub zoom_lock: Option<rerun::blueprint::components::LockRangeDuringZoom>,
 }

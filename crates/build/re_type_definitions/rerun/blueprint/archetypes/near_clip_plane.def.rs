@@ -9,6 +9,6 @@ pub struct NearClipPlane {
     /// Controls the distance to the near clip plane in 3D scene units.
     ///
     /// Content closer than this distance will not be visible.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub near_clip_plane: rerun::blueprint::components::NearClipPlane,
 }

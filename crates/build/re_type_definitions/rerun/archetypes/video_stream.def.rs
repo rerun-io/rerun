@@ -21,8 +21,8 @@ pub struct VideoStream {
     /// The codec used to encode the video chunks.
     ///
     /// This property is expected to be constant over time and is ideally logged statically once per stream.
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_required)]
+    #[rerun(no_ui_edit)]
+    #[rerun(required)]
     pub codec: rerun::components::VideoCodec,
 
     /// Video sample data (also known as "video chunk").
@@ -31,6 +31,7 @@ pub struct VideoStream {
     /// There is currently no way to log differing decoding timestamps, meaning
     /// that there is no support for B-frames.
     /// See <https://github.com/rerun-io/rerun/issues/10090> for more details.
+    // TODO(#10090): See above.
     ///
     /// Rerun chunks containing frames (i.e. bundles of sample data) may arrive out of order,
     /// but may cause the video playback in the Viewer to reset.
@@ -48,7 +49,7 @@ pub struct VideoStream {
     /// previous samples which may be required to decode an image.
     ///
     /// See [components.VideoCodec] for codec specific requirements.
-    #[rerun(component_recommended)]
+    #[rerun(recommended)]
     pub sample: Option<rerun::components::VideoSample>,
 
     /// Whether the corresponding [components.VideoSample] contains a keyframe.
@@ -60,19 +61,20 @@ pub struct VideoStream {
     /// This field is optional. It does not change how the stream itself is decoded: it is
     /// metadata that travels with the sample and can be inspected when querying the data
     /// back, for example to locate sync points or build a frame index.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub is_keyframe: Option<rerun::components::IsKeyframe>,
 
+    // TODO(#3982): add orientation.
     /// Opacity of the video stream, useful for layering several media.
     ///
     /// Defaults to 1.0 (fully opaque).
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub opacity: Option<rerun::components::Opacity>,
 
     /// An optional floating point value that specifies the 2D drawing order.
     ///
     /// Objects with higher values are drawn on top of those with lower values.
     /// Defaults to `-15.0`.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub draw_order: Option<rerun::components::DrawOrder>,
 }

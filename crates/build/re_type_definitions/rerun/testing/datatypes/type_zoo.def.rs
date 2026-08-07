@@ -1,6 +1,12 @@
 // This is a Rerun type definition for the SDK, not executable code.
 // It is parsed by `re_types_builder` to generate the Rust, Python and C++ bindings.
 
+// The "type zoo": a hand-authored menagerie of exotic type combinations
+// (nullable fields, arrays, unions, enums, transparent/nested datatypes,
+// fixed-size arrays, …) used to exercise every corner of the codegen.
+// The `components`/`archetypes` counterparts still use the historical
+// `AffixFuzzer*` names; nothing here is randomly fuzzed.
+
 #[rerun::rerun_type]
 #[rust(derive(Default, PartialEq, Eq))]
 #[rerun(state = "stable")]
@@ -68,6 +74,7 @@ pub enum NestedUnion {
     single_required(rerun::testing::datatypes::ScalarUnion) = 1,
 
     many_required(Vec<rerun::testing::datatypes::ScalarUnion>) = 2,
+    //many_optional(Option<Vec<rerun::testing::datatypes::ScalarUnion>>) = 3, // Nullable fields on unions are not supported.
 }
 
 #[rerun::rerun_type]
@@ -92,7 +99,7 @@ pub struct PrimitiveAndString {
 #[rerun(state = "stable")]
 pub enum ScalarUnion {
     degrees(f32) = 1,
-
+    //radians(Option<f32>) = 5, // Nullable fields on unions are not supported.
     craziness(Vec<rerun::testing::datatypes::MixedFields>) = 2,
 
     fixed_size_shenanigans([f32; 3]) = 3,

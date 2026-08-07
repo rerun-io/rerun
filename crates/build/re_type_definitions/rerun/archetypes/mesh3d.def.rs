@@ -25,38 +25,38 @@ pub struct Mesh3D {
     /// The positions of each vertex.
     ///
     /// If no `triangle_indices` are specified, then each triplet of positions is interpreted as a triangle.
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_required)]
+    #[rerun(no_ui_edit)]
+    #[rerun(required)]
     pub vertex_positions: Vec<rerun::components::Position3D>,
 
     /// Optional indices for the triangles that make up the mesh.
-    #[rerun(component_recommended)]
+    #[rerun(recommended)]
     pub triangle_indices: Option<Vec<rerun::components::TriangleIndices>>,
 
     /// An optional normal for each vertex.
-    #[rerun(component_recommended)]
+    #[rerun(recommended)]
     pub vertex_normals: Option<Vec<rerun::components::Vector3D>>,
 
     /// An optional color for each vertex.
     ///
     /// The alpha channel is ignored.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub vertex_colors: Option<Vec<rerun::components::Color>>,
 
     /// An optional uv texture coordinate for each vertex.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub vertex_texcoords: Option<Vec<rerun::components::Texcoord2D>>,
 
     /// A color multiplier applied to the whole mesh.
     ///
     /// Alpha channel governs the overall mesh transparency.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub albedo_factor: Option<rerun::components::AlbedoFactor>,
 
     /// Determines which faces of the mesh are rendered.
     ///
     /// The default is [components.MeshFaceRendering.DoubleSided], meaning both front and back faces are shown.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub face_rendering: Option<rerun::components::MeshFaceRendering>,
 
     /// Optional albedo texture.
@@ -67,16 +67,16 @@ pub struct Mesh3D {
     /// (meaning that the tensor must have 3 or 4 channels and use the `u8` format)
     ///
     /// The alpha channel is ignored.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub albedo_texture_buffer: Option<rerun::components::ImageBuffer>,
 
     /// The format of the `albedo_texture_buffer`, if any.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub albedo_texture_format: Option<rerun::components::ImageFormat>,
 
     /// Optional class Ids for the vertices.
     ///
     /// The [components.ClassId] provides colors and labels if not specified explicitly.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub class_ids: Option<Vec<rerun::components::ClassId>>,
 }

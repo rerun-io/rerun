@@ -2,6 +2,7 @@
 // It is parsed by `re_types_builder` to generate the Rust, Python and C++ bindings.
 
 /// Describe a component column to be selected in the dataframe view.
+// TODO(ab, jleibs): this probably needs reunification with whatever structure the data out API uses.
 #[rerun::rerun_type]
 #[python(aliases = "str")]
 #[rerun(scope = "blueprint")]
@@ -16,4 +17,5 @@ pub struct ComponentColumnSelector {
     /// This acts as the component name in the context of a given `entity_path`
     /// An example for this would be `Points3D:positions`, for the `positions` field in [archetypes.Points3D].
     pub component: rerun::datatypes::Utf8,
+    //TODO(ab, jleibs): many more fields to come (archetype, etc.)
 }

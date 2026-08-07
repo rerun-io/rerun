@@ -8,10 +8,10 @@
 #[rerun(state = "unstable")]
 pub struct VisualizerInstruction {
     /// The type of the visualizer.
-    #[rerun(component_required)]
+    #[rerun(required)]
     pub visualizer_type: rerun::blueprint::components::VisualizerType,
 
     /// The component mapping pairs.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub component_map: Option<Vec<rerun::blueprint::components::VisualizerComponentMapping>>,
 }

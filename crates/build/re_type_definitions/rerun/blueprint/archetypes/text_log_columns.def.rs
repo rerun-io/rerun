@@ -9,12 +9,12 @@ pub struct TextLogColumns {
     /// What timeline columns to show.
     ///
     /// Defaults to displaying only the active timeline.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub timeline_columns: Option<Vec<rerun::blueprint::components::TimelineColumn>>,
 
     /// All columns to be displayed.
     ///
     /// Defaults to showing all text log column kinds in the order of the enum.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub text_log_columns: Option<Vec<rerun::blueprint::components::TextLogColumn>>,
 }

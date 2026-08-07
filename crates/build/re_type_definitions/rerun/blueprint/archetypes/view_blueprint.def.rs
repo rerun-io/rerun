@@ -7,11 +7,11 @@
 #[rerun(state = "unstable")]
 pub struct ViewBlueprint {
     /// The class of the view.
-    #[rerun(component_required)]
+    #[rerun(required)]
     pub class_identifier: rerun::blueprint::components::ViewClass,
 
     /// The name of the view.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub display_name: Option<rerun::components::Name>,
 
     /// The "anchor point" of this view.
@@ -23,12 +23,12 @@ pub struct ViewBlueprint {
     /// The transform at this path forms the reference point for all scene->world transforms in this view.
     /// I.e. the position of this entity path in space forms the origin of the coordinate system in this view.
     /// Furthermore, this is the primary indicator for heuristics on what entities we show in this view.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub space_origin: Option<rerun::blueprint::components::ViewOrigin>,
 
     /// Whether this view is visible.
     ///
     /// Defaults to true if not specified.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub visible: Option<rerun::components::Visible>,
 }

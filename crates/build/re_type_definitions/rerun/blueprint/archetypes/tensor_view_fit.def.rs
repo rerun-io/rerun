@@ -9,6 +9,6 @@
 #[rerun(state = "unstable")]
 pub struct TensorViewFit {
     /// How the image is scaled to fit the view.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub scaling: Option<rerun::blueprint::components::ViewFit>,
 }

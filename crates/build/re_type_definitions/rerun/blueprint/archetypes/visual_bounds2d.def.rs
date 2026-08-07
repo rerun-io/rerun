@@ -15,6 +15,6 @@ pub struct VisualBounds2D {
     /// Controls the visible range of a 2D view.
     ///
     /// Use this to control pan & zoom of the view.
-    #[rerun(component_required)]
+    #[rerun(required)]
     pub range: rerun::blueprint::components::VisualBounds2D,
 }

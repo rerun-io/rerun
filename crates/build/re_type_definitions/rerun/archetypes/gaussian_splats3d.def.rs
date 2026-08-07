@@ -21,32 +21,32 @@
 #[rust(derive(PartialEq))]
 pub struct GaussianSplats3D {
     /// The centers (means) of the gaussians.
-    #[rerun(component_required)]
+    #[rerun(required)]
     pub centers: Vec<rerun::components::Position3D>,
 
     /// Per-axis standard deviations of the gaussians, in scene units.
-    #[rerun(component_recommended)]
+    #[rerun(recommended)]
     pub scales: Option<Vec<rerun::components::Scale3D>>,
 
     /// The orientations of the gaussians.
-    #[rerun(component_recommended)]
+    #[rerun(recommended)]
     pub quaternions: Option<Vec<rerun::components::RotationQuat>>,
 
     /// The base colors and opacities of the gaussians.
     ///
     /// The RGB part is the view-independent base color, i.e. the degree-0 (DC) term of the spherical harmonics.
     /// The alpha part is the peak opacity of the gaussian; the gaussian falloff further modulates it spatially.
-    #[rerun(component_recommended)]
+    #[rerun(recommended)]
     pub colors: Option<Vec<rerun::components::Color>>,
 
     /// Higher-order spherical harmonics coefficients for view-dependent color.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub sh_coefficients: Option<Vec<rerun::components::SphericalHarmonics3Rgb>>,
 
     /// The highest spherical harmonics degree to evaluate when rendering, 0-3.
     ///
     /// Lower values render faster; `0` disables view-dependent color entirely.
     /// If not set, defaults to 3, i.e. all coefficients present in the data are used.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub spherical_harmonics_degree: Option<rerun::components::SphericalHarmonicsDegree>,
 }

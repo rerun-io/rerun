@@ -5,7 +5,6 @@
 ///
 /// This is helpful to scale the layout, for example if long labels are involved.
 #[rerun::rerun_type]
-#[arrow(transparent)]
 #[rerun(scope = "blueprint")]
 #[rust(derive(Default, Copy, PartialEq))]
 #[rust(repr = "transparent")]

@@ -10418,6 +10418,7 @@ dependencies = [
  "re_tracing",
  "regex-lite",
  "serde",
+ "strum",
  "syn 3.0.3",
  "tempfile",
  "toml",

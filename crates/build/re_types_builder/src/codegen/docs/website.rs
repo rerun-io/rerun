@@ -318,7 +318,7 @@ fn object_page(
 }
 
 fn list_links(page: &mut String, object: &Object) {
-    let speculative_marker = if object.is_attr_set(crate::ATTR_DOCS_UNRELEASED) {
+    let speculative_marker = if object.is_attr_set(crate::DocsAttr::Unreleased) {
         "?speculative-link"
     } else {
         ""
@@ -535,7 +535,7 @@ fn write_used_by(o: &mut String, reporter: &Reporter, objects: &Objects, object:
         }
         for field in &ty.fields {
             if field.typ.fqname() == Some(object.fqname.as_str()) {
-                let is_unreleased = ty.is_attr_set(crate::ATTR_DOCS_UNRELEASED);
+                let is_unreleased = ty.is_attr_set(crate::DocsAttr::Unreleased);
                 let speculative_marker = if is_unreleased {
                     "?speculative-link"
                 } else {

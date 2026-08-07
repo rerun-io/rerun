@@ -11,12 +11,12 @@ pub struct TextDocumentFormat {
     /// Whether to use a monospace font for the document body.
     ///
     /// Defaults to disabled.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub monospace: Option<rerun::blueprint::components::Enabled>,
 
     /// Whether to wrap long lines in the document body.
     ///
     /// Defaults to enabled.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub word_wrap: Option<rerun::blueprint::components::Enabled>,
 }

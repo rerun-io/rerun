@@ -10,6 +10,7 @@
 #[rust(derive(Default, PartialEq, Eq))]
 #[rerun(state = "unstable")]
 pub struct SelectedColumns {
+    // pub row_id: rerun::datatypes::Bool, // TODO(#9921): add support for showing Row ID in UI
     /// The time columns to include
     pub time_columns: Vec<rerun::datatypes::Utf8>,
 

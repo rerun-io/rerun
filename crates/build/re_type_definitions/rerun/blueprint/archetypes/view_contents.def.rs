@@ -47,6 +47,6 @@ pub struct ViewContents {
     /// The `QueryExpression` that populates the contents for the view.
     ///
     /// They determine which entities are part of the view.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub query: Vec<rerun::blueprint::components::QueryExpression>,
 }

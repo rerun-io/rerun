@@ -3,7 +3,6 @@
 
 /// The name of a column in a table.
 #[rerun::rerun_type]
-#[arrow(transparent)]
 #[python(aliases = "str")]
 #[python(array_aliases = "str | Sequence[str]")]
 #[rerun(scope = "blueprint")]

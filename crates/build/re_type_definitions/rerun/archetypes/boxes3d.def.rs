@@ -18,58 +18,58 @@
 #[rust(new_pub_crate)]
 pub struct Boxes3D {
     /// All half-extents that make up the batch of boxes.
-    #[rerun(component_required)]
+    #[rerun(required)]
     pub half_sizes: Vec<rerun::components::HalfSize3D>,
 
     /// Optional center positions of the boxes.
     ///
     /// If not specified, the centers will be at (0, 0, 0).
-    #[rerun(component_recommended)]
+    #[rerun(recommended)]
     pub centers: Option<Vec<rerun::components::Translation3D>>,
 
     /// Rotations via axis + angle.
     ///
     /// If no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub rotation_axis_angles: Option<Vec<rerun::components::RotationAxisAngle>>,
 
     /// Rotations via quaternion.
     ///
     /// If no rotation is specified, the axes of the boxes align with the axes of the local coordinate system.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub quaternions: Option<Vec<rerun::components::RotationQuat>>,
 
     /// Optional colors for the boxes.
     ///
     /// Alpha channel is used for transparency for solid fill-mode.
-    #[rerun(component_recommended)]
+    #[rerun(recommended)]
     pub colors: Option<Vec<rerun::components::Color>>,
 
     /// Optional radii for the lines that make up the boxes.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub radii: Option<Vec<rerun::components::Radius>>,
 
     /// Optionally choose whether the boxes are drawn with lines or solid.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub fill_mode: Option<rerun::components::FillMode>,
 
     /// Optional text labels for the boxes.
     ///
     /// If there's a single label present, it will be placed at the center of the entity.
     /// Otherwise, each instance will have its own label.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub labels: Option<Vec<rerun::components::Text>>,
 
     /// Whether the text labels should be shown.
     ///
     /// If not set, labels will automatically appear when there is exactly one label for this entity
     /// or the number of instances on this entity is under a certain threshold.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub show_labels: Option<rerun::components::ShowLabels>,
 
     /// Optional [components.ClassId]s for the boxes.
     ///
     /// The [components.ClassId] provides colors and labels if not specified explicitly.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub class_ids: Option<Vec<rerun::components::ClassId>>,
 }

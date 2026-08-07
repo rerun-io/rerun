@@ -15,18 +15,18 @@
 #[rust(derive(PartialEq))]
 pub struct GridMap {
     /// The raw grid data.
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_required)]
+    #[rerun(no_ui_edit)]
+    #[rerun(required)]
     pub data: rerun::components::ImageBuffer,
 
     /// The format of the grid's image data.
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_required)]
+    #[rerun(no_ui_edit)]
+    #[rerun(required)]
     pub format: rerun::components::ImageFormat,
 
     /// The scene unit size of a single grid cell (e.g. m / pixel).
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_required)]
+    #[rerun(no_ui_edit)]
+    #[rerun(required)]
     pub cell_size: rerun::components::CellSize,
 
     /// Translation of the lower-left corner of the grid map in space.
@@ -35,8 +35,8 @@ pub struct GridMap {
     /// lower-left image corner relative to the map's parent coordinate frame.
     ///
     /// If not set, the lower-left image corner is placed at origin of the map's parent coordinate frame.
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_optional)]
+    #[rerun(no_ui_edit)]
+    #[rerun(optional)]
     pub translation: Option<rerun::components::Translation3D>,
 
     /// Rotation of the lower-left corner of the grid map in space via axis + angle.
@@ -46,34 +46,34 @@ pub struct GridMap {
     ///
     /// Note: either this or [components.RotationQuat] can be set to specify the grid map's rotation, but not both.
     /// If both this and [components.RotationQuat] are set, this is ignored in favor of the quaternion.
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_optional)]
+    #[rerun(no_ui_edit)]
+    #[rerun(optional)]
     pub rotation_axis_angle: Option<rerun::components::RotationAxisAngle>,
 
     /// Rotation of the lower-left corner of the grid map in space via quaternion.
     ///
     /// Together with [components.Translation3D], this defines the pose of the
     /// lower-left image corner relative to the map's parent coordinate frame.
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_optional)]
+    #[rerun(no_ui_edit)]
+    #[rerun(optional)]
     pub quaternion: Option<rerun::components::RotationQuat>,
 
     /// Opacity of the grid map texture after all image decoding and colormap application.
     ///
     /// Defaults to 1.0 (fully opaque).
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub opacity: Option<rerun::components::Opacity>,
 
     /// Optional draw order for layering multiple grid maps that overlap in space.
     ///
     /// Higher values are drawn on top of lower values.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub draw_order: Option<rerun::components::DrawOrder>,
 
     /// Colormap to use for rendering single-channel grid maps.
     ///
     /// If not set, the grid map is shown using the underlying [components.ImageFormat]
     /// interpretation.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub colormap: Option<rerun::components::Colormap>,
 }

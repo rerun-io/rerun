@@ -11,12 +11,12 @@ pub struct PlotLegend {
     /// To what corner the legend is aligned.
     ///
     /// Defaults to the right bottom corner.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub corner: Option<rerun::blueprint::components::Corner2D>,
 
     /// Whether the legend is shown at all.
     ///
     /// True by default.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub visible: Option<rerun::components::Visible>,
 }

@@ -9,6 +9,6 @@ pub struct TextLogRows {
     /// Log levels to display.
     ///
     /// Defaults to showing all logged levels.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub filter_by_log_level: Option<Vec<rerun::components::TextLogLevel>>,
 }

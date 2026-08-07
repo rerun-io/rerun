@@ -23,16 +23,16 @@ pub struct McapSchema {
     ///
     /// Schema IDs must be unique within an MCAP file and are referenced by channels
     /// to specify their message structure. A single schema can be shared across multiple channels.
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_required)]
+    #[rerun(no_ui_edit)]
+    #[rerun(required)]
     pub id: rerun::components::SchemaId,
 
     /// Human-readable name identifying this schema.
     ///
     /// Schema names typically describe the message type or data structure
     /// (e.g., `"geometry_msgs/msg/Twist"`, `"sensor_msgs/msg/Image"`, `"MyCustomMessage"`).
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_required)]
+    #[rerun(no_ui_edit)]
+    #[rerun(required)]
     pub name: rerun::components::Text,
 
     /// The schema definition format used to describe the message structure.
@@ -43,8 +43,8 @@ pub struct McapSchema {
     /// * `ros2msg` - [ROS2](https://mcap.dev/spec/registry#ros2msg) message definition format
     /// * `jsonschema` - [JSON Schema](https://mcap.dev/spec/registry#jsonschema) specification
     /// * `flatbuffer` - [FlatBuffers](https://mcap.dev/spec/registry#flatbuffer) schema definition
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_required)]
+    #[rerun(no_ui_edit)]
+    #[rerun(required)]
     pub encoding: rerun::components::Text,
 
     /// The schema definition content as binary data.
@@ -53,7 +53,7 @@ pub struct McapSchema {
     /// `encoding` field. For text-based schemas (like ROS message definitions or JSON Schema),
     /// this is typically UTF-8 encoded text. For binary schema formats, this contains
     /// the serialized schema data.
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_required)]
+    #[rerun(no_ui_edit)]
+    #[rerun(required)]
     pub data: rerun::components::Blob,
 }

@@ -17,8 +17,8 @@
 #[rust(derive(PartialEq))]
 pub struct Asset3D {
     /// The asset's bytes.
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_required)]
+    #[rerun(no_ui_edit)]
+    #[rerun(required)]
     pub blob: rerun::components::Blob,
 
     /// The Media Type of the asset.
@@ -31,13 +31,13 @@ pub struct Asset3D {
     ///
     /// If omitted, the viewer will try to guess from the data blob.
     /// If it cannot guess, it won't be able to render the asset.
-    #[rerun(component_recommended)]
+    #[rerun(recommended)]
     pub media_type: Option<rerun::components::MediaType>,
 
     /// A color multiplier applied to the whole asset.
     ///
     /// For mesh who already have `albedo_factor` in materials,
     /// it will be overwritten by actual `albedo_factor` of [archetypes.Asset3D] (if specified).
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub albedo_factor: Option<rerun::components::AlbedoFactor>,
 }

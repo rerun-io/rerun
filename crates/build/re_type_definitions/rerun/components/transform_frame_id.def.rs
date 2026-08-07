@@ -11,7 +11,6 @@
 /// describes a relationship between these parent and child transform frames, **not** the transform frame
 /// that the entity path may be using (defined by an [archetypes.CoordinateFrame]).
 #[rerun::rerun_type]
-#[arrow(transparent)]
 #[python(aliases = "str")]
 #[python(array_aliases = "str, Sequence[str]")]
 #[rerun(state = "stable")]

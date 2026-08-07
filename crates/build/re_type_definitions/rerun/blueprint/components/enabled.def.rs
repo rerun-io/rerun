@@ -3,12 +3,10 @@
 
 /// Whether a procedure is enabled.
 #[rerun::rerun_type]
-#[arrow(transparent)]
 #[python(aliases = "bool")]
 #[rerun(scope = "blueprint")]
 #[rust(derive(Copy, Default, PartialEq, Eq, PartialOrd, Ord))]
 #[rust(repr = "transparent")]
-#[rust(tuple_struct)]
 #[rerun(state = "unstable")]
 pub struct Enabled {
     pub visible: rerun::datatypes::Bool,

@@ -3,12 +3,10 @@
 
 /// A reference to a time.
 #[rerun::rerun_type]
-#[arrow(transparent)]
 #[python(aliases = "long")]
 #[rerun(scope = "blueprint")]
 #[rust(derive(Copy, PartialEq, Eq, PartialOrd, Ord))]
 #[rust(repr = "transparent")]
-#[rust(tuple_struct)]
 #[rerun(state = "unstable")]
 pub struct TimeInt {
     pub time: rerun::datatypes::TimeInt,

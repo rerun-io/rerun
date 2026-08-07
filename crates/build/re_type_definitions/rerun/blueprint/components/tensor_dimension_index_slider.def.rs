@@ -3,7 +3,6 @@
 
 /// Show a slider for the index of some dimension of a slider.
 #[rerun::rerun_type]
-#[arrow(transparent)]
 #[rerun(scope = "blueprint")]
 #[rust(derive(Hash, PartialEq, Eq, Default))]
 #[rust(repr = "transparent")]

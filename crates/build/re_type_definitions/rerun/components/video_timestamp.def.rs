@@ -3,7 +3,6 @@
 
 /// Timestamp inside a [archetypes.AssetVideo].
 #[rerun::rerun_type]
-#[arrow(transparent)]
 #[python(array_aliases = "npt.NDArray[np.int64]")]
 #[rerun(state = "stable")]
 #[rust(derive(Copy, PartialEq, Eq, Default))]

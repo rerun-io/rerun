@@ -15,21 +15,23 @@
 #[rust(new_pub_crate)]
 pub struct GeoLineStrings {
     /// The line strings, expressed in [EPSG:4326](https://epsg.io/4326) coordinates (North/East-positive degrees).
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_required)]
+    #[rerun(no_ui_edit)]
+    #[rerun(required)]
     pub line_strings: Vec<rerun::components::GeoLineString>,
 
     /// Optional radii for the line strings.
     ///
     /// *Note*: scene units radiii are interpreted as meters. Currently, the display scale only considers the latitude of
     /// the first vertex of each line string (see [this issue](https://github.com/rerun-io/rerun/issues/8013)).
-    #[rerun(component_recommended)]
+    #[rerun(recommended)]
     pub radii: Option<Vec<rerun::components::Radius>>,
 
     /// Optional colors for the line strings.
     ///
     /// \py The colors are interpreted as RGB or RGBA in sRGB gamma-space,
     /// \py As either 0-1 floats or 0-255 integers, with separate alpha.
-    #[rerun(component_recommended)]
+    #[rerun(recommended)]
     pub colors: Option<Vec<rerun::components::Color>>,
+    //TODO(ab): add `Label` and  `ShowLabels` components
+    //TODO(ab): add `Altitude` component
 }

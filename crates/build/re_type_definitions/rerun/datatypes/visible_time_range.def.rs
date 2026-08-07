@@ -8,6 +8,7 @@
 #[rerun(state = "stable")]
 pub struct TimeRange {
     /// Low time boundary for sequence timeline.
+    // Can't call it `from` because it's a reserved keyword in Python.
     pub start: rerun::datatypes::TimeRangeBoundary,
 
     /// High time boundary for sequence timeline.

@@ -12,16 +12,16 @@
 #[rust(derive(PartialEq))]
 pub struct TextLog {
     /// The body of the message.
-    #[rerun(component_required)]
+    #[rerun(required)]
     pub text: rerun::components::Text,
 
     /// The verbosity level of the message.
     ///
     /// This can be used to filter the log messages in the Rerun Viewer.
-    #[rerun(component_recommended)]
+    #[rerun(recommended)]
     pub level: Option<rerun::components::TextLogLevel>,
 
     /// Optional color to use for the log line in the Rerun Viewer.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub color: Option<rerun::components::Color>,
 }

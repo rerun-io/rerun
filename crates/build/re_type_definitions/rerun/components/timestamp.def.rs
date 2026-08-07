@@ -5,7 +5,6 @@
 ///
 /// Should be an absolute time, i.e. relative to Unix Epoch.
 #[rerun::rerun_type]
-#[arrow(transparent)]
 #[python(array_aliases = "npt.NDArray[np.int64]")]
 #[rerun(state = "stable")]
 #[rust(derive(Copy, PartialEq, Eq, PartialOrd, Ord))]

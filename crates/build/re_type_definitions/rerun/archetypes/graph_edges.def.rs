@@ -15,13 +15,13 @@
 #[rust(derive(PartialEq))]
 pub struct GraphEdges {
     /// A list of node tuples.
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_required)]
+    #[rerun(no_ui_edit)]
+    #[rerun(required)]
     pub edges: Vec<rerun::components::GraphEdge>,
 
     /// Specifies if the graph is directed or undirected.
     ///
     /// If no [components.GraphType] is provided, the graph is assumed to be undirected.
-    #[rerun(component_recommended)]
+    #[rerun(recommended)]
     pub graph_type: Option<rerun::components::GraphType>,
 }

@@ -13,25 +13,27 @@
 #[rust(new_pub_crate)]
 pub struct GeoPoints {
     /// The [EPSG:4326](https://epsg.io/4326) coordinates for the points (North/East-positive degrees).
-    #[rerun(component_required)]
+    #[rerun(required)]
     pub positions: Vec<rerun::components::LatLon>,
 
     /// Optional radii for the points, effectively turning them into circles.
     ///
     /// *Note*: scene units radiii are interpreted as meters.
-    #[rerun(component_recommended)]
+    #[rerun(recommended)]
     pub radii: Option<Vec<rerun::components::Radius>>,
 
     /// Optional colors for the points.
     ///
     /// \py The colors are interpreted as RGB or RGBA in sRGB gamma-space,
     /// \py As either 0-1 floats or 0-255 integers, with separate alpha.
-    #[rerun(component_recommended)]
+    #[rerun(recommended)]
     pub colors: Option<Vec<rerun::components::Color>>,
 
     /// Optional class Ids for the points.
     ///
     /// The [components.ClassId] provides colors if not specified explicitly.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub class_ids: Option<Vec<rerun::components::ClassId>>,
+    //TODO(ab): add `Label` and  `ShowLabels` components
+    //TODO(ab): add `Altitude` component
 }

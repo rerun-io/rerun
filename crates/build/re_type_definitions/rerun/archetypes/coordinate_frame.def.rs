@@ -20,7 +20,7 @@ pub struct CoordinateFrame {
     /// The coordinate frame to use for the current entity.
     ///
     /// Note that empty strings are not valid transform frame IDs.
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_required)]
+    #[rerun(no_ui_edit)]
+    #[rerun(required)]
     pub frame: rerun::components::TransformFrameId,
 }

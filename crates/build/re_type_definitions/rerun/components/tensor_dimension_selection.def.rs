@@ -3,7 +3,6 @@
 
 /// Specifies a concrete index on a tensor dimension.
 #[rerun::rerun_type]
-#[arrow(transparent)]
 #[rust(derive(Hash, Copy, PartialEq, Eq, Default))]
 #[rust(repr = "transparent")]
 #[rerun(state = "stable")]
@@ -13,7 +12,6 @@ pub struct TensorDimensionIndexSelection {
 
 /// Specifies which dimension to use for height.
 #[rerun::rerun_type]
-#[arrow(transparent)]
 #[rust(derive(Hash, Copy, PartialEq, Eq, Default))]
 #[rust(repr = "transparent")]
 #[rerun(state = "stable")]
@@ -23,7 +21,6 @@ pub struct TensorHeightDimension {
 
 /// Specifies which dimension to use for width.
 #[rerun::rerun_type]
-#[arrow(transparent)]
 #[rust(derive(Hash, Copy, PartialEq, Eq, Default))]
 #[rust(repr = "transparent")]
 #[rerun(state = "stable")]

@@ -9,6 +9,6 @@ pub struct TextLogFormat {
     /// Whether to use a monospace font for the log message body.
     ///
     /// Defaults to not being enabled.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub monospace_body: Option<rerun::blueprint::components::Enabled>,
 }

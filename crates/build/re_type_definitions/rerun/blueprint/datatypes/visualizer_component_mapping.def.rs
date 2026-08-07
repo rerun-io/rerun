@@ -13,6 +13,7 @@ pub enum ComponentSourceKind {
     ///
     /// If the source component is not found on the entity,
     /// a heuristically determined value will be used instead.
+    // TODO(andreas): this should probably be an error instead (unlike in override/default)?
     SourceComponent = 1,
 
     /// Use a timeless override value that is defined in the blueprint.
@@ -50,6 +51,7 @@ pub struct VisualizerComponentMapping {
     /// Component selector for mapping.
     ///
     /// Defaults to `target` if not specified.
+    // Uses `String` instead of `Utf8` to allow nulls.
     pub source_component: Option<String>,
 
     /// Optional selector string using jq-like syntax to pick a specific field on `source_component`.
@@ -57,5 +59,14 @@ pub struct VisualizerComponentMapping {
     /// Example: ".x" picks a field called "x" from the `source_component` if present.
     ///
     /// Defaults to empty string if not specified.
+    // Uses `String` instead of `Utf8` to allow nulls.
     pub selector: Option<String>,
+    // Motivation for separating `source_component` and `selector`:
+    // Component names may have dots in them, making parsing hard.
+    // Example:
+    // * component name: "andreas.position"  (where the selector is empty!)
+    // * component query: "andreas.position.x" (where "x" is the selector)
+    //
+    // Counter argument:
+    // May cause some UI complexity because we have now to make the distinction there on the fly.
 }

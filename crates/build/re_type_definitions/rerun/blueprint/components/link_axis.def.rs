@@ -7,7 +7,6 @@
 #[rerun(scope = "blueprint")]
 #[rust(derive(Copy, Default, PartialEq, Eq, PartialOrd, Ord))]
 #[rust(repr = "transparent")]
-#[rust(tuple_struct)]
 #[rerun(state = "stable")]
 pub enum LinkAxis {
     /// The axis is independent from all other plots.

@@ -9,16 +9,16 @@ pub struct ForceLink {
     /// Whether the link force is enabled.
     ///
     /// The link force aims to achieve a target distance between two nodes that are connected by one ore more edges.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub enabled: Option<rerun::blueprint::components::Enabled>,
 
     /// The target distance between two nodes.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub distance: Option<rerun::blueprint::components::ForceDistance>,
 
     /// Specifies how often this force should be applied per iteration.
     ///
     /// Increasing this parameter can lead to better results at the cost of longer computation time.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub iterations: Option<rerun::blueprint::components::ForceIterations>,
 }

@@ -11,5 +11,6 @@ pub struct IncludedContent {
     ///
     /// This must be a path in the blueprint store.
     /// Typically structure as `<blueprint_registry>/<uuid>`.
+    // TODO(jleibs): Maybe make this a typed UUID in the future.
     pub contents: rerun::datatypes::EntityPath,
 }

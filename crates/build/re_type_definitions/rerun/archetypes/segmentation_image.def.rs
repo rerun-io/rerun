@@ -24,25 +24,25 @@
 #[rust(derive(PartialEq))]
 pub struct SegmentationImage {
     /// The raw image data.
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_required)]
+    #[rerun(no_ui_edit)]
+    #[rerun(required)]
     pub buffer: rerun::components::ImageBuffer,
 
     /// The format of the image.
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_required)]
+    #[rerun(no_ui_edit)]
+    #[rerun(required)]
     pub format: rerun::components::ImageFormat,
 
     /// Opacity of the image, useful for layering the segmentation image on top of another image.
     ///
     /// Defaults to 0.5 if there's any other images in the scene, otherwise 1.0.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub opacity: Option<rerun::components::Opacity>,
 
     /// An optional floating point value that specifies the 2D drawing order.
     ///
     /// Objects with higher values are drawn on top of those with lower values.
     /// Defaults to `0.0`.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub draw_order: Option<rerun::components::DrawOrder>,
 }

@@ -31,28 +31,29 @@
 #[rerun(visualizer_none)]
 #[rust(derive(PartialEq))]
 pub struct InstancePoses3D {
+    // TODO(#6743): Transforms can't be affected by blueprints which is why all components of this archetype are non-ui editable.
     /// Translation vectors.
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_optional)]
+    #[rerun(no_ui_edit)]
+    #[rerun(optional)]
     pub translations: Option<Vec<rerun::components::Translation3D>>,
 
     /// Rotations via axis + angle.
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_optional)]
+    #[rerun(no_ui_edit)]
+    #[rerun(optional)]
     pub rotation_axis_angles: Option<Vec<rerun::components::RotationAxisAngle>>,
 
     /// Rotations via quaternion.
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_optional)]
+    #[rerun(no_ui_edit)]
+    #[rerun(optional)]
     pub quaternions: Option<Vec<rerun::components::RotationQuat>>,
 
     /// Scaling factors.
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_optional)]
+    #[rerun(no_ui_edit)]
+    #[rerun(optional)]
     pub scales: Option<Vec<rerun::components::Scale3D>>,
 
     /// 3x3 transformation matrices.
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_optional)]
+    #[rerun(no_ui_edit)]
+    #[rerun(optional)]
     pub mat3x3: Option<Vec<rerun::components::TransformMat3x3>>,
 }

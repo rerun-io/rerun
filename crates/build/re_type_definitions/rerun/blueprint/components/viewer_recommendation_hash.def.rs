@@ -5,7 +5,6 @@
 ///
 /// The formation of this hash is considered an internal implementation detail of the viewer.
 #[rerun::rerun_type]
-#[arrow(transparent)]
 #[python(aliases = "str")]
 #[rerun(scope = "blueprint")]
 #[rust(derive(PartialEq, Eq, PartialOrd, Ord))]

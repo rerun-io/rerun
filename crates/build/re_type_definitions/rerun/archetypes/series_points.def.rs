@@ -17,22 +17,29 @@
 #[rerun(state = "stable")]
 #[rerun(visualizer = "SeriesPoints")]
 pub struct SeriesPoints {
+    // TODO(#8368): Once it's trivial to override how scalars for a plot are sourced,
+    // we should make it explicit that the `SeriesLines`/`SeriesPoints` visualizers require
+    // scalars as an input.
+    // Doing so right now would break the model of how time series logging works too much:
+    // This is a case where we want to encourage data <-> styling separation more than elsewhere,
+    // so it's important to make keeping it separate easy.
+    //pub scalars: Vec<rerun::components::Scalar>,
     /// Color for the corresponding series.
     ///
     /// May change over time, but can cause discontinuities in the line.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub colors: Option<Vec<rerun::components::Color>>,
 
     /// What shape to use to represent the point
     ///
     /// May change over time.
-    #[rerun(component_required)]
+    #[rerun(required)]
     pub markers: Option<Vec<rerun::components::MarkerShape>>,
 
     /// Display name of the series.
     ///
     /// Used in the legend. Expected to be unchanging over time.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub names: Option<Vec<rerun::components::Name>>,
 
     /// Which lines are visible.
@@ -42,12 +49,12 @@ pub struct SeriesPoints {
     /// via this property will still be visible in the legend.
     ///
     /// May change over time.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub visible_series: Option<Vec<rerun::components::Visible>>,
 
     /// Sizes of the markers.
     ///
     /// May change over time.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub marker_sizes: Option<Vec<rerun::components::MarkerSize>>,
 }

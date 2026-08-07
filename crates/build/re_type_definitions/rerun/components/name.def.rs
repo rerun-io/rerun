@@ -3,7 +3,6 @@
 
 /// A display name, typically for an entity or a item like a plot series.
 #[rerun::rerun_type]
-#[arrow(transparent)]
 #[python(aliases = "str")]
 #[python(array_aliases = "str | Sequence[str]")]
 #[rerun(state = "stable")]

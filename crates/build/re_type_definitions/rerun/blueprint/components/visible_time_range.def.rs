@@ -5,7 +5,6 @@
 ///
 /// Refer to `VisibleTimeRanges` archetype for more information.
 #[rerun::rerun_type]
-#[arrow(transparent)]
 #[rerun(scope = "blueprint")]
 #[rust(derive(Default, PartialEq, Eq))]
 #[rust(repr = "transparent")]

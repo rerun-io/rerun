@@ -1,6 +1,11 @@
 // This is a Rerun type definition for the SDK, not executable code.
 // It is parsed by `re_types_builder` to generate the Rust, Python and C++ bindings.
 
+// The "type zoo": a hand-authored menagerie of exotic type combinations
+// (nullable fields, arrays, unions, enums, transparent/nested datatypes,
+// fixed-size arrays, …) used to exercise every corner of the codegen.
+// Despite the `AffixFuzzer*` names, nothing here is randomly fuzzed.
+
 #[rerun::rerun_type]
 #[rust(derive(Default, PartialEq))]
 #[rerun(state = "stable")]
@@ -80,7 +85,6 @@ pub struct AffixFuzzer19 {
 
 #[rerun::rerun_type]
 #[rust(derive(Default, PartialEq))]
-#[rust(tuple_struct)]
 #[rerun(state = "stable")]
 pub struct AffixFuzzer2 {
     pub single_required: rerun::testing::datatypes::MixedFields,
@@ -130,7 +134,6 @@ pub struct AffixFuzzer4 {
 
 #[rerun::rerun_type]
 #[rust(derive(Default, PartialEq))]
-#[rust(tuple_struct)]
 #[rerun(state = "stable")]
 pub struct AffixFuzzer5 {
     pub single_optional: Option<rerun::testing::datatypes::MixedFields>,
@@ -167,8 +170,14 @@ pub struct AffixFuzzer9 {
 #[rerun::rerun_type]
 #[rust(derive(Default, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable))]
 #[rust(repr = "transparent")]
-#[rust(tuple_struct)]
 #[rerun(state = "stable")]
 pub struct ManyVec3 {
     pub nested_array_of_structs: rerun::testing::datatypes::ManyVec3,
 }
+
+// TODO(cmc): the ugly bug we need to take care of at some point
+// #[rerun::rerun_type]
+// #[rust(derive(Default, PartialEq))]
+// pub struct AffixFuzzer14 {
+//     pub many_transparent_optionals: Option<rerun::testing::datatypes::TransparentOptionalFloat>,
+// }

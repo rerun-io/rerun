@@ -6,7 +6,7 @@ use anyhow::Context as _;
 
 use crate::data_type::{AtomicDataType, DataType, LazyDatatype, LazyField, UnionMode};
 use crate::objects::EnumIntegerType;
-use crate::{ATTR_ARROW_SPARSE_UNION, ElementType, Object, ObjectField, Type};
+use crate::{ArrowAttr, ElementType, Object, ObjectField, Type};
 
 // --- Registry ---
 
@@ -105,7 +105,7 @@ impl TypeRegistry {
                 datatype: LazyDatatype::Atomic(datatype).into(),
             }
         } else {
-            let is_sparse = obj.is_attr_set(ATTR_ARROW_SPARSE_UNION);
+            let is_sparse = obj.is_attr_set(ArrowAttr::SparseUnion);
             let union_mode = if is_sparse {
                 UnionMode::Sparse
             } else {

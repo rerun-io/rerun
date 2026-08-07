@@ -23,9 +23,8 @@ use crate::codegen::autogen_warning;
 use crate::codegen::common::collect_snippets_for_api_docs;
 use crate::objects::{EnumIntegerType, ObjectClass};
 use crate::{
-    ATTR_CPP_NO_DEFAULT_CTOR, ATTR_CPP_NO_FIELD_CTORS, ATTR_CPP_RENAME_FIELD, Docs, ElementType,
-    GeneratedFiles, Object, ObjectField, ObjectKind, Objects, Reporter, Type, TypeRegistry,
-    format_path,
+    CppAttr, Docs, ElementType, GeneratedFiles, Object, ObjectField, ObjectKind, Objects, Reporter,
+    Type, TypeRegistry, format_path,
 };
 
 type Result<T = (), E = anyhow::Error> = std::result::Result<T, E>;
@@ -485,7 +484,7 @@ impl QuotedObject {
             .collect_vec();
 
         // Constructors with all required components.
-        if !required_component_fields.is_empty() && !obj.is_attr_set(ATTR_CPP_NO_FIELD_CTORS) {
+        if !required_component_fields.is_empty() && !obj.is_attr_set(CppAttr::NoFieldCtors) {
             let (parameters, assignments): (Vec<_>, Vec<_>) = required_component_fields
                 .iter()
                 .map(|obj_field| {
@@ -762,7 +761,7 @@ impl QuotedObject {
                 obj.is_deprecated() || has_any_deprecated_fields,
             );
 
-        let default_ctor = if obj.is_attr_set(ATTR_CPP_NO_DEFAULT_CTOR) {
+        let default_ctor = if obj.is_attr_set(CppAttr::NoDefaultCtor) {
             quote! {}
         } else {
             quote! { #archetype_type_ident() = default; }
@@ -895,7 +894,7 @@ impl QuotedObject {
 
         let mut methods = Vec::new();
 
-        if obj.fields.len() == 1 && !obj.is_attr_set(ATTR_CPP_NO_FIELD_CTORS) {
+        if obj.fields.len() == 1 && !obj.is_attr_set(CppAttr::NoFieldCtors) {
             methods.extend(single_field_constructor_methods(
                 obj,
                 &mut hpp_includes,
@@ -1079,7 +1078,7 @@ impl QuotedObject {
 
         let mut methods = Vec::new();
 
-        if !obj.is_attr_set(ATTR_CPP_NO_FIELD_CTORS) {
+        if !obj.is_attr_set(CppAttr::NoFieldCtors) {
             if are_types_disjoint(&obj.fields) {
                 // Implicit construct from the different variant types:
                 for obj_field in &obj.fields {
@@ -1523,7 +1522,7 @@ impl QuotedObject {
 }
 
 fn field_name(obj_field: &ObjectField) -> String {
-    if let Some(name) = obj_field.try_get_attr::<String>(ATTR_CPP_RENAME_FIELD) {
+    if let Some(name) = obj_field.try_get_attr::<String>(CppAttr::RenameField) {
         name
     } else {
         obj_field.name.clone()
@@ -1555,8 +1554,7 @@ fn single_field_constructor_methods(
     } = &field.typ
     {
         let field_type_obj = &objects[field_type_fqname];
-        if field_type_obj.fields.len() == 1 && !field_type_obj.is_attr_set(ATTR_CPP_NO_FIELD_CTORS)
-        {
+        if field_type_obj.fields.len() == 1 && !field_type_obj.is_attr_set(CppAttr::NoFieldCtors) {
             methods.extend(add_copy_assignment_and_constructor(
                 hpp_includes,
                 &field_type_obj.fields[0],

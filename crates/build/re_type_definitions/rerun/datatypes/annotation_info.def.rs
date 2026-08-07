@@ -11,6 +11,7 @@
 #[rerun(state = "stable")]
 pub struct AnnotationInfo {
     /// [datatypes.ClassId] or [datatypes.KeypointId] to which this annotation info belongs.
+    // TODO(jleibs): make this typed
     pub id: u16,
 
     /// The label that will be shown in the UI.

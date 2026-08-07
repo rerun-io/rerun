@@ -24,7 +24,8 @@
 #[rust(derive(PartialEq))]
 pub struct Scalars {
     /// The scalar values to log.
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_required)]
+    #[rerun(no_ui_edit)]
+    #[rerun(required)]
     pub scalars: Vec<rerun::components::Scalar>,
+    // TODO(#1289): Support labeling points.
 }

@@ -11,4 +11,7 @@
 pub struct TensorDimensionIndexSlider {
     /// The dimension number.
     pub dimension: u32,
+    // TODO(andreas): Range of the slider?
+    // Full Range if not specified.
+    //pub range: Option<[u32; 2]>,
 }

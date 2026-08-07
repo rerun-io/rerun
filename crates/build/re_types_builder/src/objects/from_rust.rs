@@ -42,8 +42,8 @@ use camino::{Utf8Path, Utf8PathBuf};
 use syn::spanned::Spanned;
 
 use crate::{
-    ATTR_RERUN_STATE, Docs, ElementType, Object, ObjectClass, ObjectField, ObjectKind, Objects,
-    Reporter, Type,
+    Attribute, Docs, ElementType, Object, ObjectClass, ObjectField, ObjectKind, Objects, Reporter,
+    RerunAttr, Type,
 };
 
 use super::{Attributes, EnumIntegerType, State};
@@ -99,7 +99,7 @@ impl Objects {
             }
         }
 
-        this.resolve_and_validate(reporter);
+        this.validate(reporter);
 
         this
     }
@@ -315,8 +315,7 @@ impl Parser<'_> {
             syn::Fields::Named(fields) => fields
                 .named
                 .iter()
-                .enumerate()
-                .filter_map(|(index, field)| self.parse_struct_field(&fqname, index, field).ok())
+                .filter_map(|field| self.parse_struct_field(&fqname, field).ok())
                 .collect(),
 
             // A tuple struct's single field is unnamed in Rust, but Arrow needs a name for it,
@@ -333,10 +332,7 @@ impl Parser<'_> {
                 fields
                     .unnamed
                     .iter()
-                    .enumerate()
-                    .filter_map(|(index, field)| {
-                        self.parse_struct_field(&fqname, index, field).ok()
-                    })
+                    .filter_map(|field| self.parse_struct_field(&fqname, field).ok())
                     .collect()
             }
 
@@ -373,10 +369,7 @@ impl Parser<'_> {
         let fields = item
             .variants
             .iter()
-            .enumerate()
-            .filter_map(|(index, variant)| {
-                self.parse_enum_variant(&fqname, index, variant, class).ok()
-            })
+            .filter_map(|variant| self.parse_enum_variant(&fqname, variant, class).ok())
             .collect();
 
         self.make_object(
@@ -431,7 +424,7 @@ impl Parser<'_> {
         kind: ObjectKind,
         span: proc_macro2::Span,
     ) -> State {
-        if attrs.has(ATTR_RERUN_STATE) {
+        if attrs.has(RerunAttr::State) {
             return State::from_attrs(attrs).unwrap_or_else(|err| {
                 self.error(span, err);
                 State::Stable
@@ -439,7 +432,7 @@ impl Parser<'_> {
         }
 
         let scope = attrs
-            .get_string(crate::ATTR_RERUN_SCOPE)
+            .get_string(crate::RerunAttr::Scope)
             .or_else(|| (kind == ObjectKind::View).then(|| "blueprint".to_owned()));
 
         if super::is_testing_fqname(fqname) {
@@ -452,7 +445,7 @@ impl Parser<'_> {
                 // TODO(#9427): make the `attr.rerun.state` attribute mandatory
                 ObjectKind::Datatype | ObjectKind::Component => State::Stable,
                 ObjectKind::Archetype => {
-                    self.error(span, format!("Missing attribute '{ATTR_RERUN_STATE}'"));
+                    self.error(span, format!("Missing attribute `{}`", RerunAttr::State));
                     State::Stable
                 }
                 ObjectKind::View => State::Unstable,
@@ -463,12 +456,7 @@ impl Parser<'_> {
     // --- Fields ---
 
     /// One member of a struct, named or not.
-    fn parse_struct_field(
-        &self,
-        parent: &str,
-        index: usize,
-        field: &syn::Field,
-    ) -> Result<ObjectField> {
+    fn parse_struct_field(&self, parent: &str, field: &syn::Field) -> Result<ObjectField> {
         let name = match &field.ident {
             Some(ident) => ident.to_string(),
             // A tuple struct's field is unnamed in Rust, but Arrow needs a name for it, and the
@@ -491,9 +479,6 @@ impl Parser<'_> {
             state: State::Stable,
             typ,
             attrs,
-            // Source order is the order. Arrow struct field order is wire format, so moving a
-            // field in the source moves it on the wire.
-            order: index as u32,
             is_nullable: nullable,
             datatype: None,
         })
@@ -503,7 +488,6 @@ impl Parser<'_> {
     fn parse_enum_variant(
         &self,
         parent: &str,
-        index: usize,
         variant: &syn::Variant,
         class: ObjectClass,
     ) -> Result<ObjectField> {
@@ -573,7 +557,6 @@ impl Parser<'_> {
             state: State::Stable,
             typ: payload.typ,
             attrs,
-            order: index as u32,
             is_nullable: payload.nullable,
             datatype: None,
         })
@@ -864,6 +847,14 @@ impl Parser<'_> {
 
             let span = Spanned::span(&meta);
 
+            if Attribute::parse(&name).is_none() {
+                self.error(
+                    span,
+                    format!("Unknown attribute `{key}` in `#[{namespace}(…)]`."),
+                );
+                continue;
+            }
+
             match &meta {
                 syn::Meta::Path(_) => {
                     self.insert_attribute(parsed, name, None, span);
@@ -917,13 +908,20 @@ impl Parser<'_> {
                 );
                 return Err(Fail);
             };
-            paths.push(
+            // Verbatim, leading `::` and all: a path is emitted into generated code as written.
+            let leading = if path.leading_colon.is_some() {
+                "::"
+            } else {
+                ""
+            };
+            paths.push(format!(
+                "{leading}{}",
                 path.segments
                     .iter()
                     .map(|segment| segment.ident.to_string())
                     .collect::<Vec<_>>()
-                    .join("::"),
-            );
+                    .join("::")
+            ));
         }
 
         Ok(paths)
@@ -1183,10 +1181,6 @@ mod tests {
         );
 
         // Source order is the order; there is no `order` attribute to get wrong.
-        assert_eq!(
-            object.fields.iter().map(|f| f.order).collect::<Vec<_>>(),
-            vec![0, 1, 2]
-        );
         assert_eq!(object.fields[0].fqname, "rerun.datatypes.AnnotationInfo#id");
     }
 
@@ -1384,7 +1378,7 @@ mod tests {
             #[rust(derive = "Default, Copy", tuple_struct)]
             #[arrow(transparent)]
             pub struct Points3D {
-                #[rerun(component_required)]
+                #[rerun(required)]
                 #[cpp(rename_field = "positions_")]
                 pub positions: Vec<rerun::components::Position3D>,
             }
@@ -1394,32 +1388,50 @@ mod tests {
         let object = &objects[0];
         assert_eq!(
             object
-                .try_get_attr::<String>(crate::ATTR_RERUN_STATE)
+                .try_get_attr::<String>(crate::RerunAttr::State)
                 .as_deref(),
             Some("stable")
         );
         assert_eq!(
             object
-                .try_get_attr::<String>(crate::ATTR_DOCS_CATEGORY)
+                .try_get_attr::<String>(crate::DocsAttr::Category)
                 .as_deref(),
             Some("Spatial 3D")
         );
         assert_eq!(
             object
-                .try_get_attr::<String>(crate::ATTR_RUST_DERIVE)
+                .try_get_attr::<String>(crate::RustAttr::Derive)
                 .as_deref(),
             Some("Default, Copy")
         );
         // A bare name becomes a valueless attribute.
-        assert!(object.is_attr_set(crate::ATTR_RUST_TUPLE_STRUCT));
-        assert!(object.is_attr_set(crate::ATTR_ARROW_TRANSPARENT));
+        assert!(object.is_attr_set(crate::RustAttr::TupleStruct));
+        assert!(object.is_attr_set(crate::ArrowAttr::Transparent));
+
+        // A path list is emitted verbatim, leading `::` and all.
+        let objects = parse_ok(
+            "rerun.datatypes",
+            r#"
+            #[rerun_type]
+            #[rust(derive(Copy, bytemuck::Pod, ::serde::Serialize))]
+            pub struct Vec3D {
+                pub xyz: [f32; 3],
+            }
+            "#,
+        );
+        assert_eq!(
+            objects[0]
+                .try_get_attr::<String>(crate::RustAttr::Derive)
+                .as_deref(),
+            Some("Copy, bytemuck::Pod, ::serde::Serialize")
+        );
 
         let field = &object.fields[0];
-        assert!(field.has_attr(crate::ATTR_RERUN_COMPONENT_REQUIRED));
+        assert!(field.has_attr(crate::RerunAttr::Required));
         assert_eq!(field.kind(), Some(crate::objects::FieldKind::Required));
         assert_eq!(
             field
-                .try_get_attr::<String>(crate::ATTR_CPP_RENAME_FIELD)
+                .try_get_attr::<String>(crate::CppAttr::RenameField)
                 .as_deref(),
             Some("positions_")
         );
@@ -1541,6 +1553,15 @@ mod tests {
             (
                 "#[bogus] pub struct A(pub u8);",
                 "Unknown attribute `bogus`",
+            ),
+            // A known namespace does not make the key inside it known.
+            (
+                "#[rerun(not_an_attribute)] pub struct A(pub u8);",
+                "Unknown attribute `not_an_attribute`",
+            ),
+            (
+                "#[rerun(state = 3)] pub struct A(pub u8);",
+                "must be given a string literal",
             ),
             (
                 r#"#[rust(derive(Default = "x"))] pub struct A(pub u8);"#,

@@ -6,6 +6,12 @@
 #[repr(u8)]
 #[rerun(state = "stable")]
 pub enum FillMode {
+    // Design note: This entire enum is an temporary mechanism which should be replaced by
+    // allowing entities to simultaneously have fill and stroke colors.
+    // Doing that is blocked on tagged components:
+    // <https://github.com/rerun-io/rerun/issues/6889>.
+    // Once those colors exist, visualizers should be updated to simply render whichever combination
+    // of these features have non-(0, 0, 0, 0) colors set.
     /// Lines are drawn around the parts of the shape which directly correspond to the logged data.
     ///
     /// Examples of what this means:

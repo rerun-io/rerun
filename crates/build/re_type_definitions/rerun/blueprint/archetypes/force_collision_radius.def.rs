@@ -9,16 +9,16 @@ pub struct ForceCollisionRadius {
     /// Whether the collision force is enabled.
     ///
     /// The collision force resolves collisions between nodes based on the bounding circle defined by their radius.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub enabled: Option<rerun::blueprint::components::Enabled>,
 
     /// The strength of the force.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub strength: Option<rerun::blueprint::components::ForceStrength>,
 
     /// Specifies how often this force should be applied per iteration.
     ///
     /// Increasing this parameter can lead to better results at the cost of longer computation time.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub iterations: Option<rerun::blueprint::components::ForceIterations>,
 }

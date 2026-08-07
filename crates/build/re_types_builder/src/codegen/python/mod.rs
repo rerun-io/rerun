@@ -21,9 +21,8 @@ use crate::codegen::{StringExt as _, autogen_warning};
 use crate::data_type::{AtomicDataType, DataType, Field, UnionMode};
 use crate::objects::{ObjectClass, State};
 use crate::{
-    ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES, CodeGenerator, Docs, ElementType,
-    GeneratedFiles, Object, ObjectField, ObjectKind, Objects, Reporter, Type, TypeRegistry,
-    format_path,
+    CodeGenerator, Docs, ElementType, GeneratedFiles, Object, ObjectField, ObjectKind, Objects,
+    PythonAttr, Reporter, Type, TypeRegistry, format_path,
 };
 
 /// The standard python init method.
@@ -555,7 +554,7 @@ impl PythonCodeGenerator {
 
             // Keep generated imports narrow so Ruff does not reformat imports in unrelated files.
             let needs_type_alias = obj
-                .try_get_attr::<String>(ATTR_PYTHON_ARRAY_ALIASES)
+                .try_get_attr::<String>(PythonAttr::ArrayAliases)
                 .is_some_and(|aliases| aliases.contains(&format!("{}Like", obj.name)));
             let type_alias_import = if needs_type_alias { ", TypeAlias" } else { "" };
 
@@ -625,7 +624,7 @@ impl PythonCodeGenerator {
             }
 
             if obj
-                .try_get_attr::<String>(crate::ATTR_RERUN_VISUALIZER)
+                .try_get_attr::<String>(crate::RerunAttr::Visualizer)
                 .is_some()
             {
                 code.push_unindented(
@@ -827,7 +826,7 @@ fn code_for_struct(
         superclasses.push("Archetype".to_owned());
     }
 
-    let visualizer_name = obj.try_get_attr::<String>(crate::ATTR_RERUN_VISUALIZER);
+    let visualizer_name = obj.try_get_attr::<String>(crate::RerunAttr::Visualizer);
     if visualizer_name.is_some() {
         superclasses.push("VisualizableArchetype".to_owned());
     }
@@ -1729,9 +1728,9 @@ fn quote_native_types_method_from_obj(objects: &Objects, obj: &Object) -> String
 fn quote_aliases_from_object(obj: &Object) -> String {
     assert_ne!(obj.kind, ObjectKind::Archetype);
 
-    let aliases = obj.try_get_attr::<String>(ATTR_PYTHON_ALIASES);
+    let aliases = obj.try_get_attr::<String>(PythonAttr::Aliases);
     let array_aliases = obj
-        .try_get_attr::<String>(ATTR_PYTHON_ARRAY_ALIASES)
+        .try_get_attr::<String>(PythonAttr::ArrayAliases)
         .unwrap_or_default();
 
     let name = &obj.name;
@@ -1788,9 +1787,9 @@ fn quote_union_aliases_from_object<'a>(
 ) -> String {
     assert_ne!(obj.kind, ObjectKind::Archetype);
 
-    let aliases = obj.try_get_attr::<String>(ATTR_PYTHON_ALIASES);
+    let aliases = obj.try_get_attr::<String>(PythonAttr::Aliases);
     let array_aliases = obj
-        .try_get_attr::<String>(ATTR_PYTHON_ARRAY_ALIASES)
+        .try_get_attr::<String>(PythonAttr::ArrayAliases)
         .unwrap_or_default();
 
     let name = &obj.name;
@@ -2477,7 +2476,7 @@ fn quote_arrow_serialization(
                         "##,
                     ));
                 } else if let Some(np_dtype) = np_dtype_from_type(&obj.fields[0].typ) {
-                    if obj.is_attr_set(ATTR_PYTHON_ALIASES) {
+                    if obj.is_attr_set(PythonAttr::Aliases) {
                         return Ok(unindent(&format!(
                             r##"
                                 array = np.asarray(data, dtype={np_dtype}).flatten()
@@ -2488,7 +2487,7 @@ fn quote_arrow_serialization(
                         reporter.warn(
                             &obj.virtpath,
                             &obj.fqname,
-                            format!("Expected this to have {ATTR_PYTHON_ALIASES} set"),
+                            format!("Expected this to have {} set", PythonAttr::Aliases),
                         );
                     }
                 } else if let Type::Array {
@@ -2555,7 +2554,7 @@ fn quote_arrow_serialization(
             // Would be more correct to also check if the init method has a single parameter here.
             let convert_inner = ext_class.has_init
                 && obj
-                    .try_get_attr::<String>(ATTR_PYTHON_ALIASES)
+                    .try_get_attr::<String>(PythonAttr::Aliases)
                     .is_some_and(|s| !s.is_empty());
 
             code.push_indented(0, "from typing import cast", 1);
@@ -2660,7 +2659,7 @@ return pa.array(pa_data, type=data_type)
             // List of all possible types that could be in the incoming data that aren't sequences.
             let mut possible_singular_types = HashSet::new();
             possible_singular_types.insert(name.clone());
-            if let Some(aliases) = obj.try_get_attr::<String>(ATTR_PYTHON_ALIASES) {
+            if let Some(aliases) = obj.try_get_attr::<String>(PythonAttr::Aliases) {
                 possible_singular_types.extend(aliases.split(',').map(|s| s.trim().to_owned()));
             }
 

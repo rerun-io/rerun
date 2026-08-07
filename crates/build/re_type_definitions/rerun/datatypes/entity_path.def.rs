@@ -12,5 +12,6 @@
 #[rust(tuple_struct)]
 #[rerun(state = "stable")]
 pub struct EntityPath {
+    // TODO(jleibs): This should be a special primitive
     pub path: String,
 }

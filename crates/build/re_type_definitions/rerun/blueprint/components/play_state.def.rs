@@ -7,7 +7,6 @@
 #[rerun(scope = "blueprint")]
 #[rust(derive(Copy, PartialEq, Eq))]
 #[rust(repr = "transparent")]
-#[rust(tuple_struct)]
 #[rerun(state = "stable")]
 pub enum PlayState {
     /// Time doesn't move.

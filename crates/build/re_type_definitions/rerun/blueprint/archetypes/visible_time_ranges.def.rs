@@ -19,6 +19,6 @@ pub struct VisibleTimeRanges {
     /// The time ranges to show for each timeline unless specified otherwise on a per-entity basis.
     ///
     /// If a timeline is specified more than once, the first entry will be used.
-    #[rerun(component_required)]
+    #[rerun(required)]
     pub ranges: Vec<rerun::blueprint::components::VisibleTimeRange>,
 }

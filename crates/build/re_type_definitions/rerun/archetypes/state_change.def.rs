@@ -24,6 +24,6 @@ pub struct StateChange {
     /// clearing the field) all act as resets.
     ///
     /// The length of the state array should not change over time.
-    #[rerun(component_required)]
+    #[rerun(required)]
     pub state: Option<Vec<rerun::components::Text>>,
 }

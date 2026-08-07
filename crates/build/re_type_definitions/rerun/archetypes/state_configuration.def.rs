@@ -28,27 +28,27 @@ pub struct StateConfiguration {
     ///
     /// Each entry defines a known state value. The order determines the mapping to
     /// `labels`, `colors`, and `visible` (by index).
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub values: Option<Vec<rerun::components::Text>>,
 
     /// Display labels for each state value.
     ///
     /// If provided, the label at index `i` is shown instead of the raw value at index `i`.
     /// If not provided or shorter than `values`, the raw value is used as the label.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub labels: Option<Vec<rerun::components::Text>>,
 
     /// Colors for each state value.
     ///
     /// If provided, the color at index `i` is used for the state at index `i`.
     /// If not provided, colors are assigned automatically from a built-in palette.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub colors: Option<Vec<rerun::components::Color>>,
 
     /// Visibility for each state value.
     ///
     /// If provided, the visibility at index `i` controls whether the state at index `i` is shown.
     /// If not provided, all state values are visible.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub visible: Option<Vec<rerun::components::Visible>>,
 }

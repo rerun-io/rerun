@@ -25,7 +25,7 @@ pub struct McapMessage {
     /// by the associated channel's `message_encoding` field. The structure and interpretation
     /// of this binary data depends on the encoding format (e.g., ros1, cdr, protobuf)
     /// and the message schema defined for the channel.
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_required)]
+    #[rerun(no_ui_edit)]
+    #[rerun(required)]
     pub data: rerun::components::Blob,
 }

@@ -5,7 +5,6 @@
 ///
 /// To interpret the contents of this buffer, see, [components.ImageFormat].
 #[rerun::rerun_type]
-#[arrow(transparent)]
 #[python(aliases = "bytes | npt.NDArray[np.uint8]")]
 #[python(array_aliases = "bytes | npt.NDArray[np.uint8]")]
 #[rust(derive(PartialEq, Eq))]

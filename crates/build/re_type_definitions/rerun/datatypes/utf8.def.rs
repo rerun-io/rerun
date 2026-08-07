@@ -2,6 +2,8 @@
 // It is parsed by `re_types_builder` to generate the Rust, Python and C++ bindings.
 
 /// A string of text, encoded as UTF-8.
+//
+// NOTE: Apache Arrow uses UTF-8 encoding of its String type, as does Rust.
 #[rerun::rerun_type]
 #[arrow(transparent)]
 #[python(aliases = "str")]

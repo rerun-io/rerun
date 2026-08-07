@@ -5,7 +5,6 @@
 ///
 /// Allows to assign different weights to the individual forces, prioritizing one over the other.
 #[rerun::rerun_type]
-#[arrow(transparent)]
 #[rerun(scope = "blueprint")]
 #[rust(derive(Default, Copy, PartialEq))]
 #[rust(repr = "transparent")]

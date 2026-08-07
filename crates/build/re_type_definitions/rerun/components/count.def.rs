@@ -5,7 +5,6 @@
 ///
 /// Used for counting various entities like messages, schemas, channels, etc.
 #[rerun::rerun_type]
-#[arrow(transparent)]
 #[python(aliases = "int")]
 #[python(array_aliases = "int | npt.NDArray[np.uint64]")]
 #[rerun(state = "unstable")]

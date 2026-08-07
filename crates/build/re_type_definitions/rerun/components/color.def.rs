@@ -10,7 +10,6 @@
 /// \py All other colors are assumed to be in 0-255 gamma sRGB space.
 /// \py If there is an alpha, we assume it is in linear space, and separate (NOT pre-multiplied).
 #[rerun::rerun_type]
-#[arrow(transparent)]
 #[python(aliases = "int | Sequence[int] | npt.NDArray[np.uint8 | np.float32 | np.float64]")]
 #[python(
     array_aliases = "int | Sequence[Sequence[int]] | npt.NDArray[np.uint8 | np.uint32 | np.float32 | np.float64]"

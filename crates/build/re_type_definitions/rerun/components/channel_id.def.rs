@@ -5,7 +5,6 @@
 ///
 /// Used to identify specific channels within an MCAP file.
 #[rerun::rerun_type]
-#[arrow(transparent)]
 #[python(aliases = "int")]
 #[python(
     array_aliases = "int | npt.NDArray[np.uint8] | npt.NDArray[np.uint16] | npt.NDArray[np.uint32] | npt.NDArray[np.uint64]"

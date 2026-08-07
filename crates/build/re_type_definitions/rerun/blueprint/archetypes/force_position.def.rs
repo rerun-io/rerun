@@ -9,14 +9,14 @@ pub struct ForcePosition {
     /// Whether the position force is enabled.
     ///
     /// The position force pulls nodes towards a specific position, similar to gravity.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub enabled: Option<rerun::blueprint::components::Enabled>,
 
     /// The strength of the force.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub strength: Option<rerun::blueprint::components::ForceStrength>,
 
     /// The position where the nodes should be pulled towards.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub position: Option<rerun::components::Position2D>,
 }

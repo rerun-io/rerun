@@ -15,4 +15,6 @@
 pub struct VideoTimestamp {
     /// Presentation timestamp value in nanoseconds.
     pub timestamp_ns: i64,
+    // Implementation note:
+    // Keeping this to nanoseconds makes the timestamp more consistent to our other timestamp values!
 }

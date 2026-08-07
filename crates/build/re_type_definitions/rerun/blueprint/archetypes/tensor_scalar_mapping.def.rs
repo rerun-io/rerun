@@ -10,11 +10,11 @@ pub struct TensorScalarMapping {
     /// Filter used when zooming in on the tensor.
     ///
     /// Note that the filter is applied to the scalar values *before* they are mapped to color.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub mag_filter: Option<rerun::components::MagnificationFilter>,
 
     /// How scalar values map to colors.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub colormap: Option<rerun::components::Colormap>,
 
     /// Gamma exponent applied to normalized values before mapping to color.
@@ -24,6 +24,6 @@ pub struct TensorScalarMapping {
     ///
     /// The final value for display is set as:
     /// `colormap( ((value - data_display_range.min) / (data_display_range.max - data_display_range.min)) ** gamma )`
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub gamma: Option<rerun::components::GammaCorrection>,
 }

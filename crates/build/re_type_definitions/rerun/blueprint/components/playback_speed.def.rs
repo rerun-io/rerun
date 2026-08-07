@@ -8,7 +8,6 @@
 #[rerun(scope = "blueprint")]
 #[rust(derive(Copy, PartialEq, PartialOrd))]
 #[rust(repr = "transparent")]
-#[rust(tuple_struct)]
 #[rerun(state = "unstable")]
 pub struct PlaybackSpeed {
     /// 1.0 is default speed.

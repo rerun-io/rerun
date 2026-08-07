@@ -10,7 +10,6 @@
 /// These dimensions are combined with an index to look up values from the `buffer` field,
 /// which stores a contiguous array of typed values.
 #[rerun::rerun_type]
-#[arrow(transparent)]
 #[rust(derive(Default, PartialEq))]
 #[rust(repr = "transparent")]
 #[rerun(state = "stable")]

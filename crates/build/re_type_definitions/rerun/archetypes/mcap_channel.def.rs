@@ -22,8 +22,8 @@ pub struct McapChannel {
     ///
     /// Channel IDs must be unique within a single MCAP file and are used to associate
     /// messages with their corresponding channel definition.
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_required)]
+    #[rerun(no_ui_edit)]
+    #[rerun(required)]
     pub id: rerun::components::ChannelId,
 
     /// The topic name that this channel publishes to.
@@ -31,8 +31,8 @@ pub struct McapChannel {
     /// Topics are hierarchical paths from the original robotics system (e.g., "/sensors/camera/image")
     /// that categorize and organize different data streams.
     /// Topics are separate from Rerun's entity paths, but they often can be mapped to them.
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_required)]
+    #[rerun(no_ui_edit)]
+    #[rerun(required)]
     pub topic: rerun::components::Text,
 
     /// The encoding format used for messages in this channel.
@@ -42,14 +42,14 @@ pub struct McapChannel {
     /// * `cdr` - Common Data Representation (CDR) message format, used by ROS2
     /// * `protobuf` - Protocol Buffers
     /// * `json` - JSON encoding
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_required)]
+    #[rerun(no_ui_edit)]
+    #[rerun(required)]
     pub message_encoding: rerun::components::Text,
 
     /// Additional metadata for this channel stored as key-value pairs.
     ///
     /// This can include channel-specific configuration, description, units, coordinate frames,
     /// or any other contextual information that helps interpret the data in this channel.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub metadata: Option<rerun::components::KeyValuePairs>,
 }

@@ -1,6 +1,11 @@
 // This is a Rerun type definition for the SDK, not executable code.
 // It is parsed by `re_types_builder` to generate the Rust, Python and C++ bindings.
 
+// TODO(andreas): Clarify relationship to color primaries & yuv matrix coefficients.
+// Right now there's some hardcoded differences between formats.
+// See `image_to_gpu.rs`
+// Suggestion: guides heuristic but doesn't specify it unless noted.
+
 /// Specifieds a particular format of an [archetypes.Image].
 ///
 /// Most images can be described by a [datatypes.ColorModel] and a [datatypes.ChannelDatatype],
@@ -16,6 +21,14 @@
 #[repr(u8)]
 #[rerun(state = "stable")]
 pub enum PixelFormat {
+    // Given lack of a universal standard, the values of the enums are arbitrarily chosen to match
+    // those from the `predefined pixel format` portion of the `Frame` class in the Ocean library:
+    // https://github.com/facebookresearch/ocean/blob/1112f6101077c97a72a1d750e62dbff3ff01bd72/impl/ocean/base/Frame.h#L182
+    //
+    // However, this is not a strict requirement and implementations should not depend on this
+    // this fact. It merely exists to minimizes to take advantage of the thought that went into
+    // this organization and subsequently reduce the chance we may find ourselves wanting to
+    // change the values in the future.
     /// `Y_U_V12` is a YUV 4:2:0 fully planar YUV format without chroma downsampling, also known as `I420`.
     ///
     /// This uses limited range YUV, i.e. Y is expected to be within [16, 235] and U/V within [16, 240].

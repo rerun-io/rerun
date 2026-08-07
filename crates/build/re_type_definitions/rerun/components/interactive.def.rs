@@ -8,7 +8,6 @@
 #[rerun(state = "stable")]
 #[rust(derive(Copy, PartialEq, Eq, PartialOrd, Ord))]
 #[rust(repr = "transparent")]
-#[rust(tuple_struct)]
 pub struct Interactive {
     pub interactive: rerun::datatypes::Bool,
 }

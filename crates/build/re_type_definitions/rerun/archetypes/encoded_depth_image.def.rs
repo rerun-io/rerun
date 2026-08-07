@@ -18,37 +18,37 @@ pub struct EncodedDepthImage {
     /// Supported are:
     /// * single channel PNG
     /// * RVL with ROS2 metadata (for details see <https://github.com/ros-perception/image_transport_plugins/tree/jazzy>)
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_required)]
+    #[rerun(no_ui_edit)]
+    #[rerun(required)]
     pub blob: rerun::components::Blob,
 
     /// Media type of the blob, e.g.:
     ///
     ///  * `application/rvl` (RVL-compressed 16-bit)
     ///  * `image/png`
-    #[rerun(component_recommended)]
+    #[rerun(recommended)]
     pub media_type: Option<rerun::components::MediaType>,
 
     /// Conversion from native units to meters (e.g. `0.001` for millimeters).
     ///
     /// If omitted, the Viewer defaults to `1.0` for floating-point depth formats and `1000.0` for integer formats (millimeters).
-    #[rerun(component_recommended)]
+    #[rerun(recommended)]
     pub meter: Option<rerun::components::DepthMeter>,
 
     /// Optional colormap for visualization of decoded depth.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub colormap: Option<rerun::components::Colormap>,
 
     /// Optional visualization range for depth values.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub depth_range: Option<rerun::components::ValueRange>,
 
     /// Optional point fill ratio for point-cloud projection.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub point_fill_ratio: Option<rerun::components::FillRatio>,
 
     /// Optional 2D draw order.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub draw_order: Option<rerun::components::DrawOrder>,
 
     /// Optional filter used when a texel is magnified (displayed larger than a screen pixel) in 2D views.
@@ -56,6 +56,6 @@ pub struct EncodedDepthImage {
     /// The filter is applied to the scalar values *before* they are mapped to color via the colormap.
     ///
     /// Has no effect in 3D views.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub magnification_filter: Option<rerun::components::MagnificationFilter>,
 }

@@ -13,30 +13,30 @@
 #[rust(derive(PartialEq))]
 pub struct GraphNodes {
     /// A list of node IDs.
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_required)]
+    #[rerun(no_ui_edit)]
+    #[rerun(required)]
     pub node_ids: Vec<rerun::components::GraphNode>,
 
     /// Optional center positions of the nodes.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub positions: Option<Vec<rerun::components::Position2D>>,
 
     /// Optional colors for the boxes.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub colors: Option<Vec<rerun::components::Color>>,
 
     /// Optional text labels for the node.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub labels: Option<Vec<rerun::components::Text>>,
 
     /// Whether the text labels should be shown.
     ///
     /// If not set, labels will automatically appear when there is exactly one label for this entity
     /// or the number of instances on this entity is under a certain threshold.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub show_labels: Option<rerun::components::ShowLabels>,
 
     /// Optional radii for nodes.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub radii: Option<Vec<rerun::components::Radius>>,
 }

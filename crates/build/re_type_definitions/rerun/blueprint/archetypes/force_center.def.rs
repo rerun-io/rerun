@@ -9,10 +9,10 @@ pub struct ForceCenter {
     /// Whether the center force is enabled.
     ///
     /// The center force tries to move the center of mass of the graph towards the origin.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub enabled: Option<rerun::blueprint::components::Enabled>,
 
     /// The strength of the force.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub strength: Option<rerun::blueprint::components::ForceStrength>,
 }

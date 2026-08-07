@@ -34,29 +34,29 @@
 #[rust(derive(PartialEq))]
 pub struct Image {
     /// The raw image data.
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_required)]
+    #[rerun(no_ui_edit)]
+    #[rerun(required)]
     pub buffer: rerun::components::ImageBuffer,
 
     /// The format of the image.
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_required)]
+    #[rerun(no_ui_edit)]
+    #[rerun(required)]
     pub format: rerun::components::ImageFormat,
 
     /// Opacity of the image, useful for layering several media.
     ///
     /// Defaults to 1.0 (fully opaque).
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub opacity: Option<rerun::components::Opacity>,
 
     /// An optional floating point value that specifies the 2D drawing order.
     ///
     /// Objects with higher values are drawn on top of those with lower values.
     /// Defaults to `-10.0`.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub draw_order: Option<rerun::components::DrawOrder>,
 
     /// Optional filter used when a texel is magnified (displayed larger than a screen pixel).
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub magnification_filter: Option<rerun::components::MagnificationFilter>,
 }

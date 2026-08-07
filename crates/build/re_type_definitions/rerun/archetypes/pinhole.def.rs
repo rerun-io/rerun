@@ -19,11 +19,15 @@
 #[rerun(visualizer = "Cameras")]
 #[rust(derive(PartialEq))]
 pub struct Pinhole {
+    // TODO(#6743): Transforms can't be affected by blueprints which is why most components here are non-ui editable.
+    // Note that pure styling components like `color` and `line_width` are still editable as they don't affect the transform itself, but the pinhole projection components are non-editable.
+
+    // --- Camera parameters ---
     /// Camera projection, from image coordinates to view coordinates.
     ///
     /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_required)]
+    #[rerun(no_ui_edit)]
+    #[rerun(required)]
     pub image_from_camera: rerun::components::PinholeProjection,
 
     /// Pixel resolution (usually integers) of child image space. Width and height.
@@ -36,10 +40,11 @@ pub struct Pinhole {
     /// `image_from_camera` project onto the space spanned by `(0,0)` and `resolution - 1`.
     ///
     /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_recommended)]
+    #[rerun(no_ui_edit)]
+    #[rerun(recommended)]
     pub resolution: Option<rerun::components::Resolution>,
 
+    // --- Other ---
     /// Sets the camera orientation convention.
     ///
     /// All common values are available as constants on the [components.ViewCoordinates] class.
@@ -60,10 +65,13 @@ pub struct Pinhole {
     ///
     /// `image_from_camera` is always defined to project along +Z in camera coordinates.
     /// `camera_xyz` reorients that projection to the forward axis of the pinhole entity.
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_optional)]
+    // This is excluded from the atomic set because camera orientation may also be read from the `ViewCoordinates` descriptor.
+    // Should it be reset when other transform properties are changed?
+    #[rerun(no_ui_edit)]
+    #[rerun(optional)]
     pub camera_xyz: Option<rerun::components::ViewCoordinates>,
 
+    // --- Topology ---
     /// The child frame this transform transforms from.
     ///
     /// The entity at which the transform relationship of any given child frame is specified mustn't change over time, but is allowed to be different for static time.
@@ -76,8 +84,8 @@ pub struct Pinhole {
     /// To set the frame an entity is part of see [archetypes.CoordinateFrame].
     ///
     /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_optional)]
+    #[rerun(no_ui_edit)]
+    #[rerun(optional)]
     pub child_frame: Option<rerun::components::TransformFrameId>,
 
     /// The parent frame this transform transforms into.
@@ -88,21 +96,22 @@ pub struct Pinhole {
     /// To set the frame an entity is part of see [archetypes.CoordinateFrame].
     ///
     /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_optional)]
+    #[rerun(no_ui_edit)]
+    #[rerun(optional)]
     pub parent_frame: Option<rerun::components::TransformFrameId>,
 
+    // --- Visualization in 3D ---
     /// The distance from the camera origin to the image plane when the projection is shown in a 3D viewer.
     ///
     /// This is only used for visualization purposes, and does not affect the projection itself.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub image_plane_distance: Option<rerun::components::ImagePlaneDistance>,
 
     /// Color of the camera wireframe.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub color: Option<rerun::components::Color>,
 
     /// Width of the camera wireframe lines.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub line_width: Option<rerun::components::Radius>,
 }

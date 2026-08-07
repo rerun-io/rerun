@@ -9,15 +9,17 @@ pub struct SpatialInformation {
     /// The target reference frame for all transformations.
     ///
     /// Defaults to the coordinate frame used by the space origin entity.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub target_frame: rerun::components::TransformFrameId,
 
     /// Whether the bounding box should be shown.
-    #[rerun(component_optional)]
+    // TODO(andreas): Make this an enum so the user can choose between showing bounding boxes,
+    // regions of interest, or per-entity bounding boxes.
+    #[rerun(optional)]
     pub show_bounding_box: Option<rerun::blueprint::components::Enabled>,
 
     /// Whether axes should be shown at the origin.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub show_axes: Option<rerun::blueprint::components::Enabled>,
 
     /// Controls the orientation of the axes in a 3D view; it has no effect in a 2D view.
@@ -34,6 +36,7 @@ pub struct SpatialInformation {
     /// This property is hidden from the selection panel for 2D views.
     ///
     /// ⚠ [Rerun does not yet support left-handed coordinate systems](https://github.com/rerun-io/rerun/issues/5032).
-    #[rerun(component_optional)]
+    // TODO(#1387): This property has no effect in 2D views and is hidden from its selection panel.
+    #[rerun(optional)]
     pub axes: Option<rerun::components::ViewCoordinates>,
 }

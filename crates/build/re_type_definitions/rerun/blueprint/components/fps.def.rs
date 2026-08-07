@@ -8,7 +8,6 @@
 #[rerun(scope = "blueprint")]
 #[rust(derive(Copy, PartialEq, PartialOrd))]
 #[rust(repr = "transparent")]
-#[rust(tuple_struct)]
 #[rerun(state = "unstable")]
 pub struct Fps {
     pub fps: rerun::datatypes::Float64,

@@ -3,7 +3,6 @@
 
 /// Configuration for the filter is not null feature of the dataframe view.
 #[rerun::rerun_type]
-#[arrow(transparent)]
 #[rerun(scope = "blueprint")]
 #[rust(derive(Default, PartialEq, Eq))]
 #[rust(repr = "transparent")]

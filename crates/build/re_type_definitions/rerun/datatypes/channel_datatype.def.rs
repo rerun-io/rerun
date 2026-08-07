@@ -8,6 +8,19 @@
 #[repr(u8)]
 #[rerun(state = "stable")]
 pub enum ChannelDatatype {
+    // In theory these values are totally arbitrary. There's no great accepted
+    // standard for these, but we'll try to keep them somewhat sanely organized.
+
+    // Reserve 1-31 for integer types. This is very likely overkill, but it's
+    // nice to have a bit of growing room, and rounding to the nearest power of
+    // 2 keeps things clean.
+    //
+    // Additionally, we always use the low bit to indicate signedness. Conceptually
+    // bool fits this pattern if you think of it as a pure sign. This lets us grow
+    // across Uint and Int types without knowing how far up we're going to go.
+
+    // Reserve 1 for bool.
+    // Reserve 2-5 in case we want to encode U2 or U4 in the future.
     /// 8-bit unsigned integer.
     #[default]
     U8 = 6,
@@ -33,6 +46,9 @@ pub enum ChannelDatatype {
     /// 64-bit signed integer.
     I64 = 13,
 
+    // Reserve 14-31 for wider or non-power-of-2 integer types.
+
+    // Reserve 32 for the possibility of F8.
     /// 16-bit IEEE-754 floating point, also known as `half`.
     F16 = 33,
 
@@ -41,4 +57,9 @@ pub enum ChannelDatatype {
 
     /// 64-bit IEEE-754 floating point, also known as `double`.
     F64 = 35,
+    // Reservee at least 36-39 for future floating point types.
+    // For exampole, IEEE-754 binary256.
+
+    // This still leaves us plenty of room for encoding common fixed-point types,
+    // most likely starting at 64, or other exotic encodings beyond that.
 }

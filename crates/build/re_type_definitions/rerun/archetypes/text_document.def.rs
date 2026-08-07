@@ -14,7 +14,7 @@
 #[rust(derive(PartialEq))]
 pub struct TextDocument {
     /// Contents of the text document.
-    #[rerun(component_required)]
+    #[rerun(required)]
     pub text: rerun::components::Text,
 
     /// The Media Type of the text.
@@ -24,6 +24,6 @@ pub struct TextDocument {
     /// * `text/markdown`
     ///
     /// If omitted, `text/plain` is assumed.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub media_type: Option<rerun::components::MediaType>,
 }

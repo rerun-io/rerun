@@ -23,61 +23,61 @@ pub struct McapStatistics {
     ///
     /// This count includes all timestamped data messages but excludes metadata records,
     /// schema definitions, and other non-message records.
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_required)]
+    #[rerun(no_ui_edit)]
+    #[rerun(required)]
     pub message_count: rerun::components::Count,
 
     /// Number of unique schema definitions in the recording.
     ///
     /// Each schema defines the structure for one or more message types used by channels.
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_required)]
+    #[rerun(no_ui_edit)]
+    #[rerun(required)]
     pub schema_count: rerun::components::Count,
 
     /// Number of channels defined in the recording.
     ///
     /// Each channel represents a unique topic and encoding combination for publishing messages.
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_required)]
+    #[rerun(no_ui_edit)]
+    #[rerun(required)]
     pub channel_count: rerun::components::Count,
 
     /// Number of file attachments embedded in the recording.
     ///
     /// Attachments can include calibration files, configuration data, or other auxiliary files.
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_required)]
+    #[rerun(no_ui_edit)]
+    #[rerun(required)]
     pub attachment_count: rerun::components::Count,
 
     /// Number of metadata records providing additional context about the recording.
     ///
     /// Metadata records contain key-value pairs with information about the recording environment,
     /// system configuration, or other contextual data.
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_required)]
+    #[rerun(no_ui_edit)]
+    #[rerun(required)]
     pub metadata_count: rerun::components::Count,
 
     /// Number of data chunks used to organize messages in the file.
     ///
     /// Chunks group related messages together for efficient storage and indexed access.
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_required)]
+    #[rerun(no_ui_edit)]
+    #[rerun(required)]
     pub chunk_count: rerun::components::Count,
 
     /// Timestamp of the earliest message in the recording.
     ///
     /// This marks the beginning of the recorded data timeline.
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_required)]
+    #[rerun(no_ui_edit)]
+    #[rerun(required)]
     pub message_start_time: rerun::components::Timestamp,
 
     /// Timestamp of the latest message in the recording.
     ///
     /// Together with `message_start_time`, this defines the total duration of the recording.
-    #[rerun(component_no_ui_edit)]
-    #[rerun(component_required)]
+    #[rerun(no_ui_edit)]
+    #[rerun(required)]
     pub message_end_time: rerun::components::Timestamp,
 
     /// Detailed breakdown of message counts per channel.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub channel_message_counts: Option<rerun::components::ChannelMessageCounts>,
 }

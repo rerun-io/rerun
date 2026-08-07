@@ -5,7 +5,6 @@
 ///
 /// Increasing this parameter can lead to better results at the cost of longer computation time.
 #[rerun::rerun_type]
-#[arrow(transparent)]
 #[rerun(scope = "blueprint")]
 #[rust(derive(Default, Copy, PartialEq, Eq))]
 #[rust(repr = "transparent")]

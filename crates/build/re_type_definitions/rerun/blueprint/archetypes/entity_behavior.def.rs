@@ -17,7 +17,7 @@ pub struct EntityBehavior {
     /// sets `interactive` to a different value at which point propagation continues with that value instead.
     ///
     /// Defaults to parent's `interactive` value or true if there is no parent.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub interactive: Option<rerun::components::Interactive>,
 
     /// Whether the entity is visible.
@@ -26,6 +26,6 @@ pub struct EntityBehavior {
     /// sets `visible` to a different value at which point propagation continues with that value instead.
     ///
     /// Defaults to parent's `visible` value or true if there is no parent.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub visible: Option<rerun::components::Visible>,
 }

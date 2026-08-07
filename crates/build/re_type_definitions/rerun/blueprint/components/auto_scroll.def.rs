@@ -3,12 +3,10 @@
 
 /// Whether the view should auto-scroll to follow the time cursor.
 #[rerun::rerun_type]
-#[arrow(transparent)]
 #[python(aliases = "bool")]
 #[rerun(scope = "blueprint")]
 #[rust(derive(Copy, Default, PartialEq, Eq, PartialOrd, Ord))]
 #[rust(repr = "transparent")]
-#[rust(tuple_struct)]
 #[rerun(state = "unstable")]
 pub struct AutoScroll {
     pub auto_scroll: rerun::datatypes::Bool,

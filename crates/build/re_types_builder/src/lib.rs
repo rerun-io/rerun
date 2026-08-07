@@ -112,6 +112,7 @@ use re_build_tools::{
 
 use crate::format::NoopCodeFormatter;
 
+mod attributes;
 mod codegen;
 mod format;
 mod objects;
@@ -128,6 +129,9 @@ pub mod report;
 /// etc), and finally written to disk by the I/O pass.
 pub type GeneratedFiles = std::collections::BTreeMap<camino::Utf8PathBuf, String>;
 
+pub use self::attributes::{
+    ATTR_DEFAULT, ArrowAttr, Attribute, CppAttr, DocsAttr, PythonAttr, RerunAttr, RustAttr,
+};
 pub use self::codegen::{
     CodeGenerator, CppCodeGenerator, DefinitionsCodeGenerator, DocsCodeGenerator,
     PythonCodeGenerator, RustCodeGenerator, SnippetsRefCodeGenerator,
@@ -139,49 +143,6 @@ pub use self::objects::{
 };
 pub use self::report::{Report, Reporter};
 pub use self::type_registry::TypeRegistry;
-
-// --- Attributes ---
-
-pub const ATTR_DEFAULT: &str = "default";
-pub const ATTR_NULLABLE: &str = "nullable";
-pub const ATTR_ORDER: &str = "order";
-pub const ATTR_TRANSPARENT: &str = "transparent";
-
-pub const ATTR_ARROW_TRANSPARENT: &str = "attr.arrow.transparent";
-pub const ATTR_ARROW_SPARSE_UNION: &str = "attr.arrow.sparse_union";
-
-pub const ATTR_RERUN_COMPONENT_OPTIONAL: &str = "attr.rerun.component_optional";
-pub const ATTR_RERUN_COMPONENT_RECOMMENDED: &str = "attr.rerun.component_recommended";
-pub const ATTR_RERUN_COMPONENT_REQUIRED: &str = "attr.rerun.component_required";
-pub const ATTR_RERUN_COMPONENT_NO_UI_EDIT: &str = "attr.rerun.component_no_ui_edit";
-pub const ATTR_RERUN_OVERRIDE_TYPE: &str = "attr.rerun.override_type";
-pub const ATTR_RERUN_SCOPE: &str = "attr.rerun.scope";
-pub const ATTR_RERUN_VIEW_IDENTIFIER: &str = "attr.rerun.view_identifier";
-pub const ATTR_RERUN_VISUALIZER: &str = "attr.rerun.visualizer";
-pub const ATTR_RERUN_VISUALIZER_NONE: &str = "attr.rerun.visualizer_none";
-pub const ATTR_RERUN_STATE: &str = "attr.rerun.state";
-pub const ATTR_RERUN_DEPRECATED_SINCE: &str = "attr.rerun.deprecated_since";
-pub const ATTR_RERUN_DEPRECATED_NOTICE: &str = "attr.rerun.deprecated_notice";
-
-pub const ATTR_PYTHON_ALIASES: &str = "attr.python.aliases";
-pub const ATTR_PYTHON_ARRAY_ALIASES: &str = "attr.python.array_aliases";
-
-pub const ATTR_CPP_NO_DEFAULT_CTOR: &str = "attr.cpp.no_default_ctor";
-pub const ATTR_CPP_NO_FIELD_CTORS: &str = "attr.cpp.no_field_ctors";
-pub const ATTR_CPP_RENAME_FIELD: &str = "attr.cpp.rename_field";
-
-pub const ATTR_RUST_CUSTOM_CLAUSE: &str = "attr.rust.custom_clause";
-pub const ATTR_RUST_DERIVE: &str = "attr.rust.derive";
-pub const ATTR_RUST_DERIVE_ONLY: &str = "attr.rust.derive_only";
-pub const ATTR_RUST_NEW_PUB_CRATE: &str = "attr.rust.new_pub_crate";
-pub const ATTR_RUST_OVERRIDE_CRATE: &str = "attr.rust.override_crate";
-pub const ATTR_RUST_REPR: &str = "attr.rust.repr";
-pub const ATTR_RUST_TUPLE_STRUCT: &str = "attr.rust.tuple_struct";
-
-pub const ATTR_DOCS_UNRELEASED: &str = "attr.docs.unreleased";
-
-pub const ATTR_DOCS_CATEGORY: &str = "attr.docs.category";
-pub const ATTR_DOCS_VIEW_TYPES: &str = "attr.docs.view_types";
 
 // --- Entrypoints ---
 

@@ -15,6 +15,6 @@
 #[rerun(state = "unstable")]
 pub struct ActiveVisualizers {
     /// Id's of the visualizers that should be active.
-    #[rerun(component_required)]
+    #[rerun(required)]
     pub instruction_ids: Vec<rerun::blueprint::components::VisualizerInstructionId>,
 }

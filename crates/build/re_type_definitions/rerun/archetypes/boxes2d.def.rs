@@ -14,45 +14,49 @@
 #[rust(new_pub_crate)]
 pub struct Boxes2D {
     /// All half-extents that make up the batch of boxes.
-    #[rerun(component_required)]
+    #[rerun(required)]
     pub half_sizes: Vec<rerun::components::HalfSize2D>,
 
     /// Optional center positions of the boxes.
-    #[rerun(component_recommended)]
+    #[rerun(recommended)]
     pub centers: Option<Vec<rerun::components::Position2D>>,
 
+    // TODO(#3247): Add 2D rotation.
+    // Optional rotations of the boxes.
+    //#[rerun(recommended)]
+    //pub rotations: Option<Vec<rerun::components::Rotation2D>>,
     /// Optional colors for the boxes.
-    #[rerun(component_recommended)]
+    #[rerun(recommended)]
     pub colors: Option<Vec<rerun::components::Color>>,
 
     /// Optional radii for the lines that make up the boxes.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub radii: Option<Vec<rerun::components::Radius>>,
 
     /// Optional text labels for the boxes.
     ///
     /// If there's a single label present, it will be placed at the center of the entity.
     /// Otherwise, each instance will have its own label.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub labels: Option<Vec<rerun::components::Text>>,
 
     /// Whether the text labels should be shown.
     ///
     /// If not set, labels will automatically appear when there is exactly one label for this entity
     /// or the number of instances on this entity is under a certain threshold.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub show_labels: Option<rerun::components::ShowLabels>,
 
     /// An optional floating point value that specifies the 2D drawing order.
     ///
     /// Objects with higher values are drawn on top of those with lower values.
     /// Defaults to `10.0`.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub draw_order: Option<rerun::components::DrawOrder>,
 
     /// Optional [components.ClassId]s for the boxes.
     ///
     /// The [components.ClassId] provides colors and labels if not specified explicitly.
-    #[rerun(component_optional)]
+    #[rerun(optional)]
     pub class_ids: Option<Vec<rerun::components::ClassId>>,
 }
