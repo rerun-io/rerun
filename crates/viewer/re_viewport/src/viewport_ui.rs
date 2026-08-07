@@ -260,6 +260,7 @@ impl ViewportUi {
                             prune_single_child_containers: false,
                             all_panes_must_have_tabs: true,
                             join_nested_linear_containers: false,
+                            flatten_tabs_in_tabs: false,
                         });
                     }
 

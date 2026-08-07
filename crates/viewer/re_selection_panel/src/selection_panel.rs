@@ -1261,6 +1261,7 @@ fn container_top_level_properties(
                         prune_single_child_containers: false,
                         all_panes_must_have_tabs: true,
                         join_nested_linear_containers: true,
+                        flatten_tabs_in_tabs: false,
                     },
                 );
             })

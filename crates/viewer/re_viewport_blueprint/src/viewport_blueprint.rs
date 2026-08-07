@@ -977,6 +977,7 @@ pub fn tree_simplification_options() -> egui_tiles::SimplificationOptions {
         prune_single_child_tabs: false,
         prune_single_child_containers: false,
         join_nested_linear_containers: true,
+        flatten_tabs_in_tabs: false,
     }
 }
 
