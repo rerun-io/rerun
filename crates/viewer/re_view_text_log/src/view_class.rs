@@ -324,20 +324,20 @@ Filter message types and toggle column visibility in a selection panel.",
                 TimelineName::try_new(col.timeline.as_str()).ok_or_log_error_once()
             {
                 column_kinds.push(ColumnKind::Timeline(timeline));
-                table_columns.push(egui_table::Column::new(110.0).resizable(true));
+                table_columns.push(text_log_column(110.0, 60.0));
             }
         }
         for col in &columns {
             if !*col.visible {
                 continue;
             }
-            let width = match col.kind {
-                bp_encodings::TextLogColumnKind::EntityPath => 120.0,
-                bp_encodings::TextLogColumnKind::LogLevel => 50.0,
-                bp_encodings::TextLogColumnKind::Body => 400.0,
+            let (width, min_width) = match col.kind {
+                bp_encodings::TextLogColumnKind::EntityPath => (120.0, 60.0),
+                bp_encodings::TextLogColumnKind::LogLevel => (50.0, 44.0),
+                bp_encodings::TextLogColumnKind::Body => (400.0, 100.0),
             };
             column_kinds.push(ColumnKind::Kind(col.kind));
-            table_columns.push(egui_table::Column::new(width).resizable(true));
+            table_columns.push(text_log_column(width, min_width));
         }
 
         let mut delegate = TextLogTableDelegate {
@@ -362,6 +362,7 @@ Filter message types and toggle column visibility in a selection panel.",
             let mut table = egui_table::Table::new()
                 .id_salt(egui::Id::new("text_log").with(query.view_id))
                 .columns(table_columns)
+                .auto_size_mode(egui_table::AutoSizeMode::Always)
                 .headers(vec![egui_table::HeaderRow::new(
                     tokens.table_header_height(),
                 )])
@@ -403,6 +404,14 @@ Filter message types and toggle column visibility in a selection panel.",
 enum ColumnKind {
     Timeline(TimelineName),
     Kind(bp_encodings::TextLogColumnKind),
+}
+
+/// A resizable column that starts out `width` wide but may be squeezed down to `min_width`
+/// when the view is too narrow to fit every column at its preferred width.
+fn text_log_column(width: f32, min_width: f32) -> egui_table::Column {
+    egui_table::Column::new(width)
+        .range(egui::Rangef::new(min_width, f32::INFINITY))
+        .resizable(true)
 }
 
 /// Maps a global row index to a (possibly not-yet-fetched) [`Entry`].
