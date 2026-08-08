@@ -31,7 +31,7 @@ pub enum ParquetError {
     #[error(transparent)]
     Arrow(#[from] arrow::error::ArrowError),
 
-    #[error(transparent)]
+    #[error("{0:#}")]
     Other(#[from] anyhow::Error),
 }
 

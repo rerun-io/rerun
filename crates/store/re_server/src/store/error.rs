@@ -56,7 +56,7 @@ pub enum Error {
     #[error(transparent)]
     LanceError(#[from] lance::Error),
 
-    #[error("Error loading RRD: {0}")]
+    #[error("Error loading RRD: {0:#}")]
     RrdLoadingError(anyhow::Error),
 
     #[error("Failed to encode chunk key: {0}")]
