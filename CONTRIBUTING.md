@@ -96,7 +96,7 @@ Every PR needs **exactly one** of these four changelog categories:
 
 In addition:
 
-* At least one category label (e.g. `📺 re_viewer`, `sdk-python`, …) is required. See the [CI job](./.github/workflows/labels.yml) for the current list.
+* Add at least one category label (e.g. `📺 re_viewer`, `sdk-python`, …) to help with search.
 * When in doubt, add more labels rather than fewer — they help with search.
 
 #### What goes in the changeset?

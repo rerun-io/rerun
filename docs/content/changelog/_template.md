@@ -39,7 +39,8 @@ TODO(release_manager): write the highlights
 
 <!--
 One `### <heading>` per user-facing feature. Each should link to docs and/or an
-example, and include a screenshot/GIF if it has any visual component.
+example, and include visual media if it has any visual component.
+Use permanent website assets with normal Markdown or HTML markup, not GitHub-hosted assets or bare URLs.
 -->
 
 <!--

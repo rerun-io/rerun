@@ -27,8 +27,9 @@ type: feature # highlight | breaking | feature
 
  For each entry, consider:
    * Migration guide   — required for any breaking change. Show before/after.
-   * Screenshot or GIF — required for any visual feature. (GIFs render better
-                         than mp4 on GitHub; upload to a PR to host the image.)
+   * Visual media      — required for any visual feature. Use permanent website
+                         assets with normal Markdown or HTML markup. Do not use
+                         GitHub-hosted assets or paste a URL on its own line.
    * Docs link         — required for any new user-facing feature.
    * Example link      — required for new SDK functionality.
 

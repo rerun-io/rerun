@@ -140,6 +140,8 @@ exclude = [
   'https://link.to',
   'https://private-user-images\.githubusercontent\.com/demo\.mp4\?x=1&y=2',
   'https://rerun.rs',
+  'https://private-user-images.githubusercontent.com/123/456/demo.mp4.*',
+  'https://static.rerun.io/demo.mp4',
   'https://static.rerun.io/my_screenshot/',
   'https://static/',
   'https://static\.rerun\.io/abc_github-01234567\.mp4',

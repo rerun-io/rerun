@@ -107,27 +107,38 @@ After cherry-picking a commit into the patch, please make sure to remove the `co
 The curated part of the release notes — highlights, breaking changes & migration guides, and new
 features, including any screenshots/GIFs — is written incrementally **during the cycle, per PR**:
 every `include in changelog` PR drops one file in [`docs/content/changelog/upcoming/`](./docs/content/changelog/upcoming)
-(one file per PR avoids merge conflicts). At release, assemble those into the release's changeset:
+(one file per PR avoids merge conflicts).
+At release, assemble those entries into the release's changeset:
 
--   Assemble `upcoming/*.md` into `docs/content/changelog/changeset-0-xx.md`, grouping each entry by
-    its `type:` hint (`highlight` / `breaking` / `feature`). This is an agent-friendly task — run the
-    `/assemble-changelog` skill (Claude Code), which merges and de-duplicates the entries, generates
-    the detail sections, and verifies every `include in changelog` PR has an entry.
--   Once assembled and reviewed, delete the merged files from `upcoming/` (leave `_template.md`).
+This whole step is an agent-friendly task — run the `/assemble-changelog` skill (Claude Code), which
+does it end to end:
+
+-   Assembles `upcoming/*.md` into `docs/content/changelog/changeset-0-xx.md`, grouping each entry by
+    its `type:` hint (`highlight` / `breaking` / `feature`), merging and de-duplicating the entries.
+-   Checks that the assembled changeset has no unresolved `TODO(name)` placeholders.
+-   Generates the detail sections (bug fixes + the full list of changes) into `CHANGELOG.md`,
+    via `pixi run uvpy scripts/generate_changelog.py --version 0.x.y` — edit PR titles/labels to
+    improve the output.
+-   Points the `redirect:` in [`docs/content/changelog.md`](./docs/content/changelog.md) at this
+    release's changeset (`scripts/ci/check_changelog_redirect.py` requires the newest changeset to be
+    the redirect target, so this must land together with the new changeset).
+-   Deletes the merged files from `upcoming/` (leaving `_template.md`).
+
+Then review the result:
+
 -   Resolve every `TODO(name)` in the changeset (docs links, example links, screenshots/GIFs, migration guides).
     **The release is blocked until all of these are resolved.**
 -   Sanity-check the `## Highlights` section reads well as a whole. (Feature leads write their own items per PR;
     here you just make sure the one-line and multi-line summary of the release hang together.)
 
-Then update `CHANGELOG.md` with the auto-generated detail (bug fixes + the full list of changes):
-
--   Run `pixi run uvpy scripts/generate_changelog.py --version 0.x.y > new_changelog.md`
--   Edit PR descriptions/labels to improve the generated changelog
--   Copy-paste the results into `CHANGELOG.md`.
-
 The changeset is *not* copied into `CHANGELOG.md`. The script summarizes it instead — the section
 headings plus links to the changeset on the website — so the full prose lives in exactly one place.
-Assemble the changeset before running the script, or the summary will be a `TODO` placeholder. <!-- NOLINT -->
+
+Do *not* create the next release's changeset yet: an empty changeset for an unreleased version would
+fail the redirect check in CI. The next changeset is created from
+[`docs/content/changelog/_template.md`](./docs/content/changelog/_template.md) when that release is
+assembled. Until then the now-empty [`upcoming/`](./docs/content/changelog/upcoming) folder collects
+the next release's per-PR entries.
 
 ### 5. Clean up documentation links
 
@@ -138,15 +149,6 @@ Remove all the `#[docs(unreleased)]` attributes in `re_type_definitions`, follow
 Remove the speculative link markers (`?speculative-link`).
 
 Update the [python support table](./rerun_py/docs/gen_common_index.py) for the major release.
-
-Point the `redirect:` in [`docs/content/changelog.md`](./docs/content/changelog.md) at this release's changeset.
-
-Do *not* create the next release's changeset yet: `scripts/ci/check_changelog_redirect.py` requires the
-newest `changeset-0-xx.md` to be the one `changelog.md` redirects to, so an empty changeset for an unreleased
-version would fail CI. The next changeset is created from
-[`docs/content/changelog/_template.md`](./docs/content/changelog/_template.md) when that release is assembled
-(step 4). Until then the now-empty [`upcoming/`](./docs/content/changelog/upcoming) folder collects the next
-release's per-PR entries.
 
 Once you're done, commit and push onto the release branch.
 
@@ -176,7 +178,7 @@ The pull request description will tell you what to do next.
 [The `Release` workflow](https://github.com/rerun-io/rerun/actions/workflows/release.yml) will build artifacts, run PR checks, and publish them to PyPI, crates.io, npm, etc.
 For `rc` and `final` releases it also creates a **draft** [GitHub release](https://github.com/rerun-io/rerun/releases) (in the `tag-release` job) and attaches a comment to the release PR pointing at it.
 
-Once the `Release` workflow has finished successfully and you've sanity-checked the artifacts, edit the GitHub release draft (changelog, header media) and click `Publish release`.
+Once the `Release` workflow has finished successfully and you've sanity-checked the artifacts, verify that the GitHub release draft contains the summary from `CHANGELOG.md`, not the full website changeset, then click `Publish release`.
 Publishing the release triggers the [`GitHub Release` workflow](https://github.com/rerun-io/rerun/actions/workflows/on_gh_release.yml), which syncs the binary assets from `build.rerun.io` onto the published GitHub release.
 **Make sure that workflow also finishes successfully** so the release ends up with all of its assets attached.
 
