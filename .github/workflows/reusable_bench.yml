@@ -72,7 +72,10 @@ jobs:
       - name: Run benchmark
         # Use bash shell so we get pipefail behavior with tee
         # Running under `pixi` so we get `nasm`
+        # If a target/criterion folder is restored from the cache, criterion tries to read baselines from that which
+        # will fail. So clear the folder.
         run: |
+          rm -rf target/criterion
           pixi run cargo bench \
             --all-features \
             -p re_entity_db \
