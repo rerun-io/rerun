@@ -72,6 +72,26 @@ rr.set_sinks(
 
 See [Multiple sinks](../concepts/logging-and-ingestion/sinks.md#multiple-sinks-tee-pattern) for more information.
 
+### Better MCAP file introspection via CLI and Python
+
+The `rerun mcap info` CLI command has been rewritten to output richer and more detailed file-level information instead of just diagnostic checks.
+The diagnostic checks are now in a dedicated `rerun mcap check` subcommand instead.
+For programmatic access, the same information can be now also accessed through `McapReader.info()` in Python:
+
+```py
+reader = McapReader("data.mcap")
+
+print(f"{reader.info().chunks.count} chunks at max. {reader.info().chunks.max_compressed_size_bytes} B")
+
+if reader.info().metadata_count > 0:
+    print("MCAP has metadata records")
+
+for channel in reader.info().channels:
+    print(f"{channel.topic} [{channel.schema.name}] - {channel.message_count}")
+```
+
+The info is lazily built & cached once, so repeated calls to `info()` are cheap.
+
 ## Breaking changes
 
 ### Entry-name restrictions now apply to application IDs
@@ -82,11 +102,6 @@ Long application IDs are truncated and receive the same suffix.
 
 Update application IDs to use at most 180 characters and only ASCII alphanumeric characters, underscores, hyphens, spaces, brackets, and colons.
 For example, change `my/application` to `my-application`.
-
-### `rerun mcap info` output changed
-
-The `rerun mcap info` CLI command has been rewritten to output richer and more detailed file-level information instead of just diagnostic checks.
-The diagnostic checks are now in a dedicated `rerun mcap check` subcommand instead.
 
 ### `ParquetReader` loading options moved to `stream()`
 
