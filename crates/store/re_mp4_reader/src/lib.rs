@@ -7,8 +7,9 @@
 //! - [`Mode::Asset`] — emit an [`re_sdk_types::archetypes::AssetVideo`] blob
 //!   chunk plus a [`re_sdk_types::archetypes::VideoFrameReference`] index chunk.
 //! - [`Mode::Stream`] — demux the mp4 with [`re_video`] and emit a static
-//!   [`re_sdk_types::archetypes::VideoStream`] codec chunk followed by per-GOP
-//!   (or per-sample) `VideoSample` / `IsKeyframe` chunks.
+//!   [`re_sdk_types::archetypes::VideoStream`] codec chunk, per-GOP (or
+//!   per-sample) `VideoSample` chunks, and finally one dedicated `IsKeyframe`
+//!   marker chunk holding a sparse `true` row per keyframe.
 //!
 //! The entry point is [`load_mp4_from_bytes`], with a native-only `load_mp4`
 //! convenience wrapper that reads the bytes from a path on disk.

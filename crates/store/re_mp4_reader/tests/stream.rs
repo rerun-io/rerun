@@ -6,12 +6,16 @@
 //! an in-memory buffer. That equivalence is what proves the per-sample byte
 //! offsets used while streaming are correct.
 
+#![expect(clippy::unwrap_used)] // Okay to use unwrap in tests
+
 use std::path::PathBuf;
 
 use re_chunk::{Chunk, EntityPath};
 use re_mp4_reader::{
     Mode, Mp4Config, Mp4TranscodeOptions, VideoCodec, load_mp4, load_mp4_from_bytes,
 };
+use re_sdk_types::archetypes::VideoStream;
+use re_sdk_types::components::IsKeyframe;
 
 /// All codecs whose 1-second fixture is decodable in `Mode::Stream` (no
 /// B-frames, not an image sequence). VP8/VP9 additionally exercise the
@@ -54,6 +58,73 @@ fn collect_chunks(
         .collect()
 }
 
+/// Does this chunk carry video sample bytes?
+fn is_sample_chunk(chunk: &Chunk) -> bool {
+    chunk
+        .components()
+        .contains_component(VideoStream::descriptor_sample().component)
+}
+
+/// The sample chunks only — excludes the static codec chunk and the trailing
+/// `IsKeyframe` marker chunk.
+fn sample_chunks(chunks: &[Chunk]) -> Vec<&Chunk> {
+    chunks
+        .iter()
+        .filter(|c| !c.is_static() && is_sample_chunk(c))
+        .collect()
+}
+
+/// Sample times across the sample chunks, in emission order.
+fn sample_times(chunks: &[Chunk]) -> Vec<i64> {
+    let mut times = Vec::new();
+    for chunk in sample_chunks(chunks) {
+        assert_eq!(chunk.timelines().len(), 1);
+        times.extend_from_slice(chunk.timelines().values().next().unwrap().times_raw());
+    }
+    times
+}
+
+/// The times on the sparse `IsKeyframe` marker chunk, asserting every value is
+/// `true` and that exactly one such chunk exists.
+fn keyframe_marker_times(chunks: &[Chunk], label: &str) -> Vec<i64> {
+    let markers: Vec<&Chunk> = chunks
+        .iter()
+        .filter(|c| {
+            !is_sample_chunk(c)
+                && c.components()
+                    .contains_component(VideoStream::descriptor_is_keyframe().component)
+        })
+        .collect();
+    assert_eq!(
+        markers.len(),
+        1,
+        "{label}: expected exactly one dedicated IsKeyframe marker chunk"
+    );
+    let marker = markers[0];
+    assert!(
+        !marker.is_static(),
+        "{label}: the keyframe marker must be temporal"
+    );
+
+    let flags: Vec<bool> = marker
+        .iter_component::<IsKeyframe>(VideoStream::descriptor_is_keyframe().component)
+        .flat_map(|batch| batch.iter().map(|kf| bool::from(kf.0)).collect::<Vec<_>>())
+        .collect();
+    assert!(
+        flags.iter().all(|&kf| kf),
+        "{label}: the marker is sparse — only `true` may be logged, got {flags:?}"
+    );
+
+    assert_eq!(marker.timelines().len(), 1);
+    marker
+        .timelines()
+        .values()
+        .next()
+        .unwrap()
+        .times_raw()
+        .to_vec()
+}
+
 #[test]
 fn streaming_from_path_matches_in_memory() {
     let entity_path = EntityPath::from("video");
@@ -74,10 +145,10 @@ fn streaming_from_path_matches_in_memory() {
             file_name,
         );
 
-        // A codec chunk plus at least one GOP chunk.
+        // A codec chunk, at least one GOP chunk, and the keyframe marker.
         assert!(
-            from_path.len() >= 2,
-            "{file_name}: expected at least a codec chunk and one GOP chunk, got {}",
+            from_path.len() >= 3,
+            "{file_name}: expected at least a codec chunk, one GOP chunk and the keyframe marker, got {}",
             from_path.len()
         );
         assert_eq!(
@@ -101,6 +172,53 @@ fn streaming_from_path_matches_in_memory() {
                 "{file_name}: component data mismatch in chunk {i}"
             );
         }
+    }
+}
+
+/// `IsKeyframe` is emitted as a sparse marker in its own chunk: only `true` rows,
+/// no sample bytes alongside it, one row per GOP start.
+///
+/// Checked for every streamable codec, since a regression here silently costs us
+/// GOP rebatching (see the module docs for why).
+#[test]
+fn is_keyframe_is_a_sparse_marker_in_its_own_chunk() {
+    let entity_path = EntityPath::from("video");
+
+    for file_name in STREAMABLE_FIXTURES {
+        let chunks = collect_chunks(
+            load_mp4(&fixture_path(file_name), &stream_config(), &entity_path).unwrap(),
+            file_name,
+        );
+
+        // No sample chunk may carry the keyframe column.
+        for chunk in sample_chunks(&chunks) {
+            assert!(
+                !chunk
+                    .components()
+                    .contains_component(VideoStream::descriptor_is_keyframe().component),
+                "{file_name}: `is_keyframe` must not be co-located with sample bytes"
+            );
+        }
+
+        let keyframes = keyframe_marker_times(&chunks, file_name);
+
+        // Every GOP starts on a keyframe, so there is one marker row per GOP.
+        let num_gops = sample_chunks(&chunks).len();
+        assert_eq!(
+            keyframes.len(),
+            num_gops,
+            "{file_name}: expected one keyframe row per GOP chunk"
+        );
+
+        // And each marker time is the first sample time of a GOP chunk.
+        let gop_starts: Vec<i64> = sample_chunks(&chunks)
+            .into_iter()
+            .map(|c| c.timelines().values().next().unwrap().times_raw()[0])
+            .collect();
+        assert_eq!(
+            keyframes, gop_starts,
+            "{file_name}: keyframe times must be the GOP start times"
+        );
     }
 }
 
@@ -147,11 +265,7 @@ fn b_frames_are_transcoded_into_a_video_stream() {
         "h264_nobframes",
     ));
 
-    let mut times: Vec<i64> = Vec::new();
-    for chunk in chunks.iter().filter(|c| !c.is_static()) {
-        assert_eq!(chunk.timelines().len(), 1);
-        times.extend_from_slice(chunk.timelines().values().next().unwrap().times_raw());
-    }
+    let times = sample_times(&chunks);
     assert_eq!(
         times.len(),
         expected_samples,
@@ -161,15 +275,20 @@ fn b_frames_are_transcoded_into_a_video_stream() {
         times.windows(2).all(|w| w[0] < w[1]),
         "transcoded PTS must be strictly increasing (B-frames stripped): {times:?}"
     );
+
+    // The keyframe marker must still line up with the transcoded samples.
+    let keyframes = keyframe_marker_times(&chunks, "h264_bframes");
+    assert!(!keyframes.is_empty());
+    assert!(
+        keyframes.iter().all(|kf| times.contains(kf)),
+        "every keyframe time must be one of the emitted sample times"
+    );
 }
 
-/// Total number of sample rows across the non-static (temporal) chunks.
+/// Total number of sample rows across the sample chunks (excludes the static
+/// codec chunk and the sparse `IsKeyframe` marker chunk).
 fn total_sample_rows(chunks: &[Chunk]) -> usize {
-    chunks
-        .iter()
-        .filter(|c| !c.is_static())
-        .map(Chunk::num_rows)
-        .sum()
+    sample_chunks(chunks).into_iter().map(Chunk::num_rows).sum()
 }
 
 /// When ffmpeg is missing (here forced via a bogus `ffmpeg_override`), a B-frame
@@ -341,14 +460,21 @@ fn gop_size_forces_keyframe_spacing() {
         return;
     };
 
-    let gop_sizes: Vec<usize> = chunks
-        .iter()
-        .filter(|c| !c.is_static())
+    let gop_sizes: Vec<usize> = sample_chunks(&chunks)
+        .into_iter()
         .map(Chunk::num_rows)
         .collect();
     assert!(
         gop_sizes.len() >= 2,
         "gop_size={GOP} should force multiple GOPs on a 1s clip, got {gop_sizes:?}"
+    );
+
+    // One sparse marker row per forced keyframe, i.e. one per GOP chunk.
+    let keyframes = keyframe_marker_times(&chunks, "gop_spacing");
+    assert_eq!(
+        keyframes.len(),
+        gop_sizes.len(),
+        "expected one keyframe marker row per GOP, got {keyframes:?} for GOPs {gop_sizes:?}"
     );
     for (i, &n) in gop_sizes.iter().enumerate() {
         if i + 1 < gop_sizes.len() {
@@ -408,14 +534,15 @@ fn transcodes_across_codec_pairs() {
             "{label}: expected one static codec chunk"
         );
 
-        let mut times: Vec<i64> = Vec::new();
-        for chunk in chunks.iter().filter(|c| !c.is_static()) {
-            times.extend_from_slice(chunk.timelines().values().next().unwrap().times_raw());
-        }
+        let times = sample_times(&chunks);
         assert!(!times.is_empty(), "{label}: expected sample chunks");
         assert!(
             times.windows(2).all(|w| w[0] < w[1]),
             "{label}: transcoded PTS must be strictly increasing: {times:?}"
+        );
+        assert!(
+            !keyframe_marker_times(&chunks, label).is_empty(),
+            "{label}: expected a sparse keyframe marker"
         );
         ran += 1;
     }

@@ -1,6 +1,6 @@
 ---
 name: rerun-data-model
-description: "How raw multimodal robot data maps onto the Rerun data model. Read FIRST, before modeling or converting a dataset — and whenever you are about to convert/ingest/preprocess robot data into an .rrd or build a Rerun recording, even if not asked for the data model. Resolves the entity-vs-component, property-vs-component-vs-layer, and static-vs-temporal decisions and routes to the mechanism (do it with readers and lenses, not hand-built chunks or per-message rr.log): rerun-chunk-processing and the importer skills rerun-mcap, rerun-urdf, rerun-parquet, rerun-lerobot."
+description: "How raw multimodal robot data maps onto the Rerun data model. Read FIRST, before modeling or converting a dataset — and whenever you are about to convert/ingest/preprocess robot data into an .rrd or build a Rerun recording, even if not asked for the data model. Resolves the entity-vs-component, property-vs-component-vs-layer, and static-vs-temporal decisions and routes to the mechanism (do it with readers and lenses, not hand-built chunks or per-message rr.log): rerun-chunk-processing and the importer skills rerun-mcap, rerun-urdf, rerun-parquet, rerun-mp4, rerun-lerobot."
 user_invocable: true
 allowed-tools: Read, Grep, Bash, WebFetch
 ---
@@ -10,7 +10,7 @@ allowed-tools: Read, Grep, Bash, WebFetch
 The hard part of ingesting a dataset is the **modeling decision**, not the API call.
 Get the model right and any mechanism works; get it wrong and queries, views, and training all break.
 This skill is just the decisions.
-For mechanism details see `rerun-chunk-processing` (pipeline mechanics) and the importer skills it routes to: `rerun-mcap`,`rerun-urdf`,`rerun-parquet`, `rerun-lerobot`.
+For mechanism details see `rerun-chunk-processing` (pipeline mechanics) and the importer skills it routes to: `rerun-mcap`,`rerun-urdf`,`rerun-parquet`, `rerun-mp4`, `rerun-lerobot`.
 For exact signatures, the docs at `rerun.io/docs/concepts/logging-and-ingestion`.
 
 **Before writing conversion code, fill in the mapping table below.** It is the design, and a human can review it in seconds.
@@ -66,7 +66,7 @@ Keep them separate `.rrd`s.
 | Source (topic/column/key) | Entity path          | Archetype                             | Component(s)         | Timeline      | Static/temporal             | Base/layer | Property? |
 | ------------------------- | -------------------- | ------------------------------------- | -------------------- | ------------- | --------------------------- | ---------- | --------- |
 | mcap `/joint_states`      | `/robot/<joint>`     | `Scalars`                             | `scalars`            | `sensor_time` | temporal                    | base       | no        |
-| `cam0/color.mp4`          | `/camera/cam0/video` | `AssetVideo`+`VideoFrameReference`    | asset+refs           | `video_time`  | asset static, refs temporal | base       | no        |
+| `cam0/color.mp4`          | `/camera/cam0/video` | `VideoStream`                         | codec+sample         | `video_time`  | codec static, samples temporal | base    | no        |
 | `calibration.json`        | `/camera/cam0`       | `Pinhole` (+`Transform3D` extrinsics) | `image_from_camera`  | —             | static                      | base       | no        |
 | URDF + joints (computed)  | `/robot/<link>`      | `Transform3D`                         | translation/rotation | `sensor_time` | temporal                    | **layer**  | no        |
 | `episode.json` operator   | segment              | —                                     | —                    | —             | —                           | —          | **yes**   |
@@ -75,8 +75,8 @@ Keep them separate `.rrd`s.
 
 - **Transforms / FK trees**: log a `Transform3D` per link entity; it relates to the **parent path** and composes down the tree. (Named `CoordinateFrame` + `child_frame`/`parent_frame` only when topology must be a flexible graph.)
 - **Cameras**: extrinsics (`Transform3D`) + intrinsics (`Pinhole`) on the camera entity, image/depth as **children** so they inherit the projection.
-- **Video**: `VideoStream` for raw H.264/H.265 samples.
-- **Columnar ingest**: for an existing _file_, use the matching reader (`rerun-mcap`/`-parquet`/`-lerobot`), which produces chunks directly — do not hand-assemble `send_columns` from a custom parser. When you do log columns directly (live logging), `send_columns` adds **no** automatic timelines, so pass every timeline you want.
+- **Video**: `VideoStream` for compressed samples — the default for an mp4 (`rerun-mp4`) and what the Foxglove decoder already hands you. `AssetVideo`+`VideoFrameReference` is the fallback for a codec `VideoStream` cannot represent.
+- **Columnar ingest**: for an existing _file_, use the matching reader (`rerun-mcap`/`-parquet`/`-mp4`/`-lerobot`), which produces chunks directly — do not hand-assemble `send_columns` from a custom parser. When you do log columns directly (live logging), `send_columns` adds **no** automatic timelines, so pass every timeline you want.
 
 ## Gotchas that cause real failures
 

@@ -109,9 +109,10 @@ class Mp4Reader:
         mode:
             How to convert the mp4 into chunks.
 
-            - `"stream"` (default): emit a static `VideoStream(codec=…)` chunk
-              followed by per-GOP (or per-sample) `VideoSample` chunks. The mp4
-              must use a codec representable as
+            - `"stream"` (default): emit a static `VideoStream(codec=…)` chunk,
+              then per-GOP (or per-sample) `VideoSample` chunks, then one
+              `VideoStream:is_keyframe` chunk with a `True` row per keyframe.
+              The mp4 must use a codec representable as
               [`VideoCodec`][rerun.components.VideoCodec].
               A source containing B-frames — or any source for which a
               transform is requested via `transcode` — is transcoded with FFmpeg

@@ -49,8 +49,9 @@ pub enum Mode {
     /// timeline plus any `created_at` / `modified_at` cells.
     Asset { timepoint: TimePoint },
 
-    /// Emit a static `VideoStream(codec=…)` chunk followed by per-sample
-    /// `VideoSample` chunks at PTS.
+    /// Emit a static `VideoStream(codec=…)` chunk, per-sample (or per-GOP)
+    /// `VideoSample` chunks at PTS, and a trailing dedicated `IsKeyframe` chunk
+    /// holding one sparse `true` row per keyframe.
     ///
     /// The timeline used for the samples is named [`Mp4Config::timeline_name`]
     /// and typed [`Mp4Config::timeline_type`].

@@ -1,6 +1,6 @@
 ---
 name: rerun-chunk-processing
-description: "Core mechanics of the Rerun Chunk Processing API (rerun.experimental) — LazyChunkStream pipelines, Chunk, lenses (MutateLens/DeriveLens/Selector), RrdReader, writing optimized RRDs. Read BEFORE writing any ingestion/conversion/preprocessing code (convert an MCAP, build a recording from a dataset, preprocess an .rrd, port an old converter): it mandates reader+lens pipelines and steers away from hand-built chunks — no Chunk.from_columns for data a reader/lens can produce, no per-message rr.log, no manual pa.array assembly. Source-specific knowledge lives in the importer skills (rerun-mcap, rerun-urdf, rerun-parquet, rerun-lerobot); read rerun-data-model first to decide what the data should become."
+description: "Core mechanics of the Rerun Chunk Processing API (rerun.experimental) — LazyChunkStream pipelines, Chunk, lenses (MutateLens/DeriveLens/Selector), RrdReader, writing optimized RRDs. Read BEFORE writing any ingestion/conversion/preprocessing code (convert an MCAP, build a recording from a dataset, preprocess an .rrd, port an old converter): it mandates reader+lens pipelines and steers away from hand-built chunks — no Chunk.from_columns for data a reader/lens can produce, no per-message rr.log, no manual pa.array assembly. Source-specific knowledge lives in the importer skills (rerun-mcap, rerun-urdf, rerun-parquet, rerun-mp4, rerun-lerobot); read rerun-data-model first to decide what the data should become."
 user_invocable: true
 allowed-tools: Read, Grep, Bash, WebFetch
 ---
@@ -17,6 +17,7 @@ importer skill for each source:
 | MCAP file (ROS2, protobuf, Foxglove)      | `McapReader(path).stream()`             | `rerun-mcap`    |
 | URDF robot model (+ joint states → FK)    | `UrdfTree.from_file_path(...).stream()` | `rerun-urdf`    |
 | Parquet table (trajectories, sensor logs) | `ParquetReader(path).stream()`          | `rerun-parquet` |
+| mp4 camera video                          | `Mp4Reader(path).stream()`              | `rerun-mp4`     |
 | LeRobot dataset directory                 | built-in importer, then `RrdReader`     | `rerun-lerobot` |
 | Existing RRD                              | `RrdReader(path)`                       | here, below     |
 | Sidecar files (JSON calib, metadata)      | `Chunk.from_columns` + `from_iter`      | here, below     |
@@ -32,7 +33,7 @@ writing any conversion code — most "build it by hand" instincts are wrong here
 
 1. **Source a reader supports?** Use the reader's `.stream()`; never hand-parse
    and re-log. MCAP→`McapReader`, URDF→`UrdfTree`, parquet→`ParquetReader`,
-   RRD→`RrdReader`, LeRobot dir→`log_file_from_path`.
+   mp4→`Mp4Reader`, RRD→`RrdReader`, LeRobot dir→`log_file_from_path`.
 2. **A decoder already emits the archetype?** Foxglove gives `Transform3D`,
    `Pinhole`, `VideoStream` (real sample bytes) ready-made — **pass it through**,
    do not re-derive. Only custom-protobuf topics arrive as `<Name>:message` and

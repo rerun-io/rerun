@@ -1,6 +1,9 @@
-//! Stream-mode chunk emission: demux the mp4 with `re_video` and emit
-//! `VideoStream` chunks (one static codec chunk plus per-GOP or per-sample
-//! `VideoSample` / `IsKeyframe` chunks).
+//! Stream-mode chunk emission: demux the mp4 with `re_video` and emit the
+//! chunks described by [`crate::Mode::Stream`].
+//!
+//! `IsKeyframe` gets its own chunk because that is what `re_chunk_store`'s GOP
+//! rebatching accepts — it rejects `is_keyframe=false` rows — and it keeps
+//! keyframe queries off the sample column.
 //!
 //! Both modes reduce to the same pipeline — *emit the codec chunk, then turn a
 //! sequence of demuxed [`Segment`]s into GOP chunks*:
@@ -64,11 +67,11 @@ impl StreamInput {
 
 /// Build a chunk iterator for stream mode.
 ///
-/// Demuxes the source once to inspect it, then emits the static codec chunk
-/// followed by the GOP chunks of each [`Segment`]. The image-sequence-codec,
-/// keyframe, and timescale checks are performed eagerly (here and in
-/// [`Segment::new`]) so callers see those errors from this constructor rather
-/// than from the first `.next()` on the iterator.
+/// Demuxes the source once to inspect it, then emits the static codec chunk,
+/// the GOP chunks of each [`Segment`], and finally the `IsKeyframe` marker chunk.
+/// The image-sequence-codec, keyframe, and timescale checks are performed eagerly
+/// (here and in [`Segment::new`]) so callers see those errors from this
+/// constructor rather than from the first `.next()` on the iterator.
 pub(crate) fn iter_chunks(
     input: StreamInput,
     entity_path: &EntityPath,
@@ -135,19 +138,81 @@ pub(crate) fn iter_chunks(
 
     let entity_path = entity_path.clone();
     let codec_chunk = build_codec_chunk(&entity_path, output_mapped_codec);
-    let gop_chunks = segments.flat_map(move |segment| {
-        gop_chunks(
-            segment,
-            entity_path.clone(),
-            timeline_name,
-            timeline_type,
-            chunk_by_gop,
-        )
-    });
+
+    let sample_chunks = {
+        let entity_path = entity_path.clone();
+        segments.flat_map(move |segment| {
+            gop_chunks(
+                segment,
+                entity_path.clone(),
+                timeline_name,
+                timeline_type,
+                chunk_by_gop,
+            )
+        })
+    };
+
     Ok(Box::new(std::iter::chain(
         std::iter::once(codec_chunk),
-        gop_chunks,
+        WithKeyframeMarker {
+            sample_chunks,
+            entity_path,
+            timeline_name,
+            timeline_type,
+            keyframe_times: Vec::new(),
+            done: false,
+        },
     )))
+}
+
+/// Passes the sample chunks through, then yields the `IsKeyframe` marker chunk
+/// built from the keyframes seen on the way.
+///
+/// Only the keyframe timestamps are retained, so this keeps the one-GOP-at-a-time streaming.
+struct WithKeyframeMarker<I> {
+    sample_chunks: I,
+    entity_path: EntityPath,
+    timeline_name: TimelineName,
+    timeline_type: TimeType,
+    keyframe_times: Vec<i64>,
+    done: bool,
+}
+
+impl<I> Iterator for WithKeyframeMarker<I>
+where
+    I: Iterator<Item = Result<(Chunk, Vec<i64>), Mp4Error>>,
+{
+    type Item = Result<Chunk, Mp4Error>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.done {
+            return None;
+        }
+
+        match self.sample_chunks.next() {
+            Some(Ok((chunk, keyframe_times))) => {
+                self.keyframe_times.extend(keyframe_times);
+                Some(Ok(chunk))
+            }
+            Some(Err(err)) => {
+                // A failed stream is over. Without this the marker chunk would
+                // still be emitted once the source runs dry, describing only the
+                // GOPs that happened to make it out before the failure.
+                self.done = true;
+                Some(Err(err))
+            }
+            None => {
+                self.done = true;
+                build_keyframe_chunk(
+                    &self.entity_path,
+                    self.timeline_name,
+                    self.timeline_type,
+                    std::mem::take(&mut self.keyframe_times),
+                )
+                .transpose()
+            }
+        }
+    }
 }
 
 /// A demuxed, validated mp4 segment — everything needed to emit its GOP chunks.
@@ -187,13 +252,16 @@ impl Segment {
 
 /// Turn one segment into its per-GOP (or per-sample) chunks, reading sample bytes
 /// on demand. A segment that failed to demux yields a single `Err`.
+///
+/// Each chunk comes with the times of the keyframes in it, for
+/// [`WithKeyframeMarker`] to collect.
 fn gop_chunks(
     segment: Result<Segment, Mp4Error>,
     entity_path: EntityPath,
     timeline_name: TimelineName,
     timeline_type: TimeType,
     chunk_by_gop: bool,
-) -> impl Iterator<Item = Result<Chunk, Mp4Error>> {
+) -> impl Iterator<Item = Result<(Chunk, Vec<i64>), Mp4Error>> {
     let Segment {
         mut reader,
         desc,
@@ -530,6 +598,8 @@ fn build_codec_chunk(entity_path: &EntityPath, codec: VideoCodec) -> Result<Chun
 
 /// Build a single chunk for `range`, reading sample bytes from `reader` on
 /// demand, or `Ok(None)` if every sample in the range was unloaded.
+///
+/// Returns the chunk plus the times of the keyframes in it.
 fn build_gop_chunk(
     reader: &mut dyn ReadSeek,
     desc: &VideoDataDescription,
@@ -538,10 +608,10 @@ fn build_gop_chunk(
     timeline_type: TimeType,
     entity_path: &EntityPath,
     range: Range<SampleIndex>,
-) -> Result<Option<Chunk>, Mp4Error> {
+) -> Result<Option<(Chunk, Vec<i64>)>, Mp4Error> {
     let mut time_values: Vec<i64> = Vec::with_capacity(range.len());
     let mut sample_blobs: Vec<Vec<u8>> = Vec::with_capacity(range.len());
-    let mut is_keyframe: Vec<bool> = Vec::with_capacity(range.len());
+    let mut keyframe_times: Vec<i64> = Vec::new();
 
     let mut sample_bytes = vec![];
     for sample_idx in range {
@@ -594,7 +664,9 @@ fn build_gop_chunk(
             desc.sample_data_in_stream_format(&chunk)
                 .map_err(|err| Mp4Error::SampleConversion(err.to_string()))?,
         );
-        is_keyframe.push(meta.is_sync);
+        if meta.is_sync {
+            keyframe_times.push(pts_ns);
+        }
     }
 
     if time_values.is_empty() {
@@ -613,9 +685,49 @@ fn build_gop_chunk(
 
     let components: Vec<_> = VideoStream::update_fields()
         .with_many_sample(sample_blobs)
-        .with_many_is_keyframe(is_keyframe)
         .columns_of_unit_batches()
-        .map_err(|err| Mp4Error::SampleConversion(err.to_string()))?
+        .map_err(|err| {
+            Mp4Error::SampleConversion(format!("Failed to construct sample chunk: {err}"))
+        })?
+        .collect();
+
+    let chunk = Chunk::from_auto_row_ids(
+        ChunkId::new(),
+        entity_path.clone(),
+        std::iter::once((*timeline.name(), time_column)).collect(),
+        components.into_iter().collect(),
+    )?;
+
+    Ok(Some((chunk, keyframe_times)))
+}
+
+/// Build the sparse `IsKeyframe` marker chunk: one row per keyframe, all `true`.
+///
+/// `Ok(None)` if the stream had no keyframe at all.
+fn build_keyframe_chunk(
+    entity_path: &EntityPath,
+    timeline_name: TimelineName,
+    timeline_type: TimeType,
+    keyframe_times: Vec<i64>,
+) -> Result<Option<Chunk>, Mp4Error> {
+    if keyframe_times.is_empty() {
+        return Ok(None);
+    }
+
+    let num_keyframes = keyframe_times.len();
+    let timeline = Timeline::new(timeline_name, timeline_type);
+    let time_column = TimeColumn::new(
+        None,
+        timeline,
+        arrow::buffer::ScalarBuffer::from(keyframe_times),
+    );
+
+    let components: Vec<_> = VideoStream::update_fields()
+        .with_many_is_keyframe(std::iter::repeat_n(true, num_keyframes))
+        .columns_of_unit_batches()
+        .map_err(|err| {
+            Mp4Error::SampleConversion(format!("Failed to construct is_keyframe chunk: {err}"))
+        })?
         .collect();
 
     let chunk = Chunk::from_auto_row_ids(
@@ -630,7 +742,31 @@ fn build_gop_chunk(
 
 #[cfg(all(test, not(target_arch = "wasm32")))]
 mod tests {
-    use super::FragmentScanner;
+    use re_chunk::EntityPath;
+    use re_log_types::{TimeType, TimelineName};
+
+    use super::{FragmentScanner, WithKeyframeMarker};
+    use crate::Mp4Error;
+
+    /// An error ends the stream. The keyframe marker is built from what the
+    /// samples reported on the way past, so emitting it after a failure would
+    /// describe only the GOPs that made it out before the error — a marker that
+    /// looks complete but silently covers part of the video.
+    #[test]
+    fn the_keyframe_marker_is_dropped_when_the_stream_fails() {
+        let mut iter = WithKeyframeMarker {
+            sample_chunks: std::iter::once(Err(Mp4Error::SampleConversion("boom".to_owned()))),
+            entity_path: EntityPath::from("video"),
+            timeline_name: TimelineName::from_static_str("video"),
+            timeline_type: TimeType::DurationNs,
+            // Two GOPs got through before the failure.
+            keyframe_times: vec![0, 1000],
+            done: false,
+        };
+
+        assert!(matches!(iter.next(), Some(Err(_))));
+        assert!(iter.next().is_none(), "no marker chunk after an error");
+    }
 
     /// Build a minimal mp4 box: 4-byte big-endian size, 4-byte type, then body.
     fn mp4_box(box_type: &[u8; 4], body: &[u8]) -> Vec<u8> {
