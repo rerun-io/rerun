@@ -12,7 +12,6 @@
 ///
 /// Defaults to 3, i.e. every coefficient the data has.
 #[rerun::rerun_type]
-#[docs(unreleased)]
 #[python(aliases = "int")]
 #[python(
     array_aliases = "int | npt.NDArray[np.uint8] | npt.NDArray[np.uint16] | npt.NDArray[np.uint32]"
