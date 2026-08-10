@@ -145,7 +145,7 @@ Of course, Rerun is useful for much more than just robots. Any time you have any
 
 ### Rerun vs. Rviz
 
-When coming from pure visualization tools like [RViz](https://docs.ros.org/en/rolling/Tutorials/Intermediate/RViz/RViz-Main.html), you might be used to seeing the latest data only.
+When coming from pure visualization tools like [RViz](https://docs.ros.org/en/jazzy/Tutorials/Intermediate/RViz/RViz-Main.html), you might be used to seeing the latest data only.
 Rerun is more than a pure visualization solution, it provides a platform for multimodal data with a powerful visualizer, storage model and query engine (see also: [*"What is Rerun?"*](https://rerun.io/docs/overview/what-is-rerun)).
 In robotics, you can use Rerun e.g. to record test runs, manage and query training data, visually debug live streams or recordings (also from third-party formats like [MCAP](https://rerun.io/docs/howto/logging-and-ingestion/mcap)) and much more.
 
