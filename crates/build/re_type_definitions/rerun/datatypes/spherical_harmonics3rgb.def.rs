@@ -23,7 +23,6 @@
 /// yields the optimal least-squares approximation of that lower degree.
 #[rerun::rerun_type]
 #[arrow(transparent)]
-#[docs(unreleased)]
 #[python(aliases = "npt.ArrayLike")]
 #[python(array_aliases = "npt.ArrayLike")]
 #[rerun(state = "unstable")]

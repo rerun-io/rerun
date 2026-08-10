@@ -8,7 +8,7 @@ The highest spherical harmonics degree to evaluate when rendering, 0-3.
 
 `0` renders the view-independent base color only, and is the fastest.
 Each higher degree brings in more view-dependent detail, at the cost of fetching and
-evaluating more coefficients ([`components.SphericalHarmonics3Rgb`](https://rerun.io/docs/reference/types/components/spherical_harmonics3rgb?speculative-link)):
+evaluating more coefficients ([`components.SphericalHarmonics3Rgb`](https://rerun.io/docs/reference/types/components/spherical_harmonics3rgb)):
 3 of them for degree 1, 8 for degree 2, and all 15 for degree 3.
 
 Lowering this in the blueprint can make the rendering a lot faster.
@@ -25,11 +25,11 @@ UInt32
 ```
 
 ## API reference links
- * 🌊 [C++ API docs for `SphericalHarmonicsDegree`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1SphericalHarmonicsDegree.html?speculative-link)
- * 🐍 [Python API docs for `SphericalHarmonicsDegree`](https://ref.rerun.io/docs/python/stable/common/components?speculative-link#rerun.components.SphericalHarmonicsDegree)
- * 🦀 [Rust API docs for `SphericalHarmonicsDegree`](https://docs.rs/rerun/latest/rerun/components/struct.SphericalHarmonicsDegree.html?speculative-link)
+ * 🌊 [C++ API docs for `SphericalHarmonicsDegree`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1SphericalHarmonicsDegree.html)
+ * 🐍 [Python API docs for `SphericalHarmonicsDegree`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.SphericalHarmonicsDegree)
+ * 🦀 [Rust API docs for `SphericalHarmonicsDegree`](https://docs.rs/rerun/latest/rerun/components/struct.SphericalHarmonicsDegree.html)
 
 
 ## Used by
 
-* [`GaussianSplats3D`](../archetypes/gaussian_splats3d.md?speculative-link)
+* [`GaussianSplats3D`](../archetypes/gaussian_splats3d.md)

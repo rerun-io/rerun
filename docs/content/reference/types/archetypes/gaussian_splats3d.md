@@ -32,9 +32,9 @@ in their natural form: linear scales, and base colors with opacity as RGBA.
 * [DataframeView](../views/dataframe_view.md)
 
 ## API reference links
- * 🌊 [C++ API docs for `GaussianSplats3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1GaussianSplats3D.html?speculative-link)
- * 🐍 [Python API docs for `GaussianSplats3D`](https://ref.rerun.io/docs/python/stable/common/archetypes?speculative-link#rerun.archetypes.GaussianSplats3D)
- * 🦀 [Rust API docs for `GaussianSplats3D`](https://docs.rs/rerun/latest/rerun/archetypes/struct.GaussianSplats3D.html?speculative-link)
+ * 🌊 [C++ API docs for `GaussianSplats3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1GaussianSplats3D.html)
+ * 🐍 [Python API docs for `GaussianSplats3D`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.GaussianSplats3D)
+ * 🦀 [Rust API docs for `GaussianSplats3D`](https://docs.rs/rerun/latest/rerun/archetypes/struct.GaussianSplats3D.html)
 
 ## Examples
 

@@ -19,4 +19,4 @@ UInt32
 
 ## Used by
 
-* [`SphericalHarmonicsDegree`](../components/spherical_harmonics_degree.md?speculative-link)
+* [`SphericalHarmonicsDegree`](../components/spherical_harmonics_degree.md)

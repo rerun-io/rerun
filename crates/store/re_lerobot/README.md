@@ -2,8 +2,8 @@
 
 Part of the [`rerun`](https://github.com/rerun-io/rerun) family of crates.
 
-[![Latest version](https://img.shields.io/crates/v/re_lerobot.svg?speculative-link)](https://crates.io/crates/re_lerobot?speculative-link)
-[![Documentation](https://docs.rs/re_lerobot/badge.svg?speculative-link)](https://docs.rs/re_lerobot?speculative-link)
+[![Latest version](https://img.shields.io/crates/v/re_lerobot.svg)](https://crates.io/crates/re_lerobot)
+[![Documentation](https://docs.rs/re_lerobot/badge.svg)](https://docs.rs/re_lerobot)
 ![MIT](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Apache](https://img.shields.io/badge/license-Apache-blue.svg)
 
