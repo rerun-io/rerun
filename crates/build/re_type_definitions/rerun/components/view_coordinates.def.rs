@@ -3,9 +3,9 @@
 
 /// An orientation convention for a camera or 3D view.
 ///
-/// On [archetypes.Pinhole], this component controls the camera orientation and projection direction.
+/// On [`rerun::archetypes::Pinhole`], this component controls the camera orientation and projection direction.
 /// On [SpatialInformation](https://rerun.io/docs/reference/types/views/spatial3d_view), it controls the 3D view's eye orientation, navigation, and default grid plane.
-/// A logged [archetypes.ViewCoordinates] provides the default for [SpatialInformation](https://rerun.io/docs/reference/types/views/spatial3d_view).
+/// A logged [`rerun::archetypes::ViewCoordinates`] provides the default for [SpatialInformation](https://rerun.io/docs/reference/types/views/spatial3d_view).
 ///
 /// The three directions are always ordered as [x, y, z] and specify where each positive axis points.
 /// For example, [Right, Down, Forward] means that +X points right, +Y points down, and +Z points forward.

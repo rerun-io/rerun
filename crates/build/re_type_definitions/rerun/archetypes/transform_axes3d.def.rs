@@ -1,7 +1,7 @@
 // This is a Rerun type definition for the SDK, not executable code.
 // It is parsed by `re_types_builder` to generate the Rust, Python and C++ bindings.
 
-/// A visual representation of a [archetypes.Transform3D].
+/// A visual representation of a [`rerun::archetypes::Transform3D`].
 ///
 /// \example archetypes/transform3d_axes title="Visual representation of a transform as three arrows" image="https://static.rerun.io/transform3d_axes/574c482088e9d317b19127fc8bef957dbfd3abe8/1200w.png"
 #[rerun::rerun_type]

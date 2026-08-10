@@ -44,9 +44,9 @@ pub struct LineStrips3D {
     #[rerun(optional)]
     pub show_labels: Option<rerun::components::ShowLabels>,
 
-    /// Optional [components.ClassId]s for the lines.
+    /// Optional [`rerun::components::ClassId`]s for the lines.
     ///
-    /// The [components.ClassId] provides colors and labels if not specified explicitly.
+    /// The [`rerun::components::ClassId`] provides colors and labels if not specified explicitly.
     #[rerun(optional)]
     pub class_ids: Option<Vec<rerun::components::ClassId>>,
 }

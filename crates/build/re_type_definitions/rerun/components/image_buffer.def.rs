@@ -3,7 +3,7 @@
 
 /// A buffer that is known to store image data.
 ///
-/// To interpret the contents of this buffer, see, [components.ImageFormat].
+/// To interpret the contents of this buffer, see, [`rerun::components::ImageFormat`].
 #[rerun::rerun_type]
 #[python(aliases = "bytes | npt.NDArray[np.uint8]")]
 #[python(array_aliases = "bytes | npt.NDArray[np.uint8]")]

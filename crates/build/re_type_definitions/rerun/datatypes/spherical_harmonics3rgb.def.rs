@@ -15,7 +15,7 @@
 /// but those store the channels channel-major (all 15 coefficients of R, then G, then B),
 /// so they must be transposed on import.
 ///
-/// The degree-0 (DC) term is *not* included — it is represented as a [datatypes.Rgba32] color instead.
+/// The degree-0 (DC) term is *not* included — it is represented as a [`rerun::datatypes::Rgba32`] color instead.
 ///
 /// Data of a lower spherical harmonics degree should be zero-padded,
 /// which represents the exact same function (the spherical harmonics basis is orthonormal).

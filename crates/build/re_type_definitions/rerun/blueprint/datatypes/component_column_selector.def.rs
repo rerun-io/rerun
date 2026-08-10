@@ -15,7 +15,7 @@ pub struct ComponentColumnSelector {
     /// The name of the component.
     ///
     /// This acts as the component name in the context of a given `entity_path`
-    /// An example for this would be `Points3D:positions`, for the `positions` field in [archetypes.Points3D].
+    /// An example for this would be `Points3D:positions`, for the `positions` field in [`rerun::archetypes::Points3D`].
     pub component: rerun::datatypes::Utf8,
     //TODO(ab, jleibs): many more fields to come (archetype, etc.)
 }

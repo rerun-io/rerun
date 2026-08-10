@@ -13,7 +13,7 @@
 /// it will be resolved to a transform with only a rotation.
 /// (This is unlike how we usually apply latest-at semantics on an archetype where we take the latest state of any component independently)
 ///
-/// For transforms that affect only a single entity and do not propagate along the entity tree refer to [archetypes.InstancePoses3D].
+/// For transforms that affect only a single entity and do not propagate along the entity tree refer to [`rerun::archetypes::InstancePoses3D`].
 ///
 /// \example archetypes/transform3d_simple title="Variety of 3D transforms" image="https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/1200w.png"
 /// \example archetypes/transform3d_hierarchy title="Transform hierarchy" !api image="https://static.rerun.io/transform_hierarchy/c2a22bff0b5ebfb6cd7742069f096f1de984f7b1/full.png"
@@ -79,9 +79,9 @@ pub struct Transform3D {
     /// with the child frame `"robot_arm"` on any other entity than `"my_transforms"` unless one of them was logged with static time.
     ///
     /// If not specified, this is set to the implicit transform frame of the current entity path.
-    /// This means that if a [archetypes.Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity/path`.
+    /// This means that if a [`rerun::archetypes::Transform3D`] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity/path`.
     ///
-    /// To set the frame an entity is part of see [archetypes.CoordinateFrame].
+    /// To set the frame an entity is part of see [`rerun::archetypes::CoordinateFrame`].
     ///
     /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
     #[rerun(no_ui_edit)]
@@ -91,9 +91,9 @@ pub struct Transform3D {
     /// The parent frame this transform transforms into.
     ///
     /// If not specified, this is set to the implicit transform frame of the current entity path's parent.
-    /// This means that if a [archetypes.Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.
+    /// This means that if a [`rerun::archetypes::Transform3D`] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.
     ///
-    /// To set the frame an entity is part of see [archetypes.CoordinateFrame].
+    /// To set the frame an entity is part of see [`rerun::archetypes::CoordinateFrame`].
     ///
     /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
     #[rerun(no_ui_edit)]

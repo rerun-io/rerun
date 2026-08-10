@@ -22,7 +22,7 @@ pub struct LineGrid3D {
 
     /// In what plane the grid is drawn.
     ///
-    /// Defaults to the plane at zero units along the up/down axis defined by [archetypes.SpatialInformation]'s axes property.
+    /// Defaults to the plane at zero units along the up/down axis defined by [`rerun::blueprint::archetypes::SpatialInformation`]'s axes property.
     #[rerun(optional)]
     pub plane: Option<rerun::components::Plane3D>,
 

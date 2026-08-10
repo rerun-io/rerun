@@ -6,17 +6,17 @@
 // See `image_to_gpu.rs`
 // Suggestion: guides heuristic but doesn't specify it unless noted.
 
-/// Specifieds a particular format of an [archetypes.Image].
+/// Specifieds a particular format of an [`rerun::archetypes::Image`].
 ///
-/// Most images can be described by a [datatypes.ColorModel] and a [datatypes.ChannelDatatype],
+/// Most images can be described by a [`rerun::datatypes::ColorModel`] and a [`rerun::datatypes::ChannelDatatype`],
 /// e.g. `RGB` and `U8` respectively.
 ///
 /// However, some image formats has chroma downsampling and/or
-/// use differing number of bits per channel, and that is what this [datatypes.PixelFormat] is for.
+/// use differing number of bits per channel, and that is what this [`rerun::datatypes::PixelFormat`] is for.
 ///
 /// All these formats support random access.
 ///
-/// For more compressed image formats, see [archetypes.EncodedImage].
+/// For more compressed image formats, see [`rerun::archetypes::EncodedImage`].
 #[rerun::rerun_type]
 #[repr(u8)]
 #[rerun(state = "stable")]
@@ -55,7 +55,7 @@ pub enum PixelFormat {
 
     /// Monochrome Y plane only, essentially a YUV 4:0:0 planar format.
     ///
-    /// Also known as just "gray". This is virtually identical to a 8bit luminance/grayscale (see [datatypes.ColorModel]).
+    /// Also known as just "gray". This is virtually identical to a 8bit luminance/grayscale (see [`rerun::datatypes::ColorModel`]).
     ///
     /// This uses entire range YUV, i.e. Y is expected to be within [0, 255].
     /// (as opposed to "limited range" YUV as used e.g. in NV12).
@@ -81,7 +81,7 @@ pub enum PixelFormat {
     /// Also known as just "gray".
     ///
     /// This uses limited range YUV, i.e. Y is expected to be within [16, 235].
-    /// If not for this range limitation/remapping, this is almost identical to 8bit luminace/grayscale (see [datatypes.ColorModel]).
+    /// If not for this range limitation/remapping, this is almost identical to 8bit luminace/grayscale (see [`rerun::datatypes::ColorModel`]).
     Y8_LimitedRange = 41,
 
     /// `Y_U_V12` is a YUV 4:2:0 fully planar YUV format without chroma downsampling, also known as `I420`.

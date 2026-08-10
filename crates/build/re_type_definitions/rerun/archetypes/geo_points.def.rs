@@ -31,7 +31,7 @@ pub struct GeoPoints {
 
     /// Optional class Ids for the points.
     ///
-    /// The [components.ClassId] provides colors if not specified explicitly.
+    /// The [`rerun::components::ClassId`] provides colors if not specified explicitly.
     #[rerun(optional)]
     pub class_ids: Option<Vec<rerun::components::ClassId>>,
     //TODO(ab): add `Label` and  `ShowLabels` components

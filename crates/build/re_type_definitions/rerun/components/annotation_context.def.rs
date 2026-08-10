@@ -3,7 +3,7 @@
 
 /// The annotation context provides additional information on how to display entities.
 ///
-/// Entities can use [datatypes.ClassId]s and [datatypes.KeypointId]s to provide annotations, and
+/// Entities can use [`rerun::datatypes::ClassId`]s and [`rerun::datatypes::KeypointId`]s to provide annotations, and
 /// the labels and colors will be looked up in the appropriate
 /// annotation context. We use the *first* annotation context we find in the
 /// path-hierarchy when searching up through the ancestors of a given entity

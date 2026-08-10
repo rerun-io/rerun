@@ -3,7 +3,7 @@
 
 /// A 16-bit ID representing a type of semantic class.
 ///
-/// \rs Used to look up a [`crate::datatypes::ClassDescription`] within the [`crate::components::AnnotationContext`].
+/// \rs Used to look up a [`rerun::datatypes::ClassDescription`] within the [`rerun::components::AnnotationContext`].
 #[rerun::rerun_type]
 #[python(aliases = "int")]
 #[python(

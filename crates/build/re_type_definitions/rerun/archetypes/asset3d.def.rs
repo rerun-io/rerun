@@ -3,9 +3,9 @@
 
 /// A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, `.stl`, etc.).
 ///
-/// See also [archetypes.Mesh3D].
+/// See also [`rerun::archetypes::Mesh3D`].
 ///
-/// If there are multiple [archetypes.InstancePoses3D] instances logged to the same entity as a mesh,
+/// If there are multiple [`rerun::archetypes::InstancePoses3D`] instances logged to the same entity as a mesh,
 /// an instance of the mesh will be drawn for each transform.
 ///
 /// \example archetypes/asset3d_simple title="Simple 3D asset" image="https://static.rerun.io/asset3d_simple/af238578188d3fd0de3e330212120e2842a8ddb2/1200w.png"
@@ -37,7 +37,7 @@ pub struct Asset3D {
     /// A color multiplier applied to the whole asset.
     ///
     /// For mesh who already have `albedo_factor` in materials,
-    /// it will be overwritten by actual `albedo_factor` of [archetypes.Asset3D] (if specified).
+    /// it will be overwritten by actual `albedo_factor` of [`rerun::archetypes::Asset3D`] (if specified).
     #[rerun(optional)]
     pub albedo_factor: Option<rerun::components::AlbedoFactor>,
 }

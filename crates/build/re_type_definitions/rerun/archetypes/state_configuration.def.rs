@@ -14,7 +14,7 @@
 ///
 /// It's generally recommended to log this type as static.
 ///
-/// The underlying data needs to be logged to the same entity path using [archetypes.StateChange].
+/// The underlying data needs to be logged to the same entity path using [`rerun::archetypes::StateChange`].
 ///
 /// \example archetypes/state_configuration title="State changes with a custom style"
 #[rerun::rerun_type]

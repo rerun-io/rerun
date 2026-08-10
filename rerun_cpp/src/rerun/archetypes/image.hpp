@@ -35,7 +35,7 @@ namespace rerun::archetypes {
     /// The order of dimensions in the underlying `components::Blob` follows the typical
     /// row-major, interleaved-pixel image format.
     ///
-    /// Since the underlying [rerun::components::Blob] uses `rerun::Collection` internally,
+    /// Since the underlying `components::Blob` uses `rerun::Collection` internally,
     /// data can be passed in without a copy from raw pointers or by reference from `std::vector`/`std::array`/c-arrays.
     /// If needed, this "borrow-behavior" can be extended by defining your own `rerun::CollectionAdapter`.
     ///

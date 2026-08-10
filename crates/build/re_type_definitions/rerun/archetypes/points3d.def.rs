@@ -52,19 +52,19 @@ pub struct Points3D {
 
     /// How points should be shaded.
     ///
-    /// If not set, points are rendered with [components.PointShading.Gradient] by default.
+    /// If not set, points are rendered with [`rerun::components::PointShading::Gradient`] by default.
     #[rerun(optional)]
     pub point_shading: Option<rerun::components::PointShading>,
 
     /// Optional class Ids for the points.
     ///
-    /// The [components.ClassId] provides colors and labels if not specified explicitly.
+    /// The [`rerun::components::ClassId`] provides colors and labels if not specified explicitly.
     #[rerun(optional)]
     pub class_ids: Option<Vec<rerun::components::ClassId>>,
 
     /// Optional keypoint IDs for the points, identifying them within a class.
     ///
-    /// If keypoint IDs are passed in but no [components.ClassId]s were specified, the [components.ClassId] will
+    /// If keypoint IDs are passed in but no [`rerun::components::ClassId`]s were specified, the [`rerun::components::ClassId`] will
     /// default to 0.
     /// This is useful to identify points within a single classification (which is identified
     /// with `class_id`).

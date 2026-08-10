@@ -3,13 +3,13 @@
 
 /// Video stream consisting of raw video chunks.
 ///
-/// For logging video containers like mp4, refer to [archetypes.AssetVideo] and [archetypes.VideoFrameReference].
+/// For logging video containers like mp4, refer to [`rerun::archetypes::AssetVideo`] and [`rerun::archetypes::VideoFrameReference`].
 /// To learn more about video support in Rerun, check the [video reference](https://rerun.io/docs/reference/video).
 ///
 /// All components except `sample` are typically logged statically once per entity.
 /// `sample` is then logged repeatedly for each frame on the timeline.
 ///
-/// TODO(#10422): [archetypes.VideoFrameReference] does not yet work with [archetypes.VideoStream].
+/// TODO(#10422): [`rerun::archetypes::VideoFrameReference`] does not yet work with [`rerun::archetypes::VideoStream`].
 ///
 /// \example archetypes/video_stream_synthetic missing="cpp,rs" title="Live streaming of on-the-fly encoded video" image="https://static.rerun.io/video_stream_synthetic/4dd34da01980afa5604994fa4cce34d7573b0763/1200w.png"
 #[rerun::rerun_type]
@@ -44,19 +44,19 @@ pub struct VideoStream {
     /// Each video sample must contain enough data for exactly one video frame
     /// (this restriction may be relaxed in the future for some codecs).
     ///
-    /// Unless your stream consists entirely of key-frames (in which case you should consider [archetypes.EncodedImage])
+    /// Unless your stream consists entirely of key-frames (in which case you should consider [`rerun::archetypes::EncodedImage`])
     /// never log this component as static data as this means that you loose all information of
     /// previous samples which may be required to decode an image.
     ///
-    /// See [components.VideoCodec] for codec specific requirements.
+    /// See [`rerun::components::VideoCodec`] for codec specific requirements.
     #[rerun(recommended)]
     pub sample: Option<rerun::components::VideoSample>,
 
-    /// Whether the corresponding [components.VideoSample] contains a keyframe.
+    /// Whether the corresponding [`rerun::components::VideoSample`] contains a keyframe.
     ///
     /// A keyframe (also known as a sync sample or IDR) is a frame from which a decoder can
-    /// start decoding the stream with no prior decoder state. See [components.IsKeyframe]
-    /// and [components.VideoCodec] for the codec-specific definition.
+    /// start decoding the stream with no prior decoder state. See [`rerun::components::IsKeyframe`]
+    /// and [`rerun::components::VideoCodec`] for the codec-specific definition.
     ///
     /// This field is optional. It does not change how the stream itself is decoded: it is
     /// metadata that travels with the sample and can be inspected when querying the data

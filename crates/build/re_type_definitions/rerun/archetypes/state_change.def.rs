@@ -4,7 +4,7 @@
 /// A state change, representing a transition of an entity into a new state.
 ///
 /// Useful for representing discrete state machines, mode transitions, or
-/// state changes over time. Each logged [archetypes.StateChange] marks a new state
+/// state changes over time. Each logged [`rerun::archetypes::StateChange`] marks a new state
 /// at the given time. A `null` state resets the state, showing a gap in the state timeline view.
 ///
 /// The state timeline view displays these as horizontal colored lanes over time.

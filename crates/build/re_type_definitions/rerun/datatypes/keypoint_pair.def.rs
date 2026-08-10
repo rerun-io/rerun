@@ -1,7 +1,7 @@
 // This is a Rerun type definition for the SDK, not executable code.
 // It is parsed by `re_types_builder` to generate the Rust, Python and C++ bindings.
 
-/// A connection between two [datatypes.KeypointId]s.
+/// A connection between two [`rerun::datatypes::KeypointId`]s.
 #[rerun::rerun_type]
 #[python(aliases = "Sequence[datatypes.KeypointIdLike]")]
 #[rust(derive(Default, Eq, PartialEq))]

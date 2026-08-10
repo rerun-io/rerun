@@ -1,14 +1,14 @@
 // This is a Rerun type definition for the SDK, not executable code.
 // It is parsed by `re_types_builder` to generate the Rust, Python and C++ bindings.
 
-/// An image made up of integer [components.ClassId]s.
+/// An image made up of integer [`rerun::components::ClassId`]s.
 ///
-/// Each pixel corresponds to a [components.ClassId] that will be mapped to a color based on [archetypes.AnnotationContext].
+/// Each pixel corresponds to a [`rerun::components::ClassId`] that will be mapped to a color based on [`rerun::archetypes::AnnotationContext`].
 ///
 /// In the case of floating point images, the label will be looked up based on rounding to the nearest
 /// integer value.
 ///
-/// Use [archetypes.AnnotationContext] to associate each class with a color and a label.
+/// Use [`rerun::archetypes::AnnotationContext`] to associate each class with a color and a label.
 ///
 /// \cpp Since the underlying `rerun::datatypes::TensorData` uses `rerun::Collection` internally,
 /// \cpp data can be passed in without a copy from raw pointers or by reference from `std::vector`/`std::array`/c-arrays.

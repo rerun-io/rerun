@@ -50,7 +50,7 @@ pub struct Arrows3D {
 
     /// Optional class Ids for the points.
     ///
-    /// The [components.ClassId] provides colors and labels if not specified explicitly.
+    /// The [`rerun::components::ClassId`] provides colors and labels if not specified explicitly.
     #[rerun(optional)]
     pub class_ids: Option<Vec<rerun::components::ClassId>>,
 }

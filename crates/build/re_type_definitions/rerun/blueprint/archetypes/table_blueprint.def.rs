@@ -11,7 +11,7 @@ pub struct TableBlueprint {
     /// Every row can at most preview a single segment.
     ///
     /// For the preview, the rest of the blueprint data is read it as it would be with regular recording blueprints,
-    /// meaning that the regular structure of [archetypes.ViewportBlueprint], and [archetypes.ViewBlueprint] structure applies.
+    /// meaning that the regular structure of [`rerun::blueprint::archetypes::ViewportBlueprint`], and [`rerun::blueprint::archetypes::ViewBlueprint`] structure applies.
     /// However, this mostly ignores layout container types as well as automatic spawning.
     ///
     /// If unset, defaults to the first URL column in the table that points to the same Rerun server

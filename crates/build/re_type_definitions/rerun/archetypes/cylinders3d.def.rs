@@ -4,9 +4,9 @@
 /// 3D cylinders with flat caps.
 ///
 /// This archetype is for cylinder primitives defined by their axial length and radius.
-/// For points whose radii are for visualization purposes, use [archetypes.Points3D] instead.
+/// For points whose radii are for visualization purposes, use [`rerun::archetypes::Points3D`] instead.
 ///
-/// Orienting and placing cylinders forms a separate transform that is applied prior to [archetypes.InstancePoses3D] and [archetypes.Transform3D].
+/// Orienting and placing cylinders forms a separate transform that is applied prior to [`rerun::archetypes::InstancePoses3D`] and [`rerun::archetypes::Transform3D`].
 ///
 /// \example archetypes/cylinders3d_batch title="Batch of cylinders" image="https://static.rerun.io/cylinders3d_batch/ef642dede2bef23704eaff0f22aa48284d482b23/1200w.png"
 #[rerun::rerun_type]

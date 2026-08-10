@@ -15,11 +15,8 @@ You can generate the code with `pixi run codegen`.
 
 ### Doclinks
 
-The definitions can contain docstrings (`///`) which in turn can contain doclinks.
-They are to be written on the form `[archetypes.Image]`.
+The definitions can contain rustdoc links (`///`) to Rerun types and their fields or enum variants.
+Use fully-qualified paths, such as [`rerun::archetypes::Image`] or [`rerun::components::FillMode::DenseWireframe`].
 
-Only links to types are currently supported.
-
-Link checking is not done by the codegen, but the output is checked implicitly by `cargo doc`, `lychee` etc.
-
-We only support doclinks to the default `rerun.scope`.
+Rustdoc checks the links in the definitions.
+Codegen translates them into links for each target language.

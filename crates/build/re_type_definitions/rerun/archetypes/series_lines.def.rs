@@ -7,7 +7,7 @@
 /// Changes over time are supported for most but not all its fields (see respective fields for details),
 /// it's generally recommended to log this type as static.
 ///
-/// The underlying data needs to be logged to the same entity-path using [archetypes.Scalars].
+/// The underlying data needs to be logged to the same entity-path using [`rerun::archetypes::Scalars`].
 /// Dimensionality of the scalar arrays logged at each time point is assumed to be the same over time.
 ///
 /// \example archetypes/series_lines_style title="Line series" image="https://static.rerun.io/series_line_style/d2616d98b1e46bdb85849b8669154fdf058e3453/1200w.png"

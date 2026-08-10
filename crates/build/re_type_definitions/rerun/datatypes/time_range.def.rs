@@ -1,7 +1,7 @@
 // This is a Rerun type definition for the SDK, not executable code.
 // It is parsed by `re_types_builder` to generate the Rust, Python and C++ bindings.
 
-/// Two [datatypes.TimeInt] describing a range of time.
+/// Two [`rerun::datatypes::TimeInt`] describing a range of time.
 #[rerun::rerun_type]
 #[rust(derive(Copy, PartialEq, Eq, PartialOrd, Ord))]
 #[rust(override_crate = "re_types_core")]

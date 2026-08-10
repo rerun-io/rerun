@@ -9,7 +9,7 @@
 /// instances.
 ///
 /// If there's more instance poses than lengths & radii, the last capsule's orientation will be repeated for the remaining poses.
-/// Orienting and placing capsules forms a separate transform that is applied prior to [archetypes.InstancePoses3D] and [archetypes.Transform3D].
+/// Orienting and placing capsules forms a separate transform that is applied prior to [`rerun::archetypes::InstancePoses3D`] and [`rerun::archetypes::Transform3D`].
 ///
 /// \example archetypes/capsules3d_batch title="Batch of capsules" image="https://static.rerun.io/capsule3d_batch/6e6a4acafcf528359372147d7247f85d84434101/1200w.png"
 #[rerun::rerun_type]

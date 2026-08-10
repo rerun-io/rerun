@@ -4,7 +4,7 @@
 /// 3D boxes with half-extents and optional center, rotations, colors etc.
 ///
 /// If there's more instance poses than half sizes, the last box's orientation will be repeated for the remaining poses.
-/// Orienting and placing boxes forms a separate transform that is applied prior to [archetypes.InstancePoses3D] and [archetypes.Transform3D].
+/// Orienting and placing boxes forms a separate transform that is applied prior to [`rerun::archetypes::InstancePoses3D`] and [`rerun::archetypes::Transform3D`].
 ///
 /// \example archetypes/boxes3d_simple !api title="Simple 3D boxes" image="https://static.rerun.io/box3d_simple/d6a3f38d2e3360fbacac52bb43e44762635be9c8/1200w.png"
 /// \example archetypes/boxes3d_batch title="Batch of 3D boxes" image="https://static.rerun.io/box3d_batch/5aac5b5d29c9f2ecd572c93f6970fcec17f4984b/1200w.png"
@@ -67,9 +67,9 @@ pub struct Boxes3D {
     #[rerun(optional)]
     pub show_labels: Option<rerun::components::ShowLabels>,
 
-    /// Optional [components.ClassId]s for the boxes.
+    /// Optional [`rerun::components::ClassId`]s for the boxes.
     ///
-    /// The [components.ClassId] provides colors and labels if not specified explicitly.
+    /// The [`rerun::components::ClassId`] provides colors and labels if not specified explicitly.
     #[rerun(optional)]
     pub class_ids: Option<Vec<rerun::components::ClassId>>,
 }

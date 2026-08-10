@@ -46,7 +46,7 @@ pub struct VoxelGridMap {
 
     /// Translation of the minimum corner of voxel `[0, 0, 0]`.
     ///
-    /// Together with [components.RotationAxisAngle] or [components.RotationQuat], this defines the pose of the
+    /// Together with [`rerun::components::RotationAxisAngle`] or [`rerun::components::RotationQuat`], this defines the pose of the
     /// grid relative to the map's parent coordinate frame.
     ///
     /// If not set, the minimum corner is placed at the origin of the map's parent coordinate frame.
@@ -56,18 +56,18 @@ pub struct VoxelGridMap {
 
     /// Rotation of the grid via axis + angle.
     ///
-    /// Together with [components.Translation3D], this defines the pose of the grid relative to the
+    /// Together with [`rerun::components::Translation3D`], this defines the pose of the grid relative to the
     /// map's parent coordinate frame.
     ///
-    /// Note: either this or [components.RotationQuat] can be set to specify the grid's rotation, but not both.
-    /// If both this and [components.RotationQuat] are set, this is ignored in favor of the quaternion.
+    /// Note: either this or [`rerun::components::RotationQuat`] can be set to specify the grid's rotation, but not both.
+    /// If both this and [`rerun::components::RotationQuat`] are set, this is ignored in favor of the quaternion.
     #[rerun(no_ui_edit)]
     #[rerun(optional)]
     pub rotation_axis_angle: Option<rerun::components::RotationAxisAngle>,
 
     /// Rotation of the grid via quaternion.
     ///
-    /// Together with [components.Translation3D], this defines the pose of the grid relative to the
+    /// Together with [`rerun::components::Translation3D`], this defines the pose of the grid relative to the
     /// map's parent coordinate frame.
     #[rerun(no_ui_edit)]
     #[rerun(optional)]

@@ -24,7 +24,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: A 16-bit ID representing a type of semantic class.
 ///
-/// Used to look up a [`crate::datatypes::ClassDescription`] within the [`crate::components::AnnotationContext`].
+/// Used to look up a [`datatypes::ClassDescription`][crate::datatypes::ClassDescription] within the [`components::AnnotationContext`][crate::components::AnnotationContext].
 #[derive(
     Clone,
     Debug,

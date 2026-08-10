@@ -18,10 +18,10 @@ class KeypointId(datatypes.KeypointId, ComponentMixin):
     """
     **Component**: A 16-bit ID representing a type of semantic keypoint within a class.
 
-    `KeypointId`s are only meaningful within the context of a [`rerun.datatypes.ClassDescription`].
+    `KeypointId`s are only meaningful within the context of a [`datatypes.ClassDescription`][rerun.datatypes.ClassDescription].
 
-    Used to look up an [`rerun.datatypes.AnnotationInfo`] for a Keypoint within the
-    [`rerun.components.AnnotationContext`].
+    Used to look up an [`datatypes.AnnotationInfo`][rerun.datatypes.AnnotationInfo] for a Keypoint within the
+    [`components.AnnotationContext`][rerun.components.AnnotationContext].
     """
 
     _BATCH_TYPE = None

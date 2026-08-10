@@ -8,8 +8,8 @@
 /// types, and organization. Each schema is referenced by channels to indicate how their
 /// messages should be decoded and understood.
 ///
-/// See also [archetypes.McapChannel] for channels that reference these schemas,
-/// [archetypes.McapMessage] for the messages that conform to these schemas, and the
+/// See also [`rerun::archetypes::McapChannel`] for channels that reference these schemas,
+/// [`rerun::archetypes::McapMessage`] for the messages that conform to these schemas, and the
 /// [MCAP specification](https://mcap.dev/) for complete format details.
 ///
 /// \example archetypes/mcap_schema_simple !api title="Simple MCAP schema"

@@ -10,7 +10,7 @@
 #[rust(derive(Default, Eq, PartialEq))]
 #[rerun(state = "stable")]
 pub struct AnnotationInfo {
-    /// [datatypes.ClassId] or [datatypes.KeypointId] to which this annotation info belongs.
+    /// [`rerun::datatypes::ClassId`] or [`rerun::datatypes::KeypointId`] to which this annotation info belongs.
     // TODO(jleibs): make this typed
     pub id: u16,
 

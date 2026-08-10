@@ -3,14 +3,14 @@
 
 /// A 16-bit ID representing a type of semantic keypoint within a class.
 ///
-/// \py `KeypointId`s are only meaningful within the context of a [`rerun.datatypes.ClassDescription`].
+/// \py `KeypointId`s are only meaningful within the context of a [`rerun::datatypes::ClassDescription`].
 /// \py
-/// \py Used to look up an [`rerun.datatypes.AnnotationInfo`] for a Keypoint within the
-/// \py [`rerun.components.AnnotationContext`].
+/// \py Used to look up an [`rerun::datatypes::AnnotationInfo`] for a Keypoint within the
+/// \py [`rerun::components::AnnotationContext`].
 ///
-/// \rs `KeypointId`s are only meaningful within the context of a [`crate::datatypes::ClassDescription`].
+/// \rs `KeypointId`s are only meaningful within the context of a [`rerun::datatypes::ClassDescription`].
 /// \rs
-/// \rs Used to look up an [`crate::datatypes::AnnotationInfo`] for a Keypoint within the [`crate::components::AnnotationContext`].
+/// \rs Used to look up an [`rerun::datatypes::AnnotationInfo`] for a Keypoint within the [`rerun::components::AnnotationContext`].
 #[rerun::rerun_type]
 #[arrow(transparent)]
 #[python(aliases = "int")]

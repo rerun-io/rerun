@@ -48,9 +48,9 @@ pub struct LineStrips2D {
     #[rerun(optional)]
     pub draw_order: Option<rerun::components::DrawOrder>,
 
-    /// Optional [components.ClassId]s for the lines.
+    /// Optional [`rerun::components::ClassId`]s for the lines.
     ///
-    /// The [components.ClassId] provides colors and labels if not specified explicitly.
+    /// The [`rerun::components::ClassId`] provides colors and labels if not specified explicitly.
     #[rerun(optional)]
     pub class_ids: Option<Vec<rerun::components::ClassId>>,
 }

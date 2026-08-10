@@ -5,10 +5,10 @@
 ///
 /// This archetype is for ellipsoids or spheres whose size is a key part of the data
 /// (e.g. a bounding sphere).
-/// For points whose radii are for the sake of visualization, use [archetypes.Points3D] instead.
+/// For points whose radii are for the sake of visualization, use [`rerun::archetypes::Points3D`] instead.
 ///
 /// If there's more instance poses than half sizes, the last ellipsoid/sphere's orientation will be repeated for the remaining poses.
-/// Orienting and placing ellipsoids/spheres forms a separate transform that is applied prior to [archetypes.InstancePoses3D] and [archetypes.Transform3D].
+/// Orienting and placing ellipsoids/spheres forms a separate transform that is applied prior to [`rerun::archetypes::InstancePoses3D`] and [`rerun::archetypes::Transform3D`].
 ///
 /// \example archetypes/ellipsoids3d_simple title="Covariance ellipsoid" image="https://static.rerun.io/elliopsoid3d_simple/bd5d46e61b80ae44792b52ee07d750a7137002ea/1200w.png"
 #[rerun::rerun_type]

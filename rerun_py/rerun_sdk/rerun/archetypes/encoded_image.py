@@ -35,7 +35,7 @@ class EncodedImage(EncodedImageExt, Archetype, VisualizableArchetype):
     Rerun also supports uncompressed images with the [`archetypes.Image`][rerun.archetypes.Image].
     For images that refer to video frames see [`archetypes.VideoFrameReference`][rerun.archetypes.VideoFrameReference].
 
-    To compress an image, use [`rerun.Image.compress`][].
+    To compress an image, use [`rerun.Image.compress`](https://ref.rerun.io/docs/python/main/common/archetypes/#rerun.archetypes.Image.compress).
 
     Example
     -------

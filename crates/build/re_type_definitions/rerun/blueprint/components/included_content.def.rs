@@ -7,7 +7,7 @@
 #[rust(derive(Default))]
 #[rerun(state = "unstable")]
 pub struct IncludedContent {
-    /// List of the contents by [datatypes.EntityPath].
+    /// List of the contents by [`rerun::datatypes::EntityPath`].
     ///
     /// This must be a path in the blueprint store.
     /// Typically structure as `<blueprint_registry>/<uuid>`.

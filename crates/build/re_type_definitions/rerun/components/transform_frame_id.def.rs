@@ -4,12 +4,12 @@
 /// A string identifier for a transform frame.
 ///
 /// Transform frames may be derived from entity paths to refer to Rerun's implicit
-/// entity path driven hierarchy which is defined via [archetypes.Transform3D], [archetypes.Pinhole] etc..
+/// entity path driven hierarchy which is defined via [`rerun::archetypes::Transform3D`], [`rerun::archetypes::Pinhole`] etc..
 /// These implicit transform frames look like `tf#path/to/entity`.
 ///
-/// Note that any [archetypes.Transform3D]s logged with both `parent_frame` and `child_frame` set
+/// Note that any [`rerun::archetypes::Transform3D`]s logged with both `parent_frame` and `child_frame` set
 /// describes a relationship between these parent and child transform frames, **not** the transform frame
-/// that the entity path may be using (defined by an [archetypes.CoordinateFrame]).
+/// that the entity path may be using (defined by an [`rerun::archetypes::CoordinateFrame`]).
 #[rerun::rerun_type]
 #[python(aliases = "str")]
 #[python(array_aliases = "str, Sequence[str]")]

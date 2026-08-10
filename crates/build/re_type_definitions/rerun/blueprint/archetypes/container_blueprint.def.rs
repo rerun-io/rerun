@@ -20,17 +20,17 @@ pub struct ContainerBlueprint {
 
     /// The layout shares of each column in the container.
     ///
-    /// For [components.ContainerKind.Horizontal] containers, the length of this list should always match the number of contents.
+    /// For [`rerun::blueprint::components::ContainerKind::Horizontal`] containers, the length of this list should always match the number of contents.
     ///
-    /// Ignored for [components.ContainerKind.Vertical] containers.
+    /// Ignored for [`rerun::blueprint::components::ContainerKind::Vertical`] containers.
     #[rerun(optional)]
     pub col_shares: Option<Vec<rerun::blueprint::components::ColumnShare>>,
 
     /// The layout shares of each row of the container.
     ///
-    /// For [components.ContainerKind.Vertical] containers, the length of this list should always match the number of contents.
+    /// For [`rerun::blueprint::components::ContainerKind::Vertical`] containers, the length of this list should always match the number of contents.
     ///
-    /// Ignored for [components.ContainerKind.Horizontal] containers.
+    /// Ignored for [`rerun::blueprint::components::ContainerKind::Horizontal`] containers.
     #[rerun(optional)]
     pub row_shares: Option<Vec<rerun::blueprint::components::RowShare>>,
 
@@ -50,7 +50,7 @@ pub struct ContainerBlueprint {
     ///
     /// If unset, the grid layout will be auto.
     ///
-    /// Ignored for [components.ContainerKind.Horizontal]/[components.ContainerKind.Vertical] containers.
+    /// Ignored for [`rerun::blueprint::components::ContainerKind::Horizontal`]/[`rerun::blueprint::components::ContainerKind::Vertical`] containers.
     #[rerun(optional)]
     pub grid_columns: Option<rerun::blueprint::components::GridColumns>,
 }

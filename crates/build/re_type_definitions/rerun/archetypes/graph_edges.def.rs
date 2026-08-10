@@ -21,7 +21,7 @@ pub struct GraphEdges {
 
     /// Specifies if the graph is directed or undirected.
     ///
-    /// If no [components.GraphType] is provided, the graph is assumed to be undirected.
+    /// If no [`rerun::components::GraphType`] is provided, the graph is assumed to be undirected.
     #[rerun(recommended)]
     pub graph_type: Option<rerun::components::GraphType>,
 }

@@ -8,8 +8,8 @@
 /// The binary payload represents sensor data, commands, or other information encoded according
 /// to the format specified by the associated channel.
 ///
-/// See [archetypes.McapChannel] for channel definitions that specify message encoding,
-/// [archetypes.McapSchema] for data structure definitions, and the
+/// See [`rerun::archetypes::McapChannel`] for channel definitions that specify message encoding,
+/// [`rerun::archetypes::McapSchema`] for data structure definitions, and the
 /// [MCAP specification](https://mcap.dev/) for complete format details.
 ///
 /// \example archetypes/mcap_message_simple !api title="Simple MCAP message"

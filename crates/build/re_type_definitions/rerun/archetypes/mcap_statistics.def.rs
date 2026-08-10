@@ -8,8 +8,8 @@
 /// spanning the full recording duration. It is typically logged once per recording to provide
 /// an overview of the dataset's structure and content.
 ///
-/// See also [archetypes.McapChannel] for individual channel definitions,
-/// [archetypes.McapMessage] for message content, [archetypes.McapSchema] for schema definitions,
+/// See also [`rerun::archetypes::McapChannel`] for individual channel definitions,
+/// [`rerun::archetypes::McapMessage`] for message content, [`rerun::archetypes::McapSchema`] for schema definitions,
 /// and the [MCAP specification](https://mcap.dev/) for complete format details.
 ///
 /// \example archetypes/mcap_statistics_simple !api title="Simple MCAP statistics"

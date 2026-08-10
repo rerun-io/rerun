@@ -54,9 +54,9 @@ pub struct Ellipses2D {
     #[rerun(optional)]
     pub draw_order: Option<rerun::components::DrawOrder>,
 
-    /// Optional [components.ClassId]s for the ellipses.
+    /// Optional [`rerun::components::ClassId`]s for the ellipses.
     ///
-    /// The [components.ClassId] provides colors and labels if not specified explicitly.
+    /// The [`rerun::components::ClassId`] provides colors and labels if not specified explicitly.
     #[rerun(optional)]
     pub class_ids: Option<Vec<rerun::components::ClassId>>,
 }

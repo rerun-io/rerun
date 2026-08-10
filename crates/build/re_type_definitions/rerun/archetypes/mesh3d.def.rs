@@ -3,9 +3,9 @@
 
 /// A 3D triangle mesh as specified by its per-mesh and per-vertex properties.
 ///
-/// See also [archetypes.Asset3D].
+/// See also [`rerun::archetypes::Asset3D`].
 ///
-/// If there are multiple [archetypes.InstancePoses3D] instances logged to the same entity as a mesh,
+/// If there are multiple [`rerun::archetypes::InstancePoses3D`] instances logged to the same entity as a mesh,
 /// an instance of the mesh will be drawn for each transform.
 ///
 /// For transparency ordering, as well as back face culling (disabled by default),
@@ -55,13 +55,13 @@ pub struct Mesh3D {
 
     /// Determines which faces of the mesh are rendered.
     ///
-    /// The default is [components.MeshFaceRendering.DoubleSided], meaning both front and back faces are shown.
+    /// The default is [`rerun::components::MeshFaceRendering::DoubleSided`], meaning both front and back faces are shown.
     #[rerun(optional)]
     pub face_rendering: Option<rerun::components::MeshFaceRendering>,
 
     /// Optional albedo texture.
     ///
-    /// Used with the [components.Texcoord2D] of the mesh.
+    /// Used with the [`rerun::components::Texcoord2D`] of the mesh.
     ///
     /// Currently supports only sRGB(A) textures, ignoring alpha.
     /// (meaning that the tensor must have 3 or 4 channels and use the `u8` format)
@@ -76,7 +76,7 @@ pub struct Mesh3D {
 
     /// Optional class Ids for the vertices.
     ///
-    /// The [components.ClassId] provides colors and labels if not specified explicitly.
+    /// The [`rerun::components::ClassId`] provides colors and labels if not specified explicitly.
     #[rerun(optional)]
     pub class_ids: Option<Vec<rerun::components::ClassId>>,
 }

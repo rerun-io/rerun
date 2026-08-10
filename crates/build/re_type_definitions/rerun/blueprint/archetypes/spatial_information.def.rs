@@ -29,8 +29,8 @@ pub struct SpatialInformation {
     /// The three directions are always ordered as [x, y, z] and specify where each positive axis points.
     /// For example, [Right, Down, Forward] means that +X points right, +Y points down, and +Z points forward.
     ///
-    /// When this property is unset, a 3D view first uses [archetypes.ViewCoordinates] logged at its origin entity or the closest ancestor.
-    /// If none is found, it uses the camera orientation from the closest ancestor [archetypes.Pinhole].
+    /// When this property is unset, a 3D view first uses [`rerun::archetypes::ViewCoordinates`] logged at its origin entity or the closest ancestor.
+    /// If none is found, it uses the camera orientation from the closest ancestor [`rerun::archetypes::Pinhole`].
     /// If neither is found, the fallback is RFU.
     ///
     /// This property is hidden from the selection panel for 2D views.

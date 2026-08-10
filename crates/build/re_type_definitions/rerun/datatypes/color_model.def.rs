@@ -1,9 +1,9 @@
 // This is a Rerun type definition for the SDK, not executable code.
 // It is parsed by `re_types_builder` to generate the Rust, Python and C++ bindings.
 
-/// Specified what color components are present in an [archetypes.Image].
+/// Specified what color components are present in an [`rerun::archetypes::Image`].
 ///
-/// This combined with [datatypes.ChannelDatatype] determines the pixel format of an image.
+/// This combined with [`rerun::datatypes::ChannelDatatype`] determines the pixel format of an image.
 #[rerun::rerun_type]
 #[repr(u8)]
 #[rerun(state = "stable")]

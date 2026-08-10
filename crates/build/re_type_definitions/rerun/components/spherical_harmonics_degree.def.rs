@@ -5,7 +5,7 @@
 ///
 /// `0` renders the view-independent base color only, and is the fastest.
 /// Each higher degree brings in more view-dependent detail, at the cost of fetching and
-/// evaluating more coefficients ([components.SphericalHarmonics3Rgb]):
+/// evaluating more coefficients ([`rerun::components::SphericalHarmonics3Rgb`]):
 /// 3 of them for degree 1, 8 for degree 2, and all 15 for degree 3.
 ///
 /// Lowering this in the blueprint can make the rendering a lot faster.

@@ -7,8 +7,8 @@
 /// Each channel has a unique identifier and specifies the message schema and encoding used
 /// for all messages published to that topic.
 ///
-/// See also [archetypes.McapMessage] for individual messages within a channel,
-/// [archetypes.McapSchema] for the data structure definitions, and the
+/// See also [`rerun::archetypes::McapMessage`] for individual messages within a channel,
+/// [`rerun::archetypes::McapSchema`] for the data structure definitions, and the
 /// [MCAP specification](https://mcap.dev/) for complete format details.
 ///
 /// \example archetypes/mcap_channel_simple !api title="Simple MCAP channel"

@@ -3,11 +3,11 @@
 
 /// Camera perspective projection (a.k.a. intrinsics).
 ///
-/// If [archetypes.Transform3D] is logged for the same child/parent relationship (e.g. for the camera extrinsics), it takes precedence over [archetypes.Pinhole].
+/// If [`rerun::archetypes::Transform3D`] is logged for the same child/parent relationship (e.g. for the camera extrinsics), it takes precedence over [`rerun::archetypes::Pinhole`].
 ///
-/// If you use named transform frames via the `child_frame` and `parent_frame` fields, you don't have to use [archetypes.CoordinateFrame]
-/// as it is the case with other visualizations: for any entity with an [archetypes.Pinhole] the viewer will always visualize it
-/// directly without needing a [archetypes.CoordinateFrame] to refer to the pinhole's child/parent frame.
+/// If you use named transform frames via the `child_frame` and `parent_frame` fields, you don't have to use [`rerun::archetypes::CoordinateFrame`]
+/// as it is the case with other visualizations: for any entity with an [`rerun::archetypes::Pinhole`] the viewer will always visualize it
+/// directly without needing a [`rerun::archetypes::CoordinateFrame`] to refer to the pinhole's child/parent frame.
 ///
 /// \example archetypes/pinhole_simple title="Simple pinhole camera" image="https://static.rerun.io/pinhole_simple/9af9441a94bcd9fd54e1fea44fb0c59ff381a7f2/1200w.png"
 /// \example archetypes/pinhole_perspective title="Perspective pinhole camera" image="https://static.rerun.io/pinhole_perspective/317e2de6d212b238dcdad5b67037e9e2a2afafa0/1200w.png"
@@ -47,7 +47,7 @@ pub struct Pinhole {
     // --- Other ---
     /// Sets the camera orientation convention.
     ///
-    /// All common values are available as constants on the [components.ViewCoordinates] class.
+    /// All common values are available as constants on the [`rerun::components::ViewCoordinates`] class.
     ///
     /// The default is `ViewCoordinates::RDF`: +X is right, +Y is down, and +Z is forward.
     /// This makes the camera frustum point along +Z in the parent space, with its up direction along -Y.
@@ -79,9 +79,9 @@ pub struct Pinhole {
     /// with the child frame `"robot_arm"` on any other entity than `"my_transforms"` unless one of them was logged with static time.
     ///
     /// If not specified, this is set to the implicit transform frame of the current entity path.
-    /// This means that if a [archetypes.Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity/path`.
+    /// This means that if a [`rerun::archetypes::Transform3D`] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity/path`.
     ///
-    /// To set the frame an entity is part of see [archetypes.CoordinateFrame].
+    /// To set the frame an entity is part of see [`rerun::archetypes::CoordinateFrame`].
     ///
     /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
     #[rerun(no_ui_edit)]
@@ -91,9 +91,9 @@ pub struct Pinhole {
     /// The parent frame this transform transforms into.
     ///
     /// If not specified, this is set to the implicit transform frame of the current entity path's parent.
-    /// This means that if a [archetypes.Transform3D] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.
+    /// This means that if a [`rerun::archetypes::Transform3D`] is set on an entity called `/my/entity/path` then this will default to `tf#/my/entity`.
     ///
-    /// To set the frame an entity is part of see [archetypes.CoordinateFrame].
+    /// To set the frame an entity is part of see [`rerun::archetypes::CoordinateFrame`].
     ///
     /// Any update to this field will reset all other transform properties that aren't changed in the same log call or `send_columns` row.
     #[rerun(no_ui_edit)]

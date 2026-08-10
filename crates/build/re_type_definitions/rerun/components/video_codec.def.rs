@@ -1,7 +1,7 @@
 // This is a Rerun type definition for the SDK, not executable code.
 // It is parsed by `re_types_builder` to generate the Rust, Python and C++ bindings.
 
-/// The codec used to encode video stored in [components.VideoSample].
+/// The codec used to encode video stored in [`rerun::components::VideoSample`].
 ///
 /// Support of these codecs by the Rerun Viewer is platform dependent.
 /// For more details see check the [video reference](https://rerun.io/docs/reference/video).
@@ -13,7 +13,7 @@ pub enum VideoCodec {
     ///
     /// See <https://en.wikipedia.org/wiki/AV1>
     ///
-    /// [components.VideoSample]s using this codec should be formatted according the "Low overhead bitstream format",
+    /// [`rerun::components::VideoSample`]s using this codec should be formatted according the "Low overhead bitstream format",
     /// as specified in Section 5.2 of the [AV1 specification](https://aomediacodec.github.io/av1-spec/#low-overhead-bitstream-format).
     /// Each sample should be formatted as a sequence of OBUs (Open Bitstream Units) long enough to decode at least one video frame.
     /// Samples containing keyframes must include a sequence header OBU before the `KEY_FRAME` OBU to enable
@@ -27,7 +27,7 @@ pub enum VideoCodec {
     ///
     /// See <https://en.wikipedia.org/wiki/Advanced_Video_Coding>
     ///
-    /// [components.VideoSample]s using this codec should be formatted according to Annex B specification.
+    /// [`rerun::components::VideoSample`]s using this codec should be formatted according to Annex B specification.
     /// (Note that this is different from AVCC format found in MP4 files.
     /// To learn more about Annex B, check for instance <https://membrane.stream/learn/h264/3>)
     /// Key frames (IDR) require inclusion of a SPS (Sequence Parameter Set)
@@ -39,7 +39,7 @@ pub enum VideoCodec {
     ///
     /// See <https://en.wikipedia.org/wiki/High_Efficiency_Video_Coding>
     ///
-    /// [components.VideoSample]s using this codec should be formatted according to Annex B specification.
+    /// [`rerun::components::VideoSample`]s using this codec should be formatted according to Annex B specification.
     /// (Note that this is different from AVCC format found in MP4 files.
     /// To learn more about Annex B, check for instance <https://membrane.stream/learn/h264/3>)
     /// Key frames (IRAP) require inclusion of a SPS (Sequence Parameter Set)

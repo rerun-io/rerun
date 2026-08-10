@@ -6,7 +6,7 @@
 /// Each video sample must contain enough data for exactly one video frame
 /// (this restriction may be relaxed in the future for some codecs).
 ///
-/// Keyframes may require additional data, for details see [components.VideoCodec].
+/// Keyframes may require additional data, for details see [`rerun::components::VideoCodec`].
 #[rerun::rerun_type]
 #[python(aliases = "bytes | npt.NDArray[np.uint8]")]
 #[python(array_aliases = "bytes | npt.NDArray[np.uint8]")]

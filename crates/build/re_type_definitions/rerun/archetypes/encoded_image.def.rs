@@ -3,10 +3,10 @@
 
 /// An image encoded as e.g. a JPEG or PNG.
 ///
-/// Rerun also supports uncompressed images with the [archetypes.Image].
-/// For images that refer to video frames see [archetypes.VideoFrameReference].
+/// Rerun also supports uncompressed images with the [`rerun::archetypes::Image`].
+/// For images that refer to video frames see [`rerun::archetypes::VideoFrameReference`].
 ///
-/// \py To compress an image, use [`rerun.Image.compress`][].
+/// \py To compress an image, use [`rerun.Image.compress`](https://ref.rerun.io/docs/python/main/common/archetypes/#rerun.archetypes.Image.compress).
 ///
 /// \example archetypes/encoded_image title="Encoded image" image="https://static.rerun.io/encoded_image/6e92868b6533be5fb2dfd9e26938eb7a256bfb01/1200w.png"
 #[rerun::rerun_type]

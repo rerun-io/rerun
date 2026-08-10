@@ -31,7 +31,7 @@ pub struct GridMap {
 
     /// Translation of the lower-left corner of the grid map in space.
     ///
-    /// Together with [components.RotationAxisAngle] or [components.RotationQuat], this defines the pose of the
+    /// Together with [`rerun::components::RotationAxisAngle`] or [`rerun::components::RotationQuat`], this defines the pose of the
     /// lower-left image corner relative to the map's parent coordinate frame.
     ///
     /// If not set, the lower-left image corner is placed at origin of the map's parent coordinate frame.
@@ -41,18 +41,18 @@ pub struct GridMap {
 
     /// Rotation of the lower-left corner of the grid map in space via axis + angle.
     ///
-    /// Together with [components.Translation3D], this defines the pose of the
+    /// Together with [`rerun::components::Translation3D`], this defines the pose of the
     /// lower-left image corner relative to the map's parent coordinate frame.
     ///
-    /// Note: either this or [components.RotationQuat] can be set to specify the grid map's rotation, but not both.
-    /// If both this and [components.RotationQuat] are set, this is ignored in favor of the quaternion.
+    /// Note: either this or [`rerun::components::RotationQuat`] can be set to specify the grid map's rotation, but not both.
+    /// If both this and [`rerun::components::RotationQuat`] are set, this is ignored in favor of the quaternion.
     #[rerun(no_ui_edit)]
     #[rerun(optional)]
     pub rotation_axis_angle: Option<rerun::components::RotationAxisAngle>,
 
     /// Rotation of the lower-left corner of the grid map in space via quaternion.
     ///
-    /// Together with [components.Translation3D], this defines the pose of the
+    /// Together with [`rerun::components::Translation3D`], this defines the pose of the
     /// lower-left image corner relative to the map's parent coordinate frame.
     #[rerun(no_ui_edit)]
     #[rerun(optional)]
@@ -72,7 +72,7 @@ pub struct GridMap {
 
     /// Colormap to use for rendering single-channel grid maps.
     ///
-    /// If not set, the grid map is shown using the underlying [components.ImageFormat]
+    /// If not set, the grid map is shown using the underlying [`rerun::components::ImageFormat`]
     /// interpretation.
     #[rerun(optional)]
     pub colormap: Option<rerun::components::Colormap>,

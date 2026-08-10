@@ -1,7 +1,7 @@
 // This is a Rerun type definition for the SDK, not executable code.
 // It is parsed by `re_types_builder` to generate the Rust, Python and C++ bindings.
 
-/// The kind of the 3D eye to view a scene in a [views.Spatial3DView].
+/// The kind of the 3D eye to view a scene in a [`rerun::blueprint::views::Spatial3DView`].
 ///
 /// This is used to specify how the controls of the view react to user input (such as mouse gestures).
 #[rerun::rerun_type]

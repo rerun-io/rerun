@@ -3,12 +3,12 @@
 
 /// References a single video frame.
 ///
-/// Used to display individual video frames from a [archetypes.AssetVideo].
+/// Used to display individual video frames from a [`rerun::archetypes::AssetVideo`].
 /// To show an entire video, a video frame reference for each frame of the video should be logged.
 ///
 /// See <https://rerun.io/docs/reference/video> for details of what is and isn't supported.
 ///
-/// TODO(#10422): [archetypes.VideoFrameReference] does not yet work with [archetypes.VideoStream].
+/// TODO(#10422): [`rerun::archetypes::VideoFrameReference`] does not yet work with [`rerun::archetypes::VideoStream`].
 ///
 /// \example archetypes/video_auto_frames title="Video with automatically determined frames" image="https://static.rerun.io/video_manual_frames/320a44e1e06b8b3a3161ecbbeae3e04d1ccb9589/1200w.png"
 /// \example archetypes/video_manual_frames title="Demonstrates manual use of video frame references" image="https://static.rerun.io/video_manual_frames/9f41c00f84a98cc3f26875fba7c1d2fa2bad7151/1200w.png"
@@ -29,7 +29,7 @@ pub struct VideoFrameReference {
     #[rerun(required)]
     pub timestamp: rerun::components::VideoTimestamp,
 
-    /// Optional reference to an entity with a [archetypes.AssetVideo].
+    /// Optional reference to an entity with a [`rerun::archetypes::AssetVideo`].
     ///
     /// If none is specified, the video is assumed to be at the same entity.
     /// Note that blueprint overrides on the referenced video will be ignored regardless,

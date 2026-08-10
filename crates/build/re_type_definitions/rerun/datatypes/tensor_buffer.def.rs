@@ -1,7 +1,7 @@
 // This is a Rerun type definition for the SDK, not executable code.
 // It is parsed by `re_types_builder` to generate the Rust, Python and C++ bindings.
 
-/// The underlying storage for [archetypes.Tensor].
+/// The underlying storage for [`rerun::archetypes::Tensor`].
 ///
 /// Tensor elements are stored in a contiguous buffer of a single type.
 #[rerun::rerun_type]

@@ -1,7 +1,7 @@
 // This is a Rerun type definition for the SDK, not executable code.
 // It is parsed by `re_types_builder` to generate the Rust, Python and C++ bindings.
 
-/// Presentation timestamp within a [archetypes.AssetVideo].
+/// Presentation timestamp within a [`rerun::archetypes::AssetVideo`].
 ///
 /// Specified in nanoseconds.
 /// Presentation timestamps are typically measured as time since video start.

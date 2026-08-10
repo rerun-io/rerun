@@ -3,8 +3,8 @@
 
 /// One or more transforms applied on the current entity's transform frame.
 ///
-/// Unlike [archetypes.Transform3D], it is *not* propagated in the transform hierarchy.
-/// If [archetypes.CoordinateFrame] is specified, it acts relative to that coordinate frame,
+/// Unlike [`rerun::archetypes::Transform3D`], it is *not* propagated in the transform hierarchy.
+/// If [`rerun::archetypes::CoordinateFrame`] is specified, it acts relative to that coordinate frame,
 /// otherwise it is relative to the entity's implicit coordinate frame.
 ///
 /// Whenever you log this archetype, the state of the resulting overall pose is fully reset to the new archetype.
@@ -19,7 +19,7 @@
 ///
 /// Currently, many visualizers support only a single instance transform per entity.
 /// Check archetype documentations for details - if not otherwise specified, only the first instance transform is applied.
-/// Some visualizers like the mesh visualizer used for [archetypes.Mesh3D],
+/// Some visualizers like the mesh visualizer used for [`rerun::archetypes::Mesh3D`],
 /// will draw an object for every pose, a behavior also known as "instancing".
 ///
 /// \example archetypes/instance_poses3d_combined title="Regular & instance transforms in tandem" image="https://static.rerun.io/leaf_transform3d/41674f0082d6de489f8a1cd1583f60f6b5820ddf/1200w.png"

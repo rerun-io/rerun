@@ -24,9 +24,9 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: A 16-bit ID representing a type of semantic keypoint within a class.
 ///
-/// `KeypointId`s are only meaningful within the context of a [`crate::datatypes::ClassDescription`].
+/// `KeypointId`s are only meaningful within the context of a [`datatypes::ClassDescription`][crate::datatypes::ClassDescription].
 ///
-/// Used to look up an [`crate::datatypes::AnnotationInfo`] for a Keypoint within the [`crate::components::AnnotationContext`].
+/// Used to look up an [`datatypes::AnnotationInfo`][crate::datatypes::AnnotationInfo] for a Keypoint within the [`components::AnnotationContext`][crate::components::AnnotationContext].
 #[derive(
     Clone,
     Debug,
