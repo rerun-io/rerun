@@ -1,0 +1,52 @@
+name: Build and Test Wheels (Self-Hosted)
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch: # Allows manual execution from the GitHub Actions UI
+
+jobs:
+  build-and-test:
+    name: Native Build & Test Execution
+    # Routes the job to your specific self-hosted machine
+    runs-on: [self-hosted, linux]
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Pixi Environment
+        uses: prefix-dev/setup-pixi@v0.10.0
+        with:
+          pixi-version: v0.71.3
+
+      - name: Clean Previous Builds
+        # Ensures no stale artifacts from previous runner executions interfere
+        run: rm -rf dist/ target/wheels/
+
+      - name: Build Web Target Components
+        # Rerun requires the web UI compiled first to package the full wheels
+        run: pixi run rerun-build-web-release
+
+      - name: Compile Wheel
+        # Compiles the Rust bindings locally and drops the wheel file into dist/
+        run: |
+          pixi run python scripts/ci/build_and_upload_wheels.py --mode pr --dir dist
+
+      - name: Run Cargo Tests (Rust Core)
+        # Validates the native Rust crate logic before testing Python integrations
+        run: pixi run cargo test --workspace
+
+      - name: Run Pytest (Python Integrations)
+        # Installs dependencies and validates the local Python package bindings
+        run: |
+          pixi run pytest rerun_py/tests
+
+      - name: Save Compiled Wheel as Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rerun-sdk-selfhosted-wheel
+          path: dist/**/*.whl
+          retention-days: 5 # Automatically cleans up storage space on your repository
