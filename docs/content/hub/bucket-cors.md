@@ -1,4 +1,8 @@
-# Bucket CORS for the web Viewer
+---
+title: Bucket CORS
+order: 0
+description: Configure CORS on your data bucket so the Web Viewer can read presigned URLs directly
+---
 
 When connected to a Rerun Hub deployment, the Viewer can receive presigned URLs that point straight at the data bucket instead of at the server.
 Native clients (the desktop Viewer, SDKs) can always use these URLs.
