@@ -308,17 +308,7 @@ namespace rerun {
 
         /// Returns true if the collection is empty.
         bool empty() const {
-            switch (ownership) {
-                case CollectionOwnership::Borrowed:
-                    return storage.borrowed.num_instances == 0;
-
-                case CollectionOwnership::VectorOwned:
-                    return storage.vector_owned.empty();
-
-                default:
-                    assert(false && "unreachable");
-            }
-            return 0;
+            return size() == 0;
         }
 
         /// Returns a raw pointer to the underlying data.
@@ -374,10 +364,7 @@ namespace rerun {
 
         /// Copies the data into a new `std::vector`.
         std::vector<TElement> to_vector() const& {
-            std::vector<TElement> result;
-            result.reserve(size());
-            result.insert(result.end(), begin(), end());
-            return result;
+            return std::vector<TElement>(begin(), end());
         }
 
         /// Copies the data into a new `std::vector`.
