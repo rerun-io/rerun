@@ -14,6 +14,7 @@ from pathlib import Path
 
 import git
 import yaml
+from doc_anchors import anchors_in
 
 DOCS_ROOT = Path(__file__).parent.parent.parent / "docs" / "content"
 REDIRECTS_FILE = DOCS_ROOT / "_redirects.yaml"
@@ -58,22 +59,34 @@ def load_redirects() -> dict[str, str]:
     return redirects or {}
 
 
-def check_destination_exists(destination: str) -> bool:
-    """Check if the redirect destination exists (internal paths only)."""
+def check_destination(destination: str) -> str | None:
+    """Check that a redirect destination exists, and return why it does not if it doesn't."""
     # External URLs are assumed valid
     if destination.startswith(("http://", "https://")):
-        return True
+        return None
 
-    # Handle anchor links
-    base_path = destination.split("#")[0]
+    base_path, _, anchor = destination.partition("#")
     if not base_path:
-        return True  # Same-page anchor
+        return None  # Same-page anchor
 
     # Check if the destination file exists
     dest_file = DOCS_ROOT / f"{base_path}.md"
     dest_dir_index = DOCS_ROOT / base_path / "index.md"
 
-    return dest_file.exists() or dest_dir_index.exists() or (DOCS_ROOT / base_path).is_dir()
+    page = None
+    if dest_file.exists():
+        page = dest_file
+    elif dest_dir_index.exists():
+        page = dest_dir_index
+    elif not (DOCS_ROOT / base_path).is_dir():
+        return "destination does not exist"
+
+    # An anchor that names no heading silently drops the reader at the top of the page,
+    # which is the whole failure this redirect exists to avoid.
+    if anchor and page is not None and anchor not in anchors_in(page):
+        return f"no heading in {base_path} matches the anchor '#{anchor}'"
+
+    return None
 
 
 def main() -> int:
@@ -99,8 +112,9 @@ def main() -> int:
 
     # Check that destinations exist
     for source, destination in redirects.items():
-        if not check_destination_exists(destination):
-            errors.append(f"Broken redirect: {source} -> {destination}")
+        reason = check_destination(destination)
+        if reason is not None:
+            errors.append(f"Broken redirect: {source} -> {destination} ({reason})")
 
     if errors:
         print("ERROR: Found redirect issues:")

@@ -102,7 +102,23 @@ Do this *after* step 1: the script reads the assembled changeset and emits a sum
 `CHANGELOG.md` therefore never duplicates the changeset — if the changeset is missing, the
 script emits an unresolved placeholder instead.
 
-### 4. Empty the inbox
+### 4. Add the redirects for the merged entries
+
+Each `upcoming/` entry is a published page, so deleting it in the next step breaks its URL.
+Generate the redirects while the entries still exist:
+
+```bash
+pixi run python scripts/ci/generate_changelog_redirects.py --version 0.x.y
+```
+
+It points every entry at its section of the new changeset, matching the entry's `title`
+frontmatter against the changeset headings. Highlight entries, which get folded into the
+prose, go to `#highlights`.
+
+It warns about any entry it could not match — that means you renamed the section while
+assembling. Point those at the right section by hand.
+
+### 5. Empty the inbox
 
 Delete the merged `upcoming/*.md` entries, keeping `_template.md`:
 
@@ -117,6 +133,8 @@ find docs/content/changelog/upcoming -maxdepth 1 -type f -name '*.md' ! -name '_
 - [ ] `## Highlights` reads as a coherent whole, not a list of fragments.
 - [ ] `upcoming/` contains only `_template.md`.
 - [ ] `python scripts/ci/check_changelog_redirect.py` passes (redirect points at this changeset).
+- [ ] `python scripts/ci/check_doc_redirects.py` passes (every deleted entry has a redirect,
+      and every anchor names a real heading).
 
 ## Notes
 

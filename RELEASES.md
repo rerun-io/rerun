@@ -122,6 +122,9 @@ does it end to end:
 -   Points the `redirect:` in [`docs/content/changelog.md`](./docs/content/changelog.md) at this
     release's changeset (`scripts/ci/check_changelog_redirect.py` requires the newest changeset to be
     the redirect target, so this must land together with the new changeset).
+-   Adds a redirect for each merged `upcoming/` entry, pointing at its section of the new changeset,
+    via `scripts/ci/generate_changelog_redirects.py`. Those entries are published pages, so deleting
+    them without a redirect breaks their URLs.
 -   Deletes the merged files from `upcoming/` (leaving `_template.md`).
 
 Then review the result:
