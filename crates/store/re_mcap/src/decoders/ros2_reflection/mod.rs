@@ -548,6 +548,92 @@ uint32 nanosec
         assert_eq!(first.values(), &[7]);
     }
 
+    /// Checks that a decode failing part-way through an array of messages is recoverable.
+    ///
+    /// Cancelling that row closes the half-written element with a null, which lands in the list's
+    /// values array before `finish` drops the row. `ListArray` rejects such an element under a
+    /// non-nullable item field, so this is what keeps arrays of messages nullable.
+    #[test]
+    fn decode_failure_inside_an_array_of_messages_is_recoverable() {
+        let schema = MessageSchema::parse(
+            "test/Message",
+            r#"
+test/Inner[] items
+
+================================================================================
+MSG: test/Inner
+int32 a
+int32 b
+"#,
+        )
+        .unwrap();
+        let plan = Arc::new(MessageDecodePlan::from_schema(&schema).unwrap());
+        let mut decoder = CdrArrowDecoder::new(Arc::clone(&plan), 2);
+
+        // Two elements promised, but the second one is truncated after `a`, leaving the element
+        // struct mid-row.
+        assert!(
+            decoder
+                .decode_message(
+                    &[
+                        &[0x00, 0x01, 0x00, 0x00][..],
+                        &2_u32.to_le_bytes(),
+                        &1_i32.to_le_bytes(),
+                        &2_i32.to_le_bytes(),
+                        &3_i32.to_le_bytes(),
+                    ]
+                    .concat(),
+                )
+                .is_err()
+        );
+
+        decoder
+            .decode_message(
+                &[
+                    &[0x00, 0x01, 0x00, 0x00][..],
+                    &1_u32.to_le_bytes(),
+                    &7_i32.to_le_bytes(),
+                    &8_i32.to_le_bytes(),
+                ]
+                .concat(),
+            )
+            .expect("decoding must continue after a cancelled row");
+
+        // Panics if the null element ended up under a non-nullable list item field.
+        let messages = decoder.finish();
+        assert_eq!(messages.len(), 1);
+
+        let items = messages
+            .values()
+            .as_any()
+            .downcast_ref::<StructArray>()
+            .unwrap()
+            .column_by_name("items")
+            .unwrap()
+            .as_any()
+            .downcast_ref::<arrow::array::ListArray>()
+            .unwrap()
+            .clone();
+        assert_eq!(items.len(), 1);
+
+        let inner = items
+            .values()
+            .as_any()
+            .downcast_ref::<StructArray>()
+            .unwrap();
+        assert_eq!(inner.null_count(), 0, "the cancelled element must be gone");
+        for (name, expected) in [("a", 7_i32), ("b", 8)] {
+            let column = inner
+                .column_by_name(name)
+                .unwrap()
+                .as_any()
+                .downcast_ref::<Int32Array>()
+                .unwrap()
+                .clone();
+            assert_eq!(column.values(), &[expected], "unexpected values for {name}");
+        }
+    }
+
     /// Checks that a corrupt message costs only its own row, not the rest of the channel.
     ///
     /// The corrupt messages here are truncated mid-row, so decoding fails only after the first

@@ -21,7 +21,16 @@ use re_ros_msg::message_spec::{ArraySize, BuiltInType};
 use crate::parsers::dds;
 
 use super::Ros2ReflectionError;
-use super::decode_plan::{MessageDecodePlan, ValueLayout};
+use super::decode_plan::{FieldLayout, MessageDecodePlan, ValueLayout};
+
+/// CDR has no notion of an unset field: every field of every message is always present on the
+/// wire, so a successfully decoded row is never null.
+///
+/// A row whose decode failed does get nulled out, but [`append_null_for_message`] nulls the
+/// containing struct along with its children, and `StructArray` permits child nulls that the
+/// struct's own null masks. [`CdrArrowDecoder::finish`] then drops the row altogether, so no null
+/// survives into the returned array.
+const FIELD_NULLABLE: bool = false;
 
 /// Why [`CdrArrowDecoder::decode_message`] rejected a message.
 #[derive(Debug)]
@@ -148,6 +157,29 @@ impl ArrayBuilder for MessageStructBuilder {
     }
 }
 
+/// The Arrow field for one message field. Shared so that the declared datatype in
+/// [`datatype_from_layout`] and the builder in [`struct_builder_for_message`] cannot drift apart.
+fn arrow_field_from_layout(plan: &MessageDecodePlan, field: &FieldLayout) -> Field {
+    Field::new(
+        field.name(),
+        datatype_from_layout(plan, field.value()),
+        FIELD_NULLABLE,
+    )
+}
+
+/// Whether the elements of a CDR array or sequence can be null.
+///
+/// CDR itself has no null elements. But a decode that fails part-way through an array of messages
+/// closes the half-written element with a null (see [`append_null_for_layout`]) before nulling the
+/// array row, and [`CdrArrowDecoder::finish`] only drops that row once the array is already built.
+/// Unlike `StructArray`, `ListArray` rejects a null element under a non-nullable field even when
+/// the row holding it is itself null — so arrays of messages have to stay nullable.
+///
+/// Scalar builders are always at a row boundary, so arrays of scalars never gain such an element.
+fn array_item_nullable(element: &ValueLayout) -> bool {
+    matches!(element, ValueLayout::Message(_))
+}
+
 /// Creates Arrow builders whose recursive structure mirrors `message_id` in `plan`.
 fn struct_builder_for_message(plan: &MessageDecodePlan, message_id: usize) -> MessageStructBuilder {
     let (fields, field_builders): (Vec<Field>, Vec<Box<dyn ArrayBuilder>>) = plan
@@ -156,11 +188,7 @@ fn struct_builder_for_message(plan: &MessageDecodePlan, message_id: usize) -> Me
         .iter()
         .map(|field| {
             (
-                Field::new(
-                    field.name(),
-                    datatype_from_layout(plan, field.value()),
-                    true,
-                ),
+                arrow_field_from_layout(plan, field),
                 arrow_builder_from_layout(plan, field.value()),
             )
         })
@@ -180,7 +208,15 @@ fn arrow_builder_from_layout(
         ValueLayout::BuiltIn(ty) => arrow_builder_from_builtin_type(ty),
         ValueLayout::Message(message_id) => Box::new(struct_builder_for_message(plan, *message_id)),
         ValueLayout::Array { element, .. } => {
-            Box::new(ListBuilder::new(arrow_builder_from_layout(plan, element)))
+            let item_field = Field::new_list_field(
+                datatype_from_layout(plan, element),
+                array_item_nullable(element),
+            );
+            // `ListBuilder` defaults to a nullable item field, so spell ours out to keep the built
+            // array's datatype equal to the one `datatype_from_layout` declares.
+            Box::new(
+                ListBuilder::new(arrow_builder_from_layout(plan, element)).with_field(item_field),
+            )
         }
     }
 }
@@ -193,18 +229,13 @@ fn datatype_from_layout(plan: &MessageDecodePlan, value_layout: &ValueLayout) ->
             plan.message(*message_id)
                 .fields()
                 .iter()
-                .map(|field| {
-                    Field::new(
-                        field.name(),
-                        datatype_from_layout(plan, field.value()),
-                        true,
-                    )
-                })
+                .map(|field| arrow_field_from_layout(plan, field))
                 .collect::<Fields>(),
         ),
-        ValueLayout::Array { element, .. } => {
-            DataType::new_list(datatype_from_layout(plan, element), true)
-        }
+        ValueLayout::Array { element, .. } => DataType::new_list(
+            datatype_from_layout(plan, element),
+            array_item_nullable(element),
+        ),
     }
 }
 

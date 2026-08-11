@@ -17,6 +17,14 @@ use re_sdk_types::{ArchetypeName, ComponentDescriptor};
 use crate::parsers::{MessageParser, ParserContext};
 use crate::{DecoderIdentifier, Error, MessageDecoder};
 
+/// Elements of a repeated protobuf field are always present.
+const LIST_ITEM_NULLABLE: bool = false;
+
+/// Arrow mandates that map entries are non-nullable.
+const MAP_ENTRY_NULLABLE: bool = false;
+
+const MAP_ENTRY_FIELD_NAME: &str = "entries";
+
 struct ProtobufMessageParser {
     message_descriptor: MessageDescriptor,
     builder: FixedSizeListBuilder<StructBuilder>,
@@ -383,7 +391,9 @@ fn fields_from_message(descriptor: &MessageDescriptor) -> Fields {
             GroupedField::Regular(f) => arrow_field_from(&f),
             GroupedField::OneOf(oneof) => {
                 let inner: Fields = oneof.fields().map(|f| arrow_field_from(&f)).collect();
-                Field::new(oneof.name(), DataType::Struct(inner), true).with_metadata(
+                // Null when none of the variants is set (`oneof_builder.append(any_set)`).
+                let nullable = true;
+                Field::new(oneof.name(), DataType::Struct(inner), nullable).with_metadata(
                     std::iter::once((
                         "ARROW:extension:name".to_owned(),
                         "rerun.datatypes.ProtobufOneOf".to_owned(),
@@ -437,46 +447,94 @@ fn arrow_builder_from_field(descr: &FieldDescriptor) -> Box<dyn ArrayBuilder> {
         Kind::String => Box::new(StringBuilder::new()),
         Kind::Bytes => Box::new(BinaryBuilder::new()),
         Kind::Message(message_descriptor) if descr.is_map() => {
-            let key_field = message_descriptor.map_entry_key_field();
-            let val_field = message_descriptor.map_entry_value_field();
+            let proto_key_field = message_descriptor.map_entry_key_field();
+            let proto_val_field = message_descriptor.map_entry_value_field();
             let field_names = MapFieldNames {
-                entry: "entries".to_owned(),
-                key: key_field.name().to_owned(),
-                value: val_field.name().to_owned(),
+                entry: MAP_ENTRY_FIELD_NAME.to_owned(),
+                key: proto_key_field.name().to_owned(),
+                value: proto_val_field.name().to_owned(),
             };
-            let key_builder = arrow_builder_from_field(&key_field);
-            let val_builder = arrow_builder_from_field(&val_field);
-            return Box::new(MapBuilder::new(Some(field_names), key_builder, val_builder));
+            let key_builder = arrow_builder_from_field(&proto_key_field);
+            let val_builder = arrow_builder_from_field(&proto_val_field);
+            let (key_field, val_field) = map_entry_fields(&message_descriptor);
+            // `MapBuilder` defaults to a nullable value field, so spell both out to keep the
+            // built array's datatype equal to the one `datatype_from` declares.
+            return Box::new(
+                MapBuilder::new(Some(field_names), key_builder, val_builder)
+                    .with_keys_field(key_field)
+                    .with_values_field(val_field),
+            );
         }
         Kind::Message(message_descriptor) => {
             Box::new(struct_builder_from_message(&message_descriptor)) as Box<dyn ArrayBuilder>
         }
         Kind::Enum(_) => {
-            // Create a struct with "name" (String) and "value" (Int32) fields.
-            // We can't use `DictionaryArray` because `concat` does not re-key, and there
-            // could be protobuf schema evolution with different enum values across chunks.
-            // The child fields are nullable to support null enum values when the parent field is missing.
-            let fields = Fields::from(vec![
-                Field::new("name", DataType::Utf8, true),
-                Field::new("value", DataType::Int32, true),
-            ]);
             let field_builders: Vec<Box<dyn ArrayBuilder>> = vec![
                 Box::new(StringBuilder::new()),
                 Box::new(Int32Builder::new()),
             ];
-            Box::new(StructBuilder::new(fields, field_builders))
+            Box::new(StructBuilder::new(enum_fields(), field_builders))
         }
     };
 
     if descr.is_list() {
-        return Box::new(ListBuilder::new(inner));
+        let item_field = Field::new_list_field(singular_datatype_from(descr), LIST_ITEM_NULLABLE);
+        // `ListBuilder` defaults to a nullable item field, so spell ours out to keep the built
+        // array's datatype equal to the one `datatype_from` declares.
+        return Box::new(ListBuilder::new(inner).with_field(item_field));
     }
 
     inner
 }
 
+/// The key and value fields of the entry struct of a protobuf map.
+///
+/// Protobuf guarantees that both are present for every entry, and `MapBuilder` additionally
+/// requires the key field to be non-nullable.
+fn map_entry_fields(map_entry: &MessageDescriptor) -> (Arc<Field>, Arc<Field>) {
+    let proto_key_field = map_entry.map_entry_key_field();
+    let proto_val_field = map_entry.map_entry_value_field();
+
+    let key_nullable = false;
+    let value_nullable = false;
+
+    (
+        Arc::new(Field::new(
+            proto_key_field.name(),
+            datatype_from(&proto_key_field),
+            key_nullable,
+        )),
+        Arc::new(Field::new(
+            proto_val_field.name(),
+            datatype_from(&proto_val_field),
+            value_nullable,
+        )),
+    )
+}
+
+/// A protobuf enum becomes a struct with a `name` and a `value` field.
+///
+/// We can't use `DictionaryArray` because `concat` does not re-key, and there
+/// could be protobuf schema evolution with different enum values across chunks.
+fn enum_fields() -> Fields {
+    // Both children are null when the enum field itself is unset, see `append_null_to_builder`.
+    // Those nulls are always masked by the null on the parent struct, but arrow only requires
+    // that of non-nullable fields, and being explicit costs nothing here.
+    let nullable = true;
+
+    Fields::from(vec![
+        Field::new("name", DataType::Utf8, nullable),
+        Field::new("value", DataType::Int32, nullable),
+    ])
+}
+
 fn arrow_field_from(descr: &FieldDescriptor) -> Field {
-    let mut field = Field::new(descr.name(), datatype_from(descr), true);
+    // Keep this in lockstep with `append_message_fields`, which appends a null for an unset
+    // field under exactly these conditions. Plain proto3 scalars have no presence tracking,
+    // so an unset one gets its default value instead and is never null.
+    let nullable = descr.supports_presence() || descr.is_map() || descr.is_list();
+
+    let mut field = Field::new(descr.name(), datatype_from(descr), nullable);
 
     // Add extension metadata for enum types.
     if matches!(descr.kind(), Kind::Enum(_)) {
@@ -493,7 +551,19 @@ fn arrow_field_from(descr: &FieldDescriptor) -> Field {
 }
 
 fn datatype_from(descr: &FieldDescriptor) -> DataType {
-    let inner = match descr.kind() {
+    let inner = singular_datatype_from(descr);
+
+    if descr.is_list() {
+        return DataType::new_list(inner, LIST_ITEM_NULLABLE);
+    }
+
+    inner
+}
+
+/// The datatype of a single element of `descr`, i.e. without the list wrapper that
+/// [`datatype_from`] adds for repeated fields.
+fn singular_datatype_from(descr: &FieldDescriptor) -> DataType {
+    match descr.kind() {
         Kind::Double => DataType::Float64,
         Kind::Float => DataType::Float32,
         Kind::Int32 | Kind::Sfixed32 | Kind::Sint32 => DataType::Int32,
@@ -504,46 +574,21 @@ fn datatype_from(descr: &FieldDescriptor) -> DataType {
         Kind::String => DataType::Utf8,
         Kind::Bytes => DataType::Binary,
         Kind::Message(message_descriptor) if descr.is_map() => {
-            let proto_key_field = message_descriptor.map_entry_key_field();
-            let proto_val_field = message_descriptor.map_entry_value_field();
-            let key_field = Field::new(
-                proto_key_field.name(),
-                datatype_from(&proto_key_field),
-                false,
-            );
-            let val_field = Field::new(
-                proto_val_field.name(),
-                datatype_from(&proto_val_field),
-                true,
-            );
+            let (key_field, val_field) = map_entry_fields(&message_descriptor);
             let entry_field = Field::new(
-                "entries",
+                MAP_ENTRY_FIELD_NAME,
                 DataType::Struct(Fields::from(vec![key_field, val_field])),
-                false,
+                MAP_ENTRY_NULLABLE,
             );
             // TODO(grtlr): We actually store the data sorted, but `MapBuilder` does not allow that.
-            DataType::Map(Arc::new(entry_field), false)
+            let keys_sorted = false;
+            DataType::Map(Arc::new(entry_field), keys_sorted)
         }
         Kind::Message(message_descriptor) => {
             DataType::Struct(fields_from_message(&message_descriptor))
         }
-        Kind::Enum(_) => {
-            // Struct with "name" (String) and "value" (Int32) fields.
-            // See comment in arrow_builder_from_field for why we use a struct.
-            // The child fields are nullable to support null enum values when the parent field is missing.
-            let fields = Fields::from(vec![
-                Field::new("name", DataType::Utf8, true),
-                Field::new("value", DataType::Int32, true),
-            ]);
-            DataType::Struct(fields)
-        }
-    };
-
-    if descr.is_list() {
-        return DataType::new_list(inner, true);
+        Kind::Enum(_) => DataType::Struct(enum_fields()),
     }
-
-    inner
 }
 
 /// Provides reflection-based conversion of protobuf-encoded MCAP messages.
