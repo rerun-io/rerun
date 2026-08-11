@@ -615,7 +615,6 @@ async fn stream_blueprint_segment(
 ) -> Result<ControlFlow<()>, ApiError> {
     let blueprint_store_info = StoreInfo {
         store_id: blueprint_store_id,
-        cloned_from: None,
         store_source: StoreSource::Unknown,
         store_version: None,
     };
@@ -773,7 +772,6 @@ pub async fn stream_blueprint_and_segment_from_server(
     if options.download.contains(SegmentDownload::SEGMENT) {
         let store_info = StoreInfo {
             store_id: recording_store_id,
-            cloned_from: None,
             store_source: StoreSource::Unknown,
             store_version: None,
         };

@@ -101,7 +101,6 @@ Every store in an RRD is identified by a `StoreId` and described by a `StoreInfo
     - **`application_id`** — a user-chosen identifier for the application that produced the recording (see [Recordings](recordings.md) for the conventions, including the relationship with segment and dataset IDs in the remote/catalog context).
     - **`recording_id`** — a UUID or user-chosen string that distinguishes runs of the same application (catalog servers use this as the segment ID — see the [catalog object model](../query-and-transform/catalog-object-model.md)).
 - **`StoreInfo`** wraps the `StoreId` and adds:
-    - **`cloned_from`** — for stores that originated as a clone of another (typically the active blueprint is derived from a default blueprint).
     - **`store_source`** — where the store came from (`PythonSdk`, `RustSdk`, `CppSdk`, or a file source such as CLI / drag-drop).
     - **`store_version`** — the Rerun version that produced the data.
 
@@ -145,7 +144,6 @@ StoreInfo {
         "rerun_example_rrd_format",
         "example",
     ),
-    cloned_from: None,
     store_source: PythonSdk(
         3.11.13,
     ),
@@ -169,7 +167,6 @@ StoreInfo {
         "rerun_example_rrd_format",
         "example",
     ),
-    cloned_from: None,
     store_source: PythonSdk(
         3.11.13,
     ),

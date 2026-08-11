@@ -124,12 +124,11 @@ fn grid_content_ui(ctx: &AppContext<'_>, db: &EntityDb, ui: &mut egui::Ui, ui_la
     {
         let re_log_types::StoreInfo {
             store_id,
-            cloned_from,
             store_source,
             store_version,
         } = store_info;
 
-        if let Some(cloned_from) = cloned_from {
+        if let Some(cloned_from) = db.cloned_from() {
             ui.grid_left_hand_label("Clone of");
             crate::item_ui::store_id_button_ui(ctx, ui, cloned_from, ui_layout);
             ui.end_row();
