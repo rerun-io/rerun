@@ -1,5 +1,112 @@
 # Rerun changelog
 
+## [0.36.0](https://github.com/rerun-io/rerun/compare/0.35.0...0.36.0) - 2026-08-10
+
+🧳 Migration guide: https://rerun.io/docs/changelog/changeset-0-36#breaking-changes
+
+### ✨ Overview & highlights
+
+- Experimental 3D gaussian splat support
+- Experimental Viewer catalog: larger-than-RAM files on the web
+- Configurable axes for 3D views
+- Improved viewer timeline navigation
+- Multi-sink support for `GrpcServerSink`
+
+📖 Release notes: https://rerun.io/docs/changelog/changeset-0-36#highlights
+
+### ⚠️ Breaking changes
+
+- **All SDKs**: application IDs now follow the same restrictions as catalog entry names.
+  Use at most 180 characters, and only ASCII alphanumerics, underscores, hyphens, spaces, brackets, and colons.
+- **CLI**: `rerun mcap info` now prints detailed file information; the diagnostic checks moved to `rerun mcap check`.
+- **Python**: the experimental `ParquetReader`'s loading options moved from the constructor to `stream()`.
+
+🧳 Migration guide: https://rerun.io/docs/changelog/changeset-0-36#breaking-changes
+
+### 🔎 Details
+
+#### 🪵 Log API
+- `ViewDir` is now a regular (codegen'ed) enum instead of a set of constants [0f6d842](https://github.com/rerun-io/rerun/commit/0f6d842f3f220f03a0105bc45ced8c043bc1c734)
+- Experimental GaussianSplats3D archetype w/ PLY loader [73d305c](https://github.com/rerun-io/rerun/commit/73d305c28dd41ec5b2ed5da954cbab3469fb6bb0)
+- Add an alternative `Costmap` colormap for `GridMap` [033d6f9](https://github.com/rerun-io/rerun/commit/033d6f98a12dc502e6c445fb4cec06bf8f36c353)
+- Migrate `ApplicationId` to always be `EntryName` compatible [ba6ff46](https://github.com/rerun-io/rerun/commit/ba6ff46ef6db513f54c476c5ea61e68331a9d736)
+
+#### 🌊 C++ API
+- Add missing standard library includes to C++ error handling (previously an issue for VS2017) [#12872](https://github.com/rerun-io/rerun/pull/12872) (thanks [@Travor278](https://github.com/Travor278)!)
+- Make `GrpcServerSink` multisink compatible and plumb it into C++ & Python [514a49b](https://github.com/rerun-io/rerun/commit/514a49b9a5e8f458b6509ba0a3c5fb263cc46bcd)
+- `rerun_c` is now a *public* dependency of `rerun_cpp` [5fcb022](https://github.com/rerun-io/rerun/commit/5fcb022f417eda4497ebe60285384543bb43ad5b)
+- Fix C++ issues found by newer `clang` toolchains [ef56603](https://github.com/rerun-io/rerun/commit/ef5660380f0b245409f71784abe0bbd2041d582f)
+- Update C++ toolchain of Pixi workspace [b3e60d6](https://github.com/rerun-io/rerun/commit/b3e60d61a01540dacf65525881e3bc7cea9a2ebd)
+
+#### 🐍 Python API
+- Add `root_group` to `Hdf5Reader.stream()` [3d4f394](https://github.com/rerun-io/rerun/commit/3d4f394e198c877419869fff65a9768104b54ec8)
+- dataloader: block-wise shuffling strategy [d959ca3](https://github.com/rerun-io/rerun/commit/d959ca3cb08d00c9fd7651c8e3dcbfe050060d5f)
+- dataloader: Fix read group overfetch [42ee525](https://github.com/rerun-io/rerun/commit/42ee5253a41b7b48582d45cb7ed847649123e75d)
+- Adds `Chunk.from_property()` to Chunk API [9557a7a](https://github.com/rerun-io/rerun/commit/9557a7a1703e97dc897ee77f08020211362e8240)
+- Memory-bounded chunk streaming in `Hdf5Reader` using windowed dataset reads [55b95fd](https://github.com/rerun-io/rerun/commit/55b95fdf2161753a380083ba3eb9381a0597bde7)
+- Add Pytorch dataloader manifest builder [4c92c4c](https://github.com/rerun-io/rerun/commit/4c92c4c2dd84133d723963b7774257b2244e4e04)
+- Make `GrpcServerSink` multisink compatible and plumb it into C++ & Python [514a49b](https://github.com/rerun-io/rerun/commit/514a49b9a5e8f458b6509ba0a3c5fb263cc46bcd)
+- `ParquetReader`: move data conversion knobs from the constructor to `.stream()` [43ff07a](https://github.com/rerun-io/rerun/commit/43ff07ad9d05ca55c1507514cd35418bceef5d92)
+- Implementation of the manifest dataset [94070ea](https://github.com/rerun-io/rerun/commit/94070eaf4782161b2855ec926b7d2aeac9cad277)
+- Expose `McapInfo` in Python binding via `McapReader.info()` [3850ed1](https://github.com/rerun-io/rerun/commit/3850ed1e65e8b7e71583b1b1bbde714af7dc5345)
+- Make the buffer size part of the shuffling strategy [ea24f6a](https://github.com/rerun-io/rerun/commit/ea24f6afb8fb6b62c0535f81d2c71e1cecd01188)
+- Parallelize the video decoding per field [a8922fa](https://github.com/rerun-io/rerun/commit/a8922fa6b0b5b8c3773127316fd537b1407ab32f)
+
+#### 🦀 Rust API
+- Make `GrpcServerSink` multisink compatible and plumb it into C++ & Python [514a49b](https://github.com/rerun-io/rerun/commit/514a49b9a5e8f458b6509ba0a3c5fb263cc46bcd)
+
+#### 🪳 Bug fixes
+- Better error message when file saving already in progress [3d74aed](https://github.com/rerun-io/rerun/commit/3d74aed03b88427101d18d5bf2a93ec6dad6c0f2)
+- Fix rrd loading progress desyncing [d340782](https://github.com/rerun-io/rerun/commit/d340782a7cfa08cf545944456689b9354f34625e)
+- Fix negative playback speed & frame delay on time cursor boundary clamping [a2cbae5](https://github.com/rerun-io/rerun/commit/a2cbae5b44c689a6a15982c04d79aceae10cd437)
+- Avoid main loop starvation by yielding during gRPC reads and apply backpressure [6e9c061](https://github.com/rerun-io/rerun/commit/6e9c061f8fc8fc17dd0abe2bd4b8a17402c01f4b)
+- Send `BlueprintActivationCommand` in right order for `newest_first` [3fbef01](https://github.com/rerun-io/rerun/commit/3fbef0170f61b0ffd090243463fd9e9d0d9bed2f)
+- Fix LeRobot v3 episodes loading in nondeterministic order [7c6edbb](https://github.com/rerun-io/rerun/commit/7c6edbbcd0454910a7c282ee77349599324118f9)
+- Fix Rerun window missing decorations (title bar) on Linux [5392400](https://github.com/rerun-io/rerun/commit/53924003b7bee1cf62faea105088b05aede72959)
+- Fix `--detach-process` for standalone CLI [#12873](https://github.com/rerun-io/rerun/pull/12873) (thanks [@Travor278](https://github.com/Travor278)!)
+- manifest-registry: serve RRD manifests as presigned direct URLs [ac11345](https://github.com/rerun-io/rerun/commit/ac11345e8938f251c14521802a5b18e7c4ba4eed)
+- Fix incorrect chunk sorting warnings when concatting chunks (during compaction) [4a607f1](https://github.com/rerun-io/rerun/commit/4a607f12a38f84c0d7ac3b2d8be765a75d8bdbe4)
+- Fix single-fire log messages not showing up in viewer notifications [65b93e9](https://github.com/rerun-io/rerun/commit/65b93e985d1dc902447ad58ac17761d9e108a666)
+
+#### 🌁 Viewer improvements
+- Playhead navigation dropdown [1f8a30f](https://github.com/rerun-io/rerun/commit/1f8a30f631f4cc6fca4c812b59d0b906e3ddadd5)
+- Support HTTP/HTTPS mesh URLs in URDF importer [e64b4eb](https://github.com/rerun-io/rerun/commit/e64b4eb7892c9fca29fc580e332f6167c5987473)
+- Time series: warn when scalar series count changes [#12802](https://github.com/rerun-io/rerun/pull/12802) (thanks [@waamm](https://github.com/waamm)!)
+- Enable HTTP/2 keepalive pings on the gRPC server [4c969c6](https://github.com/rerun-io/rerun/commit/4c969c6c82f60d4248c6c449f4f7811cb4e4dd03)
+- Implement lazy loading of RRDs into server on Wasm [b38a039](https://github.com/rerun-io/rerun/commit/b38a039f0b98baee9d6895c053a49ab07a95acc6)
+- Configurable coordinate axes property for 3D view [9a723e9](https://github.com/rerun-io/rerun/commit/9a723e946c6ff4b8329baf3a240385d2d0c46545)
+- Improve dropped file handling on web for internal catalog [ba24887](https://github.com/rerun-io/rerun/commit/ba24887866b90cea04689c4d99abd6526be51e5a)
+- Handle manifest fetching via URLs [09a8516](https://github.com/rerun-io/rerun/commit/09a85169b5809b3105dfbca14b80cd78b292e9c4)
+
+#### 🧑‍🏫 Examples
+- Make raw_mesh example demonstrate both `Asset3D` and `Mesh3D` [6986e8b](https://github.com/rerun-io/rerun/commit/6986e8b6d351653a33b9da9adbd98592d328b5e1)
+
+#### 📚 Docs
+- Mention transform tree debug UI in docs [b2b292a](https://github.com/rerun-io/rerun/commit/b2b292a5983c042eac0e392330c131d44c7a23e9)
+- Improve `ViewCoordinates` documentation [6a0744e](https://github.com/rerun-io/rerun/commit/6a0744e8c2cd7dbbc5ccab9e36ecbbd47ff2f9ef)
+
+#### 🎨 Renderer improvements
+- Gaussian splat renderer in re_renderer (EWA splatting) [0fba9d2](https://github.com/rerun-io/rerun/commit/0fba9d281baf62e4984ce333877dce8b0dd20bd2)
+- Spherical harmonics for gaussian splats [4f50053](https://github.com/rerun-io/rerun/commit/4f500532a04d095fc295984e31f3c24921e64474)
+
+#### 🧢 MCAP
+- Add `McapFile` abstraction with cached derived `McapInfo` [b613eb5](https://github.com/rerun-io/rerun/commit/b613eb590f19b16e7724d7c9184403ab86845ac0)
+- CLI: improve `mcap info` and move checks to `mcap check` [147668d](https://github.com/rerun-io/rerun/commit/147668d30123701847313e37d3afae7b5f3a954f)
+- Move ROS & Foxglove lenses to `re_lenses` [5f1ba60](https://github.com/rerun-io/rerun/commit/5f1ba60d8a37045fe0a09931c1e7081ddb8ff0f9)
+
+#### 🗣 Refactors
+- Unify `File` loading paths across web and native [8399e93](https://github.com/rerun-io/rerun/commit/8399e93ff78d2dc3731166069d9e246156b7ef75)
+
+#### 📦 Dependencies
+- Update Lance, DataFusion dependencies [b56a402](https://github.com/rerun-io/rerun/commit/b56a402c0b90e3f190e0903f523934a65df4d039)
+- Bump hdf5-pure 0.24.0 → 0.30.0 to add lzf compression support [4d4333c](https://github.com/rerun-io/rerun/commit/4d4333cf3e2c1d97f2b0e26f18b5c87f79d57b99)
+- Bump hdf5-pure 0.30 -> 0.33 for better displays of dtypes [cf93e36](https://github.com/rerun-io/rerun/commit/cf93e36cce331fc2d9926a45a46979cf788eeb09)
+
+#### 🤷‍ Other
+- Parallelize query dataset for range query pushdown [13a02a8](https://github.com/rerun-io/rerun/commit/13a02a880c15d53c2acec1951434d69cafd1f022)
+- proto: direct-from-s3 rrd manifest fetching [22a4ef9](https://github.com/rerun-io/rerun/commit/22a4ef9c6f994a426da3c127ebe3f9912083326b)
+
+
 ## [0.35.0](https://github.com/rerun-io/rerun/compare/0.34.1...0.35.0) - 2026-07-23
 
 🧳 Migration guide: https://rerun.io/docs/changelog/changeset-0-35#breaking-changes

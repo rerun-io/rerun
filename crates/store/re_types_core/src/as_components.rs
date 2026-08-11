@@ -13,7 +13,7 @@ use crate::{SerializationResult, SerializedComponentBatch};
 ///
 /// Have a look at our [Custom Data Importer] example to learn more about handwritten bundles.
 ///
-/// [IDL definitions]: https://github.com/rerun-io/rerun/tree/latest/crates/build/re_type_definitions/rerun?speculative-link
+/// [IDL definitions]: https://github.com/rerun-io/rerun/tree/latest/crates/build/re_type_definitions/rerun
 /// [Custom Data Importer]: https://github.com/rerun-io/rerun/blob/latest/examples/rust/custom_importer
 /// [`Component`]: [crate::Component]
 pub trait AsComponents {

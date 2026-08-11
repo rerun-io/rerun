@@ -7,7 +7,6 @@
 /// coordinate system or numerical values.
 #[rerun::rerun_type]
 #[repr(u8)]
-#[docs(unreleased)]
 #[rerun(state = "stable")]
 pub enum ViewDir {
     /// Up.

@@ -5,7 +5,6 @@
 ///
 /// The view-independent (degree-0) base color is represented as a separate [`rerun::components::Color`].
 #[rerun::rerun_type]
-#[docs(unreleased)]
 #[rerun(state = "unstable")]
 #[rust(derive(Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable))]
 #[rust(repr = "transparent")]

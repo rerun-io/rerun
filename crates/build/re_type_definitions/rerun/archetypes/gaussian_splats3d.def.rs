@@ -14,7 +14,6 @@
 /// \example archetypes/gaussian_splats3d_ply title="Log a 3D gaussian splatting (3DGS) PLY file"
 #[rerun::rerun_type]
 #[docs(category = "Spatial 3D")]
-#[docs(unreleased)]
 #[docs(view_types = "Spatial3DView")]
 #[rerun(state = "unstable")]
 #[rerun(visualizer = "GaussianSplats3D")]

@@ -17,8 +17,13 @@ use re_sdk_types::archetypes::EncodedImage;
 
 use crate::{EpisodeIndex, Feature, LeRobotError};
 
-/// Shared interface for all `LeRobot` dataset versions.
-pub trait LeRobotDataset {
+/// Behavioral interface shared by all `LeRobot` dataset versions.
+///
+/// This trait is deliberately frozen at exactly two methods: iterating episode indices and
+/// loading a single episode's chunks. Construction and version dispatch live on the
+/// [`crate::LeRobotDataset`] enum instead — the trait is the mockable behavioral surface (see
+/// the importer's `TestDataset`), not a place to grow new operations.
+pub trait LeRobotDatasetOps {
     /// Returns an iterator over all episode indices within the dataset.
     fn iter_episode_indices(&self) -> impl Iterator<Item = EpisodeIndex>;
 
