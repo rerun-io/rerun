@@ -78,7 +78,7 @@ The `rerun mcap info` CLI command has been rewritten to output richer and more d
 The diagnostic checks are now in a dedicated `rerun mcap check` subcommand instead.
 For programmatic access, the same information can be now also accessed through `McapReader.info()` in Python:
 
-```py
+```python
 reader = McapReader("data.mcap")
 
 print(f"{reader.info().chunks.count} chunks at max. {reader.info().chunks.max_compressed_size_bytes} B")
