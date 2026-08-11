@@ -20,6 +20,7 @@ Use the script:
 from __future__ import annotations
 
 import argparse
+import json
 import os.path
 import shutil
 import subprocess
@@ -46,6 +47,16 @@ if TYPE_CHECKING:
 CARGO_PATH = shutil.which("cargo") or "cargo"
 DEFAULT_PRE_ID = "alpha"
 MAX_PUBLISH_WORKERS = 3
+
+# How long we wait for a freshly published crate to show up in the crates.io sparse index.
+# The index is a CDN and lags behind the database by anything from seconds to several minutes.
+INDEX_WAIT_TIMEOUT_SEC = 15 * 60
+INDEX_POLL_INTERVAL_SEC = 5
+
+# How many times we retry a failed `cargo publish`, and how long we wait when it failed
+# because a dependency has not reached the index yet.
+PUBLISH_MAX_RETRIES = 10
+INDEX_LAG_RETRY_DELAY_SEC = 60
 
 R = Fore.RED
 G = Fore.GREEN
@@ -397,6 +408,78 @@ def bump_version(dry_run: bool, bump: Bump | str | None, pre_id: str, dev: bool)
         subprocess.check_output(["taplo", "fmt"])
 
 
+def sparse_index_url(crate_name: str) -> str:
+    """URL of a crate's entry in the crates.io sparse index."""
+
+    # https://doc.rust-lang.org/cargo/reference/registry-index.html#index-files
+    name = crate_name.lower()
+    if len(name) == 1:
+        prefix = f"1/{name}"
+    elif len(name) == 2:
+        prefix = f"2/{name}"
+    elif len(name) == 3:
+        prefix = f"3/{name[0]}/{name}"
+    else:
+        prefix = f"{name[0:2]}/{name[2:4]}/{name}"
+    return f"https://index.crates.io/{prefix}"
+
+
+def is_available_on_index(version: str, crate_name: str) -> bool:
+    """
+    Is this version visible in the crates.io sparse index?
+
+    `cargo publish` resolves dependencies against the index, which is a CDN that lags behind the
+    crates.io database. `is_already_published` asks the database, so it can answer "yes" minutes
+    before a dependent crate is able to resolve the dependency. Only the index answers the
+    question that dependents actually care about.
+    """
+
+    resp = requests.get(
+        sparse_index_url(crate_name),
+        headers={
+            "user-agent": "rerun-publishing-script (rerun.io)",
+            # Ask the CDN to revalidate rather than serve us a stale entry.
+            "cache-control": "no-cache",
+        },
+        timeout=30,
+    )
+
+    if resp.status_code == 404:
+        return False  # Crate is not on the index at all yet
+
+    if not resp.ok:
+        raise Exception(f"Failed to query the crates.io index for '{crate_name}': {resp.status_code}")
+
+    # The index serves newline-delimited JSON, one line per published version.
+    for line in resp.text.splitlines():
+        if line.strip() and json.loads(line)["vers"] == version:
+            return True
+    return False
+
+
+def wait_until_available_on_index(version: str, crate_name: str) -> None:
+    """Blocks until `crate_name@version` is visible in the crates.io sparse index, or until we give up."""
+
+    if is_available_on_index(version, crate_name):
+        return
+
+    print(f"{G}Waiting{X} for {B}{crate_name}{X}@{B}{version}{X} to reach the crates.io index…")
+    start = time.monotonic()
+    while True:
+        time.sleep(INDEX_POLL_INTERVAL_SEC)
+
+        if is_available_on_index(version, crate_name):
+            print(f"{G}Indexed{X} {B}{crate_name}{X}@{B}{version}{X} after {time.monotonic() - start:.0f}s")
+            return
+
+        if time.monotonic() - start > INDEX_WAIT_TIMEOUT_SEC:
+            print(
+                f"{R}Gave up waiting{X} for {B}{crate_name}{X}@{B}{version}{X} to reach the crates.io index "
+                f"after {INDEX_WAIT_TIMEOUT_SEC}s. Continuing anyway; dependents will retry."
+            )
+            return
+
+
 def is_already_published(version: str, crate: Crate) -> bool:
     crate_name = crate.manifest["package"]["name"]
     resp = requests.get(
@@ -448,6 +531,32 @@ def parse_retry_delay_secs(error_message: str) -> float | None:
     return (retry_after - datetime.now(timezone.utc)).total_seconds() * MAX_PUBLISH_WORKERS
 
 
+def is_index_lag_error(error_message: str) -> bool:
+    """Did `cargo publish` fail because a dependency has not reached the crates.io index yet?"""
+
+    # Example:
+    #   error: failed to select a version for the requirement `re_datafusion = "^0.36.0"`
+    #   candidate versions found which didn't match: 0.35.1-rc.1, 0.35.0, 0.34.1, …
+    #   location searched: crates.io index
+    return "failed to select a version for the requirement" in error_message
+
+
+def publish_retry_delay_secs(error_message: str) -> float:
+    """How long to wait before retrying a failed `cargo publish`."""
+
+    # A 429 tells us exactly how long to wait.
+    rate_limit_delay = parse_retry_delay_secs(error_message)
+    if rate_limit_delay is not None:
+        return rate_limit_delay
+
+    # An index lag clears in minutes, not seconds.
+    if is_index_lag_error(error_message):
+        return INDEX_LAG_RETRY_DELAY_SEC
+
+    # Anything else is most likely a real error, so retry quickly and fail fast.
+    return 5.0
+
+
 def publish_crate(crate: Crate, token: str, version: str, env: dict[str, Any], dry_run: bool) -> None:
     package = crate.manifest["package"]
     name = package["name"]
@@ -467,7 +576,7 @@ def publish_crate(crate: Crate, token: str, version: str, env: dict[str, Any], d
         publish_cmd += " --dry-run"
 
     print(f"{G}Publishing{X} {B}{name}{X}…")
-    retry_attempts = 5
+    retry_attempts = PUBLISH_MAX_RETRIES
     while True:
         try:
             cargo(
@@ -478,26 +587,17 @@ def publish_crate(crate: Crate, token: str, version: str, env: dict[str, Any], d
                 capture=True,
             )
 
-            if not dry_run and not is_already_published(version, crate):
-                # Theoretically this shouldn't be needed… but sometimes it is.
-                print(f"{R}Waiting for {name} to become available…")
-                time.sleep(2)  # give crates.io some time to index the new crate
-                num_retries = 0
-                while not is_already_published(version, crate):
-                    time.sleep(3)
-                    num_retries += 1
-                    if num_retries > 10:
-                        print(f"{R}We published{X} {B}{name}{X} but it was never made available. Continuing anyway.")
-                        return
+            if not dry_run:
+                # Dependents resolve against the index, so we must not hand this crate back to the
+                # DAG before the index has caught up, or their `cargo publish` fails to resolve it.
+                wait_until_available_on_index(version, name)
 
             print(f"{G}Published{X} {B}{name}{X}@{B}{version}{X}")
 
             break
         except subprocess.CalledProcessError as e:
             error_message = e.stdout.decode("utf-8").strip()
-            # if we get a 429, parse the retry delay from it
-            # for any other error, retry after 6 seconds
-            retry_delay = 1 + (parse_retry_delay_secs(error_message) or 5.0)
+            retry_delay = 1 + publish_retry_delay_secs(error_message)
             if retry_attempts > 0:
                 print(
                     f"{R}Failed to publish{X} {B}{name}{X}:\n{error_message}\n\nRemaining retry attempts: {retry_attempts}.\nRetrying in {retry_delay} seconds."
@@ -543,6 +643,19 @@ def publish_unpublished_crates_in_parallel(
             if dependency.name in unpublished_crates:
                 dependencies.append(dependency.name)
         dependency_graph[name] = dependencies
+
+    # A crate published by an earlier, aborted run counts as published above, so nothing in this run
+    # waits for it — but it may still be missing from the index, which is what aborted that run in
+    # the first place. Wait for the ones we are about to build against.
+    if not dry_run:
+        already_published_deps = {
+            dependency.name
+            for crate in unpublished_crates.values()
+            for dependency in crate_deps(crate.manifest)
+            if dependency.name in all_crates and dependency.name not in unpublished_crates
+        }
+        for name in sorted(already_published_deps):
+            wait_until_available_on_index(version, name)
 
     # walk the dependency graph in parallel and publish each crate
     print(f"Publishing {len(unpublished_crates)} crates…")
