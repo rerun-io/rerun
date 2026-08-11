@@ -78,7 +78,7 @@ pub(crate) fn map_dimensions_to_l8_image_format()
             })
             .collect();
 
-        ImageFormat::to_arrow_opt(formats.iter().map(Some))
+        ImageFormat::to_arrow(formats.iter())
             .map(Some)
             .map_err(|err| Error::Other(err.to_string()))
     }
@@ -91,7 +91,7 @@ pub(crate) fn default_ros_map_colormap(
 ) -> impl Fn(&ArrayRef) -> Result<Option<ArrayRef>, Error> + Send + Sync {
     move |source: &ArrayRef| {
         let len = source.len();
-        Colormap::to_arrow_opt(std::iter::repeat_n(Some(colormap), len))
+        Colormap::to_arrow(std::iter::repeat_n(colormap, len))
             .map(Some)
             .map_err(|err| Error::Other(err.to_string()))
     }

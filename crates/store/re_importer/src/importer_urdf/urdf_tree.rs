@@ -344,8 +344,8 @@ impl UrdfTree {
             );
         }
 
-        let translation_array = Vec3D::to_arrow_opt(translations.iter().map(Some))?;
-        let quaternion_array = Quaternion::to_arrow_opt(quaternions.iter().map(Some))?;
+        let translation_array = Vec3D::to_arrow(translations.iter())?;
+        let quaternion_array = Quaternion::to_arrow(quaternions.iter())?;
 
         let struct_fields = Fields::from(vec![
             Field::new("translation", translation_array.data_type().clone(), false),

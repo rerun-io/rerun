@@ -200,7 +200,7 @@ fn voxel_indices_builder() -> FixedSizeListBuilder<Int32Builder> {
 
 fn default_voxel_opacity(source: &ArrayRef) -> Result<Option<ArrayRef>, Error> {
     let opacity = Opacity::from(DEFAULT_VOXEL_OPACITY);
-    Opacity::to_arrow_opt(std::iter::repeat_n(Some(opacity), source.len()))
+    Opacity::to_arrow(std::iter::repeat_n(opacity, source.len()))
         .map(Some)
         .map_err(|err| Error::Other(err.to_string()))
 }

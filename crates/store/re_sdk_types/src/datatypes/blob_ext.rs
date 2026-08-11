@@ -75,8 +75,7 @@ mod tests {
         let blob = Blob::from(data.clone());
 
         // Serialize a single blob
-        let blobs = vec![Some(blob)];
-        let array = Blob::to_arrow_opt(blobs).unwrap();
+        let array = Blob::to_arrow([blob]).unwrap();
 
         // Verify it's a ListArray
         let list_array = array
@@ -105,8 +104,7 @@ mod tests {
         let blob2 = Blob::from(data2.clone());
 
         // Serialize multiple blobs
-        let blobs = vec![Some(blob1), Some(blob2)];
-        let array = Blob::to_arrow_opt(blobs).unwrap();
+        let array = Blob::to_arrow([blob1, blob2]).unwrap();
 
         // Verify it's a ListArray
         let list_array = array
@@ -144,20 +142,18 @@ mod tests {
         let blob = Blob::from(data.clone());
 
         // Single blob roundtrip
-        let blobs_in = vec![Some(blob.clone())];
-        let array = Blob::to_arrow_opt(blobs_in).unwrap();
-        let blobs_out = Blob::from_arrow_opt(&*array).unwrap();
+        let array = Blob::to_arrow([blob]).unwrap();
+        let blobs_out = Blob::from_arrow(&*array).unwrap();
 
         assert_eq!(blobs_out.len(), 1);
-        assert_eq!(blobs_out[0].as_ref().unwrap().0.as_ref(), data.as_slice());
+        assert_eq!(blobs_out[0].0.as_ref(), data.as_slice());
     }
 
     #[test]
     fn test_empty_blob() {
         // Test edge case: empty blob
         let blob = Blob::from(vec![]);
-        let blobs = vec![Some(blob)];
-        let array = Blob::to_arrow_opt(blobs).unwrap();
+        let array = Blob::to_arrow([blob]).unwrap();
 
         let list_array = array
             .as_any()
@@ -175,8 +171,7 @@ mod tests {
         let data = vec![128u8; 1920 * 1080 * 3]; // Simulated Full HD RGB image
         let blob = Blob::from(data.clone());
 
-        let blobs = vec![Some(blob)];
-        let array = Blob::to_arrow_opt(blobs).unwrap();
+        let array = Blob::to_arrow([blob]).unwrap();
 
         let list_array = array
             .as_any()
@@ -239,7 +234,7 @@ mod tests {
         let blob = Blob::from(data.clone());
 
         // Serialize using a borrowed reference.
-        let array = Blob::to_arrow_opt([Some(&blob)]).unwrap();
+        let array = Blob::to_arrow([&blob]).unwrap();
 
         let list_array = array
             .as_any()
