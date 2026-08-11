@@ -7,7 +7,6 @@ use re_data_ui::item_ui::{self, timeline_button};
 use re_dataframe_ui::apply_table_style_fixes;
 use re_log::ResultExt as _;
 use re_log_types::{EntityPath, TimelineName};
-use re_sdk_types::archetypes::TextLog;
 use re_sdk_types::blueprint::archetypes::{TextLogColumns, TextLogFormat, TextLogRows};
 use re_sdk_types::blueprint::components::{Enabled, TextLogColumn, TimelineColumn};
 use re_sdk_types::blueprint::encodings as bp_encodings;
@@ -23,7 +22,7 @@ use re_viewer_context::{
 use re_viewport_blueprint::ViewProperty;
 
 use super::visualizer_system::{Entry, FetchWindow, TextLogOutput, TextLogSystem};
-use crate::row_layout::{LevelCountCache, LevelFilter, RowLayout};
+use crate::row_layout::RowLayout;
 
 // TODO(andreas): This should be a blueprint component.
 #[derive(Clone, PartialEq, Eq, Default, re_byte_size::SizeBytes)]
@@ -50,10 +49,6 @@ pub struct TextViewState {
     /// Written at the end of `ui()` based on the visible rows, read by
     /// [`TextLogSystem`]'s `execute()` one frame later.
     pub(crate) fetch_window: Option<FetchWindow>,
-
-    /// Cached per-chunk log level counts, used to lay out the table when a level filter is
-    /// active (see [`RowLayout`]).
-    level_counts: LevelCountCache,
 }
 
 impl ViewState for TextViewState {
@@ -205,7 +200,7 @@ Filter message types and toggle column visibility in a selection panel.",
     fn ui(
         &self,
         ctx: &ViewerContext<'_>,
-        missing_chunk_reporter: &re_viewer_context::MissingChunkReporter,
+        _missing_chunk_reporter: &re_viewer_context::MissingChunkReporter,
         ui: &mut egui::Ui,
         state: &mut dyn ViewState,
         query: &ViewQuery<'_>,
@@ -222,7 +217,6 @@ Filter message types and toggle column visibility in a selection panel.",
 
         let view_ctx = self.view_context(ctx, query.view_id, state, query.space_origin);
         let columns_property = ViewProperty::from_archetype::<TextLogColumns>(&view_ctx);
-        let rows_property = ViewProperty::from_archetype::<TextLogRows>(&view_ctx);
         let format_property = ViewProperty::from_archetype::<TextLogFormat>(&view_ctx);
 
         let monospace_body = format_property.component_or_fallback::<Enabled>(
@@ -239,64 +233,33 @@ Filter message types and toggle column visibility in a selection panel.",
             TextLogColumns::descriptor_timeline_columns().component,
         )?;
 
-        // An *explicit* level filter (i.e. one set in the blueprint, not the show-everything
-        // fallback) changes which rows are shown; the row layout then comes from cached
-        // per-chunk level counts instead of plain chunk row counts.
-        let filter = rows_property
-            .component_array::<TextLogLevel>(
-                TextLogRows::descriptor_filter_by_log_level().component,
-            )?
-            .map(|levels| LevelFilter(levels.iter().map(|lvl| lvl.as_str().to_owned()).collect()));
-
         let time = ctx.time_ctrl.time_i64().unwrap_or(state.latest_time);
 
-        // Only the fetched window's entries are materialized; the rest of the row layout comes
-        // from chunk-level metadata (time ranges + row counts), so we never have to touch the
-        // full data. See <https://github.com/rerun-io/rerun/issues/7562>.
-        let layout = {
-            let engine = ctx.recording_engine();
-            RowLayout::build(
-                engine.store(),
-                &query.timeline,
-                TextLog::descriptor_text().component,
-                TextLog::descriptor_level().component,
-                query
-                    .iter_visualizer_instruction_for(TextLogSystem::identifier())
-                    .map(|(data_result, _)| &data_result.entity_path),
-                filter.as_ref(),
-                &mut state.level_counts,
-            )
-        };
+        // Everything about *where* rows live comes from the visualizer, which derives it from
+        // chunk-level metadata rather than the row data itself.
+        // `None` means the visualizer didn't run, i.e. the view has no active instructions.
+        let layout = output.layout.as_ref();
 
-        state.seen_levels.extend(layout.levels().iter().cloned());
-
-        if layout.any_missing {
-            missing_chunk_reporter.report_missing_chunk();
+        if let Some(layout) = layout {
+            state.seen_levels.extend(layout.levels().iter().cloned());
         }
 
-        // The fetched window contains *all* rows in its time range; apply the level filter
-        // here so the entries line up with the (filtered) row layout.
-        let visible_entries: Vec<&Entry> = match &filter {
-            Some(filter) => output
-                .entries
-                .iter()
-                .filter(|te| filter.matches(te.level.as_ref().map(|lvl| lvl.as_str())))
-                .collect(),
-            None => output.entries.iter().collect(),
-        };
+        let num_rows = layout.map_or(0, RowLayout::num_rows);
+        let num_static_rows = layout.map_or(0, RowLayout::num_static_rows);
+        let rows_before = |t: TimeInt| layout.map_or(0, |layout| layout.rows_before(t));
 
-        let num_rows = layout.num_rows();
-        let scroll_row = layout.rows_before(TimeInt::new_temporal(time));
-        let anchor_row = layout.rows_before(TimeInt::new_temporal(time).inc());
+        let scroll_row = rows_before(TimeInt::new_temporal(time));
+        let anchor_row = rows_before(TimeInt::new_temporal(time).inc());
 
         let rows = RowLookup {
-            num_static: layout.num_static_rows(),
-            fetched_static: visible_entries.partition_point(|entry| entry.time.is_static()) as u64,
-            temporal_offset: output.window.map_or_else(
-                || layout.num_static_rows(),
-                |window| layout.rows_before(window.min),
-            ),
-            entries: visible_entries,
+            num_static: num_static_rows,
+            fetched_static: output
+                .entries
+                .partition_point(|entry| entry.time.is_static()) as u64,
+            temporal_offset: output
+                .window
+                .map_or(num_static_rows, |window| rows_before(window.min)),
+            entries: &output.entries,
         };
 
         // Auto-scroll when the time cursor moves, or whenever the row below the cursor shifts
@@ -383,7 +346,7 @@ Filter message types and toggle column visibility in a selection panel.",
         let prefetch_rows =
             visible_rows.start.saturating_sub(page)..(visible_rows.end + page).min(num_rows);
         let new_window = layout
-            .time_window_for_rows(prefetch_rows)
+            .and_then(|layout| layout.time_window_for_rows(prefetch_rows))
             .map(|(min, max)| FetchWindow {
                 timeline: query.timeline,
                 min,
@@ -419,7 +382,7 @@ fn text_log_column(width: f32, min_width: f32) -> egui_table::Column {
 /// Only the fetched time window is materialized.
 struct RowLookup<'a> {
     /// Fetched entries that pass the level filter, sorted by time, static entries first.
-    entries: Vec<&'a Entry>,
+    entries: &'a [Entry],
 
     /// Total number of static rows according to chunk metadata.
     num_static: u64,
@@ -434,10 +397,10 @@ struct RowLookup<'a> {
 impl RowLookup<'_> {
     fn entry(&self, row_nr: u64) -> Option<&Entry> {
         if row_nr < self.num_static {
-            (row_nr < self.fetched_static).then(|| self.entries[row_nr as usize])
+            (row_nr < self.fetched_static).then(|| &self.entries[row_nr as usize])
         } else {
             let idx = self.fetched_static + row_nr.checked_sub(self.temporal_offset)?;
-            self.entries.get(idx as usize).copied()
+            self.entries.get(idx as usize)
         }
     }
 }

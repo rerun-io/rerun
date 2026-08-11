@@ -6,11 +6,13 @@ use re_chunk_store::external::arrow::array::{
     Array as _, ListArray as ArrowListArray, StringArray as ArrowStringArray,
 };
 use re_chunk_store::{
-    AbsoluteTimeRange, Chunk, ChunkId, ChunkStore, ChunkTrackingMode, RangeQuery, TimeInt,
+    AbsoluteTimeRange, Chunk, ChunkId, ChunkStore, ChunkStoreEvent, ChunkTrackingMode, RangeQuery,
+    TimeInt,
 };
 use re_entity_db::EntityPath;
 use re_log_types::TimelineName;
 use re_sdk_types::ComponentIdentifier;
+use re_viewer_context::Cache;
 
 /// An explicit log level filter: only rows whose level is in the set are shown.
 ///
@@ -25,9 +27,6 @@ impl LevelFilter {
 }
 
 /// Per-level row counts for a single chunk.
-///
-/// Chunks are immutable, so these can be cached indefinitely (keyed by [`ChunkId`]),
-/// which makes level-filtered row counts as cheap as unfiltered ones after the first frame.
 #[derive(Clone, Default, PartialEq, Eq)]
 pub struct LevelCounts {
     /// Number of text log rows whose (first) level value is the given string.
@@ -54,10 +53,66 @@ impl re_byte_size::SizeBytes for LevelCounts {
     }
 }
 
-/// Cached per-chunk level counts, keyed by chunk id.
-pub type LevelCountCache = BTreeMap<ChunkId, LevelCounts>;
+/// Per-chunk [`LevelCounts`], computed once per chunk and shared by all text log views.
+///
+/// Chunks are immutable, so an entry stays valid until the chunk is evicted from the store,
+/// which is what makes level-filtered row counts as cheap as unfiltered ones after the first frame.
+#[derive(Default)]
+pub struct LevelCountCache(
+    BTreeMap<(ChunkId, ComponentIdentifier, ComponentIdentifier), LevelCounts>,
+);
+
+impl LevelCountCache {
+    fn counts_for(
+        &mut self,
+        chunk: &Chunk,
+        component: ComponentIdentifier,
+        level_component: ComponentIdentifier,
+    ) -> &LevelCounts {
+        self.0
+            .entry((chunk.id(), component, level_component))
+            .or_insert_with(|| level_counts_for_chunk(chunk, component, level_component))
+    }
+}
+
+impl Cache for LevelCountCache {
+    fn name(&self) -> &'static str {
+        "TextLogLevelCountCache"
+    }
+
+    fn purge_memory(&mut self) {
+        self.0.clear();
+    }
+
+    fn on_store_events(
+        &mut self,
+        events: &[&ChunkStoreEvent],
+        _entity_db: &re_entity_db::EntityDb,
+    ) {
+        re_tracing::profile_function!();
+
+        let deleted: BTreeSet<ChunkId> = events
+            .iter()
+            .filter_map(|event| event.to_deletion())
+            .map(|deletion| deletion.chunk.id())
+            .collect();
+        if deleted.is_empty() {
+            return;
+        }
+
+        self.0
+            .retain(|(chunk_id, _, _), _| !deleted.contains(chunk_id));
+    }
+}
+
+impl re_byte_size::MemUsageTreeCapture for LevelCountCache {
+    fn capture_mem_usage_tree(&self) -> re_byte_size::MemUsageTree {
+        re_byte_size::MemUsageTree::Bytes(re_byte_size::SizeBytes::total_size_bytes(&self.0))
+    }
+}
 
 /// The contiguous span of table rows contributed by one chunk.
+#[derive(Clone)]
 struct ChunkSpan {
     /// Time range covered by the chunk on the layout's timeline.
     ///
@@ -82,6 +137,7 @@ struct ChunkSpan {
 /// Rows are ordered with static rows first, then by time.
 /// Where chunks of different entities overlap in time, the layout is approximate at chunk
 /// granularity, but stable since the visible window itself is always rendered in exact time order.
+#[derive(Clone)]
 pub struct RowLayout {
     timeline: TimelineName,
     component: ComponentIdentifier,
@@ -129,7 +185,6 @@ impl RowLayout {
         let mut chunks = Vec::new();
         let mut levels = BTreeSet::new();
         let mut any_missing = false;
-        let mut live_chunks = BTreeSet::new();
 
         for entity_path in entities {
             // don't trigger chunk downloads just to compute the row layout.
@@ -149,13 +204,9 @@ impl RowLayout {
                     continue;
                 }
 
-                live_chunks.insert(chunk.id());
-
                 // One-time scan per chunk (chunks are immutable, so the cache never goes stale)
                 // this is what makes level-filtered row counts viable
-                let counts = level_counts
-                    .entry(chunk.id())
-                    .or_insert_with(|| level_counts_for_chunk(&chunk, component, level_component));
+                let counts = level_counts.counts_for(&chunk, component, level_component);
                 levels.extend(counts.per_level.keys().cloned());
 
                 let num_rows = match filter {
@@ -183,9 +234,6 @@ impl RowLayout {
                 });
             }
         }
-
-        // Drop cache entries for chunks that no longer exist
-        level_counts.retain(|chunk_id, _| live_chunks.contains(chunk_id));
 
         // Static chunks first, then by time.
         chunks.sort_by_key(|span| (!span.is_static, span.time_range.min(), span.chunk.id()));

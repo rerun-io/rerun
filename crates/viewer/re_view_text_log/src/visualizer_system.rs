@@ -6,13 +6,16 @@ use re_entity_db::EntityPath;
 use re_log_types::{TimeInt, TimePoint, TimelineName};
 use re_sdk_types::Archetype as _;
 use re_sdk_types::archetypes::TextLog;
+use re_sdk_types::blueprint::archetypes::TextLogRows;
 use re_sdk_types::components::{Color, Text, TextLogLevel};
 use re_view::range_with_blueprint_resolved_data;
 use re_viewer_context::{
     IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery, ViewStateExt as _,
     ViewSystemExecutionError, VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem,
 };
+use re_viewport_blueprint::ViewProperty;
 
+use crate::row_layout::{LevelCountCache, LevelFilter, RowLayout};
 use crate::view_class::TextViewState;
 
 #[derive(Debug, Clone)]
@@ -46,11 +49,17 @@ impl re_byte_size::SizeBytes for FetchWindow {
 pub struct TextLogOutput {
     /// Entries sorted by time on the active timeline, static entries first.
     ///
-    /// This only covers [`Self::window`] plus all static entries.
+    /// This only covers [`Self::window`] plus all static entries, and only rows that pass the
+    /// level filter.
     pub entries: Vec<Entry>,
 
     /// The time window that was queried, if any.
     pub window: Option<FetchWindow>,
+
+    /// Where every row of the table lives, including the ones outside [`Self::window`].
+    ///
+    /// `None` if the visualizer didn't run at all, i.e. the view has no active instructions.
+    pub layout: Option<RowLayout>,
 }
 
 /// A text scene, with everything needed to render it.
@@ -103,6 +112,41 @@ impl VisualizerSystem for TextLogSystem {
         let query = re_chunk_store::RangeQuery::new(view_query.timeline, time_range)
             .keep_extra_timelines(true);
 
+        // An *explicit* level filter (i.e. one set in the blueprint, not the show-everything
+        // fallback) changes which rows are shown; the row layout then comes from cached
+        // per-chunk level counts instead of plain chunk row counts.
+        let filter = ViewProperty::from_archetype::<TextLogRows>(ctx)
+            .component_array::<TextLogLevel>(
+                TextLogRows::descriptor_filter_by_log_level().component,
+            )?
+            .map(|levels| LevelFilter(levels.iter().map(|lvl| lvl.as_str().to_owned()).collect()));
+
+        // Only the fetched window's entries are materialized; the rest of the row layout comes
+        // from chunk-level metadata (time ranges + row counts), so we never have to touch the
+        // full data. See <https://github.com/rerun-io/rerun/issues/7562>.
+        let layout = {
+            let engine = ctx.recording_engine();
+            ctx.viewer_ctx
+                .store_context
+                .memoizer(|level_counts: &mut LevelCountCache| {
+                    RowLayout::build(
+                        engine.store(),
+                        &view_query.timeline,
+                        TextLog::descriptor_text().component,
+                        TextLog::descriptor_level().component,
+                        view_query
+                            .iter_visualizer_instruction_for(Self::identifier())
+                            .map(|(data_result, _)| &data_result.entity_path),
+                        filter.as_ref(),
+                        level_counts,
+                    )
+                })
+        };
+
+        if layout.any_missing {
+            output.set_missing_chunks();
+        }
+
         let mut entries = Vec::new();
 
         for (data_result, instruction) in
@@ -118,13 +162,24 @@ impl VisualizerSystem for TextLogSystem {
             );
         }
 
+        // The fetched window contains *all* rows in its time range; apply the level filter
+        // here so the entries line up with the (filtered) row layout.
+        if let Some(filter) = &filter {
+            re_tracing::profile_scope!("filter");
+            entries.retain(|entry| filter.matches(entry.level.as_ref().map(|lvl| lvl.as_str())));
+        }
+
         {
             // Sort by currently selected timeline.
             re_tracing::profile_scope!("sort");
             entries.sort_by_key(|e| e.time);
         }
 
-        Ok(output.with_visualizer_data(TextLogOutput { entries, window }))
+        Ok(output.with_visualizer_data(TextLogOutput {
+            entries,
+            window,
+            layout: Some(layout),
+        }))
     }
 }
 
