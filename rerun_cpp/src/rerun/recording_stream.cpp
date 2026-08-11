@@ -269,15 +269,7 @@ namespace rerun {
             return Error::ok();
         }
 
-        std::vector<ComponentBatch> instanced;
-
-        for (const auto& batch : batches) {
-            instanced.push_back(std::move(batch));
-        }
-
-        bool inject_time = !static_;
-
-        return try_log_data_row(entity_path, instanced.size(), instanced.data(), inject_time);
+        return try_log_data_row(entity_path, batches.size(), batches.data(), !static_);
     }
 
     Error RecordingStream::try_log_data_row(
