@@ -46,14 +46,7 @@ pub fn view_property_ui_with_redirect<A: Archetype + ArchetypeReflectionMarker>(
         &view_property,
         Some(&RedirectComponentView {
             component: redirect_component,
-            ctx: ViewContext {
-                viewer_ctx: ctx.viewer_ctx,
-                view_id: redirect_with_view_id,
-                view_class_identifier: ctx.view_class_identifier,
-                space_origin: ctx.space_origin,
-                view_state: ctx.view_state,
-                query_result: &re_viewer_context::DataQueryResult::default(),
-            },
+            ctx: ctx.with_view_id(redirect_with_view_id),
             view_property: ViewProperty::from_archetype_for_view::<A>(
                 ctx.viewer_ctx,
                 redirect_with_view_id,

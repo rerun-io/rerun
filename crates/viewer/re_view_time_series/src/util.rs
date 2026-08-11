@@ -3,7 +3,6 @@ use re_log_types::external::arrow;
 use re_sdk_types::blueprint::archetypes::TimeAxis;
 use re_sdk_types::blueprint::components::{LinkAxis, VisualizerInstructionId};
 use re_sdk_types::components::AggregationPolicy;
-use re_sdk_types::datatypes::TimeRange;
 use re_viewer_context::external::re_entity_db::InstancePath;
 use re_viewer_context::{ViewContext, ViewQuery, ViewerContext};
 use re_viewport_blueprint::{ViewProperty, ViewPropertyQueryError};
@@ -33,13 +32,10 @@ pub fn data_result_time_range(
     data_result: &re_viewer_context::DataResult,
     timeline: re_log_types::TimelineName,
 ) -> AbsoluteTimeRange {
-    let current_time = ctx
-        .time_ctrl
-        .time_int()
-        .unwrap_or(re_log_types::TimeInt::ZERO);
-
     let query_range = match data_result.query_range() {
-        re_viewer_context::QueryRange::TimeRange(time_range) => *time_range,
+        re_viewer_context::QueryRange::TimeRange(time_range) => {
+            re_view::resolve_visible_time_range(ctx, time_range)
+        }
 
         re_viewer_context::QueryRange::LatestAt => {
             // Latest-at doesn't make sense for time series and should also never happen.
@@ -47,7 +43,7 @@ pub fn data_result_time_range(
                 "Unexpected LatestAt query for time series data result at path {:?}",
                 data_result.entity_path
             );
-            TimeRange::EVERYTHING
+            AbsoluteTimeRange::EVERYTHING
         }
     };
 
@@ -57,7 +53,7 @@ pub fn data_result_time_range(
         .store()
         .entity_time_range(&timeline, &data_result.entity_path);
 
-    AbsoluteTimeRange::from_relative_time_range(&query_range, current_time)
+    query_range
         .intersection(data_range.unwrap_or(AbsoluteTimeRange::EMPTY))
         .unwrap_or(AbsoluteTimeRange::EMPTY)
 }

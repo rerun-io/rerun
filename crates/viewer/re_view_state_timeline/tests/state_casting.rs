@@ -20,7 +20,7 @@ use re_test_context::TestContext;
 use re_test_context::VisualizerBlueprintContext as _;
 use re_test_viewport::TestContextExt as _;
 use re_view_state_timeline::{
-    StateLanesData, StateTimelineView, StateTimelineViewState, StateValueKind, StateVisualizer,
+    StateLanesOutput, StateTimelineView, StateTimelineViewState, StateValueKind, StateVisualizer,
 };
 use re_viewer_context::{IdentifiedViewSystem as _, ViewClass as _, ViewId};
 use re_viewport::execute_systems_for_view;
@@ -77,11 +77,11 @@ fn build_view(
     })
 }
 
-/// Run the state visualizer and collect every emitted [`StateLanesData`].
+/// Run the state visualizer and collect every emitted [`StateLanesOutput`].
 ///
 /// Reconstructs the per-frame execution that the viewport normally performs, then peeks at
 /// the visualizer's typed output rather than rendering it.
-fn run_visualizer(test_context: &TestContext, view_id: ViewId) -> Vec<StateLanesData> {
+fn run_visualizer(test_context: &TestContext, view_id: ViewId) -> Vec<StateLanesOutput> {
     run_visualizer_impl(test_context, view_id, None)
 }
 
@@ -92,7 +92,7 @@ fn run_visualizer_with_window(
     view_id: ViewId,
     min: f64,
     time_spanned: f64,
-) -> Vec<StateLanesData> {
+) -> Vec<StateLanesOutput> {
     run_visualizer_impl(test_context, view_id, Some((min, time_spanned)))
 }
 
@@ -100,7 +100,7 @@ fn run_visualizer_impl(
     test_context: &TestContext,
     view_id: ViewId,
     window: Option<(f64, f64)>,
-) -> Vec<StateLanesData> {
+) -> Vec<StateLanesOutput> {
     test_context.run_once_in_egui_central_panel(|ctx, _ui| {
         let viewport_blueprint =
             ViewportBlueprint::from_db(ctx.store_context.blueprint, &test_context.blueprint_query);
@@ -136,13 +136,13 @@ fn run_visualizer_impl(
             execute_systems_for_view(ctx, view_blueprint, view_state.as_ref(), &once_per_frame);
 
         system_output
-            .iter_visualizer_data::<StateLanesData>()
+            .iter_visualizer_data::<StateLanesOutput>()
             .cloned()
             .collect()
     })
 }
 
-fn phase_labels(lanes_data: &StateLanesData, entity: &str) -> Vec<String> {
+fn phase_labels(lanes_data: &StateLanesOutput, entity: &str) -> Vec<String> {
     let group = lanes_data
         .groups
         .iter()
@@ -166,7 +166,7 @@ fn phase_labels(lanes_data: &StateLanesData, entity: &str) -> Vec<String> {
 
 /// Like [`phase_labels`] but keeps each phase's start time, so tests can assert *when* a
 /// reset (gap, rendered as an empty label) begins.
-fn timed_phase_labels(lanes_data: &StateLanesData, entity: &str) -> Vec<(i64, String)> {
+fn timed_phase_labels(lanes_data: &StateLanesOutput, entity: &str) -> Vec<(i64, String)> {
     let group = lanes_data
         .groups
         .iter()
@@ -191,7 +191,7 @@ fn timed_phase_labels(lanes_data: &StateLanesData, entity: &str) -> Vec<(i64, St
         .collect()
 }
 
-fn value_kind(lanes_data: &StateLanesData, entity: &str) -> StateValueKind {
+fn value_kind(lanes_data: &StateLanesOutput, entity: &str) -> StateValueKind {
     let group = lanes_data
         .groups
         .iter()
@@ -248,7 +248,7 @@ fn test_cast_int32_via_dynamic_archetype() {
     );
 
     let outputs = run_visualizer(&test_context, view_id);
-    assert_eq!(outputs.len(), 1, "expected one StateLanesData output");
+    assert_eq!(outputs.len(), 1, "expected one StateLanesOutput output");
 
     // Int32 collapses to Float64; integer-valued floats render without a trailing `.0`,
     // and consecutive identical phases merge.

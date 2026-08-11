@@ -7,14 +7,14 @@ use re_sdk_types::blueprint::components::LinkAxis;
 use re_time_ruler::{MAX_ZIG_WIDTH, TimeRangesUi};
 use re_ui::{Help, IconText, MouseButtonText, UiExt as _, icons, list_item};
 use re_viewer_context::{
-    DataQueryResult, DataResultInteractionAddress, DragAndDropFeedback, GLOBAL_VIEW_ID,
-    IdentifiedViewSystem as _, Item, TimeControlCommand, TimeView, ViewClass, ViewClassExt as _,
-    ViewClassLayoutPriority, ViewClassRegistryError, ViewContext, ViewId, ViewQuery,
-    ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewerContext,
+    DataResultInteractionAddress, DragAndDropFeedback, GLOBAL_VIEW_ID, IdentifiedViewSystem as _,
+    Item, QueryRange, TimeControlCommand, TimeView, ViewClass, ViewClassExt as _,
+    ViewClassLayoutPriority, ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics,
+    ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewerContext,
 };
 use re_viewport_blueprint::ViewProperty;
 
-use crate::data::{StateLaneGroup, StateLanePhase, StateLanesData};
+use crate::data::{StateLaneGroup, StateLanePhase, StateLanesOutput};
 
 // Layout constants (in screen pixels).
 const LANE_BAND_HEIGHT: f32 = 22.0;
@@ -175,6 +175,14 @@ impl ViewClass for StateTimelineView {
         ViewClassLayoutPriority::Low
     }
 
+    fn supports_visible_time_range(&self) -> bool {
+        true
+    }
+
+    fn default_query_range(&self, _view_state: &dyn ViewState) -> QueryRange {
+        QueryRange::TimeRange(re_sdk_types::datatypes::TimeRange::EVERYTHING)
+    }
+
     fn spawn_heuristics(
         &self,
         ctx: &ViewerContext<'_>,
@@ -235,14 +243,7 @@ impl ViewClass for StateTimelineView {
                     ctx.viewer_ctx,
                     GLOBAL_VIEW_ID,
                 );
-                let global_ctx = ViewContext {
-                    viewer_ctx,
-                    view_id: GLOBAL_VIEW_ID,
-                    view_class_identifier: Self::identifier(),
-                    space_origin,
-                    view_state: state,
-                    query_result: &DataQueryResult::default(),
-                };
+                let global_ctx = ctx.with_view_id(GLOBAL_VIEW_ID);
                 let global_query_ctx = global_time_axis.query_context(&global_ctx);
                 re_view::view_property_component_ui(
                     &global_query_ctx,
@@ -300,7 +301,7 @@ impl ViewClass for StateTimelineView {
 
         // Collect all lane groups from all visualizers.
         let all_groups: Vec<&StateLaneGroup> = system_output
-            .iter_visualizer_data::<StateLanesData>()
+            .iter_visualizer_data::<StateLanesOutput>()
             .flat_map(|d| d.groups.iter())
             .collect();
 
@@ -320,7 +321,7 @@ impl ViewClass for StateTimelineView {
         // Compute data time range.
         let timeline_range = ctx.recording().time_range_for(&query.timeline);
         let timeline_end: Option<i64> = timeline_range.map(|r| r.max.as_i64());
-        let (data_min, data_max) = data_time_range(&all_groups, timeline_end);
+        let (data_min, data_max) = data_time_range(&all_groups, timeline_range);
 
         // How is the time (X) axis linked? When linked to global, the pan/zoom window is
         // shared with all other plots (e.g. time series views) via the global blueprint view,
@@ -645,11 +646,16 @@ impl ViewClass for StateTimelineView {
 /// Invisible phases break the merge chain so that user-hidden states remain hidden
 /// rather than being folded into a visible merged region. A run of narrow phases that
 /// contains a single phase is emitted as a [`RenderItem::Single`] (no merge marker).
+///
+/// `clip` is the lane's configured visible time range: nothing outside it is painted, however far
+/// the view is zoomed out. It only ever bounds *geometry* — the phase start times and `end_time`s
+/// that end up in tooltips stay the real logged ones.
 fn compute_render_items<'a>(
     phases: &'a [StateLanePhase],
     lanes_rect: egui::Rect,
     time_ranges_ui: &TimeRangesUi,
     open_end_time: Option<f64>,
+    clip: AbsoluteTimeRange,
 ) -> Vec<RenderItem<'a>> {
     struct PendingNarrow<'a> {
         phase: &'a StateLanePhase,
@@ -707,6 +713,10 @@ fn compute_render_items<'a>(
     let mut items: Vec<RenderItem<'a>> = Vec::new();
     let mut pending = Pending::default();
 
+    let clip_min = clip.min.as_i64() as f64;
+    let clip_max = clip.max.as_i64() as f64;
+    let has_clipped_end = clip.max < TimeInt::MAX;
+
     for (i, phase) in phases.iter().enumerate() {
         // Gaps break the merge chain.
         if phase.content.is_none() {
@@ -719,11 +729,21 @@ fn compute_render_items<'a>(
             .get(i + 1)
             .map(|p| p.start_time as f64)
             .or(open_end_time);
-        let Some(x_start) = time_ranges_ui.x_from_time_f32(TimeReal::from(phase.start_time as f64))
+
+        // The clip only moves the painted edges. `next_time`, which becomes the tooltip's end
+        // time, keeps whatever the query found.
+        let clipped_start_time = (phase.start_time as f64).max(clip_min);
+        // With no successor and no known end of timeline, an unclipped phase runs to the right
+        // edge of the widget (as it does today); a clipped one stops at the clip.
+        let clipped_end_time = next_time
+            .or_else(|| has_clipped_end.then_some(clip_max))
+            .map(|t| t.min(clip_max));
+
+        let Some(x_start) = time_ranges_ui.x_from_time_f32(TimeReal::from(clipped_start_time))
         else {
             continue;
         };
-        let x_end_unclipped = match next_time {
+        let x_end_unclipped = match clipped_end_time {
             Some(t) => time_ranges_ui
                 .x_from_time_f32(TimeReal::from(t))
                 .unwrap_or_else(|| lanes_rect.right()),
@@ -749,14 +769,23 @@ fn compute_render_items<'a>(
         }
 
         if is_last {
-            // The last phase is always its own item (never merged) and open-ended. It
-            // extends slightly under the zig-zag "end of timeline" band so the band's
-            // teeth carve into it instead of leaving background notches along its edge.
+            // The last phase is always its own item (never merged) and open-ended.
+            //
+            // Unless the clip cut it short, it extends slightly under the zig-zag "end of
+            // timeline" band so the band's teeth carve into it instead of leaving background
+            // notches along its edge. A clip-capped phase gets no such overshoot — the band sits
+            // at the end of the timeline, not at the end of the visible time range — but it is
+            // still open-ended as far as the data goes, so its `end_time` stays `None`.
+            let capped_by_clip = has_clipped_end && next_time.is_none_or(|t| t > clip_max);
             pending.flush(&mut items);
             items.push(RenderItem::Single {
                 phase,
                 x_start: visible_x_start,
-                x_end: (visible_x_end + MAX_ZIG_WIDTH).min(lanes_rect.right()),
+                x_end: if capped_by_clip {
+                    visible_x_end
+                } else {
+                    (visible_x_end + MAX_ZIG_WIDTH).min(lanes_rect.right())
+                },
                 end_time: None,
             });
         } else if width >= MERGE_PHASE_THRESHOLD_PIXEL {
@@ -781,23 +810,42 @@ fn compute_render_items<'a>(
     items
 }
 
-/// Compute the (min, max) time range across all lane groups.
-fn data_time_range(groups: &[&StateLaneGroup], timeline_end: Option<i64>) -> (f64, f64) {
-    let mut min = f64::MAX;
-    let mut max = f64::MIN;
-    for group in groups {
-        for phase in group.lanes.iter().flat_map(|lane| &lane.phases) {
+/// Compute the (min, max) time range the view spans — its auto-fit window and the position of the
+/// zig-zag "end of timeline" bands.
+///
+/// This is the extent of the logged data, and deliberately *independent* of any configured visible
+/// time range: restricting the visible range says which states to draw, not where the timeline
+/// begins and ends, so the axis must not shift under the user when they change it.
+fn data_time_range(
+    groups: &[&StateLaneGroup],
+    timeline_range: Option<AbsoluteTimeRange>,
+) -> (f64, f64) {
+    // The recording's own range on this timeline is exactly "everything that was logged".
+    let (min, max) = if let Some(timeline_range) = timeline_range {
+        (
+            timeline_range.min.as_i64() as f64,
+            timeline_range.max.as_i64() as f64,
+        )
+    } else {
+        // No range for this timeline, in which case there shouldn't be any phase either — every
+        // phase comes from a temporal row on it. Belt and braces: fall back to the lane contents.
+        let mut min = f64::MAX;
+        let mut max = f64::MIN;
+        for phase in groups
+            .iter()
+            .flat_map(|group| &group.lanes)
+            .flat_map(|lane| &lane.phases)
+        {
             let t = phase.start_time as f64;
             min = min.min(t);
             max = max.max(t);
         }
-    }
-    if let Some(end) = timeline_end {
-        max = max.max(end as f64);
-    }
-    if min > max {
-        (0.0, 1.0)
-    } else if (max - min).abs() < f64::EPSILON {
+        if min > max {
+            return (0.0, 1.0);
+        }
+        (min, max)
+    };
+    if (max - min).abs() < f64::EPSILON {
         (min - 0.5, max + 0.5)
     } else {
         (min, max)
@@ -826,47 +874,36 @@ fn resolve_linked_time_view(
             re_sdk_types::datatypes::TimeRange::EVERYTHING,
         ));
 
-    let cursor = re_sdk_types::datatypes::TimeInt(latest_at.as_i64());
-    let min = match view_range.start {
-        re_sdk_types::datatypes::TimeRangeBoundary::Infinite => {
-            timeline_range.map_or(data_min as i64, |r| r.min.as_i64())
-        }
-        _ => view_range.start.start_boundary_time(cursor).0,
-    };
-    let max = match view_range.end {
-        re_sdk_types::datatypes::TimeRangeBoundary::Infinite => {
-            timeline_range.map_or_else(|| data_max.ceil() as i64, |r| r.max.as_i64())
-        }
-        _ => view_range.end.end_boundary_time(cursor).0,
-    };
-    let span = ((max - min) as f64).max(1.0);
+    // Infinite boundaries resolve to the full timeline range — or, when that is unknown, to the
+    // data we have.
+    let timeline_range = timeline_range
+        .unwrap_or_else(|| AbsoluteTimeRange::new(data_min as i64, data_max.ceil() as i64));
+    let range = re_view::resolve_time_axis_range(
+        &view_range,
+        timeline_range,
+        re_sdk_types::datatypes::TimeInt(latest_at.as_i64()),
+    );
+
+    let span = ((range.max.as_i64() - range.min.as_i64()) as f64).max(1.0);
     TimeView {
-        min: TimeReal::from(min as f64),
+        min: TimeReal::from(range.min.as_i64() as f64),
         time_spanned: span,
     }
 }
 
 /// Persist the pan/zoom window to the shared global blueprint view range.
-///
-/// Both endpoints are rounded (rather than floored/ceiled) so the width is preserved: asymmetric
-/// rounding would inflate the range by up to a unit every frame during a continuous pan, feeding
-/// back through [`resolve_linked_time_view`] on the next frame.
 fn save_linked_time_view(
     ctx: &ViewerContext<'_>,
     global_time_axis: &ViewProperty,
     time_view: TimeView,
 ) {
-    let start = time_view.min.round();
-    let end = (time_view.min + TimeReal::from(time_view.time_spanned)).round();
+    // We pan/zoom in timeline units already, so there is no plot-space offset to undo.
     let new_range =
-        re_sdk_types::blueprint::components::TimeRange(re_sdk_types::datatypes::TimeRange {
-            start: re_sdk_types::datatypes::TimeRangeBoundary::Absolute(
-                re_sdk_types::datatypes::TimeInt(start.as_i64()),
-            ),
-            end: re_sdk_types::datatypes::TimeRangeBoundary::Absolute(
-                re_sdk_types::datatypes::TimeInt(end.as_i64()),
-            ),
-        });
+        re_sdk_types::blueprint::components::TimeRange(re_view::time_axis_range_from_window(
+            time_view.min,
+            time_view.min + TimeReal::from(time_view.time_spanned),
+            0,
+        ));
     global_time_axis.save_blueprint_component(ctx, &TimeAxis::descriptor_view_range(), &new_range);
 }
 
@@ -878,6 +915,23 @@ struct HoveredPhase {
     end_time: Option<i64>,
 
     color: egui::Color32,
+}
+
+/// Cut a hovered phase's time span down to the lane's configured visible time range.
+///
+/// The highlight band this feeds — both in this view and in every other view, via
+/// [`TimeControlCommand::HighlightRange`] — should match the band that was actually painted, not
+/// the phase's full extent. An open-ended phase (`None`) ends at the clip when there is one.
+fn clamp_hovered_range(
+    start_time: i64,
+    end_time: Option<i64>,
+    clip: AbsoluteTimeRange,
+) -> (i64, Option<i64>) {
+    let end_time = match end_time {
+        Some(end_time) => Some(end_time.min(clip.max.as_i64())),
+        None => (clip.max < TimeInt::MAX).then(|| clip.max.as_i64()),
+    };
+    (start_time.max(clip.min.as_i64()), end_time)
 }
 
 /// What [`show_group`] rendered and found under the pointer.
@@ -936,9 +990,15 @@ fn show_group(
         }
 
         // `compute_render_items` uses the rect's x bounds for clipping phases to the
-        // visible time range; y is unused. Passing the group's own rect gives the same
+        // on-screen window; y is unused. Passing the group's own rect gives the same
         // bounds as the old whole-area lanes_rect since every group spans the full width.
-        let render_items = compute_render_items(&lane.phases, rect, time_ranges_ui, open_end_time);
+        let render_items = compute_render_items(
+            &lane.phases,
+            rect,
+            time_ranges_ui,
+            open_end_time,
+            group.visible_time_range,
+        );
 
         for item in &render_items {
             let (x_start, x_end) = item.x_range();
@@ -954,9 +1014,14 @@ fn show_group(
                 } => {
                     paint_single_phase(&painter, item_rect, phase, hovered);
                     if hovered && let Some(content) = &phase.content {
+                        let (start_time, end_time) = clamp_hovered_range(
+                            phase.start_time,
+                            *end_time,
+                            group.visible_time_range,
+                        );
                         hovered_phase = Some(HoveredPhase {
-                            start_time: phase.start_time,
-                            end_time: *end_time,
+                            start_time,
+                            end_time,
                             color: content.color,
                         });
                     }
@@ -974,9 +1039,11 @@ fn show_group(
                     };
                     paint_merged_phase(&painter, item_rect, *count, fill, merged_text_color);
                     if hovered {
+                        let (start_time, end_time) =
+                            clamp_hovered_range(*start_time, *end_time, group.visible_time_range);
                         hovered_phase = Some(HoveredPhase {
-                            start_time: *start_time,
-                            end_time: *end_time,
+                            start_time,
+                            end_time,
                             color: fill,
                         });
                     }
@@ -1252,7 +1319,13 @@ mod tests {
     #[test]
     fn empty_lane_produces_no_items() {
         let lane = lane(&[]);
-        let items = compute_render_items(&lane, unit_rect(), &ranges_ui(0.0, 100.0), None);
+        let items = compute_render_items(
+            &lane,
+            unit_rect(),
+            &ranges_ui(0.0, 100.0),
+            None,
+            AbsoluteTimeRange::EVERYTHING,
+        );
         assert!(items.is_empty(), "{items:?}");
     }
 
@@ -1260,7 +1333,13 @@ mod tests {
     fn single_wide_phase_renders_as_single() {
         // One phase covering x=0..100 — well above the merge threshold.
         let lane = lane(&[(0, true)]);
-        let items = compute_render_items(&lane, unit_rect(), &ranges_ui(0.0, 100.0), None);
+        let items = compute_render_items(
+            &lane,
+            unit_rect(),
+            &ranges_ui(0.0, 100.0),
+            None,
+            AbsoluteTimeRange::EVERYTHING,
+        );
         assert_eq!(items.len(), 1, "{items:?}");
         assert!(is_single(&items[0], 0), "{items:?}");
     }
@@ -1270,7 +1349,13 @@ mod tests {
         // Phase 0: x=0..2 (narrow). Phase 1: x=2..100 (wide).
         // The narrow phase has no narrow neighbor to merge with, so it stays Single.
         let lane = lane(&[(0, true), (2, true)]);
-        let items = compute_render_items(&lane, unit_rect(), &ranges_ui(0.0, 100.0), None);
+        let items = compute_render_items(
+            &lane,
+            unit_rect(),
+            &ranges_ui(0.0, 100.0),
+            None,
+            AbsoluteTimeRange::EVERYTHING,
+        );
         assert_eq!(items.len(), 2, "{items:?}");
         assert!(is_single(&items[0], 0), "{items:?}");
         assert!(is_single(&items[1], 2), "{items:?}");
@@ -1280,7 +1365,13 @@ mod tests {
     fn two_consecutive_narrow_phases_merge() {
         // Two narrow (x=0..2, 2..4) + one wide (x=4..100).
         let lane = lane(&[(0, true), (2, true), (4, true)]);
-        let items = compute_render_items(&lane, unit_rect(), &ranges_ui(0.0, 100.0), None);
+        let items = compute_render_items(
+            &lane,
+            unit_rect(),
+            &ranges_ui(0.0, 100.0),
+            None,
+            AbsoluteTimeRange::EVERYTHING,
+        );
         assert_eq!(items.len(), 2, "{items:?}");
         assert!(is_merged(&items[0], 0, 2), "{items:?}");
         assert!(is_single(&items[1], 4), "{items:?}");
@@ -1290,7 +1381,13 @@ mod tests {
     fn wide_phase_breaks_merge_chain() {
         // Wide (0..10), narrow (10..12), wide (12..100) — the lone narrow stays Single.
         let lane = lane(&[(0, true), (10, true), (12, true)]);
-        let items = compute_render_items(&lane, unit_rect(), &ranges_ui(0.0, 100.0), None);
+        let items = compute_render_items(
+            &lane,
+            unit_rect(),
+            &ranges_ui(0.0, 100.0),
+            None,
+            AbsoluteTimeRange::EVERYTHING,
+        );
         assert_eq!(items.len(), 3, "{items:?}");
         assert!(is_single(&items[0], 0), "{items:?}");
         assert!(is_single(&items[1], 10), "{items:?}");
@@ -1302,7 +1399,13 @@ mod tests {
         // narrow visible (0..2), narrow invisible (2..4), narrow visible (4..6), wide (6..100).
         // The two visible narrow phases must NOT merge across the invisible gap.
         let lane = lane(&[(0, true), (2, false), (4, true), (6, true)]);
-        let items = compute_render_items(&lane, unit_rect(), &ranges_ui(0.0, 100.0), None);
+        let items = compute_render_items(
+            &lane,
+            unit_rect(),
+            &ranges_ui(0.0, 100.0),
+            None,
+            AbsoluteTimeRange::EVERYTHING,
+        );
         assert_eq!(items.len(), 3, "{items:?}");
         assert!(is_single(&items[0], 0), "{items:?}");
         assert!(is_single(&items[1], 4), "{items:?}");
@@ -1315,7 +1418,13 @@ mod tests {
         // The gap should not produce a render item, but the first state must end at
         // t=50 (not t=60). The gap also breaks any merge chain.
         let lane = lane(&[(0, true), (50, false), (60, true)]);
-        let items = compute_render_items(&lane, unit_rect(), &ranges_ui(0.0, 100.0), None);
+        let items = compute_render_items(
+            &lane,
+            unit_rect(),
+            &ranges_ui(0.0, 100.0),
+            None,
+            AbsoluteTimeRange::EVERYTHING,
+        );
         assert_eq!(items.len(), 2, "{items:?}");
         match &items[0] {
             RenderItem::Single { end_time, .. } => assert_eq!(*end_time, Some(50)),
@@ -1332,7 +1441,13 @@ mod tests {
         // wide state (0..70), gap at 70 — the lane ends with no active state.
         // The state's end_time must be the gap's start, and the gap itself produces no item.
         let lane = lane(&[(0, true), (70, false)]);
-        let items = compute_render_items(&lane, unit_rect(), &ranges_ui(0.0, 100.0), None);
+        let items = compute_render_items(
+            &lane,
+            unit_rect(),
+            &ranges_ui(0.0, 100.0),
+            None,
+            AbsoluteTimeRange::EVERYTHING,
+        );
         assert_eq!(items.len(), 1, "{items:?}");
         match &items[0] {
             RenderItem::Single { end_time, .. } => assert_eq!(*end_time, Some(70)),
@@ -1347,7 +1462,13 @@ mod tests {
         // The two on-screen narrow phases must merge — the off-screen phases
         // shouldn't terminate the run.
         let lane = lane(&[(0, true), (5, true), (10, true), (32, true), (34, true)]);
-        let items = compute_render_items(&lane, unit_rect(), &ranges_ui(30.0, 130.0), None);
+        let items = compute_render_items(
+            &lane,
+            unit_rect(),
+            &ranges_ui(30.0, 130.0),
+            None,
+            AbsoluteTimeRange::EVERYTHING,
+        );
         assert_eq!(items.len(), 2, "{items:?}");
         assert!(is_merged(&items[0], 10, 2), "{items:?}");
         assert!(is_single(&items[1], 34), "{items:?}");
@@ -1357,7 +1478,13 @@ mod tests {
     fn off_screen_right_phase_stops_iteration() {
         // Viewport t=[0, 100], two visible wide phases, then one off-screen right.
         let lane = lane(&[(0, true), (10, true), (200, true)]);
-        let items = compute_render_items(&lane, unit_rect(), &ranges_ui(0.0, 100.0), None);
+        let items = compute_render_items(
+            &lane,
+            unit_rect(),
+            &ranges_ui(0.0, 100.0),
+            None,
+            AbsoluteTimeRange::EVERYTHING,
+        );
         assert_eq!(items.len(), 2, "{items:?}");
         assert!(is_single(&items[0], 0), "{items:?}");
         assert!(is_single(&items[1], 10), "{items:?}");
@@ -1369,7 +1496,13 @@ mod tests {
         // out as its own open-ended item, so the first 49 merge and #50 stays separate.
         let phases: Vec<(i64, bool)> = (0..50).map(|i| (i * 2, true)).collect();
         let lane = lane(&phases);
-        let items = compute_render_items(&lane, unit_rect(), &ranges_ui(0.0, 100.0), Some(100.0));
+        let items = compute_render_items(
+            &lane,
+            unit_rect(),
+            &ranges_ui(0.0, 100.0),
+            Some(100.0),
+            AbsoluteTimeRange::EVERYTHING,
+        );
         assert_eq!(items.len(), 2, "{items:?}");
         assert!(is_merged(&items[0], 0, 49), "{items:?}");
         assert!(is_open_single(&items[1], 98), "{items:?}");
@@ -1381,7 +1514,13 @@ mod tests {
         // at t=200 that's off-screen-right. The merge group must still be emitted, and the
         // off-screen last phase yields no open-ended item.
         let lane = lane(&[(50, true), (52, true), (54, true), (200, true)]);
-        let items = compute_render_items(&lane, unit_rect(), &ranges_ui(0.0, 100.0), None);
+        let items = compute_render_items(
+            &lane,
+            unit_rect(),
+            &ranges_ui(0.0, 100.0),
+            None,
+            AbsoluteTimeRange::EVERYTHING,
+        );
         assert_eq!(items.len(), 2, "{items:?}");
         assert!(is_merged(&items[0], 50, 2), "{items:?}");
         assert!(is_single(&items[1], 54), "{items:?}");
@@ -1393,7 +1532,13 @@ mod tests {
         // The phase is open-ended and ends at x=50 plus the overshoot that tucks it
         // under the zig-zag "end of timeline" band, rather than at the rect edge.
         let lane = lane(&[(0, true)]);
-        let items = compute_render_items(&lane, unit_rect(), &ranges_ui(0.0, 100.0), Some(50.0));
+        let items = compute_render_items(
+            &lane,
+            unit_rect(),
+            &ranges_ui(0.0, 100.0),
+            Some(50.0),
+            AbsoluteTimeRange::EVERYTHING,
+        );
         assert_eq!(items.len(), 1, "{items:?}");
         let RenderItem::Single {
             x_end, end_time, ..
@@ -1411,13 +1556,194 @@ mod tests {
         );
     }
 
+    /// A visible time range that ends at `max` and is open on the left.
+    fn clip_until(max: i64) -> AbsoluteTimeRange {
+        AbsoluteTimeRange::new(TimeInt::MIN, max)
+    }
+
+    fn x_end_of(item: &RenderItem<'_>) -> f32 {
+        item.x_range().1
+    }
+
+    #[test]
+    fn clip_start_moves_the_painted_edge_but_not_the_phase_start() {
+        // Viewport t=[0, 100], clip starting at 20: the phase logged at 0 is painted from x=20,
+        // but keeps its real start time for the tooltip.
+        let lane = lane(&[(0, true), (50, true)]);
+        let items = compute_render_items(
+            &lane,
+            unit_rect(),
+            &ranges_ui(0.0, 100.0),
+            None,
+            AbsoluteTimeRange::new(20, TimeInt::MAX),
+        );
+        assert_eq!(items.len(), 2, "{items:?}");
+        assert!(is_single(&items[0], 0), "{items:?}");
+        let (x_start, _) = items[0].x_range();
+        assert!((x_start - 20.0).abs() < 0.5, "x_start={x_start} {items:?}");
+    }
+
+    #[test]
+    fn phase_starting_at_the_clip_end_is_not_painted() {
+        // Clip ending at 50: the phase starting exactly there has no width left, and must not
+        // survive as an open-ended tail running to the end of the timeline.
+        let lane = lane(&[(0, true), (50, true)]);
+        let items = compute_render_items(
+            &lane,
+            unit_rect(),
+            &ranges_ui(0.0, 100.0),
+            Some(100.0),
+            clip_until(50),
+        );
+        assert_eq!(items.len(), 1, "{items:?}");
+        assert!(is_single(&items[0], 0), "{items:?}");
+        let RenderItem::Single {
+            x_end, end_time, ..
+        } = &items[0]
+        else {
+            panic!("expected Single, got {items:?}");
+        };
+        assert_eq!(*end_time, Some(50), "{items:?}");
+        assert!((x_end - 50.0).abs() < 0.5, "x_end={x_end} {items:?}");
+    }
+
+    #[test]
+    fn successor_beyond_the_clip_still_ends_the_previous_phase() {
+        // `include_extended_bounds` hands us the state right after the range (here at t=60). It
+        // must not be painted, but it is what tells the tooltip when the in-range phase ended.
+        let lane = lane(&[(0, true), (60, true)]);
+        let items = compute_render_items(
+            &lane,
+            unit_rect(),
+            &ranges_ui(0.0, 100.0),
+            Some(100.0),
+            clip_until(50),
+        );
+        assert_eq!(items.len(), 1, "{items:?}");
+        let RenderItem::Single {
+            x_end, end_time, ..
+        } = &items[0]
+        else {
+            panic!("expected Single, got {items:?}");
+        };
+        assert_eq!(*end_time, Some(60), "{items:?}");
+        assert!((x_end - 50.0).abs() < 0.5, "x_end={x_end} {items:?}");
+    }
+
+    #[test]
+    fn clipped_open_ended_phase_loses_the_zig_tuck_but_stays_open_ended() {
+        // The zig-zag band sits at the end of the timeline (t=100), not at the clip (t=60), so a
+        // clip-capped tail must not overshoot. It is still open-ended as far as the data goes.
+        let lane = lane(&[(0, true)]);
+        let items = compute_render_items(
+            &lane,
+            unit_rect(),
+            &ranges_ui(0.0, 100.0),
+            Some(100.0),
+            clip_until(60),
+        );
+        assert_eq!(items.len(), 1, "{items:?}");
+        assert!(is_open_single(&items[0], 0), "{items:?}");
+        let x_end = x_end_of(&items[0]);
+        assert!((x_end - 60.0).abs() < 0.5, "x_end={x_end} {items:?}");
+    }
+
+    #[test]
+    fn clip_caps_the_tail_even_without_an_open_end_time() {
+        // Without a known end of timeline an unclipped tail runs to the right edge of the widget;
+        // a clipped one stops at the clip instead.
+        let lane = lane(&[(0, true)]);
+        let items = compute_render_items(
+            &lane,
+            unit_rect(),
+            &ranges_ui(0.0, 100.0),
+            None,
+            clip_until(40),
+        );
+        assert_eq!(items.len(), 1, "{items:?}");
+        assert!(is_open_single(&items[0], 0), "{items:?}");
+        let x_end = x_end_of(&items[0]);
+        assert!((x_end - 40.0).abs() < 0.5, "x_end={x_end} {items:?}");
+    }
+
+    #[test]
+    fn hovered_range_is_clamped_to_the_clip() {
+        let clip = AbsoluteTimeRange::new(20, 80);
+        // Overhang on both sides gets cut back to the painted band.
+        assert_eq!(clamp_hovered_range(0, Some(100), clip), (20, Some(80)));
+        // An open-ended phase ends at the clip.
+        assert_eq!(clamp_hovered_range(0, None, clip), (20, Some(80)));
+        // Fully inside: untouched.
+        assert_eq!(clamp_hovered_range(30, Some(50), clip), (30, Some(50)));
+        // Unrestricted: untouched, and an open end stays open.
+        assert_eq!(
+            clamp_hovered_range(0, None, AbsoluteTimeRange::EVERYTHING),
+            (0, None)
+        );
+    }
+
+    fn group_with(visible_time_range: AbsoluteTimeRange, phases: &[(i64, bool)]) -> StateLaneGroup {
+        StateLaneGroup {
+            label: String::new(),
+            entity_path: EntityPath::root(),
+            value_kind: crate::data::StateValueKind::String,
+            visible_time_range,
+            lanes: vec![crate::data::StateLane {
+                phases: lane(phases),
+            }],
+        }
+    }
+
+    #[test]
+    fn axis_spans_the_whole_recording_regardless_of_the_visible_time_range() {
+        // Whatever the configured range is — and whatever ended up queried under it — both ends of
+        // the axis stay on the logged data, so restricting the range never shifts the timeline.
+        let timeline_range = Some(AbsoluteTimeRange::new(0, 100));
+        for visible_time_range in [
+            AbsoluteTimeRange::EVERYTHING,
+            AbsoluteTimeRange::new(20, 60),
+            AbsoluteTimeRange::new(200, 300), // no overlap with the data at all
+        ] {
+            let group = group_with(visible_time_range, &[(5, true), (30, true), (90, true)]);
+            assert_eq!(
+                data_time_range(&[&group], timeline_range),
+                (0.0, 100.0),
+                "{visible_time_range:?}"
+            );
+
+            // Empty lanes (nothing queried under the range) frame the recording just the same.
+            let group = group_with(visible_time_range, &[]);
+            assert_eq!(
+                data_time_range(&[&group], timeline_range),
+                (0.0, 100.0),
+                "{visible_time_range:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn axis_falls_back_to_the_lane_contents_without_a_timeline_range() {
+        let group = group_with(AbsoluteTimeRange::EVERYTHING, &[(10, true), (90, true)]);
+        assert_eq!(data_time_range(&[&group], None), (10.0, 90.0));
+
+        // Nothing at all to go on.
+        let group = group_with(AbsoluteTimeRange::EVERYTHING, &[]);
+        assert_eq!(data_time_range(&[&group], None), (0.0, 1.0));
+    }
+
     #[test]
     fn last_phase_starting_at_open_end_has_zero_width_and_is_not_drawn() {
         // Phase starting exactly at open_end_time gets zero width and produces no item.
         // (In the view this doesn't normally happen: open_end_time is the segment's
         // *expanded* end, so a state logged at the last tick keeps a small width.)
         let lane = lane(&[(0, true), (100, true)]);
-        let items = compute_render_items(&lane, unit_rect(), &ranges_ui(0.0, 120.0), Some(100.0));
+        let items = compute_render_items(
+            &lane,
+            unit_rect(),
+            &ranges_ui(0.0, 120.0),
+            Some(100.0),
+            AbsoluteTimeRange::EVERYTHING,
+        );
         assert_eq!(items.len(), 1, "{items:?}");
         assert!(is_single(&items[0], 0), "{items:?}");
     }

@@ -13,6 +13,7 @@ mod component_drop;
 mod instance_hash_conversions;
 mod outlines;
 mod query;
+mod time_axis;
 mod view_property_ui;
 mod visualizer_query;
 
@@ -40,9 +41,10 @@ pub use outlines::{
 pub use query::{
     ComponentCastRule, DataResultQuery, latest_at_with_blueprint_resolved_data,
     latest_at_with_blueprint_resolved_data_polymorphic, range_with_blueprint_resolved_data,
-    range_with_blueprint_resolved_data_polymorphic,
+    range_with_blueprint_resolved_data_polymorphic, resolve_visible_time_range,
 };
 use re_log_types::external::arrow;
+pub use time_axis::{resolve_time_axis_range, time_axis_range_from_window};
 pub use view_property_ui::{
     view_property_component_ui, view_property_component_ui_custom, view_property_ui,
     view_property_ui_with_hidden_components, view_property_ui_with_redirect,

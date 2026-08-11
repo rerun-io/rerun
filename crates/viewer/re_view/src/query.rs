@@ -17,6 +17,19 @@ use crate::blueprint_resolved_results::{
 };
 use crate::{BlueprintResolvedResults, ComponentMappingError};
 
+/// Resolve a visible time range — the range of a [`QueryRange::TimeRange`] — into absolute times.
+///
+/// Cursor-relative boundaries resolve against the current time cursor, falling back to
+/// [`TimeInt::ZERO`] when there is none. Every view that queries a time range must resolve it this
+/// way, or two views given the same range would end up showing different data.
+pub fn resolve_visible_time_range(
+    ctx: &ViewerContext<'_>,
+    time_range: &re_sdk_types::datatypes::TimeRange,
+) -> re_log_types::AbsoluteTimeRange {
+    let cursor = ctx.time_ctrl.time_int().unwrap_or(TimeInt::ZERO);
+    re_log_types::AbsoluteTimeRange::from_relative_time_range(time_range, cursor)
+}
+
 /// A rule that decides the cast destination for a polymorphic target slot based on the
 /// source's element datatype.
 ///

@@ -22,7 +22,7 @@ namespace rerun::blueprint::archetypes {
     /// query the latest data available for each component type.
     ///
     /// The default visual time range depends on the type of view this property applies to:
-    /// - For time series views, the default is to show the entire timeline.
+    /// - For time series and state timeline views, the default is to show the entire timeline.
     /// - For any other view, the default is to apply latest-at semantics.
     ///
     /// ⚠ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**

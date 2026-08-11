@@ -26,7 +26,13 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 #[derive(Clone, Debug, ::re_byte_size::SizeBytes)]
-pub struct StateTimelineView {}
+pub struct StateTimelineView {
+    /// Configures which range on each timeline is shown by this view (unless specified differently per entity).
+    ///
+    /// If not specified, the default is to show the entire timeline.
+    /// If a timeline is specified more than once, the first entry will be used.
+    pub time_ranges: crate::blueprint::archetypes::VisibleTimeRanges,
+}
 
 impl ::re_types_core::View for StateTimelineView {
     #[inline]
@@ -35,5 +41,36 @@ impl ::re_types_core::View for StateTimelineView {
             ::re_types_core::ViewClassIdentifier,
             "StateTimeline"
         )
+    }
+}
+
+impl<T: Into<crate::blueprint::archetypes::VisibleTimeRanges>> From<T> for StateTimelineView {
+    fn from(v: T) -> Self {
+        Self {
+            time_ranges: v.into(),
+        }
+    }
+}
+
+impl std::borrow::Borrow<crate::blueprint::archetypes::VisibleTimeRanges> for StateTimelineView {
+    #[inline]
+    fn borrow(&self) -> &crate::blueprint::archetypes::VisibleTimeRanges {
+        &self.time_ranges
+    }
+}
+
+impl std::ops::Deref for StateTimelineView {
+    type Target = crate::blueprint::archetypes::VisibleTimeRanges;
+
+    #[inline]
+    fn deref(&self) -> &crate::blueprint::archetypes::VisibleTimeRanges {
+        &self.time_ranges
+    }
+}
+
+impl std::ops::DerefMut for StateTimelineView {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::blueprint::archetypes::VisibleTimeRanges {
+        &mut self.time_ranges
     }
 }

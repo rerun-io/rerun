@@ -8,4 +8,10 @@
 #[rerun::rerun_type]
 #[rerun(view_identifier = "StateTimeline")]
 #[rerun(state = "unstable")]
-pub struct StateTimelineView {}
+pub struct StateTimelineView {
+    /// Configures which range on each timeline is shown by this view (unless specified differently per entity).
+    ///
+    /// If not specified, the default is to show the entire timeline.
+    /// If a timeline is specified more than once, the first entry will be used.
+    pub time_ranges: rerun::blueprint::archetypes::VisibleTimeRanges,
+}

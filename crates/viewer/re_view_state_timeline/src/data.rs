@@ -1,6 +1,6 @@
 /// Collection of state change lane groups produced by a visualizer.
 #[derive(Clone, Debug, Default)]
-pub struct StateLanesData {
+pub struct StateLanesOutput {
     pub groups: Vec<StateLaneGroup>,
 }
 
@@ -31,6 +31,9 @@ pub struct StateLaneGroup {
 
     /// The canonical post-cast type of the values in this group.
     pub value_kind: StateValueKind,
+
+    /// The visible time range configured for this group.
+    pub visible_time_range: re_log_types::AbsoluteTimeRange,
 
     /// One lane per instance index, in instance order. Never empty.
     pub lanes: Vec<StateLane>,
