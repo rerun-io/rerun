@@ -565,6 +565,110 @@ async fn scan_collect_rows<T: RerunCloudService>(
     (sorted.format_snapshot(false), requests)
 }
 
+/// An `OR` of index ranges where one branch selects *nothing* still fans out
+/// into one `query_dataset` request per branch — and the empty branch has to
+/// come back with a schema the populated branch can be concatenated with
+/// (`compute_unique_chunk_info_ids` concats all fan-out responses positionally).
+///
+/// A server that answers an empty result with a fixed fallback batch, while
+/// answering a populated one with a projection-dependent schema, breaks that
+/// concatenation with e.g. `It is not possible to concatenate arrays of
+/// different data types (Utf8, Boolean)`.
+///
+/// The projection is part of the repro: projecting a single component column
+/// narrows `fuzzy_descriptors`, which is what makes the populated response's
+/// column set differ from the fallback's.
+pub async fn query_dataset_or_with_empty_branch_and_projection(service: impl RerunCloudService) {
+    let data_sources_def = DataSourcesDefinition::new_with_tuid_prefix(
+        1,
+        [LayerDefinition::multi_chunked_entities(
+            "my_segment_id1",
+            &["my/entity"],
+        )],
+    );
+
+    let dataset_name = "dataset";
+    let dataset_entry = service.create_dataset_entry_with_name(dataset_name).await;
+    service
+        .register_with_dataset_name_blocking(dataset_name, data_sources_def.to_data_sources())
+        .await;
+    let _data_sources = data_sources_def;
+
+    let client = create_test_client(service).await;
+
+    let query = re_chunk_store::QueryExpression {
+        view_contents: Some(std::iter::once((EntityPath::from("my/entity"), None)).collect()),
+        filtered_index: Some("frame_nr".into()),
+        ..Default::default()
+    };
+
+    let table_provider = DataframeQueryTableProvider::new_from_client(
+        client.clone(),
+        dataset_entry.details.id,
+        &query,
+        &[] as &[&str],
+        None,
+        None,       // arrow_schema — let the provider fetch it
+        None,       // trace_headers
+        Vec::new(), // metrics_collectors
+    )
+    .await
+    .unwrap();
+
+    // Project the index plus exactly one component column, mirroring
+    // `select(col(index), col(blob))` from the Python API.
+    let schema = table_provider.schema();
+    let index_idx = schema.index_of("frame_nr").unwrap();
+    // By name, not by position: the dataset schema's field order is not stable across runs.
+    let component_idx = schema
+        .index_of("/my/entity:example.MyPoints:colors")
+        .unwrap();
+    let projection = vec![index_idx, component_idx];
+
+    let range = |lo: i64, hi: i64| {
+        col("frame_nr")
+            .gt_eq(lit(lo))
+            .and(col("frame_nr").lt_eq(lit(hi)))
+    };
+
+    // Frames live at `{10, …, 90}`, so this branch matches nothing.
+    let populated = range(10, 30);
+    let empty = range(-1000, -900);
+
+    let count = async |filter: Expr| -> usize {
+        let ctx = SessionContext::default();
+        let state = ctx.state();
+        let plan = table_provider
+            .scan(&state, Some(&projection), &[filter], None)
+            .await
+            .unwrap();
+
+        let num_partitions = plan.output_partitioning().partition_count();
+        let results: Vec<_> = (0..num_partitions)
+            .map(|partition| plan.execute(partition, ctx.task_ctx()))
+            .try_collect()
+            .unwrap();
+
+        let batches: Vec<RecordBatch> = futures::stream::iter(results)
+            .flat_map(|stream| stream)
+            .try_collect()
+            .await
+            .unwrap();
+
+        batches.iter().map(|batch| batch.num_rows()).sum()
+    };
+
+    let rows_populated = count(populated.clone()).await;
+    assert!(
+        rows_populated > 0,
+        "the populated branch should have selected some rows"
+    );
+    assert_eq!(count(empty.clone()).await, 0);
+
+    // The empty branch adds nothing, but it must not break the fan-out either.
+    assert_eq!(count(populated.or(empty)).await, rows_populated);
+}
+
 // ---
 
 async fn query_dataset_snapshot<T: DataframeClientAPI>(

@@ -7,7 +7,6 @@ use arrow::array::{
     ArrayRef, DurationNanosecondArray, Int64Array, RecordBatch, TimestampMicrosecondArray,
     TimestampMillisecondArray, TimestampNanosecondArray, TimestampSecondArray, UInt32Array,
 };
-use arrow::compute::concat_batches;
 use arrow::datatypes::{DataType, Field, Int64Type, Schema, SchemaRef, TimeUnit};
 use arrow::record_batch::RecordBatchOptions;
 use async_trait::async_trait;
@@ -1303,8 +1302,18 @@ fn compute_unique_chunk_info_ids(
         return Ok(None);
     }
 
-    let schema = chunk_info_batches[0].schema();
-    let combined = concat_batches(&schema, &chunk_info_batches)?;
+    // Merge by column *name*, not by position: a `query_dataset` response schema is only
+    // pinned by name (that is what `QueryDatasetDataframe::COLUMN_*` extraction relies on),
+    // and the batches we get here come from several independent responses — one per fan-out
+    // branch, each free to carry a different column order and a different set of optional
+    // columns (`chunk_byte_offset`, `{timeline}:start`, …). A branch that selected nothing
+    // typically answers with the server's fallback empty batch, whose columns are neither
+    // ordered nor shaped like the populated branches'. Concatenating those positionally
+    // either fails outright (`It is not possible to concatenate arrays of different data
+    // types (Utf8, Boolean)`) or, worse, silently pairs up same-typed but unrelated columns.
+    let combined = re_arrow_util::concat_polymorphic_batches(&chunk_info_batches)
+        .map_err(|err| exec_datafusion_err!("merging chunk-info batches: {err}"))?;
+    let schema = combined.schema();
     drop(chunk_info_batches);
 
     let chunk_ids = QueryDatasetDataframe::COLUMN_CHUNK_ID
