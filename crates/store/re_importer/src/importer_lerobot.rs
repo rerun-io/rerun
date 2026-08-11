@@ -8,8 +8,8 @@ use re_quota_channel::send_crossbeam;
 
 use crate::{ImportedData, Importer, ImporterError, import_file::prepare_store_info};
 use re_lerobot::{
-    EpisodeIndex, LeRobotDatasetVersion, LeRobotError, common::LeRobotDataset, datasetv2,
-    datasetv3, is_lerobot_dataset,
+    EpisodeIndex, LeRobotDataset, LeRobotDatasetVersion, LeRobotError, common::LeRobotDatasetOps,
+    is_lerobot_dataset,
 };
 
 /// An [`Importer`] for `LeRobot` datasets.
@@ -36,12 +36,14 @@ impl Importer for LeRobotDatasetImporter {
             .ok_or_else(|| anyhow!("Could not determine LeRobot dataset version"))?;
 
         match version {
+            // Handled here rather than in `LeRobotDataset::open`, which only knows v2/v3.
             LeRobotDatasetVersion::V1 => {
                 re_log::error!("LeRobot 'v1.x' dataset format is unsupported.");
                 Ok(())
             }
-            LeRobotDatasetVersion::V2 => Self::load_v2_dataset(settings, filepath, tx),
-            LeRobotDatasetVersion::V3 => Self::load_v3_dataset(settings, filepath, tx),
+            LeRobotDatasetVersion::V2 | LeRobotDatasetVersion::V3 => {
+                Self::load_dataset(settings, filepath, tx)
+            }
         }
     }
 
@@ -57,14 +59,14 @@ impl Importer for LeRobotDatasetImporter {
 }
 
 impl LeRobotDatasetImporter {
-    fn load_v2_dataset(
+    fn load_dataset(
         settings: &crate::ImporterSettings,
         filepath: impl AsRef<std::path::Path>,
         tx: Sender<ImportedData>,
     ) -> Result<(), ImporterError> {
         let filepath = filepath.as_ref().to_owned();
-        let dataset = datasetv2::LeRobotDatasetV2::load_from_directory(&filepath)
-            .map_err(|err| anyhow!("Loading LeRobot v2 dataset failed: {err}"))?;
+        let dataset = LeRobotDataset::open(&filepath)
+            .map_err(|err| anyhow!("Loading LeRobot dataset failed: {err}"))?;
 
         let application_id = settings
             .application_id
@@ -79,55 +81,17 @@ impl LeRobotDatasetImporter {
         // their response via channels: we cannot be waiting for these responses on the
         // common rayon thread pool.
         thread::Builder::new()
-            .name(format!("load_and_stream_v2({filepath:?})"))
+            .name(format!("load_and_stream({filepath:?})"))
             .spawn(move || {
                 re_log::info!(
-                    "Loading LeRobot v2 dataset from {:?}, with {} episode(s)",
-                    dataset.path,
-                    dataset.metadata.episode_count(),
+                    "Loading LeRobot dataset from {:?}, with {} episode(s)",
+                    dataset.path(),
+                    dataset.iter_episode_indices().count(),
                 );
                 load_and_stream_versioned(&dataset, &application_id, &tx, &loader_name);
             })
             .with_context(|| {
-                format!("Failed to spawn IO thread to load LeRobot v2 dataset {filepath:?}")
-            })?;
-
-        Ok(())
-    }
-
-    fn load_v3_dataset(
-        settings: &crate::ImporterSettings,
-        filepath: impl AsRef<std::path::Path>,
-        tx: Sender<ImportedData>,
-    ) -> Result<(), ImporterError> {
-        let filepath = filepath.as_ref().to_owned();
-        let dataset = datasetv3::LeRobotDatasetV3::load_from_directory(&filepath)
-            .map_err(|err| anyhow!("Loading LeRobot v3 dataset failed: {err}"))?;
-
-        let application_id = settings
-            .application_id
-            .clone()
-            .unwrap_or_else(|| ApplicationId::new_or_unknown(filepath.display().to_string()));
-
-        let loader_name = Self.name();
-
-        // NOTE(1): `spawn` is fine, this whole function is native-only.
-        // NOTE(2): this must spawned on a dedicated thread to avoid a deadlock!
-        // `load` will spawn a bunch of importers on the common rayon thread pool and wait for
-        // their response via channels: we cannot be waiting for these responses on the
-        // common rayon thread pool.
-        thread::Builder::new()
-            .name(format!("load_and_stream_v3({filepath:?})"))
-            .spawn(move || {
-                re_log::info!(
-                    "Loading LeRobot v3 dataset from {:?}, with {} episode(s)",
-                    dataset.path,
-                    dataset.metadata.episode_count(),
-                );
-                load_and_stream_versioned(&dataset, &application_id, &tx, &loader_name);
-            })
-            .with_context(|| {
-                format!("Failed to spawn IO thread to load LeRobot v3 dataset {filepath:?}")
+                format!("Failed to spawn IO thread to load LeRobot dataset {filepath:?}")
             })?;
 
         Ok(())
@@ -208,7 +172,7 @@ fn load_and_stream_common<Dataset>(
 ///
 /// Guarantees the two-phase protocol the viewer relies on: one `SetStoreInfo` per episode,
 /// all sent (in ascending episode order) before any chunk data is streamed.
-fn load_and_stream_versioned<D: LeRobotDataset>(
+fn load_and_stream_versioned<D: LeRobotDatasetOps>(
     dataset: &D,
     application_id: &ApplicationId,
     tx: &Sender<ImportedData>,
@@ -319,7 +283,7 @@ mod tests {
         }
     }
 
-    impl LeRobotDataset for TestDataset {
+    impl LeRobotDatasetOps for TestDataset {
         fn iter_episode_indices(&self) -> impl Iterator<Item = EpisodeIndex> {
             self.episodes.iter().copied()
         }

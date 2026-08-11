@@ -16,10 +16,15 @@ pub mod datasetv3;
 
 use std::{fmt, path::Path};
 
+use itertools::Either;
 use serde::{
     Deserialize, Deserializer, Serialize,
     de::{MapAccess, SeqAccess, Visitor},
 };
+
+use crate::common::LeRobotDatasetOps;
+use crate::datasetv2::LeRobotDatasetV2;
+use crate::datasetv3::LeRobotDatasetV3;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum LeRobotDatasetVersion {
@@ -40,6 +45,79 @@ impl LeRobotDatasetVersion {
             Some(Self::V1)
         } else {
             None
+        }
+    }
+}
+
+/// An opened `LeRobot` dataset of a known format version.
+///
+/// This closed enum over the supported versions is the single construction point: [`LeRobotDataset::open`]
+/// maps a path to its version (via [`LeRobotDatasetVersion::find_version`]) and loads the matching variant.
+/// Keeping the set closed means a future `v4` becomes an exhaustive-`match` compile error at every
+/// dispatch site, rather than a set of edit sites to find by hand.
+///
+/// Version-agnostic behavior is exposed through [`LeRobotDatasetOps`]; construction and version dispatch
+/// stay here on the enum.
+///
+/// Both variants are boxed to keep the enum pointer-sized: a `LeRobotDatasetV3` in particular
+/// is large (it carries the eager video/episode caches), and the loaded dataset is only ever
+/// held and passed by reference.
+pub enum LeRobotDataset {
+    /// A v2 (including v2.1) dataset — see [`datasetv2::LeRobotDatasetV2`].
+    V2(Box<LeRobotDatasetV2>),
+
+    /// A v3 dataset — see [`datasetv3::LeRobotDatasetV3`].
+    V3(Box<LeRobotDatasetV3>),
+}
+
+impl LeRobotDataset {
+    /// Open the `LeRobot` dataset at `path`, detecting its format version.
+    ///
+    /// This is the single place that maps a path to a concrete dataset version.
+    /// Only v2 and v3 are supported here; a v1 dataset (handled separately by the importer) or an
+    /// unrecognized path is an error.
+    ///
+    /// Opening a v3 dataset eagerly loads all episode data files and initializes video reference
+    /// counts, exactly as [`datasetv3::LeRobotDatasetV3::load_from_directory`] does.
+    pub fn open(path: &Path) -> Result<Self, LeRobotError> {
+        match LeRobotDatasetVersion::find_version(path) {
+            Some(LeRobotDatasetVersion::V2) => Ok(Self::V2(Box::new(
+                LeRobotDatasetV2::load_from_directory(path)?,
+            ))),
+            Some(LeRobotDatasetVersion::V3) => Ok(Self::V3(Box::new(
+                LeRobotDatasetV3::load_from_directory(path)?,
+            ))),
+            Some(LeRobotDatasetVersion::V1) | None => Err(LeRobotError::Other(anyhow::anyhow!(
+                "Unsupported or unrecognized LeRobot dataset version\nPath: {}",
+                path.display()
+            ))),
+        }
+    }
+
+    /// The directory this dataset was opened from.
+    pub fn path(&self) -> &Path {
+        match self {
+            Self::V2(dataset) => &dataset.path,
+            Self::V3(dataset) => &dataset.path,
+        }
+    }
+}
+
+impl LeRobotDatasetOps for LeRobotDataset {
+    fn iter_episode_indices(&self) -> impl Iterator<Item = EpisodeIndex> {
+        match self {
+            Self::V2(dataset) => Either::Left(dataset.iter_episode_indices()),
+            Self::V3(dataset) => Either::Right(dataset.iter_episode_indices()),
+        }
+    }
+
+    fn load_episode_chunks(
+        &self,
+        episode: EpisodeIndex,
+    ) -> Result<Vec<re_chunk::Chunk>, LeRobotError> {
+        match self {
+            Self::V2(dataset) => dataset.load_episode_chunks(episode),
+            Self::V3(dataset) => dataset.load_episode_chunks(episode),
         }
     }
 }

@@ -1,5 +1,5 @@
 use crate::common::{
-    LEROBOT_DATASET_IGNORED_COLUMNS, LeRobotDataset, load_episode_depth_images,
+    LEROBOT_DATASET_IGNORED_COLUMNS, LeRobotDatasetOps, load_episode_depth_images,
     load_episode_images, load_scalar,
 };
 use crate::{DType, EpisodeIndex, Feature, LeRobotDatasetTask, LeRobotError, TaskIndex};
@@ -440,7 +440,7 @@ fn load_episode(
     Ok(chunks)
 }
 
-impl LeRobotDataset for LeRobotDatasetV2 {
+impl LeRobotDatasetOps for LeRobotDatasetV2 {
     fn iter_episode_indices(&self) -> impl std::iter::Iterator<Item = EpisodeIndex> {
         self.metadata.iter_episode_indices()
     }
