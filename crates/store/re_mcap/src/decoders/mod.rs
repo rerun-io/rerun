@@ -1109,8 +1109,9 @@ mod tests {
     }
 
     /// Test helper for creating an MCAP summary & blob with a ros2msg-schema channel.
-    fn ros2_summary_with_message_encoding(
+    fn ros2_summary(
         schema_name: &str,
+        schema_content: &[u8],
         topic: &str,
         message_encoding: &str,
         payload: &[u8],
@@ -1118,7 +1119,7 @@ mod tests {
         let cursor = io::Cursor::new(Vec::new());
         let mut writer = mcap::Writer::new(cursor).expect("failed to create writer");
         let schema_id = writer
-            .add_schema(schema_name, "ros2msg", b"string data")
+            .add_schema(schema_name, "ros2msg", schema_content)
             .expect("failed to add schema");
         let channel_id = writer
             .add_channel(schema_id, topic, message_encoding, &Default::default())
@@ -1141,13 +1142,49 @@ mod tests {
         (summary, buffer)
     }
 
+    /// Checks that a schema which parses but references a missing message definition falls back
+    /// to the raw decoder, instead of failing the whole file.
+    #[test]
+    fn ros2msg_channel_with_unresolvable_schema_is_forwarded_as_raw_blob() {
+        let (summary, buffer) = ros2_summary(
+            "custom_msgs/msg/Foo",
+            b"custom_msgs/Missing missing\n",
+            "unresolvable_topic",
+            "cdr",
+            &[0, 1, 0, 0],
+        );
+
+        let plan = DecoderRegistry::all_with_raw_fallback()
+            .plan(&buffer, &summary, &TopicFilter::default())
+            .expect("an unresolvable ROS 2 schema must not fail the whole file");
+
+        let assignment = plan
+            .assignments
+            .iter()
+            .find(|assignment| assignment.topic == "unresolvable_topic")
+            .expect("missing assignment");
+        assert_eq!(assignment.decoder.to_string(), "raw");
+
+        let emitter = TestEmitter::default();
+        plan.run(&buffer, &summary, TimeType::TimestampNs, &*emitter)
+            .expect("failed to run plan");
+        assert!(emitter.finish().iter().any(|chunk| {
+            chunk
+                .entity_path()
+                .to_string()
+                .ends_with("unresolvable_topic")
+                && chunk.num_rows() == 1
+        }));
+    }
+
     /// We expect CDR as encoding for ros2msg-schema messages.
     /// Test that a non-CDR channel that claims to have ros2msg
     /// falls back to raw forwarding instead of message reflection.
     #[test]
     fn non_cdr_ros2msg_channel_is_forwarded_as_raw_blob() {
-        let (summary, buffer) = ros2_summary_with_message_encoding(
+        let (summary, buffer) = ros2_summary(
             "custom_msgs/msg/Foo",
+            b"string data",
             "non_cdr_topic",
             "json",
             br#"{"data":"hello"}"#,
@@ -1246,8 +1283,9 @@ mod tests {
     /// Tests that semantic ROS 2 parsers also reject non-CDR channels.
     #[test]
     fn semantic_ros2_decoder_does_not_claim_non_cdr_channels() {
-        let (summary, buffer) = ros2_summary_with_message_encoding(
+        let (summary, buffer) = ros2_summary(
             "std_msgs/msg/String",
+            b"string data",
             "non_cdr_string_topic",
             "json",
             br#"{"data":"hello"}"#,
@@ -1268,8 +1306,9 @@ mod tests {
     /// Tests that standard ROS 2 schemas prefer semantic decoding by default and support reflection-only selection.
     #[test]
     fn standard_ros2_schema_respects_decoder_selection() {
-        let (summary, buffer) = ros2_summary_with_message_encoding(
+        let (summary, buffer) = ros2_summary(
             "sensor_msgs/msg/Imu",
+            b"string data",
             "imu_topic",
             "cdr",
             &[0, 1, 0, 0],
