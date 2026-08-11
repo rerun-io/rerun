@@ -32,11 +32,11 @@ FixedSizeList(15 x non-null FixedSizeList(3 x non-null Float16))
 ```
 
 ## API reference links
- * 🌊 [C++ API docs for `SphericalHarmonics3Rgb`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1SphericalHarmonics3Rgb.html?speculative-link)
- * 🐍 [Python API docs for `SphericalHarmonics3Rgb`](https://ref.rerun.io/docs/python/stable/common/datatypes?speculative-link#rerun.datatypes.SphericalHarmonics3Rgb)
- * 🦀 [Rust API docs for `SphericalHarmonics3Rgb`](https://docs.rs/rerun/latest/rerun/datatypes/struct.SphericalHarmonics3Rgb.html?speculative-link)
+ * 🌊 [C++ API docs for `SphericalHarmonics3Rgb`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1SphericalHarmonics3Rgb.html)
+ * 🐍 [Python API docs for `SphericalHarmonics3Rgb`](https://ref.rerun.io/docs/python/stable/common/datatypes#rerun.datatypes.SphericalHarmonics3Rgb)
+ * 🦀 [Rust API docs for `SphericalHarmonics3Rgb`](https://docs.rs/rerun/latest/rerun/datatypes/struct.SphericalHarmonics3Rgb.html)
 
 
 ## Used by
 
-* [`SphericalHarmonics3Rgb`](../components/spherical_harmonics3rgb.md?speculative-link)
+* [`SphericalHarmonics3Rgb`](../components/spherical_harmonics3rgb.md)

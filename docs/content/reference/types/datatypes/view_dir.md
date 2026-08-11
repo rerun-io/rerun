@@ -34,9 +34,9 @@ UInt8
 ```
 
 ## API reference links
- * 🌊 [C++ API docs for `ViewDir`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1datatypes.html?speculative-link)
- * 🐍 [Python API docs for `ViewDir`](https://ref.rerun.io/docs/python/stable/common/datatypes?speculative-link#rerun.datatypes.ViewDir)
- * 🦀 [Rust API docs for `ViewDir`](https://docs.rs/rerun/latest/rerun/datatypes/enum.ViewDir.html?speculative-link)
+ * 🌊 [C++ API docs for `ViewDir`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1datatypes.html)
+ * 🐍 [Python API docs for `ViewDir`](https://ref.rerun.io/docs/python/stable/common/datatypes#rerun.datatypes.ViewDir)
+ * 🦀 [Rust API docs for `ViewDir`](https://docs.rs/rerun/latest/rerun/datatypes/enum.ViewDir.html)
 
 
 ## Used by
