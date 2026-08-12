@@ -1,6 +1,7 @@
 use egui::NumExt as _;
 use nohash_hasher::IntMap;
 use re_log_types::EntityPathHash;
+use re_renderer::RobustBounds;
 use re_viewer_context::SystemExecutionOutput;
 
 use crate::SpaceKind;
@@ -57,35 +58,31 @@ impl SceneBoundingBoxes {
         self.region_of_interest_per_entity.clear();
 
         for data in iter_spatial_data(system_output) {
-            for bounding_box in data.iter_bounding_boxes() {
+            for entity_bounds in data.iter_bounds() {
                 // 2D objects under a pinhole are placed on its image plane. Since the image plane
                 // distance may depend on the scene bounds, including them could create a feedback loop.
-                if space_kind == SpaceKind::ThreeD && bounding_box.subspace == SpaceKind::TwoD {
+                if space_kind == SpaceKind::ThreeD && entity_bounds.subspace == SpaceKind::TwoD {
                     continue;
                 }
+
+                let RobustBounds {
+                    exact,
+                    region_of_interest,
+                } = entity_bounds.bounds;
 
                 self.per_entity
-                    .entry(bounding_box.entity_path_hash)
-                    .and_modify(|bbox_entry| {
-                        *bbox_entry = bbox_entry.union(bounding_box.bounding_box);
+                    .entry(entity_bounds.entity_path_hash)
+                    .and_modify(|entry| {
+                        *entry = entry.union(exact);
                     })
-                    .or_insert(bounding_box.bounding_box);
-            }
-
-            for region_of_interest in data.iter_regions_of_interest() {
-                // 2D objects under a pinhole are placed on its image plane. Since the image plane
-                // distance may depend on the region of interest, including them could create a feedback loop.
-                if space_kind == SpaceKind::ThreeD && region_of_interest.subspace == SpaceKind::TwoD
-                {
-                    continue;
-                }
+                    .or_insert(exact);
 
                 self.region_of_interest_per_entity
-                    .entry(region_of_interest.entity_path_hash)
+                    .entry(entity_bounds.entity_path_hash)
                     .and_modify(|entry| {
-                        *entry = entry.union(region_of_interest.bounding_box);
+                        *entry = entry.union(region_of_interest);
                     })
-                    .or_insert(region_of_interest.bounding_box);
+                    .or_insert(region_of_interest);
             }
         }
 

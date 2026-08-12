@@ -1,4 +1,5 @@
 use re_log_types::EntityPathHash;
+use re_renderer::RobustBounds;
 use re_viewer_context::SystemExecutionOutput;
 
 use super::UiLabel;
@@ -6,13 +7,20 @@ use crate::PickableTexturedRect;
 use crate::SpaceKind;
 use crate::visualizers::LoadingIndicator;
 
-/// A bounding box produced by a spatial visualizer.
+/// The bounds of something a spatial visualizer showed.
 #[derive(Clone, Copy, Debug)]
-pub struct SpatialViewBoundingBox {
+pub struct SpatialViewBounds {
     pub entity_path_hash: EntityPathHash,
-    pub bounding_box: macaw::BoundingBox,
 
-    /// Whether this bounding box is defined in a 2D or 3D subspace.
+    /// The exact bounding box, plus a region of interest that excludes spatial outliers.
+    ///
+    /// The region of interest is used for camera framing and other heuristics.
+    /// For most visualizers it is identical to the bounding box.
+    /// Point cloud visualizers estimate it statistically, so it may be either
+    /// smaller or larger than the bounding box.
+    pub bounds: RobustBounds,
+
+    /// Whether these bounds are defined in a 2D or 3D subspace.
     ///
     /// If an object can only be defined in a 2D subspace (e.g. a 2D image), this will be `SpaceKind::TwoD`.
     /// Note that such objects can still be placed in a 3D scene, but need a pinhole parent to do so.
@@ -33,15 +41,8 @@ pub struct SpatialViewVisualizerData {
     /// Labels that should be shown using egui.
     pub ui_labels: Vec<UiLabel>,
 
-    /// Bounding boxes of all visualizations that the visualizer showed.
-    bounding_boxes: Vec<SpatialViewBoundingBox>,
-
-    /// Regions of interest for all visualizations, excluding spatial outliers.
-    ///
-    /// Used for camera framing and other heuristics. For most visualizers this is
-    /// identical to the bounding box. Point cloud visualizers may provide a tighter
-    /// region that excludes outlier points.
-    regions_of_interest: Vec<SpatialViewBoundingBox>,
+    /// Bounds of all visualizations that the visualizer showed.
+    bounds: Vec<SpatialViewBounds>,
 
     /// Textured rectangles that the visualizer produced which can be interacted with.
     pub pickable_rects: Vec<PickableTexturedRect>,
@@ -53,9 +54,9 @@ impl SpatialViewVisualizerData {
         self.pickable_rects.push(pickable_rect);
     }
 
-    /// Adds a bounding box and region of interest for an entity.
+    /// Adds a bounding box for an entity, with no outlier rejection.
     ///
-    /// For most visualizers these are the same. Use [`Self::add_bounding_box_and_region_of_interest`]
+    /// The region of interest becomes the bounding box itself. Use [`Self::add_bounds`]
     /// when they differ (e.g. for point clouds with outlier rejection).
     pub fn add_bounding_box_3d(
         &mut self,
@@ -63,58 +64,43 @@ impl SpatialViewVisualizerData {
         bbox: macaw::BoundingBox,
         world_from_obj: glam::Affine3A,
     ) {
-        self.add_bounding_box(entity, bbox, world_from_obj, SpaceKind::ThreeD);
+        self.add_bounds(
+            entity,
+            RobustBounds::from_bbox(bbox),
+            world_from_obj,
+            SpaceKind::ThreeD,
+        );
     }
 
+    /// Adds a bounding box for an entity, with no outlier rejection.
+    ///
+    /// The region of interest becomes the bounding box itself. Use [`Self::add_bounds`]
+    /// when they differ (e.g. for point clouds with outlier rejection).
     pub fn add_bounding_box_2d(
         &mut self,
         entity: EntityPathHash,
         bbox: macaw::BoundingBox,
         world_from_obj: glam::Affine3A,
     ) {
-        self.add_bounding_box(entity, bbox, world_from_obj, SpaceKind::TwoD);
+        self.add_bounds(
+            entity,
+            RobustBounds::from_bbox(bbox),
+            world_from_obj,
+            SpaceKind::TwoD,
+        );
     }
 
-    fn add_bounding_box(
+    /// Adds the bounds of an entity, given in object space.
+    pub fn add_bounds(
         &mut self,
         entity: EntityPathHash,
-        bbox: macaw::BoundingBox,
+        bounds: RobustBounds,
         world_from_obj: glam::Affine3A,
         subspace: SpaceKind,
     ) {
-        let transformed = bbox.transform_affine3(&world_from_obj);
-        self.bounding_boxes.push(SpatialViewBoundingBox {
+        self.bounds.push(SpatialViewBounds {
             entity_path_hash: entity,
-            bounding_box: transformed,
-            subspace,
-        });
-        self.regions_of_interest.push(SpatialViewBoundingBox {
-            entity_path_hash: entity,
-            bounding_box: transformed,
-            subspace,
-        });
-    }
-
-    /// Adds separate bounding box and region of interest for an entity.
-    ///
-    /// The bounding box is the exact extent; the region of interest excludes outliers
-    /// and is used for camera framing and other heuristics.
-    pub fn add_bounding_box_and_region_of_interest(
-        &mut self,
-        entity: EntityPathHash,
-        bbox: macaw::BoundingBox,
-        region_of_interest: macaw::BoundingBox,
-        world_from_obj: glam::Affine3A,
-        subspace: SpaceKind,
-    ) {
-        self.bounding_boxes.push(SpatialViewBoundingBox {
-            entity_path_hash: entity,
-            bounding_box: bbox.transform_affine3(&world_from_obj),
-            subspace,
-        });
-        self.regions_of_interest.push(SpatialViewBoundingBox {
-            entity_path_hash: entity,
-            bounding_box: region_of_interest.transform_affine3(&world_from_obj),
+            bounds: bounds.transform_affine3(&world_from_obj),
             subspace,
         });
     }
@@ -124,28 +110,15 @@ impl SpatialViewVisualizerData {
         pickable_rect: &PickableTexturedRect,
         subspace: SpaceKind,
     ) {
-        let entity_path_hash = pickable_rect.ent_path.hash();
-        let bounding_box = pickable_rect.textured_rect.bounding_box();
-        self.bounding_boxes.push(SpatialViewBoundingBox {
-            entity_path_hash,
-            bounding_box,
-            subspace,
-        });
-        self.regions_of_interest.push(SpatialViewBoundingBox {
-            entity_path_hash,
-            bounding_box,
+        self.bounds.push(SpatialViewBounds {
+            entity_path_hash: pickable_rect.ent_path.hash(),
+            bounds: RobustBounds::from_bbox(pickable_rect.textured_rect.bounding_box()),
             subspace,
         });
     }
 
-    pub fn iter_bounding_boxes(&self) -> impl ExactSizeIterator<Item = &SpatialViewBoundingBox> {
-        self.bounding_boxes.iter()
-    }
-
-    pub fn iter_regions_of_interest(
-        &self,
-    ) -> impl ExactSizeIterator<Item = &SpatialViewBoundingBox> {
-        self.regions_of_interest.iter()
+    pub fn iter_bounds(&self) -> impl ExactSizeIterator<Item = &SpatialViewBounds> {
+        self.bounds.iter()
     }
 }
 

@@ -85,7 +85,7 @@ impl Points2DVisualizer {
                 .as_affine3a();
 
             let has_transparency = transparency_enabled && colors.iter().any(|c| !c.is_opaque());
-            let point_cloud_bounds = re_renderer::util::point_cloud_bounds(&positions);
+            let robust_bounds = re_renderer::RobustBounds::from_points(&positions);
 
             {
                 let point_batch = point_builder
@@ -97,7 +97,7 @@ impl Points2DVisualizer {
                     )
                     .enable_alpha_blending(has_transparency)
                     .world_from_obj(world_from_obj)
-                    .object_space_bounding_box(point_cloud_bounds.bbox)
+                    .object_space_bounding_box(robust_bounds.exact)
                     .outline_mask_ids(ent_context.highlight.overall)
                     .picking_object_id(re_renderer::PickingLayerObjectId(entity_path.hash64()));
 
@@ -125,10 +125,9 @@ impl Points2DVisualizer {
                 }
             }
 
-            view_data.add_bounding_box_and_region_of_interest(
+            view_data.add_bounds(
                 entity_path.hash(),
-                point_cloud_bounds.bbox,
-                point_cloud_bounds.region_of_interest,
+                robust_bounds,
                 world_from_obj,
                 SpaceKind::TwoD,
             );
@@ -146,7 +145,7 @@ impl Points2DVisualizer {
                     entity_path,
                     visualizer_instruction: ent_context.visualizer_instruction,
                     num_instances,
-                    overall_position: point_cloud_bounds.bbox.center().truncate(),
+                    overall_position: robust_bounds.exact.center().truncate(),
                     instance_positions: data.positions.iter().map(|p| glam::vec2(p.x(), p.y())),
                     labels: &data.labels,
                     colors: &colors,

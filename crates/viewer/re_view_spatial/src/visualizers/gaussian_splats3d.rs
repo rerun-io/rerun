@@ -78,7 +78,7 @@ struct GaussianSplats3DCpu {
     /// Padded to RGBA so it can be uploaded straight into the `Rgba16Float` SH texture.
     sh_coefficients: Vec<[GaussianShCoefficient; 15]>,
     picking_ids: Vec<PickingLayerInstanceId>,
-    point_cloud_bounds: re_renderer::util::PointCloudBounds,
+    robust_bounds: re_renderer::RobustBounds,
 
     /// Scratch buffers holding the back-to-front gaussian ordering, reused across frames to speed
     /// up the per-frame CPU sort (see [`re_renderer::GaussianSplatBuilder`]).
@@ -142,7 +142,7 @@ impl GaussianSplats3DCpu {
                 .collect()
         };
 
-        let point_cloud_bounds = {
+        let robust_bounds = {
             re_tracing::profile_scope_if!(100_000 < num_instances, "bounding_box");
             // Exclude near-invisible floater gaussians so they don't blow up the bounds.
             let opaque_centers: Vec<glam::Vec3> = std::iter::zip(&centers, &colors)
@@ -150,9 +150,9 @@ impl GaussianSplats3DCpu {
                 .map(|(center, _)| *center)
                 .collect();
             if opaque_centers.is_empty() {
-                re_renderer::util::point_cloud_bounds(&centers)
+                re_renderer::RobustBounds::from_points(&centers)
             } else {
-                re_renderer::util::point_cloud_bounds(&opaque_centers)
+                re_renderer::RobustBounds::from_points(&opaque_centers)
             }
         };
 
@@ -163,7 +163,7 @@ impl GaussianSplats3DCpu {
             colors,
             sh_coefficients,
             picking_ids,
-            point_cloud_bounds,
+            robust_bounds,
             sort_order_caches: Mutex::new(Vec::new()),
         }
     }
@@ -312,7 +312,7 @@ impl GaussianSplats3DVisualizer {
                 let mut splat_batch = splat_builder
                     .batch(entity_path.to_string())
                     .world_from_obj(world_from_obj)
-                    .object_space_bounding_box(cpu.point_cloud_bounds.bbox)
+                    .object_space_bounding_box(cpu.robust_bounds.exact)
                     .outline_mask_ids(ent_context.highlight.overall)
                     .picking_object_id(re_renderer::PickingLayerObjectId(entity_path.hash64()))
                     .sort_order(cpu.sort_order_cache(transform_index))
@@ -340,10 +340,9 @@ impl GaussianSplats3DVisualizer {
                 }
                 drop(splat_batch);
 
-                view_data.add_bounding_box_and_region_of_interest(
+                view_data.add_bounds(
                     entity_path.hash(),
-                    cpu.point_cloud_bounds.bbox,
-                    cpu.point_cloud_bounds.region_of_interest,
+                    cpu.robust_bounds,
                     world_from_obj,
                     SpaceKind::ThreeD,
                 );

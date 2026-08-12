@@ -63,7 +63,7 @@ struct Points3DCpu {
     position_radii: Vec<PositionRadius>,
 
     #[size_bytes(ignore)] // Lives entirely on the stack.
-    point_cloud_bounds: re_renderer::util::PointCloudBounds,
+    robust_bounds: re_renderer::RobustBounds,
 
     picking_ids: Vec<PickingLayerInstanceId>,
     annotation_infos: ResolvedAnnotationInfos,
@@ -107,9 +107,9 @@ impl Points3DCpu {
 
         let positions: &[glam::Vec3] = bytemuck::cast_slice(data.positions);
 
-        let point_cloud_bounds = {
+        let robust_bounds = {
             re_tracing::profile_scope_if!(100_000 < num_instances, "bounding_box");
-            re_renderer::util::point_cloud_bounds(positions)
+            re_renderer::RobustBounds::from_points(positions)
         };
 
         let radii = process_radius_slice(
@@ -133,7 +133,7 @@ impl Points3DCpu {
 
         Self {
             position_radii,
-            point_cloud_bounds,
+            robust_bounds,
             picking_ids,
             annotation_infos,
             keypoints,
@@ -312,7 +312,7 @@ impl Points3DVisualizer {
                     .enable_shading(matches!(point_shading, PointShading::Gradient))
                     .enable_alpha_blending(alpha_blend)
                     .world_from_obj(world_from_obj)
-                    .object_space_bounding_box(cpu.point_cloud_bounds.bbox)
+                    .object_space_bounding_box(cpu.robust_bounds.exact)
                     .outline_mask_ids(ent_context.highlight.overall)
                     .picking_object_id(re_renderer::PickingLayerObjectId(entity_path.hash64()));
 
@@ -342,10 +342,9 @@ impl Points3DVisualizer {
                     }
                 }
 
-                view_data.add_bounding_box_and_region_of_interest(
+                view_data.add_bounds(
                     entity_path.hash(),
-                    cpu.point_cloud_bounds.bbox,
-                    cpu.point_cloud_bounds.region_of_interest,
+                    cpu.robust_bounds,
                     world_from_obj,
                     SpaceKind::ThreeD,
                 );
@@ -363,7 +362,7 @@ impl Points3DVisualizer {
                         entity_path,
                         visualizer_instruction: ent_context.visualizer_instruction,
                         num_instances,
-                        overall_position: cpu.point_cloud_bounds.bbox.center(),
+                        overall_position: cpu.robust_bounds.exact.center(),
                         instance_positions: cpu.position_radii.iter().map(|pr| pr.pos),
                         labels: &data.labels,
                         colors: &cpu.colors,
